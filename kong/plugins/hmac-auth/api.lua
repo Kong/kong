@@ -1,5 +1,4 @@
 local crud = require "kong.api.crud_helpers"
-local utils = require "kong.tools.utils"
 
 return{
   ["/consumers/:username_or_id/hmac-auth/"] = {
@@ -26,19 +25,19 @@ return{
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
       self.params.consumer_id = self.consumer.id
 
+      local credentials, err = crud.find_by_id_or_field(
+        dao_factory.hmacauth_credentials,
+        { consumer_id = self.params.consumer_id },
+        self.params.credential_username_or_id,
+        "username"
+      )
 
-      local filter_keys = {
-        [utils.is_valid_uuid(self.params.credential_username_or_id) and "id" or "username"] = self.params.credential_username_or_id,
-        consumer_id = self.params.consumer_id,
-      }
-      self.params.credential_username_or_id = nil
-
-      local credentials, err = dao_factory.hmacauth_credentials:find_all(filter_keys)
       if err then
         return helpers.yield_error(err)
       elseif next(credentials) == nil then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
+      self.params.credential_username_or_id = nil
 
       self.hmacauth_credential = credentials[1]
     end,

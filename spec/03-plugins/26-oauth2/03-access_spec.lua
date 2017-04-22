@@ -2,6 +2,56 @@ local cjson = require "cjson"
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 
+local function provision_code(host, extra_headers)
+  local request_client = helpers.proxy_ssl_client()
+  local res = assert(request_client:send {
+    method = "POST",
+    path = "/oauth2/authorize",
+    body = {
+      provision_key = "provision123",
+      client_id = "clientid123",
+      scope = "email",
+      response_type = "code",
+      state = "hello",
+      authenticated_userid = "userid123"
+    },
+    headers = utils.table_merge({
+      ["Host"] = host or "oauth2.com",
+      ["Content-Type"] = "application/json"
+    }, extra_headers)
+  })
+  assert.response(res).has.status(200)
+  local body = assert.response(res).has.jsonbody()
+  request_client:close()
+  if body.redirect_uri then
+    local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.com/kong\\?code=([\\w]{32,32})&state=hello$")
+    assert.is_nil(err)
+    local m, err = iterator()
+    assert.is_nil(err)
+    return m[1]
+  end
+end
+
+local function provision_token(host, extra_headers)
+  local code = provision_code(host, extra_headers)
+  local request_client = helpers.proxy_ssl_client()
+  local res = assert(request_client:send {
+    method = "POST",
+    path = "/oauth2/token",
+    body = { code = code, client_id = "clientid123", client_secret = "secret123", grant_type = "authorization_code" },
+    headers = utils.table_merge({
+      ["Host"] = host or "oauth2.com",
+      ["Content-Type"] = "application/json"
+    }, extra_headers)
+  })
+  assert.response(res).has.status(200)
+  local token = assert.response(res).has.jsonbody()
+  assert.is_table(token)
+  request_client:close()
+  return token
+end
+
+
 describe("#ci Plugin: oauth2 (access)", function()
   local proxy_ssl_client, proxy_client
   local client1
@@ -252,55 +302,6 @@ describe("#ci Plugin: oauth2 (access)", function()
     helpers.stop_kong()
   end)
 
-  local function provision_code(host)
-    local request_client = helpers.proxy_ssl_client()
-    local res = assert(request_client:send {
-      method = "POST",
-      path = "/oauth2/authorize",
-      body = {
-        provision_key = "provision123",
-        client_id = "clientid123",
-        scope = "email",
-        response_type = "code",
-        state = "hello",
-        authenticated_userid = "userid123"
-      },
-      headers = {
-        ["Host"] = host and host or "oauth2.com",
-        ["Content-Type"] = "application/json"
-      }
-    })
-    assert.response(res).has.status(200)
-    local body = assert.response(res).has.jsonbody()
-    request_client:close()
-    if body.redirect_uri then
-      local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.com/kong\\?code=([\\w]{32,32})&state=hello$")
-      assert.is_nil(err)
-      local m, err = iterator()
-      assert.is_nil(err)
-      return m[1]
-    end
-  end
-
-  local function provision_token(host)
-    local code = provision_code(host)
-    local request_client = helpers.proxy_ssl_client()
-    local res = assert(request_client:send {
-      method = "POST",
-      path = "/oauth2/token",
-      body = { code = code, client_id = "clientid123", client_secret = "secret123", grant_type = "authorization_code" },
-      headers = {
-        ["Host"] = host and host or "oauth2.com",
-        ["Content-Type"] = "application/json"
-      }
-    })
-    assert.response(res).has.status(200)
-    local token = assert.response(res).has.jsonbody()
-    assert.is_table(token)
-    request_client:close()
-    return token
-  end
-
   describe("OAuth2 Authorization", function()
     describe("Code Grant", function()
       it("returns an error when no provision_key is being sent", function()
@@ -312,7 +313,8 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"error_description":"Invalid provision_key","error":"invalid_provision_key"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "Invalid provision_key", error = "invalid_provision_key" }, json)
         assert.are.equal("no-store", res.headers["cache-control"])
         assert.are.equal("no-cache", res.headers["pragma"])
       end)
@@ -329,7 +331,8 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"error_description":"Missing authenticated_userid parameter","error":"invalid_authenticated_userid"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "Missing authenticated_userid parameter", error = "invalid_authenticated_userid" }, json)
       end)
       it("returns an error when only provision_key and authenticated_userid are sent", function()
         local res = assert(proxy_ssl_client:send {
@@ -345,7 +348,8 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"error_description":"Invalid client authentication","error":"invalid_client"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "Invalid client authentication", error = "invalid_client" }, json)
         assert.are.equal("no-store", res.headers["cache-control"])
         assert.are.equal("no-cache", res.headers["pragma"])
       end)
@@ -364,7 +368,8 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"redirect_uri":"http:\/\/google.com\/kong?error=invalid_scope&error_description=You%20must%20specify%20a%20scope"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ redirect_uri = "http://google.com/kong?error=invalid_scope&error_description=You%20must%20specify%20a%20scope" }, json)
       end)
       it("returns an error when an invalid scope is being sent", function()
         local res = assert(proxy_ssl_client:send {
@@ -382,7 +387,8 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"redirect_uri":"http:\/\/google.com\/kong?error=invalid_scope&error_description=%22wot%22%20is%20an%20invalid%20scope"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ redirect_uri = "http://google.com/kong?error=invalid_scope&error_description=%22wot%22%20is%20an%20invalid%20scope" }, json)
       end)
       it("returns an error when no response_type is being sent", function()
         local res = assert(proxy_ssl_client:send {
@@ -400,7 +406,8 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"redirect_uri":"http:\/\/google.com\/kong?error=unsupported_response_type&error_description=Invalid%20response_type"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ redirect_uri = "http://google.com/kong?error=unsupported_response_type&error_description=Invalid%20response_type" }, json)
       end)
       it("returns an error with a state when no response_type is being sent", function()
         local res = assert(proxy_ssl_client:send {
@@ -419,7 +426,8 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"redirect_uri":"http:\/\/google.com\/kong?error=unsupported_response_type&error_description=Invalid%20response_type&state=somestate"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ redirect_uri = "http://google.com/kong?error=unsupported_response_type&error_description=Invalid%20response_type&state=somestate" }, json)
       end)
       it("returns error when the redirect_uri does not match", function()
         local res = assert(proxy_ssl_client:send {
@@ -439,7 +447,8 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"redirect_uri":"http:\/\/google.com\/kong?error=invalid_request&error_description=Invalid%20redirect_uri%20that%20does%20not%20match%20with%20any%20redirect_uri%20created%20with%20the%20application"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ redirect_uri = "http://google.com/kong?error=invalid_request&error_description=Invalid%20redirect_uri%20that%20does%20not%20match%20with%20any%20redirect_uri%20created%20with%20the%20application" }, json)
       end)
       it("works even if redirect_uri contains a query string", function()
         local res = assert(proxy_client:send {
@@ -583,7 +592,8 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"error_description":"Invalid provision_key","error":"invalid_provision_key"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "Invalid provision_key", error = "invalid_provision_key" }, json)
       end)
       it("returns success with a path", function()
         local res = assert(proxy_ssl_client:send {
@@ -866,7 +876,8 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"error_description":"Invalid client authentication","error":"invalid_client"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "Invalid client authentication", error = "invalid_client" }, json)
       end)
       it("returns an error when client_secret is not sent", function()
         local res = assert(proxy_ssl_client:send {
@@ -884,7 +895,8 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"error":"unsupported_grant_type","error_description":"Invalid grant_type"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ error = "unsupported_grant_type", error_description = "Invalid grant_type" }, json)
       end)
       it("fails when not under HTTPS", function()
         local res = assert(proxy_client:send {
@@ -924,7 +936,8 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"error_description":"Invalid provision_key","error":"invalid_provision_key"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "Invalid provision_key", error = "invalid_provision_key" }, json)
       end)
       it("fails when setting authenticated_userid and invalid provision_key", function()
         local res = assert(proxy_ssl_client:send {
@@ -944,7 +957,8 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"error_description":"Invalid provision_key","error":"invalid_provision_key"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "Invalid provision_key", error = "invalid_provision_key" }, json)
       end)
       it("returns success", function()
         local res = assert(proxy_ssl_client:send {
@@ -1018,7 +1032,8 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"error":"invalid_request","error_description":"Invalid redirect_uri that does not match with any redirect_uri created with the application"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ error = "invalid_request", error_description = "Invalid redirect_uri that does not match with any redirect_uri created with the application" }, json)
       end)
       it("returns success with authenticated_userid and valid provision_key", function()
         local res = assert(proxy_ssl_client:send {
@@ -1072,7 +1087,8 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(401, res)
-        assert.equal([[{"error_description":"Invalid client authentication","error":"invalid_client"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "Invalid client authentication", error = "invalid_client" }, json)
         assert.are.equal("Basic realm=\"OAuth2.0\"", res.headers["www-authenticate"])
       end)
       it("sets the right upstream headers", function()
@@ -1151,7 +1167,8 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(401, res)
-        assert.equal([[{"error_description":"The access token is missing","error":"invalid_request"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "The access token is missing", error = "invalid_request" }, json)
       end)
       it("returns an error when client_secret is not sent", function()
         local res = assert(proxy_ssl_client:send {
@@ -1168,7 +1185,8 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"error_description":"Invalid client authentication","error":"invalid_client"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "Invalid client authentication", error = "invalid_client" }, json)
       end)
       it("returns an error when grant_type is not sent", function()
         local res = assert(proxy_ssl_client:send {
@@ -1186,7 +1204,8 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"error":"unsupported_grant_type","error_description":"Invalid grant_type"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ error = "unsupported_grant_type", error_description = "Invalid grant_type" }, json)
       end)
       it("fails when no provision key is being sent", function()
         local res = assert(proxy_ssl_client:send {
@@ -1205,7 +1224,8 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"error_description":"Invalid provision_key","error":"invalid_provision_key"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "Invalid provision_key", error = "invalid_provision_key" }, json)
       end)
       it("fails when no provision key is being sent", function()
         local res = assert(proxy_ssl_client:send {
@@ -1223,7 +1243,8 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"error_description":"Invalid provision_key","error":"invalid_provision_key"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "Invalid provision_key", error = "invalid_provision_key" }, json)
       end)
       it("fails when no authenticated user id is being sent", function()
         local res = assert(proxy_ssl_client:send {
@@ -1242,7 +1263,8 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"error_description":"Missing authenticated_userid parameter","error":"invalid_authenticated_userid"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "Missing authenticated_userid parameter", error = "invalid_authenticated_userid" }, json)
       end)
       it("returns success", function()
         local res = assert(proxy_ssl_client:send {
@@ -1300,7 +1322,8 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(401, res)
-        assert.equal([[{"error_description":"Invalid client authentication","error":"invalid_client"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ error_description = "Invalid client authentication", error = "invalid_client" }, json)
         assert.are.equal("Basic realm=\"OAuth2.0\"", res.headers["www-authenticate"])
       end)
       it("sets the right upstream headers", function()
@@ -1347,7 +1370,8 @@ describe("#ci Plugin: oauth2 (access)", function()
         }
       })
       local body = assert.res_status(400, res)
-      assert.equal([[{"error_description":"Invalid client authentication","error":"invalid_client"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ error_description = "Invalid client authentication", error = "invalid_client" }, json)
       -- Checking headers
       assert.are.equal("no-store", res.headers["cache-control"])
       assert.are.equal("no-cache", res.headers["pragma"])
@@ -1367,7 +1391,8 @@ describe("#ci Plugin: oauth2 (access)", function()
         }
       })
       local body = assert.res_status(400, res)
-      assert.equal([[{"error_description":"Invalid client authentication","error":"invalid_client"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ error_description = "Invalid client authentication", error = "invalid_client" }, json)
       -- Checking headers
       assert.are.equal("no-store", res.headers["cache-control"])
       assert.are.equal("no-cache", res.headers["pragma"])
@@ -1388,7 +1413,8 @@ describe("#ci Plugin: oauth2 (access)", function()
         }
       })
       local body = assert.res_status(400, res)
-      assert.equal([[{"error_description":"Invalid client authentication","error":"invalid_client"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ error_description = "Invalid client authentication", error = "invalid_client" }, json)
       -- Checking headers
       assert.are.equal("no-store", res.headers["cache-control"])
       assert.are.equal("no-cache", res.headers["pragma"])
@@ -1410,7 +1436,8 @@ describe("#ci Plugin: oauth2 (access)", function()
         }
       })
       local body = assert.res_status(400, res)
-      assert.equal([[{"error":"unsupported_grant_type","error_description":"Invalid grant_type"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ error = "unsupported_grant_type", error_description = "Invalid grant_type" }, json)
     end)
     it("returns an error with a wrong code", function()
       local code = provision_code()
@@ -1430,7 +1457,8 @@ describe("#ci Plugin: oauth2 (access)", function()
         }
       })
       local body = assert.res_status(400, res)
-      assert.equal([[{"error":"invalid_request","error_description":"Invalid code"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ error = "invalid_request", error_description = "Invalid code" }, json)
     end)
     it("returns success without state", function()
       local code = provision_code()
@@ -1539,7 +1567,8 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"error":"invalid_request","error_description":"Invalid code"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ error = "invalid_request", error_description = "Invalid code" }, json)
     end)
     it("fails when an authorization code is used by another application", function()
       local code = provision_code()
@@ -1559,7 +1588,8 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"error":"invalid_request","error_description":"Invalid code"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ error = "invalid_request", error_description = "Invalid code" }, json)
     end)
 
     it("fails when an authorization code is used for another API", function()
@@ -1579,7 +1609,8 @@ describe("#ci Plugin: oauth2 (access)", function()
         }
       })
       local body = assert.res_status(400, res)
-      assert.equal([[{"error":"invalid_request","error_description":"Invalid code"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ error = "invalid_request", error_description = "Invalid code" }, json)
     end)
   end)
 
@@ -1594,7 +1625,8 @@ describe("#ci Plugin: oauth2 (access)", function()
         }
       })
       local body = assert.res_status(401, res)
-      assert.equal([[{"error_description":"The access token is missing","error":"invalid_request"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ error_description = "The access token is missing", error = "invalid_request" }, json)
     end)
     it("works when a correct access_token is being sent in the querystring", function()
       local token = provision_token()
@@ -1619,7 +1651,8 @@ describe("#ci Plugin: oauth2 (access)", function()
         }
       })
       local body = assert.res_status(401, res)
-      assert.equal([[{"error_description":"The access token is invalid or has expired","error":"invalid_token"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ error_description = "The access token is invalid or has expired", error = "invalid_token" }, json)
     end)
     it("works when a correct access_token is being sent in a form body", function()
       local token = provision_token()
@@ -1795,7 +1828,8 @@ describe("#ci Plugin: oauth2 (access)", function()
         }
       })
       local body = assert.res_status(401, res)
-      assert.equal([[{"error_description":"The access token is missing","error":"invalid_request"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ error_description = "The access token is missing", error = "invalid_request" }, json)
       assert.are.equal('Bearer realm="service"', res.headers['www-authenticate'])
     end)
     it("returns 401 Unauthorized when an invalid access token is being sent via url parameter", function()
@@ -1807,7 +1841,8 @@ describe("#ci Plugin: oauth2 (access)", function()
         }
       })
       local body = assert.res_status(401, res)
-      assert.equal([[{"error_description":"The access token is invalid or has expired","error":"invalid_token"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ error_description = "The access token is invalid or has expired", error = "invalid_token" }, json)
       assert.are.equal('Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"', res.headers['www-authenticate'])
     end)
     it("returns 401 Unauthorized when an invalid access token is being sent via the Authorization header", function()
@@ -1820,7 +1855,8 @@ describe("#ci Plugin: oauth2 (access)", function()
         }
       })
       local body = assert.res_status(401, res)
-      assert.equal([[{"error_description":"The access token is invalid or has expired","error":"invalid_token"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ error_description = "The access token is invalid or has expired", error = "invalid_token" }, json)
       assert.are.equal('Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"', res.headers['www-authenticate'])
     end)
     it("returns 401 Unauthorized when token has expired", function()
@@ -1838,7 +1874,8 @@ describe("#ci Plugin: oauth2 (access)", function()
         }
       })
       local body = assert.res_status(401, res)
-      assert.equal([[{"error_description":"The access token is invalid or has expired","error":"invalid_token"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ error_description = "The access token is invalid or has expired", error = "invalid_token" }, json)
       assert.are.equal('Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"', res.headers['www-authenticate'])
     end)
   end)
@@ -1860,7 +1897,8 @@ describe("#ci Plugin: oauth2 (access)", function()
         }
       })
       local body = assert.res_status(400, res)
-      assert.equal([[{"error":"invalid_request","error_description":"Invalid refresh_token"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ error = "invalid_request", error_description = "Invalid refresh_token" }, json)
     end)
     it("refreshes an valid access token", function()
       local token = provision_token()
@@ -1910,7 +1948,8 @@ describe("#ci Plugin: oauth2 (access)", function()
         }
       })
       local body = assert.res_status(401, res)
-      assert.equal([[{"error_description":"The access token is invalid or has expired","error":"invalid_token"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ error_description = "The access token is invalid or has expired", error = "invalid_token" }, json)
 
       -- Refreshing the token
       local res = assert(proxy_ssl_client:send {
@@ -2044,4 +2083,226 @@ describe("#ci Plugin: oauth2 (access)", function()
       assert.res_status(200, res)
     end)
   end)
+end)
+
+
+describe("#ci Plugin: oauth2 (access)", function()
+
+  local client, user1, user2, anonymous
+
+  setup(function()
+    local api1 = assert(helpers.dao.apis:insert {
+      name = "api-1",
+      hosts = { "logical-and.com" },
+      upstream_url = "http://mockbin.org/request"
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "oauth2",
+      api_id = api1.id,
+      config = {
+        scopes = { "email", "profile", "user.email" },
+        enable_authorization_code = true,
+        mandatory_scope = true,
+        provision_key = "provision123",
+        token_expiration = 5,
+        enable_implicit_grant = true,
+        global_credentials = false,
+      }
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "key-auth",
+      api_id = api1.id
+    })
+
+    anonymous = assert(helpers.dao.consumers:insert {
+      username = "Anonymous"
+    })
+    user1 = assert(helpers.dao.consumers:insert {
+      username = "Mickey"
+    })
+    user2 = assert(helpers.dao.consumers:insert {
+      username = "Aladdin"
+    })
+
+    local api2 = assert(helpers.dao.apis:insert {
+      name = "api-2",
+      hosts = { "logical-or.com" },
+      upstream_url = "http://mockbin.org/request"
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "oauth2",
+      api_id = api2.id,
+      config = {
+        scopes = { "email", "profile", "user.email" },
+        enable_authorization_code = true,
+        mandatory_scope = true,
+        provision_key = "provision123",
+        token_expiration = 5,
+        enable_implicit_grant = true,
+        global_credentials = false,
+        anonymous = anonymous.id,
+      }
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "key-auth",
+      api_id = api2.id,
+      config = {
+        anonymous = anonymous.id
+      }
+    })
+
+    assert(helpers.dao.keyauth_credentials:insert {
+      key = "Mouse",
+      consumer_id = user1.id
+    })
+
+    assert(helpers.dao.oauth2_credentials:insert {
+      client_id = "clientid123",
+      client_secret = "secret123",
+      redirect_uri = "http://google.com/kong",
+      name = "testapp",
+      consumer_id = user2.id
+    })
+
+    assert(helpers.start_kong())
+    client = helpers.proxy_client()
+  end)
+
+
+  teardown(function()
+    if client then client:close() end
+    helpers.stop_kong()
+  end)
+
+  describe("multiple auth without anonymous, logical AND", function()
+
+    it("passes with all credentials provided", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "logical-and.com",
+          ["apikey"] = "Mouse",
+          -- we must provide the apikey again in the extra_headers, for the
+          -- token endpoint, because that endpoint is also protected by the
+          -- key-auth plugin. Otherwise getting the token simply fails.
+          ["Authorization"] = "bearer "..provision_token("logical-and.com",
+            {["apikey"] = "Mouse"}).access_token,
+        }
+      })
+      assert.response(res).has.status(200)
+      assert.request(res).has.no.header("x-anonymous-consumer")
+      local id = assert.request(res).has.header("x-consumer-id")
+      assert.not_equal(id, anonymous.id)
+      assert(id == user1.id or id == user2.id)
+    end)
+
+    it("fails 401, with only the first credential provided", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "logical-and.com",
+          ["apikey"] = "Mouse",
+        }
+      })
+      assert.response(res).has.status(401)
+    end)
+
+    it("fails 401, with only the second credential provided", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "logical-and.com",
+          -- we must provide the apikey again in the extra_headers, for the
+          -- token endpoint, because that endpoint is also protected by the
+          -- key-auth plugin. Otherwise getting the token simply fails.
+          ["Authorization"] = "bearer "..provision_token("logical-and.com",
+            {["apikey"] = "Mouse"}).access_token,
+        }
+      })
+      assert.response(res).has.status(401)
+    end)
+
+    it("fails 401, with no credential provided", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "logical-and.com",
+        }
+      })
+      assert.response(res).has.status(401)
+    end)
+
+  end)
+
+  describe("multiple auth with anonymous, logical OR", function()
+
+    it("passes with all credentials provided", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "logical-or.com",
+          ["apikey"] = "Mouse",
+          ["Authorization"] = "bearer "..provision_token("logical-or.com").access_token,
+        }
+      })
+      assert.response(res).has.status(200)
+      assert.request(res).has.no.header("x-anonymous-consumer")
+      local id = assert.request(res).has.header("x-consumer-id")
+      assert.not_equal(id, anonymous.id)
+      assert(id == user1.id or id == user2.id)
+    end)
+
+    it("passes with only the first credential provided", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "logical-or.com",
+          ["apikey"] = "Mouse",
+        }
+      })
+      assert.response(res).has.status(200)
+      assert.request(res).has.no.header("x-anonymous-consumer")
+      local id = assert.request(res).has.header("x-consumer-id")
+      assert.not_equal(id, anonymous.id)
+      assert.equal(user1.id, id)
+    end)
+
+    it("passes with only the second credential provided", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "logical-or.com",
+          ["Authorization"] = "bearer "..provision_token("logical-or.com").access_token,
+        }
+      })
+      assert.response(res).has.status(200)
+      assert.request(res).has.no.header("x-anonymous-consumer")
+      local id = assert.request(res).has.header("x-consumer-id")
+      assert.not_equal(id, anonymous.id)
+      assert.equal(user2.id, id)
+    end)
+
+    it("passes with no credential provided", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "logical-or.com",
+        }
+      })
+      assert.response(res).has.status(200)
+      assert.request(res).has.header("x-anonymous-consumer")
+      local id = assert.request(res).has.header("x-consumer-id")
+      assert.equal(id, anonymous.id)
+    end)
+
+  end)
+
 end)

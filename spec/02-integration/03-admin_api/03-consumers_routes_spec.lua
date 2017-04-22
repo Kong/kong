@@ -20,7 +20,7 @@ describe("Admin API", function()
     helpers.stop_kong()
   end)
 
-  local consumer, consumer2
+  local consumer, consumer2, consumer3
   before_each(function()
     helpers.dao:truncate_tables()
     consumer = assert(helpers.dao.consumers:insert {
@@ -30,6 +30,10 @@ describe("Admin API", function()
     consumer2 = assert(helpers.dao.consumers:insert {
       username = "bob pop",  -- containing space for urlencoded test
       custom_id = "abcd"
+    })
+    consumer3 = assert(helpers.dao.consumers:insert {
+      username = "83825bb5-38c7-4160-8c23-54dd2b007f31",  -- uuid format
+      custom_id = "1a2b"
     })
   end)
 
@@ -62,9 +66,14 @@ describe("Admin API", function()
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(400, res)
-            assert.equal([[{"custom_id":"At least a 'custom_id' or a 'username' ]]
-                       ..[[must be specified","username":"At least a 'custom_id' or ]]
-                       ..[[a 'username' must be specified"}]], body)
+            local json = cjson.decode(body)
+            assert.same(
+              {
+                custom_id = "At least a 'custom_id' or a 'username' must be specified",
+                username  = "At least a 'custom_id' or a 'username' must be specified"
+              },
+              json
+            )
           end
         end)
         it_content_types("returns 409 on conflicting username", function(content_type)
@@ -78,7 +87,8 @@ describe("Admin API", function()
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(409, res)
-            assert.equal([[{"username":"already exists with value 'bob'"}]], body)
+            local json = cjson.decode(body)
+            assert.same({ username = "already exists with value 'bob'" }, json)
           end
         end)
         it_content_types("returns 409 on conflicting custom_id", function(content_type)
@@ -93,7 +103,8 @@ describe("Admin API", function()
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(409, res)
-            assert.equal([[{"custom_id":"already exists with value '1234'"}]], body)
+            local json = cjson.decode(body)
+            assert.same({ custom_id = "already exists with value '1234'" }, json)
           end
         end)
       end)
@@ -158,9 +169,14 @@ describe("Admin API", function()
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(400, res)
-            assert.equal([[{"custom_id":"At least a 'custom_id' or a 'username' ]]
-                       ..[[must be specified","username":"At least a 'custom_id' or ]]
-                       ..[[a 'username' must be specified"}]], body)
+            local json = cjson.decode(body)
+            assert.same(
+              {
+                custom_id = "At least a 'custom_id' or a 'username' must be specified",
+                username  = "At least a 'custom_id' or a 'username' must be specified"
+              },
+              json
+            )
           end
         end)
         it_content_types("returns 409 on conflict", function(content_type)
@@ -187,7 +203,8 @@ describe("Admin API", function()
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(409, res)
-            assert.equal([[{"username":"already exists with value 'alice'"}]], body)
+            local json = cjson.decode(body)
+            assert.same({ username = "already exists with value 'alice'" }, json)
           end
         end)
       end)
@@ -253,7 +270,8 @@ describe("Admin API", function()
           query = {foo = "bar"}
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"foo":"unknown field"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ foo = "unknown field" }, json)
       end)
     end)
     it("returns 405 on invalid method", function()
@@ -266,7 +284,8 @@ describe("Admin API", function()
           headers = {["Content-Type"] = "application/json"}
         })
         local body = assert.response(res).has.status(405)
-        assert.equal([[{"message":"Method not allowed"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ message = "Method not allowed" }, json)
       end
     end)
 
@@ -289,6 +308,15 @@ describe("Admin API", function()
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
           assert.same(consumer, json)
+        end)
+        it("retrieves by username in uuid format", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/consumers/"..consumer3.username
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.same(consumer3, json)
         end)
         it("retrieves by urlencoded username", function()
           local res = assert(client:send {
@@ -370,7 +398,8 @@ describe("Admin API", function()
                 headers = {["Content-Type"] = content_type}
               })
               local body = assert.res_status(400, res)
-              assert.equal([[{"message":"empty body"}]], body)
+              local json = cjson.decode(body)
+              assert.same({ message = "empty body" }, json)
             end
           end)
         end)

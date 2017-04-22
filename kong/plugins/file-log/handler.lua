@@ -20,23 +20,16 @@ local mode = bit.bor(S_IRUSR, S_IWUSR, S_IRGRP, S_IROTH)
 ffi.cdef[[
 int open(char * filename, int flags, int mode);
 int write(int fd, void * ptr, int numbytes);
+int close(int fd);
 char *strerror(int errnum);
 ]]
-
--- fd tracking utility functions
-local file_descriptors = {}
-
-local function get_fd(conf_path)
-  return file_descriptors[conf_path]
-end
-
-local function set_fd(conf_path, file_descriptor)
-  file_descriptors[conf_path] = file_descriptor
-end
 
 local function string_to_char(str)
   return ffi.cast("uint8_t*", str)
 end
+
+-- fd tracking utility functions
+local file_descriptors = {}
 
 -- Log to a file. Function used as callback from an nginx timer.
 -- @param `premature` see OpenResty `ngx.timer.at()`
@@ -47,14 +40,23 @@ local function log(premature, conf, message)
 
   local msg = cjson.encode(message).."\n"
 
-  local fd = get_fd(conf.path)
+  local fd = file_descriptors[conf.path]
+  
+  if fd and conf.reopen then
+    -- close fd, we do this here, to make sure a previously cached fd also
+    -- gets closed upon dynamic changes of the configuration
+    ffi.C.close(fd)
+    file_descriptors[conf.path] = nil
+    fd = nil
+  end
+
   if not fd then
     fd = ffi.C.open(string_to_char(conf.path), oflags, mode)
     if fd < 0 then
       local errno = ffi.errno()
       ngx.log(ngx.ERR, "[file-log] failed to open the file: ", ffi.string(ffi.C.strerror(errno)))
     else
-      set_fd(conf.path, fd)
+      file_descriptors[conf.path] = fd
     end
   end
 
