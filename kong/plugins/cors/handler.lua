@@ -75,7 +75,7 @@ local function configure_credentials(ngx, conf)
       end
     end
 
-    ngx.header["Access-Control-Allow-Credentials"] = tostring(allow_credentials)
+    ngx.header["Access-Control-Allow-Credentials"] = allow_credentials and "true" or nil 
     
   elseif conf.credentials then
     ngx.header["Access-Control-Allow-Credentials"] = "true"
