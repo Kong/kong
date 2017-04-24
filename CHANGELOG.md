@@ -5,6 +5,10 @@
 - The Kong DNS resolver now honors the `MAXNS` setting (3) when parsing the
   `resolv.conf` nameservers.
   [#2290](https://github.com/Mashape/kong/issues/2290)
+- Upstream requests sent via TLS now set the upstream SNI field based on the
+  downstream request when `preserve_host` is set to true. Thanks
+  [konrade](https://github.com/konrade) for the original patch.
+  [#2225](https://github.com/Mashape/kong/pull/2225)
 - Admin API:
   - The "active targets" endpoint now only return the most recent nonzero
     weight Targets, instead of all nonzero weight targets. This is to provide
