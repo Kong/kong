@@ -64,6 +64,11 @@
   altering) the request URI when trying to match an API's `uris` value. Instead
   of relying on the Nginx `$uri` variable, we now use `$request_uri`.
   [#2377](https://github.com/Mashape/kong/pull/2377)
+- Upstream connections over TLS now set their Client Hello SNI field. The SNI
+  value is taken from the upstream `Host` header value, and thus also depends
+  on the `preserve_host` setting of your API. Thanks
+  [@konrade](https://github.com/konrade) for the original patch.
+  [#2225](https://github.com/Mashape/kong/pull/2225)
 - When using Cassandra, some migrations would not be performed on the same
   coordinator as the one originally chosen. The same migrations would also
   require a response from other replicas in a cluster, but were not waiting

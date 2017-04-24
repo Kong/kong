@@ -107,8 +107,10 @@ server {
         proxy_set_header Host $upstream_host;
         proxy_set_header Upgrade $upstream_upgrade;
         proxy_set_header Connection $upstream_connection;
-
         proxy_pass_header Server;
+
+        proxy_ssl_name $upstream_host;
+
         proxy_pass $upstream_scheme://kong_upstream;
 
         header_filter_by_lua_block {
