@@ -25,6 +25,9 @@ describe("Plugin: oauth (API)", function()
       consumer = assert(helpers.dao.consumers:insert {
         username = "bob"
       })
+      assert(helpers.dao.consumers:insert {
+        username = "sally"
+      })
     end)
     after_each(function()
       helpers.dao:truncate_table("oauth2_credentials")
@@ -64,6 +67,34 @@ describe("Plugin: oauth (API)", function()
         assert.equal(consumer.id, body.consumer_id)
         assert.equal("Test APP", body.name)
         assert.equal(2, #body.redirect_uri)
+      end)
+      it("creates multiple oauth2 credentials with the same client_secret", function()
+        local res = assert(admin_client:send {
+          method = "POST",
+          path = "/consumers/bob/oauth2",
+          body = {
+            name = "Test APP",
+            redirect_uri = "http://google.com/",
+            client_secret = "secret123",
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        assert.res_status(201, res)
+        res = assert(admin_client:send {
+          method = "POST",
+          path = "/consumers/sally/oauth2",
+          body = {
+            name = "Test APP",
+            redirect_uri = "http://google.com/",
+            client_secret = "secret123",
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        assert.res_status(201, res)
       end)
       describe("errors", function()
         it("returns bad request", function()
