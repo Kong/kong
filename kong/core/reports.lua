@@ -180,9 +180,6 @@ return {
 
     create_timer(PING_INTERVAL, ping_handler)
   end,
-  rewrite = function()
-    -- Do nothing
-  end,
   log = function()
     if not _enabled then
       return

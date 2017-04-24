@@ -1,57 +1,154 @@
 local helpers = require "spec.helpers"
-local cjson = require "cjson"
 
 describe("OpenResty handlers", function()
-  local api_client, proxy_client
-  setup(function()
-    assert(helpers.dao.apis:insert {
-      name = "rewrite-api",
-      uris = { "/mockbin" },
-      strip_uri = true,
-      upstream_url = "http://mockbin.com"
-    })
 
-    assert(helpers.start_kong({
-      custom_plugins = "rewrite",
-      lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua"
-    }))
+  describe("rewrite on global plugin", function()
 
-    api_client = helpers.admin_client()
-    proxy_client = helpers.proxy_client(2000)
+    local api_client, proxy_client
 
-    local res = assert(api_client:send {
-      method = "POST",
-      path = "/plugins/",
-      headers = {
-        ["Content-Type"] = "application/json"
-      },
-      body = {
-        name = "rewrite"
-      }
-    })
-    assert.res_status(201, res)
-  end)
+    setup(function()
+      -- insert plugin-less api and a global plugin
+      assert(helpers.dao.apis:insert {
+        name = "rewrite1",
+        hosts = { "rewriter1.com" },
+        upstream_url = "http://mockbin.org"
+      })
+      assert(helpers.dao.plugins:insert {
+        name = "rewriter",
+        config = {
+          value = "global plugin",
+        },
+      })
 
-  teardown(function()
-    if api_client then api_client:close() end
-    if proxy_client then proxy_client:close() end
-    helpers.stop_kong()
-  end)
+      assert(helpers.start_kong({
+        custom_plugins = "rewriter",
+      }))
 
-  describe("rewrite", function()
-    it("rewrites to a matching API", function()
+      api_client = helpers.admin_client()
+      proxy_client = helpers.proxy_client()
+    end)
+
+    teardown(function()
+      if api_client then api_client:close() end
+      helpers.stop_kong()
+    end)
+
+    it("runs", function()
       local res = assert(proxy_client:send {
         method = "GET",
-        path = "/inexistent?rewrite_to=%2Fmockbin",
+        path = "/request",
+        headers = {
+          host = "rewriter1.com",
+        },
       })
       assert.response(res).has.status(200)
-    end)
-    it("rewrites to an unmatching API", function()
-      local res = assert(proxy_client:send {
-        method = "GET",
-        path = "/inexistent?rewrite_to=%2Fhelloworld",
-      })
-      assert.response(res).has.status(404)
+      local value = assert.request(res).has.header("rewriter")
+      assert.equal("global plugin", value)
     end)
   end)
+
+  describe("rewrite on api specific plugin", function()
+
+    local api_client, proxy_client
+
+    setup(function()
+      -- api specific plugin
+      local api2 = assert(helpers.dao.apis:insert {
+        name = "rewrite2",
+        hosts = { "rewriter2.com" },
+        upstream_url = "http://mockbin.org"
+      })
+      assert(helpers.dao.plugins:insert {
+        api_id = api2.id,
+        name = "rewriter",
+        config = {
+          value = "api-specific plugin",
+        },
+      })
+
+      assert(helpers.start_kong({
+        custom_plugins = "rewriter",
+      }))
+
+      api_client = helpers.admin_client()
+      proxy_client = helpers.proxy_client()
+    end)
+
+    teardown(function()
+      if api_client then api_client:close() end
+      helpers.stop_kong()
+    end)
+
+    it("doesn't run", function()
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          host = "rewriter2.com",
+        },
+      })
+      assert.response(res).has.status(200)
+      assert.request(res).has.no.header("rewriter")
+    end)
+  end)
+
+  describe("rewrite on consumer specific plugin", function()
+
+    local api_client, proxy_client
+
+    setup(function()
+      -- consumer specific plugin
+      local api3 = assert(helpers.dao.apis:insert {
+        name = "rewrite3",
+        hosts = { "rewriter3.com" },
+        upstream_url = "http://mockbin.org"
+      })
+      assert(helpers.dao.plugins:insert {
+        api_id = api3.id,
+        name = "key-auth",
+      })
+      local consumer3 = assert(helpers.dao.consumers:insert {
+        username = "test-consumer",
+      })
+      assert(helpers.dao.keyauth_credentials:insert {
+        key = "kong",
+        consumer_id = consumer3.id
+      })
+      assert(helpers.dao.plugins:insert {
+        consumer_id = consumer3.id,
+        name = "rewriter",
+        config = {
+          value = "consumer-specific plugin",
+        },
+      })
+
+      assert(helpers.start_kong({
+        custom_plugins = "rewriter",
+      }))
+
+      api_client = helpers.admin_client()
+      proxy_client = helpers.proxy_client()
+    end)
+
+    teardown(function()
+      if api_client then api_client:close() end
+      helpers.stop_kong()
+    end)
+
+    it("doesn't run", function()
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          host = "rewriter3.com",
+          apikey = "kong"
+        },
+      })
+      assert.response(res).has.status(200)
+      local value = assert.request(res).has.header("x-consumer-username")
+      assert.equal("test-consumer", value)
+      assert.request(res).has.no.header("rewriter")
+    end)
+  end)
+
 end)
