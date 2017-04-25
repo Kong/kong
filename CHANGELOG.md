@@ -59,6 +59,11 @@
 - If no API was configured with a `hosts` matching rule, then the
   `preserve_host` flag would never be honored.
   [#2344](https://github.com/Mashape/kong/pull/2344)
+- Correctly match APIs with percent-encoded URIs in their `uris` property.
+  Generally, this change also avoids normalizing (and thus, potentially
+  altering) the request URI when trying to match an API's `uris` value. Instead
+  of relying on the Nginx `$uri` variable, we now use `$request_uri`.
+  [#2377](https://github.com/Mashape/kong/pull/2377)
 - When using Cassandra, some migrations would not be performed on the same
   coordinator as the one originally chosen. The same migrations would also
   require a response from other replicas in a cluster, but were not waiting
