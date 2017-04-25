@@ -649,8 +649,8 @@ function _M.new(apis)
       new_uri = uri
 
     else
-      local err
-      new_uri, err = re_sub(uri, api_t.strip_uri_regex, "/$1", "ajo")
+      local _, err
+      new_uri, _, err = re_sub(uri, api_t.strip_uri_regex, "/$1", "ajo")
       if not new_uri then
         log(ERR, "could not strip URI: ", err)
         return
