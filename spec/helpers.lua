@@ -7,6 +7,7 @@
 
 local BIN_PATH = "bin/kong"
 local TEST_CONF_PATH = "spec/kong_tests.conf"
+local CUSTOM_PLUGIN_PATH = "./spec/fixtures/custom_plugins/?.lua"
 
 local conf_loader = require "kong.conf_loader"
 local DAOFactory = require "kong.dao.factory"
@@ -20,6 +21,10 @@ local http = require "resty.http"
 local log = require "kong.cmd.utils.log"
 
 log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
+
+-- Add to package path so dao helpers can insert custom plugins
+-- (while running from the busted environment)
+package.path = CUSTOM_PLUGIN_PATH .. ";" .. package.path
 
 ---------------
 -- Conf and DAO
@@ -763,6 +768,15 @@ local function kong_exec(cmd, env)
   cmd = cmd or ""
   env = env or {}
 
+  -- Insert the Lua path to the custom-plugin fixtures
+  if not env.lua_package_path then
+    env.lua_package_path = CUSTOM_PLUGIN_PATH
+
+  else
+    env.lua_package_path = CUSTOM_PLUGIN_PATH .. ";" .. env.lua_package_path  
+  end
+
+  -- build Kong environment variables
   local env_vars = ""
   for k, v in pairs(env) do
     env_vars = string.format("%s KONG_%s='%s'", env_vars, k:upper(), v)
