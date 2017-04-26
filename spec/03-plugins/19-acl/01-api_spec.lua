@@ -51,9 +51,8 @@ describe("Plugin: acl (API)", function()
             }
           })
           local body = assert.res_status(400, res)
-          assert.are.same({
-            group = "group is required"
-          }, cjson.decode(body))
+          local json = cjson.decode(body)
+          assert.same({ group = "group is required" }, json)
         end)
       end)
     end)
@@ -86,9 +85,8 @@ describe("Plugin: acl (API)", function()
           }
         })
           local body = assert.res_status(400, res)
-          assert.are.same({
-            group = "group is required"
-          }, cjson.decode(body))
+          local json = cjson.decode(body)
+          assert.same({ group = "group is required" }, json)
         end)
       end)
     end)
@@ -229,9 +227,9 @@ describe("Plugin: acl (API)", function()
             }
           })
           local body = assert.res_status(400, res)
-          assert.are.same({
-            group = "ACL group already exist for this consumer"
-          }, cjson.decode(body))
+                    
+          local json = cjson.decode(body)
+          assert.same({ group = "ACL group already exist for this consumer" }, json)
         end)
       end)
     end)

@@ -102,20 +102,28 @@ local function load_consumer(consumer_id, anonymous)
 end
 
 local function set_consumer(consumer, credential)
+  
   if consumer then
+    -- this can only be the Anonymous user in this case
     ngx_set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
     ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
     ngx_set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
-  end
-  ngx.ctx.authenticated_consumer = consumer
-  if credential then
-    ngx_set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
-    ngx.ctx.authenticated_credential = credential
-    ngx_set_header(constants.HEADERS.ANONYMOUS, nil) -- in case of auth plugins concatenation
-  else
     ngx_set_header(constants.HEADERS.ANONYMOUS, true)
+    ngx.ctx.authenticated_consumer = consumer
+    return
   end
   
+  -- here we have been authenticated by ldap
+  ngx_set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
+  ngx.ctx.authenticated_credential = credential
+  
+  -- in case of auth plugins concatenation, remove remnants of anonymous
+  ngx.ctx.authenticated_consumer = nil
+  ngx_set_header(constants.HEADERS.ANONYMOUS, nil)
+  ngx_set_header(constants.HEADERS.CONSUMER_ID, nil)
+  ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, nil)
+  ngx_set_header(constants.HEADERS.CONSUMER_USERNAME, nil)
+
 end
 
 local function do_authentication(conf)
@@ -148,7 +156,15 @@ local function do_authentication(conf)
   return true
 end
 
+
 function _M.execute(conf)
+
+  if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
+    -- we're already authenticated, and we're configured for using anonymous, 
+    -- hence we're in a logical OR between auth methods and we're already done.
+    return
+  end
+
   local ok, err = do_authentication(conf)
   if not ok then
     if conf.anonymous ~= "" then
@@ -164,5 +180,6 @@ function _M.execute(conf)
     end
   end
 end
+
 
 return _M

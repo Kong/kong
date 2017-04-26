@@ -148,7 +148,7 @@ local function do_authentication(conf)
   -- Verify the JWT registered claims
   local ok_claims, errors = jwt:verify_registered_claims(conf.claims_to_verify)
   if not ok_claims then
-    return false, {status = 403, message = errors}
+    return false, {status = 401, message = errors}
   end
 
   -- Retrieve the consumer
@@ -168,9 +168,16 @@ local function do_authentication(conf)
   return true
 end
 
+
 function JwtHandler:access(conf)
   JwtHandler.super.access(self)
   
+  if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
+    -- we're already authenticated, and we're configured for using anonymous, 
+    -- hence we're in a logical OR between auth methods and we're already done.
+    return
+  end
+
   local ok, err = do_authentication(conf)
   if not ok then
     if conf.anonymous ~= "" then
@@ -186,5 +193,6 @@ function JwtHandler:access(conf)
     end
   end
 end
+
 
 return JwtHandler

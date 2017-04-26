@@ -1,6 +1,9 @@
 local helpers = require "spec.helpers"
 
-describe("Plugin: AWS Lambda (access)", function()
+pending("Plugin: AWS Lambda (access)", function()
+  -- pending due to AWS account issues and
+  -- waiting for a mock solution as suggested by
+  -- https://github.com/Mashape/kong/pull/2287
   local client, api_client
 
   setup(function()

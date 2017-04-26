@@ -615,16 +615,22 @@ function _M.new(apis)
 
 
   function self.exec(ngx)
-    local method      = ngx.req.get_method()
-    local uri         = ngx.var.uri
-    local uri_root    = uri == "/"
-    local new_uri     = uri
-    local host_header
-    local req_host
+    local method = ngx.req.get_method()
+    local uri    = ngx.var.request_uri
+
+
+    do
+      local s = find(uri, "?", 2, true)
+      if s then
+        uri = sub(uri, 1, s - 1)
+      end
+    end
 
 
     --print("grab host header: ", grab_host)
 
+
+    local req_host
 
     if grab_host then
       req_host = ngx.var.http_host
@@ -636,10 +642,15 @@ function _M.new(apis)
       return nil
     end
 
+    local new_uri
+    local uri_root = uri == "/"
 
-    if not uri_root and api_t.strip_uri_regex then
-      local err
-      new_uri, err = re_sub(uri, api_t.strip_uri_regex, "/$1", "ajo")
+    if uri_root or not api_t.strip_uri_regex then
+      new_uri = uri
+
+    else
+      local _, err
+      new_uri, _, err = re_sub(uri, api_t.strip_uri_regex, "/$1", "ajo")
       if not new_uri then
         log(ERR, "could not strip URI: ", err)
         return
@@ -677,6 +688,8 @@ function _M.new(apis)
       ngx.req.set_uri(new_uri)
     end
 
+
+    local host_header
 
     if api_t.preserve_host then
       host_header = req_host or ngx.var.http_host

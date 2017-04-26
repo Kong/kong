@@ -1,6 +1,7 @@
 local ssl_fixtures = require "spec.fixtures.ssl"
 local cache = require "kong.tools.database_cache"
 local helpers = require "spec.helpers"
+local cjson = require "cjson"
 
 
 local function get_cert(server_name)
@@ -41,7 +42,30 @@ describe("SSL", function()
       http_if_terminated = false,
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.dao.apis:insert {
+      name = "api-3",
+      hosts = { "ssl3.com" },
+      upstream_url = "https://localhost:10001",
+      preserve_host = true,
+    })
+
+    assert(helpers.dao.apis:insert {
+      name = "api-4",
+      hosts = { "no-sni.com" },
+      upstream_url = "https://localhost:10001",
+      preserve_host = false,
+    })
+
+    assert(helpers.dao.apis:insert {
+      name = "api-5",
+      hosts = { "nil-sni.com" },
+      upstream_url = "https://127.0.0.1:10001",
+      preserve_host = false,
+    })
+
+    assert(helpers.start_kong {
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    })
 
     admin_client = helpers.admin_client()
     client = helpers.proxy_client()
@@ -103,7 +127,8 @@ describe("SSL", function()
       })
 
       local body = assert.res_status(426, res)
-      assert.equal([[{"message":"Please use HTTPS protocol"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "Please use HTTPS protocol" }, json)
       assert.contains("Upgrade", res.headers.connection)
       assert.equal("TLS/1.2, HTTP/1.1", res.headers.upgrade)
     end)
@@ -142,6 +167,59 @@ describe("SSL", function()
         }
       })
       assert.res_status(426, res)
+    end)
+  end)
+
+  describe("proxy_ssl_name", function()
+    local https_client_sni
+
+    before_each(function()
+      assert(helpers.kong_exec("restart --conf " .. helpers.test_conf_path ..
+                               " --nginx-conf spec/fixtures/custom_nginx.template"))
+
+      https_client_sni = helpers.proxy_ssl_client()
+    end)
+
+    after_each(function()
+      https_client_sni:close()
+    end)
+
+    describe("properly sets the upstream SNI with preserve_host", function()
+      it("true", function()
+        local res = assert(https_client_sni:send {
+          method = "GET",
+          path = "/ssl-inspect",
+          headers = {
+            Host = "ssl3.com"
+          }
+        })
+        local body = assert.res_status(200, res)
+        assert.equal("ssl3.com", body)
+      end)
+
+      it("false", function()
+        local res = assert(https_client_sni:send {
+          method = "GET",
+          path = "/ssl-inspect",
+          headers = {
+            Host = "no-sni.com"
+          }
+        })
+        local body = assert.res_status(200, res)
+        assert.equal("localhost", body)
+      end)
+
+      it("false and IP-based upstream_url", function()
+        local res = assert(https_client_sni:send {
+          method = "GET",
+          path = "/ssl-inspect",
+          headers = {
+            Host = "nil-sni.com"
+          }
+        })
+        local body = assert.res_status(200, res)
+        assert.equal("no SNI", body)
+      end)
     end)
   end)
 

@@ -17,6 +17,9 @@ describe("Plugins triggering", function()
       key = "secret2",
       consumer_id = consumer2.id
     })
+    local consumer3 = assert(helpers.dao.consumers:insert {
+      username = "anonymous"
+    })
 
     -- Global configuration
     assert(helpers.dao.apis:insert {
@@ -73,6 +76,28 @@ describe("Plugins triggering", function()
       }
     })
 
+    -- API with anonymous configuration
+    local api3 = assert(helpers.dao.apis:insert {
+      name = "api3",
+      hosts = { "api3.com" },
+      upstream_url = "http://mockbin.com"
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "key-auth",
+      config = {
+        anonymous = consumer3.id,
+      },
+      api_id = api3.id,
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "rate-limiting",
+      consumer_id = consumer3.id,
+      api_id = api3.id,
+      config = {
+        hour = 5,
+      }
+    })
+
     assert(helpers.start_kong())
     client = helpers.proxy_client()
   end)
@@ -125,5 +150,14 @@ describe("Plugins triggering", function()
     })
     assert.res_status(200, res)
     assert.equal("4", res.headers["x-ratelimit-limit-hour"])
+  end)
+  it("checks anonymous consumer specific configuration", function()
+    local res = assert(client:send {
+      method = "GET",
+      path = "/status/200",
+      headers = { Host = "api3.com" }
+    })
+    assert.res_status(200, res)
+    assert.equal("5", res.headers["x-ratelimit-limit-hour"])
   end)
 end)

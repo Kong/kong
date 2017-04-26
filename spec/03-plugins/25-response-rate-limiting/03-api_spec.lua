@@ -35,7 +35,8 @@ describe("Plugin: response-rate-limiting (API)", function()
         }
       })
       local body = assert.res_status(400, res)
-      assert.equal([[{"config":"You need to set at least one limit name"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ config = "You need to set at least one limit name" }, json)
     end)
     it("accepts proper config", function()
       local res = assert(admin_client:send {

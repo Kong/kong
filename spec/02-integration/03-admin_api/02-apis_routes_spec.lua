@@ -113,7 +113,8 @@ describe("Admin API", function()
               headers = {["Content-Type"] = content_type}
             })
             body = assert.res_status(400, res)
-            assert.equal([[{"hosts":"host with value 'my-api.com\/com' is invalid: Invalid hostname"}]], body)
+            local json = cjson.decode(body)
+            assert.same({ hosts = "host with value 'my-api.com/com' is invalid: Invalid hostname" }, json)
           end
         end)
         it_content_types("returns 409 on conflict", function(content_type)
@@ -141,7 +142,8 @@ describe("Admin API", function()
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(409, res)
-            assert.equal([[{"name":"already exists with value 'my-api'"}]], body)
+            local json = cjson.decode(body)
+            assert.same({name = "already exists with value 'my-api'" }, json)
           end
         end)
       end)
@@ -248,7 +250,8 @@ describe("Admin API", function()
               headers = {["Content-Type"] = content_type}
             })
             body = assert.res_status(400, res)
-            assert.equal([[{"hosts":"host with value 'my-api.com\/com' is invalid: Invalid hostname"}]], body)
+            local json = cjson.decode(body)
+            assert.same({ hosts = "host with value 'my-api.com/com' is invalid: Invalid hostname" }, json)
           end
         end)
         it_content_types("returns 409 on conflict", function(content_type)
@@ -281,7 +284,8 @@ describe("Admin API", function()
                 headers = {["Content-Type"] = content_type}
               })
               body = assert.res_status(409, res)
-              assert.equal([[{"name":"already exists with value 'my-api'"}]], body)
+              local json = cjson.decode(body)
+              assert.same({ name = "already exists with value 'my-api'" }, json)
             end
         end)
       end)
@@ -349,7 +353,8 @@ describe("Admin API", function()
             query = {foo = "bar"}
           })
           local body = assert.res_status(400, res)
-          assert.equal([[{"foo":"unknown field"}]], body)
+          local json = cjson.decode(body)
+          assert.same({ foo = "unknown field" }, json)
       end)
       it("ignores an invalid body", function()
         local res = assert(client:send {
@@ -374,7 +379,8 @@ describe("Admin API", function()
             path = "/apis"
           })
           local body = assert.res_status(200, res)
-          assert.equal([[{"data":[],"total":0}]], body)
+          local json = cjson.decode(body)
+          assert.same({ data = {}, total = 0 }, json)
         end)
       end)
     end)
@@ -389,7 +395,8 @@ describe("Admin API", function()
           headers = {["Content-Type"] = "application/json"}
         })
         local body = assert.response(res).has.status(405)
-        assert.equal([[{"message":"Method not allowed"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ message = "Method not allowed" }, json)
       end
     end)
 
@@ -571,7 +578,8 @@ describe("Admin API", function()
                 headers = {["Content-Type"] = content_type}
               })
               local body = assert.res_status(400, res)
-              assert.equal([[{"upstream_url":"upstream_url is not a url"}]], body)
+              local json = cjson.decode(body)
+              assert.same({ upstream_url = "upstream_url is not a url" }, json)
             end
           end)
         end)
@@ -666,7 +674,8 @@ describe("Admin API", function()
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(400, res)
-            assert.equal([[{"name":"name is required"}]], body)
+            local json = cjson.decode(body)
+            assert.same({ name = "name is required" }, json)
           end
         end)
         it_content_types("returns 409 on conflict", function(content_type)
@@ -848,7 +857,8 @@ describe("Admin API", function()
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(400, res)
-            assert.equal([[{"name":"name is required"}]], body)
+            local json = cjson.decode(body)
+            assert.same({ name = "name is required" }, json)
           end
         end)
       end)
@@ -1026,7 +1036,8 @@ describe("Admin API", function()
                 headers = {["Content-Type"] = content_type}
               })
               local body = assert.res_status(400, res)
-              assert.equal([[{"config":"Plugin \"foo\" not found"}]], body)
+              local json = cjson.decode(body)
+              assert.same({ config = "Plugin \"foo\" not found" }, json)
             end
           end)
         end)

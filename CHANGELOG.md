@@ -10,6 +10,14 @@
     weight Targets, instead of all nonzero weight targets. This is to provide
     a better picture of the Targets currently in use by the Kong load balancer.
     [#2310](https://github.com/Mashape/kong/pull/2310)
+  - Endpoints with parameters `xxx_or_id` will now also yield the proper
+    result if the `xxx` field is formatted as a uuid. Most notably this fixes
+    a problem with consumers (where the username is a uuid) not being found,
+    but also other endpoints suffering from the same flaw have also been fixed.
+    [#2420](https://github.com/Mashape/kong/pull/2420)
+- Plugins:
+  - key-auth: Allow setting API key header names with an underscore.
+    [#2370](https://github.com/Mashape/kong/pull/2370)
 
 ### Added
 
@@ -19,13 +27,28 @@
   requests. The added functionality is now described in
   [#2211](https://github.com/Mashape/kong/issues/2211), and was implemented in
   [#2315](https://github.com/Mashape/kong/pull/2315).
+- The http-log plugin will now set a basic-auth authorization header if the
+  configured log target-url includes credentials. Thanks to
+  [Amir M. Saeid](https://github.com/amir) for the contribution.
+  [#2430](https://github.com/Mashape/kong/pull/2430)
+- Logging retries and failure information.
+  [#2429](https://github.com/Mashape/kong/pull/2429).
+- Serf commands are now logged with a `DEBUG` log level.
+  [#2410](https://github.com/Mashape/kong/pull/2410)
 - Plugins:
   - :fireworks: **New Request termination plugin**. This plugin allows to
     temporarily disable an API and return a pre-configured response status and
     body to your client. Useful for use-cases such as maintenance mode for your
-    upstream services. Thanks [Paul Austin](https://github.com/pauldaustin)
+    upstream services. Thanks to [Paul Austin](https://github.com/pauldaustin)
     for the contribution.
     [#2051](https://github.com/Mashape/kong/pull/2051)
+  - Logging plugins: The produced logs now include a `consumer` field,
+    which contains the properties of the authenticated Consumer
+    (`id`, `custom_id`, and `username`), if any.
+    [#2367](https://github.com/Mashape/kong/pull/2367)
+  - File-log plugin now has a new `reopen` setting to close and 
+    reopen the logfiles on every request which enables rotating the logs.
+    [#2348](https://github.com/Mashape/kong/pull/2348)
 
 ### Fixed
 
@@ -36,6 +59,16 @@
 - If no API was configured with a `hosts` matching rule, then the
   `preserve_host` flag would never be honored.
   [#2344](https://github.com/Mashape/kong/pull/2344)
+- Correctly match APIs with percent-encoded URIs in their `uris` property.
+  Generally, this change also avoids normalizing (and thus, potentially
+  altering) the request URI when trying to match an API's `uris` value. Instead
+  of relying on the Nginx `$uri` variable, we now use `$request_uri`.
+  [#2377](https://github.com/Mashape/kong/pull/2377)
+- Upstream connections over TLS now set their Client Hello SNI field. The SNI
+  value is taken from the upstream `Host` header value, and thus also depends
+  on the `preserve_host` setting of your API. Thanks
+  [@konrade](https://github.com/konrade) for the original patch.
+  [#2225](https://github.com/Mashape/kong/pull/2225)
 - When using Cassandra, some migrations would not be performed on the same
   coordinator as the one originally chosen. The same migrations would also
   require a response from other replicas in a cluster, but were not waiting
@@ -49,10 +82,18 @@
 - Prevent an upstream or legitimate internal error in the load balancing code
   from throwing a Lua-land error as well.
   [#2327](https://github.com/Mashape/kong/pull/2327)
+- Ensure consumer based plugins run if the consumer was set without a
+  credential.
+  [#2424](https://github.com/Mashape/kong/pull/2424)
+- CNAME records are now properly cached by the dns resolver.
+  [#2303](https://github.com/Mashape/kong/pull/2303)
 - Plugins:
   - hmac: Better handling of invalid base64-encoded signatures. Previously Kong
     would return an HTTP 500 error. We now properly return HTTP 403 Forbidden.
     [#2283](https://github.com/Mashape/kong/pull/2283)
+  - jwt: Returns `401 unauthorized` on invalid claims, instead of previous
+    `403 forbidden`.
+    [#2433](https://github.com/Mashape/kong/pull/2433)
 - Admin API:
   - Detect conflicts between SNI Objects in the `/snis` and `/certificates`
     endpoint.
@@ -105,6 +146,9 @@
 - Relax multipart MIME type parsing. A space is allowed in between values
   of the Content-Type header.
   [#2215](https://github.com/Mashape/kong/pull/2215)
+- Multiple auth plugins would overwrite eachothers results, causing 
+  false negatives in an OR scenario.
+  [#2222](https://github.com/Mashape/kong/pull/2222)
 - Admin API:
   - Better handling of non-supported HTTP methods on endpoints of the Admin
     API. In some cases this used to throw an internal error. Calling any

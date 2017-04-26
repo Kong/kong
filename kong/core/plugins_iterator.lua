@@ -73,7 +73,7 @@ local function iter_plugins_for_req(loaded_plugins, access_or_cert_ctx)
         local plugin_configuration
 
         -- Search API and Consumer specific, or consumer specific
-        local consumer_id = (ctx.authenticated_credential or empty).consumer_id
+        local consumer_id = (ctx.authenticated_consumer or empty).id        
         if consumer_id and plugin.schema and not plugin.schema.no_consumer then
           plugin_configuration = load_plugin_configuration(ctx.api.id, consumer_id, plugin.name)
           if not plugin_configuration then

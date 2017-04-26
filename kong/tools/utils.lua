@@ -598,12 +598,12 @@ _M.validate_header_name = function(name)
     return nil, "no header name provided"
   end
 
-  if re_match(name, "^[a-zA-Z0-9-]+$", "jo") then
+  if re_match(name, "^[a-zA-Z0-9-_]+$", "jo") then
     return name
   end
 
   return nil, "bad header name '" .. name ..
-              "', allowed characters are A-Z, a-z, 0-9 and '-'"
+              "', allowed characters are A-Z, a-z, 0-9, '_', and '-'"
 end
 
 return _M
