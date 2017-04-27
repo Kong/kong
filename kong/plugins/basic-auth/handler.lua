@@ -14,6 +14,6 @@ function BasicAuthHandler:access(conf)
   access.execute(conf)
 end
 
-BasicAuthHandler.PRIORITY = 1000
+BasicAuthHandler.PRIORITY = 1900
 
 return BasicAuthHandler
