@@ -7,6 +7,8 @@ local uuid = require("kong.tools.utils").uuid
 
 local CorrelationIdHandler = BasePlugin:extend()
 
+CorrelationIdHandler.PRIORITY = 250
+
 local worker_uuid
 local worker_counter
 

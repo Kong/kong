@@ -10,7 +10,7 @@ local ngx_set_header = ngx.req.set_header
 
 local JwtHandler = BasePlugin:extend()
 
-JwtHandler.PRIORITY = 1000
+JwtHandler.PRIORITY = 2000
 
 --- Retrieve a JWT in a request.
 -- Checks for the JWT in URI parameters, then in the `Authorization` header.
@@ -79,7 +79,7 @@ local function set_consumer(consumer, jwt_secret)
   else
     ngx_set_header(constants.HEADERS.ANONYMOUS, true)
   end
-  
+
 end
 
 local function do_authentication(conf)
@@ -98,7 +98,7 @@ local function do_authentication(conf)
       return false, {status = 401, message = "Unrecognizable token"}
     end
   end
-  
+
   -- Decode token to find out who the consumer is
   local jwt, err = jwt_decoder:new(token)
   if err then
@@ -139,7 +139,7 @@ local function do_authentication(conf)
   if not jwt_secret_value then
     return false, {status = 403, message = "Invalid key/secret"}
   end
-  
+
   -- Now verify the JWT signature
   if not jwt:verify_signature(jwt_secret_value) then
     return false, {status = 403, message = "Invalid signature"}
@@ -173,9 +173,9 @@ end
 
 function JwtHandler:access(conf)
   JwtHandler.super.access(self)
-  
+
   if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
-    -- we're already authenticated, and we're configured for using anonymous, 
+    -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
     return
   end

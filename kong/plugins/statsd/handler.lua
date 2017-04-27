@@ -12,7 +12,7 @@ local NGX_ERR       = ngx.ERR
 
 
 local StatsdHandler = BasePlugin:extend()
-StatsdHandler.PRIORITY = 1
+StatsdHandler.PRIORITY = 550
 
 
 local get_consumer_id = {
@@ -82,7 +82,6 @@ local metrics = {
 local function log(premature, conf, message)
   if premature then
     return
-
   end
 
   local api_name   = string_gsub(message.api.name, "%.", "_")
