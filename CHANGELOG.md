@@ -49,6 +49,8 @@
   - File-log plugin now has a new `reopen` setting to close and 
     reopen the logfiles on every request which enables rotating the logs.
     [#2348](https://github.com/Mashape/kong/pull/2348)
+  - OAuth 2.0: properly checking ownership of a token when refreshing it.
+    [#2461](https://github.com/Mashape/kong/pull/2461)
 
 ### Fixed
 

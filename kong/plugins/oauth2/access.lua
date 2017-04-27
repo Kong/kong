@@ -357,8 +357,13 @@ local function issue_token(conf)
         if not token then
           response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REFRESH_TOKEN}
         else
-          response_params = generate_token(conf, ngx.ctx.api, client, token.authenticated_userid, token.scope, state)
-          singletons.dao.oauth2_tokens:delete({id=token.id}) -- Delete old token
+          -- Check that the token belongs to the client application
+          if token.credential_id ~= client.id then
+            response_params = {[ERROR] = "invalid_client", error_description = "Invalid client authentication"}
+          else
+            response_params = generate_token(conf, ngx.ctx.api, client, token.authenticated_userid, token.scope, state)
+            singletons.dao.oauth2_tokens:delete({id=token.id}) -- Delete old token
+          end
         end
       end
     end
