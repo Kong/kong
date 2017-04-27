@@ -10,18 +10,13 @@
     weight Targets, instead of all nonzero weight targets. This is to provide
     a better picture of the Targets currently in use by the Kong load balancer.
     [#2310](https://github.com/Mashape/kong/pull/2310)
-  - Endpoints with parameters `xxx_or_id` will now also yield the proper
-    result if the `xxx` field is formatted as a uuid. Most notably this fixes
-    a problem with consumers (where the username is a uuid) not being found,
-    but also other endpoints suffering from the same flaw have also been fixed.
-    [#2420](https://github.com/Mashape/kong/pull/2420)
 - Plugins:
   - key-auth: Allow setting API key header names with an underscore.
     [#2370](https://github.com/Mashape/kong/pull/2370)
 
 ### Added
 
-  :fireworks: Plugins can implement a new `rewrite_by_lua` handler to execute
+- :fireworks: Plugins can implement a new `rewrite_by_lua` handler to execute
   code in the Nginx rewrite phase. This phase is executed prior to matching a
   registered Kong API, and prior to any authentication plugin. As such, plugins
   implementing this phase don't have to be configured via the Admin API to be
@@ -116,6 +111,17 @@
   - Target Objects can now be deleted with their ID as well as their name. The
     endpoint becomes: `/upstreams/:name_or_id/targets/:target_or_id`.
     [#2304](https://github.com/Mashape/kong/pull/2304)
+  - The `/certificates` route used to not return the `total` and `data` JSON
+    fields. We now send those fields back instead of a root list of certificate
+    objects.
+    [#2463](https://github.com/Mashape/kong/pull/2463)
+  - Upstream Objects can now be deleted properly when using Cassandra.
+    [#2404](https://github.com/Mashape/kong/pull/2404)
+  - Endpoints with path parameters like `/xxx_or_id` will now also yield the
+    proper result if the `xxx` field is formatted as a UUID. Most notably, this
+    fixes a problem for Consumers whose `username` is a UUID, that could not be
+    found when requesting `/consumers/{username_as_uuid}`.
+    [#2420](https://github.com/Mashape/kong/pull/2420)
 
 ## [0.10.1] - 2017/03/27
 

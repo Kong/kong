@@ -99,7 +99,10 @@ return {
         end
       end
 
-      return helpers.responses.send_HTTP_OK(ssl_certificates)
+      return helpers.responses.send_HTTP_OK({
+        data = #ssl_certificates > 0 and ssl_certificates or cjson.empty_array,
+        total = #ssl_certificates,
+      })
     end,
 
 
