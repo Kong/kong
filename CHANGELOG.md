@@ -37,8 +37,8 @@
 - Serf commands executed by a running Kong node are now logged in the Nginx
   error logs with a `DEBUG` level.
   [#2410](https://github.com/Mashape/kong/pull/2410)
-- Logging retries and failure information.
-  [#2429](https://github.com/Mashape/kong/pull/2429).
+- Checking that core Lua shared dictionaries are declared in the configuration.
+  [#2466](https://github.com/Mashape/kong/pull/2466)
 - Plugins:
   - :fireworks: **New Request termination plugin**. This plugin allows to
     temporarily disable an API and return a pre-configured response status and
