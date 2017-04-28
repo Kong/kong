@@ -124,7 +124,9 @@ function Kong.init()
   -- Check shared dictionaries
   for _, dict in ipairs(constants.DICTS) do
     if not ngx.shared[dict] then
-      error("cannot find shared dictionary: "..dict)
+      error("missing shared dict in Nginx configuration, are you "..
+            "using a custom template? Make sure the 'lua_shared_dict "..
+            dict.." [SIZE];' directive is defined.")
     end
   end
 

@@ -214,8 +214,10 @@ describe("kong start/stop", function()
 
         local _, stderr = helpers.kong_exec("start --nginx-conf "
                                             ..new_templ_fixture)
-        assert.matches("cannot find shared dictionary: "..dict, 
-                        stderr, nil, true)
+        assert.matches(
+          "missing shared dict in Nginx configuration, "..
+          "are you using a custom template? Make sure the 'lua_shared_dict "
+          ..dict.." [SIZE];' directive is defined.", stderr, nil, true)
       end
 
       pl_file.delete(new_templ_fixture)
