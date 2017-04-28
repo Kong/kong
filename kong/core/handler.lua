@@ -95,7 +95,8 @@ return {
         type                 = utils.hostname_type(upstream.host),  -- the type of `host`; ipv4, ipv6 or name
         host                 = upstream.host,  -- target host per `upstream_url`
         port                 = upstream.port,  -- final target port
-        tries                = 0,              -- retry counter
+        try_count            = 0,              -- retry counter
+        tries                = {},             -- stores info per try
         retries              = api.retries,    -- number of retries for the balancer
         connect_timeout      = api.upstream_connect_timeout or 60000,
         send_timeout         = api.upstream_send_timeout or 60000,
