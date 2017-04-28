@@ -21,6 +21,8 @@
 
 ### Added
 
+- :fireworks: The `rewrite_by_lua` OpenResty phase can now be implemented by 
+  Kong plugins. [#2354](https://github.com/Mashape/kong/pull/2354)
 - Ability for the client to chose whether the upstream request (Kong <->
   upstream) should contain a trailing slash in its URI. Prior to this change,
   Kong 0.10 would unconditionally append a trailing slash to all upstream
