@@ -3,18 +3,13 @@
 ### Changed
 
 - The Kong DNS resolver now honors the `MAXNS` setting (3) when parsing the
-  `resolv.conf` nameservers.
+  nameservers specified in `resolv.conf`.
   [#2290](https://github.com/Mashape/kong/issues/2290)
 - Admin API:
   - The "active targets" endpoint now only return the most recent nonzero
     weight Targets, instead of all nonzero weight targets. This is to provide
     a better picture of the Targets currently in use by the Kong load balancer.
     [#2310](https://github.com/Mashape/kong/pull/2310)
-  - Endpoints with parameters `xxx_or_id` will now also yield the proper
-    result if the `xxx` field is formatted as a uuid. Most notably this fixes
-    a problem with consumers (where the username is a uuid) not being found,
-    but also other endpoints suffering from the same flaw have also been fixed.
-    [#2420](https://github.com/Mashape/kong/pull/2420)
 - Plugins:
   - key-auth: Allow setting API key header names with an underscore.
     [#2370](https://github.com/Mashape/kong/pull/2370)
@@ -24,76 +19,86 @@
 - Ability for the client to chose whether the upstream request (Kong <->
   upstream) should contain a trailing slash in its URI. Prior to this change,
   Kong 0.10 would unconditionally append a trailing slash to all upstream
-  requests. The added functionality is now described in
+  requests. The added functionality is described in
   [#2211](https://github.com/Mashape/kong/issues/2211), and was implemented in
   [#2315](https://github.com/Mashape/kong/pull/2315).
-- The http-log plugin will now set a basic-auth authorization header if the
-  configured log target-url includes credentials. Thanks to
-  [Amir M. Saeid](https://github.com/amir) for the contribution.
-  [#2430](https://github.com/Mashape/kong/pull/2430)
-- Logging retries and failure information.
-  [#2429](https://github.com/Mashape/kong/pull/2429).
-- Serf commands are now logged with a `DEBUG` log level.
+- Serf commands executed by a running Kong node are now logged in the Nginx
+  error logs with a `DEBUG` level.
   [#2410](https://github.com/Mashape/kong/pull/2410)
 - Plugins:
   - :fireworks: **New Request termination plugin**. This plugin allows to
     temporarily disable an API and return a pre-configured response status and
     body to your client. Useful for use-cases such as maintenance mode for your
-    upstream services. Thanks to [Paul Austin](https://github.com/pauldaustin)
+    upstream services. Thanks to [@pauldaustin](https://github.com/pauldaustin)
     for the contribution.
     [#2051](https://github.com/Mashape/kong/pull/2051)
-  - Logging plugins: The produced logs now include a `consumer` field,
-    which contains the properties of the authenticated Consumer
-    (`id`, `custom_id`, and `username`), if any.
+  - Logging plugins: The produced logs include two new fields. A `consumer`
+    field, which contains the properties of the authenticated Consumer
+    (`id`, `custom_id`, and `username`), if any, and a `tries` field, which
+    includes, if any, failures informations recorded by the load balancer
+    when contacting the upstream service.
     [#2367](https://github.com/Mashape/kong/pull/2367)
-  - File-log plugin now has a new `reopen` setting to close and 
-    reopen the logfiles on every request which enables rotating the logs.
+    [#2429](https://github.com/Mashape/kong/pull/2429)
+  - http-log: Now set an upstream HTTP basic access authentication header if
+    the configured `conf.http_endpoint` parameter includes an authentication
+    section. Thanks [@amir](https://github.com/amir) for the contribution.
+    [#2432](https://github.com/Mashape/kong/pull/2432)
+  - file-log: New `config.reopen` property to close and reopen the log file on
+    every request, in otder to effectively rotate the logs.
     [#2348](https://github.com/Mashape/kong/pull/2348)
+  - jwt: Returns `401 Unauthorized` on invalid claims instead of the previous
+    `403 Forbidden` status.
+    [#2433](https://github.com/Mashape/kong/pull/2433)
+  - cors: When `config.credentials = true`, we do not send an ACAO header with
+    value `*`. The ACAO header value will be that of the request's `Origin: `
+    header.
+    [#2451](https://github.com/Mashape/kong/pull/2451)
 
 ### Fixed
 
-- Handle a routing edge-case under some conditions with the `uris` matching
-  rule of APIs that would falsely lead Kong into believing no API was matched for
-  what would actually be a valid request.
-  [#2343](https://github.com/Mashape/kong/pull/2343)
-- If no API was configured with a `hosts` matching rule, then the
-  `preserve_host` flag would never be honored.
-  [#2344](https://github.com/Mashape/kong/pull/2344)
-- Correctly match APIs with percent-encoded URIs in their `uris` property.
-  Generally, this change also avoids normalizing (and thus, potentially
-  altering) the request URI when trying to match an API's `uris` value. Instead
-  of relying on the Nginx `$uri` variable, we now use `$request_uri`.
-  [#2377](https://github.com/Mashape/kong/pull/2377)
 - Upstream connections over TLS now set their Client Hello SNI field. The SNI
   value is taken from the upstream `Host` header value, and thus also depends
   on the `preserve_host` setting of your API. Thanks
   [@konrade](https://github.com/konrade) for the original patch.
   [#2225](https://github.com/Mashape/kong/pull/2225)
+- Correctly match APIs with percent-encoded URIs in their `uris` property.
+  Generally, this change also avoids normalizing (and thus, potentially
+  altering) the request URI when trying to match an API's `uris` value. Instead
+  of relying on the Nginx `$uri` variable, we now use `$request_uri`.
+  [#2377](https://github.com/Mashape/kong/pull/2377)
+- Handle a routing edge-case under some conditions with the `uris` matching
+  rule of APIs that would falsely lead Kong into believing no API was matched
+  for what would actually be a valid request.
+  [#2343](https://github.com/Mashape/kong/pull/2343)
+- If no API was configured with a `hosts` matching rule, then the
+  `preserve_host` flag would never be honored.
+  [#2344](https://github.com/Mashape/kong/pull/2344)
 - When using Cassandra, some migrations would not be performed on the same
   coordinator as the one originally chosen. The same migrations would also
   require a response from other replicas in a cluster, but were not waiting
   for a schema consensus beforehand, causing undeterministic failures in the
   migrations, especially if the cluster's inter-nodes communication is slow.
   [#2326](https://github.com/Mashape/kong/pull/2326)
+- CNAME records are now properly cached by the DNS resolver.
+  [#2303](https://github.com/Mashape/kong/pull/2303)
+- Correctly trigger plugins configured on the anonymous Consumer for anonymous
+  requests (from auth plugins with the new `config.anonymous` parameter).
+  [#2424](https://github.com/Mashape/kong/pull/2424)
+- When multiple auth plugins were configured with the recent `config.anonymous`
+  parameter for "OR" authentication, such plugins would override each other's
+  results and response headers, causing false negatives.
+  [#2222](https://github.com/Mashape/kong/pull/2222)
 - Ensure the `cassandra_contact_points` property does not contain any port
   information. Those should be specified in `cassandra_port`. Thanks
-  [Vermeille](https://github.com/Vermeille) for the contribution.
+  [@Vermeille](https://github.com/Vermeille) for the contribution.
   [#2263](https://github.com/Mashape/kong/pull/2263)
 - Prevent an upstream or legitimate internal error in the load balancing code
   from throwing a Lua-land error as well.
   [#2327](https://github.com/Mashape/kong/pull/2327)
-- Ensure consumer based plugins run if the consumer was set without a
-  credential.
-  [#2424](https://github.com/Mashape/kong/pull/2424)
-- CNAME records are now properly cached by the dns resolver.
-  [#2303](https://github.com/Mashape/kong/pull/2303)
 - Plugins:
   - hmac: Better handling of invalid base64-encoded signatures. Previously Kong
     would return an HTTP 500 error. We now properly return HTTP 403 Forbidden.
     [#2283](https://github.com/Mashape/kong/pull/2283)
-  - jwt: Returns `401 unauthorized` on invalid claims, instead of previous
-    `403 forbidden`.
-    [#2433](https://github.com/Mashape/kong/pull/2433)
 - Admin API:
   - Detect conflicts between SNI Objects in the `/snis` and `/certificates`
     endpoint.
@@ -103,6 +108,13 @@
   - Target Objects can now be deleted with their ID as well as their name. The
     endpoint becomes: `/upstreams/:name_or_id/targets/:target_or_id`.
     [#2304](https://github.com/Mashape/kong/pull/2304)
+  - Upstream Objects can now be deleted properly when using Cassandra.
+    [#2404](https://github.com/Mashape/kong/pull/2404)
+  - Endpoints with path parameters like `/xxx_or_id` will now also yield the
+    proper result if the `xxx` field is formatted as a UUID. Most notably, this
+    fixes a problem for Consumers whose `username` is a UUID, that could not be
+    found when requesting `/consumers/{username_as_uuid}`.
+    [#2420](https://github.com/Mashape/kong/pull/2420)
 
 ## [0.10.1] - 2017/03/27
 
@@ -146,9 +158,6 @@
 - Relax multipart MIME type parsing. A space is allowed in between values
   of the Content-Type header.
   [#2215](https://github.com/Mashape/kong/pull/2215)
-- Multiple auth plugins would overwrite eachothers results, causing 
-  false negatives in an OR scenario.
-  [#2222](https://github.com/Mashape/kong/pull/2222)
 - Admin API:
   - Better handling of non-supported HTTP methods on endpoints of the Admin
     API. In some cases this used to throw an internal error. Calling any
