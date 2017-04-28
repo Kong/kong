@@ -120,11 +120,9 @@ end
 
 local Kong = {}
 
-local DICTS = { "kong", "cache", "cache_locks", "process_events", "cassandra"}
-
 function Kong.init()
   -- Check shared dictionaries
-  for _, dict in ipairs(DICTS) do
+  for _, dict in ipairs(constants.DICTS) do
     if not ngx.shared[dict] then
       error("cannot find shared dictionary: "..dict)
     end
