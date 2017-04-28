@@ -7,7 +7,12 @@ describe("Log Serializer", function()
     ngx = {
       ctx = {
         balancer_address = {
-          tries = 1,
+          tries = {
+            { 
+              ip = "127.0.0.1",
+              port = 8000,
+            },
+          },
         },
       },
       var = {
@@ -67,7 +72,6 @@ describe("Log Serializer", function()
 
       -- Tries
       assert.is_table(res.tries)
-      assert.equal(1, res.tries.count)
     end)
 
     it("serializes the API object", function()
@@ -106,17 +110,16 @@ describe("Log Serializer", function()
     end)
 
     it("serializes the tries and failure information", function()
-      ngx.ctx.balancer_address.tries = 3
-      ngx.ctx.balancer_address.failures = {
-        { state = "next",   code = 502, ip = "127.0.0.1", port = 1234 },
-        { state = "failed", code = nil, ip = "127.0.0.1", port = 1234 },
+      ngx.ctx.balancer_address.tries = {
+        { ip = "127.0.0.1", port = 1234, state = "next",   code = 502 },
+        { ip = "127.0.0.1", port = 1234, state = "failed", code = nil },
+        { ip = "127.0.0.1", port = 1234 },
       }
 
       local res = basic.serialize(ngx)
       assert.is_table(res)
 
       assert.same({
-          count = 3,
           {
             code  = 502,
             ip    = '127.0.0.1',
@@ -126,7 +129,10 @@ describe("Log Serializer", function()
             ip    = '127.0.0.1',
             port  = 1234,
             state = 'failed',
-          }
+          }, {
+            ip    = '127.0.0.1',
+            port  = 1234,
+          },
         }, res.tries)
     end)
   end)

@@ -208,21 +208,17 @@ end
 
 function Kong.balancer()
   local addr = ngx.ctx.balancer_address
-  addr.tries = addr.tries + 1
-  if addr.tries > 1 then
+  local tries = addr.tries
+
+  addr.try_count = addr.try_count + 1
+  if addr.try_count > 1 then
     -- only call balancer on retry, first one is done in `core.access.before` which runs
     -- in the ACCESS context and hence has less limitations than this BALANCER context
     -- where the retries are executed
 
     -- record failure data
-    local state, code = get_last_failure()
-    addr.failures = addr.failures or {}
-    addr.failures[addr.tries-1] = {
-      state = state,
-      code  = code,
-      ip    = addr.ip,
-      port  = addr.port,
-    }
+    local try = tries[addr.try_count - 1]
+    try.state, try.code = get_last_failure()
 
     local ok, err = balancer_execute(addr)
     if not ok then
@@ -231,6 +227,7 @@ function Kong.balancer()
 
       return responses.send(500)
     end
+
   else
     -- first try, so set the max number of retries
     local retries = addr.retries
@@ -238,6 +235,11 @@ function Kong.balancer()
       set_more_tries(retries)
     end
   end
+
+  tries[addr.try_count] = {
+    ip    = addr.ip,
+    port  = addr.port,
+  }
 
   -- set the targets as resolved
   local ok, err = set_current_peer(addr.ip, addr.port)
