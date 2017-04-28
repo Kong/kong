@@ -49,6 +49,9 @@
   - File-log plugin now has a new `reopen` setting to close and 
     reopen the logfiles on every request which enables rotating the logs.
     [#2348](https://github.com/Mashape/kong/pull/2348)
+  - ACL: a new `/acls` endpoint has been exposed in the Admin API to globally 
+    access the ACL group associations.
+    [#2371](https://github.com/Mashape/kong/pull/2371)
 
 ### Fixed
 
