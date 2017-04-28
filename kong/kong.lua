@@ -120,7 +120,16 @@ end
 
 local Kong = {}
 
+local DICTS = { "kong", "cache", "cache_locks", "process_events", "cassandra"}
+
 function Kong.init()
+  -- Check shared dictionaries
+  for _, dict in ipairs(DICTS) do
+    if not ngx.shared[dict] then
+      error("cannot find shared dictionary: "..dict)
+    end
+  end
+
   local pl_path = require "pl.path"
   local conf_loader = require "kong.conf_loader"
 
