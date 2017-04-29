@@ -1,5 +1,7 @@
 ## [Unreleased][unreleased]
 
+## [0.10.2] - 2017/05/01
+
 ### Changed
 
 - The Kong DNS resolver now honors the `MAXNS` setting (3) when parsing the
@@ -1210,7 +1212,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.10.1...next
+[unreleased]: https://github.com/mashape/kong/compare/0.10.2...next
+[0.10.2]: https://github.com/mashape/kong/compare/0.10.1...0.10.2
 [0.10.1]: https://github.com/mashape/kong/compare/0.10.0...0.10.1
 [0.10.0]: https://github.com/mashape/kong/compare/0.9.9...0.10.0
 [0.9.9]: https://github.com/mashape/kong/compare/0.9.8...0.9.9
