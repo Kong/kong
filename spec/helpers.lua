@@ -773,8 +773,10 @@ local function kong_exec(cmd, env)
     env.lua_package_path = CUSTOM_PLUGIN_PATH
 
   else
-    env.lua_package_path = CUSTOM_PLUGIN_PATH .. ";" .. env.lua_package_path  
+    env.lua_package_path = CUSTOM_PLUGIN_PATH .. ";" .. env.lua_package_path
   end
+
+  env.lua_package_path = env.lua_package_path .. ";" .. conf.lua_package_path
 
   -- build Kong environment variables
   local env_vars = ""
