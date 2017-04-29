@@ -68,6 +68,11 @@
                                  # HTTPS requests to the admin API, if
                                  # `admin_ssl` is enabled.
 
+#nginx_user = nobody nobody      # Defines user and group credentials used by
+                                 # worker processes. If group is omitted, a
+                                 # group whose name equals that of user is
+                                 # used. Ex: [user] [group].
+
 #nginx_worker_processes = auto   # Determines the number of worker processes
                                  # spawned by Nginx.
 
@@ -114,6 +119,16 @@
                                  # preserved in the cache of each worker
                                  # process. When this number is exceeded, the
                                  # least recently used connections are closed.
+
+#server_tokens = on              # Enables or disables emitting Kong version on
+                                 # error pages and in the "Server" or "Via"
+                                 # (in case the request was proxied) response
+                                 # header field.
+
+#latency_tokens = on             # Enables or disables emitting Kong latency
+                                 # information in the "X-Kong-Proxy-Latency"
+                                 # and "X-Kong-Upstream-Latency" response
+                                 # header fields.
 
 #------------------------------------------------------------------------------
 # DATASTORE

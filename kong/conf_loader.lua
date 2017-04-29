@@ -59,8 +59,11 @@ local CONF_INFERENCES = {
   cluster_listen = {typ = "string"},
   cluster_listen_rpc = {typ = "string"},
   cluster_advertise = {typ = "string"},
+  nginx_user = {typ = "string"},
   nginx_worker_processes = {typ = "string"},
   upstream_keepalive = {typ = "number"},
+  server_tokens = {typ = "boolean"},
+  latency_tokens = {typ = "boolean"},
 
   database = {enum = {"postgres", "cassandra"}},
   pg_port = {typ = "number"},
@@ -393,6 +396,14 @@ local function load(path, custom_conf)
     setmetatable(conf.plugins, nil) -- remove Map mt
   end
 
+  -- nginx user directive
+  do
+    local user = conf.nginx_user:gsub("^%s*", ""):gsub("%s$", ""):gsub("%s+", " ")
+    if user == "nobody" or user == "nobody nobody" then
+      conf.nginx_user = nil
+    end
+  end
+
   -- extract ports/listen ips
   do
     local ip_port_pat = "(.+):([%d]+)$"
@@ -437,7 +448,7 @@ local function load(path, custom_conf)
   -- initialize the dns client, so the globally patched tcp.connect method
   -- will work from here onwards.
   assert(require("kong.tools.dns")(conf))
-  
+
   return setmetatable(conf, nil) -- remove Map mt
 end
 

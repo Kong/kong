@@ -10,12 +10,11 @@ statsd_mt.__index = statsd_mt
 
 function statsd_mt:new(conf)
   local sock = ngx_socket_udp()
-  sock:settimeout(conf.timeout)
   local _, err = sock:setpeername(conf.host, conf.port)
   if err then
     return nil, "failed to connect to "..conf.host..":"..tostring(conf.port)..": "..err
   end
-  
+
   local statsd = {
     host = conf.host,
     port = conf.port,
@@ -26,10 +25,10 @@ end
 
 function statsd_mt:create_statsd_message(stat, delta, kind, sample_rate)
   local rate = ""
-  if sample_rate and sample_rate ~= 1 then 
-    rate = "|@"..sample_rate 
+  if sample_rate and sample_rate ~= 1 then
+    rate = "|@"..sample_rate
   end
-  
+
   local message = {
     "kong.",
     stat,

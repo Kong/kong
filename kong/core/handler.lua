@@ -120,7 +120,7 @@ return {
       end
 
       -- if set `host_header` is the original header to be preserved
-      var.upstream_host = host_header or 
+      var.upstream_host = host_header or
           balancer_address.hostname..":"..balancer_address.port
 
     end,
@@ -138,19 +138,34 @@ return {
   },
   header_filter = {
     before = function()
-      if ngx.ctx.KONG_PROXIED then
+      local ctx = ngx.ctx
+
+      if ctx.KONG_PROXIED then
         local now = get_now()
-        ngx.ctx.KONG_WAITING_TIME = now - ngx.ctx.KONG_ACCESS_ENDED_AT -- time spent waiting for a response from upstream
-        ngx.ctx.KONG_HEADER_FILTER_STARTED_AT = now
+        ctx.KONG_WAITING_TIME = now - ctx.KONG_ACCESS_ENDED_AT -- time spent waiting for a response from upstream
+        ctx.KONG_HEADER_FILTER_STARTED_AT = now
       end
     end,
     after = function()
-      if ngx.ctx.KONG_PROXIED then
-        ngx.header[constants.HEADERS.UPSTREAM_LATENCY] = ngx.ctx.KONG_WAITING_TIME
-        ngx.header[constants.HEADERS.PROXY_LATENCY] = ngx.ctx.KONG_PROXY_LATENCY
-        ngx.header["Via"] = server_header
+      local ctx, header = ngx.ctx, ngx.header
+
+      if ctx.KONG_PROXIED then
+        if singletons.configuration.latency_tokens then
+          header[constants.HEADERS.UPSTREAM_LATENCY] = ctx.KONG_WAITING_TIME
+          header[constants.HEADERS.PROXY_LATENCY]    = ctx.KONG_PROXY_LATENCY
+        end
+
+        if singletons.configuration.server_tokens then
+          header["Via"] = server_header
+        end
+
       else
-        ngx.header["Server"] = server_header
+        if singletons.configuration.server_tokens then
+          header["Server"] = server_header
+
+        else
+          header["Server"] = nil
+        end
       end
     end
   },
