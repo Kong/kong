@@ -9,13 +9,6 @@ local function check_user(anonymous)
   return false, "the anonymous user must be empty or a valid uuid"
 end
 
-local function generate_if_missing(v, t, column)
-  if not v or utils.strip(v) == "" then
-    return true, nil, { [column] = utils.random_string()}
-  end
-  return true
-end
-
 local function check_mandatory_scope(v, t)
   if v and not t.scopes then
     return false, "To set a mandatory scope you also need to create available scopes"
@@ -28,7 +21,7 @@ return {
   fields = {
     scopes = { required = false, type = "array" },
     mandatory_scope = { required = true, type = "boolean", default = false, func = check_mandatory_scope },
-    provision_key = { required = false, unique = true, type = "string", func = generate_if_missing },
+    provision_key = { required = false, unique = true, type = "string", default = utils.random_string },
     token_expiration = { required = true, type = "number", default = 7200 },
     enable_authorization_code = { required = true, type = "boolean", default = false },
     enable_implicit_grant = { required = true, type = "boolean", default = false },
