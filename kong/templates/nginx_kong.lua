@@ -96,6 +96,10 @@ server {
         set $upstream_host nil;
         set $upstream_scheme nil;
 
+        rewrite_by_lua_block {
+            kong.rewrite()
+        }
+
         access_by_lua_block {
             kong.access()
         }

@@ -259,6 +259,19 @@ function Kong.balancer()
   end
 end
 
+function Kong.rewrite()
+  core.rewrite.before()
+
+  -- we're just using the iterator, as in this rewrite phase no consumer nor
+  -- api will have been identified, hence we'll just be executing the global
+  -- plugins
+  for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
+    plugin.handler:rewrite(plugin_conf)
+  end
+
+  core.rewrite.after()
+end
+
 function Kong.access()
   core.access.before()
 
