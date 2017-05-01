@@ -78,7 +78,7 @@ map $http_upgrade $upstream_upgrade {
 server {
     server_name kong;
     listen ${{PROXY_LISTEN}};
-    error_page 404 408 411 412 413 414 417 /kong_error_handler;
+    error_page 400 404 408 411 412 413 414 417 /kong_error_handler;
     error_page 500 502 503 504 /kong_error_handler;
 
     access_log ${{PROXY_ACCESS_LOG}};
