@@ -121,6 +121,15 @@ end
 local Kong = {}
 
 function Kong.init()
+  -- Check shared dictionaries
+  for _, dict in ipairs(constants.DICTS) do
+    if not ngx.shared[dict] then
+      error("missing shared dict in Nginx configuration, are you "..
+            "using a custom template? Make sure the 'lua_shared_dict "..
+            dict.." [SIZE];' directive is defined.")
+    end
+  end
+
   local pl_path = require "pl.path"
   local conf_loader = require "kong.conf_loader"
 
