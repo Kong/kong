@@ -48,5 +48,9 @@ return {
       default = "",
       func = check_user,
     },
+    key_in_body = {
+      type = "boolean",
+      default = "false",
+    },
   }
 }
