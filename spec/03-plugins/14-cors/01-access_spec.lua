@@ -45,6 +45,12 @@ describe("Plugin: cors (access)", function()
       hosts = { "cors-empty-origins.com" },
       upstream_url = "http://mockbin.com"
     })
+    local api9 = assert(helpers.dao.apis:insert {
+      name = "api-9",
+      hosts = { "cors9.com" },
+      upstream_url = "http://mockbin.com"
+    })
+
 
     assert(helpers.dao.plugins:insert {
       name = "cors",
@@ -122,6 +128,14 @@ describe("Plugin: cors (access)", function()
       api_id = api8.id,
       config = {
         origins = {},
+      }
+    })
+
+    assert(helpers.dao.plugins:insert {
+      name = "cors",
+      api_id = api9.id,
+      config = {
+        origins = { [[.*\.?example(?:-foo)?.com]] },
       }
     })
 
@@ -309,6 +323,27 @@ describe("Plugin: cors (access)", function()
       })
       assert.res_status(200, res)
       assert.equal("http://www.example.com", res.headers["Access-Control-Allow-Origin"])
+
+      local domains = {
+        ["example.com"] = true,
+        ["www.example.com"] = true,
+        ["example-foo.com"] = true,
+        ["www.example-foo.com"] = true,
+        ["www.example-fo0.com"] = false,
+      }
+
+      for domain, v in pairs(domains) do
+        local res = assert(client:send {
+          method = "GET",
+          headers = {
+            ["Host"] = "cors9.com",
+            ["Origin"] = domain
+          }
+        })
+        assert.res_status(200, res)
+        assert.equal(domains[domain] and domain or nil,
+                     res.headers["Access-Control-Allow-Origin"])
+      end
     end)
 
     it("does not sets CORS orgin if origin host is not in origin_domains list", function()
