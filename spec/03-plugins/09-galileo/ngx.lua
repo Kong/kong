@@ -1,3 +1,6 @@
+local pl_utils = require "pl.utils"
+
+
 -- test fixtures. we have to load them before requiring the
 -- ALF serializer, since it caches those functions at the
 -- module chunk level.
@@ -50,7 +53,7 @@ Accept: application/json\r
     return t
   end,
   sleep = function(t)
-    os.execute("sleep " .. t/1000)
+    pl_utils.execute("sleep " .. t/1000)
   end,
   timer = {
     at = function() end

@@ -1,30 +1,59 @@
 ## [Unreleased][unreleased]
 
+## [0.10.2] - 2017/05/01
+
 ### Changed
 
 - The Kong DNS resolver now honors the `MAXNS` setting (3) when parsing the
   nameservers specified in `resolv.conf`.
   [#2290](https://github.com/Mashape/kong/issues/2290)
+- Kong now matches incoming requests via the `$request_uri` property, instead
+  of `$uri`, in order to better handle percent-encoded URIS. A more detailed
+  explanation will be included in the below "Fixed" section.
+  [#2377](https://github.com/Mashape/kong/pull/2377)
+- Upstream calls do not unconditionally include a trailing `/` anymore. See the
+  below "Added" section for more details.
+  [#2315](https://github.com/Mashape/kong/pull/2315)
 - Admin API:
   - The "active targets" endpoint now only return the most recent nonzero
     weight Targets, instead of all nonzero weight targets. This is to provide
     a better picture of the Targets currently in use by the Kong load balancer.
     [#2310](https://github.com/Mashape/kong/pull/2310)
-- Plugins:
-  - key-auth: Allow setting API key header names with an underscore.
-    [#2370](https://github.com/Mashape/kong/pull/2370)
 
 ### Added
 
+- :fireworks: Plugins can implement a new `rewrite_by_lua` handler to execute
+  code in the Nginx rewrite phase. This phase is executed prior to matching a
+  registered Kong API, and prior to any authentication plugin. As such, plugins
+  implementing this phase don't have to be configured via the Admin API to be
+  executed. Enabled plugins (loaded via the `custom_plugins` Kong configuration
+  value) will execute their `rewrite_by_lua` handler for each request.
+  [#2354](https://github.com/Mashape/kong/pull/2354)
 - Ability for the client to chose whether the upstream request (Kong <->
   upstream) should contain a trailing slash in its URI. Prior to this change,
   Kong 0.10 would unconditionally append a trailing slash to all upstream
   requests. The added functionality is described in
   [#2211](https://github.com/Mashape/kong/issues/2211), and was implemented in
   [#2315](https://github.com/Mashape/kong/pull/2315).
+- Ability to hide Kong-specific response headers. Two new configuration fields:
+  `server_tokens` and `latency_tokens` will respectively toggle whether the
+  `Server` and `X-Kong-*-Latency` headers should be sent to downstream clients.
+  [#2259](https://github.com/Mashape/kong/pull/2259)
+- New `cassandra_schema_consensus_timeout` configuration property, to allow for
+  Kong to wait for the schema consensus of your Cassandra cluster during
+  migrations.
+  [#2326](https://github.com/Mashape/kong/pull/2326)
 - Serf commands executed by a running Kong node are now logged in the Nginx
   error logs with a `DEBUG` level.
   [#2410](https://github.com/Mashape/kong/pull/2410)
+- Ensure the required shared dictionaries are defined in the Nginx
+  configuration. This will prevent custom Nginx templates from potentially
+  resulting in a breaking upgrade for users.
+  [#2466](https://github.com/Mashape/kong/pull/2466)
+- Admin API:
+  - Target Objects can now be deleted with their ID as well as their name. The
+    endpoint becomes: `/upstreams/:name_or_id/targets/:target_or_id`.
+    [#2304](https://github.com/Mashape/kong/pull/2304)
 - Plugins:
   - :fireworks: **New Request termination plugin**. This plugin allows to
     temporarily disable an API and return a pre-configured response status and
@@ -32,11 +61,11 @@
     upstream services. Thanks to [@pauldaustin](https://github.com/pauldaustin)
     for the contribution.
     [#2051](https://github.com/Mashape/kong/pull/2051)
-  - Logging plugins: The produced logs include two new fields. A `consumer`
+  - Logging plugins: The produced logs include two new fields: a `consumer`
     field, which contains the properties of the authenticated Consumer
     (`id`, `custom_id`, and `username`), if any, and a `tries` field, which
-    includes, if any, failures informations recorded by the load balancer
-    when contacting the upstream service.
+    includes the upstream connection successes and failures of the load-
+    balancer.
     [#2367](https://github.com/Mashape/kong/pull/2367)
     [#2429](https://github.com/Mashape/kong/pull/2429)
   - http-log: Now set an upstream HTTP basic access authentication header if
@@ -49,6 +78,8 @@
   - jwt: Returns `401 Unauthorized` on invalid claims instead of the previous
     `403 Forbidden` status.
     [#2433](https://github.com/Mashape/kong/pull/2433)
+  - key-auth: Allow setting API key header names with an underscore.
+    [#2370](https://github.com/Mashape/kong/pull/2370)
   - cors: When `config.credentials = true`, we do not send an ACAO header with
     value `*`. The ACAO header value will be that of the request's `Origin: `
     header.
@@ -73,14 +104,18 @@
 - If no API was configured with a `hosts` matching rule, then the
   `preserve_host` flag would never be honored.
   [#2344](https://github.com/Mashape/kong/pull/2344)
+- CNAME records are now properly being cached by the DNS resolver. This results
+  in a performance improvement over previous 0.10 versions.
+  [#2303](https://github.com/Mashape/kong/pull/2303)
 - When using Cassandra, some migrations would not be performed on the same
   coordinator as the one originally chosen. The same migrations would also
   require a response from other replicas in a cluster, but were not waiting
   for a schema consensus beforehand, causing undeterministic failures in the
   migrations, especially if the cluster's inter-nodes communication is slow.
   [#2326](https://github.com/Mashape/kong/pull/2326)
-- CNAME records are now properly cached by the DNS resolver.
-  [#2303](https://github.com/Mashape/kong/pull/2303)
+- The `cassandra_timeout` configuraiton property is now correctly taken into
+  consideration by Kong.
+  [#2326](https://github.com/Mashape/kong/pull/2326)
 - Correctly trigger plugins configured on the anonymous Consumer for anonymous
   requests (from auth plugins with the new `config.anonymous` parameter).
   [#2424](https://github.com/Mashape/kong/pull/2424)
@@ -95,6 +130,11 @@
 - Prevent an upstream or legitimate internal error in the load balancing code
   from throwing a Lua-land error as well.
   [#2327](https://github.com/Mashape/kong/pull/2327)
+- Allow backwards compatibility with custom Nginx configurations that still
+  define the `resolver ${{DNS_RESOLVER}}` directive. Vales from the Kong
+  `dns_resolver` property will be flattened to a string and appended to the
+  directive.
+  [#2386](https://github.com/Mashape/kong/pull/2386)
 - Plugins:
   - hmac: Better handling of invalid base64-encoded signatures. Previously Kong
     would return an HTTP 500 error. We now properly return HTTP 403 Forbidden.
@@ -103,18 +143,19 @@
   - Detect conflicts between SNI Objects in the `/snis` and `/certificates`
     endpoint.
     [#2285](https://github.com/Mashape/kong/pull/2285)
-  - The "active targets" endpoint does not require a trailing slash anymore.
-    [#2307](https://github.com/Mashape/kong/pull/2307)
-  - Target Objects can now be deleted with their ID as well as their name. The
-    endpoint becomes: `/upstreams/:name_or_id/targets/:target_or_id`.
-    [#2304](https://github.com/Mashape/kong/pull/2304)
-  - Upstream Objects can now be deleted properly when using Cassandra.
-    [#2404](https://github.com/Mashape/kong/pull/2404)
+  - The `/certificates` route used to not return the `total` and `data` JSON
+    fields. We now send those fields back instead of a root list of certificate
+    objects.
+    [#2463](https://github.com/Mashape/kong/pull/2463)
   - Endpoints with path parameters like `/xxx_or_id` will now also yield the
     proper result if the `xxx` field is formatted as a UUID. Most notably, this
     fixes a problem for Consumers whose `username` is a UUID, that could not be
     found when requesting `/consumers/{username_as_uuid}`.
     [#2420](https://github.com/Mashape/kong/pull/2420)
+  - The "active targets" endpoint does not require a trailing slash anymore.
+    [#2307](https://github.com/Mashape/kong/pull/2307)
+  - Upstream Objects can now be deleted properly when using Cassandra.
+    [#2404](https://github.com/Mashape/kong/pull/2404)
 
 ## [0.10.1] - 2017/03/27
 
@@ -1171,7 +1212,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.10.1...next
+[unreleased]: https://github.com/mashape/kong/compare/0.10.2...next
+[0.10.2]: https://github.com/mashape/kong/compare/0.10.1...0.10.2
 [0.10.1]: https://github.com/mashape/kong/compare/0.10.0...0.10.1
 [0.10.0]: https://github.com/mashape/kong/compare/0.9.9...0.10.0
 [0.9.9]: https://github.com/mashape/kong/compare/0.9.8...0.9.9

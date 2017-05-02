@@ -24,6 +24,22 @@
 -- |[[    ]]|
 -- ==========
 
+do
+  -- let's ensure the required shared dictionaries are
+  -- declared via lua_shared_dict in the Nginx conf
+
+  local constants = require "kong.constants"
+
+  for _, dict in ipairs(constants.DICTS) do
+    if not ngx.shared[dict] then
+      return error("missing shared dict '" .. dict .. "' in Nginx "          ..
+                   "configuration, are you using a custom template? "        ..
+                   "Make sure the 'lua_shared_dict " .. dict .. " [SIZE];' " ..
+                   "directive is defined.")
+    end
+  end
+end
+
 require("kong.core.globalpatches")()
 
 local dns = require "kong.tools.dns"
@@ -257,6 +273,19 @@ function Kong.balancer()
   if not ok then
     ngx.log(ngx.ERR, "could not set upstream timeouts: ", err)
   end
+end
+
+function Kong.rewrite()
+  core.rewrite.before()
+
+  -- we're just using the iterator, as in this rewrite phase no consumer nor
+  -- api will have been identified, hence we'll just be executing the global
+  -- plugins
+  for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
+    plugin.handler:rewrite(plugin_conf)
+  end
+
+  core.rewrite.after()
 end
 
 function Kong.access()

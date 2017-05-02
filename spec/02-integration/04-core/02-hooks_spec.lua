@@ -106,7 +106,7 @@ describe("Core Hooks", function()
         })
         local entry = cjson.decode(assert.res_status(200, res))
         assert.same(DB_MISS_SENTINEL, entry)  -- db-miss sentinel value
-        
+
         -- Add plugin
         local res = assert(api_client:send {
           method = "POST",
@@ -732,7 +732,10 @@ describe("Core Hooks", function()
 
       local function kill(pid_file, args)
         local cmd = string.format([[kill %s `cat %s` >/dev/null 2>&1]], args or "-0", pid_file)
-        return os.execute(cmd)
+        local ok, code = pl_utils.execute(cmd)
+        if ok then
+          return code
+        end
       end
 
       local function is_running(pid_path)
@@ -782,7 +785,7 @@ describe("Core Hooks", function()
       end
 
       local function stop_serf()
-        os.execute(string.format("kill `cat %s` >/dev/null 2>&1", PID_FILE))
+        pl_utils.execute(string.format("kill `cat %s` >/dev/null 2>&1", PID_FILE))
       end
 
       it("should synchronize nodes on members events", function()
