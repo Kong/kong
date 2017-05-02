@@ -17,7 +17,6 @@ local NODES = {
     cluster_listen_rpc = "0.0.0.0:9373",
     cluster_profile = "local",
     custom_plugins = "first-request",
-    lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua"
   },
   servroot2 = {
     prefix = "servroot2",
@@ -29,7 +28,6 @@ local NODES = {
     cluster_listen_rpc = "0.0.0.0:10373",
     cluster_profile = "local",
     custom_plugins = "first-request",
-    lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua"
   },
   servroot3 = {
     prefix = "servroot3",
@@ -41,7 +39,6 @@ local NODES = {
     cluster_listen_rpc = "0.0.0.0:20373",
     cluster_profile = "local",
     custom_plugins = "first-request",
-    lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua"
   }
 }
 

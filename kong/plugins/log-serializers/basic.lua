@@ -8,6 +8,8 @@ function _M.serialize(ngx)
       consumer_id = ngx.ctx.authenticated_credential.consumer_id
     }
   end
+  
+  local addr = ngx.ctx.balancer_address
 
   return {
     request = {
@@ -23,9 +25,11 @@ function _M.serialize(ngx)
       headers = ngx.resp.get_headers(),
       size = ngx.var.bytes_sent
     },
+    tries = addr.tries,
     latencies = {
       kong = (ngx.ctx.KONG_ACCESS_TIME or 0) +
-             (ngx.ctx.KONG_RECEIVE_TIME or 0),
+             (ngx.ctx.KONG_RECEIVE_TIME or 0) +
+             (ngx.ctx.KONG_REWRITE_TIME or 0),
       proxy = ngx.ctx.KONG_WAITING_TIME or -1,
       request = ngx.var.request_time * 1000
     },

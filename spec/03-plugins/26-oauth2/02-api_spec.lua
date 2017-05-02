@@ -76,7 +76,8 @@ describe("Plugin: oauth (API)", function()
             }
           })
           local body = assert.res_status(400, res)
-          assert.equal([[{"redirect_uri":"redirect_uri is required","name":"name is required"}]], body)
+          local json = cjson.decode(body)
+          assert.same({ redirect_uri = "redirect_uri is required", name = "name is required" }, json)
         end)
         it("returns bad request with invalid redirect_uri", function()
           local res = assert(admin_client:send {
@@ -91,7 +92,8 @@ describe("Plugin: oauth (API)", function()
             }
           })
           local body = assert.res_status(400, res)
-          assert.equal([[{"redirect_uri":"cannot parse 'not-valid'"}]], body)
+          local json = cjson.decode(body)
+          assert.same({ redirect_uri = "cannot parse 'not-valid'" }, json)
 
           local res = assert(admin_client:send {
             method = "POST",
@@ -105,7 +107,8 @@ describe("Plugin: oauth (API)", function()
             }
           })
           local body = assert.res_status(400, res)
-          assert.equal([[{"redirect_uri":"fragment not allowed in 'http:\/\/test.com\/#with-fragment'"}]], body)
+          local json = cjson.decode(body)
+          assert.same({ redirect_uri = "fragment not allowed in 'http://test.com/#with-fragment'" }, json)
 
           local res = assert(admin_client:send {
             method = "POST",
@@ -119,7 +122,8 @@ describe("Plugin: oauth (API)", function()
             }
           })
           local body = assert.res_status(400, res)
-          assert.equal([[{"redirect_uri":"cannot parse 'not-valid'"}]], body)
+          local json = cjson.decode(body)
+          assert.same({ redirect_uri = "cannot parse 'not-valid'" }, json)
 
           local res = assert(admin_client:send {
             method = "POST",
@@ -133,7 +137,8 @@ describe("Plugin: oauth (API)", function()
             }
           })
           local body = assert.res_status(400, res)
-          assert.equal([[{"redirect_uri":"fragment not allowed in 'http:\/\/test.com\/#with-fragment'"}]], body)
+          local json = cjson.decode(body)
+          assert.same({ redirect_uri = "fragment not allowed in 'http://test.com/#with-fragment'" }, json)
         end)
       end)
     end)
@@ -167,7 +172,8 @@ describe("Plugin: oauth (API)", function()
             }
           })
           local body = assert.res_status(400, res)
-          assert.equal([[{"redirect_uri":"redirect_uri is required","name":"name is required"}]], body)
+          local json = cjson.decode(body)
+          assert.same({ redirect_uri = "redirect_uri is required", name = "name is required" }, json)
         end)
       end)
     end)
@@ -308,7 +314,8 @@ describe("Plugin: oauth (API)", function()
             }
           })
           local body = assert.res_status(400, res)
-          assert.equal([[{"redirect_uri":"cannot parse 'not-valid'"}]], body)
+          local json = cjson.decode(body)
+          assert.same({ redirect_uri = "cannot parse 'not-valid'" }, json)
         end)
       end)
     end)
@@ -386,7 +393,8 @@ describe("Plugin: oauth (API)", function()
             }
           })
           local body = assert.res_status(400, res)
-          assert.equal([[{"credential_id":"credential_id is required","expires_in":"expires_in is required"}]], body)
+          local json = cjson.decode(body)
+          assert.same({ credential_id = "credential_id is required", expires_in = "expires_in is required" }, json)
         end)
       end)
     end)
@@ -423,7 +431,8 @@ describe("Plugin: oauth (API)", function()
             }
           })
           local body = assert.res_status(400, res)
-          assert.equal([[{"credential_id":"credential_id is required","expires_in":"expires_in is required"}]], body)
+          local json = cjson.decode(body)
+          assert.same({ credential_id = "credential_id is required", expires_in = "expires_in is required" }, json)
         end)
       end)
     end)
@@ -534,7 +543,8 @@ describe("Plugin: oauth (API)", function()
               }
             })
             local body = assert.res_status(400, res)
-            assert.equal([[{"expires_in":"expires_in is not a number"}]], body)
+            local json = cjson.decode(body)
+            assert.same({ expires_in = "expires_in is not a number" }, json)
           end)
         end)
       end)

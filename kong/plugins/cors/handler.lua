@@ -55,11 +55,19 @@ end
 
 
 local function configure_credentials(ngx, conf)
-  if ngx.ctx.cors_allow_all then
-    ngx.header["Access-Control-Allow-Credentials"] = "false"
+  if conf.credentials then
+    if not ngx.ctx.cors_allow_all then
+      ngx.header["Access-Control-Allow-Credentials"] = "true"
+      return
+    end
 
-  elseif conf.credentials then
-    ngx.header["Access-Control-Allow-Credentials"] = "true"
+    -- Access-Control-Allow-Origin is '*', must change it because ACAC cannot
+    -- be 'true' if ACAO is '*'.
+    local req_origin = ngx.var.http_origin
+    if req_origin then
+      ngx.header["Access-Control-Allow-Origin"]      = req_origin
+      ngx.header["Access-Control-Allow-Credentials"] = "true"
+    end
   end
 end
 

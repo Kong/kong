@@ -62,11 +62,13 @@ return {
       "year"
     }
   },
-  SYSLOG = {
+  REPORTS = {
     ADDRESS = "kong-hf.mashape.com",
-    PORT = 61828
+    SYSLOG_PORT = 61828,
+    STATS_PORT = 61829
   },
   CACHE = {
     CLUSTER = "cluster"
-  }
+  },
+  DICTS = { "kong", "cache", "cache_locks", "process_events", "cassandra"},
 }

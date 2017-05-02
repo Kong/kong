@@ -82,28 +82,11 @@ local function create_hash(request, hmac_params, headers)
   return ngx_sha1(hmac_params.secret, signing_string)
 end
 
-local function is_digest_equal(digest_1, digest_2)
-  local result = true
-  for i=1, #digest_1 do
-    if digest_1:sub(i, i) ~= digest_2:sub(i, i) then
-      result = false
-    end
-  end
-  return result
-end
-
 local function validate_signature(request, hmac_params, headers)
   local digest = create_hash(request, hmac_params, headers)
   local sig = ngx_decode_base64(hmac_params.signature)
 
-  -- we didnt receive a well-formed base64 encoding
-  if not sig then
-    return false
-  end
-
-  if digest then
-   return is_digest_equal(digest, sig)
-  end
+  return digest == sig
 end
 
 local function load_credential_into_memory(username)
@@ -216,7 +199,15 @@ local function do_authentication(conf)
   return true
 end
 
+
 function _M.execute(conf)
+
+  if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
+    -- we're already authenticated, and we're configured for using anonymous, 
+    -- hence we're in a logical OR between auth methods and we're already done.
+    return
+  end
+
   local ok, err = do_authentication(conf)
   if not ok then
     if conf.anonymous ~= "" then
@@ -232,5 +223,6 @@ function _M.execute(conf)
     end
   end
 end
+
 
 return _M

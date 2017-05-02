@@ -168,9 +168,9 @@ local function compile_conf(kong_config, conf_template)
     tostring = tostring
   }
 
-  if kong_config.anonymous_reports and socket.dns.toip(constants.SYSLOG.ADDRESS) then
+  if kong_config.anonymous_reports and socket.dns.toip(constants.REPORTS.ADDRESS) then
     compile_env["syslog_reports"] = fmt("error_log syslog:server=%s:%d error;",
-                                        constants.SYSLOG.ADDRESS, constants.SYSLOG.PORT)
+                                        constants.REPORTS.ADDRESS, constants.REPORTS.SYSLOG_PORT)
   end
   if kong_config.nginx_optimizations then
     local infos, err = gather_system_infos()
@@ -179,6 +179,7 @@ local function compile_conf(kong_config, conf_template)
   end
 
   compile_env = pl_tablex.merge(compile_env, kong_config, true) -- union
+  compile_env.dns_resolver = table.concat(compile_env.dns_resolver, " ")
 
   local post_template = pl_template.substitute(conf_template, compile_env)
   return string.gsub(post_template, "(${%b{}})", function(w)

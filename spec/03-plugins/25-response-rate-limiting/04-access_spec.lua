@@ -5,7 +5,7 @@ local timestamp = require "kong.tools.timestamp"
 local REDIS_HOST = "127.0.0.1"
 local REDIS_PORT = 6379
 local REDIS_PASSWORD = ""
-local REDIS_DATABASE = 0
+local REDIS_DATABASE = 1
 
 local SLEEP_TIME = 1
 
@@ -494,7 +494,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         }
       })
       local body = assert.res_status(429, res)
-      assert.equal([[{"message":"API rate limit exceeded for 'image'"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "API rate limit exceeded for 'image'" }, json)
     end)
 
     describe("Config with hide_client_headers", function()
@@ -590,7 +591,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             }
           })
           local body = assert.res_status(500, res)
-          assert.equal([[{"message":"An unexpected error occurred"}]], body)
+          local json = cjson.decode(body)
+          assert.same({ message = "An unexpected error occurred" }, json)
         end)
 
         it("keeps working if an error occurs", function()
@@ -669,7 +671,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             }
           })
           local body = assert.res_status(500, res)
-          assert.are.equal([[{"message":"An unexpected error occurred"}]], body)
+          local json = cjson.decode(body)
+          assert.same({ message = "An unexpected error occurred" }, json)
         end)
         it("keeps working if an error occurs", function()
           -- Make another request
@@ -738,7 +741,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             query = { cache = "shm" },
           })
           local body = assert.res_status(200, res)
-          assert.equal([[{"message":1}]], body)
+          local json = cjson.decode(body)
+          assert.same({ message = 1 }, json)
         end
 
         ngx.sleep(61) -- Wait for counter to expire
