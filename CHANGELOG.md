@@ -73,7 +73,7 @@
     section. Thanks [@amir](https://github.com/amir) for the contribution.
     [#2432](https://github.com/Mashape/kong/pull/2432)
   - file-log: New `config.reopen` property to close and reopen the log file on
-    every request, in otder to effectively rotate the logs.
+    every request, in order to effectively rotate the logs.
     [#2348](https://github.com/Mashape/kong/pull/2348)
   - jwt: Returns `401 Unauthorized` on invalid claims instead of the previous
     `403 Forbidden` status.
@@ -110,10 +110,10 @@
 - When using Cassandra, some migrations would not be performed on the same
   coordinator as the one originally chosen. The same migrations would also
   require a response from other replicas in a cluster, but were not waiting
-  for a schema consensus beforehand, causing undeterministic failures in the
+  for a schema consensus beforehand, causing indeterministic failures in the
   migrations, especially if the cluster's inter-nodes communication is slow.
   [#2326](https://github.com/Mashape/kong/pull/2326)
-- The `cassandra_timeout` configuraiton property is now correctly taken into
+- The `cassandra_timeout` configuration property is now correctly taken into
   consideration by Kong.
   [#2326](https://github.com/Mashape/kong/pull/2326)
 - Correctly trigger plugins configured on the anonymous Consumer for anonymous
