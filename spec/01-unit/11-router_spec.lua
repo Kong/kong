@@ -717,7 +717,7 @@ describe("Router", function()
       _ngx = {
         re = ngx.re,
         var = setmetatable({
-          uri = uri,
+          request_uri = uri,
           http_kong_debug = headers.kong_debug
         }, {
           __index = function(_, key)
@@ -729,7 +729,7 @@ describe("Router", function()
         }),
         req = {
           set_uri = function(uri)
-            _ngx.var.uri = uri
+            _ngx.var.request_uri = uri
           end,
           get_method = function()
             return method
@@ -816,6 +816,23 @@ describe("Router", function()
       assert.equal(8443, upstream.port)
     end)
 
+    it("allows url encoded uris", function()
+      local use_case_apis = {
+        {
+          name = "api-1",
+          uris = {
+            "/endel%C3%B8st"
+          },
+        },
+      }
+
+      local _ngx = mock_ngx("GET", "/endel%C3%B8st", {})
+      local router = assert(Router.new(use_case_apis))
+      local api = router.exec(_ngx)
+      assert.same(use_case_apis[1], api)
+      assert.equal("/endel%C3%B8st", _ngx.var.request_uri)
+    end)
+
     describe("grab_headers", function()
       local use_case_apis = {
         {
@@ -882,7 +899,7 @@ describe("Router", function()
 
         local api = router.exec(_ngx)
         assert.same(use_case_apis[1], api)
-        assert.equal("/hello/world", _ngx.var.uri)
+        assert.equal("/hello/world", _ngx.var.request_uri)
       end)
 
       it("strips if matched URI is plain (not a prefix)", function()
@@ -890,7 +907,7 @@ describe("Router", function()
 
         local api = router.exec(_ngx)
         assert.same(use_case_apis[1], api)
-        assert.equal("/", _ngx.var.uri)
+        assert.equal("/", _ngx.var.request_uri)
       end)
 
       it("doesn't strip if 'strip_uri' is not enabled", function()
@@ -898,7 +915,7 @@ describe("Router", function()
 
         local api = router.exec(_ngx)
         assert.same(use_case_apis[2], api)
-        assert.equal("/my-api/hello/world", _ngx.var.uri)
+        assert.equal("/my-api/hello/world", _ngx.var.request_uri)
       end)
 
       it("does not strips root / URI", function()
@@ -916,7 +933,7 @@ describe("Router", function()
 
         local api = router.exec(_ngx)
         assert.same(use_case_apis[1], api)
-        assert.equal("/my-api/hello/world", _ngx.var.uri)
+        assert.equal("/my-api/hello/world", _ngx.var.request_uri)
       end)
 
       it("can find an API with stripped URI several times in a row", function()
@@ -924,12 +941,12 @@ describe("Router", function()
 
         local api = router.exec(_ngx)
         assert.same(use_case_apis[1], api)
-        assert.equal("/", _ngx.var.uri)
+        assert.equal("/", _ngx.var.request_uri)
 
         _ngx = mock_ngx("GET", "/my-api", {})
         local api2 = router.exec(_ngx)
         assert.same(use_case_apis[1], api2)
-        assert.equal("/", _ngx.var.uri)
+        assert.equal("/", _ngx.var.request_uri)
       end)
 
       it("can proxy an API with stripped URI with different URIs in a row", function()
@@ -937,12 +954,12 @@ describe("Router", function()
 
         local api = router.exec(_ngx)
         assert.same(use_case_apis[1], api)
-        assert.equal("/", _ngx.var.uri)
+        assert.equal("/", _ngx.var.request_uri)
 
         _ngx = mock_ngx("GET", "/this-api", {})
         local api2 = router.exec(_ngx)
         assert.same(use_case_apis[1], api2)
-        assert.equal("/", _ngx.var.uri)
+        assert.equal("/", _ngx.var.request_uri)
       end)
     end)
 
@@ -1102,7 +1119,7 @@ describe("Router", function()
           local api, upstream = router.exec(_ngx)
           assert.same(use_case_apis[1], api)
           assert.equal(args[1], upstream.path)
-          assert.equal(args[4], _ngx.var.uri)
+          assert.equal(args[4], _ngx.var.request_uri)
         end)
       end
     end)
