@@ -35,8 +35,17 @@ describe("Plugin: rate-limiting (policies)", function()
       local current_timestamp = 1424217600
       local periods = timestamp.get_timestamps(current_timestamp)
 
+      local limits = {
+        second = 100,
+        minute = 100,
+        hour = 100,
+        day = 100,
+        month = 100,
+        year = 100
+      }
+
       -- First increment
-      assert(cluster_policy.increment(nil, api_id, identifier, current_timestamp, 1))
+      assert(cluster_policy.increment(nil, limits, api_id, identifier, current_timestamp, 1))
 
       -- First select
       for period, period_date in pairs(periods) do
@@ -46,7 +55,7 @@ describe("Plugin: rate-limiting (policies)", function()
       end
 
       -- Second increment
-      assert(cluster_policy.increment(nil, api_id, identifier, current_timestamp, 1))
+      assert(cluster_policy.increment(nil, limits, api_id, identifier, current_timestamp, 1))
 
       -- Second select
       for period, period_date in pairs(periods) do
@@ -60,7 +69,7 @@ describe("Plugin: rate-limiting (policies)", function()
       periods = timestamp.get_timestamps(current_timestamp)
 
       -- Third increment
-      assert(cluster_policy.increment(nil, api_id, identifier, current_timestamp, 1))
+      assert(cluster_policy.increment(nil, limits, api_id, identifier, current_timestamp, 1))
 
       -- Third select with 1 second delay
       for period, period_date in pairs(periods) do
