@@ -258,7 +258,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         })
         local body = assert.res_status(429, res)
         local json = cjson.decode(body)
-        assert.same({ message = "API rate limit exceeded" }, body)
+        assert.same({ message = "API rate limit exceeded" }, json)
         assert.are.equal(2, tonumber(res.headers["x-ratelimit-remaining-hour"]))
         assert.are.equal(0, tonumber(res.headers["x-ratelimit-remaining-minute"]))
       end)
@@ -464,6 +464,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       describe("Fault tolerancy", function()
 
         before_each(function()
+          helpers.kill_all()
+
           local api1 = assert(helpers.dao.apis:insert {
             name = "failtest3_com",
             hosts = { "failtest3.com" },
@@ -485,6 +487,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             api_id = api2.id,
             config = { minute = 6, policy = policy, redis_host = "5.5.5.5", fault_tolerant = true }
           })
+
+          assert(helpers.start_kong())
         end)
 
         it("does not work if an error occurs", function()
