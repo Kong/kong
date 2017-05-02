@@ -5,7 +5,7 @@ local cjson = require "cjson"
 local REDIS_HOST = "127.0.0.1"
 local REDIS_PORT = 6379
 local REDIS_PASSWORD = ""
-local REDIS_DATABASE = 0
+local REDIS_DATABASE = 1
 
 local SLEEP_TIME = 1
 
