@@ -41,6 +41,7 @@ lua_ssl_verify_depth ${{LUA_SSL_VERIFY_DEPTH}};
 > end
 
 init_by_lua_block {
+    require 'luarocks.loader'
     require 'resty.core'
     kong = require 'kong'
     kong.init()
