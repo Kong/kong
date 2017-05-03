@@ -38,12 +38,12 @@ end
 
 function _M.find_api_by_name_or_id(self, dao_factory, helpers)
   local rows, err = _M.find_by_id_or_field(dao_factory.apis, {},
-                                           self.params.name_or_id, "name")
+                                           self.params.api_name_or_id, "name")
 
   if err then
     return helpers.yield_error(err)
   end
-  self.params.name_or_id = nil
+  self.params.api_name_or_id = nil
 
   -- We know name and id are unique for APIs, hence if we have a row, it must be the only one
   self.api = rows[1]
@@ -56,16 +56,14 @@ end
 -- also the api to be specified by name or id
 function _M.find_plugin_by_name_or_id(self, dao_factory, helpers)
   _M.find_api_by_name_or_id(self, dao_factory, helpers)
-  local filter_keys = {
-    api_id = self.api.id,
-    [utils.is_valid_uuid(self.params.plugin_name_or_id) and "id" or "name"] = self.params.plugin_name_or_id
-  }
-  self.params.plugin_name_or_id = nil
 
-  local rows, err = dao_factory.plugins:find_all(filter_keys)
+  local rows, err = _M.find_by_id_or_field(dao_factory.plugins, { api_id = self.api.id },
+                                           self.params.plugin_name_or_id, "name")
+
   if err then
     return helpers.yield_error(err)
   end
+  self.params.plugin_name_or_id = nil
 
   -- We know combi of api+plugin is unique for plugins, hence if we have a row, it must be the only one
   self.plugin = rows[1]
@@ -92,12 +90,12 @@ end
 
 function _M.find_upstream_by_name_or_id(self, dao_factory, helpers)
   local rows, err = _M.find_by_id_or_field(dao_factory.upstreams, {},
-                                           self.params.name_or_id, "name")
+                                           self.params.upstream_name_or_id, "name")
 
   if err then
     return helpers.yield_error(err)
   end
-  self.params.name_or_id = nil
+  self.params.upstream_name_or_id = nil
 
   -- We know name and id are unique, so if we have a row, it must be the only one
   self.upstream = rows[1]
@@ -109,16 +107,13 @@ end
 -- this function will return the exact target if specified by `id`, or just
 -- 'any target entry' if specified by target (= 'hostname:port')
 function _M.find_target_by_target_or_id(self, dao_factory, helpers)
-  local filter_keys = {
-    upstream_id = self.upstream.id,
-    [utils.is_valid_uuid(self.params.target_or_id) and "id" or "target"] = self.params.target_or_id
-  }
-  self.params.target_or_id = nil
+  local rows, err = _M.find_by_id_or_field(dao_factory.targets, {},
+                                           self.params.target_or_id, "target")
 
-  local rows, err = dao_factory.targets:find_all(filter_keys)
   if err then
     return helpers.yield_error(err)
   end
+  self.params.target_or_id = nil
 
   -- if looked up by `target` property we can have multiple targets here, but
   -- anyone will do as they all have the same 'target' field, so just pick
