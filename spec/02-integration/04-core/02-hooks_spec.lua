@@ -9,7 +9,7 @@ local pl_stringx = require "pl.stringx"
 -- cache entry inserted as a sentinel whenever a db lookup returns nothing
 local DB_MISS_SENTINEL = { null = true }
 
-describe("Core Hooks", function()
+pending("Core Hooks", function()
   describe("Global", function()
     describe("Plugin entity invalidation on API", function()
       local client, api_client, db_miss_api

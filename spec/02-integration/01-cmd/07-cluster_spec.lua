@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 local pl_file = require "pl.file"
 
-describe("kong cluster", function()
+pending("kong cluster", function()
   setup(function()
     helpers.prepare_prefix()
   end)

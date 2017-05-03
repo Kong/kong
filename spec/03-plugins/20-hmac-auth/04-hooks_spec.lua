@@ -4,7 +4,7 @@ local cjson = require "cjson"
 local cache = require "kong.tools.database_cache"
 local crypto = require "crypto"
 
-describe("Plugin: hmac-auth (hooks)", function()
+pending("Plugin: hmac-auth (hooks)", function()
   local client_proxy, client_admin, consumer, credential
 
   setup(function()

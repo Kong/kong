@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 local cache = require "kong.tools.database_cache"
 
-describe("Plugin: ACL (hooks)", function()
+pending("Plugin: ACL (hooks)", function()
   local admin_client, proxy_client
   local consumer1, acl1
 

@@ -2,7 +2,7 @@ local cjson = require "cjson"
 local cache = require "kong.tools.database_cache"
 local helpers = require "spec.helpers"
 
-describe("#ci Plugin: oauth2 (hooks)", function()
+pending("#ci Plugin: oauth2 (hooks)", function()
   local admin_client, proxy_ssl_client
 
   before_each(function()

@@ -3,7 +3,7 @@ local cjson = require "cjson"
 local cache = require "kong.tools.database_cache"
 local jwt_encoder = require "kong.plugins.jwt.jwt_parser"
 
-describe("Plugin: jwt (hooks)", function()
+pending("Plugin: jwt (hooks)", function()
   local admin_client, proxy_client, consumer1, api1
 
   before_each(function()

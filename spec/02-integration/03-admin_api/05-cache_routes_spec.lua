@@ -13,7 +13,7 @@ local function do_it(desc, func)
   end
 end
 
-describe("Admin API /cache/{key}", function()
+pending("Admin API /cache/{key}", function()
   local api_client, proxy_client
   setup(function()
     local api = assert(helpers.dao.apis:insert {

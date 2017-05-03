@@ -46,7 +46,7 @@ for k, v in pairs(NODES) do
   NODES_CONF[k] = conf_loader(nil, v)
 end
 
-describe("Cluster", function()
+pending("Cluster", function()
   before_each(function()
     for _, v in pairs(NODES) do
       helpers.prepare_prefix(v.prefix)

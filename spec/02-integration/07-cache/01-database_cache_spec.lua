@@ -1,6 +1,6 @@
 local helpers = require "spec.helpers"
 
-describe("Resolver", function()
+pending("Resolver", function()
   local admin_client
 
   setup(function()

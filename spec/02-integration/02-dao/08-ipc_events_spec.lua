@@ -5,7 +5,7 @@ local Factory = require "kong.dao.factory"
 local spec_helpers = require "spec.helpers"
 
 helpers.for_each_dao(function(kong_config)
-  describe("Quiet with #" .. kong_config.database, function()
+  pending("Quiet with #" .. kong_config.database, function()
     local factory
     local events
 

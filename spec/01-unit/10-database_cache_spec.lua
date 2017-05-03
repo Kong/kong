@@ -1,7 +1,7 @@
 local cache = require "kong.tools.database_cache"
 local json = require "cjson"
 
-describe("Database cache", function()
+pending("Database cache", function()
 
   it("returns a valid API cache key", function()
     assert.are.equal("apis:httpbin.org", cache.api_key("httpbin.org"))

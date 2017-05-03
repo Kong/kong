@@ -2,7 +2,7 @@ local helpers = require "spec.helpers"
 local cache = require "kong.tools.database_cache"
 local cjson = require "cjson"
 
-describe("Plugin: basic-auth (hooks)", function()
+pending("Plugin: basic-auth (hooks)", function()
   local admin_client, proxy_client
 
   before_each(function()
