@@ -1,5 +1,4 @@
 _G.ngx = require "spec.03-plugins.09-galileo.ngx"
-local json = require "cjson"
 
 -- asserts if an array contains a given table
 local function contains(state, args)

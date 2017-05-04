@@ -183,7 +183,7 @@ return {
       clean_history(self.upstream.id, dao_factory)
 
       -- this is just a wrapper around POSTing a new target with weight=0
-      local data, err = dao_factory.targets:insert({
+      local _, err = dao_factory.targets:insert({
         target      = self.target.target,
         upstream_id = self.upstream.id,
         weight      = 0,

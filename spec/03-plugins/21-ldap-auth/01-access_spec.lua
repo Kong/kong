@@ -342,7 +342,7 @@ end)
 
 describe("Plugin: ldap-auth (access)", function()
 
-  local client, user1, user2, anonymous
+  local client, user1, anonymous
 
   setup(function()
     local api1 = assert(helpers.dao.apis:insert {
@@ -482,7 +482,7 @@ describe("Plugin: ldap-auth (access)", function()
       assert.request(res).has.no.header("x-anonymous-consumer")
       local id = assert.request(res).has.header("x-consumer-id")
       assert.not_equal(id, anonymous.id)
-      assert(id == user1.id or id == user2.id)
+      assert(id == user1.id)
     end)
 
     it("passes with only the first credential provided", function()

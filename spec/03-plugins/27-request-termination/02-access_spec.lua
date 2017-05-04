@@ -1,9 +1,7 @@
 local helpers = require "spec.helpers"
-local cache = require "kong.tools.database_cache"
 local cjson = require "cjson"
 
 describe("Plugin: request-termination (access)", function()
-  local plugin_config
   local client, admin_client
 
   setup(function()
