@@ -843,7 +843,6 @@ describe("Router", function()
       it("does not read Host header if not required", function()
         local _ngx = mock_ngx("GET", "/my-api", {})
 
-        local var_mt = getmetatable(_ngx.var)
         spy.on(spy_stub, "nop")
 
         local router = assert(Router.new(use_case_apis))
