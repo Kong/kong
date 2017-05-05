@@ -68,6 +68,8 @@ local CONF_INFERENCES = {
   upstream_keepalive = {typ = "number"},
   server_tokens = {typ = "boolean"},
   latency_tokens = {typ = "boolean"},
+  error_default_type = {enum = {"application/json", "application/xml",
+                                "text/html", "text/plain"}},
 
   database = {enum = {"postgres", "cassandra"}},
   pg_port = {typ = "number"},

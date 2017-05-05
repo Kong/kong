@@ -178,6 +178,13 @@
                                  # and "X-Kong-Upstream-Latency" response
                                  # header fields.
 
+#error_default_type = text/plain  # Default MIME type to use when the request
+                                  # `Accept` header is missing and Nginx
+                                  # is returning an error for the request.
+                                  # Accepted values are `text/plain`,
+                                  # `text/html`, `application/json`, and
+                                  # `application/xml`.
+
 #------------------------------------------------------------------------------
 # DATASTORE
 #------------------------------------------------------------------------------
