@@ -178,6 +178,9 @@
 # See http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_recursive
 # for a description of this directive.
 
+#response_format = text/plain # The default response format to use when the
+                              # 'Accept' header is missing in the request
+
 #------------------------------------------------------------------------------
 # DATASTORE
 #------------------------------------------------------------------------------
