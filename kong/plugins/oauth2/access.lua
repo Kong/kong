@@ -1,8 +1,6 @@
 local url = require "socket.url"
-local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
 local cache = require "kong.tools.database_cache"
-local Multipart = require "multipart"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local timestamp = require "kong.tools.timestamp"
@@ -94,19 +92,9 @@ end
 
 local function retrieve_parameters()
   ngx.req.read_body()
-  -- OAuth2 parameters could be in both the querystring or body
-  local body_parameters, err
-  local content_type = req_get_headers()[CONTENT_TYPE]
-  if content_type and string_find(content_type:lower(), "multipart/form-data", nil, true) then
-    body_parameters = Multipart(ngx.req.get_body_data(), content_type):get_all()
-  elseif content_type and string_find(content_type:lower(), "application/json", nil, true) then
-    body_parameters, err = cjson.decode(ngx.req.get_body_data())
-    if err then body_parameters = {} end
-  else
-    body_parameters = public_utils.get_post_args()
-  end
 
-  return utils.table_merge(ngx.req.get_uri_args(), body_parameters)
+  -- OAuth2 parameters could be in both the querystring or body
+  return utils.table_merge(ngx.req.get_uri_args(), public_utils.get_body_args())
 end
 
 local function retrieve_scopes(parameters, conf)
@@ -440,7 +428,7 @@ local function parse_access_token(conf)
 
       if ngx.req.get_method() ~= "GET" and is_form_post then -- Remove from body
         ngx.req.read_body()
-        parameters = public_utils.get_post_args()
+        parameters = public_utils.get_body_args()
         parameters[ACCESS_TOKEN] = nil
         local encoded_args = ngx.encode_args(parameters)
         ngx.req.set_header(CONTENT_LENGTH, #encoded_args)

@@ -75,7 +75,7 @@ local function do_authentication(conf)
   -- read in the body if we want to examine POST args
   if conf.key_in_body then
     ngx_req_read_body()
-    body_data = public_tools.get_post_args()
+    body_data = public_tools.get_body_args()
   end
 
   -- search in headers & querystring

@@ -166,64 +166,57 @@ describe("Plugin: key-auth (access)", function()
   end)
 
   describe("key in request body", function()
-    it("authenticates valid credentials", function()
-      local res = assert(client:send {
-        path = "/request",
-        headers = {
-          ["Host"] = "key-auth5.com",
-          ["Content-Type"] = "application/www-form-urlencoded",
-        },
-        body = {
-          apikey = "kong",
-        }
-      })
-      assert.res_status(200, res)
-    end)
-    it("returns 403 Forbidden on invalid key", function()
-      local res = assert(client:send {
-        path = "/status/200",
-        headers = {
-          ["Host"] = "key-auth5.com",
-          ["Content-Type"] = "application/www-form-urlencoded",
-        },
-        body = {
-          apikey = "123",
-        }
-      })
-      local body = assert.res_status(403, res)
-      local json = cjson.decode(body)
-      assert.same({ message = "Invalid authentication credentials" }, json)
-    end)
-    it("handles duplicated key", function()
-      local res = assert(client:send {
-        path = "/status/200",
-        headers = {
-          ["Host"] = "key-auth5.com",
-          ["Content-Type"] = "application/www-form-urlencoded",
-        },
-        body = {
-          apikey = { "kong", "kong" },
-        },
-      })
-      local body = assert.res_status(401, res)
-      local json = cjson.decode(body)
-      assert.same({ message = "Duplicate API key found" }, json)
-    end)
-    it("only handles application/www-form-urlencoded bodies", function()
-      local res = assert(client:send {
-        path = "/status/200",
-        headers = {
-          ["Host"] = "key-auth5.com",
-          ["Content-Type"] = "application/json",
-        },
-        body = {
-          apikey = { "kong", "kong" },
-        },
-      })
-      local body = assert.res_status(401, res)
-      local json = cjson.decode(body)
-      assert.same({ message = "No API key found in request" }, json)
-    end)
+    for _, type in pairs({ "application/www-form-urlencoded", "application/json", "multipart/form-data" }) do
+      describe(type, function()
+        it("authenticates valid credentials", function()
+          local res = assert(client:send {
+            path = "/request",
+            headers = {
+              ["Host"] = "key-auth5.com",
+              ["Content-Type"] = type,
+            },
+            body = {
+              apikey = "kong",
+            }
+          })
+          assert.res_status(200, res)
+        end)
+        it("returns 403 Forbidden on invalid key", function()
+          local res = assert(client:send {
+            path = "/status/200",
+            headers = {
+              ["Host"] = "key-auth5.com",
+              ["Content-Type"] = type,
+            },
+            body = {
+              apikey = "123",
+            }
+          })
+          local body = assert.res_status(403, res)
+          local json = cjson.decode(body)
+          assert.same({ message = "Invalid authentication credentials" }, json)
+        end)
+
+        -- lua-multipart doesn't currently handle duplicates in the same method
+        -- that json/form-urlencoded handlers do
+        local test = type == "multipart/form-data" and pending or it
+        test("handles duplicated key", function()
+          local res = assert(client:send {
+            path = "/status/200",
+            headers = {
+              ["Host"] = "key-auth5.com",
+              ["Content-Type"] = type,
+            },
+            body = {
+              apikey = { "kong", "kong" },
+            },
+          })
+          local body = assert.res_status(401, res)
+          local json = cjson.decode(body)
+          assert.same({ message = "Duplicate API key found" }, json)
+        end)
+      end)
+    end
   end)
 
   describe("key in headers", function()
