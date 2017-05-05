@@ -199,5 +199,31 @@ describe("kong start/stop", function()
 
       assert(kill.is_running(helpers.test_conf.nginx_pid))
     end)
+    it("ensures the required shared dictionaries are defined", function()
+      local constants = require "kong.constants"
+      local pl_file   = require "pl.file"
+      local fmt       = string.format
+
+      local templ_fixture     = "spec/fixtures/custom_nginx.template"
+      local new_templ_fixture = "spec/fixtures/custom_nginx.template.tmp"
+
+      finally(function()
+        pl_file.delete(new_templ_fixture)
+        helpers.stop_kong()
+      end)
+
+      for _, dict in ipairs(constants.DICTS) do
+        -- remove shared dictionary entry
+        assert(os.execute(fmt("sed '/lua_shared_dict %s .*;/d' %s > %s",
+                              dict, templ_fixture, new_templ_fixture)))
+
+        local ok, err = helpers.start_kong({ nginx_conf = new_templ_fixture })
+        assert.falsy(ok)
+        assert.matches(
+          "missing shared dict '" .. dict .. "' in Nginx configuration, "    ..
+          "are you using a custom template? Make sure the 'lua_shared_dict " ..
+          dict .. " [SIZE];' directive is defined.", err, nil, true)
+      end
+    end)
   end)
 end)

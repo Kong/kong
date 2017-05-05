@@ -5,7 +5,7 @@ local cjson = require "cjson"
 local REDIS_HOST = "127.0.0.1"
 local REDIS_PORT = 6379
 local REDIS_PASSWORD = ""
-local REDIS_DATABASE = 0
+local REDIS_DATABASE = 1
 
 local SLEEP_TIME = 1
 
@@ -15,7 +15,7 @@ local function wait(second_offset)
   -- of the current minute is > 30, then we wait till the new minute kicks in
   local current_second = timestamp.get_timetable().sec
   if current_second > (second_offset or 0) then
-    os.execute("sleep "..tostring(60 - current_second))
+    ngx.sleep(60 - current_second)
   end
 end
 
@@ -258,7 +258,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         })
         local body = assert.res_status(429, res)
         local json = cjson.decode(body)
-        assert.same({ message = "API rate limit exceeded" }, body)
+        assert.same({ message = "API rate limit exceeded" }, json)
         assert.are.equal(2, tonumber(res.headers["x-ratelimit-remaining-hour"]))
         assert.are.equal(0, tonumber(res.headers["x-ratelimit-remaining-minute"]))
       end)
@@ -464,6 +464,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       describe("Fault tolerancy", function()
 
         before_each(function()
+          helpers.kill_all()
+
           local api1 = assert(helpers.dao.apis:insert {
             name = "failtest3_com",
             hosts = { "failtest3.com" },
@@ -485,6 +487,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             api_id = api2.id,
             config = { minute = 6, policy = policy, redis_host = "5.5.5.5", fault_tolerant = true }
           })
+
+          assert(helpers.start_kong())
         end)
 
         it("does not work if an error occurs", function()

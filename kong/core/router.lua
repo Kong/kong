@@ -60,7 +60,6 @@ end
 
 local match_api
 local reduce
-local empty_t = {}
 
 
 local function marshall_api(api)

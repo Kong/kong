@@ -637,7 +637,7 @@ describe("Entities Schemas", function()
       -- Insert key-auth, whose config has some default values that should be set
       local plugin = {name = "key-auth", api_id = "stub"}
       local valid = validate_entity(plugin, plugins_schema, {dao = dao_stub})
-      assert.same({key_names = {"apikey"}, hide_credentials = false, anonymous = ""}, plugin.config)
+      assert.same({key_names = {"apikey"}, hide_credentials = false, anonymous = "", key_in_body = false}, plugin.config)
       assert.is_true(valid)
     end)
     it("should be valid if no value is specified for a subfield and if the config schema has default as empty array", function()

@@ -66,7 +66,7 @@ pending("Plugin: AWS Lambda (access)", function()
     -- invocation will take the most time
     client = helpers.proxy_client()
     client:set_timeout(2 * 60 * 1000) -- 2 minute timeout for the warmup
-    local res = assert(client:send {
+    assert(client:send {
       method = "GET",
       path = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
       headers = {

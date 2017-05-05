@@ -45,6 +45,7 @@ lua_ssl_verify_depth ${{LUA_SSL_VERIFY_DEPTH}};
 > end
 
 init_by_lua_block {
+    require 'luarocks.loader'
     require 'resty.core'
     kong = require 'kong'
     kong.init()
@@ -95,6 +96,10 @@ server {
     location / {
         set $upstream_host nil;
         set $upstream_scheme nil;
+
+        rewrite_by_lua_block {
+            kong.rewrite()
+        }
 
         access_by_lua_block {
             kong.access()
