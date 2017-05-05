@@ -199,11 +199,13 @@ build = {
     ["kong.plugins.request-size-limiting.schema"] = "kong/plugins/request-size-limiting/schema.lua",
 
     ["kong.plugins.request-transformer.migrations.cassandra"] = "kong/plugins/request-transformer/migrations/cassandra.lua",
+    ["kong.plugins.request-transformer.migrations.postgres"] = "kong/plugins/request-transformer/migrations/postgres.lua",
     ["kong.plugins.request-transformer.handler"] = "kong/plugins/request-transformer/handler.lua",
     ["kong.plugins.request-transformer.access"] = "kong/plugins/request-transformer/access.lua",
     ["kong.plugins.request-transformer.schema"] = "kong/plugins/request-transformer/schema.lua",
 
     ["kong.plugins.response-transformer.migrations.cassandra"] = "kong/plugins/response-transformer/migrations/cassandra.lua",
+    ["kong.plugins.response-transformer.migrations.postgres"] = "kong/plugins/response-transformer/migrations/postgres.lua",
     ["kong.plugins.response-transformer.handler"] = "kong/plugins/response-transformer/handler.lua",
     ["kong.plugins.response-transformer.body_transformer"] = "kong/plugins/response-transformer/body_transformer.lua",
     ["kong.plugins.response-transformer.header_transformer"] = "kong/plugins/response-transformer/header_transformer.lua",
