@@ -27,7 +27,7 @@ function RunscopeLogHandler:access(conf)
     local headers = req_get_headers()
     local content_type = headers["content-type"]
     if content_type and string_find(content_type:lower(), "application/x-www-form-urlencoded", nil, true) then
-      req_post_args = public_utils.get_post_args()
+      req_post_args = public_utils.get_body_args()
     end
   end
 
