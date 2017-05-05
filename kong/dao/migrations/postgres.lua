@@ -373,8 +373,6 @@ return {
     name = "2017-03-27-132300_anonymous",
     -- this should have been in 0.10, but instead goes into 0.10.1 as a bugfix
     up = function(_, _, dao)
-      local json_decode = require("cjson").decode
-      local json_encode = require("cjson").encode
       for _, name in ipairs({
         "basic-auth",
         "hmac-auth",
