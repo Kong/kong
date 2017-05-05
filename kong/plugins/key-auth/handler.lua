@@ -114,8 +114,7 @@ local function do_authentication(conf)
   -- this request is missing an API key, HTTP 401
   if not key then
     ngx.header["WWW-Authenticate"] = _realm
-    return false, {status = 401, message = "No API key found in headers"
-                                          .." or querystring"}
+    return false, { status = 401, message = "No API key found in request" }
   end
 
   -- retrieve our consumer linked to this API key
