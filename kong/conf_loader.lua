@@ -68,7 +68,7 @@ local CONF_INFERENCES = {
   real_ip_header = {typ = "string"},
   real_ip_recursive = {typ = "ngx_boolean"},
   trusted_ips = {typ = "array"},
-  response_format = {enum = {"application/json", "application/xml", "text/html", "text/plain"}},
+  error_default_type = {enum = {"application/json", "application/xml", "text/html", "text/plain"}},
 
   database = {enum = {"postgres", "cassandra"}},
   pg_port = {typ = "number"},

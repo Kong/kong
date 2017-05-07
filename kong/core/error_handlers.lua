@@ -36,7 +36,8 @@ return function(ngx)
   local template, message, content_type
 
   if accept_header == nil then
-    accept_header = singletons.configuration.response_format
+    accept_header = singletons.configuration.error_default_type
+  end
 
   if find(accept_header, TYPE_HTML, nil, true) then
     template = html_template
