@@ -1,15 +1,14 @@
-# API Gateway & Microservice Management [![Build Status][badge-travis-image]][badge-travis-url]
+# The API Gateway & Microservice Management Layer [![Build Status][badge-travis-image]][badge-travis-url]
 [![][kong-logo]][kong-url]
 
 Kong is a scalable, open source API Layer *(also known as an API Gateway, or
-API Middleware)*. Kong was originally built at [Mashape][mashape-url] to
+API Middleware)*. Backed by the battle-tested **NGINX** with a focus on realiability, speed and high performance, Kong
+was made available as an open-source platform in 2015 - originally built at [Mashape][mashape-url] to
 secure, manage and extend over
 [15,000 Microservices](http://stackshare.io/mashape/how-mashape-manages-over-15000-apis-and-microservices)
 for its API Marketplace, which generates billions of requests per month.
 
-Backed by the battle-tested **NGINX** with a focus on high performance, Kong
-was made available as an open-source platform in 2015. Under active
-development, Kong is now used in production at hundreds of organizations from
+Under active development, Kong is now used in production at hundreds of organizations from
 startups, to large enterprises and government departments including: The New
 York Times, Expedia, Healthcare.gov, The Guardian, Condè Nast and The
 University of Auckland.
@@ -52,20 +51,24 @@ freenode: [#kong](http://webchat.freenode.net/?channels=kong)
 - **Developer Portal**: With
   [Gelato](https://docs.gelato.io/guides/using-gelato-with-kong) integration,
   build beautiful portals for easy developer on-boarding.
+- **API Analytics**: Visualize, Inspect and Monitor API traffic with [Galileo](https://getgalileo.io).
 - **Plugins**: Extendable architecture for adding functionality to Kong and APIs.
   - **OAuth2.0**: Add easily an OAuth2.0 authentication to your APIs.
   - **Logging**: Log requests and responses to your system over HTTP, TCP, UDP or to disk.
   - **JWT**: Verify and authenticate JSON Web Tokens.
+  - **LDAP**: Integrate Kong with a LDAP server.
   - **HMAC**: Add HMAC Authentication to your APIs.
   - **ACL**: Acccess Control for your API Consumers.
   - **IP-restriction**: Whitelist or blacklist IPs that can make requests.
   - **Response-Rate-Limiting**: Rate limiting based on custom response header value.
-  - **API Analytics**: Visualize, Inspect and Monitor API traffic with [Galileo](https://getgalileo.io).
   - **Loggly Integration**: Push your traffic data through your Loggly account.
   - **DataDog Integration**: Easy Data monitoring through DataDog. DevOps will love it!
+  - **Bot Detection**: Detect and block bots from the outside.
   - **Runscope Integration**: Test and Monitor your APIs.
   - **Syslog**: Logging to System log.
-  - **SSL**: Setup a Specific SSL Certificate for an underlying service or API.
+  - **Dynamic SSL**: Setup a Specific SSL Certificate for an underlying service or API.
+  - **Correlation ID**: Correlate requests and responses using a unique ID  
+  - **StatsD**: Send requests and response to StatsD server 
   - **Monitoring**: Live monitoring provides key load and performance server metrics.
   - **Authentication**: Manage consumer credentials query string and header tokens.
   - **Rate-limiting**: Block and throttle requests based on IP, authentication or body size.
@@ -113,6 +116,13 @@ code, other repos are also under active development:
   Heroku in one click.
 - [Kong and Instaclustr](https://www.instaclustr.com/solutions/kong/): Let
   Instaclustr manage your Cassandra cluster.
+- [Kong on Terraform](https://github.com/arsdehnel/kong-tf): Let Terraform setup Kong.
+- [Kong on Kubernetes](https://github.com/Mashape/kong-dist-google-cloud): Run Kong on the GKE.
+- [Kong on Docker Compose](https://github.com/Mashape/docker-kong/tree/master/compose): Run Kong on Docker.
+- 
+-  
+
+
 
 ## Community Resources and Tools
 
@@ -131,6 +141,28 @@ code, other repos are also under active development:
 - [A Question about Microservices](http://marcotroisi.com/questions-about-microservices/)
 - [Kong Intro in Chinese](https://www.sdk.cn/news/1596)
 
+**Tools**: (third-part tools maintained by the community)
+- [Ansible role for Kong on Ubuntu](https://github.com/Getsidecar/ansible-role-kong)
+- [Biplane](https://github.com/articulate/biplane): declarative configuration in Crystal
+- [Bonobo](https://github.com/guardian/bonobo): key management (with Mashery migration scripts)
+- [Chef cookbook](https://github.com/zuazo/kong-cookbook)
+- [Django Kong Admin](https://github.com/vikingco/django-kong-admin): Admin UI in Python
+- [Jungle](https://github.com/rsdevigo/jungle): Admin UI in JavaScript
+- [Kong Dashboard](https://github.com/PGBI/kong-dashboard): Admin UI in JavaScript
+- [Kong for CanopyCloud](https://github.com/CanopyCloud/cip-kong)
+- [Ruby Library for Kong Admin API](https://github.com/maveonair/kongkit)
+- [Kong on MANTL](https://github.com/CiscoCloud/mantl/tree/master/examples/kong)
+- [Kong image waiting for Cassandra](https://github.com/articulate/docker-kong-wait)
+- [Kong image for Tutum](https://github.com/Sillelien/docker-kong)
+- [Kong-UI](https://github.com/msaraf/kong-ui): Admin UI in JavaScript
+- [Konga](https://github.com/Floby/konga-cli): CLI Admin tool in JavaScript
+- [Kongfig](https://github.com/mybuilder/kongfig): Declarative configuration in JavaScript
+- [Kongfig on Puppet Forge](https://forge.puppet.com/mybuilder/kongfig)
+- [Puppet recipe](https://github.com/scottefein/puppet-nyt-kong)
+- [Puppet module on Puppet Forge](https://forge.puppet.com/juniorsysadmin/kong)
+- [Python-Kong](https://pypi.python.org/pypi/python-kong/): Admin client library for Python
+- [.NET-Kong](https://www.nuget.org/packages/Kong/0.0.4): Admin client library for .NET
+
 **Videos**:
 - [Kong Intro Tutorial](https://www.youtube.com/watch?v=S6CeWL2qvl4)
 - [Kong mentioned at Hashicorp Conf](https://www.youtube.com/watch?v=0r24K_0BGBY&feature=youtu.be&t=22m03s)
@@ -142,25 +174,7 @@ code, other repos are also under active development:
 - [Changelog #185](https://changelog.com/185)
 - [Three Devs and a Maybe #83](http://threedevsandamaybe.com/kong-the-api-microservice-management-layer-with-ahmad-nassri/)
 
-Here is a list of third-party **tools** maintained by the community:
-- [Ansible role for Kong on Ubuntu](https://github.com/Getsidecar/ansible-role-kong)
-- [Biplane](https://github.com/articulate/biplane): declarative configuration in Crystal
-- [Bonobo](https://github.com/guardian/bonobo): key management (with Mashery migration scripts)
-- [Chef cookbook](https://github.com/zuazo/kong-cookbook)
-- [Django Kong Admin](https://github.com/vikingco/django-kong-admin): Admin UI in Python
-- [Jungle](https://github.com/rsdevigo/jungle): Admin UI in JavaScript
-- [Kong Dashboard](https://github.com/PGBI/kong-dashboard): Admin UI in JavaScript
-- [Kong for CanopyCloud](https://github.com/CanopyCloud/cip-kong)
-- [Kong image waiting for Cassandra](https://github.com/articulate/docker-kong-wait)
-- [Kong image for Tutum](https://github.com/Sillelien/docker-kong)
-- [Kong-UI](https://github.com/msaraf/kong-ui): Admin UI in JavaScript
-- [Konga](https://github.com/Floby/konga-cli): CLI Admin tool in JavaScript
-- [Kongfig](https://github.com/mybuilder/kongfig): Declarative configuration in JavaScript
-- [Kongfig on Puppet Forge](https://forge.puppet.com/mybuilder/kongfig)
-- [Puppet recipe](https://github.com/scottefein/puppet-nyt-kong)
-- [Puppet module on Puppet Forge](https://forge.puppet.com/juniorsysadmin/kong)
-- [Python-Kong](https://pypi.python.org/pypi/python-kong/): Admin client library for Python
-- [.NET-Kong](https://www.nuget.org/packages/Kong/0.0.4): Admin client library for .NET
+
 
 ## Roadmap
 
