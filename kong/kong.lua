@@ -45,16 +45,15 @@ require("kong.core.globalpatches")()
 local ip = require "kong.tools.ip"
 local dns = require "kong.tools.dns"
 local core = require "kong.core.handler"
-local Serf = require "kong.serf"
 local utils = require "kong.tools.utils"
-local Events = require "kong.core.events"
 local responses = require "kong.tools.responses"
-local constants = require "kong.constants"
 local singletons = require "kong.singletons"
 local DAOFactory = require "kong.dao.factory"
+local kong_cache = require "kong.cache"
 local ngx_balancer = require "ngx.balancer"
 local plugins_iterator = require "kong.core.plugins_iterator"
 local balancer_execute = require("kong.core.balancer").execute
+local kong_cluster_events = require "kong.cluster_events"
 
 local ipairs           = ipairs
 local get_last_failure = ngx_balancer.get_last_failure
@@ -62,13 +61,7 @@ local set_current_peer = ngx_balancer.set_current_peer
 local set_timeouts     = ngx_balancer.set_timeouts
 local set_more_tries   = ngx_balancer.set_more_tries
 
-local function attach_hooks(events, hooks)
-  for k, v in pairs(hooks) do
-    events:subscribe(k, v)
-  end
-end
-
-local function load_plugins(kong_conf, dao, events)
+local function load_plugins(kong_conf, dao)
   local in_db_plugins, sorted_plugins = {}, {}
 
   ngx.log(ngx.DEBUG, "Discovering used plugins")
@@ -106,12 +99,6 @@ local function load_plugins(kong_conf, dao, events)
       handler = handler(),
       schema = schema
     }
-
-    -- Attaching hooks
-    local ok, hooks = utils.load_module_if_exists("kong.plugins." .. plugin .. ".hooks")
-    if ok then
-      attach_hooks(events, hooks)
-    end
   end
 
   -- sort plugins by order of execution
@@ -147,23 +134,18 @@ function Kong.init()
   local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
   local config = assert(conf_loader(conf_path))
 
-  local events = Events() -- retrieve node plugins
-  local dao = assert(DAOFactory.new(config, events)) -- instanciate long-lived DAO
+  local dao = assert(DAOFactory.new(config)) -- instantiate long-lived DAO
   assert(dao:init())
   assert(dao:run_migrations()) -- migrating in case embedded in custom nginx
 
   -- populate singletons
   singletons.ip = ip.init(config)
   singletons.dns = dns(config)
-  singletons.loaded_plugins = assert(load_plugins(config, dao, events))
-  singletons.serf = Serf.new(config, dao)
+  singletons.loaded_plugins = assert(load_plugins(config, dao))
   singletons.dao = dao
-  singletons.events = events
   singletons.configuration = config
 
-  attach_hooks(events, require "kong.core.hooks")
-
-  assert(core.build_router())
+  assert(core.build_router(dao, "init"))
 end
 
 function Kong.init_worker()
@@ -173,7 +155,9 @@ function Kong.init_worker()
   -- seeds.
   math.randomseed()
 
+
   -- init DAO
+
 
   local ok, err = singletons.dao:init_worker()
   if not ok then
@@ -181,20 +165,12 @@ function Kong.init_worker()
     return
   end
 
+
   -- init inter-worker events
+
 
   local worker_events = require "resty.worker.events"
 
-  local handler = function(data, event, source, pid)
-    if data and data.collection == "apis" then
-      assert(core.build_router())
-
-    elseif source and source == constants.CACHE.CLUSTER then
-      singletons.events:publish(event, data)
-    end
-  end
-
-  worker_events.register(handler)
 
   local ok, err = worker_events.configure {
     shm = "process_events", -- defined by "lua_shared_dict"
@@ -209,9 +185,62 @@ function Kong.init_worker()
     return
   end
 
+
+  -- init cluster_events
+
+
+  local cluster_events, err = kong_cluster_events.new {
+    dao                     = singletons.dao,
+    poll_interval           = 5,
+    poll_offset             = 0,
+  }
+  if not cluster_events then
+    ngx.log(ngx.CRIT, "could not create cluster_events: ", err)
+    return
+  end
+
+
+  -- init cache
+
+
+  local cache, err = kong_cache.new {
+    cluster_events    = cluster_events,
+    worker_events     = worker_events,
+    propagation_delay = 0,
+    ttl               = 3600,
+    neg_ttl           = 300,
+    resty_lock_opts   = {
+      exptime = 10,
+      timeout = 5,
+    },
+  }
+  if not cache then
+    ngx.log(ngx.CRIT, "could not create kong cache: ", err)
+    return
+  end
+
+  local ok, err = cache:get("router:version", { ttl = 0 }, function()
+    return "init"
+  end)
+  if not ok then
+    ngx.log(ngx.CRIT, "could not set router version in cache: ", err)
+    return
+  end
+
+
+  singletons.cache          = cache
+  singletons.worker_events  = worker_events
+  singletons.cluster_events = cluster_events
+
+
+  singletons.dao:set_events_handler(worker_events)
+
+
   core.init_worker.before()
 
+
   -- run plugins init_worker context
+
 
   for _, plugin in ipairs(singletons.loaded_plugins) do
     plugin.handler:init_worker()

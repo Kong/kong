@@ -601,6 +601,10 @@ describe("Entities Schemas", function()
       assert.equal("username is not a string", errors.username)
       assert.equal("At least a 'custom_id' or a 'username' must be specified", errors.custom_id)
     end)
+
+    it("has a cache_key", function()
+      assert.is_table(consumer_schema.cache_key)
+    end)
   end)
 
   --
@@ -614,6 +618,10 @@ describe("Entities Schemas", function()
         return {}
       end
     }
+
+    it("has a cache_key", function()
+      assert.is_table(plugins_schema.cache_key)
+    end)
 
     it("should not validate if the plugin doesn't exist (not installed)", function()
       local valid, errors = validate_entity({name = "world domination"}, plugins_schema)

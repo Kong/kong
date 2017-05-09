@@ -2,7 +2,6 @@
 -- for dns-record balancing see the `dns_spec` files
 
 local helpers = require "spec.helpers"
-local cache = require "kong.tools.database_cache"
 local dao_helpers = require "spec.02-integration.02-dao.helpers"
 local PORT = 21000
 
@@ -75,7 +74,7 @@ end
 
 dao_helpers.for_each_dao(function(kong_config)
 
-  pending("Ring-balancer #" .. kong_config.database, function()
+  describe("Ring-balancer #" .. kong_config.database, function()
     -- TODO: database_cache dep
 
     local config_db
@@ -211,9 +210,6 @@ dao_helpers.for_each_dao(function(kong_config)
         })
         assert.response(res).has.status(201)
 
-        -- wait for the change to become effective
-        helpers.wait_for_invalidation(cache.targets_key(upstream.id))
-
         -- now go and hit the same balancer again
         -----------------------------------------
 
@@ -286,9 +282,6 @@ dao_helpers.for_each_dao(function(kong_config)
         })
         assert.response(res).has.status(201)
 
-        -- wait for the change to become effective
-        helpers.wait_for_invalidation(cache.targets_key(target2.upstream_id))
-
         -- now go and hit the same balancer again
         -----------------------------------------
 
@@ -354,9 +347,6 @@ dao_helpers.for_each_dao(function(kong_config)
           },
         })
         assert.response(res).has.status(201)
-
-        -- wait for the change to become effective
-        helpers.wait_for_invalidation(cache.targets_key(target2.upstream_id))
 
         -- now go and hit the same balancer again
         -----------------------------------------
@@ -439,9 +429,6 @@ dao_helpers.for_each_dao(function(kong_config)
           },
         })
         assert.response(res).has.status(201)
-
-        -- wait for the change to become effective
-        helpers.wait_for_invalidation(cache.targets_key(target2.upstream_id))
 
         -- now go and hit the same balancer again
         -----------------------------------------

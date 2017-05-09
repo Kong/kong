@@ -18,6 +18,7 @@ local ffi_str    = ffi.string
 local type       = type
 local pairs      = pairs
 local ipairs     = ipairs
+local select     = select
 local tostring   = tostring
 local sort       = table.sort
 local concat     = table.concat

@@ -81,7 +81,8 @@ local function load_daos(self, schemas, constraints, events_handler)
   end
 
   for m_name, schema in pairs(schemas) do
-    self.daos[m_name] = DAO(self.db, ModelFactory(schema), schema, constraints[m_name], events_handler)
+    self.daos[m_name] = DAO(self.db, ModelFactory(schema), schema,
+                            constraints[m_name], events_handler)
   end
 end
 
@@ -134,6 +135,12 @@ end
 
 function _M:init_worker()
   return self.db:init_worker()
+end
+
+function _M:set_events_handler(events)
+  for _, dao in pairs(self.daos) do
+    dao.events = events
+  end
 end
 
 -- Migrations

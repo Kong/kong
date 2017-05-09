@@ -188,6 +188,7 @@ end
 return {
   table = "apis",
   primary_key = {"id"},
+  -- no cache key
   fields = {
     id = {type = "id", dao_insert_value = true, required = true},
     created_at = {type = "timestamp", immutable = true, dao_insert_value = true, required = true},

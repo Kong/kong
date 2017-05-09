@@ -69,7 +69,7 @@ return {
       message_t.type = string_upper(message_t.type)
 
       -- If it's an update, load the new entity too so it's available in the hooks
-      if message_t.type == singletons.events.TYPES.ENTITY_UPDATED then
+      if message_t.type == singletons.old_events.TYPES.ENTITY_UPDATED then
         message_t.old_entity = message_t.entity
 
         -- The schema may have multiple primary keys

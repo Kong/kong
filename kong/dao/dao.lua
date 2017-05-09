@@ -18,6 +18,19 @@ local Errors = require "kong.dao.errors"
 local schemas_validation = require "kong.dao.schemas_validation"
 local event_types = require("kong.core.events").TYPES
 
+
+local fmt    = string.format
+local concat = table.concat
+local new_tab
+do
+  local ok
+  ok, new_tab = pcall(require, "table.new")
+  if not ok then
+    new_tab = function(narr, nrec) return {} end
+  end
+end
+
+
 local RANDOM_VALUE = utils.random_string()
 
 local function check_arg(arg, arg_n, exp_type)
@@ -103,6 +116,37 @@ function DAO:new(db, model_mt, schema, constraints, events_handler)
   self.events_handler = events_handler
 end
 
+function DAO:cache_key(...)
+  local t = utils.pack(...)
+
+  for i = 1, t.n do
+    if t[i] == nil then
+      t[i] = ""
+    end
+  end
+
+  return fmt("%s:%s", self.table, concat(t, ":"))
+end
+
+function DAO:entity_cache_key(entity)
+  local schema    = self.schema
+  local cache_key = schema.cache_key
+
+  if not cache_key then
+    return
+  end
+
+  local n = #cache_key
+  local keys = new_tab(n, 0)
+  keys.n = n
+
+  for i = 1, n do
+    keys[i] = entity[cache_key[i]]
+  end
+
+  return self:cache_key(utils.unpack(keys))
+end
+
 --- Insert a row.
 -- Insert a given Lua table as a row in the related table.
 -- @param[type=table] tbl Table to insert as a row.
@@ -132,6 +176,16 @@ function DAO:insert(tbl, options)
   local res, err = self.db:insert(self.table, self.schema, model, self.constraints, options)
   if not err and not options.quiet then
     event(self, event_types.ENTITY_CREATED, self.table, self.schema, res)
+    if self.events then
+      local ok, err = self.events.post_local("dao:crud", "create", {
+        schema    = self.schema,
+        operation = "create",
+        entity    = res,
+      })
+      if not ok then
+        ngx.log(ngx.ERR, "could not propagate CRUD operation: ", err)
+      end
+    end
   end
   return ret_error(self.db.name, res, err)
 end
@@ -300,6 +354,17 @@ function DAO:update(tbl, filter_keys, options)
   elseif res then
     if not options.quiet then
       event(self, event_types.ENTITY_UPDATED, self.table, self.schema, old)
+      if self.events then
+        local ok, err = self.events.post_local("dao:crud", "update", {
+          schema     = self.schema,
+          operation  = "update",
+          entity     = res,
+          old_entity = old,
+        })
+        if not ok then
+          ngx.log(ngx.ERR, "could not propagate CRUD operation: ", err)
+        end
+      end
     end
     return setmetatable(res, nil)
   end
@@ -347,11 +412,31 @@ function DAO:delete(tbl, options)
   local row, err = self.db:delete(self.table, self.schema, primary_keys, self.constraints)
   if not err and row ~= nil and not options.quiet then
     event(self, event_types.ENTITY_DELETED, self.table, self.schema, row)
+    if self.events then
+      local ok, err = self.events.post_local("dao:crud", "delete", {
+        schema    = self.schema,
+        operation = "delete",
+        entity    = row,
+      })
+      if not ok then
+        ngx.log(ngx.ERR, "could not propagate CRUD operation: ", err)
+      end
+    end
 
     -- Also propagate the deletion for the associated entities
     for k, v in pairs(associated_entites) do
       for _, entity in ipairs(v.entities) do
         event(self, event_types.ENTITY_DELETED, k, v.schema, entity)
+        if self.events then
+          local ok, err = self.events.post_local("dao:crud", "delete", {
+            schema    = v.schema,
+            operation = "delete",
+            entity    = entity,
+          })
+          if not ok then
+            ngx.log(ngx.ERR, "could not propagate CRUD operation: ", err)
+          end
+        end
       end
     end
   end
