@@ -1,20 +1,11 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
-local current_cache
-local caches = { "lua", "shm" }
-local function do_it(desc, func)
-  for _, cache in ipairs(caches) do
-    it("[cache=" .. cache .. "] " .. desc,
-      function(...)
-        current_cache = cache
-        return func(...)
-      end)
-  end
-end
+describe("Admin API /cache", function()
+  local proxy_client
+  local admin_client
 
-pending("Admin API /cache/{key}", function()
-  local api_client, proxy_client
+
   setup(function()
     local api = assert(helpers.dao.apis:insert {
       name = "api-cache",
@@ -23,126 +14,148 @@ pending("Admin API /cache/{key}", function()
     })
     assert(helpers.dao.plugins:insert {
       api_id = api.id,
-      name = "first-request",
+      name = "cache",
     })
 
-    assert(helpers.start_kong({
-      custom_plugins = "first-request",
-    }))
-    api_client = helpers.admin_client()
-    proxy_client = helpers.proxy_client(2000)
+    assert(helpers.start_kong())
+    proxy_client = helpers.proxy_client()
+    admin_client = helpers.admin_client()
   end)
+
+
   teardown(function()
-    if api_client then
-      api_client:close()
+    if admin_client then
+      admin_client:close()
+    end
+
+    if proxy_client then
       proxy_client:close()
     end
+
     helpers.stop_kong()
   end)
 
-  describe("GET", function()
-    do_it("returns 404 if not found", function()
-      local res = assert(api_client:send {
-        method = "GET",
-        path = "/cache/_inexistent_",
-        query = { cache = current_cache },
-      })
-      assert.response(res).has.status(404)
-    end)
-    it("retrieves a cached entity", function()
-      -- populate cache
-      local res = assert(proxy_client:send {
-        method = "GET",
-        path = "/",
-        headers = {host = "cache.com"},
-        query = { cache = current_cache },
-      })
-      assert.response(res).has.status(200)
 
-      res = assert(api_client:send {
-        method = "GET",
-        path = "/cache/requested",
-        query = { cache = current_cache },
-      })
-      assert.response(res).has.status(200)
-      local json = assert.response(res).has.jsonbody()
-      if current_cache == "shm" then
-        -- in this case the entry is jsonified (string type) and hence send as a "message" entry
-        json = cjson.decode(json.message)
-      end
-      assert.True(json.requested)
+  describe("/cache/:key", function()
+    describe("GET", function()
+      it("returns 404 if cache miss", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/cache/_inexistent_",
+        })
+        assert.res_status(404, res)
+      end)
+
+      it("returns 200 and value if cache hit", function()
+        -- populate cache
+        local res = assert(proxy_client:send {
+          method = "POST",
+          path = "/",
+          body = {
+            cache_key = "my_key",
+            cache_value = "my_value",
+          },
+          headers = {
+            ["Host"] = "cache.com",
+            ["Content-Type"] = "application/x-www-form-urlencoded",
+          },
+        })
+        assert.res_status(200, res)
+
+        local admin_res = assert(admin_client:send {
+          method = "GET",
+          path = "/cache/my_key",
+        })
+        local body = assert.res_status(200, admin_res)
+        local json = cjson.decode(body)
+
+        assert.equal("my_value", json.message)
+      end)
+    end)
+
+
+    describe("DELETE", function()
+      it("purges a cached value", function()
+        -- populate cache
+        local res = assert(proxy_client:send {
+          method = "POST",
+          path = "/",
+          body = {
+            cache_key = "purge_me",
+            cache_value = "value_to_purge",
+          },
+          headers = {
+            ["Host"] = "cache.com",
+            ["Content-Type"] = "application/x-www-form-urlencoded",
+          },
+        })
+        assert.res_status(200, res)
+
+        -- delete cache
+        local admin_res = assert(admin_client:send {
+          method = "DELETE",
+          path = "/cache/purge_me",
+        })
+        assert.res_status(204, admin_res)
+
+        admin_res = assert(admin_client:send {
+          method = "GET",
+          path = "/cache/purge_me",
+        })
+        assert.res_status(404, admin_res)
+      end)
     end)
   end)
+
 
   describe("DELETE", function()
-    it("purges cached entity", function()
+    it("purges all cached values", function()
       -- populate cache
       local res = assert(proxy_client:send {
-        method = "GET",
+        method = "POST",
         path = "/",
-        headers = {host = "cache.com"},
-        query = { cache = current_cache },
+        body = {
+          cache_key = "key_1",
+          cache_value = "value_to_purge",
+        },
+        headers = {
+          ["Host"] = "cache.com",
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+        },
       })
-      assert.response(res).has.status(200)
+      assert.res_status(200, res)
 
-      res = assert(api_client:send {
-        method = "GET",
-        path = "/cache/requested",
-        query = { cache = current_cache },
+      res = assert(proxy_client:send {
+        method = "POST",
+        path = "/",
+        body = {
+          cache_key = "key_2",
+          cache_value = "value_to_purge",
+        },
+        headers = {
+          ["Host"] = "cache.com",
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+        },
       })
-      assert.response(res).has.status(200)
+      assert.res_status(200, res)
 
-      -- delete cache
-      res = assert(api_client:send {
+      local admin_res = assert(admin_client:send {
         method = "DELETE",
-        path = "/cache/requested",
-        query = { cache = current_cache },
+        path = "/cache",
       })
-      assert.response(res).has.status(204)
+      assert.res_status(204, admin_res)
 
-      res = assert(api_client:send {
+      admin_res = assert(admin_client:send {
         method = "GET",
-        path = "/cache/requested",
-        query = { cache = current_cache },
+        path = "/cache/key_1",
       })
-      assert.response(res).has.status(404)
-    end)
-  end)
+      assert.res_status(404, admin_res)
 
-  describe("/cache/", function()
-    describe("DELETE", function()
-      it("purges all entities", function()
-         -- populate cache
-        local res = assert(proxy_client:send {
-          method = "GET",
-          path = "/",
-          headers = {host = "cache.com"},
-          query = { cache = current_cache },
-        })
-        assert.response(res).has.status(200)
-
-        res = assert(api_client:send {
-          method = "GET",
-          path = "/cache/requested",
-          query = { cache = current_cache },
-        })
-        assert.response(res).has.status(200)
-
-         -- delete cache
-        res = assert(api_client:send {
-          method = "DELETE",
-          path = "/cache",
-          query = { cache = current_cache },
-        })
-        assert.response(res).has.status(204)
-
-        res = assert(api_client:send {
-          method = "GET",
-          path = "/cache/requested",
-          query = { cache = current_cache },
-        })
-        assert.response(res).has.status(404)
-      end)
+      admin_res = assert(admin_client:send {
+        method = "GET",
+        path = "/cache/key_2",
+      })
+      assert.res_status(404, admin_res)
     end)
   end)
 end)
