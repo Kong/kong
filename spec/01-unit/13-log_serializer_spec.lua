@@ -135,5 +135,14 @@ describe("Log Serializer", function()
           },
         }, res.tries)
     end)
+
+    it("does not fail when the 'balancer_address' structure is missing", function()
+      ngx.ctx.balancer_address = nil
+
+      local res = basic.serialize(ngx)
+      assert.is_table(res)
+
+      assert.is_nil(res.tries)
+    end)
   end)
 end)
