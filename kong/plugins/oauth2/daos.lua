@@ -54,6 +54,9 @@ local BEARER = "bearer"
 local OAUTH2_TOKENS_SCHEMA = {
   primary_key = {"id"},
   table = "oauth2_tokens",
+  api = {
+    secondary_key = "access_token"
+  },
   fields = {
     id = { type = "id", dao_insert_value = true },
     api_id = { type = "id", required = false, foreign = "apis:id" },

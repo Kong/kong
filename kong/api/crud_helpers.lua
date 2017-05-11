@@ -17,6 +17,7 @@ local _M = {}
 function _M.find_by_id_or_field(dao, filter, value, alternate_field)
   filter = filter or {}
   local is_uuid = utils.is_valid_uuid(value)
+  if not is_uuid and not alternate_field then return {} end
   filter[is_uuid and "id" or alternate_field] = value
 
   local rows, err = dao:find_all(filter)
@@ -24,7 +25,7 @@ function _M.find_by_id_or_field(dao, filter, value, alternate_field)
     return nil, err
   end
 
-  if is_uuid and not next(rows) then
+  if is_uuid and not next(rows) and alternate_field then
     -- it's a uuid, but yielded no results, so retry with the alternate field
     filter.id = nil
     filter[alternate_field] = value
@@ -245,6 +246,63 @@ function _M.delete(primary_keys, dao_collection)
   else
     return responses.send_HTTP_NO_CONTENT()
   end
+end
+
+--- Generates generic endpoints for an entity
+function _M.generate_generic_route(entity_name, schema)
+  if not schema.primary_key or not #schema.primary_key == 1 then
+    return nil, "cannot generate API endpoint for: "..entity_name
+  end
+
+  local primary_key = schema.primary_key[1]
+
+  return {
+    ["/"..entity_name.."/"] = {
+      GET = function(self, dao_factory)
+        _M.paginated_set(self, dao_factory[entity_name])
+      end,
+
+      PUT = function(self, dao_factory)
+        _M.put(self.params, dao_factory[entity_name])
+      end,
+
+      POST = function(self, dao_factory)
+        _M.post(self.params, dao_factory[entity_name])
+      end
+    },
+
+    ["/"..entity_name.."/:primary_key"] = {
+      before = function(self, dao_factory, helpers)
+        local entities, err = _M.find_by_id_or_field(
+          dao_factory[entity_name],
+          {},
+          self.params.primary_key,
+          schema.api and schema.api.secondary_key or nil
+        )
+
+        if err then
+          return helpers.yield_error(err)
+        elseif next(entities) == nil then
+          return helpers.responses.send_HTTP_NOT_FOUND()
+        end
+        self.params.primary_key = nil
+
+        self.entity = entities[1]
+      end,
+
+      GET = function(self, dao_factory, helpers)
+        return helpers.responses.send_HTTP_OK(self.entity)
+      end,
+
+      PATCH = function(self, dao_factory)
+        _M.patch(self.params, dao_factory[entity_name], self.entity)
+      end,
+
+      DELETE = function(self, dao_factory)
+        _M.delete(self.entity, dao_factory[entity_name])
+      end
+    }
+  }
 end
 
 return _M
