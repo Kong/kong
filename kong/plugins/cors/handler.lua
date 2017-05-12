@@ -16,13 +16,15 @@ CorsHandler.PRIORITY = 2000
 
 
 local function configure_origin(ngx, conf)
-  if not conf.origins then
+  local n_origins = conf.origins ~= nil and #conf.origins or 0
+
+  if n_origins == 0 then
     ngx.header["Access-Control-Allow-Origin"] = "*"
     ngx.ctx.cors_allow_all = true
     return
   end
 
-  if #conf.origins == 1 then
+  if n_origins == 1 then
     if conf.origins[1] == "*" then
       ngx.ctx.cors_allow_all = true
 

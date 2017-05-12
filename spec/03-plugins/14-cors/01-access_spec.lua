@@ -40,6 +40,11 @@ describe("Plugin: cors (access)", function()
       hosts = { "cors7.com" },
       upstream_url = "http://mockbin.com"
     })
+    local api8 = assert(helpers.dao.apis:insert {
+      name = "api-8",
+      hosts = { "cors-empty-origins.com" },
+      upstream_url = "http://mockbin.com"
+    })
 
     assert(helpers.dao.plugins:insert {
       name = "cors",
@@ -112,6 +117,14 @@ describe("Plugin: cors (access)", function()
       }
     })
 
+    assert(helpers.dao.plugins:insert {
+      name = "cors",
+      api_id = api8.id,
+      config = {
+        origins = {},
+      }
+    })
+
     assert(helpers.start_kong())
     client = helpers.proxy_client()
   end)
@@ -127,6 +140,28 @@ describe("Plugin: cors (access)", function()
         method = "OPTIONS",
         headers = {
           ["Host"] = "cors1.com"
+        }
+      })
+      assert.res_status(204, res)
+      assert.equal("GET,HEAD,PUT,PATCH,POST,DELETE", res.headers["Access-Control-Allow-Methods"])
+      assert.equal("*", res.headers["Access-Control-Allow-Origin"])
+      assert.is_nil(res.headers["Access-Control-Allow-Headers"])
+      assert.is_nil(res.headers["Access-Control-Expose-Headers"])
+      assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
+      assert.is_nil(res.headers["Access-Control-Max-Age"])
+    end)
+
+    it("gives * wildcard when origins is empty", function()
+      -- this test covers a regression introduced in 0.10.1, where
+      -- the 'multiple_origins' migration would always insert a table
+      -- (that might be empty) in the 'config.origins' field, and the
+      -- * wildcard would only been sent when said table was **nil**,
+      -- and not necessarily empty.
+
+      local res = assert(client:send {
+        method  = "OPTIONS",
+        headers = {
+          ["Host"] = "cors-empty-origins.com",
         }
       })
       assert.res_status(204, res)
