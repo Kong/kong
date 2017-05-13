@@ -1,6 +1,5 @@
 local singletons = require "kong.singletons"
 local BasePlugin = require "kong.plugins.base_plugin"
-local cache = require "kong.tools.database_cache"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local jwt_decoder = require "kong.plugins.jwt.jwt_parser"
@@ -114,8 +113,9 @@ local function do_authentication(conf)
   end
 
   -- Retrieve the secret
-  local jwt_secret, err = cache.get_or_set(cache.jwtauth_credential_key(jwt_secret_key),
-                                      nil, load_credential, jwt_secret_key)
+  local jwt_secret_cache_key = singletons.dao.jwt_secrets:cache_key(jwt_secret_key)
+  local jwt_secret, err      = singletons.cache:get(jwt_secret_cache_key, nil,
+                                                    load_credential, jwt_secret_key)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
@@ -152,8 +152,10 @@ local function do_authentication(conf)
   end
 
   -- Retrieve the consumer
-  local consumer, err = cache.get_or_set(cache.consumer_key(jwt_secret_key),
-                                    nil, load_consumer, jwt_secret.consumer_id)
+  local consumer_cache_key = singletons.dao.consumers:cache_key(jwt_secret.consumer_id)
+  local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
+                                                  load_consumer,
+                                                  jwt_secret.consumer_id, true)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
@@ -182,8 +184,10 @@ function JwtHandler:access(conf)
   if not ok then
     if conf.anonymous ~= "" then
       -- get anonymous user
-      local consumer, err = cache.get_or_set(cache.consumer_key(conf.anonymous),
-                       nil, load_consumer, conf.anonymous, true)
+      local consumer_cache_key = singletons.dao.consumers:cache_key(conf.anonymous)
+      local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
+                                                      load_consumer,
+                                                      conf.anonymous, true)
       if err then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end

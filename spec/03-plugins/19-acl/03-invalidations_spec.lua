@@ -1,7 +1,6 @@
 local helpers = require "spec.helpers"
-local cache = require "kong.tools.database_cache"
 
-pending("Plugin: ACL (hooks)", function()
+describe("Plugin: ACL (invalidations)", function()
   local admin_client, proxy_client
   local consumer1, acl1
 
@@ -73,14 +72,6 @@ pending("Plugin: ACL (hooks)", function()
     assert(helpers.start_kong())
     proxy_client = helpers.proxy_client()
     admin_client = helpers.admin_client()
-
-    -- Purge cache on every test
-    local res = assert(admin_client:send {
-      method = "DELETE",
-      path = "/cache/",
-      headers = {}
-    })
-    assert.res_status(204, res)
   end)
 
   after_each(function()
@@ -105,9 +96,11 @@ pending("Plugin: ACL (hooks)", function()
       assert.res_status(200, res)
 
       -- Check that the cache is populated
+
+      local cache_key = helpers.dao.acls:cache_key(consumer1.id)
       local res = assert(admin_client:send {
         method = "GET",
-        path = "/cache/" .. cache.acls_key(consumer1.id),
+        path = "/cache/" .. cache_key,
         headers = {}
       })
       assert.res_status(200, res)
@@ -124,7 +117,7 @@ pending("Plugin: ACL (hooks)", function()
       helpers.wait_until(function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/cache/" .. cache.acls_key(consumer1.id),
+          path = "/cache/" .. cache_key,
           headers = {}
         })
         res:read_body()
@@ -163,9 +156,10 @@ pending("Plugin: ACL (hooks)", function()
       assert.res_status(403, res)
 
       -- Check that the cache is populated
+      local cache_key = helpers.dao.acls:cache_key(consumer1.id)
       local res = assert(admin_client:send {
         method = "GET",
-        path = "/cache/" .. cache.acls_key(consumer1.id),
+        path = "/cache/" .. cache_key,
         headers = {}
       })
       assert.res_status(200, res)
@@ -187,7 +181,7 @@ pending("Plugin: ACL (hooks)", function()
       helpers.wait_until(function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/cache/" .. cache.acls_key(consumer1.id),
+          path = "/cache/" .. cache_key,
           headers = {}
         })
         res:read_body()
@@ -229,9 +223,10 @@ pending("Plugin: ACL (hooks)", function()
       assert.res_status(200, res)
 
       -- Check that the cache is populated
+      local cache_key = helpers.dao.acls:cache_key(consumer1.id)
       local res = assert(admin_client:send {
         method = "GET",
-        path = "/cache/" .. cache.acls_key(consumer1.id),
+        path = "/cache/" .. cache_key,
         headers = {}
       })
       assert.res_status(200, res)
@@ -248,7 +243,7 @@ pending("Plugin: ACL (hooks)", function()
       helpers.wait_until(function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/cache/" .. cache.acls_key(consumer1.id),
+          path = "/cache/" .. cache_key,
           headers = {}
         })
         res:read_body()
@@ -256,10 +251,11 @@ pending("Plugin: ACL (hooks)", function()
       end, 3)
 
       -- Wait for key to be invalidated
+      local keyauth_cache_key = helpers.dao.keyauth_credentials:cache_key("apikey123")
       helpers.wait_until(function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/cache/" .. cache.keyauth_credential_key("apikey123"),
+          path = "/cache/" .. keyauth_cache_key,
           headers = {}
         })
         res:read_body()

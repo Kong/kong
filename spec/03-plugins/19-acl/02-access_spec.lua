@@ -1,6 +1,5 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local cache = require "kong.tools.database_cache"
 
 describe("Plugin: ACL (access)", function()
   local client, api_client
@@ -434,10 +433,12 @@ describe("Plugin: ACL (access)", function()
         assert.res_status(201, res)
 
         -- Wait for cache to be invalidated
+        local cache_key = helpers.dao.acls:cache_key(consumer_id)
+
         helpers.wait_until(function()
           local res = assert(api_client:send {
             method = "GET",
-            path = "/cache/" .. cache.acls_key(consumer_id)
+            path = "/cache/" .. cache_key
           })
           res:read_body()
           return res.status == 404

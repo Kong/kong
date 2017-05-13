@@ -1,9 +1,8 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local cache = require "kong.tools.database_cache"
 local jwt_encoder = require "kong.plugins.jwt.jwt_parser"
 
-pending("Plugin: jwt (hooks)", function()
+describe("Plugin: jwt (invalidations)", function()
   local admin_client, proxy_client, consumer1, api1
 
   before_each(function()
@@ -69,7 +68,7 @@ pending("Plugin: jwt (hooks)", function()
       assert.res_status(200, res)
 
       -- Check that cache is populated
-      local cache_key = cache.jwtauth_credential_key("key123")
+      local cache_key = helpers.dao.jwt_secrets:cache_key("key123")
       res = assert(admin_client:send {
         method = "GET",
         path = "/cache/" .. cache_key,
@@ -137,7 +136,7 @@ pending("Plugin: jwt (hooks)", function()
       assert.res_status(403, res)
 
       -- Check that cache is populated
-      local cache_key = cache.jwtauth_credential_key("key123")
+      local cache_key = helpers.dao.jwt_secrets:cache_key("key123")
       res = assert(admin_client:send {
         method = "GET",
         path = "/cache/" .. cache_key,
@@ -213,7 +212,7 @@ pending("Plugin: jwt (hooks)", function()
       assert.res_status(200, res)
 
       -- Check that cache is populated
-      local cache_key = cache.jwtauth_credential_key("key123")
+      local cache_key = helpers.dao.jwt_secrets:cache_key("key123")
       res = assert(admin_client:send {
         method = "GET",
         path = "/cache/" .. cache_key,

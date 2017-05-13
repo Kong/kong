@@ -1,8 +1,7 @@
 local helpers = require "spec.helpers"
-local cache = require "kong.tools.database_cache"
 local cjson = require "cjson"
 
-pending("Plugin: key-auth (hooks)", function()
+describe("Plugin: key-auth (invalidations)", function()
   local admin_client, proxy_client
 
   before_each(function()
@@ -51,7 +50,7 @@ pending("Plugin: key-auth (hooks)", function()
     assert.res_status(200, res)
 
     -- ensure cache is populated
-    local cache_key = cache.keyauth_credential_key("kong")
+    local cache_key = helpers.dao.keyauth_credentials:cache_key("kong")
     res = assert(admin_client:send {
       method = "GET",
       path = "/cache/" .. cache_key
@@ -99,7 +98,7 @@ pending("Plugin: key-auth (hooks)", function()
     assert.res_status(200, res)
 
     -- ensure cache is populated
-    local cache_key = cache.keyauth_credential_key("kong")
+    local cache_key = helpers.dao.keyauth_credentials:cache_key("kong")
     res = assert(admin_client:send {
       method = "GET",
       path = "/cache/" .. cache_key
@@ -148,7 +147,7 @@ pending("Plugin: key-auth (hooks)", function()
     assert.res_status(200, res)
 
     -- ensure cache is populated
-    local cache_key = cache.keyauth_credential_key("kong")
+    local cache_key = helpers.dao.keyauth_credentials:cache_key("kong")
     res = assert(admin_client:send {
       method = "GET",
       path = "/cache/" .. cache_key

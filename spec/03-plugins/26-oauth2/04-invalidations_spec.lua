@@ -1,8 +1,7 @@
 local cjson = require "cjson"
-local cache = require "kong.tools.database_cache"
 local helpers = require "spec.helpers"
 
-pending("#ci Plugin: oauth2 (hooks)", function()
+describe("Plugin: oauth2 (invalidations)", function()
   local admin_client, proxy_ssl_client
 
   before_each(function()
@@ -94,7 +93,8 @@ pending("#ci Plugin: oauth2 (hooks)", function()
       assert.response(res).has.status(200)
 
       -- Check that cache is populated
-      local cache_key = cache.oauth2_credential_key("clientid123")
+      local cache_key = helpers.dao.oauth2_credentials:cache_key("clientid123")
+
       local res = assert(admin_client:send {
         method = "GET",
         path = "/cache/" .. cache_key,
@@ -164,7 +164,8 @@ pending("#ci Plugin: oauth2 (hooks)", function()
       assert.res_status(400, res)
 
       -- Check that cache is populated
-      local cache_key = cache.oauth2_credential_key("clientid123")
+      local cache_key = helpers.dao.oauth2_credentials:cache_key("clientid123")
+
       local res = assert(admin_client:send {
         method = "GET",
         path = "/cache/" .. cache_key,
@@ -239,7 +240,8 @@ pending("#ci Plugin: oauth2 (hooks)", function()
       assert.res_status(200, res)
 
       -- Check that cache is populated
-      local cache_key = cache.oauth2_credential_key("clientid123")
+      local cache_key = helpers.dao.oauth2_credentials:cache_key("clientid123")
+
       local res = assert(admin_client:send {
         method = "GET",
         path = "/cache/" .. cache_key,
@@ -307,7 +309,7 @@ pending("#ci Plugin: oauth2 (hooks)", function()
       assert.res_status(200, res)
 
       -- Check that cache is populated
-      local cache_key = cache.oauth2_token_key(token.access_token)
+      local cache_key = helpers.dao.oauth2_tokens:cache_key(token.access_token)
       local res = assert(admin_client:send {
         method = "GET",
         path = "/cache/" .. cache_key,
@@ -374,7 +376,8 @@ pending("#ci Plugin: oauth2 (hooks)", function()
       assert.res_status(200, res)
 
       -- Check that cache is populated
-      local cache_key = cache.oauth2_token_key(token.access_token)
+      local cache_key = helpers.dao.oauth2_tokens:cache_key(token.access_token)
+
       local res = assert(admin_client:send {
         method = "GET",
         path = "/cache/" .. cache_key,
@@ -458,7 +461,8 @@ pending("#ci Plugin: oauth2 (hooks)", function()
       assert.res_status(200, res)
 
       -- Check that cache is populated
-      local cache_key = cache.oauth2_token_key(token.access_token)
+      local cache_key = helpers.dao.oauth2_tokens:cache_key(token.access_token)
+
       local res = assert(admin_client:send {
         method = "GET",
         path = "/cache/" .. cache_key,
@@ -467,9 +471,11 @@ pending("#ci Plugin: oauth2 (hooks)", function()
       assert.res_status(200, res)
 
       -- Retrieve credential ID
+      local cache_key_credential = helpers.dao.oauth2_credentials:cache_key("clientid123")
+
       local res = assert(admin_client:send {
         method = "GET",
-        path = "/cache/" .. cache.oauth2_credential_key("clientid123"),
+        path = "/cache/" .. cache_key_credential,
         headers = {}
       })
       local credential = cjson.decode(assert.res_status(200, res))

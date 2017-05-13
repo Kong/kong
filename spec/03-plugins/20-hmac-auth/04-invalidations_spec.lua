@@ -1,10 +1,9 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
-local cache = require "kong.tools.database_cache"
 local crypto = require "crypto"
 
-pending("Plugin: hmac-auth (hooks)", function()
+describe("Plugin: hmac-auth (invalidations)", function()
   local client_proxy, client_admin, consumer, credential
 
   setup(function()
@@ -41,7 +40,7 @@ pending("Plugin: hmac-auth (hooks)", function()
       client_proxy:close()
       client_admin:close()
     end
-    helpers.stop_kong()
+    helpers.stop_kong(nil, true)
   end)
 
   local function hmac_sha1_binary(secret, data)
@@ -57,7 +56,7 @@ pending("Plugin: hmac-auth (hooks)", function()
   end
 
   describe("HMAC Auth Credentials entity invalidation", function()
-    it("should invalidate when Hmac Auth Credential entity is deleted #o", function()
+    it("should invalidate when Hmac Auth Credential entity is deleted", function()
       -- It should work
       local authorization, date = get_authorization("bob")
       local res = assert(client_proxy:send {
@@ -73,7 +72,7 @@ pending("Plugin: hmac-auth (hooks)", function()
       assert.res_status(200, res)
 
       -- Check that cache is populated
-      local cache_key = cache.hmacauth_credential_key("bob")
+      local cache_key = helpers.dao.hmacauth_credentials:cache_key("bob")
       res = assert(client_admin:send {
         method = "GET",
         path = "/cache/" .. cache_key,
@@ -123,14 +122,22 @@ pending("Plugin: hmac-auth (hooks)", function()
       assert.res_status(403, res)
     end)
     it("should invalidate when Hmac Auth Credential entity is updated", function()
-      credential = assert(helpers.dao["hmacauth_credentials"]:insert {
-        username = "bob",
-        secret = "secret",
-        consumer_id = consumer.id
+      local res = assert(client_admin:send {
+        method = "POST",
+        path = "/consumers/consumer1/hmac-auth/",
+        body = {
+          username = "bob",
+          secret   = "secret",
+          consumer_id = consumer.id,
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        }
       })
+      local body = assert.res_status(201, res)
+      credential = cjson.decode(body)
 
       -- It should work
-      local cache_key = cache.hmacauth_credential_key("bob")
       local authorization, date = get_authorization("bob")
       local res = assert(client_proxy:send {
         method = "GET",
@@ -172,6 +179,7 @@ pending("Plugin: hmac-auth (hooks)", function()
       assert.res_status(200, res)
 
       -- ensure cache is invalidated
+      local cache_key = helpers.dao.hmacauth_credentials:cache_key("bob")
       helpers.wait_until(function()
         local res = assert(client_admin:send {
           method = "GET",
@@ -212,7 +220,7 @@ pending("Plugin: hmac-auth (hooks)", function()
       assert.res_status(200, res)
 
       -- Check that cache is populated
-      local cache_key = cache.hmacauth_credential_key("hello123")
+      local cache_key = helpers.dao.hmacauth_credentials:cache_key("hello123")
       res = assert(client_admin:send {
         method = "GET",
         path = "/cache/" .. cache_key,
