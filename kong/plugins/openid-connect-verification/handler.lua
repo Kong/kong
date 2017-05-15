@@ -22,6 +22,7 @@ local sub           = string.sub
 local var           = ngx.var
 local log           = ngx.log
 
+
 local NOTICE        = ngx.NOTICE
 local ERR           = ngx.ERR
 
@@ -108,56 +109,56 @@ end
 function OICVerificationHandler:access(conf)
   OICVerificationHandler.super.access(self)
 
-  local n = conf.param_name
-  local v
+  local name = conf.param_name or "id_token"
+  local typ  = conf.param_type or { "header", "query", "form" }
+  local tok
 
   local ct = var.content_type
 
-  for _, t in ipairs(conf.param_type) do
+  for _, t in ipairs(typ) do
     if t == "header" then
-      v = var["http_" .. n]
+      tok = var["http_" .. name]
 
     elseif t == "query" then
-      v = get_uri_args()[n]
+      tok = get_uri_args()[name]
 
     elseif t == "form" then
       if sub(ct, 1, 19) == "multipart/form-data" then
-        v = multipart(n, conf.timeout)
+        tok = multipart(name, conf.timeout)
 
       else
         read_body()
-        v = get_post_args()[n]
+        tok = get_post_args()[name]
       end
 
     elseif t == "body" then
       read_body()
-      v = get_body_data()
+      tok = get_body_data()
 
-      if v and sub(ct, 1, 16) == "application/json" then
-        v = cjson.decode(v)
-        if v then
-          v = v[n]
+      if tok and sub(ct, 1, 16) == "application/json" then
+        tok = cjson.decode(tok)
+        if tok then
+          tok = tok[name]
         end
       end
     end
 
-    if v then
+    if tok then
       break
     end
   end
 
-  if not v then
+  if not tok then
     return responses.send_HTTP_UNAUTHORIZED()
   end
 
   if not self.oic then
     local o, err = oic.new {
       issuer       = conf.issuer,
-      leeway       = conf.leeway,
-      http_version = conf.http_version,
-      ssl_verify   = conf.ssl_verify,
-      timeout      = conf.timeout,
-      keepalive    = conf.keepalive,
+      leeway       = conf.leeway       or 0,
+      http_version = conf.http_version or 1.1,
+      ssl_verify   = conf.ssl_verify   or true,
+      timeout      = conf.timeout      or 10000,
     }
 
     if not o then
@@ -170,7 +171,7 @@ function OICVerificationHandler:access(conf)
 
   local issuer = self.oic.configuration
 
-  local idt, err = self.oic.jwt:decode(v)
+  local idt, err = self.oic.jwt:decode(tok)
   if not idt then
     log(NOTICE, err)
     return responses.send_HTTP_UNAUTHORIZED()
@@ -178,10 +179,11 @@ function OICVerificationHandler:access(conf)
 
   local idt_header  = idt.header  or {}
   local idt_payload = idt.payload or {}
-  local now = time()
-  local lwy = conf.leeway
+  local now         = time()
+  local lwy         = conf.leeway or 0
+  local claims      = conf.claims or { "iss", "sub", "aud", "exp", "iat" }
 
-  for _, c in ipairs(conf.claims) do
+  for _, c in ipairs(claims) do
     if c == "alg" then
       if not idt_header.alg then
         log(NOTICE, "alg claim was not specified for id token")
@@ -319,10 +321,34 @@ function OICVerificationHandler:access(conf)
         end
       end
 
+    elseif c == "hd" then
+      local hd = idt_payload.hd
+      if not hd then
+        log(NOTICE, "hd claim was not specified for id token")
+        return responses.send_HTTP_UNAUTHORIZED()
+      end
+
+      local present = false
+      local domains = conf.domains
+      if domains then
+        for _, d in ipairs(domains) do
+          if d == hd then
+            present = true
+            break
+          end
+        end
+
+        if not present then
+          log(NOTICE, "invalid hd claim was specified for id token")
+          return responses.send_HTTP_UNAUTHORIZED()
+        end
+      end
+
     elseif c == "at_hash" then
       local at_hash = idt_payload.at_hash
       if not at_hash then
         log(NOTICE, "at_hash claim was not specified for id token")
+        return responses.send_HTTP_UNAUTHORIZED()
       end
 
       local authz = var.http_authorization
