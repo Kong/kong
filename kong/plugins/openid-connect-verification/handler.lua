@@ -109,11 +109,10 @@ end
 function OICVerificationHandler:access(conf)
   OICVerificationHandler.super.access(self)
 
-  local name = conf.param_name or "id_token"
-  local typ  = conf.param_type or { "header", "query", "form" }
+  local name = conf.param_name  or "id_token"
+  local typ  = conf.param_type  or { "header", "query", "form", "body" }
+  local ct   = var.content_type or ""
   local tok
-
-  local ct = var.content_type
 
   for _, t in ipairs(typ) do
     if t == "header" then
@@ -149,16 +148,17 @@ function OICVerificationHandler:access(conf)
   end
 
   if not tok then
+    log(NOTICE, "id token was not specified")
     return responses.send_HTTP_UNAUTHORIZED()
   end
 
   if not self.oic then
     local o, err = oic.new {
       issuer       = conf.issuer,
-      leeway       = conf.leeway       or 0,
-      http_version = conf.http_version or 1.1,
-      ssl_verify   = conf.ssl_verify   or true,
-      timeout      = conf.timeout      or 10000,
+      leeway       = conf.leeway                     or 0,
+      http_version = conf.http_version               or 1.1,
+      ssl_verify   = conf.ssl_verify == nil and true or conf.ssl_verify,
+      timeout      = conf.timeout                    or 10000,
     }
 
     if not o then
@@ -215,53 +215,64 @@ function OICVerificationHandler:access(conf)
         return responses.send_HTTP_UNAUTHORIZED()
       end
 
-      local present   = false
       local audiences = conf.audiences
 
-      if type(aud) == "string" then
-        for _, audience in ipairs(audiences) do
-          if audience == aud then
-            present = true
-            break
+      if audiences then
+        local present   = false
+
+        if type(aud) == "string" then
+          for _, audience in ipairs(audiences) do
+            if audience == aud then
+              present = true
+              break
+            end
           end
-        end
 
-      elseif type(aud) == "table" then
-        for _, audience in ipairs(audiences) do
-          if set.has(audience, aud) then
-            present  = true
-            break
-          end
-        end
-      end
-
-      if not present then
-        log(NOTICE, "invalid aud claim was specified for id token")
-        return responses.send_HTTP_UNAUTHORIZED()
-      end
-
-    elseif c == "azp" then
-      local azp       = idt_payload.azp
-      local multiple  = type(idt_payload.aud) == "table"
-      local present   = false
-      local audiences = conf.audiences
-
-      if azp then
-        for _, audience in ipairs(audiences) do
-          if azp == audience then
-            present = true
-            break
+        elseif type(aud) == "table" then
+          for _, audience in ipairs(audiences) do
+            if set.has(audience, aud) then
+              present  = true
+              break
+            end
           end
         end
 
         if not present then
-          log(NOTICE, "invalid azp claim was specified for id token")
+          log(NOTICE, "invalid aud claim was specified for id token")
           return responses.send_HTTP_UNAUTHORIZED()
         end
+      end
 
-      elseif multiple then
-        log(NOTICE, "azp claim was not specified for id token")
+    elseif c == "azp" then
+      local azp = idt_payload.azp
+      if not azp then
+        log(NOTICE, "azp claim was not specified for access token")
         return responses.send_HTTP_UNAUTHORIZED()
+      end
+
+      local audiences = conf.audiences
+
+      if audiences then
+        local multiple  = type(idt_payload.aud) == "table"
+        local present   = false
+
+        if azp then
+          for _, audience in ipairs(audiences) do
+            if azp == audience then
+              present = true
+              break
+            end
+          end
+
+          if not present then
+            log(NOTICE, "invalid azp claim was specified for access token")
+            return responses.send_HTTP_UNAUTHORIZED()
+          end
+
+        elseif multiple then
+          log(NOTICE, "azp claim was not specified for access token")
+          return responses.send_HTTP_UNAUTHORIZED()
+        end
       end
 
     elseif c == "exp" then
@@ -438,27 +449,35 @@ function OICVerificationHandler:access(conf)
             end
 
           elseif claim == "azp" then
-            local azp       = act_payload.azp
-            local multiple  = type(act_payload.aud) == "table"
-            local present   = false
-            local audiences = conf.audiences
-
-            if azp then
-              for _, audience in ipairs(audiences) do
-                if azp == audience then
-                  present = true
-                  break
-                end
-              end
-
-              if not present then
-                log(NOTICE, "invalid azp claim was specified for access token")
-                return responses.send_HTTP_UNAUTHORIZED()
-              end
-
-            elseif multiple then
+            local azp = act_payload.azp
+            if not azp then
               log(NOTICE, "azp claim was not specified for access token")
               return responses.send_HTTP_UNAUTHORIZED()
+            end
+
+            local audiences = conf.audiences
+
+            if audiences then
+              local multiple  = type(act_payload.aud) == "table"
+              local present   = false
+
+              if azp then
+                for _, audience in ipairs(audiences) do
+                  if azp == audience then
+                    present = true
+                    break
+                  end
+                end
+
+                if not present then
+                  log(NOTICE, "invalid azp claim was specified for access token")
+                  return responses.send_HTTP_UNAUTHORIZED()
+                end
+
+              elseif multiple then
+                log(NOTICE, "azp claim was not specified for access token")
+                return responses.send_HTTP_UNAUTHORIZED()
+              end
             end
 
           elseif claim == "exp" then

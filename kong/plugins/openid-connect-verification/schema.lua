@@ -24,7 +24,7 @@ return {
       required   = false,
       type       = "array",
       enum       = { "header", "query", "form", "body" },
-      default    = { "header", "query", "form" },
+      default    = { "header", "query", "form", "body" },
     },
     domains      = {
       required   = false,
