@@ -5,15 +5,15 @@ return {
       required   = true,
       type       = "url",
     },
-    audience     = {
-      required   = true,
+    audiences    = {
+      required   = false,
       type       = "array",
     },
     claims       = {
       required   = true,
       type       = "array",
-      enum       = { "iss", "sub", "aud", "exp", "iat", "nbf", "auth_time", "azp", "at_hash" },
-      default    = { "iss", "sub", "aud", "exp", "iat" },
+      enum       = { "alg", "iss", "sub", "aud", "exp", "iat", "nbf", "auth_time", "azp", "at_hash" },
+      default    = { "alg", "iss", "sub", "aud", "exp", "iat" },
     },
     param_name   = {
       required   = true,
@@ -29,6 +29,10 @@ return {
     domain       = {
       required   = false,
       type       = "string",
+    },
+    max_age      = {
+      required   = false,
+      type       = "number",
     },
     leeway       = {
       required   = true,
