@@ -47,8 +47,9 @@ function _M.new(kong_config)
     max_schema_consensus_wait = kong_config.cassandra_schema_consensus_timeout,
     ssl = kong_config.cassandra_ssl,
     verify = kong_config.cassandra_ssl_verify,
+    cafile = kong_config.lua_ssl_trusted_certificate,
     lock_timeout = 30,
-    silent = ngx.IS_CLI
+    silent = ngx.IS_CLI,
   }
 
   if ngx.IS_CLI then
@@ -196,14 +197,14 @@ function _M:close_coordinator()
     return nil, "no coordinator"
   end
 
-  local ok, err = coordinator:close()
-  if not ok then
+  local _, err = coordinator:close()
+  if err then
     return nil, err
   end
 
   coordinator = nil
 
-  return ok
+  return true
 end
 
 function _M:wait_for_schema_consensus()
