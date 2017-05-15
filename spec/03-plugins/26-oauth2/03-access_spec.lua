@@ -2,14 +2,14 @@ local cjson = require "cjson"
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 
-local function provision_code(host, extra_headers)
+local function provision_code(host, extra_headers, client_id)
   local request_client = helpers.proxy_ssl_client()
   local res = assert(request_client:send {
     method = "POST",
     path = "/oauth2/authorize",
     body = {
       provision_key = "provision123",
-      client_id = "clientid123",
+      client_id = client_id or "clientid123",
       scope = "email",
       response_type = "code",
       state = "hello",
@@ -22,6 +22,7 @@ local function provision_code(host, extra_headers)
   })
   assert.response(res).has.status(200)
   local body = assert.response(res).has.jsonbody()
+
   request_client:close()
   if body.redirect_uri then
     local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.com/kong\\?code=([\\w]{32,32})&state=hello$")
@@ -32,13 +33,16 @@ local function provision_code(host, extra_headers)
   end
 end
 
-local function provision_token(host, extra_headers)
-  local code = provision_code(host, extra_headers)
+local function provision_token(host, extra_headers, client_id, client_secret)
+  local code = provision_code(host, extra_headers, client_id)
   local request_client = helpers.proxy_ssl_client()
   local res = assert(request_client:send {
     method = "POST",
     path = "/oauth2/token",
-    body = { code = code, client_id = "clientid123", client_secret = "secret123", grant_type = "authorization_code" },
+    body = { code = code, 
+             client_id = client_id or "clientid123", 
+             client_secret = client_secret or "secret123", 
+             grant_type = "authorization_code" },
     headers = utils.table_merge({
       ["Host"] = host or "oauth2.com",
       ["Content-Type"] = "application/json"
@@ -52,7 +56,7 @@ local function provision_token(host, extra_headers)
 end
 
 
-describe("#ci Plugin: oauth2 (access)", function()
+describe("Plugin: oauth2 (access)", function()
   local proxy_ssl_client, proxy_client
   local client1
   setup(function()
@@ -74,6 +78,13 @@ describe("#ci Plugin: oauth2 (access)", function()
       client_secret = "secret789",
       redirect_uri = "http://google.com/kong?foo=bar&code=123",
       name = "testapp2",
+      consumer_id = consumer.id
+    })
+    assert(helpers.dao.oauth2_credentials:insert {
+      client_id = "clientid333",
+      client_secret = "secret333",
+      redirect_uri = "http://google.com/kong",
+      name = "testapp3",
       consumer_id = consumer.id
     })
     assert(helpers.dao.oauth2_credentials:insert {
@@ -1501,6 +1512,27 @@ describe("#ci Plugin: oauth2 (access)", function()
       local body = assert.res_status(200, res)
       assert.is_table(ngx.re.match(body, [[^\{"refresh_token":"[\w]{32,32}","token_type":"bearer","state":"wot","access_token":"[\w]{32,32}","expires_in":5\}$]]))
     end)
+    it("fails when the client used for the code is not the same client used for the token", function()
+      local code = provision_code(nil, nil, "clientid333")
+
+      local res = assert(proxy_ssl_client:send {
+        method = "POST",
+        path = "/oauth2/token",
+        body = {
+          code = code,
+          client_id = "clientid123",
+          client_secret = "secret123",
+          grant_type = "authorization_code",
+          state = "wot"
+        },
+        headers = {
+          ["Host"] = "oauth2.com",
+          ["Content-Type"] = "application/json"
+        }
+      })
+      local body = assert.res_status(400, res)
+      assert.same({ error = "invalid_request", error_description = "Invalid code", state = "wot" }, cjson.decode(body))
+    end)
     it("sets the right upstream headers", function()
       local code = provision_code()
       local res = assert(proxy_ssl_client:send {
@@ -1920,6 +1952,29 @@ describe("#ci Plugin: oauth2 (access)", function()
       local body = assert.res_status(200, res)
       assert.is_table(ngx.re.match(body, [[^\{"refresh_token":"[\w]{32,32}","token_type":"bearer","access_token":"[\w]{32,32}","expires_in":5\}$]]))
     end)
+    it("refreshes an valid access token and checks that it belongs to the application", function()
+      local token = provision_token(nil, nil, "clientid333", "secret333")
+
+      local res = assert(proxy_ssl_client:send {
+        method = "POST",
+        path = "/oauth2/token",
+        body = {
+          refresh_token = token.refresh_token,
+          client_id = "clientid123",
+          client_secret = "secret123",
+          grant_type = "refresh_token"
+        },
+        headers = {
+          ["Host"] = "oauth2.com",
+          ["Content-Type"] = "application/json"
+        }
+      })
+      local body = assert.res_status(400, res)
+      local json = cjson.decode(body)
+      assert.same({ error_description = "Invalid client authentication", error = "invalid_client" }, json)
+      assert.are.equal("no-store", res.headers["cache-control"])
+      assert.are.equal("no-cache", res.headers["pragma"])
+    end)
     it("expires after 5 seconds", function()
       local token = provision_token()
 
@@ -2086,7 +2141,7 @@ describe("#ci Plugin: oauth2 (access)", function()
 end)
 
 
-describe("#ci Plugin: oauth2 (access)", function()
+describe("Plugin: oauth2 (access)", function()
 
   local client, user1, user2, anonymous
 

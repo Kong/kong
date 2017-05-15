@@ -1,5 +1,11 @@
 ## [Unreleased][unreleased]
 
+### Fixed
+
+- Plugins:
+  - OAuth 2.0: properly checking ownership of a token when refreshing it.
+    [#2461](https://github.com/Mashape/kong/pull/2461)
+
 ## [0.10.2] - 2017/05/01
 
 ### Changed
