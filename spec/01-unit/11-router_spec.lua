@@ -174,6 +174,39 @@ describe("Router", function()
         assert.same(use_case[2], api_t.api)
       end)
 
+      it("does not superseds another API with a longer URI prefix while methods are also defined", function()
+        local use_case = {
+          {
+            name = "api-1",
+            methods = {"POST", "PUT", "GET"},
+            uris = { "/my-api" },
+          },
+          {
+            name = "api-2",
+            methods = {"POST", "PUT", "GET"},
+            uris = { "/my-api/hello" },
+          }
+        }
+
+        local router = assert(Router.new(use_case))
+
+        local api_t = router.select("GET", "/my-api/hello")
+        assert.truthy(api_t)
+        assert.same(use_case[2], api_t.api)
+
+        api_t = router.select("GET", "/my-api/hello/world")
+        assert.truthy(api_t)
+        assert.same(use_case[2], api_t.api)
+
+        api_t = router.select("GET", "/my-api")
+        assert.truthy(api_t)
+        assert.same(use_case[1], api_t.api)
+
+        api_t = router.select("GET", "/my-api/world")
+        assert.truthy(api_t)
+        assert.same(use_case[1], api_t.api)
+      end)
+
       it("only matches URI as a prefix (anchored mode)", function()
         local use_case = {
           {
