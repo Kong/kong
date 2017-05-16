@@ -9,6 +9,7 @@ local oic           = require "kong.openid-connect"
 
 
 local get_body_data = ngx.req.get_body_data
+local get_body_file = ngx.req.get_body_file
 local get_post_args = ngx.req.get_post_args
 local get_uri_args  = ngx.req.get_uri_args
 local read_body     = ngx.req.read_body
@@ -16,6 +17,7 @@ local concat        = table.concat
 local ipairs        = ipairs
 local lower         = string.lower
 local find          = string.find
+local open          = io.open
 local time          = ngx.time
 local type          = type
 local sub           = string.sub
@@ -25,6 +27,17 @@ local log           = ngx.log
 
 local NOTICE        = ngx.NOTICE
 local ERR           = ngx.ERR
+
+
+local function read_file(f)
+  local f, e = open(f, "rb")
+  if not f then
+    return nil, e
+  end
+  local c = f:read "*a"
+  f:close()
+  return c
+end
 
 
 local function kv(r, s)
@@ -110,7 +123,7 @@ function OICVerificationHandler:access(conf)
   OICVerificationHandler.super.access(self)
 
   local name = conf.param_name  or "id_token"
-  local typ  = conf.param_type  or { "header", "query", "form", "body" }
+  local typ  = conf.param_type  or { "query", "header", "body" }
   local ct   = var.content_type or ""
   local tok
 
@@ -119,25 +132,46 @@ function OICVerificationHandler:access(conf)
       tok = var["http_" .. name]
 
     elseif t == "query" then
-      tok = get_uri_args()[name]
-
-    elseif t == "form" then
-      if sub(ct, 1, 19) == "multipart/form-data" then
-        tok = multipart(name, conf.timeout)
-
-      else
-        read_body()
-        tok = get_post_args()[name]
+      local args = get_uri_args()
+      if args then
+        tok = args[name]
       end
 
     elseif t == "body" then
-      read_body()
-      tok = get_body_data()
+      if sub(ct, 1, 33) == "application/x-www-form-urlencoded" then
+        read_body()
+        local args = get_post_args()
+        if args then
+          tok = args[name]
+        end
 
-      if tok and sub(ct, 1, 16) == "application/json" then
-        tok = cjson.decode(tok)
+      elseif sub(ct, 1, 19) == "multipart/form-data" then
+        tok = multipart(name, conf.timeout)
+
+      elseif sub(ct, 1, 16) == "application/json" then
+        read_body()
+        local data = get_body_data()
+        if data == nil then
+          local file = get_body_file()
+          if file ~= nil then
+            tok = read_file(file)
+          end
+        end
         if tok then
-          tok = tok[name]
+          local json = cjson.decode(tok)
+          if json then
+            tok = json[name]
+          end
+        end
+
+      else
+        read_body()
+        local data = get_body_data()
+        if data == nil then
+          local file = get_body_file()
+          if file ~= nil then
+            tok = read_file(file)
+          end
         end
       end
     end
@@ -247,13 +281,8 @@ function OICVerificationHandler:access(conf)
 
     elseif c == "azp" then
       local azp = idt_payload.azp
-      if not azp then
-        log(NOTICE, "azp claim was not specified for access token")
-        return responses.send_HTTP_UNAUTHORIZED()
-      end
 
       local audiences = conf.audiences
-
       if audiences then
         local multiple  = type(idt_payload.aud) == "table"
         local present   = false
@@ -267,12 +296,12 @@ function OICVerificationHandler:access(conf)
           end
 
           if not present then
-            log(NOTICE, "invalid azp claim was specified for access token")
+            log(NOTICE, "invalid azp claim was specified for id token")
             return responses.send_HTTP_UNAUTHORIZED()
           end
 
         elseif multiple then
-          log(NOTICE, "azp claim was not specified for access token")
+          log(NOTICE, "azp claim was not specified for id token")
           return responses.send_HTTP_UNAUTHORIZED()
         end
       end
@@ -366,13 +395,13 @@ function OICVerificationHandler:access(conf)
 
       local authz = var.http_authorization
       if not authz then
-        log(NOTICE, "at_hash claim cloud not be validated ")
+        log(NOTICE, "at_hash claim could not be validated in absense of authorization header")
         return responses.send_HTTP_UNAUTHORIZED()
       end
 
       local act_type = lower(sub(authz, 1, 6))
       if act_type ~= "bearer" then
-        log(NOTICE, "at_hash claim cloud not be validated")
+        log(NOTICE, "at_hash claim could not be validated as the authorization was not carried with a bearer token")
         return responses.send_HTTP_UNAUTHORIZED()
       end
 
@@ -452,13 +481,8 @@ function OICVerificationHandler:access(conf)
 
           elseif claim == "azp" then
             local azp = act_payload.azp
-            if not azp then
-              log(NOTICE, "azp claim was not specified for access token")
-              return responses.send_HTTP_UNAUTHORIZED()
-            end
 
             local audiences = conf.audiences
-
             if audiences then
               local multiple  = type(act_payload.aud) == "table"
               local present   = false

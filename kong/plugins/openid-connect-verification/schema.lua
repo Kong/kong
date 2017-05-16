@@ -5,16 +5,6 @@ return {
       required   = true,
       type       = "url",
     },
-    audiences    = {
-      required   = false,
-      type       = "array",
-    },
-    claims       = {
-      required   = false,
-      type       = "array",
-      enum       = { "iss", "sub", "aud", "exp", "iat", "auth_time", "azp", "at_hash", "alg", "nbf", "hd" },
-      default    = { "iss", "sub", "aud", "exp", "iat" },
-    },
     param_name   = {
       required   = false,
       type       = "string",
@@ -23,8 +13,18 @@ return {
     param_type   = {
       required   = false,
       type       = "array",
-      enum       = { "header", "query", "form", "body" },
-      default    = { "header", "query", "form", "body" },
+      enum       = { "query", "header", "body" },
+      default    = { "query", "header", "body" },
+    },
+    claims       = {
+      required   = false,
+      type       = "array",
+      enum       = { "iss", "sub", "aud", "azp", "exp", "iat", "auth_time", "at_hash", "alg", "nbf", "hd" },
+      default    = { "iss", "sub", "aud", "azp", "exp", "iat" },
+    },
+    audiences    = {
+      required   = false,
+      type       = "array",
     },
     domains      = {
       required   = false,
