@@ -77,14 +77,16 @@ function RateLimitingHandler:access(conf)
   local fault_tolerant = conf.fault_tolerant
 
   -- Load current metric for configured period
-  local usage, stop, err = get_usage(conf, api_id, identifier, current_timestamp, {
+  local limits = {
     second = conf.second,
     minute = conf.minute,
     hour = conf.hour,
     day = conf.day,
     month = conf.month,
     year = conf.year
-  })
+  }
+
+  local usage, stop, err = get_usage(conf, api_id, identifier, current_timestamp, limits)
   if err then
     if fault_tolerant then
       ngx_log(ngx.ERR, "failed to get usage: ", tostring(err))
@@ -106,13 +108,13 @@ function RateLimitingHandler:access(conf)
     end
   end
 
-  local incr = function(premature, conf, api_id, identifier, current_timestamp, value)
+  local incr = function(premature, conf, limits, api_id, identifier, current_timestamp, value)
     if premature then return end
-    policies[policy].increment(conf, api_id, identifier, current_timestamp, value)
+    policies[policy].increment(conf, limits, api_id, identifier, current_timestamp, value)
   end
 
-  -- Increment metrics for all periods if the request goes through
-  local ok, err = ngx_timer_at(0, incr, conf, api_id, identifier, current_timestamp, 1)
+  -- Increment metrics for configured periods if the request goes through
+  local ok, err = ngx_timer_at(0, incr, conf, limits, api_id, identifier, current_timestamp, 1)
   if not ok then
     ngx_log(ngx.ERR, "failed to create timer: ", err)
   end
