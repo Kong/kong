@@ -18,15 +18,11 @@ local oflags = bit.bor(O_WRONLY, O_CREAT, O_APPEND)
 local mode = bit.bor(S_IRUSR, S_IWUSR, S_IRGRP, S_IROTH)
 
 ffi.cdef[[
-int open(char * filename, int flags, int mode);
-int write(int fd, void * ptr, int numbytes);
+int open(const char * filename, int flags, int mode);
+int write(int fd, const void * ptr, int numbytes);
 int close(int fd);
 char *strerror(int errnum);
 ]]
-
-local function string_to_char(str)
-  return ffi.cast("uint8_t*", str)
-end
 
 -- fd tracking utility functions
 local file_descriptors = {}
@@ -51,7 +47,7 @@ local function log(premature, conf, message)
   end
 
   if not fd then
-    fd = ffi.C.open(string_to_char(conf.path), oflags, mode)
+    fd = ffi.C.open(conf.path, oflags, mode)
     if fd < 0 then
       local errno = ffi.errno()
       ngx.log(ngx.ERR, "[file-log] failed to open the file: ", ffi.string(ffi.C.strerror(errno)))
@@ -60,7 +56,7 @@ local function log(premature, conf, message)
     end
   end
 
-  ffi.C.write(fd, string_to_char(msg), #msg)
+  ffi.C.write(fd, msg, #msg)
 end
 
 local FileLogHandler = BasePlugin:extend()
