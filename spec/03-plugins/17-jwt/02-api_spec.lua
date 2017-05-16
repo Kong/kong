@@ -189,7 +189,7 @@ describe("Plugin: jwt (API)", function()
         local json = assert.response(res).has.jsonbody()
         assert.string(json.secret)
         assert.equals(32, #json.secret)
-        assert.matches("^%x+$", json.secret)
+        assert.matches("^[%a%d]+$", json.secret)
       end)
     end)
 
