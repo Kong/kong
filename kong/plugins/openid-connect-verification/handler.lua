@@ -153,6 +153,8 @@ function OICVerificationHandler:access(conf)
   end
 
   if not self.oic then
+    log(NOTICE, "loading openid connect configuration")
+
     local o, err = oic.new {
       issuer       = conf.issuer,
       leeway       = conf.leeway                     or 0,
@@ -383,7 +385,7 @@ function OICVerificationHandler:access(conf)
 
       local jwt_type = jwt.type(act)
       if jwt_type == "JWS" or jwt_type == "JWE" then
-        act, err = self.jwt:decode(act)
+        act, err = self.oic.jwt:decode(act)
         if not act then
           log(NOTICE, err)
           return responses.send_HTTP_UNAUTHORIZED()
@@ -522,6 +524,8 @@ function OICVerificationHandler:access(conf)
   end
 end
 
+
 OICVerificationHandler.PRIORITY = 1000
+
 
 return OICVerificationHandler
