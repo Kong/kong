@@ -78,6 +78,35 @@ describe("NGINX conf compiler", function()
       assert.matches("listen 0.0.0.0:80;", kong_nginx_conf, nil, true)
       assert.matches("listen 127.0.0.1:8001;", kong_nginx_conf, nil, true)
     end)
+    it("enables HTTP/2", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        http2 = true,
+        admin_http2 = true
+      }))
+      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.matches("listen 0.0.0.0:9000;", kong_nginx_conf, nil, true)
+      assert.matches("listen 0.0.0.0:9443 ssl http2;", kong_nginx_conf, nil, true)
+      assert.matches("listen 0.0.0.0:9001;", kong_nginx_conf, nil, true)
+      assert.matches("listen 0.0.0.0:8444 ssl http2;", kong_nginx_conf, nil, true)
+
+      conf = assert(conf_loader(helpers.test_conf_path, {
+        http2 = true,
+      }))
+      kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.matches("listen 0.0.0.0:9000;", kong_nginx_conf, nil, true)
+      assert.matches("listen 0.0.0.0:9443 ssl http2;", kong_nginx_conf, nil, true)
+      assert.matches("listen 0.0.0.0:9001;", kong_nginx_conf, nil, true)
+      assert.matches("listen 0.0.0.0:8444 ssl;", kong_nginx_conf, nil, true)
+
+      conf = assert(conf_loader(helpers.test_conf_path, {
+        admin_http2 = true
+      }))
+      kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.matches("listen 0.0.0.0:9000;", kong_nginx_conf, nil, true)
+      assert.matches("listen 0.0.0.0:9443 ssl;", kong_nginx_conf, nil, true)
+      assert.matches("listen 0.0.0.0:9001;", kong_nginx_conf, nil, true)
+      assert.matches("listen 0.0.0.0:8444 ssl http2;", kong_nginx_conf, nil, true)
+    end)
     it("disables SSL", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
         ssl = false,

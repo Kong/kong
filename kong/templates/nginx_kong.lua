@@ -80,9 +80,9 @@ server {
 
 > if ssl then
 > if real_ip_header == "proxy_protocol" then
-    listen ${{PROXY_LISTEN_SSL}} proxy_protocol ssl;
+    listen ${{PROXY_LISTEN_SSL}} proxy_protocol ssl${{HTTP2}};
 > else
-    listen ${{PROXY_LISTEN_SSL}} ssl;
+    listen ${{PROXY_LISTEN_SSL}} ssl${{HTTP2}};
 > end
     ssl_certificate ${{SSL_CERT}};
     ssl_certificate_key ${{SSL_CERT_KEY}};
@@ -173,7 +173,7 @@ server {
     client_body_buffer_size 10m;
 
 > if admin_ssl then
-    listen ${{ADMIN_LISTEN_SSL}} ssl;
+    listen ${{ADMIN_LISTEN_SSL}} ssl${{ADMIN_HTTP2}};
     ssl_certificate ${{ADMIN_SSL_CERT}};
     ssl_certificate_key ${{ADMIN_SSL_CERT_KEY}};
     ssl_protocols TLSv1.1 TLSv1.2;

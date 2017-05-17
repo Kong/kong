@@ -109,6 +109,9 @@ local function compile_conf(kong_config, conf_template)
   compile_env = pl_tablex.merge(compile_env, kong_config, true) -- union
   compile_env.dns_resolver = table.concat(compile_env.dns_resolver, " ")
 
+  compile_env.http2 = kong_config.http2 and " http2" or ""
+  compile_env.admin_http2 = kong_config.admin_http2 and " http2" or ""
+
   local post_template = pl_template.substitute(conf_template, compile_env)
   return string.gsub(post_template, "(${%b{}})", function(w)
     local name = w:sub(4, -3)

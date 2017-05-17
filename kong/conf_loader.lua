@@ -102,6 +102,8 @@ local CONF_INFERENCES = {
   dns_error_ttl = {typ = "number"},
   dns_no_sync = {typ = "boolean"},
 
+  http2 = {typ = "boolean"},
+  admin_http2 = {typ = "boolean"},
   ssl = {typ = "boolean"},
   client_ssl = {typ = "boolean"},
   admin_ssl = {typ = "boolean"},
