@@ -67,8 +67,5 @@ return {
     SYSLOG_PORT = 61828,
     STATS_PORT = 61829
   },
-  CACHE = {
-    CLUSTER = "cluster"
-  },
-  DICTS = { "kong", "cache", "cache_locks", "process_events", "cassandra", "cluster_events" },
+  DICTS = { "kong", "cache", "process_events", "cassandra", "cluster_events" },
 }

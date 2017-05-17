@@ -77,14 +77,11 @@ describe("kong start/stop", function()
       local _, _, stdout = assert(helpers.kong_exec("start --vv --conf " .. helpers.test_conf_path, {
         pg_password = "do not print",
         cassandra_password = "do not print",
-        cluster_encrypt_key = "fHGfspTRljmzLsYDVEK1Rw=="
       }))
       assert.matches('KONG_PG_PASSWORD ENV found with "******"', stdout, nil, true)
       assert.matches('KONG_CASSANDRA_PASSWORD ENV found with "******"', stdout, nil, true)
-      assert.matches('KONG_CLUSTER_ENCRYPT_KEY ENV found with "******"', stdout, nil, true)
       assert.matches('pg_password = "******"', stdout, nil, true)
       assert.matches('cassandra_password = "******"', stdout, nil, true)
-      assert.matches('cluster_encrypt_key = "******"', stdout, nil, true)
     end)
   end)
 
@@ -116,29 +113,6 @@ describe("kong start/stop", function()
     end)
   end)
 
-  describe("Serf", function()
-    it("starts Serf agent daemon", function()
-      assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path))
-
-      local cmd = string.format("kill -0 `cat %s` >/dev/null 2>&1", helpers.test_conf.serf_pid)
-      assert(helpers.execute(cmd))
-    end)
-    it("recovers from expired serf.pid file", function()
-      assert(helpers.execute("touch " .. helpers.test_conf.serf_pid)) -- dumb pid
-      assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path))
-
-      local cmd = string.format("kill -0 `cat %s` >/dev/null 2>&1", helpers.test_conf.serf_pid)
-      assert(helpers.execute(cmd))
-    end)
-    it("dumps PID in prefix", function()
-      assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path))
-      assert.truthy(helpers.path.exists(helpers.test_conf.serf_pid))
-      assert(helpers.kong_exec("stop --prefix " .. helpers.test_conf.prefix))
-      ngx.sleep(2)
-      assert.False(helpers.path.exists(helpers.test_conf.serf_pid))
-    end)
-  end)
-
   describe("errors", function()
     it("start inexistent Kong conf file", function()
       local ok, stderr = helpers.kong_exec "start --conf foobar.conf"
@@ -167,7 +141,6 @@ describe("kong start/stop", function()
       assert.matches("Kong is already running in " .. helpers.test_conf.prefix, stderr, nil, true)
     end)
     it("stops other services when could not start", function()
-      local kill = require "kong.cmd.utils.kill"
       local thread = helpers.tcp_server(helpers.test_conf.proxy_port)
       finally(function()
         -- make tcp server receive and close
@@ -181,8 +154,6 @@ describe("kong start/stop", function()
       local ok, err = helpers.kong_exec("start --conf " .. helpers.test_conf_path)
       assert.False(ok)
       assert.matches("Address already in use", err, nil, true)
-
-      assert.falsy(kill.is_running(helpers.test_conf.serf_pid))
     end)
     it("should not stop Kong if already running in prefix", function()
       local kill = require "kong.cmd.utils.kill"

@@ -75,9 +75,8 @@ end
 dao_helpers.for_each_dao(function(kong_config)
 
   describe("Ring-balancer #" .. kong_config.database, function()
-    -- TODO: database_cache dep
-
     local config_db
+
     setup(function()
       config_db = helpers.test_conf.database
       helpers.test_conf.database = kong_config.database

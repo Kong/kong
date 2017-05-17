@@ -18,11 +18,6 @@ local DEFAULT_PATHS = {
 }
 
 local PREFIX_PATHS = {
-  serf_pid = {"pids", "serf.pid"},
-  serf_log = {"logs", "serf.log"},
-  serf_event = {"serf", "serf_event.sh"},
-  serf_node_id = {"serf", "serf.id"}
-  ;
   nginx_pid = {"pids", "nginx.pid"},
   nginx_err_logs = {"logs", "error.log"},
   nginx_acc_logs = {"logs", "access.log"},
@@ -62,9 +57,6 @@ local CONF_INFERENCES = {
   proxy_listen_ssl = {typ = "string"},
   admin_listen = {typ = "string"},
   admin_listen_ssl = {typ = "string"},
-  cluster_listen = {typ = "string"},
-  cluster_listen_rpc = {typ = "string"},
-  cluster_advertise = {typ = "string"},
   nginx_user = {typ = "string"},
   nginx_worker_processes = {typ = "string"},
   upstream_keepalive = {typ = "number"},
@@ -99,9 +91,6 @@ local CONF_INFERENCES = {
   cassandra_data_centers = {typ = "array"},
   cassandra_schema_consensus_timeout = {typ = "number"},
 
-  cluster_profile = {enum = {"local", "lan", "wan"}},
-  cluster_ttl_on_failure = {typ = "number"},
-
   dns_resolver = {typ = "array"},
   dns_hostsfile = {typ = "string"},
   dns_order = {typ = "array"},
@@ -133,7 +122,6 @@ local CONF_INFERENCES = {
 local CONF_SENSITIVE = {
   pg_password = true,
   cassandra_password = true,
-  cluster_encrypt_key = true
 }
 
 local CONF_SENSITIVE_PLACEHOLDER = "******"
@@ -305,21 +293,6 @@ local function check_and_infer(conf)
     end
   end
 
-  local address, port = utils.normalize_ipv4(conf.cluster_listen)
-  if not (address and port) then
-    errors[#errors+1] = "cluster_listen must be in the form of IPv4:port"
-  end
-  address, port = utils.normalize_ipv4(conf.cluster_listen_rpc)
-  if not (address and port) then
-    errors[#errors+1] = "cluster_listen_rpc must be in the form of IPv4:port"
-  end
-  address, port = utils.normalize_ipv4(conf.cluster_advertise or "")
-  if conf.cluster_advertise and not (address and port) then
-    errors[#errors+1] = "cluster_advertise must be in the form of IPv4:port"
-  end
-  if conf.cluster_ttl_on_failure < 60 then
-    errors[#errors+1] = "cluster_ttl_on_failure must be at least 60 seconds"
-  end
   if not conf.lua_package_cpath then
     conf.lua_package_cpath = ""
   end

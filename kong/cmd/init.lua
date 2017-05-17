@@ -21,7 +21,6 @@ local cmds = {
   check = true,
   compile = true,
   migrations = true,
-  cluster = true,
   version = true,
   roar = true
 }

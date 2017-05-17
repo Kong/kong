@@ -19,7 +19,6 @@ local function execute(args)
   local conf = assert(conf_loader(default_conf.kong_env))
 
   local pids = {
-    serf = conf.serf_pid,
     nginx = conf.nginx_pid,
   }
 

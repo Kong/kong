@@ -6,7 +6,6 @@ local CORE_MODELS = {
   "apis",
   "consumers",
   "plugins",
-  "nodes",
   "ssl_certificates",
   "ssl_servers_names",
   "upstreams",
@@ -60,7 +59,7 @@ local function build_constraints(schemas)
   return all_constraints
 end
 
-local function load_daos(self, schemas, constraints, events_handler)
+local function load_daos(self, schemas, constraints)
   for m_name, schema in pairs(schemas) do
     if constraints[m_name] ~= nil and constraints[m_name].foreign ~= nil then
       for col, f_constraint in pairs(constraints[m_name].foreign) do
@@ -82,11 +81,11 @@ local function load_daos(self, schemas, constraints, events_handler)
 
   for m_name, schema in pairs(schemas) do
     self.daos[m_name] = DAO(self.db, ModelFactory(schema), schema,
-                            constraints[m_name], events_handler)
+                            constraints[m_name])
   end
 end
 
-function _M.new(kong_config, events_handler)
+function _M.new(kong_config)
   local self = {
     db_type = kong_config.database,
     daos = {},
@@ -124,7 +123,7 @@ function _M.new(kong_config, events_handler)
   end
 
   local constraints = build_constraints(schemas)
-  load_daos(self, schemas, constraints, events_handler)
+  load_daos(self, schemas, constraints)
 
   return setmetatable(self, _M)
 end

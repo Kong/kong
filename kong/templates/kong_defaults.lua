@@ -62,14 +62,6 @@ cassandra_repl_factor = 1
 cassandra_data_centers = dc1:2,dc2:3
 cassandra_schema_consensus_timeout = 10000
 
-cluster_listen = 0.0.0.0:7946
-cluster_listen_rpc = 127.0.0.1:7373
-cluster_advertise = NONE
-cluster_encrypt_key = NONE
-cluster_keyring_file = NONE
-cluster_profile = wan
-cluster_ttl_on_failure = 3600
-
 dns_resolver = NONE
 dns_hostsfile = /etc/hosts
 dns_order = LAST,SRV,A,CNAME
@@ -82,5 +74,4 @@ lua_ssl_trusted_certificate = NONE
 lua_ssl_verify_depth = 1
 lua_package_path = ?/init.lua;./kong/?.lua
 lua_package_cpath = NONE
-serf_path = serf
 ]]

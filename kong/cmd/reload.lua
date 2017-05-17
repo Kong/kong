@@ -1,8 +1,6 @@
 local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
-local serf_signals = require "kong.cmd.utils.serf_signals"
 local conf_loader = require "kong.conf_loader"
-local DAOFactory = require "kong.dao.factory"
 local pl_path = require "pl.path"
 local log = require "kong.cmd.utils.log"
 
@@ -22,8 +20,6 @@ local function execute(args)
   }))
   assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
 
-  local dao = assert(DAOFactory.new(conf))
-  assert(serf_signals.start(conf, dao))
   assert(nginx_signals.reload(conf))
   log("Kong reloaded")
 end

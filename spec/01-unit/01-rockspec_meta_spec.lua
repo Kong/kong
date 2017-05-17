@@ -43,7 +43,6 @@ describe("rockspec/meta", function()
     it("has a _DEPENDENCIES field", function()
       assert.is_table(meta._DEPENDENCIES)
       assert.is_table(meta._DEPENDENCIES.nginx)
-      assert.is_table(meta._DEPENDENCIES.serf)
     end)
   end)
 

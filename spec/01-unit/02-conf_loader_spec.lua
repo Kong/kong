@@ -86,10 +86,6 @@ describe("Configuration loader", function()
   end)
   it("attaches prefix paths", function()
     local conf = assert(conf_loader())
-    assert.equal("/usr/local/kong/pids/serf.pid", conf.serf_pid)
-    assert.equal("/usr/local/kong/logs/serf.log", conf.serf_log)
-    assert.equal("/usr/local/kong/serf/serf_event.sh", conf.serf_event)
-    assert.equal("/usr/local/kong/serf/serf.id", conf.serf_node_id)
     assert.equal("/usr/local/kong/pids/nginx.pid", conf.nginx_pid)
     assert.equal("/usr/local/kong/logs/error.log", conf.nginx_err_logs)
     assert.equal("/usr/local/kong/logs/access.log", conf.nginx_acc_logs)
@@ -231,25 +227,6 @@ describe("Configuration loader", function()
                  .. " THREE, LOCAL_ONE)", err)
       assert.is_nil(conf)
     end)
-    it("enforces ipv4:port types", function()
-      local conf, err = conf_loader(nil, {
-        cluster_listen = 123
-      })
-      assert.equal("cluster_listen must be in the form of IPv4:port", err)
-      assert.is_nil(conf)
-
-      conf, err = conf_loader(nil, {
-        cluster_listen = "1.1.1.1"
-      })
-      assert.equal("cluster_listen must be in the form of IPv4:port", err)
-      assert.is_nil(conf)
-
-      conf, err = conf_loader(nil, {
-        cluster_listen = "1.1.1.1:3333"
-      })
-      assert.is_nil(err)
-      assert.is_table(conf)
-    end)
     it("enforces listen addresses format", function()
       local conf, err = conf_loader(nil, {
         admin_listen = "127.0.0.1"
@@ -330,13 +307,6 @@ describe("Configuration loader", function()
           cassandra_contact_points = "addr1:9042,addr2"
       })
       assert.equal("bad cassandra contact point 'addr1:9042': port must be specified in cassandra_port", err)
-      assert.is_nil(conf)
-    end)
-    it("cluster_ttl_on_failure cannot be lower than 60 seconds", function()
-      local conf, err = conf_loader(nil, {
-        cluster_ttl_on_failure = 40
-      })
-      assert.equal("cluster_ttl_on_failure must be at least 60 seconds", err)
       assert.is_nil(conf)
     end)
     it("does not check SSL cert and key if SSL is off", function()
@@ -597,20 +567,17 @@ describe("Configuration loader", function()
       local conf = assert(conf_loader(nil, {
         pg_password = "hide_me",
         cassandra_password = "hide_me",
-        cluster_encrypt_key = "hide_me"
       }))
 
       local purged_conf = conf_loader.remove_sensitive(conf)
       assert.not_equal("hide_me", purged_conf.pg_password)
       assert.not_equal("hide_me", purged_conf.cassandra_password)
-      assert.not_equal("hide_me", purged_conf.cluster_encrypt_key)
     end)
     it("does not insert placeholder if no value", function()
       local conf = assert(conf_loader())
       local purged_conf = conf_loader.remove_sensitive(conf)
       assert.is_nil(purged_conf.pg_password)
       assert.is_nil(purged_conf.cassandra_password)
-      assert.is_nil(purged_conf.cluster_encrypt_key)
     end)
   end)
 
