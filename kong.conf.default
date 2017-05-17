@@ -136,6 +136,9 @@
                                  # the SSL key for the `proxy_listen_ssl`
                                  # address.
 
+#http2 = off                     # Enables HTTP2 support for HTTPS traffic on
+                                 # the `proxy_listen_ssl` address.
+
 #client_ssl = off                # Determines if Nginx should send client-side
                                  # SSL certificates when proxying requests.
 
@@ -166,6 +169,9 @@
 #admin_ssl_cert_key =            # If `admin_ssl` is enabled, the absolute path
                                  # to the SSL key for the `admin_listen_ssl`
                                  # address.
+
+#admin_http2 = off               # Enables HTTP2 support for HTTPS traffic on
+                                 # the `admin_listen_ssl` address.
 
 #upstream_keepalive = 60         # Sets the maximum number of idle keepalive
                                  # connections to upstream servers that are
