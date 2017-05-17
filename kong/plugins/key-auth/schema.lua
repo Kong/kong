@@ -50,7 +50,7 @@ return {
     },
     key_in_body = {
       type = "boolean",
-      default = "false",
+      default = false,
     },
   }
 }
