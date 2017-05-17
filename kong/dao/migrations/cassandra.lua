@@ -468,4 +468,10 @@ return {
          AND comment = 'Kong cluster events broadcasting and polling';
     ]],
   },
+  {
+    name = "2017-05-19-173100_remove_nodes_table",
+    up = [[
+      DROP TABLE nodes;
+    ]],
+  },
 }
