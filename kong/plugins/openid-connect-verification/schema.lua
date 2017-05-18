@@ -16,6 +16,10 @@ return {
       enum       = { "query", "header", "body" },
       default    = { "query", "header", "body" },
     },
+    jwk_header   = {
+      required   = false,
+      type       = "string",
+    },
     claims       = {
       required   = false,
       type       = "array",

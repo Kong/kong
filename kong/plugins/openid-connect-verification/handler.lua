@@ -2,9 +2,7 @@ local cjson         = require "cjson.safe"
 local upload        = require "resty.upload"
 local BasePlugin    = require "kong.plugins.base_plugin"
 local responses     = require "kong.tools.responses"
-local validate      = require "kong.openid-connect.validate"
-local jwt           = require "kong.openid-connect.jwt"
-local set           = require "kong.openid-connect.set"
+local codec         = require "kong.openid-connect.codec"
 local oic           = require "kong.openid-connect"
 
 
@@ -12,13 +10,13 @@ local get_body_data = ngx.req.get_body_data
 local get_body_file = ngx.req.get_body_file
 local get_post_args = ngx.req.get_post_args
 local get_uri_args  = ngx.req.get_uri_args
+local base64url     = codec.base64url
+local set_header    = ngx.req.set_header
 local read_body     = ngx.req.read_body
 local concat        = table.concat
 local ipairs        = ipairs
-local lower         = string.lower
 local find          = string.find
 local open          = io.open
-local time          = ngx.time
 local type          = type
 local sub           = string.sub
 local var           = ngx.var
@@ -125,16 +123,16 @@ function OICVerificationHandler:access(conf)
   local name = conf.param_name  or "id_token"
   local typ  = conf.param_type  or { "query", "header", "body" }
   local ct   = var.content_type or ""
-  local tok
+  local idt
 
   for _, t in ipairs(typ) do
     if t == "header" then
-      tok = var["http_" .. name]
+      idt = var["http_" .. name]
 
     elseif t == "query" then
       local args = get_uri_args()
       if args then
-        tok = args[name]
+        idt = args[name]
       end
 
     elseif t == "body" then
@@ -142,11 +140,11 @@ function OICVerificationHandler:access(conf)
         read_body()
         local args = get_post_args()
         if args then
-          tok = args[name]
+          idt = args[name]
         end
 
       elseif sub(ct, 1, 19) == "multipart/form-data" then
-        tok = multipart(name, conf.timeout)
+        idt = multipart(name, conf.timeout)
 
       elseif sub(ct, 1, 16) == "application/json" then
         read_body()
@@ -154,13 +152,13 @@ function OICVerificationHandler:access(conf)
         if data == nil then
           local file = get_body_file()
           if file ~= nil then
-            tok = read_file(file)
+            data = read_file(file)
           end
         end
-        if tok then
-          local json = cjson.decode(tok)
+        if data then
+          local json = cjson.decode(data)
           if json then
-            tok = json[name]
+            idt = json[name]
           end
         end
 
@@ -170,18 +168,18 @@ function OICVerificationHandler:access(conf)
         if data == nil then
           local file = get_body_file()
           if file ~= nil then
-            tok = read_file(file)
+            idt = read_file(file)
           end
         end
       end
     end
 
-    if tok then
+    if idt then
       break
     end
   end
 
-  if not tok then
+  if not idt then
     log(NOTICE, "id token was not specified")
     return responses.send_HTTP_UNAUTHORIZED()
   end
@@ -189,12 +187,18 @@ function OICVerificationHandler:access(conf)
   if not self.oic then
     log(NOTICE, "loading openid connect configuration")
 
+    local claims = conf.claims or { "iss", "sub", "aud", "azp", "exp", "iat" }
+
     local o, err = oic.new {
       issuer       = conf.issuer,
       leeway       = conf.leeway                     or 0,
       http_version = conf.http_version               or 1.1,
       ssl_verify   = conf.ssl_verify == nil and true or conf.ssl_verify,
       timeout      = conf.timeout                    or 10000,
+      audiences    = conf.audiences,
+      max_age      = conf.max_age,
+      domains      = conf.domains,
+      claims       = claims
     }
 
     if not o then
@@ -205,346 +209,48 @@ function OICVerificationHandler:access(conf)
     self.oic = o
   end
 
-  local issuer = self.oic.configuration
+  local act = self.oic.token:bearer()
 
-  local idt, err = self.oic.jwt:decode(tok)
-  if not idt then
+  local tokens = {
+    id_token     = idt,
+    access_token = act
+  }
+
+  local tks, err = self.oic.token:verify(tokens)
+
+  if type(tks) ~= "table" then
     log(NOTICE, err)
     return responses.send_HTTP_UNAUTHORIZED()
   end
 
-  local idt_header  = idt.header  or {}
-  local idt_payload = idt.payload or {}
-  local now         = time()
-  local lwy         = conf.leeway or 0
-  local claims      = conf.claims or { "iss", "sub", "aud", "exp", "iat" }
+  idt = tks.id_token
+  if type(idt) ~= "table" then
+    log(NOTICE, "id token was not verified")
+    return responses.send_HTTP_UNAUTHORIZED()
+  end
 
-  for _, c in ipairs(claims) do
-    if c == "alg" then
-      if not idt_header.alg then
-        log(NOTICE, "alg claim was not specified for id token")
-        return responses.send_HTTP_UNAUTHORIZED()
-      end
+  local jwk_header = conf.jwk_header
 
-      local algs = issuer.id_token_signing_alg_values_supported
-      if not set.has(idt_header.alg, algs) then
-        log(NOTICE, "invalid alg claim was specified for id token")
-        return responses.send_HTTP_UNAUTHORIZED()
-      end
-
-    elseif c == "iss" then
-      if idt_payload.iss ~= issuer.issuer then
-        log(NOTICE, "issuer mismatch")
-        return responses.send_HTTP_UNAUTHORIZED()
-      end
-
-    elseif c == "sub" then
-      if not idt_payload.sub then
-        log(NOTICE, "sub claim was not specified for id token")
-        return responses.send_HTTP_UNAUTHORIZED()
-      end
-
-    elseif c == "aud" then
-      local aud = idt_payload.aud
-      if not aud then
-        log(NOTICE, "aud claim was not specified for id token")
-        return responses.send_HTTP_UNAUTHORIZED()
-      end
-
-      local audiences = conf.audiences
-
-      if audiences then
-        local present   = false
-
-        if type(aud) == "string" then
-          for _, audience in ipairs(audiences) do
-            if audience == aud then
-              present = true
-              break
-            end
-          end
-
-        elseif type(aud) == "table" then
-          for _, audience in ipairs(audiences) do
-            if set.has(audience, aud) then
-              present  = true
-              break
-            end
-          end
-        end
-
-        if not present then
-          log(NOTICE, "invalid aud claim was specified for id token")
-          return responses.send_HTTP_UNAUTHORIZED()
-        end
-      end
-
-    elseif c == "azp" then
-      local azp = idt_payload.azp
-
-      local audiences = conf.audiences
-      if audiences then
-        local multiple  = type(idt_payload.aud) == "table"
-        local present   = false
-
-        if azp then
-          for _, audience in ipairs(audiences) do
-            if azp == audience then
-              present = true
-              break
-            end
-          end
-
-          if not present then
-            log(NOTICE, "invalid azp claim was specified for id token")
-            return responses.send_HTTP_UNAUTHORIZED()
-          end
-
-        elseif multiple then
-          log(NOTICE, "azp claim was not specified for id token")
-          return responses.send_HTTP_UNAUTHORIZED()
-        end
-      end
-
-    elseif c == "exp" then
-      local exp = idt_payload.exp
-      if not exp then
-        log(NOTICE, "exp claim was not specified for id token")
-        return responses.send_HTTP_UNAUTHORIZED()
-      end
-
-      if now - lwy > exp then
-        log(NOTICE, "invalid exp claim was specified for id token")
-        return responses.send_HTTP_UNAUTHORIZED()
-      end
-
-    elseif c == "iat" then
-      local iat = idt_payload.iat
-      if not iat then
-        log(NOTICE, "iat claim was not specified for id token")
-        return responses.send_HTTP_UNAUTHORIZED()
-      end
-
-      if now + lwy < iat then
-        log(NOTICE, "invalid iat claim was specified for id token")
-        return responses.send_HTTP_UNAUTHORIZED()
-      end
-
-    elseif c == "nbf" then
-      local nbf = idt_payload.nbf
-      if not nbf then
-        log(NOTICE, "nbf claim was not specified for id token")
-        return responses.send_HTTP_UNAUTHORIZED()
-      end
-
-      if now + lwy < nbf then
-        log(NOTICE, "invalid nbf claim was specified for id token")
-        return responses.send_HTTP_UNAUTHORIZED()
-      end
-
-    elseif c == "auth_time" then
-      local auth_time = idt_payload.auth_time
-      if not auth_time then
-        log(NOTICE, "auth_time claim was not specified for id token")
-        return responses.send_HTTP_UNAUTHORIZED()
-      end
-
-      if now + lwy < auth_time then
-        log(NOTICE, "invalid auth_time claim was specified for id token")
-        return responses.send_HTTP_UNAUTHORIZED()
-      end
-
-      local max_age = conf.max_age
-      if max_age then
-        local age = now - auth_time
-        if age - lwy > max_age then
-          log(NOTICE, "invalid auth_time claim was specified for id token")
-          return responses.send_HTTP_UNAUTHORIZED()
-        end
-      end
-
-    elseif c == "hd" then
-      local hd = idt_payload.hd
-      if not hd then
-        log(NOTICE, "hd claim was not specified for id token")
-        return responses.send_HTTP_UNAUTHORIZED()
-      end
-
-      local present = false
-      local domains = conf.domains
-      if domains then
-        for _, d in ipairs(domains) do
-          if d == hd then
-            present = true
-            break
-          end
-        end
-
-        if not present then
-          log(NOTICE, "invalid hd claim was specified for id token")
-          return responses.send_HTTP_UNAUTHORIZED()
-        end
-      end
-
-    elseif c == "at_hash" then
-      local at_hash = idt_payload.at_hash
-      if not at_hash then
-        log(NOTICE, "at_hash claim was not specified for id token")
-        return responses.send_HTTP_UNAUTHORIZED()
-      end
-
-      local authz = var.http_authorization
-      if not authz then
-        log(NOTICE, "at_hash claim could not be validated in absense of authorization header")
-        return responses.send_HTTP_UNAUTHORIZED()
-      end
-
-      local act_type = lower(sub(authz, 1, 6))
-      if act_type ~= "bearer" then
-        log(NOTICE, "at_hash claim could not be validated as the authorization was not carried with a bearer token")
-        return responses.send_HTTP_UNAUTHORIZED()
-      end
-
-      local act = sub(authz, 8)
-
-      if not validate.access_token(act, at_hash, idt_header.alg) then
-        log(NOTICE, "invalid at_hash claim was specified for id token")
-        return responses.send_HTTP_UNAUTHORIZED()
-      end
-
-      local jwt_type = jwt.type(act)
-      if jwt_type == "JWS" or jwt_type == "JWE" then
-        act, err = self.oic.jwt:decode(act)
-        if not act then
-          log(NOTICE, err)
-          return responses.send_HTTP_UNAUTHORIZED()
-        end
-
-        local act_header  = act.header  or {}
-        local act_payload = act.payload or {}
-
-        for _, claim in ipairs(conf.claims) do
-          if claim == "alg" then
-            if not act_header.alg then
-              log(NOTICE, "alg claim was not specified for access token")
-              return responses.send_HTTP_UNAUTHORIZED()
-            end
-
-            local algs = issuer.id_token_signing_alg_values_supported
-            if not set.has(act_header.alg, algs) then
-              log(NOTICE, "invalid alg claim was specified for access token")
-              return responses.send_HTTP_UNAUTHORIZED()
-            end
-          elseif claim == "iss" then
-            if act_payload.iss ~= issuer.issuer then
-              log(NOTICE, "invalid issuer was specified for access token")
-              return responses.send_HTTP_UNAUTHORIZED()
-            end
-
-          elseif claim == "sub" then
-            if not act_payload.sub then
-              log(NOTICE, "sub claim was not specified for access token")
-              return responses.send_HTTP_UNAUTHORIZED()
-            end
-
-          elseif claim == "aud" then
-            local aud = act_payload.aud
-            if not aud then
-              log(NOTICE, "aud claim was not specified for access token")
-              return responses.send_HTTP_UNAUTHORIZED()
-            end
-
-            local present   = false
-            local audiences = conf.audiences
-
-            if type(aud) == "string" then
-              for _, audience in ipairs(audiences) do
-                if audience == aud then
-                  present = true
-                  break
-                end
-              end
-
-            elseif type(aud) == "table" then
-              for _, audience in ipairs(audiences) do
-                if set.has(audience, aud) then
-                  present  = true
-                  break
-                end
-              end
-            end
-
-            if not present then
-              log(NOTICE, "invalid aud claim was specified for access token")
-              return responses.send_HTTP_UNAUTHORIZED()
-            end
-
-          elseif claim == "azp" then
-            local azp = act_payload.azp
-
-            local audiences = conf.audiences
-            if audiences then
-              local multiple  = type(act_payload.aud) == "table"
-              local present   = false
-
-              if azp then
-                for _, audience in ipairs(audiences) do
-                  if azp == audience then
-                    present = true
-                    break
-                  end
-                end
-
-                if not present then
-                  log(NOTICE, "invalid azp claim was specified for access token")
-                  return responses.send_HTTP_UNAUTHORIZED()
-                end
-
-              elseif multiple then
-                log(NOTICE, "azp claim was not specified for access token")
-                return responses.send_HTTP_UNAUTHORIZED()
-              end
-            end
-
-          elseif claim == "exp" then
-            local exp = act_payload.exp
-            if not exp then
-              log(NOTICE, "exp claim was not specified for access token")
-              return responses.send_HTTP_UNAUTHORIZED()
-            end
-
-            if now - lwy > exp then
-              log(NOTICE, "invalid exp claim was specified for access token")
-              return responses.send_HTTP_UNAUTHORIZED()
-            end
-
-          elseif claim == "iat" then
-            local iat = act_payload.iat
-            if not iat then
-              log(NOTICE, "iat claim was not specified for access token")
-              return responses.send_HTTP_UNAUTHORIZED()
-            end
-
-            if now + lwy < iat then
-              log(NOTICE, "invalid iat claim was specified for access token")
-              return responses.send_HTTP_UNAUTHORIZED()
-            end
-
-          elseif claim == "nbf" then
-            local nbf = act_payload.nbf
-            if not nbf then
-              log(NOTICE, "nbf claim was not specified for access token")
-              return responses.send_HTTP_UNAUTHORIZED()
-            end
-
-            if now + lwy < nbf then
-              log(NOTICE, "invalid nbf claim was specified for access token")
-              return responses.send_HTTP_UNAUTHORIZED()
-            end
-          end
-        end
-      end
+  if jwk_header then
+    local jwk = idt.jwk
+    if type(idt) ~= "table" then
+      log(NOTICE, "invalid jwk was specified")
+      return responses.send_HTTP_UNAUTHORIZED()
     end
+
+    jwk, err = cjson.encode(jwk)
+    if not jwk then
+      log(ERR, err)
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    end
+
+    jwk, err = base64url.encode(jwk)
+    if not jwk then
+      log(ERR, err)
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    end
+
+    set_header(jwk_header, jwk)
   end
 end
 
