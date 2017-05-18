@@ -433,7 +433,7 @@ function _M.new(apis)
     categorize_api_t(api_t, categories)
   end
 
-  local compare = function(a,b, category_bit)
+  local function compare(a,b, category_bit)
     if not band(category_bit, MATCH_RULES.URI) then
       return
     end
@@ -462,6 +462,11 @@ function _M.new(apis)
     end)
     for _, apilist_by_method in pairs(category.apis_by_methods) do
       table.sort(apilist_by_method, function(a,b)
+        return compare(a,b,category_bit)
+      end)
+    end
+    for _, apilist_by_host in pairs(category.apis_by_plain_hosts) do
+      table.sort(apilist_by_host, function(a,b)
         return compare(a,b,category_bit)
       end)
     end

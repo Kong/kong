@@ -390,7 +390,7 @@ describe("Router", function()
       end)
     end)
   end)
-  
+
   describe("edge-cases", function()
 
     setup(function()
@@ -465,6 +465,43 @@ describe("Router", function()
         method = "GET",
         path = "/root/fixture/get",
         headers = { ["kong-debug"] = 1 }
+      })
+
+      assert.response(res).has_status(200)
+      assert.equal("fixture-api", res.headers["kong-api-name"])
+    end)
+  end)
+
+  describe("edge-cases where longer uris should be matched first while host and uri are both defined", function()
+
+    setup(function()
+      insert_apis {
+        {
+          name = "root-api",
+          hosts = "api.com",
+          upstream_url = "http://httpbin.org",
+          uris = "/root",
+        },
+        {
+          name = "fixture-api",
+          hosts = "api.com",
+          upstream_url = "http://httpbin.org",
+          uris = "/root/fixture",
+        },
+      }
+
+      assert(helpers.start_kong())
+    end)
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("route to the correct api when requested with a subpath", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/root/fixture/get",
+        headers = { ["kong-debug"] = 1, ["Host"] = "api.com" }
       })
 
       assert.response(res).has_status(200)
