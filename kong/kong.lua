@@ -189,10 +189,14 @@ function Kong.init_worker()
   -- init cluster_events
 
 
+  local dao_factory   = singletons.dao
+  local configuration = singletons.configuration
+
+
   local cluster_events, err = kong_cluster_events.new {
-    dao                     = singletons.dao,
-    poll_interval           = 5,
-    poll_offset             = 0,
+    dao                     = dao_factory,
+    poll_interval           = configuration.db_update_frequency,
+    poll_offset             = configuration.db_update_propagation,
   }
   if not cluster_events then
     ngx.log(ngx.CRIT, "could not create cluster_events: ", err)
@@ -206,9 +210,9 @@ function Kong.init_worker()
   local cache, err = kong_cache.new {
     cluster_events    = cluster_events,
     worker_events     = worker_events,
-    propagation_delay = 0,
-    ttl               = 3600,
-    neg_ttl           = 300,
+    propagation_delay = configuration.db_update_propagation,
+    ttl               = configuration.db_cache_ttl,
+    neg_ttl           = configuration.db_cache_ttl,
     resty_lock_opts   = {
       exptime = 10,
       timeout = 5,

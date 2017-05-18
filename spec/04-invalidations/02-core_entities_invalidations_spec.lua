@@ -4,7 +4,7 @@ local dao_helpers  = require "spec.02-integration.02-dao.helpers"
 local ssl_fixtures = require "spec.fixtures.ssl"
 
 
-local POLL_INTERVAL = 5
+local POLL_INTERVAL = 0.3
 
 
 dao_helpers.for_each_dao(function(kong_conf)
@@ -25,6 +25,8 @@ describe("core entities are invalidated with db: " .. kong_conf.database, functi
     dao = assert(kong_dao_factory.new(kong_conf))
     dao:truncate_tables()
 
+    local db_update_propagation = kong_conf.database == "cassandra" and 3 or 0
+
     assert(helpers.start_kong {
       log_level             = "debug",
       prefix                = "servroot1",
@@ -33,6 +35,8 @@ describe("core entities are invalidated with db: " .. kong_conf.database, functi
       proxy_listen_ssl      = "0.0.0.0:8443",
       admin_listen          = "0.0.0.0:8001",
       admin_ssl             = false,
+      db_update_frequency   = POLL_INTERVAL,
+      db_update_propagation = db_update_propagation,
     })
 
     assert(helpers.start_kong {
@@ -43,6 +47,8 @@ describe("core entities are invalidated with db: " .. kong_conf.database, functi
       proxy_listen_ssl      = "0.0.0.0:9443",
       admin_listen          = "0.0.0.0:9001",
       admin_ssl             = false,
+      db_update_frequency   = POLL_INTERVAL,
+      db_update_propagation = db_update_propagation,
     })
 
     admin_client_1 = helpers.http_client("127.0.0.1", 8001)
@@ -51,7 +57,7 @@ describe("core entities are invalidated with db: " .. kong_conf.database, functi
     proxy_client_2 = helpers.http_client("127.0.0.1", 9000)
 
     wait_for_propagation = function()
-      ngx.sleep(POLL_INTERVAL)
+      ngx.sleep(POLL_INTERVAL + db_update_propagation)
     end
   end)
 
