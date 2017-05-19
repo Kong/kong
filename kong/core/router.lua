@@ -433,30 +433,43 @@ function _M.new(apis)
     categorize_api_t(api_t, categories)
   end
 
+  local function compare(a,b, category_bit)
+    if not band(category_bit, MATCH_RULES.URI) then
+      return
+    end
+
+    local max_uri_a = 0
+    local max_uri_b = 0
+
+    for _, prefix in ipairs(a.uris_prefixes_regexes) do
+      if #prefix.regex > max_uri_a then
+        max_uri_a = #prefix.regex
+      end
+    end
+
+    for _, prefix in ipairs(b.uris_prefixes_regexes) do
+      if #prefix.regex > max_uri_b then
+        max_uri_b = #prefix.regex
+      end
+    end
+
+    return max_uri_a > max_uri_b
+  end
 
   for category_bit, category in pairs(categories) do
-    table.sort(category.apis, function(a, b)
-      if not band(category_bit, MATCH_RULES.URI) then
-        return
-      end
-
-      local max_uri_a = 0
-      local max_uri_b = 0
-
-      for _, prefix in ipairs(a.uris_prefixes_regexes) do
-        if #prefix.regex > max_uri_a then
-          max_uri_a = #prefix.regex
-        end
-      end
-
-      for _, prefix in ipairs(b.uris_prefixes_regexes) do
-        if #prefix.regex > max_uri_b then
-          max_uri_b = #prefix.regex
-        end
-      end
-
-      return max_uri_a > max_uri_b
+    table.sort(category.apis, function(a,b)
+      return compare(a,b,category_bit)
     end)
+    for _, apilist_by_method in pairs(category.apis_by_methods) do
+      table.sort(apilist_by_method, function(a,b)
+        return compare(a,b,category_bit)
+      end)
+    end
+    for _, apilist_by_host in pairs(category.apis_by_plain_hosts) do
+      table.sort(apilist_by_host, function(a,b)
+        return compare(a,b,category_bit)
+      end)
+    end
   end
 
 
