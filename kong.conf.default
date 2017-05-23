@@ -34,6 +34,30 @@
 # Note: See http://nginx.org/en/docs/ngx_core_module.html#error_log for a list
 # of accepted values.
 
+#proxy_access_log = logs/access.log       # Path for proxy port request access
+                                          # logs. Set this value to `off` to
+                                          # disable logging proxy requests.
+                                          # If this value is a relative path, it
+                                          # will be placed under the `prefix`
+                                          # location.
+
+#proxy_error_log = logs/error.log         # Path for proxy port request error
+                                          # logs. Granularity of these logs is
+                                          # adjusted by the `log_level`
+                                          # directive.
+
+#admin_access_log = logs/admin_access.log # Path for Admin API request access
+                                          # logs. Set this value to `off` to
+                                          # disable logging Admin API requests.
+                                          # If this value is a relative path, it
+                                          # will be placed under the `prefix`
+                                          # location.
+
+#admin_error_log = logs/error.log         # Path for Admin API request error
+                                          # logs. Granularity of these logs is
+                                          # adjusted by the `log_level`
+                                          # directive.
+
 #custom_plugins =                # Comma-separated list of additional plugins
                                  # this node should load.
                                  # Use this property to load custom plugins

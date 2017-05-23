@@ -1,8 +1,6 @@
 return [[
 charset UTF-8;
 
-error_log logs/error.log ${{LOG_LEVEL}};
-
 > if anonymous_reports then
 ${{SYSLOG_REPORTS}}
 > end
@@ -81,7 +79,9 @@ server {
     error_page 404 408 411 412 413 414 417 /kong_error_handler;
     error_page 500 502 503 504 /kong_error_handler;
 
-    access_log logs/access.log;
+    access_log ${{PROXY_ACCESS_LOG}};
+    error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
+
 
 > if ssl then
     listen ${{PROXY_LISTEN_SSL}} ssl;
@@ -143,7 +143,8 @@ server {
     server_name kong_admin;
     listen ${{ADMIN_LISTEN}};
 
-    access_log logs/admin_access.log;
+    access_log ${{ADMIN_ACCESS_LOG}};
+    error_log ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
 
     client_max_body_size 10m;
     client_body_buffer_size 10m;
