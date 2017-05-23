@@ -146,7 +146,8 @@ local function do_authentication(conf)
   end
 
   -- Verify the JWT registered claims
-  local ok_claims, errors = jwt:verify_registered_claims(conf.claims_to_verify)
+  local args = { remote_addr = ngx.var.remote_addr }
+  local ok_claims, errors = jwt:verify_registered_claims(conf.claims_to_verify, args)
   if not ok_claims then
     return false, {status = 401, message = errors}
   end

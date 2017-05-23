@@ -32,7 +32,7 @@ describe("Plugin: jwt (access)", function()
 
     assert(helpers.dao.plugins:insert {name = "jwt", config = {}, api_id = api1.id})
     assert(helpers.dao.plugins:insert {name = "jwt", config = {uri_param_names = {"token", "jwt"}}, api_id = api2.id})
-    assert(helpers.dao.plugins:insert {name = "jwt", config = {claims_to_verify = {"nbf", "exp"}}, api_id = api3.id})
+    assert(helpers.dao.plugins:insert {name = "jwt", config = {claims_to_verify = {"nbf", "exp", "cip"}}, api_id = api3.id})
     assert(helpers.dao.plugins:insert {name = "jwt", config = {key_claim_name = "aud"}, api_id = api4.id})
     assert(helpers.dao.plugins:insert {name = "jwt", config = {secret_is_base64 = true}, api_id = api5.id})
     assert(helpers.dao.plugins:insert {name = "jwt", config = {anonymous = anonymous_user.id}, api_id = api6.id})
@@ -281,13 +281,14 @@ describe("Plugin: jwt (access)", function()
         }
       })
       local body = assert.res_status(401, res)
-      assert.equal('{"nbf":"must be a number","exp":"must be a number"}', body)
+      assert.equal('{"nbf":"must be a number","cip":"must be a string","exp":"must be a number"}', body)
     end)
     it("checks if the fields are valid: `exp` claim", function()
       local payload = {
         iss = jwt_secret.key,
         exp = os.time() - 10,
-        nbf = os.time() - 10
+        nbf = os.time() - 10,
+        cip = "127.0.0.1"
       }
       local jwt = jwt_encoder.encode(payload, jwt_secret.secret)
       local res = assert(proxy_client:send {
@@ -304,7 +305,8 @@ describe("Plugin: jwt (access)", function()
       local payload = {
         iss = jwt_secret.key,
         exp = os.time() + 10,
-        nbf = os.time() + 5
+        nbf = os.time() + 5,
+        cip = "127.0.0.1"
       }
       local jwt = jwt_encoder.encode(payload, jwt_secret.secret)
       local res = assert(proxy_client:send {
@@ -316,6 +318,24 @@ describe("Plugin: jwt (access)", function()
       })
       local body = assert.res_status(401, res)
       assert.equal('{"nbf":"token not valid yet"}', body)
+    end)
+    it("checks if the fields are valid: `cip` claim", function()
+      local payload = {
+        iss = jwt_secret.key,
+        exp = os.time() + 20,
+        nbf = os.time() - 20,
+        cip = "127.0.0.X"
+      }
+      local jwt = jwt_encoder.encode(payload, jwt_secret.secret)
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/request/?jwt="..jwt,
+        headers = {
+          ["Host"] = "jwt3.com"
+        }
+      })
+      local body = assert.res_status(401, res)
+      assert.equal('{"cip":"client ip mismatch"}', body)
     end)
   end)
 
