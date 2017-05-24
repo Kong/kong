@@ -516,4 +516,20 @@ function _M:record_migration(id, name)
   return true
 end
 
+function _M:reachable()
+  local query = fmt("SELECT * FROM pg_stat_database where datname='%s'",
+                    self.query_options.database)
+
+  local rows, err = self:query(query)
+  if not rows then
+    return nil, err
+  end
+
+  if #rows > 0  then
+    return true
+  end
+
+  return false
+end
+
 return _M
