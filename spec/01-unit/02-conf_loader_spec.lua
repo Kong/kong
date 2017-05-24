@@ -342,6 +342,62 @@ describe("Configuration loader", function()
           assert.True(helpers.path.isabs(conf.ssl_cert_key))
         end)
       end)
+      describe("client", function()
+        it("requires both proxy SSL cert and key", function()
+          local conf, err = conf_loader(nil, {
+            client_ssl = true,
+            client_ssl_cert = "/path/cert.pem"
+          })
+          assert.equal("client_ssl_cert_key must be specified", err)
+          assert.is_nil(conf)
+
+          conf, err = conf_loader(nil, {
+            client_ssl = true,
+            client_ssl_cert_key = "/path/key.pem"
+          })
+          assert.equal("client_ssl_cert must be specified", err)
+          assert.is_nil(conf)
+
+          conf, err = conf_loader(nil, {
+            client_ssl = true,
+            client_ssl_cert = "spec/fixtures/kong_spec.crt",
+            client_ssl_cert_key = "spec/fixtures/kong_spec.key"
+          })
+          assert.is_nil(err)
+          assert.is_table(conf)
+        end)
+        it("requires SSL cert and key to exist", function()
+          local conf, _, errors = conf_loader(nil, {
+            client_ssl = true,
+            client_ssl_cert = "/path/cert.pem",
+            client_ssl_cert_key = "/path/cert_key.pem"
+          })
+          assert.equal(2, #errors)
+          assert.contains("client_ssl_cert: no such file at /path/cert.pem", errors)
+          assert.contains("client_ssl_cert_key: no such file at /path/cert_key.pem", errors)
+          assert.is_nil(conf)
+
+          conf, _, errors = conf_loader(nil, {
+            client_ssl = true,
+            client_ssl_cert = "spec/fixtures/kong_spec.crt",
+            client_ssl_cert_key = "/path/cert_key.pem"
+          })
+          assert.equal(1, #errors)
+          assert.contains("client_ssl_cert_key: no such file at /path/cert_key.pem", errors)
+          assert.is_nil(conf)
+        end)
+        it("resolves SSL cert/key to absolute path", function()
+          local conf, err = conf_loader(nil, {
+            client_ssl = true,
+            client_ssl_cert = "spec/fixtures/kong_spec.crt",
+            client_ssl_cert_key = "spec/fixtures/kong_spec.key"
+          })
+          assert.is_nil(err)
+          assert.is_table(conf)
+          assert.True(helpers.path.isabs(conf.client_ssl_cert))
+          assert.True(helpers.path.isabs(conf.client_ssl_cert_key))
+        end)
+      end)
       describe("admin", function()
         it("requires both admin SSL cert and key", function()
           local conf, err = conf_loader(nil, {
