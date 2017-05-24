@@ -111,6 +111,18 @@
                                  # itself on `proxy_listen`, and all SSL
                                  # settings will be ignored.
 
+#ssl_cipher_suite = modern       # Defines the TLS ciphers served by Nginx.
+                                 # Accepted values are 'modern', 'intermediate',
+                                 # 'old', or 'custom'.
+# Note: See https://wiki.mozilla.org/Security/Server_Side_TLS for detailed
+# descriptions of each cipher suite.
+
+#ssl_ciphers =                   # Defines a custom list of TLS ciphers to be
+                                 # served by Nginx. This list must conform to
+                                 # the pattern defined by `openssl ciphers`.
+                                 # This value is ignored if `ssl_ciphers_suite`
+                                 # is not 'custom'.
+
 #ssl_cert =                      # If `ssl` is enabled, the absolute path to
                                  # the SSL certificate for the
                                  # `proxy_listen_ssl` address.
