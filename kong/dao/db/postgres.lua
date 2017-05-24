@@ -516,4 +516,18 @@ function _M:record_migration(id, name)
   return true
 end
 
+function _M:reachable()
+  local conn_opts = self:clone_query_options()
+  local pg = pgmoon.new(conn_opts)
+
+  local ok, err = pg:connect()
+  if not ok then
+    return nil, Errors.db(err)
+  end
+
+  pg:keepalive()
+
+  return true
+end
+
 return _M
