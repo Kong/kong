@@ -49,6 +49,14 @@
 
 ### Changed
 
+- We noticed that some distribution packages were not
+  building OpenResty against a JITable PCRE library. This
+  happened on Ubuntu and RHEL environments where OpenResty was
+  built against the system's PCRE installation.
+  We now compile OpenResty against a JITable PCRE source for
+  those platforms, which should result in significant performance
+  improvements in regex matching.
+  [Mashape/kong-distributions #9](https://github.com/Mashape/kong-distributions/pull/9)
 - TLS connections are now handled with a modern list of
   accepted ciphers, as per the Mozilla recommended TLS
   ciphers list.
@@ -97,6 +105,11 @@
 - SSL connections to Cassandra can now properly verify the
   certificate in use (when `cassandra_ssl_verify` is enabled).
   [#2531](https://github.com/Mashape/kong/pull/2531)
+- The DNS resolver no longer sends a A or AAAA DNS queries for SRV
+  records. This should improve performance by avoiding unecessary
+  lookups.
+  [#2563](https://github.com/Mashape/kong/pull/2563) &
+  [Mashape/lua-resty-dns-client #12](https://github.com/Mashape/lua-resty-dns-client/pull/12)
 - Plugins
   - All authentication plugins don't throw an error anymore when
     invalid credentials are given and the `anonymous` user isn't
@@ -290,6 +303,7 @@
   `cluster_advertise` configuration property.
 - :warning: The [CORS Plugin](https://getkong.org/plugins/cors/) parameter
   `config.origin` is now `config.origins`.
+  [#2203](https://github.com/Mashape/kong/pull/2203)
 
    :red_circle: **Post-release note (as of 2017/05/12)**: A faulty behavior
    has been observed with this change. Previously, the plugin would send the
@@ -297,7 +311,10 @@
    plugin **does not** send the `*` wildcard by default anymore. You will need
    to specify it manually when configuring the plugin, with `config.origins=*`.
    This behavior is to be fixed in a future release.
-  [#2203](https://github.com/Mashape/kong/pull/2203)
+
+   :white_check_mark: **Update (2017/05/24)**: A fix to this regression has been
+   released as part of 0.10.3. See the section of the Changelog related to this
+   release for more details.
 - Admin API:
   - Disable support for TLS/1.0.
     [#2212](https://github.com/Mashape/kong/pull/2212)
