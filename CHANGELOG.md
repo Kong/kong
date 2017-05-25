@@ -244,6 +244,7 @@
   `cluster_advertise` configuration property.
 - :warning: The [CORS Plugin](https://getkong.org/plugins/cors/) parameter
   `config.origin` is now `config.origins`.
+  [#2203](https://github.com/Mashape/kong/pull/2203)
 
    :red_circle: **Post-release note (as of 2017/05/12)**: A faulty behavior
    has been observed with this change. Previously, the plugin would send the
@@ -251,7 +252,10 @@
    plugin **does not** send the `*` wildcard by default anymore. You will need
    to specify it manually when configuring the plugin, with `config.origins=*`.
    This behavior is to be fixed in a future release.
-  [#2203](https://github.com/Mashape/kong/pull/2203)
+
+   :white_check_mark: **Update (2017/05/24)**: A fix to this regression has been
+   released as part of 0.10.3. See the section of the Changelog related to this
+   release for more details.
 - Admin API:
   - Disable support for TLS/1.0.
     [#2212](https://github.com/Mashape/kong/pull/2212)
