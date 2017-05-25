@@ -1,9 +1,72 @@
 ## [Unreleased][unreleased]
 
+## [0.10.3] - 2017/05/24
+
+### Changed
+
+- TLS connections are now handled with a modern list of
+  accepted ciphers, as per the Mozilla recommended TLS
+  ciphers list.
+  See https://wiki.mozilla.org/Security/Server_Side_TLS.
+  This behavior is configurable via the newly
+  introduced configuration properties described in the
+  below "Added" section.
+- Plugins:
+  - rate-limiting: Performance improvements when using the
+    `cluster` policy. The number of round trips to the
+    database has been limited to the number of configured
+    limits.
+    [#2488](https://github.com/Mashape/kong/pull/2488)
+
+### Added
+
+- New `ssl_cipher_suite` and `ssl_ciphers` configuration
+  properties to configure the desired set of accepted ciphers,
+  based on the Mozilla recommended TLS ciphers list.
+  [#2555](https://github.com/Mashape/kong/pull/2555)
+- New `proxy_ssl_certificate` and `proxy_ssl_certificate_key`
+  configuration properties. These properties configure the
+  Nginx directives bearing the same name, to set client
+  certificates to Kong when connecting to your upstream services.
+  [#2556](https://github.com/Mashape/kong/pull/2556)
+- Proxy and Admin API access and error log paths are now
+  configurable. Access logs can be entirely disabled if
+  desired.
+  [#2552](https://github.com/Mashape/kong/pull/2552)
+- Plugins:
+  - Logging plugins: The produced logs include a new `tries`
+    field which contains, which includes the upstream
+    connection successes and failures of the load-balancer.
+    [#2429](https://github.com/Mashape/kong/pull/2429)
+  - key-auth: Credentials can now be sent in the request body.
+    [#2493](https://github.com/Mashape/kong/pull/2493)
+  - cors: Origins can now be defined as regular expressions.
+    [#2482](https://github.com/Mashape/kong/pull/2482)
+
 ### Fixed
 
-- Plugins:
-  - OAuth 2.0: properly checking ownership of a token when refreshing it.
+- APIs matching: prioritize APIs with longer `uris` when said
+  APIs also define `hosts` and/or `methods` as well. Thanks
+  [@leonzz](https://github.com/leonzz) for the patch.
+  [#2523](https://github.com/Mashape/kong/pull/2523)
+- SSL connections to Cassandra can now properly verify the
+  certificate in use (when `cassandra_ssl_verify` is enabled).
+  [#2531](https://github.com/Mashape/kong/pull/2531)
+- Plugins
+  - All authentication plugins don't throw an error anymore when
+    invalid credentials are given and the `anonymous` user isn't
+    configured.
+    [#2508](https://github.com/Mashape/kong/pull/2508)
+  - rate-limiting: Effectively use the desired Redis database when
+    the `redis` policy is in use and the `config.redis_database`
+    property is set.
+    [#2481](https://github.com/Mashape/kong/pull/2481)
+  - cors: The regression introduced in 0.10.1 regarding not
+    sending the `*` wildcard when `conf.origin` was not specified
+    has been fixed.
+    [#2518](https://github.com/Mashape/kong/pull/2518)
+  - oauth2: properly check the client application ownership of a
+    token before refreshing it.
     [#2461](https://github.com/Mashape/kong/pull/2461)
 
 ## [0.10.2] - 2017/05/01
@@ -1223,7 +1286,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.10.2...next
+[unreleased]: https://github.com/mashape/kong/compare/0.10.3...next
+[0.10.3]: https://github.com/mashape/kong/compare/0.10.2...0.10.3
 [0.10.2]: https://github.com/mashape/kong/compare/0.10.1...0.10.2
 [0.10.1]: https://github.com/mashape/kong/compare/0.10.0...0.10.1
 [0.10.0]: https://github.com/mashape/kong/compare/0.9.9...0.10.0
