@@ -15,6 +15,8 @@ local set_header    = ngx.req.set_header
 local read_body     = ngx.req.read_body
 local concat        = table.concat
 local ipairs        = ipairs
+local lower         = string.lower
+local gsub          = string.gsub
 local find          = string.find
 local open          = io.open
 local type          = type
@@ -127,7 +129,8 @@ function OICVerificationHandler:access(conf)
 
   for _, t in ipairs(typ) do
     if t == "header" then
-      idt = var["http_" .. name]
+      local header = "http_" .. gsub(lower(name), "-", "_")
+      idt = var[header]
 
     elseif t == "query" then
       local args = get_uri_args()
