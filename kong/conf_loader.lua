@@ -9,6 +9,7 @@ local pl_path = require "pl.path"
 local tablex = require "pl.tablex"
 local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
+local ciphers = require "kong.tools.ciphers"
 
 local DEFAULT_PATHS = {
   "/etc/kong/kong.conf",
@@ -249,6 +250,15 @@ local function check_and_infer(conf)
     end
     if conf.admin_ssl_cert_key and not pl_path.exists(conf.admin_ssl_cert_key) then
       errors[#errors+1] = "admin_ssl_cert_key: no such file at "..conf.admin_ssl_cert_key
+    end
+  end
+
+  if conf.ssl_cipher_suite ~= "custom" then
+    local ok, err = pcall(function()
+      conf.ssl_ciphers = ciphers(conf.ssl_cipher_suite)
+    end)
+    if not ok then
+      errors[#errors + 1] = err
     end
   end
 

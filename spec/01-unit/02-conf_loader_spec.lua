@@ -341,6 +341,44 @@ describe("Configuration loader", function()
           assert.True(helpers.path.isabs(conf.ssl_cert))
           assert.True(helpers.path.isabs(conf.ssl_cert_key))
         end)
+        it("defines ssl_ciphers by default", function()
+          local conf, err = conf_loader(nil, {})
+          assert.is_nil(err)
+          -- looks kinda like a cipher suite
+          assert.matches(":", conf.ssl_ciphers, nil, true)
+        end)
+        it("explicitly defines ssl_ciphers", function()
+          local conf, err = conf_loader(nil, {
+            ssl_cipher_suite = "old"
+          })
+          assert.is_nil(err)
+          -- looks kinda like a cipher suite
+          assert.matches(":", conf.ssl_ciphers, nil, true)
+        end)
+        it("errors on invalid ssl_cipher_suite", function()
+          local conf, _, errors = conf_loader(nil, {
+            ssl_cipher_suite = "foo"
+          })
+          assert.is_nil(conf)
+          assert.equal(1, #errors)
+          assert.matches("Undefined cipher suite foo", errors[1], nil, true)
+        end)
+        it("overrides ssl_ciphers when ssl_cipher_suite is custom", function()
+          local conf, err = conf_loader(nil, {
+            ssl_cipher_suite = "custom",
+            ssl_ciphers      = "foo:bar",
+          })
+          assert.is_nil(err)
+          assert.equals("foo:bar", conf.ssl_ciphers)
+        end)
+        it("doesn't override ssl_ciphers when undefined", function()
+          local ciphers = require "kong.tools.ciphers"
+          local conf, err = conf_loader(nil, {
+            ssl_cipher_suite = "custom",
+          })
+          assert.is_nil(err)
+          assert.same(ciphers("modern"), conf.ssl_ciphers)
+        end)
       end)
       describe("client", function()
         it("requires both proxy SSL cert and key", function()

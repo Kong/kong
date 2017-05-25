@@ -91,6 +91,11 @@ server {
     ssl_certificate_by_lua_block {
         kong.ssl_certificate()
     }
+
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+    ssl_prefer_server_ciphers on;
+    ssl_ciphers ${{SSL_CIPHERS}};
 > end
 
 > if client_ssl then
@@ -159,6 +164,11 @@ server {
     ssl_certificate ${{ADMIN_SSL_CERT}};
     ssl_certificate_key ${{ADMIN_SSL_CERT_KEY}};
     ssl_protocols TLSv1.1 TLSv1.2;
+
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+    ssl_prefer_server_ciphers on;
+    ssl_ciphers ${{SSL_CIPHERS}};
 > end
 
     location / {
