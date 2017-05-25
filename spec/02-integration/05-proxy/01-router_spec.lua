@@ -435,6 +435,85 @@ describe("Router", function()
     end)
   end)
 
+  describe("[uris] + [methods]", function()
+
+    setup(function()
+      insert_apis {
+        {
+          name = "root-api",
+          methods = { "GET" },
+          uris = "/root",
+          upstream_url = "http://httpbin.org",
+        },
+        {
+          name = "fixture-api",
+          methods = { "GET" },
+          uris = "/root/fixture",
+          upstream_url = "http://httpbin.org",
+        },
+      }
+
+      assert(helpers.start_kong())
+    end)
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("prioritizes longer URIs", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/root/fixture/get",
+        headers = {
+          ["kong-debug"] = 1,
+        }
+      })
+
+      assert.res_status(200, res)
+      assert.equal("fixture-api", res.headers["kong-api-name"])
+    end)
+  end)
+
+  describe("[uris] + [hosts]", function()
+
+    setup(function()
+      insert_apis {
+        {
+          name = "root-api",
+          hosts = "api.com",
+          uris = "/root",
+          upstream_url = "http://httpbin.org",
+        },
+        {
+          name = "fixture-api",
+          hosts = "api.com",
+          uris = "/root/fixture",
+          upstream_url = "http://httpbin.org",
+        },
+      }
+
+      assert(helpers.start_kong())
+    end)
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("prioritizes longer URIs", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/root/fixture/get",
+        headers = {
+          ["Host"]       = "api.com",
+          ["kong-debug"] = 1,
+        }
+      })
+
+      assert.res_status(200, res)
+      assert.equal("fixture-api", res.headers["kong-api-name"])
+    end)
+  end)
+
   describe("trailing slash", function()
     local checks = {
       -- upstream url    uris            request path    expected path           strip uri

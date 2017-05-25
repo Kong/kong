@@ -12,6 +12,7 @@ return {
     invocation_type = {type = "string", required = true, default = "RequestResponse", 
                        enum = {"RequestResponse", "Event", "DryRun"}},
     log_type = {type = "string", required = true, default = "Tail", 
-                       enum = {"Tail", "None"}}
+                       enum = {"Tail", "None"}},
+    port = { type = "number", default = 443 },
   }
 }

@@ -1,8 +1,6 @@
 return [[
 charset UTF-8;
 
-error_log logs/error.log ${{LOG_LEVEL}};
-
 > if anonymous_reports then
 ${{SYSLOG_REPORTS}}
 > end
@@ -71,7 +69,9 @@ server {
     error_page 400 404 408 411 412 413 414 417 /kong_error_handler;
     error_page 500 502 503 504 /kong_error_handler;
 
-    access_log logs/access.log;
+    access_log ${{PROXY_ACCESS_LOG}};
+    error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
+
 
 > if ssl then
 > if real_ip_header == "proxy_protocol" then
@@ -85,6 +85,16 @@ server {
     ssl_certificate_by_lua_block {
         kong.ssl_certificate()
     }
+
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+    ssl_prefer_server_ciphers on;
+    ssl_ciphers ${{SSL_CIPHERS}};
+> end
+
+> if client_ssl then
+    proxy_ssl_certificate ${{CLIENT_SSL_CERT}};
+    proxy_ssl_certificate_key ${{CLIENT_SSL_CERT_KEY}};
 > end
 
     real_ip_header     ${{REAL_IP_HEADER}};
@@ -150,7 +160,8 @@ server {
     server_name kong_admin;
     listen ${{ADMIN_LISTEN}};
 
-    access_log logs/admin_access.log;
+    access_log ${{ADMIN_ACCESS_LOG}};
+    error_log ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
 
     client_max_body_size 10m;
     client_body_buffer_size 10m;
@@ -160,6 +171,11 @@ server {
     ssl_certificate ${{ADMIN_SSL_CERT}};
     ssl_certificate_key ${{ADMIN_SSL_CERT_KEY}};
     ssl_protocols TLSv1.1 TLSv1.2;
+
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+    ssl_prefer_server_ciphers on;
+    ssl_ciphers ${{SSL_CIPHERS}};
 > end
 
     location / {

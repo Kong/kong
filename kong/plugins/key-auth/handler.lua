@@ -75,7 +75,7 @@ local function do_authentication(conf)
   -- read in the body if we want to examine POST args
   if conf.key_in_body then
     ngx_req_read_body()
-    body_data = public_tools.get_post_args()
+    body_data = public_tools.get_body_args()
   end
 
   -- search in headers & querystring
@@ -114,8 +114,7 @@ local function do_authentication(conf)
   -- this request is missing an API key, HTTP 401
   if not key then
     ngx.header["WWW-Authenticate"] = _realm
-    return false, {status = 401, message = "No API key found in headers"
-                                          .." or querystring"}
+    return false, { status = 401, message = "No API key found in request" }
   end
 
   -- retrieve our consumer linked to this API key
@@ -158,7 +157,7 @@ function KeyAuthHandler:access(conf)
 
   local ok, err = do_authentication(conf)
   if not ok then
-    if conf.anonymous ~= "" then
+    if conf.anonymous ~= "" and conf.anonymous ~= nil then
       -- get anonymous user
       local consumer, err = cache.get_or_set(cache.consumer_key(conf.anonymous),
                             nil, load_consumer, conf.anonymous, true)

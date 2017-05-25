@@ -34,6 +34,30 @@
 # Note: See http://nginx.org/en/docs/ngx_core_module.html#error_log for a list
 # of accepted values.
 
+#proxy_access_log = logs/access.log       # Path for proxy port request access
+                                          # logs. Set this value to `off` to
+                                          # disable logging proxy requests.
+                                          # If this value is a relative path, it
+                                          # will be placed under the `prefix`
+                                          # location.
+
+#proxy_error_log = logs/error.log         # Path for proxy port request error
+                                          # logs. Granularity of these logs is
+                                          # adjusted by the `log_level`
+                                          # directive.
+
+#admin_access_log = logs/admin_access.log # Path for Admin API request access
+                                          # logs. Set this value to `off` to
+                                          # disable logging Admin API requests.
+                                          # If this value is a relative path, it
+                                          # will be placed under the `prefix`
+                                          # location.
+
+#admin_error_log = logs/error.log         # Path for Admin API request error
+                                          # logs. Granularity of these logs is
+                                          # adjusted by the `log_level`
+                                          # directive.
+
 #custom_plugins =                # Comma-separated list of additional plugins
                                  # this node should load.
                                  # Use this property to load custom plugins
@@ -92,6 +116,18 @@
                                  # itself on `proxy_listen`, and all SSL
                                  # settings will be ignored.
 
+#ssl_cipher_suite = modern       # Defines the TLS ciphers served by Nginx.
+                                 # Accepted values are `modern`, `intermediate`,
+                                 # `old`, or `custom`.
+# Note: See https://wiki.mozilla.org/Security/Server_Side_TLS for detailed
+# descriptions of each cipher suite.
+
+#ssl_ciphers =                   # Defines a custom list of TLS ciphers to be
+                                 # served by Nginx. This list must conform to
+                                 # the pattern defined by `openssl ciphers`.
+                                 # This value is ignored if `ssl_cipher_suite`
+                                 # is not `custom`.
+
 #ssl_cert =                      # If `ssl` is enabled, the absolute path to
                                  # the SSL certificate for the
                                  # `proxy_listen_ssl` address.
@@ -99,6 +135,23 @@
 #ssl_cert_key =                  # If `ssl` is enabled, the absolute path to
                                  # the SSL key for the `proxy_listen_ssl`
                                  # address.
+
+#client_ssl = off                # Determines if Nginx should send client-side
+                                 # SSL certificates when proxying requests.
+
+#client_ssl_cert =               # If `client_ssl` is enabled, the absolute path
+                                 # to the client SSL certificate for the
+                                 # `proxy_ssl_certificate` directive. Note that
+                                 # this value is statically defined on the node,
+                                 # and currently cannot be configured on a
+                                 # per-API basis.
+
+#client_ssl_cert_key =           # If `client_ssl` is enabled, the absolute path
+                                 # to the client SSL key for the
+                                 # `proxy_ssl_certificate_key` address. Note
+                                 # this value is statically defined on the node,
+                                 # and currently cannot be configured on a
+                                 # per-API basis.
 
 #admin_ssl = on                  # Determines if Nginx should be listening for
                                  # HTTPS traffic on the `admin_listen_ssl`
