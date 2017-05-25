@@ -93,6 +93,11 @@ server {
     }
 > end
 
+> if client_ssl then
+    proxy_ssl_certificate ${{CLIENT_SSL_CERT}};
+    proxy_ssl_certificate_key ${{CLIENT_SSL_CERT_KEY}};
+> end
+
     location / {
         set $upstream_host nil;
         set $upstream_scheme nil;

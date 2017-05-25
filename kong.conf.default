@@ -119,6 +119,23 @@
                                  # the SSL key for the `proxy_listen_ssl`
                                  # address.
 
+#client_ssl = on                 # Determines if Nginx should send client-side
+                                 # SSL certificates when proxying requests.
+
+#client_ssl_cert =               # If `client_ssl` is enabled, the absolute path
+                                 # to the client SSL certificate for the
+                                 # `proxy_ssl_certificate` directive. Note that
+                                 # this value is statically defined on the node,
+                                 # and currently cannot be configured on a
+                                 # per-API basis.
+
+#client_ssl_cert_key =           # If `client_ssl` is enabled, the absolute path
+                                 # to the client SSL key for the
+                                 # `proxy_ssl_certificate_key` address. Note
+                                 # this value is statically defined on the node,
+                                 # and currently cannot be configured on a
+                                 # per-API basis.
+
 #admin_ssl = on                  # Determines if Nginx should be listening for
                                  # HTTPS traffic on the `admin_listen_ssl`
                                  # address. If disabled, Nginx will only bind
