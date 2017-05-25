@@ -60,6 +60,11 @@
 - SSL connections to Cassandra can now properly verify the
   certificate in use (when `cassandra_ssl_verify` is enabled).
   [#2531](https://github.com/Mashape/kong/pull/2531)
+- The DNS resolver no longer sends a A or AAAA DNS queries for SRV
+  records. This should improve performance by avoiding unecessary
+  lookups.
+  [#2563](https://github.com/Mashape/kong/pull/2563) &
+  [Mashape/lua-resty-dns-client #12](https://github.com/Mashape/lua-resty-dns-client/pull/12)
 - Plugins
   - All authentication plugins don't throw an error anymore when
     invalid credentials are given and the `anonymous` user isn't
