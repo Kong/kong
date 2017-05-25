@@ -93,6 +93,10 @@ local CONF_INFERENCES = {
   ssl = {typ = "boolean"},
   admin_ssl = {typ = "boolean"},
 
+  proxy_access_log = {typ = "string"},
+  proxy_error_log = {typ = "string"},
+  admin_access_log = {typ = "string"},
+  admin_error_log = {typ = "string"},
   log_level = {enum = {"debug", "info", "notice", "warn",
                        "error", "crit", "alert", "emerg"}},
   custom_plugins = {typ = "array"},
