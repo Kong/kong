@@ -60,6 +60,10 @@
 - SSL connections to Cassandra can now properly verify the
   certificate in use (when `cassandra_ssl_verify` is enabled).
   [#2531](https://github.com/Mashape/kong/pull/2531)
+- [DNS resolver dependency](https://github.com/Mashape/lua-resty-dns-client/tree/0.4.x)
+  updated to 0.4.2. This fixes a casing bug, a problem
+  with looking up ip addresses and adds more verbose logging.
+  
 - Plugins
   - All authentication plugins don't throw an error anymore when
     invalid credentials are given and the `anonymous` user isn't
