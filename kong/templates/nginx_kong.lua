@@ -5,6 +5,8 @@ charset UTF-8;
 ${{SYSLOG_REPORTS}}
 > end
 
+error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
+
 > if nginx_optimizations then
 >-- send_timeout 60s;          # default value
 >-- keepalive_timeout 75s;     # default value
