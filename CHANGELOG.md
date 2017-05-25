@@ -4,6 +4,14 @@
 
 ### Changed
 
+- We noticed that some distribution packages were not
+  building OpenResty against a JITable PCRE library. This
+  happened on Ubuntu and RHEL environments where OpenResty was
+  built against the system's PCRE installation.
+  We now compile OpenResty against a JITable PCRE source for
+  those platforms, which should result in significant performance
+  improvements in regex matching.
+  [Mashape/kong-distributions #9](https://github.com/Mashape/kong-distributions/pull/9)
 - TLS connections are now handled with a modern list of
   accepted ciphers, as per the Mozilla recommended TLS
   ciphers list.
