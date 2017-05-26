@@ -24,8 +24,8 @@ _M.dao_insert_values = {
     return uuid()
   end,
   timestamp = function()
-    -- return time in UNIT millisecond, and PRECISION millisecond 
-    return math.floor(timestamp.get_utc_ms()) 
+    -- return time in UNIT millisecond, and PRECISION millisecond
+    return math.floor(timestamp.get_utc_ms())
   end
 }
 
@@ -659,6 +659,40 @@ function _M:record_migration(id, name)
   })
   if not res then return nil, err end
   return true
+end
+
+function _M:reachable()
+  local q_keyspace_exists
+
+  assert(self.release_version, "release_version not set for Cassandra cluster")
+
+  if self.release_version == 3 then
+    q_keyspace_exists = [[
+      SELECT * FROM system_schema.keyspaces
+      WHERE keyspace_name = ?
+    ]]
+  else
+    q_keyspace_exists = [[
+      SELECT * FROM system.schema_keyspaces
+      WHERE keyspace_name = ?
+    ]]
+  end
+
+  local rows, err = self:query(q_keyspace_exists, {
+    self.cluster_options.keyspace
+  }, {
+    prepared = false
+  }, nil, true)
+
+  if not rows then
+    return nil, err
+  end
+
+  if #rows > 0  then
+    return true
+  end
+
+  return false
 end
 
 return _M

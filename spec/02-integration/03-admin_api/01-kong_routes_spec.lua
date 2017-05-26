@@ -97,9 +97,7 @@ describe("Admin API", function()
       assert.is_table(json.database)
       assert.is_table(json.server)
 
-      for k in pairs(helpers.dao.daos) do
-        assert.is_number(json.database[k])
-      end
+      assert.is_boolean(json.database.reachable)
 
       assert.is_number(json.server.connections_accepted)
       assert.is_number(json.server.connections_active)
