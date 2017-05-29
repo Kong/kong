@@ -174,6 +174,13 @@ server {
 > end
 
     location / {
+> if admin_basic_auth then
+        satisfy              any;
+        allow                ${{ADMIN_ACL}};
+        deny                 all;
+        auth_basic           "kong admin";
+        auth_basic_user_file ${{ADMIN_BASIC_AUTH_FILE}};
+> end
         default_type application/json;
         content_by_lua_block {
             ngx.header['Access-Control-Allow-Origin'] = '*'
