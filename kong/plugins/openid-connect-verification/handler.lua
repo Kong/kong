@@ -3,6 +3,7 @@ local upload        = require "resty.upload"
 local BasePlugin    = require "kong.plugins.base_plugin"
 local responses     = require "kong.tools.responses"
 local codec         = require "kong.openid-connect.codec"
+local set           = require "kong.openid-connect.set"
 local oic           = require "kong.openid-connect"
 
 
@@ -122,71 +123,6 @@ end
 function OICVerificationHandler:access(conf)
   OICVerificationHandler.super.access(self)
 
-  local name = conf.param_name  or "id_token"
-  local typ  = conf.param_type  or { "query", "header", "body" }
-  local ct   = var.content_type or ""
-  local idt
-
-  for _, t in ipairs(typ) do
-    if t == "header" then
-      local header = "http_" .. gsub(lower(name), "-", "_")
-      idt = var[header]
-
-    elseif t == "query" then
-      local args = get_uri_args()
-      if args then
-        idt = args[name]
-      end
-
-    elseif t == "body" then
-      if sub(ct, 1, 33) == "application/x-www-form-urlencoded" then
-        read_body()
-        local args = get_post_args()
-        if args then
-          idt = args[name]
-        end
-
-      elseif sub(ct, 1, 19) == "multipart/form-data" then
-        idt = multipart(name, conf.timeout)
-
-      elseif sub(ct, 1, 16) == "application/json" then
-        read_body()
-        local data = get_body_data()
-        if data == nil then
-          local file = get_body_file()
-          if file ~= nil then
-            data = read_file(file)
-          end
-        end
-        if data then
-          local json = cjson.decode(data)
-          if json then
-            idt = json[name]
-          end
-        end
-
-      else
-        read_body()
-        local data = get_body_data()
-        if data == nil then
-          local file = get_body_file()
-          if file ~= nil then
-            idt = read_file(file)
-          end
-        end
-      end
-    end
-
-    if idt then
-      break
-    end
-  end
-
-  if not idt then
-    log(NOTICE, "id token was not specified")
-    return responses.send_HTTP_UNAUTHORIZED()
-  end
-
   if not self.oic then
     log(NOTICE, "loading openid connect configuration")
 
@@ -212,48 +148,169 @@ function OICVerificationHandler:access(conf)
     self.oic = o
   end
 
-  local act = self.oic.token:bearer()
+  local tokens = conf.tokens or { "id_token" }
 
-  local tokens = {
+  local idt, idp
+
+  if set.has("id_token", tokens) then
+    local ct     = var.content_type  or ""
+    local name   = conf.param_name   or "id_token"
+    local typ    = conf.param_type   or { "query", "header", "body" }
+    local prefix = conf.param_prefix or "x_"
+
+    for _, t in ipairs(typ) do
+      if t == "header" then
+        local header = "http_" .. gsub(lower(prefix .. name), "-", "_")
+        idt = var[header]
+        if idt then
+          idp = t
+          break
+        end
+
+      elseif t == "query" then
+        local args = get_uri_args()
+        if args then
+          idt = args[name]
+          if idt then
+            idp = t
+            break
+          end
+        end
+
+      elseif t == "body" then
+        if sub(ct, 1, 33) == "application/x-www-form-urlencoded" then
+          read_body()
+          local args = get_post_args()
+          if args then
+            idt = args[name]
+            if idt then
+              idp = t
+              break
+            end
+          end
+
+        elseif sub(ct, 1, 19) == "multipart/form-data" then
+          idt = multipart(name, conf.timeout)
+          if idt then
+            idp = t
+            break
+          end
+
+        elseif sub(ct, 1, 16) == "application/json" then
+          read_body()
+          local data = get_body_data()
+          if data == nil then
+            local file = get_body_file()
+            if file ~= nil then
+              data = read_file(file)
+            end
+          end
+          if data then
+            local json = cjson.decode(data)
+            if json then
+              idt = json[name]
+              if idt then
+                idp = t
+                break
+              end
+            end
+          end
+
+        else
+          read_body()
+          local data = get_body_data()
+          if data == nil then
+            local file = get_body_file()
+            if file ~= nil then
+              idt = read_file(file)
+              if idt then
+                idp = t
+                break
+              end
+            end
+          end
+        end
+      end
+    end
+
+    if not idt then
+      log(NOTICE, "id token was not specified")
+      return responses.send_HTTP_UNAUTHORIZED()
+    end
+  end
+
+  local act, atp
+
+  if set.has("access_token", tokens) then
+    act, atp = self.oic.token:bearer()
+    if not act then
+      log(NOTICE, "access token was not specified")
+      return responses.send_HTTP_UNAUTHORIZED()
+    end
+  elseif idp then
+    act, atp = self.oic.token:bearer()
+  end
+
+  local toks = {
     id_token     = idt,
     access_token = act
   }
 
-  local tks, err = self.oic.token:verify(tokens)
+  local options = {
+    tokens = tokens
+  }
+
+  local tks, err = self.oic.token:verify(toks, options)
 
   if type(tks) ~= "table" then
     log(NOTICE, err)
     return responses.send_HTTP_UNAUTHORIZED()
   end
 
-  idt = tks.id_token
-  if type(idt) ~= "table" then
-    log(NOTICE, "id token was not verified")
-    return responses.send_HTTP_UNAUTHORIZED()
+  local kids = {}
+  local jwks = {}
+  local keys = 0
+  local jwks_header = conf.jwks_header
+
+  for _, t in ipairs(tokens) do
+    if type(tks[t]) ~= "table" then
+      log(NOTICE,  gsub(lower(t), "_", " ") .. " was not verified")
+      return responses.send_HTTP_UNAUTHORIZED()
+    elseif jwks_header then
+      local jwk = tks[t].jwk
+
+      if type(jwk) ~= "table" then
+        log(NOTICE, "invalid jwk was specified for " .. gsub(lower(t), "_", " "))
+        return responses.send_HTTP_UNAUTHORIZED()
+      end
+
+      if jwk then
+        if not kids[jwk.kid] then
+          keys = keys + 1
+          kids[jwk.kid] = true
+          jwks[keys] = jwk
+        end
+      end
+    end
   end
 
-  local jwk_header = conf.jwk_header
-
-  if jwk_header then
-    local jwk = idt.jwk
-    if type(idt) ~= "table" then
-      log(NOTICE, "invalid jwk was specified")
-      return responses.send_HTTP_UNAUTHORIZED()
+  if keys > 0 then
+    if keys == 1 then
+      jwks, err = cjson.encode(jwks[1])
+    else
+      jwks, err = cjson.encode(jwks)
     end
-
-    jwk, err = cjson.encode(jwk)
-    if not jwk then
+    if not jwks then
+      log(ERR, err)
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    end
+    jwks, err = base64url.encode(jwks)
+    if not jwks then
       log(ERR, err)
       return responses.send_HTTP_INTERNAL_SERVER_ERROR()
     end
 
-    jwk, err = base64url.encode(jwk)
-    if not jwk then
-      log(ERR, err)
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
-    end
-
-    set_header(jwk_header, jwk)
+    set_header(jwks_header, jwks)
   end
 end
 

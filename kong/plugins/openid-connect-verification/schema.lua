@@ -5,6 +5,12 @@ return {
       required   = true,
       type       = "url",
     },
+    tokens       = {
+      required   = false,
+      type       = "array",
+      enum       = { "id_token", "access_token" },
+      default    = { "id_token" },
+    },
     param_name   = {
       required   = false,
       type       = "string",
@@ -16,7 +22,12 @@ return {
       enum       = { "query", "header", "body" },
       default    = { "query", "header", "body" },
     },
-    jwk_header   = {
+    param_prefix = {
+      required   = false,
+      type       = "string",
+      default    = "x_"
+    },
+    jwks_header  = {
       required   = false,
       type       = "string",
     },
