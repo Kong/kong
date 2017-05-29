@@ -54,50 +54,45 @@ function OICAuthenticationHandler:access(conf)
     self.oic = o
   end
 
-  local s = session.open()
+  local s, present = session.open()
 
-  if s.present then
-    if s.data.state and s.data.nonce then
+  if present then
+    local data = s.data
+
+    if data.state and data.nonce then
       local err, tokens, encoded
       local args = {
-        state = s.state,
-        nonce = s.nonce,
+        state = data.state,
+        nonce = data.nonce,
       }
 
       args, err = self.oic.authorization:verify(args)
       if not args then
-        s:destroy()
         log(NOTICE, err)
+        s:destroy()
         return responses.send_HTTP_UNAUTHORIZED()
       end
 
       tokens, err = self.oic.token:request(args)
       if not tokens then
-        s:destroy()
         log(NOTICE, err)
+        s:destroy()
         return responses.send_HTTP_UNAUTHORIZED()
       end
 
       encoded, err = oic.token:verify(tokens, args)
       if not encoded then
-        s:destroy()
         log(NOTICE, err)
+        s:destroy()
         return responses.send_HTTP_UNAUTHORIZED()
       end
 
-      s:start()
+      s:regenerate()
       s.data = tokens
       s:save()
 
     else
-
-
       s:start()
-      s.data = {
-
-      }
-      s:save()
-
     end
 
   else
@@ -107,11 +102,11 @@ function OICAuthenticationHandler:access(conf)
       return responses.send_HTTP_INTERNAL_SERVER_ERROR()
     end
 
-    s:start()
     s.data = {
       state = args.state,
       nonce = args.nonce,
     }
+
     s:save()
 
     return redirect(args.url)
