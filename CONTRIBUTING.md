@@ -16,6 +16,7 @@ Consult the Table of Contents below, and jump to the concerned section.
 - [Where to report bugs?](#where-to-report-bugs)
 - [Contributing](#contributing)
   - [Improving the documentation](#improving-the-documentation)
+  - [Proposing a new plugin](#proposing-a-new-plugin)
   - [Submitting a patch](#submitting-a-patch)
     - [Git branches](#git-branches)
     - [Commit atomicity](#commit-atomicity)
@@ -32,7 +33,7 @@ Consult the Table of Contents below, and jump to the concerned section.
 
 If you are a Kong Enterprise customer, contact the Enterprise Support channels
 by opening an Enterprise support ticket on
-[https://support.mashape.com](https://support.mashape.com/)
+[https://support.mashape.com](https://support.mashape.com/).
 
 If you are experiencing a P1 issue, please call the 24/7 Enterprise Support
 phone line for immediate assistance, as published in the Customer Success
@@ -130,6 +131,39 @@ When contributing, be weary of a few things:
 
 [Back to TOC](#table-of-contents)
 
+
+### Proposing a new plugin
+
+We **do not** accept new plugins into the core repository. The plugins that are
+currently part of this repository are there because of historical reasons, but
+will be pushed into separate repositories in the foreseeable future.
+
+If you wish to write a new plugin for your own needs, you should start by
+reading the [Plugin Development
+Guide](https://getkong.org/docs/latest/plugin-development).
+
+If you already wrote a plugin, and are thinking about making it available to
+the community, we strongly encourage you to host it on a publicly available
+repository (like GitHub), and to distribute it via LuaRocks. A good resource on
+how to do so is the [Distribution
+Section](https://getkong.org/docs/latest/plugin-development/distribution/#distribute-your-plugin)
+of the Plugin Development Guide.
+
+To give visibility to your plugin, we advise that you post an announcement
+thread on the [mailing
+list](https://groups.google.com/forum/#!forum/konglayer). A good title for such
+an announcement would be something like:
+
+```
+[ANN] Community Plugin - [plugin name] [plugin version]
+```
+
+In the foreseeable future, we will also include a "Community Plugins" section
+to the online [Plugins Gallery](https://getkong.org/plugins/), and we will
+improve how plugins are distributed and installed on Kong nodes. Stay tuned!
+:wink:
+
+[Back to TOC](#table-of-contents)
 
 ### Submitting a patch
 
