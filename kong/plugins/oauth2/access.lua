@@ -219,7 +219,7 @@ end
 local function retrieve_client_credentials(parameters)
   local client_id, client_secret, from_authorization_header
   local authorization_header = ngx.req.get_headers()["authorization"]
-  if parameters[CLIENT_ID] then
+  if parameters[CLIENT_ID] and parameters[CLIENT_SECRET] then
     client_id = parameters[CLIENT_ID]
     client_secret = parameters[CLIENT_SECRET]
   elseif authorization_header then

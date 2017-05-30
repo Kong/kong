@@ -1083,6 +1083,24 @@ describe("Plugin: oauth2 (access)", function()
         local body = assert.res_status(200, res)
         assert.is_table(ngx.re.match(body, [[^\{"token_type":"bearer","access_token":"[\w]{32,32}","expires_in":5\}$]]))
       end)
+      it("returns success with authorization header and client_id body param", function()
+        local res = assert(proxy_ssl_client:send {
+          method = "POST",
+          path = "/oauth2/token",
+          body = {
+            client_id = "clientid123",
+            scope = "email",
+            grant_type = "client_credentials"
+          },
+          headers = {
+            ["Host"] = "oauth2_4.com",
+            ["Content-Type"] = "application/json",
+            Authorization = "Basic Y2xpZW50aWQxMjM6c2VjcmV0MTIz"
+          }
+        })
+        local body = assert.res_status(200, res)
+        assert.is_table(ngx.re.match(body, [[^\{"token_type":"bearer","access_token":"[\w]{32,32}","expires_in":5\}$]]))
+      end)
       it("returns an error with a wrong authorization header", function()
         local res = assert(proxy_ssl_client:send {
           method = "POST",
