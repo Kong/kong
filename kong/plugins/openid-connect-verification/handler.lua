@@ -97,7 +97,6 @@ local function multipart(name, timeout)
         p.n  = n + 1
       end
     elseif t == "part_end" then
-      local c, d
       if p then
         p = concat(p)
         break
@@ -239,16 +238,16 @@ function OICVerificationHandler:access(conf)
     end
   end
 
-  local act, atp
+  local act
 
   if set.has("access_token", tokens) then
-    act, atp = self.oic.token:bearer()
+    act = self.oic.token:bearer()
     if not act then
       log(NOTICE, "access token was not specified")
       return responses.send_HTTP_UNAUTHORIZED()
     end
   elseif idp then
-    act, atp = self.oic.token:bearer()
+    act = self.oic.token:bearer()
   end
 
   local toks = {
