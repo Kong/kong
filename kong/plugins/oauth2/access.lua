@@ -122,7 +122,8 @@ local function authorize(conf)
   local allowed_redirect_uris, client, redirect_uri, parsed_redirect_uri
   local is_implicit_grant
 
-  local is_https, err = check_https(conf.accept_http_if_already_terminated)
+  local is_https, err = check_https(singletons.ip.trusted(ngx.var.realip_remote_addr),
+                                    conf.accept_http_if_already_terminated)
   if not is_https then
     response_params = {[ERROR] = "access_denied", error_description = err or "You must use HTTPS"}
   else
@@ -256,7 +257,8 @@ local function issue_token(conf)
   local parameters = retrieve_parameters()
   local state = parameters[STATE]
 
-  local is_https, err = check_https(conf.accept_http_if_already_terminated)
+  local is_https, err = check_https(singletons.ip.trusted(ngx.var.realip_remote_addr),
+                                    conf.accept_http_if_already_terminated)
   if not is_https then
     response_params = {[ERROR] = "access_denied", error_description = err or "You must use HTTPS"}
   else

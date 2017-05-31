@@ -96,7 +96,11 @@ return {
         return responses.send_HTTP_NOT_FOUND("no API found with those values")
       end
 
-      if api.https_only and not utils.check_https(api.http_if_terminated) then
+      local realip_remote_addr = var.realip_remote_addr
+      local trusted_ip = singletons.ip.trusted(realip_remote_addr)
+      if api.https_only and not utils.check_https(trusted_ip,
+                                                  api.http_if_terminated)
+      then
         ngx.header["connection"] = "Upgrade"
         ngx.header["upgrade"]    = "TLS/1.2, HTTP/1.1"
 
@@ -154,7 +158,6 @@ return {
       -- $remote_addr before realip module overrode that (aka the client that
       -- connected us).
 
-      local realip_remote_addr   = var.realip_remote_addr
       local http_x_forwarded_for = var.http_x_forwarded_for
 
       if http_x_forwarded_for then
@@ -165,7 +168,7 @@ return {
         var.upstream_x_forwarded_for = var.remote_addr
       end
 
-      if singletons.ip.trusted(realip_remote_addr) then
+      if trusted_ip then
         var.upstream_x_forwarded_proto = var.http_x_forwarded_proto or
                                          var.scheme
 
