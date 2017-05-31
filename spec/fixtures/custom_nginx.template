@@ -275,6 +275,9 @@ http {
             content_by_lua_block {
                 local function say(res, status)
                   ngx.header["x-amzn-RequestId"] = "foo"
+                  if string.match(ngx.var.uri, "functionWithUnhandledError") then
+                    ngx.header["X-Amzn-Function-Error"] = "Unhandled"
+                  end
                   ngx.status = status
 
                   if type(res) == 'string' then
