@@ -72,7 +72,9 @@ return {
       end
 
       local res, err = db:query(concat(buf, ";"))
-      if not res then return nil, err end
+      if not res then
+        return nil, err
+      end
 
       return true
     end,
@@ -89,7 +91,9 @@ return {
       ]], api_id, identifier, periods[period]/1000, period)
 
       local res, err = db:query(q)
-      if not res or err then return nil, err end
+      if not res or err then
+        return nil, err
+      end
 
       return res[1]
     end,

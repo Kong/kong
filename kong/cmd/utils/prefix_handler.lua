@@ -96,7 +96,9 @@ end
 local function gen_default_ssl_cert(kong_config, admin)
   -- create SSL folder
   local ok, err = pl_dir.makepath(pl_path.join(kong_config.prefix, "ssl"))
-  if not ok then return nil, err end
+  if not ok then
+    return nil, err
+  end
 
   local ssl_cert, ssl_cert_key, ssl_cert_csr
   if admin then
@@ -139,7 +141,9 @@ end
 
 local function get_ulimit()
   local ok, _, stdout, stderr = pl_utils.executeex "ulimit -n"
-  if not ok then return nil, stderr end
+  if not ok then
+    return nil, stderr
+  end
   local sanitized_limit = pl_stringx.strip(stdout)
   if sanitized_limit:lower():match("unlimited") then
     return 65536
@@ -152,7 +156,9 @@ local function gather_system_infos(compile_env)
   local infos = {}
 
   local ulimit, err = get_ulimit()
-  if not ulimit then return nil, err end
+  if not ulimit then
+    return nil, err
+  end
 
   infos.worker_rlimit = ulimit
   infos.worker_connections = math.min(16384, ulimit)
@@ -174,7 +180,9 @@ local function compile_conf(kong_config, conf_template)
   end
   if kong_config.nginx_optimizations then
     local infos, err = gather_system_infos()
-    if not infos then return nil, err end
+    if not infos then
+      return nil, err
+    end
     compile_env = pl_tablex.merge(compile_env, infos,  true) -- union
   end
 
@@ -203,7 +211,9 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
   if not pl_path.exists(kong_config.prefix) then
     log("prefix directory %s not found, trying to create it", kong_config.prefix)
     local ok, err = pl_dir.makepath(kong_config.prefix)
-    if not ok then return nil, err end
+    if not ok then
+      return nil, err
+    end
   elseif not pl_path.isdir(kong_config.prefix) then
     return nil, kong_config.prefix.." is not a directory"
   end
@@ -211,21 +221,29 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
   -- create directories in prefix
   for _, dir in ipairs {"logs", "serf", "pids"} do
     local ok, err = pl_dir.makepath(pl_path.join(kong_config.prefix, dir))
-    if not ok then return nil, err end
+    if not ok then
+      return nil, err
+    end
   end
 
   -- create log files in case they don't already exist
   if not pl_path.exists(kong_config.nginx_err_logs) then
     local ok, err = pl_file.write(kong_config.nginx_err_logs, "")
-    if not ok then return nil, err end
+    if not ok then
+      return nil, err
+    end
   end
   if not pl_path.exists(kong_config.nginx_acc_logs) then
     local ok, err = pl_file.write(kong_config.nginx_acc_logs, "")
-    if not ok then return nil, err end
+    if not ok then
+      return nil, err
+    end
   end
   if not pl_path.exists(kong_config.nginx_admin_acc_logs) then
     local ok, err = pl_file.write(kong_config.nginx_admin_acc_logs, "")
-    if not ok then return nil, err end
+    if not ok then
+      return nil, err
+    end
   end
 
   log.verbose("saving serf identifier to %s", kong_config.serf_node_id)
@@ -235,7 +253,9 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
   end
 
   local resty_bin, err = find_resty_bin()
-  if not resty_bin then return nil, err end
+  if not resty_bin then
+    return nil, err
+  end
 
   log.verbose("saving serf shell script handler to %s", kong_config.serf_event)
   -- setting serf admin ip
@@ -247,20 +267,26 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
   local script = fmt(script_template, admin_ip, kong_config.admin_port, resty_bin)
   pl_file.write(kong_config.serf_event, script)
   local ok, _, _, stderr = pl_utils.executeex("chmod +x "..kong_config.serf_event)
-  if not ok then return nil, stderr end
+  if not ok then
+    return nil, stderr
+  end
 
   -- generate default SSL certs if needed
   if kong_config.ssl and not kong_config.ssl_cert and not kong_config.ssl_cert_key then
     log.verbose("SSL enabled, no custom certificate set: using default certificate")
     local ok, err = gen_default_ssl_cert(kong_config)
-    if not ok then return nil, err end
+    if not ok then
+      return nil, err
+    end
     kong_config.ssl_cert = kong_config.ssl_cert_default
     kong_config.ssl_cert_key = kong_config.ssl_cert_key_default
   end
   if kong_config.admin_ssl and not kong_config.admin_ssl_cert and not kong_config.admin_ssl_cert_key then
     log.verbose("Admin SSL enabled, no custom certificate set: using default certificate")
     local ok, err = gen_default_ssl_cert(kong_config, true)
-    if not ok then return nil, err end
+    if not ok then
+      return nil, err
+    end
     kong_config.admin_ssl_cert = kong_config.admin_ssl_cert_default
     kong_config.admin_ssl_cert_key = kong_config.admin_ssl_cert_key_default
   end
@@ -284,12 +310,16 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
 
   -- write NGINX conf
   local nginx_conf, err = compile_nginx_conf(kong_config, nginx_template)
-  if not nginx_conf then return nil, err end
+  if not nginx_conf then
+    return nil, err
+  end
   pl_file.write(kong_config.nginx_conf, nginx_conf)
 
   -- write Kong's NGINX conf
   local nginx_kong_conf, err = compile_kong_conf(kong_config)
-  if not nginx_kong_conf then return nil, err end
+  if not nginx_kong_conf then
+    return nil, err
+  end
   pl_file.write(kong_config.nginx_kong_conf, nginx_kong_conf)
 
   -- write kong.conf in prefix (for workers and CLI)

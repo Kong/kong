@@ -11,7 +11,9 @@ local function check_for_value(value)
 end
 
 local function check_method(value)
-  if not value then return true end
+  if not value then
+    return true
+  end
   local method = value:upper()
   local ngx_method = ngx["HTTP_"..method]
   if not ngx_method then

@@ -45,7 +45,9 @@ function _M.execute(conf)
   ngx.ctx.increments = increments
 
   local usage = ngx.ctx.usage -- Load current usage
-  if not usage then return end
+  if not usage then
+    return
+  end
 
   local stop
   for limit_name, v in pairs(usage) do

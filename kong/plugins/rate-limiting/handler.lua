@@ -30,7 +30,9 @@ local function get_identifier(conf)
     identifier = ngx.ctx.authenticated_credential and ngx.ctx.authenticated_credential.id
   end
 
-  if not identifier then identifier = ngx.var.remote_addr end
+  if not identifier then
+    identifier = ngx.var.remote_addr
+  end
 
   return identifier
 end
@@ -109,7 +111,9 @@ function RateLimitingHandler:access(conf)
   end
 
   local incr = function(premature, conf, limits, api_id, identifier, current_timestamp, value)
-    if premature then return end
+    if premature then
+      return
+    end
     policies[policy].increment(conf, limits, api_id, identifier, current_timestamp, value)
   end
 

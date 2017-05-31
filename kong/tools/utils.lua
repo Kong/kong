@@ -156,7 +156,9 @@ end
 
 local uuid_regex = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
 function _M.is_valid_uuid(str)
-  if type(str) ~= 'string' or #str ~= 36 then return false end
+  if type(str) ~= 'string' or #str ~= 36 then
+    return false
+  end
   return re_find(str, uuid_regex, 'ioj') ~= nil
 end
 
@@ -261,8 +263,12 @@ end
 -- @param t2 The second table
 -- @return The (new) merged table
 function _M.table_merge(t1, t2)
-  if not t1 then t1 = {} end
-  if not t2 then t2 = {} end
+  if not t1 then
+    t1 = {}
+  end
+  if not t2 then
+    t2 = {}
+  end
 
   local res = {}
   for k,v in pairs(t1) do res[k] = v end
@@ -290,11 +296,15 @@ end
 -- @param t The table to check
 -- @return Returns `true` if the table is an array, `false` otherwise
 function _M.is_array(t)
-  if type(t) ~= "table" then return false end
+  if type(t) ~= "table" then
+    return false
+  end
   local i = 0
   for _ in pairs(t) do
     i = i + 1
-    if t[i] == nil and t[tostring(i)] == nil then return false end
+    if t[i] == nil and t[tostring(i)] == nil then
+      return false
+    end
   end
   return true
 end
@@ -353,7 +363,9 @@ end
 -- @param v Value of the error
 -- @return The `errors` table with the new error inserted.
 function _M.add_error(errors, k, v)
-  if not errors then errors = {} end
+  if not errors then
+    errors = {}
+  end
 
   if errors and errors[k] then
     if getmetatable(errors[k]) ~= err_list_mt then
@@ -419,8 +431,12 @@ end
 -- hostname_type("some::thing")      -->  "ipv6", but invalid...
 _M.hostname_type = function(name)
   local remainder, colons = gsub(name, ":", "")
-  if colons > 1 then return "ipv6" end
-  if remainder:match("^[%d%.]+$") then return "ipv4" end
+  if colons > 1 then
+    return "ipv6"
+  end
+  if remainder:match("^[%d%.]+$") then
+    return "ipv4"
+  end
   return "name"
 end
 
@@ -458,7 +474,9 @@ end
 -- @return normalized expanded address (string) + port (number or nil), or alternatively nil+error
 _M.normalize_ipv6 = function(address)
   local check, port = address:match("^(%b[])(.-)$")
-  if port == "" then port = nil end
+  if port == "" then
+    port = nil
+  end
   if check then
     check = check:sub(2, -2)  -- drop the brackets
     -- we have ipv6 in brackets, now get port if we got something left
@@ -478,8 +496,12 @@ _M.normalize_ipv6 = function(address)
     port = nil
   end
   -- check ipv6 format and normalize
-  if check:sub(1,1) == ":" then check = "0"..check end
-  if check:sub(-1,-1) == ":" then check = check.."0" end
+  if check:sub(1,1) == ":" then
+    check = "0"..check
+  end
+  if check:sub(-1,-1) == ":" then
+    check = check.."0"
+  end
   if check:find("::") then
     -- expand double colon
     local _, count = gsub(check, ":", "")
@@ -544,7 +566,9 @@ local verify_types = {
 _M.normalize_ip = function(address)
   local atype = _M.hostname_type(address)
   local addr, port = verify_types[atype](address)
-  if not addr then return nil, port end 
+  if not addr then
+    return nil, port
+  end
   return {
     type = atype,
     host = addr,

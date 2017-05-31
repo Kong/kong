@@ -66,7 +66,9 @@ end
 -- @param `body` raw http body to be logged
 -- @param `name` the plugin name (used for logging purposes in case of errors etc.)
 local function log(premature, conf, body, name)
-  if premature then return end
+  if premature then
+    return
+  end
   name = "["..name.."] "
   
   local ok, err

@@ -66,7 +66,9 @@ return {
       local rows, err = policy_cluster[db.name].find(db, api_id, identifier,
                                                      current_timestamp, period,
                                                      name)
-      if err then return nil, err end
+      if err then
+        return nil, err
+      end
 
       return rows and rows.value or 0
     end

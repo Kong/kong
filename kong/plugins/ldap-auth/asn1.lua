@@ -127,7 +127,9 @@ _M.ASN1Decoder = {
     while (sPos < len) do
       local newSeq
       sPos, newSeq = self:decode(sStr, sPos)
-      if (not(newSeq) and self.stoponerror) then break end
+      if not newSeq and self.stoponerror then
+        break
+      end
       table.insert(seq, newSeq)
     end
     return pos, seq

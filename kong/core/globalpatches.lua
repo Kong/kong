@@ -38,7 +38,9 @@ return function(options)
       local old_cdef = ffi.cdef
       local exists = {}
       ffi.cdef = function(def)
-        if exists[def] then return end
+        if exists[def] then
+          return
+        end
         exists[def] = true
         return old_cdef(def)
       end

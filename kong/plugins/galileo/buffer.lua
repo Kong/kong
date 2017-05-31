@@ -102,7 +102,9 @@ _delayed_flush = function(premature, self)
 end
 
 _send = function(premature, self, to_send)
-  if premature then return end
+  if premature then
+    return
+  end
 
   -- retry trigger, in case the collector
   -- is unresponseive
@@ -254,7 +256,9 @@ function _M:add_entry(...)
 
   if err >= self.queue_size then -- err is the queue size in this case
      ok, err = self:flush()
-     if not ok then return nil, err end -- for our tests only
+     if not ok then
+       return nil, err
+     end -- for our tests only
    elseif not self.timer_flush_pending then -- start delayed timer if none
      _create_delayed_timer(self)
    end

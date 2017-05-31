@@ -101,14 +101,18 @@ local function ttl(self, tbl, table_name, schema, ttl)
   end
 
   local primary_key_type, err = retrieve_primary_key_type(self, schema, table_name)
-  if not primary_key_type then return nil, err end
+  if not primary_key_type then
+    return nil, err
+  end
 
   -- get current server time, in milliseconds, but with SECOND precision
   local query = [[
     SELECT extract(epoch from now() at time zone 'utc')::bigint*1000 as timestamp;
   ]]
   local res, err = self:query(query)
-  if not res then return nil, err end
+  if not res then
+    return nil, err
+  end
 
   -- the expiration is always based on the current time
   local expire_at = res[1].timestamp + (ttl * 1000)
@@ -119,7 +123,9 @@ local function ttl(self, tbl, table_name, schema, ttl)
       primary_key_type == "uuid" and "'"..tbl[schema.primary_key[1]].."'" or "NULL",
       schema.primary_key[1], table_name, expire_at)
   local res, err = self:query(query)
-  if not res then return nil, err end
+  if not res then
+    return nil, err
+  end
   return true
 end
 
@@ -128,20 +134,26 @@ local function clear_expired_ttl(self)
     SELECT * FROM ttls WHERE expire_at < CURRENT_TIMESTAMP(0) at time zone 'utc'
   ]]
   local res, err = self:query(query)
-  if not res then return nil, err end
+  if not res then
+    return nil, err
+  end
 
   for _, v in ipairs(res) do
     local delete_entity_query = fmt("DELETE FROM %s WHERE %s='%s'", v.table_name,
                                     v.primary_key_name, v.primary_key_value)
     local res, err = self:query(delete_entity_query)
-    if not res then return nil, err end
+    if not res then
+      return nil, err
+    end
 
     local delete_ttl_query = fmt([[
       DELETE FROM ttls
       WHERE primary_key_value='%s'
         AND table_name='%s']], v.primary_key_value, v.table_name)
     res, err = self:query(delete_ttl_query)
-    if not res then return nil, err end
+    if not res then
+      return nil, err
+    end
   end
 
   return true
@@ -151,7 +163,9 @@ end
 _M.clear_expired_ttl = clear_expired_ttl
 
 do_clean_ttl = function(premature, self)
-  if premature then return end
+  if premature then
+    return
+  end
 
   local ok, err = clear_expired_ttl(self)
   if not ok then
@@ -217,7 +231,9 @@ local function select_query(self, select_clause, schema, table, where, offset, l
   local join_ttl = schema.primary_key and #schema.primary_key == 1
   if join_ttl then
     local primary_key_type, err = retrieve_primary_key_type(self, schema, table)
-    if not primary_key_type then return nil, err end
+    if not primary_key_type then
+      return nil, err
+    end
 
     query = fmt([[
       SELECT %s FROM %s
@@ -277,7 +293,9 @@ function _M:query(query, schema)
   local conn_opts = self:clone_query_options()
   local pg = pgmoon.new(conn_opts)
   local ok, err = pg:connect()
-  if not ok then return nil, Errors.db(err) end
+  if not ok then
+    return nil, Errors.db(err)
+  end
 
   local res, err = pg:query(query)
   if get_phase() ~= "init" then
@@ -332,7 +350,9 @@ function _M:insert(table_name, schema, model, _, options)
   options = options or {}
 
   local values, err = serialize_timestamps(self, model, schema)
-  if err then return nil, err end
+  if err then
+    return nil, err
+  end
 
   local cols, args = {}, {}
   for col, value in pairs(values) do
@@ -353,7 +373,9 @@ function _M:insert(table_name, schema, model, _, options)
       -- Handle options
       if options.ttl then
         local ok, err = ttl(self, res, table_name, schema, options.ttl)
-        if not ok then return nil, err end
+        if not ok then
+          return nil, err
+        end
       end
       return res
     end
@@ -383,7 +405,9 @@ function _M:find_page(table_name, tbl, page, page_size, schema)
   page = page or 1
 
   local total_count, err = self:count(table_name, tbl, schema)
-  if not total_count then return nil, err end
+  if not total_count then
+    return nil, err
+  end
 
   local total_pages = ceil(total_count/page_size)
   local offset = page_size * (page - 1)
@@ -395,7 +419,9 @@ function _M:find_page(table_name, tbl, page, page_size, schema)
 
   local query = select_query(self, get_select_fields(schema), schema, table_name, where, offset, page_size)
   local rows, err = self:query(query, schema)
-  if not rows then return nil, err end
+  if not rows then
+    return nil, err
+  end
 
   local next_page = page + 1
   return rows, nil, (next_page <= total_pages and next_page or nil)
@@ -419,7 +445,9 @@ function _M:update(table_name, schema, _, filter_keys, values, nils, full, _, op
 
   local args = {}
   local values, err = serialize_timestamps(self, values, schema)
-  if not values then return nil, err end
+  if not values then
+    return nil, err
+  end
 
   for col, value in pairs(values) do
     args[#args+1] = fmt("%s = %s",
@@ -446,7 +474,9 @@ function _M:update(table_name, schema, _, filter_keys, values, nils, full, _, op
     if not res then return nil, err
     elseif options.ttl then
       local ok, err = ttl(self, res, table_name, schema, options.ttl)
-      if not ok then return nil, err end
+      if not ok then
+        return nil, err
+      end
     end
     return res
   end
@@ -469,26 +499,34 @@ end
 function _M:queries(queries)
   if utils.strip(queries) ~= "" then
     local res, err = self:query(queries)
-    if not res then return err end
+    if not res then
+      return err
+    end
   end
 end
 
 function _M:drop_table(table_name)
   local res, err = self:query("DROP TABLE "..table_name.." CASCADE")
-  if not res then return nil, err end
+  if not res then
+    return nil, err
+  end
   return true
 end
 
 function _M:truncate_table(table_name)
   local res, err = self:query("TRUNCATE "..table_name.." CASCADE")
-  if not res then return nil, err end
+  if not res then
+    return nil, err
+  end
   return true
 end
 
 function _M:current_migrations()
   -- check if schema_migrations table exists
   local rows, err = self:query "SELECT to_regclass('schema_migrations')"
-  if not rows then return nil, err end
+  if not rows then
+    return nil, err
+  end
 
   if #rows > 0 and rows[1].to_regclass == "schema_migrations" then
     return self:query "SELECT * FROM schema_migrations"
@@ -512,7 +550,9 @@ function _M:record_migration(id, name)
     ]],
     fmt("SELECT upsert_schema_migrations('%s', %s)", id, escape_literal(name))
   }
-  if not res then return nil, err end
+  if not res then
+    return nil, err
+  end
   return true
 end
 

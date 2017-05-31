@@ -143,12 +143,16 @@ return {
     name = "2016-12-15-set_global_credentials",
     up = function(_, _, dao)
       local rows, err = dao.plugins:find_all({name = "oauth2"})
-      if err then return err end
+      if err then
+        return err
+      end
       for _, row in ipairs(rows) do
         row.config.global_credentials = true
 
         local _, err = dao.plugins:update(row, row)
-        if err then return err end
+        if err then
+          return err
+        end
       end
     end
   }

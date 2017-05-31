@@ -153,9 +153,15 @@ end
 
 -- For test purposes
 local function encode_token(data, key, alg, header)
-  if type(data) ~= "table" then error("Argument #1 must be table", 2) end
-  if type(key) ~= "string" then error("Argument #2 must be string", 2) end
-  if header and type(header) ~= "table" then error("Argument #4 must be a table", 2) end
+  if type(data) ~= "table" then
+    error("Argument #1 must be table", 2)
+  end
+  if type(key) ~= "string" then
+    error("Argument #2 must be string", 2)
+  end
+  if header and type(header) ~= "table" then
+    error("Argument #4 must be a table", 2)
+  end
 
   alg = alg or "HS256"
 
@@ -191,7 +197,9 @@ _M.__index = _M
 -- @return JWT parser
 -- @return error if any
 function _M:new(token)
-  if type(token) ~= "string" then error("Token must be a string, got "..tostring(token), 2) end
+  if type(token) ~= "string" then
+    error("Token must be a string, got "..tostring(token), 2)
+  end
 
   local token, err = decode_token(token)
   if err then
@@ -239,7 +247,9 @@ local registered_claims = {
 -- @return A boolean indicating true if no errors zere found
 -- @return A list of errors
 function _M:verify_registered_claims(claims_to_verify)
-  if not claims_to_verify then claims_to_verify = {} end
+  if not claims_to_verify then
+    claims_to_verify = {}
+  end
   local errors = nil
   local claim, claim_rules
 

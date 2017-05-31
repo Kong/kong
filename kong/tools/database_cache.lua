@@ -88,7 +88,9 @@ function _M.set(key, value, exptime)
 
   -- Save into Shared Dictionary
   local _, err = _M.sh_set(key, json_encode(value), exptime)
-  if err then return nil, err end
+  if err then
+    return nil, err
+  end
 
   return true
 end
@@ -157,7 +159,9 @@ function _M.get_or_set(key, ttl, cb, ...)
 
   -- Try to get the value from the cache
   local value = _M.get(key)
-  if value ~= nil then return value end
+  if value ~= nil then
+    return value
+  end
 
   local lock, err = resty_lock:new("cache_locks", {
     exptime = 10,

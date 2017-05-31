@@ -42,7 +42,9 @@ function ACLHandler:access(conf)
   if err then
     responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
-  if not acls then acls = {} end
+  if not acls then
+    acls = {}
+  end
 
   local block
 
@@ -66,7 +68,9 @@ function ACLHandler:access(conf)
           break
         end
       end
-      if not contains then block = true end
+      if not contains then
+        block = true
+      end
     end
   end
 

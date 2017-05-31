@@ -51,7 +51,9 @@ local function canonicalise_path(path)
     end
   end
   local len = #segments
-  if len == 0 then return "/" end
+  if len == 0 then
+    return "/"
+  end
   -- If there was a slash on the end, keep it there.
   if path:sub(-1, -1) == "/" then
     len = len + 1
@@ -110,7 +112,9 @@ local function prepare_awsv4_request(tbl)
     end
   end
   local tls = tbl.tls
-  if tls == nil then tls = true end
+  if tls == nil then
+    tls = true
+  end
   local port = tbl.port or (tls and 443 or 80)
   local timestamp = tbl.timestamp or ngx.time()
   local req_date = os.date("!%Y%m%dT%H%M%SZ", timestamp)

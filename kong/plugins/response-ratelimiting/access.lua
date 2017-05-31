@@ -22,7 +22,9 @@ local function get_identifier(conf)
     identifier = ngx.ctx.authenticated_credential and ngx.ctx.authenticated_credential.id
   end
 
-  if not identifier then identifier = ngx.var.remote_addr end
+  if not identifier then
+    identifier = ngx.var.remote_addr
+  end
 
   return identifier
 end
@@ -39,8 +41,12 @@ local function get_usage(conf, api_id, identifier, current_timestamp, limits)
 
       local remaining = lv - current_usage
 
-      if not usage[k] then usage[k] = {} end
-      if not usage[k][lk] then usage[k][lk] = {} end
+      if not usage[k] then
+        usage[k] = {}
+      end
+      if not usage[k][lk] then
+        usage[k][lk] = {}
+      end
 
       usage[k][lk].limit = lv
       usage[k][lk].remaining = remaining
