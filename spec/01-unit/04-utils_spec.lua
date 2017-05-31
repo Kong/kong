@@ -73,19 +73,19 @@ describe("Utils", function()
 
       it("should validate an HTTPS scheme", function()
         ngx.var.scheme = "hTTps" -- mixed casing to ensure case insensitiveness
-        assert.is.truthy(utils.check_https())
+        assert.is.truthy(utils.check_https(true, false))
       end)
 
       it("should invalidate non-HTTPS schemes", function()
         ngx.var.scheme = "hTTp"
-        assert.is.falsy(utils.check_https())
+        assert.is.falsy(utils.check_https(true, false))
         ngx.var.scheme = "something completely different"
-        assert.is.falsy(utils.check_https())
+        assert.is.falsy(utils.check_https(true, false))
       end)
 
       it("should invalidate non-HTTPS schemes with proto header allowed", function()
         ngx.var.scheme = "hTTp"
-        assert.is.falsy(utils.check_https(true))
+        assert.is.falsy(utils.check_https(true, true))
       end)
     end)
 
@@ -98,29 +98,57 @@ describe("Utils", function()
       it("should validate any scheme with X-Forwarded_Proto as HTTPS", function()
         headers["x-forwarded-proto"] = "hTTPs"  -- check mixed casing for case insensitiveness
         ngx.var.scheme = "hTTps"
-        assert.is.truthy(utils.check_https(true))
+        assert.is.truthy(utils.check_https(true, true))
         ngx.var.scheme = "hTTp"
-        assert.is.truthy(utils.check_https(true))
+        assert.is.truthy(utils.check_https(true, true))
         ngx.var.scheme = "something completely different"
-        assert.is.truthy(utils.check_https(true))
+        assert.is.truthy(utils.check_https(true, true))
       end)
 
       it("should validate only https scheme with X-Forwarded_Proto as non-HTTPS", function()
         headers["x-forwarded-proto"] = "hTTP"
         ngx.var.scheme = "hTTps"
-        assert.is.truthy(utils.check_https(true))
+        assert.is.truthy(utils.check_https(true, true))
         ngx.var.scheme = "hTTp"
-        assert.is.falsy(utils.check_https(true))
+        assert.is.falsy(utils.check_https(true, true))
         ngx.var.scheme = "something completely different"
-        assert.is.falsy(utils.check_https(true))
+        assert.is.falsy(utils.check_https(true, true))
       end)
 
       it("should return an error with multiple X-Forwarded_Proto headers", function()
         headers["x-forwarded-proto"] = { "hTTP", "https" }
         ngx.var.scheme = "hTTps"
-        assert.is.truthy(utils.check_https(true))
+        assert.is.truthy(utils.check_https(true, true))
         ngx.var.scheme = "hTTp"
-        assert.are.same({ nil, "Only one X-Forwarded-Proto header allowed" }, { utils.check_https(true) })
+        assert.are.same({ nil, "Only one X-Forwarded-Proto header allowed" },
+                        { utils.check_https(true, true) })
+      end)
+
+      it("should not use X-Forwarded-Proto when the client is untrusted", function()
+        headers["x-forwarded-proto"] = "https"
+        ngx.var.scheme = "http"
+        assert.is_false(utils.check_https(false, false))
+        assert.is_false(utils.check_https(false, true))
+
+        headers["x-forwarded-proto"] = "https"
+        ngx.var.scheme = "https"
+        assert.is_true(utils.check_https(false, false))
+        assert.is_true(utils.check_https(false, true))
+      end)
+
+      it("should use X-Forwarded-Proto when the client is trusted", function()
+        headers["x-forwarded-proto"] = "https"
+        ngx.var.scheme = "http"
+
+        -- trusted client but do not allow terminated
+        assert.is_false(utils.check_https(true, false))
+
+        assert.is_true(utils.check_https(true, true))
+
+        headers["x-forwarded-proto"] = "https"
+        ngx.var.scheme = "https"
+        assert.is_true(utils.check_https(true, false))
+        assert.is_true(utils.check_https(true, true))
       end)
     end)
   end)
