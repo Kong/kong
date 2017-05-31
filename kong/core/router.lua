@@ -517,7 +517,8 @@ function _M.new(apis)
 
     do
       local api_t_from_cache = cache:get(cache_key)
-      if api_t_from_cache then
+      if api_t_from_cache and match_api(api_t_from_cache, method, uri, host)
+      then
         return api_t_from_cache
       end
     end

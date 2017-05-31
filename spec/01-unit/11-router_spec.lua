@@ -1025,8 +1025,18 @@ describe("Router", function()
         assert.equal("/", _ngx.var.request_uri)
 
         _ngx = mock_ngx("GET", "/this-api", {})
-        local api2 = router.exec(_ngx)
-        assert.same(use_case_apis[1], api2)
+        api = router.exec(_ngx)
+        assert.same(use_case_apis[1], api)
+        assert.equal("/", _ngx.var.request_uri)
+
+        _ngx = mock_ngx("GET", "/my-api", {})
+        api = router.exec(_ngx)
+        assert.same(use_case_apis[1], api)
+        assert.equal("/", _ngx.var.request_uri)
+
+        _ngx = mock_ngx("GET", "/this-api", {})
+        api = router.exec(_ngx)
+        assert.same(use_case_apis[1], api)
         assert.equal("/", _ngx.var.request_uri)
       end)
 
