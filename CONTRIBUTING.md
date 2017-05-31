@@ -35,9 +35,9 @@ If you are a Kong Enterprise customer, contact the Enterprise Support channels
 by opening an Enterprise support ticket on
 [https://support.mashape.com](https://support.mashape.com/).
 
-If you are experiencing a P1 issue, please call the 24/7 Enterprise Support
-phone line for immediate assistance, as published in the Customer Success
-Reference Guide.
+If you are experiencing a P1 issue, please call the [24/7 Enterprise Support
+phone line](https://support.mashape.com/hc/en-us/articles/115004921808-Telephone-Support)
+for immediate assistance, as published in the Customer Success Reference Guide.
 
 If you are interested in becoming a Kong Enterprise customer, please visit
 https://www.mashape.com/enterprise/ or contact us at
