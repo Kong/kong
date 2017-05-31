@@ -346,7 +346,9 @@ local function load(path, custom_conf)
   local s = pl_stringio.open(kong_default_conf)
   local defaults, err = pl_config.read(s)
   s:close()
-  if not defaults then return nil, "could not load default conf: "..err end
+  if not defaults then
+    return nil, "could not load default conf: "..err
+  end
 
   ---------------------
   -- Configuration file
@@ -372,7 +374,9 @@ local function load(path, custom_conf)
     log.verbose("no config file, skipping loading")
   else
     local f, err = pl_file.read(path)
-    if not f then return nil, err end
+    if not f then
+      return nil, err
+    end
 
     log.verbose("reading config file at %s", path)
     local s = pl_stringio.open(f)
@@ -381,7 +385,9 @@ local function load(path, custom_conf)
       list_delim = "_blank_" -- mandatory but we want to ignore it
     })
     s:close()
-    if not from_file_conf then return nil, err end
+    if not from_file_conf then
+      return nil, err
+    end
   end
 
   -----------------------
@@ -393,7 +399,9 @@ local function load(path, custom_conf)
 
   -- validation
   local ok, err, errors = check_and_infer(conf)
-  if not ok then return nil, err, errors end
+  if not ok then
+    return nil, err, errors
+  end
 
   conf = tablex.merge(conf, defaults) -- intersection (remove extraneous properties)
 

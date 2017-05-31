@@ -69,8 +69,12 @@ local function load_credential(given_username, given_password, conf)
   ngx_log(ngx_debug, "[ldap-auth] authenticating user against LDAP server: "..conf.ldap_host..":"..conf.ldap_port)
 
   local ok, err, status = ldap_authenticate(given_username, given_password, conf)
-  if status ~= nil then return nil, err, status end
-  if err ~= nil then ngx_log(ngx_error, err) end
+  if status ~= nil then
+    return nil, err, status
+  end
+  if err ~= nil then
+    ngx_log(ngx_error, err)
+  end
   if not ok then
     return nil
   end
@@ -85,7 +89,9 @@ local function authenticate(conf, given_credentials)
 
   local credential, err, status = cache.get_or_set(cache.ldap_credential_key(ngx.ctx.api.id, given_username), 
       conf.cache_ttl, load_credential, given_username, given_password, conf)
-  if status then responses.send(status, err) end
+  if status then
+    responses.send(status, err)
+  end
 
   return credential and credential.password == given_password, credential
 end

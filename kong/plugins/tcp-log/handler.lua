@@ -5,7 +5,9 @@ local cjson = require "cjson"
 local TcpLogHandler = BasePlugin:extend()
 
 local function log(premature, conf, message)
-  if premature then return end
+  if premature then
+    return
+  end
   
   local ok, err
   local host = conf.host

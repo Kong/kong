@@ -66,7 +66,9 @@ return {
       local db = singletons.dao.db
       local row, err = policy_cluster[db.name].find(db, api_id, identifier,
                                                      current_timestamp, name)
-      if err then return nil, err end
+      if err then
+        return nil, err
+      end
 
       return row and row.value or 0
     end

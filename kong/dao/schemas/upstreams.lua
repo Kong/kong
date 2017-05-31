@@ -72,7 +72,9 @@ return {
         end
 
         count = count + 1
-        if i > max then max = i end
+        if i > max then
+          max = i
+        end
       end
 
       if (count ~= config.slots) or (max ~= config.slots) then

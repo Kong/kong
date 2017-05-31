@@ -39,7 +39,9 @@ local function send_signal(kong_conf, signal)
   log.verbose("sending %s signal to nginx running at %s", signal, kong_conf.nginx_pid)
 
   local code = kill.kill(kong_conf.nginx_pid, "-s "..signal)
-  if code ~= 0 then return nil, "could not send signal" end
+  if code ~= 0 then
+    return nil, "could not send signal"
+  end
 
   return true
 end
@@ -69,7 +71,9 @@ end
 
 function _M.start(kong_conf)
   local nginx_bin, err = find_nginx_bin()
-  if not nginx_bin then return nil, err end
+  if not nginx_bin then
+    return nil, err
+  end
 
   if kill.is_running(kong_conf.nginx_pid) then
     return nil, "nginx is already running in "..kong_conf.prefix
@@ -80,7 +84,9 @@ function _M.start(kong_conf)
   log.debug("starting nginx: %s", cmd)
 
   local ok, _, _, stderr = pl_utils.executeex(cmd)
-  if not ok then return nil, stderr end
+  if not ok then
+    return nil, stderr
+  end
 
   log.debug("nginx started")
 
@@ -101,7 +107,9 @@ function _M.reload(kong_conf)
   end
 
   local nginx_bin, err = find_nginx_bin()
-  if not nginx_bin then return nil, err end
+  if not nginx_bin then
+    return nil, err
+  end
 
   local cmd = fmt("%s -p %s -c %s -s %s",
                   nginx_bin, kong_conf.prefix, "nginx.conf", "reload")
@@ -109,7 +117,9 @@ function _M.reload(kong_conf)
   log.debug("reloading nginx: %s", cmd)
 
   local ok, _, _, stderr = pl_utils.executeex(cmd)
-  if not ok then return nil, stderr end
+  if not ok then
+    return nil, stderr
+  end
 
   return true
 end

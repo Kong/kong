@@ -66,7 +66,9 @@ function Serf:leave()
   -- fail because the primary key is missing in the delete operation.
   if self.node_name then
     local _, err = self.dao.nodes:delete {name = self.node_name}
-    if err then return nil, tostring(err) end
+    if err then
+      return nil, tostring(err)
+    end
   end
 
   return true
@@ -74,7 +76,9 @@ end
 
 function Serf:force_leave(node_name)
   local res, err = self:invoke_signal("force-leave", node_name)
-  if not res then return nil, err end
+  if not res then
+    return nil, err
+  end
 
   return true
 end
@@ -82,17 +86,23 @@ end
 function Serf:keys(action, key)
   local res, err = self:invoke_signal(string.format("keys %s %s", action, key 
                                               and key or ""), nil, false, true)
-  if not res then return nil, err end
+  if not res then
+    return nil, err
+  end
 
   return res
 end
 
 function Serf:members()
   local res, err = self:invoke_signal("members", {["-format"] = "json"})
-  if not res then return nil, err end
+  if not res then
+    return nil, err
+  end
 
   local json, err = cjson.decode(res)
-  if not json then return nil, err end
+  if not json then
+    return nil, err
+  end
 
   return json.members
 end
@@ -109,7 +119,9 @@ function Serf:cleanup()
   -- Delete current node just in case it was there
   -- (due to an inconsistency caused by a crash)
   local _, err = self.dao.nodes:delete {name = self.node_name }
-  if err then return nil, tostring(err) end
+  if err then
+    return nil, tostring(err)
+  end
 
   return true
 end
@@ -144,7 +156,9 @@ end
 
 function Serf:add_node()
   local members, err = self:members()
-  if not members then return nil, err end
+  if not members then
+    return nil, err
+  end
 
   local addr
   for _, member in ipairs(members) do
@@ -162,14 +176,18 @@ function Serf:add_node()
     name = self.node_name,
     cluster_listening_address = pl_stringx.strip(addr)
   }, {ttl = self.config.cluster_ttl_on_failure})
-  if err then return nil, tostring(err) end
+  if err then
+    return nil, tostring(err)
+  end
 
   return true
 end
 
 function Serf:event(t_payload)
   local payload, err = cjson.encode(t_payload)
-  if not payload then return nil, err end
+  if not payload then
+    return nil, err
+  end
 
   if #payload > 512 then
     -- Serf can't send a payload greater than 512 bytes

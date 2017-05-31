@@ -89,7 +89,9 @@ local function decide_severity(conf, severity, message)
 end
 
 local function log(premature, conf, message)
-  if premature then return end
+  if premature then
+    return
+  end
   
   if message.response.status >= 500 then
     return decide_severity(conf, conf.server_errors_severity, message)

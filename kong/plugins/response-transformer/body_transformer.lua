@@ -43,7 +43,9 @@ local function iter(config_array)
     end
 
     local current_name, current_value = match(current_pair, "^([^:]+):*(.-)$")
-    if current_value == "" then current_value = nil end
+    if current_value == "" then
+      current_value = nil
+    end
  
     return i, current_name, current_value  
   end, config_array, 0
@@ -55,7 +57,9 @@ end
 
 function _M.transform_json_body(conf, buffered_data)
   local json_body = read_json_body(buffered_data)
-  if json_body == nil then return end
+  if json_body == nil then
+    return
+  end
   
   -- remove key:value to body
   for _, name in iter(conf.remove.json) do

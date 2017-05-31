@@ -73,7 +73,9 @@ local function load_plugins(kong_conf, dao, events)
   ngx.log(ngx.DEBUG, "Discovering used plugins")
 
   local rows, err_t = dao.plugins:find_all()
-  if not rows then return nil, tostring(err_t) end
+  if not rows then
+    return nil, tostring(err_t)
+  end
 
   for _, row in ipairs(rows) do in_db_plugins[row.name] = true end
 

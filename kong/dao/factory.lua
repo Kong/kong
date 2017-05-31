@@ -96,7 +96,9 @@ function _M.new(kong_config, events_handler)
 
   local DB = require("kong.dao.db."..self.db_type)
   local db, err = DB.new(kong_config)
-  if not db then return ret_error_string(self.db_type, nil, err) end
+  if not db then
+    return ret_error_string(self.db_type, nil, err)
+  end
 
   self.db = db
 
@@ -199,7 +201,9 @@ end
 
 function _M:current_migrations()
   local rows, err = self.db:current_migrations()
-  if err then return ret_error_string(self.db.name, nil, err) end
+  if err then
+    return ret_error_string(self.db.name, nil, err)
+  end
 
   local cur_migrations = {}
   for _, row in ipairs(rows) do
@@ -286,7 +290,9 @@ function _M:run_migrations(on_migrate, on_success)
   end
 
   local ok, err, migrations_ran = migrate(self, "core", migrations_modules, cur_migrations, on_migrate, on_success)
-  if not ok then return ret_error_string(self.db.name, nil, err) end
+  if not ok then
+    return ret_error_string(self.db.name, nil, err)
+  end
 
   for identifier in pairs(migrations_modules) do
     if identifier ~= "core" then

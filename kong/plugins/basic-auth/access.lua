@@ -75,7 +75,9 @@ local function load_credential_into_memory(username)
 end
 
 local function load_credential_from_db(username)
-  if not username then return end
+  if not username then
+    return
+  end
   
   local credential, err = cache.get_or_set(cache.basicauth_credential_key(username),
                           nil, load_credential_into_memory, username)

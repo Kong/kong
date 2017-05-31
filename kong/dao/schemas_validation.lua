@@ -51,8 +51,12 @@ local _M = {}
 -- This error is not returned in the second return value because it might be unrelated to schema validation,
 -- and hence have a different error type (DB error for example).
 function _M.validate_entity(tbl, schema, options)
-  if not options then options = {} end
-  if not options.old_t then options.old_t = {} end
+  if not options then
+    options = {}
+  end
+  if not options.old_t then
+    options.old_t = {}
+  end
 
   local errors
   local partial_update = options.update and not options.full_update
