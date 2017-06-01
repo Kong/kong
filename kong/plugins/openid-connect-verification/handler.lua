@@ -133,7 +133,8 @@ function OICVerificationHandler:access(conf)
       http_version = conf.http_version               or 1.1,
       ssl_verify   = conf.ssl_verify == nil and true or conf.ssl_verify,
       timeout      = conf.timeout                    or 10000,
-      audiences    = conf.audiences,
+      clients      = conf.clients,
+      audience     = conf.audience,
       max_age      = conf.max_age,
       domains      = conf.domains,
       claims       = claims

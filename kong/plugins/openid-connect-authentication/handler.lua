@@ -1,7 +1,7 @@
 local BasePlugin = require "kong.plugins.base_plugin"
 local responses  = require "kong.tools.responses"
-local session    = require "resty.session"
 local oic        = require "kong.openid-connect"
+local session    = require "resty.session"
 
 
 local redirect   = ngx.redirect
@@ -29,15 +29,13 @@ function OICAuthenticationHandler:access(conf)
   if not self.oic then
     log(NOTICE, "loading openid connect configuration")
 
-    local claims = conf.claims or { "iss", "sub", "aud", "azp", "exp", "iat" }
-
     local o, err = oic.new {
       client_id     = conf.client_id,
       client_secret = conf.client_secret,
       issuer        = conf.issuer,
       redirect_uri  = conf.redirect_uri,
-      scopes        = conf.scopes,
-      claims        = claims,
+      scope         = conf.scopes or { "openid" },
+      claims        = conf.claims or { "iss", "sub", "aud", "azp", "exp", "iat" },
       leeway        = conf.leeway                     or 0,
       http_version  = conf.http_version               or 1.1,
       ssl_verify    = conf.ssl_verify == nil and true or conf.ssl_verify,
@@ -80,19 +78,39 @@ function OICAuthenticationHandler:access(conf)
         return responses.send_HTTP_UNAUTHORIZED()
       end
 
-      encoded, err = oic.token:verify(tokens, args)
+      encoded, err = self.oic.token:verify(tokens, args)
       if not encoded then
         log(NOTICE, err)
         s:destroy()
         return responses.send_HTTP_UNAUTHORIZED()
       end
 
+      -- TODO: introspect tokens
+      -- TODO: call userinfo endpoint
+
       s:regenerate()
-      s.data = tokens
+      s.data = {
+        tokens = tokens,
+        nonce  = args.nonce
+      }
       s:save()
 
+      return responses.send_HTTP_OK(encoded.id_token.payload)
     else
-      s:start()
+      local encoded, err = self.oic.token:verify(data.tokens, { nonce = data.nonce })
+      if not encoded then
+        log(NOTICE, err)
+        s:destroy()
+        return responses.send_HTTP_UNAUTHORIZED()
+      else
+        s:start()
+        -- TODO: proxy the request
+        -- TODO: append access token as a bearer token
+        -- TODO: append jwk to header
+        -- TODO: handle refreshing the access token
+        -- TODO: require a new authentication when the previous is too far in the past
+        return responses.send_HTTP_OK { logged = "in" }
+      end
     end
 
   else
