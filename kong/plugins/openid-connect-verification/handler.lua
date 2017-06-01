@@ -247,7 +247,7 @@ function OICVerificationHandler:access(conf)
       log(NOTICE, "access token was not specified")
       return responses.send_HTTP_UNAUTHORIZED()
     end
-  elseif idp then
+  elseif idt then
     act = self.oic.token:bearer()
   end
 

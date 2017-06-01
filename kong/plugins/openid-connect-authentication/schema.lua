@@ -13,6 +13,12 @@ return {
       required    = true,
       type        = "url",
     },
+    tokens       = {
+      required   = false,
+      type       = "array",
+      enum       = { "id_token", "access_token" },
+      default    = { "id_token", "access_token" },
+    },
     redirect_uri  = {
       required    = true,
       type        = "url",

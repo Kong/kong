@@ -77,4 +77,5 @@ end
 
 OICProtectionHandler.PRIORITY = 1000
 
+
 return OICProtectionHandler

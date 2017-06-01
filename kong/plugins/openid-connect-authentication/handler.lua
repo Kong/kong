@@ -5,14 +5,50 @@ local session    = require "resty.session"
 
 
 local redirect   = ngx.redirect
+local var        = ngx.var
 local log        = ngx.log
+local tonumber   = tonumber
+local concat     = table.concat
+local find       = string.find
+local type       = type
+local sub        = string.sub
 
 
 local NOTICE     = ngx.NOTICE
 local ERR        = ngx.ERR
 
 
+local function request_url()
+  local scheme = var.scheme
+  local host   = var.host
+  local port   = tonumber(var.server_port)
+  local uri    = var.request_uri
+
+  do
+    local s = find(uri, "?", 2, true)
+    if s then
+      uri = sub(uri, 1, s - 1)
+    end
+  end
+
+  local url = { scheme, "://", host }
+
+  if port == 80 and scheme == "http" then
+    url[4] = uri
+  elseif port == 443 and scheme == "https" then
+    url[4] = uri
+  else
+    url[4] = ":"
+    url[5] = port
+    url[6] = uri
+  end
+
+  return concat(url)
+end
+
+
 local OICAuthenticationHandler = BasePlugin:extend()
+
 
 function OICAuthenticationHandler:new()
   OICAuthenticationHandler.super.new(self, "openid-connect-authentication")
@@ -33,7 +69,7 @@ function OICAuthenticationHandler:access(conf)
       client_id     = conf.client_id,
       client_secret = conf.client_secret,
       issuer        = conf.issuer,
-      redirect_uri  = conf.redirect_uri,
+      redirect_uri  = conf.redirect_uri or request_url(),
       scope         = conf.scopes or { "openid" },
       claims        = conf.claims or { "iss", "sub", "aud", "azp", "exp", "iat" },
       leeway        = conf.leeway                     or 0,
@@ -57,7 +93,7 @@ function OICAuthenticationHandler:access(conf)
   if present then
     local data = s.data
 
-    if data.state and data.nonce then
+    if data.state then
       local err, tokens, encoded
       local args = {
         state = data.state,
@@ -95,21 +131,22 @@ function OICAuthenticationHandler:access(conf)
       }
       s:save()
 
-      return responses.send_HTTP_OK(encoded.id_token.payload)
+      if type(encoded.id_token) == "table" then
+        return responses.send_HTTP_OK(encoded.id_token.payload or {})
+
+      else
+        return responses.send_HTTP_OK{}
+      end
     else
-      local encoded, err = self.oic.token:verify(data.tokens, { nonce = data.nonce })
+      local encoded, err = self.oic.token:verify(data.tokens, { nonce = data.nonce, tokens = conf.tokens })
       if not encoded then
         log(NOTICE, err)
         s:destroy()
         return responses.send_HTTP_UNAUTHORIZED()
+
       else
         s:start()
-        -- TODO: proxy the request
-        -- TODO: append access token as a bearer token
-        -- TODO: append jwk to header
-        -- TODO: handle refreshing the access token
-        -- TODO: require a new authentication when the previous is too far in the past
-        return responses.send_HTTP_OK { logged = "in" }
+        return responses.send_HTTP_OK(encoded.id_token.payload or {})
       end
     end
 
@@ -133,5 +170,6 @@ end
 
 
 OICAuthenticationHandler.PRIORITY = 1000
+
 
 return OICAuthenticationHandler
