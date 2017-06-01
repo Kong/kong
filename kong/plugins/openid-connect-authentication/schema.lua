@@ -20,7 +20,7 @@ return {
       default    = { "id_token", "access_token" },
     },
     redirect_uri  = {
-      required    = true,
+      required    = false,
       type        = "url",
     },
     scopes        = {

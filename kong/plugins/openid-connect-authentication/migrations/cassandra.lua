@@ -7,16 +7,16 @@ return {
         webfinger     text,
         configuration text,
         keys          text,
-        created_at    timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc'),
-        PRIMARY KEY (iss)
+        created_at    timestamp,
+        PRIMARY KEY (issuer)
       );
-      CREATE TABLE IF NOT EXISTS oic_issuers (
+      CREATE TABLE IF NOT EXISTS oic_revoked (
         hash          text,
-        created_at    timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc'),
+        created_at    timestamp,
         PRIMARY KEY (hash)
       );
     ]],
-    down =  [[
+    down = [[
       DROP TABLE oic_issuers;
       DROP TABLE oic_revoked;
     ]]
