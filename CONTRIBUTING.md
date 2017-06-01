@@ -586,7 +586,7 @@ local myString = "hello world"
 local my_string = "hello world"
 ```
 
-When assigning a variable, **do** give it an uppercase name:
+When assigning a constant variable, **do** give it an uppercase name:
 
 ```lua
 -- bad
