@@ -10,14 +10,15 @@ return {
     day = { type = "number" },
     month = { type = "number" },
     year = { type = "number" },
-    limit_by = { type = "string", enum = {"consumer", "credential", "ip"}, default = "consumer" },
+    limit_by = { type = "string", enum = {"consumer", "credential", "ip", "http_header"}, default = "consumer" },
     policy = { type = "string", enum = {"local", "cluster", REDIS}, default = "cluster" },
     fault_tolerant = { type = "boolean", default = true },
     redis_host = { type = "string" },
     redis_port = { type = "number", default = 6379 },
     redis_password = { type = "string" },
     redis_timeout = { type = "number", default = 2000 },
-    redis_database = { type = "number", default = 0 }
+    redis_database = { type = "number", default = 0 },
+    http_header = { type = "string" }
   },
   self_check = function(schema, plugin_t, dao, is_update)
     local ordered_periods = { "second", "minute", "hour", "day", "month", "year"}
