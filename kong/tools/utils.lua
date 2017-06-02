@@ -633,4 +633,33 @@ _M.validate_header_name = function(name)
               "', allowed characters are A-Z, a-z, 0-9, '_', and '-'"
 end
 
+_M.flat_table = function (table)
+  local cache = {}
+  local r = {}
+
+  local function fullname(prefix, name)
+    return (prefix and prefix .. '.' .. tostring(name)) or tostring(name)
+  end
+
+  local function flat(data, prefix)
+    if type(data) ~= "table" then
+      r[prefix] = data
+      return
+    end
+
+    -- check circular references
+    local str = tostring(data)
+    if cache[str] then
+      return
+    end
+    cache[str] = true
+
+    for k, v in pairs(data) do
+      flat(v, fullname(prefix, k))
+    end
+  end
+
+  flat(table, nil)
+  return r
+end
 return _M
