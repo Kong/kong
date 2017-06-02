@@ -255,7 +255,7 @@ local function execute(target)
 
   -- when tries == 0 it runs before the `balancer` context (in the `access` context),
   -- when tries >= 2 then it performs a retry in the `balancer` context
-  local dns_cache_only = target.tries ~= 0
+  local dns_cache_only = target.try_count ~= 0
   local balancer
 
   if dns_cache_only then

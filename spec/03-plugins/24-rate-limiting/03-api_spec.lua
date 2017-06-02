@@ -33,7 +33,8 @@ describe("Plugin: rate-limiting (API)", function()
         }
       })
       local body = assert.res_status(400, res)
-      assert.equal([[{"config":"You need to set at least one limit: second, minute, hour, day, month, year"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ config = "You need to set at least one limit: second, minute, hour, day, month, year" }, json)
     end)
 
     it("should save with proper config", function()

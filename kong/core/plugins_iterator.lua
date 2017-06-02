@@ -66,16 +66,19 @@ local function iter_plugins_for_req(loaded_plugins, access_or_cert_ctx)
   local function get_next()
     i = i + 1
     local plugin = loaded_plugins[i]
-    if plugin and ctx.api then
+    local api = ctx.api
+    if plugin then
       -- load the plugin configuration in early phases
       if access_or_cert_ctx then
 
         local plugin_configuration
 
         -- Search API and Consumer specific, or consumer specific
-        local consumer_id = (ctx.authenticated_credential or empty).consumer_id
+        local consumer_id = (ctx.authenticated_consumer or empty).id        
         if consumer_id and plugin.schema and not plugin.schema.no_consumer then
-          plugin_configuration = load_plugin_configuration(ctx.api.id, consumer_id, plugin.name)
+          if api then
+            plugin_configuration = load_plugin_configuration(api.id, consumer_id, plugin.name)
+          end
           if not plugin_configuration then
             plugin_configuration = load_plugin_configuration(nil, consumer_id, plugin.name)
           end
@@ -83,7 +86,9 @@ local function iter_plugins_for_req(loaded_plugins, access_or_cert_ctx)
 
         if not plugin_configuration then
           -- Search API specific, or global
-          plugin_configuration = load_plugin_configuration(ctx.api.id, nil, plugin.name)
+          if api then
+            plugin_configuration = load_plugin_configuration(api.id, nil, plugin.name)
+          end
           if not plugin_configuration then
             plugin_configuration = load_plugin_configuration(nil, nil, plugin.name)
           end

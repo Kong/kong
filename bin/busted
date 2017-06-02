@@ -1,5 +1,7 @@
 #!/usr/bin/env resty
 
+require "luarocks.loader"
+
 require("kong.core.globalpatches")({
   cli = true,
   rbusted = true

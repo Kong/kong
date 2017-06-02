@@ -5,16 +5,45 @@ local app_helpers = require "lapis.application"
 
 local _M = {}
 
-function _M.find_api_by_name_or_id(self, dao_factory, helpers)
-  local filter_keys = {
-    [utils.is_valid_uuid(self.params.name_or_id) and "id" or "name"] = self.params.name_or_id
-  }
-  self.params.name_or_id = nil
+--- Will look up a value in the dao.
+-- Either by `id` field or by the field named by 'alternate_field'. If the value
+-- is NOT a uuid, then by the 'alternate_field'. If it is a uuid then it will
+-- first try the `id` field, if that doesn't yield anything it will try again
+-- with the 'alternate_field'.
+-- @param dao the specific dao to search
+-- @param filter filter table to use, tries will add to this table
+-- @param value the value to look up
+-- @param alternate_field the field to use if it is not a uuid, or not found in `id`
+function _M.find_by_id_or_field(dao, filter, value, alternate_field)
+  filter = filter or {}
+  local is_uuid = utils.is_valid_uuid(value)
+  filter[is_uuid and "id" or alternate_field] = value
 
-  local rows, err = dao_factory.apis:find_all(filter_keys)
+  local rows, err = dao:find_all(filter)
+  if err then
+    return nil, err
+  end
+
+  if is_uuid and not next(rows) then
+    -- it's a uuid, but yielded no results, so retry with the alternate field
+    filter.id = nil
+    filter[alternate_field] = value
+    rows, err = dao:find_all(filter)
+    if err then
+      return nil, err
+    end
+  end
+  return rows
+end
+
+function _M.find_api_by_name_or_id(self, dao_factory, helpers)
+  local rows, err = _M.find_by_id_or_field(dao_factory.apis, {},
+                                           self.params.api_name_or_id, "name")
+
   if err then
     return helpers.yield_error(err)
   end
+  self.params.api_name_or_id = nil
 
   -- We know name and id are unique for APIs, hence if we have a row, it must be the only one
   self.api = rows[1]
@@ -23,16 +52,34 @@ function _M.find_api_by_name_or_id(self, dao_factory, helpers)
   end
 end
 
-function _M.find_consumer_by_username_or_id(self, dao_factory, helpers)
-  local filter_keys = {
-    [utils.is_valid_uuid(self.params.username_or_id) and "id" or "username"] = self.params.username_or_id
-  }
-  self.params.username_or_id = nil
+-- this function will lookup a plugin by name or id, but REQUIRES
+-- also the api to be specified by name or id
+function _M.find_plugin_by_name_or_id(self, dao_factory, helpers)
+  _M.find_api_by_name_or_id(self, dao_factory, helpers)
 
-  local rows, err = dao_factory.consumers:find_all(filter_keys)
+  local rows, err = _M.find_by_id_or_field(dao_factory.plugins, { api_id = self.api.id },
+                                           self.params.plugin_name_or_id, "name")
+
   if err then
     return helpers.yield_error(err)
   end
+  self.params.plugin_name_or_id = nil
+
+  -- We know combi of api+plugin is unique for plugins, hence if we have a row, it must be the only one
+  self.plugin = rows[1]
+  if not self.plugin then
+    return helpers.responses.send_HTTP_NOT_FOUND()
+  end
+end
+
+function _M.find_consumer_by_username_or_id(self, dao_factory, helpers)
+  local rows, err = _M.find_by_id_or_field(dao_factory.consumers, {},
+                                           self.params.username_or_id, "username")
+
+  if err then
+    return helpers.yield_error(err)
+  end
+  self.params.username_or_id = nil
 
   -- We know username and id are unique, so if we have a row, it must be the only one
   self.consumer = rows[1]
@@ -42,15 +89,13 @@ function _M.find_consumer_by_username_or_id(self, dao_factory, helpers)
 end
 
 function _M.find_upstream_by_name_or_id(self, dao_factory, helpers)
-  local filter_keys = {
-    [utils.is_valid_uuid(self.params.name_or_id) and "id" or "name"] = self.params.name_or_id
-  }
-  self.params.name_or_id = nil
+  local rows, err = _M.find_by_id_or_field(dao_factory.upstreams, {},
+                                           self.params.upstream_name_or_id, "name")
 
-  local rows, err = dao_factory.upstreams:find_all(filter_keys)
   if err then
     return helpers.yield_error(err)
   end
+  self.params.upstream_name_or_id = nil
 
   -- We know name and id are unique, so if we have a row, it must be the only one
   self.upstream = rows[1]
@@ -62,16 +107,13 @@ end
 -- this function will return the exact target if specified by `id`, or just
 -- 'any target entry' if specified by target (= 'hostname:port')
 function _M.find_target_by_target_or_id(self, dao_factory, helpers)
-  local filter_keys = {
-    upstream_id = self.upstream.id,
-    [utils.is_valid_uuid(self.params.target_or_id) and "id" or "target"] = self.params.target_or_id
-  }
-  self.params.target_or_id = nil
+  local rows, err = _M.find_by_id_or_field(dao_factory.targets, {},
+                                           self.params.target_or_id, "target")
 
-  local rows, err = dao_factory.targets:find_all(filter_keys)
   if err then
     return helpers.yield_error(err)
   end
+  self.params.target_or_id = nil
 
   -- if looked up by `target` property we can have multiple targets here, but
   -- anyone will do as they all have the same 'target' field, so just pick

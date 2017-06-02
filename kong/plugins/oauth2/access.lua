@@ -1,8 +1,6 @@
 local url = require "socket.url"
-local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
 local cache = require "kong.tools.database_cache"
-local Multipart = require "multipart"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local timestamp = require "kong.tools.timestamp"
@@ -94,19 +92,9 @@ end
 
 local function retrieve_parameters()
   ngx.req.read_body()
-  -- OAuth2 parameters could be in both the querystring or body
-  local body_parameters, err
-  local content_type = req_get_headers()[CONTENT_TYPE]
-  if content_type and string_find(content_type:lower(), "multipart/form-data", nil, true) then
-    body_parameters = Multipart(ngx.req.get_body_data(), content_type):get_all()
-  elseif content_type and string_find(content_type:lower(), "application/json", nil, true) then
-    body_parameters, err = cjson.decode(ngx.req.get_body_data())
-    if err then body_parameters = {} end
-  else
-    body_parameters = public_utils.get_post_args()
-  end
 
-  return utils.table_merge(ngx.req.get_uri_args(), body_parameters)
+  -- OAuth2 parameters could be in both the querystring or body
+  return utils.table_merge(ngx.req.get_uri_args(), public_utils.get_body_args())
 end
 
 local function retrieve_scopes(parameters, conf)
@@ -357,8 +345,13 @@ local function issue_token(conf)
         if not token then
           response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REFRESH_TOKEN}
         else
-          response_params = generate_token(conf, ngx.ctx.api, client, token.authenticated_userid, token.scope, state)
-          singletons.dao.oauth2_tokens:delete({id=token.id}) -- Delete old token
+          -- Check that the token belongs to the client application
+          if token.credential_id ~= client.id then
+            response_params = {[ERROR] = "invalid_client", error_description = "Invalid client authentication"}
+          else
+            response_params = generate_token(conf, ngx.ctx.api, client, token.authenticated_userid, token.scope, state)
+            singletons.dao.oauth2_tokens:delete({id=token.id}) -- Delete old token
+          end
         end
       end
     end
@@ -435,7 +428,7 @@ local function parse_access_token(conf)
 
       if ngx.req.get_method() ~= "GET" and is_form_post then -- Remove from body
         ngx.req.read_body()
-        parameters = public_utils.get_post_args()
+        parameters = public_utils.get_body_args()
         parameters[ACCESS_TOKEN] = nil
         local encoded_args = ngx.encode_args(parameters)
         ngx.req.set_header(CONTENT_LENGTH, #encoded_args)
@@ -525,8 +518,17 @@ local function do_authentication(conf)
   return true
 end
 
+
 function _M.execute(conf)
+
+  if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
+    -- we're already authenticated, and we're configured for using anonymous, 
+    -- hence we're in a logical OR between auth methods and we're already done.
+    return
+  end
+
   if ngx.req.get_method() == "POST" then
+
     local from, _, err = ngx.re.find(ngx.var.uri, [[\/oauth2\/token]], "oj")
     if err then
       ngx.log(ngx.ERR, "could not search for token path segment: ", err)
@@ -551,7 +553,7 @@ function _M.execute(conf)
 
   local ok, err = do_authentication(conf)
   if not ok then
-    if conf.anonymous ~= "" then
+    if conf.anonymous ~= "" and conf.anonymous ~= nil then
       -- get anonymous user
       local consumer, err = cache.get_or_set(cache.consumer_key(conf.anonymous),
                        nil, load_consumer_into_memory, conf.anonymous, true)
@@ -559,10 +561,12 @@ function _M.execute(conf)
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end
       set_consumer(consumer, nil, nil)
+
     else
       return responses.send(err.status, err.message, err.headers)
     end
   end
 end
+
 
 return _M

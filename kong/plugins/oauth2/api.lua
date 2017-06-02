@@ -1,5 +1,4 @@
 local crud = require "kong.api.crud_helpers"
-local utils = require "kong.tools.utils"
 
 return {
   ["/oauth2_tokens/"] = {
@@ -18,18 +17,19 @@ return {
 
   ["/oauth2_tokens/:token_or_id"] = {
     before = function(self, dao_factory, helpers)
-      local filter_keys = {
-        [utils.is_valid_uuid(self.params.token_or_id) and "id" or "access_token"] = self.params.token_or_id,
-        consumer_id = self.params.consumer_id,
-      }
-      self.params.token_or_id = nil
+      local credentials, err = crud.find_by_id_or_field(
+        dao_factory.oauth2_tokens,
+        { consumer_id = self.params.consumer_id },
+        self.params.token_or_id,
+        "access_token"
+      )
 
-      local credentials, err = dao_factory.oauth2_tokens:find_all(filter_keys)
       if err then
         return helpers.yield_error(err)
       elseif next(credentials) == nil then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
+      self.params.token_or_id = nil
 
       self.oauth2_token = credentials[1]
     end,
@@ -77,18 +77,19 @@ return {
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
       self.params.consumer_id = self.consumer.id
 
-      local filter_keys = {
-        [utils.is_valid_uuid(self.params.clientid_or_id) and "id" or "client_id"] = self.params.clientid_or_id,
-        consumer_id = self.params.consumer_id,
-      }
-      self.params.clientid_or_id = nil
+      local credentials, err = crud.find_by_id_or_field(
+        dao_factory.oauth2_credentials,
+        { consumer_id = self.params.consumer_id },
+        self.params.clientid_or_id,
+        "client_id"
+      )
 
-      local credentials, err = dao_factory.oauth2_credentials:find_all(filter_keys)
       if err then
         return helpers.yield_error(err)
       elseif next(credentials) == nil then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
+      self.params.clientid_or_id = nil
 
       self.oauth2_credential = credentials[1]
     end,

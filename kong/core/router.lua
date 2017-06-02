@@ -60,7 +60,6 @@ end
 
 local match_api
 local reduce
-local empty_t = {}
 
 
 local function marshall_api(api)
@@ -435,29 +434,46 @@ function _M.new(apis)
   end
 
 
+  local function compare_uris_length(a, b, category_bit)
+    if not band(category_bit, MATCH_RULES.URI) then
+      return
+    end
+
+    local max_uri_a = 0
+    local max_uri_b = 0
+
+    for _, prefix in ipairs(a.uris_prefixes_regexes) do
+      if #prefix.regex > max_uri_a then
+        max_uri_a = #prefix.regex
+      end
+    end
+
+    for _, prefix in ipairs(b.uris_prefixes_regexes) do
+      if #prefix.regex > max_uri_b then
+        max_uri_b = #prefix.regex
+      end
+    end
+
+    return max_uri_a > max_uri_b
+  end
+
+
   for category_bit, category in pairs(categories) do
     table.sort(category.apis, function(a, b)
-      if not band(category_bit, MATCH_RULES.URI) then
-        return
-      end
-
-      local max_uri_a = 0
-      local max_uri_b = 0
-
-      for _, prefix in ipairs(a.uris_prefixes_regexes) do
-        if #prefix.regex > max_uri_a then
-          max_uri_a = #prefix.regex
-        end
-      end
-
-      for _, prefix in ipairs(b.uris_prefixes_regexes) do
-        if #prefix.regex > max_uri_b then
-          max_uri_b = #prefix.regex
-        end
-      end
-
-      return max_uri_a > max_uri_b
+      return compare_uris_length(a, b, category_bit)
     end)
+
+    for _, apis_by_method in pairs(category.apis_by_methods) do
+      table.sort(apis_by_method, function(a, b)
+        return compare_uris_length(a, b, category_bit)
+      end)
+    end
+
+    for _, apis_by_host in pairs(category.apis_by_plain_hosts) do
+      table.sort(apis_by_host, function(a, b)
+        return compare_uris_length(a, b, category_bit)
+      end)
+    end
   end
 
 
@@ -615,16 +631,22 @@ function _M.new(apis)
 
 
   function self.exec(ngx)
-    local method      = ngx.req.get_method()
-    local uri         = ngx.var.uri
-    local uri_root    = uri == "/"
-    local new_uri     = uri
-    local host_header
-    local req_host
+    local method = ngx.req.get_method()
+    local uri    = ngx.var.request_uri
+
+
+    do
+      local s = find(uri, "?", 2, true)
+      if s then
+        uri = sub(uri, 1, s - 1)
+      end
+    end
 
 
     --print("grab host header: ", grab_host)
 
+
+    local req_host
 
     if grab_host then
       req_host = ngx.var.http_host
@@ -636,10 +658,15 @@ function _M.new(apis)
       return nil
     end
 
+    local new_uri
+    local uri_root = uri == "/"
 
-    if not uri_root and api_t.strip_uri_regex then
-      local err
-      new_uri, err = re_sub(uri, api_t.strip_uri_regex, "/$1", "ajo")
+    if uri_root or not api_t.strip_uri_regex then
+      new_uri = uri
+
+    else
+      local _, err
+      new_uri, _, err = re_sub(uri, api_t.strip_uri_regex, "/$1", "ajo")
       if not new_uri then
         log(ERR, "could not strip URI: ", err)
         return
@@ -677,6 +704,8 @@ function _M.new(apis)
       ngx.req.set_uri(new_uri)
     end
 
+
+    local host_header
 
     if api_t.preserve_host then
       host_header = req_host or ngx.var.http_host

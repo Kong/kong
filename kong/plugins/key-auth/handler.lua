@@ -2,6 +2,7 @@ local cache = require "kong.tools.database_cache"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local singletons = require "kong.singletons"
+local public_tools = require "kong.tools.public"
 local BasePlugin = require "kong.plugins.base_plugin"
 
 local ngx_set_header = ngx.req.set_header
@@ -9,6 +10,9 @@ local ngx_get_headers = ngx.req.get_headers
 local set_uri_args = ngx.req.set_uri_args
 local get_uri_args = ngx.req.get_uri_args
 local clear_header = ngx.req.clear_header
+local ngx_req_read_body = ngx.req.read_body
+local ngx_req_set_body_data = ngx.req.set_body_data
+local ngx_encode_args = ngx.encode_args
 local type = type
 
 local _realm = 'Key realm="'.._KONG._NAME..'"'
@@ -66,6 +70,13 @@ local function do_authentication(conf)
   local key
   local headers = ngx_get_headers()
   local uri_args = get_uri_args()
+  local body_data
+
+  -- read in the body if we want to examine POST args
+  if conf.key_in_body then
+    ngx_req_read_body()
+    body_data = public_tools.get_body_args()
+  end
 
   -- search in headers & querystring
   for i = 1, #conf.key_names do
@@ -76,12 +87,22 @@ local function do_authentication(conf)
       v = uri_args[name]
     end
 
+    -- search the body, if we asked to
+    if not v and conf.key_in_body then
+      v = body_data[name]
+    end
+
     if type(v) == "string" then
       key = v
       if conf.hide_credentials then
         uri_args[name] = nil
         set_uri_args(uri_args)
         clear_header(name)
+
+        if conf.key_in_body then
+          body_data[name] = nil
+          ngx_req_set_body_data(ngx_encode_args(body_data))
+        end
       end
       break
     elseif type(v) == "table" then
@@ -93,8 +114,7 @@ local function do_authentication(conf)
   -- this request is missing an API key, HTTP 401
   if not key then
     ngx.header["WWW-Authenticate"] = _realm
-    return false, {status = 401, message = "No API key found in headers"
-                                          .." or querystring"}
+    return false, { status = 401, message = "No API key found in request" }
   end
 
   -- retrieve our consumer linked to this API key
@@ -125,12 +145,19 @@ local function do_authentication(conf)
   return true
 end
 
+
 function KeyAuthHandler:access(conf)
   KeyAuthHandler.super.access(self)
 
+  if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
+    -- we're already authenticated, and we're configured for using anonymous, 
+    -- hence we're in a logical OR between auth methods and we're already done.
+    return
+  end
+
   local ok, err = do_authentication(conf)
   if not ok then
-    if conf.anonymous ~= "" then
+    if conf.anonymous ~= "" and conf.anonymous ~= nil then
       -- get anonymous user
       local consumer, err = cache.get_or_set(cache.consumer_key(conf.anonymous),
                             nil, load_consumer, conf.anonymous, true)
@@ -143,5 +170,6 @@ function KeyAuthHandler:access(conf)
     end
   end
 end
+
 
 return KeyAuthHandler

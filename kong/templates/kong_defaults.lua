@@ -1,6 +1,10 @@
 return [[
 prefix = /usr/local/kong/
 log_level = notice
+proxy_access_log = logs/access.log
+proxy_error_log = logs/error.log
+admin_access_log = logs/admin_access.log
+admin_error_log = logs/error.log
 custom_plugins = NONE
 anonymous_reports = on
 
@@ -16,6 +20,11 @@ mem_cache_size = 128m
 ssl = on
 ssl_cert = NONE
 ssl_cert_key = NONE
+client_ssl = off
+client_ssl_cert = NONE
+client_ssl_cert_key = NONE
+ssl_cipher_suite = modern
+ssl_ciphers = ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256
 admin_ssl = on
 admin_ssl_cert = NONE
 admin_ssl_cert_key = NONE

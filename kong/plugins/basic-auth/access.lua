@@ -147,10 +147,18 @@ local function do_authentication(conf)
   return true
 end
 
+
 function _M.execute(conf)
+
+  if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
+    -- we're already authenticated, and we're configured for using anonymous, 
+    -- hence we're in a logical OR between auth methods and we're already done.
+    return
+  end
+
   local ok, err = do_authentication(conf)
   if not ok then
-    if conf.anonymous ~= "" then
+    if conf.anonymous ~= "" and conf.anonymous ~= nil then
       -- get anonymous user
       local consumer, err = cache.get_or_set(cache.consumer_key(conf.anonymous),
                        nil, load_consumer_into_memory, conf.anonymous, true)
@@ -163,5 +171,6 @@ function _M.execute(conf)
     end
   end
 end
+
 
 return _M

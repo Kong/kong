@@ -25,6 +25,9 @@ describe("Plugin: oauth (API)", function()
       consumer = assert(helpers.dao.consumers:insert {
         username = "bob"
       })
+      assert(helpers.dao.consumers:insert {
+        username = "sally"
+      })
     end)
     after_each(function()
       helpers.dao:truncate_table("oauth2_credentials")
@@ -65,6 +68,34 @@ describe("Plugin: oauth (API)", function()
         assert.equal("Test APP", body.name)
         assert.equal(2, #body.redirect_uri)
       end)
+      it("creates multiple oauth2 credentials with the same client_secret", function()
+        local res = assert(admin_client:send {
+          method = "POST",
+          path = "/consumers/bob/oauth2",
+          body = {
+            name = "Test APP",
+            redirect_uri = "http://google.com/",
+            client_secret = "secret123",
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        assert.res_status(201, res)
+        res = assert(admin_client:send {
+          method = "POST",
+          path = "/consumers/sally/oauth2",
+          body = {
+            name = "Test APP",
+            redirect_uri = "http://google.com/",
+            client_secret = "secret123",
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        assert.res_status(201, res)
+      end)
       describe("errors", function()
         it("returns bad request", function()
           local res = assert(admin_client:send {
@@ -76,7 +107,8 @@ describe("Plugin: oauth (API)", function()
             }
           })
           local body = assert.res_status(400, res)
-          assert.equal([[{"redirect_uri":"redirect_uri is required","name":"name is required"}]], body)
+          local json = cjson.decode(body)
+          assert.same({ redirect_uri = "redirect_uri is required", name = "name is required" }, json)
         end)
         it("returns bad request with invalid redirect_uri", function()
           local res = assert(admin_client:send {
@@ -91,7 +123,8 @@ describe("Plugin: oauth (API)", function()
             }
           })
           local body = assert.res_status(400, res)
-          assert.equal([[{"redirect_uri":"cannot parse 'not-valid'"}]], body)
+          local json = cjson.decode(body)
+          assert.same({ redirect_uri = "cannot parse 'not-valid'" }, json)
 
           local res = assert(admin_client:send {
             method = "POST",
@@ -105,7 +138,8 @@ describe("Plugin: oauth (API)", function()
             }
           })
           local body = assert.res_status(400, res)
-          assert.equal([[{"redirect_uri":"fragment not allowed in 'http:\/\/test.com\/#with-fragment'"}]], body)
+          local json = cjson.decode(body)
+          assert.same({ redirect_uri = "fragment not allowed in 'http://test.com/#with-fragment'" }, json)
 
           local res = assert(admin_client:send {
             method = "POST",
@@ -119,7 +153,8 @@ describe("Plugin: oauth (API)", function()
             }
           })
           local body = assert.res_status(400, res)
-          assert.equal([[{"redirect_uri":"cannot parse 'not-valid'"}]], body)
+          local json = cjson.decode(body)
+          assert.same({ redirect_uri = "cannot parse 'not-valid'" }, json)
 
           local res = assert(admin_client:send {
             method = "POST",
@@ -133,7 +168,8 @@ describe("Plugin: oauth (API)", function()
             }
           })
           local body = assert.res_status(400, res)
-          assert.equal([[{"redirect_uri":"fragment not allowed in 'http:\/\/test.com\/#with-fragment'"}]], body)
+          local json = cjson.decode(body)
+          assert.same({ redirect_uri = "fragment not allowed in 'http://test.com/#with-fragment'" }, json)
         end)
       end)
     end)
@@ -167,7 +203,8 @@ describe("Plugin: oauth (API)", function()
             }
           })
           local body = assert.res_status(400, res)
-          assert.equal([[{"redirect_uri":"redirect_uri is required","name":"name is required"}]], body)
+          local json = cjson.decode(body)
+          assert.same({ redirect_uri = "redirect_uri is required", name = "name is required" }, json)
         end)
       end)
     end)
@@ -308,7 +345,8 @@ describe("Plugin: oauth (API)", function()
             }
           })
           local body = assert.res_status(400, res)
-          assert.equal([[{"redirect_uri":"cannot parse 'not-valid'"}]], body)
+          local json = cjson.decode(body)
+          assert.same({ redirect_uri = "cannot parse 'not-valid'" }, json)
         end)
       end)
     end)
@@ -386,7 +424,8 @@ describe("Plugin: oauth (API)", function()
             }
           })
           local body = assert.res_status(400, res)
-          assert.equal([[{"credential_id":"credential_id is required","expires_in":"expires_in is required"}]], body)
+          local json = cjson.decode(body)
+          assert.same({ credential_id = "credential_id is required", expires_in = "expires_in is required" }, json)
         end)
       end)
     end)
@@ -423,7 +462,8 @@ describe("Plugin: oauth (API)", function()
             }
           })
           local body = assert.res_status(400, res)
-          assert.equal([[{"credential_id":"credential_id is required","expires_in":"expires_in is required"}]], body)
+          local json = cjson.decode(body)
+          assert.same({ credential_id = "credential_id is required", expires_in = "expires_in is required" }, json)
         end)
       end)
     end)
@@ -534,7 +574,8 @@ describe("Plugin: oauth (API)", function()
               }
             })
             local body = assert.res_status(400, res)
-            assert.equal([[{"expires_in":"expires_in is not a number"}]], body)
+            local json = cjson.decode(body)
+            assert.same({ expires_in = "expires_in is not a number" }, json)
           end)
         end)
       end)

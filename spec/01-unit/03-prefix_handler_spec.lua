@@ -90,6 +90,26 @@ describe("NGINX conf compiler", function()
       assert.not_matches("ssl_protocols", kong_nginx_conf)
       assert.not_matches("ssl_certificate_by_lua_block", kong_nginx_conf)
     end)
+    describe("handles client_ssl", function()
+      it("on", function()
+        local conf = assert(conf_loader(helpers.test_conf_path, {
+          client_ssl = true,
+          client_ssl_cert = "spec/fixtures/kong_spec.crt",
+          client_ssl_cert_key = "spec/fixtures/kong_spec.key",
+        }))
+        local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
+        assert.matches("proxy_ssl_certificate.*spec/fixtures/kong_spec.crt", kong_nginx_conf)
+        assert.matches("proxy_ssl_certificate_key.*spec/fixtures/kong_spec.key", kong_nginx_conf)
+      end)
+      it("off", function()
+        local conf = assert(conf_loader(helpers.test_conf_path, {
+          client_ssl = false,
+        }))
+        local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
+        assert.not_matches("proxy_ssl_certificate.*spec/fixtures/kong_spec.crt", kong_nginx_conf)
+        assert.not_matches("proxy_ssl_certificate_key.*spec/fixtures/kong_spec.key", kong_nginx_conf)
+      end)
+    end)
     it("does not include lua_ssl_trusted_certificate/lua_ssl_verify_depth by default", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
         lua_ssl_verify_depth = "2"
@@ -227,6 +247,14 @@ describe("NGINX conf compiler", function()
       assert.matches("worker_rlimit_nofile %d+;", nginx_conf)
       assert.matches("worker_connections %d+;", nginx_conf)
       assert.matches("multi_accept on;", nginx_conf)
+    end)
+    it("converts dns_resolver to string", function()
+      local nginx_conf = prefix_handler.compile_nginx_conf({
+        dns_resolver = { "8.8.8.8", "8.8.4.4" }
+      }, [[
+        "resolver ${{DNS_RESOLVER}} ipv6=off;"
+      ]])
+      assert.matches("resolver 8.8.8.8 8.8.4.4 ipv6=off;", nginx_conf, nil, true)
     end)
   end)
 
