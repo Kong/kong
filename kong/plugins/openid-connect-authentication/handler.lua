@@ -96,8 +96,9 @@ function OICAuthenticationHandler:access(conf)
     if data.state then
       local err, tokens, encoded
       local args = {
-        state = data.state,
-        nonce = data.nonce,
+        state         = data.state,
+        nonce         = data.nonce,
+        code_verifier = data.code_verifier,
       }
 
       args, err = self.oic.authorization:verify(args)
@@ -127,7 +128,7 @@ function OICAuthenticationHandler:access(conf)
       s:regenerate()
       s.data = {
         tokens = tokens,
-        nonce  = args.nonce
+        nonce  = args.nonce,
       }
       s:save()
 
@@ -146,7 +147,7 @@ function OICAuthenticationHandler:access(conf)
 
       else
         s:start()
-        return responses.send_HTTP_OK(encoded.id_token.payload or {})
+        return responses.send_HTTP_OK(data.tokens.id_token or {})
       end
     end
 
@@ -158,8 +159,9 @@ function OICAuthenticationHandler:access(conf)
     end
 
     s.data = {
-      state = args.state,
-      nonce = args.nonce,
+      state         = args.state,
+      nonce         = args.nonce,
+      code_verifier = args.code_verifier,
     }
 
     s:save()
