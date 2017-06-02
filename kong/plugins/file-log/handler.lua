@@ -71,7 +71,7 @@ end
 
 function FileLogHandler:log(conf)
   FileLogHandler.super.log(self)
-  local message = basic_serializer.serialize(ngx)
+  local message = basic_serializer.serialize(ngx, conf)
 
   local ok, err = ngx_timer(0, log, conf, message)
   if not ok then

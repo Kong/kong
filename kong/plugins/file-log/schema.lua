@@ -17,5 +17,6 @@ return {
   fields = {
     path = { required = true, type = "string", func = validate_file },
     reopen = { type = "boolean", default = false },
+    timestamp_format = { type = "string", default = nil },
   }
 }
