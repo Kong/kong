@@ -17,6 +17,7 @@ function statsd_mt:new(conf)
   end
   
   local statsd = {
+    prefix = conf.prefix,
     host = conf.host,
     port = conf.port,
     socket = sock
@@ -31,7 +32,7 @@ function statsd_mt:create_statsd_message(stat, delta, kind, sample_rate)
   end
   
   local message = {
-    "kong.",
+    self.prefix,
     stat,
     ":",
     delta,

@@ -453,4 +453,29 @@ return {
     end,
     down = function(_, _, dao) end
   },
+  {
+    name = "2017-05-24-100000_plugin_statsd_prefix",
+    up = function(_, _, dao)
+      local rows, err = dao.db:query([[
+        SELECT * FROM plugins WHERE name = 'statsd';
+      ]])
+      if err then
+        return err
+      end
+
+      for _, row in ipairs(rows) do
+        local config = row.config
+        if config.prefix == nil then
+          config.prefix = "kong."
+          local _, err = dao.plugins:update({
+            config = config,
+          }, { id = row.id, name = row.name })
+          if err then
+            return err
+          end
+        end
+      end
+    end,
+    down = function(_, _, dao) end
+  },
 }

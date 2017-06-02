@@ -11,6 +11,7 @@ local metrics = {
 
 return {
   fields = {
+    prefix = {type = "string", default = "kong."},
     host = {required = true, type = "string", default = "localhost"},
     port = {required = true, type = "number", default = 8125},
     metrics = {
