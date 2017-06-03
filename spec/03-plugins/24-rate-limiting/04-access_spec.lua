@@ -195,6 +195,27 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         }
       })
 
+     local api6 = assert(helpers.dao.apis:insert {
+        name = "api-6",
+        hosts = { "test6.com" },
+        upstream_url = "http://mockbin.com"
+      })
+      assert(helpers.dao.plugins:insert {
+        name = "rate-limiting",
+        api_id = api6.id,
+        config = {
+          policy = policy,
+          minute = 6,
+          fault_tolerant = true,
+          redis_host = REDIS_HOST,
+          redis_port = REDIS_PORT,
+          redis_password = REDIS_PASSWORD,
+          redis_database = REDIS_DATABASE,
+          limit_by = "http_header",
+          http_header = "X-My-Client-Id",
+        }
+      })
+
       assert(helpers.start_kong())
     end)
 
@@ -398,6 +419,65 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         assert.res_status(200, res)
         assert.is_nil(res.headers["x-ratelimit-limit-minute"])
         assert.is_nil(res.headers["x-ratelimit-remaining-minute"])
+      end)
+    end)
+
+    describe("#CustomHeader With custom header(X-My-Client-Id)", function()
+      it("blocks if exceeding limit", function()
+        for i = 1, 6 do
+          local res = assert(helpers.proxy_client():send {
+            method = "GET",
+            path = "/status/200/",
+            headers = {
+              ["Host"] = "test6.com",
+              ["X-My-Client-Id"] = "value1"
+            }
+          })
+
+          ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
+
+          assert.res_status(200, res)
+          assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
+          assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
+
+          -- Send the request with a new X-My-Client-Id, x-ratelimit-limit-minute should be same
+          res = assert(helpers.proxy_client():send {
+            method = "GET",
+            path = "/status/200/",
+            headers = {
+              ["Host"] = "test6.com",
+			  ["X-My-Client-Id"] = "value2"
+            }
+          })
+          assert.res_status(200, res)
+          assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
+          assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
+
+        end
+
+        -- Additonal request, while limit is 6/minute
+        local res = assert(helpers.proxy_client():send {
+          method = "GET",
+          path = "/status/200/",
+          headers = {
+            ["Host"] = "test6.com",
+			["X-My-Client-Id"] = "value1"
+          }
+        })
+        local body = assert.res_status(429, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "API rate limit exceeded" }, json)
+
+        -- Send the request with a new X-My-Client-Id, should return 200
+        res = assert(helpers.proxy_client():send {
+          method = "GET",
+          path = "/status/200/",
+          headers = {
+            ["Host"] = "test6.com",
+            ["X-My-Client-Id"] = "value3"
+          }
+        })
+        assert.res_status(200, res)
       end)
     end)
 
