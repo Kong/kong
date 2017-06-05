@@ -270,7 +270,11 @@ function OICVerificationHandler:access(conf)
   local kids = {}
   local jwks = {}
   local keys = 0
+
   local jwks_header = conf.jwks_header
+  if jwks_header == "" then
+    jwks_header = nil
+  end
 
   for _, t in ipairs(tokens) do
     if type(tks[t]) ~= "table" then
