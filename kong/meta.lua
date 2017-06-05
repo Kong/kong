@@ -2,11 +2,11 @@ local version = setmetatable({
   major = 0,
   minor = 10,
   patch = 3,
-  --pre_release = ""
+  --suffix = ""
 }, {
   __tostring = function(t)
     return string.format("%d.%d.%d%s", t.major, t.minor, t.patch,
-                         t.pre_release and t.pre_release or "")
+                         t.suffix and t.suffix or "")
   end
 })
 
