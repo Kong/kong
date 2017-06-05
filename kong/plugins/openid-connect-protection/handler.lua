@@ -31,7 +31,7 @@ function OICProtectionHandler:access(conf)
     local o, err = oic.new {
       issuer        = conf.issuer,
       scope         = conf.scopes or { "openid" },
-      claims        = conf.claims or { "iss", "sub", "aud", "azp", "exp", "iat" },
+      claims        = conf.claims or { "iss", "sub", "aud", "azp", "exp" },
       leeway        = conf.leeway                     or 0,
       http_version  = conf.http_version               or 1.1,
       ssl_verify    = conf.ssl_verify == nil and true or conf.ssl_verify,

@@ -125,7 +125,7 @@ function OICVerificationHandler:access(conf)
   if not self.oic then
     log(NOTICE, "loading openid connect configuration")
 
-    local claims = conf.claims or { "iss", "sub", "aud", "azp", "exp", "iat" }
+    local claims = conf.claims or { "iss", "sub", "aud", "azp", "exp" }
 
     local o, err = oic.new {
       issuer       = conf.issuer,
@@ -295,11 +295,7 @@ function OICVerificationHandler:access(conf)
   end
 
   if keys > 0 then
-    if keys == 1 then
-      jwks, err = cjson.encode(jwks[1])
-    else
-      jwks, err = cjson.encode(jwks)
-    end
+    jwks, err = cjson.encode(jwks)
     if not jwks then
       log(ERR, err)
       return responses.send_HTTP_INTERNAL_SERVER_ERROR()
