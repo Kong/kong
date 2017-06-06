@@ -231,6 +231,13 @@
 # See http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_recursive
 # for a description of this directive.
 
+#error_default_type = text/plain  # Default MIME type to use when the
+                                  # 'Accept' header is missing and Nginx
+                                  # is returning an error for the request.
+                                  # Accepted values are `text/plain`, `text/html`,
+                                  # `application/json` and `application/xml`.
+                                   
+
 #------------------------------------------------------------------------------
 # DATASTORE
 #------------------------------------------------------------------------------

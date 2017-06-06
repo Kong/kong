@@ -34,6 +34,7 @@ latency_tokens = on
 real_ip_header = X-Real-IP
 real_ip_recursive = off
 trusted_ips = NONE
+error_default_type = text/plain
 
 database = postgres
 pg_host = 127.0.0.1
