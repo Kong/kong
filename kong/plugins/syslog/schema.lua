@@ -6,5 +6,6 @@ return {
     successful_severity = { type = "string", enum = ALLOWED_LEVELS, default = "info" },
     client_errors_severity = { type = "string", enum = ALLOWED_LEVELS, default = "info" },
     server_errors_severity = { type = "string", enum = ALLOWED_LEVELS, default = "info" },
+    strip_auth_header = { type = "boolean", default = false }
   }
 }

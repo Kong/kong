@@ -35,7 +35,7 @@ end
 
 local function log(premature, conf, message)
   if premature then return end
-  
+
   if message.response.status >= 500 then
     send_to_syslog(conf.log_level, conf.server_errors_severity, message)
   elseif message.response.status >= 400 then
@@ -53,6 +53,10 @@ function SysLogHandler:log(conf)
   SysLogHandler.super.log(self)
 
   local message = basic_serializer.serialize(ngx)
+  if conf.strip_auth_header and message['request'] ~= nil and message['request']['headers'] ~= nil  then
+    message['request']['headers']['authorization'] = nil
+  end
+
   local ok, err = ngx_timer_at(0, log, conf, message)
   if not ok then
     ngx_log(ngx.ERR, "failed to create timer: ", err)
