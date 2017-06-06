@@ -21,7 +21,11 @@ return {
                        enum = {"RequestResponse", "Event", "DryRun"}},
     log_type = {type = "string", required = true, default = "Tail", 
                        enum = {"Tail", "None"}},
-    port = { type = "number", default = 443 },
+    aws_port = { type = "number", default = 443 },
     unhandled_status = { type = "number", func = check_status },
+    forward_request_body = { type = "boolean", default = false, required = true },
+    forward_request_http_headers = { type = "boolean", default = false, required = true },
+    forward_request_http_method = { type = "boolean", default = false, required = true },
+    forward_request_uri = { type = "boolean", default = false, required = true },
   }
 }

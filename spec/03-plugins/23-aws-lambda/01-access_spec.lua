@@ -52,11 +52,23 @@ describe("Plugin: AWS Lambda (access)", function()
       upstream_url = "http://httpbin.org"
     })
 
+    local api9 = assert(helpers.dao.apis:insert {
+      name = "lambda9.com",
+      hosts = { "lambda9.com" },
+      upstream_url = "http://httpbin.org"
+    })
+
+    local api10 = assert(helpers.dao.apis:insert {
+      name = "lambda10.com",
+      hosts = { "lambda10.com" },
+      upstream_url = "http://httpbin.org"
+    })
+
     assert(helpers.dao.plugins:insert {
       name = "aws-lambda",
       api_id = api1.id,
       config = {
-        port = 10001,
+        aws_port = 10001,
         aws_key = "mock-key",
         aws_secret = "mock-secret",
         aws_region = "us-east-1",
@@ -68,7 +80,7 @@ describe("Plugin: AWS Lambda (access)", function()
       name = "aws-lambda",
       api_id = api2.id,
       config = {
-        port = 10001,
+        aws_port = 10001,
         aws_key = "mock-key",
         aws_secret = "mock-secret",
         aws_region = "us-east-1",
@@ -81,7 +93,7 @@ describe("Plugin: AWS Lambda (access)", function()
       name = "aws-lambda",
       api_id = api3.id,
       config = {
-        port = 10001,
+        aws_port = 10001,
         aws_key = "mock-key",
         aws_secret = "mock-secret",
         aws_region = "us-east-1",
@@ -94,7 +106,7 @@ describe("Plugin: AWS Lambda (access)", function()
       name = "aws-lambda",
       api_id = api4.id,
       config = {
-        port = 10001,
+        aws_port = 10001,
         aws_key = "mock-key",
         aws_secret = "mock-secret",
         aws_region = "us-east-1",
@@ -107,7 +119,7 @@ describe("Plugin: AWS Lambda (access)", function()
       name = "aws-lambda",
       api_id = api5.id,
       config = {
-        port = 10001,
+        aws_port = 10001,
         aws_key = "mock-key",
         aws_secret = "mock-secret",
         aws_region = "us-east-1",
@@ -119,7 +131,7 @@ describe("Plugin: AWS Lambda (access)", function()
       name = "aws-lambda",
       api_id = api6.id,
       config = {
-        port = 10001,
+        aws_port = 10001,
         aws_key = "mock-key",
         aws_secret = "mock-secret",
         aws_region = "us-east-1",
@@ -132,7 +144,7 @@ describe("Plugin: AWS Lambda (access)", function()
       name = "aws-lambda",
       api_id = api7.id,
       config = {
-        port = 10001,
+        aws_port = 10001,
         aws_key = "mock-key",
         aws_secret = "mock-secret",
         aws_region = "us-east-1",
@@ -145,12 +157,43 @@ describe("Plugin: AWS Lambda (access)", function()
       name = "aws-lambda",
       api_id = api8.id,
       config = {
-        port = 10001,
+        aws_port = 10001,
         aws_key = "mock-key",
         aws_secret = "mock-secret",
         aws_region = "us-east-1",
         function_name = "functionWithUnhandledError",
         unhandled_status = 412,
+      }
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "aws-lambda",
+      api_id = api9.id,
+      config = {
+        aws_port = 10001,
+        aws_key = "mock-key",
+        aws_secret = "mock-secret",
+        aws_region = "us-east-1",
+        function_name = "kongLambdaTest",
+        forward_request_body = true,
+        forward_request_http_headers = true,
+        forward_request_http_method = true,
+        forward_request_uri = true
+      }
+    })
+
+    assert(helpers.dao.plugins:insert {
+      name = "aws-lambda",
+      api_id = api10.id,
+      config = {
+        aws_port = 10001,
+        aws_key = "mock-key",
+        aws_secret = "mock-secret",
+        aws_region = "us-east-1",
+        function_name = "kongLambdaTest",
+        forward_request_body = true,
+        forward_request_http_headers = true,
+        forward_request_http_method = true,
+        forward_request_uri = false
       }
     })
 
@@ -181,9 +224,10 @@ describe("Plugin: AWS Lambda (access)", function()
         ["Host"] = "lambda.com"
       }
     })
-    local body = assert.res_status(200, res)
+    assert.res_status(200, res)
+    local body = assert.response(res).has.jsonbody()
     assert.is_string(res.headers["x-amzn-RequestId"])
-    assert.equal([["some_value1"]], body)
+    assert.equal("some_value1", body.key1)
     assert.is_nil(res.headers["X-Amzn-Function-Error"])
   end)
   it("invokes a Lambda function with POST params", function()
@@ -200,9 +244,10 @@ describe("Plugin: AWS Lambda (access)", function()
         key3 = "some_value_post3"
       }
     })
-    local body = assert.res_status(200, res)
+    assert.res_status(200, res)
+    local body = assert.response(res).has.jsonbody()
     assert.is_string(res.headers["x-amzn-RequestId"])
-    assert.equal([["some_value_post1"]], body)
+    assert.equal("some_value_post1", body.key1)
   end)
   it("invokes a Lambda function with POST json body", function()
     local res = assert(client:send {
@@ -218,9 +263,10 @@ describe("Plugin: AWS Lambda (access)", function()
         key3 = "some_value_json3"
       }
     })
-    local body = assert.res_status(200, res)
+    assert.res_status(200, res)
+    local body = assert.response(res).has.jsonbody()
     assert.is_string(res.headers["x-amzn-RequestId"])
-    assert.equal([["some_value_json1"]], body)
+    assert.equal("some_value_json1", body.key1)
   end)
   it("invokes a Lambda function with POST and both querystring and body params", function()
     local res = assert(client:send {
@@ -235,9 +281,91 @@ describe("Plugin: AWS Lambda (access)", function()
         key3 = "some_value_post3"
       }
     })
-    local body = assert.res_status(200, res)
+    assert.res_status(200, res)
+    local body = assert.response(res).has.jsonbody()
     assert.is_string(res.headers["x-amzn-RequestId"])
-    assert.equal([["from_querystring"]], body)
+    assert.equal("from_querystring", body.key1)
+  end)
+  it("invokes a Lambda function with POST and xml payload, custom header and query partameter", function()
+    local res = assert(client:send {
+      method = "POST",
+      path = "/post?key1=from_querystring",
+      headers = {
+        ["Host"] = "lambda9.com",
+        ["Content-Type"] = "application/xml",
+        ["custom-header"] = "someheader"
+      },
+      body = "<xml/>"
+    })
+    assert.res_status(200, res)
+    local body = assert.response(res).has.jsonbody()
+    assert.is_string(res.headers["x-amzn-RequestId"])
+    assert.equal("<xml/>", body.request_body)
+    assert.equal("lambda9.com", body.request_http_headers.host)
+    assert.equal("someheader", body.request_http_headers["custom-header"])
+    assert.equal("/post?key1=from_querystring", body.request_uri)
+    assert.equal("POST", body.request_http_method)
+  end)
+  it("invokes a Lambda function with POST and json payload, custom header and query partameter", function()
+    local res = assert(client:send {
+      method = "POST",
+      path = "/post?key1=from_querystring",
+      headers = {
+        ["Host"] = "lambda10.com",
+        ["Content-Type"] = "application/json",
+        ["custom-header"] = "someheader"
+      },
+      body = { key2 = "some_value" }
+    })
+    assert.res_status(200, res)
+    local body = assert.response(res).has.jsonbody()
+    assert.is_string(res.headers["x-amzn-RequestId"])
+    assert.equal(nil, body.request_body_args)
+    assert.equal("from_querystring", body.request_uri_args.key1)
+    assert.equal("some_value", body.request_body.key2)
+    assert.equal("lambda10.com", body.request_http_headers.host)
+    assert.equal("someheader", body.request_http_headers["custom-header"])
+    assert.equal("POST", body.request_http_method)
+  end)
+  it("invokes a Lambda function with POST and txt payload, custom header and query partameter", function()
+    local res = assert(client:send {
+      method = "POST",
+      path = "/post?key1=from_querystring",
+      headers = {
+        ["Host"] = "lambda9.com",
+        ["Content-Type"] = "text/plain",
+        ["custom-header"] = "someheader"
+      },
+      body = "some text"
+    })
+    assert.res_status(200, res)
+    local body = assert.response(res).has.jsonbody()
+    assert.is_string(res.headers["x-amzn-RequestId"])
+    assert.equal("some text", body.request_body)
+    assert.equal("lambda9.com", body.request_http_headers.host)
+    assert.equal("someheader", body.request_http_headers["custom-header"])
+    assert.equal("/post?key1=from_querystring", body.request_uri)
+    assert.equal("POST", body.request_http_method)
+  end)
+  it("invokes a Lambda function with POST and binary payload and custom header", function()
+    local res = assert(client:send {
+      method = "POST",
+      path = "/post?key1=from_querystring",
+      headers = {
+        ["Host"] = "lambda9.com",
+        ["Content-Type"] = "application/octet-stream",
+        ["custom-header"] = "someheader"
+      },
+      body = "01234"
+    })
+    assert.res_status(200, res)
+    local body = assert.response(res).has.jsonbody()
+    assert.is_string(res.headers["x-amzn-RequestId"])
+    assert.equal(ngx.encode_base64('01234'), body.request_body)
+    assert.equal("lambda9.com", body.request_http_headers.host)
+    assert.equal("someheader", body.request_http_headers["custom-header"])
+    assert.equal("/post?key1=from_querystring", body.request_uri)
+    assert.equal("POST", body.request_http_method)
   end)
   it("invokes a Lambda function with POST params and Event invocation_type", function()
     local res = assert(client:send {

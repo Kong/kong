@@ -13,7 +13,7 @@ describe("Plugin: AWS Lambda (schema)", function()
     function_name = "my-function",
     invocation_type  = "RequestResponse",
     log_type = "Tail",
-    port  = 443,
+    aws_port  = 443,
   }
 
   it("accepts nil Unhandled Response Status Code", function()
