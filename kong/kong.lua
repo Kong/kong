@@ -212,7 +212,7 @@ function Kong.init_worker()
   -- run plugins init_worker context
 
   for _, plugin in ipairs(singletons.loaded_plugins) do
-    plugin.handler:init_worker()
+    plugin.handler:init_worker(singletons.configuration)
   end
 end
 
