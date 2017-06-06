@@ -1,4 +1,5 @@
 local BasePlugin = require "kong.plugins.base_plugin"
+local cache      = require "kong.plugins.openid-connect.cache"
 local responses  = require "kong.tools.responses"
 local oic        = require "kong.openid-connect"
 local session    = require "resty.session"
@@ -25,27 +26,28 @@ end
 
 function OICProtectionHandler:access(conf)
   OICProtectionHandler.super.access(self)
-  if not self.oic then
-    log(NOTICE, "loading openid connect configuration")
 
-    local o, err = oic.new {
-      issuer        = conf.issuer,
-      scope         = conf.scopes or { "openid" },
-      claims        = conf.claims or { "iss", "sub", "aud", "azp", "exp" },
-      leeway        = conf.leeway                     or 0,
-      http_version  = conf.http_version               or 1.1,
-      ssl_verify    = conf.ssl_verify == nil and true or conf.ssl_verify,
-      timeout       = conf.timeout                    or 10000,
-      max_age       = conf.max_age,
-      domains       = conf.domains,
-    }
+  local issuer, err = cache.issuers.load(conf)
+  if not issuer then
+    log(ERR, err)
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+  end
 
-    if not o then
-      log(ERR, err)
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
-    end
+  local o, err = oic.new({
+    issuer        = conf.issuer,
+    scope         = conf.scopes or { "openid" },
+    claims        = conf.claims or { "iss", "sub", "aud", "azp", "exp" },
+    leeway        = conf.leeway                     or 0,
+    http_version  = conf.http_version               or 1.1,
+    ssl_verify    = conf.ssl_verify == nil and true or conf.ssl_verify,
+    timeout       = conf.timeout                    or 10000,
+    max_age       = conf.max_age,
+    domains       = conf.domains,
+  }, issuer.configuration, issuer.keys)
 
-    self.oic = o
+  if not o then
+    log(ERR, err)
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
 
   local s, present = session.open()
@@ -53,7 +55,7 @@ function OICProtectionHandler:access(conf)
   if present then
     local data = s.data
 
-    local encoded, err = self.oic.token:verify(data.tokens, { nonce = data.nonce })
+    local encoded, err = o.token:verify(data.tokens, { nonce = data.nonce })
     if not encoded then
       log(NOTICE, err)
       s:destroy()

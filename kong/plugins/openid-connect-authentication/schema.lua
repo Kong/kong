@@ -32,7 +32,7 @@ return {
       required    = false,
       type        = "array",
       enum        = { "iss", "sub", "aud", "azp", "exp", "iat", "auth_time", "at_hash", "alg", "nbf", "hd" },
-      default     = { "iss", "sub", "aud", "azp", "exp", "iat", "at_hash" },
+      default     = { "iss", "sub", "aud", "azp", "exp", "at_hash" },
     },
     domains       = {
       required    = false,

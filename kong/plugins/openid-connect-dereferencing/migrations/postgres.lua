@@ -1,1 +1,1 @@
-return require "kong.plugins.openid-connect-authentication.migrations.postgres"
+return require "kong.plugins.openid-connect.migrations.postgres"

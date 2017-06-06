@@ -1,1 +1,1 @@
-return require "kong.plugins.openid-connect-authentication.migrations.cassandra"
+return require "kong.plugins.openid-connect.migrations.cassandra"

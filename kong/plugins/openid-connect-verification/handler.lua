@@ -2,6 +2,7 @@ local cjson         = require "cjson.safe"
 local upload        = require "resty.upload"
 local BasePlugin    = require "kong.plugins.base_plugin"
 local responses     = require "kong.tools.responses"
+local cache         = require "kong.plugins.openid-connect.cache"
 local codec         = require "kong.openid-connect.codec"
 local set           = require "kong.openid-connect.set"
 local oic           = require "kong.openid-connect"
@@ -122,30 +123,29 @@ end
 function OICVerificationHandler:access(conf)
   OICVerificationHandler.super.access(self)
 
-  if not self.oic then
-    log(NOTICE, "loading openid connect configuration")
+  local issuer, err = cache.issuers.load(conf)
+  if not issuer then
+    log(ERR, err)
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+  end
 
-    local claims = conf.claims or { "iss", "sub", "aud", "azp", "exp" }
+  local claims = conf.claims or { "iss", "sub", "aud", "azp", "exp" }
 
-    local o, err = oic.new {
-      issuer       = conf.issuer,
-      leeway       = conf.leeway                     or 0,
-      http_version = conf.http_version               or 1.1,
-      ssl_verify   = conf.ssl_verify == nil and true or conf.ssl_verify,
-      timeout      = conf.timeout                    or 10000,
-      clients      = conf.clients,
-      audience     = conf.audience,
-      max_age      = conf.max_age,
-      domains      = conf.domains,
-      claims       = claims
-    }
+  local o, err = oic.new({
+    leeway       = conf.leeway                     or 0,
+    http_version = conf.http_version               or 1.1,
+    ssl_verify   = conf.ssl_verify == nil and true or conf.ssl_verify,
+    timeout      = conf.timeout                    or 10000,
+    clients      = conf.clients,
+    audience     = conf.audience,
+    max_age      = conf.max_age,
+    domains      = conf.domains,
+    claims       = claims
+  }, issuer.configuration, issuer.keys)
 
-    if not o then
-      log(ERR, err)
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
-    end
-
-    self.oic = o
+  if not o then
+    log(ERR, err)
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
 
   local tokens = conf.tokens or { "id_token" }
@@ -242,13 +242,13 @@ function OICVerificationHandler:access(conf)
   local act
 
   if set.has("access_token", tokens) then
-    act = self.oic.token:bearer()
+    act = o.token:bearer()
     if not act then
       log(NOTICE, "access token was not specified")
       return responses.send_HTTP_UNAUTHORIZED()
     end
   elseif idt then
-    act = self.oic.token:bearer()
+    act = o.token:bearer()
   end
 
   local toks = {
@@ -260,7 +260,7 @@ function OICVerificationHandler:access(conf)
     tokens = tokens
   }
 
-  local tks, err = self.oic.token:verify(toks, options)
+  local tks, err = o.token:verify(toks, options)
 
   if type(tks) ~= "table" then
     log(NOTICE, err)
