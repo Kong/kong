@@ -11,20 +11,20 @@ local NOTICE     = ngx.NOTICE
 local ERR        = ngx.ERR
 
 
-local OICDereferencingMicroserviceHandler = BasePlugin:extend()
+local OICMicroserviceHandler = BasePlugin:extend()
 
-function OICDereferencingMicroserviceHandler:new()
-  OICDereferencingMicroserviceHandler.super.new(self, "openid-connect-dereferencing-microservice")
+function OICMicroserviceHandler:new()
+  OICMicroserviceHandler.super.new(self, "openid-connect-microservice")
 end
 
 
-function OICDereferencingMicroserviceHandler:init_worker()
-  OICDereferencingMicroserviceHandler.super.init_worker(self)
+function OICMicroserviceHandler:init_worker()
+  OICMicroserviceHandler.super.init_worker(self)
 end
 
 
-function OICDereferencingMicroserviceHandler:access(conf)
-  OICDereferencingMicroserviceHandler.super.access(self)
+function OICMicroserviceHandler:access(conf)
+  OICMicroserviceHandler.super.access(self)
 
   local issuer, err = cache.issuers.load(conf)
   if not issuer then
@@ -52,7 +52,7 @@ function OICDereferencingMicroserviceHandler:access(conf)
 end
 
 
-OICDereferencingMicroserviceHandler.PRIORITY = 1000
+OICMicroserviceHandler.PRIORITY = 1000
 
 
-return OICDereferencingMicroserviceHandler
+return OICMicroserviceHandler
