@@ -31,6 +31,8 @@ upstream_keepalive = 60
 server_tokens = on
 latency_tokens = on
 error_default_type = text/plain
+client_max_body_size = 0
+client_body_buffer_size = 8k
 
 database = postgres
 pg_host = 127.0.0.1

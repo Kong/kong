@@ -29,7 +29,7 @@ http {
 >-- reset_timedout_connection on; # disabled until benchmarked
 > end
 
-    client_max_body_size 0;
+    client_max_body_size ${{CLIENT_MAX_BODY_SIZE}};
     proxy_ssl_server_name on;
     underscores_in_headers on;
 
@@ -91,6 +91,8 @@ http {
         error_page 500 502 503 504 /kong_error_handler;
 
         access_log logs/access.log;
+
+        client_body_buffer_size ${{CLIENT_BODY_BUFFER_SIZE}};
 
 > if ssl then
         listen ${{PROXY_LISTEN_SSL}} ssl;
