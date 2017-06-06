@@ -80,5 +80,21 @@ return {
       type = "number",
       func = check_status,
     },
+    forward_request_method = {
+      type = "boolean",
+      default = false,
+    },
+    forward_request_uri = {
+      type = "boolean",
+      default = false,
+    },
+    forward_request_headers = {
+      type = "boolean",
+      default = false,
+    },
+    forward_request_body = {
+      type = "boolean",
+      default = false,
+    },
   },
 }
