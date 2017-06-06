@@ -70,6 +70,9 @@ local CONF_INFERENCES = {
   latency_tokens = {typ = "boolean"},
   error_default_type = {enum = {"application/json", "application/xml",
                                 "text/html", "text/plain"}},
+  client_max_body_size = {typ = "string"},
+  client_body_buffer_size = {typ = "string"},
+
 
   database = {enum = {"postgres", "cassandra"}},
   pg_port = {typ = "number"},
