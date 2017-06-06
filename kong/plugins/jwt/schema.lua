@@ -16,5 +16,6 @@ return {
     secret_is_base64 = {type = "boolean", default = false},
     claims_to_verify = {type = "array", enum = {"exp", "nbf"}},
     anonymous = {type = "string", default = "", func = check_user},
+    cookie_name = {type = "string", default = "jwt_token"},
   }
 }
