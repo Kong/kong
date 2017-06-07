@@ -485,6 +485,14 @@ function _M:truncate_table(table_name)
   return true
 end
 
+function _M:migrations_ran()
+  -- check if schema_migrations table exists
+  local rows, err = self:query "SELECT to_regclass('schema_migrations')"
+  if not rows then return nil, err end
+
+  return #rows > 0 and rows[1].to_regclass == "schema_migrations"
+end
+
 function _M:current_migrations()
   -- check if schema_migrations table exists
   local rows, err = self:query "SELECT to_regclass('schema_migrations')"

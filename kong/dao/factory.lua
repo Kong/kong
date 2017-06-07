@@ -273,11 +273,12 @@ function _M:are_migrations_uptodate()
   for module, migrations in pairs(migrations_modules) do
     for _, migration in ipairs(migrations) do
       if not (cur_migrations[module] and 
-          utils.table_contains(cur_migrations[module], migration.name)) then
-
+              utils.table_contains(cur_migrations[module], migration.name))
+      then
         local log = require "kong.cmd.utils.log"
-        log.warn(string.format("database is missing migration: (%s) %s", 
-                                module, migration.name))
+        local infos = self.db:infos()
+        log.warn("%s %s '%s' is missing migration: (%s) %s",
+                  self.db_type, infos.desc, infos.name, module, migration.name)
         return false, "migrations are not up to date"
       end
     end

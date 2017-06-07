@@ -584,6 +584,37 @@ function _M:truncate_table(table_name)
   return true
 end
 
+function _M:migrations_ran()
+  local q_keyspace_and_migrations_table_exists
+
+  assert(self.release_version, "release_version not set for Cassandra cluster")
+
+  if self.release_version == 3 then
+    q_keyspace_and_migrations_table_exists = [[
+      SELECT COUNT(*) FROM system_schema.tables
+      WHERE keyspace_name = ? AND table_name = ?
+    ]]
+  else
+    q_keyspace_and_migrations_table_exists = [[
+      SELECT COUNT(*) FROM system.schema_columnfamilies
+      WHERE keyspace_name = ? AND columnfamily_name = ?
+    ]]
+  end
+
+  -- Check if keyspace and "schema_migrations" table exists
+  local rows, err = self:query(q_keyspace_and_migrations_table_exists, {
+    self.cluster_options.keyspace,
+    "schema_migrations"
+  }, {
+    prepared = false,
+    --consistency = cassandra.consistencies.all,
+  }, nil, true)
+  if not rows then return nil, err
+  elseif rows[1] and rows[1].count > 0 then
+    return true
+  end
+end
+
 function _M:current_migrations()
   local q_keyspace_exists, q_migrations_table_exists
 
@@ -659,5 +690,7 @@ function _M:record_migration(id, name)
   if not res then return nil, err end
   return true
 end
+
+
 
 return _M
