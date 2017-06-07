@@ -244,7 +244,7 @@
 - When using Cassandra, some migrations would not be performed on the same
   coordinator as the one originally chosen. The same migrations would also
   require a response from other replicas in a cluster, but were not waiting
-  for a schema consensus beforehand, causing indeterministic failures in the
+  for a schema consensus beforehand, causing indeterministic failures in the
   migrations, especially if the cluster's inter-nodes communication is slow.
   [#2326](https://github.com/Mashape/kong/pull/2326)
 - The `cassandra_timeout` configuration property is now correctly taken into
