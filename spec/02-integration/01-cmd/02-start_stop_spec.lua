@@ -116,7 +116,7 @@ describe("kong start/stop", function()
     end)
   end)
 
-  describe("#only --run-migrations", function()
+  describe("--run-migrations", function()
     before_each(function()
       helpers.dao:drop_schema()
     end)
