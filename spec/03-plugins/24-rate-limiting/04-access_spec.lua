@@ -47,7 +47,7 @@ local function flush_redis()
 end
 
 for i, policy in ipairs({"local", "cluster", "redis"}) do
-  describe("#ci Plugin: rate-limiting (access) with policy: "..policy, function()
+  describe("#ci Plugin: rate-limiting (access) with policy: " .. policy, function()
     setup(function()
       helpers.kill_all()
       flush_redis()
@@ -569,7 +569,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         if policy == "local" then
           local res = assert(helpers.admin_client():send {
             method = "GET",
-            path = "/cache/"..string.format("ratelimit:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "minute"),
+            path = "/cache/" .. string.format("ratelimit:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "minute"),
             query = { cache = "shm" },
           })
           local body = assert.res_status(200, res)
@@ -596,7 +596,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         if policy == "local" then
           local res = assert(helpers.admin_client():send {
             method = "GET",
-            path = "/cache/"..string.format("ratelimit:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "minute"),
+            path = "/cache/" .. string.format("ratelimit:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "minute"),
             query = { cache = "shm" },
           })
           assert.res_status(404, res)

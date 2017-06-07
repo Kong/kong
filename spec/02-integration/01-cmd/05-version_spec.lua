@@ -10,7 +10,7 @@ describe("kong version", function()
   it("--all outputs all deps versions", function()
     local _, _, stdout = assert(helpers.kong_exec("version -a"))
     assert.matches([[
-Kong: ]]..meta._VERSION..[[
+Kong: ]] .. meta._VERSION .. [[
 
 ngx_lua: %d+
 nginx: %d+

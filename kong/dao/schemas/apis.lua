@@ -91,7 +91,7 @@ local function check_uri(uri)
   if match(esc, "%%") then
     -- % is remaining, so not properly encoded
     local err = uri:sub(esc:find("%%.?.?"))
-    return false, "must use proper encoding; '"..err.."' is invalid"
+    return false, "must use proper encoding; '" .. err .. "' is invalid"
   end
 
   -- From now on, the request_path is considered valid.

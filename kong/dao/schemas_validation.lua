@@ -73,11 +73,11 @@ function _M.validate_entity(tbl, schema, options)
     if t ~= nil then
       local error_prefix = ""
       if utils.strip(tk) ~= "" then
-        error_prefix = tk.."."
+        error_prefix = tk .. "."
       end
 
       if schema.flexible and type(t) ~= "table" then
-        errors = utils.add_error(errors, tk, tk.." is not a table")
+        errors = utils.add_error(errors, tk, tk .. " is not a table")
         break
       end
 
@@ -123,14 +123,14 @@ function _M.validate_entity(tbl, schema, options)
           end
 
           if not is_valid_type and POSSIBLE_TYPES[v.type] then
-            errors = utils.add_error(errors, error_prefix..column,
+            errors = utils.add_error(errors, error_prefix .. column,
                     string.format("%s is not %s %s", column, v.type == "array" and "an" or "a", v.type))
           end
         end
 
         -- [IMMUTABLE] check immutability of a field if updating
         if v.immutable and options.update and (t[column] ~= nil and options.old_t[column] ~= nil and t[column] ~= options.old_t[column]) and not v.required then
-          errors = utils.add_error(errors, error_prefix..column, column.." cannot be updated")
+          errors = utils.add_error(errors, error_prefix .. column, column .. " cannot be updated")
         end
 
         -- [ENUM] Check if the value is allowed in the enum.
@@ -150,14 +150,14 @@ function _M.validate_entity(tbl, schema, options)
           end
 
           if not found then
-            errors = utils.add_error(errors, error_prefix..column, string.format("\"%s\" is not allowed. Allowed values are: \"%s\"", wrong_value, table.concat(v.enum, "\", \"")))
+            errors = utils.add_error(errors, error_prefix .. column, string.format("\"%s\" is not allowed. Allowed values are: \"%s\"", wrong_value, table.concat(v.enum, "\", \"")))
           end
         end
 
         -- [REGEX] Check field against a regex if specified
         if type(t[column]) == "string" and v.regex then
           if not ngx.re.find(t[column], v.regex) then
-            errors = utils.add_error(errors, error_prefix..column, column.." has an invalid value")
+            errors = utils.add_error(errors, error_prefix .. column, column .. " has an invalid value")
           end
         end
 
@@ -167,7 +167,7 @@ function _M.validate_entity(tbl, schema, options)
           if type(v.schema) == "function" then
             sub_schema, err = v.schema(t)
             if err then -- could not retrieve sub schema
-              errors = utils.add_error(errors, error_prefix..column, err)
+              errors = utils.add_error(errors, error_prefix .. column, err)
             end
           else
             sub_schema = v.schema
@@ -180,7 +180,7 @@ function _M.validate_entity(tbl, schema, options)
                 if sub_field.default ~= nil then -- Sub-value has a default, be polite and pre-assign the sub-value
                   t[column] = {}
                 elseif sub_field.required then -- Only check required if field doesn't have a default and dao_insert_value
-                  errors = utils.add_error(errors, error_prefix..column, column.."."..sub_field_k.." is required")
+                  errors = utils.add_error(errors, error_prefix .. column, column .. "." .. sub_field_k .. " is required")
                 end
               end
             end
@@ -190,10 +190,10 @@ function _M.validate_entity(tbl, schema, options)
               local s_ok, s_errors, s_self_check_err = _M.validate_entity(t[column], sub_schema, options)
               if not s_ok then
                 if s_self_check_err then
-                  errors = utils.add_error(errors, error_prefix..column..(tk ~= "" and "."..tk or ""), s_self_check_err.message)
+                  errors = utils.add_error(errors, error_prefix .. column .. (tk ~= "" and "." .. tk or ""), s_self_check_err.message)
                 else
                   for s_k, s_v in pairs(s_errors) do
-                    errors = utils.add_error(errors, error_prefix..column.."."..s_k, s_v)
+                    errors = utils.add_error(errors, error_prefix .. column .. "." .. s_k, s_v)
                   end
                 end
               end
@@ -203,14 +203,14 @@ function _M.validate_entity(tbl, schema, options)
 
         -- Check that full updates still meet the REQUIRED contraints
         if options.full_update and v.required and (t[column] == nil or t[column] == "") then
-          errors = utils.add_error(errors, error_prefix..column, column.." is required")
+          errors = utils.add_error(errors, error_prefix .. column, column .. " is required")
         end
 
         if not partial_update or t[column] ~= nil then
           -- [REQUIRED] Check that required fields are set.
           -- Now that default and most other checks have been run.
           if v.required and not v.dao_insert_value and (t[column] == nil or t[column] == "") then
-            errors = utils.add_error(errors, error_prefix..column, column.." is required")
+            errors = utils.add_error(errors, error_prefix .. column, column .. " is required")
           end
 
           if type(v.func) == "function" and (errors == nil or errors[column] == nil) then
@@ -218,7 +218,7 @@ function _M.validate_entity(tbl, schema, options)
             -- only if there is no error on that field already.
             local ok, err, new_fields = v.func(t[column], t, column)
             if ok == false and err then
-              errors = utils.add_error(errors, error_prefix..column, err)
+              errors = utils.add_error(errors, error_prefix .. column, err)
             elseif new_fields then
               for k, v in pairs(new_fields) do
                 t[k] = v
@@ -233,10 +233,10 @@ function _M.validate_entity(tbl, schema, options)
         if schema.fields[k] == nil then
           if schema.flexible then
             if utils.strip(tk) ~= "" and k ~= tk then
-              errors = utils.add_error(errors, error_prefix..k, k.." is an unknown field")
+              errors = utils.add_error(errors, error_prefix .. k, k .. " is an unknown field")
             end
           else
-            errors = utils.add_error(errors, error_prefix..k, k.." is an unknown field")
+            errors = utils.add_error(errors, error_prefix .. k, k .. " is an unknown field")
           end
         end
       end
@@ -261,7 +261,7 @@ function _M.is_schema_subset(tbl, schema)
       errors = utils.add_error(errors, k, "unknown field")
     elseif schema.fields[k].type == "id" and v ~= nil then
       if not utils.is_valid_uuid(v) then
-        errors = utils.add_error(errors, k, v.." is not a valid uuid")
+        errors = utils.add_error(errors, k, v .. " is not a valid uuid")
       end
     end
   end

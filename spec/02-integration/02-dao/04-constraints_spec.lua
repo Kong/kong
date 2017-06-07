@@ -15,7 +15,7 @@ local plugin_tbl = {
 }
 
 helpers.for_each_dao(function(kong_config)
-  describe("Model (Constraints) with DB: #"..kong_config.database, function()
+  describe("Model (Constraints) with DB: #" .. kong_config.database, function()
     local plugin_fixture, api_fixture
     local factory, apis, plugins
     setup(function()
@@ -112,7 +112,7 @@ helpers.for_each_dao(function(kong_config)
         assert.falsy(plugin)
         assert.truthy(err)
         assert.True(err.foreign)
-        assert.matches("api_id=does not exist with value '"..plugin_fixture.api_id.."'", tostring(err), nil, true)
+        assert.matches("api_id=does not exist with value '" .. plugin_fixture.api_id .. "'", tostring(err), nil, true)
       end)
       it("not insert plugin if invalid Consumer foreign key", function()
         local plugin_tbl = {
@@ -126,7 +126,7 @@ helpers.for_each_dao(function(kong_config)
         assert.falsy(plugin)
         assert.truthy(err)
         assert.True(err.foreign)
-        assert.matches("consumer_id=does not exist with value '"..plugin_tbl.consumer_id.."'", tostring(err), nil, true)
+        assert.matches("consumer_id=does not exist with value '" .. plugin_tbl.consumer_id .. "'", tostring(err), nil, true)
       end)
       it("does not update plugin if invalid foreign key", function()
         plugin_fixture.api_id = api_fixture.id
@@ -141,7 +141,7 @@ helpers.for_each_dao(function(kong_config)
         assert.falsy(plugin)
         assert.truthy(err)
         assert.True(err.foreign)
-        assert.matches("api_id=does not exist with value '"..fake_api_id.."'", tostring(err), nil, true)
+        assert.matches("api_id=does not exist with value '" .. fake_api_id .. "'", tostring(err), nil, true)
       end)
     end)
 

@@ -5,8 +5,8 @@ local escape = require("socket.url").escape
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
   local test_json = fn("application/json")
-  it(title.." with application/www-form-urlencoded", test_form_encoded)
-  it(title.." with application/json", test_json)
+  it(title .. " with application/www-form-urlencoded", test_form_encoded)
+  it(title .. " with application/json", test_json)
 end
 
 describe("Admin API", function()
@@ -216,7 +216,7 @@ describe("Admin API", function()
 
         for i = 1, 10 do
           assert(helpers.dao.consumers:insert {
-            username = "consumer-"..i,
+            username = "consumer-" .. i,
           })
         end
       end)
@@ -294,7 +294,7 @@ describe("Admin API", function()
         it("retrieves by id", function()
           local res = assert(client:send {
             method = "GET",
-            path = "/consumers/"..consumer.id
+            path = "/consumers/" .. consumer.id
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
@@ -303,7 +303,7 @@ describe("Admin API", function()
         it("retrieves by username", function()
           local res = assert(client:send {
             method = "GET",
-            path = "/consumers/"..consumer.username
+            path = "/consumers/" .. consumer.username
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
@@ -312,7 +312,7 @@ describe("Admin API", function()
         it("retrieves by username in uuid format", function()
           local res = assert(client:send {
             method = "GET",
-            path = "/consumers/"..consumer3.username
+            path = "/consumers/" .. consumer3.username
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
@@ -321,7 +321,7 @@ describe("Admin API", function()
         it("retrieves by urlencoded username", function()
           local res = assert(client:send {
             method = "GET",
-            path = "/consumers/"..escape(consumer2.username)
+            path = "/consumers/" .. escape(consumer2.username)
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
@@ -341,7 +341,7 @@ describe("Admin API", function()
           return function()
             local res = assert(client:send {
               method = "PATCH",
-              path = "/consumers/"..consumer.id,
+              path = "/consumers/" .. consumer.id,
               body = {
                 username = "alice"
               },
@@ -360,7 +360,7 @@ describe("Admin API", function()
           return function()
             local res = assert(client:send {
               method = "PATCH",
-              path = "/consumers/"..consumer.username,
+              path = "/consumers/" .. consumer.username,
               body = {
                 username = "alice"
               },
@@ -393,7 +393,7 @@ describe("Admin API", function()
             return function()
               local res = assert(client:send {
                 method = "PATCH",
-                path = "/consumers/"..consumer.id,
+                path = "/consumers/" .. consumer.id,
                 body = {},
                 headers = {["Content-Type"] = content_type}
               })
@@ -409,7 +409,7 @@ describe("Admin API", function()
         it("deletes by id", function()
           local res = assert(client:send {
             method = "DELETE",
-            path = "/consumers/"..consumer.id
+            path = "/consumers/" .. consumer.id
           })
           local body = assert.res_status(204, res)
           assert.equal("", body)
@@ -417,7 +417,7 @@ describe("Admin API", function()
         it("deletes by username", function()
           local res = assert(client:send {
             method = "DELETE",
-            path = "/consumers/"..consumer.username
+            path = "/consumers/" .. consumer.username
           })
           local body = assert.res_status(204, res)
           assert.equal("", body)

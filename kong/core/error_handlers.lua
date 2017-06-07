@@ -28,7 +28,7 @@ local BODIES = {
   default = "The upstream server responded with %d"
 }
 
-local SERVER_HEADER = _KONG._NAME.."/".._KONG._VERSION
+local SERVER_HEADER = _KONG._NAME .. "/" .. _KONG._VERSION
 
 return function(ngx)
   local accept_header = ngx.req.get_headers()["accept"]
@@ -53,7 +53,7 @@ return function(ngx)
   end
 
   local status = ngx.status
-  message = BODIES["s"..status] and BODIES["s"..status] or format(BODIES.default, status)
+  message = BODIES["s" .. status] and BODIES["s" .. status] or format(BODIES.default, status)
 
   if singletons.configuration.server_tokens then
     ngx.header["Server"] = SERVER_HEADER

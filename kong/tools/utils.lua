@@ -391,7 +391,7 @@ function _M.load_module_if_exists(module_name)
   if status then
     return true, res
   -- Here we match any character because if a module has a dash '-' in its name, we would need to escape it.
-  elseif type(res) == "string" and find(res, "module '"..module_name.."' not found", nil, true) then
+  elseif type(res) == "string" and find(res, "module '" .. module_name .. "' not found", nil, true) then
     return false, res
   else
     error(res)
@@ -453,11 +453,11 @@ _M.normalize_ipv4 = function(address)
     a,b,c,d,port = address:match("^(%d%d?%d?)%.(%d%d?%d?)%.(%d%d?%d?)%.(%d%d?%d?)$")
   end
   if not a then
-    return nil, "invalid ipv4 address: "..address
+    return nil, "invalid ipv4 address: " .. address
   end
   a,b,c,d = tonumber(a), tonumber(b), tonumber(c), tonumber(d)
   if (a<0) or (a>255) or (b<0) or (b>255) or (c<0) or (c>255) or (d<0) or (d>255) then
-    return nil, "invalid ipv4 address: "..address
+    return nil, "invalid ipv4 address: " .. address
   end
   if port then 
     port = tonumber(port) 
@@ -497,32 +497,32 @@ _M.normalize_ipv6 = function(address)
   end
   -- check ipv6 format and normalize
   if check:sub(1,1) == ":" then
-    check = "0"..check
+    check = "0" .. check
   end
   if check:sub(-1,-1) == ":" then
-    check = check.."0"
+    check = check .. "0"
   end
   if check:find("::") then
     -- expand double colon
     local _, count = gsub(check, ":", "")
-    local ins = ":"..string.rep("0:", 8 - count)
+    local ins = ":" .. string.rep("0:", 8 - count)
     check = gsub(check, "::", ins, 1)  -- replace only 1 occurence!
   end
   local a,b,c,d,e,f,g,h = check:match("^(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?)$")
   if not a then
     -- not a valid IPv6 address
-    return nil, "invalid ipv6 address: "..address
+    return nil, "invalid ipv6 address: " .. address
   end
   local zeros = "0000"
   return lower(fmt("%s:%s:%s:%s:%s:%s:%s:%s",
-      zeros:sub(1, 4 - #a)..a,
-      zeros:sub(1, 4 - #b)..b,
-      zeros:sub(1, 4 - #c)..c,
-      zeros:sub(1, 4 - #d)..d,
-      zeros:sub(1, 4 - #e)..e,
-      zeros:sub(1, 4 - #f)..f,
-      zeros:sub(1, 4 - #g)..g,
-      zeros:sub(1, 4 - #h)..h)), port
+      zeros:sub(1, 4 - #a) .. a,
+      zeros:sub(1, 4 - #b) .. b,
+      zeros:sub(1, 4 - #c) .. c,
+      zeros:sub(1, 4 - #d) .. d,
+      zeros:sub(1, 4 - #e) .. e,
+      zeros:sub(1, 4 - #f) .. f,
+      zeros:sub(1, 4 - #g) .. g,
+      zeros:sub(1, 4 - #h) .. h)), port
 end
 
 --- parses and validates a hostname.
@@ -540,14 +540,14 @@ _M.check_hostname = function(address)
   end
   local match = name:match("^[%d%a%-%.%_]+$")
   if match == nil then
-    return nil, "invalid hostname: "..address
+    return nil, "invalid hostname: " .. address
   end
 
   -- Reject prefix/trailing dashes and dots in each segment
   -- note: punycode allowes prefixed dash, if the characters before the dash are escaped
   for _, segment in ipairs(split(name, ".")) do
     if segment == "" or segment:match("-$") or segment:match("^%.") or segment:match("%.$") then
-      return nil, "invalid hostname: "..address
+      return nil, "invalid hostname: " .. address
     end
   end
   return name, port
@@ -587,7 +587,7 @@ end
 -- local addr, err = format_ip(normalize_ip("001.002.003.004:123"))  --> "1.2.3.4:123"
 -- local addr, err = format_ip(normalize_ip("::1"))                  --> "[0000:0000:0000:0000:0000:0000:0000:0001]"
 -- local addr, err = format_ip("::1", 80))                           --> "[::1]:80"
--- local addr, err = format_ip(check_hostname("//bad..name\\"))      --> nil, "invalid hostname: ..."
+-- local addr, err = format_ip(check_hostname("//bad .. name\\"))    --> nil, "invalid hostname: ... "
 _M.format_host = function(p1, p2)
   local t = type(p1)
   if t == "nil" then 
@@ -603,12 +603,12 @@ _M.format_host = function(p1, p2)
     host = p1
     typ = _M.hostname_type(host)
   else
-    return nil, "cannot format type '"..t.."'"
+    return nil, "cannot format type '" .. t .. "'"
   end
   if (typ == "ipv6") and (not find(host, "%[")) then
-    return "["..host.."]" ..  (port and ":"..port or "")
+    return "[" .. host .. "]" .. (port and ":" .. port or "")
   else
-    return host ..  (port and ":"..port or "")
+    return host ..  (port and ":" .. port or "")
   end
 end
 

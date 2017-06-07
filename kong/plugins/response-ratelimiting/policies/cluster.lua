@@ -24,7 +24,7 @@ return {
           db.cassandra.uuid(api_id),
           identifier,
           db.cassandra.timestamp(period_date),
-          name.."_"..period,
+          name .. "_" .. period,
         })
         if not res then
           log(ERR, "[response-ratelimiting] cluster policy: could not increment ",
@@ -47,7 +47,7 @@ return {
         db.cassandra.uuid(api_id),
         identifier,
         db.cassandra.timestamp(periods[period]),
-        name.."_"..period,
+        name .. "_" .. period,
       })
       if not rows then       return nil, err
       elseif #rows <= 1 then return rows[1]

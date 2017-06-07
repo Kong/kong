@@ -36,7 +36,7 @@ function BotDetectionHandler:access(conf)
     user_agent = strip(user_agent)
 
     -- Cache key, per API
-    local cache_key = ngx.ctx.api.id..":"..user_agent
+    local cache_key = ngx.ctx.api.id .. ":" .. user_agent
 
     -- The cache already has the user_agents that should be blocked
     -- So we avoid matching the regexes everytime

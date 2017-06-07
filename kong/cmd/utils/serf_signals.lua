@@ -92,8 +92,8 @@ function _M.start(kong_config, dao)
     ["-profile"] = kong_config.cluster_profile,
     ["-node"] = serf.node_name,
     ["-event-handler"] = "member-join,member-leave,member-failed,"
-                       .."member-update,member-reap,user:"
-                       ..serf_event_name.."="..kong_config.serf_event
+                       .. "member-update,member-reap,user:"
+                       .. serf_event_name .. "=" .. kong_config.serf_event
   }, Serf.args_mt)
 
   local cmd = string.format("nohup %s agent %s > %s 2>&1 & echo $! > %s",
@@ -124,7 +124,7 @@ function _M.start(kong_config, dao)
     local tlogs = pl_stringx.split(logs, "\n")
     local err = string.gsub(tlogs[#tlogs-1], "==> ", "")
     err = pl_stringx.strip(err)
-    return nil, "could not start serf: "..err
+    return nil, "could not start serf: " .. err
   end
 
   log.verbose("serf agent started")

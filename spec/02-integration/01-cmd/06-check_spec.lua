@@ -2,7 +2,7 @@ local helpers = require "spec.helpers"
 
 describe("kong check", function()
   it("validates a conf", function()
-    local _, _, stdout = assert(helpers.kong_exec("check "..helpers.test_conf_path))
+    local _, _, stdout = assert(helpers.kong_exec("check " .. helpers.test_conf_path))
     assert.matches("configuration at .- is valid", stdout)
   end)
   it("reports invalid conf", function()

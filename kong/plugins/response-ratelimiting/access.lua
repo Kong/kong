@@ -84,7 +84,7 @@ function _M.execute(conf)
     local remaining
     for lk, lv in pairs(usage[k]) do
       if conf.block_on_first_violation and lv.remaining == 0 then
-        return responses.send(429, "API rate limit exceeded for '"..k.."'")
+        return responses.send(429, "API rate limit exceeded for '" .. k .. "'")
       end
 
       if not remaining or lv.remaining < remaining then
@@ -92,7 +92,7 @@ function _M.execute(conf)
       end
     end
 
-    ngx.req.set_header(RATELIMIT_REMAINING.."-"..k, remaining)
+    ngx.req.set_header(RATELIMIT_REMAINING .. "-" .. k, remaining)
   end
 
   ngx.ctx.usage = usage -- For later use

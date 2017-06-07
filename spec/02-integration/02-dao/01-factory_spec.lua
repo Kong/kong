@@ -2,7 +2,7 @@ local helpers = require "spec.02-integration.02-dao.helpers"
 local Factory = require "kong.dao.factory"
 
 helpers.for_each_dao(function(kong_conf)
-  describe("DAO Factory with DB: #"..kong_conf.database, function()
+  describe("DAO Factory with DB: #" .. kong_conf.database, function()
     it("should be instanciable", function()
       local factory
       assert.has_no_errors(function()

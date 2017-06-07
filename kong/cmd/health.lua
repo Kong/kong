@@ -11,9 +11,9 @@ local function execute(args)
     prefix = args.prefix
   }))
   assert(pl_path.exists(default_conf.prefix),
-         "no such prefix: "..default_conf.prefix)
+         "no such prefix: " .. default_conf.prefix)
   assert(pl_path.exists(default_conf.kong_env),
-         "Kong is not running at "..default_conf.prefix)
+         "Kong is not running at " .. default_conf.prefix)
 
   -- load <PREFIX>/kong.conf containing running node's config
   local conf = assert(conf_loader(default_conf.kong_env))
@@ -26,7 +26,7 @@ local function execute(args)
   local count = 0
   for k, v in pairs(pids) do
     local running = kill.is_running(v)
-    local msg = pl_stringx.ljust(k, 12, ".")..(running and "running" or "not running")
+    local msg = pl_stringx.ljust(k, 12, ".") .. (running and "running" or "not running")
     if running then
       count = count + 1
     end
@@ -35,8 +35,8 @@ local function execute(args)
 
   log("") -- line jump
 
-  assert(count > 0, "Kong is not running at "..conf.prefix)
-  assert(count == pl_tablex.size(pids), "some services are not running at "..conf.prefix)
+  assert(count > 0, "Kong is not running at " .. conf.prefix)
+  assert(count == pl_tablex.size(pids), "some services are not running at " .. conf.prefix)
 
   log("Kong is healthy at %s", conf.prefix)
 end

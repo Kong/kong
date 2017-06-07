@@ -12,7 +12,7 @@ local function execute(args)
   }))
 
   assert(not kill.is_running(conf.nginx_pid),
-         "Kong is already running in "..conf.prefix)
+         "Kong is already running in " .. conf.prefix)
 
   local err
   local dao = assert(DAOFactory.new(conf))

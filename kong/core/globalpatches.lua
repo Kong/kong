@@ -210,7 +210,7 @@ return function(options)
       local seed = seeds[ngx.worker.pid()]
       if not seed then
         if not options.cli and ngx.get_phase() ~= "init_worker" then
-          ngx.log(ngx.WARN, debug.traceback("math.randomseed() must be "..
+          ngx.log(ngx.WARN, debug.traceback("math.randomseed() must be " ..
               "called in init_worker context", 2))
         end
 
@@ -255,8 +255,8 @@ return function(options)
         randomseed(seed)
         seeds[ngx.worker.pid()] = seed
       else
-        ngx.log(ngx.DEBUG, debug.traceback("attempt to seed random number "..
-            "generator, but already seeded with: "..tostring(seed), 2))
+        ngx.log(ngx.DEBUG, debug.traceback("attempt to seed random number " ..
+            "generator, but already seeded with: " .. tostring(seed), 2))
       end
 
       return seed

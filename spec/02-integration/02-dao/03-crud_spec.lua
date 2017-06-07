@@ -31,7 +31,7 @@ local api_tbl = {
 }
 
 helpers.for_each_dao(function(kong_config)
-  describe("Model (CRUD) with DB: #"..kong_config.database, function()
+  describe("Model (CRUD) with DB: #" .. kong_config.database, function()
     local factory, apis, oauth2_credentials
     setup(function()
       factory = assert(Factory.new(kong_config))
@@ -208,8 +208,8 @@ helpers.for_each_dao(function(kong_config)
 
         for i = 1, 100 do
           local api, err = apis:insert {
-            name = "fixture_"..i,
-            hosts = { "fixture"..i..".com" },
+            name = "fixture_" .. i,
+            hosts = { "fixture" .. i .. ".com" },
             upstream_url = "http://fixture.org"
           }
           assert.falsy(err)
@@ -307,8 +307,8 @@ helpers.for_each_dao(function(kong_config)
 
         for i = 1, 100 do
           local api, err = apis:insert {
-            name = "fixture_"..i,
-            hosts = { "fixture"..i..".com" },
+            name = "fixture_" .. i,
+            hosts = { "fixture" .. i .. ".com" },
             upstream_url = "http://fixture.org"
           }
           assert.falsy(err)
@@ -414,8 +414,8 @@ helpers.for_each_dao(function(kong_config)
 
         for i = 1, 100 do
           local api, err = apis:insert {
-            name = "fixture_"..i,
-            hosts = { "fixture"..i..".com" },
+            name = "fixture_" .. i,
+            hosts = { "fixture" .. i .. ".com" },
             upstream_url = "http://fixture.org"
           }
           assert.falsy(err)
@@ -711,7 +711,7 @@ helpers.for_each_dao(function(kong_config)
         assert.error_matches(function()
           local fact = assert(Factory.new(kong_config))
           assert(fact.apis:find_all())
-        end, "["..kong_config.database.." error]", nil, true)
+        end, "[" .. kong_config.database .. " error]", nil, true)
       end)
     end)
   end) -- describe

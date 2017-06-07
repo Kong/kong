@@ -220,15 +220,15 @@ end
 -- Utility Functions
 
 function _M.api_key(host)
-  return CACHE_KEYS.APIS..":"..host
+  return CACHE_KEYS.APIS .. ":" .. host
 end
 
 function _M.consumer_key(id)
-  return CACHE_KEYS.CONSUMERS..":"..id
+  return CACHE_KEYS.CONSUMERS .. ":" .. id
 end
 
 function _M.plugin_key(name, api_id, consumer_id)
-  return CACHE_KEYS.PLUGINS..":"..name..(api_id and ":"..api_id or "")..(consumer_id and ":"..consumer_id or "")
+  return CACHE_KEYS.PLUGINS .. ":" .. name .. (api_id and ":" .. api_id or "") .. (consumer_id and ":" .. consumer_id or "")
 end
 
 function _M.certificate_key(sni)
@@ -236,43 +236,43 @@ function _M.certificate_key(sni)
 end
 
 function _M.basicauth_credential_key(username)
-  return CACHE_KEYS.BASICAUTH_CREDENTIAL..":"..username
+  return CACHE_KEYS.BASICAUTH_CREDENTIAL .. ":" .. username
 end
 
 function _M.oauth2_credential_key(client_id)
-  return CACHE_KEYS.OAUTH2_CREDENTIAL..":"..client_id
+  return CACHE_KEYS.OAUTH2_CREDENTIAL .. ":" .. client_id
 end
 
 function _M.oauth2_token_key(access_token)
-  return CACHE_KEYS.OAUTH2_TOKEN..":"..access_token
+  return CACHE_KEYS.OAUTH2_TOKEN .. ":" .. access_token
 end
 
 function _M.keyauth_credential_key(key)
-  return CACHE_KEYS.KEYAUTH_CREDENTIAL..":"..key
+  return CACHE_KEYS.KEYAUTH_CREDENTIAL .. ":" .. key
 end
 
 function _M.hmacauth_credential_key(username)
-  return CACHE_KEYS.HMACAUTH_CREDENTIAL..":"..username
+  return CACHE_KEYS.HMACAUTH_CREDENTIAL .. ":" .. username
 end
 
 function _M.jwtauth_credential_key(secret)
-  return CACHE_KEYS.JWTAUTH_CREDENTIAL..":"..secret
+  return CACHE_KEYS.JWTAUTH_CREDENTIAL .. ":" .. secret
 end
 
 function _M.ldap_credential_key(api_id, username)
-  return CACHE_KEYS.LDAP_CREDENTIAL.."_"..api_id..":"..username
+  return CACHE_KEYS.LDAP_CREDENTIAL .. "_" .. api_id .. ":" .. username
 end
 
 function _M.acls_key(consumer_id)
-  return CACHE_KEYS.ACLS..":"..consumer_id
+  return CACHE_KEYS.ACLS .. ":" .. consumer_id
 end
 
 function _M.ssl_data(api_id)
-  return CACHE_KEYS.SSL..(api_id and ":"..api_id or "")
+  return CACHE_KEYS.SSL .. (api_id and ":" .. api_id or "")
 end
 
 function _M.bot_detection_key(key)
-  return CACHE_KEYS.BOT_DETECTION..":"..key
+  return CACHE_KEYS.BOT_DETECTION .. ":" .. key
 end
 
 function _M.upstreams_dict_key()
@@ -280,11 +280,11 @@ function _M.upstreams_dict_key()
 end
 
 function _M.upstream_key(upstream_id)
-  return CACHE_KEYS.UPSTREAMS..":"..upstream_id
+  return CACHE_KEYS.UPSTREAMS .. ":" .. upstream_id
 end
 
 function _M.targets_key(upstream_id)
-  return CACHE_KEYS.TARGETS..":"..upstream_id
+  return CACHE_KEYS.TARGETS .. ":" .. upstream_id
 end
 
 function _M.all_apis_by_dict_key()
