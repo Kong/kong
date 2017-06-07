@@ -8,14 +8,14 @@ local slots_default, slots_max = 100, 2^16
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
   local test_json = fn("application/json")
-  it(title.." with application/www-form-urlencoded", test_form_encoded)
-  it(title.." with application/json", test_json)
+  it(title .. " with application/www-form-urlencoded", test_form_encoded)
+  it(title .. " with application/json", test_json)
 end
 
 local function validate_order(list, size)
-  assert(type(list) == "table", "expected list table, got "..type(list))
+  assert(type(list) == "table", "expected list table, got " .. type(list))
   assert(next(list), "table is empty")
-  assert(type(size) == "number", "expected size number, got "..type(size))
+  assert(type(size) == "number", "expected size number, got " .. type(size))
   assert(size > 0, "expected size to be > 0")
   local c = {}
   local max = 0
@@ -103,9 +103,9 @@ describe("Admin API", function()
         local res = assert(client:send {
           method = "POST",
           path = "/upstreams",
-          body = "name=my.upstream&slots=10&"..
-                 "orderlist[]=10&orderlist[]=9&orderlist[]=8&orderlist[]=7&"..
-                 "orderlist[]=6&orderlist[]=5&orderlist[]=4&orderlist[]=3&"..
+          body = "name=my.upstream&slots=10&" ..
+                 "orderlist[]=10&orderlist[]=9&orderlist[]=8&orderlist[]=7&" ..
+                 "orderlist[]=6&orderlist[]=5&orderlist[]=4&orderlist[]=3&" ..
                  "orderlist[]=2&orderlist[]=1",
           headers = {["Content-Type"] = "application/www-form-urlencoded"}
         })
@@ -118,7 +118,7 @@ describe("Admin API", function()
         validate_order(json.orderlist, json.slots)
         assert.are.same({ 10,9,8,7,6,5,4,3,2,1 }, json.orderlist)
       end)
-      it("creates an upstream with "..slots_max.." slots", function(content_type)
+      it("creates an upstream with " .. slots_max .. " slots", function(content_type)
         local res = assert(client:send {
           method = "POST",
           path = "/upstreams",
@@ -393,7 +393,7 @@ if content_type == "application/x-www-form-urlencoded" then return end
 
         for i = 1, 10 do
           assert(dao.upstreams:insert {
-            name = "upstream-"..i,
+            name = "upstream-" .. i,
           })
         end
       end)

@@ -54,7 +54,7 @@ describe("Plugin: key-auth (hooks)", function()
     local cache_key = cache.keyauth_credential_key("kong")
     res = assert(admin_client:send {
       method = "GET",
-      path = "/cache/"..cache_key
+      path = "/cache/" .. cache_key
     })
     assert.res_status(200, res)
 
@@ -69,7 +69,7 @@ describe("Plugin: key-auth (hooks)", function()
     helpers.wait_until(function()
       local res = assert(admin_client:send {
         method = "GET",
-        path = "/cache/"..cache_key
+        path = "/cache/" .. cache_key
       })
       res:read_body()
       return res.status == 404
@@ -102,7 +102,7 @@ describe("Plugin: key-auth (hooks)", function()
     local cache_key = cache.keyauth_credential_key("kong")
     res = assert(admin_client:send {
       method = "GET",
-      path = "/cache/"..cache_key
+      path = "/cache/" .. cache_key
     })
     local body = assert.res_status(200, res)
     local credential = cjson.decode(body)
@@ -110,7 +110,7 @@ describe("Plugin: key-auth (hooks)", function()
     -- delete credential entity
     res = assert(admin_client:send {
       method = "DELETE",
-      path = "/consumers/bob/key-auth/"..credential.id
+      path = "/consumers/bob/key-auth/" .. credential.id
     })
     assert.res_status(204, res)
 
@@ -118,7 +118,7 @@ describe("Plugin: key-auth (hooks)", function()
     helpers.wait_until(function()
       local res = assert(admin_client:send {
         method = "GET",
-        path = "/cache/"..cache_key
+        path = "/cache/" .. cache_key
       })
       res:read_body()
       return res.status == 404
@@ -151,7 +151,7 @@ describe("Plugin: key-auth (hooks)", function()
     local cache_key = cache.keyauth_credential_key("kong")
     res = assert(admin_client:send {
       method = "GET",
-      path = "/cache/"..cache_key
+      path = "/cache/" .. cache_key
     })
     local body = assert.res_status(200, res)
     local credential = cjson.decode(body)
@@ -159,7 +159,7 @@ describe("Plugin: key-auth (hooks)", function()
     -- delete credential entity
     res = assert(admin_client:send {
       method = "PATCH",
-      path = "/consumers/bob/key-auth/"..credential.id,
+      path = "/consumers/bob/key-auth/" .. credential.id,
       body = {
         key = "kong-updated"
       },
@@ -173,7 +173,7 @@ describe("Plugin: key-auth (hooks)", function()
     helpers.wait_until(function()
       local res = assert(admin_client:send {
         method = "GET",
-        path = "/cache/"..cache_key
+        path = "/cache/" .. cache_key
       })
       res:read_body()
       return res.status == 404

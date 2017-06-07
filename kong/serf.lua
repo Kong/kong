@@ -16,7 +16,7 @@ Serf.__index = Serf
 Serf.args_mt = {
   __tostring = function(t)
     local buf = {}
-    for k, v in pairs(t) do buf[#buf+1] = k.." '"..v.."'" end
+    for k, v in pairs(t) do buf[#buf+1] = k .. " '" .. v .. "'" end
     return table.concat(buf, " ")
   end
 }
@@ -36,7 +36,7 @@ function Serf:invoke_signal(signal, args, no_rpc, full_error)
   if type(args) == "table" then
     setmetatable(args, Serf.args_mt)
   end
-  local rpc = no_rpc and "" or "-rpc-addr="..self.config.cluster_listen_rpc
+  local rpc = no_rpc and "" or "-rpc-addr=" .. self.config.cluster_listen_rpc
   local cmd = string.format("%s %s %s %s", self.config.serf_path, signal, rpc, tostring(args))
   ngx_log(DEBUG, "[serf] running command: ", cmd)
   local ok, code, stdout, stderr = pl_utils.executeex(cmd)
@@ -142,7 +142,7 @@ function Serf:autojoin()
         joined = true
         break
       else
-        log.warn("could not join cluster at %s, if the node does not exist "..
+        log.warn("could not join cluster at %s, if the node does not exist " ..
                  "anymore it will be purged automatically", v.cluster_listening_address)
       end
     end
@@ -191,10 +191,10 @@ function Serf:event(t_payload)
 
   if #payload > 512 then
     -- Serf can't send a payload greater than 512 bytes
-    return nil, "encoded payload is "..#payload.." and exceeds the limit of 512 bytes!"
+    return nil, "encoded payload is " .. #payload .. " and exceeds the limit of 512 bytes!"
   end
 
-  return self:invoke_signal("event -coalesce=false", " kong '"..payload.."'")
+  return self:invoke_signal("event -coalesce=false", " kong '" .. payload .. "'")
 end
 
 return Serf

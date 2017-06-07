@@ -43,7 +43,7 @@ local function canonicalise_path(path)
   for segment in path:gmatch("/([^/]*)") do
     if segment == "" or segment == "." then
       segments = segments -- do nothing and avoid lint
-    elseif segment == ".." then
+    elseif segment == " .. " then
       -- intentionally discards components at top level
       segments[#segments] = nil
     else
@@ -203,7 +203,7 @@ local function prepare_awsv4_request(tbl)
   -- Task 4: Add the Signing Information to the Request
   -- http://docs.aws.amazon.com/general/latest/gr/sigv4-add-signature-to-request.html
   local authorization = ALGORITHM
-    .. " Credential=" .. access_key .."/" .. credential_scope
+    .. " Credential=" .. access_key .. "/" .. credential_scope
     .. ", SignedHeaders=" .. signed_headers
     .. ", Signature=" .. signature
   if add_auth_header then

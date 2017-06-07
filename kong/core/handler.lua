@@ -125,9 +125,9 @@ return {
 
       local ok, err = balancer_execute(balancer_address)
       if not ok then
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR("failed the initial "..
-          "dns/balancer resolve for '"..balancer_address.host..
-          "' with: "..tostring(err))
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR("failed the initial " ..
+          "dns/balancer resolve for '" .. balancer_address.host ..
+          "' with: " .. tostring(err))
       end
 
       -- `uri` is the URI with which to call upstream, as returned by the
@@ -135,7 +135,7 @@ return {
       -- `host_header` is the original header to be preserved if set.
       var.upstream_uri  = uri
       var.upstream_host = host_header or
-          balancer_address.hostname..":"..balancer_address.port
+          balancer_address.hostname .. ":" .. balancer_address.port
 
     end,
     -- Only executed if the `router` module found an API and allows nginx to proxy it.

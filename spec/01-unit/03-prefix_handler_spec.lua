@@ -218,7 +218,7 @@ describe("NGINX conf compiler", function()
         prefix = tmp
       }))
       local ok, err = prefix_handler.prepare_prefix(config)
-      assert.equal(tmp.." is not a directory", err)
+      assert.equal(tmp .. " is not a directory", err)
       assert.is_nil(ok)
     end)
     it("creates pids folder", function()

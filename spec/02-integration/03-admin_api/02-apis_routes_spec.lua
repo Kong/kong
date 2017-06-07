@@ -4,8 +4,8 @@ local cjson = require "cjson"
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
   local test_json = fn("application/json")
-  it(title.." with application/www-form-urlencoded", test_form_encoded)
-  it(title.." with application/json", test_json)
+  it(title .. " with application/www-form-urlencoded", test_form_encoded)
+  it(title .. " with application/json", test_json)
 end
 
 describe("Admin API", function()
@@ -297,8 +297,8 @@ describe("Admin API", function()
 
         for i = 1, 10 do
           assert(helpers.dao.apis:insert {
-            name = "api-"..i,
-            uris = "/api-"..i,
+            name = "api-" .. i,
+            uris = "/api-" .. i,
             upstream_url = "http://my-api.com"
           })
         end
@@ -420,7 +420,7 @@ describe("Admin API", function()
         it("retrieves by id", function()
           local res = assert(client:send {
             method = "GET",
-            path = "/apis/"..api.id
+            path = "/apis/" .. api.id
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
@@ -429,7 +429,7 @@ describe("Admin API", function()
         it("retrieves by name", function()
           local res = assert(client:send {
             method = "GET",
-            path = "/apis/"..api.name
+            path = "/apis/" .. api.name
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
@@ -445,7 +445,7 @@ describe("Admin API", function()
         it("ignores an invalid body", function()
           local res = assert(client:send {
             method = "GET",
-            path = "/apis/"..api.id,
+            path = "/apis/" .. api.id,
             body = "this fails if decoded as json",
             headers = {
               ["Content-Type"] = "application/json",
@@ -460,7 +460,7 @@ describe("Admin API", function()
           return function()
             local res = assert(client:send {
               method = "PATCH",
-              path = "/apis/"..api.id,
+              path = "/apis/" .. api.id,
               body = {
                 name = "my-updated-api"
               },
@@ -479,7 +479,7 @@ describe("Admin API", function()
           return function()
             local res = assert(client:send {
               method = "PATCH",
-              path = "/apis/"..api.name,
+              path = "/apis/" .. api.name,
               body = {
                 name = "my-updated-api"
               },
@@ -498,7 +498,7 @@ describe("Admin API", function()
           return function()
             local res = assert(client:send {
               method = "PATCH",
-              path = "/apis/"..api.id,
+              path = "/apis/" .. api.id,
               body = {
                 uris = "/my-updated-api,/my-new-uri"
               },
@@ -517,7 +517,7 @@ describe("Admin API", function()
           return function()
             local res = assert(client:send {
               method = "PATCH",
-              path = "/apis/"..api.id,
+              path = "/apis/" .. api.id,
               body = {
                 strip_uri = true
               },
@@ -536,7 +536,7 @@ describe("Admin API", function()
           return function()
             local res = assert(client:send {
               method = "PATCH",
-              path = "/apis/"..api.id,
+              path = "/apis/" .. api.id,
               body = {
                 uris = "/my-updated-path",
                 hosts = "my-updated.tld"
@@ -571,7 +571,7 @@ describe("Admin API", function()
             return function()
               local res = assert(client:send {
                 method = "PATCH",
-                path = "/apis/"..api.id,
+                path = "/apis/" .. api.id,
                 body = {
                   upstream_url = "api.com"
                 },
@@ -589,7 +589,7 @@ describe("Admin API", function()
         it("deletes an API by id", function()
           local res = assert(client:send {
             method = "DELETE",
-            path = "/apis/"..api.id
+            path = "/apis/" .. api.id
           })
           local body = assert.res_status(204, res)
           assert.equal("", body)
@@ -597,7 +597,7 @@ describe("Admin API", function()
         it("deletes an API by name", function()
           local res = assert(client:send {
             method = "DELETE",
-            path = "/apis/"..api.name
+            path = "/apis/" .. api.name
           })
           local body = assert.res_status(204, res)
           assert.equal("", body)
@@ -634,7 +634,7 @@ describe("Admin API", function()
         return function()
           local res = assert(client:send {
             method = "POST",
-            path = "/apis/"..api.id.."/plugins",
+            path = "/apis/" .. api.id .. "/plugins",
             body = {
               name = "key-auth",
               ["config.key_names"] = "apikey,key"
@@ -651,7 +651,7 @@ describe("Admin API", function()
         return function()
           local res = assert(client:send {
             method = "POST",
-            path = "/apis/"..api.name.."/plugins",
+            path = "/apis/" .. api.name .. "/plugins",
             body = {
               name = "key-auth",
               ["config.key_names"] = "apikey,key"
@@ -669,7 +669,7 @@ describe("Admin API", function()
           return function()
             local res = assert(client:send {
               method = "POST",
-              path = "/apis/"..api.id.."/plugins",
+              path = "/apis/" .. api.id .. "/plugins",
               body = {},
               headers = {["Content-Type"] = content_type}
             })
@@ -683,7 +683,7 @@ describe("Admin API", function()
             -- insert initial plugin
             local res = assert(client:send {
               method = "POST",
-              path = "/apis/"..api.id.."/plugins",
+              path = "/apis/" .. api.id .. "/plugins",
               body = {
                 name="basic-auth",
               },
@@ -695,7 +695,7 @@ describe("Admin API", function()
             -- do it again, to provoke the error
             local res = assert(client:send {
               method = "POST",
-              path = "/apis/"..api.id.."/plugins",
+              path = "/apis/" .. api.id .. "/plugins",
               body = {
                 name="basic-auth",
               },
@@ -714,7 +714,7 @@ describe("Admin API", function()
         return function()
           local res = assert(client:send {
             method = "PUT",
-            path = "/apis/"..api.id.."/plugins",
+            path = "/apis/" .. api.id .. "/plugins",
             body = {
               name = "key-auth",
               ["config.key_names"] = "apikey,key",
@@ -732,7 +732,7 @@ describe("Admin API", function()
         return function()
           local res = assert(client:send {
             method = "PUT",
-            path = "/apis/"..api.id.."/plugins",
+            path = "/apis/" .. api.id .. "/plugins",
             body = {
               name = "key-auth",
               ["config.key_names"] = "apikey,key",
@@ -745,7 +745,7 @@ describe("Admin API", function()
 
           res = assert(client:send {
             method = "PUT",
-            path = "/apis/"..api.id.."/plugins",
+            path = "/apis/" .. api.id .. "/plugins",
             body = {
               id = json.id,
               name = "key-auth",
@@ -772,7 +772,7 @@ describe("Admin API", function()
 
           local res = assert(client:send {
             method = "PUT",
-            path = "/apis/"..api.id.."/plugins",
+            path = "/apis/" .. api.id .. "/plugins",
             body = {
               id = plugin.id,
               name = "key-auth",
@@ -803,7 +803,7 @@ describe("Admin API", function()
 
           local res = assert(client:send {
             method = "PUT",
-            path = "/apis/"..api.id.."/plugins",
+            path = "/apis/" .. api.id .. "/plugins",
             body = {
               id = plugin.id,
               name = "key-auth",
@@ -827,7 +827,7 @@ describe("Admin API", function()
 
           local res = assert(client:send {
             method = "PUT",
-            path = "/apis/"..api.id.."/plugins",
+            path = "/apis/" .. api.id .. "/plugins",
             body = {
               id = plugin.id,
               name = "key-auth",
@@ -852,7 +852,7 @@ describe("Admin API", function()
           return function()
             local res = assert(client:send {
               method = "PUT",
-              path = "/apis/"..api.id.."/plugins",
+              path = "/apis/" .. api.id .. "/plugins",
               body = {},
               headers = {["Content-Type"] = content_type}
             })
@@ -872,7 +872,7 @@ describe("Admin API", function()
         })
         local res = assert(client:send {
           method = "GET",
-          path = "/apis/"..api.id.."/plugins"
+          path = "/apis/" .. api.id .. "/plugins"
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -881,7 +881,7 @@ describe("Admin API", function()
       it("ignores an invalid body", function()
         local res = assert(client:send {
           method = "GET",
-          path = "/apis/"..api.id.."/plugins",
+          path = "/apis/" .. api.id .. "/plugins",
           body = "this fails if decoded as json",
           headers = {
             ["Content-Type"] = "application/json",
@@ -904,7 +904,7 @@ describe("Admin API", function()
         it("retrieves by id", function()
           local res = assert(client:send {
             method = "GET",
-            path = "/apis/"..api.id.."/plugins/"..plugin.id
+            path = "/apis/" .. api.id .. "/plugins/" .. plugin.id
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
@@ -921,14 +921,14 @@ describe("Admin API", function()
           -- Try to request the plugin through it (belongs to the fixture API instead)
           local res = assert(client:send {
             method = "GET",
-            path = "/apis/"..w_api.id.."/plugins/"..plugin.id
+            path = "/apis/" .. w_api.id .. "/plugins/" .. plugin.id
           })
           assert.res_status(404, res)
         end)
         it("ignores an invalid body", function()
           local res = assert(client:send {
             method = "GET",
-            path = "/apis/"..api.id.."/plugins/"..plugin.id,
+            path = "/apis/" .. api.id .. "/plugins/" .. plugin.id,
             body = "this fails if decoded as json",
             headers = {
               ["Content-Type"] = "application/json",
@@ -943,7 +943,7 @@ describe("Admin API", function()
           return function()
             local res = assert(client:send {
               method = "PATCH",
-              path = "/apis/"..api.id.."/plugins/"..plugin.id,
+              path = "/apis/" .. api.id .. "/plugins/" .. plugin.id,
               body = {
                 ["config.key_names"] = {"key-updated"}
               },
@@ -972,7 +972,7 @@ describe("Admin API", function()
 
             local res = assert(client:send {
               method = "PATCH",
-              path = "/apis/"..api.id.."/plugins/"..plugin.id,
+              path = "/apis/" .. api.id .. "/plugins/" .. plugin.id,
               body = {
                 ["config.key_names"] = {"my-new-key"}
               },
@@ -995,7 +995,7 @@ describe("Admin API", function()
           return function()
             local res = assert(client:send {
               method = "PATCH",
-              path = "/apis/"..api.id.."/plugins/"..plugin.id,
+              path = "/apis/" .. api.id .. "/plugins/" .. plugin.id,
               body = {
                 name = "key-auth",
                 enabled = false
@@ -1018,7 +1018,7 @@ describe("Admin API", function()
             return function()
               local res = assert(client:send {
                 method = "PATCH",
-                path = "/apis/"..api.id.."/plugins/b6cca0aa-4537-11e5-af97-23a06d98af51",
+                path = "/apis/" .. api.id .. "/plugins/b6cca0aa-4537-11e5-af97-23a06d98af51",
                 body = {},
                 headers = {["Content-Type"] = content_type}
               })
@@ -1029,7 +1029,7 @@ describe("Admin API", function()
             return function()
               local res = assert(client:send {
                 method = "PATCH",
-                path = "/apis/"..api.id.."/plugins/"..plugin.id,
+                path = "/apis/" .. api.id .. "/plugins/" .. plugin.id,
                 body = {
                   name = "foo"
                 },
@@ -1047,7 +1047,7 @@ describe("Admin API", function()
         it("deletes a plugin configuration", function()
           local res = assert(client:send {
             method = "DELETE",
-            path = "/apis/"..api.id.."/plugins/"..plugin.id
+            path = "/apis/" .. api.id .. "/plugins/" .. plugin.id
           })
           assert.res_status(204, res)
         end)
@@ -1055,7 +1055,7 @@ describe("Admin API", function()
           it("returns 404 if not found", function()
             local res = assert(client:send {
               method = "DELETE",
-              path = "/apis/"..api.id.."/plugins/b6cca0aa-4537-11e5-af97-23a06d98af51"
+              path = "/apis/" .. api.id .. "/plugins/b6cca0aa-4537-11e5-af97-23a06d98af51"
             })
             assert.res_status(404, res)
           end)

@@ -179,10 +179,10 @@ local function check_and_infer(conf)
 
     typ = typ or "string"
     if value and not typ_checks[typ](value) then
-      errors[#errors+1] = k.." is not a "..typ..": '"..tostring(value).."'"
+      errors[#errors+1] = k .. " is not a " .. typ .. ": '" .. tostring(value) .. "'"
     elseif v_schema.enum and not tablex.find(v_schema.enum, value) then
-      errors[#errors+1] = k.." has an invalid value: '"..tostring(value)
-                          .."' ("..table.concat(v_schema.enum, ", ")..")"
+      errors[#errors+1] = k .. " has an invalid value: '" .. tostring(value)
+                          .. "' (" .. table.concat(v_schema.enum, ", ") .. ")"
     end
 
     conf[k] = value
@@ -194,7 +194,7 @@ local function check_and_infer(conf)
 
   if conf.cassandra_lb_policy == "DCAwareRoundRobin" and
      not conf.cassandra_local_datacenter then
-     errors[#errors+1] = "must specify 'cassandra_local_datacenter' when "..
+     errors[#errors+1] = "must specify 'cassandra_local_datacenter' when " ..
                         "DCAwareRoundRobin policy is in use"
   end
 
@@ -218,10 +218,10 @@ local function check_and_infer(conf)
     end
 
     if conf.ssl_cert and not pl_path.exists(conf.ssl_cert) then
-      errors[#errors+1] = "ssl_cert: no such file at "..conf.ssl_cert
+      errors[#errors+1] = "ssl_cert: no such file at " .. conf.ssl_cert
     end
     if conf.ssl_cert_key and not pl_path.exists(conf.ssl_cert_key) then
-      errors[#errors+1] = "ssl_cert_key: no such file at "..conf.ssl_cert_key
+      errors[#errors+1] = "ssl_cert_key: no such file at " .. conf.ssl_cert_key
     end
   end
 
@@ -233,10 +233,10 @@ local function check_and_infer(conf)
     end
 
     if conf.client_ssl_cert and not pl_path.exists(conf.client_ssl_cert) then
-      errors[#errors+1] = "client_ssl_cert: no such file at "..conf.client_ssl_cert
+      errors[#errors+1] = "client_ssl_cert: no such file at " .. conf.client_ssl_cert
     end
     if conf.client_ssl_cert_key and not pl_path.exists(conf.client_ssl_cert_key) then
-      errors[#errors+1] = "client_ssl_cert_key: no such file at "..conf.client_ssl_cert_key
+      errors[#errors+1] = "client_ssl_cert_key: no such file at " .. conf.client_ssl_cert_key
     end
   end
 
@@ -248,10 +248,10 @@ local function check_and_infer(conf)
     end
 
     if conf.admin_ssl_cert and not pl_path.exists(conf.admin_ssl_cert) then
-      errors[#errors+1] = "admin_ssl_cert: no such file at "..conf.admin_ssl_cert
+      errors[#errors+1] = "admin_ssl_cert: no such file at " .. conf.admin_ssl_cert
     end
     if conf.admin_ssl_cert_key and not pl_path.exists(conf.admin_ssl_cert_key) then
-      errors[#errors+1] = "admin_ssl_cert_key: no such file at "..conf.admin_ssl_cert_key
+      errors[#errors+1] = "admin_ssl_cert_key: no such file at " .. conf.admin_ssl_cert_key
     end
   end
 
@@ -268,8 +268,8 @@ local function check_and_infer(conf)
     for _, server in ipairs(conf.dns_resolver) do
       local dns = utils.normalize_ip(server)
       if (not dns) or (dns.type ~= "ipv4") then
-        errors[#errors+1] = "dns_resolver must be a comma separated list in "..
-                            "the form of IPv4 or IPv4:port, got '"..server.."'"
+        errors[#errors+1] = "dns_resolver must be a comma separated list in " ..
+                            "the form of IPv4 or IPv4:port, got '" .. server .. "'"
       end
     end
   end
@@ -309,7 +309,7 @@ local function overrides(k, default_v, file_conf, arg_conf)
   end
 
   -- environment variables have higher priority
-  local env_name = "KONG_"..string.upper(k)
+  local env_name = "KONG_" .. string.upper(k)
   local env = os.getenv(env_name)
   if env ~= nil then
     local to_print = env
@@ -347,7 +347,7 @@ local function load(path, custom_conf)
   local defaults, err = pl_config.read(s)
   s:close()
   if not defaults then
-    return nil, "could not load default conf: "..err
+    return nil, "could not load default conf: " .. err
   end
 
   ---------------------
@@ -357,7 +357,7 @@ local function load(path, custom_conf)
   local from_file_conf = {}
   if path and not pl_path.exists(path) then
     -- file conf has been specified and must exist
-    return nil, "no file at: "..path
+    return nil, "no file at: " .. path
   elseif not path then
     -- try to look for a conf in default locations, but no big
     -- deal if none is found: we will use our defaults.
@@ -414,7 +414,7 @@ local function load(path, custom_conf)
         to_print = "******"
       end
 
-      conf_arr[#conf_arr+1] = k.." = "..pl_pretty.write(to_print, "")
+      conf_arr[#conf_arr+1] = k .. " = " .. pl_pretty.write(to_print, "")
     end
 
     table.sort(conf_arr)

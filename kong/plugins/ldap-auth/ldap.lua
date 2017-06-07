@@ -38,7 +38,7 @@ local function claculate_payload_length(encStr, pos, socket)
     local elenNext
     for i = 1, elen do
       elenCalc = elenCalc * 256
-      encStr = encStr..socket:receive(1)
+      encStr = encStr .. socket:receive(1)
       pos, elenNext = bunpack(encStr, 'C', pos)
       elenCalc = elenCalc + elenNext
     end

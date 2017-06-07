@@ -50,10 +50,10 @@ describe("Plugin: hmac-auth (hooks)", function()
 
   local function get_authorization(username)
     local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-    local encodedSignature   = ngx.encode_base64(hmac_sha1_binary("secret", "date: "..date))
-    return [["hmac username="]]..username
-         ..[[",algorithm="hmac-sha1",headers="date",signature="]]
-         ..encodedSignature..[["]], date
+    local encodedSignature   = ngx.encode_base64(hmac_sha1_binary("secret", "date: " .. date))
+    return [["hmac username="]] .. username
+         .. [[",algorithm="hmac-sha1",headers="date",signature="]]
+         .. encodedSignature .. [["]], date
   end
 
   describe("HMAC Auth Credentials entity invalidation", function()
@@ -76,7 +76,7 @@ describe("Plugin: hmac-auth (hooks)", function()
       local cache_key = cache.hmacauth_credential_key("bob")
       res = assert(client_admin:send {
         method = "GET",
-        path = "/cache/"..cache_key,
+        path = "/cache/" .. cache_key,
         body = {},
       })
       assert.res_status(200, res)
@@ -94,7 +94,7 @@ describe("Plugin: hmac-auth (hooks)", function()
       -- Delete Hmac Auth credential (which triggers invalidation)
       res = assert(client_admin:send {
         method = "DELETE",
-        path = "/consumers/consumer1/hmac-auth/"..credential_id,
+        path = "/consumers/consumer1/hmac-auth/" .. credential_id,
         body = {},
       })
       assert.res_status(204, res)
@@ -103,7 +103,7 @@ describe("Plugin: hmac-auth (hooks)", function()
       helpers.wait_until(function()
         local res = assert(client_admin:send {
           method = "GET",
-          path = "/cache/"..cache_key
+          path = "/cache/" .. cache_key
         })
         res:read_body()
         return res.status == 404
@@ -161,7 +161,7 @@ describe("Plugin: hmac-auth (hooks)", function()
       -- Update Hmac Auth credential (which triggers invalidation)
       res = assert(client_admin:send {
         method = "PATCH",
-        path = "/consumers/consumer1/hmac-auth/"..credential.id,
+        path = "/consumers/consumer1/hmac-auth/" .. credential.id,
         body = {
           username = "hello123"
         },
@@ -175,7 +175,7 @@ describe("Plugin: hmac-auth (hooks)", function()
       helpers.wait_until(function()
         local res = assert(client_admin:send {
           method = "GET",
-          path = "/cache/"..cache_key
+          path = "/cache/" .. cache_key
         })
         res:read_body()
         return res.status == 404
@@ -215,7 +215,7 @@ describe("Plugin: hmac-auth (hooks)", function()
       local cache_key = cache.hmacauth_credential_key("hello123")
       res = assert(client_admin:send {
         method = "GET",
-        path = "/cache/"..cache_key,
+        path = "/cache/" .. cache_key,
         body = {},
       })
       assert.res_status(200, res)
@@ -232,7 +232,7 @@ describe("Plugin: hmac-auth (hooks)", function()
       helpers.wait_until(function()
         local res = assert(client_admin:send {
           method = "GET",
-          path = "/cache/"..cache_key
+          path = "/cache/" .. cache_key
         })
         res:read_body()
         return res.status == 404

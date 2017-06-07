@@ -8,7 +8,7 @@ local utils = require "kong.tools.utils"
 local DEFAULT_PORT = 8000
 local DEFAULT_WEIGHT = 100
 local WEIGHT_MIN, WEIGHT_MAX = 0, 1000
-local WEIGHT_MSG = "weight must be from "..WEIGHT_MIN.." to "..WEIGHT_MAX
+local WEIGHT_MSG = "weight must be from " .. WEIGHT_MIN .. " to " .. WEIGHT_MAX
 
 return {
   table = "targets",

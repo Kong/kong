@@ -190,14 +190,14 @@ describe("Plugin: jwt (API)", function()
       it("retrieves by id", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/bob/jwt/"..jwt_secret.id,
+          path = "/consumers/bob/jwt/" .. jwt_secret.id,
         })
         assert.res_status(200, res)
       end)
       it("retrieves by key", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/bob/jwt/"..jwt_secret.key,
+          path = "/consumers/bob/jwt/" .. jwt_secret.key,
         })
         assert.res_status(200, res)
       end)
@@ -207,7 +207,7 @@ describe("Plugin: jwt (API)", function()
       it("updates a credential by id", function()
         local res = assert(admin_client:send {
           method = "PATCH",
-          path = "/consumers/bob/jwt/"..jwt_secret.id,
+          path = "/consumers/bob/jwt/" .. jwt_secret.id,
           body = {
             key = "alice",
             secret = "newsecret"
@@ -223,7 +223,7 @@ describe("Plugin: jwt (API)", function()
       it("updates a credential by key", function()
         local res = assert(admin_client:send {
           method = "PATCH",
-          path = "/consumers/bob/jwt/"..jwt_secret.key,
+          path = "/consumers/bob/jwt/" .. jwt_secret.key,
           body = {
             key = "alice",
             secret = "newsecret2"
@@ -242,7 +242,7 @@ describe("Plugin: jwt (API)", function()
       it("deletes a credential", function()
         local res = assert(admin_client:send {
           method = "DELETE",
-          path = "/consumers/bob/jwt/"..jwt_secret.id,
+          path = "/consumers/bob/jwt/" .. jwt_secret.id,
           body = {},
           headers = {
             ["Content-Type"] = "application/json"
@@ -253,7 +253,7 @@ describe("Plugin: jwt (API)", function()
       it("returns proper errors", function()
         local res = assert(admin_client:send {
           method = "DELETE",
-          path = "/consumers/bob/jwt/".."blah",
+          path = "/consumers/bob/jwt/" .. "blah",
           body = {},
           headers = {
             ["Content-Type"] = "application/json"
@@ -263,7 +263,7 @@ describe("Plugin: jwt (API)", function()
 
        local res = assert(admin_client:send {
           method = "DELETE",
-          path = "/consumers/bob/jwt/".."00000000-0000-0000-0000-000000000000",
+          path = "/consumers/bob/jwt/" .. "00000000-0000-0000-0000-000000000000",
           body = {},
           headers = {
             ["Content-Type"] = "application/json"

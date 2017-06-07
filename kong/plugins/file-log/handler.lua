@@ -36,7 +36,7 @@ local function log(premature, conf, message)
     return
   end
 
-  local msg = cjson.encode(message).."\n"
+  local msg = cjson.encode(message) .. "\n"
 
   local fd = file_descriptors[conf.path]
   

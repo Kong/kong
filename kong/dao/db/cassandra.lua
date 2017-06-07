@@ -108,13 +108,13 @@ local function cluster_release_version(peers)
   for i = 1, #peers do
     local release_version = peers[i].release_version
     if not release_version then
-      return nil, 'no release_version for peer '..peers[i].host
+      return nil, 'no release_version for peer ' .. peers[i].host
     end
 
     local major_version = extract_major(release_version)
     if not major_version then
-      return nil, 'failed to extract major version for peer '..peers[i].host..
-                  ' version: '..tostring(peers[i].release_version)
+      return nil, 'failed to extract major version for peer ' .. peers[i].host ..
+                  ' version: ' .. tostring(peers[i].release_version)
     end
     if i == 1 then
       first_release_version = major_version
@@ -531,7 +531,7 @@ function _M:update(table_name, schema, constraints, filter_keys, values, nils, f
   -- unset nil fields if asked for
   if full then
     for col in pairs(nils) do
-      sets[#sets + 1] = col.." = ?"
+      sets[#sets + 1] = col .. " = ?"
       args[#args + 1] = cassandra.null
     end
   end
@@ -606,7 +606,7 @@ function _M:queries(queries, no_keyspace)
 end
 
 function _M:drop_table(table_name)
-  local res, err = self:query("DROP TABLE "..table_name)
+  local res, err = self:query("DROP TABLE " .. table_name)
   if not res then
     return nil, err
   end
@@ -614,7 +614,7 @@ function _M:drop_table(table_name)
 end
 
 function _M:truncate_table(table_name)
-  local res, err = self:query("TRUNCATE "..table_name)
+  local res, err = self:query("TRUNCATE " .. table_name)
   if not res then
     return nil, err
   end

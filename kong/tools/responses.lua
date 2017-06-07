@@ -21,8 +21,8 @@
 local cjson = require "cjson.safe"
 local meta = require "kong.meta"
 
---local server_header = _KONG._NAME.."/".._KONG._VERSION
-local server_header = meta._NAME.."/"..meta._VERSION
+--local server_header = _KONG._NAME .. "/" .. _KONG._VERSION
+local server_header = meta._NAME .. "/" .. meta._VERSION
 
 --- Define the most common HTTP status codes for sugar methods.
 -- Each of those status will generate a helper method (sugar)
@@ -139,7 +139,7 @@ end
 
 -- Generate sugar methods (closures) for the most used HTTP status codes.
 for status_code_name, status_code in pairs(_M.status_codes) do
-  _M["send_"..status_code_name] = send_response(status_code)
+  _M["send_" .. status_code_name] = send_response(status_code)
 end
 
 local closure_cache = {}

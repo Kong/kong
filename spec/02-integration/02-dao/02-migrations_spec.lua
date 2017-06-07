@@ -4,7 +4,7 @@ local utils = require "kong.tools.utils"
 local Factory = require "kong.dao.factory"
 
 helpers.for_each_dao(function(kong_config)
-  describe("Model migrations with DB: #"..kong_config.database, function()
+  describe("Model migrations with DB: #" .. kong_config.database, function()
     local factory
     setup(function()
       -- some `setup` functions also use `factory` and they run before the `before_each` chain
@@ -122,7 +122,7 @@ helpers.for_each_dao(function(kong_config)
         assert.error_matches(function()
           local fact = assert(Factory.new(kong_config))
           assert(fact:run_migrations())
-        end, "["..kong_config.database.." error]", nil, true)
+        end, "[" .. kong_config.database .. " error]", nil, true)
       end)
     end)
   end)

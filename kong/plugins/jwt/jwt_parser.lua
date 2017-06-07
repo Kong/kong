@@ -77,7 +77,7 @@ local function b64_decode(input)
 
   if remainder > 0 then
     local padlen = 4 - remainder
-    input = input..string_rep('=', padlen)
+    input = input .. string_rep('=', padlen)
   end
 
   input = input:gsub("-", "+"):gsub("_", "/")
@@ -198,7 +198,7 @@ _M.__index = _M
 -- @return error if any
 function _M:new(token)
   if type(token) ~= "string" then
-    error("Token must be a string, got "..tostring(token), 2)
+    error("Token must be a string, got " .. tostring(token), 2)
   end
 
   local token, err = decode_token(token)
@@ -214,7 +214,7 @@ end
 -- @param key Key against which to verify the signature
 -- @return A boolean indicating if the signature if verified or not
 function _M:verify_signature(key)
-  return alg_verify[self.header.alg](self.header_64.."."..self.claims_64, self.signature, key)
+  return alg_verify[self.header.alg](self.header_64 .. "." .. self.claims_64, self.signature, key)
 end
 
 function _M:b64_decode(input)
@@ -257,7 +257,7 @@ function _M:verify_registered_claims(claims_to_verify)
     claim = self.claims[claim_name]
     claim_rules = registered_claims[claim_name]
     if type(claim) ~= claim_rules.type then
-      errors = utils.add_error(errors, claim_name, "must be a "..claim_rules.type)
+      errors = utils.add_error(errors, claim_name, "must be a " .. claim_rules.type)
     else
       local check_err = claim_rules.check(claim)
       if check_err then

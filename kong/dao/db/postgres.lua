@@ -120,7 +120,7 @@ local function ttl(self, tbl, table_name, schema, ttl)
   local query = fmt([[
     SELECT upsert_ttl('%s', %s, '%s', '%s', to_timestamp(%d/1000) at time zone 'UTC')
   ]], tbl[schema.primary_key[1]],
-      primary_key_type == "uuid" and "'"..tbl[schema.primary_key[1]].."'" or "NULL",
+      primary_key_type == "uuid" and "'" .. tbl[schema.primary_key[1]] .. "'" or "NULL",
       schema.primary_key[1], table_name, expire_at)
   local res, err = self:query(query)
   if not res then
@@ -506,7 +506,7 @@ function _M:queries(queries)
 end
 
 function _M:drop_table(table_name)
-  local res, err = self:query("DROP TABLE "..table_name.." CASCADE")
+  local res, err = self:query("DROP TABLE " .. table_name .. " CASCADE")
   if not res then
     return nil, err
   end
@@ -514,7 +514,7 @@ function _M:drop_table(table_name)
 end
 
 function _M:truncate_table(table_name)
-  local res, err = self:query("TRUNCATE "..table_name.." CASCADE")
+  local res, err = self:query("TRUNCATE " .. table_name .. " CASCADE")
   if not res then
     return nil, err
   end

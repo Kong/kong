@@ -195,8 +195,8 @@ describe("Configuration loader", function()
         cassandra_consistency = "FOUR"
       })
       assert.equal("cassandra_consistency has an invalid value: 'FOUR'"
-                 .." (ALL, EACH_QUORUM, QUORUM, LOCAL_QUORUM, ONE, TWO,"
-                 .." THREE, LOCAL_ONE)", err)
+                 .. " (ALL, EACH_QUORUM, QUORUM, LOCAL_QUORUM, ONE, TWO,"
+                 .. " THREE, LOCAL_ONE)", err)
       assert.is_nil(conf)
     end)
     it("enforces ipv4:port types", function()

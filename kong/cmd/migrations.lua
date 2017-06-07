@@ -17,7 +17,7 @@ local ANSWERS = {
 local function confirm(q)
   local max = 3
   while max > 0 do
-    io.write("> "..q.." [Y/n] ")
+    io.write("> " .. q .. " [Y/n] ")
     local a = io.read("*l")
     if ANSWERS[a] ~= nil then
       return ANSWERS[a]

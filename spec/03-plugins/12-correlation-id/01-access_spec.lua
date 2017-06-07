@@ -2,7 +2,7 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
-local UUID_COUNTER_PATTERN = UUID_PATTERN.."#%d"
+local UUID_COUNTER_PATTERN = UUID_PATTERN .. "#%d"
 local TRACKER_PATTERN = "%d+%.%d+%.%d+%.%d+%-%d+%-%d+%-%d+%-%d+%-%d%d%d%d%d%d%d%d%d%d%.%d%d%d"
 
 describe("Plugin: correlation-id (access)", function()

@@ -21,7 +21,7 @@ local function is_openresty(bin_path)
   if ok and stderr then
     local version_match = stderr:match(nginx_version_pattern)
     if not version_match or not nginx_compatible:matches(version_match) then
-      log.verbose("incompatible OpenResty found at %s. Kong requires version"..
+      log.verbose("incompatible OpenResty found at %s. Kong requires version" ..
                   " %s, got %s", bin_path, tostring(nginx_compatible),
                   version_match)
       return false
@@ -33,12 +33,12 @@ end
 
 local function send_signal(kong_conf, signal)
   if not kill.is_running(kong_conf.nginx_pid) then
-    return nil, "nginx not running in prefix: "..kong_conf.prefix
+    return nil, "nginx not running in prefix: " .. kong_conf.prefix
   end
 
   log.verbose("sending %s signal to nginx running at %s", signal, kong_conf.nginx_pid)
 
-  local code = kill.kill(kong_conf.nginx_pid, "-s "..signal)
+  local code = kill.kill(kong_conf.nginx_pid, "-s " .. signal)
   if code ~= 0 then
     return nil, "could not send signal"
   end
@@ -62,7 +62,7 @@ local function find_nginx_bin()
   end
 
   if not found then
-    return nil, ("could not find OpenResty 'nginx' executable. Kong requires"..
+    return nil, ("could not find OpenResty 'nginx' executable. Kong requires" ..
                  " version %s"):format(tostring(nginx_compatible))
   end
 
@@ -76,7 +76,7 @@ function _M.start(kong_conf)
   end
 
   if kill.is_running(kong_conf.nginx_pid) then
-    return nil, "nginx is already running in "..kong_conf.prefix
+    return nil, "nginx is already running in " .. kong_conf.prefix
   end
 
   local cmd = fmt("%s -p %s -c %s", nginx_bin, kong_conf.prefix, "nginx.conf")
@@ -103,7 +103,7 @@ end
 
 function _M.reload(kong_conf)
   if not kill.is_running(kong_conf.nginx_pid) then
-    return nil, "nginx not running in prefix: "..kong_conf.prefix
+    return nil, "nginx not running in prefix: " .. kong_conf.prefix
   end
 
   local nginx_bin, err = find_nginx_bin()

@@ -62,7 +62,7 @@ local function is_openresty(bin_path)
   if ok and stderr then
     local version_match = stderr:match(resty_version_pattern)
     if not version_match or not resty_compatible:matches(version_match) then
-      log.verbose("'resty' found at %s uses incompatible OpenResty. Kong "..
+      log.verbose("'resty' found at %s uses incompatible OpenResty. Kong " ..
                   "requires OpenResty version %s, got %s", bin_path,
                   tostring(resty_compatible), version_match)
       return false
@@ -86,7 +86,7 @@ local function find_resty_bin()
   end
 
   if not found then
-    return nil, ("could not find OpenResty 'resty' executable. Kong requires"..
+    return nil, ("could not find OpenResty 'resty' executable. Kong requires" ..
                  " version %s"):format(tostring(resty_compatible))
   end
 
@@ -128,7 +128,7 @@ local function gen_default_ssl_cert(kong_config, admin)
     for i = 1, #commands do
       local ok, _, _, stderr = pl_utils.executeex(commands[i])
       if not ok then
-        return nil, "could not generate "..(admin and "admin" or "default").." SSL certificate: "..stderr
+        return nil, "could not generate " .. (admin and "admin" or "default") .. " SSL certificate: " .. stderr
       end
     end
   else
@@ -215,7 +215,7 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
       return nil, err
     end
   elseif not pl_path.isdir(kong_config.prefix) then
-    return nil, kong_config.prefix.." is not a directory"
+    return nil, kong_config.prefix .. " is not a directory"
   end
 
   -- create directories in prefix
@@ -248,7 +248,7 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
 
   log.verbose("saving serf identifier to %s", kong_config.serf_node_id)
   if not pl_path.exists(kong_config.serf_node_id) then
-    local id = utils.get_hostname().."_"..kong_config.cluster_listen.."_"..utils.random_string()
+    local id = utils.get_hostname() .. "_" .. kong_config.cluster_listen .. "_" .. utils.random_string()
     pl_file.write(kong_config.serf_node_id, id)
   end
 
@@ -266,7 +266,7 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
   -- saving serf script handler
   local script = fmt(script_template, admin_ip, kong_config.admin_port, resty_bin)
   pl_file.write(kong_config.serf_event, script)
-  local ok, _, _, stderr = pl_utils.executeex("chmod +x "..kong_config.serf_event)
+  local ok, _, _, stderr = pl_utils.executeex("chmod +x " .. kong_config.serf_event)
   if not ok then
     return nil, stderr
   end
@@ -295,15 +295,15 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
   local ulimit, err = get_ulimit()
   if not ulimit then return nil, err
   elseif ulimit < 4096 then
-    log.warn([[ulimit is currently set to "%d". For better performance set it]]
-           ..[[ to at least "4096" using "ulimit -n"]], ulimit)
+    log.warn([[ulimit is currently set to "%d". For better performance set it]] ..
+             [[ to at least "4096" using "ulimit -n"]], ulimit)
   end
 
   -- compile Nginx configurations
   local nginx_template
   if nginx_custom_template_path then
     if not pl_path.exists(nginx_custom_template_path) then
-      return nil, "no such file: "..nginx_custom_template_path
+      return nil, "no such file: " .. nginx_custom_template_path
     end
     nginx_template = pl_file.read(nginx_custom_template_path)
   end
@@ -339,7 +339,7 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
       v = table.concat(v, ",")
     end
     if v ~= "" then
-      buf[#buf+1] = k.." = "..tostring(v)
+      buf[#buf+1] = k .. " = " .. tostring(v)
     end
   end
 

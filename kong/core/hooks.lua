@@ -155,7 +155,7 @@ local function member_join(s_node)
   if #nodes == 1 then -- Update
     member_update(s_node)
   elseif #nodes > 1 then
-    error("Inconsistency error. More than one node found with name "..member.name)
+    error("Inconsistency error. More than one node found with name " .. member.name)
   end
 
   -- Purge the cache when a new node joins

@@ -52,7 +52,7 @@ describe("Plugin: jwt (hooks)", function()
   local function get_authorization(key, secret)
     PAYLOAD.iss = key
     local jwt = jwt_encoder.encode(PAYLOAD, secret)
-    return "Bearer "..jwt
+    return "Bearer " .. jwt
   end
 
   describe("JWT Credentials entity invalidation", function()
@@ -72,7 +72,7 @@ describe("Plugin: jwt (hooks)", function()
       local cache_key = cache.jwtauth_credential_key("key123")
       res = assert(admin_client:send {
         method = "GET",
-        path = "/cache/"..cache_key,
+        path = "/cache/" .. cache_key,
       })
       assert.res_status(200, res)
 
@@ -88,7 +88,7 @@ describe("Plugin: jwt (hooks)", function()
       -- Delete JWT credential (which triggers invalidation)
       res = assert(admin_client:send {
         method = "DELETE",
-        path = "/consumers/consumer1/jwt/"..credential_id,
+        path = "/consumers/consumer1/jwt/" .. credential_id,
       })
       assert.res_status(204, res)
 
@@ -96,7 +96,7 @@ describe("Plugin: jwt (hooks)", function()
       helpers.wait_until(function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/cache/"..cache_key
+          path = "/cache/" .. cache_key
         })
         res:read_body()
         return res.status == 404
@@ -140,7 +140,7 @@ describe("Plugin: jwt (hooks)", function()
       local cache_key = cache.jwtauth_credential_key("key123")
       res = assert(admin_client:send {
         method = "GET",
-        path = "/cache/"..cache_key,
+        path = "/cache/" .. cache_key,
       })
       assert.res_status(200, res)
 
@@ -156,7 +156,7 @@ describe("Plugin: jwt (hooks)", function()
       -- Patch JWT credential (which triggers invalidation)
       res = assert(admin_client:send {
         method = "PATCH",
-        path = "/consumers/consumer1/jwt/"..credential_id,
+        path = "/consumers/consumer1/jwt/" .. credential_id,
         body = {
           key = "keyhello"
         },
@@ -170,7 +170,7 @@ describe("Plugin: jwt (hooks)", function()
       helpers.wait_until(function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/cache/"..cache_key
+          path = "/cache/" .. cache_key
         })
         res:read_body()
         return res.status == 404
@@ -216,7 +216,7 @@ describe("Plugin: jwt (hooks)", function()
       local cache_key = cache.jwtauth_credential_key("key123")
       res = assert(admin_client:send {
         method = "GET",
-        path = "/cache/"..cache_key,
+        path = "/cache/" .. cache_key,
       })
       assert.res_status(200, res)
 
@@ -231,7 +231,7 @@ describe("Plugin: jwt (hooks)", function()
       helpers.wait_until(function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/cache/"..cache_key
+          path = "/cache/" .. cache_key
         })
         res:read_body()
         return res.status == 404

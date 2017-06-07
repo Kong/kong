@@ -363,7 +363,7 @@ end
 
 local function transform_method(conf)
   if conf.http_method then
-    req_set_method(ngx["HTTP_"..conf.http_method:upper()])
+    req_set_method(ngx["HTTP_" .. conf.http_method:upper()])
     if conf.http_method == "GET" or conf.http_method == "HEAD" or conf.http_method == "TRACE" then
       local content_type_value = req_get_headers()[CONTENT_TYPE]
       local content_type = get_content_type(content_type_value)

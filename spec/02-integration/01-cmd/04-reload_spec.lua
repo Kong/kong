@@ -18,7 +18,7 @@ describe("kong reload", function()
     local nginx_pid = helpers.file.read(helpers.test_conf.nginx_pid)
 
     -- kong_exec uses test conf too, so same prefix
-    assert(helpers.kong_exec("reload --prefix "..helpers.test_conf.prefix))
+    assert(helpers.kong_exec("reload --prefix " .. helpers.test_conf.prefix))
     ngx.sleep(1)
 
     -- same master PID
@@ -38,7 +38,7 @@ describe("kong reload", function()
     local nginx_pid = assert(helpers.file.read(helpers.test_conf.nginx_pid),
                              "no nginx master PID")
 
-    assert(helpers.kong_exec("reload --conf "..helpers.test_conf_path, {
+    assert(helpers.kong_exec("reload --conf " .. helpers.test_conf_path, {
       proxy_listen = "0.0.0.0:9000"
     }))
 
@@ -62,8 +62,8 @@ describe("kong reload", function()
 
     ngx.sleep(1)
 
-    assert(helpers.kong_exec("reload --conf "..helpers.test_conf_path
-           .." --nginx-conf spec/fixtures/custom_nginx.template"))
+    assert(helpers.kong_exec("reload --conf " .. helpers.test_conf_path
+           .. " --nginx-conf spec/fixtures/custom_nginx.template"))
 
     ngx.sleep(1)
 
@@ -78,9 +78,9 @@ describe("kong reload", function()
 
   describe("errors", function()
     it("complains about missing PID if not already running", function()
-      local ok, err = helpers.kong_exec("reload --prefix "..helpers.test_conf.prefix)
+      local ok, err = helpers.kong_exec("reload --prefix " .. helpers.test_conf.prefix)
       assert.False(ok)
-      assert.matches("Error: nginx not running in prefix: "..helpers.test_conf.prefix, err, nil, true)
+      assert.matches("Error: nginx not running in prefix: " .. helpers.test_conf.prefix, err, nil, true)
     end)
   end)
 end)

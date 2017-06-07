@@ -48,7 +48,7 @@ function AWSLambdaHandler:access(conf)
     path = path,
     access_key = conf.aws_key,
     secret_key = conf.aws_secret,
-    query = conf.qualifier and "Qualifier="..conf.qualifier
+    query = conf.qualifier and "Qualifier=" .. conf.qualifier
   }
 
   local request, err = aws_v4(opts)

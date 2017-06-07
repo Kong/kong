@@ -82,23 +82,23 @@ local function load_plugins(kong_conf, dao, events)
   -- check all plugins in DB are enabled/installed
   for plugin in pairs(in_db_plugins) do
     if not kong_conf.plugins[plugin] then
-      return nil, plugin.." plugin is in use but not enabled"
+      return nil, plugin .. " plugin is in use but not enabled"
     end
   end
 
   -- load installed plugins
   for plugin in pairs(kong_conf.plugins) do
-    local ok, handler = utils.load_module_if_exists("kong.plugins."..plugin..".handler")
+    local ok, handler = utils.load_module_if_exists("kong.plugins." .. plugin .. ".handler")
     if not ok then
-      return nil, plugin.." plugin is enabled but not installed;\n"..handler
+      return nil, plugin .. " plugin is enabled but not installed;\n" .. handler
     end
 
-    local ok, schema = utils.load_module_if_exists("kong.plugins."..plugin..".schema")
+    local ok, schema = utils.load_module_if_exists("kong.plugins." .. plugin .. ".schema")
     if not ok then
-      return nil, "no configuration schema found for plugin: "..plugin
+      return nil, "no configuration schema found for plugin: " .. plugin
     end
 
-    ngx.log(ngx.DEBUG, "Loading plugin: "..plugin)
+    ngx.log(ngx.DEBUG, "Loading plugin: " .. plugin)
 
     sorted_plugins[#sorted_plugins+1] = {
       name = plugin,
@@ -107,7 +107,7 @@ local function load_plugins(kong_conf, dao, events)
     }
 
     -- Attaching hooks
-    local ok, hooks = utils.load_module_if_exists("kong.plugins."..plugin..".hooks")
+    local ok, hooks = utils.load_module_if_exists("kong.plugins." .. plugin .. ".hooks")
     if ok then
       attach_hooks(events, hooks)
     end

@@ -4,7 +4,7 @@ local function check_for_value(value)
   for i, entry in ipairs(value) do
     local ok = find(entry, ":")
     if not ok then
-      return false, "key '"..entry.."' has no value"
+      return false, "key '" .. entry .. "' has no value"
     end
   end
   return true
@@ -15,9 +15,9 @@ local function check_method(value)
     return true
   end
   local method = value:upper()
-  local ngx_method = ngx["HTTP_"..method]
+  local ngx_method = ngx["HTTP_" .. method]
   if not ngx_method then
-    return false, method.." is not supported"
+    return false, method .. " is not supported"
   end
   return true
 end
