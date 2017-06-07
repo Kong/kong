@@ -206,7 +206,8 @@ describe("Plugin: ACL (access)", function()
         }
       })
       local body = assert.res_status(403, res)
-      assert.equal([[{"message":"Cannot identify the consumer, add an authentication plugin to use the ACL plugin"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "Cannot identify the consumer, add an authentication plugin to use the ACL plugin" }, json)
     end)
 
     it("should fail when not in whitelist", function()
@@ -218,7 +219,8 @@ describe("Plugin: ACL (access)", function()
         }
       })
       local body = assert.res_status(403, res)
-      assert.equal([[{"message":"You cannot consume this service"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "You cannot consume this service" }, json)
     end)
 
     it("should work when in whitelist", function()
@@ -253,7 +255,8 @@ describe("Plugin: ACL (access)", function()
         }
       })
       local body = assert.res_status(403, res)
-      assert.equal([[{"message":"You cannot consume this service"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "You cannot consume this service" }, json)
     end)
   end)
 
@@ -279,7 +282,8 @@ describe("Plugin: ACL (access)", function()
         }
       })
       local body = assert.res_status(403, res)
-      assert.equal([[{"message":"You cannot consume this service"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "You cannot consume this service" }, json)
     end)
 
     it("should fail when in blacklist", function()
@@ -291,7 +295,8 @@ describe("Plugin: ACL (access)", function()
         }
       })
       local body = assert.res_status(403, res)
-      assert.equal([[{"message":"You cannot consume this service"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "You cannot consume this service" }, json)
     end)
 
     it("should work when not in blacklist", function()
@@ -314,7 +319,8 @@ describe("Plugin: ACL (access)", function()
         }
       })
       local body = assert.res_status(403, res)
-      assert.equal([[{"message":"You cannot consume this service"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "You cannot consume this service" }, json)
     end)
 
     it("should work when one of the ACLs in the whitelist", function()
@@ -337,7 +343,8 @@ describe("Plugin: ACL (access)", function()
         }
       })
       local body = assert.res_status(403, res)
-      assert.equal([[{"message":"You cannot consume this service"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "You cannot consume this service" }, json)
     end)
   end)
 

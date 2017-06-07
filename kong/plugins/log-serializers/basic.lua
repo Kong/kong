@@ -1,4 +1,8 @@
+local tablex = require "pl.tablex"
+
 local _M = {}
+
+local EMPTY = tablex.readonly({})
 
 function _M.serialize(ngx)
   local authenticated_entity
@@ -8,7 +12,7 @@ function _M.serialize(ngx)
       consumer_id = ngx.ctx.authenticated_credential.consumer_id
     }
   end
-
+  
   return {
     request = {
       uri = ngx.var.request_uri,
@@ -23,9 +27,11 @@ function _M.serialize(ngx)
       headers = ngx.resp.get_headers(),
       size = ngx.var.bytes_sent
     },
+    tries = (ngx.ctx.balancer_address or EMPTY).tries,
     latencies = {
       kong = (ngx.ctx.KONG_ACCESS_TIME or 0) +
-             (ngx.ctx.KONG_RECEIVE_TIME or 0),
+             (ngx.ctx.KONG_RECEIVE_TIME or 0) +
+             (ngx.ctx.KONG_REWRITE_TIME or 0),
       proxy = ngx.ctx.KONG_WAITING_TIME or -1,
       request = ngx.var.request_time * 1000
     },

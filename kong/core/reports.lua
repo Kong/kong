@@ -61,8 +61,8 @@ local function send_report(signal_type, t, host, port)
   end
 
   t = t or {}
-  host = host or constants.SYSLOG.ADDRESS
-  port = port or constants.SYSLOG.PORT
+  host = host or constants.REPORTS.ADDRESS
+  port = port or constants.REPORTS.STATS_PORT
 
   -- add signal type to data
 

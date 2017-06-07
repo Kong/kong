@@ -16,30 +16,41 @@ CorsHandler.PRIORITY = 2000
 
 
 local function configure_origin(ngx, conf)
-  if not conf.origins then
+  local n_origins = conf.origins ~= nil and #conf.origins or 0
+
+  if n_origins == 0 then
     ngx.header["Access-Control-Allow-Origin"] = "*"
     ngx.ctx.cors_allow_all = true
     return
   end
 
-  if #conf.origins == 1 then
+  if n_origins == 1 then
     if conf.origins[1] == "*" then
       ngx.ctx.cors_allow_all = true
-
-    else
-      ngx.header["Vary"] = "Origin"
+      ngx.header["Access-Control-Allow-Origin"] = "*"
+      return
     end
 
-    ngx.header["Access-Control-Allow-Origin"] = conf.origins[1]
-    return
+    ngx.header["Vary"] = "Origin"
+
+    -- if this doesnt look like a regex, set the ACAO header directly
+    -- otherwise, we'll fall through to an iterative search and
+    -- set the ACAO header based on the client Origin
+    local from, _, err = re_find(conf.origins[1], "^[A-Za-z0-9.:/-]+$", "jo")
+    if err then
+      ngx.log(ngx.ERR, "[cors] could not inspect origin for type: ", err)
+    end
+
+    if from then
+      ngx.header["Access-Control-Allow-Origin"] = conf.origins[1]
+      return
+    end
   end
 
   local req_origin = ngx.var.http_origin
   if req_origin then
     for _, domain in ipairs(conf.origins) do
-      local from, _, err = re_find(req_origin,
-                                   [[\Q]] .. domain .. [[\E$]],
-                                   "jo")
+      local from, _, err = re_find(req_origin, domain, "jo")
       if err then
         ngx.log(ngx.ERR, "[cors] could not search for domain: ", err)
       end
@@ -55,11 +66,19 @@ end
 
 
 local function configure_credentials(ngx, conf)
-  if ngx.ctx.cors_allow_all then
-    ngx.header["Access-Control-Allow-Credentials"] = "false"
+  if conf.credentials then
+    if not ngx.ctx.cors_allow_all then
+      ngx.header["Access-Control-Allow-Credentials"] = "true"
+      return
+    end
 
-  elseif conf.credentials then
-    ngx.header["Access-Control-Allow-Credentials"] = "true"
+    -- Access-Control-Allow-Origin is '*', must change it because ACAC cannot
+    -- be 'true' if ACAO is '*'.
+    local req_origin = ngx.var.http_origin
+    if req_origin then
+      ngx.header["Access-Control-Allow-Origin"]      = req_origin
+      ngx.header["Access-Control-Allow-Credentials"] = "true"
+    end
   end
 end
 

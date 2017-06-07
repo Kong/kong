@@ -69,6 +69,15 @@ return {
       certificate.execute()
     end
   },
+  rewrite = {
+    before = function()
+      ngx.ctx.KONG_REWRITE_START = get_now()
+    end,
+    after = function ()
+      local ctx = ngx.ctx
+      ctx.KONG_REWRITE_TIME = get_now() - ctx.KONG_REWRITE_START -- time spent in Kong's rewrite_by_lua
+    end
+  },
   access = {
     before = function()
       if not router then
@@ -98,7 +107,8 @@ return {
         type                 = utils.hostname_type(upstream.host),  -- the type of `host`; ipv4, ipv6 or name
         host                 = upstream.host,  -- target host per `upstream_url`
         port                 = upstream.port,  -- final target port
-        tries                = 0,              -- retry counter
+        try_count            = 0,              -- retry counter
+        tries                = {},             -- stores info per try
         retries              = api.retries,    -- number of retries for the balancer
         connect_timeout      = api.upstream_connect_timeout or 60000,
         send_timeout         = api.upstream_send_timeout or 60000,

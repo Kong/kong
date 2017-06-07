@@ -3,8 +3,6 @@ local BasePlugin = require "kong.plugins.base_plugin"
 local log = require "kong.plugins.runscope.log"
 local public_utils = require "kong.tools.public"
 
-local ngx_log = ngx.log
-local ngx_log_ERR = ngx.ERR
 local string_find = string.find
 local req_read_body = ngx.req.read_body
 local req_get_headers = ngx.req.get_headers
@@ -29,7 +27,7 @@ function RunscopeLogHandler:access(conf)
     local headers = req_get_headers()
     local content_type = headers["content-type"]
     if content_type and string_find(content_type:lower(), "application/x-www-form-urlencoded", nil, true) then
-      req_post_args = public_utils.get_post_args()
+      req_post_args = public_utils.get_body_args()
     end
   end
 

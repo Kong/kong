@@ -66,6 +66,13 @@ Kong 0.10 introduced the following breaking changes:
 - The `cassandra_contact_points` property does not allow specifying a port
   anymore. All Cassandra nodes must listen on the same port, which can be
   tweaked via the `cassandra_port` property.
+- If you are upgrading to `0.10.1` or `0.10.2` and using the CORS plugin, pay
+  extra attention to a regression that was introduced in `0.10.1`:
+  Previously, the plugin would send the `*` wildcard when `config.origin` was
+  not specified. With this change, the plugin **does not** send the `*`
+  wildcard by default anymore. You will need to specify it manually when
+  configuring the plugin, with `config.origins=*`. This behavior is to be fixed
+  in a future release.
 
 We recommend that you consult the full [0.10.0
 Changelog](https://github.com/Mashape/kong/blob/master/CHANGELOG.md) for a full

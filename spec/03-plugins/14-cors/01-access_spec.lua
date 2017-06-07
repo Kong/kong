@@ -35,6 +35,22 @@ describe("Plugin: cors (access)", function()
       hosts = { "cors6.com" },
       upstream_url = "http://mockbin.com"
     })
+    local api7 = assert(helpers.dao.apis:insert {
+      name = "api-7",
+      hosts = { "cors7.com" },
+      upstream_url = "http://mockbin.com"
+    })
+    local api8 = assert(helpers.dao.apis:insert {
+      name = "api-8",
+      hosts = { "cors-empty-origins.com" },
+      upstream_url = "http://mockbin.com"
+    })
+    local api9 = assert(helpers.dao.apis:insert {
+      name = "api-9",
+      hosts = { "cors9.com" },
+      upstream_url = "http://mockbin.com"
+    })
+
 
     assert(helpers.dao.plugins:insert {
       name = "cors",
@@ -80,7 +96,8 @@ describe("Plugin: cors (access)", function()
       name = "cors",
       api_id = api5.id,
       config = {
-        origins = { "*" }
+        origins = { "*" },
+        credentials = true
       }
     })
 
@@ -94,6 +111,31 @@ describe("Plugin: cors (access)", function()
         exposed_headers = {"x-auth-token"},
         max_age = 23,
         preflight_continue = true
+      }
+    })
+
+    assert(helpers.dao.plugins:insert {
+      name = "cors",
+      api_id = api7.id,
+      config = {
+        origins = { "*" },
+        credentials = false
+      }
+    })
+
+    assert(helpers.dao.plugins:insert {
+      name = "cors",
+      api_id = api8.id,
+      config = {
+        origins = {},
+      }
+    })
+
+    assert(helpers.dao.plugins:insert {
+      name = "cors",
+      api_id = api9.id,
+      config = {
+        origins = { [[.*\.?example(?:-foo)?.com]] },
       }
     })
 
@@ -119,7 +161,29 @@ describe("Plugin: cors (access)", function()
       assert.equal("*", res.headers["Access-Control-Allow-Origin"])
       assert.is_nil(res.headers["Access-Control-Allow-Headers"])
       assert.is_nil(res.headers["Access-Control-Expose-Headers"])
-      assert.equal("false", res.headers["Access-Control-Allow-Credentials"])
+      assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
+      assert.is_nil(res.headers["Access-Control-Max-Age"])
+    end)
+
+    it("gives * wildcard when origins is empty", function()
+      -- this test covers a regression introduced in 0.10.1, where
+      -- the 'multiple_origins' migration would always insert a table
+      -- (that might be empty) in the 'config.origins' field, and the
+      -- * wildcard would only been sent when said table was **nil**,
+      -- and not necessarily empty.
+
+      local res = assert(client:send {
+        method  = "OPTIONS",
+        headers = {
+          ["Host"] = "cors-empty-origins.com",
+        }
+      })
+      assert.res_status(204, res)
+      assert.equal("GET,HEAD,PUT,PATCH,POST,DELETE", res.headers["Access-Control-Allow-Methods"])
+      assert.equal("*", res.headers["Access-Control-Allow-Origin"])
+      assert.is_nil(res.headers["Access-Control-Allow-Headers"])
+      assert.is_nil(res.headers["Access-Control-Expose-Headers"])
+      assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
       assert.is_nil(res.headers["Access-Control-Max-Age"])
     end)
 
@@ -135,7 +199,7 @@ describe("Plugin: cors (access)", function()
       assert.equal("*", res.headers["Access-Control-Allow-Origin"])
       assert.is_nil(res.headers["Access-Control-Allow-Headers"])
       assert.is_nil(res.headers["Access-Control-Expose-Headers"])
-      assert.equal("false", res.headers["Access-Control-Allow-Credentials"])
+      assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
       assert.is_nil(res.headers["Access-Control-Max-Age"])
     end)
 
@@ -196,7 +260,7 @@ describe("Plugin: cors (access)", function()
       assert.is_nil(res.headers["Access-Control-Allow-Methods"])
       assert.is_nil(res.headers["Access-Control-Allow-Headers"])
       assert.is_nil(res.headers["Access-Control-Expose-Headers"])
-      assert.equal("false", res.headers["Access-Control-Allow-Credentials"])
+      assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
       assert.is_nil(res.headers["Access-Control-Max-Age"])
     end)
 
@@ -229,7 +293,7 @@ describe("Plugin: cors (access)", function()
       assert.is_nil(res.headers["Access-Control-Allow-Methods"])
       assert.is_nil(res.headers["Access-Control-Allow-Headers"])
       assert.is_nil(res.headers["Access-Control-Expose-Headers"])
-      assert.equal("false", res.headers["Access-Control-Allow-Credentials"])
+      assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
       assert.is_nil(res.headers["Access-Control-Max-Age"])
     end)
 
@@ -245,7 +309,7 @@ describe("Plugin: cors (access)", function()
       assert.is_nil(res.headers["Access-Control-Allow-Methods"])
       assert.is_nil(res.headers["Access-Control-Allow-Headers"])
       assert.is_nil(res.headers["Access-Control-Expose-Headers"])
-      assert.equal("false", res.headers["Access-Control-Allow-Credentials"])
+      assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
       assert.is_nil(res.headers["Access-Control-Max-Age"])
     end)
 
@@ -259,6 +323,27 @@ describe("Plugin: cors (access)", function()
       })
       assert.res_status(200, res)
       assert.equal("http://www.example.com", res.headers["Access-Control-Allow-Origin"])
+
+      local domains = {
+        ["example.com"] = true,
+        ["www.example.com"] = true,
+        ["example-foo.com"] = true,
+        ["www.example-foo.com"] = true,
+        ["www.example-fo0.com"] = false,
+      }
+
+      for domain, v in pairs(domains) do
+        local res = assert(client:send {
+          method = "GET",
+          headers = {
+            ["Host"] = "cors9.com",
+            ["Origin"] = domain
+          }
+        })
+        assert.res_status(200, res)
+        assert.equal(domains[domain] and domain or nil,
+                     res.headers["Access-Control-Allow-Origin"])
+      end
     end)
 
     it("does not sets CORS orgin if origin host is not in origin_domains list", function()
@@ -271,6 +356,45 @@ describe("Plugin: cors (access)", function()
       })
       assert.res_status(200, res)
       assert.is_nil(res.headers["Access-Control-Allow-Origin"])
+    end)
+
+    it("responds with the requested Origin when config.credentials=true", function()
+      local res = assert(client:send {
+        method = "GET",
+        headers = {
+          ["Host"] = "cors5.com",
+          ["Origin"] = "http://www.example.net"
+        }
+      })
+      assert.res_status(200, res)
+      assert.equals("http://www.example.net", res.headers["Access-Control-Allow-Origin"])
+      assert.equals("true", res.headers["Access-Control-Allow-Credentials"])
+    end)
+
+    it("responds with the requested Origin (including port) when config.credentials=true", function()
+      local res = assert(client:send {
+        method = "GET",
+        headers = {
+          ["Host"] = "cors5.com",
+          ["Origin"] = "http://www.example.net:3000"
+        }
+      })
+      assert.res_status(200, res)
+      assert.equals("http://www.example.net:3000", res.headers["Access-Control-Allow-Origin"])
+      assert.equals("true", res.headers["Access-Control-Allow-Credentials"])
+    end)
+
+    it("responds with * when config.credentials=false", function()
+      local res = assert(client:send {
+        method = "GET",
+        headers = {
+          ["Host"] = "cors7.com",
+          ["Origin"] = "http://www.example.net"
+        }
+      })
+      assert.res_status(200, res)
+      assert.equals("*", res.headers["Access-Control-Allow-Origin"])
+      assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
     end)
   end)
 end)

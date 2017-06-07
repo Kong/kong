@@ -80,7 +80,6 @@ describe("URI encoding", function()
     local body = assert.res_status(200, res)
     local json = cjson.decode(body)
 
-    -- TODO: %7C is apparently decoded/re-encoded to %7c
     assert.equal("http://mockbin.com/request?param=abc%7Cdef", json.url)
   end)
 

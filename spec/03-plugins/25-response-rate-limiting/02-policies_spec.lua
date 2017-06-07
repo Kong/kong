@@ -1,6 +1,6 @@
 local uuid = require("kong.tools.utils").uuid
 local helpers = require "spec.helpers"
-local policies = require "kong.plugins.rate-limiting.policies"
+local policies = require "kong.plugins.response-ratelimiting.policies"
 local timestamp = require "kong.tools.timestamp"
 
 describe("Plugin: response-ratelimiting (policies)", function()

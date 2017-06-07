@@ -135,9 +135,15 @@ describe("Utils", function()
     describe("random_string()", function()
       it("should return a random string", function()
         local first = utils.random_string()
-        assert.truthy(first)
-        assert.falsy(first:find("-"))
+        assert.is_string(first)
 
+        -- build the same length string as previous implementations
+        assert.equals(32, #first)
+
+        -- ensure we don't find anything that isnt alphanumeric
+        assert.not_matches("^[^%a%d]+$", first)
+
+        -- at some point in the universe this test will fail ;)
         local second = utils.random_string()
         assert.not_equal(first, second)
       end)

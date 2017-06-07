@@ -1,8 +1,6 @@
 local Errors = require "kong.dao.errors"
-local utils = require "kong.tools.utils"
 
 return {
-  no_consumer = true,
   fields = {
     status_code = { type = "number", default = 503 },
     message = { type = "string" },

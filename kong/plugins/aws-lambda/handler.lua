@@ -4,18 +4,14 @@ local BasePlugin = require "kong.plugins.base_plugin"
 local aws_v4 = require "kong.plugins.aws-lambda.v4"
 local responses = require "kong.tools.responses"
 local utils = require "kong.tools.utils"
-local Multipart = require "multipart"
 local http = require "resty.http"
 local cjson = require "cjson.safe"
 local public_utils = require "kong.tools.public"
 
-local string_find = string.find
-local ngx_req_get_headers = ngx.req.get_headers
 local ngx_req_read_body = ngx.req.read_body
 local ngx_req_get_uri_args = ngx.req.get_uri_args
-local ngx_req_get_body_data = ngx.req.get_body_data
 
-local CONTENT_TYPE = "content-type"
+local AWS_PORT = 443
 
 local AWSLambdaHandler = BasePlugin:extend()
 
@@ -25,20 +21,8 @@ end
 
 local function retrieve_parameters()
   ngx_req_read_body()
-  local body_parameters, err
-  local content_type = ngx_req_get_headers()[CONTENT_TYPE]
-  if content_type and string_find(content_type:lower(), "multipart/form-data", nil, true) then
-    body_parameters = Multipart(ngx_req_get_body_data(), content_type):get_all()
-  elseif content_type and string_find(content_type:lower(), "application/json", nil, true) then
-    body_parameters, err = cjson.decode(ngx_req_get_body_data())
-    if err then
-      body_parameters = {}
-    end
-  else
-    body_parameters = public_utils.get_post_args()
-  end
 
-  return utils.table_merge(ngx_req_get_uri_args(), body_parameters)
+  return utils.table_merge(ngx_req_get_uri_args(), public_utils.get_body_args())
 end
 
 function AWSLambdaHandler:access(conf)
@@ -49,7 +33,6 @@ function AWSLambdaHandler:access(conf)
   local host = string.format("lambda.%s.amazonaws.com", conf.aws_region)
   local path = string.format("/2015-03-31/functions/%s/invocations",
                             conf.function_name)
-
   local opts = {
     region = conf.aws_region,
     service = "lambda",
@@ -75,7 +58,7 @@ function AWSLambdaHandler:access(conf)
 
   -- Trigger request
   local client = http.new()
-  client:connect(host, 443)
+  client:connect(host, conf.port or AWS_PORT)
   client:set_timeout(conf.timeout)
   local ok, err = client:ssl_handshake()
   if not ok then

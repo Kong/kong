@@ -149,6 +149,52 @@ describe("Router", function()
     end)
   end)
 
+  describe("percent-encoded URIs", function()
+
+    setup(function()
+      insert_apis {
+        {
+          name = "api-1",
+          upstream_url = "http://httpbin.org",
+          uris = "/endel%C3%B8st",
+        },
+        {
+          name = "api-2",
+          upstream_url = "http://httpbin.org",
+          uris = "/foo/../bar",
+        },
+      }
+
+      assert(helpers.start_kong())
+    end)
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("routes when [uris] is percent-encoded", function()
+      local res = assert(client:send {
+        method  = "GET",
+        path    = "/endel%C3%B8st",
+        headers = { ["kong-debug"] = 1 },
+      })
+
+      assert.res_status(200, res)
+      assert.equal("api-1", res.headers["kong-api-name"])
+    end)
+
+    it("matches against non-normalized URI", function()
+      local res = assert(client:send {
+        method  = "GET",
+        path    = "/foo/../bar",
+        headers = { ["kong-debug"] = 1 },
+      })
+
+      assert.res_status(200, res)
+      assert.equal("api-2", res.headers["kong-api-name"])
+    end)
+  end)
+
   describe("invalidation", function()
     local admin_client
 
@@ -385,6 +431,85 @@ describe("Router", function()
       })
 
       assert.response(res).has_status(200)
+      assert.equal("fixture-api", res.headers["kong-api-name"])
+    end)
+  end)
+
+  describe("[uris] + [methods]", function()
+
+    setup(function()
+      insert_apis {
+        {
+          name = "root-api",
+          methods = { "GET" },
+          uris = "/root",
+          upstream_url = "http://httpbin.org",
+        },
+        {
+          name = "fixture-api",
+          methods = { "GET" },
+          uris = "/root/fixture",
+          upstream_url = "http://httpbin.org",
+        },
+      }
+
+      assert(helpers.start_kong())
+    end)
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("prioritizes longer URIs", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/root/fixture/get",
+        headers = {
+          ["kong-debug"] = 1,
+        }
+      })
+
+      assert.res_status(200, res)
+      assert.equal("fixture-api", res.headers["kong-api-name"])
+    end)
+  end)
+
+  describe("[uris] + [hosts]", function()
+
+    setup(function()
+      insert_apis {
+        {
+          name = "root-api",
+          hosts = "api.com",
+          uris = "/root",
+          upstream_url = "http://httpbin.org",
+        },
+        {
+          name = "fixture-api",
+          hosts = "api.com",
+          uris = "/root/fixture",
+          upstream_url = "http://httpbin.org",
+        },
+      }
+
+      assert(helpers.start_kong())
+    end)
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("prioritizes longer URIs", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/root/fixture/get",
+        headers = {
+          ["Host"]       = "api.com",
+          ["kong-debug"] = 1,
+        }
+      })
+
+      assert.res_status(200, res)
       assert.equal("fixture-api", res.headers["kong-api-name"])
     end)
   end)
