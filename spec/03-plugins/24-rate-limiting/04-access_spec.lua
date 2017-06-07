@@ -27,19 +27,19 @@ local function flush_redis()
   red:set_timeout(2000)
   local ok, err = red:connect(REDIS_HOST, REDIS_PORT)
   if not ok then
-    error("failed to connect to Redis: ", err)
+    error("failed to connect to Redis: " .. err)
   end
 
   if REDIS_PASSWORD and REDIS_PASSWORD ~= "" then
     local ok, err = red:auth(REDIS_PASSWORD)
     if not ok then
-      error("failed to connect to Redis: ", err)
+      error("failed to connect to Redis: " .. err)
     end
   end
 
   local ok, err = red:select(REDIS_DATABASE)
   if not ok then
-    error("failed to change Redis database: ", err)
+    error("failed to change Redis database: " .. err)
   end
 
   red:flushall()
