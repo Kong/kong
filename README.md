@@ -114,7 +114,7 @@ code, other repos are also under active development:
 - [Kong and Instaclustr](https://www.instaclustr.com/solutions/kong/): Let
   Instaclustr manage your Cassandra cluster.
 
-## Community Resources and Tools
+## Community Resources 
 
 **Resources**:
 - [The story behind Kong](http://stackshare.io/mashape/how-mashape-manages-over-15000-apis-and-microservices)
@@ -141,30 +141,6 @@ code, other repos are also under active development:
 **Podcasts**:
 - [Changelog #185](https://changelog.com/185)
 - [Three Devs and a Maybe #83](http://threedevsandamaybe.com/kong-the-api-microservice-management-layer-with-ahmad-nassri/)
-
-Here is a list of third-party **tools** maintained by the community:
-- [Ansible role for Kong on Ubuntu](https://github.com/Getsidecar/ansible-role-kong)
-- [Biplane](https://github.com/articulate/biplane): declarative configuration in Crystal
-- [Bonobo](https://github.com/guardian/bonobo): key management (with Mashery migration scripts)
-- [Chef cookbook](https://github.com/zuazo/kong-cookbook)
-- [Django Kong Admin](https://github.com/vikingco/django-kong-admin): Admin UI in Python
-- [Jungle](https://github.com/rsdevigo/jungle): Admin UI in JavaScript
-- [Kong Dashboard](https://github.com/PGBI/kong-dashboard): Admin UI in JavaScript
-- [Kong for CanopyCloud](https://github.com/CanopyCloud/cip-kong)
-- [Kong image waiting for Cassandra](https://github.com/articulate/docker-kong-wait)
-- [Kong image for Tutum](https://github.com/Sillelien/docker-kong)
-- [Kong-UI](https://github.com/msaraf/kong-ui): Admin UI in JavaScript
-- [Konga](https://github.com/Floby/konga-cli): CLI Admin tool in JavaScript
-- [Kongfig](https://github.com/mybuilder/kongfig): Declarative configuration in JavaScript
-- [Kongfig on Puppet Forge](https://forge.puppet.com/mybuilder/kongfig)
-- [Puppet recipe](https://github.com/scottefein/puppet-nyt-kong)
-- [Puppet module on Puppet Forge](https://forge.puppet.com/juniorsysadmin/kong)
-- [Python-Kong](https://pypi.python.org/pypi/python-kong/): Admin client library for Python
-- [.NET-Kong](https://www.nuget.org/packages/Kong/0.0.4): Admin client library for .NET
-
-## Roadmap
-
-You can find a detailed Roadmap of Kong on the [Wiki](https://github.com/Mashape/kong/wiki).
 
 ## Development
 
