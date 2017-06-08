@@ -150,6 +150,7 @@ Here is a list of third-party **tools** maintained by the community:
 - [Django Kong Admin](https://github.com/vikingco/django-kong-admin): Admin UI in Python
 - [Jungle](https://github.com/rsdevigo/jungle): Admin UI in JavaScript
 - [Kong Dashboard](https://github.com/PGBI/kong-dashboard): Admin UI in JavaScript
+- [Konga](https://github.com/pantsel/konga): Admin UI in JavaScript
 - [Kong for CanopyCloud](https://github.com/CanopyCloud/cip-kong)
 - [Kong image waiting for Cassandra](https://github.com/articulate/docker-kong-wait)
 - [Kong image for Tutum](https://github.com/Sillelien/docker-kong)
