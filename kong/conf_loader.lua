@@ -100,6 +100,9 @@ local CONF_INFERENCES = {
   ssl = {typ = "boolean"},
   client_ssl = {typ = "boolean"},
   admin_ssl = {typ = "boolean"},
+  admin_basic_auth = {typ = "boolean"},
+  admin_acl = {typ = "string"},
+  admin_basic_auth_file = {typ = "string"},
 
   proxy_access_log = {typ = "string"},
   proxy_error_log = {typ = "string"},
