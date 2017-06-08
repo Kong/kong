@@ -1,16 +1,22 @@
 return {
   oic_issuers            = {
-    primary_key          = { "issuer" },
+    primary_key          = { "id" },
     table                = "oic_issuers",
     fields               = {
+      id                 = {
+        type             = "id",
+        dao_insert_value = true
+      },
       issuer             = {
-        type             = "string"
+        type             = "url",
+        unique           = true,
+        required         = true,
       },
       configuration      = {
-        type             = "text"
+        type             = "text",
       },
       keys               = {
-        type             = "text"
+        type             = "text",
       },
       created_at         = {
         type             = "timestamp",
@@ -20,27 +26,107 @@ return {
     },
     marshall_event       = function(_, t)
       return {
-        issuer           = t.issuer
+        id               = t.id,
+        issuer           = t.issuer,
       }
     end,
   },
-  oic_revoked            = {
-    primary_key          = { "hash" },
-    table                = "oic_revoked",
+  oic_signout            = {
+    primary_key          = { "id" },
+    table                = "oic_signout",
     fields               = {
-      hash               = {
-        type             = "string"
+      id                 = {
+        type             = "id",
+        dao_insert_value = true,
+      },
+      jti                = {
+        type             = "text",
+      },
+      iss                = {
+        type             = "text",
+      },
+      sid                = {
+        type             = "text",
+      },
+      sub                = {
+        type             = "text",
+      },
+      aud                = {
+        type             = "text",
       },
       created_at         = {
         type             = "timestamp",
         immutable        = true,
-        dao_insert_value = true
+        dao_insert_value = true,
       },
     },
     marshall_event       = function(_, t)
       return {
-        hash             = t.hash
+        id               = t.id,
+        sid              = t.sid,
+        sub              = t.sub,
       }
     end
-  }
+  },
+  oic_session            = {
+    primary_key          = { "id" },
+    table                = "oic_session",
+    fields               = {
+      id                 = {
+        type             = "id",
+        dao_insert_value = true,
+      },
+      sid                = {
+        type             = "text",
+        unique           = true,
+        required         = true,
+      },
+      exp                = {
+        type             = "number",
+      },
+      data                = {
+        type             = "text",
+      },
+      created_at         = {
+        type             = "timestamp",
+        immutable        = true,
+        dao_insert_value = true,
+      },
+    },
+    marshall_event       = function(_, t)
+      return {
+        id               = t.id,
+        sid              = t.sid,
+      }
+    end
+  },
+  oic_revoked            = {
+    primary_key          = { "id" },
+    table                = "oic_revoked",
+    fields               = {
+      id                 = {
+        type             = "id",
+        dao_insert_value = true,
+      },
+      hash               = {
+        type             = "text",
+        unique           = true,
+        required         = true,
+      },
+      exp                = {
+        type             = "number",
+      },
+      created_at         = {
+        type             = "timestamp",
+        immutable        = true,
+        dao_insert_value = true,
+      },
+    },
+    marshall_event       = function(_, t)
+      return {
+        id               = t.id,
+        sid              = t.sid,
+      }
+    end
+  },
 }

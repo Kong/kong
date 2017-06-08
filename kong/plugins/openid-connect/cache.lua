@@ -30,12 +30,12 @@ function issuers.init(conf)
 
   local issuer = conf.issuer
 
-  local results = singletons.dao.oic_issuers:find { issuer = issuer }
-  if results then
+  local results = singletons.dao.oic_issuers:find_all { issuer = issuer }
+  if results and results[1] then
     return {
       issuer        = issuer,
-      configuration = results.configuration,
-      keys          = results.keys,
+      configuration = results[1].configuration,
+      keys          = results[1].keys,
     }
   end
 
