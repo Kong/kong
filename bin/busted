@@ -1,4 +1,4 @@
-#!/usr/bin/env resty
+#!/usr/bin/env resty -c 1024
 
 require "luarocks.loader"
 
