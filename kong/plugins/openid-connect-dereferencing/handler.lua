@@ -32,7 +32,7 @@ function OICDereferencingHandler:access(conf)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
 
-  local o, err = oic.new {
+  local o, err = oic.new({
     issuer        = conf.issuer,
     scope         = conf.scopes or { "openid" },
     claims        = conf.claims or { "iss", "sub", "aud", "azp", "exp" },
@@ -42,7 +42,7 @@ function OICDereferencingHandler:access(conf)
     timeout       = conf.timeout                    or 10000,
     max_age       = conf.max_age,
     domains       = conf.domains,
-  }
+  }, issuer.configuration, issuer.keys)
 
   if not o then
     log(ERR, err)
