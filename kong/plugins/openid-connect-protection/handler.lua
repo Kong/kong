@@ -63,11 +63,12 @@ function OICProtectionHandler:access(conf)
     else
       -- TODO: check required scopes
 
-      s:start() -- TODO: move this to header_filter
       -- TODO: append access token as a bearer token
       -- TODO: append jwk to header
       -- TODO: handle refreshing the access token
       -- TODO: require a new authentication when the previous is too far in the past
+
+      s:start() -- TODO: move this to header_filter
     end
 
   else

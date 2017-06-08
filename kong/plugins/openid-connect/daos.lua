@@ -63,8 +63,11 @@ return {
     marshall_event       = function(_, t)
       return {
         id               = t.id,
+        jti              = t.jti,
+        iss              = t.iss,
         sid              = t.sid,
         sub              = t.sub,
+        aud              = t.aud,
       }
     end
   },
@@ -97,6 +100,7 @@ return {
       return {
         id               = t.id,
         sid              = t.sid,
+        exp              = t.exp,
       }
     end
   },
@@ -125,7 +129,8 @@ return {
     marshall_event       = function(_, t)
       return {
         id               = t.id,
-        sid              = t.sid,
+        hash             = t.hash,
+        exp              = t.exp,
       }
     end
   },

@@ -1,67 +1,75 @@
 return {
-  no_consumer = true,
-  fields      = {
-    client_id     = {
-      required    = true,
-      type        = "string",
+  no_consumer           = true,
+  fields                = {
+    client_id           = {
+      required          = true,
+      type              = "string",
     },
-    client_secret = {
-      required    = true,
-      type        = "string",
+    client_secret       = {
+      required          = true,
+      type              = "string",
     },
-    issuer        = {
-      required    = true,
-      type        = "url",
+    issuer              = {
+      required          = true,
+      type              = "url",
     },
-    tokens       = {
-      required   = false,
-      type       = "array",
-      enum       = { "id_token", "access_token" },
-      default    = { "id_token", "access_token" },
+    tokens              = {
+      required          = false,
+      type              = "array",
+      enum              = { "id_token", "access_token" },
+      default           = { "id_token", "access_token" },
     },
-    redirect_uri  = {
-      required    = false,
-      type        = "url",
+    redirect_uri        = {
+      required          = false,
+      type              = "url",
     },
-    scopes        = {
-      required    = false,
-      type        = "array",
-      default     = { "openid" },
+    login_redirect_uri  = {
+      required          = false,
+      type              = "url",
     },
-    claims        = {
-      required    = false,
-      type        = "array",
-      enum        = { "iss", "sub", "aud", "azp", "exp", "iat", "auth_time", "at_hash", "alg", "nbf", "hd" },
-      default     = { "iss", "sub", "aud", "azp", "exp", "at_hash" },
+    logout_redirect_uri = {
+      required          = false,
+      type              = "url",
     },
-    domains       = {
-      required    = false,
-      type        = "array",
+    scopes              = {
+      required          = false,
+      type              = "array",
+      default           = { "openid" },
     },
-    max_age       = {
-      required    = false,
-      type        = "number",
+    claims              = {
+      required          = false,
+      type              = "array",
+      enum              = { "iss", "sub", "aud", "azp", "exp", "iat", "auth_time", "at_hash", "alg", "nbf", "hd" },
+      default           = { "iss", "sub", "aud", "azp", "exp", "at_hash" },
     },
-    leeway        = {
-      required    = false,
-      type        = "number",
-      default     = 0,
+    domains             = {
+      required          = false,
+      type              = "array",
     },
-    http_version  = {
-      required    = false,
-      type        = "number",
-      enum        = { 1.0, 1.1 },
-      default     = 1.1,
+    max_age             = {
+      required          = false,
+      type              = "number",
     },
-    ssl_verify    = {
-      required    = false,
-      type        = "boolean",
-      default     = true,
+    leeway              = {
+      required          = false,
+      type              = "number",
+      default           = 0,
     },
-    timeout       = {
-      required    = false,
-      type        = "number",
-      default     = 10000,
+    http_version        = {
+      required          = false,
+      type              = "number",
+      enum              = { 1.0, 1.1 },
+      default           = 1.1,
+    },
+    ssl_verify          = {
+      required          = false,
+      type              = "boolean",
+      default           = true,
+    },
+    timeout             = {
+      required          = false,
+      type              = "number",
+      default           = 10000,
     },
   },
 }

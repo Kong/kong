@@ -7,7 +7,6 @@ local oic        = require "kong.openid-connect"
 local log        = ngx.log
 
 
-local NOTICE     = ngx.NOTICE
 local ERR        = ngx.ERR
 
 

@@ -96,29 +96,29 @@ function OICAuthenticationHandler:access(conf)
     local data = s.data
 
     if data.state then
-      local err, tokens, encoded
+      local err, toks, decoded
       local args = {
         state         = data.state,
         nonce         = data.nonce,
         code_verifier = data.code_verifier,
       }
 
-      args, err = self.oic.authorization:verify(args)
+      args, err = o.authorization:verify(args)
       if not args then
         log(NOTICE, err)
         s:destroy()
         return responses.send_HTTP_UNAUTHORIZED()
       end
 
-      tokens, err = o.token:request(args)
-      if not tokens then
+      toks, err = o.token:request(args)
+      if not toks then
         log(NOTICE, err)
         s:destroy()
         return responses.send_HTTP_UNAUTHORIZED()
       end
 
-      encoded, err = o.token:verify(tokens, args)
-      if not encoded then
+      decoded, err = o.token:verify(toks, args)
+      if not decoded then
         log(NOTICE, err)
         s:destroy()
         return responses.send_HTTP_UNAUTHORIZED()
@@ -129,27 +129,42 @@ function OICAuthenticationHandler:access(conf)
 
       s:regenerate()
       s.data = {
-        tokens = tokens,
+        tokens = toks,
         nonce  = args.nonce,
       }
       s:save()
 
-      if type(encoded.id_token) == "table" then
-        return responses.send_HTTP_OK(encoded.id_token.payload or {})
+      local login_uri = conf.login_redirect_uri
+
+      if login_uri then
+        return redirect(login_uri .. "#id_token=" .. toks.id_token)
 
       else
-        return responses.send_HTTP_OK{}
+        if type(decoded.id_token) == "table" then
+          return responses.send_HTTP_OK(toks.id_token or {})
+
+        else
+          return responses.send_HTTP_OK{}
+        end
       end
     else
-      local encoded, err = o.token:verify(data.tokens, { nonce = data.nonce, tokens = tokens })
-      if not encoded then
+      local decoded, err = o.token:verify(data.tokens, { nonce = data.nonce, tokens = tokens })
+      if not decoded then
         log(NOTICE, err)
         s:destroy()
         return responses.send_HTTP_UNAUTHORIZED()
 
       else
         s:start()
-        return responses.send_HTTP_OK(data.tokens.id_token or {})
+
+        local login_uri = conf.login_redirect_uri
+
+        if login_uri then
+          return redirect(login_uri .. "#id_token=" .. data.tokens.id_token)
+
+        else
+          return responses.send_HTTP_OK(data.tokens.id_token or {})
+        end
       end
     end
 

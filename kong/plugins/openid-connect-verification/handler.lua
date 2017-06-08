@@ -150,7 +150,7 @@ function OICVerificationHandler:access(conf)
 
   local tokens = conf.tokens or { "id_token" }
 
-  local idt, idp
+  local idt --, idp
 
   if set.has("id_token", tokens) then
     local ct     = var.content_type  or ""
@@ -163,7 +163,7 @@ function OICVerificationHandler:access(conf)
         local header = "http_" .. gsub(lower(prefix .. name), "-", "_")
         idt = var[header]
         if idt then
-          idp = t
+          --idp = t
           break
         end
 
@@ -172,7 +172,7 @@ function OICVerificationHandler:access(conf)
         if args then
           idt = args[name]
           if idt then
-            idp = t
+            --idp = t
             break
           end
         end
@@ -184,7 +184,7 @@ function OICVerificationHandler:access(conf)
           if args then
             idt = args[name]
             if idt then
-              idp = t
+              --idp = t
               break
             end
           end
@@ -192,7 +192,7 @@ function OICVerificationHandler:access(conf)
         elseif sub(ct, 1, 19) == "multipart/form-data" then
           idt = multipart(name, conf.timeout)
           if idt then
-            idp = t
+            --idp = t
             break
           end
 
@@ -210,7 +210,7 @@ function OICVerificationHandler:access(conf)
             if json then
               idt = json[name]
               if idt then
-                idp = t
+                --idp = t
                 break
               end
             end
@@ -224,7 +224,7 @@ function OICVerificationHandler:access(conf)
             if file ~= nil then
               idt = read_file(file)
               if idt then
-                idp = t
+                --idp = t
                 break
               end
             end
