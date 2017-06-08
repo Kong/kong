@@ -553,7 +553,7 @@ function _M.execute(conf)
 
   local ok, err = do_authentication(conf)
   if not ok then
-    if conf.anonymous ~= "" and conf.anonymous ~= nil then
+    if conf.anonymous ~= "" then
       -- get anonymous user
       local consumer, err = cache.get_or_set(cache.consumer_key(conf.anonymous),
                        nil, load_consumer_into_memory, conf.anonymous, true)
