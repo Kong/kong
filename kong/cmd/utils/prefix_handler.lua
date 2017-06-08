@@ -315,6 +315,12 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
 
   pl_file.write(kong_config.kong_env, table.concat(buf, "\n"))
 
+  -- ... yeah this sucks. thanks fwrite.
+  local ok, _, _, err = pl_utils.executeex("chmod 640 " .. kong_config.kong_env)
+  if not ok then
+    log.warn("Unable to set kong env permissions: ", err)
+  end
+
   return true
 end
 
