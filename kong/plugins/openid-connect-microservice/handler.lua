@@ -32,7 +32,6 @@ function OICMicroserviceHandler:access(conf)
   end
 
   local o, err = oic.new({
-    issuer        = conf.issuer,
     scope         = conf.scopes or { "openid" },
     claims        = conf.claims or { "iss", "sub", "aud", "azp", "exp" },
     leeway        = conf.leeway                     or 0,
@@ -51,7 +50,7 @@ function OICMicroserviceHandler:access(conf)
 end
 
 
-OICMicroserviceHandler.PRIORITY = 1000
+OICMicroserviceHandler.PRIORITY = 800
 
 
 return OICMicroserviceHandler

@@ -17,7 +17,7 @@ function OICHandler:access()
 end
 
 
-OICHandler.PRIORITY = 1000
+OICHandler.PRIORITY = 1
 
 
 return OICHandler

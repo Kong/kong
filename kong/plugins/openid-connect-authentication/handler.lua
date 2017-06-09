@@ -69,10 +69,9 @@ function OICAuthenticationHandler:access(conf)
     log(ERR, err)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
-  local o, err = oic.new {
+  local o, err = oic.new({
     client_id     = conf.client_id,
     client_secret = conf.client_secret,
-    issuer        = conf.issuer,
     redirect_uri  = conf.redirect_uri or request_url(),
     scope         = conf.scopes or { "openid" },
     claims        = conf.claims or { "iss", "sub", "aud", "azp", "exp" },
@@ -82,14 +81,16 @@ function OICAuthenticationHandler:access(conf)
     timeout       = conf.timeout                    or 10000,
     max_age       = conf.max_age,
     domains       = conf.domains,
-  }
-
-  local tokens = conf.tokens or { "id_token", "access_token" }
+  }, issuer.configuration, issuer.keys)
 
   if not o then
     log(ERR, err)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
+
+  local tokens     = conf.tokens or { "id_token", "access_token" }
+
+  -- TODO: Add support for session configuration
   local s, present = session.open()
 
   if present then
@@ -148,7 +149,9 @@ function OICAuthenticationHandler:access(conf)
         end
       end
     else
-      local decoded, err = o.token:verify(data.tokens, { nonce = data.nonce, tokens = tokens })
+      local toks = data.tokens or {}
+
+      local decoded, err = o.token:verify(toks, { nonce = data.nonce, tokens = tokens })
       if not decoded then
         log(NOTICE, err)
         s:destroy()
@@ -160,10 +163,10 @@ function OICAuthenticationHandler:access(conf)
         local login_uri = conf.login_redirect_uri
 
         if login_uri then
-          return redirect(login_uri .. "#id_token=" .. data.tokens.id_token)
+          return redirect(login_uri .. "#id_token=" .. toks.id_token)
 
         else
-          return responses.send_HTTP_OK(data.tokens.id_token or {})
+          return responses.send_HTTP_OK(toks.id_token or {})
         end
       end
     end

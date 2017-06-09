@@ -1,8 +1,26 @@
 return {
-  no_consumer = true,
-  fields      = {
+  no_consumer     = true,
+  fields          = {
+    client_id     = {
+      required    = false,
+      type        = "string",
+    },
+    client_secret = {
+      required    = false,
+      type        = "string",
+    },
     issuer        = {
       required    = true,
+      type        = "url",
+    },
+    tokens        = {
+      required    = false,
+      type        = "array",
+      enum        = { "id_token", "access_token" },
+      default     = { "id_token", "access_token" },
+    },
+    redirect_uri  = {
+      required    = false,
       type        = "url",
     },
     scopes        = {

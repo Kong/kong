@@ -315,7 +315,7 @@ function OICVerificationHandler:access(conf)
 end
 
 
-OICVerificationHandler.PRIORITY = 1000
+OICVerificationHandler.PRIORITY = 900
 
 
 return OICVerificationHandler

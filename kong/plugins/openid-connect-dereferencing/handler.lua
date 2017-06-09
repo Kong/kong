@@ -32,7 +32,6 @@ function OICDereferencingHandler:access(conf)
   end
 
   local o, err = oic.new({
-    issuer        = conf.issuer,
     scope         = conf.scopes or { "openid" },
     claims        = conf.claims or { "iss", "sub", "aud", "azp", "exp" },
     leeway        = conf.leeway                     or 0,
@@ -50,7 +49,7 @@ function OICDereferencingHandler:access(conf)
 end
 
 
-OICDereferencingHandler.PRIORITY = 1000
+OICDereferencingHandler.PRIORITY = 850
 
 
 return OICDereferencingHandler
