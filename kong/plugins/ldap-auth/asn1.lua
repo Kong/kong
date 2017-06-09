@@ -105,7 +105,7 @@ _M.ASN1Decoder = {
   decodeLength = function(encStr, pos)
     local elen
     pos, elen = bunpack(encStr, 'C', pos)
-    if (elen > 128) then
+    if elen > 128 then
       elen = elen - 128
       local elenCalc = 0
       local elenNext
@@ -174,7 +174,7 @@ _M.ASN1Decoder = {
     local hexStr
     pos, hexStr = bunpack(encStr, "X" .. len, pos)
     local value = tonumber(hexStr, 16)
-    if (value >= math.pow(256, len)/2) then
+    if value >= math.pow(256, len)/2 then
       value = value - math.pow(256, len)
     end
     return pos, value
@@ -214,12 +214,12 @@ _M.ASN1Encoder = {
     self.encoder = {}
 
     self.encoder['table'] = function(self, val)
-      if (val._ldap == '0A') then
+      if val._ldap == '0A' then
         local ival = self.encodeInt(val[1])
         local len = self.encodeLength(#ival)
         return bpack('XAA', '0A', len, ival)
       end
-      if (val._ldaptype) then
+      if val._ldaptype then
         local len
         if val[1] == nil or #val[1] == 0 then
           return bpack('XC', val._ldaptype, 0)
@@ -234,7 +234,7 @@ _M.ASN1Encoder = {
         encVal = encVal .. self.encode(v) -- todo: buffer?
       end
       local tableType = "\x30"
-      if (val["_snmp"]) then
+      if val["_snmp"] then
         tableType = bpack("X", val["_snmp"])
       end
       return bpack('AAA', tableType, self.encodeLength(#encVal), encVal)

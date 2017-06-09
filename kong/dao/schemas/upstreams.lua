@@ -67,7 +67,7 @@ return {
       table.sort(t)
       local count, max = 0, 0
       for i, v in pairs(t) do
-        if (i ~= v) then
+        if i ~= v then
           return false, Errors.schema("invalid orderlist")
         end
 
@@ -77,7 +77,7 @@ return {
         end
       end
 
-      if (count ~= config.slots) or (max ~= config.slots) then
+      if count ~= config.slots or max ~= config.slots then
         return false, Errors.schema("invalid orderlist")
       end
 

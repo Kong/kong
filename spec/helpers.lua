@@ -180,7 +180,7 @@ function resty_http_proxy_mt:send(opts)
     -- times
     local reader = res.read_body
     res.read_body = function(self)
-      if (not self._cached_body) and (not self._cached_error) then
+      if not self._cached_body and not self._cached_error then
         self._cached_body, self._cached_error = reader(self)
       end
       return self._cached_body, self._cached_error
@@ -458,7 +458,7 @@ local function contains(state, args)
   local expected, arr, pattern = unpack(args)
   local found
   for i = 1, #arr do
-    if (pattern and string.match(arr[i], expected)) or (arr[i] == expected) then
+    if (pattern and string.match(arr[i], expected)) or arr[i] == expected then
       found = i
       break
     end
@@ -709,7 +709,7 @@ local function req_form_param(state, args)
   if req.postData then
     -- mockbin request
     value = lookup((req.postData or {}).params, param)
-  elseif (type(req.url) == "string") and (req.url:find("//httpbin.org", 1, true)) then
+  elseif type(req.url) == "string" and req.url:find("//httpbin.org", 1, true) then
     -- hhtpbin request
     value = lookup(req.form or {}, param)
   else
