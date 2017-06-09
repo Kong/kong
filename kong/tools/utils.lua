@@ -456,7 +456,8 @@ _M.normalize_ipv4 = function(address)
     return nil, "invalid ipv4 address: " .. address
   end
   a,b,c,d = tonumber(a), tonumber(b), tonumber(c), tonumber(d)
-  if (a<0) or (a>255) or (b<0) or (b>255) or (c<0) or (c>255) or (d<0) or (d>255) then
+  if a < 0 or a > 255 or b < 0 or b > 255 or c < 0 or
+     c > 255 or d < 0 or d > 255 then
     return nil, "invalid ipv4 address: " .. address
   end
   if port then 
@@ -605,7 +606,7 @@ _M.format_host = function(p1, p2)
   else
     return nil, "cannot format type '" .. t .. "'"
   end
-  if (typ == "ipv6") and (not find(host, "%[")) then
+  if typ == "ipv6" and not find(host, "[", nil, true) then
     return "[" .. host .. "]" .. (port and ":" .. port or "")
   else
     return host ..  (port and ":" .. port or "")

@@ -267,7 +267,7 @@ local function check_and_infer(conf)
   if conf.dns_resolver then
     for _, server in ipairs(conf.dns_resolver) do
       local dns = utils.normalize_ip(server)
-      if (not dns) or (dns.type ~= "ipv4") then
+      if not dns or dns.type ~= "ipv4" then
         errors[#errors+1] = "dns_resolver must be a comma separated list in " ..
                             "the form of IPv4 or IPv4:port, got '" .. server .. "'"
       end
