@@ -29,11 +29,11 @@ local function get_identifier(conf)
   elseif conf.limit_by == "credential" then
     identifier = ngx.ctx.authenticated_credential and ngx.ctx.authenticated_credential.id
   elseif conf.limit_by == "http_header" then
-    local header = ngx.req.get_headers()[conf.http_header]
-    if (type(header)) == "table" then
-      identifier = ngx.req.get_headers()[conf.http_header][#header]
-    else
-      identifier = ngx.req.get_headers()[conf.http_header]
+    local header_name = conf.http_header 
+    if header_name then
+      header_name = string.gsub(string.lower('http_'..header_name), "-", "_")
+      local header = ngx.var[header_name]
+      identifier = header 
     end
   end
 
