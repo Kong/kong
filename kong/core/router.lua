@@ -702,7 +702,7 @@ function _M.new(apis)
 
 
     if new_uri ~= uri then
-      ngx.req.set_uri(new_uri)
+      uri = new_uri
     end
 
 
@@ -717,7 +717,7 @@ function _M.new(apis)
       ngx.header["Kong-Api-Name"] = api_t.api.name
     end
 
-    return api_t.api, api_t.upstream, host_header
+    return api_t.api, api_t.upstream, host_header, uri
   end
 
 

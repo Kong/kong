@@ -17,6 +17,20 @@ describe("URI encoding", function()
       upstream_url = "http://mockbin.com",
     })
 
+    assert(helpers.dao.apis:insert {
+      name         = "api-3",
+      uris         = "/request",
+      strip_uri    = false,
+      upstream_url = "http://mockbin.com",
+    })
+
+    assert(helpers.dao.apis:insert {
+      name         = "api-4",
+      uris         = "/stripped-mockbin",
+      strip_uri    = true,
+      upstream_url = "http://mockbin.com",
+    })
+
     assert(helpers.start_kong())
     client = helpers.proxy_client()
   end)
@@ -100,5 +114,48 @@ describe("URI encoding", function()
     local json = cjson.decode(body)
 
     assert.equal("http://mockbin.com/request/foo%2Fbar", json.url)
+  end)
+
+  it("issue #2512 does not double percent-encode upstream URLs", function()
+    -- https://github.com/Mashape/kong/issues/2512
+
+    -- we use mockbin because httpbin.org/get performs URL decode
+    -- on `url` and `args` fields.
+
+    -- with `hosts` matching
+    local res    = assert(client:send {
+      method     = "GET",
+      path       = "/request/auth%7C123",
+      headers    = {
+        ["Host"] = "mockbin.com",
+      }
+    })
+
+    local body = assert.res_status(200, res)
+    local json = cjson.decode(body)
+
+    assert.equal("http://mockbin.com/request/auth%7C123", json.url)
+
+    -- with `uris` matching
+    local res2 = assert(client:send {
+      method   = "GET",
+      path     = "/request/auth%7C123",
+    })
+
+    local body2 = assert.res_status(200, res2)
+    local json2 = cjson.decode(body2)
+
+    assert.equal("http://mockbin.com/request/auth%7C123", json2.url)
+
+    -- with `uris` matching + `strip_uri`
+    local res3 = assert(client:send {
+      method   = "GET",
+      path     = "/stripped-mockbin/request/auth%7C123",
+    })
+
+    local body3 = assert.res_status(200, res3)
+    local json3 = cjson.decode(body3)
+
+    assert.equal("http://mockbin.com/request/auth%7C123", json3.url)
   end)
 end)

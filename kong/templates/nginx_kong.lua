@@ -108,6 +108,7 @@ server {
     location / {
         set $upstream_host nil;
         set $upstream_scheme nil;
+        set $upstream_uri nil;
 
         rewrite_by_lua_block {
             kong.rewrite()
@@ -128,7 +129,7 @@ server {
 
         proxy_ssl_name $upstream_host;
 
-        proxy_pass $upstream_scheme://kong_upstream;
+        proxy_pass $upstream_scheme://kong_upstream$upstream_uri;
 
         header_filter_by_lua_block {
             kong.header_filter()

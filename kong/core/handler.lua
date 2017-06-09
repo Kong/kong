@@ -20,6 +20,8 @@ local balancer_execute = require("kong.core.balancer").execute
 
 local router, router_err
 local ngx_now = ngx.now
+local sub = string.sub
+
 local server_header = _KONG._NAME.."/".._KONG._VERSION
 
 
@@ -88,7 +90,7 @@ return {
 
       ctx.KONG_ACCESS_START = get_now()
 
-      local api, upstream, host_header = router.exec(ngx)
+      local api, upstream, host_header, uri = router.exec(ngx)
       if not api then
         return responses.send_HTTP_NOT_FOUND("no API found with those values")
       end
@@ -128,7 +130,10 @@ return {
           "' with: "..tostring(err))
       end
 
-      -- if set `host_header` is the original header to be preserved
+      -- `uri` is the URI with which to call upstream, as returned by the
+      --       router, which might have truncated it (`strip_uri`).
+      -- `host_header` is the original header to be preserved if set.
+      var.upstream_uri  = uri
       var.upstream_host = host_header or
           balancer_address.hostname..":"..balancer_address.port
 
@@ -136,6 +141,21 @@ return {
     -- Only executed if the `router` module found an API and allows nginx to proxy it.
     after = function()
       local ctx = ngx.ctx
+      local var = ngx.var
+
+      do
+        -- Nginx's behavior when proxying a request with an empty querystring
+        -- `/foo?` is to keep `$is_args` an empty string, hence effectively
+        -- stripping the empty querystring.
+        -- We overcome this behavior with our own logic, to preserve user
+        -- desired semantics.
+        local upstream_uri = var.upstream_uri
+
+        if var.is_args == "?" or sub(var.request_uri, -1) == "?" then
+          var.upstream_uri = upstream_uri .. "?" .. (var.args or "")
+        end
+      end
+
       local now = get_now()
 
       ctx.KONG_ACCESS_TIME = now - ctx.KONG_ACCESS_START -- time spent in Kong's access_by_lua
