@@ -76,7 +76,7 @@
                                  # HTTP requests.
                                  # This is the public-facing entrypoint of
                                  # Kong, to which your consumers will make
-                                 # requests to.
+                                 # requests.
 # Note: See http://nginx.org/en/docs/http/ngx_http_core_module.html#listen for
 # a description of the accepted formats for this and other *_listen values.
 
