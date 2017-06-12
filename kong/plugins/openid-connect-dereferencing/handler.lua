@@ -31,7 +31,9 @@ function OICDereferencingHandler:access(conf)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
 
-  local o, err = oic.new({
+  local o
+
+  o, err = oic.new({
     scope         = conf.scopes or { "openid" },
     claims        = conf.claims or { "iss", "sub", "aud", "azp", "exp" },
     leeway        = conf.leeway                     or 0,

@@ -42,6 +42,11 @@ return {
       required    = false,
       type        = "number",
     },
+    reverify    = {
+      required    = false,
+      type        = "boolean",
+      default     = false,
+    },
     leeway        = {
       required    = false,
       type        = "number",

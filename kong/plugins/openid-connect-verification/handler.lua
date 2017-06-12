@@ -5,6 +5,7 @@ local responses     = require "kong.tools.responses"
 local cache         = require "kong.plugins.openid-connect.cache"
 local codec         = require "kong.openid-connect.codec"
 local set           = require "kong.openid-connect.set"
+local uri           = require "kong.openid-connect.uri"
 local oic           = require "kong.openid-connect"
 
 
@@ -15,6 +16,7 @@ local get_uri_args  = ngx.req.get_uri_args
 local base64url     = codec.base64url
 local set_header    = ngx.req.set_header
 local read_body     = ngx.req.read_body
+local header        = ngx.header
 local concat        = table.concat
 local ipairs        = ipairs
 local lower         = string.lower
@@ -112,6 +114,24 @@ local function multipart(name, timeout)
 end
 
 
+local function unauthorized(iss, err)
+  if err then
+    log(NOTICE, err)
+  end
+  local parts = uri.parse(iss)
+  header["WWW-Authenticate"] = 'Bearer realm="' .. parts.host .. '"'
+  return responses.send_HTTP_UNAUTHORIZED()
+end
+
+
+local function internalerror(err)
+  if err then
+    log(ERR, err)
+  end
+  return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+end
+
+
 local OICVerificationHandler = BasePlugin:extend()
 
 
@@ -125,13 +145,14 @@ function OICVerificationHandler:access(conf)
 
   local issuer, err = cache.issuers.load(conf)
   if not issuer then
-    log(ERR, err)
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    return internalerror(err)
   end
 
   local claims = conf.claims or { "iss", "sub", "aud", "azp", "exp" }
 
-  local o, err = oic.new({
+  local o
+
+  o, err = oic.new({
     leeway       = conf.leeway                     or 0,
     http_version = conf.http_version               or 1.1,
     ssl_verify   = conf.ssl_verify == nil and true or conf.ssl_verify,
@@ -144,13 +165,13 @@ function OICVerificationHandler:access(conf)
   }, issuer.configuration, issuer.keys)
 
   if not o then
-    log(ERR, err)
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    return internalerror(err)
   end
 
+  local iss    = o.configuration.issuer
   local tokens = conf.tokens or { "id_token" }
 
-  local idt --, idp
+  local idt
 
   if set.has("id_token", tokens) then
     local ct     = var.content_type  or ""
@@ -163,7 +184,6 @@ function OICVerificationHandler:access(conf)
         local header = "http_" .. gsub(lower(prefix .. name), "-", "_")
         idt = var[header]
         if idt then
-          --idp = t
           break
         end
 
@@ -172,7 +192,6 @@ function OICVerificationHandler:access(conf)
         if args then
           idt = args[name]
           if idt then
-            --idp = t
             break
           end
         end
@@ -184,7 +203,6 @@ function OICVerificationHandler:access(conf)
           if args then
             idt = args[name]
             if idt then
-              --idp = t
               break
             end
           end
@@ -192,7 +210,6 @@ function OICVerificationHandler:access(conf)
         elseif sub(ct, 1, 19) == "multipart/form-data" then
           idt = multipart(name, conf.timeout)
           if idt then
-            --idp = t
             break
           end
 
@@ -210,7 +227,6 @@ function OICVerificationHandler:access(conf)
             if json then
               idt = json[name]
               if idt then
-                --idp = t
                 break
               end
             end
@@ -224,7 +240,6 @@ function OICVerificationHandler:access(conf)
             if file ~= nil then
               idt = read_file(file)
               if idt then
-                --idp = t
                 break
               end
             end
@@ -234,8 +249,7 @@ function OICVerificationHandler:access(conf)
     end
 
     if not idt then
-      log(NOTICE, "id token was not specified")
-      return responses.send_HTTP_UNAUTHORIZED()
+      return unauthorized(iss, "id token was not specified")
     end
   end
 
@@ -244,8 +258,7 @@ function OICVerificationHandler:access(conf)
   if set.has("access_token", tokens) then
     act = o.token:bearer()
     if not act then
-      log(NOTICE, "access token was not specified")
-      return responses.send_HTTP_UNAUTHORIZED()
+      return unauthorized(iss, "access token was not specified")
     end
   elseif idt then
     act = o.token:bearer()
@@ -263,8 +276,7 @@ function OICVerificationHandler:access(conf)
   local tks, err = o.token:verify(toks, options)
 
   if type(tks) ~= "table" then
-    log(NOTICE, err)
-    return responses.send_HTTP_UNAUTHORIZED()
+    return unauthorized(iss, err)
   end
 
   local kids = {}
@@ -278,14 +290,12 @@ function OICVerificationHandler:access(conf)
 
   for _, t in ipairs(tokens) do
     if type(tks[t]) ~= "table" then
-      log(NOTICE,  gsub(lower(t), "_", " ") .. " was not verified")
-      return responses.send_HTTP_UNAUTHORIZED()
+      return unauthorized(iss, gsub(lower(t), "_", " ") .. " was not verified")
     elseif jwks_header then
       local jwk = tks[t].jwk
 
       if type(jwk) ~= "table" then
-        log(NOTICE, "invalid jwk was specified for " .. gsub(lower(t), "_", " "))
-        return responses.send_HTTP_UNAUTHORIZED()
+        return unauthorized(iss, "invalid jwk was specified for " .. gsub(lower(t), "_", " "))
       end
 
       if jwk then
@@ -301,13 +311,11 @@ function OICVerificationHandler:access(conf)
   if keys > 0 then
     jwks, err = cjson.encode(jwks)
     if not jwks then
-      log(ERR, err)
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+      return internalerror(err)
     end
     jwks, err = base64url.encode(jwks)
     if not jwks then
-      log(ERR, err)
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+      return internalerror(err)
     end
 
     set_header(jwks_header, jwks)
