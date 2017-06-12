@@ -217,7 +217,7 @@ end
 local registered_claims = {
   ["nbf"] = {
     type = "number",
-    check = function(nbf)
+    check = function(nbf, args)
       if nbf > ngx_time() then
         return "token not valid yet"
       end
@@ -225,9 +225,21 @@ local registered_claims = {
   },
   ["exp"] = {
     type = "number",
-    check = function(exp)
+    check = function(exp, args)
       if exp <= ngx_time() then
         return "token expired"
+      end
+    end
+  },
+  ["cip"] = {
+    type = "string",
+    check = function(cip, args)
+      remote_addr = args.remote_addr
+      if remote_addr == nil then
+        return "missing remote_addr"
+      end
+      if cip ~= remote_addr then
+        return "client ip mismatch"
       end
     end
   }
@@ -238,8 +250,10 @@ local registered_claims = {
 -- @param claims_to_verify A list of claims to verify.
 -- @return A boolean indicating true if no errors zere found
 -- @return A list of errors
-function _M:verify_registered_claims(claims_to_verify)
+function _M:verify_registered_claims(claims_to_verify, args)
   if not claims_to_verify then claims_to_verify = {} end
+  if not args then args = {} end
+
   local errors = nil
   local claim, claim_rules
 
@@ -249,7 +263,7 @@ function _M:verify_registered_claims(claims_to_verify)
     if type(claim) ~= claim_rules.type then
       errors = utils.add_error(errors, claim_name, "must be a "..claim_rules.type)
     else
-      local check_err = claim_rules.check(claim)
+      local check_err = claim_rules.check(claim, args)
       if check_err then
         errors = utils.add_error(errors, claim_name, check_err)
       end
