@@ -8,6 +8,7 @@ local session    = require "resty.session"
 local redirect   = ngx.redirect
 local var        = ngx.var
 local log        = ngx.log
+local time       = ngx.time
 local tonumber   = tonumber
 local concat     = table.concat
 local find       = string.find
@@ -118,6 +119,8 @@ function OICAuthenticationHandler:access(conf)
         return responses.send_HTTP_UNAUTHORIZED()
       end
 
+      local expires = (tonumber(toks.expires_in) or 3600) + time()
+
       decoded, err = o.token:verify(toks, args)
       if not decoded then
         log(NOTICE, err)
@@ -128,12 +131,12 @@ function OICAuthenticationHandler:access(conf)
       -- TODO: introspect tokens
       -- TODO: call userinfo endpoint
 
-      s:regenerate()
       s.data = {
-        tokens = toks,
-        nonce  = args.nonce,
+        tokens  = toks,
+        expires = expires,
+        nonce   = args.nonce,
       }
-      s:save()
+      s:regenerate()
 
       local login_uri = conf.login_redirect_uri
 

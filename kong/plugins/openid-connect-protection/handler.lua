@@ -9,6 +9,7 @@ local session    = require "resty.session"
 local ngx        = ngx
 local var        = ngx.var
 local log        = ngx.log
+local time       = ngx.time
 local header     = ngx.header
 local set_header = ngx.req.set_header
 local tonumber   = tonumber
@@ -97,28 +98,78 @@ function OICProtectionHandler:access(conf)
   local s, present = session.open()
 
   if present then
+    local data    = s.data
+    local toks    = data.tokens
+    local expires = data.expires - conf.leeway
+    if expires < time() then
+      if toks.refresh_token then
+        local toks, err = oic.token:refresh(toks.refresh_token)
+        if toks then
+          local expires = (tonumber(toks.expires_in) or 3600) + time()
+          local decoded
 
-    local data = s.data
-    local toks = data.tokens
+          decoded, err = o.token:verify(toks, { nonce = data.nonce, tokens = tokens })
+          if not decoded then
+            log(NOTICE, err)
+            s:destroy()
+            return responses.send_HTTP_UNAUTHORIZED()
+          end
 
-    -- TODO: handle refreshing the access token
+          -- TODO: introspect tokens
+          -- TODO: call userinfo endpoint
 
-    local decoded, err = o.token:verify(toks, { nonce = data.nonce, tokens = tokens })
-    if not decoded then
-      log(NOTICE, err)
-      local parts = uri.parse(iss)
-      header["WWW-Authenticate"] = 'Bearer realm="' .. parts.host .. '"'
-      return responses.send_HTTP_UNAUTHORIZED()
-    else
-      s:start()
-      if toks.access_token then
-        set_header("Authorization", "Bearer " .. toks.access_token)
+          s.data = {
+            tokens  = toks,
+            expires = expires,
+            nonce   = data.nonce,
+          }
+          s:regenerate()
+          s:hide()
+
+          if toks.access_token then
+            set_header("Authorization", "Bearer " .. toks.access_token)
+          end
+          -- TODO: check required scopes
+          -- TODO: append jwks to request
+          -- TODO: append user info to request
+          -- TODO: append id token to request
+          -- TODO: require a new authentication when the previous is too far in the past
+
+        else
+          log(NOTICE, err)
+          local parts = uri.parse(iss)
+          header["WWW-Authenticate"] = 'Bearer realm="' .. parts.host .. '"'
+          return responses.send_HTTP_UNAUTHORIZED()
+        end
+
+      else
+        local parts = uri.parse(iss)
+        header["WWW-Authenticate"] = 'Bearer realm="' .. parts.host .. '"'
+        return responses.send_HTTP_UNAUTHORIZED()
       end
-      -- TODO: remove session cookie
-      -- TODO: check required scopes
-      -- TODO: append jwk to header
-      -- TODO: require a new authentication when the previous is too far in the past
+
+    else
+      local decoded, err = o.token:verify(toks, { nonce = data.nonce, tokens = tokens })
+      if decoded then
+        s:start()
+        s:hide()
+        if toks.access_token then
+          set_header("Authorization", "Bearer " .. toks.access_token)
+        end
+        -- TODO: check required scopes
+        -- TODO: append jwks to request
+        -- TODO: append user info to request
+        -- TODO: append id token to request
+        -- TODO: require a new authentication when the previous is too far in the past
+
+      else
+        log(NOTICE, err)
+        local parts = uri.parse(iss)
+        header["WWW-Authenticate"] = 'Bearer realm="' .. parts.host .. '"'
+        return responses.send_HTTP_UNAUTHORIZED()
+      end
     end
+
   else
     local parts = uri.parse(iss)
     header["WWW-Authenticate"] = 'Bearer realm="' .. parts.host .. '"'
