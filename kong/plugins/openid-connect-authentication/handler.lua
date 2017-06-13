@@ -143,17 +143,17 @@ function OICAuthenticationHandler:access(conf)
 
     args, err = o.authorization:verify(args)
     if not args then
-      return unauthorized(iss, err)
+      return unauthorized(s, iss, err)
     end
 
     toks, err = o.token:request(args)
     if not toks then
-      return unauthorized(iss, err)
+      return unauthorized(s, iss, err)
     end
 
     decoded, err = o.token:verify(toks, args)
     if not decoded then
-      return unauthorized(iss, err)
+      return unauthorized(s, iss, err)
     end
 
     -- TODO: introspect tokens
@@ -163,7 +163,7 @@ function OICAuthenticationHandler:access(conf)
 
     s.data = {
       tokens  = toks,
-      expires = time() + 60, --expires,
+      expires = expires,
     }
     s:regenerate()
 
