@@ -12,7 +12,6 @@ proxy_listen = 0.0.0.0:8000
 proxy_listen_ssl = 0.0.0.0:8443
 admin_listen = 0.0.0.0:8001
 admin_listen_ssl = 0.0.0.0:8444
-nginx_user = nobody nobody
 nginx_worker_processes = auto
 nginx_optimizations = on
 nginx_daemon = on
@@ -31,12 +30,9 @@ admin_ssl_cert_key = NONE
 upstream_keepalive = 60
 server_tokens = on
 latency_tokens = on
-real_ip_header = X-Real-IP
-real_ip_recursive = off
-trusted_ips = NONE
+error_default_type = text/plain
 client_max_body_size = 0
 client_body_buffer_size = 8k
-error_default_type = text/plain
 
 database = postgres
 pg_host = 127.0.0.1
@@ -72,9 +68,6 @@ cluster_ttl_on_failure = 3600
 
 dns_resolver = NONE
 dns_hostsfile = /etc/hosts
-dns_order = LAST,SRV,A,CNAME
-dns_not_found_ttl = 30.0
-dns_error_ttl = 1.0
 
 lua_code_cache = on
 lua_socket_pool_size = 30

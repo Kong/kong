@@ -699,15 +699,4 @@ function _M:record_migration(id, name)
   return true
 end
 
-function _M:reachable()
-  local peer, err = self.cluster:next_coordinator()
-  if not peer then
-    return nil, Errors.db(err)
-  end
-
-  peer:setkeepalive()
-
-  return true
-end
-
 return _M

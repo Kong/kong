@@ -9,7 +9,6 @@ local pl_path = require "pl.path"
 local tablex = require "pl.tablex"
 local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
-local ip = require "kong.tools.ip"
 local ciphers = require "kong.tools.ciphers"
 
 local DEFAULT_PATHS = {
@@ -65,18 +64,15 @@ local CONF_INFERENCES = {
   cluster_listen = {typ = "string"},
   cluster_listen_rpc = {typ = "string"},
   cluster_advertise = {typ = "string"},
-  nginx_user = {typ = "string"},
   nginx_worker_processes = {typ = "string"},
   upstream_keepalive = {typ = "number"},
   server_tokens = {typ = "boolean"},
   latency_tokens = {typ = "boolean"},
-  real_ip_header = {typ = "string"},
-  real_ip_recursive = {typ = "ngx_boolean"},
-  trusted_ips = {typ = "array"},
-  client_max_body_size = {typ = "string"},
-  client_body_buffer_size = {typ = "string"},
   error_default_type = {enum = {"application/json", "application/xml",
                                 "text/html", "text/plain"}},
+  client_max_body_size = {typ = "string"},
+  client_body_buffer_size = {typ = "string"},
+
 
   database = {enum = {"postgres", "cassandra"}},
   pg_port = {typ = "number"},
@@ -103,10 +99,6 @@ local CONF_INFERENCES = {
   cluster_ttl_on_failure = {typ = "number"},
 
   dns_resolver = {typ = "array"},
-  dns_hostsfile = {typ = "string"},
-  dns_order = {typ = "array"},
-  dns_not_found_ttl = {typ = "number"},
-  dns_error_ttl = {typ = "number"},
 
   ssl = {typ = "boolean"},
   client_ssl = {typ = "boolean"},
@@ -156,12 +148,7 @@ local function check_and_infer(conf)
     local typ = v_schema.typ
 
     if type(value) == "string" then
-
-      -- remove trailing comment, if any
-      -- and remove escape chars from octothorpes
-      value = string.gsub(value, "[^\\]#.-$", "")
-      value = string.gsub(value, "\\#", "#")
-
+      value = string.gsub(value, "#.-$", "") -- remove trailing comment if any
       value = pl_stringx.strip(value)
     end
 
@@ -290,31 +277,16 @@ local function check_and_infer(conf)
     end
   end
 
-  if conf.dns_hostsfile then
-    if not pl_path.isfile(conf.dns_hostsfile) then
-      errors[#errors+1] = "dns_hostsfile: file does not exist"
-    end
-  end
-
-  if conf.dns_order then
-    local allowed = { LAST = true, A = true, CNAME = true, SRV = true }
-    for _, name in ipairs(conf.dns_order) do
-      if not allowed[name:upper()] then
-        errors[#errors+1] = "dns_order: invalid entry '" .. tostring(name) .. "'"
-      end
-    end
-  end
-
-  local address, port = utils.normalize_ipv4(conf.cluster_listen)
-  if not (address and port) then
+  local ip, port = utils.normalize_ipv4(conf.cluster_listen)
+  if not (ip and port) then
     errors[#errors+1] = "cluster_listen must be in the form of IPv4:port"
   end
-  address, port = utils.normalize_ipv4(conf.cluster_listen_rpc)
-  if not (address and port) then
+  ip, port = utils.normalize_ipv4(conf.cluster_listen_rpc)
+  if not (ip and port) then
     errors[#errors+1] = "cluster_listen_rpc must be in the form of IPv4:port"
   end
-  address, port = utils.normalize_ipv4(conf.cluster_advertise or "")
-  if conf.cluster_advertise and not (address and port) then
+  ip, port = utils.normalize_ipv4(conf.cluster_advertise or "")
+  if conf.cluster_advertise and not (ip and port) then
     errors[#errors+1] = "cluster_advertise must be in the form of IPv4:port"
   end
   if conf.cluster_ttl_on_failure < 60 then
@@ -322,15 +294,6 @@ local function check_and_infer(conf)
   end
   if not conf.lua_package_cpath then
     conf.lua_package_cpath = ""
-  end
-
-  -- Checking the trusted ips
-  for _, address in ipairs(conf.trusted_ips) do
-    if not ip.valid(address) and not address == "unix:" then
-      errors[#errors+1] = "trusted_ips must be a comma separated list in "..
-                          "the form of IPv4 or IPv6 address or CIDR "..
-                          "block or 'unix:', got '" .. address .. "'"
-    end
   end
 
   return #errors == 0, errors[1], errors
@@ -477,14 +440,6 @@ local function load(path, custom_conf)
     end
     conf.plugins = tablex.merge(constants.PLUGINS_AVAILABLE, custom_plugins, true)
     setmetatable(conf.plugins, nil) -- remove Map mt
-  end
-
-  -- nginx user directive
-  do
-    local user = conf.nginx_user:gsub("^%s*", ""):gsub("%s$", ""):gsub("%s+", " ")
-    if user == "nobody" or user == "nobody nobody" then
-      conf.nginx_user = nil
-    end
   end
 
   -- extract ports/listen ips

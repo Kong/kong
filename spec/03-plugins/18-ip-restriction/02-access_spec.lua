@@ -97,11 +97,7 @@ describe("Plugin: ip-restriction (access)", function()
       }
     })
 
-    assert(helpers.start_kong {
-      real_ip_header    = "X-Forwarded-For",
-      real_ip_recursive = "on",
-      trusted_ips       = "0.0.0.0/0, ::/0",
-    })
+    assert(helpers.start_kong())
     client = helpers.proxy_client()
     admin_client = helpers.admin_client()
   end)

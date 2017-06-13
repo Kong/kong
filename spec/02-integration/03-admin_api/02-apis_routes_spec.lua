@@ -1,9 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
-local dao_helpers = require "spec.02-integration.02-dao.helpers"
-local DAOFactory = require "kong.dao.factory"
-
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
   local test_json = fn("application/json")
@@ -11,17 +8,10 @@ local function it_content_types(title, fn)
   it(title .. " with application/json", test_json)
 end
 
-dao_helpers.for_each_dao(function(kong_config)
-
-describe("Admin API " .. kong_config.database, function()
+describe("Admin API", function()
   local client
-  local dao
   setup(function()
-    dao = assert(DAOFactory.new(kong_config))
-
-    assert(helpers.start_kong{
-      database = kong_config.database
-    })
+    assert(helpers.start_kong())
     client = assert(helpers.admin_client())
   end)
   teardown(function()
@@ -32,7 +22,7 @@ describe("Admin API " .. kong_config.database, function()
   describe("/apis", function()
     describe("POST", function()
       before_each(function()
-        dao:truncate_tables()
+        helpers.dao:truncate_tables()
       end)
       it_content_types("creates an API", function(content_type)
         return function()
@@ -162,7 +152,7 @@ describe("Admin API " .. kong_config.database, function()
 
     describe("PUT", function()
       before_each(function()
-        dao:truncate_tables()
+        helpers.dao:truncate_tables()
       end)
 
       it_content_types("creates if not exists", function(content_type)
@@ -303,10 +293,10 @@ describe("Admin API " .. kong_config.database, function()
 
     describe("GET", function()
       setup(function()
-        dao:truncate_tables()
+        helpers.dao:truncate_tables()
 
         for i = 1, 10 do
-          assert(dao.apis:insert {
+          assert(helpers.dao.apis:insert {
             name = "api-" .. i,
             uris = "/api-" .. i,
             upstream_url = "http://my-api.com"
@@ -314,7 +304,7 @@ describe("Admin API " .. kong_config.database, function()
         end
       end)
       teardown(function()
-        dao:truncate_tables()
+        helpers.dao:truncate_tables()
       end)
 
       it("retrieves the first page", function()
@@ -380,7 +370,7 @@ describe("Admin API " .. kong_config.database, function()
 
       describe("empty results", function()
         setup(function()
-          dao:truncate_tables()
+          helpers.dao:truncate_tables()
         end)
 
         it("data property is an empty array", function()
@@ -413,17 +403,17 @@ describe("Admin API " .. kong_config.database, function()
     describe("/apis/{api}", function()
       local api
       setup(function()
-        dao:truncate_tables()
+        helpers.dao:truncate_tables()
       end)
       before_each(function()
-        api = assert(dao.apis:insert {
+        api = assert(helpers.dao.apis:insert {
           name = "my-api",
           uris = "/my-api",
           upstream_url = "http://my-api.com"
         })
       end)
       after_each(function()
-        dao:truncate_tables()
+        helpers.dao:truncate_tables()
       end)
 
       describe("GET", function()
@@ -481,7 +471,7 @@ describe("Admin API " .. kong_config.database, function()
             assert.equal("my-updated-api", json.name)
             assert.equal(api.id, json.id)
 
-            local in_db = assert(dao.apis:find {id = api.id})
+            local in_db = assert(helpers.dao.apis:find {id = api.id})
             assert.same(json, in_db)
           end
         end)
@@ -500,7 +490,7 @@ describe("Admin API " .. kong_config.database, function()
             assert.equal("my-updated-api", json.name)
             assert.equal(api.id, json.id)
 
-            local in_db = assert(dao.apis:find {id = api.id})
+            local in_db = assert(helpers.dao.apis:find {id = api.id})
             assert.same(json, in_db)
           end
         end)
@@ -519,7 +509,7 @@ describe("Admin API " .. kong_config.database, function()
             assert.same({ "/my-updated-api", "/my-new-uri" }, json.uris)
             assert.equal(api.id, json.id)
 
-            local in_db = assert(dao.apis:find {id = api.id})
+            local in_db = assert(helpers.dao.apis:find {id = api.id})
             assert.same(json, in_db)
           end
         end)
@@ -538,7 +528,7 @@ describe("Admin API " .. kong_config.database, function()
             assert.True(json.strip_uri)
             assert.equal(api.id, json.id)
 
-            local in_db = assert(dao.apis:find {id = api.id})
+            local in_db = assert(helpers.dao.apis:find {id = api.id})
             assert.same(json, in_db)
           end
         end)
@@ -559,7 +549,7 @@ describe("Admin API " .. kong_config.database, function()
             assert.same({ "my-updated.tld" }, json.hosts)
             assert.equal(api.id, json.id)
 
-            local in_db = assert(dao.apis:find {id = api.id})
+            local in_db = assert(helpers.dao.apis:find {id = api.id})
             assert.same(json, in_db)
           end
         end)
@@ -627,16 +617,16 @@ describe("Admin API " .. kong_config.database, function()
   describe("/apis/{api}/plugins", function()
     local api
     setup(function()
-      dao:truncate_tables()
+      helpers.dao:truncate_tables()
 
-      api = assert(dao.apis:insert {
+      api = assert(helpers.dao.apis:insert {
         name = "my-api",
         uris = "/my-api",
         upstream_url = "http://my-api.com"
       })
     end)
     before_each(function()
-      dao.plugins:truncate()
+      helpers.dao.plugins:truncate()
     end)
 
     describe("POST", function()
@@ -675,15 +665,6 @@ describe("Admin API " .. kong_config.database, function()
         end
       end)
       describe("errors", function()
-        -- TODO fix the weird nesting issues in this file that
-        -- require us to rescope client
-        local client
-        before_each(function()
-          client = assert(helpers.admin_client())
-        end)
-        after_each(function()
-          if client then client:close() end
-        end)
         it_content_types("handles invalid input", function(content_type)
           return function()
             local res = assert(client:send {
@@ -723,35 +704,6 @@ describe("Admin API " .. kong_config.database, function()
             assert.response(res).has.status(409)
             local json = assert.response(res).has.jsonbody()
             assert.same({ name = "already exists with value 'basic-auth'"}, json)
-          end
-        end)
-        it_content_types("returns 409 on id conflict #xxx", function(content_type)
-          return function()
-            -- insert initial plugin
-            local res = assert(client:send {
-              method = "POST",
-              path = "/apis/"..api.id.."/plugins",
-              body = {
-                name="basic-auth",
-              },
-              headers = {["Content-Type"] = content_type}
-            })
-            local body = assert.res_status(201, res)
-            local plugin = cjson.decode(body)
-
-            -- do it again, to provoke the error
-            local conflict_res = assert(client:send {
-              method = "POST",
-              path = "/apis/"..api.id.."/plugins",
-              body = {
-                name="key-auth",
-                id = plugin.id,
-              },
-              headers = {["Content-Type"] = content_type}
-            })
-            local conflict_body = assert.res_status(409, conflict_res)
-            local json = cjson.decode(conflict_body)
-            assert.same({ id = "already exists with value '" .. plugin.id .. "'"}, json)
           end
         end)
       end)
@@ -810,7 +762,7 @@ describe("Admin API " .. kong_config.database, function()
       end)
       it_content_types("perfers default values when replacing", function(content_type)
         return function()
-          local plugin = assert(dao.plugins:insert {
+          local plugin = assert(helpers.dao.plugins:insert {
             name = "key-auth",
             api_id = api.id,
             config = {hide_credentials = true}
@@ -833,7 +785,7 @@ describe("Admin API " .. kong_config.database, function()
           local json = cjson.decode(body)
           assert.False(json.config.hide_credentials) -- not true anymore
 
-          plugin = assert(dao.plugins:find {
+          plugin = assert(helpers.dao.plugins:find {
             id = plugin.id,
             name = plugin.name
           })
@@ -843,7 +795,7 @@ describe("Admin API " .. kong_config.database, function()
       end)
       it_content_types("overrides a plugin previous config if partial", function(content_type)
         return function()
-          local plugin = assert(dao.plugins:insert {
+          local plugin = assert(helpers.dao.plugins:insert {
             name = "key-auth",
             api_id = api.id
           })
@@ -867,7 +819,7 @@ describe("Admin API " .. kong_config.database, function()
       end)
       it_content_types("updates the enabled property", function(content_type)
         return function()
-          local plugin = assert(dao.plugins:insert {
+          local plugin = assert(helpers.dao.plugins:insert {
             name = "key-auth",
             api_id = api.id
           })
@@ -888,7 +840,7 @@ describe("Admin API " .. kong_config.database, function()
           local json = cjson.decode(body)
           assert.False(json.enabled)
 
-          plugin = assert(dao.plugins:find {
+          plugin = assert(helpers.dao.plugins:find {
             id = plugin.id,
             name = plugin.name
           })
@@ -914,7 +866,7 @@ describe("Admin API " .. kong_config.database, function()
 
     describe("GET", function()
       it("retrieves the first page", function()
-        assert(dao.plugins:insert {
+        assert(helpers.dao.plugins:insert {
           name = "key-auth",
           api_id = api.id
         })
@@ -942,7 +894,7 @@ describe("Admin API " .. kong_config.database, function()
     describe("/apis/{api}/plugins/{plugin}", function()
       local plugin
       before_each(function()
-        plugin = assert(dao.plugins:insert {
+        plugin = assert(helpers.dao.plugins:insert {
           name = "key-auth",
           api_id = api.id
         })
@@ -958,18 +910,9 @@ describe("Admin API " .. kong_config.database, function()
           local json = cjson.decode(body)
           assert.same(plugin, json)
         end)
-        it("retrieves by plugin name", function()
-          local res = assert(client:send {
-            method = "GET",
-            path = "/apis/"..api.name.."/plugins/"..plugin.name
-          })
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-          assert.same(plugin, json)
-        end)
         it("only retrieves if associated to the correct API", function()
           -- Create an API and try to query our plugin through it
-          local w_api = assert(dao.apis:insert {
+          local w_api = assert(helpers.dao.apis:insert {
             name = "wrong-api",
             uris = "/wrong-api",
             upstream_url = "http://wrong-api.com"
@@ -1011,7 +954,7 @@ describe("Admin API " .. kong_config.database, function()
             assert.same({"key-updated"}, json.config.key_names)
             assert.equal(plugin.id, json.id)
 
-            local in_db = assert(dao.plugins:find {
+            local in_db = assert(helpers.dao.plugins:find {
               id = plugin.id,
               name = plugin.name
             })
@@ -1021,7 +964,7 @@ describe("Admin API " .. kong_config.database, function()
         it_content_types("doesn't override a plugin config if partial", function(content_type)
           -- This is delicate since a plugin config is a text field in a DB like Cassandra
           return function()
-            plugin = assert(dao.plugins:update({
+            plugin = assert(helpers.dao.plugins:update({
               config = {hide_credentials = true}
             }, {id = plugin.id, name = plugin.name}))
             assert.True(plugin.config.hide_credentials)
@@ -1040,7 +983,7 @@ describe("Admin API " .. kong_config.database, function()
             assert.True(json.config.hide_credentials) -- still true
             assert.same({"my-new-key"}, json.config.key_names)
 
-            plugin = assert(dao.plugins:find {
+            plugin = assert(helpers.dao.plugins:find {
               id = plugin.id,
               name = plugin.name
             })
@@ -1063,7 +1006,7 @@ describe("Admin API " .. kong_config.database, function()
             local json = cjson.decode(body)
             assert.False(json.enabled)
 
-            plugin = assert(dao.plugins:find {
+            plugin = assert(helpers.dao.plugins:find {
               id = plugin.id,
               name = plugin.name
             })
@@ -1120,61 +1063,50 @@ describe("Admin API " .. kong_config.database, function()
       end)
     end)
   end)
-end)
 
-end)
+  describe("request size", function()
+    setup(function()
+      assert(helpers.dao.apis:insert {
+        name = "my-cool-api",
+        hosts = "my.api.com",
+        upstream_url = "http://api.com"
+      })
+    end)
+    it("handles req bodies < 10MB", function()
+      local ip = "204.48.16.0"
+      local n = 2^20 / #ip
+      local buf = {}
+      for i = 1, n do buf[#buf+1] = ip end
+      local ips = table.concat(buf, ",")
 
-describe("Admin API request size", function()
-  local client
-  setup(function()
-    assert(helpers.dao.apis:insert {
-      name = "my-cool-api",
-      hosts = "my.api.com",
-      upstream_url = "http://api.com"
-    })
+      local res = assert(client:send {
+        method = "POST",
+        path = "/apis/my-cool-api/plugins",
+        body = {
+          name = "ip-restriction",
+          ["config.blacklist"] = ips
+        },
+        headers = {["Content-Type"] = "application/json"}
+      })
+      assert.res_status(201, res)
+    end)
+    it("fails with req bodies 10MB", function()
+      local ip = "204.48.16.0"
+      local n = 11 * 2^20 / #ip
+      local buf = {}
+      for i = 1, n do buf[#buf+1] = ip end
+      local ips = table.concat(buf, ",")
 
-    assert(helpers.start_kong())
-    client = assert(helpers.admin_client())
-  end)
-  teardown(function()
-    if client then client:close() end
-    helpers.stop_kong()
-  end)
-
-  it("handles req bodies < 10MB", function()
-    local ip = "204.48.16.0"
-    local n = 2^20 / #ip
-    local buf = {}
-    for i = 1, n do buf[#buf+1] = ip end
-    local ips = table.concat(buf, ",")
-
-    local res = assert(client:send {
-      method = "POST",
-      path = "/apis/my-cool-api/plugins",
-      body = {
-        name = "ip-restriction",
-        ["config.blacklist"] = ips
-      },
-      headers = {["Content-Type"] = "application/json"}
-    })
-    assert.res_status(201, res)
-  end)
-  it("fails with req bodies 10MB", function()
-    local ip = "204.48.16.0"
-    local n = 11 * 2^20 / #ip
-    local buf = {}
-    for i = 1, n do buf[#buf+1] = ip end
-    local ips = table.concat(buf, ",")
-
-    local res = assert(client:send {
-      method = "POST",
-      path = "/apis/my-cool-api/plugins",
-      body = {
-        name = "ip-restriction",
-        ["config.blacklist"] = ips
-      },
-      headers = {["Content-Type"] = "application/json"}
-    })
-    assert.res_status(413, res)
+      local res = assert(client:send {
+        method = "POST",
+        path = "/apis/my-cool-api/plugins",
+        body = {
+          name = "ip-restriction",
+          ["config.blacklist"] = ips
+        },
+        headers = {["Content-Type"] = "application/json"}
+      })
+      assert.res_status(413, res)
+    end)
   end)
 end)

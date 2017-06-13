@@ -71,7 +71,7 @@ describe("#ci Plugin: syslog (log)", function()
   end)
 
   local function do_test(host, expecting_same)
-    local uuid = utils.uuid()
+    local uuid = utils.random_string()
 
     local response = assert(client:send {
       method = "GET",
