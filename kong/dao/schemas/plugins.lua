@@ -3,11 +3,11 @@ local Errors = require "kong.dao.errors"
 
 local function load_config_schema(plugin_t)
   if plugin_t.name then
-    local loaded, plugin_schema = utils.load_module_if_exists("kong.plugins."..plugin_t.name..".schema")
+    local loaded, plugin_schema = utils.load_module_if_exists("kong.plugins." .. plugin_t.name .. ".schema")
     if loaded then
       return plugin_schema
     else
-      return nil, 'Plugin "'..tostring(plugin_t.name)..'" not found'
+      return nil, 'Plugin "' .. tostring(plugin_t.name) .. '" not found'
     end
   end
 end
@@ -19,8 +19,7 @@ return {
     id = {
       type = "id",
       dao_insert_value = true,
-      required = true,
-      unique = true,
+      required = true
     },
     created_at = {
       type = "timestamp",

@@ -95,7 +95,9 @@ local function load_targets_into_memory(upstream_id)
   log(DEBUG, "fetching targets for upstream: ",tostring(upstream_id))
 
   local target_history, err = singletons.dao.targets:find_all {upstream_id = upstream_id}
-  if err then return nil, err end
+  if err then
+    return nil, err
+  end
 
   -- perform some raw data updates
   for _, target in ipairs(target_history) do
@@ -221,7 +223,9 @@ local get_balancer = function(target)
           order = upstream.orderlist,
           dns = dns_client,
         })
-      if not balancer then return balancer, err end
+      if not balancer then
+        return balancer, err
+      end
 
       balancer.__targets_history = {}
       balancers[upstream.name] = balancer  -- overwrite our existing one
@@ -299,7 +303,7 @@ local function execute(target)
   -- have to do a regular DNS lookup
   local ip, port = toip(target.host, target.port, dns_cache_only)
   if not ip then
-    if port == "dns server error: 3 name error" then
+    if port == "dns server error; 3 name error" then
       -- in this case a "503 service unavailable", others will be a 500.
       log(ERROR, "name resolution failed for '", tostring(target.host),
                  "': ", port)

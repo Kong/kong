@@ -14,7 +14,7 @@ describe("Entities Schemas", function()
                           plugins = plugins_schema,
                           targets = targets_schema,
                           upstreams = upstreams_schema}) do
-    it(k.." schema should have some required properties", function()
+    it(k .. " schema should have some required properties", function()
       assert.is_table(schema.primary_key)
       assert.is_table(schema.fields)
       assert.is_string(schema.table)
@@ -396,7 +396,7 @@ describe("Entities Schemas", function()
 
             local ok, errors = validate_entity(t, api_schema)
             assert.is_false(ok)
-            assert.matches("must use proper encoding; '"..errstr[i].."' is invalid", errors.uris, nil, true)
+            assert.matches("must use proper encoding; '" .. errstr[i] .. "' is invalid", errors.uris, nil, true)
           end
         end)
 
@@ -739,7 +739,7 @@ describe("Entities Schemas", function()
         valid, errors, check = validate_entity(data, upstreams_schema)
         assert.is_false(valid)
         assert.is_nil(errors)
-        assert.equal("number of slots must be between "..slots_min.." and "..slots_max, check.message)
+        assert.equal("number of slots must be between " .. slots_min .. " and " .. slots_max, check.message)
       end
 
       local good_slots = { slots_min, 500, slots_max }
@@ -758,9 +758,9 @@ describe("Entities Schemas", function()
     it("should require (optional) orderlist to be a proper list", function()
       local data, valid, errors, check
       local function validate_order(list, size)
-        assert(type(list) == "table", "expected list table, got "..type(list))
+        assert(type(list) == "table", "expected list table, got " .. type(list))
         assert(next(list), "table is empty")
-        assert(type(size) == "number", "expected size number, got "..type(size))
+        assert(type(size) == "number", "expected size number, got " .. type(size))
         assert(size > 0, "expected size to be > 0")
         local c = {}
         local max = 0
@@ -881,7 +881,7 @@ describe("Entities Schemas", function()
 
       -- the utils module does the normalization, here just check whether it is being invoked.
       local names_in = { "012.034.056.078", "01.02.03.04:123" }
-      local names_out = { "12.34.56.78:"..default_port, "1.2.3.4:123" }
+      local names_out = { "12.34.56.78:" .. default_port, "1.2.3.4:123" }
       for i, name in ipairs(names_in) do
         local data = { target = name }
         valid, errors, check = validate_entity(data, targets_schema)
@@ -900,7 +900,7 @@ describe("Entities Schemas", function()
         valid, errors, check = validate_entity({ target = "1.2.3.4", weight = weight }, targets_schema)
         assert.is_false(valid)
         assert.is_nil(errors)
-        assert.equal("weight must be from "..weight_min.." to "..weight_max, check.message)
+        assert.equal("weight must be from " .. weight_min .. " to " .. weight_max, check.message)
       end
 
       weights = { weight_min, weight_default, weight_max }

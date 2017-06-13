@@ -10,9 +10,9 @@ describe("Plugin: jwt (parser)", function()
         admin = true
       }, "secret")
 
-      assert.equal([[eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSw]]
-                 ..[[ibmFtZSI6IkpvaG4gRG9lIiwic3ViIjoiMTIzNDU2Nzg5MCJ9.]]
-                 ..[[eNK_fimsCW3Q-meOXyc_dnZHubl2D4eZkIcn6llniCk]], token)
+      assert.equal([[eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSw]] ..
+                   [[ibmFtZSI6IkpvaG4gRG9lIiwic3ViIjoiMTIzNDU2Nzg5MCJ9.]] ..
+                   [[eNK_fimsCW3Q-meOXyc_dnZHubl2D4eZkIcn6llniCk]], token)
     end)
     it("should properly encode using RS256", function()
       local token = jwt_parser.encode({
@@ -21,13 +21,13 @@ describe("Plugin: jwt (parser)", function()
         admin = true
       }, fixtures.rs256_private_key, 'RS256')
 
-      assert.equal([[eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwi]]
-                 ..[[bmFtZSI6IkpvaG4gRG9lIiwic3ViIjoiMTIzNDU2Nzg5MCJ9.EiOLxyMimY8vbLR8]]
-                 ..[[EcGOlXAiEe-eEVn7Aewgu0gYIBPyiEhVTq0CzB_XtHoQ_0y4gBBBZVRnz1pgruOtN]]
-                 ..[[mOzcaoXnyplFm1IbrCCBKYQeA4lanmu_-Wzk6Dw4p-TimRHpf8EEHBUJSEbVEyet3]]
-                 ..[[cpozUo2Ep0dEfA_Nf3T-g8RjfOYXkFTr3M6FuIDq95cFZloH-DRGodUVQX508wggg]]
-                 ..[[tcFKN-Pi7_rWzBtQwP2u4CrFD4ZJbn2sxobzSlFb9fn4nRh_-rPPjDSeHVKwrpsYp]]
-                 ..[[FSLBJxwX-KhbeGUfalg2eu9tHLDPHC4gTCpoQKxxRIwfMjW5zlHOZhohKZV2ZtpcgA]] , token)
+      assert.equal([[eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwi]] ..
+                    [[bmFtZSI6IkpvaG4gRG9lIiwic3ViIjoiMTIzNDU2Nzg5MCJ9.EiOLxyMimY8vbLR8]] ..
+                    [[EcGOlXAiEe-eEVn7Aewgu0gYIBPyiEhVTq0CzB_XtHoQ_0y4gBBBZVRnz1pgruOtN]] ..
+                    [[mOzcaoXnyplFm1IbrCCBKYQeA4lanmu_-Wzk6Dw4p-TimRHpf8EEHBUJSEbVEyet3]] ..
+                    [[cpozUo2Ep0dEfA_Nf3T-g8RjfOYXkFTr3M6FuIDq95cFZloH-DRGodUVQX508wggg]] ..
+                    [[tcFKN-Pi7_rWzBtQwP2u4CrFD4ZJbn2sxobzSlFb9fn4nRh_-rPPjDSeHVKwrpsYp]] ..
+                    [[FSLBJxwX-KhbeGUfalg2eu9tHLDPHC4gTCpoQKxxRIwfMjW5zlHOZhohKZV2ZtpcgA]] , token)
     end)
 
     it("should encode using ES256", function()

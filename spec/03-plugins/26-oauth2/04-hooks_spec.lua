@@ -97,7 +97,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
       local cache_key = cache.oauth2_credential_key("clientid123")
       local res = assert(admin_client:send {
         method = "GET",
-        path = "/cache/"..cache_key,
+        path = "/cache/" .. cache_key,
         headers = {},
         query = { cache = "lua" },
       })
@@ -107,7 +107,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
       -- Delete OAuth2 credential (which triggers invalidation)
       local res = assert(admin_client:send {
         method = "DELETE",
-        path = "/consumers/bob/oauth2/"..credential.id,
+        path = "/consumers/bob/oauth2/" .. credential.id,
         headers = {}
       })
       assert.response(res).has.status(204)
@@ -116,7 +116,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
       helpers.wait_until(function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/cache/"..cache_key
+          path = "/cache/" .. cache_key
         })
         res:read_body()
         return res.status == 404
@@ -167,7 +167,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
       local cache_key = cache.oauth2_credential_key("clientid123")
       local res = assert(admin_client:send {
         method = "GET",
-        path = "/cache/"..cache_key,
+        path = "/cache/" .. cache_key,
         headers = {}
       })
       local credential = cjson.decode(assert.res_status(200, res))
@@ -175,7 +175,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
       -- Update OAuth2 credential (which triggers invalidation)
       local res = assert(admin_client:send {
         method = "PATCH",
-        path = "/consumers/bob/oauth2/"..credential.id,
+        path = "/consumers/bob/oauth2/" .. credential.id,
         body = {
           client_id = "updated_clientid123"
         },
@@ -189,7 +189,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
       helpers.wait_until(function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/cache/"..cache_key
+          path = "/cache/" .. cache_key
         })
         res:read_body()
         return res.status == 404
@@ -242,7 +242,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
       local cache_key = cache.oauth2_credential_key("clientid123")
       local res = assert(admin_client:send {
         method = "GET",
-        path = "/cache/"..cache_key,
+        path = "/cache/" .. cache_key,
         headers = {}
       })
       assert.res_status(200, res)
@@ -259,7 +259,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
       helpers.wait_until(function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/cache/"..cache_key
+          path = "/cache/" .. cache_key
         })
         res:read_body()
         return res.status == 404
@@ -299,7 +299,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
       -- The token should work
       local res = assert(proxy_ssl_client:send {
         method = "GET",
-        path = "/status/200?access_token="..token.access_token,
+        path = "/status/200?access_token=" .. token.access_token,
         headers = {
           ["Host"] = "oauth2.com"
         }
@@ -310,7 +310,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
       local cache_key = cache.oauth2_token_key(token.access_token)
       local res = assert(admin_client:send {
         method = "GET",
-        path = "/cache/"..cache_key,
+        path = "/cache/" .. cache_key,
         headers = {}
       })
       assert.res_status(200, res)
@@ -322,7 +322,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
       -- Delete token (which triggers invalidation)
       local res = assert(admin_client:send {
         method = "DELETE",
-        path = "/oauth2_tokens/"..token_id,
+        path = "/oauth2_tokens/" .. token_id,
         headers = {}
       })
       assert.res_status(204, res)
@@ -331,7 +331,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
       helpers.wait_until(function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/cache/"..cache_key
+          path = "/cache/" .. cache_key
         })
         res:read_body()
         return res.status == 404
@@ -340,7 +340,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
       -- It should not work
       local res = assert(proxy_ssl_client:send {
         method = "GET",
-        path = "/status/200?access_token="..token.access_token,
+        path = "/status/200?access_token=" .. token.access_token,
         headers = {
           ["Host"] = "oauth2.com"
         }
@@ -366,7 +366,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
       -- The token should work
       local res = assert(proxy_ssl_client:send {
         method = "GET",
-        path = "/status/200?access_token="..token.access_token,
+        path = "/status/200?access_token=" .. token.access_token,
         headers = {
           ["Host"] = "oauth2.com"
         }
@@ -377,7 +377,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
       local cache_key = cache.oauth2_token_key(token.access_token)
       local res = assert(admin_client:send {
         method = "GET",
-        path = "/cache/"..cache_key,
+        path = "/cache/" .. cache_key,
         headers = {}
       })
       assert.res_status(200, res)
@@ -389,7 +389,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
       -- Update OAuth 2 token (which triggers invalidation)
       local res = assert(admin_client:send {
         method = "PATCH",
-        path = "/oauth2_tokens/"..token_id,
+        path = "/oauth2_tokens/" .. token_id,
         body = {
           access_token = "updated_token"
         },
@@ -403,7 +403,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
       helpers.wait_until(function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/cache/"..cache_key
+          path = "/cache/" .. cache_key
         })
         res:read_body()
         return res.status == 404
@@ -422,7 +422,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
       -- It should not work
       local res = assert(proxy_ssl_client:send {
         method = "GET",
-        path = "/status/200?access_token="..token.access_token,
+        path = "/status/200?access_token=" .. token.access_token,
         headers = {
           ["Host"] = "oauth2.com"
         }
@@ -450,7 +450,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
       -- The token should work
       local res = assert(proxy_ssl_client:send {
         method = "GET",
-        path = "/status/200?access_token="..token.access_token,
+        path = "/status/200?access_token=" .. token.access_token,
         headers = {
           ["Host"] = "oauth2.com"
         }
@@ -461,7 +461,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
       local cache_key = cache.oauth2_token_key(token.access_token)
       local res = assert(admin_client:send {
         method = "GET",
-        path = "/cache/"..cache_key,
+        path = "/cache/" .. cache_key,
         headers = {}
       })
       assert.res_status(200, res)
@@ -469,7 +469,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
       -- Retrieve credential ID
       local res = assert(admin_client:send {
         method = "GET",
-        path = "/cache/"..cache.oauth2_credential_key("clientid123"),
+        path = "/cache/" .. cache.oauth2_credential_key("clientid123"),
         headers = {}
       })
       local credential = cjson.decode(assert.res_status(200, res))
@@ -477,7 +477,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
       -- Delete OAuth2 client (which triggers invalidation)
       local res = assert(admin_client:send {
         method = "DELETE",
-        path = "/consumers/bob/oauth2/"..credential.id,
+        path = "/consumers/bob/oauth2/" .. credential.id,
         headers = {}
       })
       assert.res_status(204, res)
@@ -486,7 +486,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
       helpers.wait_until(function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/cache/"..cache_key
+          path = "/cache/" .. cache_key
         })
         res:read_body()
         return res.status == 404
@@ -495,7 +495,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
       -- it should not work
       local res = assert(proxy_ssl_client:send {
         method = "GET",
-        path = "/status/200?access_token="..token.access_token,
+        path = "/status/200?access_token=" .. token.access_token,
         headers = {
           ["Host"] = "oauth2.com"
         }

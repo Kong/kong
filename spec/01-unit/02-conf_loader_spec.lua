@@ -5,7 +5,6 @@ describe("Configuration loader", function()
   it("loads the defaults", function()
     local conf = assert(conf_loader())
     assert.is_string(conf.lua_package_path)
-    assert.is_nil(conf.nginx_user)
     assert.equal("auto", conf.nginx_worker_processes)
     assert.equal("0.0.0.0:8001", conf.admin_listen)
     assert.equal("0.0.0.0:8000", conf.proxy_listen)
@@ -22,8 +21,7 @@ describe("Configuration loader", function()
     -- defaults
     assert.equal("on", conf.nginx_daemon)
     -- overrides
-    assert.is_nil(conf.nginx_user)
-    assert.equal("1",            conf.nginx_worker_processes)
+    assert.equal("1", conf.nginx_worker_processes)
     assert.equal("0.0.0.0:9001", conf.admin_listen)
     assert.equal("0.0.0.0:9000", conf.proxy_listen)
     assert.equal("0.0.0.0:9443", conf.proxy_listen_ssl)
@@ -41,11 +39,10 @@ describe("Configuration loader", function()
     -- defaults
     assert.equal("on", conf.nginx_daemon)
     -- overrides
-    assert.is_nil(conf.nginx_user)
-    assert.equal("auto",           conf.nginx_worker_processes)
+    assert.equal("auto", conf.nginx_worker_processes)
     assert.equal("127.0.0.1:9001", conf.admin_listen)
-    assert.equal("0.0.0.0:9000",   conf.proxy_listen)
-    assert.equal("0.0.0.0:9443",   conf.proxy_listen_ssl)
+    assert.equal("0.0.0.0:9000", conf.proxy_listen)
+    assert.equal("0.0.0.0:9443", conf.proxy_listen_ssl)
     assert.is_nil(getmetatable(conf))
   end)
   it("strips extraneous properties (not in defaults)", function()
@@ -68,7 +65,7 @@ describe("Configuration loader", function()
   end)
   it("loads custom plugins surrounded by spaces", function()
     local conf = assert(conf_loader(nil, {
-      custom_plugins = " hello-world ,   another-one  "
+      custom_plugins = " hello-world ,   another-one  "  
     }))
     assert.True(conf.plugins["hello-world"])
     assert.True(conf.plugins["another-one"])
@@ -115,35 +112,6 @@ describe("Configuration loader", function()
     assert.False(conf.pg_ssl)
     assert.True(conf.plugins.foobar)
     assert.True(conf.plugins["hello-world"])
-  end)
-  it("correctly parses values containing an octothorpe", function()
-    local conf = assert(conf_loader("spec/fixtures/to-strip.conf"))
-    assert.equal("test#123", conf.pg_password)
-  end)
-
-  describe("nginx_user", function()
-    it("is nil by default", function()
-      local conf = assert(conf_loader(helpers.test_conf_path))
-      assert.is_nil(conf.nginx_user)
-    end)
-    it("is nil when 'nobody'", function()
-      local conf = assert(conf_loader(helpers.test_conf_path, {
-        nginx_user = "nobody"
-      }))
-      assert.is_nil(conf.nginx_user)
-    end)
-    it("is nil when 'nobody nobody'", function()
-      local conf = assert(conf_loader(helpers.test_conf_path, {
-        nginx_user = "nobody nobody"
-      }))
-      assert.is_nil(conf.nginx_user)
-    end)
-    it("is 'www_data www_data' when 'www_data www_data'", function()
-      local conf = assert(conf_loader(helpers.test_conf_path, {
-        nginx_user = "www_data www_data"
-      }))
-      assert.equal("www_data www_data", conf.nginx_user)
-    end)
   end)
 
   describe("inferences", function()
@@ -227,8 +195,8 @@ describe("Configuration loader", function()
         cassandra_consistency = "FOUR"
       })
       assert.equal("cassandra_consistency has an invalid value: 'FOUR'"
-                 .." (ALL, EACH_QUORUM, QUORUM, LOCAL_QUORUM, ONE, TWO,"
-                 .." THREE, LOCAL_ONE)", err)
+                 .. " (ALL, EACH_QUORUM, QUORUM, LOCAL_QUORUM, ONE, TWO,"
+                 .. " THREE, LOCAL_ONE)", err)
       assert.is_nil(conf)
     end)
     it("enforces ipv4:port types", function()
@@ -293,30 +261,6 @@ describe("Configuration loader", function()
       })
       assert.is_nil(err)
       assert.is_table(conf)
-    end)
-    it("errors when the hosts file does not exist", function()
-      local tmpfile = "/a_file_that_does_not_exist"
-      local conf, err = conf_loader(nil, {
-        dns_hostsfile = tmpfile,
-      })
-      assert.equal([[dns_hostsfile: file does not exist]], err)
-      assert.is_nil(conf)
-    end)
-    it("accepts an existing hosts file", function()
-      local tmpfile = require("pl.path").tmpname()  -- this creates the file!
-      finally(function() os.remove(tmpfile) end)
-      local conf, err = conf_loader(nil, {
-        dns_hostsfile = tmpfile,
-      })
-      assert.is_nil(err)
-      assert.equal(tmpfile, conf.dns_hostsfile)
-    end)
-    it("errors on bad entries in the order list", function()
-      local conf, err = conf_loader(nil, {
-        dns_order = "A,CXAME,SRV",
-      })
-      assert.is_nil(conf)
-      assert.equal([[dns_order: invalid entry 'CXAME']], err)
     end)
     it("errors when hosts have a bad format in cassandra_contact_points", function()
       local conf, err = conf_loader(nil, {

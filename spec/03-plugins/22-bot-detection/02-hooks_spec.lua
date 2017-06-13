@@ -47,7 +47,7 @@ describe("Plugin: bot-detection (hooks)", function()
     -- Update the plugin
     res = assert(admin_client:send {
       method = "PATCH",
-      path = "/apis/bot.com/plugins/"..plugin.id,
+      path = "/apis/bot.com/plugins/" .. plugin.id,
       body = {
         ["config.blacklist"] = "helloworld"
       },
@@ -87,7 +87,7 @@ describe("Plugin: bot-detection (hooks)", function()
     -- Update the plugin
     res = assert(admin_client:send {
       method = "PATCH",
-      path = "/apis/bot.com/plugins/"..plugin.id,
+      path = "/apis/bot.com/plugins/" .. plugin.id,
       body = {
         ["config.whitelist"] = "facebookexternalhit/1.1"
       },

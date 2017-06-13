@@ -30,11 +30,11 @@ describe("kong start/stop", function()
     assert(helpers.kong_exec "stop")
   end)
   it("start/stop custom Kong conf/prefix", function()
-    assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))
-    assert(helpers.kong_exec("stop --prefix "..helpers.test_conf.prefix))
+    assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path))
+    assert(helpers.kong_exec("stop --prefix " .. helpers.test_conf.prefix))
   end)
   it("start dumps Kong config in prefix", function()
-    assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))
+    assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path))
     assert.truthy(helpers.path.exists(helpers.test_conf.kong_env))
   end)
   it("creates prefix directory if it doesn't exist", function()
@@ -52,17 +52,17 @@ describe("kong start/stop", function()
 
   describe("verbose args", function()
     it("accepts verbose --v", function()
-      local _, _, stdout = assert(helpers.kong_exec("start --v --conf "..helpers.test_conf_path))
+      local _, _, stdout = assert(helpers.kong_exec("start --v --conf " .. helpers.test_conf_path))
       assert.matches("[verbose] prefix in use: ", stdout, nil, true)
     end)
     it("accepts debug --vv", function()
-      local _, _, stdout = assert(helpers.kong_exec("start --vv --conf "..helpers.test_conf_path))
+      local _, _, stdout = assert(helpers.kong_exec("start --vv --conf " .. helpers.test_conf_path))
       assert.matches("[verbose] prefix in use: ", stdout, nil, true)
       assert.matches("[debug] prefix = ", stdout, nil, true)
       assert.matches("[debug] database = ", stdout, nil, true)
     end)
     it("prints ENV variables when detected", function()
-      local _, _, stdout = assert(helpers.kong_exec("start --vv --conf "..helpers.test_conf_path, {
+      local _, _, stdout = assert(helpers.kong_exec("start --vv --conf " .. helpers.test_conf_path, {
         database = "postgres",
         admin_listen = "127.0.0.1:8001"
       }))
@@ -70,11 +70,11 @@ describe("kong start/stop", function()
       assert.matches('KONG_ADMIN_LISTEN ENV found with "127.0.0.1:8001"', stdout, nil, true)
     end)
     it("prints config in alphabetical order", function()
-      local _, _, stdout = assert(helpers.kong_exec("start --vv --conf "..helpers.test_conf_path))
+      local _, _, stdout = assert(helpers.kong_exec("start --vv --conf " .. helpers.test_conf_path))
       assert.matches("admin_listen.*anonymous_reports.*cassandra_ssl.*prefix.*", stdout)
     end)
     it("does not print sensitive settings in config", function()
-      local _, _, stdout = assert(helpers.kong_exec("start --vv --conf "..helpers.test_conf_path, {
+      local _, _, stdout = assert(helpers.kong_exec("start --vv --conf " .. helpers.test_conf_path, {
         pg_password = "do not print",
         cassandra_password = "do not print",
         cluster_encrypt_key = "fHGfspTRljmzLsYDVEK1Rw=="
@@ -92,7 +92,7 @@ describe("kong start/stop", function()
     local templ_fixture = "spec/fixtures/custom_nginx.template"
 
     it("accept a custom Nginx configuration", function()
-      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path.." --nginx-conf "..templ_fixture))
+      assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path .. " --nginx-conf " .. templ_fixture))
       assert.truthy(helpers.path.exists(helpers.test_conf.nginx_conf))
 
       local contents = helpers.file.read(helpers.test_conf.nginx_conf)
@@ -103,13 +103,13 @@ describe("kong start/stop", function()
 
   describe("/etc/hosts resolving in CLI", function()
     it("resolves #cassandra hostname", function()
-      assert(helpers.kong_exec("start --vv --conf "..helpers.test_conf_path, {
+      assert(helpers.kong_exec("start --vv --conf " .. helpers.test_conf_path, {
         cassandra_contact_points = "localhost",
         database = "cassandra"
       }))
     end)
     it("resolves #postgres hostname", function()
-      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, {
+      assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path, {
         pg_host = "localhost",
         database = "postgres"
       }))
@@ -118,22 +118,22 @@ describe("kong start/stop", function()
 
   describe("Serf", function()
     it("starts Serf agent daemon", function()
-      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))
+      assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path))
 
       local cmd = string.format("kill -0 `cat %s` >/dev/null 2>&1", helpers.test_conf.serf_pid)
       assert(helpers.execute(cmd))
     end)
     it("recovers from expired serf.pid file", function()
-      assert(helpers.execute("touch "..helpers.test_conf.serf_pid)) -- dumb pid
-      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))
+      assert(helpers.execute("touch " .. helpers.test_conf.serf_pid)) -- dumb pid
+      assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path))
 
       local cmd = string.format("kill -0 `cat %s` >/dev/null 2>&1", helpers.test_conf.serf_pid)
       assert(helpers.execute(cmd))
     end)
     it("dumps PID in prefix", function()
-      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))
+      assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path))
       assert.truthy(helpers.path.exists(helpers.test_conf.serf_pid))
-      assert(helpers.kong_exec("stop --prefix "..helpers.test_conf.prefix))
+      assert(helpers.kong_exec("stop --prefix " .. helpers.test_conf.prefix))
       ngx.sleep(2)
       assert.False(helpers.path.exists(helpers.test_conf.serf_pid))
     end)
@@ -147,7 +147,7 @@ describe("kong start/stop", function()
       assert.matches("Error: no file at: foobar.conf", stderr, nil, true)
     end)
     it("stop inexistent prefix", function()
-      assert(helpers.kong_exec("start --prefix "..helpers.test_conf.prefix, {
+      assert(helpers.kong_exec("start --prefix " .. helpers.test_conf.prefix, {
         pg_database = helpers.test_conf.pg_database
       }))
 
@@ -156,15 +156,15 @@ describe("kong start/stop", function()
       assert.matches("Error: no such prefix: .*/inexistent", stderr)
     end)
     it("notifies when Kong is already running", function()
-      assert(helpers.kong_exec("start --prefix "..helpers.test_conf.prefix, {
+      assert(helpers.kong_exec("start --prefix " .. helpers.test_conf.prefix, {
         pg_database = helpers.test_conf.pg_database
       }))
 
-      local ok, stderr = helpers.kong_exec("start --prefix "..helpers.test_conf.prefix, {
+      local ok, stderr = helpers.kong_exec("start --prefix " .. helpers.test_conf.prefix, {
         pg_database = helpers.test_conf.pg_database
       })
       assert.False(ok)
-      assert.matches("Kong is already running in "..helpers.test_conf.prefix, stderr, nil, true)
+      assert.matches("Kong is already running in " .. helpers.test_conf.prefix, stderr, nil, true)
     end)
     it("stops other services when could not start", function()
       local kill = require "kong.cmd.utils.kill"
@@ -178,7 +178,7 @@ describe("kong start/stop", function()
         thread:join()
       end)
 
-      local ok, err = helpers.kong_exec("start --conf "..helpers.test_conf_path)
+      local ok, err = helpers.kong_exec("start --conf " .. helpers.test_conf_path)
       assert.False(ok)
       assert.matches("Address already in use", err, nil, true)
 
@@ -187,15 +187,15 @@ describe("kong start/stop", function()
     it("should not stop Kong if already running in prefix", function()
       local kill = require "kong.cmd.utils.kill"
 
-      assert(helpers.kong_exec("start --prefix "..helpers.test_conf.prefix, {
+      assert(helpers.kong_exec("start --prefix " .. helpers.test_conf.prefix, {
         pg_database = helpers.test_conf.pg_database
       }))
 
-      local ok, stderr = helpers.kong_exec("start --prefix "..helpers.test_conf.prefix, {
+      local ok, stderr = helpers.kong_exec("start --prefix " .. helpers.test_conf.prefix, {
         pg_database = helpers.test_conf.pg_database
       })
       assert.False(ok)
-      assert.matches("Kong is already running in "..helpers.test_conf.prefix, stderr, nil, true)
+      assert.matches("Kong is already running in " .. helpers.test_conf.prefix, stderr, nil, true)
 
       assert(kill.is_running(helpers.test_conf.nginx_pid))
     end)

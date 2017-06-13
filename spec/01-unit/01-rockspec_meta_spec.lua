@@ -37,7 +37,7 @@ describe("rockspec/meta", function()
       assert.is_number(meta._VERSION_TABLE.major)
       assert.is_number(meta._VERSION_TABLE.minor)
       assert.is_number(meta._VERSION_TABLE.patch)
-      -- pre_release optional
+      -- suffix optional
     end)
 
     it("has a _DEPENDENCIES field", function()

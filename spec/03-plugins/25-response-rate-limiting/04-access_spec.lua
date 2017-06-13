@@ -27,13 +27,13 @@ local function flush_redis()
   red:set_timeout(2000)
   local ok, err = red:connect(REDIS_HOST, REDIS_PORT)
   if not ok then
-    error("failed to connect to Redis: "..err)
+    error("failed to connect to Redis: " .. err)
   end
 
   if REDIS_PASSWORD and REDIS_PASSWORD ~= "" then
     local ok, err = red:auth(REDIS_PASSWORD)
     if not ok then
-      error("failed to connect to Redis: "..err)
+      error("failed to connect to Redis: " .. err)
     end
   end
 
@@ -47,7 +47,7 @@ local function flush_redis()
 end
 
 for i, policy in ipairs({"local", "cluster", "redis"}) do
-  describe("#ci Plugin: response-ratelimiting (access) with policy: "..policy, function()
+  describe("#ci Plugin: response-ratelimiting (access) with policy: " .. policy, function()
     setup(function()
       flush_redis()
       helpers.dao:drop_schema()
@@ -201,26 +201,6 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           redis_password = REDIS_PASSWORD,
           redis_database = REDIS_DATABASE,
           limits = {video = {minute = 6, hour = 10}, image = {minute = 4}}
-        }
-      })
-
-      api = assert(helpers.dao.apis:insert {
-        name = "test9_com",
-        hosts = { "test9.com" },
-        upstream_url = "http://httpbin.org"
-      })
-      assert(helpers.dao.plugins:insert {
-        name = "response-ratelimiting",
-        api_id = api.id,
-        config = {
-          fault_tolerant = false,
-          policy = policy,
-          hide_client_headers = true,
-          redis_host = REDIS_HOST,
-          redis_port = REDIS_PORT,
-          redis_password = REDIS_PASSWORD,
-          redis_database = REDIS_DATABASE,
-          limits = {video = {minute = 6}}
         }
       })
 
@@ -498,22 +478,6 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       assert.same({ message = "API rate limit exceeded for 'image'" }, json)
     end)
 
-    describe("Config with hide_client_headers", function()
-      it("does not send rate-limit headers when hide_client_headers==true", function()
-        local res = assert(helpers.proxy_client():send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "test9.com"
-          }
-        })
-
-        assert.res_status(200, res)
-        assert.is_nil(res.headers["x-ratelimit-remaining-video-minute"])
-        assert.is_nil(res.headers["x-ratelimit-limit-video-minute"])
-      end)
-    end)
-
     if policy == "cluster" then
       describe("Fault tolerancy", function()
 
@@ -737,7 +701,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         if policy == "local" then
           local res = assert(helpers.admin_client():send {
             method = "GET",
-            path = "/cache/"..string.format("response-ratelimit:%s:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "video", "minute"),
+            path = "/cache/" .. string.format("response-ratelimit:%s:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "video", "minute"),
             query = { cache = "shm" },
           })
           local body = assert.res_status(200, res)
@@ -764,7 +728,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         if policy == "local" then
           local res = assert(helpers.admin_client():send {
             method = "GET",
-            path = "/cache/"..string.format("response-ratelimit:%s:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "video", "minute"),
+            path = "/cache/" .. string.format("response-ratelimit:%s:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "video", "minute"),
             query = { cache = "shm" },
           })
           assert.res_status(404, res)

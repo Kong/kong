@@ -40,17 +40,17 @@ local function merge(conf, message, pri)
   local tags_list = conf.tags
   local tags = {}
   for i = 1, #tags_list do
-    table_insert(tags, "tag=".."\""..tags_list[i].."\"")
+    table_insert(tags, "tag=" .. "\"" .. tags_list[i] .. "\"")
   end
 
   local udp_message = {
-    "<"..pri..">1",
+    "<" .. pri .. ">1",
     os_date("!%Y-%m-%dT%XZ"),
     HOSTNAME,
     SENDER_NAME,
     "-",
     "-",
-    "["..conf.key.."@41058", table_concat(tags, " ").."]",
+    "[" .. conf.key .. "@41058", table_concat(tags, " ") .. "]",
     cjson.encode(message)
   }
   return table_concat(udp_message, " ")
@@ -66,17 +66,17 @@ local function send_to_loggly(conf, message, pri)
 
   local ok, err = sock:setpeername(host, port)
   if not ok then
-    ngx_log(ngx.ERR, "failed to connect to "..host..":"..tostring(port)..": ", err)
+    ngx_log(ngx.ERR, "failed to connect to " .. host .. ":" .. tostring(port) .. ": ", err)
     return
   end
   local ok, err = sock:send(udp_message)
   if not ok then
-    ngx_log(ngx.ERR, "failed to send data to ".. host..":"..tostring(port)..": ", err)
+    ngx_log(ngx.ERR, "failed to send data to " .. host .. ":" .. tostring(port) .. ": ", err)
   end
 
   local ok, err = sock:close()
   if not ok then
-    ngx_log(ngx.ERR, "failed to close connection from "..host..":"..tostring(port)..": ", err)
+    ngx_log(ngx.ERR, "failed to close connection from " .. host .. ":" .. tostring(port) .. ": ", err)
     return
   end
 end
@@ -89,7 +89,9 @@ local function decide_severity(conf, severity, message)
 end
 
 local function log(premature, conf, message)
-  if premature then return end
+  if premature then
+    return
+  end
   
   if message.response.status >= 500 then
     return decide_severity(conf, conf.server_errors_severity, message)

@@ -24,7 +24,7 @@ return {
           db.cassandra.uuid(api_id),
           identifier,
           db.cassandra.timestamp(period_date),
-          name.."_"..period,
+          name .. "_" .. period,
         })
         if not res then
           log(ERR, "[response-ratelimiting] cluster policy: could not increment ",
@@ -47,7 +47,7 @@ return {
         db.cassandra.uuid(api_id),
         identifier,
         db.cassandra.timestamp(periods[period]),
-        name.."_"..period,
+        name .. "_" .. period,
       })
       if not rows then       return nil, err
       elseif #rows <= 1 then return rows[1]
@@ -67,7 +67,9 @@ return {
       end
 
       local res, err = db:query(concat(buf, ";"))
-      if not res then return nil, err end
+      if not res then
+        return nil, err
+      end
 
       return true
     end,
@@ -84,7 +86,9 @@ return {
       ]], api_id, identifier, periods[period]/1000, name, period)
 
       local res, err = db:query(q)
-      if not res or err then return nil, err end
+      if not res or err then
+        return nil, err
+      end
 
       return res[1]
     end,

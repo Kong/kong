@@ -73,19 +73,19 @@ describe("Utils", function()
 
       it("should validate an HTTPS scheme", function()
         ngx.var.scheme = "hTTps" -- mixed casing to ensure case insensitiveness
-        assert.is.truthy(utils.check_https(true, false))
+        assert.is.truthy(utils.check_https())
       end)
 
       it("should invalidate non-HTTPS schemes", function()
         ngx.var.scheme = "hTTp"
-        assert.is.falsy(utils.check_https(true, false))
+        assert.is.falsy(utils.check_https())
         ngx.var.scheme = "something completely different"
-        assert.is.falsy(utils.check_https(true, false))
+        assert.is.falsy(utils.check_https())
       end)
 
       it("should invalidate non-HTTPS schemes with proto header allowed", function()
         ngx.var.scheme = "hTTp"
-        assert.is.falsy(utils.check_https(true, true))
+        assert.is.falsy(utils.check_https(true))
       end)
     end)
 
@@ -98,57 +98,29 @@ describe("Utils", function()
       it("should validate any scheme with X-Forwarded_Proto as HTTPS", function()
         headers["x-forwarded-proto"] = "hTTPs"  -- check mixed casing for case insensitiveness
         ngx.var.scheme = "hTTps"
-        assert.is.truthy(utils.check_https(true, true))
+        assert.is.truthy(utils.check_https(true))
         ngx.var.scheme = "hTTp"
-        assert.is.truthy(utils.check_https(true, true))
+        assert.is.truthy(utils.check_https(true))
         ngx.var.scheme = "something completely different"
-        assert.is.truthy(utils.check_https(true, true))
+        assert.is.truthy(utils.check_https(true))
       end)
 
       it("should validate only https scheme with X-Forwarded_Proto as non-HTTPS", function()
         headers["x-forwarded-proto"] = "hTTP"
         ngx.var.scheme = "hTTps"
-        assert.is.truthy(utils.check_https(true, true))
+        assert.is.truthy(utils.check_https(true))
         ngx.var.scheme = "hTTp"
-        assert.is.falsy(utils.check_https(true, true))
+        assert.is.falsy(utils.check_https(true))
         ngx.var.scheme = "something completely different"
-        assert.is.falsy(utils.check_https(true, true))
+        assert.is.falsy(utils.check_https(true))
       end)
 
       it("should return an error with multiple X-Forwarded_Proto headers", function()
         headers["x-forwarded-proto"] = { "hTTP", "https" }
         ngx.var.scheme = "hTTps"
-        assert.is.truthy(utils.check_https(true, true))
+        assert.is.truthy(utils.check_https(true))
         ngx.var.scheme = "hTTp"
-        assert.are.same({ nil, "Only one X-Forwarded-Proto header allowed" },
-                        { utils.check_https(true, true) })
-      end)
-
-      it("should not use X-Forwarded-Proto when the client is untrusted", function()
-        headers["x-forwarded-proto"] = "https"
-        ngx.var.scheme = "http"
-        assert.is_false(utils.check_https(false, false))
-        assert.is_false(utils.check_https(false, true))
-
-        headers["x-forwarded-proto"] = "https"
-        ngx.var.scheme = "https"
-        assert.is_true(utils.check_https(false, false))
-        assert.is_true(utils.check_https(false, true))
-      end)
-
-      it("should use X-Forwarded-Proto when the client is trusted", function()
-        headers["x-forwarded-proto"] = "https"
-        ngx.var.scheme = "http"
-
-        -- trusted client but do not allow terminated
-        assert.is_false(utils.check_https(true, false))
-
-        assert.is_true(utils.check_https(true, true))
-
-        headers["x-forwarded-proto"] = "https"
-        ngx.var.scheme = "https"
-        assert.is_true(utils.check_https(true, false))
-        assert.is_true(utils.check_https(true, true))
+        assert.are.same({ nil, "Only one X-Forwarded-Proto header allowed" }, { utils.check_https(true) })
       end)
     end)
   end)
@@ -163,15 +135,9 @@ describe("Utils", function()
     describe("random_string()", function()
       it("should return a random string", function()
         local first = utils.random_string()
-        assert.is_string(first)
+        assert.truthy(first)
+        assert.falsy(first:find("-"))
 
-        -- build the same length string as previous implementations
-        assert.equals(32, #first)
-
-        -- ensure we don't find anything that isnt alphanumeric
-        assert.not_matches("^[^%a%d]+$", first)
-
-        -- at some point in the universe this test will fail ;)
         local second = utils.random_string()
         assert.not_equal(first, second)
       end)
@@ -443,15 +409,15 @@ describe("Utils", function()
           assert.are.same(name, (utils.check_hostname(name)))
         end
         for _, name in ipairs(valids) do
-          assert.are.same({ [1] = name, [2] = 80}, { utils.check_hostname(name..":80")})
+          assert.are.same({ [1] = name, [2] = 80}, { utils.check_hostname(name .. ":80")})
         end
         for _, name in ipairs(valids) do
-          assert.is_nil((utils.check_hostname(name..":xx")))
-          assert.is_nil((utils.check_hostname(name..":99999")))
+          assert.is_nil((utils.check_hostname(name .. ":xx")))
+          assert.is_nil((utils.check_hostname(name .. ":99999")))
         end
         for _, name in ipairs(invalids) do
           assert.is_nil((utils.check_hostname(name)))
-          assert.is_nil((utils.check_hostname(name..":80")))
+          assert.is_nil((utils.check_hostname(name .. ":80")))
         end
       end)
       it("validates addresses", function()
@@ -494,13 +460,13 @@ describe("Utils", function()
         assert.are.equal("mashape.com:80", utils.format_host(utils.normalize_ip("mashape.com:80")))
         -- passthrough errors
         local one, two = utils.format_host(utils.normalize_ipv4("1.2.3.4.5"))
-        assert.are.equal("nilstring", type(one)..type(two))
-        local one, two = utils.format_host(utils.normalize_ipv6("not ipv6 ..."))
-        assert.are.equal("nilstring", type(one)..type(two))
+        assert.are.equal("nilstring", type(one) .. type(two))
+        local one, two = utils.format_host(utils.normalize_ipv6("not ipv6..."))
+        assert.are.equal("nilstring", type(one) .. type(two))
         local one, two = utils.format_host(utils.check_hostname("//bad..name\\:123"))
-        assert.are.equal("nilstring", type(one)..type(two))
+        assert.are.equal("nilstring", type(one) .. type(two))
         local one, two = utils.format_host(utils.normalize_ip("m a s h a p e.com:80"))
-        assert.are.equal("nilstring", type(one)..type(two))
+        assert.are.equal("nilstring", type(one) .. type(two))
       end)
     end)
   end)

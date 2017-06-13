@@ -4,11 +4,12 @@ local conf_loader = require "kong.conf_loader"
 
 local sub = string.sub
 local find = string.find
+local pairs = pairs
 local ipairs = ipairs
 local select = select
 local tonumber = tonumber
 
-local tagline = "Welcome to ".._KONG._NAME
+local tagline = "Welcome to " .. _KONG._NAME
 local version = _KONG._VERSION
 local lua_version = jit and jit.version or _VERSION
 
@@ -89,18 +90,15 @@ return {
           connections_handled = tonumber(handled),
           total_requests = tonumber(total)
         },
-        database = {
-          reachable = false,
-        },
+        database = {}
       }
 
-      local ok, err = dao.db:reachable()
-      if not ok then
-        ngx.log(ngx.ERR, "failed to reach database as part of ",
-                         "/status endpoint: ", err)
-
-      else
-        status_response.database.reachable = true
+      for k, v in pairs(dao.daos) do
+        local count, err = v:count()
+        if err then
+          return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+        end
+        status_response.database[k] = count
       end
 
       return helpers.responses.send_HTTP_OK(status_response)

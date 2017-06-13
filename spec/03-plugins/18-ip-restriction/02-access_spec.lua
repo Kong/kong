@@ -97,11 +97,7 @@ describe("Plugin: ip-restriction (access)", function()
       }
     })
 
-    assert(helpers.start_kong {
-      real_ip_header    = "X-Forwarded-For",
-      real_ip_recursive = "on",
-      trusted_ips       = "0.0.0.0/0, ::/0",
-    })
+    assert(helpers.start_kong())
     client = helpers.proxy_client()
     admin_client = helpers.admin_client()
   end)
@@ -281,7 +277,7 @@ describe("Plugin: ip-restriction (access)", function()
 
     res = assert(admin_client:send {
       method = "PATCH",
-      path = "/apis/api-2/plugins/"..plugin_config.id,
+      path = "/apis/api-2/plugins/" .. plugin_config.id,
       body = {
         ["config.blacklist"] = "127.0.0.1,127.0.0.2"
       },
@@ -296,7 +292,7 @@ describe("Plugin: ip-restriction (access)", function()
     helpers.wait_until(function()
       res = assert(admin_client:send {
         method = "GET",
-        path = "/cache/"..cache_key
+        path = "/cache/" .. cache_key
       })
       res:read_body()
       return res.status ~= 200

@@ -17,7 +17,7 @@ local function check_for_value(value)
     if ok then 
       local _,next = pl_utils.splitv(entry, ':')
       if not next or #next == 0 then
-        return false, "key '"..entry.."' has no value, "
+        return false, "key '" .. entry .. "' has no value, "
       end
     end
   end

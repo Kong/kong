@@ -46,9 +46,9 @@ describe("Admin API", function()
       setup(function()
         local pl_utils = require "pl.utils"
         local kill = require "kong.cmd.utils.kill"
-        local cmd = string.format("nohup %s agent -rpc-addr=127.0.0.1:20000 "
-                                .."-bind=127.0.0.1:20001 -node=newnode > "
-                                .."%s 2>&1 & echo $! > %s",
+        local cmd = string.format("nohup %s agent -rpc-addr=127.0.0.1:20000 " ..
+                                  "-bind=127.0.0.1:20001 -node=newnode > " ..
+                                  "%s 2>&1 & echo $! > %s",
                                 helpers.test_conf.serf_path, log_path, pid_path)
         assert(pl_utils.execute(cmd))
 

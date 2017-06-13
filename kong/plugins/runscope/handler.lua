@@ -45,7 +45,7 @@ function RunscopeLogHandler:body_filter(conf)
   if conf.log_body then
     local chunk = ngx.arg[1]
     local runscope_data = ngx.ctx.runscope or {res_body = ""} -- minimize the number of calls to ngx.ctx while fallbacking on default value
-    runscope_data.res_body = runscope_data.res_body..chunk
+    runscope_data.res_body = runscope_data.res_body .. chunk
     ngx.ctx.runscope = runscope_data
   end
 end

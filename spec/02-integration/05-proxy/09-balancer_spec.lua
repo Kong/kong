@@ -75,7 +75,7 @@ end
 
 dao_helpers.for_each_dao(function(kong_config)
 
-  describe("Ring-balancer #"..kong_config.database, function()
+  describe("Ring-balancer #" .. kong_config.database, function()
 
     local config_db
     setup(function()
@@ -106,12 +106,12 @@ dao_helpers.for_each_dao(function(kong_config)
           slots = 10,
         })
         target1 = assert(helpers.dao.targets:insert {
-          target = "127.0.0.1:"..PORT,
+          target = "127.0.0.1:" .. PORT,
           weight = 10,
           upstream_id = upstream.id,
         })
         target2 = assert(helpers.dao.targets:insert {
-          target = "127.0.0.1:"..(PORT+1),
+          target = "127.0.0.1:" .. (PORT+1),
           weight = 10,
           upstream_id = upstream.id,
         })
@@ -199,12 +199,12 @@ dao_helpers.for_each_dao(function(kong_config)
         -- add a new target 3
         local res = assert(api_client:send {
           method = "POST",
-          path = "/upstreams/"..upstream.name.."/targets",
+          path = "/upstreams/" .. upstream.name .. "/targets",
           headers = {
             ["Content-Type"] = "application/json"
           },
           body = {
-            target = "127.0.0.1:"..(PORT+2),
+            target = "127.0.0.1:" .. (PORT+2),
             weight = target1.weight/2 ,  -- shift proportions from 50/50 to 40/40/20
           },
         })
@@ -274,7 +274,7 @@ dao_helpers.for_each_dao(function(kong_config)
         -- modify weight for target 2, set to 0
         local res = assert(api_client:send {
           method = "POST",
-          path = "/upstreams/"..upstream.name.."/targets",
+          path = "/upstreams/" .. upstream.name .. "/targets",
           headers = {
             ["Content-Type"] = "application/json"
           },
@@ -343,7 +343,7 @@ dao_helpers.for_each_dao(function(kong_config)
         -- modify weight for target 2
         local res = assert(api_client:send {
           method = "POST",
-          path = "/upstreams/"..target2.upstream_id.."/targets",
+          path = "/upstreams/" .. target2.upstream_id .. "/targets",
           headers = {
             ["Content-Type"] = "application/json"
           },
@@ -415,7 +415,7 @@ dao_helpers.for_each_dao(function(kong_config)
         -- modify weight for both targets, set to 0
         local res = assert(api_client:send {
           method = "POST",
-          path = "/upstreams/"..upstream.name.."/targets",
+          path = "/upstreams/" .. upstream.name .. "/targets",
           headers = {
             ["Content-Type"] = "application/json"
           },
@@ -428,7 +428,7 @@ dao_helpers.for_each_dao(function(kong_config)
 
         res = assert(api_client:send {
           method = "POST",
-          path = "/upstreams/"..upstream.name.."/targets",
+          path = "/upstreams/" .. upstream.name .. "/targets",
           headers = {
             ["Content-Type"] = "application/json"
           },

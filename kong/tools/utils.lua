@@ -43,11 +43,6 @@ void ERR_load_crypto_strings(void);
 void ERR_free_strings(void);
 
 const char *ERR_reason_error_string(unsigned long e);
-
-int open(const char * filename, int flags, int mode);
-size_t read(int fd, void *buf, size_t count);
-int close(int fd);
-char *strerror(int errnum);
 ]]
 
 local _M = {}
@@ -120,56 +115,11 @@ do
   end
 end
 
-local get_rand_bytes
-
 do
-  local ngx_log = ngx.log
-  local WARN    = ngx.WARN
-
-  local system_constants = require "lua_system_constants"
-  local O_RDONLY = system_constants.O_RDONLY()
   local bytes_buf_t = ffi.typeof "char[?]"
 
-  local function urandom_bytes(buf, size)
-    local fd = ffi.C.open("/dev/urandom", O_RDONLY, 0) -- mode is ignored
-    if fd < 0 then
-      ngx_log(WARN, "Error opening random fd: ",
-                    ffi_str(ffi.C.strerror(ffi.errno())))
-
-      return false
-    end
-
-    local res = ffi.C.read(fd, buf, size)
-    if res <= 0 then
-      ngx_log(WARN, "Error reading from urandom: ",
-                    ffi_str(ffi.C.strerror(ffi.errno())))
-
-      return false
-    end
-
-    if ffi.C.close(fd) ~= 0 then
-      ngx_log(WARN, "Error closing urandom: ",
-                    ffi_str(ffi.C.strerror(ffi.errno())))
-    end
-
-    return true
-  end
-
-  -- try to get n_bytes of CSPRNG data, first via /dev/urandom,
-  -- and then falling back to OpenSSL if necessary
-  get_rand_bytes = function(n_bytes, urandom)
+  function _M.get_rand_bytes(n_bytes)
     local buf = ffi_new(bytes_buf_t, n_bytes)
-
-    -- only read from urandom if we were explicitly asked
-    if urandom then
-      local rc = urandom_bytes(buf, n_bytes)
-
-      -- if the read of urandom was successful, we returned true
-      -- and buf is filled with our bytes, so return it as a string
-      if rc then
-        return ffi_str(buf, n_bytes)
-      end
-    end
 
     if C.RAND_bytes(buf, n_bytes) == 0 then
       -- get error code
@@ -189,9 +139,9 @@ do
 
     return ffi_str(buf, n_bytes)
   end
-
-  _M.get_rand_bytes = get_rand_bytes
 end
+
+local v4_uuid = uuid.generate_v4
 
 --- Generates a v4 uuid.
 -- @function uuid
@@ -199,34 +149,16 @@ end
 _M.uuid = uuid.generate_v4
 
 --- Generates a random unique string
--- @return string  The random string (a chunk of base64ish-encoded random bytes)
-do
-  local char = string.char
-  local rand = math.random
-  local encode_base64 = ngx.encode_base64
-
-  -- generate a random-looking string by retrieving a chunk of bytes and
-  -- replacing non-alphanumeric characters with random alphanumeric replacements
-  -- (we dont care about deriving these bytes securely)
-  -- this serves to attempt to maintain some backward compatibility with the
-  -- previous implementation (stripping a UUID of its hyphens), while significantly
-  -- expanding the size of the keyspace.
-  local function random_string()
-    -- get 24 bytes, which will return a 32 char string after encoding
-    -- this is done in attempt to maintain backwards compatibility as
-    -- much as possible while improving the strength of this function
-    return encode_base64(get_rand_bytes(24, true))
-           :gsub("/", char(rand(48, 57)))  -- 0 - 10
-           :gsub("+", char(rand(65, 90)))  -- A - Z
-           :gsub("=", char(rand(97, 122))) -- a - z
-  end
-
-  _M.random_string = random_string
+-- @return string  The random string (a uuid without hyphens)
+function _M.random_string()
+  return v4_uuid():gsub("-", "")
 end
 
 local uuid_regex = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
 function _M.is_valid_uuid(str)
-  if type(str) ~= 'string' or #str ~= 36 then return false end
+  if type(str) ~= 'string' or #str ~= 36 then
+    return false
+  end
   return re_find(str, uuid_regex, 'ioj') ~= nil
 end
 
@@ -297,14 +229,12 @@ do
   end
 end
 
---- Checks whether a request is https or was originally https (but already
--- terminated). It will check in the current request (global `ngx` table). If
--- the header `X-Forwarded-Proto` exists -- with value `https` then it will also
--- be considered as an https connection.
--- @param trusted_ip boolean indicating if the client is a trusted IP
+--- Checks whether a request is https or was originally https (but already terminated).
+-- It will check in the current request (global `ngx` table). If the header `X-Forwarded-Proto` exists
+-- with value `https` then it will also be considered as an https connection.
 -- @param allow_terminated if truthy, the `X-Forwarded-Proto` header will be checked as well.
 -- @return boolean or nil+error in case the header exists multiple times
-_M.check_https = function(trusted_ip, allow_terminated)
+_M.check_https = function(allow_terminated)
   if ngx.var.scheme:lower() == "https" then
     return true
   end
@@ -313,20 +243,15 @@ _M.check_https = function(trusted_ip, allow_terminated)
     return false
   end
 
-  -- if we trust this IP, examine it's X-Forwarded-Proto header
-  -- otherwise, we fall back to relying on the client scheme
-  -- (which was either validated earlier, or we fall through this block)
-  if trusted_ip then
-    local scheme = ngx.req.get_headers()["x-forwarded-proto"]
+  local forwarded_proto_header = ngx.req.get_headers()["x-forwarded-proto"]
+  if tostring(forwarded_proto_header):lower() == "https" then
+    return true
+  end
 
-    -- we could use the first entry (lower security), or check the contents of
-    -- each of them (slow). So for now defensive, and error
+  if type(forwarded_proto_header) == "table" then
+    -- we could use the first entry (lower security), or check the contents of each of them (slow). So for now defensive, and error
     -- out on multiple entries for the x-forwarded-proto header.
-    if type(scheme) == "table" then
-      return nil, "Only one X-Forwarded-Proto header allowed"
-    end
-
-    return tostring(scheme):lower() == "https"
+    return nil, "Only one X-Forwarded-Proto header allowed"
   end
 
   return false
@@ -338,8 +263,12 @@ end
 -- @param t2 The second table
 -- @return The (new) merged table
 function _M.table_merge(t1, t2)
-  if not t1 then t1 = {} end
-  if not t2 then t2 = {} end
+  if not t1 then
+    t1 = {}
+  end
+  if not t2 then
+    t2 = {}
+  end
 
   local res = {}
   for k,v in pairs(t1) do res[k] = v end
@@ -367,11 +296,15 @@ end
 -- @param t The table to check
 -- @return Returns `true` if the table is an array, `false` otherwise
 function _M.is_array(t)
-  if type(t) ~= "table" then return false end
+  if type(t) ~= "table" then
+    return false
+  end
   local i = 0
   for _ in pairs(t) do
     i = i + 1
-    if t[i] == nil and t[tostring(i)] == nil then return false end
+    if t[i] == nil and t[tostring(i)] == nil then
+      return false
+    end
   end
   return true
 end
@@ -430,7 +363,9 @@ end
 -- @param v Value of the error
 -- @return The `errors` table with the new error inserted.
 function _M.add_error(errors, k, v)
-  if not errors then errors = {} end
+  if not errors then
+    errors = {}
+  end
 
   if errors and errors[k] then
     if getmetatable(errors[k]) ~= err_list_mt then
@@ -456,7 +391,7 @@ function _M.load_module_if_exists(module_name)
   if status then
     return true, res
   -- Here we match any character because if a module has a dash '-' in its name, we would need to escape it.
-  elseif type(res) == "string" and find(res, "module '"..module_name.."' not found", nil, true) then
+  elseif type(res) == "string" and find(res, "module '" .. module_name .. "' not found", nil, true) then
     return false, res
   else
     error(res)
@@ -496,8 +431,12 @@ end
 -- hostname_type("some::thing")      -->  "ipv6", but invalid...
 _M.hostname_type = function(name)
   local remainder, colons = gsub(name, ":", "")
-  if colons > 1 then return "ipv6" end
-  if remainder:match("^[%d%.]+$") then return "ipv4" end
+  if colons > 1 then
+    return "ipv6"
+  end
+  if remainder:match("^[%d%.]+$") then
+    return "ipv4"
+  end
   return "name"
 end
 
@@ -514,11 +453,12 @@ _M.normalize_ipv4 = function(address)
     a,b,c,d,port = address:match("^(%d%d?%d?)%.(%d%d?%d?)%.(%d%d?%d?)%.(%d%d?%d?)$")
   end
   if not a then
-    return nil, "invalid ipv4 address: "..address
+    return nil, "invalid ipv4 address: " .. address
   end
   a,b,c,d = tonumber(a), tonumber(b), tonumber(c), tonumber(d)
-  if (a<0) or (a>255) or (b<0) or (b>255) or (c<0) or (c>255) or (d<0) or (d>255) then
-    return nil, "invalid ipv4 address: "..address
+  if a < 0 or a > 255 or b < 0 or b > 255 or c < 0 or
+     c > 255 or d < 0 or d > 255 then
+    return nil, "invalid ipv4 address: " .. address
   end
   if port then 
     port = tonumber(port) 
@@ -535,7 +475,9 @@ end
 -- @return normalized expanded address (string) + port (number or nil), or alternatively nil+error
 _M.normalize_ipv6 = function(address)
   local check, port = address:match("^(%b[])(.-)$")
-  if port == "" then port = nil end
+  if port == "" then
+    port = nil
+  end
   if check then
     check = check:sub(2, -2)  -- drop the brackets
     -- we have ipv6 in brackets, now get port if we got something left
@@ -555,29 +497,33 @@ _M.normalize_ipv6 = function(address)
     port = nil
   end
   -- check ipv6 format and normalize
-  if check:sub(1,1) == ":" then check = "0"..check end
-  if check:sub(-1,-1) == ":" then check = check.."0" end
+  if check:sub(1,1) == ":" then
+    check = "0" .. check
+  end
+  if check:sub(-1,-1) == ":" then
+    check = check .. "0"
+  end
   if check:find("::") then
     -- expand double colon
     local _, count = gsub(check, ":", "")
-    local ins = ":"..string.rep("0:", 8 - count)
+    local ins = ":" .. string.rep("0:", 8 - count)
     check = gsub(check, "::", ins, 1)  -- replace only 1 occurence!
   end
   local a,b,c,d,e,f,g,h = check:match("^(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?)$")
   if not a then
     -- not a valid IPv6 address
-    return nil, "invalid ipv6 address: "..address
+    return nil, "invalid ipv6 address: " .. address
   end
   local zeros = "0000"
   return lower(fmt("%s:%s:%s:%s:%s:%s:%s:%s",
-      zeros:sub(1, 4 - #a)..a,
-      zeros:sub(1, 4 - #b)..b,
-      zeros:sub(1, 4 - #c)..c,
-      zeros:sub(1, 4 - #d)..d,
-      zeros:sub(1, 4 - #e)..e,
-      zeros:sub(1, 4 - #f)..f,
-      zeros:sub(1, 4 - #g)..g,
-      zeros:sub(1, 4 - #h)..h)), port
+      zeros:sub(1, 4 - #a) .. a,
+      zeros:sub(1, 4 - #b) .. b,
+      zeros:sub(1, 4 - #c) .. c,
+      zeros:sub(1, 4 - #d) .. d,
+      zeros:sub(1, 4 - #e) .. e,
+      zeros:sub(1, 4 - #f) .. f,
+      zeros:sub(1, 4 - #g) .. g,
+      zeros:sub(1, 4 - #h) .. h)), port
 end
 
 --- parses and validates a hostname.
@@ -595,14 +541,14 @@ _M.check_hostname = function(address)
   end
   local match = name:match("^[%d%a%-%.%_]+$")
   if match == nil then
-    return nil, "invalid hostname: "..address
+    return nil, "invalid hostname: " .. address
   end
 
   -- Reject prefix/trailing dashes and dots in each segment
   -- note: punycode allowes prefixed dash, if the characters before the dash are escaped
   for _, segment in ipairs(split(name, ".")) do
     if segment == "" or segment:match("-$") or segment:match("^%.") or segment:match("%.$") then
-      return nil, "invalid hostname: "..address
+      return nil, "invalid hostname: " .. address
     end
   end
   return name, port
@@ -621,7 +567,9 @@ local verify_types = {
 _M.normalize_ip = function(address)
   local atype = _M.hostname_type(address)
   local addr, port = verify_types[atype](address)
-  if not addr then return nil, port end 
+  if not addr then
+    return nil, port
+  end
   return {
     type = atype,
     host = addr,
@@ -640,7 +588,7 @@ end
 -- local addr, err = format_ip(normalize_ip("001.002.003.004:123"))  --> "1.2.3.4:123"
 -- local addr, err = format_ip(normalize_ip("::1"))                  --> "[0000:0000:0000:0000:0000:0000:0000:0001]"
 -- local addr, err = format_ip("::1", 80))                           --> "[::1]:80"
--- local addr, err = format_ip(check_hostname("//bad..name\\"))      --> nil, "invalid hostname: ..."
+-- local addr, err = format_ip(check_hostname("//bad .. name\\"))    --> nil, "invalid hostname: ... "
 _M.format_host = function(p1, p2)
   local t = type(p1)
   if t == "nil" then 
@@ -656,12 +604,12 @@ _M.format_host = function(p1, p2)
     host = p1
     typ = _M.hostname_type(host)
   else
-    return nil, "cannot format type '"..t.."'"
+    return nil, "cannot format type '" .. t .. "'"
   end
-  if (typ == "ipv6") and (not find(host, "%[")) then
-    return "["..host.."]" ..  (port and ":"..port or "")
+  if typ == "ipv6" and not find(host, "[", nil, true) then
+    return "[" .. host .. "]" .. (port and ":" .. port or "")
   else
-    return host ..  (port and ":"..port or "")
+    return host ..  (port and ":" .. port or "")
   end
 end
 

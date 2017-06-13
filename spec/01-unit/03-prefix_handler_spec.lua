@@ -141,79 +141,29 @@ describe("NGINX conf compiler", function()
       local nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.matches("error_log syslog:server=.+:61828 error;", nginx_conf)
     end)
-
-    describe("user directive", function()
-      it("is not included by default", function()
-        local conf = assert(conf_loader(helpers.test_conf_path))
-        local nginx_conf = prefix_handler.compile_nginx_conf(conf)
-        assert.not_matches("user[^;]*;", nginx_conf, nil, true)
-      end)
-      it("is not included when 'nobody'", function()
-        local conf = assert(conf_loader(helpers.test_conf_path, {
-          nginx_user = "nobody"
-        }))
-        local nginx_conf = prefix_handler.compile_nginx_conf(conf)
-        assert.not_matches("user[^;]*;", nginx_conf, nil, true)
-      end)
-      it("is not included when 'nobody nobody'", function()
-        local conf = assert(conf_loader(helpers.test_conf_path, {
-          nginx_user = "nobody nobody"
-        }))
-        local nginx_conf = prefix_handler.compile_nginx_conf(conf)
-        assert.not_matches("user[^;]*;", nginx_conf, nil, true)
-      end)
-      it("is included when otherwise", function()
-        local conf = assert(conf_loader(helpers.test_conf_path, {
-          nginx_user = "www_data www_data"
-        }))
-        local nginx_conf = prefix_handler.compile_nginx_conf(conf)
-        assert.matches("user www_data www_data;", nginx_conf, nil, true)
-      end)
+    it("defines the client_max_body_size by default", function()
+      local conf = assert(conf_loader(nil, {}))
+      local nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.matches("client_max_body_size 0", nginx_conf, nil, true)
     end)
-
-    describe("ngx_http_realip_module settings", function()
-      it("defaults", function()
-        local conf = assert(conf_loader())
-        local nginx_conf = prefix_handler.compile_kong_conf(conf)
-        assert.matches("real_ip_header%s+X%-Real%-IP;", nginx_conf)
-        assert.matches("real_ip_recursive%s+off;", nginx_conf)
-        assert.not_matches("set_real_ip_from", nginx_conf)
-      end)
-
-      it("real_ip_recursive on", function()
-        local conf = assert(conf_loader(nil, {
-          real_ip_recursive = true,
-        }))
-        local nginx_conf = prefix_handler.compile_kong_conf(conf)
-        assert.matches("real_ip_recursive%s+on;", nginx_conf)
-      end)
-
-      it("real_ip_recursive off", function()
-        local conf = assert(conf_loader(nil, {
-          real_ip_recursive = false,
-        }))
-        local nginx_conf = prefix_handler.compile_kong_conf(conf)
-        assert.matches("real_ip_recursive%s+off;", nginx_conf)
-      end)
-
-      it("set_real_ip_from", function()
-        local conf = assert(conf_loader(nil, {
-          trusted_ips = "192.168.1.0/24,192.168.2.1,2001:0db8::/32"
-        }))
-        local nginx_conf = prefix_handler.compile_kong_conf(conf)
-        assert.matches("set_real_ip_from%s+192.168.1.0/24", nginx_conf)
-        assert.matches("set_real_ip_from%s+192.168.1.0",    nginx_conf)
-        assert.matches("set_real_ip_from%s+2001:0db8::/32", nginx_conf)
-      end)
-      it("proxy_protocol", function()
-        local conf = assert(conf_loader(nil, {
-          real_ip_header = "proxy_protocol"
-        }))
-        local nginx_conf = prefix_handler.compile_kong_conf(conf)
-        assert.matches("real_ip_header%s+proxy_protocol", nginx_conf)
-        assert.matches("listen 0.0.0.0:8000 proxy_protocol;", nginx_conf)
-        assert.matches("listen 0.0.0.0:8443 proxy_protocol ssl;", nginx_conf)
-      end)
+    it("writes the client_max_body_size as defined", function()
+      local conf = assert(conf_loader(nil, {
+        client_max_body_size = "1m",
+      }))
+      local nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.matches("client_max_body_size 1m", nginx_conf, nil, true)
+    end)
+    it("defines the client_body_buffer_size directive by default", function()
+      local conf = assert(conf_loader(nil, {}))
+      local nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.matches("client_body_buffer_size 8k", nginx_conf, nil, true)
+    end)
+    it("writes the client_body_buffer_size directive as defined", function()
+      local conf = assert(conf_loader(nil, {
+        client_body_buffer_size = "128k",
+      }))
+      local nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.matches("client_body_buffer_size 128k", nginx_conf, nil, true)
     end)
   end)
 
@@ -292,7 +242,7 @@ describe("NGINX conf compiler", function()
         prefix = tmp
       }))
       local ok, err = prefix_handler.prepare_prefix(config)
-      assert.equal(tmp.." is not a directory", err)
+      assert.equal(tmp .. " is not a directory", err)
       assert.is_nil(ok)
     end)
     it("creates pids folder", function()

@@ -30,7 +30,9 @@ local function get_identifier(conf)
     identifier = ngx.ctx.authenticated_credential and ngx.ctx.authenticated_credential.id
   end
 
-  if not identifier then identifier = ngx.var.remote_addr end
+  if not identifier then
+    identifier = ngx.var.remote_addr
+  end
 
   return identifier
 end
@@ -97,11 +99,9 @@ function RateLimitingHandler:access(conf)
 
   if usage then
     -- Adding headers
-    if not conf.hide_client_headers then
-      for k, v in pairs(usage) do
-        ngx.header[RATELIMIT_LIMIT.."-"..k] = v.limit
-        ngx.header[RATELIMIT_REMAINING.."-"..k] = math.max(0, (stop == nil or stop == k) and v.remaining - 1 or v.remaining) -- -increment_value for this current request
-      end
+    for k, v in pairs(usage) do
+      ngx.header[RATELIMIT_LIMIT .. "-" .. k] = v.limit
+      ngx.header[RATELIMIT_REMAINING .. "-" .. k] = math.max(0, (stop == nil or stop == k) and v.remaining - 1 or v.remaining) -- -increment_value for this current request
     end
 
     -- If limit is exceeded, terminate the request
@@ -111,7 +111,9 @@ function RateLimitingHandler:access(conf)
   end
 
   local incr = function(premature, conf, limits, api_id, identifier, current_timestamp, value)
-    if premature then return end
+    if premature then
+      return
+    end
     policies[policy].increment(conf, limits, api_id, identifier, current_timestamp, value)
   end
 

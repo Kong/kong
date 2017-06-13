@@ -28,6 +28,30 @@ describe("Plugin: AWS Lambda (access)", function()
       upstream_url = "http://httpbin.org"
     })
 
+    local api5 = assert(helpers.dao.apis:insert {
+      name = "lambda5.com",
+      hosts = { "lambda5.com" },
+      upstream_url = "http://httpbin.org"
+    })
+
+    local api6 = assert(helpers.dao.apis:insert {
+      name = "lambda6.com",
+      hosts = { "lambda6.com" },
+      upstream_url = "http://httpbin.org"
+    })
+
+    local api7 = assert(helpers.dao.apis:insert {
+      name = "lambda7.com",
+      hosts = { "lambda7.com" },
+      upstream_url = "http://httpbin.org"
+    })
+
+    local api8 = assert(helpers.dao.apis:insert {
+      name = "lambda8.com",
+      hosts = { "lambda8.com" },
+      upstream_url = "http://httpbin.org"
+    })
+
     assert(helpers.dao.plugins:insert {
       name = "aws-lambda",
       api_id = api1.id,
@@ -79,6 +103,57 @@ describe("Plugin: AWS Lambda (access)", function()
       }
     })
 
+    assert(helpers.dao.plugins:insert {
+      name = "aws-lambda",
+      api_id = api5.id,
+      config = {
+        port = 10001,
+        aws_key = "mock-key",
+        aws_secret = "mock-secret",
+        aws_region = "us-east-1",
+        function_name = "functionWithUnhandledError",
+      }
+    })
+
+    assert(helpers.dao.plugins:insert {
+      name = "aws-lambda",
+      api_id = api6.id,
+      config = {
+        port = 10001,
+        aws_key = "mock-key",
+        aws_secret = "mock-secret",
+        aws_region = "us-east-1",
+        function_name = "functionWithUnhandledError",
+        invocation_type = "Event",
+      }
+    })
+
+    assert(helpers.dao.plugins:insert {
+      name = "aws-lambda",
+      api_id = api7.id,
+      config = {
+        port = 10001,
+        aws_key = "mock-key",
+        aws_secret = "mock-secret",
+        aws_region = "us-east-1",
+        function_name = "functionWithUnhandledError",
+        invocation_type = "DryRun",
+      }
+    })
+
+    assert(helpers.dao.plugins:insert {
+      name = "aws-lambda",
+      api_id = api8.id,
+      config = {
+        port = 10001,
+        aws_key = "mock-key",
+        aws_secret = "mock-secret",
+        aws_region = "us-east-1",
+        function_name = "functionWithUnhandledError",
+        unhandled_status = 412,
+      }
+    })
+
     assert(helpers.start_kong{
       nginx_conf = "spec/fixtures/custom_nginx.template",
     })
@@ -109,6 +184,7 @@ describe("Plugin: AWS Lambda (access)", function()
     local body = assert.res_status(200, res)
     assert.is_string(res.headers["x-amzn-RequestId"])
     assert.equal([["some_value1"]], body)
+    assert.is_nil(res.headers["X-Amzn-Function-Error"])
   end)
   it("invokes a Lambda function with POST params", function()
     local res = assert(client:send {
@@ -208,4 +284,48 @@ describe("Plugin: AWS Lambda (access)", function()
     assert.res_status(500, res)
   end)
 
+  it("invokes a Lambda function with an unhandled function error (and no unhandled_status set)", function()
+    local res = assert(client:send {
+      method = "GET",
+      path = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+      headers = {
+        ["Host"] = "lambda5.com"
+      }
+    })
+    assert.res_status(200, res)
+    assert.equal("Unhandled", res.headers["X-Amzn-Function-Error"])
+  end)
+  it("invokes a Lambda function with an unhandled function error with Event invocation type", function()
+    local res = assert(client:send {
+      method = "GET",
+      path = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+      headers = {
+        ["Host"] = "lambda6.com"
+      }
+    })
+    assert.res_status(202, res)
+    assert.equal("Unhandled", res.headers["X-Amzn-Function-Error"])
+  end)
+  it("invokes a Lambda function with an unhandled function error with DryRun invocation type", function()
+    local res = assert(client:send {
+      method = "GET",
+      path = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+      headers = {
+        ["Host"] = "lambda7.com"
+      }
+    })
+    assert.res_status(204, res)
+    assert.equal("Unhandled", res.headers["X-Amzn-Function-Error"])
+  end)
+  it("invokes a Lambda function with an unhandled function error", function()
+    local res = assert(client:send {
+      method = "GET",
+      path = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+      headers = {
+        ["Host"] = "lambda8.com"
+      }
+    })
+    assert.res_status(412, res)
+    assert.equal("Unhandled", res.headers["X-Amzn-Function-Error"])
+  end)
 end)

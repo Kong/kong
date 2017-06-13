@@ -71,7 +71,7 @@ describe("#ci Plugin: syslog (log)", function()
   end)
 
   local function do_test(host, expecting_same)
-    local uuid = utils.uuid()
+    local uuid = utils.random_string()
 
     local response = assert(client:send {
       method = "GET",
@@ -94,7 +94,7 @@ describe("#ci Plugin: syslog (log)", function()
         assert.not_equal(uuid, json.request.headers["sys-log-uuid"])
       end
     elseif expecting_same then
-      local _, _, stdout = assert(helpers.execute("find /var/log -type f -mmin -5 2>/dev/null | xargs grep -l "..uuid))
+      local _, _, stdout = assert(helpers.execute("find /var/log -type f -mmin -5 2>/dev/null | xargs grep -l " .. uuid))
       assert.True(#stdout > 0)
     end
   end

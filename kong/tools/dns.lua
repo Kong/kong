@@ -9,6 +9,7 @@ local setup_client = function(conf)
   end
 
   conf = conf or {}
+  local hosts = conf.dns_hostsfile      -- filename
   local servers = {}
   
   -- servers must be reformatted as name/port sub-arrays
@@ -20,14 +21,12 @@ local setup_client = function(conf)
   end
     
   local opts = {
-    hosts = conf.dns_hostsfile,
-    resolvConf = nil,                -- defaults to system resolv.conf
-    nameservers = servers,           -- provided list or taken from resolv.conf
-    retrans = nil,                   -- taken from system resolv.conf; attempts
-    timeout = nil,                   -- taken from system resolv.conf; timeout
-    badTtl = conf.dns_not_found_ttl, -- ttl in seconds for dns error responses (except 3 - name error)
-    emptyTtl = conf.dns_error_ttl,   -- ttl in seconds for empty and "(3) name error" dns responses
-    order = conf.dns_order,          -- order of trying record types
+    hosts = hosts,
+    resolvConf = nil,      -- defaults to system resolv.conf
+    nameservers = servers, -- provided list or taken from resolv.conf
+    retrans = nil,         -- taken from system resolv.conf; attempts
+    timeout = nil,         -- taken from system resolv.conf; timeout
+    badTtl = nil,          -- ttl in seconds for bad dns responses (empty/error)
   }
   
   assert(dns_client.init(opts))

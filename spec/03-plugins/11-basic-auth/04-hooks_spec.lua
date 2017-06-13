@@ -55,7 +55,7 @@ describe("Plugin: basic-auth (hooks)", function()
     local cache_key = cache.basicauth_credential_key("bob")
     res = assert(admin_client:send {
       method = "GET",
-      path = "/cache/"..cache_key
+      path = "/cache/" .. cache_key
     })
     assert.res_status(200, res)
 
@@ -70,7 +70,7 @@ describe("Plugin: basic-auth (hooks)", function()
     helpers.wait_until(function()
       local res = assert(admin_client:send {
         method = "GET",
-        path = "/cache/"..cache_key
+        path = "/cache/" .. cache_key
       })
       res:read_body()
       return res.status == 404
@@ -103,7 +103,7 @@ describe("Plugin: basic-auth (hooks)", function()
     local cache_key = cache.basicauth_credential_key("bob")
     res = assert(admin_client:send {
       method = "GET",
-      path = "/cache/"..cache_key
+      path = "/cache/" .. cache_key
     })
     local body = assert.res_status(200, res)
     local credential = cjson.decode(body)
@@ -111,7 +111,7 @@ describe("Plugin: basic-auth (hooks)", function()
     -- delete credential entity
     res = assert(admin_client:send {
       method = "DELETE",
-      path = "/consumers/bob/basic-auth/"..credential.id
+      path = "/consumers/bob/basic-auth/" .. credential.id
     })
     assert.res_status(204, res)
 
@@ -119,7 +119,7 @@ describe("Plugin: basic-auth (hooks)", function()
     helpers.wait_until(function()
       local res = assert(admin_client:send {
         method = "GET",
-        path = "/cache/"..cache_key
+        path = "/cache/" .. cache_key
       })
       res:read_body()
       return res.status == 404
@@ -152,7 +152,7 @@ describe("Plugin: basic-auth (hooks)", function()
     local cache_key = cache.basicauth_credential_key("bob")
     res = assert(admin_client:send {
       method = "GET",
-      path = "/cache/"..cache_key
+      path = "/cache/" .. cache_key
     })
     local body = assert.res_status(200, res)
     local credential = cjson.decode(body)
@@ -160,7 +160,7 @@ describe("Plugin: basic-auth (hooks)", function()
     -- delete credential entity
     res = assert(admin_client:send {
       method = "PATCH",
-      path = "/consumers/bob/basic-auth/"..credential.id,
+      path = "/consumers/bob/basic-auth/" .. credential.id,
       body = {
         username = "bob",
         password = "kong-updated"
@@ -175,7 +175,7 @@ describe("Plugin: basic-auth (hooks)", function()
     helpers.wait_until(function()
       local res = assert(admin_client:send {
         method = "GET",
-        path = "/cache/"..cache_key
+        path = "/cache/" .. cache_key
       })
       res:read_body()
       return res.status == 404

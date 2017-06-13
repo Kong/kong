@@ -42,7 +42,6 @@ end
 
 require("kong.core.globalpatches")()
 
-local ip = require "kong.tools.ip"
 local dns = require "kong.tools.dns"
 local core = require "kong.core.handler"
 local Serf = require "kong.serf"
@@ -74,30 +73,32 @@ local function load_plugins(kong_conf, dao, events)
   ngx.log(ngx.DEBUG, "Discovering used plugins")
 
   local rows, err_t = dao.plugins:find_all()
-  if not rows then return nil, tostring(err_t) end
+  if not rows then
+    return nil, tostring(err_t)
+  end
 
   for _, row in ipairs(rows) do in_db_plugins[row.name] = true end
 
   -- check all plugins in DB are enabled/installed
   for plugin in pairs(in_db_plugins) do
     if not kong_conf.plugins[plugin] then
-      return nil, plugin.." plugin is in use but not enabled"
+      return nil, plugin .. " plugin is in use but not enabled"
     end
   end
 
   -- load installed plugins
   for plugin in pairs(kong_conf.plugins) do
-    local ok, handler = utils.load_module_if_exists("kong.plugins."..plugin..".handler")
+    local ok, handler = utils.load_module_if_exists("kong.plugins." .. plugin .. ".handler")
     if not ok then
-      return nil, plugin.." plugin is enabled but not installed;\n"..handler
+      return nil, plugin .. " plugin is enabled but not installed;\n" .. handler
     end
 
-    local ok, schema = utils.load_module_if_exists("kong.plugins."..plugin..".schema")
+    local ok, schema = utils.load_module_if_exists("kong.plugins." .. plugin .. ".schema")
     if not ok then
-      return nil, "no configuration schema found for plugin: "..plugin
+      return nil, "no configuration schema found for plugin: " .. plugin
     end
 
-    ngx.log(ngx.DEBUG, "Loading plugin: "..plugin)
+    ngx.log(ngx.DEBUG, "Loading plugin: " .. plugin)
 
     sorted_plugins[#sorted_plugins+1] = {
       name = plugin,
@@ -106,7 +107,7 @@ local function load_plugins(kong_conf, dao, events)
     }
 
     -- Attaching hooks
-    local ok, hooks = utils.load_module_if_exists("kong.plugins."..plugin..".hooks")
+    local ok, hooks = utils.load_module_if_exists("kong.plugins." .. plugin .. ".hooks")
     if ok then
       attach_hooks(events, hooks)
     end
@@ -151,7 +152,6 @@ function Kong.init()
   assert(dao:run_migrations()) -- migrating in case embedded in custom nginx
 
   -- populate singletons
-  singletons.ip = ip.init(config)
   singletons.dns = dns(config)
   singletons.loaded_plugins = assert(load_plugins(config, dao, events))
   singletons.serf = Serf.new(config, dao)

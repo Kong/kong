@@ -76,7 +76,7 @@
                                  # HTTP requests.
                                  # This is the public-facing entrypoint of
                                  # Kong, to which your consumers will make
-                                 # requests to.
+                                 # requests.
 # Note: See http://nginx.org/en/docs/http/ngx_http_core_module.html#listen for
 # a description of the accepted formats for this and other *_listen values.
 
@@ -91,11 +91,6 @@
 #admin_listen_ssl = 0.0.0.0:8444 # Address and port on which Kong will accept
                                  # HTTPS requests to the admin API, if
                                  # `admin_ssl` is enabled.
-
-#nginx_user = nobody nobody      # Defines user and group credentials used by
-                                 # worker processes. If group is omitted, a
-                                 # group whose name equals that of user is
-                                 # used. Ex: [user] [group].
 
 #nginx_worker_processes = auto   # Determines the number of worker processes
                                  # spawned by Nginx.
@@ -183,53 +178,42 @@
                                  # and "X-Kong-Upstream-Latency" response
                                  # header fields.
 
-#trusted_ips =                   # Defines trusted IP addresses blocks that are
-                                 # known to send correct X-Forwarded-* headers.
-                                 # Requests from trusted IPs make Kong forward
-                                 # their X-Forwarded-* headers upstream.
-                                 # Non-trusted requests make Kong insert its
-                                 # own X-Forwarded-* headers.
-                                 #
-                                 # This property also sets the `set_real_ip_from`
-                                 # directive(s) in the Nginx configuration. It
-                                 # accepts the same type of values (CIDR blocks)
-                                 # but as a comma-separated list.
-                                 #
-                                 # To trust *all* /!\ IPs, set this value to
-                                 # `0.0.0.0/0,::/0`.
-                                 #
-                                 # If the special value `unix:` is specified,
-                                 # all UNIX-domain sockets will be trusted.
-# Note:
-#
-# See http://nginx.org/en/docs/http/ngx_http_realip_module.html for
-# examples of accepted values.
+#error_default_type = text/plain  # Default MIME type to use when the request
+                                  # `Accept` header is missing and Nginx
+                                  # is returning an error for the request.
+                                  # Accepted values are `text/plain`,
+                                  # `text/html`, `application/json`, and
+                                  # `application/xml`.
 
-#real_ip_header = X-Real-IP      # Defines the request header field whose value
-                                 # will be used to replace the client address.
-                                 # This value sets the ngx_http_realip_module
-                                 # directive of the same name in the Nginx
-                                 # configuration.
-                                 #
-                                 # If this value receives `proxy_protocol`, the
-                                 # `proxy_protocol` parameter will be appended
-                                 # to the `listen` directive of the Nginx
-                                 # template.
-# Note:
-#
-# See http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_header
-# for a description of this directive.
-#
-# See https://www.nginx.com/resources/admin-guide/proxy-protocol/ for more
-# details about the `proxy_protocol` parameter.
+#client_max_body_size = 0        # Defines the maximum request body size allowed
+                                 # by requests proxied by Kong, specified in the
+                                 # Content-Length request header. If a request
+                                 # exceeds this limit, Kong will respond with a
+                                 # 413 (Request Entity Too Large). Setting this
+                                 # value to 0 disables checking the request body
+                                 # size.
+# Note: See
+# http://nginx.org/en/docs/http/ngx_http_core_module.html#client_max_body_size
+# for further description of this parameter. Numeric values may be suffixed with
+# 'k' or 'm' to denote limits in terms of kilobytes or megabytes.
 
-#real_ip_recursive = off         # This value sets the ngx_http_realip_module
-                                 # directive of the same name in the Nginx
-                                 # configuration.
-# Note:
-#
-# See http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_recursive
-# for a description of this directive.
+#client_body_buffer_size = 8k    # Defines the buffer size for reading the
+                                 # request body. If the client request body is
+                                 # larger than this value, the body will be
+                                 # buffered to disk. Note that when the body is
+                                 # buffered to disk Kong plugins that access or
+                                 # manipulate the request body may not work, so
+                                 # it is advisable to set this value as high as
+                                 # possible (e.g., set it as high as
+                                 # `client_max_body_size` to force request
+                                 # bodies to be kept in memory). Do note that
+                                 # high-concurrency environments will require
+                                 # significant memory allocations to process
+                                 # many concurrent large request bodies.
+# Note: See
+# http://nginx.org/en/docs/http/ngx_http_core_module.html#client_body_buffer_size
+# for further description of this parameter. Numeric values may be suffixed with
+# 'k' or 'm' to denote limits in terms of kilobytes or megabytes.
 
 #------------------------------------------------------------------------------
 # DATASTORE
@@ -399,11 +383,6 @@
 # DNS RESOLVER
 #------------------------------------------------------------------------------
 
-# By default the DNS resolver will use the standard configuration files
-# `/etc/hosts` and `/etc/resolv.conf`. The settings in the latter file will be
-# overridden by the environment variables `LOCALDOMAIN` and `RES_OPTIONS` if
-# they have been set.
-
 #dns_resolver =                  # Comma separated list of nameservers, each
                                  # entry in `ipv4[:port]` format to be used by
                                  # Kong. If not specified the nameservers in
@@ -414,17 +393,6 @@
                                  # once and its content is static in memory.
                                  # To read the file again after modifying it,
                                  # Kong must be reloaded.
-
-#dns_order = LAST,SRV,A,CNAME    # the order in which to resolve different
-                                 # record types. The `LAST` type means the
-                                 # type of the last successful lookup (for the
-                                 # specified name). The format is a (case
-                                 # insensitive) comma separated list.
-
-#dns_not_found_ttl = 30.0        # ttl in seconds for empty DNS responses and
-                                 # "(3) name error" responses.
-
-#dns_error_ttl = 1.0             # ttl in seconds for error responses.
 
 #------------------------------------------------------------------------------
 # DEVELOPMENT & MISCELLANEOUS

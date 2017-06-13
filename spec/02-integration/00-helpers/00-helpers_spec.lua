@@ -89,7 +89,7 @@ describe("helpers: assertions and modifiers", function()
     it("fails with bad input", function()
       assert.error(function() assert.request().True(true) end)
       assert.error(function() assert.request(true).True(true) end)
-      assert.error(function() assert.request("bad...").True(true) end)
+      assert.error(function() assert.request("bad... ").True(true) end)
     end)
     it("succeeds with a mockbin response", function()
       local r = assert(client:send {

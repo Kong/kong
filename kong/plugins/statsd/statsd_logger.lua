@@ -13,7 +13,7 @@ function statsd_mt:new(conf)
   sock:settimeout(conf.timeout)
   local _, err = sock:setpeername(conf.host, conf.port)
   if err then
-    return nil, "failed to connect to "..conf.host..":"..tostring(conf.port)..": "..err
+    return nil, "failed to connect to " .. conf.host .. ":" .. tostring(conf.port) .. ": " .. err
   end
   
   local statsd = {
@@ -27,7 +27,7 @@ end
 function statsd_mt:create_statsd_message(stat, delta, kind, sample_rate)
   local rate = ""
   if sample_rate and sample_rate ~= 1 then 
-    rate = "|@"..sample_rate 
+    rate = "|@" .. sample_rate 
   end
   
   local message = {
@@ -45,17 +45,17 @@ end
 function statsd_mt:close_socket()
   local ok, err = self.socket:close()
   if not ok then
-    ngx_log(NGX_ERR, "failed to close connection from "..self.host..":"..tostring(self.port)..": ", err)
+    ngx_log(NGX_ERR, "failed to close connection from " .. self.host .. ":" .. tostring(self.port) .. ": ", err)
     return
   end
 end
 
 function statsd_mt:send_statsd(stat, delta, kind, sample_rate)
   local udp_message = self:create_statsd_message(stat, delta, kind, sample_rate)
-  ngx_log(NGX_DEBUG, "Sending data to statsd server: "..udp_message)
+  ngx_log(NGX_DEBUG, "Sending data to statsd server: " .. udp_message)
   local ok, err = self.socket:send(udp_message)
   if not ok then
-    ngx_log(NGX_ERR, "failed to send data to "..self.host..":"..tostring(self.port)..": ", err)
+    ngx_log(NGX_ERR, "failed to send data to " .. self.host .. ":" .. tostring(self.port) .. ": ", err)
   end
 end
 

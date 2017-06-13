@@ -12,11 +12,11 @@ local function check_ordered_limits(limit_value)
     if limit_value[v] then
       has_value = true
       if limit_value[v] <=0 then
-        invalid_value = "Value for "..v.." must be greater than zero"
+        invalid_value = "Value for " .. v .. " must be greater than zero"
       else
         for t = i+1, #ordered_periods do
           if limit_value[ordered_periods[t]] and limit_value[ordered_periods[t]] < limit_value[v] then
-            invalid_order = "The limit for "..ordered_periods[t].." cannot be lower than the limit for "..v
+            invalid_order = "The limit for " .. ordered_periods[t] .. " cannot be lower than the limit for " .. v
           end
         end
       end
@@ -58,8 +58,7 @@ return {
           year = { type = "number" }
         }
       }
-    },
-    hide_client_headers = { type = "boolean", default = false },
+    }
   },
   self_check = function(schema, plugin_t, dao, is_update)
     if not plugin_t.limits or (not next(plugin_t.limits)) then

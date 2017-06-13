@@ -19,10 +19,9 @@ local balancer_execute = require("kong.core.balancer").execute
 
 
 local router, router_err
-local tostring = tostring
-local lower = string.lower
-local ngx = ngx
 local ngx_now = ngx.now
+local sub = string.sub
+
 local server_header = _KONG._NAME.."/".._KONG._VERSION
 
 
@@ -91,16 +90,12 @@ return {
 
       ctx.KONG_ACCESS_START = get_now()
 
-      local api, upstream, host_header = router.exec(ngx)
+      local api, upstream, host_header, uri = router.exec(ngx)
       if not api then
         return responses.send_HTTP_NOT_FOUND("no API found with those values")
       end
 
-      local realip_remote_addr = var.realip_remote_addr
-      local trusted_ip = singletons.ip.trusted(realip_remote_addr)
-      if api.https_only and not utils.check_https(trusted_ip,
-                                                  api.http_if_terminated)
-      then
+      if api.https_only and not utils.check_https(api.http_if_terminated) then
         ngx.header["connection"] = "Upgrade"
         ngx.header["upgrade"]    = "TLS/1.2, HTTP/1.1"
 
@@ -130,63 +125,37 @@ return {
 
       local ok, err = balancer_execute(balancer_address)
       if not ok then
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR("failed the initial "..
-          "dns/balancer resolve for '"..balancer_address.host..
-          "' with: "..tostring(err))
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR("failed the initial " ..
+          "dns/balancer resolve for '" .. balancer_address.host ..
+          "' with: " .. tostring(err))
       end
 
-      -- if set `host_header` is the original header to be preserved
+      -- `uri` is the URI with which to call upstream, as returned by the
+      --       router, which might have truncated it (`strip_uri`).
+      -- `host_header` is the original header to be preserved if set.
+      var.upstream_uri  = uri
       var.upstream_host = host_header or
-          balancer_address.hostname..":"..balancer_address.port
+          balancer_address.hostname .. ":" .. balancer_address.port
 
-      -- Keep-Alive and WebSocket Protocol Upgrade Headers
-      if var.http_upgrade and lower(var.http_upgrade) == "websocket" then
-        var.upstream_connection = "upgrade"
-        var.upstream_upgrade    = "websocket"
-
-      else
-        var.upstream_connection = "keep-alive"
-      end
-
-      -- X-Forwarded-* Headers
-      --
-      -- We could use $proxy_add_x_forwarded_for, but it does not work properly
-      -- with the realip module. The realip module overrides $remote_addr and
-      -- it is okay for us to use it in case no X-Forwarded-For header was
-      -- present. But in case it was given, we will append the
-      -- $realip_remote_addr that contains the IP that was originally in
-      -- $remote_addr before realip module overrode that (aka the client that
-      -- connected us).
-
-      local http_x_forwarded_for = var.http_x_forwarded_for
-
-      if http_x_forwarded_for then
-        var.upstream_x_forwarded_for = http_x_forwarded_for .. ", " ..
-                                       realip_remote_addr
-
-      else
-        var.upstream_x_forwarded_for = var.remote_addr
-      end
-
-      if trusted_ip then
-        var.upstream_x_forwarded_proto = var.http_x_forwarded_proto or
-                                         var.scheme
-
-        var.upstream_x_forwarded_host  = var.http_x_forwarded_host  or
-                                         var.host
-
-        var.upstream_x_forwarded_port  = var.http_x_forwarded_port  or
-                                         var.server_port
-
-      else
-        var.upstream_x_forwarded_proto = var.scheme
-        var.upstream_x_forwarded_host  = var.host
-        var.upstream_x_forwarded_port  = var.server_port
-      end
     end,
     -- Only executed if the `router` module found an API and allows nginx to proxy it.
     after = function()
       local ctx = ngx.ctx
+      local var = ngx.var
+
+      do
+        -- Nginx's behavior when proxying a request with an empty querystring
+        -- `/foo?` is to keep `$is_args` an empty string, hence effectively
+        -- stripping the empty querystring.
+        -- We overcome this behavior with our own logic, to preserve user
+        -- desired semantics.
+        local upstream_uri = var.upstream_uri
+
+        if var.is_args == "?" or sub(var.request_uri, -1) == "?" then
+          var.upstream_uri = upstream_uri .. "?" .. (var.args or "")
+        end
+      end
+
       local now = get_now()
 
       ctx.KONG_ACCESS_TIME = now - ctx.KONG_ACCESS_START -- time spent in Kong's access_by_lua

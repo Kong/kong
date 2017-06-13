@@ -9,7 +9,6 @@ local pl_path = require "pl.path"
 local tablex = require "pl.tablex"
 local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
-local ip = require "kong.tools.ip"
 local ciphers = require "kong.tools.ciphers"
 
 local DEFAULT_PATHS = {
@@ -65,14 +64,15 @@ local CONF_INFERENCES = {
   cluster_listen = {typ = "string"},
   cluster_listen_rpc = {typ = "string"},
   cluster_advertise = {typ = "string"},
-  nginx_user = {typ = "string"},
   nginx_worker_processes = {typ = "string"},
   upstream_keepalive = {typ = "number"},
   server_tokens = {typ = "boolean"},
   latency_tokens = {typ = "boolean"},
-  real_ip_header = {typ = "string"},
-  real_ip_recursive = {typ = "ngx_boolean"},
-  trusted_ips = {typ = "array"},
+  error_default_type = {enum = {"application/json", "application/xml",
+                                "text/html", "text/plain"}},
+  client_max_body_size = {typ = "string"},
+  client_body_buffer_size = {typ = "string"},
+
 
   database = {enum = {"postgres", "cassandra"}},
   pg_port = {typ = "number"},
@@ -99,10 +99,6 @@ local CONF_INFERENCES = {
   cluster_ttl_on_failure = {typ = "number"},
 
   dns_resolver = {typ = "array"},
-  dns_hostsfile = {typ = "string"},
-  dns_order = {typ = "array"},
-  dns_not_found_ttl = {typ = "number"},
-  dns_error_ttl = {typ = "number"},
 
   ssl = {typ = "boolean"},
   client_ssl = {typ = "boolean"},
@@ -152,12 +148,7 @@ local function check_and_infer(conf)
     local typ = v_schema.typ
 
     if type(value) == "string" then
-
-      -- remove trailing comment, if any
-      -- and remove escape chars from octothorpes
-      value = string.gsub(value, "[^\\]#.-$", "")
-      value = string.gsub(value, "\\#", "#")
-
+      value = string.gsub(value, "#.-$", "") -- remove trailing comment if any
       value = pl_stringx.strip(value)
     end
 
@@ -191,10 +182,10 @@ local function check_and_infer(conf)
 
     typ = typ or "string"
     if value and not typ_checks[typ](value) then
-      errors[#errors+1] = k.." is not a "..typ..": '"..tostring(value).."'"
+      errors[#errors+1] = k .. " is not a " .. typ .. ": '" .. tostring(value) .. "'"
     elseif v_schema.enum and not tablex.find(v_schema.enum, value) then
-      errors[#errors+1] = k.." has an invalid value: '"..tostring(value)
-                          .."' ("..table.concat(v_schema.enum, ", ")..")"
+      errors[#errors+1] = k .. " has an invalid value: '" .. tostring(value)
+                          .. "' (" .. table.concat(v_schema.enum, ", ") .. ")"
     end
 
     conf[k] = value
@@ -206,7 +197,7 @@ local function check_and_infer(conf)
 
   if conf.cassandra_lb_policy == "DCAwareRoundRobin" and
      not conf.cassandra_local_datacenter then
-     errors[#errors+1] = "must specify 'cassandra_local_datacenter' when "..
+     errors[#errors+1] = "must specify 'cassandra_local_datacenter' when " ..
                         "DCAwareRoundRobin policy is in use"
   end
 
@@ -230,10 +221,10 @@ local function check_and_infer(conf)
     end
 
     if conf.ssl_cert and not pl_path.exists(conf.ssl_cert) then
-      errors[#errors+1] = "ssl_cert: no such file at "..conf.ssl_cert
+      errors[#errors+1] = "ssl_cert: no such file at " .. conf.ssl_cert
     end
     if conf.ssl_cert_key and not pl_path.exists(conf.ssl_cert_key) then
-      errors[#errors+1] = "ssl_cert_key: no such file at "..conf.ssl_cert_key
+      errors[#errors+1] = "ssl_cert_key: no such file at " .. conf.ssl_cert_key
     end
   end
 
@@ -245,10 +236,10 @@ local function check_and_infer(conf)
     end
 
     if conf.client_ssl_cert and not pl_path.exists(conf.client_ssl_cert) then
-      errors[#errors+1] = "client_ssl_cert: no such file at "..conf.client_ssl_cert
+      errors[#errors+1] = "client_ssl_cert: no such file at " .. conf.client_ssl_cert
     end
     if conf.client_ssl_cert_key and not pl_path.exists(conf.client_ssl_cert_key) then
-      errors[#errors+1] = "client_ssl_cert_key: no such file at "..conf.client_ssl_cert_key
+      errors[#errors+1] = "client_ssl_cert_key: no such file at " .. conf.client_ssl_cert_key
     end
   end
 
@@ -260,10 +251,10 @@ local function check_and_infer(conf)
     end
 
     if conf.admin_ssl_cert and not pl_path.exists(conf.admin_ssl_cert) then
-      errors[#errors+1] = "admin_ssl_cert: no such file at "..conf.admin_ssl_cert
+      errors[#errors+1] = "admin_ssl_cert: no such file at " .. conf.admin_ssl_cert
     end
     if conf.admin_ssl_cert_key and not pl_path.exists(conf.admin_ssl_cert_key) then
-      errors[#errors+1] = "admin_ssl_cert_key: no such file at "..conf.admin_ssl_cert_key
+      errors[#errors+1] = "admin_ssl_cert_key: no such file at " .. conf.admin_ssl_cert_key
     end
   end
 
@@ -279,38 +270,23 @@ local function check_and_infer(conf)
   if conf.dns_resolver then
     for _, server in ipairs(conf.dns_resolver) do
       local dns = utils.normalize_ip(server)
-      if (not dns) or (dns.type ~= "ipv4") then
-        errors[#errors+1] = "dns_resolver must be a comma separated list in "..
-                            "the form of IPv4 or IPv4:port, got '"..server.."'"
+      if not dns or dns.type ~= "ipv4" then
+        errors[#errors+1] = "dns_resolver must be a comma separated list in " ..
+                            "the form of IPv4 or IPv4:port, got '" .. server .. "'"
       end
     end
   end
 
-  if conf.dns_hostsfile then
-    if not pl_path.isfile(conf.dns_hostsfile) then
-      errors[#errors+1] = "dns_hostsfile: file does not exist"
-    end
-  end
-
-  if conf.dns_order then
-    local allowed = { LAST = true, A = true, CNAME = true, SRV = true }
-    for _, name in ipairs(conf.dns_order) do
-      if not allowed[name:upper()] then
-        errors[#errors+1] = "dns_order: invalid entry '" .. tostring(name) .. "'"
-      end
-    end
-  end
-
-  local address, port = utils.normalize_ipv4(conf.cluster_listen)
-  if not (address and port) then
+  local ip, port = utils.normalize_ipv4(conf.cluster_listen)
+  if not (ip and port) then
     errors[#errors+1] = "cluster_listen must be in the form of IPv4:port"
   end
-  address, port = utils.normalize_ipv4(conf.cluster_listen_rpc)
-  if not (address and port) then
+  ip, port = utils.normalize_ipv4(conf.cluster_listen_rpc)
+  if not (ip and port) then
     errors[#errors+1] = "cluster_listen_rpc must be in the form of IPv4:port"
   end
-  address, port = utils.normalize_ipv4(conf.cluster_advertise or "")
-  if conf.cluster_advertise and not (address and port) then
+  ip, port = utils.normalize_ipv4(conf.cluster_advertise or "")
+  if conf.cluster_advertise and not (ip and port) then
     errors[#errors+1] = "cluster_advertise must be in the form of IPv4:port"
   end
   if conf.cluster_ttl_on_failure < 60 then
@@ -318,15 +294,6 @@ local function check_and_infer(conf)
   end
   if not conf.lua_package_cpath then
     conf.lua_package_cpath = ""
-  end
-
-  -- Checking the trusted ips
-  for _, address in ipairs(conf.trusted_ips) do
-    if not ip.valid(address) and not address == "unix:" then
-      errors[#errors+1] = "trusted_ips must be a comma separated list in "..
-                          "the form of IPv4 or IPv6 address or CIDR "..
-                          "block or 'unix:', got '" .. address .. "'"
-    end
   end
 
   return #errors == 0, errors[1], errors
@@ -345,7 +312,7 @@ local function overrides(k, default_v, file_conf, arg_conf)
   end
 
   -- environment variables have higher priority
-  local env_name = "KONG_"..string.upper(k)
+  local env_name = "KONG_" .. string.upper(k)
   local env = os.getenv(env_name)
   if env ~= nil then
     local to_print = env
@@ -382,7 +349,9 @@ local function load(path, custom_conf)
   local s = pl_stringio.open(kong_default_conf)
   local defaults, err = pl_config.read(s)
   s:close()
-  if not defaults then return nil, "could not load default conf: "..err end
+  if not defaults then
+    return nil, "could not load default conf: " .. err
+  end
 
   ---------------------
   -- Configuration file
@@ -391,7 +360,7 @@ local function load(path, custom_conf)
   local from_file_conf = {}
   if path and not pl_path.exists(path) then
     -- file conf has been specified and must exist
-    return nil, "no file at: "..path
+    return nil, "no file at: " .. path
   elseif not path then
     -- try to look for a conf in default locations, but no big
     -- deal if none is found: we will use our defaults.
@@ -408,7 +377,9 @@ local function load(path, custom_conf)
     log.verbose("no config file, skipping loading")
   else
     local f, err = pl_file.read(path)
-    if not f then return nil, err end
+    if not f then
+      return nil, err
+    end
 
     log.verbose("reading config file at %s", path)
     local s = pl_stringio.open(f)
@@ -417,7 +388,9 @@ local function load(path, custom_conf)
       list_delim = "_blank_" -- mandatory but we want to ignore it
     })
     s:close()
-    if not from_file_conf then return nil, err end
+    if not from_file_conf then
+      return nil, err
+    end
   end
 
   -----------------------
@@ -429,7 +402,9 @@ local function load(path, custom_conf)
 
   -- validation
   local ok, err, errors = check_and_infer(conf)
-  if not ok then return nil, err, errors end
+  if not ok then
+    return nil, err, errors
+  end
 
   conf = tablex.merge(conf, defaults) -- intersection (remove extraneous properties)
 
@@ -442,7 +417,7 @@ local function load(path, custom_conf)
         to_print = "******"
       end
 
-      conf_arr[#conf_arr+1] = k.." = "..pl_pretty.write(to_print, "")
+      conf_arr[#conf_arr+1] = k .. " = " .. pl_pretty.write(to_print, "")
     end
 
     table.sort(conf_arr)
@@ -465,14 +440,6 @@ local function load(path, custom_conf)
     end
     conf.plugins = tablex.merge(constants.PLUGINS_AVAILABLE, custom_plugins, true)
     setmetatable(conf.plugins, nil) -- remove Map mt
-  end
-
-  -- nginx user directive
-  do
-    local user = conf.nginx_user:gsub("^%s*", ""):gsub("%s$", ""):gsub("%s+", " ")
-    if user == "nobody" or user == "nobody nobody" then
-      conf.nginx_user = nil
-    end
   end
 
   -- extract ports/listen ips

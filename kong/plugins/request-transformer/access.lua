@@ -62,7 +62,9 @@ local function iter(config_array)
     end
 
     local current_name, current_value = current_pair:match("^([^:]+):*(.-)$")
-    if current_value == "" then current_value = nil end
+    if current_value == "" then
+      current_value = nil
+    end
 
     return i, current_name, current_value
   end, config_array, 0
@@ -182,7 +184,9 @@ local function transform_json_body(conf, body, content_length)
   local removed, renamed, replaced, added, appended = false, false, false, false, false
   local content_length = (body and #body) or 0
   local parameters = parse_json(body)
-  if parameters == nil and content_length > 0 then return false, nil end
+  if parameters == nil and content_length > 0 then
+    return false, nil
+  end
 
   if content_length > 0 and #conf.remove.body > 0 then
     for _, name, value in iter(conf.remove.body) do
@@ -331,7 +335,11 @@ end
 local function transform_body(conf)
   local content_type_value = req_get_headers()[CONTENT_TYPE]
   local content_type = get_content_type(content_type_value)
-  if content_type == nil or #conf.rename.body < 1 and #conf.remove.body < 1 and #conf.replace.body < 1 and #conf.add.body < 1 and #conf.append.body < 1 then return end
+  if content_type == nil or #conf.rename.body < 1 and
+     #conf.remove.body < 1 and #conf.replace.body < 1 and
+     #conf.add.body < 1 and #conf.append.body < 1 then
+    return
+  end
 
   -- Call req_read_body to read the request body first
   req_read_body()
@@ -355,7 +363,7 @@ end
 
 local function transform_method(conf)
   if conf.http_method then
-    req_set_method(ngx["HTTP_"..conf.http_method:upper()])
+    req_set_method(ngx["HTTP_" .. conf.http_method:upper()])
     if conf.http_method == "GET" or conf.http_method == "HEAD" or conf.http_method == "TRACE" then
       local content_type_value = req_get_headers()[CONTENT_TYPE]
       local content_type = get_content_type(content_type_value)
