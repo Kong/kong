@@ -64,7 +64,8 @@ describe("SSL", function()
     })
 
     assert(helpers.start_kong {
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_conf  = "spec/fixtures/custom_nginx.template",
+      trusted_ips = "127.0.0.1",
     })
 
     admin_client = helpers.admin_client()
@@ -167,6 +168,45 @@ describe("SSL", function()
         }
       })
       assert.res_status(426, res)
+    end)
+
+    it("allows with https x-forwarded-proto from trusted client", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          Host = "example.com",
+          ["x-forwarded-proto"] = "https"
+        }
+      })
+      assert.res_status(200, res)
+    end)
+
+    describe("blocks with https x-forwarded-proto from untrusted client", function()
+      local client
+
+      -- restart kong and use a new client to simulate a connection from an
+      -- untrusted ip
+      setup(function()
+        assert(helpers.kong_exec("restart -c " .. helpers.test_conf_path, {
+          trusted_ips = "1.2.3.4", -- explicitly trust an IP that is not us
+        }))
+
+        client = helpers.proxy_client()
+      end)
+
+      -- despite reloading here with no trusted IPs, this
+      it("", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            Host = "example.com",
+            ["x-forwarded-proto"] = "https"
+          }
+        })
+        assert.res_status(426, res)
+      end)
     end)
   end)
 

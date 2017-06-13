@@ -23,10 +23,6 @@ client_max_body_size ${{CLIENT_MAX_BODY_SIZE}};
 proxy_ssl_server_name on;
 underscores_in_headers on;
 
-real_ip_header X-Forwarded-For;
-set_real_ip_from 0.0.0.0/0;
-real_ip_recursive on;
-
 lua_package_path '${{LUA_PACKAGE_PATH}};;';
 lua_package_cpath '${{LUA_PACKAGE_CPATH}};;';
 lua_code_cache ${{LUA_CODE_CACHE}};
@@ -65,20 +61,14 @@ upstream kong_upstream {
     keepalive ${{UPSTREAM_KEEPALIVE}};
 }
 
-map $http_upgrade $upstream_connection {
-    default keep-alive;
-    websocket upgrade;
-}
-
-map $http_upgrade $upstream_upgrade {
-    default '';
-    websocket websocket;
-}
-
 server {
     server_name kong;
+> if real_ip_header == "proxy_protocol" then
+    listen ${{PROXY_LISTEN}} proxy_protocol;
+> else
     listen ${{PROXY_LISTEN}};
-    error_page 404 408 411 412 413 414 417 /kong_error_handler;
+> end
+    error_page 400 404 408 411 412 413 414 417 /kong_error_handler;
     error_page 500 502 503 504 /kong_error_handler;
 
     access_log ${{PROXY_ACCESS_LOG}};
@@ -87,7 +77,11 @@ server {
     client_body_buffer_size ${{CLIENT_BODY_BUFFER_SIZE}};
 
 > if ssl then
+> if real_ip_header == "proxy_protocol" then
+    listen ${{PROXY_LISTEN_SSL}} proxy_protocol ssl;
+> else
     listen ${{PROXY_LISTEN_SSL}} ssl;
+> end
     ssl_certificate ${{SSL_CERT}};
     ssl_certificate_key ${{SSL_CERT_KEY}};
     ssl_protocols TLSv1.1 TLSv1.2;
@@ -106,10 +100,22 @@ server {
     proxy_ssl_certificate_key ${{CLIENT_SSL_CERT_KEY}};
 > end
 
+    real_ip_header     ${{REAL_IP_HEADER}};
+    real_ip_recursive  ${{REAL_IP_RECURSIVE}};
+> for i = 1, #trusted_ips do
+    set_real_ip_from   $(trusted_ips[i]);
+> end
+
     location / {
-        set $upstream_host nil;
-        set $upstream_scheme nil;
-        set $upstream_uri nil;
+        set $upstream_host               '';
+        set $upstream_upgrade            '';
+        set $upstream_connection         '';
+        set $upstream_scheme             '';
+        set $upstream_uri                '';
+        set $upstream_x_forwarded_for    '';
+        set $upstream_x_forwarded_proto  '';
+        set $upstream_x_forwarded_host   '';
+        set $upstream_x_forwarded_port   '';
 
         rewrite_by_lua_block {
             kong.rewrite()
@@ -120,17 +126,18 @@ server {
         }
 
         proxy_http_version 1.1;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header Host $upstream_host;
-        proxy_set_header Upgrade $upstream_upgrade;
-        proxy_set_header Connection $upstream_connection;
-        proxy_pass_header Server;
-
-        proxy_ssl_name $upstream_host;
-
-        proxy_pass $upstream_scheme://kong_upstream$upstream_uri;
+        proxy_set_header   Host              $upstream_host;
+        proxy_set_header   Upgrade           $upstream_upgrade;
+        proxy_set_header   Connection        $upstream_connection;
+        proxy_set_header   X-Forwarded-For   $upstream_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $upstream_x_forwarded_proto;
+        proxy_set_header   X-Forwarded-Host  $upstream_x_forwarded_host;
+        proxy_set_header   X-Forwarded-Port  $upstream_x_forwarded_port;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_pass_header  Server;
+        proxy_pass_header  Date;
+        proxy_ssl_name     $upstream_host;
+        proxy_pass         $upstream_scheme://kong_upstream$upstream_uri;
 
         header_filter_by_lua_block {
             kong.header_filter()

@@ -19,6 +19,9 @@ local balancer_execute = require("kong.core.balancer").execute
 
 
 local router, router_err
+local tostring = tostring
+local lower = string.lower
+local ngx = ngx
 local ngx_now = ngx.now
 local sub = string.sub
 
@@ -95,7 +98,11 @@ return {
         return responses.send_HTTP_NOT_FOUND("no API found with those values")
       end
 
-      if api.https_only and not utils.check_https(api.http_if_terminated) then
+      local realip_remote_addr = var.realip_remote_addr
+      local trusted_ip = singletons.ip.trusted(realip_remote_addr)
+      if api.https_only and not utils.check_https(trusted_ip,
+                                                  api.http_if_terminated)
+      then
         ngx.header["connection"] = "Upgrade"
         ngx.header["upgrade"]    = "TLS/1.2, HTTP/1.1"
 
@@ -137,6 +144,50 @@ return {
       var.upstream_host = host_header or
           balancer_address.hostname .. ":" .. balancer_address.port
 
+      -- Keep-Alive and WebSocket Protocol Upgrade Headers
+      if var.http_upgrade and lower(var.http_upgrade) == "websocket" then
+        var.upstream_connection = "upgrade"
+        var.upstream_upgrade    = "websocket"
+
+      else
+        var.upstream_connection = "keep-alive"
+      end
+
+      -- X-Forwarded-* Headers
+      --
+      -- We could use $proxy_add_x_forwarded_for, but it does not work properly
+      -- with the realip module. The realip module overrides $remote_addr and
+      -- it is okay for us to use it in case no X-Forwarded-For header was
+      -- present. But in case it was given, we will append the
+      -- $realip_remote_addr that contains the IP that was originally in
+      -- $remote_addr before realip module overrode that (aka the client that
+      -- connected us).
+
+      local http_x_forwarded_for = var.http_x_forwarded_for
+
+      if http_x_forwarded_for then
+        var.upstream_x_forwarded_for = http_x_forwarded_for .. ", " ..
+                                       realip_remote_addr
+
+      else
+        var.upstream_x_forwarded_for = var.remote_addr
+      end
+
+      if trusted_ip then
+        var.upstream_x_forwarded_proto = var.http_x_forwarded_proto or
+                                         var.scheme
+
+        var.upstream_x_forwarded_host  = var.http_x_forwarded_host  or
+                                         var.host
+
+        var.upstream_x_forwarded_port  = var.http_x_forwarded_port  or
+                                         var.server_port
+
+      else
+        var.upstream_x_forwarded_proto = var.scheme
+        var.upstream_x_forwarded_host  = var.host
+        var.upstream_x_forwarded_port  = var.server_port
+      end
     end,
     -- Only executed if the `router` module found an API and allows nginx to proxy it.
     after = function()

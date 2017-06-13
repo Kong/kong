@@ -27,7 +27,7 @@ local OAUTH2_CREDENTIALS_SCHEMA = {
     consumer_id = { type = "id", required = true, foreign = "consumers:id" },
     name = { type = "string", required = true },
     client_id = { type = "string", required = false, unique = true, default = utils.random_string },
-    client_secret = { type = "string", required = false, unique = true, default = utils.random_string },
+    client_secret = { type = "string", required = false, default = utils.random_string },
     redirect_uri = { type = "array", required = true, func = validate_uris },
     created_at = { type = "timestamp", immutable = true, dao_insert_value = true }
   },

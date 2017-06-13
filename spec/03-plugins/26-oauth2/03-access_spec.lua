@@ -301,7 +301,9 @@ describe("Plugin: oauth2 (access)", function()
       }
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      trusted_ips = "127.0.0.1",
+    }))
     proxy_client = helpers.proxy_client()
     proxy_ssl_client = helpers.proxy_ssl_client()
   end)

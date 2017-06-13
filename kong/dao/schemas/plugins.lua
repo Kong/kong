@@ -19,7 +19,8 @@ return {
     id = {
       type = "id",
       dao_insert_value = true,
-      required = true
+      required = true,
+      unique = true,
     },
     created_at = {
       type = "timestamp",
