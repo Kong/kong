@@ -32,25 +32,25 @@ return {
       CREATE TABLE IF NOT EXISTS oic_session (
         id            uuid,
         sid           text UNIQUE,
-        exp           int,
+        expires       int,
         data          text,
         created_at    timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc'),
         PRIMARY KEY (id)
       );
 
       CREATE INDEX IF NOT EXISTS oic_session_sid_idx ON oic_session (sid);
-      CREATE INDEX IF NOT EXISTS oic_session_exp_idx ON oic_session (exp);
+      CREATE INDEX IF NOT EXISTS oic_session_exp_idx ON oic_session (expires);
 
       CREATE TABLE IF NOT EXISTS oic_revoked (
         id            uuid,
         hash          text,
-        exp           int,
+        expires       int,
         created_at    timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc'),
         PRIMARY KEY (id)
       );
 
       CREATE INDEX IF NOT EXISTS oic_session_hash_idx ON oic_revoked (hash);
-      CREATE INDEX IF NOT EXISTS oic_session_exp_idx  ON oic_revoked (exp);
+      CREATE INDEX IF NOT EXISTS oic_session_exp_idx  ON oic_revoked (expires);
     ]],
     down = [[
       DROP TABLE oic_issuers;
