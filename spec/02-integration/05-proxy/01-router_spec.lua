@@ -381,7 +381,8 @@ describe("Router", function()
 
         local body = assert.res_status(200, res_uri_1)
         local json = cjson.decode(body)
-        assert.matches("httpbin.org/get", json.url, nil, true)
+        assert.matches("/get", json.url, nil, true)
+        assert.not_matches("/x/y/z/get", json.url, nil, true)
 
         local res_uri_2 = assert(client:send {
           method = "GET",
@@ -390,7 +391,8 @@ describe("Router", function()
 
         body = assert.res_status(200, res_uri_2)
         json = cjson.decode(body)
-        assert.matches("httpbin.org/get", json.url, nil, true)
+        assert.matches("/get", json.url, nil, true)
+        assert.not_matches("/z/y/x/get", json.url, nil, true)
 
         local res_2_uri_1 = assert(client:send {
           method = "GET",
@@ -399,7 +401,8 @@ describe("Router", function()
 
         body = assert.res_status(200, res_2_uri_1)
         json = cjson.decode(body)
-        assert.matches("httpbin.org/get", json.url, nil, true)
+        assert.matches("/get", json.url, nil, true)
+        assert.not_matches("/x/y/z/get", json.url, nil, true)
 
         local res_2_uri_2 = assert(client:send {
           method = "GET",
@@ -408,7 +411,8 @@ describe("Router", function()
 
         body = assert.res_status(200, res_2_uri_2)
         json = cjson.decode(body)
-        assert.matches("httpbin.org/get", json.url, nil, true)
+        assert.matches("/get", json.url, nil, true)
+        assert.not_matches("/x/y/z/get", json.url, nil, true)
       end)
     end)
   end)
