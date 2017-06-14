@@ -92,14 +92,15 @@ function OICAuthenticationHandler:access(conf)
     client_id     = conf.client_id,
     client_secret = conf.client_secret,
     redirect_uri  = conf.redirect_uri or request_url(),
-    scope         = conf.scopes or { "openid" },
-    claims        = conf.claims or { "iss", "sub", "aud", "azp", "exp" },
-    leeway        = conf.leeway                     or 0,
-    http_version  = conf.http_version               or 1.1,
-    ssl_verify    = conf.ssl_verify == nil and true or conf.ssl_verify,
-    timeout       = conf.timeout                    or 10000,
-    max_age       = conf.max_age,
+    scope         = conf.scopes       or { "openid" },
+    claims        = conf.claims       or { "iss", "sub", "aud", "azp", "exp" },
+    audience      = conf.audience,
     domains       = conf.domains,
+    max_age       = conf.max_age,
+    timeout       = conf.timeout      or 10000,
+    leeway        = conf.leeway       or 0,
+    http_version  = conf.http_version or 1.1,
+    ssl_verify    = conf.ssl_verify == nil and true or conf.ssl_verify,
   }, issuer.configuration, issuer.keys)
 
   if not o then

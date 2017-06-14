@@ -148,20 +148,19 @@ function OICVerificationHandler:access(conf)
     return internalerror(err)
   end
 
-  local claims = conf.claims or { "iss", "sub", "aud", "azp", "exp" }
-
   local o
 
   o, err = oic.new({
-    leeway       = conf.leeway                     or 0,
-    http_version = conf.http_version               or 1.1,
-    ssl_verify   = conf.ssl_verify == nil and true or conf.ssl_verify,
-    timeout      = conf.timeout                    or 10000,
     clients      = conf.clients,
     audience     = conf.audience,
-    max_age      = conf.max_age,
+    claims       = conf.claims       or { "iss", "sub", "aud", "azp", "exp" },
     domains      = conf.domains,
-    claims       = claims
+    max_age      = conf.max_age,
+    timeout      = conf.timeout      or 10000,
+    leeway       = conf.leeway       or 0,
+    http_version = conf.http_version or 1.1,
+    ssl_verify   = conf.ssl_verify == nil and true or conf.ssl_verify,
+
   }, issuer.configuration, issuer.keys)
 
   if not o then
