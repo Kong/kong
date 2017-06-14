@@ -246,27 +246,27 @@ describe("Configuration loader", function()
       assert.is_nil(conf)
       assert.equal("proxy_listen_ssl must be of form 'address:port'", err)
     end)
-    it("errors when dns_resolver is not a list in ipv4[:port] format", function()
-      local conf, err = conf_loader(nil, {
-        dns_resolver = "[::1]:53"
-      })
-      assert.equal("dns_resolver must be a comma separated list in the form of IPv4 or IPv4:port, got '[::1]:53'", err)
-      assert.is_nil(conf)
-
+    it("errors when dns_resolver is not a list in ipv4/6[:port] format", function()
       local conf, err = conf_loader(nil, {
         dns_resolver = "1.2.3.4:53;4.3.2.1" -- ; as separator
       })
-      assert.equal("dns_resolver must be a comma separated list in the form of IPv4 or IPv4:port, got '1.2.3.4:53;4.3.2.1'", err)
+      assert.equal("dns_resolver must be a comma separated list in the form of IPv4/6 or IPv4/6:port, got '1.2.3.4:53;4.3.2.1'", err)
       assert.is_nil(conf)
 
       conf, err = conf_loader(nil, {
-        dns_resolver = "8.8.8.8,1.2.3.4:53"
+        dns_resolver = "8.8.8.8:53"
       })
       assert.is_nil(err)
       assert.is_table(conf)
 
       conf, err = conf_loader(nil, {
-        dns_resolver = "8.8.8.8:53"
+        dns_resolver = "[::1]:53"
+      })
+      assert.is_nil(err)
+      assert.is_table(conf)
+
+      conf, err = conf_loader(nil, {
+        dns_resolver = "8.8.8.8,1.2.3.4:53,::1,[::1]:53"
       })
       assert.is_nil(err)
       assert.is_table(conf)
