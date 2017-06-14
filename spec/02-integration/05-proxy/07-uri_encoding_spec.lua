@@ -134,7 +134,7 @@ describe("URI encoding", function()
     local body = assert.res_status(200, res)
     local json = cjson.decode(body)
 
-    assert.equal("http://mockbin.com/request/auth%7C123", json.url)
+    assert.matches("/request/auth%7C123", json.url, nil, true)
 
     -- with `uris` matching
     local res2 = assert(client:send {
@@ -145,7 +145,7 @@ describe("URI encoding", function()
     local body2 = assert.res_status(200, res2)
     local json2 = cjson.decode(body2)
 
-    assert.equal("http://mockbin.com/request/auth%7C123", json2.url)
+    assert.matches("/request/auth%7C123", json2.url, nil, true)
 
     -- with `uris` matching + `strip_uri`
     local res3 = assert(client:send {
@@ -156,6 +156,6 @@ describe("URI encoding", function()
     local body3 = assert.res_status(200, res3)
     local json3 = cjson.decode(body3)
 
-    assert.equal("http://mockbin.com/request/auth%7C123", json3.url)
+    assert.matches("/request/auth%7C123", json3.url, nil, true)
   end)
 end)
