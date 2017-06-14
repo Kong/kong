@@ -415,10 +415,11 @@
 # they have been set.
 
 #dns_resolver =                  # Comma separated list of nameservers, each
-                                 # entry in `ipv4[:port]` format to be used by
+                                 # entry in `ip[:port]` format to be used by
                                  # Kong. If not specified the nameservers in
                                  # the local `resolv.conf` file will be used.
-                                 # Port defaults to 53 if omitted.
+                                 # Port defaults to 53 if omitted. Accepts
+                                 # both IPv4 and IPv6 addresses.
 
 #dns_hostsfile = /etc/hosts      # The hosts file to use. This file is read
                                  # once and its content is static in memory.
