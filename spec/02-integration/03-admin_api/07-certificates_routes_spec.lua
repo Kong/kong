@@ -8,8 +8,8 @@ local cjson = require "cjson"
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
   local test_json = fn("application/json")
-  it(title.." with application/www-form-urlencoded", test_form_encoded)
-  it(title.." with application/json", test_json)
+  it(title .. " with application/www-form-urlencoded", test_form_encoded)
+  it(title .. " with application/json", test_json)
 end
 
 

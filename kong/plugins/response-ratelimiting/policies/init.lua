@@ -31,7 +31,7 @@ return {
 
         local _, err = cache.sh_incr(cache_key, value)
         if err then
-          ngx_log("[response-ratelimiting] could not increment counter for period '"..period.."': "..tostring(err))
+          ngx_log("[response-ratelimiting] could not increment counter for period '" .. period .. "': " .. tostring(err))
           return nil, err
         end
       end
@@ -66,7 +66,9 @@ return {
       local rows, err = policy_cluster[db.name].find(db, api_id, identifier,
                                                      current_timestamp, period,
                                                      name)
-      if err then return nil, err end
+      if err then
+        return nil, err
+      end
 
       return rows and rows.value or 0
     end

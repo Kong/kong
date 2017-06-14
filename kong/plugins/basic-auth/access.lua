@@ -8,7 +8,7 @@ local responses = require "kong.tools.responses"
 local ngx_set_header = ngx.req.set_header
 local ngx_get_headers = ngx.req.get_headers
 
-local realm = 'Basic realm="'.._KONG._NAME..'"'
+local realm = 'Basic realm="' .. _KONG._NAME .. '"'
 
 local _M = {}
 
@@ -61,7 +61,7 @@ end
 local function validate_credentials(credential, given_password)
   local digest, err = crypto.encrypt({consumer_id = credential.consumer_id, password = given_password})
   if err then
-    ngx.log(ngx.ERR, "[basic-auth]  "..err)
+    ngx.log(ngx.ERR, "[basic-auth]  " .. err)
   end
   return credential.password == digest
 end
@@ -75,7 +75,9 @@ local function load_credential_into_memory(username)
 end
 
 local function load_credential_from_db(username)
-  if not username then return end
+  if not username then
+    return
+  end
   
   local credential, err = cache.get_or_set(cache.basicauth_credential_key(username),
                           nil, load_credential_into_memory, username)
@@ -89,7 +91,7 @@ local function load_consumer_into_memory(consumer_id, anonymous)
   local result, err = singletons.dao.consumers:find { id = consumer_id }
   if not result then
     if anonymous and not err then
-      err = 'anonymous consumer "'..consumer_id..'" not found'
+      err = 'anonymous consumer "' .. consumer_id .. '" not found'
     end
     return nil, err
   end

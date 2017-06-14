@@ -102,7 +102,9 @@ _delayed_flush = function(premature, self)
 end
 
 _send = function(premature, self, to_send)
-  if premature then return end
+  if premature then
+    return
+  end
 
   -- retry trigger, in case the collector
   -- is unresponseive
@@ -142,7 +144,7 @@ _send = function(premature, self, to_send)
         log(DEBUG, "Galileo collector saved the ALF (200 OK): ", body)
       elseif res.status == 207 then
         log(DEBUG, "Galileo collector partially saved the ALF "
-                 .."(207 Multi-Status): ", body)
+                 .. "(207 Multi-Status): ", body)
       elseif res.status >= 400 and res.status < 500 then
         log(WARN, "Galileo collector refused this ALF (", res.status, "): ", body)
       elseif res.status >= 500 then
@@ -254,7 +256,10 @@ function _M:add_entry(...)
 
   if err >= self.queue_size then -- err is the queue size in this case
      ok, err = self:flush()
-     if not ok then return nil, err end -- for our tests only
+     if not ok then
+       -- for our tests only
+       return nil, err
+     end
    elseif not self.timer_flush_pending then -- start delayed timer if none
      _create_delayed_timer(self)
    end

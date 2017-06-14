@@ -29,12 +29,14 @@ local LOG_LEVELS = {
 local function send_to_syslog(log_level, severity, message)
   if LOG_LEVELS[severity] <= LOG_LEVELS[log_level] then
     l_open(SENDER_NAME, lsyslog.FACILITY_USER)
-    l_log(lsyslog["LOG_"..string_upper(severity)], cjson.encode(message))
+    l_log(lsyslog["LOG_" .. string_upper(severity)], cjson.encode(message))
   end
 end
 
 local function log(premature, conf, message)
-  if premature then return end
+  if premature then
+    return
+  end
   
   if message.response.status >= 500 then
     send_to_syslog(conf.log_level, conf.server_errors_severity, message)

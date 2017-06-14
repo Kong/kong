@@ -13,7 +13,7 @@ function statsd_mt:new(conf)
   sock:settimeout(conf.timeout)
   local ok, err = sock:setpeername(conf.host, conf.port)
   if not ok then
-    return nil, "failed to connect to "..conf.host..":"..conf.port..": "..err
+    return nil, "failed to connect to " .. conf.host .. ":" .. conf.port .. ": " .. err
   end
 
   local statsd = {
@@ -29,11 +29,11 @@ function statsd_mt:create_statsd_message(stat, delta, kind, sample_rate, tags)
   local rate = ""
   local str_tags = ""
   if sample_rate and sample_rate ~= 1 then
-    rate = "|@"..sample_rate
+    rate = "|@" .. sample_rate
   end
   
   if tags and #tags > 0 then
-    str_tags = "|#"..table_concat(tags, ",")
+    str_tags = "|#" .. table_concat(tags, ",")
   end
 
   local message = {

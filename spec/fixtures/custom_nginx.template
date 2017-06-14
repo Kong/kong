@@ -32,7 +32,7 @@ http {
 >-- reset_timedout_connection on; # disabled until benchmarked
 > end
 
-    client_max_body_size 0;
+    client_max_body_size ${{CLIENT_MAX_BODY_SIZE}};
     proxy_ssl_server_name on;
     underscores_in_headers on;
 
@@ -85,6 +85,8 @@ http {
 
         access_log logs/access.log;
 
+        client_body_buffer_size ${{CLIENT_BODY_BUFFER_SIZE}};
+
 > if ssl then
 > if real_ip_header == "proxy_protocol" then
         listen ${{PROXY_LISTEN_SSL}} proxy_protocol ssl;
@@ -110,6 +112,8 @@ http {
             set $upstream_upgrade            '';
             set $upstream_connection         '';
             set $upstream_scheme             '';
+            set $upstream_uri                '';
+            set $upstream_host               '';
             set $upstream_x_forwarded_for    '';
             set $upstream_x_forwarded_proto  '';
             set $upstream_x_forwarded_host   '';
@@ -131,7 +135,7 @@ http {
             proxy_pass_header  Server;
             proxy_pass_header  Date;
             proxy_ssl_name     $upstream_host;
-            proxy_pass         $upstream_scheme://kong_upstream;
+            proxy_pass         $upstream_scheme://kong_upstream$upstream_uri;
 
             header_filter_by_lua_block {
                 kong.header_filter()
@@ -285,6 +289,9 @@ http {
             content_by_lua_block {
                 local function say(res, status)
                   ngx.header["x-amzn-RequestId"] = "foo"
+                  if string.match(ngx.var.uri, "functionWithUnhandledError") then
+                    ngx.header["X-Amzn-Function-Error"] = "Unhandled"
+                  end
                   ngx.status = status
 
                   if type(res) == 'string' then

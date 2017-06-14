@@ -48,7 +48,7 @@ function AWSLambdaHandler:access(conf)
     path = path,
     access_key = conf.aws_key,
     secret_key = conf.aws_secret,
-    query = conf.qualifier and "Qualifier="..conf.qualifier
+    query = conf.qualifier and "Qualifier=" .. conf.qualifier
   }
 
   local request, err = aws_v4(opts)
@@ -83,7 +83,14 @@ function AWSLambdaHandler:access(conf)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
-  ngx.status = res.status
+  if conf.unhandled_status
+     and headers["X-Amzn-Function-Error"] == "Unhandled"
+  then
+    ngx.status = conf.unhandled_status
+
+  else
+    ngx.status = res.status
+  end
 
   -- Send response to client
   for k, v in pairs(headers) do

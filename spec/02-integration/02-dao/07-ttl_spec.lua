@@ -3,7 +3,7 @@ local spec_helpers = require "spec.helpers"
 local Factory = require "kong.dao.factory"
 
 helpers.for_each_dao(function(kong_config)
-  describe("TTL with #"..kong_config.database, function()
+  describe("TTL with #" .. kong_config.database, function()
     local factory
     setup(function()
       factory = assert(Factory.new(kong_config))
@@ -95,7 +95,7 @@ helpers.for_each_dao(function(kong_config)
         for i = 1, 4 do
           local _, err = factory.apis:insert({
             name = "api-" .. i,
-            hosts = { "mockbin"..i..".com" },
+            hosts = { "mockbin" .. i .. ".com" },
             upstream_url = "http://mockbin.com"
           }, {ttl = 1})
           assert.falsy(err)

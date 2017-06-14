@@ -229,18 +229,15 @@
 - If no API was configured with a `hosts` matching rule, then the
   `preserve_host` flag would never be honored.
   [#2344](https://github.com/Mashape/kong/pull/2344)
-<<<<<<< HEAD
 - The `X-Forwarded-For` header sent to your upstream services by Kong is not
   set from the Nginx `$proxy_add_x_forwarded_for` variable anymore. Instead,
   Kong uses the `$realip_remote_addr` variable to append the real IP address
   of a client, instead of `$remote_addr`, which can come from a previous proxy
   hop.
   [#2236](https://github.com/Mashape/kong/pull/2236)
-=======
 - CNAME records are now properly being cached by the DNS resolver. This results
   in a performance improvement over previous 0.10 versions.
   [#2303](https://github.com/Mashape/kong/pull/2303)
->>>>>>> origin/master
 - When using Cassandra, some migrations would not be performed on the same
   coordinator as the one originally chosen. The same migrations would also
   require a response from other replicas in a cluster, but were not waiting

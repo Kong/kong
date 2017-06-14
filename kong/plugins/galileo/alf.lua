@@ -110,7 +110,7 @@ function _M:add_entry(_ngx, req_body_str, resp_body_str)
   -- retrieval
   local var = _ngx.var
   local ctx = _ngx.ctx
-  local http_version = "HTTP/"..http_version()
+  local http_version = "HTTP/" .. http_version()
   local request_headers = req_get_headers()
   local request_content_len = get_header(request_headers, "content-length", 0)
   local request_transfer_encoding = get_header(request_headers, "transfer-encoding")

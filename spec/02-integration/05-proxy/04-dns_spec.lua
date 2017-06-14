@@ -23,7 +23,7 @@ local function bad_tcp_server(port, duration, ...)
           client:close()  -- we're behaving bad, do nothing, just close
           tries = tries + 1
         elseif err ~= "timeout" then
-          return nil, "error accepting tcp connection; "..tostring(err)
+          return nil, "error accepting tcp connection; " .. tostring(err)
         end
       end
       server:close()
@@ -43,7 +43,7 @@ describe("DNS", function()
       assert(helpers.dao.apis:insert {
         name = "tests-retries",
         hosts = { "retries.com" },
-        upstream_url = "http://127.0.0.1:"..TCP_PORT,
+        upstream_url = "http://127.0.0.1:" .. TCP_PORT,
         retries = retries,
       })
 

@@ -4,8 +4,8 @@ local cjson = require "cjson"
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
   local test_json = fn("application/json")
-  it(title.." with application/www-form-urlencoded", test_form_encoded)
-  it(title.." with application/json", test_json)
+  it(title .. " with application/www-form-urlencoded", test_form_encoded)
+  it(title .. " with application/json", test_json)
 end
 
 local upstream_name = "my_upstream"
@@ -38,7 +38,7 @@ describe("Admin API", function()
         return function()
           local res = assert(client:send {
             method = "POST",
-            path = "/upstreams/"..upstream_name.."/targets/",
+            path = "/upstreams/" .. upstream_name .. "/targets/",
             body = {
               target = "mashape.com",
             },
@@ -46,7 +46,7 @@ describe("Admin API", function()
           })
           assert.response(res).has.status(201)
           local json = assert.response(res).has.jsonbody()
-          assert.equal("mashape.com:"..default_port, json.target)
+          assert.equal("mashape.com:" .. default_port, json.target)
           assert.is_number(json.created_at)
           assert.is_string(json.id)
           assert.are.equal(weight_default, json.weight)
@@ -56,7 +56,7 @@ describe("Admin API", function()
         return function()
           local res = assert(client:send {
             method = "POST",
-            path = "/upstreams/"..upstream_name.."/targets/",
+            path = "/upstreams/" .. upstream_name .. "/targets/",
             body = {
               target = "mashape.com:123",
               weight = 99,
@@ -77,7 +77,7 @@ describe("Admin API", function()
         for i = 1, 12 do
           local res = assert(client:send {
             method = "POST",
-            path = "/upstreams/"..upstream_name.."/targets/",
+            path = "/upstreams/" .. upstream_name .. "/targets/",
             body = {
               target = "mashape.com:123",
               weight = 99,
@@ -100,7 +100,7 @@ describe("Admin API", function()
         it("handles malformed JSON body", function()
           local res = assert(client:request {
             method = "POST",
-            path = "/upstreams/"..upstream_name.."/targets/",
+            path = "/upstreams/" .. upstream_name .. "/targets/",
             body = '{"hello": "world"',
             headers = {["Content-Type"] = "application/json"}
           })
@@ -113,7 +113,7 @@ describe("Admin API", function()
             -- Missing parameter
             local res = assert(client:send {
               method = "POST",
-              path = "/upstreams/"..upstream_name.."/targets/",
+              path = "/upstreams/" .. upstream_name .. "/targets/",
               body = {
                 weight = weight_min,
               },
@@ -126,7 +126,7 @@ describe("Admin API", function()
             -- Invalid target parameter
             res = assert(client:send {
               method = "POST",
-              path = "/upstreams/"..upstream_name.."/targets/",
+              path = "/upstreams/" .. upstream_name .. "/targets/",
               body = {
                 target = "some invalid host name",
               },
@@ -139,7 +139,7 @@ describe("Admin API", function()
             -- Invalid weight parameter
             res = assert(client:send {
               method = "POST",
-              path = "/upstreams/"..upstream_name.."/targets/",
+              path = "/upstreams/" .. upstream_name .. "/targets/",
               body = {
                 target = "mashape.com",
                 weight = weight_max + 1,
@@ -153,11 +153,11 @@ describe("Admin API", function()
         end)
         
         for _, method in ipairs({"PUT", "PATCH", "DELETE"}) do
-          it_content_types("returns 405 on "..method, function(content_type)
+          it_content_types("returns 405 on " .. method, function(content_type)
             return function()
               local res = assert(client:send {
                 method = method,
-                path = "/upstreams/"..upstream_name.."/targets/",
+                path = "/upstreams/" .. upstream_name .. "/targets/",
                 body = {
                   target = "mashape.com",
                 },
@@ -174,7 +174,7 @@ describe("Admin API", function()
       before_each(function()
         for i = 1, 10 do
           assert(helpers.dao.targets:insert {
-            target = "api-"..i..":80",
+            target = "api-" .. i .. ":80",
             weight = 100,
             upstream_id = upstream.id,
           })
@@ -184,7 +184,7 @@ describe("Admin API", function()
       it("retrieves the first page", function()
         local res = assert(client:send {
           methd = "GET",
-          path = "/upstreams/"..upstream_name.."/targets/",
+          path = "/upstreams/" .. upstream_name .. "/targets/",
         })
         assert.response(res).has.status(200)
         local json = assert.response(res).has.jsonbody()
@@ -198,7 +198,7 @@ describe("Admin API", function()
         for i = 1, 4 do
           local res = assert(client:send {
             method = "GET",
-            path = "/upstreams/"..upstream_name.."/targets/",
+            path = "/upstreams/" .. upstream_name .. "/targets/",
             query = {size = 3, offset = offset}
           })
           assert.response(res).has.status(200)
@@ -223,7 +223,7 @@ describe("Admin API", function()
       it("handles invalid filters", function()
         local res = assert(client:send {
           method = "GET",
-          path = "/upstreams/"..upstream_name.."/targets/",
+          path = "/upstreams/" .. upstream_name .. "/targets/",
           query = {foo = "bar"},
         })
         local body = assert.response(res).has.status(400)
@@ -233,7 +233,7 @@ describe("Admin API", function()
       it("ignores an invalid body", function()
         local res = assert(client:send {
           methd = "GET",
-          path = "/upstreams/"..upstream_name.."/targets/",
+          path = "/upstreams/" .. upstream_name .. "/targets/",
           body = "this fails if decoded as json",
           headers = {
             ["Content-Type"] = "application/json",
@@ -256,7 +256,7 @@ describe("Admin API", function()
         it("data property is an empty array", function()
           local res = assert(client:send {
             method = "GET",
-            path = "/upstreams/"..upstream_name2.."/targets/",
+            path = "/upstreams/" .. upstream_name2 .. "/targets/",
           })
           local body = assert.response(res).has.status(200)
           local json = cjson.decode(body)

@@ -5,7 +5,7 @@ local current_cache
 local caches = { "lua", "shm" }
 local function do_it(desc, func)
   for _, cache in ipairs(caches) do
-    it("[cache="..cache.."] "..desc,
+    it("[cache=" .. cache .. "] " .. desc,
       function(...)
         current_cache = cache
         return func(...)

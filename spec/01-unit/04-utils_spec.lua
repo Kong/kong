@@ -443,15 +443,15 @@ describe("Utils", function()
           assert.are.same(name, (utils.check_hostname(name)))
         end
         for _, name in ipairs(valids) do
-          assert.are.same({ [1] = name, [2] = 80}, { utils.check_hostname(name..":80")})
+          assert.are.same({ [1] = name, [2] = 80}, { utils.check_hostname(name .. ":80")})
         end
         for _, name in ipairs(valids) do
-          assert.is_nil((utils.check_hostname(name..":xx")))
-          assert.is_nil((utils.check_hostname(name..":99999")))
+          assert.is_nil((utils.check_hostname(name .. ":xx")))
+          assert.is_nil((utils.check_hostname(name .. ":99999")))
         end
         for _, name in ipairs(invalids) do
           assert.is_nil((utils.check_hostname(name)))
-          assert.is_nil((utils.check_hostname(name..":80")))
+          assert.is_nil((utils.check_hostname(name .. ":80")))
         end
       end)
       it("validates addresses", function()
@@ -494,13 +494,13 @@ describe("Utils", function()
         assert.are.equal("mashape.com:80", utils.format_host(utils.normalize_ip("mashape.com:80")))
         -- passthrough errors
         local one, two = utils.format_host(utils.normalize_ipv4("1.2.3.4.5"))
-        assert.are.equal("nilstring", type(one)..type(two))
-        local one, two = utils.format_host(utils.normalize_ipv6("not ipv6 ..."))
-        assert.are.equal("nilstring", type(one)..type(two))
+        assert.are.equal("nilstring", type(one) .. type(two))
+        local one, two = utils.format_host(utils.normalize_ipv6("not ipv6..."))
+        assert.are.equal("nilstring", type(one) .. type(two))
         local one, two = utils.format_host(utils.check_hostname("//bad..name\\:123"))
-        assert.are.equal("nilstring", type(one)..type(two))
+        assert.are.equal("nilstring", type(one) .. type(two))
         local one, two = utils.format_host(utils.normalize_ip("m a s h a p e.com:80"))
-        assert.are.equal("nilstring", type(one)..type(two))
+        assert.are.equal("nilstring", type(one) .. type(two))
       end)
     end)
   end)

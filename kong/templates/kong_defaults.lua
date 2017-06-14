@@ -31,9 +31,12 @@ admin_ssl_cert_key = NONE
 upstream_keepalive = 60
 server_tokens = on
 latency_tokens = on
+trusted_ips = NONE
 real_ip_header = X-Real-IP
 real_ip_recursive = off
-trusted_ips = NONE
+client_max_body_size = 0
+client_body_buffer_size = 8k
+error_default_type = text/plain
 
 database = postgres
 pg_host = 127.0.0.1

@@ -29,9 +29,11 @@ local file_descriptors = {}
 -- @param `conf`     Configuration table, holds http endpoint details
 -- @param `message`  Message to be logged
 local function log(premature, conf, message)
-  if premature then return end
+  if premature then
+    return
+  end
 
-  local msg = cjson.encode(message).."\n"
+  local msg = cjson.encode(message) .. "\n"
 
   local fd = file_descriptors[conf.path]
   

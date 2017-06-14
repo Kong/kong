@@ -15,7 +15,7 @@ local ngx_req_set_body_data = ngx.req.set_body_data
 local ngx_encode_args = ngx.encode_args
 local type = type
 
-local _realm = 'Key realm="'.._KONG._NAME..'"'
+local _realm = 'Key realm="' .. _KONG._NAME .. '"'
 
 local KeyAuthHandler = BasePlugin:extend()
 
@@ -39,7 +39,7 @@ local function load_consumer(consumer_id, anonymous)
   local result, err = singletons.dao.consumers:find { id = consumer_id }
   if not result then
     if anonymous and not err then
-      err = 'anonymous consumer "'..consumer_id..'" not found'
+      err = 'anonymous consumer "' .. consumer_id .. '" not found'
     end
     return nil, err
   end

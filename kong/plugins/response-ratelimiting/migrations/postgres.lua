@@ -37,14 +37,18 @@ return {
     name = "2016-08-04-321512_response-rate-limiting_policies",
     up = function(_, _, dao)
       local rows, err = dao.plugins:find_all {name = "response-ratelimiting"}
-      if err then return err end
+      if err then
+        return err
+      end
 
       for i = 1, #rows do
         local response_rate_limiting = rows[i]
 
         -- Delete the old one to avoid conflicts when inserting the new one
         local _, err = dao.plugins:delete(response_rate_limiting)
-        if err then return err end
+        if err then
+          return err
+        end
 
         local _, err = dao.plugins:insert {
           name = "response-ratelimiting",
@@ -64,7 +68,9 @@ return {
             fault_tolerant = response_rate_limiting.config.continue_on_error
           }
         }
-        if err then return err end
+        if err then
+          return err
+        end
       end
     end
   }

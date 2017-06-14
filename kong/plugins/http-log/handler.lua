@@ -22,7 +22,7 @@ local HTTPS = "https"
 local function generate_post_payload(method, content_type, parsed_url, body)
   local url
   if parsed_url.query then
-    url = parsed_url.path .. "?".. parsed_url.query
+    url = parsed_url.path .. "?" .. parsed_url.query
   else
     url = parsed_url.path
   end
@@ -66,8 +66,10 @@ end
 -- @param `body` raw http body to be logged
 -- @param `name` the plugin name (used for logging purposes in case of errors etc.)
 local function log(premature, conf, body, name)
-  if premature then return end
-  name = "["..name.."] "
+  if premature then
+    return
+  end
+  name = "[" .. name .. "] "
   
   local ok, err
   local parsed_url = parse_url(conf.http_endpoint)
@@ -79,25 +81,25 @@ local function log(premature, conf, body, name)
 
   ok, err = sock:connect(host, port)
   if not ok then
-    ngx.log(ngx.ERR, name.."failed to connect to "..host..":"..tostring(port)..": ", err)
+    ngx.log(ngx.ERR, name .. "failed to connect to " .. host .. ":" .. tostring(port) .. ": ", err)
     return
   end
 
   if parsed_url.scheme == HTTPS then
     local _, err = sock:sslhandshake(true, host, false)
     if err then
-      ngx.log(ngx.ERR, name.."failed to do SSL handshake with "..host..":"..tostring(port)..": ", err)
+      ngx.log(ngx.ERR, name .. "failed to do SSL handshake with " .. host .. ":" .. tostring(port) .. ": ", err)
     end
   end
 
   ok, err = sock:send(generate_post_payload(conf.method, conf.content_type, parsed_url, body))
   if not ok then
-    ngx.log(ngx.ERR, name.."failed to send data to "..host..":"..tostring(port)..": ", err)
+    ngx.log(ngx.ERR, name .. "failed to send data to " .. host .. ":" .. tostring(port) .. ": ", err)
   end
 
   ok, err = sock:setkeepalive(conf.keepalive)
   if not ok then
-    ngx.log(ngx.ERR, name.."failed to keepalive to "..host..":"..tostring(port)..": ", err)
+    ngx.log(ngx.ERR, name .. "failed to keepalive to " .. host .. ":" .. tostring(port) .. ": ", err)
     return
   end
 end
@@ -120,7 +122,7 @@ function HttpLogHandler:log(conf)
 
   local ok, err = ngx.timer.at(0, log, conf, self:serialize(ngx, conf), self._name)
   if not ok then
-    ngx.log(ngx.ERR, "["..self._name.."] failed to create timer: ", err)
+    ngx.log(ngx.ERR, "[" .. self._name .. "] failed to create timer: ", err)
   end
 end
 

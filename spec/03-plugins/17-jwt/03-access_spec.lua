@@ -79,7 +79,7 @@ describe("Plugin: jwt (access)", function()
     end)
     it("returns 401 if the claims do not contain the key to identify a secret", function()
       local jwt = jwt_encoder.encode(PAYLOAD, "foo")
-      local authorization = "Bearer "..jwt
+      local authorization = "Bearer " .. jwt
       local res = assert(proxy_client:send {
         method = "GET",
         path = "/request",
@@ -95,7 +95,7 @@ describe("Plugin: jwt (access)", function()
     it("returns 403 Forbidden if the iss does not match a credential", function()
       PAYLOAD.iss = "123456789"
       local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
-      local authorization = "Bearer "..jwt
+      local authorization = "Bearer " .. jwt
       local res = assert(proxy_client:send {
         method = "GET",
         path = "/request",
@@ -111,7 +111,7 @@ describe("Plugin: jwt (access)", function()
     it("returns 403 Forbidden if the signature is invalid", function()
       PAYLOAD.iss = jwt_secret.key
       local jwt = jwt_encoder.encode(PAYLOAD, "foo")
-      local authorization = "Bearer "..jwt
+      local authorization = "Bearer " .. jwt
       local res = assert(proxy_client:send {
         method = "GET",
         path = "/request",
@@ -127,7 +127,7 @@ describe("Plugin: jwt (access)", function()
     it("returns 403 Forbidden if the alg does not match the credential", function()
       local header = {typ = "JWT", alg = 'RS256'}
       local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret, 'HS256', header)
-      local authorization = "Bearer "..jwt
+      local authorization = "Bearer " .. jwt
       local res = assert(proxy_client:send {
         method = "GET",
         path = "/request",
@@ -146,7 +146,7 @@ describe("Plugin: jwt (access)", function()
     it("proxies the request with token and consumer headers if it was verified", function()
       PAYLOAD.iss = jwt_secret.key
       local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
-      local authorization = "Bearer "..jwt
+      local authorization = "Bearer " .. jwt
       local res = assert(proxy_client:send {
         method = "GET",
         path = "/request",
@@ -163,7 +163,7 @@ describe("Plugin: jwt (access)", function()
     it("proxies the request if secret key is stored in a field other than iss", function()
       PAYLOAD.aud = jwt_secret.key
       local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
-      local authorization = "Bearer "..jwt
+      local authorization = "Bearer " .. jwt
       local res = assert(proxy_client:send {
         method = "GET",
         path = "/request",
@@ -182,7 +182,7 @@ describe("Plugin: jwt (access)", function()
       local base64_secret = ngx.encode_base64(base64_jwt_secret.secret)
       local res = assert(admin_client:send {
         method = "PATCH",
-        path = "/consumers/jwt_tests_base64_consumer/jwt/"..base64_jwt_secret.id,
+        path = "/consumers/jwt_tests_base64_consumer/jwt/" .. base64_jwt_secret.id,
         body = {
           key = base64_jwt_secret.key,
           secret = base64_secret},
@@ -193,7 +193,7 @@ describe("Plugin: jwt (access)", function()
       assert.res_status(200, res)
 
       local jwt = jwt_encoder.encode(PAYLOAD, original_secret)
-      local authorization = "Bearer "..jwt
+      local authorization = "Bearer " .. jwt
       local res = assert(proxy_client:send {
         method = "GET",
         path = "/request",
@@ -211,7 +211,7 @@ describe("Plugin: jwt (access)", function()
       local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
       local res = assert(proxy_client:send {
         method = "GET",
-        path = "/request/?jwt="..jwt,
+        path = "/request/?jwt=" .. jwt,
         headers = {
           ["Host"] = "jwt.com"
         }
@@ -223,7 +223,7 @@ describe("Plugin: jwt (access)", function()
       local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
       local res = assert(proxy_client:send {
         method = "GET",
-        path = "/request/?token="..jwt,
+        path = "/request/?token=" .. jwt,
         headers = {
           ["Host"] = "jwt2.com"
         }
@@ -236,7 +236,7 @@ describe("Plugin: jwt (access)", function()
     it("verifies JWT", function()
       PAYLOAD.iss = rsa_jwt_secret_1.key
       local jwt = jwt_encoder.encode(PAYLOAD, fixtures.rs256_private_key, 'RS256')
-      local authorization = "Bearer "..jwt
+      local authorization = "Bearer " .. jwt
       local res = assert(proxy_client:send {
         method = "GET",
         path = "/request",
@@ -252,7 +252,7 @@ describe("Plugin: jwt (access)", function()
     it("identifies Consumer", function()
       PAYLOAD.iss = rsa_jwt_secret_2.key
       local jwt = jwt_encoder.encode(PAYLOAD, fixtures.rs256_private_key, 'RS256')
-      local authorization = "Bearer "..jwt
+      local authorization = "Bearer " .. jwt
       local res = assert(proxy_client:send {
         method = "GET",
         path = "/request",
@@ -275,7 +275,7 @@ describe("Plugin: jwt (access)", function()
       local jwt = jwt_encoder.encode(payload, jwt_secret.secret)
       local res = assert(proxy_client:send {
         method = "GET",
-        path = "/request/?jwt="..jwt,
+        path = "/request/?jwt=" .. jwt,
         headers = {
           ["Host"] = "jwt3.com"
         }
@@ -292,7 +292,7 @@ describe("Plugin: jwt (access)", function()
       local jwt = jwt_encoder.encode(payload, jwt_secret.secret)
       local res = assert(proxy_client:send {
         method = "GET",
-        path = "/request/?jwt="..jwt,
+        path = "/request/?jwt=" .. jwt,
         headers = {
           ["Host"] = "jwt3.com"
         }
@@ -309,7 +309,7 @@ describe("Plugin: jwt (access)", function()
       local jwt = jwt_encoder.encode(payload, jwt_secret.secret)
       local res = assert(proxy_client:send {
         method = "GET",
-        path = "/request/?jwt="..jwt,
+        path = "/request/?jwt=" .. jwt,
         headers = {
           ["Host"] = "jwt3.com"
         }
@@ -323,7 +323,7 @@ describe("Plugin: jwt (access)", function()
     it("works with right credentials and anonymous", function()
       PAYLOAD.iss = jwt_secret.key
       local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
-      local authorization = "Bearer "..jwt
+      local authorization = "Bearer " .. jwt
       local res = assert(proxy_client:send {
         method = "GET",
         path = "/request",
@@ -420,7 +420,7 @@ describe("Plugin: jwt (access)", function()
       consumer_id = user2.id
     })
     PAYLOAD.iss = jwt_secret.key
-    jwt_token = "Bearer "..jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+    jwt_token = "Bearer " .. jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
 
     assert(helpers.start_kong())
     client = helpers.proxy_client()

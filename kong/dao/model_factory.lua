@@ -41,7 +41,7 @@ return setmetatable({}, {
       for _, key in pairs(schema.primary_key) do
         -- check for uuid here. not all dbs might have ids of type uuid however
         if schema.fields[key].type == "id" and not utils.is_valid_uuid(self[key]) then
-          return nil, nil, nil, self[key].." is not a valid uuid"
+          return nil, nil, nil, self[key] .. " is not a valid uuid"
         end
         primary_keys[key] = self[key]
         primary_keys_idx[key] = true

@@ -107,7 +107,7 @@ describe("Plugin: ACL (hooks)", function()
       -- Check that the cache is populated
       local res = assert(admin_client:send {
         method = "GET",
-        path = "/cache/"..cache.acls_key(consumer1.id),
+        path = "/cache/" .. cache.acls_key(consumer1.id),
         headers = {}
       })
       assert.res_status(200, res)
@@ -115,7 +115,7 @@ describe("Plugin: ACL (hooks)", function()
       -- Delete ACL group (which triggers invalidation)
       local res = assert(admin_client:send {
         method = "DELETE",
-        path = "/consumers/consumer1/acls/"..acl1.id,
+        path = "/consumers/consumer1/acls/" .. acl1.id,
         headers = {}
       })
       assert.res_status(204, res)
@@ -124,7 +124,7 @@ describe("Plugin: ACL (hooks)", function()
       helpers.wait_until(function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/cache/"..cache.acls_key(consumer1.id),
+          path = "/cache/" .. cache.acls_key(consumer1.id),
           headers = {}
         })
         res:read_body()
@@ -165,7 +165,7 @@ describe("Plugin: ACL (hooks)", function()
       -- Check that the cache is populated
       local res = assert(admin_client:send {
         method = "GET",
-        path = "/cache/"..cache.acls_key(consumer1.id),
+        path = "/cache/" .. cache.acls_key(consumer1.id),
         headers = {}
       })
       assert.res_status(200, res)
@@ -173,7 +173,7 @@ describe("Plugin: ACL (hooks)", function()
       -- Update ACL group (which triggers invalidation)
       local res = assert(admin_client:send {
         method = "PATCH",
-        path = "/consumers/consumer1/acls/"..acl1.id,
+        path = "/consumers/consumer1/acls/" .. acl1.id,
         headers = {
           ["Content-Type"] = "application/json"
         },
@@ -187,7 +187,7 @@ describe("Plugin: ACL (hooks)", function()
       helpers.wait_until(function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/cache/"..cache.acls_key(consumer1.id),
+          path = "/cache/" .. cache.acls_key(consumer1.id),
           headers = {}
         })
         res:read_body()
@@ -231,7 +231,7 @@ describe("Plugin: ACL (hooks)", function()
       -- Check that the cache is populated
       local res = assert(admin_client:send {
         method = "GET",
-        path = "/cache/"..cache.acls_key(consumer1.id),
+        path = "/cache/" .. cache.acls_key(consumer1.id),
         headers = {}
       })
       assert.res_status(200, res)
@@ -248,7 +248,7 @@ describe("Plugin: ACL (hooks)", function()
       helpers.wait_until(function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/cache/"..cache.acls_key(consumer1.id),
+          path = "/cache/" .. cache.acls_key(consumer1.id),
           headers = {}
         })
         res:read_body()
@@ -259,7 +259,7 @@ describe("Plugin: ACL (hooks)", function()
       helpers.wait_until(function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/cache/"..cache.keyauth_credential_key("apikey123"),
+          path = "/cache/" .. cache.keyauth_credential_key("apikey123"),
           headers = {}
         })
         res:read_body()

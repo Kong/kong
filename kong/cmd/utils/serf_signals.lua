@@ -77,7 +77,9 @@ function _M.start(kong_config, dao)
 
   -- make sure Serf is in PATH
   local ok, err = check_serf_bin(kong_config)
-  if not ok then return nil, err end
+  if not ok then
+    return nil, err
+  end
 
   local serf = Serf.new(kong_config, dao)
   local args = setmetatable({
@@ -90,8 +92,8 @@ function _M.start(kong_config, dao)
     ["-profile"] = kong_config.cluster_profile,
     ["-node"] = serf.node_name,
     ["-event-handler"] = "member-join,member-leave,member-failed,"
-                       .."member-update,member-reap,user:"
-                       ..serf_event_name.."="..kong_config.serf_event
+                       .. "member-update,member-reap,user:"
+                       .. serf_event_name .. "=" .. kong_config.serf_event
   }, Serf.args_mt)
 
   local cmd = string.format("nohup %s agent %s > %s 2>&1 & echo $! > %s",
@@ -102,7 +104,9 @@ function _M.start(kong_config, dao)
 
   -- start Serf agent
   local ok = pl_utils.execute(cmd)
-  if not ok then return nil end
+  if not ok then
+    return nil
+  end
 
   log.verbose("waiting for serf agent to be running")
 
@@ -120,22 +124,28 @@ function _M.start(kong_config, dao)
     local tlogs = pl_stringx.split(logs, "\n")
     local err = string.gsub(tlogs[#tlogs-1], "==> ", "")
     err = pl_stringx.strip(err)
-    return nil, "could not start serf: "..err
+    return nil, "could not start serf: " .. err
   end
 
   log.verbose("serf agent started")
 
   -- cleanup current node from cluster to prevent inconsistency of data
   local ok, err = serf:cleanup()
-  if not ok then return nil, err end
+  if not ok then
+    return nil, err
+  end
 
   log.verbose("auto-joining serf cluster")
   local ok, err = serf:autojoin()
-  if not ok then return nil, err end
+  if not ok then
+    return nil, err
+  end
 
   log.verbose("registering serf node in datastore")
   local ok, err = serf:add_node()
-  if not ok then return nil, err end
+  if not ok then
+    return nil, err
+  end
 
   log.verbose("cluster joined and node registered in datastore")
 
@@ -146,7 +156,9 @@ function _M.stop(kong_config, dao)
   log.verbose("leaving serf cluster")
   local serf = Serf.new(kong_config, dao)
   local ok, err = serf:leave()
-  if not ok then return nil, err end
+  if not ok then
+    return nil, err
+  end
   log.verbose("left serf cluster")
 
   log.verbose("stopping serf agent at %s", kong_config.serf_pid)

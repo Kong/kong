@@ -16,7 +16,7 @@ local function clean_history(upstream_id, dao_factory)
   if target_history then
     -- sort the targets
     for _,target in ipairs(target_history) do
-      target.order = target.created_at..":"..target.id
+      target.order = target.created_at .. ":" .. target.id
     end
 
     -- sort table in reverse order
@@ -136,7 +136,7 @@ return {
       --sort and walk based on target and creation time
       for _, target in ipairs(target_history) do
         target.order = target.target .. ":" ..
-          target.created_at .. ":" ..target.id
+          target.created_at .. ":" .. target.id
       end
       table.sort(target_history, function(a, b) return a.order > b.order end)
 

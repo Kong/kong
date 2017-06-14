@@ -17,9 +17,9 @@ end
 
 function error_mt.__concat(a, b)
   if getmetatable(a) == error_mt then
-    return tostring(a)..b
+    return tostring(a) .. b
   else
-    return a..tostring(b)
+    return a .. tostring(b)
   end
 end
 
@@ -34,14 +34,14 @@ local serializers = {
   [ERRORS.unique] = function(tbl)
     local ret = {}
     for k, v in pairs(tbl) do
-      ret[k] = "already exists with value '"..v.."'"
+      ret[k] = "already exists with value '" .. v .. "'"
     end
     return ret
   end,
   [ERRORS.foreign] = function(tbl)
     local ret = {}
     for k, v in pairs(tbl) do
-      ret[k] = "does not exist with value '"..v.."'"
+      ret[k] = "does not exist with value '" .. v .. "'"
     end
     return ret
   end

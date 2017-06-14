@@ -19,7 +19,7 @@ error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 >-- reset_timedout_connection on; # disabled until benchmarked
 > end
 
-client_max_body_size 0;
+client_max_body_size ${{CLIENT_MAX_BODY_SIZE}};
 proxy_ssl_server_name on;
 underscores_in_headers on;
 
@@ -74,6 +74,7 @@ server {
     access_log ${{PROXY_ACCESS_LOG}};
     error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
+    client_body_buffer_size ${{CLIENT_BODY_BUFFER_SIZE}};
 
 > if ssl then
 > if real_ip_header == "proxy_protocol" then
@@ -110,6 +111,7 @@ server {
         set $upstream_upgrade            '';
         set $upstream_connection         '';
         set $upstream_scheme             '';
+        set $upstream_uri                '';
         set $upstream_x_forwarded_for    '';
         set $upstream_x_forwarded_proto  '';
         set $upstream_x_forwarded_host   '';
@@ -135,7 +137,7 @@ server {
         proxy_pass_header  Server;
         proxy_pass_header  Date;
         proxy_ssl_name     $upstream_host;
-        proxy_pass         $upstream_scheme://kong_upstream;
+        proxy_pass         $upstream_scheme://kong_upstream$upstream_uri;
 
         header_filter_by_lua_block {
             kong.header_filter()

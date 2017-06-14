@@ -103,13 +103,13 @@ local function retrieve_scopes(parameters, conf)
   if conf.scopes and scope then
     for v in scope:gmatch("%S+") do
       if not utils.table_contains(conf.scopes, v) then
-        return false, {[ERROR] = "invalid_scope", error_description = "\""..v.."\" is an invalid "..SCOPE}
+        return false, {[ERROR] = "invalid_scope", error_description = "\"" .. v .. "\" is an invalid " .. SCOPE}
       else
         table.insert(scopes, v)
       end
     end
   elseif not scope and conf.mandatory_scope then
-    return false, {[ERROR] = "invalid_scope", error_description = "You must specify a "..SCOPE}
+    return false, {[ERROR] = "invalid_scope", error_description = "You must specify a " .. SCOPE}
   end
 
   return true, scopes
@@ -135,7 +135,7 @@ local function authorize(conf)
       local response_type = parameters[RESPONSE_TYPE]
       -- Check response_type
       if not ((response_type == CODE and conf.enable_authorization_code) or (conf.enable_implicit_grant and response_type == TOKEN)) then -- Authorization Code Grant (http://tools.ietf.org/html/rfc6749#section-4.1.1)
-        response_params = {[ERROR] = "unsupported_response_type", error_description = "Invalid "..RESPONSE_TYPE}
+        response_params = {[ERROR] = "unsupported_response_type", error_description = "Invalid " .. RESPONSE_TYPE}
       end
 
       -- Check scopes
@@ -153,7 +153,7 @@ local function authorize(conf)
         redirect_uri = parameters[REDIRECT_URI] and parameters[REDIRECT_URI] or allowed_redirect_uris[1]
 
         if not utils.table_contains(allowed_redirect_uris, redirect_uri) then
-          response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REDIRECT_URI.. " that does not match with any redirect_uri created with the application" }
+          response_params = {[ERROR] = "invalid_request", error_description = "Invalid " .. REDIRECT_URI .. " that does not match with any redirect_uri created with the application" }
           -- redirect_uri used in this case is the first one registered with the application
           redirect_uri = allowed_redirect_uris[1]
         end
@@ -220,7 +220,7 @@ end
 local function retrieve_client_credentials(parameters)
   local client_id, client_secret, from_authorization_header
   local authorization_header = ngx.req.get_headers()["authorization"]
-  if parameters[CLIENT_ID] then
+  if parameters[CLIENT_ID] and parameters[CLIENT_SECRET] then
     client_id = parameters[CLIENT_ID]
     client_secret = parameters[CLIENT_SECRET]
   elseif authorization_header then
@@ -267,7 +267,7 @@ local function issue_token(conf)
             grant_type == GRANT_REFRESH_TOKEN or
             (conf.enable_client_credentials and grant_type == GRANT_CLIENT_CREDENTIALS) or
             (conf.enable_password_grant and grant_type == GRANT_PASSWORD)) then
-      response_params = {[ERROR] = "unsupported_grant_type", error_description = "Invalid "..GRANT_TYPE}
+      response_params = {[ERROR] = "unsupported_grant_type", error_description = "Invalid " .. GRANT_TYPE}
     end
 
     local client_id, client_secret, from_authorization_header = retrieve_client_credentials(parameters)
@@ -282,7 +282,7 @@ local function issue_token(conf)
     else
       local redirect_uri = parameters[REDIRECT_URI] and parameters[REDIRECT_URI] or allowed_redirect_uris[1]
       if not utils.table_contains(allowed_redirect_uris, redirect_uri) then
-        response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REDIRECT_URI.. " that does not match with any redirect_uri created with the application" }
+        response_params = {[ERROR] = "invalid_request", error_description = "Invalid " .. REDIRECT_URI .. " that does not match with any redirect_uri created with the application" }
       end
     end
 
@@ -302,9 +302,9 @@ local function issue_token(conf)
         end
         local authorization_code = code and singletons.dao.oauth2_authorization_codes:find_all({api_id = api_id, code = code})[1]
         if not authorization_code then
-          response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CODE}
+          response_params = {[ERROR] = "invalid_request", error_description = "Invalid " .. CODE}
         elseif authorization_code.credential_id ~= client.id then
-          response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CODE}
+          response_params = {[ERROR] = "invalid_request", error_description = "Invalid " .. CODE}
         else
           response_params = generate_token(conf, ngx.ctx.api, client, authorization_code.authenticated_userid, authorization_code.scope, state)
           singletons.dao.oauth2_authorization_codes:delete({id=authorization_code.id}) -- Delete authorization code so it cannot be reused
@@ -345,7 +345,7 @@ local function issue_token(conf)
         end
         local token = refresh_token and singletons.dao.oauth2_tokens:find_all({api_id = api_id, refresh_token = refresh_token})[1]
         if not token then
-          response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REFRESH_TOKEN}
+          response_params = {[ERROR] = "invalid_request", error_description = "Invalid " .. REFRESH_TOKEN}
         else
           -- Check that the token belongs to the client application
           if token.credential_id ~= client.id then
@@ -454,7 +454,7 @@ local function load_consumer_into_memory(consumer_id, anonymous)
   local result, err = singletons.dao.consumers:find { id = consumer_id }
   if not result then
     if anonymous and not err then
-      err = 'anonymous consumer "'..consumer_id..'" not found'
+      err = 'anonymous consumer "' .. consumer_id .. '" not found'
     end
     return nil, err
   end

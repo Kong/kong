@@ -74,15 +74,15 @@ local function create_hash(request, hmac_params, headers)
     if not header_value then
       if header == "request-line" then
         -- request-line in hmac headers list
-        signing_string = signing_string..split(request.raw_header(), "\r\n")[1]
+        signing_string = signing_string .. split(request.raw_header(), "\r\n")[1]
       else
-        signing_string = signing_string..header..":"
+        signing_string = signing_string .. header .. ":"
       end
     else
-      signing_string = signing_string..header..":".." "..header_value
+      signing_string = signing_string .. header .. ":" .. " " .. header_value
     end
     if i < count then
-      signing_string = signing_string.."\n"
+      signing_string = signing_string .. "\n"
     end
   end
   return ngx_sha1(hmac_params.secret, signing_string)
@@ -159,7 +159,7 @@ local function load_consumer_into_memory(consumer_id, anonymous)
   local result, err = singletons.dao.consumers:find { id = consumer_id }
   if not result then
     if anonymous and not err then
-      err = 'anonymous consumer "'..consumer_id..'" not found'
+      err = 'anonymous consumer "' .. consumer_id .. '" not found'
     end
     return nil, err
   end

@@ -149,6 +149,79 @@ describe("Router", function()
     end)
   end)
 
+  describe("URI arguments (querystring)", function()
+
+    setup(function()
+      insert_apis {
+        {
+          name = "api-1",
+          upstream_url = "http://httpbin.org",
+          hosts = { "example.com" },
+        },
+        {
+          name = "api-2",
+          upstream_url = "http://localhost:9999",
+          hosts = { "localhost" },
+        },
+      }
+
+      assert(helpers.start_kong {
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      })
+    end)
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("preserves URI arguments", function()
+      local res = assert(client:send {
+        method = "GET",
+        path   = "/get",
+        query  = {
+          foo   = "bar",
+          hello = "world",
+        },
+        headers = {
+          ["Host"] = "example.com",
+        },
+      })
+
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.equal("bar", json.args.foo)
+      assert.equal("world", json.args.hello)
+    end)
+
+    it("does proxy an empty querystring if URI does not contain arguments", function()
+      local res = assert(client:send {
+        method = "GET",
+        path   = "/get?",
+        headers = {
+          ["Host"] = "localhost",
+        },
+      })
+
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.matches("/get%?$", json.vars.request_uri)
+    end)
+
+    it("does proxy a querystring with an empty value", function()
+      local res = assert(client:send {
+        method = "GET",
+        path   = "/get?hello",
+        headers = {
+          ["Host"] = "example.com",
+        },
+      })
+
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.matches("/get%?hello$", json.url)
+    end)
+  end)
+
   describe("percent-encoded URIs", function()
 
     setup(function()
@@ -277,6 +350,66 @@ describe("Router", function()
         }
       })
       assert.response(res).has_status(200)
+    end)
+  end)
+
+  describe("strip_uri", function()
+
+    setup(function()
+      insert_apis {
+        {
+          name         = "api-strip-uri",
+          upstream_url = "http://httpbin.org",
+          uris         = { "/x/y/z", "/z/y/x" },
+          strip_uri    = true,
+        },
+      }
+
+      assert(helpers.start_kong())
+    end)
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    describe(" = true", function()
+      it("strips subsequent calls to an API with different [uris]", function()
+        local res_uri_1 = assert(client:send {
+          method = "GET",
+          path   = "/x/y/z/get",
+        })
+
+        local body = assert.res_status(200, res_uri_1)
+        local json = cjson.decode(body)
+        assert.matches("httpbin.org/get", json.url, nil, true)
+
+        local res_uri_2 = assert(client:send {
+          method = "GET",
+          path   = "/z/y/x/get",
+        })
+
+        body = assert.res_status(200, res_uri_2)
+        json = cjson.decode(body)
+        assert.matches("httpbin.org/get", json.url, nil, true)
+
+        local res_2_uri_1 = assert(client:send {
+          method = "GET",
+          path   = "/x/y/z/get",
+        })
+
+        body = assert.res_status(200, res_2_uri_1)
+        json = cjson.decode(body)
+        assert.matches("httpbin.org/get", json.url, nil, true)
+
+        local res_2_uri_2 = assert(client:send {
+          method = "GET",
+          path   = "/x/y/z/get",
+        })
+
+        body = assert.res_status(200, res_2_uri_2)
+        json = cjson.decode(body)
+        assert.matches("httpbin.org/get", json.url, nil, true)
+      end)
     end)
   end)
 

@@ -2,7 +2,7 @@ local BasePlugin = require "kong.plugins.base_plugin"
 local responses = require "kong.tools.responses"
 local meta = require "kong.meta"
 
-local server_header = meta._NAME.."/"..meta._VERSION
+local server_header = meta._NAME .. "/" .. meta._VERSION
 
 local RequestTerminationHandler = BasePlugin:extend()
 
