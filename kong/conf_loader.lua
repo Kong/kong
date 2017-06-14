@@ -97,8 +97,10 @@ local CONF_INFERENCES = {
   dns_resolver = {typ = "array"},
   dns_hostsfile = {typ = "string"},
   dns_order = {typ = "array"},
+  dns_stale_ttl = {typ = "number"},
   dns_not_found_ttl = {typ = "number"},
   dns_error_ttl = {typ = "number"},
+  dns_no_sync = {typ = "boolean"},
 
   ssl = {typ = "boolean"},
   client_ssl = {typ = "boolean"},

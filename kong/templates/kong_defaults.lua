@@ -69,8 +69,10 @@ db_cache_ttl = 3600
 dns_resolver = NONE
 dns_hostsfile = /etc/hosts
 dns_order = LAST,SRV,A,CNAME
-dns_not_found_ttl = 30.0
-dns_error_ttl = 1.0
+dns_stale_ttl = 4
+dns_not_found_ttl = 30
+dns_error_ttl = 1
+dns_no_sync = off
 
 lua_code_cache = on
 lua_socket_pool_size = 30
