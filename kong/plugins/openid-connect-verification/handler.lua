@@ -308,9 +308,9 @@ function OICVerificationHandler:access(conf)
   end
 
   local sco = conf.session_cookie
-  if sco then
+  if sco and sco ~= "" then
     local value = var["cookie_" .. sco]
-    if not value then
+    if not value or value == "" then
       return unauthorized(iss, "session cookie was not specified for session claim verification")
     end
 
