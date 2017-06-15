@@ -307,6 +307,32 @@ function OICVerificationHandler:access(conf)
     end
   end
 
+  local sco = conf.session_cookie
+  if sco then
+    local value = var["cookie_" .. sco]
+    if not value then
+      return unauthorized(iss, "session cookie was not specified for session claim verification")
+    end
+
+    local act = tks.access_token
+    if not act then
+      return unauthorized(iss, "access token was not specified for session claim verification")
+    end
+    if type(act) ~= "table" then
+      return unauthorized(iss, "opaque access token was specified for session claim verification")
+    end
+
+    local claim = act.payload[conf.session_claim or "sid"]
+
+    if not claim then
+      return unauthorized(iss, "session claim (" .. claim .. ") was not specified in access token")
+    end
+
+    if claim ~= value then
+      return unauthorized(iss, "invalid session claim (" .. claim .. ") was specified in access token")
+    end
+  end
+
   if keys > 0 then
     jwks, err = cjson.encode(jwks)
     if not jwks then

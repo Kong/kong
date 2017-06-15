@@ -20,12 +20,6 @@ local issuers = {}
 
 
 function issuers.init(conf)
-  local opts = {
-    http_version = conf.http_version               or 1.1,
-    ssl_verify   = conf.ssl_verify == nil and true or conf.ssl_verify,
-    timeout      = conf.timeout                    or 10000,
-  }
-
   log(NOTICE, "loading openid connect configuration for ", conf.issuer, " from database")
 
   local issuer = conf.issuer
@@ -40,6 +34,12 @@ function issuers.init(conf)
   end
 
   log(NOTICE, "loading openid connect configuration for ", issuer, " using discovery")
+
+  local opts = {
+    http_version = conf.http_version               or 1.1,
+    ssl_verify   = conf.ssl_verify == nil and true or conf.ssl_verify,
+    timeout      = conf.timeout                    or 10000,
+  }
 
   local claims, err = configuration.load(issuer, opts)
   if not claims then
@@ -87,12 +87,30 @@ function issuers.init(conf)
   return data
 end
 
+
 function issuers.load(conf)
   local issuer = conf.issuer
   if sub(issuer, -1) == "/" then
       issuer = sub(issuer, 1, #issuer - 1)
   end
   return cache.get_or_set("oic:" .. issuer, conf.ttl, issuers.init, conf)
+end
+
+
+local consumers = {}
+
+
+function consumers.init(sub)
+  local result, err = singletons.dao.consumers:find_all { custom_id = sub }
+  if not result then
+    return nil, err
+  end
+  return result[1]
+end
+
+
+function consumers.load(conf, sub)
+  return cache.get_or_set(conf.issuer .. "#" .. sub, conf.ttl, consumers.init, sub)
 end
 
 
@@ -104,6 +122,7 @@ end
 
 
 return {
-  issuers = issuers,
-  revoked = revoked,
+  issuers   = issuers,
+  consumers = consumers,
+  revoked   = revoked,
 }

@@ -51,6 +51,16 @@ local function request_url()
 end
 
 
+local function subject(token)
+  if token and type(token) == "table" then
+    local payload = token.payload
+    if payload and type(payload) == "table" then
+      return payload.sub
+    end
+  end
+end
+
+
 local function unauthorized(session, iss, err)
   if err then
     log(NOTICE, err)
@@ -161,8 +171,10 @@ function OICAuthenticationHandler:access(conf)
     -- TODO: call userinfo endpoint
 
     local expires = (tonumber(toks.expires_in) or 3600) + time()
+    local subject = subject(decoded.id_token) or subject(decoded.access_token)
 
     s.data = {
+      subject = subject,
       tokens  = toks,
       expires = expires,
     }

@@ -14,6 +14,7 @@ local header     = ngx.header
 local set_header = ngx.req.set_header
 local tonumber   = tonumber
 local concat     = table.concat
+local type       = type
 local find       = string.find
 local sub        = string.sub
 
@@ -51,6 +52,16 @@ local function request_url()
 end
 
 
+local function subject(token)
+  if token and type(token) == "table" then
+    local payload = token.payload
+    if payload and type(payload) == "table" then
+      return payload.sub
+    end
+  end
+end
+
+
 local function unauthorized(iss, err)
   if err then
     log(NOTICE, err)
@@ -59,7 +70,6 @@ local function unauthorized(iss, err)
   header["WWW-Authenticate"] = 'Bearer realm="' .. parts.host .. '"'
   return responses.send_HTTP_UNAUTHORIZED()
 end
-
 
 
 local OICProtectionHandler = BasePlugin:extend()
@@ -117,8 +127,8 @@ function OICProtectionHandler:access(conf)
     return responses.send_HTTP_UNAUTHORIZED()
   end
 
-  local data    = s.data
-  local toks    = data.tokens
+  local data = s.data
+  local toks = data.tokens
 
   local decoded
 
@@ -152,15 +162,16 @@ function OICProtectionHandler:access(conf)
     -- TODO: call userinfo endpoint to refresh?
 
     local expires = (tonumber(toks.expires_in) or 3600) + time()
+    local subject = subject(decoded.id_token) or subject(decoded.access_token) or data.subject
 
     if not toks.refresh_token then
       toks.refresh_token = refresh_token
     end
 
     s.data = {
+      subject = subject,
       tokens  = toks,
       expires = expires,
-      nonce   = data.nonce,
     }
     s:regenerate()
   end
