@@ -322,14 +322,15 @@ function OICVerificationHandler:access(conf)
       return unauthorized(iss, "opaque access token was specified for session claim verification")
     end
 
-    local claim = act.payload[conf.session_claim or "sid"]
+    local cname = conf.session_claim or "sid"
+    local claim = act.payload[cname]
 
     if not claim then
-      return unauthorized(iss, "session claim (" .. claim .. ") was not specified in access token")
+      return unauthorized(iss, "session claim (" .. cname .. ") was not specified in access token")
     end
 
     if claim ~= value then
-      return unauthorized(iss, "invalid session claim (" .. claim .. ") was specified in access token")
+      return unauthorized(iss, "invalid session claim (" .. cname .. ") was specified in access token")
     end
   end
 
