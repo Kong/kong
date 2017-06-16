@@ -510,4 +510,18 @@ return {
       DROP TABLE nodes;
     ]],
   },
+  {
+    name = "2017-06-16-283123_ttl_indexes",
+    up = [[
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('ttls_primary_uuid_value_idx')) IS NULL THEN
+          CREATE INDEX ttls_primary_uuid_value_idx ON ttls(primary_uuid_value);
+        END IF;
+      END$$;
+    ]],
+    down = [[
+      DROP INDEX ttls_primary_uuid_value_idx;
+    ]]
+  },
 }
