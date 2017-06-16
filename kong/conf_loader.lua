@@ -199,21 +199,31 @@ local function check_and_infer(conf)
   -- custom validations
   ---------------------
 
-  if conf.cassandra_lb_policy == "DCAwareRoundRobin" and
-     not conf.cassandra_local_datacenter then
-     errors[#errors+1] = "must specify 'cassandra_local_datacenter' when " ..
-                        "DCAwareRoundRobin policy is in use"
-  end
+  if conf.database == "cassandra" then
+    if conf.cassandra_lb_policy == "DCAwareRoundRobin" and
+      not conf.cassandra_local_datacenter then
+      errors[#errors+1] = "must specify 'cassandra_local_datacenter' when " ..
+      "DCAwareRoundRobin policy is in use"
+    end
 
-  for _, contact_point in ipairs(conf.cassandra_contact_points) do
-    local endpoint, err = utils.normalize_ip(contact_point)
-    if not endpoint then
-      errors[#errors+1] = "bad cassandra contact point '" .. contact_point ..
-                          "': " .. err
+    for _, contact_point in ipairs(conf.cassandra_contact_points) do
+      local endpoint, err = utils.normalize_ip(contact_point)
+      if not endpoint then
+        errors[#errors+1] = "bad cassandra contact point '" .. contact_point ..
+        "': " .. err
 
-    elseif endpoint.port then
-      errors[#errors+1] = "bad cassandra contact point '" .. contact_point ..
-                          "': port must be specified in cassandra_port"
+      elseif endpoint.port then
+        errors[#errors+1] = "bad cassandra contact point '" .. contact_point ..
+        "': port must be specified in cassandra_port"
+      end
+    end
+
+    -- cache settings check
+
+    if conf.db_update_propagation == 0 then
+      log.warn("You are using Cassandra but your 'db_update_propagation' " ..
+               "setting is set to '0' (default). Due to the distributed "  ..
+               "nature of Cassandra, you should increase this value.")
     end
   end
 

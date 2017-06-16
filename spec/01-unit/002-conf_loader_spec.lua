@@ -297,6 +297,7 @@ describe("Configuration loader", function()
     end)
     it("errors when hosts have a bad format in cassandra_contact_points", function()
       local conf, err = conf_loader(nil, {
+          database                 = "cassandra",
           cassandra_contact_points = [[some/really\bad/host\name,addr2]]
       })
       assert.equal([[bad cassandra contact point 'some/really\bad/host\name': invalid hostname: some/really\bad/host\name]], err)
@@ -304,6 +305,7 @@ describe("Configuration loader", function()
     end)
     it("errors when specifying a port in cassandra_contact_points", function()
       local conf, err = conf_loader(nil, {
+          database                 = "cassandra",
           cassandra_contact_points = "addr1:9042,addr2"
       })
       assert.equal("bad cassandra contact point 'addr1:9042': port must be specified in cassandra_port", err)
@@ -526,6 +528,7 @@ describe("Configuration loader", function()
     end)
     it("requires cassandra_local_datacenter if DCAwareRoundRobin is in use", function()
       local conf, err = conf_loader(nil, {
+        database            = "cassandra",
         cassandra_lb_policy = "DCAwareRoundRobin"
       })
       assert.is_nil(conf)
