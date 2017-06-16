@@ -449,4 +449,65 @@ return {
       ALTER TABLE plugins DROP CONSTRAINT plugins_id_key;
     ]],
   },
+  {
+    name = "2017-05-19-180200_cluster_events",
+    up = [[
+      CREATE TABLE IF NOT EXISTS cluster_events (
+          id uuid NOT NULL,
+          node_id uuid NOT NULL,
+          at TIMESTAMP WITH TIME ZONE NOT NULL,
+          nbf TIMESTAMP WITH TIME ZONE,
+          expire_at TIMESTAMP WITH TIME ZONE NOT NULL,
+          channel text,
+          data text,
+          PRIMARY KEY (id)
+      );
+
+      DO $$
+      BEGIN
+          IF (SELECT to_regclass('idx_cluster_events_at')) IS NULL THEN
+              CREATE INDEX idx_cluster_events_at ON cluster_events (at);
+          END IF;
+          IF (SELECT to_regclass('idx_cluster_events_channel')) IS NULL THEN
+              CREATE INDEX idx_cluster_events_channel ON cluster_events (channel);
+          END IF;
+      END$$;
+
+      CREATE OR REPLACE FUNCTION delete_expired_cluster_events() RETURNS trigger
+          LANGUAGE plpgsql
+          AS $$
+      BEGIN
+          DELETE FROM cluster_events WHERE expire_at <= NOW();
+          RETURN NEW;
+      END;
+      $$;
+
+      DO $$
+      BEGIN
+          IF NOT EXISTS(
+              SELECT FROM information_schema.triggers
+               WHERE event_object_table = 'cluster_events'
+                 AND trigger_name = 'delete_expired_cluster_events_trigger')
+          THEN
+              CREATE TRIGGER delete_expired_cluster_events_trigger
+               AFTER INSERT ON cluster_events
+               EXECUTE PROCEDURE delete_expired_cluster_events();
+          END IF;
+      END;
+      $$;
+    ]],
+    down = [[
+      DROP TABLE IF EXISTS cluster_events;
+      DROP FUNCTION IF EXISTS delete_expired_cluster_events;
+      DROP TRIGGER IF EXISTS delete_expired_cluster_events_trigger;
+    ]],
+  },
+  {
+    name = "2017-05-19-173100_remove_nodes_table",
+    up = [[
+      DELETE FROM ttls WHERE table_name = 'nodes';
+
+      DROP TABLE nodes;
+    ]],
+  },
 }

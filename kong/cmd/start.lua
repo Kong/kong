@@ -1,6 +1,5 @@
 local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
-local serf_signals = require "kong.cmd.utils.serf_signals"
 local conf_loader = require "kong.conf_loader"
 local DAOFactory = require "kong.dao.factory"
 local kill = require "kong.cmd.utils.kill"
@@ -19,7 +18,6 @@ local function execute(args)
   xpcall(function()
     assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
     assert(dao:run_migrations())
-    assert(serf_signals.start(conf, dao))
     assert(nginx_signals.start(conf))
     log("Kong started")
   end, function(e)
@@ -29,7 +27,6 @@ local function execute(args)
   if err then
     log.verbose("could not start Kong, stopping services")
     pcall(nginx_signals.stop(conf))
-    pcall(serf_signals.stop(conf, dao))
     log.verbose("stopped services")
     error(err) -- report to main error handler
   end

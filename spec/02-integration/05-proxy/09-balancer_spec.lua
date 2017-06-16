@@ -2,8 +2,7 @@
 -- for dns-record balancing see the `dns_spec` files
 
 local helpers = require "spec.helpers"
-local cache = require "kong.tools.database_cache"
-local dao_helpers = require "spec.02-integration.02-dao.helpers"
+local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local PORT = 21000
 
 
@@ -76,8 +75,8 @@ end
 dao_helpers.for_each_dao(function(kong_config)
 
   describe("Ring-balancer #" .. kong_config.database, function()
-
     local config_db
+
     setup(function()
       config_db = helpers.test_conf.database
       helpers.test_conf.database = kong_config.database
@@ -137,7 +136,7 @@ dao_helpers.for_each_dao(function(kong_config)
           client:close()
           api_client:close()
         end
-        helpers.stop_kong()
+        helpers.stop_kong(nil, true)
       end)
 
       it("over multiple targets", function()
@@ -209,9 +208,6 @@ dao_helpers.for_each_dao(function(kong_config)
           },
         })
         assert.response(res).has.status(201)
-
-        -- wait for the change to become effective
-        helpers.wait_for_invalidation(cache.targets_key(upstream.id))
 
         -- now go and hit the same balancer again
         -----------------------------------------
@@ -285,9 +281,6 @@ dao_helpers.for_each_dao(function(kong_config)
         })
         assert.response(res).has.status(201)
 
-        -- wait for the change to become effective
-        helpers.wait_for_invalidation(cache.targets_key(target2.upstream_id))
-
         -- now go and hit the same balancer again
         -----------------------------------------
 
@@ -353,9 +346,6 @@ dao_helpers.for_each_dao(function(kong_config)
           },
         })
         assert.response(res).has.status(201)
-
-        -- wait for the change to become effective
-        helpers.wait_for_invalidation(cache.targets_key(target2.upstream_id))
 
         -- now go and hit the same balancer again
         -----------------------------------------
@@ -438,9 +428,6 @@ dao_helpers.for_each_dao(function(kong_config)
           },
         })
         assert.response(res).has.status(201)
-
-        -- wait for the change to become effective
-        helpers.wait_for_invalidation(cache.targets_key(target2.upstream_id))
 
         -- now go and hit the same balancer again
         -----------------------------------------

@@ -853,6 +853,10 @@ describe("Plugin: hmac-auth (access)", function()
       assert.equal('no-body', body.headers["x-consumer-username"])
     end)
     it("errors when anonymous user doesn't exist", function()
+      finally(function()
+        client = helpers.proxy_client()
+      end)
+
       local res = assert(client:send {
         method = "GET",
         path = "/request",

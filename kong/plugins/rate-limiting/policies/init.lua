@@ -1,9 +1,9 @@
 local singletons = require "kong.singletons"
 local timestamp = require "kong.tools.timestamp"
-local cache = require "kong.tools.database_cache"
 local redis = require "resty.redis"
 local policy_cluster = require "kong.plugins.rate-limiting.policies.cluster"
 local ngx_log = ngx.log
+local shm = ngx.shared.cache
 
 local pairs = pairs
 local fmt = string.format
@@ -28,11 +28,18 @@ return {
       for period, period_date in pairs(periods) do
         if limits[period] then
           local cache_key = get_local_key(api_id, identifier, period_date, period)
-          cache.sh_add(cache_key, 0, EXPIRATIONS[period])
 
-          local _, err = cache.sh_incr(cache_key, value)
-          if err then
-            ngx_log("[rate-limiting] could not increment counter for period '" .. period .. "': " .. tostring(err))
+          local ok, err = shm:add(cache_key, 0, EXPIRATIONS[period])
+          if not ok and err ~= "exists" then
+            ngx_log(ngx.ERR, "[rate-limiting] could not set local counter: ",
+                             err)
+            return nil, err
+          end
+
+          local newval, err = shm:incr(cache_key, value)
+          if not newval then
+            ngx_log(ngx.ERR, "[rate-limiting] could not increment counter ",
+                             "for period '", period, "': ", err)
             return nil, err
           end
         end
@@ -43,7 +50,7 @@ return {
     usage = function(conf, api_id, identifier, current_timestamp, name)
       local periods = timestamp.get_timestamps(current_timestamp)
       local cache_key = get_local_key(api_id, identifier, periods[name], name)
-      local current_metric, err = cache.sh_get(cache_key)
+      local current_metric, err = shm:get(cache_key)
       if err then
         return nil, err
       end

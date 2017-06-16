@@ -453,4 +453,25 @@ return {
     end,
     down = function(_, _, dao) end
   },
+  {
+    name = "2017-04-04-145100_cluster_events",
+    up = [[
+      CREATE TABLE IF NOT EXISTS cluster_events(
+        channel text,
+        at      timestamp,
+        node_id uuid,
+        data    text,
+        id      uuid,
+        nbf     timestamp,
+        PRIMARY KEY ((channel), at, node_id, id)
+      ) WITH default_time_to_live = 86400
+         AND comment = 'Kong cluster events broadcasting and polling';
+    ]],
+  },
+  {
+    name = "2017-05-19-173100_remove_nodes_table",
+    up = [[
+      DROP TABLE nodes;
+    ]],
+  },
 }

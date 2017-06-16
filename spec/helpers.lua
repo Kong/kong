@@ -778,6 +778,10 @@ local function kong_exec(cmd, env)
 
   env.lua_package_path = env.lua_package_path .. ";" .. conf.lua_package_path
 
+  if not env.custom_plugins then
+    env.custom_plugins = "dummy,cache,rewriter"
+  end
+
   -- build Kong environment variables
   local env_vars = ""
   for k, v in pairs(env) do

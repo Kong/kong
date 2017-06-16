@@ -113,6 +113,7 @@ return function(options)
         set(self.data, key, value)
         return true, nil, false
       end
+      SharedDict.safe_add = SharedDict.add
       function SharedDict:replace(key, value)
         if self.data[key] == nil then
           return false, "not found", false
