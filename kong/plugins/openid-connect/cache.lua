@@ -5,10 +5,10 @@ local cache         = require "kong.tools.database_cache"
 local singletons    = require "kong.singletons"
 
 
-local json         = codec.json
+local concat        = table.concat
+local json          = codec.json
+local type          = type
 local log           = ngx.log
-
-
 local sub           = string.sub
 
 
@@ -100,17 +100,38 @@ end
 local consumers = {}
 
 
-function consumers.init(sub)
-  local result, err = singletons.dao.consumers:find_all { custom_id = sub }
-  if not result then
-    return nil, err
+function consumers.init(key, subject)
+  if key == "id" then
+    log(NOTICE, "openid connect is loading consumer by id for " .. subject)
+
+    local result, err = singletons.dao.consumers:find { id = subject }
+    if not result then
+      return nil, err
+    end
+    if type(result) == "table" then
+      return result
+    end
+
+  else
+    log(NOTICE, "openid connect is loading consumer by " .. key .. " for " .. subject)
+    local result, err = singletons.dao.consumers:find_all { [key] = subject }
+    if not result then
+      return nil, err
+    end
+    if type(result) == "table" then
+      return result[1]
+    end
   end
-  return result[1]
 end
 
 
-function consumers.load(conf, sub)
-  return cache.get_or_set(conf.issuer .. "#" .. sub, conf.ttl, consumers.init, sub)
+function consumers.load(conf, subject, anon)
+  local issuer = conf.issuer
+  if sub(issuer, -1) == "/" then
+    issuer = sub(issuer, 1, #issuer - 1)
+  end
+  local key = anon and "id" or conf.consumer_by or "custom_id"
+  return cache.get_or_set(concat{issuer, "#", key, "=", subject }, conf.ttl, consumers.init, key, subject)
 end
 
 

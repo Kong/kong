@@ -1,6 +1,7 @@
 local cjson         = require "cjson.safe"
 local upload        = require "resty.upload"
 local BasePlugin    = require "kong.plugins.base_plugin"
+local constants       require "kong.constants"
 local responses     = require "kong.tools.responses"
 local cache         = require "kong.plugins.openid-connect.cache"
 local codec         = require "kong.openid-connect.codec"
@@ -129,6 +130,35 @@ local function internalerror(err)
     log(ERR, err)
   end
   return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+end
+
+
+local function consumer(conf, tok, claim, anon)
+  if not tok then
+    return nil, "token for consumer mapping was not found"
+  end
+
+  if type(tok) ~= "table" then
+    return nil, "opaque token cannot be used for consumer mapping"
+  end
+
+  local payload = tok.payload
+
+  if not payload then
+    return nil, "token payload was not found for consumer mapping"
+  end
+
+  if type(payload) ~= "table" then
+    return nil, "invalid token payload was specified for consumer mapping"
+  end
+
+  local subject = payload[claim]
+
+  if not subject then
+    return nil, "claim (" .. claim .. ") was not found for consumer mapping"
+  end
+
+  return cache.consumers.load(conf, subject, anon)
 end
 
 
@@ -331,6 +361,70 @@ function OICVerificationHandler:access(conf)
 
     if claim ~= value then
       return unauthorized(iss, "invalid session claim (" .. cname .. ") was specified in access token")
+    end
+  end
+
+  local claim = conf.consumer_claim
+  if claim and claim ~= "" then
+    local consr
+
+    if tks.id_token then
+      consr, err = consumer(conf, tks.id_token, claim)
+      if not consr then
+        consr = consumer(conf, tks.access_token, claim)
+      end
+
+    else
+        consr, err = consumer(conf, tks.access_token, claim)
+    end
+
+    local is_anonymous = false
+
+    if not consr then
+      local anonymous = conf.anonymous
+      if anonymous == nil or anonymous == "" then
+        if err then
+          return unauthorized(iss, "consumer was not found (" .. err .. ")")
+
+        else
+          return unauthorized(iss, "consumer was not found")
+        end
+      end
+
+      is_anonymous = true
+
+      local tok = {
+        payload = {
+          [claim] = anonymous
+        }
+      }
+
+      consr, err = consumer(conf, tok, claim, true)
+      if not consr then
+        if err then
+          return unauthorized(iss, "anonymous consumer was not found (" .. err .. ")")
+
+        else
+          return unauthorized(iss, "anonymous consumer was not found")
+        end
+      end
+    end
+
+    local HEADERS = constants and constants.HEADERS or {
+      CONSUMER_ID        = "X-Consumer-ID",
+      CONSUMER_CUSTOM_ID = "X-Consumer-Custom-ID",
+      CONSUMER_USERNAME  = "X-Consumer-Username",
+      ANONYMOUS          = "X-Anonymous-Consumer"
+    }
+
+    ngx.ctx.authenticated_consumer = consr
+
+    set_header(HEADERS.CONSUMER_ID,        consr.id)
+    set_header(HEADERS.CONSUMER_CUSTOM_ID, consr.custom_id)
+    set_header(HEADERS.CONSUMER_USERNAME,  consr.username)
+
+    if is_anonymous then
+      set_header(HEADERS.ANONYMOUS, is_anonymous)
     end
   end
 

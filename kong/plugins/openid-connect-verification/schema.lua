@@ -1,3 +1,13 @@
+local utils = require "kong.tools.utils"
+
+local function check_user(anonymous)
+  if anonymous == nil or anonymous == "" or utils.is_valid_uuid(anonymous) then
+    return true
+  end
+
+  return false, "the anonymous user must be empty or a valid uuid"
+end
+
 return {
   no_consumer      = true,
   fields           = {
@@ -61,6 +71,19 @@ return {
       required     = false,
       type         = "string",
       default      = "sid",
+    },
+    consumer_claim = {
+      required     = false,
+      type         = "string",
+    },
+    consumer_by    = {
+      required     = false,
+      enum         = { "id", "username", "custom_id" },
+      default      = "custom_id",
+    },
+    anonymous      = {
+      type         = "string",
+      func         = check_user,
     },
     leeway         = {
       required     = false,
