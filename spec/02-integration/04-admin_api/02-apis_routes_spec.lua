@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
-local dao_helpers = require "spec.02-integration.02-dao.helpers"
+local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local DAOFactory = require "kong.dao.factory"
 
 local function it_content_types(title, fn)

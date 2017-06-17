@@ -1,5 +1,5 @@
 local helpers = require "spec.helpers"
-local dao_helpers = require "spec.02-integration.02-dao.helpers"
+local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local cjson = require "cjson"
 local DAOFactory = require "kong.dao.factory"
 

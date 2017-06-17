@@ -1,5 +1,5 @@
 local ssl_fixtures = require "spec.fixtures.ssl"
-local dao_helpers = require "spec.02-integration.02-dao.helpers"
+local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local DAOFactory = require "kong.dao.factory"
 local helpers = require "spec.helpers"
 local cjson = require "cjson"

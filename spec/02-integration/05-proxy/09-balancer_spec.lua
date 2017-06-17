@@ -2,7 +2,7 @@
 -- for dns-record balancing see the `dns_spec` files
 
 local helpers = require "spec.helpers"
-local dao_helpers = require "spec.02-integration.02-dao.helpers"
+local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local PORT = 21000
 
 
