@@ -51,16 +51,6 @@ local function request_url()
 end
 
 
-local function subject(token)
-  if token and type(token) == "table" then
-    local payload = token.payload
-    if payload and type(payload) == "table" then
-      return payload.sub
-    end
-  end
-end
-
-
 local function unauthorized(session, iss, err)
   if err then
     log(NOTICE, err)
@@ -121,7 +111,7 @@ function OICAuthenticationHandler:access(conf)
   local iss    = o.configuration.issuer
   local tokens = conf.tokens or { "id_token", "access_token" }
 
-  -- TODO: Add support for session configuration
+  -- TODO: Add support for session configuration (currently possible through nginx configuration)
   local s, present = session.open()
 
   if not present then
@@ -171,17 +161,15 @@ function OICAuthenticationHandler:access(conf)
     -- TODO: call userinfo endpoint
 
     local expires = (tonumber(toks.expires_in) or 3600) + time()
-    local subject = subject(decoded.id_token) or subject(decoded.access_token)
 
     s.data = {
-      subject = subject,
       tokens  = toks,
       expires = expires,
     }
+
     s:regenerate()
 
     local login_uri = conf.login_redirect_uri
-
     if login_uri then
       return redirect(login_uri .. "#id_token=" .. toks.id_token)
 
@@ -205,7 +193,6 @@ function OICAuthenticationHandler:access(conf)
     s:start()
 
     local login_uri = conf.login_redirect_uri
-
     if login_uri then
       return redirect(login_uri .. "#id_token=" .. toks.id_token)
 

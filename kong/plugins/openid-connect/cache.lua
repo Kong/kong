@@ -6,6 +6,7 @@ local singletons    = require "kong.singletons"
 
 
 local concat        = table.concat
+local ipairs        = ipairs
 local json          = codec.json
 local type          = type
 local log           = ngx.log
@@ -93,35 +94,36 @@ function issuers.load(conf)
   if sub(issuer, -1) == "/" then
       issuer = sub(issuer, 1, #issuer - 1)
   end
-  return cache.get_or_set("oic:" .. issuer, conf.ttl, issuers.init, conf)
+  return cache.get_or_set("oic:" .. issuer, 604800, issuers.init, conf)
 end
 
 
 local consumers = {}
 
 
-function consumers.init(key, subject)
-  if key == "id" then
-    log(NOTICE, "openid connect is loading consumer by id for " .. subject)
+function consumers.init(keys, subject)
+  if not subject or subject == "" then
+    return nil, "openid connect is unable to load consumer by a missing subject"
+  end
 
-    local result, err = singletons.dao.consumers:find { id = subject }
-    if not result then
-      return nil, err
-    end
-    if type(result) == "table" then
-      return result
-    end
+  local result, err
+  for _, key in ipairs(keys) do
+    if key == "id" then
+      log(NOTICE, "openid connect is loading consumer by id using " .. subject)
+      result, err = singletons.dao.consumers:find { id = subject }
+      if type(result) == "table" then
+        return result
+      end
 
-  else
-    log(NOTICE, "openid connect is loading consumer by " .. key .. " for " .. subject)
-    local result, err = singletons.dao.consumers:find_all { [key] = subject }
-    if not result then
-      return nil, err
-    end
-    if type(result) == "table" then
-      return result[1]
+    else
+      log(NOTICE, "openid connect is loading consumer by " .. key .. " using " .. subject)
+      result, err = singletons.dao.consumers:find_all { [key] = subject }
+      if type(result) == "table" then
+        return result[1]
+      end
     end
   end
+  return nil, err
 end
 
 
@@ -130,8 +132,8 @@ function consumers.load(conf, subject, anon)
   if sub(issuer, -1) == "/" then
     issuer = sub(issuer, 1, #issuer - 1)
   end
-  local key = anon and "id" or conf.consumer_by or "custom_id"
-  return cache.get_or_set(concat{issuer, "#", key, "=", subject }, conf.ttl, consumers.init, key, subject)
+  local keys = anon and { "id" } or conf.consumer_by or { "custom_id" }
+  return cache.get_or_set(concat{issuer, "#", subject }, conf.consumer_ttl, consumers.init, keys, subject)
 end
 
 

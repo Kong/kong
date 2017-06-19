@@ -1,5 +1,6 @@
 local BasePlugin = require "kong.plugins.base_plugin"
 local cache      = require "kong.plugins.openid-connect.cache"
+local constants  = require "kong.constants"
 local responses  = require "kong.tools.responses"
 local oic        = require "kong.openid-connect"
 local uri        = require "kong.openid-connect.uri"
@@ -52,16 +53,6 @@ local function request_url()
 end
 
 
-local function subject(token)
-  if token and type(token) == "table" then
-    local payload = token.payload
-    if payload and type(payload) == "table" then
-      return payload.sub
-    end
-  end
-end
-
-
 local function unauthorized(iss, err)
   if err then
     log(NOTICE, err)
@@ -69,6 +60,35 @@ local function unauthorized(iss, err)
   local parts = uri.parse(iss)
   header["WWW-Authenticate"] = 'Bearer realm="' .. parts.host .. '"'
   return responses.send_HTTP_UNAUTHORIZED()
+end
+
+
+local function consumer(conf, tok, claim, anon)
+  if not tok then
+    return nil, "token for consumer mapping was not found"
+  end
+
+  if type(tok) ~= "table" then
+    return nil, "opaque token cannot be used for consumer mapping"
+  end
+
+  local payload = tok.payload
+
+  if not payload then
+    return nil, "token payload was not found for consumer mapping"
+  end
+
+  if type(payload) ~= "table" then
+    return nil, "invalid token payload was specified for consumer mapping"
+  end
+
+  local subject = payload[claim]
+
+  if not subject then
+    return nil, "claim (" .. claim .. ") was not found for consumer mapping"
+  end
+
+  return cache.consumers.load(conf, subject, anon)
 end
 
 
@@ -118,7 +138,7 @@ function OICProtectionHandler:access(conf)
   local iss    = o.configuration.issuer
   local tokens = conf.tokens or { "id_token", "access_token" }
 
-  -- TODO: Add support for session configuration
+  -- TODO: Add support for session configuration (currently possible through nginx configuration)
   local s, present = session.open()
 
   if not present then
@@ -141,39 +161,114 @@ function OICProtectionHandler:access(conf)
         return unauthorized(iss, err)
       end
     end
+
   else
     if not toks.refresh_token then
       return unauthorized(iss)
     end
 
+    local tks
     local refresh_token = toks.refresh_token
-    toks, err = o.token:refresh(refresh_token)
+    tks, err = o.token:refresh(refresh_token)
 
-    if not toks then
+    if not tks then
       return unauthorized(iss, err)
     end
 
-    decoded, err = o.token:verify(toks, { tokens = tokens })
+    if not tks.id_token then
+      tks.id_token = toks.id_token
+    end
+
+    if not tks.refresh_token then
+      tks.refresh_token = refresh_token
+    end
+
+    decoded, err = o.token:verify(tks, { tokens = tokens })
     if not decoded then
       return unauthorized(iss, err)
     end
+
+    toks = tks
 
     -- TODO: introspect refreshed tokens?
     -- TODO: call userinfo endpoint to refresh?
 
     local expires = (tonumber(toks.expires_in) or 3600) + time()
-    local subject = subject(decoded.id_token) or subject(decoded.access_token) or data.subject
-
-    if not toks.refresh_token then
-      toks.refresh_token = refresh_token
-    end
 
     s.data = {
-      subject = subject,
       tokens  = toks,
       expires = expires,
     }
+
     s:regenerate()
+  end
+
+
+  local claim = conf.consumer_claim
+  if claim and claim ~= "" then
+    if not decoded then
+      decoded, err = o.token:decode(toks, { tokens = tokens })
+      if not decoded then
+        return unauthorized(iss, err)
+      end
+    end
+
+    local consr
+
+    local id_token = decoded.id_token
+    if id_token then
+      consr, err = consumer(conf, id_token, claim)
+      if not consr then
+        consr = consumer(conf, decoded.access_token, claim)
+      end
+
+    else
+      consr, err = consumer(conf, decoded.access_token, claim)
+    end
+
+    local is_anonymous = false
+
+    if not consr then
+      local anonymous = conf.anonymous
+      if anonymous == nil or anonymous == "" then
+        if err then
+          return unauthorized(iss, "consumer was not found (" .. err .. ")")
+
+        else
+          return unauthorized(iss, "consumer was not found")
+        end
+      end
+
+      is_anonymous = true
+
+      local tok = {
+        payload = {
+          [claim] = anonymous
+        }
+      }
+
+      consr, err = consumer(conf, tok, claim, true)
+      if not consr then
+        if err then
+          return unauthorized(iss, "anonymous consumer was not found (" .. err .. ")")
+
+        else
+          return unauthorized(iss, "anonymous consumer was not found")
+        end
+      end
+    end
+
+    local headers = constants.HEADERS
+
+    ngx.ctx.authenticated_consumer = consr
+
+    set_header(headers.CONSUMER_ID,        consr.id)
+    set_header(headers.CONSUMER_CUSTOM_ID, consr.custom_id)
+    set_header(headers.CONSUMER_USERNAME,  consr.username)
+
+    if is_anonymous then
+      set_header(headers.ANONYMOUS, is_anonymous)
+    end
   end
 
   s:hide()

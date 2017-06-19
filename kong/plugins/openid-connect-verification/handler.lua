@@ -1,7 +1,7 @@
 local cjson         = require "cjson.safe"
 local upload        = require "resty.upload"
 local BasePlugin    = require "kong.plugins.base_plugin"
-local constants       require "kong.constants"
+local constants     = require "kong.constants"
 local responses     = require "kong.tools.responses"
 local cache         = require "kong.plugins.openid-connect.cache"
 local codec         = require "kong.openid-connect.codec"
@@ -10,6 +10,7 @@ local uri           = require "kong.openid-connect.uri"
 local oic           = require "kong.openid-connect"
 
 
+local ngx           = ngx
 local get_body_data = ngx.req.get_body_data
 local get_body_file = ngx.req.get_body_file
 local get_post_args = ngx.req.get_post_args
@@ -302,9 +303,9 @@ function OICVerificationHandler:access(conf)
     tokens = tokens
   }
 
-  local tks, err = o.token:verify(toks, options)
+  local decoded, err = o.token:verify(toks, options)
 
-  if type(tks) ~= "table" then
+  if type(decoded) ~= "table" then
     return unauthorized(iss, err)
   end
 
@@ -318,10 +319,10 @@ function OICVerificationHandler:access(conf)
   end
 
   for _, t in ipairs(tokens) do
-    if type(tks[t]) ~= "table" then
+    if type(decoded[t]) ~= "table" then
       return unauthorized(iss, gsub(lower(t), "_", " ") .. " was not verified")
     elseif jwks_header then
-      local jwk = tks[t].jwk
+      local jwk = decoded[t].jwk
 
       if type(jwk) ~= "table" then
         return unauthorized(iss, "invalid jwk was specified for " .. gsub(lower(t), "_", " "))
@@ -344,7 +345,7 @@ function OICVerificationHandler:access(conf)
       return unauthorized(iss, "session cookie was not specified for session claim verification")
     end
 
-    local act = tks.access_token
+    local act = decoded.access_token
     if not act then
       return unauthorized(iss, "access token was not specified for session claim verification")
     end
@@ -368,14 +369,15 @@ function OICVerificationHandler:access(conf)
   if claim and claim ~= "" then
     local consr
 
-    if tks.id_token then
-      consr, err = consumer(conf, tks.id_token, claim)
+    local id_token = decoded.id_token
+    if id_token then
+      consr, err = consumer(conf, id_token, claim)
       if not consr then
-        consr = consumer(conf, tks.access_token, claim)
+        consr = consumer(conf, decoded.access_token, claim)
       end
 
     else
-        consr, err = consumer(conf, tks.access_token, claim)
+        consr, err = consumer(conf, decoded.access_token, claim)
     end
 
     local is_anonymous = false
@@ -410,21 +412,16 @@ function OICVerificationHandler:access(conf)
       end
     end
 
-    local HEADERS = constants and constants.HEADERS or {
-      CONSUMER_ID        = "X-Consumer-ID",
-      CONSUMER_CUSTOM_ID = "X-Consumer-Custom-ID",
-      CONSUMER_USERNAME  = "X-Consumer-Username",
-      ANONYMOUS          = "X-Anonymous-Consumer"
-    }
+    local headers = constants.HEADERS
 
     ngx.ctx.authenticated_consumer = consr
 
-    set_header(HEADERS.CONSUMER_ID,        consr.id)
-    set_header(HEADERS.CONSUMER_CUSTOM_ID, consr.custom_id)
-    set_header(HEADERS.CONSUMER_USERNAME,  consr.username)
+    set_header(headers.CONSUMER_ID,        consr.id)
+    set_header(headers.CONSUMER_CUSTOM_ID, consr.custom_id)
+    set_header(headers.CONSUMER_USERNAME,  consr.username)
 
     if is_anonymous then
-      set_header(HEADERS.ANONYMOUS, is_anonymous)
+      set_header(headers.ANONYMOUS, is_anonymous)
     end
   end
 
