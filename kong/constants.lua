@@ -70,7 +70,6 @@ return {
   DICTS = {
     "kong",
     "kong_cache",
-    "kong_cassandra",
     "kong_process_events",
     "kong_cluster_events",
   },
