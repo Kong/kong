@@ -10,7 +10,7 @@ local NOTICE  = ngx.NOTICE
 local DEBUG   = ngx.DEBUG
 
 
-local SHM_CACHE = "cache"
+local SHM_CACHE = "kong_cache"
 local LRU_SIZE  = 1000
 
 

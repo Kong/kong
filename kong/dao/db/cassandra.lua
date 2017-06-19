@@ -38,7 +38,7 @@ function _M.new(kong_config)
   }
 
   local cluster_options = {
-    shm = "cassandra",
+    shm = "kong_cassandra",
     contact_points = kong_config.cassandra_contact_points,
     default_port = kong_config.cassandra_port,
     keyspace = kong_config.cassandra_keyspace,

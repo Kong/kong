@@ -103,7 +103,7 @@ function _M.new(opts)
 
   local self      = {
     shm           = ngx.shared.kong,
-    events_shm    = ngx.shared.cluster_events,
+    events_shm    = ngx.shared.kong_cluster_events,
     strategy      = strategy,
     poll_interval = poll_interval,
     poll_offset   = poll_offset,
