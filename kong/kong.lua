@@ -173,7 +173,7 @@ function Kong.init_worker()
 
 
   local ok, err = worker_events.configure {
-    shm = "process_events", -- defined by "lua_shared_dict"
+    shm = "kong_process_events", -- defined by "lua_shared_dict"
     timeout = 5,            -- life time of event data in shm
     interval = 1,           -- poll interval (seconds)
 

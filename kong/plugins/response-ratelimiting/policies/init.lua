@@ -3,7 +3,7 @@ local timestamp = require "kong.tools.timestamp"
 local redis = require "resty.redis"
 local policy_cluster = require "kong.plugins.response-ratelimiting.policies.cluster"
 local ngx_log = ngx.log
-local shm = ngx.shared.cache
+local shm = ngx.shared.kong_cache
 
 local pairs = pairs
 local fmt = string.format
