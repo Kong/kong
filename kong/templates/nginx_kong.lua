@@ -31,9 +31,11 @@ lua_max_running_timers 4096;
 lua_max_pending_timers 16384;
 lua_shared_dict kong                4m;
 lua_shared_dict kong_cache          ${{MEM_CACHE_SIZE}};
-lua_shared_dict kong_cassandra      5m;
 lua_shared_dict kong_process_events 1m;
 lua_shared_dict kong_cluster_events 1m;
+> if database == "cassandra" then
+lua_shared_dict kong_cassandra      5m;
+> end
 lua_socket_log_errors off;
 > if lua_ssl_trusted_certificate then
 lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE}}';

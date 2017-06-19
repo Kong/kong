@@ -37,6 +37,13 @@ function _M.new(kong_config)
     prepared = true
   }
 
+  if not ngx.shared.kong_cassandra then
+    error("cannot use Cassandra datastore: missing shared dict "            ..
+          "'kong_cassandra' in Nginx configuration, are you using a "       ..
+          "custom template? Make sure the 'lua_shared_dict kong_cassandra " ..
+          "[SIZE];' directive is defined.")
+  end
+
   local cluster_options = {
     shm = "kong_cassandra",
     contact_points = kong_config.cassandra_contact_points,
