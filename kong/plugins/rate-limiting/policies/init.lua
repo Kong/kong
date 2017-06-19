@@ -167,7 +167,12 @@ return {
         current_metric = nil
       end
 
-      return current_metric and current_metric or 0
+      local ok, err = red:set_keepalive(10000, 100)
+      if not ok then
+        ngx_log(ngx.ERR, "failed to set Redis keepalive: ", err)
+      end
+
+      return current_metric or 0
     end
   }
 }
