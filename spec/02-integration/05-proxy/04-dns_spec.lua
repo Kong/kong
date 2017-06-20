@@ -1,6 +1,9 @@
 local helpers = require "spec.helpers"
 
-local TCP_PORT = 35000
+local TCP_PORT = 16945
+
+local pack = function(...) return { n = select("#", ...), ... } end
+local unpack = function(t) return unpack(t, 1, t.n) end
 
 -- @param port the port to listen on
 -- @param duration the duration for which to listen and accept connections (seconds)
@@ -14,7 +17,7 @@ local function bad_tcp_server(port, duration, ...)
       local tries = 0
       server:settimeout(0.1)
       assert(server:setoption('reuseaddr', true))
-      assert(server:bind("*", port))
+      assert(server:bind("127.0.0.1", port))
       assert(server:listen())
       while socket.gettime() < expire do
         local client, err = server:accept()
@@ -31,7 +34,9 @@ local function bad_tcp_server(port, duration, ...)
     end
   }, port, duration)
 
-  return thread:start(...)
+  local result = pack(thread:start(...))
+  ngx.sleep(0.2) -- wait for server to start
+  return unpack(result)
 end
 
 describe("DNS", function()
