@@ -425,16 +425,31 @@
                                  # To read the file again after modifying it,
                                  # Kong must be reloaded.
 
-#dns_order = LAST,SRV,A,CNAME    # the order in which to resolve different
+#dns_order = LAST,SRV,A,CNAME    # The order in which to resolve different
                                  # record types. The `LAST` type means the
                                  # type of the last successful lookup (for the
                                  # specified name). The format is a (case
                                  # insensitive) comma separated list.
 
-#dns_not_found_ttl = 30.0        # ttl in seconds for empty DNS responses and
+#dns_stale_ttl = 4               # Defines, in seconds, how long a record will
+                                 # remain in cache past its TTL. This value
+                                 # will be used while the new DNS record is
+                                 # fetched in the background.
+                                 # Stale data will be used from expiry of a
+                                 # record until either the refresh query
+                                 # completes, or the `dns_stale_ttl` number of
+                                 # seconds have passed.
+
+#dns_not_found_ttl = 30          # TTL in seconds for empty DNS responses and
                                  # "(3) name error" responses.
 
-#dns_error_ttl = 1.0             # ttl in seconds for error responses.
+#dns_error_ttl = 1               # TTL in seconds for error responses.
+
+#dns_no_sync = off               # If enabled, then upon a cache-miss every
+                                 # request will trigger its own dns query.
+                                 # When disabled multiple requests for the
+                                 # same name/type will be synchronised to a
+                                 # single query.
 
 #------------------------------------------------------------------------------
 # DEVELOPMENT & MISCELLANEOUS
