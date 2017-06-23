@@ -77,7 +77,6 @@ local function validate_params(params, conf)
     for _, header in ipairs(params.hmac_headers) do
       enforced_header_set[header] = nil
     end
-
     for _, header in ipairs(conf.enforce_headers) do
       if enforced_header_set[header] then
         return nil, "enforced header not used for signature creation"
