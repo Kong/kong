@@ -10,6 +10,13 @@ local function execute(args)
     prefix = args.prefix
   }))
 
+  if args.migrate_timeout then
+    assert(not args.run_migrations, "only one of the options " ..
+           "`--run-migrations` or `--migrate-timeout` can be specified")
+    assert(args.migrate_timeout > 0, "the migrate-timeout must be greater " ..
+           "than 0")
+  end
+
   assert(not kill.is_running(conf.nginx_pid),
          "Kong is already running in " .. conf.prefix)
 
@@ -17,10 +24,22 @@ local function execute(args)
   local dao = assert(DAOFactory.new(conf))
   xpcall(function()
     assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
-    if args.run_migrations or not dao.db:migrations_initialized() then
+    if not args.migrate_timeout and 
+       (args.run_migrations or not dao.db:migrations_initialized()) then
       assert(dao:run_migrations())
     end
-    assert(dao:are_migrations_uptodate())
+    if args.migrate_timeout then
+      local expire = ngx.now() + args.migrate_timeout
+      local ok, err = dao:are_migrations_uptodate()
+      log.verbose("waiting for migrations to complete...")
+      while not ok and expire >= ngx.now() do
+        ngx.sleep(1)  -- very arbitrary value ...
+        ok, err = dao:are_migrations_uptodate()
+      end
+      assert(ok, "migration timeout: " .. err)
+    else
+      assert(dao:are_migrations_uptodate())
+    end
     assert(nginx_signals.start(conf))
     log("Kong started")
   end, function(e)
@@ -42,10 +61,13 @@ Start Kong (Nginx and other configured services) in the configured
 prefix directory.
 
 Options:
- -c,--conf        (optional string)   configuration file
- -p,--prefix      (optional string)   override prefix directory
- --nginx-conf     (optional string)   custom Nginx configuration template
- --run-migrations (optional boolean)  optionally run migrations on the DB 
+ -c,--conf         (optional string)   configuration file
+ -p,--prefix       (optional string)   override prefix directory
+ --nginx-conf      (optional string)   custom Nginx configuration template
+ --run-migrations  (optional boolean)  optionally run migrations on the DB
+ --migrate-timeout (optional number)   how long to wait for migrations to be
+                                       completed by another node
+ 
 ]]
 
 return {
