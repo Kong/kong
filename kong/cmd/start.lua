@@ -18,7 +18,7 @@ local function execute(args)
   local dao = assert(DAOFactory.new(conf))
   xpcall(function()
     assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
-    if args.run_migrations or not dao.db:migrations_ran() then
+    if args.run_migrations or not dao.db:migrations_initialized() then
       assert(dao:run_migrations())
     end
     assert(dao:are_migrations_uptodate())

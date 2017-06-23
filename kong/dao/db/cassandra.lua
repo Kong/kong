@@ -585,7 +585,7 @@ function _M:truncate_table(table_name)
   return true
 end
 
-function _M:migrations_ran()
+function _M:migrations_initialized()
   local q_keyspace_and_migrations_table_exists
 
   assert(self.release_version, "release_version not set for Cassandra cluster")
