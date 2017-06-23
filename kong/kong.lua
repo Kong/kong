@@ -230,7 +230,7 @@ function Kong.balancer()
 
   addr.try_count = addr.try_count + 1
   if addr.try_count > 1 then
-    -- only call balancer on retry, first one is done in `core.access.before` which runs
+    -- only call balancer on retry, first one is done in `core.access.after` which runs
     -- in the ACCESS context and hence has less limitations than this BALANCER context
     -- where the retries are executed
 

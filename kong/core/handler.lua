@@ -118,25 +118,16 @@ return {
         -- hostname          = nil,            -- the hostname belonging to the final target IP
       }
 
-      var.upstream_scheme = upstream.scheme
-
-      ctx.api              = api
-      ctx.balancer_address = balancer_address
-
-      local ok, err = balancer_execute(balancer_address)
-      if not ok then
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR("failed the initial " ..
-          "dns/balancer resolve for '" .. balancer_address.host ..
-          "' with: " .. tostring(err))
-      end
-
+      -- `scheme` is the scheme to use for the upstream call
       -- `uri` is the URI with which to call upstream, as returned by the
       --       router, which might have truncated it (`strip_uri`).
       -- `host_header` is the original header to be preserved if set.
-      var.upstream_uri  = uri
-      var.upstream_host = host_header or
-          balancer_address.hostname .. ":" .. balancer_address.port
+      var.upstream_scheme = upstream.scheme
+      var.upstream_uri    = uri
+      var.upstream_host   = host_header
 
+      ctx.api              = api
+      ctx.balancer_address = balancer_address
     end,
     -- Only executed if the `router` module found an API and allows nginx to proxy it.
     after = function()
@@ -153,6 +144,33 @@ return {
 
         if var.is_args == "?" or sub(var.request_uri, -1) == "?" then
           var.upstream_uri = upstream_uri .. "?" .. (var.args or "")
+        end
+      end
+
+      local ok, err = balancer_execute(ctx.balancer_address)
+      if not ok then
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR(
+                          "failed the initial dns/balancer resolve for '" ..
+                          ctx.balancer_address.host .. "' with: "         ..
+                          tostring(err))
+      end
+
+      do
+        -- set the upstream host header if not `preserve_host`
+        local upstream_host = var.upstream_host
+
+        if not upstream_host or upstream_host == "" then
+          local addr = ctx.balancer_address
+          upstream_host = addr.hostname
+
+          local upstream_scheme = var.upstream_scheme
+          if upstream_scheme == "http"  and addr.port ~= 80 or
+             upstream_scheme == "https" and addr.port ~= 443
+          then
+            upstream_host = upstream_host .. ":" .. addr.port
+          end
+
+          var.upstream_host = upstream_host
         end
       end
 
