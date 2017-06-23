@@ -1,6 +1,7 @@
 local crud = require "kong.api.crud_helpers"
 local app_helpers = require "lapis.application"
 local responses = require "kong.tools.responses"
+local cjson = require "cjson"
 
 
 -- clean the target history for a given upstream
@@ -141,7 +142,7 @@ return {
       table.sort(target_history, function(a, b) return a.order > b.order end)
 
       local seen     = {}
-      local active   = {}
+      local active   = setmetatable({}, cjson.empty_array_mt)
       local active_n = 0
 
       for _, entry in ipairs(target_history) do
@@ -162,6 +163,14 @@ return {
           end
         end
       end
+
+      -- FIXME: remove and stick to previous `empty_array_mt` metatable
+      -- assignment once https://github.com/openresty/lua-cjson/pull/16
+      -- is included in the OpenResty release we use.
+      if #active == 0 then
+        active = cjson.empty_array
+      end
+
 
       -- for now lets not worry about rolling our own pagination
       -- we also end up returning a "backwards" list of targets because
