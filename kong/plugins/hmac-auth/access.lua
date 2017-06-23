@@ -2,6 +2,7 @@ local utils = require "kong.tools.utils"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local singletons = require "kong.singletons"
+local crypto = require "crypto"
 local resty_sha256 = require "resty.sha256"
 
 local math_abs = math.abs
@@ -10,14 +11,16 @@ local ngx_gmatch = ngx.re.gmatch
 local ngx_decode_base64 = ngx.decode_base64
 local ngx_encode_base64 = ngx.encode_base64
 local ngx_parse_time = ngx.parse_http_time
-local ngx_sha1 = ngx.hmac_sha1
 local ngx_set_header = ngx.req.set_header
 local ngx_get_headers = ngx.req.get_headers
 local ngx_log = ngx.log
 local req_read_body = ngx.req.read_body
 local req_get_body_data = ngx.req.get_body_data
+local ngx_hmac_sha1 = ngx.hmac_sha1
 
 local split = utils.split
+local fmt = string.format
+local ipairs = ipairs
 
 local AUTHORIZATION = "authorization"
 local PROXY_AUTHORIZATION = "proxy-authorization"
@@ -27,7 +30,69 @@ local DIGEST = "digest"
 local SIGNATURE_NOT_VALID = "HMAC signature cannot be verified"
 local SIGNATURE_NOT_SAME = "HMAC signature does not match"
 
+local new_tab
+do
+  local ok
+  ok, new_tab = pcall(require, "table.new")
+  if not ok then
+    new_tab = function() return {} end
+  end
+end
+
 local _M = {}
+
+local hmac = {
+  ["hmac-sha1"] = function(secret, data)
+    return ngx_hmac_sha1(secret, data)
+  end,
+  ["hmac-sha256"] = function(secret, data)
+    return crypto.hmac.digest("sha256", data, secret, true)
+  end,
+  ["hmac-sha384"] = function(secret, data)
+    return crypto.hmac.digest("sha384", data, secret, true)
+  end,
+  ["hmac-sha512"] = function(secret, data)
+    return crypto.hmac.digest("sha512", data, secret, true)
+  end
+}
+
+local function list_as_set(list)
+  local set = new_tab(0, #list)
+  for _, v in ipairs(list) do
+    set[v] = true
+  end
+
+  return set
+end
+
+local function validate_params(params, conf)
+  -- check username and signature are present
+  if not params.username and params.signature then
+    return nil, "username or signature missing"
+  end
+
+  -- check enforced headers are present
+  if conf.enforce_headers and #conf.enforce_headers >= 1 then
+    local enforced_header_set = list_as_set(conf.enforce_headers)
+    for _, header in ipairs(params.hmac_headers) do
+      enforced_header_set[header] = nil
+    end
+    for _, header in ipairs(conf.enforce_headers) do
+      if enforced_header_set[header] then
+        return nil, "enforced header not used for signature creation"
+      end
+    end
+  end
+
+  -- check supported alorithm used
+  for _, algo in ipairs(conf.algorithms) do
+    if algo == params.algorithm then
+      return true
+    end
+  end
+
+  return nil, fmt("algorithm %s not supported", params.algorithm)
+end
 
 local function retrieve_hmac_fields(request, headers, header_name, conf)
   local hmac_params = {}
@@ -84,7 +149,7 @@ local function create_hash(request, hmac_params, headers)
       signing_string = signing_string .. "\n"
     end
   end
-  return ngx_sha1(hmac_params.secret, signing_string)
+  return hmac[hmac_params.algorithm](hmac_params.secret, signing_string)
 end
 
 local function validate_signature(request, hmac_params, headers)
@@ -196,26 +261,33 @@ local function do_authentication(conf)
 
   -- retrieve hmac parameter from Proxy-Authorization header
   local hmac_params = retrieve_hmac_fields(ngx.req, headers, PROXY_AUTHORIZATION, conf)
+
   -- Try with the authorization header
   if not hmac_params.username then
     hmac_params = retrieve_hmac_fields(ngx.req, headers, AUTHORIZATION, conf)
   end
-  if not (hmac_params.username and hmac_params.signature) then
+
+  local ok, err = validate_params(hmac_params, conf)
+  if not ok then
+    ngx_log(ngx.DEBUG, err)
     return false, {status = 403, message = SIGNATURE_NOT_VALID}
   end
 
   -- validate signature
   local credential = load_credential(hmac_params.username)
   if not credential then
+    ngx_log(ngx.DEBUG, "failed to retrieve credential for ", hmac_params.username)
     return false, {status = 403, message = SIGNATURE_NOT_VALID}
   end
   hmac_params.secret = credential.secret
+
   if not validate_signature(ngx.req, hmac_params, headers) then
     return false, { status = 403, message = SIGNATURE_NOT_SAME }
   end
 
   -- If request body validation is enabled, then verify digest.
   if conf.validate_request_body and not validate_body(headers[DIGEST]) then
+    ngx_log(ngx.DEBUG, "digest validation failed")
     return false, { status = 403, message = SIGNATURE_NOT_SAME }
   end
 
