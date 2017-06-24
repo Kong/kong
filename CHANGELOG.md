@@ -1,24 +1,90 @@
 ## [Unreleased][unreleased]
 
+## [0.11.0rc1] - 2017/06/26
+
+The Kong development team is very excited to present you with its latest work!
+With this release comes two major features that we have been working on
+for the last couple of months: a new invalidations mechanism that does not
+depend on Serf, and the support for the `search` and `ndots` options in our
+internal DNS resolver.
+
+We are **actively** looking for testing and feedback regarding those two
+major changes!
+
+As per usual, our major releases include datastore migrations and other
+breaking changes. As such, we strongly advise you to read the [0.11 Upgrade
+Path](https://github.com/Mashape/kong/blob/release/0.11/UPGRADE.md#upgrade-to-011x)
+if you are running a Kong cluster already.
+
 ### Changed
 
-- :warning: Previously, the `X-Forwarded-*` and `X-Real-IP` were trusted from
-  any client by default, and forwarded upstream. With the introduction of the
-  new `trusted_ips` property (see the below "Added" section), and to enforce
-  best security practices, Kong *does not* trust any client IP address by
-  default anymore. This will make Kong *not* forward incoming `X-Forwarded-*`
-  headers if not coming from configured, trusted IP addresses blocks. See the
-  `trusted_ips` property introduced in this release in the
-  [0.10 Configuration reference](https://getkong.org/docs/0.10.x/configuration/)
-  , or read the [0.10 Proxy reference](https://getkong.org/docs/0.10.x/proxy/).
+- :warning: (:fireworks:) Serf is **not** a dependency anymore. Kong nodes now
+  handle cache invalidation events via a built-in database polling mechanism.
+  See the new "Datastore Cache" section of the configuration file which
+  contains 3 new properties to configure this behavior. If you use Cassandra,
+  you **must** pay a particular attention to the `db_update_propagation`
+  setting, as you should not use the default value of `0`.
+  [#2561](https://github.com/Mashape/kong/pull/2561)
+- :warning: As a result of this change, Kong is now entirely stateless, and as
+  such, the `/cluster` endpoint of the Admin API has disappeared.
+  [#2561](https://github.com/Mashape/kong/pull/2561)
+- :warning: Numerous updates were made to the Nginx configuration template. If
+  you are using a custom template, you **must** apply those modifications. See
+  the [0.11 Upgrade
+  Path](https://github.com/Mashape/kong/blob/release/0.11/UPGRADE.md#upgrade-to-011x)
+  for a complete list of changes to apply.
+- :warning: Previously, the `X-Forwarded-*` and `X-Real-IP` headers were
+  trusted from any client by default, and forwarded upstream. With the
+  introduction of the new `trusted_ips` property (see the below "Added"
+  section) and to enforce best security practices, Kong *does not* trust any
+  client IP address by default anymore. This will make Kong *not* forward
+  incoming `X-Forwarded-*` headers if not coming from configured, trusted IP
+  addresses blocks. This setting also affects the API `check_https` field,
+  which itself relies on *trusted* `X-Forwarded-Proto` headers **only**.
+  [#2236](https://github.com/Mashape/kong/pull/2236)
+- :warning: The upstream URI is now determined via the Nginx `$upstream_uri`
+  variable. Custom plugins using the `ngx.req.set_uri()` API will not be taken
+  into consideration anymore. One must now use the `ngx.var.upstream_uri`
+  variable from the Lua land. See
+  [#2519](https://github.com/Mashape/kong/pull/2519).
+- :warning: The Admin API `/status` endpoint does not return a count of the
+  database entities anymore. Instead, it now returns a `database.reachable`
+  boolean value, which reflects the state of the connection between Kong and
+  the underlying database. Please note that this flag **does not** reflect the
+  health of the database itself.
+  [#2567](https://github.com/Mashape/kong/pull/2567)
+- :warning: The internal DNS resolver now honours the `search` and `ndots`
+  configuration options of your `resolv.conf` file. Make sure that DNS
+  resolution is still consistent in your environment, and consider eventually
+  not using FQDNs anymore.
+  [#2425](https://github.com/Mashape/kong/pull/2425)
+- Performance around DNS resolution has been greatly improved in some cases.
+  [#2625](https://github.com/Mashape/kong/pull/2425)
+- Secret values are now generated with a kernel-level, Cryptographically Secure
+  PRNG.
+  [#2536](https://github.com/Mashape/kong/pull/2536)
+- The `.kong_env` file created by Kong is now written without world-read
+  permissions.
+  [#2611](https://github.com/Mashape/kong/pull/2611)
 
 ### Added
 
+- :fireworks: Support for HTTP/2. A new `http2` directive now enables HTTP/2
+  traffic on the `proxy_listen_ssl` address.
+  [#2541](https://github.com/Mashape/kong/pull/2541)
+- :fireworks: A built-in invalidation mechanism that does not require the
+  Serf agent anymore.
+  [#2561](https://github.com/Mashape/kong/pull/2561)
+- :fireworks: Support for the `search` and `ndots` configuration options of
+  your `resolv.conf` file.
+  [#2425](https://github.com/Mashape/kong/pull/2425)
+- Support for DNS nameservers specified in IPv6 format.
+  [#2634](https://github.com/Mashape/kong/pull/2634)
 - Kong now forwards new headers to your upstream services: `X-Forwarded-Host`,
   `X-Forwarded-Port`, and `X-Forwarded-Proto`.
   [#2236](https://github.com/Mashape/kong/pull/2236)
 - A new `trusted_ips` configuration property allows you to define a list of
-  trusted IP addresses blocks that are known to send trusted `X-Forwarded-*`
+  trusted IP address blocks that are known to send trusted `X-Forwarded-*`
   headers. Requests from trusted IPs will make Kong forward those headers
   upstream. Requests from non-trusted IP addresses will make Kong override the
   `X-Forwarded-*` headers with its own values. In addition, this property also
@@ -37,13 +103,81 @@
   the `proxy_protocol` parameter to the Nginx `listen` directive of the Kong
   proxy port.
   [#2236](https://github.com/Mashape/kong/pull/2236)
+- Ability to hide Kong-specific response headers. Two new configuration fields:
+  `server_tokens` and `latency_tokens` will respectively toggle whether the
+  `Server` and `X-Kong-*-Latency` headers should be sent to downstream clients.
+  [#2259](https://github.com/Mashape/kong/pull/2259)
+- New configuration property to tune handling request body data via the
+  `client_max_body_size` and `client_body_buffer_size` directives (mirroring
+  their Nginx counterparts). Note these settings are only defined for proxy
+  requests; request body handling in the Admin API remains unchanged.
+  [#2602](https://github.com/Mashape/kong/pull/2602)
+- New `error_default_type` configuration property. This setting is to specify a
+  MIME type that will be used as the error response body format when Nginx
+  encounters an error, but no `Accept` header was present in the request.  The
+  default value is `text/plain` for backwards compatibility.  Thanks
+  [@therealgambo](https://github.com/therealgambo) for the contribution!
+  [#2500](https://github.com/Mashape/kong/pull/2500)
+- New `nginx_user` configuration property, which interfaces with the Nginx
+  `user` directive.
+  Thanks [@depay](https://github.com/depay) for the contribution!
+  [#2180](https://github.com/Mashape/kong/pull/2180)
+- Admin API:
+  - Plugins on an API can now be accessed by name as well. The updated route
+    is: `/apis/{api_name_or_id}/plugins/{plugin_name_or_id}`.
+    [#2252](https://github.com/Mashape/kong/pull/2252)
 - Plugins:
   - rate-limiting/response-ratelimiting: Optionally hide informative response
     headers.
     [#2087](https://github.com/Mashape/kong/pull/2087)
-  - The endpoint `/apis/:api_name_or_id/plugins/:plugin_name_or_id` now accepts
-    the plugin name as well for the last parameter.
-    [#2252](https://github.com/Mashape/kong/pull/2252)
+  - aws-lambda: Define a custom response status when the upstream
+    `X-Amzn-Function-Error` header is "Unhandled".
+    Thanks [@erran](https://github.com/erran) for the contribution!
+    [#2587](https://github.com/Mashape/kong/pull/2587)
+  - hmac: New option to validate the client-provided SHA-256 of the request
+    body.
+    Thanks [@vaibhavatul47](https://github.com/vaibhavatul47) for the
+    contribution!
+    [#2419](https://github.com/Mashape/kong/pull/2419)
+  - hmac: Added support for `enforce_headers` option and added HMAC-SHA256,
+    HMAC-SHA384, and HMAC-SHA512 support.
+    [#2644](https://github.com/Mashape/kong/pull/2644)
+  - statsd: New metrics and more flexible configuration. Support for prefixes,
+    configurable stat type, and added metrics.
+    [#2400](https://github.com/Mashape/kong/pull/2400)
+  - datadog: New metrics and more flexible configuration. Support for prefixes,
+    configurable stat type, and added metrics.
+    [#2394](https://github.com/Mashape/kong/pull/2394)
+
+### Fixed
+
+- Kong now ensures that your clients URIs are transparently proxied upstream.
+  No percent-encoding/decoding or querystring stripping will occur anymore.
+  [#2519](https://github.com/Mashape/kong/pull/2519)
+- Fix an edge-case where an API with multiple `uris` and `strip_uri = true`
+  would not always strip the client URI.
+  [#2562](https://github.com/Mashape/kong/issues/2562)
+- Octothorpes (`#`) can now be escaped (`\#`) and included in the Kong
+  configuration values such as your datastore passwords or usernames.
+  [#2411](https://github.com/Mashape/kong/pull/2411)
+- HTTP `400` errors thrown by Nginx are now correctly caught by Kong.
+  [#2476](https://github.com/Mashape/kong/pull/2476)
+- Admin API:
+  - The `data` response field of the `/upstreams/{upstream}/targets/active`
+    Admin API endpoint now returns a list (`[]`) instead of an object (`{}`)
+    when no active targets are present.
+    [#2619](https://github.com/Mashape/kong/pull/2619)
+- Plugins:
+  - The `unique` constraint on OAuth2 `client_secrets` has been removed.
+    [#2447](https://github.com/Mashape/kong/pull/2447)
+  - The `unique` constraint on JWT Credentials `secrets` has been removed.
+    [#2548](https://github.com/Mashape/kong/pull/2548)
+  - oauth2: When requesting a token from `/oauth2/token`, one can now pass the
+    `client_id` as a request body parameter, while `client_id:client_secret` is
+    passed via the Authorization header. This allows for better integration
+    with some OAuth2 flows proposed out there, such as from Cloudflare Apps.
+    Thanks [@cedum](https://github.com/cedum) for the patch!
+    [#2577](https://github.com/Mashape/kong/pull/2577)
 
 ## [0.10.3] - 2017/05/24
 
@@ -160,10 +294,6 @@
   requests. The added functionality is described in
   [#2211](https://github.com/Mashape/kong/issues/2211), and was implemented in
   [#2315](https://github.com/Mashape/kong/pull/2315).
-- Ability to hide Kong-specific response headers. Two new configuration fields:
-  `server_tokens` and `latency_tokens` will respectively toggle whether the
-  `Server` and `X-Kong-*-Latency` headers should be sent to downstream clients.
-  [#2259](https://github.com/Mashape/kong/pull/2259)
 - New `cassandra_schema_consensus_timeout` configuration property, to allow for
   Kong to wait for the schema consensus of your Cassandra cluster during
   migrations.
@@ -1354,7 +1484,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.10.3...next
+[unreleased]: https://github.com/mashape/kong/compare/0.11.0rc1...release/0.11
+[0.11.0rc1]: https://github.com/mashape/kong/compare/0.10.3...0.11.0rc1
 [0.10.3]: https://github.com/mashape/kong/compare/0.10.2...0.10.3
 [0.10.2]: https://github.com/mashape/kong/compare/0.10.1...0.10.2
 [0.10.1]: https://github.com/mashape/kong/compare/0.10.0...0.10.1
