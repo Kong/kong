@@ -13,11 +13,10 @@ return {
     get_method = function() return "GET" end,
     http_version = function() return 1.1 end,
     raw_header = function ()
-      return [[
-GET /request/path HTTP/1.1\r
-Host: mockbin.com\r
-Accept: application/json\r
-\r\n\r\n]]
+      return "GET /request/path HTTP/1.1\r\n"..
+             "Host: mockbin.com\r\n"..
+             "Accept: application/json\r\n"..
+             "Accept: application/x-www-form-urlencoded\r\n\r\n"
     end,
     get_headers = function()
       return {

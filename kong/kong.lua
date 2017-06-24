@@ -262,16 +262,20 @@ end
 function Kong.balancer()
   local addr = ngx.ctx.balancer_address
   local tries = addr.tries
-
+  local current_try = {}
   addr.try_count = addr.try_count + 1
+  tries[addr.try_count] = current_try
+
+  core.balancer.before()
+
   if addr.try_count > 1 then
-    -- only call balancer on retry, first one is done in `core.access.before` which runs
+    -- only call balancer on retry, first one is done in `core.access.after` which runs
     -- in the ACCESS context and hence has less limitations than this BALANCER context
     -- where the retries are executed
 
     -- record failure data
-    local try = tries[addr.try_count - 1]
-    try.state, try.code = get_last_failure()
+    local previous_try = tries[addr.try_count - 1]
+    previous_try.state, previous_try.code = get_last_failure()
 
     local ok, err = balancer_execute(addr)
     if not ok then
@@ -289,10 +293,8 @@ function Kong.balancer()
     end
   end
 
-  tries[addr.try_count] = {
-    ip    = addr.ip,
-    port  = addr.port,
-  }
+  current_try.ip   = addr.ip
+  current_try.port = addr.port
 
   -- set the targets as resolved
   local ok, err = set_current_peer(addr.ip, addr.port)
@@ -310,6 +312,8 @@ function Kong.balancer()
   if not ok then
     ngx.log(ngx.ERR, "could not set upstream timeouts: ", err)
   end
+
+  core.balancer.after()
 end
 
 function Kong.rewrite()

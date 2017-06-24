@@ -28,14 +28,7 @@ return {
       for period, period_date in pairs(periods) do
         local cache_key = get_local_key(api_id, identifier, period_date, name, period)
 
-        local ok, err = shm:add(cache_key, 0, EXPIRATIONS[period])
-        if not ok and err ~= "exists" then
-          ngx_log(ngx.ERR, "[response-ratelimiting] could not set local counter: ",
-                           err)
-          return nil, err
-        end
-
-        local newval, err = shm:incr(cache_key, value)
+        local newval, err = shm:incr(cache_key, value, 0)
         if not newval then
           ngx_log(ngx.ERR, "[response-ratelimiting] could not increment counter ",
                            "for period '", period, "': ", err)

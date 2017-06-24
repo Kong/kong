@@ -306,29 +306,20 @@ return {
         send_timeout         = api.upstream_send_timeout or 60000,
         read_timeout         = api.upstream_read_timeout or 60000,
         -- ip                = nil,            -- final target IP address
-        -- failures          = nil,            -- for each failure an entry { name = "...", code = xx }
         -- balancer          = nil,            -- the balancer object, in case of a balancer
         -- hostname          = nil,            -- the hostname belonging to the final target IP
       }
 
-      var.upstream_scheme = upstream.scheme
-
       ctx.api              = api
       ctx.balancer_address = balancer_address
 
-      local ok, err = balancer.execute(balancer_address)
-      if not ok then
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR("failed the initial " ..
-          "dns/balancer resolve for '" .. balancer_address.host ..
-          "' with: " .. tostring(err))
-      end
-
+      -- `scheme` is the scheme to use for the upstream call
       -- `uri` is the URI with which to call upstream, as returned by the
       --       router, which might have truncated it (`strip_uri`).
       -- `host_header` is the original header to be preserved if set.
-      var.upstream_uri  = uri
-      var.upstream_host = host_header or
-          balancer_address.hostname .. ":" .. balancer_address.port
+      var.upstream_scheme = upstream.scheme
+      var.upstream_uri    = uri
+      var.upstream_host   = host_header
 
       -- Keep-Alive and WebSocket Protocol Upgrade Headers
       if var.http_upgrade and lower(var.http_upgrade) == "websocket" then
@@ -393,6 +384,33 @@ return {
         end
       end
 
+      local ok, err = balancer.execute(ctx.balancer_address)
+      if not ok then
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR(
+                          "failed the initial dns/balancer resolve for '" ..
+                          ctx.balancer_address.host .. "' with: "         ..
+                          tostring(err))
+      end
+
+      do
+        -- set the upstream host header if not `preserve_host`
+        local upstream_host = var.upstream_host
+
+        if not upstream_host or upstream_host == "" then
+          local addr = ctx.balancer_address
+          upstream_host = addr.hostname
+
+          local upstream_scheme = var.upstream_scheme
+          if upstream_scheme == "http"  and addr.port ~= 80 or
+             upstream_scheme == "https" and addr.port ~= 443
+          then
+            upstream_host = upstream_host .. ":" .. addr.port
+          end
+
+          var.upstream_host = upstream_host
+        end
+      end
+
       local now = get_now()
 
       ctx.KONG_ACCESS_TIME = now - ctx.KONG_ACCESS_START -- time spent in Kong's access_by_lua
@@ -400,6 +418,26 @@ return {
       -- time spent in Kong before sending the reqeust to upstream
       ctx.KONG_PROXY_LATENCY = now - ngx.req.start_time() * 1000 -- ngx.req.start_time() is kept in seconds with millisecond resolution.
       ctx.KONG_PROXIED = true
+    end
+  },
+  balancer = {
+    before = function()
+      local addr = ngx.ctx.balancer_address
+      local current_try = addr.tries[addr.try_count]
+      current_try.balancer_start = get_now()
+    end,
+    after = function ()
+      local ctx = ngx.ctx
+      local addr = ctx.balancer_address
+      local current_try = addr.tries[addr.try_count]
+
+      -- record try-latency
+      local try_latency = get_now() - current_try.balancer_start
+      current_try.balancer_latency = try_latency
+      current_try.balancer_start = nil
+
+      -- record overall latency
+      ctx.KONG_BALANCER_TIME = (ctx.KONG_BALANCER_TIME or 0) + try_latency
     end
   },
   header_filter = {

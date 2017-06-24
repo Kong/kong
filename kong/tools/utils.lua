@@ -13,6 +13,7 @@ local uuid = require "resty.jit-uuid"
 local pl_stringx = require "pl.stringx"
 
 local C          = ffi.C
+local ffi_fill   = ffi.fill
 local ffi_new    = ffi.new
 local ffi_str    = ffi.string
 local type       = type
@@ -160,6 +161,7 @@ do
   -- and then falling back to OpenSSL if necessary
   get_rand_bytes = function(n_bytes, urandom)
     local buf = ffi_new(bytes_buf_t, n_bytes)
+    ffi_fill(buf, n_bytes, 0x0)
 
     -- only read from urandom if we were explicitly asked
     if urandom then

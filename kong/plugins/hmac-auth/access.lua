@@ -17,7 +17,6 @@ local ngx_log = ngx.log
 local req_read_body = ngx.req.read_body
 local req_get_body_data = ngx.req.get_body_data
 local ngx_hmac_sha1 = ngx.hmac_sha1
-
 local split = utils.split
 local fmt = string.format
 local ipairs = ipairs
@@ -138,7 +137,8 @@ local function create_hash(request, hmac_params, headers)
     if not header_value then
       if header == "request-line" then
         -- request-line in hmac headers list
-        signing_string = signing_string .. split(request.raw_header(), "\r\n")[1]
+        local request_line = fmt("%s %s HTTP/%s", ngx.req.get_method(), ngx.var.uri, ngx.req.http_version())
+        signing_string = signing_string .. request_line
       else
         signing_string = signing_string .. header .. ":"
       end
