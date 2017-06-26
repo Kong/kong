@@ -18,7 +18,7 @@ if you are running a Kong cluster already.
 
 ### Changed
 
-- :warning: (:fireworks:) Serf is **not** a dependency anymore. Kong nodes now
+- :warning: :fireworks: Serf is **not** a dependency anymore. Kong nodes now
   handle cache invalidation events via a built-in database polling mechanism.
   See the new "Datastore Cache" section of the configuration file which
   contains 3 new properties to configure this behavior. If you use Cassandra,
@@ -44,9 +44,9 @@ if you are running a Kong cluster already.
   [#2236](https://github.com/Mashape/kong/pull/2236)
 - :warning: The upstream URI is now determined via the Nginx `$upstream_uri`
   variable. Custom plugins using the `ngx.req.set_uri()` API will not be taken
-  into consideration anymore. One must now use the `ngx.var.upstream_uri`
-  variable from the Lua land. See
-  [#2519](https://github.com/Mashape/kong/pull/2519).
+  into consideration anymore. One must now set the `ngx.var.upstream_uri`
+  variable from the Lua land.
+  [#2519](https://github.com/Mashape/kong/pull/2519)
 - :warning: The Admin API `/status` endpoint does not return a count of the
   database entities anymore. Instead, it now returns a `database.reachable`
   boolean value, which reflects the state of the connection between Kong and
