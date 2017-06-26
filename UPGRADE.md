@@ -60,6 +60,10 @@ Here is the list of breaking changes introduced in 0.11:
 - Several updates were made to the Nginx configuration template. If you are
   using a custom template, you **must** apply those modifications. See below
   for a list of changes to apply.
+- The upstream URI is now determined via the Nginx `$upstream_uri` variable.
+  Custom plugins using the `ngx.req.set_uri()` API will not be taken into
+  consideration anymore. One must now set the `ngx.var.upstream_uri` variable
+  from the Lua land.
 - While Kong now correctly proxies downstream `X-Forwarded-*` headers, the
   introduction of the new `trusted_ips` property also means that Kong will
   only do so when the request comes from a trusted client IP. This is also
