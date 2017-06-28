@@ -1,10 +1,13 @@
 local tablex = require "pl.tablex"
+local utils = require "kong.tools.utils"
 
 local _M = {}
 
 local EMPTY = tablex.readonly({})
 
-function _M.serialize(ngx)
+function _M.serialize(ngx, conf)
+  conf = conf or {}
+
   local authenticated_entity
   if ngx.ctx.authenticated_credential ~= nil then
     authenticated_entity = {
@@ -13,7 +16,7 @@ function _M.serialize(ngx)
     }
   end
   
-  return {
+  local message = {
     request = {
       uri = ngx.var.request_uri,
       request_uri = ngx.var.scheme .. "://" .. ngx.var.host .. ":" .. ngx.var.server_port .. ngx.var.request_uri,
@@ -42,6 +45,11 @@ function _M.serialize(ngx)
     client_ip = ngx.var.remote_addr,
     started_at = ngx.req.start_time() * 1000
   }
+
+  if conf.flat then
+    message = utils.flat_table(message)
+
+  return message
 end
 
 return _M
