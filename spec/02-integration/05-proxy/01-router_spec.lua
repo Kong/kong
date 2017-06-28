@@ -149,6 +149,79 @@ describe("Router", function()
     end)
   end)
 
+  describe("URI arguments (querystring)", function()
+
+    setup(function()
+      insert_apis {
+        {
+          name = "api-1",
+          upstream_url = "http://httpbin.org",
+          hosts = { "example.com" },
+        },
+        {
+          name = "api-2",
+          upstream_url = "http://localhost:9999",
+          hosts = { "localhost" },
+        },
+      }
+
+      assert(helpers.start_kong {
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      })
+    end)
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("preserves URI arguments", function()
+      local res = assert(client:send {
+        method = "GET",
+        path   = "/get",
+        query  = {
+          foo   = "bar",
+          hello = "world",
+        },
+        headers = {
+          ["Host"] = "example.com",
+        },
+      })
+
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.equal("bar", json.args.foo)
+      assert.equal("world", json.args.hello)
+    end)
+
+    it("does proxy an empty querystring if URI does not contain arguments", function()
+      local res = assert(client:send {
+        method = "GET",
+        path   = "/get?",
+        headers = {
+          ["Host"] = "localhost",
+        },
+      })
+
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.matches("/get%?$", json.vars.request_uri)
+    end)
+
+    it("does proxy a querystring with an empty value", function()
+      local res = assert(client:send {
+        method = "GET",
+        path   = "/get?hello",
+        headers = {
+          ["Host"] = "example.com",
+        },
+      })
+
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.matches("/get%?hello$", json.url)
+    end)
+  end)
+
   describe("percent-encoded URIs", function()
 
     setup(function()
@@ -195,88 +268,67 @@ describe("Router", function()
     end)
   end)
 
-  describe("invalidation", function()
-    local admin_client
+  describe("strip_uri", function()
 
     setup(function()
-      helpers.dao:truncate_tables()
-      assert(helpers.start_kong())
+      insert_apis {
+        {
+          name         = "api-strip-uri",
+          upstream_url = "http://httpbin.org",
+          uris         = { "/x/y/z", "/z/y/x" },
+          strip_uri    = true,
+        },
+      }
 
-      admin_client = helpers.admin_client()
+      assert(helpers.start_kong())
     end)
 
     teardown(function()
-      if admin_client then
-        admin_client:close()
-      end
-
       helpers.stop_kong()
     end)
 
-    it("updates itself when updating APIs from the Admin API", function()
-      local res = assert(client:send {
-        method = "GET",
-        headers = {
-          host = "api.com"
-        }
-      })
-      local body = assert.response(res).has_status(404)
-      local json = cjson.decode(body)
-      assert.matches("^kong/", res.headers.server)
-      assert.equal("no API found with those values", json.message)
+    describe(" = true", function()
+      it("strips subsequent calls to an API with different [uris]", function()
+        local res_uri_1 = assert(client:send {
+          method = "GET",
+          path   = "/x/y/z/get",
+        })
 
-      local admin_res = assert(admin_client:send {
-        method = "POST",
-        path = "/apis",
-        body = {
-          name = "my-api",
-          upstream_url = "http://httpbin.org",
-          hosts = "api.com",
-        },
-        headers = { ["Content-Type"] = "application/json" },
-      })
-      assert.response(admin_res).has_status(201)
+        local body = assert.res_status(200, res_uri_1)
+        local json = cjson.decode(body)
+        assert.matches("/get", json.url, nil, true)
+        assert.not_matches("/x/y/z/get", json.url, nil, true)
 
-      ngx.sleep(1)
+        local res_uri_2 = assert(client:send {
+          method = "GET",
+          path   = "/z/y/x/get",
+        })
 
-      res = assert(client:send {
-        method = "GET",
-        headers = {
-          host = "api.com"
-        }
-      })
-      assert.response(res).has_status(200)
+        body = assert.res_status(200, res_uri_2)
+        json = cjson.decode(body)
+        assert.matches("/get", json.url, nil, true)
+        assert.not_matches("/z/y/x/get", json.url, nil, true)
 
-      admin_res = assert(admin_client:send {
-        method = "PATCH",
-        path = "/apis/my-api",
-        body = {
-          hosts = "api.com,foo.com",
-          uris = "/foo",
-          strip_uri = true,
-        },
-        headers = { ["Content-Type"] = "application/json" },
-      })
-      assert.response(admin_res).has_status(200)
+        local res_2_uri_1 = assert(client:send {
+          method = "GET",
+          path   = "/x/y/z/get",
+        })
 
-      ngx.sleep(1)
+        body = assert.res_status(200, res_2_uri_1)
+        json = cjson.decode(body)
+        assert.matches("/get", json.url, nil, true)
+        assert.not_matches("/x/y/z/get", json.url, nil, true)
 
-      res = assert(client:send {
-        method = "GET",
-        headers = {
-          host = "foo.com"
-        }
-      })
-      assert.response(res).has_status(404)
+        local res_2_uri_2 = assert(client:send {
+          method = "GET",
+          path   = "/x/y/z/get",
+        })
 
-      res = assert(client:send {
-        method = "GET",
-        path = "/foo",
-        headers = {
-          host = "foo.com"
-        }
-      })
-      assert.response(res).has_status(200)
+        body = assert.res_status(200, res_2_uri_2)
+        json = cjson.decode(body)
+        assert.matches("/get", json.url, nil, true)
+        assert.not_matches("/x/y/z/get", json.url, nil, true)
+      end)
     end)
   end)
 

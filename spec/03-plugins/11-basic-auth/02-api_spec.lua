@@ -148,7 +148,7 @@ describe("Plugin: basic-auth (API)", function()
       setup(function()
         for i = 1, 3 do
           assert(helpers.dao.basicauth_credentials:insert {
-            username = "bob"..i,
+            username = "bob" .. i,
             password = "kong",
             consumer_id = consumer.id
           })
@@ -185,7 +185,7 @@ describe("Plugin: basic-auth (API)", function()
       it("retrieves basic-auth credential by id", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/bob/basic-auth/"..credential.id
+          path = "/consumers/bob/basic-auth/" .. credential.id
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -194,7 +194,7 @@ describe("Plugin: basic-auth (API)", function()
       it("retrieves basic-auth credential by username", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/bob/basic-auth/"..credential.username
+          path = "/consumers/bob/basic-auth/" .. credential.username
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -207,13 +207,13 @@ describe("Plugin: basic-auth (API)", function()
 
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/bob/basic-auth/"..credential.id
+          path = "/consumers/bob/basic-auth/" .. credential.id
         })
         assert.res_status(200, res)
 
         res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/alice/basic-auth/"..credential.id
+          path = "/consumers/alice/basic-auth/" .. credential.id
         })
         assert.res_status(404, res)
       end)
@@ -225,7 +225,7 @@ describe("Plugin: basic-auth (API)", function()
 
         local res = assert(admin_client:send {
           method = "PATCH",
-          path = "/consumers/bob/basic-auth/"..credential.id,
+          path = "/consumers/bob/basic-auth/" .. credential.id,
           body = {
             password = "4321"
           },
@@ -242,7 +242,7 @@ describe("Plugin: basic-auth (API)", function()
 
         local res = assert(admin_client:send {
           method = "PATCH",
-          path = "/consumers/bob/basic-auth/"..credential.username,
+          path = "/consumers/bob/basic-auth/" .. credential.username,
           body = {
             password = "upd4321"
           },
@@ -258,7 +258,7 @@ describe("Plugin: basic-auth (API)", function()
         it("handles invalid input", function()
           local res = assert(admin_client:send {
             method = "PATCH",
-            path = "/consumers/bob/basic-auth/"..credential.id,
+            path = "/consumers/bob/basic-auth/" .. credential.id,
             body = {
               password = 123
             },
@@ -277,7 +277,7 @@ describe("Plugin: basic-auth (API)", function()
       it("deletes a credential", function()
         local res = assert(admin_client:send {
           method = "DELETE",
-          path = "/consumers/bob/basic-auth/"..credential.id,
+          path = "/consumers/bob/basic-auth/" .. credential.id,
         })
         assert.res_status(204, res)
       end)

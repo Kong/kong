@@ -2,7 +2,14 @@ local client = require "resty.websocket.client"
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
-describe("Websockets", function()
+pending("Websockets", function()
+  -- Pending (2017/06/16)
+  -- Since sockb.in appears to be offline, we'll need to find a way to test
+  -- WebSocket proxying support differently.
+  --  * Use another service
+  --  * Spawn our own sockb.in instance on Heroku
+  --  * Compile our test Nginx with the stream module for local testing (ideal)
+
   setup(function()
     assert(helpers.dao.apis:insert {
       name = "ws",
@@ -36,10 +43,10 @@ describe("Websockets", function()
   end)
 
   it("works with Kong", function()
-    assert(make_request("ws://"..helpers.test_conf.proxy_ip..":"..helpers.test_conf.proxy_port.."/ws"))
+    assert(make_request("ws://" .. helpers.test_conf.proxy_ip .. ":" .. helpers.test_conf.proxy_port .. "/ws"))
   end)
 
   it("works with Kong under HTTPS", function()
-    assert(make_request("wss://"..helpers.test_conf.proxy_ssl_ip..":"..helpers.test_conf.proxy_ssl_port.."/ws"))
+    assert(make_request("wss://" .. helpers.test_conf.proxy_ssl_ip .. ":" .. helpers.test_conf.proxy_ssl_port .. "/ws"))
   end)
 end)

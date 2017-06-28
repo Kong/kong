@@ -10,7 +10,9 @@ local UdpLogHandler = BasePlugin:extend()
 UdpLogHandler.PRIORITY = 1
 
 local function log(premature, conf, str)
-  if premature then return end
+  if premature then
+    return
+  end
 
   local sock = udp()
   sock:settimeout(conf.timeout)

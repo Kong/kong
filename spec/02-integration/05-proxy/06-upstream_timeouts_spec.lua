@@ -1,6 +1,6 @@
 local helpers = require "spec.helpers"
 local Factory = require "kong.dao.factory"
-local dao_helpers = require "spec.02-integration.02-dao.helpers"
+local dao_helpers = require "spec.02-integration.03-dao.helpers"
 
 
 local factory

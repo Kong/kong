@@ -27,19 +27,19 @@ local function flush_redis()
   red:set_timeout(2000)
   local ok, err = red:connect(REDIS_HOST, REDIS_PORT)
   if not ok then
-    error("failed to connect to Redis: "..err)
+    error("failed to connect to Redis: " .. err)
   end
 
   if REDIS_PASSWORD and REDIS_PASSWORD ~= "" then
     local ok, err = red:auth(REDIS_PASSWORD)
     if not ok then
-      error("failed to connect to Redis: "..err)
+      error("failed to connect to Redis: " .. err)
     end
   end
 
   local ok, err = red:select(REDIS_DATABASE)
   if not ok then
-    error("failed to change Redis database: ", err)
+    error("failed to change Redis database: " .. err)
   end
 
   red:flushall()
@@ -47,7 +47,7 @@ local function flush_redis()
 end
 
 for i, policy in ipairs({"local", "cluster", "redis"}) do
-  describe("#ci Plugin: response-ratelimiting (access) with policy: "..policy, function()
+  describe("#ci Plugin: response-ratelimiting (access) with policy: " .. policy, function()
     setup(function()
       flush_redis()
       helpers.dao:drop_schema()
@@ -718,8 +718,6 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       end)
 
       it("expires a counter", function()
-        local periods = timestamp.get_timestamps()
-
         local res = assert(helpers.proxy_client():send {
           method = "GET",
           path = "/response-headers?x-kong-limit=video=1",
@@ -733,17 +731,6 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         assert.res_status(200, res)
         assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
         assert.equal(5, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
-
-        if policy == "local" then
-          local res = assert(helpers.admin_client():send {
-            method = "GET",
-            path = "/cache/"..string.format("response-ratelimit:%s:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "video", "minute"),
-            query = { cache = "shm" },
-          })
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-          assert.same({ message = 1 }, json)
-        end
 
         ngx.sleep(61) -- Wait for counter to expire
 
@@ -760,15 +747,6 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         assert.res_status(200, res)
         assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
         assert.equal(5, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
-
-        if policy == "local" then
-          local res = assert(helpers.admin_client():send {
-            method = "GET",
-            path = "/cache/"..string.format("response-ratelimit:%s:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "video", "minute"),
-            query = { cache = "shm" },
-          })
-          assert.res_status(404, res)
-        end
       end)
     end)
   end)

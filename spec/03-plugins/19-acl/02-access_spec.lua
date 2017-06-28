@@ -1,6 +1,5 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local cache = require "kong.tools.database_cache"
 
 describe("Plugin: ACL (access)", function()
   local client, api_client
@@ -386,8 +385,8 @@ describe("Plugin: ACL (access)", function()
             ["Content-Type"] = "application/json"
           },
           body = {
-            name = "acl_test"..i,
-            hosts = { "acl_test"..i..".com" },
+            name = "acl_test" .. i,
+            hosts = { "acl_test" .. i .. ".com" },
             upstream_url = "http://mockbin.com"
           }
         })
@@ -396,13 +395,13 @@ describe("Plugin: ACL (access)", function()
         -- Add the ACL plugin to the new API with the new group
         local res = assert(api_client:send {
           method = "POST",
-          path = "/apis/acl_test"..i.."/plugins/",
+          path = "/apis/acl_test" .. i .. "/plugins/",
           headers = {
             ["Content-Type"] = "application/json"
           },
           body = {
             name = "acl",
-            ["config.whitelist"] = "admin"..i
+            ["config.whitelist"] = "admin" .. i
           }
         })
         assert.res_status(201, res)
@@ -410,7 +409,7 @@ describe("Plugin: ACL (access)", function()
         -- Add key-authentication to API
         local res = assert(api_client:send {
           method = "POST",
-          path = "/apis/acl_test"..i.."/plugins/",
+          path = "/apis/acl_test" .. i .. "/plugins/",
           headers = {
             ["Content-Type"] = "application/json"
           },
@@ -428,16 +427,18 @@ describe("Plugin: ACL (access)", function()
             ["Content-Type"] = "application/json"
           },
           body = {
-            group = "admin"..i
+            group = "admin" .. i
           }
         })
         assert.res_status(201, res)
 
         -- Wait for cache to be invalidated
+        local cache_key = helpers.dao.acls:cache_key(consumer_id)
+
         helpers.wait_until(function()
           local res = assert(api_client:send {
             method = "GET",
-            path = "/cache/"..cache.acls_key(consumer_id)
+            path = "/cache/" .. cache_key
           })
           res:read_body()
           return res.status == 404
@@ -451,7 +452,7 @@ describe("Plugin: ACL (access)", function()
             method = "GET",
             path = "/status/200?apikey=secret123",
             headers = {
-              ["Host"] = "acl_test"..i..".com"
+              ["Host"] = "acl_test" .. i .. ".com"
             }
           })
           res:read_body()

@@ -9,10 +9,10 @@ local function validate_uris(v, t, column)
     for _, uri in ipairs(v) do
       local parsed_uri = url.parse(uri)
       if not (parsed_uri and parsed_uri.host and parsed_uri.scheme) then
-        return false, "cannot parse '"..uri.."'"
+        return false, "cannot parse '" .. uri .. "'"
       end
       if parsed_uri.fragment ~= nil then
-        return false, "fragment not allowed in '"..uri.."'"
+        return false, "fragment not allowed in '" .. uri .. "'"
       end
     end
   end
@@ -22,6 +22,7 @@ end
 local OAUTH2_CREDENTIALS_SCHEMA = {
   primary_key = {"id"},
   table = "oauth2_credentials",
+  cache_key = { "client_id" },
   fields = {
     id = { type = "id", dao_insert_value = true },
     consumer_id = { type = "id", required = true, foreign = "consumers:id" },
@@ -54,6 +55,7 @@ local BEARER = "bearer"
 local OAUTH2_TOKENS_SCHEMA = {
   primary_key = {"id"},
   table = "oauth2_tokens",
+  cache_key = { "access_token" },
   fields = {
     id = { type = "id", dao_insert_value = true },
     api_id = { type = "id", required = false, foreign = "apis:id" },

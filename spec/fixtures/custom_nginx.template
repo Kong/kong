@@ -32,7 +32,7 @@ http {
 >-- reset_timedout_connection on; # disabled until benchmarked
 > end
 
-    client_max_body_size 0;
+    client_max_body_size ${{CLIENT_MAX_BODY_SIZE}};
     proxy_ssl_server_name on;
     underscores_in_headers on;
 
@@ -42,11 +42,13 @@ http {
     lua_socket_pool_size ${{LUA_SOCKET_POOL_SIZE}};
     lua_max_running_timers 4096;
     lua_max_pending_timers 16384;
-    lua_shared_dict kong 4m;
-    lua_shared_dict cache ${{MEM_CACHE_SIZE}};
-    lua_shared_dict cache_locks 100k;
-    lua_shared_dict process_events 1m;
-    lua_shared_dict cassandra 5m;
+    lua_shared_dict kong                5m;
+    lua_shared_dict kong_cache          ${{MEM_CACHE_SIZE}};
+    lua_shared_dict kong_process_events 5m;
+    lua_shared_dict kong_cluster_events 5m;
+> if database == "cassandra" then
+    lua_shared_dict kong_cassandra      5m;
+> end
     lua_socket_log_errors off;
 > if lua_ssl_trusted_certificate then
     lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE}}';
@@ -85,6 +87,8 @@ http {
 
         access_log logs/access.log;
 
+        client_body_buffer_size ${{CLIENT_BODY_BUFFER_SIZE}};
+
 > if ssl then
 > if real_ip_header == "proxy_protocol" then
         listen ${{PROXY_LISTEN_SSL}} proxy_protocol ssl;
@@ -110,6 +114,8 @@ http {
             set $upstream_upgrade            '';
             set $upstream_connection         '';
             set $upstream_scheme             '';
+            set $upstream_uri                '';
+            set $upstream_host               '';
             set $upstream_x_forwarded_for    '';
             set $upstream_x_forwarded_proto  '';
             set $upstream_x_forwarded_host   '';
@@ -131,7 +137,7 @@ http {
             proxy_pass_header  Server;
             proxy_pass_header  Date;
             proxy_ssl_name     $upstream_host;
-            proxy_pass         $upstream_scheme://kong_upstream;
+            proxy_pass         $upstream_scheme://kong_upstream$upstream_uri;
 
             header_filter_by_lua_block {
                 kong.header_filter()
@@ -285,6 +291,9 @@ http {
             content_by_lua_block {
                 local function say(res, status)
                   ngx.header["x-amzn-RequestId"] = "foo"
+                  if string.match(ngx.var.uri, "functionWithUnhandledError") then
+                    ngx.header["X-Amzn-Function-Error"] = "Unhandled"
+                  end
                   ngx.status = status
 
                   if type(res) == 'string' then

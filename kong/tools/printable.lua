@@ -20,16 +20,16 @@ function printable_mt:__tostring()
       end
     end
 
-    table.insert(t, (type(k) == "string" and k.."=" or "")..tostring(v))
+    table.insert(t, (type(k) == "string" and k .. "=" or "") .. tostring(v))
   end
   return table.concat(t, " ")
 end
 
 function printable_mt.__concat(a, b)
   if getmetatable(a) == printable_mt then
-    return tostring(a)..b
+    return tostring(a) .. b
   else
-    return a..tostring(b)
+    return a .. tostring(b)
   end
 end
 

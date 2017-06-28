@@ -1,5 +1,4 @@
 local ssl_fixtures = require "spec.fixtures.ssl"
-local cache = require "kong.tools.database_cache"
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
@@ -64,7 +63,8 @@ describe("SSL", function()
     })
 
     assert(helpers.start_kong {
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_conf  = "spec/fixtures/custom_nginx.template",
+      trusted_ips = "127.0.0.1",
     })
 
     admin_client = helpers.admin_client()
@@ -108,10 +108,10 @@ describe("SSL", function()
 
     it("sets the configured SSL certificate if SNI match", function()
       local cert = get_cert("ssl1.com")
-      assert.matches("CN=ssl1.com", cert, nil, true)
+      assert.matches("CN=ssl-example.com", cert, nil, true)
 
       cert = get_cert("example.com")
-      assert.matches("CN=ssl1.com", cert, nil, true)
+      assert.matches("CN=ssl-example.com", cert, nil, true)
     end)
   end)
 
@@ -168,6 +168,45 @@ describe("SSL", function()
       })
       assert.res_status(426, res)
     end)
+
+    it("allows with https x-forwarded-proto from trusted client", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          Host = "example.com",
+          ["x-forwarded-proto"] = "https"
+        }
+      })
+      assert.res_status(200, res)
+    end)
+
+    describe("blocks with https x-forwarded-proto from untrusted client", function()
+      local client
+
+      -- restart kong and use a new client to simulate a connection from an
+      -- untrusted ip
+      setup(function()
+        assert(helpers.kong_exec("restart -c " .. helpers.test_conf_path, {
+          trusted_ips = "1.2.3.4", -- explicitly trust an IP that is not us
+        }))
+
+        client = helpers.proxy_client()
+      end)
+
+      -- despite reloading here with no trusted IPs, this
+      it("", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            Host = "example.com",
+            ["x-forwarded-proto"] = "https"
+          }
+        })
+        assert.res_status(426, res)
+      end)
+    end)
   end)
 
   describe("proxy_ssl_name", function()
@@ -221,114 +260,5 @@ describe("SSL", function()
         assert.equal("no SNI", body)
       end)
     end)
-  end)
-
-end)
-
-describe("SSL certificates and SNIs invalidations", function()
-  local admin_client
-  local CACHE_KEY = cache.certificate_key("ssl1.com")
-
-  before_each(function()
-    helpers.dao:truncate_tables()
-
-    assert(helpers.dao.apis:insert {
-      name = "api-1",
-      hosts = { "ssl1.com" },
-      upstream_url = "http://httpbin.org",
-    })
-
-    local certificate = assert(helpers.dao.ssl_certificates:insert {
-      cert = ssl_fixtures.cert,
-      key  = ssl_fixtures.key,
-    })
-
-    assert(helpers.dao.ssl_servers_names:insert {
-      ssl_certificate_id = certificate.id,
-      name = "ssl1.com",
-    })
-
-    assert(helpers.start_kong())
-    admin_client = helpers.admin_client()
-  end)
-
-  after_each(function()
-    helpers.stop_kong()
-  end)
-
-  it("DELETE", function()
-    local cert = get_cert("ssl1.com")
-    assert.matches("CN=ssl1.com", cert, nil, true)
-
-    -- check cache is populated
-
-    local res = assert(admin_client:send {
-      method = "GET",
-      path   = "/cache/" .. CACHE_KEY,
-    })
-
-    assert.res_status(200, res)
-
-    -- delete the SSL certificate
-
-    res = assert(admin_client:send {
-      method = "DELETE",
-      path   = "/certificates/ssl1.com",
-    })
-
-    assert.res_status(204, res)
-
-    -- ensure cache is invalidated
-
-    helpers.wait_until(function()
-      local res = assert(admin_client:send {
-        method = "GET",
-        path   = "/cache/" .. CACHE_KEY,
-      })
-      res:read_body()
-      return res.status == 404
-    end, 5)
-  end)
-
-  it("UPDATE", function()
-    local cert = get_cert("ssl1.com")
-    assert.matches("CN=ssl1.com", cert, nil, true)
-
-    -- check cache is populated
-
-    local res = assert(admin_client:send {
-      method = "GET",
-      path   = "/cache/" .. CACHE_KEY,
-    })
-
-    assert.res_status(200, res)
-
-    -- update the SSL certificate
-
-    res = assert(admin_client:send {
-      method = "PATCH",
-      path   = "/certificates/ssl1.com",
-      body   = {
-        cert = helpers.file.read(helpers.test_conf.ssl_cert),
-        key  = helpers.file.read(helpers.test_conf.ssl_cert_key),
-      },
-      headers = { ["Content-Type"] = "application/json" },
-    })
-
-    assert.res_status(200, res)
-
-    -- ensure cache is invalidated
-
-    helpers.wait_until(function()
-      local res = assert(admin_client:send {
-        method = "GET",
-        path   = "/cache/" .. CACHE_KEY,
-      })
-      res:read_body()
-      return res.status == 404
-    end, 5)
-
-    cert = get_cert("ssl1.com")
-    assert.not_matches("CN=ssl1.com", cert, nil, true)
   end)
 end)

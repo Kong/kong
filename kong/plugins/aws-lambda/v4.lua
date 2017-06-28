@@ -43,7 +43,7 @@ local function canonicalise_path(path)
   for segment in path:gmatch("/([^/]*)") do
     if segment == "" or segment == "." then
       segments = segments -- do nothing and avoid lint
-    elseif segment == ".." then
+    elseif segment == " .. " then
       -- intentionally discards components at top level
       segments[#segments] = nil
     else
@@ -51,7 +51,9 @@ local function canonicalise_path(path)
     end
   end
   local len = #segments
-  if len == 0 then return "/" end
+  if len == 0 then
+    return "/"
+  end
   -- If there was a slash on the end, keep it there.
   if path:sub(-1, -1) == "/" then
     len = len + 1
@@ -110,7 +112,9 @@ local function prepare_awsv4_request(tbl)
     end
   end
   local tls = tbl.tls
-  if tls == nil then tls = true end
+  if tls == nil then
+    tls = true
+  end
   local port = tbl.port or (tls and 443 or 80)
   local timestamp = tbl.timestamp or ngx.time()
   local req_date = os.date("!%Y%m%dT%H%M%SZ", timestamp)
@@ -199,7 +203,7 @@ local function prepare_awsv4_request(tbl)
   -- Task 4: Add the Signing Information to the Request
   -- http://docs.aws.amazon.com/general/latest/gr/sigv4-add-signature-to-request.html
   local authorization = ALGORITHM
-    .. " Credential=" .. access_key .."/" .. credential_scope
+    .. " Credential=" .. access_key .. "/" .. credential_scope
     .. ", SignedHeaders=" .. signed_headers
     .. ", Signature=" .. signature
   if add_auth_header then

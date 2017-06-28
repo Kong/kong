@@ -31,7 +31,7 @@ function ResponseTransformerHandler:body_filter(conf)
       local body = body_filter.transform_json_body(conf, ngx.ctx.buffer)
       ngx.arg[1] = body
     else
-      ngx.ctx.buffer = ngx.ctx.buffer..chunk
+      ngx.ctx.buffer = ngx.ctx.buffer .. chunk
       ngx.arg[1] = nil
     end  
   end  

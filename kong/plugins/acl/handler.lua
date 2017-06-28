@@ -1,9 +1,8 @@
-local singletons = require "kong.singletons"
 local BasePlugin = require "kong.plugins.base_plugin"
-local cache = require "kong.tools.database_cache"
 local responses = require "kong.tools.responses"
 local utils = require "kong.tools.utils"
 local constants = require "kong.constants"
+local singletons = require "kong.singletons"
 
 local table_insert = table.insert
 local table_concat = table.concat
@@ -37,12 +36,15 @@ function ACLHandler:access(conf)
   end
 
   -- Retrieve ACL
-  local acls, err = cache.get_or_set(cache.acls_key(consumer_id), nil,
-                                load_acls_into_memory, consumer_id)
+  local cache_key = singletons.dao.acls:cache_key(consumer_id)
+  local acls, err = singletons.cache:get(cache_key, nil,
+                                         load_acls_into_memory, consumer_id)
   if err then
     responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
-  if not acls then acls = {} end
+  if not acls then
+    acls = {}
+  end
 
   local block
 
@@ -66,7 +68,9 @@ function ACLHandler:access(conf)
           break
         end
       end
-      if not contains then block = true end
+      if not contains then
+        block = true
+      end
     end
   end
 

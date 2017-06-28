@@ -19,6 +19,7 @@ end
 local SCHEMA = {
   primary_key = {"id"},
   table = "basicauth_credentials",
+  cache_key = { "username" },
   fields = {
     id = {type = "id", dao_insert_value = true},
     created_at = {type = "timestamp", immutable = true, dao_insert_value = true},

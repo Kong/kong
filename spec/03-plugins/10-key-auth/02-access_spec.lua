@@ -124,7 +124,7 @@ describe("Plugin: key-auth (access)", function()
         }
       })
       res:read_body()
-      assert.equal('Key realm="'..meta._NAME..'"', res.headers["WWW-Authenticate"])
+      assert.equal('Key realm="' .. meta._NAME .. '"', res.headers["WWW-Authenticate"])
     end)
   end)
 

@@ -19,7 +19,7 @@ error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 >-- reset_timedout_connection on; # disabled until benchmarked
 > end
 
-client_max_body_size 0;
+client_max_body_size ${{CLIENT_MAX_BODY_SIZE}};
 proxy_ssl_server_name on;
 underscores_in_headers on;
 
@@ -29,11 +29,13 @@ lua_code_cache ${{LUA_CODE_CACHE}};
 lua_socket_pool_size ${{LUA_SOCKET_POOL_SIZE}};
 lua_max_running_timers 4096;
 lua_max_pending_timers 16384;
-lua_shared_dict kong 4m;
-lua_shared_dict cache ${{MEM_CACHE_SIZE}};
-lua_shared_dict cache_locks 100k;
-lua_shared_dict process_events 1m;
-lua_shared_dict cassandra 5m;
+lua_shared_dict kong                5m;
+lua_shared_dict kong_cache          ${{MEM_CACHE_SIZE}};
+lua_shared_dict kong_process_events 5m;
+lua_shared_dict kong_cluster_events 5m;
+> if database == "cassandra" then
+lua_shared_dict kong_cassandra      5m;
+> end
 lua_socket_log_errors off;
 > if lua_ssl_trusted_certificate then
 lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE}}';
@@ -74,12 +76,13 @@ server {
     access_log ${{PROXY_ACCESS_LOG}};
     error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
+    client_body_buffer_size ${{CLIENT_BODY_BUFFER_SIZE}};
 
 > if ssl then
 > if real_ip_header == "proxy_protocol" then
-    listen ${{PROXY_LISTEN_SSL}} proxy_protocol ssl;
+    listen ${{PROXY_LISTEN_SSL}} proxy_protocol ssl${{HTTP2}};
 > else
-    listen ${{PROXY_LISTEN_SSL}} ssl;
+    listen ${{PROXY_LISTEN_SSL}} ssl${{HTTP2}};
 > end
     ssl_certificate ${{SSL_CERT}};
     ssl_certificate_key ${{SSL_CERT_KEY}};
@@ -110,6 +113,7 @@ server {
         set $upstream_upgrade            '';
         set $upstream_connection         '';
         set $upstream_scheme             '';
+        set $upstream_uri                '';
         set $upstream_x_forwarded_for    '';
         set $upstream_x_forwarded_proto  '';
         set $upstream_x_forwarded_host   '';
@@ -135,7 +139,7 @@ server {
         proxy_pass_header  Server;
         proxy_pass_header  Date;
         proxy_ssl_name     $upstream_host;
-        proxy_pass         $upstream_scheme://kong_upstream;
+        proxy_pass         $upstream_scheme://kong_upstream$upstream_uri;
 
         header_filter_by_lua_block {
             kong.header_filter()
@@ -169,7 +173,7 @@ server {
     client_body_buffer_size 10m;
 
 > if admin_ssl then
-    listen ${{ADMIN_LISTEN_SSL}} ssl;
+    listen ${{ADMIN_LISTEN_SSL}} ssl${{ADMIN_HTTP2}};
     ssl_certificate ${{ADMIN_SSL_CERT}};
     ssl_certificate_key ${{ADMIN_SSL_CERT_KEY}};
     ssl_protocols TLSv1.1 TLSv1.2;

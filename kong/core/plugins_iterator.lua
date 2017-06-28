@@ -1,4 +1,3 @@
-local cache = require "kong.tools.database_cache"
 local responses = require "kong.tools.responses"
 local singletons = require "kong.singletons"
 local pl_tablex = require "pl.tablex"
@@ -36,9 +35,12 @@ end
 -- @param[type=stirng] plugin_name Name of the plugin being tested for.
 -- @treturn table Plugin retrieved from the cache or database.
 local function load_plugin_configuration(api_id, consumer_id, plugin_name)
-  local cache_key = cache.plugin_key(plugin_name, api_id, consumer_id)
-  local plugin, err = cache.get_or_set(cache_key, nil, load_plugin_into_memory,
-                                  api_id, consumer_id, plugin_name)
+  local plugin_cache_key = singletons.dao.plugins:cache_key(plugin_name,
+                                                            api_id,
+                                                            consumer_id)
+  local plugin, err = singletons.cache:get(plugin_cache_key, nil,
+                                           load_plugin_into_memory,
+                                           api_id, consumer_id, plugin_name)
   if err then
     responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end

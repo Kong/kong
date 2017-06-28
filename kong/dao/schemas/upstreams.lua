@@ -3,7 +3,7 @@ local utils = require "kong.tools.utils"
 
 local DEFAULT_SLOTS = 100
 local SLOTS_MIN, SLOTS_MAX = 10, 2^16
-local SLOTS_MSG = "number of slots must be between "..SLOTS_MIN.." and "..SLOTS_MAX
+local SLOTS_MSG = "number of slots must be between " .. SLOTS_MIN .. " and " .. SLOTS_MAX
 
 return {
   table = "upstreams",
@@ -67,15 +67,17 @@ return {
       table.sort(t)
       local count, max = 0, 0
       for i, v in pairs(t) do
-        if (i ~= v) then
+        if i ~= v then
           return false, Errors.schema("invalid orderlist")
         end
 
         count = count + 1
-        if i > max then max = i end
+        if i > max then
+          max = i
+        end
       end
 
-      if (count ~= config.slots) or (max ~= config.slots) then
+      if count ~= config.slots or max ~= config.slots then
         return false, Errors.schema("invalid orderlist")
       end
 

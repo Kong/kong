@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local cache = require "kong.tools.database_cache"
 local cjson = require "cjson"
 
 describe("Plugin: ip-restriction (access)", function()
@@ -281,7 +280,7 @@ describe("Plugin: ip-restriction (access)", function()
 
     res = assert(admin_client:send {
       method = "PATCH",
-      path = "/apis/api-2/plugins/"..plugin_config.id,
+      path = "/apis/api-2/plugins/" .. plugin_config.id,
       body = {
         ["config.blacklist"] = "127.0.0.1,127.0.0.2"
       },
@@ -291,12 +290,14 @@ describe("Plugin: ip-restriction (access)", function()
     })
     assert.res_status(200, res)
 
-    local cache_key = cache.plugin_key(plugin_config.name, plugin_config.api_id, plugin_config.consumer_id)
+    local cache_key = helpers.dao.plugins:cache_key(plugin_config.name,
+                                                    plugin_config.api_id,
+                                                    plugin_config.consumer_id)
 
     helpers.wait_until(function()
       res = assert(admin_client:send {
         method = "GET",
-        path = "/cache/"..cache_key
+        path = "/cache/" .. cache_key
       })
       res:read_body()
       return res.status ~= 200

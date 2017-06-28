@@ -1,4 +1,3 @@
-local cache = require "kong.tools.database_cache"
 local pl_tablex = require "pl.tablex"
 local responses = require "kong.tools.responses"
 local singletons = require "kong.singletons"
@@ -74,8 +73,8 @@ end
 -- caching, invalidation, db access, et al.
 -- @return upstream table, or `false` if not found, or nil+error
 local function get_upstream(upstream_name)
-  local upstreams_dict, err = cache.get_or_set(cache.upstreams_dict_key(),
-                              nil, load_upstreams_dict_into_memory)
+  local upstreams_dict, err = singletons.cache:get("balancer:upstreams", nil,
+                                                   load_upstreams_dict_into_memory)
   if err then
     return nil, err
   end
@@ -85,8 +84,9 @@ local function get_upstream(upstream_name)
     return false -- no upstream by this name
   end
 
-  return cache.get_or_set(cache.upstream_key(upstream_id), nil,
-                          load_upstream_into_memory, upstream_id)
+  local upstream_cache_key = "balancer:upstreams:" .. upstream_id
+  return singletons.cache:get(upstream_cache_key, nil,
+                              load_upstream_into_memory, upstream_id)
 end
 
 -- loads the target history for an upstream
@@ -95,7 +95,9 @@ local function load_targets_into_memory(upstream_id)
   log(DEBUG, "fetching targets for upstream: ",tostring(upstream_id))
 
   local target_history, err = singletons.dao.targets:find_all {upstream_id = upstream_id}
-  if err then return nil, err end
+  if err then
+    return nil, err
+  end
 
   -- perform some raw data updates
   for _, target in ipairs(target_history) do
@@ -161,8 +163,10 @@ local get_balancer = function(target)
   end
 
   -- we've got the upstream, now fetch its targets, from cache or the db
-  local targets_history, err = cache.get_or_set(cache.targets_key(upstream.id),
-                               nil, load_targets_into_memory, upstream.id)
+  local targets_cache_key    = "balancer:targets:" .. upstream.id
+  local targets_history, err = singletons.cache:get(targets_cache_key, nil,
+                                                    load_targets_into_memory,
+                                                    upstream.id)
   if err then
     return nil, err
   end
@@ -221,7 +225,9 @@ local get_balancer = function(target)
           order = upstream.orderlist,
           dns = dns_client,
         })
-      if not balancer then return balancer, err end
+      if not balancer then
+        return balancer, err
+      end
 
       balancer.__targets_history = {}
       balancers[upstream.name] = balancer  -- overwrite our existing one
