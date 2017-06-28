@@ -38,10 +38,13 @@ This command is equivalent to doing both 'kong stop' and
 'kong start'.
 
 Options:
- -c,--conf        (optional string)   configuration file
- -p,--prefix      (optional string)   prefix at which Kong should be running
- --nginx-conf     (optional string)   custom Nginx configuration template
- --run-migrations (optional boolean)  optionally run migrations on the DB
+ -c,--conf         (optional string)   configuration file
+ -p,--prefix       (optional string)   prefix at which Kong should be running
+ --nginx-conf      (optional string)   custom Nginx configuration template
+ --run-migrations  (optional boolean)  optionally run migrations on the DB
+ --migrate-timeout (optional number)   how long to wait for migrations to be
+                                       completed by another node
+
 ]]
 
 return {

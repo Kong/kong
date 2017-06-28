@@ -287,7 +287,7 @@ function _M:are_migrations_uptodate()
       then
         local log = require "kong.cmd.utils.log"
         local infos = self.db:infos()
-        log.warn("%s %s '%s' is missing migration: (%s) %s",
+        log.debug("%s %s '%s' is missing migration: (%s) %s",
                   self.db_type, infos.desc, infos.name, module, migration.name)
         return false, "migrations are not up to date"
       end
