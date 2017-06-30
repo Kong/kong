@@ -457,6 +457,9 @@ function _M.new(apis)
     return max_uri_a > max_uri_b
   end
 
+  table.sort(uris_prefixes, function(a, b)
+    return #a > #b
+  end)
 
   for category_bit, category in pairs(categories) do
     table.sort(category.apis, function(a, b)
@@ -562,6 +565,8 @@ function _M.new(apis)
         end
 
         if from then
+          -- strip \Q...\E tokens
+          uri = sub(uris_prefixes[i], 3, -3)
           req_category = bor(req_category, MATCH_RULES.URI)
           break
         end
