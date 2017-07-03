@@ -12,7 +12,7 @@ local PAYLOAD = {
 }
 
 describe("Plugin: jwt (access)", function()
-  local jwt_secret, base64_jwt_secret, rsa_jwt_secret_1, rsa_jwt_secret_2
+  local jwt_secret, base64_jwt_secret, rsa_jwt_secret_1, rsa_jwt_secret_2, rsa_jwt_secret_3
   local proxy_client, admin_client
 
   setup(function()
@@ -28,6 +28,7 @@ describe("Plugin: jwt (access)", function()
     local consumer2 = assert(helpers.dao.consumers:insert {username = "jwt_tests_base64_consumer"})
     local consumer3 = assert(helpers.dao.consumers:insert {username = "jwt_tests_rsa_consumer_1"})
     local consumer4 = assert(helpers.dao.consumers:insert {username = "jwt_tests_rsa_consumer_2"})
+    local consumer5 = assert(helpers.dao.consumers:insert {username = "jwt_tests_rsa_consumer_5"})
     local anonymous_user = assert(helpers.dao.consumers:insert {username = "no-body"})
 
     assert(helpers.dao.plugins:insert {name = "jwt", config = {}, api_id = api1.id})
@@ -49,6 +50,11 @@ describe("Plugin: jwt (access)", function()
       consumer_id = consumer4.id,
       algorithm = "RS256",
       rsa_public_key = fixtures.rs256_public_key
+    })
+    rsa_jwt_secret_3 = assert(helpers.dao.jwt_secrets:insert {
+      consumer_id = consumer5.id,
+      algorithm = "RS512",
+      rsa_public_key = fixtures.rs512_public_key
     })
 
     assert(helpers.start_kong())
@@ -260,6 +266,41 @@ describe("Plugin: jwt (access)", function()
       local body = cjson.decode(assert.res_status(200, res))
       assert.equal(authorization, body.headers.authorization)
       assert.equal("jwt_tests_rsa_consumer_2", body.headers["x-consumer-username"])
+    end)
+  end)
+
+describe("RS512", function()
+    it("verifies JWT", function()
+      PAYLOAD.iss = rsa_jwt_secret_3.key
+      local jwt = jwt_encoder.encode(PAYLOAD, fixtures.rs512_private_key, "RS512")
+      local authorization = "Bearer " .. jwt
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Authorization"] = authorization,
+          ["Host"] = "jwt.com",
+        }
+      })
+      local body = cjson.decode(assert.res_status(200, res))
+      assert.equal(authorization, body.headers.authorization)
+      assert.equal("jwt_tests_rsa_consumer_5", body.headers["x-consumer-username"])
+    end)
+    it("identifies Consumer", function()
+      PAYLOAD.iss = rsa_jwt_secret_3.key
+      local jwt = jwt_encoder.encode(PAYLOAD, fixtures.rs512_private_key, "RS512")
+      local authorization = "Bearer " .. jwt
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Authorization"] = authorization,
+          ["Host"] = "jwt.com",
+        }
+      })
+      local body = cjson.decode(assert.res_status(200, res))
+      assert.equal(authorization, body.headers.authorization)
+      assert.equal("jwt_tests_rsa_consumer_5", body.headers["x-consumer-username"])
     end)
   end)
 
