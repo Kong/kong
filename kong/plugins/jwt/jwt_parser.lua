@@ -27,6 +27,7 @@ local alg_sign = {
   --["HS384"] = function(data, key) return crypto.hmac.digest("sha384", data, key, true) end,
   --["HS512"] = function(data, key) return crypto.hmac.digest("sha512", data, key, true) end
   ["RS256"] = function(data, key) return crypto.sign('sha256', data, crypto.pkey.from_pem(key, true)) end,
+  ["RS512"] = function(data, key) return crypto.sign('sha512', data, crypto.pkey.from_pem(key, true)) end,
   ["ES256"] = function(data, key)
     local pkeyPrivate = crypto.pkey.from_pem(key, true)
     local signature = crypto.sign('sha256', data, pkeyPrivate)
@@ -48,6 +49,10 @@ local alg_verify = {
   ["RS256"] = function(data, signature, key)
     local pkey = assert(crypto.pkey.from_pem(key), "Consumer Public Key is Invalid")
     return crypto.verify('sha256', data, signature, pkey)
+  end,
+  ["RS512"] = function(data, signature, key)
+    local pkey = assert(crypto.pkey.from_pem(key), "Consumer Public Key is Invalid")
+    return crypto.verify('sha512', data, signature, pkey)
   end,
   ["ES256"] = function(data, signature, key)
     local pkey = assert(crypto.pkey.from_pem(key), "Consumer Public Key is Invalid")
