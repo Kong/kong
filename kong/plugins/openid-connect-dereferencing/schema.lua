@@ -5,25 +5,6 @@ return {
       required    = true,
       type        = "url",
     },
-    scopes        = {
-      required    = false,
-      type        = "array",
-      default     = { "openid" },
-    },
-    claims        = {
-      required    = false,
-      type        = "array",
-      enum        = { "iss", "sub", "aud", "azp", "exp", "iat", "auth_time", "at_hash", "alg", "nbf", "hd" },
-      default     = { "iss", "sub", "aud", "azp", "exp" },
-    },
-    domains       = {
-      required    = false,
-      type        = "array",
-    },
-    max_age       = {
-      required    = false,
-      type        = "number",
-    },
     leeway        = {
       required    = false,
       type        = "number",

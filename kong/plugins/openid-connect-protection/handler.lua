@@ -285,7 +285,7 @@ function OICProtectionHandler:access(conf)
 end
 
 
-OICProtectionHandler.PRIORITY = 950
+OICProtectionHandler.PRIORITY = 990
 
 
 return OICProtectionHandler

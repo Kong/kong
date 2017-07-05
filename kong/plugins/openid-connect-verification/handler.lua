@@ -440,7 +440,7 @@ function OICVerificationHandler:access(conf)
 end
 
 
-OICVerificationHandler.PRIORITY = 900
+OICVerificationHandler.PRIORITY = 980
 
 
 return OICVerificationHandler

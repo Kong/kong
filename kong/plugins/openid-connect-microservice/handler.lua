@@ -52,7 +52,7 @@ function OICMicroserviceHandler:access(conf)
 end
 
 
-OICMicroserviceHandler.PRIORITY = 800
+OICMicroserviceHandler.PRIORITY = 960
 
 
 return OICMicroserviceHandler
