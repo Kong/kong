@@ -136,7 +136,12 @@ function Kong.init()
 
   local dao = assert(DAOFactory.new(config)) -- instantiate long-lived DAO
   assert(dao:init())
-  assert(dao:run_migrations()) -- migrating in case embedded in custom nginx
+
+  -- migrating in case embedded in custom nginx
+  if not dao.db:migrations_initialized() then
+    assert(dao:run_migrations())
+  end
+  assert(dao:are_migrations_uptodate())
 
   -- populate singletons
   singletons.ip = ip.init(config)

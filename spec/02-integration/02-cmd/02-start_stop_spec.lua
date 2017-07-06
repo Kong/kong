@@ -113,6 +113,47 @@ describe("kong start/stop", function()
     end)
   end)
 
+  describe("--disable-migrations", function()
+    before_each(function()
+      helpers.dao:drop_schema()
+    end)
+    after_each(function()
+      helpers.dao:drop_schema()
+      helpers.dao:run_migrations()
+    end)
+
+    it("Kong shouldn't restart when no migration", function()
+      assert(helpers.kong_exec("start --no-migrations --conf " ..
+                               helpers.test_conf_path))
+
+      local _, err = helpers.dao.db:query([[
+          DELETE FROM schema_migrations WHERE id='rate-limiting'
+        ]])
+      assert.is_nil(err)
+      assert.is_false(helpers.kong_exec("restart --no-migrations --conf " ..
+              helpers.test_conf_path))
+    end)
+    it("Kong should restart when migrations run", function()
+      assert(helpers.kong_exec("start --no-migrations --conf " ..
+              helpers.test_conf_path))
+
+      local _, err = helpers.dao.db:query([[
+          DELETE FROM schema_migrations WHERE id='rate-limiting'
+        ]])
+      assert.is_nil(err)
+
+      assert.is_false(helpers.kong_exec("restart --no-migrations --conf " ..
+              helpers.test_conf_path))
+
+      assert(helpers.kong_exec("migrations up --conf " ..
+              helpers.test_conf_path))
+
+      assert(helpers.kong_exec("restart --no-migrations --conf " ..
+              helpers.test_conf_path))
+    end)
+  end)
+
+
   describe("errors", function()
     it("start inexistent Kong conf file", function()
       local ok, stderr = helpers.kong_exec "start --conf foobar.conf"

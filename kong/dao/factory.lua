@@ -272,6 +272,31 @@ local function default_on_success(identifier, migration_name, db_infos)
       identifier, migration_name)
 end
 
+function _M:are_migrations_uptodate()
+  local migrations_modules = self:migrations_modules()
+  local cur_migrations, err = self:current_migrations()
+  if err then
+    return ret_error_string(self.db.name, nil,
+      "could not get current migrations: " .. err)
+  end
+
+  for module, migrations in pairs(migrations_modules) do
+    for _, migration in ipairs(migrations) do
+      if not (cur_migrations[module] and
+              utils.table_contains(cur_migrations[module], migration.name))
+      then
+        local log = require "kong.cmd.utils.log"
+        local infos = self.db:infos()
+        log.warn("%s %s '%s' is missing migration: (%s) %s",
+          self.db_type, infos.desc, infos.name, module, migration.name)
+        return false, "all migrations need to run for Kong to start"
+      end
+    end
+  end
+
+  return true
+end
+
 function _M:run_migrations(on_migrate, on_success)
   on_migrate = on_migrate or default_on_migrate
   on_success = on_success or default_on_success
