@@ -67,9 +67,22 @@ local function get_timestamps(now)
   return stamps
 end
 
+--- format the timestamp to string.
+-- @param timestamp
+-- @param format datetime format like '%Y-%m-%d %H:%M:%S.%s'
+-- @return formatted string of timestamp if format is provided otherwise the original timestamp
+function format_timestamp(timestamp, format)
+  if format then
+    return os.date(format, timestamp)
+  else
+    return timestamp
+  end
+end
+
 return {
   get_utc = get_utc,
   get_utc_ms = get_utc_ms,
   get_timetable = get_timetable,
   get_timestamps = get_timestamps,
+  format_timestamps = format_timestamps,
 }
