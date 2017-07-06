@@ -21,5 +21,6 @@ events {
 
 http {
     include 'nginx-kong.conf';
+    include 'conf.d/nginx_*.conf';
 }
 ]]

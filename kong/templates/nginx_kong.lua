@@ -150,6 +150,8 @@ server {
             kong.handle_error()
         }
     }
+
+    include 'conf.d/kong_*.conf';
 }
 
 server {
@@ -190,5 +192,7 @@ server {
     location /robots.txt {
         return 200 'User-agent: *\nDisallow: /';
     }
+
+    include 'conf.d/admin_*.conf';
 }
 ]]
