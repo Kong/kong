@@ -135,7 +135,7 @@ describe("Router", function()
       assert.same(use_case[7], api_t.api)
     end)
 
-    describe("[uri] as a prefix", function()
+    describe("[uri prefix]", function()
       it("matches when given [uri] is in request URI prefix", function()
         -- uri prefix
         local api_t = router.select("GET", "/my-api/some/path")
@@ -143,7 +143,7 @@ describe("Router", function()
         assert.same(use_case[3], api_t.api)
       end)
 
-      it("does not superseds another API with a longer URI prefix", function()
+      it("does not supersede another API with a longer [uri]", function()
         local use_case = {
           {
             name = "api-1",
@@ -244,7 +244,7 @@ describe("Router", function()
         assert.same(use_case[1], api_t.api)
       end)
 
-      it("only matches URI as a prefix (anchored mode)", function()
+      it("only matches [uri prefix] as a prefix (anchored mode)", function()
         local use_case = {
           {
             name = "api-1",
@@ -268,7 +268,7 @@ describe("Router", function()
       end)
     end)
 
-    describe("uri as a regex", function()
+    describe("[uri regex]", function()
       it("matches with [uri regex]", function()
         local use_case = {
           {
@@ -327,7 +327,7 @@ describe("Router", function()
       end)
     end)
 
-    describe("wildcard domains", function()
+    describe("[wildcard host]", function()
       local use_case = {
         {
           name = "api-1",
@@ -548,7 +548,7 @@ describe("Router", function()
         assert.same(use_case[2], api_t.api)
       end)
 
-      it("[method] does not supersede non-plain [uri]", function()
+      it("[method] does not supersede [uri prefix]", function()
         local use_case = {
           {
             name = "api-1",
@@ -570,7 +570,7 @@ describe("Router", function()
         assert.same(use_case[2], api_t.api)
       end)
 
-      it("[method] does not supersede wildcard [host]", function()
+      it("[method] does not supersede [wildcard host]", function()
         local use_case = {
           {
             name    = "api-1",
@@ -590,6 +590,25 @@ describe("Router", function()
         assert.same(use_case[1], api_t.api)
 
         api_t = router.select("GET", "/", "domain.com")
+        assert.truthy(api_t)
+        assert.same(use_case[2], api_t.api)
+      end)
+
+      it("does not supersede another API with a longer [uri prefix]", function()
+        local use_case = {
+          {
+            name = "api-1",
+            uris = { "/a", "/bbbbbbb" }
+          },
+          {
+            name = "api-2",
+            uris = { "/a/bb" }
+          },
+        }
+
+        local router = assert(Router.new(use_case))
+
+        local api_t = router.select("GET", "/a/bb/foobar")
         assert.truthy(api_t)
         assert.same(use_case[2], api_t.api)
       end)
@@ -629,52 +648,6 @@ describe("Router", function()
           local api_t = router.select("GET", "/foobar/baz")
           assert.truthy(api_t)
           assert.same(use_case[1], api_t.api)
-        end)
-
-        it("HTTP method does not supersede non-plain URI", function()
-          local use_case = {
-            {
-              name = "api-1",
-              methods = { "GET" },
-            },
-            {
-              name = "api-2",
-              uris = { "/httpbin" },
-            }
-          }
-
-          local router = assert(Router.new(use_case))
-          local api_t = router.select("GET", "/httpbin")
-          assert.truthy(api_t)
-          assert.same(use_case[2], api_t.api)
-
-          api_t = router.select("GET", "/httpbin/status/200")
-          assert.truthy(api_t)
-          assert.same(use_case[2], api_t.api)
-        end)
-
-        it("HTTP method does not supersede wildcard domain", function()
-          local use_case = {
-            {
-              name = "api-1",
-              methods = { "GET" },
-            },
-            {
-              name = "api-2",
-              headers = {
-                ["Host"] = { "domain.*" }
-              }
-            }
-          }
-
-          local router = assert(Router.new(use_case))
-          local api_t = router.select("GET", "/")
-          assert.truthy(api_t)
-          assert.same(use_case[1], api_t.api)
-
-          api_t = router.select("GET", "/", "domain.com")
-          assert.truthy(api_t)
-          assert.same(use_case[2], api_t.api)
         end)
       end)
 
@@ -718,25 +691,6 @@ describe("Router", function()
           assert.truthy(api_t)
           assert.same(use_case[#use_case], api_t.api)
         end)
-      end)
-
-      it("does not incorrectly match another API which has a longer [uri]", function()
-        local use_case = {
-          {
-            name = "api-1",
-            uris = { "/a", "/bbbbbbb" }
-          },
-          {
-            name = "api-2",
-            uris = { "/a/bb" }
-          },
-        }
-
-        local router = assert(Router.new(use_case))
-
-        local api_t = router.select("GET", "/a/bb/foobar")
-        assert.truthy(api_t)
-        assert.same(use_case[2], api_t.api)
       end)
     end)
 
