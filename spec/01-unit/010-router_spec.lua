@@ -1176,6 +1176,85 @@ describe("Router", function()
         local _, _, _, uri = router.exec(_ngx)
         assert.equal("/hello/world", uri)
       end)
+
+      it("returns groups captures from a [uri regex]", function()
+        local use_case = {
+          {
+            name = "api-1",
+            uris = { [[/users/(?P<user_id>\d+)/profile/?(?P<scope>[a-z]*)]] },
+          },
+        }
+
+        local router = assert(Router.new(use_case))
+
+        local _ngx = mock_ngx("GET", "/users/1984/profile", {})
+        local _, _, _, _, uri_captures = router.exec(_ngx)
+        assert.equal("1984", uri_captures[1])
+        assert.equal("1984", uri_captures.user_id)
+        assert.equal("",     uri_captures[2])
+        assert.equal("",     uri_captures.scope)
+        -- no full match
+        assert.is_nil(uri_captures[0])
+        -- no stripped_uri capture
+        assert.is_nil(uri_captures.stripped_uri)
+        assert.equal(2, #uri_captures)
+
+        -- again, this time from the LRU cache
+        local _, _, _, _, uri_captures = router.exec(_ngx)
+        assert.equal("1984", uri_captures[1])
+        assert.equal("1984", uri_captures.user_id)
+        assert.equal("",     uri_captures[2])
+        assert.equal("",     uri_captures.scope)
+        -- no full match
+        assert.is_nil(uri_captures[0])
+        -- no stripped_uri capture
+        assert.is_nil(uri_captures.stripped_uri)
+        assert.equal(2, #uri_captures)
+
+        local _ngx = mock_ngx("GET", "/users/1984/profile/email", {})
+        local _, _, _, _, uri_captures = router.exec(_ngx)
+        assert.equal("1984",  uri_captures[1])
+        assert.equal("1984",  uri_captures.user_id)
+        assert.equal("email", uri_captures[2])
+        assert.equal("email", uri_captures.scope)
+        -- no full match
+        assert.is_nil(uri_captures[0])
+        -- no stripped_uri capture
+        assert.is_nil(uri_captures.stripped_uri)
+        assert.equal(2, #uri_captures)
+      end)
+
+      it("returns no group capture from a [uri prefix] match", function()
+        local use_case = {
+          {
+            name      = "api-1",
+            uris      = { "/hello" },
+            strip_uri = true,
+          },
+        }
+
+        local router = assert(Router.new(use_case))
+
+        local _ngx = mock_ngx("GET", "/hello/world", {})
+        local _, _, _, uri, uri_captures = router.exec(_ngx)
+        assert.equal("/world", uri)
+        assert.is_nil(uri_captures)
+      end)
+
+      it("returns no group capture from a [uri regex] match without groups", function()
+        local use_case = {
+          {
+            name = "api-1",
+            uris = { [[/users/\d+/profile]] },
+          },
+        }
+
+        local router = assert(Router.new(use_case))
+
+        local _ngx = mock_ngx("GET", "/users/1984/profile", {})
+        local _, _, _, _, uri_captures = router.exec(_ngx)
+        assert.is_nil(uri_captures)
+      end)
     end)
 
     describe("preserve Host header", function()
@@ -1336,6 +1415,45 @@ describe("Router", function()
           assert.equal(args[1], upstream.path)
           assert.equal(args[4], uri)
         end)
+      end
+    end)
+  end)
+
+  describe("has_capturing_groups()", function()
+    -- load the `assert.fail` assertion
+    require "spec.helpers"
+
+    it("detects if a string has capturing groups", function()
+      local uris                         = {
+        ["/users/(foo)"]                 = true,
+        ["/users/()"]                    = true,
+        ["/users/()/foo"]                = true,
+        ["/users/(hello(foo)world)"]     = true,
+        ["/users/(hello(foo)world"]      = true,
+        ["/users/(foo)/thing/(bar)"]     = true,
+        ["/users/\\(foo\\)/thing/(bar)"] = true,
+        -- 0-indexed capture groups
+        ["()/world"]                     = true,
+        ["(/hello)/world"]               = true,
+
+        ["/users/\\(foo\\)"] = false,
+        ["/users/\\(\\)"]    = false,
+        -- unbalanced capture groups
+        ["(/hello\\)/world"] = false,
+        ["/users/(foo"]      = false,
+        ["/users/\\(foo)"]   = false,
+        ["/users/(foo\\)"]   = false,
+      }
+
+      for uri, expected_to_match in pairs(uris) do
+        local has_captures = Router.has_capturing_groups(uri)
+        if expected_to_match and not has_captures then
+          assert.fail(uri, "has capturing groups that were not detected")
+
+        elseif not expected_to_match and has_captures then
+          assert.fail(uri, "has no capturing groups but false-positives " ..
+                           "were detected")
+        end
       end
     end)
   end)
