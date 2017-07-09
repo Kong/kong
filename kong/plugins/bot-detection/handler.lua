@@ -17,12 +17,6 @@ local MATCH_WHITELIST = 1
 local MATCH_BLACKLIST = 2
 local MATCH_BOT       = 3
 
--- per-worker cache of matched UAs
--- we could use the kong cache mechanism, but purging a subset of
--- the cache is a pain, and the lookup here isn't so expensive that
--- we really worry about it. so we just cache per worker and invalidate
--- when the plugin has been updated
-local ua_cache = {}
 local UA_CACHE_SIZE = 10 ^ 4
 
 local function get_user_agent()
@@ -65,47 +59,6 @@ function BotDetectionHandler:new()
   BotDetectionHandler.super.new(self, "bot-detection")
 end
 
-function BotDetectionHandler:init_worker()
-  local singletons    = require "kong.singletons"
-  local worker_events = singletons.worker_events
-  local dao_factory   = singletons.dao
-
-  -- load our existing plugins to create our cache spaces
-  local plugins, err = dao_factory.plugins:find_all({
-    name = "bot-detection",
-  })
-  if err then
-    ngx.log(ngx.ERR, "err in fetching plugins: ", err)
-  end
-
-  for i = 1, #plugins do
-    ua_cache[plugins[i].api_id] = lrucache.new(UA_CACHE_SIZE)
-  end
-
-  -- catch updates and tell each worker to adjust their cache
-  -- accordingly. for create/updates we create/purge the cache
-  -- by simply creating a new lua table; for deletions, as we no
-  -- longer need this cache data, we just remove it
-  worker_events.register(function(data)
-    if data.entity.name == "bot-detection" then
-      worker_events.post("bot-detection-invalidate", data.operation,
-                         data.entity)
-    end
-  end, "crud", "plugins")
-
-  worker_events.register(function(entity)
-    ua_cache[entity.api_id] = lrucache.new(UA_CACHE_SIZE)
-  end, "bot-detection-invalidate", "create")
-
-  worker_events.register(function(entity)
-    ua_cache[entity.api_id] = lrucache.new(UA_CACHE_SIZE)
-  end, "bot-detection-invalidate", "update")
-
-  worker_events.register(function(entity)
-    ua_cache[entity.api_id] = nil
-  end, "bot-detection-invalidate", "delete")
-end
-
 function BotDetectionHandler:access(conf)
   BotDetectionHandler.super.access(self)
 
@@ -118,12 +71,16 @@ function BotDetectionHandler:access(conf)
     return
   end
 
-  local api_id = ngx.ctx.api.id
-  local match  = ua_cache[api_id]:get(user_agent)
+  local ua_cache = conf.ua_cache
+  if not ua_cache then
+    ua_cache = lrucache.new(UA_CACHE_SIZE)
+    conf.ua_cache = ua_cache
+  end
+  local match  = ua_cache:get(user_agent)
 
   if not match then
     match = examine_agent(user_agent, conf)
-    ua_cache[api_id]:set(user_agent, match)
+    ua_cache:set(user_agent, match)
   end
 
   -- if we saw a blacklisted UA or bot, return forbidden. otherwise,
