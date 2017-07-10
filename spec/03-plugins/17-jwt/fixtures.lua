@@ -39,7 +39,7 @@ FLiGOm5uTMEk8S4txs2efueg1XyymilCKzzuXlJvrvPA4u6HI7qNvuvkvUjQmwBH
 gwIDAQAB
 -----END PUBLIC KEY-----
 ]],
-    rs512_private_key = [[
+rs512_private_key = [[
 -----BEGIN RSA PRIVATE KEY-----
 MIIEoQIBAAKCAQBoyqH30IH7YnHk2YLLygDwD0LUvrXRcWwVCsN1/2+DB+FLV8f+
 /VoLegUowlcCea6vJCu9q9vnJqz2UhK7eN/kDYNhnx4WIdc3KjL+SXnp3KZozgn/

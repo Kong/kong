@@ -238,13 +238,13 @@ describe("Plugin: jwt (access)", function()
     it("verifies JWT", function()
       PAYLOAD.iss = rsa_jwt_secret_1.key
       local jwt = jwt_encoder.encode(PAYLOAD, fixtures.rs256_private_key, 'RS256')
-      local authorization = "Bearer " .. jwt
+      local authorization = "Bearer "..jwt
       local res = assert(proxy_client:send {
         method = "GET",
         path = "/request",
         headers = {
           ["Authorization"] = authorization,
-          ["Host"] = "jwt.com",
+          ["Host"] = "jwt.com"
         }
       })
       local body = cjson.decode(assert.res_status(200, res))
@@ -273,7 +273,7 @@ describe("RS512", function()
     it("verifies JWT", function()
       PAYLOAD.iss = rsa_jwt_secret_3.key
       local jwt = jwt_encoder.encode(PAYLOAD, fixtures.rs512_private_key, 'RS512')
-      local authorization = "Bearer "..jwt
+      local authorization = "Bearer " .. jwt
       local res = assert(proxy_client:send {
         method = "GET",
         path = "/request",

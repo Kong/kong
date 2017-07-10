@@ -76,7 +76,6 @@ describe("Plugin: jwt (parser)", function()
       local token = jwt_parser.encode({sub = "1234"}, "secret", nil, {alg = "RS256"})
       assert(jwt_parser:new(token))
     end)
-
     it("accepts a valid RS512 encoding request", function()
       local token = jwt_parser.encode({sub = "1234"}, "secret", nil, {
         typ = "JWT",
@@ -95,10 +94,7 @@ describe("Plugin: jwt (parser)", function()
       local token = jwt_parser.encode({sub = "1234"}, "secret", nil, {alg = "RS512"})
       assert(jwt_parser:new(token))
     end)
-
-
   end)
-
   describe("verify signature", function()
     it("using HS256", function()
       local token = jwt_parser.encode({sub = "foo"}, "secret")
@@ -118,7 +114,6 @@ describe("Plugin: jwt (parser)", function()
       assert.True(jwt:verify_signature(fixtures.rs512_public_key))
       assert.False(jwt:verify_signature(fixtures.rs512_public_key:gsub('AE=', 'zzz')))
     end)
-
     it("using ES256", function()
       for _ = 1, 500 do
         local token = jwt_parser.encode({sub = "foo"}, fixtures.es256_private_key, 'ES256')
