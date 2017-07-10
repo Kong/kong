@@ -6,7 +6,7 @@ local oic        = require "kong.openid-connect"
 
 
 local base64url  = codec.base64url
-local json       = codec.json
+--local json       = codec.json
 local log        = ngx.log
 
 
