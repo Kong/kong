@@ -1,0 +1,2 @@
+std = "ngx_lua"
+

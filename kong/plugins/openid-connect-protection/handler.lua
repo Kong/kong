@@ -28,25 +28,25 @@ local function request_url()
   local scheme = var.scheme
   local host   = var.host
   local port   = tonumber(var.server_port)
-  local uri    = var.request_uri
+  local u      = var.request_uri
 
   do
-    local s = find(uri, "?", 2, true)
+    local s = find(u, "?", 2, true)
     if s then
-      uri = sub(uri, 1, s - 1)
+      u = sub(u, 1, s - 1)
     end
   end
 
   local url = { scheme, "://", host }
 
   if port == 80 and scheme == "http" then
-    url[4] = uri
+    url[4] = u
   elseif port == 443 and scheme == "https" then
-    url[4] = uri
+    url[4] = u
   else
     url[4] = ":"
     url[5] = port
-    url[6] = uri
+    url[6] = u
   end
 
   return concat(url)
@@ -193,7 +193,7 @@ function OICProtectionHandler:access(conf)
     -- TODO: introspect refreshed tokens?
     -- TODO: call userinfo endpoint to refresh?
 
-    local expires = (tonumber(toks.expires_in) or 3600) + time()
+    expires = (tonumber(toks.expires_in) or 3600) + time()
 
     s.data = {
       tokens  = toks,

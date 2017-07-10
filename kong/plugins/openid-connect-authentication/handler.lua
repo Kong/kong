@@ -26,37 +26,37 @@ local function request_url()
   local scheme = var.scheme
   local host   = var.host
   local port   = tonumber(var.server_port)
-  local uri    = var.request_uri
+  local u      = var.request_uri
 
   do
-    local s = find(uri, "?", 2, true)
+    local s = find(u, "?", 2, true)
     if s then
-      uri = sub(uri, 1, s - 1)
+      u = sub(u, 1, s - 1)
     end
   end
 
   local url = { scheme, "://", host }
 
   if port == 80 and scheme == "http" then
-    url[4] = uri
+    url[4] = u
   elseif port == 443 and scheme == "https" then
-    url[4] = uri
+    url[4] = u
   else
     url[4] = ":"
     url[5] = port
-    url[6] = uri
+    url[6] = u
   end
 
   return concat(url)
 end
 
 
-local function unauthorized(session, iss, err)
+local function unauthorized(s, iss, err)
   if err then
     log(NOTICE, err)
   end
 
-  session:destroy()
+  s:destroy()
 
   local parts = uri.parse(iss)
   header["WWW-Authenticate"] = 'Bearer realm="' .. parts.host .. '"'
@@ -115,7 +115,8 @@ function OICAuthenticationHandler:access(conf)
   local s, present = session.open()
 
   if not present then
-    local args, err = o.authorization:request()
+    local args
+    args, err = o.authorization:request()
     if not args then
       log(ERR, err)
       return responses.send_HTTP_INTERNAL_SERVER_ERROR()
@@ -185,7 +186,8 @@ function OICAuthenticationHandler:access(conf)
 
   local toks = data.tokens or {}
 
-  local decoded, err = o.token:verify(toks, { nonce = data.nonce, tokens = tokens })
+  local decoded
+  decoded, err = o.token:verify(toks, { nonce = data.nonce, tokens = tokens })
   if not decoded then
     return unauthorized(s, iss, err)
 

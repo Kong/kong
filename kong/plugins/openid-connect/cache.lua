@@ -101,13 +101,13 @@ end
 local consumers = {}
 
 
-function consumers.init(keys, subject)
+function consumers.init(cons, subject)
   if not subject or subject == "" then
     return nil, "openid connect is unable to load consumer by a missing subject"
   end
 
   local result, err
-  for _, key in ipairs(keys) do
+  for _, key in ipairs(cons) do
     if key == "id" then
       log(NOTICE, "openid connect is loading consumer by id using " .. subject)
       result, err = singletons.dao.consumers:find { id = subject }
@@ -132,8 +132,8 @@ function consumers.load(conf, subject, anon)
   if sub(issuer, -1) == "/" then
     issuer = sub(issuer, 1, #issuer - 1)
   end
-  local keys = anon and { "id" } or conf.consumer_by or { "custom_id" }
-  return cache.get_or_set(concat{issuer, "#", subject }, conf.consumer_ttl, consumers.init, keys, subject)
+  local cons = anon and { "id" } or conf.consumer_by or { "custom_id" }
+  return cache.get_or_set(concat{issuer, "#", subject }, conf.consumer_ttl, consumers.init, cons, subject)
 end
 
 

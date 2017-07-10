@@ -35,8 +35,8 @@ local NOTICE        = ngx.NOTICE
 local ERR           = ngx.ERR
 
 
-local function read_file(f)
-  local f, e = open(f, "rb")
+local function read_file(p)
+  local f, e = open(p, "rb")
   if not f then
     return nil, e
   end
@@ -211,8 +211,8 @@ function OICVerificationHandler:access(conf)
 
     for _, t in ipairs(typ) do
       if t == "header" then
-        local header = "http_" .. gsub(lower(prefix .. name), "-", "_")
-        idt = var[header]
+        local hdr = "http_" .. gsub(lower(prefix .. name), "-", "_")
+        idt = var[hdr]
         if idt then
           break
         end
@@ -303,8 +303,8 @@ function OICVerificationHandler:access(conf)
     tokens = tokens
   }
 
-  local decoded, err = o.token:verify(toks, options)
-
+  local decoded
+  decoded, err = o.token:verify(toks, options)
   if type(decoded) ~= "table" then
     return unauthorized(iss, err)
   end
@@ -345,7 +345,7 @@ function OICVerificationHandler:access(conf)
       return unauthorized(iss, "session cookie was not specified for session claim verification")
     end
 
-    local act = decoded.access_token
+    act = decoded.access_token
     if not act then
       return unauthorized(iss, "access token was not specified for session claim verification")
     end
