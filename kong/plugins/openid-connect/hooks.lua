@@ -7,9 +7,6 @@ local function invalidate(t)
     if key then
       cache.delete("oic:" .. key)
     end
-
-  elseif t.collection == "consumers" then
-
   end
 end
 
