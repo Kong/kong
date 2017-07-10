@@ -11,7 +11,12 @@ return {
         PRIMARY KEY (id)
       );
 
-      CREATE INDEX IF NOT EXISTS oic_issuers_idx ON oic_issuers (issuer);
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('oic_issuers_idx')) IS NULL THEN
+          CREATE INDEX oic_issuers_idx ON oic_issuers (issuer);
+        END IF;
+      END$$;
 
       CREATE TABLE IF NOT EXISTS oic_signout (
         id            uuid,
@@ -24,10 +29,33 @@ return {
         PRIMARY KEY (id)
       );
 
-      CREATE INDEX IF NOT EXISTS oic_signout_iss_idx ON oic_signout (iss);
-      CREATE INDEX IF NOT EXISTS oic_signout_sid_idx ON oic_signout (sid);
-      CREATE INDEX IF NOT EXISTS oic_signout_sub_idx ON oic_signout (sub);
-      CREATE INDEX IF NOT EXISTS oic_signout_jti_idx ON oic_signout (jti);
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('oic_signout_iss_idx')) IS NULL THEN
+          CREATE INDEX oic_signout_iss_idx ON oic_signout (iss);
+        END IF;
+      END$$;
+
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('oic_signout_sid_idx')) IS NULL THEN
+          CREATE INDEX oic_signout_sid_idx ON oic_signout (sid);
+        END IF;
+      END$$;
+
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('oic_signout_sub_idx')) IS NULL THEN
+          CREATE INDEX oic_signout_sub_idx ON oic_signout (sub);
+        END IF;
+      END$$;
+
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('oic_signout_jti_idx')) IS NULL THEN
+          CREATE INDEX oic_signout_jti_idx ON oic_signout (jti);
+        END IF;
+      END$$;
 
       CREATE TABLE IF NOT EXISTS oic_session (
         id            uuid,
@@ -38,8 +66,19 @@ return {
         PRIMARY KEY (id)
       );
 
-      CREATE INDEX IF NOT EXISTS oic_session_sid_idx ON oic_session (sid);
-      CREATE INDEX IF NOT EXISTS oic_session_exp_idx ON oic_session (expires);
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('oic_session_sid_idx')) IS NULL THEN
+          CREATE INDEX oic_session_sid_idx ON oic_session (sid);
+        END IF;
+      END$$;
+
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('oic_session_exp_idx')) IS NULL THEN
+          CREATE INDEX oic_session_exp_idx ON oic_session (expires);
+        END IF;
+      END$$;
 
       CREATE TABLE IF NOT EXISTS oic_revoked (
         id            uuid,
@@ -49,8 +88,19 @@ return {
         PRIMARY KEY (id)
       );
 
-      CREATE INDEX IF NOT EXISTS oic_session_hash_idx ON oic_revoked (hash);
-      CREATE INDEX IF NOT EXISTS oic_session_exp_idx  ON oic_revoked (expires);
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('oic_session_hash_idx')) IS NULL THEN
+          CREATE INDEX oic_session_hash_idx ON oic_revoked (hash);
+        END IF;
+      END$$;
+
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('oic_session_exp_idx')) IS NULL THEN
+          CREATE INDEX oic_session_exp_idx ON oic_revoked (expires);
+        END IF;
+      END$$;
     ]],
     down = [[
       DROP TABLE oic_issuers;
