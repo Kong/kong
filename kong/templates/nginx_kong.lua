@@ -195,7 +195,7 @@ server {
                 ngx.exit(204)
             end
 
-            require('lapis').serve('kong.api')
+            require('kong-lapis').serve('kong.api')
         }
     }
 
