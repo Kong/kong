@@ -131,7 +131,7 @@ return function(options)
           if not init then
             return nil, "not found"
           else
-            self.data[key].value = init
+            self.data[key] = { value = init }
           end
         elseif type(self.data[key].value) ~= "number" then
           return nil, "not a number"
