@@ -622,12 +622,12 @@ describe("Upstream header(s)", function()
       it("should be changed according to rules if present in request", function()
         local sock = ngx.socket.tcp()
         local request = "PROXY TCP4 192.168.0.1 " .. helpers.test_conf.proxy_ip .. " 56324 " .. helpers.test_conf.proxy_port .. "\r\n" ..
-            "GET / HTTP/1.1\r\n" ..
-            "Host: headers-inspect.com\r\n" ..
-            "Connection: close\r\n" ..
-            "X-Real-IP: 10.0.0.2\r\n" ..
-            "X-Forwarded-For: 10.0.0.1, 127.0.0.2, 10.0.0.1, 192.168.0.1, 172.16.0.1\r\n" ..
-            "\r\n"
+                        "GET / HTTP/1.1\r\n" ..
+                        "Host: headers-inspect.com\r\n" ..
+                        "Connection: close\r\n" ..
+                        "X-Real-IP: 10.0.0.2\r\n" ..
+                        "X-Forwarded-For: 10.0.0.1, 127.0.0.2, 10.0.0.1, 192.168.0.1, 172.16.0.1\r\n" ..
+                        "\r\n"
 
         assert(sock:connect(helpers.test_conf.proxy_ip, helpers.test_conf.proxy_port))
         assert(sock:send(request))
@@ -652,13 +652,13 @@ describe("Upstream header(s)", function()
       it("should be forwarded even if proxy protocol and X-Forwarded-For header has a port in it", function()
         local sock = ngx.socket.tcp()
         local request = "PROXY TCP4 192.168.0.1 " .. helpers.test_conf.proxy_ip .. " 56324 " .. helpers.test_conf.proxy_port .. "\r\n" ..
-            "GET / HTTP/1.1\r\n" ..
-            "Host: headers-inspect.com\r\n" ..
-            "Connection: close\r\n" ..
-            "X-Real-IP: 10.0.0.2\r\n" ..
-            "X-Forwarded-For: 127.0.0.1:14, 10.0.0.1:15, 192.168.0.1:16, 127.0.0.1:17, 172.16.0.1:18\r\n" ..
-            "X-Forwarded-Port: 14\r\n" ..
-            "\r\n"
+                        "GET / HTTP/1.1\r\n" ..
+                        "Host: headers-inspect.com\r\n" ..
+                        "Connection: close\r\n" ..
+                        "X-Real-IP: 10.0.0.2\r\n" ..
+                        "X-Forwarded-For: 127.0.0.1:14, 10.0.0.1:15, 192.168.0.1:16, 127.0.0.1:17, 172.16.0.1:18\r\n" ..
+                        "X-Forwarded-Port: 14\r\n" ..
+                        "\r\n"
 
         assert(sock:connect(helpers.test_conf.proxy_ip, helpers.test_conf.proxy_port))
         assert(sock:send(request))
@@ -697,10 +697,10 @@ describe("Upstream header(s)", function()
       it("should be added if not present in request", function()
         local sock = ngx.socket.tcp()
         local request = "PROXY TCP4 192.168.0.1 " .. helpers.test_conf.proxy_ip .. " 56324 " .. helpers.test_conf.proxy_port .. "\r\n" ..
-            "GET / HTTP/1.1\r\n" ..
-            "Host: headers-inspect.com\r\n" ..
-            "Connection: close\r\n" ..
-            "\r\n"
+                        "GET / HTTP/1.1\r\n" ..
+                        "Host: headers-inspect.com\r\n" ..
+                        "Connection: close\r\n" ..
+                        "\r\n"
 
         assert(sock:connect(helpers.test_conf.proxy_ip, helpers.test_conf.proxy_port))
         assert(sock:send(request))
@@ -724,12 +724,12 @@ describe("Upstream header(s)", function()
       it("should be changed according to rules if present in request", function()
         local sock = ngx.socket.tcp()
         local request = "PROXY TCP4 192.168.0.1 " .. helpers.test_conf.proxy_ip .. " 56324 " .. helpers.test_conf.proxy_port .. "\r\n" ..
-            "GET / HTTP/1.1\r\n" ..
-            "Host: headers-inspect.com\r\n" ..
-            "Connection: close\r\n" ..
-            "X-Real-IP: 10.0.0.2\r\n" ..
-            "X-Forwarded-For: 10.0.0.1, 127.0.0.2, 10.0.0.1, 192.168.0.1, 172.16.0.1\r\n" ..
-            "\r\n"
+                        "GET / HTTP/1.1\r\n" ..
+                        "Host: headers-inspect.com\r\n" ..
+                        "Connection: close\r\n" ..
+                        "X-Real-IP: 10.0.0.2\r\n" ..
+                        "X-Forwarded-For: 10.0.0.1, 127.0.0.2, 10.0.0.1, 192.168.0.1, 172.16.0.1\r\n" ..
+                        "\r\n"
 
         assert(sock:connect(helpers.test_conf.proxy_ip, helpers.test_conf.proxy_port))
         assert(sock:send(request))
@@ -754,13 +754,13 @@ describe("Upstream header(s)", function()
       it("should be replaced even if proxy protocol, X-Forwarded-Port and X-Forwarded-For headers have a port in it", function()
         local sock = ngx.socket.tcp()
         local request = "PROXY TCP4 192.168.0.1 " .. helpers.test_conf.proxy_ip .. " 56324 " .. helpers.test_conf.proxy_port .. "\r\n" ..
-            "GET / HTTP/1.1\r\n" ..
-            "Host: headers-inspect.com\r\n" ..
-            "Connection: close\r\n" ..
-            "X-Real-IP: 10.0.0.2\r\n" ..
-            "X-Forwarded-For: 127.0.0.1:14, 10.0.0.1:15, 192.168.0.1:16, 127.0.0.1:17, 172.16.0.1:18\r\n" ..
-            "X-Forwarded-Port: 14\r\n" ..
-            "\r\n"
+                        "GET / HTTP/1.1\r\n" ..
+                        "Host: headers-inspect.com\r\n" ..
+                        "Connection: close\r\n" ..
+                        "X-Real-IP: 10.0.0.2\r\n" ..
+                        "X-Forwarded-For: 127.0.0.1:14, 10.0.0.1:15, 192.168.0.1:16, 127.0.0.1:17, 172.16.0.1:18\r\n" ..
+                        "X-Forwarded-Port: 14\r\n" ..
+                        "\r\n"
 
         assert(sock:connect(helpers.test_conf.proxy_ip, helpers.test_conf.proxy_port))
         assert(sock:send(request))
