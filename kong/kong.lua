@@ -24,6 +24,9 @@
 -- |[[    ]]|
 -- ==========
 
+require "luarocks.loader"
+require "resty.core"
+
 do
   -- let's ensure the required shared dictionaries are
   -- declared via lua_shared_dict in the Nginx conf
@@ -46,6 +49,7 @@ local ip = require "kong.tools.ip"
 local dns = require "kong.tools.dns"
 local core = require "kong.core.handler"
 local utils = require "kong.tools.utils"
+local lapis = require "lapis"
 local responses = require "kong.tools.responses"
 local singletons = require "kong.singletons"
 local DAOFactory = require "kong.dao.factory"
@@ -54,8 +58,13 @@ local ngx_balancer = require "ngx.balancer"
 local plugins_iterator = require "kong.core.plugins_iterator"
 local balancer_execute = require("kong.core.balancer").execute
 local kong_cluster_events = require "kong.cluster_events"
+local kong_error_handlers = require "kong.core.error_handlers"
 
+local ngx              = ngx
+local header           = ngx.header
 local ipairs           = ipairs
+local assert           = assert
+local tostring         = tostring
 local get_last_failure = ngx_balancer.get_last_failure
 local set_current_peer = ngx_balancer.set_current_peer
 local set_timeouts     = ngx_balancer.set_timeouts
@@ -363,6 +372,25 @@ function Kong.log()
   end
 
   core.log.after()
+end
+
+function Kong.handle_error()
+  return kong_error_handlers(ngx)
+end
+
+function Kong.serve_admin_api(options)
+  options = options or {}
+
+  header["Access-Control-Allow-Origin"] = options.allow_origin or "*"
+
+  if ngx.req.get_method() == "OPTIONS" then
+    header["Access-Control-Allow-Methods"] = "GET, HEAD, PUT, PATCH, POST, DELETE"
+    header["Access-Control-Allow-Headers"] = "Content-Type"
+
+    return ngx.exit(204)
+  end
+
+  return lapis.serve("kong.api")
 end
 
 return Kong
