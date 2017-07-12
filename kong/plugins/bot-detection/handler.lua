@@ -6,7 +6,7 @@ local strip = require("kong.tools.utils").strip
 
 local ipairs = ipairs
 local get_headers = ngx.req.get_headers
-local re_match = ngx.re.match
+local re_find = ngx.re.find
 
 local BotDetectionHandler = BasePlugin:extend()
 
@@ -49,7 +49,7 @@ function BotDetectionHandler:access(conf)
 
     if conf.whitelist then
       for _, rule in ipairs(conf.whitelist) do
-        if re_match(user_agent, rule) then
+        if re_find(user_agent, rule, "jo") then
           bot_cache.set(cache_key, true)
           return
         end
@@ -58,7 +58,7 @@ function BotDetectionHandler:access(conf)
 
     if conf.blacklist then
       for _, rule in ipairs(conf.blacklist) do
-        if re_match(user_agent, rule) then
+        if re_find(user_agent, rule, "jo") then
           bot_cache.set(cache_key, false)
           return responses.send_HTTP_FORBIDDEN()
         end
@@ -66,7 +66,7 @@ function BotDetectionHandler:access(conf)
     end
   
     for _, rule in ipairs(rules.bots) do
-      if re_match(user_agent, rule) then
+      if re_find(user_agent, rule, "jo") then
         bot_cache.set(cache_key, false)
         return responses.send_HTTP_FORBIDDEN()
       end
