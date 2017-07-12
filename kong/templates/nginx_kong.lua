@@ -43,8 +43,6 @@ lua_ssl_verify_depth ${{LUA_SSL_VERIFY_DEPTH}};
 > end
 
 init_by_lua_block {
-    require 'luarocks.loader'
-    require 'resty.core'
     kong = require 'kong'
     kong.init()
 }
@@ -149,7 +147,7 @@ server {
     location = /kong_error_handler {
         internal;
         content_by_lua_block {
-            require('kong.core.error_handlers')(ngx)
+            kong.handle_error()
         }
     }
 }
@@ -179,15 +177,7 @@ server {
     location / {
         default_type application/json;
         content_by_lua_block {
-            ngx.header['Access-Control-Allow-Origin'] = '*'
-
-            if ngx.req.get_method() == 'OPTIONS' then
-                ngx.header['Access-Control-Allow-Methods'] = 'GET,HEAD,PUT,PATCH,POST,DELETE'
-                ngx.header['Access-Control-Allow-Headers'] = 'Content-Type'
-                ngx.exit(204)
-            end
-
-            require('lapis').serve('kong.api')
+            kong.serve_admin_api()
         }
     }
 
