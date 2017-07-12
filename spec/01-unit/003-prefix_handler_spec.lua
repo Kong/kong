@@ -107,6 +107,14 @@ describe("NGINX conf compiler", function()
       assert.matches("listen 0.0.0.0:9001;", kong_nginx_conf, nil, true)
       assert.matches("listen 0.0.0.0:8444 ssl http2;", kong_nginx_conf, nil, true)
     end)
+    it("enables proxy_protocol", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        real_ip_header = "proxy_protocol",
+      }))
+      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.matches("listen 0.0.0.0:9000 proxy_protocol;", kong_nginx_conf, nil, true)
+      assert.matches("listen 0.0.0.0:9443 ssl proxy_protocol;", kong_nginx_conf, nil, true)
+    end)
     it("disables SSL", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
         ssl = false,
@@ -279,7 +287,7 @@ describe("NGINX conf compiler", function()
         local nginx_conf = prefix_handler.compile_kong_conf(conf)
         assert.matches("real_ip_header%s+proxy_protocol", nginx_conf)
         assert.matches("listen 0.0.0.0:8000 proxy_protocol;", nginx_conf)
-        assert.matches("listen 0.0.0.0:8443 proxy_protocol ssl;", nginx_conf)
+        assert.matches("listen 0.0.0.0:8443 ssl proxy_protocol;", nginx_conf)
       end)
     end)
   end)
