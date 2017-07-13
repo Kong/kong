@@ -97,8 +97,8 @@ code, other repos are also under active development:
 
 - [Kong Docker](https://github.com/Mashape/docker-kong): A Dockerfile for
   running Kong in Docker.
-- [Kong Packages](https://github.com/Mashape/kong-distributions): Packaging
-  scripts for deb, rpm and osx distributions.
+- [Kong Packages](https://github.com/Mashape/kong/releases): Pre-built packages
+  for Debian, Red Hat, and OS X distributions (shipped with each release).
 - [Kong Vagrant](https://github.com/Mashape/kong-vagrant): A Vagrantfile for
   provisioning a development ready environment for Kong.
 - [Kong Homebrew](https://github.com/Mashape/homebrew-kong): Homebrew Formula
