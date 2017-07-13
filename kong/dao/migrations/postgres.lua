@@ -526,4 +526,27 @@ return {
       DROP INDEX ttls_primary_uuid_value_idx;
     ]]
   },
+  {
+    name = "2017-06-20-100000_init_ratelimiting",
+    up = [[
+      CREATE TABLE IF NOT EXISTS rl_counters(
+        key          text,
+        namespace    text,
+        window_start int,
+        window_size  int,
+        count        int,
+        PRIMARY KEY(key, namespace, window_start, window_size)
+      );
+
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('sync_key_idx')) IS NULL THEN
+          CREATE INDEX sync_key_idx ON rl_counters(namespace, window_start);
+        END IF;
+      END$$;
+    ]],
+    down = [[
+      DROP TABLE rl_counters;
+    ]],
+  },
 }

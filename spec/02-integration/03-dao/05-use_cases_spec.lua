@@ -14,7 +14,7 @@ helpers.for_each_dao(function(kong_config)
       factory:truncate_tables()
     end)
 
-    it("retrieves plugins for plugins_iterator", function()
+    it("#ee retrieves plugins for plugins_iterator", function()
       local api, err = factory.apis:insert {
         name = "mockbin", hosts = { "mockbin.com" },
         upstream_url = "http://mockbin.com"

@@ -73,7 +73,7 @@ helpers.for_each_dao(function(kong_config)
                          "name=already exists with value 'key-auth'",
                          err, nil, true)
         end)
-        it("API/Consumer/Plugin", function()
+        it("#ee API/Consumer/Plugin", function()
           local consumer, err = factory.consumers:insert {
             username = "bob"
           }
@@ -114,7 +114,7 @@ helpers.for_each_dao(function(kong_config)
         assert.True(err.foreign)
         assert.matches("api_id=does not exist with value '" .. plugin_fixture.api_id .. "'", tostring(err), nil, true)
       end)
-      it("not insert plugin if invalid Consumer foreign key", function()
+      it("#ee not insert plugin if invalid Consumer foreign key", function()
         local plugin_tbl = {
           name = "rate-limiting",
           api_id = api_fixture.id,
@@ -188,7 +188,7 @@ helpers.for_each_dao(function(kong_config)
         assert.falsy(plugin)
       end)
 
-      it("delete bis", function()
+      it("#ee delete bis", function()
         local plugin, err = plugins:insert {
           name = "rate-limiting",
           api_id = api_fixture.id,

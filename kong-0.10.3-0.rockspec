@@ -30,6 +30,7 @@ dependencies = {
   "lua-resty-dns-client == 0.6.0",
   "lua-resty-worker-events == 0.3.0",
   "lua-resty-mediador == 0.1.2",
+  "lua-resty-redis-connector == 0.03",
 }
 build = {
   type = "builtin",
@@ -92,6 +93,12 @@ build = {
     ["kong.tools.printable"] = "kong/tools/printable.lua",
     ["kong.tools.responses"] = "kong/tools/responses.lua",
     ["kong.tools.timestamp"] = "kong/tools/timestamp.lua",
+
+    ["kong.tools.public.rate-limiting"] = "kong/tools/public/rate-limiting/init.lua",
+    ["kong.tools.public.rate-limiting.strategies.cassandra"] = "kong/tools/public/rate-limiting/strategies/cassandra.lua",
+    ["kong.tools.public.rate-limiting.strategies.postgres"] = "kong/tools/public/rate-limiting/strategies/postgres.lua",
+    ["kong.tools.public.rate-limiting.strategies.redis"] = "kong/tools/public/rate-limiting/strategies/redis.lua",
+    ["kong.tools.public.rate-limiting"] = "kong/tools/public/rate-limiting/init.lua",
 
     ["kong.core.handler"] = "kong/core/handler.lua",
     ["kong.core.certificate"] = "kong/core/certificate.lua",
