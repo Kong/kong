@@ -1,7 +1,7 @@
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local responses = require "kong.tools.responses"
-local app_helpers = require "lapis.application"
+local app_helpers = require "kong-lapis.application"
 
 local _M = {}
 

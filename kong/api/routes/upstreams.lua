@@ -1,5 +1,5 @@
 local crud = require "kong.api.crud_helpers"
-local app_helpers = require "lapis.application"
+local app_helpers = require "kong-lapis.application"
 local responses = require "kong.tools.responses"
 local cjson = require "cjson"
 

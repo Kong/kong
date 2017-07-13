@@ -1,9 +1,9 @@
-local lapis = require "lapis"
+local lapis = require "kong-lapis"
 local utils = require "kong.tools.utils"
 local tablex = require "pl.tablex"
 local responses = require "kong.tools.responses"
 local singletons = require "kong.singletons"
-local app_helpers = require "lapis.application"
+local app_helpers = require "kong-lapis.application"
 local api_helpers = require "kong.api.api_helpers"
 
 
