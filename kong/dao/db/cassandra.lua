@@ -24,8 +24,8 @@ _M.dao_insert_values = {
     return uuid()
   end,
   timestamp = function()
-    -- return time in UNIT millisecond, and PRECISION millisecond 
-    return math.floor(timestamp.get_utc_ms()) 
+    -- return time in UNIT millisecond, and PRECISION millisecond
+    return math.floor(timestamp.get_utc_ms())
   end
 }
 
@@ -262,7 +262,7 @@ end
 -- @section query_building
 
 local function serialize_arg(field, value)
-  if value == nil then
+  if value == nil or value == ngx.null then
     return cassandra.null
   elseif field.type == "id" then
     return cassandra.uuid(value)

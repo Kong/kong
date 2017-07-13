@@ -268,6 +268,8 @@ local function fix(old, new, schema)
       for f_k in pairs(f_schema.fields) do
         if new[col][f_k] == nil and old[col][f_k] ~= nil then
           new[col][f_k] = old[col][f_k]
+        elseif new[col][f_k] == ngx.null then
+          new[col][f_k] = nil
         end
       end
 

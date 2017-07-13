@@ -83,6 +83,9 @@ function _M.validate_entity(tbl, schema, options)
 
       if not partial_update then
         for column, v in pairs(schema.fields) do
+          if t[column] == ngx.null then
+            t[column] = nil
+          end
           -- [DEFAULT] Set default value for the field if given
           if t[column] == nil and v.default ~= nil then
             if type(v.default) == "function" then
@@ -95,9 +98,16 @@ function _M.validate_entity(tbl, schema, options)
       end
 
       -- Check the given table against a given schema
+
       for column, v in pairs(schema.fields) do
+        if not partial_update then
+          if t[column] == ngx.null then
+            t[column] = nil
+          end
+        end
+
         -- [TYPE] Check if type is valid. Booleans and Numbers as strings are accepted and converted
-        if t[column] ~= nil and v.type ~= nil then
+        if t[column] ~= nil and t[column] ~= ngx.null and v.type ~= nil then
           local is_valid_type
           -- ALIASES: number, timestamp, boolean and array can be passed as strings and will be converted
           if type(t[column]) == "string" then
@@ -134,7 +144,7 @@ function _M.validate_entity(tbl, schema, options)
         end
 
         -- [ENUM] Check if the value is allowed in the enum.
-        if t[column] ~= nil and v.enum ~= nil then
+        if t[column] ~= nil and t[column] ~= ngx.null and v.enum ~= nil then
           local found = true
           local wrong_value = t[column]
           if v.type == "array" then
@@ -185,7 +195,7 @@ function _M.validate_entity(tbl, schema, options)
               end
             end
 
-            if t[column] and type(t[column]) == "table" then
+            if t[column] and t[column] ~= ngx.null and type(t[column]) == "table" then
               -- Actually validating the sub-schema
               local s_ok, s_errors, s_self_check_err = _M.validate_entity(t[column], sub_schema, options)
               if not s_ok then
@@ -209,14 +219,24 @@ function _M.validate_entity(tbl, schema, options)
         if not partial_update or t[column] ~= nil then
           -- [REQUIRED] Check that required fields are set.
           -- Now that default and most other checks have been run.
-          if v.required and not v.dao_insert_value and (t[column] == nil or t[column] == "") then
+          if not options.full_update and v.required and not v.dao_insert_value and (t[column] == nil or t[column] == "" or t[column] == ngx.null) then
             errors = utils.add_error(errors, error_prefix .. column, column .. " is required")
           end
 
-          if type(v.func) == "function" and (errors == nil or errors[column] == nil) then
+          local callable = type(v.func) == "function"
+          if not callable then
+            local mt = getmetatable(v.func)
+            callable = mt and mt.__call ~= nil
+          end
+          if callable and (errors == nil or errors[column] == nil) then
             -- [FUNC] Check field against a custom function
             -- only if there is no error on that field already.
-            local ok, err, new_fields = v.func(t[column], t, column)
+            local ok, err, new_fields
+            if t[column] == ngx.null then
+              ok, err, new_fields = v.func(nil, t, column)
+            else
+              ok, err, new_fields = v.func(t[column], t, column)
+            end
             if ok == false and err then
               errors = utils.add_error(errors, error_prefix .. column, err)
             elseif new_fields then

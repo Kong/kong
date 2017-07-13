@@ -188,6 +188,10 @@ end
 
 -- @see pgmoon
 local function escape_literal(val, field)
+  if val == ngx.null then
+    return "NULL"
+  end
+
   local t_val = type(val)
   if t_val == "number" then
     return tostring(val)
