@@ -474,4 +474,20 @@ return {
       DROP TABLE nodes;
     ]],
   },
+  {
+    name = "2017-07-13-150200_ratelimiting_lib_counters",
+    up = [[
+      CREATE TABLE IF NOT EXISTS rl_counters(
+        namespace    text,
+        window_start timestamp,
+        window_size  int,
+        key          text,
+        count        counter,
+        PRIMARY KEY((namespace, window_start, window_size), key)
+      );
+    ]],
+    down = [[
+      DROP TABLE rl_counters;
+    ]]
+  },
 }
