@@ -29,6 +29,8 @@ pending("Plugin: http-log (log)", function()
   -- seems to be broken.
   local client
   setup(function()
+    helpers.run_migrations()
+
     local api1 = assert(helpers.dao.apis:insert {
       name = "api-1",
       hosts = { "http_logging.com" },

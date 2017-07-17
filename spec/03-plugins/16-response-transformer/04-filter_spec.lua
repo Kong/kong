@@ -4,6 +4,8 @@ describe("Plugin: response-transformer (filter)", function()
   local client
 
   setup(function()
+    helpers.run_migrations()
+
     local api1 = assert(helpers.dao.apis:insert {
       name = "tests-response-transformer",
       hosts = { "response.com" },

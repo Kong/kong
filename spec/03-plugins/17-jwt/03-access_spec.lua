@@ -16,6 +16,8 @@ describe("Plugin: jwt (access)", function()
   local proxy_client, admin_client
 
   setup(function()
+    helpers.run_migrations()
+
     local api1 = assert(helpers.dao.apis:insert {name = "tests-jwt1", hosts = { "jwt.com" }, upstream_url = "http://mockbin.com"})
     local api2 = assert(helpers.dao.apis:insert {name = "tests-jwt2", hosts = { "jwt2.com" }, upstream_url = "http://mockbin.com"})
     local api3 = assert(helpers.dao.apis:insert {name = "tests-jwt3", hosts = { "jwt3.com" }, upstream_url = "http://mockbin.com"})

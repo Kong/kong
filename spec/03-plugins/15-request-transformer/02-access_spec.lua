@@ -4,6 +4,8 @@ describe("Plugin: request-transformer (access)", function()
   local client
 
   setup(function()
+    helpers.run_migrations()
+
     local api1 = assert(helpers.dao.apis:insert { name = "api-1", hosts = { "test1.com" }, upstream_url = "http://mockbin.com"})
     local api2 = assert(helpers.dao.apis:insert { name = "api-2", hosts = { "test2.com" }, upstream_url = "http://httpbin.org"})
     local api3 = assert(helpers.dao.apis:insert { name = "api-3", hosts = { "test3.com" }, upstream_url = "http://mockbin.com"})

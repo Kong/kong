@@ -4,6 +4,8 @@ local cjson = require "cjson"
 describe("Plugin: hmac-auth (API)", function()
   local client, credential, consumer
   setup(function()
+    helpers.run_migrations()
+
     helpers.prepare_prefix()
     assert(helpers.start_kong())
     client = helpers.admin_client()

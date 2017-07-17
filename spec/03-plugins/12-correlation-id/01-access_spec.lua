@@ -8,6 +8,8 @@ local TRACKER_PATTERN = "%d+%.%d+%.%d+%.%d+%-%d+%-%d+%-%d+%-%d+%-%d%d%d%d%d%d%d%
 describe("Plugin: correlation-id (access)", function()
   local client
   setup(function()
+    helpers.run_migrations()
+
     local api1 = assert(helpers.dao.apis:insert {
       name = "api-1",
       hosts = { "correlation1.com" },

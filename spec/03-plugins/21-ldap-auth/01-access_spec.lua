@@ -10,6 +10,8 @@ local ldap_host_aws = "ec2-54-172-82-117.compute-1.amazonaws.com"
 describe("Plugin: ldap-auth (access)", function()
   local client, client_admin, api2, plugin2
   setup(function()
+    helpers.run_migrations()
+
     local api1 = assert(helpers.dao.apis:insert {
       name = "test-ldap",
       hosts = { "ldap.com" },

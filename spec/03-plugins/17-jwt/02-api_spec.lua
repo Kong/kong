@@ -7,6 +7,8 @@ local fixtures = require "spec.03-plugins.17-jwt.fixtures"
 describe("Plugin: jwt (API)", function()
   local admin_client, consumer, jwt_secret
   setup(function()
+    helpers.run_migrations()
+
     assert(helpers.start_kong())
     admin_client = helpers.admin_client()
   end)

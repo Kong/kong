@@ -32,7 +32,14 @@ package.path = CUSTOM_PLUGIN_PATH .. ";" .. package.path
 local conf = assert(conf_loader(TEST_CONF_PATH))
 local dao = assert(DAOFactory.new(conf))
 -- make sure migrations are up-to-date
-assert(dao:run_migrations())
+
+local function run_migrations(given_dao)
+  -- either use the dao provided to this call, or use
+  -- the helper dao
+  local d = given_dao or dao
+
+  assert(d:run_migrations())
+end
 
 -----------------
 -- Custom helpers
@@ -864,6 +871,7 @@ return {
   prepare_prefix = prepare_prefix,
   clean_prefix = clean_prefix,
   wait_for_invalidation = wait_for_invalidation,
+  run_migrations = run_migrations,
   
   -- miscellaneous
   intercept = intercept,

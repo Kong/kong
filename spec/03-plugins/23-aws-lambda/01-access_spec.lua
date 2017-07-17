@@ -4,6 +4,8 @@ describe("Plugin: AWS Lambda (access)", function()
   local client, api_client
 
   setup(function()
+    helpers.run_migrations()
+
     local api1 = assert(helpers.dao.apis:insert {
       name = "lambda.com",
       hosts = { "lambda.com" } ,

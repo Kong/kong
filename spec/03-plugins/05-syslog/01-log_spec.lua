@@ -6,6 +6,8 @@ local pl_stringx = require "pl.stringx"
 describe("#ci Plugin: syslog (log)", function()
   local client, platform
   setup(function()
+    helpers.run_migrations()
+
     local api1 = assert(helpers.dao.apis:insert {
       name = "api-1",
       hosts = { "logging.com" },

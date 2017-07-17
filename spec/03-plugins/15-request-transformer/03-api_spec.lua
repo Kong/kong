@@ -14,6 +14,8 @@ describe("Plugin: request-transformer (API)", function()
 
   describe("POST", function()
     setup(function()
+      helpers.run_migrations()
+
       assert(helpers.dao.apis:insert {
         name = "test",
         hosts = { "test1.com" },
