@@ -272,11 +272,11 @@ return function(options)
       -- Because the CLI runs in `xpcall`, we cannot use yielding cosockets.
       -- Hence, we need to stick to luasocket when using cassandra or pgmoon
       -- in the CLI.
-      for _, namespace in ipairs({"cassandra", "pgmoon-mashape"}) do
-        local socket = require(namespace .. ".socket")
-        socket.force_luasocket(ngx.get_phase(), true)
-      end
+      local cassandra_socket = require "cassandra.socket"
+      cassandra_socket.force_luasocket(ngx.get_phase(), true)
 
+      local psql_dao = require "kong.dao.db.postgres"
+      psql_dao.force_luasocket(ngx.get_phase(), true)
     else
       local sub = string.sub
 

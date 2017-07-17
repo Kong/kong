@@ -1,4 +1,4 @@
-local pgmoon = require "pgmoon-mashape"
+local pgmoon = require "pgmoon"
 local Errors = require "kong.dao.errors"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
@@ -26,6 +26,27 @@ end
 
 local _M = require("kong.dao.db").new_db("postgres")
 
+local forced_luasocket_phases = {
+  init        = true,
+  init_worker = true,
+}
+
+do
+  local function check_phase(phase)
+    if type(phase) ~= 'string' then
+      local info = debug.getinfo(2)
+      local err = string.format("bad argument #1 to '%s' (%s expected, got %s)",
+                                info.name, 'string', type(phase))
+      error(err, 3)
+    end
+  end
+
+  function _M.force_luasocket(phase, force)
+    check_phase(phase)
+    forced_luasocket_phases[phase] = force
+  end
+end
+
 _M.dao_insert_values = {
   id = function()
     return uuid()
@@ -45,10 +66,18 @@ function _M.new(kong_config)
     database = kong_config.pg_database,
     ssl = kong_config.pg_ssl,
     ssl_verify = kong_config.pg_ssl_verify,
-    cafile = kong_config.lua_ssl_trusted_certificate
+    cafile = kong_config.lua_ssl_trusted_certificate,
   }
 
   return self
+end
+
+local function query_opts(self)
+  local opts = self:clone_query_options()
+  opts.socket_type = forced_luasocket_phases[get_phase()] and
+                     "luasocket" or "nginx"
+
+  return opts
 end
 
 function _M:infos()
@@ -290,7 +319,7 @@ local function deserialize_rows(rows, schema)
 end
 
 function _M:query(query, schema)
-  local conn_opts = self:clone_query_options()
+  local conn_opts = query_opts(self)
   local pg = pgmoon.new(conn_opts)
   local ok, err = pg:connect()
   if not ok then
@@ -298,7 +327,7 @@ function _M:query(query, schema)
   end
 
   local res, err = pg:query(query)
-  if get_phase() ~= "init" then
+  if conn_opts.socket_type == "nginx" then
     pg:keepalive()
   else
     pg:disconnect()
@@ -557,7 +586,7 @@ function _M:record_migration(id, name)
 end
 
 function _M:reachable()
-  local conn_opts = self:clone_query_options()
+  local conn_opts = query_opts(self)
   local pg = pgmoon.new(conn_opts)
 
   local ok, err = pg:connect()
