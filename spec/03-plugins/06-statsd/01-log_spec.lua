@@ -4,6 +4,8 @@ local UDP_PORT = 20000
 describe("Plugin: statsd (log)", function()
   local client
   setup(function()
+    helpers.run_migrations()
+
     local consumer1 = assert(helpers.dao.consumers:insert {
       username = "bob",
       custom_id = "robert"

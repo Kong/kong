@@ -5,6 +5,8 @@ describe("Plugin: ACL (invalidations)", function()
   local consumer1, acl1
 
   before_each(function()
+    helpers.run_migrations()
+
     helpers.dao:truncate_tables()
 
     consumer1 = assert(helpers.dao.consumers:insert {

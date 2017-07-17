@@ -5,6 +5,8 @@ describe("Plugin: request-termination (integration)", function()
   local consumer1
 
   setup(function()
+    helpers.run_migrations()
+
     assert(helpers.dao.apis:insert {
       name = "api-1",
       hosts = { "api1.request-termination.com" },

@@ -4,6 +4,8 @@ local threads = require "llthreads2.ex"
 describe("Plugin: datadog (log)", function()
   local client
   setup(function()
+    helpers.run_migrations()
+
     local consumer1 = assert(helpers.dao.consumers:insert {
       username = "foo",
       custom_id = "bar"

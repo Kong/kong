@@ -14,6 +14,8 @@ describe("Plugin: hmac-auth (access)", function()
   local client, consumer, credential
 
   setup(function()
+    helpers.run_migrations()
+
     local api1 = assert(helpers.dao.apis:insert {
       name = "api-1",
       hosts = { "hmacauth.com" },

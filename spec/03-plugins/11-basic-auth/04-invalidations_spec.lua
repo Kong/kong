@@ -5,6 +5,8 @@ describe("Plugin: basic-auth (invalidations)", function()
   local admin_client, proxy_client
 
   before_each(function()
+    helpers.run_migrations()
+
     helpers.dao:truncate_tables()
     local api = assert(helpers.dao.apis:insert {
       name = "api-1",
