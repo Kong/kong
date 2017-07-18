@@ -706,7 +706,7 @@ end
 
 -- good
 local function check_name(name)
-  if #name < 3 and #name > 30 then
+  if #name <= 3 or #name >= 30 then
     return false
   end
 
