@@ -161,7 +161,8 @@ local function ping_handler(premature)
   send_report("ping", {
     requests = n_requests,
     unique_id = _unique_str,
-    database = singletons.configuration.database
+    database = singletons.configuration.database,
+    enterprise = true,
   })
 
   local ok, err = kong_dict:incr(BUFFERED_REQUESTS_COUNT_KEYS, -n_requests, n_requests)
