@@ -20,6 +20,7 @@ local cmds = {
   health = true,
   check = true,
   compile = true,
+  prepare = true,
   migrations = true,
   version = true,
   roar = true
