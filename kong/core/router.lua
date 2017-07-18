@@ -92,15 +92,15 @@ end
 
 
 local function marshall_api(api)
-  local api_t           = {
-    api                 = api,
-    strip_uri           = api.strip_uri,
-    preserve_host       = api.preserve_host,
-    match_rules         = 0x00,
-    hosts               = {},
-    uris                = {},
-    methods             = {},
-    upstream            = {},
+  local api_t      = {
+    api            = api,
+    strip_uri      = api.strip_uri,
+    preserve_host  = api.preserve_host,
+    match_rules    = 0x00,
+    hosts          = {},
+    uris           = {},
+    methods        = {},
+    upstream_url_t = {},
   }
 
 
@@ -144,7 +144,7 @@ local function marshall_api(api)
           })
         end
 
-        api_t.hosts[host_value] = true
+        api_t.hosts[host_value] = host_value
       end
     end
   end
@@ -169,6 +169,7 @@ local function marshall_api(api)
 
           api_t.uris[uri] = {
             prefix        = true,
+            value         = uri,
             strip_regex   = strip_regex,
           }
 
@@ -185,6 +186,7 @@ local function marshall_api(api)
           local has_captures = has_capturing_groups(uri)
 
           api_t.uris[uri] = {
+            value         = uri,
             has_captures  = has_captures,
             strip_regex   = strip_regex,
           }
@@ -225,24 +227,25 @@ local function marshall_api(api)
   if api.upstream_url then
     local parsed = url.parse(api.upstream_url)
 
-    api_t.upstream = {
-      scheme       = parsed.scheme,
-      host         = parsed.host,
-      port         = tonumber(parsed.port),
+    api_t.upstream_url_t = {
+      scheme             = parsed.scheme,
+      host               = parsed.host,
+      port               = tonumber(parsed.port),
     }
 
     if parsed.path then
-      api_t.upstream.path = parsed.path
-      api_t.upstream.file = sub(parsed.path, -1) == "/" and parsed.path ~= "/" and
-                            sub(parsed.path,  1, -2)     or parsed.path
+      api_t.upstream_url_t.path = parsed.path
+      api_t.upstream_url_t.file = sub(parsed.path, -1) == "/"
+                                  and parsed.path ~= "/"
+                                  and sub(parsed.path,  1, -2) or parsed.path
     end
 
-    if not api_t.upstream.port then
+    if not api_t.upstream_url_t.port then
       if parsed.scheme == "https" then
-        api_t.upstream.port = 443
+        api_t.upstream_url_t.port = 443
 
       else
-        api_t.upstream.port = 80
+        api_t.upstream_url_t.port = 80
       end
     end
   end
@@ -323,21 +326,21 @@ end
 do
   local matchers = {
     [MATCH_RULES.HOST] = function(api_t, ctx)
-      local host = ctx.wildcard_host or ctx.host
+      local host = api_t.hosts[ctx.hits.host or ctx.req_host]
+      if host then
+        ctx.matches.host = host
 
-      if api_t.hosts[host] then
         return true
       end
     end,
 
     [MATCH_RULES.URI] = function(api_t, ctx)
       do
-        local uri     = ctx.uri_regex or ctx.uri_prefix or ctx.uri
-        local regex_t = api_t.uris[uri]
+        local regex_t = api_t.uris[ctx.hits.uri or ctx.req_uri]
 
         if regex_t then
           if api_t.strip_uri or regex_t.has_captures then
-            local m, err = re_match(ctx.uri, regex_t.strip_regex, "ajo")
+            local m, err = re_match(ctx.req_uri, regex_t.strip_regex, "ajo")
             if err then
               log(ERR, "could not evaluate URI prefix/regex: ", err)
               return
@@ -345,22 +348,26 @@ do
 
             if m then
               if m.stripped_uri then
-                ctx.stripped_uri = "/" .. m.stripped_uri
+                ctx.matches.stripped_uri = "/" .. m.stripped_uri
                 -- remove the stripped_uri group
-                m[#m]            = nil
-                m.stripped_uri   = nil
+                m[#m]          = nil
+                m.stripped_uri = nil
               end
 
               if regex_t.has_captures then
-                m[0] = nil
-                ctx.uri_captures = m
+                ctx.matches.uri_captures = m
               end
+
+              ctx.matches.uri = regex_t.value
 
               return true
             end
           end
 
           -- plain or prefix match from the index without strip_uri
+
+          ctx.matches.uri = regex_t.value
+
           return true
         end
       end
@@ -369,7 +376,7 @@ do
         local regex_t = api_t.uris[i]
 
         if api_t.strip_uri or regex_t.has_captures then
-          local m, err = re_match(ctx.uri, regex_t.strip_regex, "ajo")
+          local m, err = re_match(ctx.req_uri, regex_t.strip_regex, "ajo")
           if err then
             log(ERR, "could not evaluate URI prefix/regex: ", err)
             return
@@ -377,29 +384,32 @@ do
 
           if m then
             if m.stripped_uri then
-              ctx.stripped_uri = "/" .. m.stripped_uri
+              ctx.matches.stripped_uri = "/" .. m.stripped_uri
               -- remove the stripped_uri group
-              m[#m]            = nil
-              m.stripped_uri   = nil
+              m[#m]          = nil
+              m.stripped_uri = nil
             end
 
             if regex_t.has_captures then
-              m[0] = nil
-              ctx.uri_captures = m
+              ctx.matches.uri_captures = m
             end
+
+            ctx.matches.uri = regex_t.value
 
             return true
           end
 
         else
           -- prefix match without strip_uri
-          local from, _, err = re_find(ctx.uri, regex_t.regex, "ajo")
+          local from, _, err = re_find(ctx.req_uri, regex_t.regex, "ajo")
           if err then
             log(ERR, "could not evaluate URI prefix/regex: ", err)
             return
           end
 
           if from then
+            ctx.matches.uri = regex_t.value
+
             return true
           end
         end
@@ -407,7 +417,12 @@ do
     end,
 
     [MATCH_RULES.METHOD] = function(api_t, ctx)
-      return api_t.methods[ctx.method]
+      local method = api_t.methods[ctx.req_method]
+      if method then
+        ctx.matches.method = ctx.req_method
+
+        return true
+      end
     end
   }
 
@@ -415,6 +430,7 @@ do
   match_api = function(api_t, ctx)
     -- run cached matcher
     if type(matchers[api_t.match_rules]) == "function" then
+      clear_tab(ctx.matches)
       return matchers[api_t.match_rules](api_t, ctx)
     end
 
@@ -429,6 +445,9 @@ do
     end
 
     matchers[api_t.match_rules] = function(api_t, ctx)
+      -- clear matches context for this try on this API
+      clear_tab(ctx.matches)
+
       for i = 1, #matchers_set do
         if not matchers_set[i](api_t, ctx) then
           return
@@ -446,19 +465,15 @@ end
 do
   local reducers = {
     [MATCH_RULES.HOST] = function(category, ctx)
-      local host = ctx.wildcard_host or ctx.host
-
-      return category.apis_by_hosts[host]
+      return category.apis_by_hosts[ctx.hits.host]
     end,
 
     [MATCH_RULES.URI] = function(category, ctx)
-      local uri = ctx.uri_regex or ctx.uri_prefix or ctx.uri
-
-      return category.apis_by_uris[uri]
+      return category.apis_by_uris[ctx.hits.uri or ctx.req_uri]
     end,
 
     [MATCH_RULES.METHOD] = function(category, ctx)
-      return category.apis_by_methods[ctx.method]
+      return category.apis_by_methods[ctx.req_method]
     end,
   }
 
@@ -515,7 +530,10 @@ function _M.new(apis)
   local self = {}
 
 
-  local ctx = {}
+  local ctx = {
+    hits    = {},
+    matches = {},
+  }
 
 
   -- hash table for fast lookup of plain hosts, uris
@@ -565,55 +583,54 @@ function _M.new(apis)
   local grab_host = #wildcard_hosts > 0 or next(plain_indexes.hosts) ~= nil
 
 
-  local function find_api(method, uri, host)
-    if type(method) ~= "string" then
+  local function find_api(req_method, req_uri, req_host, ngx)
+    if type(req_method) ~= "string" then
       return error("arg #1 method must be a string")
     end
-    if type(uri) ~= "string" then
+    if type(req_uri) ~= "string" then
       return error("arg #2 uri must be a string")
     end
-    if host and type(host) ~= "string" then
+    if req_host and type(req_host) ~= "string" then
       return error("arg #3 host must be a string")
     end
 
+    -- cache lookup
 
-    -- input sanitization
+    local cache_key = fmt("%s:%s:%s", req_method, req_uri, req_host)
 
+    do
+      local match_t = cache:get(cache_key)
+      if match_t then
+        return match_t
+      end
+    end
 
-    method = upper(method)
+    -- input sanitization for matchers
 
-    if host then
-      -- strip port number if given
-      local m, err = re_match(host, "([^:]+)", "ajo")
+    local raw_req_host = req_host
+
+    req_method = upper(req_method)
+
+    if req_host then
+      -- strip port number if given because matching ignores ports
+      local m, err = re_match(req_host, "([^:]+)", "ajo")
       if not m then
         log(ERR, "could not strip port from Host header: ", err)
       end
 
       if m[0] then
-        host = m[0]
+        req_host = m[0]
       end
     end
 
-
-    -- cache lookup
-
-
-    local cache_key = fmt("%s:%s:%s", method, uri, host)
-
-    do
-      local cache = cache:get(cache_key)
-      if cache then
-        return cache.api_t, cache.ctx
-      end
-    end
-
-    clear_tab(ctx)
-
-    ctx.uri    = uri
-    ctx.host   = host
-    ctx.method = method
-
+    local hits         = ctx.hits
     local req_category = 0x00
+
+    ctx.req_uri    = req_uri
+    ctx.req_host   = req_host
+    ctx.req_method = req_method
+
+    clear_tab(hits)
 
     -- router, router, which of these APIs is the fairest?
     --
@@ -621,20 +638,20 @@ function _M.new(apis)
 
     -- host match
 
-    if plain_indexes.hosts[host] then
+    if plain_indexes.hosts[req_host] then
       req_category = bor(req_category, MATCH_RULES.HOST)
 
-    elseif host then
+    elseif req_host then
       for i = 1, #wildcard_hosts do
-        local from, _, err = re_find(host, wildcard_hosts[i].regex, "ajo")
+        local from, _, err = re_find(req_host, wildcard_hosts[i].regex, "ajo")
         if err then
           log(ERR, "could not match wildcard host: ", err)
           return
         end
 
         if from then
-          ctx.wildcard_host = wildcard_hosts[i].value
-          req_category      = bor(req_category, MATCH_RULES.HOST)
+          hits.host    = wildcard_hosts[i].value
+          req_category = bor(req_category, MATCH_RULES.HOST)
           break
         end
       end
@@ -642,34 +659,34 @@ function _M.new(apis)
 
     -- uri match
 
-    if plain_indexes.uris[uri] then
+    if plain_indexes.uris[req_uri] then
       req_category = bor(req_category, MATCH_RULES.URI)
 
     else
       for i = 1, #uris_prefixes do
-        local from, _, err = re_find(uri, uris_prefixes[i].regex, "ajo")
+        local from, _, err = re_find(req_uri, uris_prefixes[i].regex, "ajo")
         if err then
           log(ERR, "could not evaluate URI prefix: ", err)
           return
         end
 
         if from then
-          ctx.uri_prefix = uris_prefixes[i].value
-          req_category   = bor(req_category, MATCH_RULES.URI)
+          hits.uri     = uris_prefixes[i].value
+          req_category = bor(req_category, MATCH_RULES.URI)
           break
         end
       end
 
       for i = 1, #uris_regexes do
-        local from, _, err = re_find(uri, uris_regexes[i].regex, "ajo")
+        local from, _, err = re_find(req_uri, uris_regexes[i].regex, "ajo")
         if err then
           log(ERR, "could not evaluate URI regex: ", err)
           return
         end
 
         if from then
-          ctx.uri_regex = uris_regexes[i].value
-          req_category  = bor(req_category, MATCH_RULES.URI)
+          hits.uri     = uris_regexes[i].value
+          req_category = bor(req_category, MATCH_RULES.URI)
           break
         end
       end
@@ -677,16 +694,14 @@ function _M.new(apis)
 
     -- method match
 
-    if plain_indexes.methods[method] then
+    if plain_indexes.methods[req_method] then
       req_category = bor(req_category, MATCH_RULES.METHOD)
     end
 
-
-    --print("highest potential category: ", ctx.req_category)
+    --print("highest potential category: ", req_category)
 
     -- iterate from the highest matching to the lowest category to
     -- find our API
-
 
     if req_category ~= 0x00 then
       local category_idx = CATEGORIES_LOOKUP[req_category]
@@ -725,15 +740,71 @@ function _M.new(apis)
           end
 
           if matched_api then
-            cache:set(cache_key, {
-              api_t = matched_api,
-              ctx   = {
-                stripped_uri = ctx.stripped_uri,
-                uri_captures = ctx.uri_captures,
-              }
-            })
+            local upstream_host
+            local upstream_uri = req_uri
+            local matches      = ctx.matches
 
-            return matched_api, ctx
+            -- URI stripping logic
+
+            local uri_root = req_uri == "/"
+
+            if not uri_root and matched_api.strip_uri
+               and matches.stripped_uri
+            then
+              upstream_uri = matches.stripped_uri
+            end
+
+            -- uri trailing slash logic
+
+            local upstream_url_path = matched_api.upstream_url_t.path
+            local upstream_url_file = matched_api.upstream_url_t.file
+
+            if upstream_url_path and upstream_url_path ~= "/" then
+              if upstream_uri ~= "/" then
+                upstream_uri = upstream_url_file .. upstream_uri
+
+              else
+                if upstream_url_path ~= upstream_url_file then
+                  if uri_root or sub(req_uri, -1) == "/" then
+                    upstream_uri = upstream_url_path
+
+                  else
+                    upstream_uri = upstream_url_file
+                  end
+
+                else
+                  if uri_root or sub(req_uri, -1) ~= "/" then
+                    upstream_uri = upstream_url_file
+
+                  else
+                    upstream_uri = upstream_url_file .. upstream_uri
+                  end
+                end
+              end
+            end
+
+            -- preserve_host header logic
+
+            if matched_api.preserve_host then
+              upstream_host = raw_req_host or ngx.var.http_host
+            end
+
+            local match_t    = {
+              api            = matched_api.api,
+              upstream_url_t = matched_api.upstream_url_t,
+              upstream_uri   = upstream_uri,
+              upstream_host  = upstream_host,
+              matches        = {
+                uri_captures = matches.uri_captures,
+                uri          = matches.uri,
+                host         = matches.host,
+                method       = matches.method,
+              }
+            }
+
+            cache:set(cache_key, match_t)
+
+            return match_t
           end
         end
 
@@ -754,17 +825,14 @@ function _M.new(apis)
     local request_uri = ngx.var.request_uri
     local uri         = request_uri
 
-
     do
-      local s = find(uri, "?", 2, true)
-      if s then
-        uri = sub(uri, 1, s - 1)
+      local idx = find(uri, "?", 2, true)
+      if idx then
+        uri = sub(uri, 1, idx - 1)
       end
     end
 
-
     --print("grab host header: ", grab_host)
-
 
     local req_host
 
@@ -772,56 +840,18 @@ function _M.new(apis)
       req_host = ngx.var.http_host
     end
 
-    local api_t, ctx = find_api(method, uri, req_host)
-    if not api_t then
+    local match_t = find_api(method, uri, req_host, ngx)
+    if not match_t then
       return nil
     end
 
-    local uri_root = request_uri == "/"
-
-    if not uri_root and api_t.strip_uri and ctx.stripped_uri then
-      uri = ctx.stripped_uri
-    end
-
-
-    local upstream = api_t.upstream
-    if upstream.path and upstream.path ~= "/" then
-      if uri ~= "/" then
-        uri = upstream.file .. uri
-
-      else
-        if upstream.path ~= upstream.file then
-          if uri_root or sub(request_uri, -1) == "/" then
-            uri = upstream.path
-
-          else
-            uri = upstream.file
-          end
-
-        else
-          if uri_root or sub(request_uri, -1) ~= "/" then
-            uri = upstream.file
-
-          else
-            uri = upstream.file .. uri
-          end
-        end
-      end
-    end
-
-
-    local host_header
-
-    if api_t.preserve_host then
-      host_header = req_host or ngx.var.http_host
-    end
-
+    -- debug HTTP request header logic
 
     if ngx.var.http_kong_debug then
-      ngx.header["Kong-Api-Name"] = api_t.api.name
+      ngx.header["Kong-Api-Name"] = match_t.api.name
     end
 
-    return api_t.api, api_t.upstream, host_header, uri, ctx.uri_captures
+    return match_t
   end
 
 
