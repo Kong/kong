@@ -6,9 +6,8 @@ set -e
 OPENSSL_DOWNLOAD=$DOWNLOAD_CACHE/openssl-$OPENSSL
 OPENRESTY_DOWNLOAD=$DOWNLOAD_CACHE/openresty-$OPENRESTY
 LUAROCKS_DOWNLOAD=$DOWNLOAD_CACHE/luarocks-$LUAROCKS
-SERF_DOWNLOAD=$DOWNLOAD_CACHE/serf-$SERF
 
-mkdir -p $OPENSSL_DOWNLOAD $OPENRESTY_DOWNLOAD $LUAROCKS_DOWNLOAD $SERF_DOWNLOAD
+mkdir -p $OPENSSL_DOWNLOAD $OPENRESTY_DOWNLOAD $LUAROCKS_DOWNLOAD
 
 if [ ! "$(ls -A $OPENSSL_DOWNLOAD)" ]; then
   pushd $DOWNLOAD_CACHE
@@ -26,22 +25,14 @@ if [ ! "$(ls -A $LUAROCKS_DOWNLOAD)" ]; then
   git clone https://github.com/keplerproject/luarocks.git $LUAROCKS_DOWNLOAD
 fi
 
-if [ ! "$(ls -A $SERF_DOWNLOAD)" ]; then
-  pushd $SERF_DOWNLOAD
-    wget https://releases.hashicorp.com/serf/${SERF}/serf_${SERF}_linux_amd64.zip
-    unzip serf_${SERF}_linux_amd64.zip
-  popd
-fi
-
 #--------
 # Install
 #--------
 OPENSSL_INSTALL=$INSTALL_CACHE/openssl-$OPENSSL
 OPENRESTY_INSTALL=$INSTALL_CACHE/openresty-$OPENRESTY
 LUAROCKS_INSTALL=$INSTALL_CACHE/luarocks-$LUAROCKS
-SERF_INSTALL=$INSTALL_CACHE/serf-$SERF
 
-mkdir -p $OPENSSL_INSTALL $OPENRESTY_INSTALL $LUAROCKS_INSTALL $SERF_INSTALL
+mkdir -p $OPENSSL_INSTALL $OPENRESTY_INSTALL $LUAROCKS_INSTALL
 
 if [ ! "$(ls -A $OPENSSL_INSTALL)" ]; then
   pushd $OPENSSL_DOWNLOAD
@@ -87,14 +78,9 @@ if [ ! "$(ls -A $LUAROCKS_INSTALL)" ]; then
   popd
 fi
 
-if [ ! "$(ls -A $SERF_INSTALL)" ]; then
-  ln -s $SERF_DOWNLOAD/serf $SERF_INSTALL/serf
-fi
-
 export OPENSSL_DIR=$OPENSSL_INSTALL # for LuaSec install
-export SERF_PATH=$SERF_INSTALL/serf # for our test instance (not in default bin/sh $PATH)
 
-export PATH=$PATH:$OPENRESTY_INSTALL/nginx/sbin:$OPENRESTY_INSTALL/bin:$LUAROCKS_INSTALL/bin:$SERF_INSTALL
+export PATH=$PATH:$OPENRESTY_INSTALL/nginx/sbin:$OPENRESTY_INSTALL/bin:$LUAROCKS_INSTALL/bin
 
 eval `luarocks path`
 
@@ -111,4 +97,3 @@ fi
 nginx -V
 resty -V
 luarocks --version
-serf version

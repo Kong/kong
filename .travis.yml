@@ -13,14 +13,12 @@ addons:
   postgresql: "9.4"
   apt:
     packages:
-      - dnsmasq
       - net-tools
       - libpcre3-dev
       - build-essential
 
 env:
   global:
-    - SERF=0.8.0
     - LUAROCKS=2.4.2
     - OPENSSL=1.0.2l
     - CASSANDRA=2.2.8
