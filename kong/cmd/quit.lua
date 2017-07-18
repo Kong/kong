@@ -54,8 +54,8 @@ If the timeout delay is reached, the node will be forcefully
 stopped (SIGTERM).
 
 Options:
- -p,--prefix  (optional string) prefix Kong is running at
- -t,--timeout (default 10) timeout before forced shutdown
+ -p,--prefix   (optional string) prefix Kong is running at
+ -t,--timeout  (default 10) timeout before forced shutdown
 ]]
 
 return {

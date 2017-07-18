@@ -42,9 +42,9 @@ Start Kong (Nginx and other configured services) in the configured
 prefix directory.
 
 Options:
- -c,--conf    (optional string) configuration file
- -p,--prefix  (optional string) override prefix directory
- --nginx-conf (optional string) custom Nginx configuration template
+ -c,--conf     (optional string) configuration file
+ -p,--prefix   (optional string) override prefix directory
+ --nginx-conf  (optional string) custom Nginx configuration template
 ]]
 
 return {
