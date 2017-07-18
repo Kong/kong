@@ -18,7 +18,7 @@ dependencies = {
   "lua-resty-jit-uuid == 0.0.5",
   "multipart == 0.5",
   "version == 0.2",
-  "kong-lapis == 1.5.3",
+  "kong-lapis == 1.5.4",
   "lua-cassandra == 1.2.2",
   "pgmoon == 1.8.0",
   "luatz == 0.3",
