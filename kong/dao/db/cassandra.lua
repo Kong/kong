@@ -92,15 +92,6 @@ function _M.new(kong_config)
   self.query_options = query_opts
   self.cluster_options = cluster_options
 
-  if ngx.IS_CLI then
-    -- we must manually call our init phase (usually called from `init_by_lua`)
-    -- to refresh the cluster.
-    local ok, err = self:init()
-    if not ok then
-      return nil, err
-    end
-  end
-
   return self
 end
 
@@ -631,7 +622,12 @@ end
 function _M:current_migrations()
   local q_keyspace_exists, q_migrations_table_exists
 
-  assert(self.release_version, "release_version not set for Cassandra cluster")
+  if not self.release_version then
+    local ok, err = self:init()
+    if not ok then
+      return nil, err
+    end
+  end
 
   if self.release_version == 3 then
     q_keyspace_exists = [[
