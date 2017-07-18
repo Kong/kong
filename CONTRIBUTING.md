@@ -2,11 +2,11 @@
 
 Hello, and welcome! Whether you are looking for help, trying to report a bug,
 thinking about getting involved in the project or about to submit a patch, this
-document is for you! It's intent is to be both an entry point for newcomers to
+document is for you! Its intent is to be both an entry point for newcomers to
 the community (with various technical backgrounds), and a guide/reference for
 contributors and maintainers.
 
-Consult the Table of Contents below, and jump to the concerned section.
+Consult the Table of Contents below, and jump to the desired section.
 
 ## Table of Contents
 
@@ -168,8 +168,8 @@ improve how plugins are distributed and installed on Kong nodes. Stay tuned!
 ### Submitting a patch
 
 Feel free to contribute fixes or minor features, we love to receive Pull
-Requests! If the feature you are planning to develop is more consequent, come
-talk to us first!
+Requests! If you are planning to develop a larger feature, come talk to us
+first!
 
 When contributing, please follow the guidelines provided in this document. They
 will cover topics such as the different Git branches we use, the commit message
@@ -449,7 +449,7 @@ assert.same(t1, t2)
 
 We write code for the [LuaJIT](https://github.com/Mashape/kong/issues/new)
 interpreter, **not** Lua-PUC. As such, you should follow the LuaJIT best
-practises:
+practices:
 
 - Do **not** instantiate global variables
 - Consult the [LuaJIT wiki](http://wiki.luajit.org/Home)
