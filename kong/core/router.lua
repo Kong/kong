@@ -135,7 +135,7 @@ local function marshall_api(api)
           insert(api_t.hosts, {
             wildcard = true,
             value    = host_value,
-            regex    = wildcard_host_regex
+            regex    = wildcard_host_regex,
           })
 
         else
@@ -162,41 +162,32 @@ local function marshall_api(api)
       api_t.match_rules = bor(api_t.match_rules, MATCH_RULES.URI)
 
       for _, uri in ipairs(api.uris) do
-        if re_match(uri, [[^[a-zA-Z0-9\.\-_~/%]*$]]) then
+        if re_find(uri, [[^[a-zA-Z0-9\.\-_~/%]*$]]) then
           -- plain URI or URI prefix
-          local escaped_uri = [[\Q]] .. uri .. [[\E]]
-          local strip_regex = escaped_uri .. [[/?(?P<stripped_uri>.*)]]
 
-          api_t.uris[uri] = {
-            prefix        = true,
-            value         = uri,
-            strip_regex   = strip_regex,
+          local uri_t = {
+            is_prefix = true,
+            value     = uri,
           }
 
-          insert(api_t.uris, {
-            prefix      = true,
-            value       = uri,
-            regex       = escaped_uri,
-            strip_regex = strip_regex,
-          })
+          api_t.uris[uri] = uri_t
+          insert(api_t.uris, uri_t)
 
         else
           -- regex URI
-          local strip_regex  = uri .. [[/?(?P<stripped_uri>.*)]]
+          local strip_regex  = uri .. [[/?(?<stripped_uri>.*)]]
           local has_captures = has_capturing_groups(uri)
 
-          api_t.uris[uri] = {
-            value         = uri,
-            has_captures  = has_captures,
-            strip_regex   = strip_regex,
-          }
-
-          insert(api_t.uris, {
+          local uri_t    = {
+            is_regex     = true,
             value        = uri,
             regex        = uri,
             has_captures = has_captures,
             strip_regex  = strip_regex,
-          })
+          }
+
+          api_t.uris[uri] = uri_t
+          insert(api_t.uris, uri_t)
         end
       end
     end
@@ -267,7 +258,7 @@ local function index_api_t(api_t, plain_indexes, uris_prefixes, uris_regexes,
   end
 
   for _, uri_t in ipairs(api_t.uris) do
-    if uri_t.prefix then
+    if uri_t.is_prefix then
       plain_indexes.uris[uri_t.value] = true
       insert(uris_prefixes, uri_t)
 
@@ -336,11 +327,11 @@ do
 
     [MATCH_RULES.URI] = function(api_t, ctx)
       do
-        local regex_t = api_t.uris[ctx.hits.uri or ctx.req_uri]
+        local uri_t = api_t.uris[ctx.hits.uri or ctx.req_uri]
 
-        if regex_t then
-          if api_t.strip_uri or regex_t.has_captures then
-            local m, err = re_match(ctx.req_uri, regex_t.strip_regex, "ajo")
+        if uri_t then
+          if uri_t.is_regex then
+            local m, err = re_match(ctx.req_uri, uri_t.strip_regex, "ajo")
             if err then
               log(ERR, "could not evaluate URI prefix/regex: ", err)
               return
@@ -354,29 +345,37 @@ do
                 m.stripped_uri = nil
               end
 
-              if regex_t.has_captures then
+              if uri_t.has_captures then
                 ctx.matches.uri_captures = m
               end
 
-              ctx.matches.uri = regex_t.value
+              ctx.matches.uri = uri_t.value
 
               return true
             end
           end
 
-          -- plain or prefix match from the index without strip_uri
+          -- plain or prefix match from the index
+          if api_t.strip_uri then
+            local stripped_uri = sub(ctx.req_uri, #uri_t.value + 1)
+            if sub(stripped_uri, 1, 1) ~= "/" then
+              stripped_uri = "/" .. stripped_uri
+            end
 
-          ctx.matches.uri = regex_t.value
+            ctx.matches.stripped_uri = stripped_uri
+          end
+
+          ctx.matches.uri = uri_t.value
 
           return true
         end
       end
 
       for i = 1, #api_t.uris do
-        local regex_t = api_t.uris[i]
+        local uri_t = api_t.uris[i]
 
-        if api_t.strip_uri or regex_t.has_captures then
-          local m, err = re_match(ctx.req_uri, regex_t.strip_regex, "ajo")
+        if uri_t.is_regex then
+          local m, err = re_match(ctx.req_uri, uri_t.strip_regex, "ajo")
           if err then
             log(ERR, "could not evaluate URI prefix/regex: ", err)
             return
@@ -390,25 +389,31 @@ do
               m.stripped_uri = nil
             end
 
-            if regex_t.has_captures then
+            if uri_t.has_captures then
               ctx.matches.uri_captures = m
             end
 
-            ctx.matches.uri = regex_t.value
+            ctx.matches.uri = uri_t.value
 
             return true
           end
 
         else
-          -- prefix match without strip_uri
-          local from, _, err = re_find(ctx.req_uri, regex_t.regex, "ajo")
-          if err then
-            log(ERR, "could not evaluate URI prefix/regex: ", err)
-            return
-          end
+          -- plain or prefix match (not from the index)
+          local from, to = find(ctx.req_uri, uri_t.value, nil, true)
+          if from == 1 then
+            ctx.matches.uri = sub(ctx.req_uri, 1, to)
 
-          if from then
-            ctx.matches.uri = regex_t.value
+            if api_t.strip_uri then
+              local stripped_uri = sub(ctx.req_uri, to + 1)
+              if sub(stripped_uri, 1, 1) ~= "/" then
+                stripped_uri = "/" .. stripped_uri
+              end
+
+              ctx.matches.stripped_uri = stripped_uri
+            end
+
+            ctx.matches.uri = uri_t.value
 
             return true
           end
@@ -613,13 +618,9 @@ function _M.new(apis)
 
     if req_host then
       -- strip port number if given because matching ignores ports
-      local m, err = re_match(req_host, "([^:]+)", "ajo")
-      if not m then
-        log(ERR, "could not strip port from Host header: ", err)
-      end
-
-      if m[0] then
-        req_host = m[0]
+      local idx = find(req_host, ":", 2, true)
+      if idx then
+        req_host = sub(req_host, 1, idx - 1)
       end
     end
 
@@ -664,13 +665,7 @@ function _M.new(apis)
 
     else
       for i = 1, #uris_prefixes do
-        local from, _, err = re_find(req_uri, uris_prefixes[i].regex, "ajo")
-        if err then
-          log(ERR, "could not evaluate URI prefix: ", err)
-          return
-        end
-
-        if from then
+        if find(req_uri, uris_prefixes[i].value, nil, true) == 1 then
           hits.uri     = uris_prefixes[i].value
           req_category = bor(req_category, MATCH_RULES.URI)
           break
@@ -741,8 +736,9 @@ function _M.new(apis)
 
           if matched_api then
             local upstream_host
-            local upstream_uri = req_uri
-            local matches      = ctx.matches
+            local upstream_uri   = req_uri
+            local upstream_url_t = matched_api.upstream_url_t
+            local matches        = ctx.matches
 
             -- URI stripping logic
 
@@ -756,8 +752,8 @@ function _M.new(apis)
 
             -- uri trailing slash logic
 
-            local upstream_url_path = matched_api.upstream_url_t.path
-            local upstream_url_file = matched_api.upstream_url_t.file
+            local upstream_url_path = upstream_url_t.path
+            local upstream_url_file = upstream_url_t.file
 
             if upstream_url_path and upstream_url_path ~= "/" then
               if upstream_uri ~= "/" then
@@ -791,7 +787,7 @@ function _M.new(apis)
 
             local match_t    = {
               api            = matched_api.api,
-              upstream_url_t = matched_api.upstream_url_t,
+              upstream_url_t = upstream_url_t,
               upstream_uri   = upstream_uri,
               upstream_host  = upstream_host,
               matches        = {
