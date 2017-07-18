@@ -98,6 +98,9 @@ function _M:select_interval(channels, min_at, max_at)
     end
 
     local res, err = self.db:query(q)
+    if not res then
+      return nil, err
+    end
 
     local page = #res > 0 and 1 or 0
 
