@@ -40,9 +40,9 @@ and stop the old ones when they have finished processing
 current requests.
 
 Options:
- -c,--conf    (optional string) configuration file
- -p,--prefix  (optional string) prefix Kong is running at
- --nginx-conf (optional string) custom Nginx configuration template
+ -c,--conf     (optional string) configuration file
+ -p,--prefix   (optional string) prefix Kong is running at
+ --nginx-conf  (optional string) custom Nginx configuration template
 ]]
 
 return {
