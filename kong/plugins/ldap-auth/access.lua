@@ -45,6 +45,14 @@ local function ldap_authenticate(given_username, given_password, conf)
     return nil, err, responses.status_codes.HTTP_INTERNAL_SERVER_ERROR
   end
 
+  if conf.ldaps then
+    local _, err = sock:sslhandshake(true, conf.ldap_host, conf.verify_ldap_host)
+    if err ~= nil then
+      return false, "failed to do SSL handshake with "..conf.ldap_host..":"..tostring(conf.ldap_port)..": ".. err
+    end
+  end
+
+
   if conf.start_tls then
     local success, err = ldap.start_tls(sock)
     if not success then
