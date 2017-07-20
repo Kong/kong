@@ -77,9 +77,15 @@ describe("Router", function()
         {
           name = "api-4",
           upstream_url = "http://httpbin.org/basic-auth",
-          uris = { "/user" },
+          uris = { "/private" },
           strip_uri = false,
-        }
+        },
+        {
+          name = "api-5",
+          upstream_url = "http://httpbin.org/anything",
+          uris = { [[/users/\d+/profile]] },
+          strip_uri = true,
+        },
       }
 
       assert(helpers.start_kong())
@@ -140,12 +146,31 @@ describe("Router", function()
     it("with strip_uri = false", function()
         local res = assert(client:send {
           method = "GET",
-          path = "/user/passwd",
+          path = "/private/passwd",
           headers = { ["kong-debug"] = 1 },
         })
 
         assert.res_status(401, res)
         assert.equal("api-4", res.headers["kong-api-name"])
+    end)
+
+    it("[uri] with a regex", function()
+      local res = assert(client:send {
+        method  = "GET",
+        path    = "/users/foo/profile",
+        headers = { ["kong-debug"] = 1 },
+      })
+
+      assert.res_status(404, res)
+
+      res = assert(client:send {
+        method  = "GET",
+        path    = "/users/123/profile",
+        headers = { ["kong-debug"] = 1 },
+      })
+
+      assert.res_status(200, res)
+      assert.equal("api-5", res.headers["kong-api-name"])
     end)
   end)
 

@@ -279,10 +279,13 @@ return {
 
       ctx.KONG_ACCESS_START = get_now()
 
-      local api, upstream, host_header, uri = router.exec(ngx)
-      if not api then
+      local match_t = router.exec(ngx)
+      if not match_t then
         return responses.send_HTTP_NOT_FOUND("no API found with those values")
       end
+
+      local api = match_t.api
+      local upstream_url_t = match_t.upstream_url_t
 
       local realip_remote_addr = var.realip_remote_addr
       local trusted_ip = singletons.ip.trusted(realip_remote_addr)
@@ -291,14 +294,13 @@ return {
       then
         ngx.header["connection"] = "Upgrade"
         ngx.header["upgrade"]    = "TLS/1.2, HTTP/1.1"
-
         return responses.send(426, "Please use HTTPS protocol")
       end
 
       local balancer_address = {
-        type                 = utils.hostname_type(upstream.host),  -- the type of `host`; ipv4, ipv6 or name
-        host                 = upstream.host,  -- target host per `upstream_url`
-        port                 = upstream.port,  -- final target port
+        type                 = utils.hostname_type(upstream_url_t.host),  -- the type of `host`; ipv4, ipv6 or name
+        host                 = upstream_url_t.host,  -- target host per `upstream_url`
+        port                 = upstream_url_t.port,  -- final target port
         try_count            = 0,              -- retry counter
         tries                = {},             -- stores info per try
         retries              = api.retries,    -- number of retries for the balancer
@@ -311,15 +313,16 @@ return {
       }
 
       ctx.api              = api
+      ctx.router_matches   = match_t.matches
       ctx.balancer_address = balancer_address
 
       -- `scheme` is the scheme to use for the upstream call
       -- `uri` is the URI with which to call upstream, as returned by the
       --       router, which might have truncated it (`strip_uri`).
       -- `host_header` is the original header to be preserved if set.
-      var.upstream_scheme = upstream.scheme
-      var.upstream_uri    = uri
-      var.upstream_host   = host_header
+      var.upstream_scheme = upstream_url_t.scheme
+      var.upstream_uri    = match_t.upstream_uri
+      var.upstream_host   = match_t.upstream_host
 
       -- Keep-Alive and WebSocket Protocol Upgrade Headers
       if var.http_upgrade and lower(var.http_upgrade) == "websocket" then
