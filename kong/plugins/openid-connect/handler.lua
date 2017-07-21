@@ -409,7 +409,7 @@ function OICHandler:access(conf)
 
   local now = time()
   local expires
-  local tokens_encoded, tokens_decoded, token_introspected = data.tokens, nil, nil
+  local tokens_encoded, tokens_decoded, access_token_introspected = data.tokens, nil, nil
 
   if bearer then
     tokens_decoded, err = o.token:verify(tokens_encoded)
@@ -419,14 +419,14 @@ function OICHandler:access(conf)
 
     local access_token = tokens_decoded.access_token
     if type(access_token) ~= "table" then
-      token_introspected, err = o.token:introspect(access_token, "access_token", {
+      access_token_introspected, err = o.token:introspect(access_token, "access_token", {
           introspection_endpoint = conf.introspection_endpoint
       })
-      if not token_introspected or not token_introspected.active then
+      if not access_token_introspected or not access_token_introspected.active then
         return unauthorized(iss, err, s)
       end
 
-      expires = token_introspected.exp or (3600 + now)
+      expires = access_token_introspected.exp or (3600 + now)
 
     else
       expires = access_token.exp or (3600 + now)
@@ -551,6 +551,10 @@ function OICHandler:access(conf)
       end
     end
 
+    if not mapped_consumer and access_token_introspected then
+      mapped_consumer, err = consumer(conf, access_token_introspected, consumer_claim)
+    end
+
     local is_anonymous = false
 
     if not mapped_consumer then
@@ -658,8 +662,8 @@ function OICHandler:access(conf)
   end
 
   local introspection_header = conf.intropection_header
-  if introspection_header and token_introspected then
-    local introspected = json.encode(token_introspected)
+  if introspection_header and access_token_introspected then
+    local introspected = json.encode(access_token_introspected)
     if introspected then
       introspected = base64.encode(introspected)
       if introspected then
