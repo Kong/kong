@@ -126,7 +126,7 @@ local function unauthorized(iss, err)
 end
 
 
-local function internalerror(err)
+local function unexpected(err)
   if err then
     log(ERR, err)
   end
@@ -176,26 +176,27 @@ function OICVerificationHandler:access(conf)
 
   local issuer, err = cache.issuers.load(conf)
   if not issuer then
-    return internalerror(err)
+    return unexpected(err)
   end
 
   local o
 
   o, err = oic.new({
-    clients      = conf.clients,
-    audience     = conf.audience,
-    claims       = conf.claims       or { "iss", "sub", "aud", "azp", "exp" },
-    domains      = conf.domains,
-    max_age      = conf.max_age,
-    timeout      = conf.timeout      or 10000,
-    leeway       = conf.leeway       or 0,
-    http_version = conf.http_version or 1.1,
-    ssl_verify   = conf.ssl_verify == nil and true or conf.ssl_verify,
-
+    clients           = conf.clients,
+    audience          = conf.audience,
+    claims            = conf.claims       or { "iss", "sub", "aud", "azp", "exp" },
+    domains           = conf.domains,
+    max_age           = conf.max_age,
+    timeout           = conf.timeout      or 10000,
+    leeway            = conf.leeway       or 0,
+    http_version      = conf.http_version or 1.1,
+    ssl_verify        = conf.ssl_verify == nil and true or conf.ssl_verify,
+    verify_signature  = conf.verify_signature,
+    verify_claims     = conf.verify_claims,
   }, issuer.configuration, issuer.keys)
 
   if not o then
-    return internalerror(err)
+    return unexpected(err)
   end
 
   local iss    = o.configuration.issuer
@@ -286,12 +287,12 @@ function OICVerificationHandler:access(conf)
   local act
 
   if set.has("access_token", tokens) then
-    act = o.token:bearer()
+    act = o.authorization:bearer()
     if not act then
       return unauthorized(iss, "access token was not specified")
     end
   elseif idt then
-    act = o.token:bearer()
+    act = o.authorization:bearer()
   end
 
   local toks = {
@@ -367,22 +368,22 @@ function OICVerificationHandler:access(conf)
 
   local claim = conf.consumer_claim
   if claim and claim ~= "" then
-    local consr
+    local mapped_consumer
 
     local id_token = decoded.id_token
     if id_token then
-      consr, err = consumer(conf, id_token, claim)
-      if not consr then
-        consr = consumer(conf, decoded.access_token, claim)
+      mapped_consumer, err = consumer(conf, id_token, claim)
+      if not mapped_consumer then
+        mapped_consumer = consumer(conf, decoded.access_token, claim)
       end
 
     else
-        consr, err = consumer(conf, decoded.access_token, claim)
+        mapped_consumer, err = consumer(conf, decoded.access_token, claim)
     end
 
     local is_anonymous = false
 
-    if not consr then
+    if not mapped_consumer then
       local anonymous = conf.anonymous
       if anonymous == nil or anonymous == "" then
         if err then
@@ -401,8 +402,8 @@ function OICVerificationHandler:access(conf)
         }
       }
 
-      consr, err = consumer(conf, tok, claim, true)
-      if not consr then
+      mapped_consumer, err = consumer(conf, tok, claim, true)
+      if not mapped_consumer then
         if err then
           return unauthorized(iss, "anonymous consumer was not found (" .. err .. ")")
 
@@ -414,11 +415,14 @@ function OICVerificationHandler:access(conf)
 
     local headers = constants.HEADERS
 
-    ngx.ctx.authenticated_consumer = consr
+    ngx.ctx.authenticated_consumer = mapped_consumer
+    ngx.ctx.authenticated_credential = {
+      consumer_id = mapped_consumer.id
+    }
 
-    set_header(headers.CONSUMER_ID,        consr.id)
-    set_header(headers.CONSUMER_CUSTOM_ID, consr.custom_id)
-    set_header(headers.CONSUMER_USERNAME,  consr.username)
+    set_header(headers.CONSUMER_ID,        mapped_consumer.id)
+    set_header(headers.CONSUMER_CUSTOM_ID, mapped_consumer.custom_id)
+    set_header(headers.CONSUMER_USERNAME,  mapped_consumer.username)
 
     if is_anonymous then
       set_header(headers.ANONYMOUS, is_anonymous)
@@ -428,11 +432,11 @@ function OICVerificationHandler:access(conf)
   if keys > 0 then
     jwks, err = cjson.encode(jwks)
     if not jwks then
-      return internalerror(err)
+      return unexpected(err)
     end
     jwks, err = base64url.encode(jwks)
     if not jwks then
-      return internalerror(err)
+      return unexpected(err)
     end
 
     set_header(jwks_header, jwks)

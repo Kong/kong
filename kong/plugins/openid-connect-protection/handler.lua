@@ -116,18 +116,22 @@ function OICProtectionHandler:access(conf)
   local o
 
   o, err = oic.new({
-    client_id     = conf.client_id,
-    client_secret = conf.client_secret,
-    redirect_uri  = conf.redirect_uri or request_url(),
-    scope         = conf.scopes       or { "openid" },
-    claims        = conf.claims       or { "iss", "sub", "aud", "azp", "exp" },
-    audience      = conf.audience,
-    domains       = conf.domains,
-    max_age       = conf.max_age,
-    timeout       = conf.timeout      or 10000,
-    leeway        = conf.leeway       or 0,
-    http_version  = conf.http_version or 1.1,
-    ssl_verify    = conf.ssl_verify == nil and true or conf.ssl_verify,
+    client_id         = conf.client_id,
+    client_secret     = conf.client_secret,
+    redirect_uri      = conf.redirect_uri or request_url(),
+    scope             = conf.scopes       or { "openid" },
+    claims            = conf.claims       or { "iss", "sub", "aud", "azp", "exp" },
+    audience          = conf.audience,
+    domains           = conf.domains,
+    max_age           = conf.max_age,
+    timeout           = conf.timeout      or 10000,
+    leeway            = conf.leeway       or 0,
+    http_version      = conf.http_version or 1.1,
+    ssl_verify        = conf.ssl_verify == nil and true or conf.ssl_verify,
+    verify_parameters = conf.verify_parameters,
+    verify_nonce      = conf.verify_nonce,
+    verify_signature  = conf.verify_signature,
+    verify_claims     = conf.verify_claims,
   }, issuer.configuration, issuer.keys)
 
   if not o then
@@ -213,22 +217,22 @@ function OICProtectionHandler:access(conf)
       end
     end
 
-    local consr
+    local mapped_consumer
 
     local id_token = decoded.id_token
     if id_token then
-      consr, err = consumer(conf, id_token, claim)
-      if not consr then
-        consr = consumer(conf, decoded.access_token, claim)
+      mapped_consumer, err = consumer(conf, id_token, claim)
+      if not mapped_consumer then
+        mapped_consumer = consumer(conf, decoded.access_token, claim)
       end
 
     else
-      consr, err = consumer(conf, decoded.access_token, claim)
+      mapped_consumer, err = consumer(conf, decoded.access_token, claim)
     end
 
     local is_anonymous = false
 
-    if not consr then
+    if not mapped_consumer then
       local anonymous = conf.anonymous
       if anonymous == nil or anonymous == "" then
         if err then
@@ -247,8 +251,8 @@ function OICProtectionHandler:access(conf)
         }
       }
 
-      consr, err = consumer(conf, tok, claim, true)
-      if not consr then
+      mapped_consumer, err = consumer(conf, tok, claim, true)
+      if not mapped_consumer then
         if err then
           return unauthorized(iss, "anonymous consumer was not found (" .. err .. ")")
 
@@ -260,11 +264,14 @@ function OICProtectionHandler:access(conf)
 
     local headers = constants.HEADERS
 
-    ngx.ctx.authenticated_consumer = consr
+    ngx.ctx.authenticated_consumer = mapped_consumer
+    ngx.ctx.authenticated_credential = {
+      consumer_id = mapped_consumer.id
+    }
 
-    set_header(headers.CONSUMER_ID,        consr.id)
-    set_header(headers.CONSUMER_CUSTOM_ID, consr.custom_id)
-    set_header(headers.CONSUMER_USERNAME,  consr.username)
+    set_header(headers.CONSUMER_ID,        mapped_consumer.id)
+    set_header(headers.CONSUMER_CUSTOM_ID, mapped_consumer.custom_id)
+    set_header(headers.CONSUMER_USERNAME,  mapped_consumer.username)
 
     if is_anonymous then
       set_header(headers.ANONYMOUS, is_anonymous)

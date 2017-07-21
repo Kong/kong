@@ -4,7 +4,7 @@ local constants    = require "kong.constants"
 local responses    = require "kong.tools.responses"
 local oic          = require "kong.openid-connect"
 local uri          = require "kong.openid-connect.uri"
---local set          = require "kong.openid-connect.set"
+local set          = require "kong.openid-connect.set"
 local codec        = require "kong.openid-connect.codec"
 local session      = require "resty.session"
 local upload       = require "resty.upload"
@@ -189,6 +189,21 @@ local function unauthorized(issuer, err, s)
   local parts = uri.parse(issuer)
   header["WWW-Authenticate"] = 'Bearer realm="' .. parts.host .. '"'
   return responses.send_HTTP_UNAUTHORIZED()
+end
+
+
+local function forbidden(issuer, err, s)
+  if err then
+    log(NOTICE, err)
+  end
+
+  if s then
+    s:destroy()
+  end
+
+  local parts = uri.parse(issuer)
+  header["WWW-Authenticate"] = 'Bearer realm="' .. parts.host .. '"'
+  return responses.send_HTTP_FORBIDDEN()
 end
 
 
