@@ -137,15 +137,7 @@ function consumers.load(conf, subject, anon)
 end
 
 
-local revoked = {}
-
-
-function revoked.load()
-end
-
-
 return {
   issuers   = issuers,
   consumers = consumers,
-  revoked   = revoked,
 }
