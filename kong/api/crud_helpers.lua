@@ -193,7 +193,7 @@ function _M.get(primary_keys, dao_collection, post_process)
 end
 
 --- Insertion of an entity.
-function _M.post(params, dao_collection, post_process)
+function _M.post(params, dao_collection, success, post_process)
   local data, err = dao_collection:insert(params)
   if err then
     return app_helpers.yield_error(err)
