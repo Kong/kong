@@ -41,9 +41,6 @@
   - rate-limiting/response-ratelimiting: Optionally hide informative response
     headers.
     [#2087](https://github.com/Mashape/kong/pull/2087)
-  - The endpoint `/apis/:api_name_or_id/plugins/:plugin_name_or_id` now accepts
-    the plugin name as well for the last parameter.
-    [#2252](https://github.com/Mashape/kong/pull/2252)
 
 ## [0.10.3] - 2017/05/24
 

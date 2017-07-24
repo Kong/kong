@@ -52,20 +52,13 @@ function _M.find_api_by_name_or_id(self, dao_factory, helpers)
   end
 end
 
--- this function will lookup a plugin by name or id, but REQUIRES
--- also the api to be specified by name or id
-function _M.find_plugin_by_name_or_id(self, dao_factory, helpers)
-  _M.find_api_by_name_or_id(self, dao_factory, helpers)
-
-  local rows, err = _M.find_by_id_or_field(dao_factory.plugins, { api_id = self.api.id },
-                                           self.params.plugin_name_or_id, "name")
-
+function _M.find_plugin_by_filter(self, dao_factory, filter, helpers)
+  local rows, err = dao_factory.plugins:find_all(filter)
   if err then
     return helpers.yield_error(err)
   end
-  self.params.plugin_name_or_id = nil
 
-  -- We know combi of api+plugin is unique for plugins, hence if we have a row, it must be the only one
+  -- We know the id is unique, so if we have a row, it must be the only one
   self.plugin = rows[1]
   if not self.plugin then
     return helpers.responses.send_HTTP_NOT_FOUND()

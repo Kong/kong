@@ -49,26 +49,21 @@ return {
 
   ["/plugins/:id"] = {
     before = function(self, dao_factory, helpers)
-      local rows, err = dao_factory.plugins:find_all {id = self.params.id}
-      if err then
-        return helpers.yield_error(err)
-      elseif #rows == 0 then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-
-      self.plugin_conf = rows[1]
+      crud.find_plugin_by_filter(self, dao_factory, {
+        id = self.params.id
+      }, helpers)
     end,
 
     GET = function(self, dao_factory, helpers)
-      return helpers.responses.send_HTTP_OK(self.plugin_conf)
+      return helpers.responses.send_HTTP_OK(self.plugin)
     end,
 
     PATCH = function(self, dao_factory)
-      crud.patch(self.params, dao_factory.plugins, self.plugin_conf)
+      crud.patch(self.params, dao_factory.plugins, self.plugin)
     end,
 
     DELETE = function(self, dao_factory)
-      crud.delete(self.plugin_conf, dao_factory.plugins)
+      crud.delete(self.plugin, dao_factory.plugins)
     end
   },
 
