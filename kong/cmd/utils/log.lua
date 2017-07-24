@@ -51,7 +51,7 @@ local function log(lvl, ...)
       msg = string.format("%s [%s] %s", os.date("%Y/%m/%d %H:%M:%S"), r_levels[lvl], msg)
     end
 
-    if lvl < _LEVELS.error then
+    if lvl < _LEVELS.warn then
       print(msg)
     else
       io.stderr:write(msg .. "\n")
