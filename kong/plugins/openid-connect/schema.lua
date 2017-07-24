@@ -34,7 +34,7 @@ return {
       type                  = "array",
       default               = { "openid" },
     },
-    authorization           = {
+    auth_methods            = {
       required              = false,
       type                  = "array",
       enum                  = { "password", "client_credentials", "authorization_code", "bearer", "introspection" },

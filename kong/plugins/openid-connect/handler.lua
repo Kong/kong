@@ -260,6 +260,31 @@ function OICHandler:access(conf)
     return unexpected(err)
   end
 
+  local auth_method_password
+  local auth_method_client_credentials
+  local auth_method_authorization_code
+  local auth_method_bearer
+  local auth_method_introspection
+
+  local auth_methods = conf.auth_methods
+  for _, auth_method in auth_methods do
+    if auth_method == "password" then
+      auth_method_password = true
+
+    elseif auth_method == "client_credentials" then
+      auth_method_client_credentials = true
+
+    elseif auth_method == "authorization_code" then
+      auth_method_authorization_code = true
+
+    elseif auth_method == "bearer" then
+      auth_method_bearer = true
+
+    elseif auth_method == "introspection" then
+      auth_method_introspection = true
+    end
+  end
+
   local iss = o.configuration.issuer
 
   local args, bearer
@@ -362,7 +387,7 @@ function OICHandler:access(conf)
       end
 
     else
-      -- Resource Owner Password and Client Credentials
+      -- resource owner password and client credentials grants
       local identity, secret = o.authorization:basic()
       if identity and secret then
         args = {
@@ -402,7 +427,7 @@ function OICHandler:access(conf)
 
   local state = data.state
   if state then
-    -- Authorization Code Response
+    -- authorization code response
     args = {
       state         = state,
       nonce         = data.nonce,
@@ -435,7 +460,7 @@ function OICHandler:access(conf)
     local access_token = tokens_decoded.access_token
     if type(access_token) ~= "table" then
       access_token_introspected, err = o.token:introspect(access_token, "access_token", {
-          introspection_endpoint = conf.introspection_endpoint
+        introspection_endpoint = conf.introspection_endpoint
       })
       if not access_token_introspected or not access_token_introspected.active then
         return unauthorized(iss, err, s)
@@ -506,7 +531,7 @@ function OICHandler:access(conf)
     end
 
   else
-    -- Refresh Tokens
+    -- access token has expired, try to refresh the access token before proxying
 
     if not tokens_encoded.refresh_token then
       return unauthorized(iss, "access token cannot be refreshed in absense of refresh token", s)
@@ -618,10 +643,13 @@ function OICHandler:access(conf)
     end
   end
 
+  -- remove session cookie from the upstream request
   s:hide()
 
+  -- inject access token as a beaerer token in the headers
   set_header("Authorization", "Bearer " .. tokens_encoded.access_token)
 
+  -- inject access token jwk in th headers?
   local access_token_jwk_header = conf.access_token_jwk_header
   if access_token_jwk_header and access_token_jwk_header ~= "" then
     if not tokens_decoded then
@@ -641,6 +669,7 @@ function OICHandler:access(conf)
     end
   end
 
+  -- inject id token into the headers?
   local id_token_header = conf.id_token_header
   if id_token_header and id_token_header ~= "" then
     local id_token = tokens_encoded.id_token
@@ -649,6 +678,7 @@ function OICHandler:access(conf)
     end
   end
 
+  -- inject id token jwk into the headers?
   local id_token_jwk_header = conf.id_token_jwk_header
   if id_token_jwk_header and id_token_jwk_header ~= "" then
     if not tokens_decoded then
@@ -668,6 +698,7 @@ function OICHandler:access(conf)
     end
   end
 
+  -- inject user info into the headers?
   local userinfo_header = conf.userinfo_header
   if userinfo_header and userinfo_header ~= "" then
     local userinfo = o:userinfo(tokens_encoded.access_token, { userinfo_format = "base64" })
@@ -676,6 +707,7 @@ function OICHandler:access(conf)
     end
   end
 
+  -- inject introspected access token into the headers?
   local introspection_header = conf.intropection_header
   if introspection_header and access_token_introspected then
     local introspected = json.encode(access_token_introspected)
