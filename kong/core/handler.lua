@@ -64,28 +64,26 @@ return {
     end
   },
   certificate = {
-    before = function()
+    before = function(ctx)
       certificate.execute()
     end
   },
   rewrite = {
-    before = function()
-      ngx.ctx.KONG_REWRITE_START = get_now()
+    before = function(ctx)
+      ctx.KONG_REWRITE_START = get_now()
     end,
-    after = function ()
-      local ctx = ngx.ctx
+    after = function (ctx)
       ctx.KONG_REWRITE_TIME = get_now() - ctx.KONG_REWRITE_START -- time spent in Kong's rewrite_by_lua
     end
   },
   access = {
-    before = function()
+    before = function(ctx)
       if not router then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(
           "no router to route request (reason: " .. tostring(router_err) .. ")"
         )
       end
 
-      local ctx = ngx.ctx
       local var = ngx.var
 
       ctx.KONG_ACCESS_START = get_now()
@@ -129,8 +127,7 @@ return {
       ctx.balancer_address = balancer_address
     end,
     -- Only executed if the `router` module found an API and allows nginx to proxy it.
-    after = function()
-      local ctx = ngx.ctx
+    after = function(ctx)
       local var = ngx.var
 
       do
@@ -203,17 +200,15 @@ return {
     end
   },
   header_filter = {
-    before = function()
-      local ctx = ngx.ctx
-
+    before = function(ctx)
       if ctx.KONG_PROXIED then
         local now = get_now()
         ctx.KONG_WAITING_TIME = now - ctx.KONG_ACCESS_ENDED_AT -- time spent waiting for a response from upstream
         ctx.KONG_HEADER_FILTER_STARTED_AT = now
       end
     end,
-    after = function()
-      local ctx, header = ngx.ctx, ngx.header
+    after = function(ctx)
+      local header = ngx.header
 
       if ctx.KONG_PROXIED then
         if singletons.configuration.latency_tokens then
@@ -236,17 +231,17 @@ return {
     end
   },
   body_filter = {
-    after = function()
-      if ngx.arg[2] and ngx.ctx.KONG_PROXIED then
+    after = function(ctx)
+      if ngx.arg[2] and ctx.KONG_PROXIED then
         -- time spent receiving the response (header_filter + body_filter)
         -- we could uyse $upstream_response_time but we need to distinguish the waiting time
         -- from the receiving time in our logging plugins (especially ALF serializer).
-        ngx.ctx.KONG_RECEIVE_TIME = get_now() - ngx.ctx.KONG_HEADER_FILTER_STARTED_AT
+        ctx.KONG_RECEIVE_TIME = get_now() - ctx.KONG_HEADER_FILTER_STARTED_AT
       end
     end
   },
   log = {
-    after = function()
+    after = function(ctx)
       reports.log()
     end
   }
