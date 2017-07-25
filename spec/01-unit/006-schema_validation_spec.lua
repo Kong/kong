@@ -55,6 +55,13 @@ describe("Schemas", function()
         assert.truthy(err)
         assert.are.same("string is required", err.string)
       end)
+      it("errors if required property is set to ngx.null", function()
+        local values = { string = ngx.null }
+
+        local ok, err = validate_entity(values, schema)
+        assert.falsy(ok)
+        assert.equal("string is required", err.string)
+      end)
     end)
 
     describe("[type]", function()
@@ -325,6 +332,14 @@ describe("Schemas", function()
         assert.are.same("abcdef", values.default)
       end)
 
+      it("sets to default when a field is given ngx.null", function()
+        local values = { string = "foo", default = ngx.null }
+
+        local ok, err = validate_entity(values, schema)
+        assert.falsy(err)
+        assert.is_true(ok)
+        assert.equal("default", values.default)
+      end)
     end)
 
     describe("[regex]", function()
@@ -420,6 +435,17 @@ describe("Schemas", function()
         assert.falsy(valid)
         assert.truthy(err)
         assert.are.same("Nah", err.custom)
+      end)
+      it("is called with arg1 'nil' when given ngx.null", function()
+        spy.on(schema.fields.custom, "func")
+
+        local values = { string = "foo", custom = ngx.null }
+
+        local ok, err = validate_entity(values, schema)
+        assert.falsy(err)
+        assert.is_true(ok)
+        assert.is_nil(values.custom)
+        assert.spy(schema.fields.custom.func).was_called_with(nil, values, "custom")
       end)
     end)
 
@@ -753,6 +779,38 @@ describe("Schemas", function()
         assert.are.same("asd is an unknown field", err["flexi.somekey2.asd"])
       end)
 
+      it("errors if required sub-schema is given ngx.null", function()
+        local values = { some_required = "foo", sub_schema = ngx.null }
+
+        local ok, err = validate_entity(values, nested_schema)
+        assert.falsy(ok)
+        assert.same({
+          ["sub_schema"] = "sub_schema.sub_field_required is required",
+          ["sub_schema.sub_field_required"] = "sub_field_required is required",
+          ["sub_schema.sub_sub_schema"] = "sub_sub_schema.sub_sub_field_required is required",
+        }, err)
+      end)
+
+      it("gives NULL to sub-schema if given ngx.null in update", function()
+        local values = { some_required = "foo", sub_schema = ngx.null }
+
+        local ok, err = validate_entity(values, nested_schema, { update = true })
+        assert.falsy(err)
+        assert.is_true(ok)
+        assert.equal(ngx.null, values.sub_schema)
+      end)
+
+      it("errors if required sub-schema is given ngx.null in a full update", function()
+        local values = { some_required = "foo", sub_schema = ngx.null }
+
+        local ok, err = validate_entity(values, nested_schema, { update = true, full_update = true })
+        assert.falsy(ok)
+        assert.same({
+          ["sub_schema"] = "sub_schema.sub_field_required is required",
+          ["sub_schema.sub_field_required"] = "sub_field_required is required",
+          ["sub_schema.sub_sub_schema"] = "sub_sub_schema.sub_sub_field_required is required",
+        }, err)
+      end)
     end)
 
     describe("[update] (partial)", function()
@@ -796,6 +854,37 @@ describe("Schemas", function()
         assert.truthy(err)
         assert.equal("date cannot be updated", err.date)
       end)
+
+      it("passes NULL if a field with default is given ngx.null", function()
+        local values = { string = "foo", date = ngx.null }
+
+        local ok, err = validate_entity(values, schema, { update = true })
+        assert.falsy(err)
+        assert.is_true(ok)
+        assert.equal(ngx.null, values.date) -- DAO will handle ngx.null to 'NULL'
+      end)
+
+      it("calls 'func' with arg1 'nil' when given ngx.null", function()
+        spy.on(schema.fields.custom, "func")
+
+        local values = { string = "foo", custom = ngx.null }
+
+        local ok, err = validate_entity(values, schema, { update = true })
+        assert.falsy(err)
+        assert.is_true(ok)
+        assert.equal(ngx.null, values.custom)
+        assert.spy(schema.fields.custom.func).was_called_with(nil, values, "custom")
+      end)
+
+      it("errors when a required field is given ngx.null", function()
+        spy.on(schema.fields.custom, "func")
+
+        local values = { string = ngx.null }
+
+        local ok, err = validate_entity(values, schema, { update = true })
+        assert.falsy(ok)
+        assert.equal("string is required", err.string)
+      end)
     end)
 
     describe("[update] (full)", function()
@@ -805,7 +894,7 @@ describe("Schemas", function()
         local valid, err = validate_entity(values, schema, {update = true, full_update = true})
         assert.False(valid)
         assert.truthy(err)
-        assert.are.same({"string is required", "string is required"}, err.string)
+        assert.equal("string is required", err.string)
       end)
       it("should complete default fields", function()
         local values = {string = "foo", date = 123456}
@@ -814,6 +903,34 @@ describe("Schemas", function()
         assert.True(valid)
         assert.falsy(err)
         assert.equal("default", values.default)
+      end)
+      it("sets a field to its default if given ngx.null", function()
+        local values = { string = "foo", date = ngx.null }
+
+        local ok, err = validate_entity(values, schema, {update = true, full_update = true})
+        assert.falsy(err)
+        assert.is_true(ok)
+        assert.is_number(values.date)
+      end)
+      it("calls 'func' with arg1 'nil' when given ngx.null", function()
+        spy.on(schema.fields.custom, "func")
+
+        local values = { string = "foo", custom = ngx.null }
+
+        local ok, err = validate_entity(values, schema, { update = true, full_update = true })
+        assert.falsy(err)
+        assert.is_true(ok)
+        assert.is_nil(values.custom)
+        assert.spy(schema.fields.custom.func).was_called_with(nil, values, "custom")
+      end)
+      it("errors when a required field is given ngx.null", function()
+        spy.on(schema.fields.custom, "func")
+
+        local values = { string = ngx.null }
+
+        local ok, err = validate_entity(values, schema, { update = true, full_update = true })
+        assert.falsy(ok)
+        assert.equal("string is required", err.string)
       end)
     end)
   end)

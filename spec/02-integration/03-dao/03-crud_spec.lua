@@ -119,6 +119,21 @@ helpers.for_each_dao(function(kong_config)
         assert.True(err.unique)
         assert.equal("already exists with value 'mockbin'", err.tbl.name)
       end)
+      it("ignores ngx.null fields", function()
+        local api, err = apis:insert {
+          name = "httpbin",
+          hosts = { "httpbin.org" },
+          upstream_url = "http://httpbin.org",
+          uris = ngx.null,
+          methods = ngx.null,
+        }
+        assert.falsy(err)
+        assert.is_table(api)
+        assert.equal("httpbin", api.name)
+        assert.is_nil(api.uris)
+        assert.is_nil(api.methods)
+        assert.raw_table(api)
+      end)
 
       describe("errors", function()
         it("refuse if invalid schema", function()
@@ -575,6 +590,21 @@ helpers.for_each_dao(function(kong_config)
         assert.not_same(api_fixture, api)
         assert.truthy(api.uris)
       end)
+      it("does unset ngx.null fields", function()
+        api_fixture.uris = ngx.null
+
+        local api, err = apis:update(api_fixture, {id = api_fixture.id})
+        assert.falsy(err)
+        assert.truthy(api)
+        assert.not_same(api_fixture, api)
+        assert.falsy(api.uris)
+        assert.raw_table(api)
+
+        api, err = apis:find(api_fixture)
+        assert.falsy(err)
+        assert.not_same(api_fixture, api)
+        assert.falsy(api.uris)
+      end)
 
       describe("full", function()
         it("update with nil fetch_keys", function()
@@ -595,6 +625,20 @@ helpers.for_each_dao(function(kong_config)
           api_fixture.uris = nil
 
           local api, err = apis:update(api_fixture, api_fixture, {full = true})
+          assert.falsy(err)
+          assert.truthy(api)
+          assert.same(api_fixture, api)
+          assert.raw_table(api)
+
+          api, err = apis:find(api_fixture)
+          assert.falsy(err)
+          assert.same(api_fixture, api)
+        end)
+        it("unset ngx.null fields", function()
+          api_fixture.uris = ngx.null
+
+          local api, err = apis:update(api_fixture, api_fixture, {full = true})
+          api_fixture.uris = nil
           assert.falsy(err)
           assert.truthy(api)
           assert.same(api_fixture, api)
