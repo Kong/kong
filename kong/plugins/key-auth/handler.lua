@@ -18,7 +18,7 @@ local _realm = 'Key realm="' .. _KONG._NAME .. '"'
 
 local KeyAuthHandler = BasePlugin:extend()
 
-KeyAuthHandler.PRIORITY = 1000
+KeyAuthHandler.PRIORITY = 1700
 
 function KeyAuthHandler:new()
   KeyAuthHandler.super.new(self, "key-auth")
@@ -57,7 +57,7 @@ local function set_consumer(consumer, credential)
   else
     ngx_set_header(constants.HEADERS.ANONYMOUS, true)
   end
-  
+
 end
 
 local function do_authentication(conf)
@@ -156,7 +156,7 @@ function KeyAuthHandler:access(conf)
   KeyAuthHandler.super.access(self)
 
   if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
-    -- we're already authenticated, and we're configured for using anonymous, 
+    -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
     return
   end

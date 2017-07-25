@@ -36,7 +36,7 @@ local function log(premature, conf, message)
   local msg = cjson.encode(message) .. "\n"
 
   local fd = file_descriptors[conf.path]
-  
+
   if fd and conf.reopen then
     -- close fd, we do this here, to make sure a previously cached fd also
     -- gets closed upon dynamic changes of the configuration
@@ -60,7 +60,7 @@ end
 
 local FileLogHandler = BasePlugin:extend()
 
-FileLogHandler.PRIORITY = 1
+FileLogHandler.PRIORITY = 200
 
 function FileLogHandler:new()
   FileLogHandler.super.new(self, "file-log")
