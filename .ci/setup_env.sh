@@ -54,10 +54,6 @@ if [ ! "$(ls -A $OPENRESTY_INSTALL)" ]; then
     "--with-http_v2_module"
   )
 
-  if [ "$OPENRESTY" != "1.11.2.1" ]; then
-    OPENRESTY_OPTS[${#OPENRESTY_OPTS[@]}]="--without-luajit-lua52"
-  fi
-
   pushd $OPENRESTY_DOWNLOAD
     ./configure ${OPENRESTY_OPTS[*]}
     make
