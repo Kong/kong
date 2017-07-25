@@ -417,6 +417,7 @@ describe("core entities are invalidated with db: " .. kong_conf.database, functi
   ----------
 
   describe("plugins (per API)", function()
+    local api_plugin_id
 
     it("on create", function()
       -- create API
@@ -475,7 +476,9 @@ describe("core entities are invalidated with db: " .. kong_conf.database, functi
           ["Content-Type"] = "application/json",
         },
       })
-      assert.res_status(201, admin_res_plugin)
+      local body = assert.res_status(201, admin_res_plugin)
+      local plugin = cjson.decode(body)
+      api_plugin_id = assert(plugin.id, "could not get plugin id from " .. body)
 
       -- no need to wait for workers propagation (lua-resty-worker-events)
       -- because our test instance only has 1 worker
@@ -506,7 +509,7 @@ describe("core entities are invalidated with db: " .. kong_conf.database, functi
     it("on update", function()
       local admin_res_plugin = assert(admin_client_1:send {
         method = "PATCH",
-        path   = "/apis/dummy-api/plugins/dummy",
+        path   = "/apis/dummy-api/plugins/" .. api_plugin_id,
         body   = {
           ["config.resp_header_value"] = "2",
         },
@@ -545,7 +548,7 @@ describe("core entities are invalidated with db: " .. kong_conf.database, functi
     it("on delete", function()
       local admin_res_plugin = assert(admin_client_1:send {
         method = "DELETE",
-        path   = "/apis/dummy-api/plugins/dummy",
+        path   = "/apis/dummy-api/plugins/" .. api_plugin_id,
       })
       assert.res_status(204, admin_res_plugin)
 
