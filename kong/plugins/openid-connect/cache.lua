@@ -119,7 +119,9 @@ function consumers.init(cons, subject)
       log(NOTICE, "openid connect is loading consumer by " .. key .. " using " .. subject)
       result, err = singletons.dao.consumers:find_all { [key] = subject }
       if type(result) == "table" then
-        return result[1]
+        if type(result[1]) == "table" then
+          return result[1]
+        end
       end
     end
   end
@@ -132,12 +134,32 @@ function consumers.load(conf, subject, anon)
   if sub(issuer, -1) == "/" then
     issuer = sub(issuer, 1, #issuer - 1)
   end
-  local cons = anon and { "id" } or conf.consumer_by or { "custom_id" }
+  local cons
+
+  if anon then
+    cons = { "id" }
+
+  elseif conf.consumer_by then
+    cons = conf.consumer_by
+
+  else
+    cons = { "custom_id" }
+  end
+
   return cache.get_or_set(concat{issuer, "#", subject }, conf.consumer_ttl, consumers.init, cons, subject)
+end
+
+
+local userinfo = {}
+
+
+function userinfo.load()
+
 end
 
 
 return {
   issuers   = issuers,
   consumers = consumers,
+  userinfo  = userinfo,
 }

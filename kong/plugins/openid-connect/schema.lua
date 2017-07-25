@@ -13,32 +13,52 @@ end
 return {
   no_consumer               = true,
   fields                    = {
-    client_id               = {
-      required              = true,
-      type                  = "string",
-    },
-    client_secret           = {
-      required              = true,
-      type                  = "string",
-    },
     issuer                  = {
       required              = true,
       type                  = "url",
     },
+    client_id               = {
+      required              = true,
+      type                  = "array",
+    },
+    client_secret           = {
+      required              = true,
+      type                  = "array",
+    },
     redirect_uri            = {
       required              = false,
-      type                  = "url",
+      type                  = "array",
     },
     scopes                  = {
       required              = false,
       type                  = "array",
       default               = { "openid" },
     },
+    response_mode           = {
+      required              = false,
+      type                  = "string",
+      enum                  = { "query", "form_post", "fragment" },
+      default               = "query",
+    },
     auth_methods            = {
       required              = false,
       type                  = "array",
-      enum                  = { "password", "client_credentials", "authorization_code", "bearer", "introspection" },
-      default               = { "password", "client_credentials", "authorization_code", "bearer", "introspection" },
+      enum                  = {
+        "password",
+        "client_credentials",
+        "authorization_code",
+        "bearer",
+        "introspection",
+        "refresh_token",
+      },
+      default               = {
+        "password",
+        "client_credentials",
+        "authorization_code",
+        "bearer",
+        "introspection",
+        "refresh_token"
+      },
     },
     audience                = {
       required              = false,
@@ -91,17 +111,19 @@ return {
       required              = false,
       type                  = "url",
     },
-    login_redirect_uri      = {
+    login_action            = {
       required              = false,
-      type                  = "url",
+      type                  = "string",
+      enum                  = { "upstream", "response", "redirect" },
+      default               = "upstream",
     },
-    login_redirect_tokens   = {
+    login_tokens            = {
       required              = false,
       type                  = "array",
       enum                  = { "id_token", "access_token", "refresh_token" },
       default               = { "id_token" },
     },
-    logout_redirect_uri     = {
+    login_redirect_uri      = {
       required              = false,
       type                  = "url",
     },
@@ -113,7 +135,7 @@ return {
       required              = false,
       type                  = "array",
       enum                  = { "id", "username", "custom_id" },
-      default               = { "username", "custom_id" }
+      default               = { "username", "custom_id" },
     },
     consumer_ttl            = {
       required              = false,

@@ -4,7 +4,6 @@ local constants    = require "kong.constants"
 local responses    = require "kong.tools.responses"
 local oic          = require "kong.openid-connect"
 local uri          = require "kong.openid-connect.uri"
-local set          = require "kong.openid-connect.set"
 local codec        = require "kong.openid-connect.codec"
 local session      = require "resty.session"
 local upload       = require "resty.upload"
@@ -19,6 +18,7 @@ local header        = ngx.header
 local set_header    = ngx.req.set_header
 local read_body     = ngx.req.read_body
 local get_uri_args  = ngx.req.get_uri_args
+local set_uri_args  = ngx.req.set_uri_args
 local get_body_data = ngx.req.get_body_data
 local get_body_file = ngx.req.get_body_file
 local get_post_args = ngx.req.get_post_args
@@ -50,7 +50,10 @@ local function read_file(p)
 end
 
 
-local function request_url()
+local function redirect_uri()
+  -- we try to use current url as a redirect_uri by default
+  -- if none is configured.
+
   local scheme = var.scheme
   local host   = var.host
   local port   = tonumber(var.server_port)
@@ -211,7 +214,13 @@ local function unexpected(err)
   if err then
     log(ERR, err)
   end
+
   return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+end
+
+
+local function success(response)
+  return responses.send_HTTP_OK(response)
 end
 
 
@@ -219,7 +228,7 @@ local OICHandler = BasePlugin:extend()
 
 
 function OICHandler:new()
-  OICHandler.super.new(self, "openid-connect-authentication")
+  OICHandler.super.new(self, "openid-connect")
 end
 
 
@@ -231,18 +240,71 @@ end
 function OICHandler:access(conf)
   OICHandler.super.access(self)
 
+  -- load issuer configuration
   local issuer, err = cache.issuers.load(conf)
   if not issuer then
     return unexpected(err)
   end
 
+  local clients   = conf.client_id
+  local secrets   = conf.client_secret
+  local redirects = conf.redirect_uri or {}
+
+  local client_id, client_secret, redirection_uri
+
+  -- try to find the right client
+  if #clients > 1 then
+    client_id = var.http_x_client_id
+    if client_id then
+      for i, client in ipairs(clients) do
+        if client_id == client then
+          client_secret   = secrets[i]
+          redirection_uri = redirects[i] or redirects[1]
+          break
+        end
+      end
+    else
+      local uri_args = get_uri_args()
+      client_id = uri_args.client_id
+      if client_id then
+        for i, client in ipairs(clients) do
+          if client_id == client then
+            client_secret   = secrets[i]
+            redirection_uri = redirects[i] or redirects[1]
+            break
+          end
+        end
+      else
+        read_body()
+        local post_args = get_post_args()
+        client_id = post_args.client_id
+        if client_id then
+          for i, client in ipairs(clients) do
+            if client_id == client then
+              client_secret   = secrets[i]
+              redirection_uri = redirects[i] or redirects[1]
+              break
+            end
+          end
+        end
+      end
+    end
+  end
+
+  -- fallback to default client
+  if not client_secret then
+    client_id     = clients[1]
+    client_secret = secrets[1]
+  end
+
   local o
 
   o, err = oic.new({
-    client_id         = conf.client_id,
-    client_secret     = conf.client_secret,
-    redirect_uri      = conf.redirect_uri or request_url(),
+    client_id         = client_id,
+    client_secret     = client_secret,
+    redirect_uri      = redirection_uri   or redirect_uri(),
     scope             = conf.scopes       or { "openid" },
+    response_mode     = conf.response_mode,
     audience          = conf.audience,
     domains           = conf.domains,
     max_age           = conf.max_age,
@@ -254,20 +316,31 @@ function OICHandler:access(conf)
     verify_nonce      = conf.verify_nonce,
     verify_signature  = conf.verify_signature,
     verify_claims     = conf.verify_claims,
+
   }, issuer.configuration, issuer.keys)
 
   if not o then
     return unexpected(err)
   end
 
+  -- determine the supported authentication methods
   local auth_method_password
   local auth_method_client_credentials
   local auth_method_authorization_code
   local auth_method_bearer
   local auth_method_introspection
+  local auth_method_refresh_token
 
-  local auth_methods = conf.auth_methods
-  for _, auth_method in auth_methods do
+  local auth_methods = conf.auth_methods or {
+    "password",
+    "client_credentials",
+    "authorization_code",
+    "bearer",
+    "introspection",
+    "refresh_token",
+  }
+
+  for _, auth_method in ipairs(auth_methods) do
     if auth_method == "password" then
       auth_method_password = true
 
@@ -282,174 +355,225 @@ function OICHandler:access(conf)
 
     elseif auth_method == "introspection" then
       auth_method_introspection = true
+
+    elseif auth_method == "refresh_token" then
+      auth_method_refresh_token = true
     end
   end
 
   local iss = o.configuration.issuer
 
-  local args, bearer
+  local args, bearer, state
 
   local s, session_present = session.open()
 
   if not session_present then
-    bearer = o.authorization:bearer()
-    if bearer then
-      -- Bearer Token
-      s.data = {
-        tokens = {
-          access_token = bearer
+    -- bearer token authentication
+    if auth_method_bearer or auth_method_introspection then
+      bearer = o.authorization:bearer()
+      if bearer then
+        s.data = {
+          tokens = {
+            access_token = bearer
+          }
         }
-      }
 
-      local id_token
-      local content_type = var.content_type  or ""
+        -- additionally we can validate the id token as well
+        -- and pass it on, if it is passed on the request
+        local id_token
+        local content_type = var.content_type  or ""
 
-      local id_token_param_name = conf.id_token_param_name
-      if id_token_param_name then
-        local id_token_param_type = conf.id_token_param_type or { "query", "header", "body" }
+        local id_token_param_name = conf.id_token_param_name
+        if id_token_param_name then
+          local id_token_param_type = conf.id_token_param_type or { "query", "header", "body" }
 
-        for _, t in ipairs(id_token_param_type) do
-          if t == "header" then
-            local name = gsub(lower(id_token_param_name), "-", "_")
-            id_token = var["http_" .. name]
-            if id_token then
-              break
-            end
-            id_token = var["http_x_" .. name]
-            if id_token then
-              break
-            end
-
-          elseif t == "query" then
-            local uri_args = get_uri_args()
-            if uri_args then
-              id_token = uri_args[id_token_param_name]
+          for _, t in ipairs(id_token_param_type) do
+            if t == "header" then
+              local name = gsub(lower(id_token_param_name), "-", "_")
+              id_token = var["http_" .. name]
               if id_token then
                 break
               end
-            end
+              id_token = var["http_x_" .. name]
+              if id_token then
+                break
+              end
 
-          elseif t == "body" then
-            if sub(content_type, 1, 33) == "application/x-www-form-urlencoded" then
-              read_body()
-              local post_args = get_post_args()
-              if post_args then
-                id_token = post_args[id_token_param_name]
+            elseif t == "query" then
+              local uri_args = get_uri_args()
+              if uri_args then
+                id_token = uri_args[id_token_param_name]
                 if id_token then
                   break
                 end
               end
 
-            elseif sub(content_type, 1, 19) == "multipart/form-data" then
-              id_token = multipart(id_token_param_name, conf.timeout)
-              if id_token then
-                break
-              end
-
-            elseif sub(content_type, 1, 16) == "application/json" then
-              read_body()
-              local data = get_body_data()
-              if data == nil then
-                local file = get_body_file()
-                if file ~= nil then
-                  data = read_file(file)
-                end
-              end
-              if data then
-                local json_body = json.decode(data)
-                if json_body then
-                  id_token = json_body[id_token_param_name]
+            elseif t == "body" then
+              if sub(content_type, 1, 33) == "application/x-www-form-urlencoded" then
+                read_body()
+                local post_args = get_post_args()
+                if post_args then
+                  id_token = post_args[id_token_param_name]
                   if id_token then
                     break
                   end
                 end
-              end
 
-            else
-              read_body()
-              local data = get_body_data()
-              if data == nil then
-                local file = get_body_file()
-                if file ~= nil then
-                  id_token = read_file(file)
-                  if id_token then
-                    break
+              elseif sub(content_type, 1, 19) == "multipart/form-data" then
+                id_token = multipart(id_token_param_name, conf.timeout)
+                if id_token then
+                  break
+                end
+
+              elseif sub(content_type, 1, 16) == "application/json" then
+                read_body()
+                local data = get_body_data()
+                if data == nil then
+                  local file = get_body_file()
+                  if file ~= nil then
+                    data = read_file(file)
+                  end
+                end
+                if data then
+                  local json_body = json.decode(data)
+                  if json_body then
+                    id_token = json_body[id_token_param_name]
+                    if id_token then
+                      break
+                    end
+                  end
+                end
+
+              else
+                read_body()
+                local data = get_body_data()
+                if data == nil then
+                  local file = get_body_file()
+                  if file ~= nil then
+                    id_token = read_file(file)
+                    if id_token then
+                      break
+                    end
                   end
                 end
               end
             end
           end
-        end
 
-        if id_token then
-          s.data.tokens.id_token = id_token
+          if id_token then
+            s.data.tokens.id_token = id_token
+          end
+        end
+      end
+    end
+
+    if not bearer then
+      -- resource owner password and client credentials grants
+      if auth_method_password or auth_method_client_credentials then
+        local identity, secret = o.authorization:basic()
+        if identity and secret then
+          args = {}
+          if auth_method_password then
+            args[1] = {
+              username      = identity,
+              password      = secret,
+              grant_type    = "password",
+            }
+          end
+
+          if auth_method_client_credentials then
+            args[auth_method_password and 2 or 1] = {
+              client_id     = identity,
+              client_secret = secret,
+              grant_type    = "client_credentials",
+            }
+          end
         end
       end
 
-    else
-      -- resource owner password and client credentials grants
-      local identity, secret = o.authorization:basic()
-      if identity and secret then
-        args = {
-          {
-            username      = identity,
-            password      = secret,
-            grant_type    = "password",
-          },
-          {
-            client_id     = identity,
-            client_secret = secret,
-            grant_type    = "client_credentials",
-          },
-        }
+      if not args then
+        -- authorization code grant
+        if auth_method_authorization_code then
+          local authorization, authorization_present = session.open {
+            name = "authorization",
+            cookie = {
+              samesite = "off",
+            }
+          }
 
-      else
-        -- Authorization Code Request
-        args, err = o.authorization:request()
-        if not args then
-          return unexpected(err)
+          if authorization_present then
+            local authorization_data = authorization.data or {}
+
+            state = authorization_data.state
+
+            if state then
+              -- authorization code response
+              args = {
+                state         = state,
+                nonce         = authorization_data.nonce,
+                code_verifier = authorization_data.code_verifier,
+              }
+
+              local uri_args = get_uri_args()
+
+              args, err = o.authorization:verify(args)
+              if not args then
+                if uri_args.state == state then
+                  return unauthorized(iss, err, authorization)
+
+                else
+                  read_body()
+                  local post_args = get_post_args()
+                  if post_args.state == state then
+                    return unauthorized(iss, err, authorization)
+                  end
+                end
+
+                return unauthorized(iss, err)
+              end
+
+              authorization:destroy()
+
+              uri_args.code  = nil
+              uri_args.state = nil
+
+              set_uri_args(uri_args)
+
+              args = { args }
+            end
+
+          else
+            -- authorization code request
+            args, err = o.authorization:request()
+            if not args then
+              return unexpected(err)
+            end
+
+            authorization.data = {
+              state         = args.state,
+              nonce         = args.nonce,
+              code_verifier = args.code_verifier,
+            }
+
+            authorization:save()
+
+            return redirect(args.url)
+          end
+
+        else
+          return unauthorized(iss, "no suitable authorization credentials were provided")
         end
-
-        s.data = {
-          state         = args.state,
-          nonce         = args.nonce,
-          code_verifier = args.code_verifier,
-        }
-
-        s:save()
-
-        return redirect(args.url)
       end
     end
   end
 
-  local data = s.data or {}
+  local session_data = s.data or {}
 
-  local state = data.state
-  if state then
-    -- authorization code response
-    args = {
-      state         = state,
-      nonce         = data.nonce,
-      code_verifier = data.code_verifier,
-    }
-
-    args, err = o.authorization:verify(args)
-    if not args then
-      local uri_args = get_uri_args()
-      if uri_args.state == state then
-        return unauthorized(iss, err, s)
-      end
-
-      return unauthorized(iss, err)
-   end
-
-    args = { args }
-  end
-
+  local default_expires_in = 3600
   local now = time()
+  local exp = now + default_expires_in
   local expires
-  local tokens_encoded, tokens_decoded, access_token_introspected = data.tokens, nil, nil
+  local tokens_encoded, tokens_decoded, access_token_introspected = session_data.tokens, nil, nil
 
   if bearer then
     tokens_decoded, err = o.token:verify(tokens_encoded)
@@ -459,17 +583,20 @@ function OICHandler:access(conf)
 
     local access_token = tokens_decoded.access_token
     if type(access_token) ~= "table" then
-      access_token_introspected, err = o.token:introspect(access_token, "access_token", {
-        introspection_endpoint = conf.introspection_endpoint
-      })
+      if auth_method_introspection then
+        access_token_introspected, err = o.token:introspect(access_token, "access_token", {
+          introspection_endpoint = conf.introspection_endpoint
+        })
+      end
+
       if not access_token_introspected or not access_token_introspected.active then
         return unauthorized(iss, err, s)
       end
 
-      expires = access_token_introspected.exp or (3600 + now)
+      expires = access_token_introspected.exp or exp
 
     else
-      expires = access_token.exp or (3600 + now)
+      expires = access_token.exp or exp
     end
 
     s.data.expires = expires
@@ -493,7 +620,7 @@ function OICHandler:access(conf)
       return unauthorized(iss, err, s)
     end
 
-    expires = (tonumber(tokens_encoded.expires_in) or 3600) + now
+    expires = (tonumber(tokens_encoded.expires_in) or default_expires_in) + now
 
     s.data = {
       tokens  = tokens_encoded,
@@ -502,19 +629,49 @@ function OICHandler:access(conf)
 
     if session_present then
       s:regenerate()
+
     else
       s:save()
     end
 
     if state then
-      local login_redirect_uri = conf.login_redirect_uri
-      if login_redirect_uri then
-        return redirect(login_redirect_uri .. "#id_token=" .. tokens_encoded.id_token)
+      local login_action = conf.login_action
+      if login_action == "response" then
+        local response = {}
+        local login_tokens = conf.login_tokens
+        for _, name in ipairs(login_tokens) do
+          if tokens_encoded[name] then
+            response[name] = tokens_encoded[name]
+          end
+        end
+
+        return success(response)
+
+      elseif login_action == "redirect" and conf.login_redirect_uri then
+        local login_redirect_uri, i = { conf.login_redirect_uri }, 2
+        local login_tokens = conf.login_tokens
+        for _, name in ipairs(login_tokens) do
+          if tokens_encoded[name] then
+            if i == 1 then
+              login_redirect_uri[i] = "#"
+
+            else
+              login_redirect_uri[i] = "&"
+            end
+
+            login_redirect_uri[i+1] = name
+            login_redirect_uri[i+2] = "="
+            login_redirect_uri[i+3] = tokens_encoded[name]
+            i = i+4
+          end
+        end
+
+        return redirect(concat(login_redirect_uri))
       end
     end
 
   else
-    expires = (data.expires or conf.leeway) - conf.leeway
+    expires = (session_data.expires or conf.leeway) - conf.leeway
   end
 
   if not tokens_encoded.access_token then
@@ -526,48 +683,52 @@ function OICHandler:access(conf)
     if conf.reverify then
       tokens_decoded, err = o.token:verify(tokens_encoded)
       if not tokens_decoded then
-        return unauthorized(iss, err)
+        return forbidden(iss, err)
       end
     end
 
   else
-    -- access token has expired, try to refresh the access token before proxying
+    if auth_method_refresh_token then
+      -- access token has expired, try to refresh the access token before proxying
+      if not tokens_encoded.refresh_token then
+        return forbidden(iss, "access token cannot be refreshed in absense of refresh token", s)
+      end
 
-    if not tokens_encoded.refresh_token then
-      return unauthorized(iss, "access token cannot be refreshed in absense of refresh token", s)
+      local tokens_refreshed
+      local refresh_token = tokens_encoded.refresh_token
+      tokens_refreshed, err = o.token:refresh(refresh_token)
+
+      if not tokens_refreshed then
+        return forbidden(iss, err, s)
+      end
+
+      if not tokens_refreshed.id_token then
+        tokens_refreshed.id_token = tokens_encoded.id_token
+      end
+
+      if not tokens_refreshed.refresh_token then
+        tokens_refreshed.refresh_token = refresh_token
+      end
+
+      tokens_decoded, err = o.token:verify(tokens_refreshed)
+      if not tokens_decoded then
+        return forbidden(iss, err, s)
+      end
+
+      tokens_encoded = tokens_refreshed
+
+      expires = (tonumber(tokens_encoded.expires_in) or default_expires_in) + now
+
+      s.data = {
+        tokens  = tokens_encoded,
+        expires = expires,
+      }
+
+      s:regenerate()
+
+    else
+      return forbidden(iss, err, s)
     end
-
-    local tokens_refreshed
-    local refresh_token = tokens_encoded.refresh_token
-    tokens_refreshed, err = o.token:refresh(refresh_token)
-
-    if not tokens_refreshed then
-      return unauthorized(iss, err, s)
-    end
-
-    if not tokens_refreshed.id_token then
-      tokens_refreshed.id_token = tokens_encoded.id_token
-    end
-
-    if not tokens_refreshed.refresh_token then
-      tokens_refreshed.refresh_token = refresh_token
-    end
-
-    tokens_decoded, err = o.token:verify(tokens_refreshed)
-    if not tokens_decoded then
-      return unauthorized(iss, err, s)
-    end
-
-    tokens_encoded = tokens_refreshed
-
-    expires = (tonumber(tokens_encoded.expires_in) or 3600) + now
-
-    s.data = {
-      tokens  = tokens_encoded,
-      expires = expires,
-    }
-
-    s:regenerate()
   end
 
   local consumer_claim = conf.consumer_claim
@@ -601,10 +762,10 @@ function OICHandler:access(conf)
       local anonymous = conf.anonymous
       if anonymous == nil or anonymous == "" then
         if err then
-          return unauthorized(iss, "consumer was not found (" .. err .. ")", s)
+          return forbidden(iss, "consumer was not found (" .. err .. ")", s)
 
         else
-          return unauthorized(iss, "consumer was not found", s)
+          return forbidden(iss, "consumer was not found", s)
         end
       end
 
@@ -619,10 +780,10 @@ function OICHandler:access(conf)
       mapped_consumer, err = consumer(conf, consumer_token, consumer_claim, true)
       if not mapped_consumer then
         if err then
-          return unauthorized(iss, "anonymous consumer was not found (" .. err .. ")", s)
+          return forbidden(iss, "anonymous consumer was not found (" .. err .. ")", s)
 
         else
-          return unauthorized(iss, "anonymous consumer was not found", s)
+          return forbidden(iss, "anonymous consumer was not found", s)
         end
       end
     end
@@ -701,9 +862,9 @@ function OICHandler:access(conf)
   -- inject user info into the headers?
   local userinfo_header = conf.userinfo_header
   if userinfo_header and userinfo_header ~= "" then
-    local userinfo = o:userinfo(tokens_encoded.access_token, { userinfo_format = "base64" })
-    if userinfo then
-      set_header(userinfo_header, userinfo)
+    local userinfo_data = o:userinfo(tokens_encoded.access_token, { userinfo_format = "base64" })
+    if userinfo_data then
+      set_header(userinfo_header, userinfo_data)
     end
   end
 
@@ -718,7 +879,6 @@ function OICHandler:access(conf)
       end
     end
   end
-
 end
 
 
