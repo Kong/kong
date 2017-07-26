@@ -434,4 +434,475 @@ describe("Admin API", function()
       end)
     end)
   end)
+
+  describe("/consumers/{username_or_id}/plugins", function()
+    before_each(function()
+      helpers.dao.plugins:truncate()
+    end)
+    describe("POST", function()
+      it_content_types("creates a plugin config using a consumer id", function(content_type)
+        return function()
+          local res = assert(client:send {
+            method = "POST",
+            path = "/consumers/" .. consumer.id .. "/plugins",
+            body = {
+              name = "rewriter",
+              ["config.value"] = "potato",
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal("rewriter", json.name)
+          assert.same("potato", json.config.value)
+        end
+      end)
+      it_content_types("creates a plugin config using a consumer username with a space on it", function(content_type)
+        return function()
+          local res = assert(client:send {
+            method = "POST",
+            path = "/consumers/" .. consumer2.username .. "/plugins",
+            body = {
+              name = "rewriter",
+              ["config.value"] = "potato",
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal("rewriter", json.name)
+          assert.same("potato", json.config.value)
+        end
+      end)
+      it_content_types("creates a plugin config using a consumer username in uuid format", function(content_type)
+        return function()
+          local res = assert(client:send {
+            method = "POST",
+            path = "/consumers/" .. consumer3.username .. "/plugins",
+            body = {
+              name = "rewriter",
+              ["config.value"] = "potato",
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal("rewriter", json.name)
+          assert.same("potato", json.config.value)
+        end
+      end)
+      describe("errors", function()
+        it_content_types("handles invalid input", function(content_type)
+          return function()
+            local res = assert(client:send {
+              method = "POST",
+              path = "/consumers/" .. consumer.id .. "/plugins",
+              body = {},
+              headers = {["Content-Type"] = content_type}
+            })
+            local body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ name = "name is required" }, json)
+          end
+        end)
+        it_content_types("returns 409 on conflict", function(content_type)
+          return function()
+            -- insert initial plugin
+            local res = assert(client:send {
+              method = "POST",
+              path = "/consumers/" .. consumer.id .. "/plugins",
+              body = {
+                name="rewriter",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            assert.response(res).has.status(201)
+            assert.response(res).has.jsonbody()
+
+            -- do it again, to provoke the error
+            local res = assert(client:send {
+              method = "POST",
+              path = "/consumers/" .. consumer.id .. "/plugins",
+              body = {
+                name="rewriter",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            assert.response(res).has.status(409)
+            local json = assert.response(res).has.jsonbody()
+            assert.same({ name = "already exists with value 'rewriter'"}, json)
+          end
+        end)
+      end)
+    end)
+
+    describe("PUT", function()
+      it_content_types("creates if not exists", function(content_type)
+        return function()
+          local res = assert(client:send {
+            method = "PUT",
+            path = "/consumers/" .. consumer.id .. "/plugins",
+            body = {
+              name = "rewriter",
+              ["config.value"] = "potato",
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal("rewriter", json.name)
+          assert.equal("potato", json.config.value)
+        end
+      end)
+      it_content_types("replaces if exists", function(content_type)
+        return function()
+          local res = assert(client:send {
+            method = "PUT",
+            path = "/consumers/" .. consumer.id .. "/plugins",
+            body = {
+              name = "rewriter",
+              ["config.value"] = "potato",
+              created_at = 1461276890000
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+
+          res = assert(client:send {
+            method = "PUT",
+            path = "/consumers/" .. consumer.id .. "/plugins",
+            body = {
+              id = json.id,
+              name = "rewriter",
+              ["config.value"] = "carrot",
+              created_at = 1461276890000
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          body = assert.res_status(200, res)
+          json = cjson.decode(body)
+          assert.equal("rewriter", json.name)
+          assert.equal("carrot", json.config.value)
+        end
+      end)
+      it_content_types("prefers default values when replacing", function(content_type)
+        return function()
+          local plugin = assert(helpers.dao.plugins:insert {
+            name = "rewriter",
+            consumer_id = consumer.id,
+            config = { value = "potato", extra = "super" }
+          })
+          assert.equal("potato", plugin.config.value)
+          assert.equal("super", plugin.config.extra)
+
+          local res = assert(client:send {
+            method = "PUT",
+            path = "/consumers/" .. consumer.id .. "/plugins",
+            body = {
+              id = plugin.id,
+              name = "rewriter",
+              ["config.value"] = "carrot",
+              created_at = 1461276890000
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal(json.config.value, "carrot")
+          assert.equal(json.config.extra, "extra") -- changed to the default value
+
+          plugin = assert(helpers.dao.plugins:find {
+            id = plugin.id,
+            name = plugin.name
+          })
+          assert.equal(plugin.config.value, "carrot")
+          assert.equal(plugin.config.extra, "extra") -- changed to the default value
+        end
+      end)
+      it_content_types("overrides a plugin previous config if partial", function(content_type)
+        return function()
+          local plugin = assert(helpers.dao.plugins:insert {
+            name = "rewriter",
+            consumer_id = consumer.id
+          })
+          assert.equal("extra", plugin.config.extra)
+
+          local res = assert(client:send {
+            method = "PUT",
+            path = "/consumers/" .. consumer.id .. "/plugins",
+            body = {
+              id = plugin.id,
+              name = "rewriter",
+              ["config.extra"] = "super",
+              created_at = 1461276890000
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.same("super", json.config.extra)
+        end
+      end)
+      it_content_types("updates the enabled property", function(content_type)
+        return function()
+          local plugin = assert(helpers.dao.plugins:insert {
+            name = "rewriter",
+            consumer_id = consumer.id
+          })
+          assert.True(plugin.enabled)
+
+          local res = assert(client:send {
+            method = "PUT",
+            path = "/consumers/" .. consumer.id .. "/plugins",
+            body = {
+              id = plugin.id,
+              name = "rewriter",
+              enabled = false,
+              created_at = 1461276890000
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.False(json.enabled)
+
+          plugin = assert(helpers.dao.plugins:find {
+            id = plugin.id,
+            name = plugin.name
+          })
+          assert.False(plugin.enabled)
+        end
+      end)
+      describe("errors", function()
+        it_content_types("handles invalid input", function(content_type)
+          return function()
+            local res = assert(client:send {
+              method = "PUT",
+              path = "/consumers/" .. consumer.id .. "/plugins",
+              body = {},
+              headers = {["Content-Type"] = content_type}
+            })
+            local body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ name = "name is required" }, json)
+          end
+        end)
+      end)
+    end)
+
+    describe("GET", function()
+      it("retrieves the first page", function()
+        assert(helpers.dao.plugins:insert {
+          name = "rewriter",
+          consumer_id = consumer.id
+        })
+        local res = assert(client:send {
+          method = "GET",
+          path = "/consumers/" .. consumer.id .. "/plugins"
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal(1, #json.data)
+      end)
+      it("ignores an invalid body", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/consumers/" .. consumer.id .. "/plugins",
+          body = "this fails if decoded as json",
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(200, res)
+      end)
+    end)
+
+  end)
+
+
+  describe("/consumers/{username_or_id}/plugins/{plugin}", function()
+    local plugin, plugin2
+    before_each(function()
+      plugin = assert(helpers.dao.plugins:insert {
+        name = "rewriter",
+        consumer_id = consumer.id
+      })
+      plugin2 = assert(helpers.dao.plugins:insert {
+        name = "rewriter",
+        consumer_id = consumer2.id
+      })
+    end)
+
+    describe("GET", function()
+      it("retrieves by id", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/consumers/" .. consumer.id .. "/plugins/" .. plugin.id
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.same(plugin, json)
+      end)
+      it("retrieves by consumer id when it has spaces", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/consumers/" .. consumer2.id .. "/plugins/" .. plugin2.id
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.same(plugin2, json)
+      end)
+      it("only retrieves if associated to the correct consumer", function()
+        -- Create an consumer and try to query our plugin through it
+        local w_consumer = assert(helpers.dao.consumers:insert {
+          custom_id = "wc",
+          username = "wrong-consumer"
+        })
+
+        -- Try to request the plugin through it (belongs to the fixture consumer instead)
+        local res = assert(client:send {
+          method = "GET",
+          path = "/consumers/" .. w_consumer.id .. "/plugins/" .. plugin.id
+        })
+        assert.res_status(404, res)
+      end)
+      it("ignores an invalid body", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/consumers/" .. consumer.id .. "/plugins/" .. plugin.id,
+          body = "this fails if decoded as json",
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(200, res)
+      end)
+    end)
+
+    describe("PATCH", function()
+      it_content_types("updates if found", function(content_type)
+        return function()
+          local res = assert(client:send {
+            method = "PATCH",
+            path = "/consumers/" .. consumer.id .. "/plugins/" .. plugin.id,
+            body = {
+              ["config.value"] = "updated"
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal("updated", json.config.value)
+          assert.equal(plugin.id, json.id)
+
+          local in_db = assert(helpers.dao.plugins:find {
+            id = plugin.id,
+            name = plugin.name
+          })
+          assert.same(json, in_db)
+        end
+      end)
+      it_content_types("doesn't override a plugin config if partial", function(content_type)
+        -- This is delicate since a plugin config is a text field in a DB like Cassandra
+        return function()
+          plugin = assert(helpers.dao.plugins:update(
+              { config = { value = "potato" } },
+              { id = plugin.id, name = plugin.name }
+          ))
+          assert.equal("potato", plugin.config.value)
+          assert.equal("extra", plugin.config.extra )
+
+          local res = assert(client:send {
+            method = "PATCH",
+            path = "/consumers/" .. consumer.id .. "/plugins/" .. plugin.id,
+            body = {
+              ["config.value"] = "carrot",
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal("carrot", json.config.value)
+          assert.equal("extra", json.config.extra)
+
+          plugin = assert(helpers.dao.plugins:find {
+            id = plugin.id,
+            name = plugin.name
+          })
+          assert.equal("carrot", plugin.config.value)
+          assert.equal("extra", plugin.config.extra)
+        end
+      end)
+      it_content_types("updates the enabled property", function(content_type)
+        return function()
+          local res = assert(client:send {
+            method = "PATCH",
+            path = "/consumers/" .. consumer.id .. "/plugins/" .. plugin.id,
+            body = {
+              name = "rewriter",
+              enabled = false
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.False(json.enabled)
+
+          plugin = assert(helpers.dao.plugins:find {
+            id = plugin.id,
+            name = plugin.name
+          })
+          assert.False(plugin.enabled)
+        end
+      end)
+      describe("errors", function()
+        it_content_types("returns 404 if not found", function(content_type)
+          return function()
+            local res = assert(client:send {
+              method = "PATCH",
+              path = "/consumers/" .. consumer.id .. "/plugins/b6cca0aa-4537-11e5-af97-23a06d98af51",
+              body = {},
+              headers = {["Content-Type"] = content_type}
+            })
+            assert.res_status(404, res)
+          end
+        end)
+        it_content_types("handles invalid input", function(content_type)
+          return function()
+            local res = assert(client:send {
+              method = "PATCH",
+              path = "/consumers/" .. consumer.id .. "/plugins/" .. plugin.id,
+              body = {
+                name = "foo"
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            local body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ config = "Plugin \"foo\" not found" }, json)
+          end
+        end)
+      end)
+    end)
+
+    describe("DELETE", function()
+      it("deletes a plugin configuration", function()
+        local res = assert(client:send {
+          method = "DELETE",
+          path = "/consumers/" .. consumer.id .. "/plugins/" .. plugin.id
+        })
+        assert.res_status(204, res)
+      end)
+      describe("errors", function()
+        it("returns 404 if not found", function()
+          local res = assert(client:send {
+            method = "DELETE",
+            path = "/consumers/" .. consumer.id .. "/plugins/fafafafa-1234-baba-5678-cececececece"
+          })
+          assert.res_status(404, res)
+        end)
+      end)
+    end)
+  end)
 end)
