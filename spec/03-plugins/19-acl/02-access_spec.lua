@@ -268,7 +268,7 @@ describe("Plugin: ACL (access)", function()
       })
       local body = assert.res_status(403, res)
       local json = cjson.decode(body)
-      assert.same({ message = "Cannot identify the consumer, add an authentication plugin to use the ACL plugin" }, json)
+      assert.same({ message = "You cannot consume this service" }, json)
     end)
 
     it("should fail when not in whitelist", function()
