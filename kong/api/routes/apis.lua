@@ -1,4 +1,5 @@
-local crud = require "kong.api.crud_helpers"
+local crud    = require "kong.api.crud_helpers"
+local utils   = require "kong.tools.utils"
 local reports = require "kong.core.reports"
 
 return {
@@ -46,7 +47,7 @@ return {
 
     POST = function(self, dao_factory)
       crud.post(self.params, dao_factory.plugins, function(data)
-        reports.send("api", data)
+        reports.send("api", utils.deep_copy(data))
       end)
     end,
 

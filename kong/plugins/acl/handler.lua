@@ -6,6 +6,8 @@ local singletons = require "kong.singletons"
 
 local table_insert = table.insert
 local table_concat = table.concat
+local ngx_error = ngx.ERR
+local ngx_log = ngx.log
 local ipairs = ipairs
 local empty = {}
 
@@ -29,10 +31,24 @@ function ACLHandler:access(conf)
   ACLHandler.super.access(self)
 
   local consumer_id
-  if ngx.ctx.authenticated_credential then
-    consumer_id = ngx.ctx.authenticated_credential.consumer_id
-  else
-    return responses.send_HTTP_FORBIDDEN("Cannot identify the consumer, add an authentication plugin to use the ACL plugin")
+  local ctx = ngx.ctx
+
+  local authenticated_consumer = ctx.authenticated_consumer
+  if authenticated_consumer then
+    consumer_id = authenticated_consumer.id
+  end
+
+  if not consumer_id then
+    local authenticated_credential = ctx.authenticated_credential
+    if authenticated_credential then
+      consumer_id = authenticated_credential.consumer_id
+    end
+  end
+
+  if not consumer_id then
+    ngx_log(ngx_error, "[acl plugin] Cannot identify the consumer, add an ",
+                       "authentication plugin to use the ACL plugin")
+    return responses.send_HTTP_FORBIDDEN("You cannot consume this service")
   end
 
   -- Retrieve ACL

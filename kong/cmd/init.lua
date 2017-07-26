@@ -6,8 +6,8 @@ local pl_app = require "pl.lapp"
 local log = require "kong.cmd.utils.log"
 
 local options = [[
- --v         verbose
- --vv        debug
+ --v              verbose
+ --vv             debug
 ]]
 
 local cmds_arr = {}

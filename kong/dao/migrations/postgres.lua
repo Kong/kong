@@ -147,7 +147,9 @@ return {
     up = [[
       DO $$
       BEGIN
-        ALTER TABLE apis ADD COLUMN retries smallint NOT NULL DEFAULT 5;
+        ALTER TABLE apis ADD COLUMN retries smallint;
+        ALTER TABLE apis ALTER COLUMN retries SET DEFAULT 5;
+        UPDATE apis SET retries = 5;
       EXCEPTION WHEN duplicate_column THEN
           -- Do nothing, accept existing state
       END$$;

@@ -579,6 +579,9 @@ function _M.new(apis)
                 wildcard_hosts)
   end
 
+  table.sort(uris_prefixes, function(a, b)
+    return #a > #b
+  end)
 
   table.sort(uris_prefixes, function(uri_t_a, uri_t_b)
     return #uri_t_a.value > #uri_t_b.value

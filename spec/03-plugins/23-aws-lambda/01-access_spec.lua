@@ -186,7 +186,7 @@ describe("Plugin: AWS Lambda (access)", function()
     local body = assert.res_status(200, res)
     assert.is_string(res.headers["x-amzn-RequestId"])
     assert.equal([["some_value1"]], body)
-    assert.is_nil(res.headers["X-Amzn-Function-Error"])
+    assert.is_nil(res.headers["X-Amz-Function-Error"])
   end)
   it("invokes a Lambda function with POST params", function()
     local res = assert(client:send {
@@ -295,7 +295,7 @@ describe("Plugin: AWS Lambda (access)", function()
       }
     })
     assert.res_status(200, res)
-    assert.equal("Unhandled", res.headers["X-Amzn-Function-Error"])
+    assert.equal("Unhandled", res.headers["X-Amz-Function-Error"])
   end)
   it("invokes a Lambda function with an unhandled function error with Event invocation type", function()
     local res = assert(client:send {
@@ -306,7 +306,7 @@ describe("Plugin: AWS Lambda (access)", function()
       }
     })
     assert.res_status(202, res)
-    assert.equal("Unhandled", res.headers["X-Amzn-Function-Error"])
+    assert.equal("Unhandled", res.headers["X-Amz-Function-Error"])
   end)
   it("invokes a Lambda function with an unhandled function error with DryRun invocation type", function()
     local res = assert(client:send {
@@ -317,7 +317,7 @@ describe("Plugin: AWS Lambda (access)", function()
       }
     })
     assert.res_status(204, res)
-    assert.equal("Unhandled", res.headers["X-Amzn-Function-Error"])
+    assert.equal("Unhandled", res.headers["X-Amz-Function-Error"])
   end)
   it("invokes a Lambda function with an unhandled function error", function()
     local res = assert(client:send {
@@ -328,6 +328,6 @@ describe("Plugin: AWS Lambda (access)", function()
       }
     })
     assert.res_status(412, res)
-    assert.equal("Unhandled", res.headers["X-Amzn-Function-Error"])
+    assert.equal("Unhandled", res.headers["X-Amz-Function-Error"])
   end)
 end)

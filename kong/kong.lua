@@ -261,7 +261,8 @@ function Kong.init_worker()
 end
 
 function Kong.ssl_certificate()
-  core.certificate.before()
+  local ctx = ngx.ctx
+  core.certificate.before(ctx)
 
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
     plugin.handler:certificate(plugin_conf)
@@ -269,7 +270,8 @@ function Kong.ssl_certificate()
 end
 
 function Kong.balancer()
-  local addr = ngx.ctx.balancer_address
+  local ctx = ngx.ctx
+  local addr = ctx.balancer_address
   local tries = addr.tries
   local current_try = {}
   addr.try_count = addr.try_count + 1
@@ -326,7 +328,8 @@ function Kong.balancer()
 end
 
 function Kong.rewrite()
-  core.rewrite.before()
+  local ctx = ngx.ctx
+  core.rewrite.before(ctx)
 
   -- we're just using the iterator, as in this rewrite phase no consumer nor
   -- api will have been identified, hence we'll just be executing the global
@@ -335,43 +338,47 @@ function Kong.rewrite()
     plugin.handler:rewrite(plugin_conf)
   end
 
-  core.rewrite.after()
+  core.rewrite.after(ctx)
 end
 
 function Kong.access()
-  core.access.before()
+  local ctx = ngx.ctx
+  core.access.before(ctx)
 
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
     plugin.handler:access(plugin_conf)
   end
 
-  core.access.after()
+  core.access.after(ctx)
 end
 
 function Kong.header_filter()
-  core.header_filter.before()
+  local ctx = ngx.ctx
+  core.header_filter.before(ctx)
 
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins) do
     plugin.handler:header_filter(plugin_conf)
   end
 
-  core.header_filter.after()
+  core.header_filter.after(ctx)
 end
 
 function Kong.body_filter()
+  local ctx = ngx.ctx
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins) do
     plugin.handler:body_filter(plugin_conf)
   end
 
-  core.body_filter.after()
+  core.body_filter.after(ctx)
 end
 
 function Kong.log()
+  local ctx = ngx.ctx
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins) do
     plugin.handler:log(plugin_conf)
   end
 
-  core.log.after()
+  core.log.after(ctx)
 end
 
 function Kong.handle_error()

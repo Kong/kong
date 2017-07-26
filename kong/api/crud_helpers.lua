@@ -1,7 +1,22 @@
-local utils = require "kong.tools.utils"
-local cjson = require "cjson"
-local responses = require "kong.tools.responses"
-local app_helpers = require "lapis.application"
+local cjson         = require "cjson"
+local utils         = require "kong.tools.utils"
+local responses     = require "kong.tools.responses"
+local app_helpers   = require "lapis.application"
+
+
+local decode_base64 = ngx.decode_base64
+local encode_base64 = ngx.encode_base64
+local encode_args   = ngx.encode_args
+local tonumber      = tonumber
+local ipairs        = ipairs
+local next          = next
+local type          = type
+
+
+local function post_process_row(row, post_process)
+  return type(post_process) == "function" and post_process(row) or row
+end
+
 
 local _M = {}
 
@@ -117,11 +132,11 @@ function _M.find_target_by_target_or_id(self, dao_factory, helpers)
   end
 end
 
-function _M.paginated_set(self, dao_collection)
-  local size = self.params.size and tonumber(self.params.size) or 100
-  local offset = self.params.offset and ngx.decode_base64(self.params.offset)
+function _M.paginated_set(self, dao_collection, post_process)
+  local size   = self.params.size   and tonumber(self.params.size) or 100
+  local offset = self.params.offset and decode_base64(self.params.offset)
 
-  self.params.size = nil
+  self.params.size   = nil
   self.params.offset = nil
 
   local filter_keys = next(self.params) and self.params
@@ -138,56 +153,68 @@ function _M.paginated_set(self, dao_collection)
 
   local next_url
   if offset then
-    offset = ngx.encode_base64(offset)
+    offset = encode_base64(offset)
     next_url = self:build_url(self.req.parsed_url.path, {
-      port = self.req.parsed_url.port,
-      query = ngx.encode_args {
+      port     = self.req.parsed_url.port,
+      query    = encode_args {
         offset = offset,
-        size = size
+        size   = size
       }
     })
   end
 
-  return responses.send_HTTP_OK {
+  local data
+
+  if #rows == 0 then
     -- FIXME: remove and stick to previous `empty_array_mt` metatable
     -- assignment once https://github.com/openresty/lua-cjson/pull/16
     -- is included in the OpenResty release we use.
-    data = #rows > 0 and rows or cjson.empty_array,
-    total = total_count,
-    offset = offset,
+    data = cjson.empty_array
+
+  else
+    data = rows
+
+    if type(post_process) == "function" then
+      for i, row in ipairs(rows) do
+        data[i] = post_process(row)
+      end
+    end
+  end
+
+  return responses.send_HTTP_OK {
+    data     = data,
+    total    = total_count,
+    offset   = offset,
     ["next"] = next_url
   }
 end
 
 -- Retrieval of an entity.
 -- The DAO requires to be given a table containing the full primary key of the entity
-function _M.get(primary_keys, dao_collection)
+function _M.get(primary_keys, dao_collection, post_process)
   local row, err = dao_collection:find(primary_keys)
   if err then
     return app_helpers.yield_error(err)
   elseif row == nil then
     return responses.send_HTTP_NOT_FOUND()
   else
-    return responses.send_HTTP_OK(row)
+    return responses.send_HTTP_OK(post_process_row(row, post_process))
   end
 end
 
 --- Insertion of an entity.
-function _M.post(params, dao_collection, success)
+function _M.post(params, dao_collection, success, post_process)
   local data, err = dao_collection:insert(params)
   if err then
     return app_helpers.yield_error(err)
   else
-    if success then
-      success(utils.deep_copy(data))
-    end
-    return responses.send_HTTP_CREATED(data)
+    return responses.send_HTTP_CREATED(post_process_row(data, post_process))
   end
 end
 
 --- Partial update of an entity.
 -- Filter keys must be given to get the row to update.
-function _M.patch(params, dao_collection, filter_keys)
+function _M.patch(params, dao_collection, filter_keys, post_process)
   if not next(params) then
     return responses.send_HTTP_BAD_REQUEST("empty body")
   end
@@ -197,14 +224,14 @@ function _M.patch(params, dao_collection, filter_keys)
   elseif updated_entity == nil then
     return responses.send_HTTP_NOT_FOUND()
   else
-    return responses.send_HTTP_OK(updated_entity)
+    return responses.send_HTTP_OK(post_process_row(updated_entity, post_process))
   end
 end
 
 -- Full update of an entity.
 -- First, we check if the entity body has primary keys or not,
 -- if it does, we are performing an update, if not, an insert.
-function _M.put(params, dao_collection)
+function _M.put(params, dao_collection, post_process)
   local new_entity, err
 
   local model = dao_collection.model_mt(params)
@@ -212,13 +239,13 @@ function _M.put(params, dao_collection)
     -- If entity body has no primary key, deal with an insert
     new_entity, err = dao_collection:insert(params)
     if not err then
-      return responses.send_HTTP_CREATED(new_entity)
+      return responses.send_HTTP_CREATED(post_process_row(new_entity, post_process))
     end
   else
     -- If entity body has primary key, deal with update
     new_entity, err = dao_collection:update(params, params, {full = true})
     if not err then
-      return responses.send_HTTP_OK(new_entity)
+      return responses.send_HTTP_OK(post_process_row(new_entity, post_process))
     end
   end
 

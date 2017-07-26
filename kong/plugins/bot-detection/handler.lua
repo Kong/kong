@@ -6,7 +6,7 @@ local lrucache = require "resty.lrucache"
 
 local ipairs = ipairs
 local get_headers = ngx.req.get_headers
-local re_match = ngx.re.match
+local re_find = ngx.re.find
 
 local BotDetectionHandler = BasePlugin:extend()
 
@@ -38,7 +38,7 @@ local function examine_agent(user_agent, conf)
 
   if conf.whitelist then
     for _, rule in ipairs(conf.whitelist) do
-      if re_match(user_agent, rule) then
+      if re_find(user_agent, rule, "jo") then
         return MATCH_WHITELIST
       end
     end
@@ -46,14 +46,14 @@ local function examine_agent(user_agent, conf)
 
   if conf.blacklist then
     for _, rule in ipairs(conf.blacklist) do
-      if re_match(user_agent, rule) then
+      if re_find(user_agent, rule, "jo") then
         return MATCH_BLACKLIST
       end
     end
   end
 
   for _, rule in ipairs(rules.bots) do
-    if re_match(user_agent, rule) then
+    if re_find(user_agent, rule, "jo") then
       return MATCH_BOT
     end
   end

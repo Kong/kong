@@ -692,6 +692,25 @@ describe("Router", function()
           assert.same(use_case[#use_case], match_t.api)
         end)
       end)
+
+      it("does not incorrectly match another API which has a longer [uri]", function()
+        local use_case = {
+          {
+            name = "api-1",
+            uris = { "/a", "/bbbbbbb" }
+          },
+          {
+            name = "api-2",
+            uris = { "/a/bb" }
+          },
+        }
+
+        local router = assert(Router.new(use_case))
+
+        local api_t = router.select("GET", "/a/bb/foobar")
+        assert.truthy(api_t)
+        assert.same(use_case[2], api_t.api)
+      end)
     end)
 
     describe("misses", function()

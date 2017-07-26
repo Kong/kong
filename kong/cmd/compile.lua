@@ -33,7 +33,7 @@ Note:
  and started for Kong to be fully compatible while embedded.
 
 Options:
- -c,--conf (optional string) configuration file
+ -c,--conf        (optional string) configuration file
 ]]
 
 return {

@@ -55,6 +55,23 @@ describe("Plugin: jwt (parser)", function()
         ]], true), token)
       end
     end)
+    it("should encode using RS512", function()
+      local token = jwt_parser.encode({
+        sub   = "1234567890",
+        name  = "John Doe",
+        admin = true,
+      }, fixtures.rs512_private_key, "RS512")
+
+      assert.equal([[eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1]] ..
+                   [[ZSwibmFtZSI6IkpvaG4gRG9lIiwic3ViIjoiMTIzNDU2Nzg5MCJ9.]] ..
+                   [[VhoFYud-lrxtkbkfMl0Wkr4fERsDNjGfvHc2hFEecjLqSJ65_cydJ]] ..
+                   [[iU011QqAmlMM8oIRCnoGKvA63XeE7M6qPsNkJ_vHMoqO-Hg3ajx1R]] ..
+                   [[aWmVaHyeTCkkyStNvh88phVSH5EB5wIYjukHErRXLCTL9UhE0Z60f]] ..
+                   [[NzLeEZ5yJZS-rhOK3fa0QSVoTD2QKVITYBcX_xt6NzHzTTx_3kQ1K]] ..
+                   [[lcuueNlOLmCYx_6tissUvMY91KjcZfs3z9tYREu5paFx0pSiPvgNB]] ..
+                   [[vrWQfbm3irr-1YcBH7wJuIinPDrERVohK1v37t8fDnSqhi1tWUati]] ..
+                   [[7Mynkb3JrpCeF3IyReSvkhQA]], token)
+    end)
 
     it("should encode using ES256", function()
       local token = jwt_parser.encode({
@@ -115,6 +132,12 @@ describe("Plugin: jwt (parser)", function()
       local jwt = assert(jwt_parser:new(token))
       assert.True(jwt:verify_signature(fixtures.rs256_public_key))
       assert.False(jwt:verify_signature(fixtures.rs256_public_key:gsub('QAB', 'zzz')))
+    end)
+    it("using RS512", function()
+      local token = jwt_parser.encode({sub = "foo"}, fixtures.rs512_private_key, 'RS512')
+      local jwt = assert(jwt_parser:new(token))
+      assert.True(jwt:verify_signature(fixtures.rs512_public_key))
+      assert.False(jwt:verify_signature(fixtures.rs512_public_key:gsub('AE=', 'zzz')))
     end)
     it("using ES256", function()
       for _ = 1, 500 do
