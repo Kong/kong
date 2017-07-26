@@ -309,4 +309,64 @@ http {
             }
         }
     }
+
+    server {
+        listen 55555;
+
+        location /ws {
+            content_by_lua_block {
+                local server = require "resty.websocket.server"
+                local wb, err = server:new{
+                  timeout = 5000,
+                  max_payload_len = 65535,
+                }
+
+                if not wb then
+                  ngx.log(ngx.ERR, "failed to open websocket: ", err)
+                  return ngx.exit(444)
+                end
+
+                while true do
+                  local data, typ, err = wb:recv_frame()
+                  if wb.fatal then
+                    ngx.log(ngx.ERR, "failed to receive frame: ", err)
+                    return ngx.exit(444)
+                  end
+
+                  if data then
+                    if typ == "close" then
+                      break
+                    end
+
+                    if typ == "ping" then
+                      local bytes, err = wb:send_pong(data)
+                      if not bytes then
+                        ngx.log(ngx.ERR, "failed to send pong: ", err)
+                        return ngx.exit(444)
+                      end
+
+                    elseif typ == "pong" then
+                      ngx.log(ngx.INFO, "client ponged")
+
+                    elseif typ == "text" then
+                      local bytes, err = wb:send_text(data)
+                      if not bytes then
+                        ngx.log(ngx.ERR, "failed to send text: ", err)
+                        return ngx.exit(444)
+                      end
+                    end
+
+                  else
+                    local bytes, err = wb:send_ping()
+                    if not bytes then
+                      ngx.log(ngx.ERR, "failed to send ping: ", err)
+                      return ngx.exit(444)
+                    end
+                  end
+                end
+
+                wb:send_close()
+            }
+        }
+    }
 }
