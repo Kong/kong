@@ -1,6 +1,7 @@
 local helpers = require "spec.helpers"
 local timestamp = require "kong.tools.timestamp"
 local cjson = require "cjson"
+local luatz = require "luatz"
 
 local REDIS_HOST = "127.0.0.1"
 local REDIS_PORT = 6379
@@ -332,6 +333,13 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           })
           local body = assert.res_status(429, res)
           local json = cjson.decode(body)
+
+          local periods = timestamp.get_timestamps(timestamp.get_utc())
+          local timetable = luatz.timetable.new_from_timestamp(math.floor(periods.minute / 1000))
+          timetable.min = timetable.min + 1
+          timetable:normalise()
+
+          assert.are.same(timetable:timestamp(), tonumber(res.headers["x-ratelimit-reset"]))
           assert.same({ message = "API rate limit exceeded" }, json)
         end)
         it("blocks if the only rate-limiting plugin existing is per consumer and not per API", function()
