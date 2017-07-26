@@ -7,6 +7,8 @@ local constants = require "kong.constants"
 
 local table_insert = table.insert
 local table_concat = table.concat
+local ngx_error = ngx.ERR
+local ngx_log = ngx.log
 local ipairs = ipairs
 local empty = {}
 
@@ -45,9 +47,9 @@ function ACLHandler:access(conf)
   end
 
   if not consumer_id then
-    return responses.send_HTTP_FORBIDDEN(
-      "Cannot identify the consumer, add an authentication plugin to use the ACL plugin"
-    )
+    ngx_log(ngx_error, "[acl plugin] Cannot identify the consumer, add an ",
+                       "authentication plugin to use the ACL plugin")
+    return responses.send_HTTP_FORBIDDEN("You cannot consume this service")
   end
 
   -- Retrieve ACL
