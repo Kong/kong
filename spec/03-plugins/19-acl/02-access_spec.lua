@@ -58,6 +58,15 @@ describe("Plugin: ACL (access)", function()
       consumer_id = consumer4.id
     })
 
+    local anonymous = assert(helpers.dao.consumers:insert {
+      username = "anonymous"
+    })
+
+    assert(helpers.dao.acls:insert {
+      group = "anonymous",
+      consumer_id = anonymous.id
+    })
+
     local api1 = assert(helpers.dao.apis:insert {
       name = "api-1",
       hosts = { "acl1.com" },
@@ -179,6 +188,28 @@ describe("Plugin: ACL (access)", function()
       config = {}
     })
 
+    local api8 = assert(helpers.dao.apis:insert {
+      name = "api-8",
+      hosts = { "acl8.com" },
+      upstream_url = "http://mockbin.com"
+    })
+
+    assert(helpers.dao.plugins:insert {
+      name = "acl",
+      api_id = api8.id,
+      config = {
+        whitelist = {"anonymous"}
+      }
+    })
+
+    assert(helpers.dao.plugins:insert {
+      name = "key-auth",
+      api_id = api8.id,
+      config = {
+        anonymous = anonymous.id,
+      }
+    })
+
     assert(helpers.start_kong())
   end)
 
@@ -195,6 +226,36 @@ describe("Plugin: ACL (access)", function()
   teardown(function()
     helpers.stop_kong()
   end)
+
+
+  describe("Mapping to Consumer", function()
+    it("should work with consumer with credentials", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request?apikey=apikey124",
+        headers = {
+          ["Host"] = "acl2.com"
+        }
+      })
+
+      local body = cjson.decode(assert.res_status(200, res))
+      assert.equal("admin", body.headers["x-consumer-groups"])
+    end)
+
+    it("should work with consumer without credentials", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "acl8.com"
+        }
+      })
+
+      local body = cjson.decode(assert.res_status(200, res))
+      assert.equal("anonymous", body.headers["x-consumer-groups"])
+    end)
+  end)
+
 
   describe("Simple lists", function()
     it("should fail when an authentication plugin is missing", function()
