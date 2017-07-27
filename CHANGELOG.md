@@ -1,5 +1,59 @@
 ## [Unreleased][unreleased]
 
+## [0.11.0rc2] - 2017/07/26
+
+This new RC addresses a few performance regressions spotted in 0.11.0rc1, and
+bumps the compatible versions of OpenResty up to the latest `1.11.2.4`.
+
+It also includes support for regexps URIs and a new `kong prepare` command.
+
+We are **actively** looking for testing and feedback regarding this release
+candidate!
+
+### Changed
+
+- :warning: Migrations are **not** executed automatically by `kong start`
+  anymore. Migrations are now a **manual** process, via the `kong migrations`
+  command. This is to enforce the "single node running migrations" rule.
+  [#2421](https://github.com/Mashape/kong/pull/2421)
+
+### Added
+
+- :fireworks: Support for regexps URIs! You can now define regexps in your APIs
+  `uris` property. Those regexps can have capturing groups which can be
+  extracted by Kong during a request, and accessed later in the plugins (useful
+  for URI rewriting).
+  [#2681](https://github.com/Mashape/kong/pull/2681)
+- Bump OpenResty compatibility to `1.11.2.4`. OpenResty's LuaJIT can now be built
+  with Lua 5.2 compatibility.
+  [#2489](https://github.com/Mashape/kong/pull/2489)
+- New `kong prepare` command to prepare the Kong running prefix (creating log
+  files, SSL certificates, etc...) and allow for Kong to be started via the
+  `nginx` binary. This is useful for environments like containers, where the
+  foreground process should be the Nginx master process. The `kong compile`
+  command has been deprecated as a result of this addition.
+  [#2706](https://github.com/Mashape/kong/pull/2706)
+- Support for BDR compatibility in the PostgreSQL migrations.
+  Thanks [@AlexBloor](https://github.com/AlexBloor) for the patch!
+  [#2672](https://github.com/Mashape/kong/pull/2672)
+- Admin API:
+  - Support for JSON `null` in `PATCH` requests to unset a value on any entity.
+    [#2700](https://github.com/Mashape/kong/pull/2700)
+  - New endpoints: `/consumers/:username_or_id/plugins` and
+    `/consumers/:username_or_id/plugins/:plugin_id` to easily retrieve plugins
+    configured on a Consumer.
+    [#2714](https://github.com/Mashape/kong/pull/2714)
+- Plugins:
+  - jwt: Support for RS512 signed tokens.
+    Thanks [@sarraz1](https://github.com/sarraz1) for the patch!
+    [#2666](https://github.com/Mashape/kong/pull/2666)
+
+### Fixed
+
+- Fix an issue where Kong would match an API with a shorter URI (from its `uris`
+  value) as a prefix instead of a longer, matching prefix from another API.
+  [#2662](https://github.com/Mashape/kong/issues/2662)
+
 ## [0.11.0rc1] - 2017/06/26
 
 The Kong development team is very excited to present you with its latest work!
@@ -1484,7 +1538,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.11.0rc1...release/0.11
+[unreleased]: https://github.com/mashape/kong/compare/0.11.0rc2...release/0.11
+[0.11.0rc2]: https://github.com/mashape/kong/compare/0.11.0rc1...0.11.0rc2
 [0.11.0rc1]: https://github.com/mashape/kong/compare/0.10.3...0.11.0rc1
 [0.10.3]: https://github.com/mashape/kong/compare/0.10.2...0.10.3
 [0.10.2]: https://github.com/mashape/kong/compare/0.10.1...0.10.2
