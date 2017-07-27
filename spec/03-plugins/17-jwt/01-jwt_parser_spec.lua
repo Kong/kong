@@ -62,15 +62,28 @@ describe("Plugin: jwt (parser)", function()
         admin = true,
       }, fixtures.rs512_private_key, "RS512")
 
-      assert.equal([[eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1]] ..
-                   [[ZSwibmFtZSI6IkpvaG4gRG9lIiwic3ViIjoiMTIzNDU2Nzg5MCJ9.]] ..
-                   [[VhoFYud-lrxtkbkfMl0Wkr4fERsDNjGfvHc2hFEecjLqSJ65_cydJ]] ..
-                   [[iU011QqAmlMM8oIRCnoGKvA63XeE7M6qPsNkJ_vHMoqO-Hg3ajx1R]] ..
-                   [[aWmVaHyeTCkkyStNvh88phVSH5EB5wIYjukHErRXLCTL9UhE0Z60f]] ..
-                   [[NzLeEZ5yJZS-rhOK3fa0QSVoTD2QKVITYBcX_xt6NzHzTTx_3kQ1K]] ..
-                   [[lcuueNlOLmCYx_6tissUvMY91KjcZfs3z9tYREu5paFx0pSiPvgNB]] ..
-                   [[vrWQfbm3irr-1YcBH7wJuIinPDrERVohK1v37t8fDnSqhi1tWUati]] ..
-                   [[7Mynkb3JrpCeF3IyReSvkhQA]], token)
+      if helpers.openresty_ver_num < 11123 then
+        assert.equal(u([[
+          eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwibmFtZSI6Ikpv
+          aG4gRG9lIiwic3ViIjoiMTIzNDU2Nzg5MCJ9.VhoFYud-lrxtkbkfMl0Wkr4fERsDNjGf
+          vHc2hFEecjLqSJ65_cydJiU011QqAmlMM8oIRCnoGKvA63XeE7M6qPsNkJ_vHMoqO-Hg3
+          ajx1RaWmVaHyeTCkkyStNvh88phVSH5EB5wIYjukHErRXLCTL9UhE0Z60fNzLeEZ5yJZS
+          -rhOK3fa0QSVoTD2QKVITYBcX_xt6NzHzTTx_3kQ1KlcuueNlOLmCYx_6tissUvMY91Kj
+          cZfs3z9tYREu5paFx0pSiPvgNBvrWQfbm3irr-1YcBH7wJuIinPDrERVohK1v37t8fDnS
+          qhi1tWUati7Mynkb3JrpCeF3IyReSvkhQA
+        ]], true), token)
+
+      else
+        assert.equal(u([[
+          eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiSm9obiBEb2UiLCJhZG1p
+          biI6dHJ1ZSwic3ViIjoiMTIzNDU2Nzg5MCJ9.YgYhC6E8_4V--36yWGSCIvPfL77zibNk
+          m6lnM-8u2J39nP3QlQtiEkuY0lWZku_mWggYiL0PycTLHChLqeiL0ElP6IYaL39XrlYES
+          kH4iwJ_F9_x6JUvlPYZmgerD6oxmpyA-FNNdej_DCgztuzzaJBSsXLE8zn_HNnc0WsRBA
+          TV85hXzhp5_YvGgayTzAYr9fiS0NeuIl7s6CPhuH1UZp5PDx6v2TmfaHlia16ZbaAoUtM
+          KXI18ZRTBOmh4hV66fzbzTxh_kO7Z-h0hOfdVbtqEJRLlQkgq3c_JUB5Sky2WLkK3rFWm
+          UecxqNnQXKYkOgq_DuXU8KIv7GGzpTELww
+        ]], true), token)
+      end
     end)
 
     it("should encode using ES256", function()
