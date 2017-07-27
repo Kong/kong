@@ -51,12 +51,15 @@ complete list of changes and new features.
 
 Here is the list of breaking changes introduced in 0.11:
 
+- Migrations are **not** executed automatically by `kong start`
+  anymore. Migrations are now a **manual** process, via the `kong migrations`
+  command. This is to enforce the "single node running migrations" rule.
 - Kong is now entirely stateless, and as such, the `/cluster`
-  endpoint of the Admin API has for now disappeared. This endpoint used to
-  retrieve the state of the Serf agent running on other nodes to ensure they
-  were part of the same cluster. Starting from 0.11, all Kong nodes connected
-  to the same datastore are guaranteed to be part of the same cluster without
-  requiring additional channels of communication.
+  endpoint of the Admin API has for now disappeared. This endpoint, in previous
+  versions of Kong, retrieved the state of the Serf agent running on other
+  nodes to ensure they were part of the same cluster. Starting from 0.11, all
+  Kong nodes connected to the same datastore are guaranteed to be part of the
+  same cluster without requiring additional channels of communication.
 - Several updates were made to the Nginx configuration template. If you are
   using a custom template, you **must** apply those modifications. See below
   for a list of changes to apply.
@@ -89,25 +92,10 @@ your template:
 
 ```diff
 diff --git a/kong/templates/nginx_kong.lua b/kong/templates/nginx_kong.lua
-index f6c84b49..395de17a 100644
+index 3c038595..faa97ffe 100644
 --- a/kong/templates/nginx_kong.lua
 +++ b/kong/templates/nginx_kong.lua
-@@ -1,12 +1,12 @@
- return [[
- charset UTF-8;
- 
--error_log logs/error.log ${{LOG_LEVEL}};
--
- > if anonymous_reports then
- ${{SYSLOG_REPORTS}}
- > end
- 
-+error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
-+
- > if nginx_optimizations then
- >-- send_timeout 60s;          # default value
- >-- keepalive_timeout 75s;     # default value
-@@ -19,25 +19,23 @@ ${{SYSLOG_REPORTS}}
+@@ -19,25 +19,23 @@ error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
  >-- reset_timedout_connection on; # disabled until benchmarked
  > end
  
@@ -141,15 +129,16 @@ index f6c84b49..395de17a 100644
  lua_socket_log_errors off;
  > if lua_ssl_trusted_certificate then
  lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE}}';
-@@ -45,6 +43,7 @@ lua_ssl_verify_depth ${{LUA_SSL_VERIFY_DEPTH}};
+@@ -45,8 +43,6 @@ lua_ssl_verify_depth ${{LUA_SSL_VERIFY_DEPTH}};
  > end
  
  init_by_lua_block {
-+    require 'luarocks.loader'
-     require 'resty.core'
+-    require 'luarocks.loader'
+-    require 'resty.core'
      kong = require 'kong'
      kong.init()
-@@ -64,52 +63,83 @@ upstream kong_upstream {
+ }
+@@ -65,28 +61,19 @@ upstream kong_upstream {
      keepalive ${{UPSTREAM_KEEPALIVE}};
  }
  
@@ -165,51 +154,33 @@ index f6c84b49..395de17a 100644
 -
  server {
      server_name kong;
-+> if real_ip_header == "proxy_protocol" then
-+    listen ${{PROXY_LISTEN}} proxy_protocol;
-+> else
-     listen ${{PROXY_LISTEN}};
+-    listen ${{PROXY_LISTEN}};
 -    error_page 404 408 411 412 413 414 417 /kong_error_handler;
-+> end
++    listen ${{PROXY_LISTEN}}${{PROXY_PROTOCOL}};
 +    error_page 400 404 408 411 412 413 414 417 /kong_error_handler;
      error_page 500 502 503 504 /kong_error_handler;
  
--    access_log logs/access.log;
-+    access_log ${{PROXY_ACCESS_LOG}};
-+    error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
-+
+     access_log ${{PROXY_ACCESS_LOG}};
+     error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
+ 
 +    client_body_buffer_size ${{CLIENT_BODY_BUFFER_SIZE}};
  
  > if ssl then
-+> if real_ip_header == "proxy_protocol" then
-+    listen ${{PROXY_LISTEN_SSL}} proxy_protocol ssl;
-+> else
-     listen ${{PROXY_LISTEN_SSL}} ssl;
-+> end
+-    listen ${{PROXY_LISTEN_SSL}} ssl;
++    listen ${{PROXY_LISTEN_SSL}} ssl${{HTTP2}}${{PROXY_PROTOCOL}};
      ssl_certificate ${{SSL_CERT}};
      ssl_certificate_key ${{SSL_CERT_KEY}};
      ssl_protocols TLSv1.1 TLSv1.2;
-     ssl_certificate_by_lua_block {
-         kong.ssl_certificate()
-     }
-+
-+    ssl_session_cache shared:SSL:10m;
-+    ssl_session_timeout 10m;
-+    ssl_prefer_server_ciphers on;
-+    ssl_ciphers ${{SSL_CIPHERS}};
-+> end
-+
-+> if client_ssl then
-+    proxy_ssl_certificate ${{CLIENT_SSL_CERT}};
-+    proxy_ssl_certificate_key ${{CLIENT_SSL_CERT_KEY}};
-+> end
-+
+@@ -105,9 +92,22 @@ server {
+     proxy_ssl_certificate_key ${{CLIENT_SSL_CERT_KEY}};
+ > end
+ 
 +    real_ip_header     ${{REAL_IP_HEADER}};
 +    real_ip_recursive  ${{REAL_IP_RECURSIVE}};
 +> for i = 1, #trusted_ips do
 +    set_real_ip_from   $(trusted_ips[i]);
- > end
- 
++> end
++
      location / {
 -        set $upstream_host nil;
 -        set $upstream_scheme nil;
@@ -222,13 +193,10 @@ index f6c84b49..395de17a 100644
 +        set $upstream_x_forwarded_proto  '';
 +        set $upstream_x_forwarded_host   '';
 +        set $upstream_x_forwarded_port   '';
-+
-+        rewrite_by_lua_block {
-+            kong.rewrite()
-+        }
  
-         access_by_lua_block {
-             kong.access()
+         rewrite_by_lua_block {
+             kong.rewrite()
+@@ -118,17 +118,18 @@ server {
          }
  
          proxy_http_version 1.1;
@@ -238,8 +206,10 @@ index f6c84b49..395de17a 100644
 -        proxy_set_header Host $upstream_host;
 -        proxy_set_header Upgrade $upstream_upgrade;
 -        proxy_set_header Connection $upstream_connection;
--
 -        proxy_pass_header Server;
+-
+-        proxy_ssl_name $upstream_host;
+-
 -        proxy_pass $upstream_scheme://kong_upstream;
 +        proxy_set_header   Host              $upstream_host;
 +        proxy_set_header   Upgrade           $upstream_upgrade;
@@ -256,39 +226,40 @@ index f6c84b49..395de17a 100644
  
          header_filter_by_lua_block {
              kong.header_filter()
-@@ -136,7 +166,8 @@ server {
-     server_name kong_admin;
-     listen ${{ADMIN_LISTEN}};
- 
--    access_log logs/admin_access.log;
-+    access_log ${{ADMIN_ACCESS_LOG}};
-+    error_log ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
- 
-     client_max_body_size 10m;
+@@ -146,7 +147,7 @@ server {
+     location = /kong_error_handler {
+         internal;
+         content_by_lua_block {
+-            require('kong.core.error_handlers')(ngx)
++            kong.handle_error()
+         }
+     }
+ }
+@@ -162,7 +163,7 @@ server {
      client_body_buffer_size 10m;
-@@ -145,14 +176,19 @@ server {
-     listen ${{ADMIN_LISTEN_SSL}} ssl;
+ 
+ > if admin_ssl then
+-    listen ${{ADMIN_LISTEN_SSL}} ssl;
++    listen ${{ADMIN_LISTEN_SSL}} ssl${{ADMIN_HTTP2}};
      ssl_certificate ${{ADMIN_SSL_CERT}};
      ssl_certificate_key ${{ADMIN_SSL_CERT_KEY}};
--    ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
-+    ssl_protocols TLSv1.1 TLSv1.2;
-+
-+    ssl_session_cache shared:SSL:10m;
-+    ssl_session_timeout 10m;
-+    ssl_prefer_server_ciphers on;
-+    ssl_ciphers ${{SSL_CIPHERS}};
- > end
- 
+     ssl_protocols TLSv1.1 TLSv1.2;
+@@ -176,15 +177,7 @@ server {
      location / {
          default_type application/json;
          content_by_lua_block {
-             ngx.header['Access-Control-Allow-Origin'] = '*'
--            ngx.header['Access-Control-Allow-Credentials'] = 'false'
-+
-             if ngx.req.get_method() == 'OPTIONS' then
-                 ngx.header['Access-Control-Allow-Methods'] = 'GET,HEAD,PUT,PATCH,POST,DELETE'
-                 ngx.header['Access-Control-Allow-Headers'] = 'Content-Type'
-
+-            ngx.header['Access-Control-Allow-Origin'] = '*'
+-
+-            if ngx.req.get_method() == 'OPTIONS' then
+-                ngx.header['Access-Control-Allow-Methods'] = 'GET,HEAD,PUT,PATCH,POST,DELETE'
+-                ngx.header['Access-Control-Allow-Headers'] = 'Content-Type'
+-                ngx.exit(204)
+-            end
+-
+-            require('lapis').serve('kong.api')
++            kong.serve_admin_api()
+         }
+     }
 ```
 
 Once those changes have been applied, you will be able to benefit from the new
