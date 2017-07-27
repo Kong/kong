@@ -12,6 +12,6 @@ function LdapAuthHandler:access(conf)
   access.execute(conf)
 end
 
-LdapAuthHandler.PRIORITY = 1000
+LdapAuthHandler.PRIORITY = 1500
 
 return LdapAuthHandler

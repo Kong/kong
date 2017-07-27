@@ -43,8 +43,6 @@ lua_ssl_verify_depth ${{LUA_SSL_VERIFY_DEPTH}};
 > end
 
 init_by_lua_block {
-    require 'luarocks.loader'
-    require 'resty.core'
     kong = require 'kong'
     kong.init()
 }
@@ -65,11 +63,7 @@ upstream kong_upstream {
 
 server {
     server_name kong;
-> if real_ip_header == "proxy_protocol" then
-    listen ${{PROXY_LISTEN}} proxy_protocol;
-> else
-    listen ${{PROXY_LISTEN}};
-> end
+    listen ${{PROXY_LISTEN}}${{PROXY_PROTOCOL}};
     error_page 400 404 408 411 412 413 414 417 /kong_error_handler;
     error_page 500 502 503 504 /kong_error_handler;
 
@@ -79,11 +73,7 @@ server {
     client_body_buffer_size ${{CLIENT_BODY_BUFFER_SIZE}};
 
 > if ssl then
-> if real_ip_header == "proxy_protocol" then
-    listen ${{PROXY_LISTEN_SSL}} proxy_protocol ssl${{HTTP2}};
-> else
-    listen ${{PROXY_LISTEN_SSL}} ssl${{HTTP2}};
-> end
+    listen ${{PROXY_LISTEN_SSL}} ssl${{HTTP2}}${{PROXY_PROTOCOL}};
     ssl_certificate ${{SSL_CERT}};
     ssl_certificate_key ${{SSL_CERT_KEY}};
     ssl_protocols TLSv1.1 TLSv1.2;
@@ -157,7 +147,7 @@ server {
     location = /kong_error_handler {
         internal;
         content_by_lua_block {
-            require('kong.core.error_handlers')(ngx)
+            kong.handle_error()
         }
     }
 }
@@ -187,15 +177,7 @@ server {
     location / {
         default_type application/json;
         content_by_lua_block {
-            ngx.header['Access-Control-Allow-Origin'] = '*'
-
-            if ngx.req.get_method() == 'OPTIONS' then
-                ngx.header['Access-Control-Allow-Methods'] = 'GET,HEAD,PUT,PATCH,POST,DELETE'
-                ngx.header['Access-Control-Allow-Headers'] = 'Content-Type'
-                ngx.exit(204)
-            end
-
-            require('lapis').serve('kong.api')
+            kong.serve_admin_api()
         }
     }
 

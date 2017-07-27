@@ -60,6 +60,8 @@ describe("Plugin: oauth2 (access)", function()
   local proxy_ssl_client, proxy_client
   local client1
   setup(function()
+    helpers.run_migrations()
+
     local consumer = assert(helpers.dao.consumers:insert {
       username = "bob"
     })

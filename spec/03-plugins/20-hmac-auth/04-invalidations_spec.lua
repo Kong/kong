@@ -7,6 +7,8 @@ describe("Plugin: hmac-auth (invalidations)", function()
   local client_proxy, client_admin, consumer, credential
 
   setup(function()
+    helpers.run_migrations()
+
     local api = assert(helpers.dao.apis:insert {
       name = "api-1",
       hosts = { "hmacauth.com" },

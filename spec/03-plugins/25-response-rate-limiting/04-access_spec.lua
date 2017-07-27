@@ -51,7 +51,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
     setup(function()
       flush_redis()
       helpers.dao:drop_schema()
-      assert(helpers.dao:run_migrations())
+      helpers.run_migrations()
 
       local consumer1 = assert(helpers.dao.consumers:insert {custom_id = "provider_123"})
       assert(helpers.dao.keyauth_credentials:insert {
@@ -520,7 +520,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         before_each(function()
           helpers.kill_all()
           helpers.dao:drop_schema()
-          assert(helpers.dao:run_migrations())
+          helpers.run_migrations()
 
           local api1 = assert(helpers.dao.apis:insert {
             name = "failtest1_com",
@@ -564,7 +564,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         teardown(function()
           helpers.kill_all()
           helpers.dao:drop_schema()
-          assert(helpers.dao:run_migrations())
+          helpers.run_migrations()
         end)
 
         it("does not work if an error occurs", function()
@@ -695,7 +695,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       setup(function()
         helpers.stop_kong()
         helpers.dao:drop_schema()
-        assert(helpers.dao:run_migrations())
+        helpers.run_migrations()
         assert(helpers.start_kong())
 
         api = assert(helpers.dao.apis:insert {

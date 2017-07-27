@@ -6,6 +6,8 @@ local utils = require "kong.tools.utils"
 describe("Plugin: key-auth (access)", function()
   local client
   setup(function()
+    helpers.run_migrations()
+
     local anonymous_user = assert(helpers.dao.consumers:insert {
       username = "no-body"
     })

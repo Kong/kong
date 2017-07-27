@@ -272,6 +272,61 @@ local function default_on_success(identifier, migration_name, db_infos)
       identifier, migration_name)
 end
 
+function _M:are_migrations_uptodate()
+  local migrations_modules = self:migrations_modules()
+  local cur_migrations, err = self:current_migrations()
+  if err then
+    return ret_error_string(self.db.name, nil,
+                            "could not retrieve current migrations: " .. err)
+  end
+
+  local log = require "kong.cmd.utils.log"
+
+  for module, migrations in pairs(migrations_modules) do
+    for _, migration in ipairs(migrations) do
+      if not (cur_migrations[module] and
+              utils.table_contains(cur_migrations[module], migration.name))
+      then
+        local infos = self.db:infos()
+        log.warn("%s %s '%s' is missing migration: (%s) %s",
+                 self.db_type, infos.desc, infos.name, module, migration.name)
+        return ret_error_string(self.db.name, nil, "the current database "   ..
+                                "schema does not match this version of "     ..
+                                "Kong. Please run `kong migrations up` "     ..
+                                "to update/initialize the database schema. " ..
+                                "Be aware that Kong migrations should only " ..
+                                "run from a single node, and that nodes "    ..
+                                "running migrations concurrently will "      ..
+                                "conflict with each other and might "        ..
+                                "corrupt your database schema!")
+      end
+    end
+  end
+
+  return true
+end
+
+function _M:check_schema_consensus()
+  if self.db.name ~= "cassandra" then
+    return true -- only applicable for cassandra
+  end
+
+  local log = require "kong.cmd.utils.log"
+
+  log.verbose("checking Cassandra schema consensus...")
+
+  local ok, err = self.db:check_schema_consensus()
+  if err then
+    return ret_error_string(self.db.name, nil,
+                            "failed to check for schema consensus: " .. err)
+  end
+
+  log.verbose("Cassandra schema consensus: %s",
+              ok ~= nil and "reached" or "not reached")
+
+  return ok
+end
+
 function _M:run_migrations(on_migrate, on_success)
   on_migrate = on_migrate or default_on_migrate
   on_success = on_success or default_on_success
@@ -292,7 +347,7 @@ function _M:run_migrations(on_migrate, on_success)
   local cur_migrations, err = self:current_migrations()
   if err then
     return ret_error_string(self.db.name, nil,
-                            "could not get current migrations: " .. err)
+                            "could not retrieve current migrations: " .. err)
   end
 
   local ok, err, migrations_ran = migrate(self, "core", migrations_modules, cur_migrations, on_migrate, on_success)
@@ -310,27 +365,29 @@ function _M:run_migrations(on_migrate, on_success)
     end
   end
 
-  if self.db.name == "cassandra" then
-    if migrations_ran > 0 then
-      log.verbose("now waiting for schema consensus (%dms) timeout",
-                  self.db.cluster.max_schema_consensus_wait)
+  if migrations_ran > 0 then
+    log("%d migrations ran", migrations_ran)
+
+    if self.db.name == "cassandra" then
+      log("waiting for Cassandra schema consensus (%dms timeout)...",
+          self.db.cluster.max_schema_consensus_wait)
 
       local ok, err = self.db:wait_for_schema_consensus()
       if not ok then
         return ret_error_string(self.db.name, nil,
-                                "failed waiting for schema consensus: " .. err)
+                                "failed to wait for schema consensus: " .. err)
       end
-    end
 
-    ok, err = self.db:close_coordinator()
+      log("Cassandra schema consensus: reached")
+    end
+  end
+
+  if self.db.name == "cassandra" then
+    local ok, err = self.db:close_coordinator()
     if not ok then
       return ret_error_string(self.db.name, nil,
                               "could not close coordinator: " .. err)
     end
-  end
-
-  if migrations_ran > 0 then
-    log("%d migrations ran", migrations_ran)
   end
 
   log.verbose("migrations up to date")

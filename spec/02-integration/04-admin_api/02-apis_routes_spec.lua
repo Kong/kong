@@ -563,6 +563,31 @@ describe("Admin API " .. kong_config.database, function()
             assert.same(json, in_db)
           end
         end)
+        it_content_types("removes optional field with ngx.null", function(content_type)
+          return function()
+            -- TODO: how should ngx.null work with application/www-form-urlencoded?
+            if content_type == "application/json" then
+              local res = assert(client:send {
+                method = "PATCH",
+                path = "/apis/" .. api.id,
+                body = {
+                  uris = ngx.null,
+                  hosts = ngx.null,
+                },
+                headers = {["Content-Type"] = content_type}
+              })
+              local body = assert.res_status(200, res)
+              local json = cjson.decode(body)
+              assert.is_nil(json.uris)
+              assert.is_nil(json.hosts)
+              assert.equal(api.id, json.id)
+
+              local in_db = assert(dao.apis:find {id = api.id})
+              assert.same(json, in_db)
+            end
+          end
+        end)
+
         describe("errors", function()
           it_content_types("returns 404 if not found", function(content_type)
             return function()
@@ -953,15 +978,6 @@ describe("Admin API " .. kong_config.database, function()
           local res = assert(client:send {
             method = "GET",
             path = "/apis/" .. api.id .. "/plugins/" .. plugin.id
-          })
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-          assert.same(plugin, json)
-        end)
-        it("retrieves by plugin name", function()
-          local res = assert(client:send {
-            method = "GET",
-            path = "/apis/"..api.name.."/plugins/"..plugin.name
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)

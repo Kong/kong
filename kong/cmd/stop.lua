@@ -28,7 +28,7 @@ prefix directory.
 This command sends a SIGTERM signal to Nginx.
 
 Options:
- -p,--prefix (optional string) prefix Kong is running at
+ -p,--prefix      (optional string) prefix Kong is running at
 ]]
 
 return {

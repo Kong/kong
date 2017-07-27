@@ -6,6 +6,8 @@ local FACEBOOK = "facebookexternalhit/1.1"  -- matches a known bot in `rules.lua
 describe("Plugin: bot-detection (access)", function()
   local client
   setup(function()
+    helpers.run_migrations()
+
     local api1 = assert(helpers.dao.apis:insert {
       name = "api-1",
       hosts = { "bot.com" },

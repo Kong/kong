@@ -84,7 +84,7 @@ function AWSLambdaHandler:access(conf)
   end
 
   if conf.unhandled_status
-     and headers["X-Amzn-Function-Error"] == "Unhandled"
+     and headers["X-Amz-Function-Error"] == "Unhandled"
   then
     ngx.status = conf.unhandled_status
 
@@ -102,6 +102,6 @@ function AWSLambdaHandler:access(conf)
   return ngx.exit(res.status)
 end
 
-AWSLambdaHandler.PRIORITY = 750
+AWSLambdaHandler.PRIORITY = 900
 
 return AWSLambdaHandler

@@ -5,6 +5,8 @@ describe("Plugin: key-auth (API)", function()
   local consumer
   local admin_client
   setup(function()
+    helpers.run_migrations()
+
     assert(helpers.dao.apis:insert {
       name = "keyauth1",
       upstream_url = "http://mockbin.com",

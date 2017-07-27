@@ -24,6 +24,9 @@
 -- |[[    ]]|
 -- ==========
 
+require "luarocks.loader"
+require "resty.core"
+
 do
   -- let's ensure the required shared dictionaries are
   -- declared via lua_shared_dict in the Nginx conf
@@ -46,6 +49,7 @@ local ip = require "kong.tools.ip"
 local dns = require "kong.tools.dns"
 local core = require "kong.core.handler"
 local utils = require "kong.tools.utils"
+local lapis = require "lapis"
 local responses = require "kong.tools.responses"
 local singletons = require "kong.singletons"
 local DAOFactory = require "kong.dao.factory"
@@ -54,8 +58,13 @@ local ngx_balancer = require "ngx.balancer"
 local plugins_iterator = require "kong.core.plugins_iterator"
 local balancer_execute = require("kong.core.balancer").execute
 local kong_cluster_events = require "kong.cluster_events"
+local kong_error_handlers = require "kong.core.error_handlers"
 
+local ngx              = ngx
+local header           = ngx.header
 local ipairs           = ipairs
+local assert           = assert
+local tostring         = tostring
 local get_last_failure = ngx_balancer.get_last_failure
 local set_current_peer = ngx_balancer.set_current_peer
 local set_timeouts     = ngx_balancer.set_timeouts
@@ -136,7 +145,7 @@ function Kong.init()
 
   local dao = assert(DAOFactory.new(config)) -- instantiate long-lived DAO
   assert(dao:init())
-  assert(dao:run_migrations()) -- migrating in case embedded in custom nginx
+  assert(dao:are_migrations_uptodate())
 
   -- populate singletons
   singletons.ip = ip.init(config)
@@ -252,7 +261,8 @@ function Kong.init_worker()
 end
 
 function Kong.ssl_certificate()
-  core.certificate.before()
+  local ctx = ngx.ctx
+  core.certificate.before(ctx)
 
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
     plugin.handler:certificate(plugin_conf)
@@ -260,7 +270,8 @@ function Kong.ssl_certificate()
 end
 
 function Kong.balancer()
-  local addr = ngx.ctx.balancer_address
+  local ctx = ngx.ctx
+  local addr = ctx.balancer_address
   local tries = addr.tries
   local current_try = {}
   addr.try_count = addr.try_count + 1
@@ -317,7 +328,8 @@ function Kong.balancer()
 end
 
 function Kong.rewrite()
-  core.rewrite.before()
+  local ctx = ngx.ctx
+  core.rewrite.before(ctx)
 
   -- we're just using the iterator, as in this rewrite phase no consumer nor
   -- api will have been identified, hence we'll just be executing the global
@@ -326,43 +338,66 @@ function Kong.rewrite()
     plugin.handler:rewrite(plugin_conf)
   end
 
-  core.rewrite.after()
+  core.rewrite.after(ctx)
 end
 
 function Kong.access()
-  core.access.before()
+  local ctx = ngx.ctx
+  core.access.before(ctx)
 
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
     plugin.handler:access(plugin_conf)
   end
 
-  core.access.after()
+  core.access.after(ctx)
 end
 
 function Kong.header_filter()
-  core.header_filter.before()
+  local ctx = ngx.ctx
+  core.header_filter.before(ctx)
 
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins) do
     plugin.handler:header_filter(plugin_conf)
   end
 
-  core.header_filter.after()
+  core.header_filter.after(ctx)
 end
 
 function Kong.body_filter()
+  local ctx = ngx.ctx
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins) do
     plugin.handler:body_filter(plugin_conf)
   end
 
-  core.body_filter.after()
+  core.body_filter.after(ctx)
 end
 
 function Kong.log()
+  local ctx = ngx.ctx
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins) do
     plugin.handler:log(plugin_conf)
   end
 
-  core.log.after()
+  core.log.after(ctx)
+end
+
+function Kong.handle_error()
+  return kong_error_handlers(ngx)
+end
+
+function Kong.serve_admin_api(options)
+  options = options or {}
+
+  header["Access-Control-Allow-Origin"] = options.allow_origin or "*"
+
+  if ngx.req.get_method() == "OPTIONS" then
+    header["Access-Control-Allow-Methods"] = "GET, HEAD, PUT, PATCH, POST, DELETE"
+    header["Access-Control-Allow-Headers"] = "Content-Type"
+
+    return ngx.exit(204)
+  end
+
+  return lapis.serve("kong.api")
 end
 
 return Kong

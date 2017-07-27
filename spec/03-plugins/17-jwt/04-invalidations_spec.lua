@@ -6,6 +6,8 @@ describe("Plugin: jwt (invalidations)", function()
   local admin_client, proxy_client, consumer1, api1
 
   before_each(function()
+    helpers.run_migrations()
+
     helpers.dao:truncate_tables()
 
     api1 = assert(helpers.dao.apis:insert {

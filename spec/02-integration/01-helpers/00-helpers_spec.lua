@@ -76,7 +76,7 @@ describe("helpers: assertions and modifiers", function()
     it("succeeds with a httpbin response", function()
       local r = assert(client:send {
         method = "GET",
-        path = "/request",
+        path = "/anything",
         headers = {
           host = "httpbin.org"
         }

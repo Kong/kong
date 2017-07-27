@@ -26,13 +26,68 @@ log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
 -- (while running from the busted environment)
 package.path = CUSTOM_PLUGIN_PATH .. ";" .. package.path
 
+-- Extract the current OpenResty version in use and returns
+-- a numerical representation of it.
+-- Ex: 1.11.2.2 -> 11122
+local function openresty_ver_num()
+  local ok, _, _, stderr = pl_utils.executeex("nginx -V")
+  if not ok then
+    error("could not execute 'nginx -V': " .. stderr)
+  end
+
+  local a, b, c, d = string.match(stderr, "openresty/(%d+)%.(%d+)%.(%d+)%.(%d+)")
+
+  return tonumber(a .. b .. c .. d)
+end
+
+-- Unindent a multi-line string for proper indenting in
+-- square brackets.
+--
+-- Ex:
+--   u[[
+--       hello world
+--       foo bar
+--   ]]
+--
+-- will return: "hello world\nfoo bar"
+local function unindent(str, concat_newlines)
+  str = string.match(str, "^%s*(%S.-%S*)%s*$")
+  if not str then
+    return ""
+  end
+
+  local level  = math.huge
+  local prefix = ""
+  local len
+
+  for pref in str:gmatch("\n(%s+)") do
+    len = #prefix
+
+    if len < level then
+      level  = len
+      prefix = pref
+    end
+  end
+
+  local repl = concat_newlines and "" or "\n"
+
+  return (str:gsub("\n" .. prefix, repl):gsub("\n$", "")):gsub("\\r", "\r")
+end
+
 ---------------
 -- Conf and DAO
 ---------------
 local conf = assert(conf_loader(TEST_CONF_PATH))
 local dao = assert(DAOFactory.new(conf))
 -- make sure migrations are up-to-date
-assert(dao:run_migrations())
+
+local function run_migrations(given_dao)
+  -- either use the dao provided to this call, or use
+  -- the helper dao
+  local d = given_dao or dao
+
+  assert(d:run_migrations())
+end
 
 -----------------
 -- Custom helpers
@@ -864,9 +919,12 @@ return {
   prepare_prefix = prepare_prefix,
   clean_prefix = clean_prefix,
   wait_for_invalidation = wait_for_invalidation,
+  run_migrations = run_migrations,
   
   -- miscellaneous
   intercept = intercept,
+  openresty_ver_num = openresty_ver_num(),
+  unindent = unindent,
 
   start_kong = function(env)
     env = env or {}

@@ -24,8 +24,8 @@ _M.dao_insert_values = {
     return uuid()
   end,
   timestamp = function()
-    -- return time in UNIT millisecond, and PRECISION millisecond 
-    return math.floor(timestamp.get_utc_ms()) 
+    -- return time in UNIT millisecond, and PRECISION millisecond
+    return math.floor(timestamp.get_utc_ms())
   end
 }
 
@@ -91,15 +91,6 @@ function _M.new(kong_config)
   self.cluster = cluster
   self.query_options = query_opts
   self.cluster_options = cluster_options
-
-  if ngx.IS_CLI then
-    -- we must manually call our init phase (usually called from `init_by_lua`)
-    -- to refresh the cluster.
-    local ok, err = self:init()
-    if not ok then
-      return nil, err
-    end
-  end
 
   return self
 end
@@ -222,12 +213,41 @@ function _M:close_coordinator()
   return true
 end
 
-function _M:wait_for_schema_consensus()
+function _M:check_schema_consensus()
+  local close_coordinator
+
+  if not coordinator then
+    close_coordinator = true
+
+    local peer, err = self:first_coordinator()
+    if not peer then
+      return nil, "could not retrieve coordinator: " .. err
+    end
+
+    -- coordinator = peer -- done by first_coordinator()
+  end
+
+  local ok, err = self.cluster.check_schema_consensus(coordinator)
+
+  if close_coordinator then
+    -- ignore errors
+    self:close_coordinator()
+  end
+
+  if err then
+    return nil, err
+  end
+
+  return ok
+end
+
+-- timeout is optional, defaults to `max_schema_consensus_wait` setting
+function _M:wait_for_schema_consensus(timeout)
   if not coordinator then
     return nil, "no coordinator"
   end
 
-  return self.cluster:wait_schema_consensus(coordinator)
+  return self.cluster:wait_schema_consensus(coordinator, timeout)
 end
 
 function _M:query(query, args, options, schema, no_keyspace)
@@ -262,7 +282,7 @@ end
 -- @section query_building
 
 local function serialize_arg(field, value)
-  if value == nil then
+  if value == nil or value == ngx.null then
     return cassandra.null
   elseif field.type == "id" then
     return cassandra.uuid(value)
@@ -631,7 +651,12 @@ end
 function _M:current_migrations()
   local q_keyspace_exists, q_migrations_table_exists
 
-  assert(self.release_version, "release_version not set for Cassandra cluster")
+  if not self.release_version then
+    local ok, err = self:init()
+    if not ok then
+      return nil, err
+    end
+  end
 
   if self.release_version == 3 then
     q_keyspace_exists = [[

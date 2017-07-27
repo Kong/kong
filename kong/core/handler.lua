@@ -233,21 +233,20 @@ return {
     end
   },
   certificate = {
-    before = function()
+    before = function(ctx)
       certificate.execute()
     end
   },
   rewrite = {
-    before = function()
-      ngx.ctx.KONG_REWRITE_START = get_now()
+    before = function(ctx)
+      ctx.KONG_REWRITE_START = get_now()
     end,
-    after = function ()
-      local ctx = ngx.ctx
+    after = function (ctx)
       ctx.KONG_REWRITE_TIME = get_now() - ctx.KONG_REWRITE_START -- time spent in Kong's rewrite_by_lua
     end
   },
   access = {
-    before = function()
+    before = function(ctx)
       -- ensure router is up-to-date
 
       local version, err = singletons.cache:get("router:version", {
@@ -274,15 +273,17 @@ return {
 
       -- routing request
 
-      local ctx = ngx.ctx
       local var = ngx.var
 
       ctx.KONG_ACCESS_START = get_now()
 
-      local api, upstream, host_header, uri = router.exec(ngx)
-      if not api then
+      local match_t = router.exec(ngx)
+      if not match_t then
         return responses.send_HTTP_NOT_FOUND("no API found with those values")
       end
+
+      local api = match_t.api
+      local upstream_url_t = match_t.upstream_url_t
 
       local realip_remote_addr = var.realip_remote_addr
       local trusted_ip = singletons.ip.trusted(realip_remote_addr)
@@ -291,14 +292,13 @@ return {
       then
         ngx.header["connection"] = "Upgrade"
         ngx.header["upgrade"]    = "TLS/1.2, HTTP/1.1"
-
         return responses.send(426, "Please use HTTPS protocol")
       end
 
       local balancer_address = {
-        type                 = utils.hostname_type(upstream.host),  -- the type of `host`; ipv4, ipv6 or name
-        host                 = upstream.host,  -- target host per `upstream_url`
-        port                 = upstream.port,  -- final target port
+        type                 = utils.hostname_type(upstream_url_t.host),  -- the type of `host`; ipv4, ipv6 or name
+        host                 = upstream_url_t.host,  -- target host per `upstream_url`
+        port                 = upstream_url_t.port,  -- final target port
         try_count            = 0,              -- retry counter
         tries                = {},             -- stores info per try
         retries              = api.retries,    -- number of retries for the balancer
@@ -311,15 +311,16 @@ return {
       }
 
       ctx.api              = api
+      ctx.router_matches   = match_t.matches
       ctx.balancer_address = balancer_address
 
       -- `scheme` is the scheme to use for the upstream call
       -- `uri` is the URI with which to call upstream, as returned by the
       --       router, which might have truncated it (`strip_uri`).
       -- `host_header` is the original header to be preserved if set.
-      var.upstream_scheme = upstream.scheme
-      var.upstream_uri    = uri
-      var.upstream_host   = host_header
+      var.upstream_scheme = upstream_url_t.scheme
+      var.upstream_uri    = match_t.upstream_uri
+      var.upstream_host   = match_t.upstream_host
 
       -- Keep-Alive and WebSocket Protocol Upgrade Headers
       if var.http_upgrade and lower(var.http_upgrade) == "websocket" then
@@ -367,8 +368,7 @@ return {
       end
     end,
     -- Only executed if the `router` module found an API and allows nginx to proxy it.
-    after = function()
-      local ctx = ngx.ctx
+    after = function(ctx)
       local var = ngx.var
 
       do
@@ -441,17 +441,15 @@ return {
     end
   },
   header_filter = {
-    before = function()
-      local ctx = ngx.ctx
-
+    before = function(ctx)
       if ctx.KONG_PROXIED then
         local now = get_now()
         ctx.KONG_WAITING_TIME = now - ctx.KONG_ACCESS_ENDED_AT -- time spent waiting for a response from upstream
         ctx.KONG_HEADER_FILTER_STARTED_AT = now
       end
     end,
-    after = function()
-      local ctx, header = ngx.ctx, ngx.header
+    after = function(ctx)
+      local header = ngx.header
 
       if ctx.KONG_PROXIED then
         if singletons.configuration.latency_tokens then
@@ -474,17 +472,17 @@ return {
     end
   },
   body_filter = {
-    after = function()
-      if ngx.arg[2] and ngx.ctx.KONG_PROXIED then
+    after = function(ctx)
+      if ngx.arg[2] and ctx.KONG_PROXIED then
         -- time spent receiving the response (header_filter + body_filter)
         -- we could uyse $upstream_response_time but we need to distinguish the waiting time
         -- from the receiving time in our logging plugins (especially ALF serializer).
-        ngx.ctx.KONG_RECEIVE_TIME = get_now() - ngx.ctx.KONG_HEADER_FILTER_STARTED_AT
+        ctx.KONG_RECEIVE_TIME = get_now() - ctx.KONG_HEADER_FILTER_STARTED_AT
       end
     end
   },
   log = {
-    after = function()
+    after = function(ctx)
       reports.log()
     end
   }

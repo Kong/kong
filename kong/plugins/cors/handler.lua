@@ -12,7 +12,7 @@ local ipairs          = ipairs
 local CorsHandler = BasePlugin:extend()
 
 
-CorsHandler.PRIORITY = 2000
+CorsHandler.PRIORITY = 2300
 
 
 local function configure_origin(ngx, conf)

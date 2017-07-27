@@ -4,6 +4,8 @@ local helpers = require "spec.helpers"
 describe("Plugin: oauth (API)", function()
   local consumer, api, admin_client
   setup(function()
+    helpers.run_migrations()
+
     helpers.prepare_prefix()
     assert(helpers.start_kong())
 

@@ -111,6 +111,7 @@ local function compile_conf(kong_config, conf_template)
 
   compile_env.http2 = kong_config.http2 and " http2" or ""
   compile_env.admin_http2 = kong_config.admin_http2 and " http2" or ""
+  compile_env.proxy_protocol = kong_config.real_ip_header == "proxy_protocol" and " proxy_protocol" or ""
 
   local post_template = pl_template.substitute(conf_template, compile_env)
   return string.gsub(post_template, "(${%b{}})", function(w)

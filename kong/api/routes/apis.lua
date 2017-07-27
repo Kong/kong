@@ -1,4 +1,5 @@
-local crud = require "kong.api.crud_helpers"
+local crud    = require "kong.api.crud_helpers"
+local utils   = require "kong.tools.utils"
 local reports = require "kong.core.reports"
 
 return {
@@ -46,7 +47,7 @@ return {
 
     POST = function(self, dao_factory)
       crud.post(self.params, dao_factory.plugins, function(data)
-        reports.send("api", data)
+        reports.send("api", utils.deep_copy(data))
       end)
     end,
 
@@ -55,9 +56,13 @@ return {
     end
   },
 
-  ["/apis/:api_name_or_id/plugins/:plugin_name_or_id"] = {
+  ["/apis/:api_name_or_id/plugins/:id"] = {
     before = function(self, dao_factory, helpers)
-      crud.find_plugin_by_name_or_id(self, dao_factory, helpers)
+      crud.find_api_by_name_or_id(self, dao_factory, helpers)
+      crud.find_plugin_by_filter(self, dao_factory, {
+        api_id = self.api.id,
+        id     = self.params.id,
+      }, helpers)
     end,
 
     GET = function(self, dao_factory, helpers)

@@ -10,6 +10,8 @@ local FILE_LOG_PATH = os.tmpname()
 describe("Plugin: file-log (log)", function()
   local client
   setup(function()
+    helpers.run_migrations()
+
     local api1 = assert(helpers.dao.apis:insert {
       name = "api-1",
       hosts = { "file_logging.com" },

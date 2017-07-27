@@ -6,6 +6,8 @@ describe("Plugin: ip-restriction (access)", function()
   local client, admin_client
 
   setup(function()
+    helpers.run_migrations()
+
     local api1 = assert(helpers.dao.apis:insert {
       name = "api-1",
       hosts = { "ip-restriction1.com" },

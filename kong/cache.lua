@@ -11,7 +11,17 @@ local DEBUG   = ngx.DEBUG
 
 
 local SHM_CACHE = "kong_cache"
-local LRU_SIZE  = 1000
+--[[
+Hypothesis
+----------
+
+Item size:        1024 bytes
+Max memory limit: 500 MiBs
+
+LRU size must be: (500 * 2^20) / 1024 = 512000
+Floored: 500.000 items should be a good default
+--]]
+local LRU_SIZE = 5e5
 
 
 local _init
