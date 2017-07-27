@@ -299,7 +299,19 @@ describe("Admin API", function()
         end
       end)
 
-      it("only shows active targets", function()
+      it("#ci only shows active targets", function()
+        -- Pending (as of 2017/07/26) (CI-only)
+        -- This test is failing to often on Travis CI because of the eventual
+        -- consistency of the 3 C* nodes running on Travis (gossip seems to be
+        -- to slow)
+        -- Current failure (the UUID comparison fails as well sometimes) is:
+        --[[
+          spec/02-integration/04-admin_api/08-targets_routes_spec.lua:311: Expected objects to be equal.
+          Passed in:
+          (number) 2
+          Expected:
+          (number) 3
+        --]]
         local res = assert(client:send {
           method = "GET",
           path = "/upstreams/" .. upstream_name3 .. "/targets/active/",
