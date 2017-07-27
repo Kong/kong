@@ -23,6 +23,7 @@ describe("Plugin: jwt (access)", function()
     local api5 = assert(helpers.dao.apis:insert {name = "tests-jwt5", hosts = { "jwt5.com" }, upstream_url = "http://mockbin.com"})
     local api6 = assert(helpers.dao.apis:insert {name = "tests-jwt6", hosts = { "jwt6.com" }, upstream_url = "http://mockbin.com"})
     local api7 = assert(helpers.dao.apis:insert {name = "tests-jwt7", hosts = { "jwt7.com" }, upstream_url = "http://mockbin.com"})
+    local api8 = assert(helpers.dao.apis:insert {name = "tests-jwt8", hosts = { "jwt8.com" }, upstream_url = "http://mockbin.com"})
 
     local consumer1 = assert(helpers.dao.consumers:insert {username = "jwt_tests_consumer"})
     local consumer2 = assert(helpers.dao.consumers:insert {username = "jwt_tests_base64_consumer"})
@@ -38,6 +39,7 @@ describe("Plugin: jwt (access)", function()
     assert(helpers.dao.plugins:insert {name = "jwt", config = {secret_is_base64 = true}, api_id = api5.id})
     assert(helpers.dao.plugins:insert {name = "jwt", config = {anonymous = anonymous_user.id}, api_id = api6.id})
     assert(helpers.dao.plugins:insert {name = "jwt", config = {anonymous = utils.uuid()}, api_id = api7.id})
+    assert(helpers.dao.plugins:insert {name = "jwt", config = {run_on_preflight = false}, api_id = api8.id})
 
     jwt_secret = assert(helpers.dao.jwt_secrets:insert {consumer_id = consumer1.id})
     base64_jwt_secret = assert(helpers.dao.jwt_secrets:insert {consumer_id = consumer2.id})
@@ -141,6 +143,27 @@ describe("Plugin: jwt (access)", function()
       local body = assert.res_status(403, res)
       local json = cjson.decode(body)
       assert.same({ message = "Invalid algorithm" }, json)
+    end)
+    it("returns 200 on OPTIONS requests if run_on_preflight is false", function()
+      local res = assert(proxy_client:send {
+        method = "OPTIONS",
+        path = "/request",
+        headers = {
+          ["Host"] = "jwt8.com"
+        }
+      })
+      assert.res_status(200, res)
+    end)
+    it("returns Unauthorized on OPTIONS requests if run_on_preflight is true", function()
+      local res = assert(proxy_client:send {
+        method = "OPTIONS",
+        path = "/request",
+        headers = {
+          ["Host"] = "jwt.com"
+        }
+      })
+      local body = assert.res_status(401, res)
+      assert.equal([[{"message":"Unauthorized"}]], body)
     end)
   end)
 

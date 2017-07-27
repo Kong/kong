@@ -8,6 +8,7 @@ local string_format = string.format
 local ngx_re_gmatch = ngx.re.gmatch
 
 local ngx_set_header = ngx.req.set_header
+local get_method = ngx.req.get_method
 
 local JwtHandler = BasePlugin:extend()
 
@@ -171,7 +172,16 @@ end
 
 function JwtHandler:access(conf)
   JwtHandler.super.access(self)
-  
+
+  -- check if preflight request and whether it should be authenticated
+  if conf.run_on_preflight == false and get_method() == "OPTIONS" then
+    -- FIXME: the above `== false` test is because existing entries in the db will
+    -- have `nil` and hence will by default start passing the preflight request
+    -- This should be fixed by a migration to update the actual entries
+    -- in the datastore
+    return
+  end
+
   if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
     -- we're already authenticated, and we're configured for using anonymous, 
     -- hence we're in a logical OR between auth methods and we're already done.
