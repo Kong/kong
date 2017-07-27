@@ -372,6 +372,21 @@ function _M.table_contains(arr, val)
   return false
 end
 
+--- Check if any regex in a table matches a value
+-- @param arr The table to use
+-- @param pat The value to check
+-- @return Returns `true` if the table contains a regex matching the value, `false` otherwise
+function _M.table_contains_regex(arr, val)
+  if arr then
+    for _, p in pairs(arr) do
+      if ngx.re.match(val, p) then
+        return true
+      end
+    end
+  end
+  return false
+end
+
 --- Checks if a table is an array and not an associative array.
 -- *** NOTE *** string-keys containing integers are considered valid array entries!
 -- @param t The table to check

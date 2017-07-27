@@ -189,5 +189,29 @@ return {
       end
     end,
     down = function(_, _, dao) end  -- not implemented
+  },
+  {
+    name = "2017-7-27-convert_redirect_uri_to_pattern",
+    up = function(_, _, factory)
+      local schema = factory.oauth2_credentials.schema
+
+      local rows, err = factory.oauth2_credentials.db:find_all("oauth2_credentials", nil, schema)
+      if err then
+        return err
+      end
+
+      for _, row in ipairs(rows) do
+        local converted = {}
+        for _, uri in ipairs(row.redirect_uri) do
+          converted[_] = "^" .. uri .. "$"
+        end
+
+        local _, err = factory.oauth2_credentials.db:update("oauth2_credentials", schema, nil, {id = row.id}, {redirect_uri = converted})
+        if err then
+          return err
+        end
+      end
+    end,
+    down = function(_, _, dao) end  -- not implemented
   }
 }

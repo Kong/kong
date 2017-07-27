@@ -92,6 +92,13 @@ describe("Plugin: oauth2 (access)", function()
       consumer_id = consumer.id
     })
     assert(helpers.dao.oauth2_credentials:insert {
+      client_id = "clientid1011",
+      client_secret = "secret1011",
+      redirect_uri = "http://google.com/kong",
+      name = "testapp31",
+      consumer_id = consumer.id
+    })
+    assert(helpers.dao.oauth2_credentials:insert {
       client_id = "clientid456",
       client_secret = "secret456",
       redirect_uri = {"http://one.com/one/", "http://two.com/two"},
@@ -99,11 +106,11 @@ describe("Plugin: oauth2 (access)", function()
       consumer_id = consumer.id
     })
     assert(helpers.dao.oauth2_credentials:insert {
-          client_id = "clientid1011",
-          client_secret = "secret1011",
-          redirect_uri = "http://google.com/kong",
-          name = "testapp31",
-          consumer_id = consumer.id
+      client_id = "clientidwpattern",
+      client_secret = "secretforpattern",
+      redirect_uri = {"^http://one.com/one/$", "^http://two.com/two/.*$"},
+      name = "testapp3",
+      consumer_id = consumer.id
     })
 
     local api1 = assert(helpers.dao.apis:insert {
@@ -553,6 +560,49 @@ describe("Plugin: oauth2 (access)", function()
         assert.response(res).has.status(200)
         local json = assert.response(res).has.jsonbody()
         assert.truthy(ngx.re.match(json.redirect_uri, "^http://one\\.com/one/\\?code=[\\w]{32,32}$"))
+      end)
+      it("works when the redirect URI is a pattern", function()
+        local res = assert(proxy_client:send {
+          method = "POST",
+          path = "/oauth2/authorize",
+          body = {
+            provision_key = "provision123",
+            authenticated_userid = "id123",
+            client_id = "clientwpattern",
+            scope = "email",
+            response_type = "code",
+            redirect_uri = "http://two.com/two/deep"
+          },
+          headers = {
+            ["Host"] = "oauth2_6.com",
+            ["Content-Type"] = "application/json",
+            ["X-Forwarded-Proto"] = "https"
+          }
+        })
+        assert.response(res).has.status(200)
+        local json = assert.response(res).has.jsonbody()
+        assert.truthy(ngx.re.match(json.redirect_uri, "^http://two\\.com/two/deep\\?code=[\\w]{32,32}$"))
+      end)
+      it("sends proper redirect URI when not supplied by client and is a pattern", function()
+        local res = assert(proxy_client:send {
+          method = "POST",
+          path = "/oauth2/authorize",
+          body = {
+            provision_key = "provision123",
+            authenticated_userid = "id123",
+            client_id = "clientwpattern",
+            scope = "email",
+            response_type = "code"
+          },
+          headers = {
+            ["Host"] = "oauth2_6.com",
+            ["Content-Type"] = "application/json",
+            ["X-Forwarded-Proto"] = "https"
+          }
+        })
+        assert.response(res).has.status(200)
+        local json = assert.response(res).has.jsonbody()
+        assert.truthy(ngx.re.match(json.redirect_uri, "^http://one\\.com/one\\?code=[\\w]{32,32}$"))
       end)
       it("fails when not under HTTPS", function()
         local res = assert(proxy_client:send {
