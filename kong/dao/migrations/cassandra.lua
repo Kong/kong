@@ -474,4 +474,11 @@ return {
       DROP TABLE nodes;
     ]],
   },
+  {
+    name = "2017-07-28-225000_balancer_orderlist_remove",
+    up = [[
+      ALTER TABLE upstreams DROP orderlist;
+    ]],
+    down = function(_, _, dao) end  -- not implemented
+  },
 }
