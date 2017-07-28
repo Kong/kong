@@ -34,7 +34,9 @@ describe("core entities are invalidated with db: " .. kong_conf.database, functi
       proxy_listen          = "0.0.0.0:8000",
       proxy_listen_ssl      = "0.0.0.0:8443",
       admin_listen          = "0.0.0.0:8001",
+      admin_gui_listen      = "0.0.0.0:8002",
       admin_ssl             = false,
+      admin_gui_ssl         = false,
       db_update_frequency   = POLL_INTERVAL,
       db_update_propagation = db_update_propagation,
     })
@@ -46,7 +48,9 @@ describe("core entities are invalidated with db: " .. kong_conf.database, functi
       proxy_listen          = "0.0.0.0:9000",
       proxy_listen_ssl      = "0.0.0.0:9443",
       admin_listen          = "0.0.0.0:9001",
+      admin_gui_listen      = "0.0.0.0:9002",
       admin_ssl             = false,
+      admin_gui_ssl         = false,
       db_update_frequency   = POLL_INTERVAL,
       db_update_propagation = db_update_propagation,
     })

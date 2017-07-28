@@ -38,6 +38,10 @@ local PREFIX_PATHS = {
   admin_ssl_cert_default = {"ssl", "admin-kong-default.crt"},
   admin_ssl_cert_key_default = {"ssl", "admin-kong-default.key"},
   admin_ssl_cert_csr_default = {"ssl", "admin-kong-default.csr"}
+  ;
+  admin_gui_ssl_cert_default = {"ssl", "admin-gui-kong-default.crt"},
+  admin_gui_ssl_cert_key_default = {"ssl", "admin-gui-kong-default.key"},
+  admin_gui_ssl_cert_csr_default = {"ssl", "admin-gui-kong-default.csr"}
 }
 
 -- By default, all properties in the configuration are considered to
@@ -57,6 +61,8 @@ local CONF_INFERENCES = {
   proxy_listen_ssl = {typ = "string"},
   admin_listen = {typ = "string"},
   admin_listen_ssl = {typ = "string"},
+  admin_gui_listen = {typ = "string"},
+  admin_gui_listen_ssl = {typ = "string"},
   db_update_frequency = { typ = "number" },
   db_update_propagation = { typ = "number" },
   db_cache_ttl = { typ = "number" },
@@ -107,6 +113,7 @@ local CONF_INFERENCES = {
   ssl = {typ = "boolean"},
   client_ssl = {typ = "boolean"},
   admin_ssl = {typ = "boolean"},
+  admin_gui_ssl = {typ = "boolean"},
 
   proxy_access_log = {typ = "string"},
   proxy_error_log = {typ = "string"},
@@ -482,18 +489,25 @@ local function load(path, custom_conf)
     local ip_port_pat = "(.+):([%d]+)$"
     local admin_ip, admin_port = string.match(conf.admin_listen, ip_port_pat)
     local admin_ssl_ip, admin_ssl_port = string.match(conf.admin_listen_ssl, ip_port_pat)
+    local admin_gui_ip, admin_gui_port = string.match(conf.admin_gui_listen, ip_port_pat)
+    local admin_gui_ssl_ip, admin_gui_ssl_port = string.match(conf.admin_gui_listen_ssl, ip_port_pat)
     local proxy_ip, proxy_port = string.match(conf.proxy_listen, ip_port_pat)
     local proxy_ssl_ip, proxy_ssl_port = string.match(conf.proxy_listen_ssl, ip_port_pat)
 
     if not admin_port then return nil, "admin_listen must be of form 'address:port'"
     elseif not proxy_port then return nil, "proxy_listen must be of form 'address:port'"
+    elseif not admin_gui_port then return nil, "admin_gui_listen must be of form 'address:port'"
     elseif not proxy_ssl_port then return nil, "proxy_listen_ssl must be of form 'address:port'" end
     conf.admin_ip = admin_ip
     conf.admin_ssl_ip = admin_ssl_ip
+    conf.admin_gui_ip = admin_gui_ip
+    conf.admin_gui_ssl_ip = admin_gui_ssl_ip
     conf.proxy_ip = proxy_ip
     conf.proxy_ssl_ip = proxy_ssl_ip
     conf.admin_port = tonumber(admin_port)
     conf.admin_ssl_port = tonumber(admin_ssl_port)
+    conf.admin_gui_port = tonumber(admin_gui_port)
+    conf.admin_gui_ssl_port = tonumber(admin_gui_ssl_port)
     conf.proxy_port = tonumber(proxy_port)
     conf.proxy_ssl_port = tonumber(proxy_ssl_port)
   end

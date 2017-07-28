@@ -13,7 +13,7 @@ local log = require "kong.cmd.utils.log"
 local constants = require "kong.constants"
 local fmt = string.format
 
-local function gen_default_ssl_cert(kong_config, admin)
+local function gen_default_ssl_cert(kong_config, pair_type)
   -- create SSL folder
   local ok, err = pl_dir.makepath(pl_path.join(kong_config.prefix, "ssl"))
   if not ok then
@@ -21,19 +21,28 @@ local function gen_default_ssl_cert(kong_config, admin)
   end
 
   local ssl_cert, ssl_cert_key, ssl_cert_csr
-  if admin then
+  if pair_type == "admin" then
     ssl_cert = kong_config.admin_ssl_cert_default
     ssl_cert_key = kong_config.admin_ssl_cert_key_default
     ssl_cert_csr = kong_config.admin_ssl_cert_csr_default
-  else
+
+  elseif pair_type == "admin_gui" then
+    ssl_cert = kong_config.admin_gui_ssl_cert_default
+    ssl_cert_key = kong_config.admin_gui_ssl_cert_key_default
+    ssl_cert_csr = kong_config.admin_gui_ssl_cert_csr_default
+
+  elseif pair_type == "default" then
     ssl_cert = kong_config.ssl_cert_default
     ssl_cert_key = kong_config.ssl_cert_key_default
     ssl_cert_csr = kong_config.ssl_cert_csr_default
+
+  else
+    error("Invalid type " .. pair_type .. " in gen_default_ssl_cert")
   end
 
   if not pl_path.exists(ssl_cert) and not pl_path.exists(ssl_cert_key) then
     log.verbose("generating %s SSL certificate and key",
-                     admin and "admin" or "default")
+                pair_type)
 
     local passphrase = utils.random_string()
     local commands = {
@@ -48,12 +57,11 @@ local function gen_default_ssl_cert(kong_config, admin)
     for i = 1, #commands do
       local ok, _, _, stderr = pl_utils.executeex(commands[i])
       if not ok then
-        return nil, "could not generate " .. (admin and "admin" or "default") .. " SSL certificate: " .. stderr
+        return nil, "could not generate " .. pair_type .. " SSL certificate: " .. stderr
       end
     end
   else
-    log.verbose("%s SSL certificate found at %s",
-                     admin and "admin" or "default", ssl_cert)
+    log.verbose("%s SSL certificate found at %s", pair_type, ssl_cert)
   end
 
   return true
@@ -129,6 +137,43 @@ local function compile_nginx_conf(kong_config, template)
   return compile_conf(kong_config, template)
 end
 
+local function prepare_admin(kong_config)
+  local ADMIN_GUI_PATH = kong_config.prefix .. "/gui"
+
+  local compile_env = {
+    ADMIN_API_PORT = tostring(kong_config.admin_port),
+    ADMIN_API_SSL_PORT = tostring(kong_config.admin_ssl_port),
+    RBAC_ENFORCED = tostring(kong_config.enforce_rbac),
+    RBAC_HEADER = tostring(kong_config.rbac_header),
+  }
+
+  -- make the template if it doesn't exit
+  if not pl_path.isfile(ADMIN_GUI_PATH .. "/index.html.tp") then
+    if not pl_file.copy(ADMIN_GUI_PATH .. "/index.html",
+                        ADMIN_GUI_PATH .. "/index.html.tp") then
+
+      log.warn("Could not copy index to template")
+    end
+  end
+
+  -- load the template, do our substitutions, and write it out
+  local index = pl_file.read(ADMIN_GUI_PATH .. "/index.html.tp")
+
+  if not index then
+    log.warn("Could not read GUI index template")
+    return
+  end
+
+  local _, err
+  index, _, err = ngx.re.gsub(index, "{{(.*?)}}", function(m)
+          return compile_env[m[1]] end)
+  if err then
+    log.warn("Error replacing templated values: " .. err)
+  end
+
+  pl_file.write(ADMIN_GUI_PATH .. "/index.html", index)
+end
+
 local function prepare_prefix(kong_config, nginx_custom_template_path)
   log.verbose("preparing nginx prefix directory at %s", kong_config.prefix)
 
@@ -173,7 +218,7 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
   -- generate default SSL certs if needed
   if kong_config.ssl and not kong_config.ssl_cert and not kong_config.ssl_cert_key then
     log.verbose("SSL enabled, no custom certificate set: using default certificate")
-    local ok, err = gen_default_ssl_cert(kong_config)
+    local ok, err = gen_default_ssl_cert(kong_config, "default")
     if not ok then
       return nil, err
     end
@@ -182,13 +227,27 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
   end
   if kong_config.admin_ssl and not kong_config.admin_ssl_cert and not kong_config.admin_ssl_cert_key then
     log.verbose("Admin SSL enabled, no custom certificate set: using default certificate")
-    local ok, err = gen_default_ssl_cert(kong_config, true)
+    local ok, err = gen_default_ssl_cert(kong_config, "admin")
     if not ok then
       return nil, err
     end
     kong_config.admin_ssl_cert = kong_config.admin_ssl_cert_default
     kong_config.admin_ssl_cert_key = kong_config.admin_ssl_cert_key_default
   end
+  if kong_config.admin_gui_ssl and not kong_config.admin_gui_ssl_cert and
+    not kong_config.admin_gui_ssl_cert_key
+  then
+
+    log.verbose("Admin GUI SSL enabled, no custom certificate set: " ..
+                "using default certificate")
+    local ok, err = gen_default_ssl_cert(kong_config, "admin_gui")
+    if not ok then
+      return nil, err
+    end
+    kong_config.admin_gui_ssl_cert = kong_config.admin_gui_ssl_cert_default
+    kong_config.admin_gui_ssl_cert_key = kong_config.admin_gui_ssl_cert_key_default
+  end
+
 
   -- check ulimit
   local ulimit, err = get_ulimit()
@@ -250,6 +309,9 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
     log.warn("Unable to set kong env permissions: ", err)
   end
 
+  -- prep the admin gui html based on our config env
+  prepare_admin(kong_config)
+
   return true
 end
 
@@ -257,5 +319,6 @@ return {
   prepare_prefix = prepare_prefix,
   compile_kong_conf = compile_kong_conf,
   compile_nginx_conf = compile_nginx_conf,
-  gen_default_ssl_cert = gen_default_ssl_cert
+  gen_default_ssl_cert = gen_default_ssl_cert,
+  prepare_admin = prepare_admin,
 }

@@ -92,6 +92,16 @@
                                  # HTTPS requests to the admin API, if
                                  # `admin_ssl` is enabled.
 
+#admin_gui_listen = 0.0.0.0:8002 # Address and port on which Kong will
+                                 # expose the Admin API GUI. This interface
+                                 # lets you configure and manage Kong via a
+                                 # web interface and should be kept private
+                                 # and secured.
+
+#admin_gui_listen_ssl = 0.0.0.0:8445 # Address and port on which Kong will
+                                     # accept HTTPS requests to the admin GUI,
+                                     # if `admin_ssl` is enabled.
+
 #nginx_user = nobody nobody      # Defines user and group credentials used by
                                  # worker processes. If group is omitted, a
                                  # group whose name equals that of user is
@@ -172,6 +182,20 @@
 
 #admin_http2 = off               # Enables HTTP2 support for HTTPS traffic on
                                  # the `admin_listen_ssl` address.
+
+#admin_gui_ssl = on              # Determines if Nginx should be listening for
+                                 # HTTPS traffic on the `admin_gui_listen_ssl`
+                                 # address. If disabled, Nginx will only bind
+                                 # itself on `admin_gui_listen`, and all SSL
+                                 # settings will be ignored.
+
+#admin_gui_ssl_cert =            # If `admin_gui_ssl` is enabled, the absolute
+                                 # path to the SSL certificate for the
+                                 # `admin_gui_listen_ssl` address.
+
+#admin_gui_ssl_cert_key =        # If `admin_gui_ssl` is enabled, the absolute
+                                 # path to the SSL key for the
+                                 # `admin_gui_listen_ssl` address.
 
 #upstream_keepalive = 60         # Sets the maximum number of idle keepalive
                                  # connections to upstream servers that are

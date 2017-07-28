@@ -153,6 +153,55 @@ server {
 }
 
 server {
+    server_name kong_gui;
+    listen ${{ADMIN_GUI_LISTEN}};
+
+> if admin_gui_ssl then
+    listen ${{ADMIN_GUI_LISTEN_SSL}} ssl;
+    ssl_certificate ${{ADMIN_GUI_SSL_CERT}};
+    ssl_certificate_key ${{ADMIN_GUI_SSL_CERT_KEY}};
+    ssl_protocols TLSv1.1 TLSv1.2;
+> end
+
+    client_max_body_size 10m;
+    client_body_buffer_size 10m;
+
+    types {
+      text/html                             html htm shtml;
+      text/css                              css;
+      text/xml                              xml;
+      image/gif                             gif;
+      image/jpeg                            jpeg jpg;
+      application/javascript                js;
+      application/json                      json;
+      image/png                             png;
+      image/tiff                            tif tiff;
+      image/x-icon                          ico;
+      image/x-jng                           jng;
+      image/x-ms-bmp                        bmp;
+      image/svg+xml                         svg svgz;
+      image/webp                            webp;
+    }
+
+    gzip on;
+    gzip_types text/html text/plain text/css application/json application/javascript;
+
+    location / {
+        root /usr/local/kong/gui;
+
+        try_files $uri /index.html;
+
+        access_log logs/admin_gui_access.log;
+        error_log logs/admin_gui_error.log;
+    }
+
+    location /robots.txt {
+        return 200 'User-agent: *\nDisallow: /';
+    }
+}
+
+
+server {
     server_name kong_admin;
     listen ${{ADMIN_LISTEN}};
 
