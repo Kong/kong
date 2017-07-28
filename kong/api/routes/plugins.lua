@@ -29,16 +29,16 @@ return {
 
     POST = function(self, dao_factory)
       crud.post(self.params, dao_factory.plugins, function(data)
-        reports.send("api", data)
+        reports.send("api", utils.deep_copy(data))
       end)
     end
   },
 
   ["/plugins/schema/:name"] = {
     GET = function(self, dao_factory, helpers)
-      local ok, plugin_schema = utils.load_module_if_exists("kong.plugins."..self.params.name..".schema")
+      local ok, plugin_schema = utils.load_module_if_exists("kong.plugins." .. self.params.name .. ".schema")
       if not ok then
-        return helpers.responses.send_HTTP_NOT_FOUND("No plugin named '"..self.params.name.."'")
+        return helpers.responses.send_HTTP_NOT_FOUND("No plugin named '" .. self.params.name .. "'")
       end
 
       remove_functions(plugin_schema)

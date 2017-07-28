@@ -12,7 +12,7 @@ local function execute(args)
   }))
 
   assert(not kill.is_running(conf.nginx_pid),
-         "Kong is already running in "..conf.prefix)
+         "Kong is already running in " .. conf.prefix)
 
   local err
   local dao = assert(DAOFactory.new(conf))
@@ -42,9 +42,9 @@ Start Kong (Nginx and other configured services) in the configured
 prefix directory.
 
 Options:
- -c,--conf    (optional string) configuration file
- -p,--prefix  (optional string) override prefix directory
- --nginx-conf (optional string) custom Nginx configuration template
+ -c,--conf     (optional string) configuration file
+ -p,--prefix   (optional string) override prefix directory
+ --nginx-conf  (optional string) custom Nginx configuration template
 ]]
 
 return {

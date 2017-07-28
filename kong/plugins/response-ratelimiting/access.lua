@@ -22,7 +22,9 @@ local function get_identifier(conf)
     identifier = ngx.ctx.authenticated_credential and ngx.ctx.authenticated_credential.id
   end
 
-  if not identifier then identifier = ngx.var.remote_addr end
+  if not identifier then
+    identifier = ngx.var.remote_addr
+  end
 
   return identifier
 end
@@ -39,8 +41,12 @@ local function get_usage(conf, api_id, identifier, current_timestamp, limits)
 
       local remaining = lv - current_usage
 
-      if not usage[k] then usage[k] = {} end
-      if not usage[k][lk] then usage[k][lk] = {} end
+      if not usage[k] then
+        usage[k] = {}
+      end
+      if not usage[k][lk] then
+        usage[k][lk] = {}
+      end
 
       usage[k][lk].limit = lv
       usage[k][lk].remaining = remaining
@@ -78,7 +84,7 @@ function _M.execute(conf)
     local remaining
     for lk, lv in pairs(usage[k]) do
       if conf.block_on_first_violation and lv.remaining == 0 then
-        return responses.send(429, "API rate limit exceeded for '"..k.."'")
+        return responses.send(429, "API rate limit exceeded for '" .. k .. "'")
       end
 
       if not remaining or lv.remaining < remaining then
@@ -86,7 +92,7 @@ function _M.execute(conf)
       end
     end
 
-    ngx.req.set_header(RATELIMIT_REMAINING.."-"..k, remaining)
+    ngx.req.set_header(RATELIMIT_REMAINING .. "-" .. k, remaining)
   end
 
   ngx.ctx.usage = usage -- For later use

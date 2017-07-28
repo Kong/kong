@@ -38,7 +38,9 @@ return function(options)
       local old_cdef = ffi.cdef
       local exists = {}
       ffi.cdef = function(def)
-        if exists[def] then return end
+        if exists[def] then
+          return
+        end
         exists[def] = true
         return old_cdef(def)
       end
@@ -129,7 +131,7 @@ return function(options)
           if not init then
             return nil, "not found"
           else
-            self.data[key].value = init
+            self.data[key] = { value = init }
           end
         elseif type(self.data[key].value) ~= "number" then
           return nil, "not a number"
@@ -208,7 +210,7 @@ return function(options)
       local seed = seeds[ngx.worker.pid()]
       if not seed then
         if not options.cli and ngx.get_phase() ~= "init_worker" then
-          ngx.log(ngx.WARN, debug.traceback("math.randomseed() must be "..
+          ngx.log(ngx.WARN, debug.traceback("math.randomseed() must be " ..
               "called in init_worker context", 2))
         end
 
@@ -253,8 +255,8 @@ return function(options)
         randomseed(seed)
         seeds[ngx.worker.pid()] = seed
       else
-        ngx.log(ngx.DEBUG, debug.traceback("attempt to seed random number "..
-            "generator, but already seeded with: "..tostring(seed), 2))
+        ngx.log(ngx.DEBUG, debug.traceback("attempt to seed random number " ..
+            "generator, but already seeded with: " .. tostring(seed), 2))
       end
 
       return seed

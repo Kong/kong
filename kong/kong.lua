@@ -73,30 +73,32 @@ local function load_plugins(kong_conf, dao, events)
   ngx.log(ngx.DEBUG, "Discovering used plugins")
 
   local rows, err_t = dao.plugins:find_all()
-  if not rows then return nil, tostring(err_t) end
+  if not rows then
+    return nil, tostring(err_t)
+  end
 
   for _, row in ipairs(rows) do in_db_plugins[row.name] = true end
 
   -- check all plugins in DB are enabled/installed
   for plugin in pairs(in_db_plugins) do
     if not kong_conf.plugins[plugin] then
-      return nil, plugin.." plugin is in use but not enabled"
+      return nil, plugin .. " plugin is in use but not enabled"
     end
   end
 
   -- load installed plugins
   for plugin in pairs(kong_conf.plugins) do
-    local ok, handler = utils.load_module_if_exists("kong.plugins."..plugin..".handler")
+    local ok, handler = utils.load_module_if_exists("kong.plugins." .. plugin .. ".handler")
     if not ok then
-      return nil, plugin.." plugin is enabled but not installed;\n"..handler
+      return nil, plugin .. " plugin is enabled but not installed;\n" .. handler
     end
 
-    local ok, schema = utils.load_module_if_exists("kong.plugins."..plugin..".schema")
+    local ok, schema = utils.load_module_if_exists("kong.plugins." .. plugin .. ".schema")
     if not ok then
-      return nil, "no configuration schema found for plugin: "..plugin
+      return nil, "no configuration schema found for plugin: " .. plugin
     end
 
-    ngx.log(ngx.DEBUG, "Loading plugin: "..plugin)
+    ngx.log(ngx.DEBUG, "Loading plugin: " .. plugin)
 
     sorted_plugins[#sorted_plugins+1] = {
       name = plugin,
@@ -105,7 +107,7 @@ local function load_plugins(kong_conf, dao, events)
     }
 
     -- Attaching hooks
-    local ok, hooks = utils.load_module_if_exists("kong.plugins."..plugin..".hooks")
+    local ok, hooks = utils.load_module_if_exists("kong.plugins." .. plugin .. ".hooks")
     if ok then
       attach_hooks(events, hooks)
     end
@@ -215,7 +217,8 @@ function Kong.init_worker()
 end
 
 function Kong.ssl_certificate()
-  core.certificate.before()
+  local ctx = ngx.ctx
+  core.certificate.before(ctx)
 
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
     plugin.handler:certificate(plugin_conf)
@@ -223,18 +226,23 @@ function Kong.ssl_certificate()
 end
 
 function Kong.balancer()
-  local addr = ngx.ctx.balancer_address
+  local ctx = ngx.ctx
+  local addr = ctx.balancer_address
   local tries = addr.tries
-
+  local current_try = {}
   addr.try_count = addr.try_count + 1
+  tries[addr.try_count] = current_try
+
+  core.balancer.before()
+
   if addr.try_count > 1 then
-    -- only call balancer on retry, first one is done in `core.access.before` which runs
+    -- only call balancer on retry, first one is done in `core.access.after` which runs
     -- in the ACCESS context and hence has less limitations than this BALANCER context
     -- where the retries are executed
 
     -- record failure data
-    local try = tries[addr.try_count - 1]
-    try.state, try.code = get_last_failure()
+    local previous_try = tries[addr.try_count - 1]
+    previous_try.state, previous_try.code = get_last_failure()
 
     local ok, err = balancer_execute(addr)
     if not ok then
@@ -252,10 +260,8 @@ function Kong.balancer()
     end
   end
 
-  tries[addr.try_count] = {
-    ip    = addr.ip,
-    port  = addr.port,
-  }
+  current_try.ip   = addr.ip
+  current_try.port = addr.port
 
   -- set the targets as resolved
   local ok, err = set_current_peer(addr.ip, addr.port)
@@ -273,10 +279,13 @@ function Kong.balancer()
   if not ok then
     ngx.log(ngx.ERR, "could not set upstream timeouts: ", err)
   end
+
+  core.balancer.after()
 end
 
 function Kong.rewrite()
-  core.rewrite.before()
+  local ctx = ngx.ctx
+  core.rewrite.before(ctx)
 
   -- we're just using the iterator, as in this rewrite phase no consumer nor
   -- api will have been identified, hence we'll just be executing the global
@@ -285,43 +294,47 @@ function Kong.rewrite()
     plugin.handler:rewrite(plugin_conf)
   end
 
-  core.rewrite.after()
+  core.rewrite.after(ctx)
 end
 
 function Kong.access()
-  core.access.before()
+  local ctx = ngx.ctx
+  core.access.before(ctx)
 
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
     plugin.handler:access(plugin_conf)
   end
 
-  core.access.after()
+  core.access.after(ctx)
 end
 
 function Kong.header_filter()
-  core.header_filter.before()
+  local ctx = ngx.ctx
+  core.header_filter.before(ctx)
 
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins) do
     plugin.handler:header_filter(plugin_conf)
   end
 
-  core.header_filter.after()
+  core.header_filter.after(ctx)
 end
 
 function Kong.body_filter()
+  local ctx = ngx.ctx
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins) do
     plugin.handler:body_filter(plugin_conf)
   end
 
-  core.body_filter.after()
+  core.body_filter.after(ctx)
 end
 
 function Kong.log()
+  local ctx = ngx.ctx
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins) do
     plugin.handler:log(plugin_conf)
   end
 
-  core.log.after()
+  core.log.after(ctx)
 end
 
 return Kong

@@ -858,7 +858,7 @@ describe("Plugin: oauth2 (access)", function()
 
         local res = assert(proxy_ssl_client:send {
           method = "GET",
-          path = "/request?access_token="..access_token,
+          path = "/request?access_token=" .. access_token,
           headers = {
             ["Host"] = "oauth2.com"
           }
@@ -1083,6 +1083,24 @@ describe("Plugin: oauth2 (access)", function()
         local body = assert.res_status(200, res)
         assert.is_table(ngx.re.match(body, [[^\{"token_type":"bearer","access_token":"[\w]{32,32}","expires_in":5\}$]]))
       end)
+      it("returns success with authorization header and client_id body param", function()
+        local res = assert(proxy_ssl_client:send {
+          method = "POST",
+          path = "/oauth2/token",
+          body = {
+            client_id = "clientid123",
+            scope = "email",
+            grant_type = "client_credentials"
+          },
+          headers = {
+            ["Host"] = "oauth2_4.com",
+            ["Content-Type"] = "application/json",
+            Authorization = "Basic Y2xpZW50aWQxMjM6c2VjcmV0MTIz"
+          }
+        })
+        local body = assert.res_status(200, res)
+        assert.is_table(ngx.re.match(body, [[^\{"token_type":"bearer","access_token":"[\w]{32,32}","expires_in":5\}$]]))
+      end)
       it("returns an error with a wrong authorization header", function()
         local res = assert(proxy_ssl_client:send {
           method = "POST",
@@ -1123,7 +1141,7 @@ describe("Plugin: oauth2 (access)", function()
 
         local res = assert(proxy_ssl_client:send {
           method = "GET",
-          path = "/request?access_token="..body.access_token,
+          path = "/request?access_token=" .. body.access_token,
           headers = {
             ["Host"] = "oauth2_4.com"
           }
@@ -1357,7 +1375,7 @@ describe("Plugin: oauth2 (access)", function()
 
         local res = assert(proxy_ssl_client:send {
           method = "GET",
-          path = "/request?access_token="..body.access_token,
+          path = "/request?access_token=" .. body.access_token,
           headers = {
             ["Host"] = "oauth2_5.com"
           }
@@ -1457,7 +1475,7 @@ describe("Plugin: oauth2 (access)", function()
         method = "POST",
         path = "/oauth2/token",
         body = {
-          code = code.."hello",
+          code = code .. "hello",
           client_id = "clientid123",
           client_secret = "secret123",
           grant_type = "authorization_code"
@@ -1553,7 +1571,7 @@ describe("Plugin: oauth2 (access)", function()
 
       local res = assert(proxy_ssl_client:send {
         method = "GET",
-        path = "/request?access_token="..body.access_token,
+        path = "/request?access_token=" .. body.access_token,
         headers = {
           ["Host"] = "oauth2.com"
         }
@@ -1665,7 +1683,7 @@ describe("Plugin: oauth2 (access)", function()
 
       local res = assert(proxy_ssl_client:send {
         method = "GET",
-        path = "/request?access_token="..token.access_token,
+        path = "/request?access_token=" .. token.access_token,
         headers = {
           ["Host"] = "oauth2.com"
         }
@@ -1677,7 +1695,7 @@ describe("Plugin: oauth2 (access)", function()
 
       local res = assert(proxy_ssl_client:send {
         method = "GET",
-        path = "/request?access_token="..token.access_token,
+        path = "/request?access_token=" .. token.access_token,
         headers = {
           ["Host"] = "oauth2_3.com"
         }
@@ -1710,7 +1728,7 @@ describe("Plugin: oauth2 (access)", function()
         path = "/request",
         headers = {
           ["Host"] = "oauth2.com",
-          Authorization = "bearer "..token.access_token
+          Authorization = "bearer " .. token.access_token
         }
       })
       assert.res_status(200, res)
@@ -1723,7 +1741,7 @@ describe("Plugin: oauth2 (access)", function()
         path = "/request",
         headers = {
           ["Host"] = "oauth2.com",
-          Authorization = "bearer "..token.access_token
+          Authorization = "bearer " .. token.access_token
         }
       })
       local body = cjson.decode(assert.res_status(200, res))
@@ -1743,7 +1761,7 @@ describe("Plugin: oauth2 (access)", function()
         path = "/request",
         headers = {
           ["Host"] = "oauth2_7.com",
-          Authorization = "bearer "..token.access_token
+          Authorization = "bearer " .. token.access_token
         }
       })
       local body = cjson.decode(assert.res_status(200, res))
@@ -1786,7 +1804,7 @@ describe("Plugin: oauth2 (access)", function()
           path = "/request",
           headers = {
             ["Host"] = "oauth2_8.com",
-            Authorization = "bearer "..token.access_token
+            Authorization = "bearer " .. token.access_token
           }
         })
         assert.res_status(200, res)
@@ -1796,7 +1814,7 @@ describe("Plugin: oauth2 (access)", function()
           path = "/request",
           headers = {
             ["Host"] = "oauth2.com",
-            Authorization = "bearer "..token.access_token
+            Authorization = "bearer " .. token.access_token
           }
         })
         assert.res_status(401, res)
@@ -1809,7 +1827,7 @@ describe("Plugin: oauth2 (access)", function()
           path = "/request",
           headers = {
             ["Host"] = "oauth2_8.com",
-            Authorization = "bearer "..token.access_token
+            Authorization = "bearer " .. token.access_token
           }
         })
         assert.res_status(401, res)
@@ -1819,7 +1837,7 @@ describe("Plugin: oauth2 (access)", function()
           path = "/request",
           headers = {
             ["Host"] = "oauth2.com",
-            Authorization = "bearer "..token.access_token
+            Authorization = "bearer " .. token.access_token
           }
         })
         assert.res_status(200, res)
@@ -1832,7 +1850,7 @@ describe("Plugin: oauth2 (access)", function()
           path = "/request",
           headers = {
             ["Host"] = "oauth2_8.com",
-            Authorization = "bearer "..token.access_token
+            Authorization = "bearer " .. token.access_token
           }
         })
         assert.res_status(200, res)
@@ -1842,7 +1860,7 @@ describe("Plugin: oauth2 (access)", function()
           path = "/request",
           headers = {
             ["Host"] = "oauth2_9.com",
-            Authorization = "bearer "..token.access_token
+            Authorization = "bearer " .. token.access_token
           }
         })
         assert.res_status(200, res)
@@ -1902,7 +1920,7 @@ describe("Plugin: oauth2 (access)", function()
         path = "/request",
         headers = {
           ["Host"] = "oauth2.com",
-          Authorization = "bearer "..token.access_token
+          Authorization = "bearer " .. token.access_token
         }
       })
       local body = assert.res_status(401, res)
@@ -1983,7 +2001,7 @@ describe("Plugin: oauth2 (access)", function()
         path = "/request",
         headers = {
           ["Host"] = "oauth2.com",
-          authorization = "bearer "..token.access_token
+          authorization = "bearer " .. token.access_token
         }
       })
       assert.res_status(200, res)
@@ -1999,7 +2017,7 @@ describe("Plugin: oauth2 (access)", function()
         path = "/request",
         headers = {
           ["Host"] = "oauth2.com",
-          authorization = "bearer "..token.access_token
+          authorization = "bearer " .. token.access_token
         }
       })
       local body = assert.res_status(401, res)
@@ -2019,7 +2037,7 @@ describe("Plugin: oauth2 (access)", function()
         headers = {
           ["Host"] = "oauth2.com",
           ["Content-Type"] = "application/json",
-          authorization = "bearer "..token.access_token
+          authorization = "bearer " .. token.access_token
         }
       })
       local body = assert.res_status(200, res)
@@ -2072,7 +2090,7 @@ describe("Plugin: oauth2 (access)", function()
 
       local res = assert(proxy_client:send {
         method = "GET",
-        path = "/request?access_token="..token.access_token,
+        path = "/request?access_token=" .. token.access_token,
         headers = {
           ["Host"] = "oauth2.com"
         }
@@ -2085,7 +2103,7 @@ describe("Plugin: oauth2 (access)", function()
 
       local res = assert(proxy_client:send {
         method = "GET",
-        path = "/request?access_token="..token.access_token,
+        path = "/request?access_token=" .. token.access_token,
         headers = {
           ["Host"] = "oauth2_3.com"
         }
@@ -2101,11 +2119,11 @@ describe("Plugin: oauth2 (access)", function()
         path = "/request",
         headers = {
           ["Host"] = "oauth2.com",
-          authorization = "bearer "..token.access_token
+          authorization = "bearer " .. token.access_token
         }
       })
       local body = cjson.decode(assert.res_status(200, res))
-      assert.equal("bearer "..token.access_token, body.headers.authorization)
+      assert.equal("bearer " .. token.access_token, body.headers.authorization)
     end)
     it("hides credentials in the header", function()
       local token = provision_token("oauth2_3.com")
@@ -2115,7 +2133,7 @@ describe("Plugin: oauth2 (access)", function()
         path = "/request",
         headers = {
           ["Host"] = "oauth2_3.com",
-          authorization = "bearer "..token.access_token
+          authorization = "bearer " .. token.access_token
         }
       })
       local body = cjson.decode(assert.res_status(200, res))
@@ -2126,7 +2144,7 @@ describe("Plugin: oauth2 (access)", function()
 
       local res = assert(proxy_client:send {
         method = "POST",
-        path = "/request?access_token="..token.access_token,
+        path = "/request?access_token=" .. token.access_token,
         body = {
           foo = "bar"
         },
@@ -2241,7 +2259,7 @@ describe("Plugin: oauth2 (access)", function()
           -- we must provide the apikey again in the extra_headers, for the
           -- token endpoint, because that endpoint is also protected by the
           -- key-auth plugin. Otherwise getting the token simply fails.
-          ["Authorization"] = "bearer "..provision_token("logical-and.com",
+          ["Authorization"] = "bearer " .. provision_token("logical-and.com",
             {["apikey"] = "Mouse"}).access_token,
         }
       })
@@ -2273,7 +2291,7 @@ describe("Plugin: oauth2 (access)", function()
           -- we must provide the apikey again in the extra_headers, for the
           -- token endpoint, because that endpoint is also protected by the
           -- key-auth plugin. Otherwise getting the token simply fails.
-          ["Authorization"] = "bearer "..provision_token("logical-and.com",
+          ["Authorization"] = "bearer " .. provision_token("logical-and.com",
             {["apikey"] = "Mouse"}).access_token,
         }
       })
@@ -2302,7 +2320,7 @@ describe("Plugin: oauth2 (access)", function()
         headers = {
           ["Host"] = "logical-or.com",
           ["apikey"] = "Mouse",
-          ["Authorization"] = "bearer "..provision_token("logical-or.com").access_token,
+          ["Authorization"] = "bearer " .. provision_token("logical-or.com").access_token,
         }
       })
       assert.response(res).has.status(200)
@@ -2334,7 +2352,7 @@ describe("Plugin: oauth2 (access)", function()
         path = "/request",
         headers = {
           ["Host"] = "logical-or.com",
-          ["Authorization"] = "bearer "..provision_token("logical-or.com").access_token,
+          ["Authorization"] = "bearer " .. provision_token("logical-or.com").access_token,
         }
       })
       assert.response(res).has.status(200)

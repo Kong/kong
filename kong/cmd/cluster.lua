@@ -22,7 +22,7 @@ local function execute(args)
   }))
   -- load <PREFIX>/kong.conf containing running node's config
   assert(pl_path.exists(default_conf.prefix),
-         "no such prefix: "..default_conf.prefix)
+         "no such prefix: " .. default_conf.prefix)
   local conf = assert(conf_loader(default_conf.kong_env))
   local dao = assert(DAOFactory.new(conf))
   local serf = Serf.new(conf, dao)
@@ -44,7 +44,7 @@ local function execute(args)
     assert(pl_table.find(KEYS_COMMANDS, args[1]), "invalid command")
     assert(args[1] == "list" or #args == 2, "missing key")
 
-    print(assert(serf:keys("-"..args[1], args[2])))
+    print(assert(serf:keys("-" .. args[1], args[2])))
   end
 end
 
@@ -76,8 +76,8 @@ The available commands are:
                             number of members it is installed on to the console.
 
 Options:
- -c,--conf   (optional string) configuration file
- -p,--prefix (optional string) prefix Kong is running at
+ -c,--conf     (optional string) configuration file
+ -p,--prefix   (optional string) prefix Kong is running at
 ]]
 
 return {

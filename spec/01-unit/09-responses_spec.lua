@@ -31,14 +31,14 @@ describe("Response helpers", function()
   it("is callable via `send_HTTP_STATUS_CODE`", function()
     for status_code_name, status_code in pairs(responses.status_codes) do
       assert.has_no.errors(function()
-        responses["send_"..status_code_name]()
+        responses["send_" .. status_code_name]()
       end)
     end
   end)
   it("sets the correct ngx values and call ngx.say and ngx.exit", function()
     responses.send_HTTP_OK("OK")
     assert.equal(ngx.status, responses.status_codes.HTTP_OK)
-    assert.equal(meta._NAME.."/"..meta._VERSION, ngx.header["Server"])
+    assert.equal(meta._NAME .. "/" .. meta._VERSION, ngx.header["Server"])
     assert.stub(ngx.say).was.called() -- set custom content
     assert.stub(ngx.exit).was.called() -- exit nginx (or continue to the next context if 200)
   end)
@@ -53,7 +53,7 @@ describe("Response helpers", function()
   it("calls `ngx.exit` with the corresponding status_code", function()
     for status_code_name, status_code in pairs(responses.status_codes) do
       assert.has_no.errors(function()
-        responses["send_"..status_code_name]()
+        responses["send_" .. status_code_name]()
         assert.stub(ngx.exit).was.called_with(status_code)
       end)
     end

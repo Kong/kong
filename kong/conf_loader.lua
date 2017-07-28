@@ -70,6 +70,9 @@ local CONF_INFERENCES = {
   latency_tokens = {typ = "boolean"},
   error_default_type = {enum = {"application/json", "application/xml",
                                 "text/html", "text/plain"}},
+  client_max_body_size = {typ = "string"},
+  client_body_buffer_size = {typ = "string"},
+
 
   database = {enum = {"postgres", "cassandra"}},
   pg_port = {typ = "number"},
@@ -179,10 +182,10 @@ local function check_and_infer(conf)
 
     typ = typ or "string"
     if value and not typ_checks[typ](value) then
-      errors[#errors+1] = k.." is not a "..typ..": '"..tostring(value).."'"
+      errors[#errors+1] = k .. " is not a " .. typ .. ": '" .. tostring(value) .. "'"
     elseif v_schema.enum and not tablex.find(v_schema.enum, value) then
-      errors[#errors+1] = k.." has an invalid value: '"..tostring(value)
-                          .."' ("..table.concat(v_schema.enum, ", ")..")"
+      errors[#errors+1] = k .. " has an invalid value: '" .. tostring(value)
+                          .. "' (" .. table.concat(v_schema.enum, ", ") .. ")"
     end
 
     conf[k] = value
@@ -194,7 +197,7 @@ local function check_and_infer(conf)
 
   if conf.cassandra_lb_policy == "DCAwareRoundRobin" and
      not conf.cassandra_local_datacenter then
-     errors[#errors+1] = "must specify 'cassandra_local_datacenter' when "..
+     errors[#errors+1] = "must specify 'cassandra_local_datacenter' when " ..
                         "DCAwareRoundRobin policy is in use"
   end
 
@@ -218,10 +221,10 @@ local function check_and_infer(conf)
     end
 
     if conf.ssl_cert and not pl_path.exists(conf.ssl_cert) then
-      errors[#errors+1] = "ssl_cert: no such file at "..conf.ssl_cert
+      errors[#errors+1] = "ssl_cert: no such file at " .. conf.ssl_cert
     end
     if conf.ssl_cert_key and not pl_path.exists(conf.ssl_cert_key) then
-      errors[#errors+1] = "ssl_cert_key: no such file at "..conf.ssl_cert_key
+      errors[#errors+1] = "ssl_cert_key: no such file at " .. conf.ssl_cert_key
     end
   end
 
@@ -233,10 +236,10 @@ local function check_and_infer(conf)
     end
 
     if conf.client_ssl_cert and not pl_path.exists(conf.client_ssl_cert) then
-      errors[#errors+1] = "client_ssl_cert: no such file at "..conf.client_ssl_cert
+      errors[#errors+1] = "client_ssl_cert: no such file at " .. conf.client_ssl_cert
     end
     if conf.client_ssl_cert_key and not pl_path.exists(conf.client_ssl_cert_key) then
-      errors[#errors+1] = "client_ssl_cert_key: no such file at "..conf.client_ssl_cert_key
+      errors[#errors+1] = "client_ssl_cert_key: no such file at " .. conf.client_ssl_cert_key
     end
   end
 
@@ -248,10 +251,10 @@ local function check_and_infer(conf)
     end
 
     if conf.admin_ssl_cert and not pl_path.exists(conf.admin_ssl_cert) then
-      errors[#errors+1] = "admin_ssl_cert: no such file at "..conf.admin_ssl_cert
+      errors[#errors+1] = "admin_ssl_cert: no such file at " .. conf.admin_ssl_cert
     end
     if conf.admin_ssl_cert_key and not pl_path.exists(conf.admin_ssl_cert_key) then
-      errors[#errors+1] = "admin_ssl_cert_key: no such file at "..conf.admin_ssl_cert_key
+      errors[#errors+1] = "admin_ssl_cert_key: no such file at " .. conf.admin_ssl_cert_key
     end
   end
 
@@ -267,9 +270,9 @@ local function check_and_infer(conf)
   if conf.dns_resolver then
     for _, server in ipairs(conf.dns_resolver) do
       local dns = utils.normalize_ip(server)
-      if (not dns) or (dns.type ~= "ipv4") then
-        errors[#errors+1] = "dns_resolver must be a comma separated list in "..
-                            "the form of IPv4 or IPv4:port, got '"..server.."'"
+      if not dns or dns.type ~= "ipv4" then
+        errors[#errors+1] = "dns_resolver must be a comma separated list in " ..
+                            "the form of IPv4 or IPv4:port, got '" .. server .. "'"
       end
     end
   end
@@ -309,7 +312,7 @@ local function overrides(k, default_v, file_conf, arg_conf)
   end
 
   -- environment variables have higher priority
-  local env_name = "KONG_"..string.upper(k)
+  local env_name = "KONG_" .. string.upper(k)
   local env = os.getenv(env_name)
   if env ~= nil then
     local to_print = env
@@ -346,7 +349,9 @@ local function load(path, custom_conf)
   local s = pl_stringio.open(kong_default_conf)
   local defaults, err = pl_config.read(s)
   s:close()
-  if not defaults then return nil, "could not load default conf: "..err end
+  if not defaults then
+    return nil, "could not load default conf: " .. err
+  end
 
   ---------------------
   -- Configuration file
@@ -355,7 +360,7 @@ local function load(path, custom_conf)
   local from_file_conf = {}
   if path and not pl_path.exists(path) then
     -- file conf has been specified and must exist
-    return nil, "no file at: "..path
+    return nil, "no file at: " .. path
   elseif not path then
     -- try to look for a conf in default locations, but no big
     -- deal if none is found: we will use our defaults.
@@ -372,7 +377,9 @@ local function load(path, custom_conf)
     log.verbose("no config file, skipping loading")
   else
     local f, err = pl_file.read(path)
-    if not f then return nil, err end
+    if not f then
+      return nil, err
+    end
 
     log.verbose("reading config file at %s", path)
     local s = pl_stringio.open(f)
@@ -381,7 +388,9 @@ local function load(path, custom_conf)
       list_delim = "_blank_" -- mandatory but we want to ignore it
     })
     s:close()
-    if not from_file_conf then return nil, err end
+    if not from_file_conf then
+      return nil, err
+    end
   end
 
   -----------------------
@@ -393,7 +402,9 @@ local function load(path, custom_conf)
 
   -- validation
   local ok, err, errors = check_and_infer(conf)
-  if not ok then return nil, err, errors end
+  if not ok then
+    return nil, err, errors
+  end
 
   conf = tablex.merge(conf, defaults) -- intersection (remove extraneous properties)
 
@@ -406,7 +417,7 @@ local function load(path, custom_conf)
         to_print = "******"
       end
 
-      conf_arr[#conf_arr+1] = k.." = "..pl_pretty.write(to_print, "")
+      conf_arr[#conf_arr+1] = k .. " = " .. pl_pretty.write(to_print, "")
     end
 
     table.sort(conf_arr)

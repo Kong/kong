@@ -94,7 +94,7 @@ describe("#ci Plugin: syslog (log)", function()
         assert.not_equal(uuid, json.request.headers["sys-log-uuid"])
       end
     elseif expecting_same then
-      local _, _, stdout = assert(helpers.execute("find /var/log -type f -mmin -5 2>/dev/null | xargs grep -l "..uuid))
+      local _, _, stdout = assert(helpers.execute("find /var/log -type f -mmin -5 2>/dev/null | xargs grep -l " .. uuid))
       assert.True(#stdout > 0)
     end
   end

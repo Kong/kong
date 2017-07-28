@@ -457,6 +457,9 @@ function _M.new(apis)
     return max_uri_a > max_uri_b
   end
 
+  table.sort(uris_prefixes, function(a, b)
+    return #a > #b
+  end)
 
   for category_bit, category in pairs(categories) do
     table.sort(category.apis, function(a, b)
@@ -562,6 +565,8 @@ function _M.new(apis)
         end
 
         if from then
+          -- strip \Q...\E tokens
+          uri = sub(uris_prefixes[i], 3, -3)
           req_category = bor(req_category, MATCH_RULES.URI)
           break
         end
@@ -632,8 +637,9 @@ function _M.new(apis)
 
 
   function self.exec(ngx)
-    local method = ngx.req.get_method()
-    local uri    = ngx.var.request_uri
+    local method      = ngx.req.get_method()
+    local request_uri = ngx.var.request_uri
+    local uri         = request_uri
 
 
     do
@@ -659,16 +665,12 @@ function _M.new(apis)
       return nil
     end
 
-    local new_uri
-    local uri_root = uri == "/"
+    local uri_root = request_uri == "/"
 
-    if uri_root or not api_t.strip_uri_regex then
-      new_uri = uri
-
-    else
+    if not uri_root and api_t.strip_uri_regex then
       local _, err
-      new_uri, _, err = re_sub(uri, api_t.strip_uri_regex, "/$1", "ajo")
-      if not new_uri then
+      uri, _, err = re_sub(uri, api_t.strip_uri_regex, "/$1", "ajo")
+      if not uri then
         log(ERR, "could not strip URI: ", err)
         return
       end
@@ -677,32 +679,27 @@ function _M.new(apis)
 
     local upstream = api_t.upstream
     if upstream.path and upstream.path ~= "/" then
-      if new_uri ~= "/" then
-        new_uri = upstream.file .. new_uri
+      if uri ~= "/" then
+        uri = upstream.file .. uri
 
       else
         if upstream.path ~= upstream.file then
-          if uri_root or sub(uri, -1) == "/" then
-            new_uri = upstream.path
+          if uri_root or sub(request_uri, -1) == "/" then
+            uri = upstream.path
 
           else
-            new_uri = upstream.file
+            uri = upstream.file
           end
 
         else
-          if uri_root or sub(uri, -1) ~= "/" then
-            new_uri = upstream.file
+          if uri_root or sub(request_uri, -1) ~= "/" then
+            uri = upstream.file
 
           else
-            new_uri = upstream.file .. new_uri
+            uri = upstream.file .. uri
           end
         end
       end
-    end
-
-
-    if new_uri ~= uri then
-      ngx.req.set_uri(new_uri)
     end
 
 
@@ -717,7 +714,7 @@ function _M.new(apis)
       ngx.header["Kong-Api-Name"] = api_t.api.name
     end
 
-    return api_t.api, api_t.upstream, host_header
+    return api_t.api, api_t.upstream, host_header, uri
   end
 
 

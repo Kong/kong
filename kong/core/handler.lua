@@ -20,6 +20,8 @@ local balancer_execute = require("kong.core.balancer").execute
 
 local router, router_err
 local ngx_now = ngx.now
+local sub = string.sub
+
 local server_header = _KONG._NAME.."/".._KONG._VERSION
 
 
@@ -62,33 +64,31 @@ return {
     end
   },
   certificate = {
-    before = function()
+    before = function(ctx)
       certificate.execute()
     end
   },
   rewrite = {
-    before = function()
-      ngx.ctx.KONG_REWRITE_START = get_now()
+    before = function(ctx)
+      ctx.KONG_REWRITE_START = get_now()
     end,
-    after = function ()
-      local ctx = ngx.ctx
+    after = function (ctx)
       ctx.KONG_REWRITE_TIME = get_now() - ctx.KONG_REWRITE_START -- time spent in Kong's rewrite_by_lua
     end
   },
   access = {
-    before = function()
+    before = function(ctx)
       if not router then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(
           "no router to route request (reason: " .. tostring(router_err) .. ")"
         )
       end
 
-      local ctx = ngx.ctx
       local var = ngx.var
 
       ctx.KONG_ACCESS_START = get_now()
 
-      local api, upstream, host_header = router.exec(ngx)
+      local api, upstream, host_header, uri = router.exec(ngx)
       if not api then
         return responses.send_HTTP_NOT_FOUND("no API found with those values")
       end
@@ -111,31 +111,65 @@ return {
         send_timeout         = api.upstream_send_timeout or 60000,
         read_timeout         = api.upstream_read_timeout or 60000,
         -- ip                = nil,            -- final target IP address
-        -- failures          = nil,            -- for each failure an entry { name = "...", code = xx }
         -- balancer          = nil,            -- the balancer object, in case of a balancer
         -- hostname          = nil,            -- the hostname belonging to the final target IP
       }
 
+      -- `scheme` is the scheme to use for the upstream call
+      -- `uri` is the URI with which to call upstream, as returned by the
+      --       router, which might have truncated it (`strip_uri`).
+      -- `host_header` is the original header to be preserved if set.
       var.upstream_scheme = upstream.scheme
+      var.upstream_uri    = uri
+      var.upstream_host   = host_header
 
       ctx.api              = api
       ctx.balancer_address = balancer_address
-
-      local ok, err = balancer_execute(balancer_address)
-      if not ok then
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR("failed the initial "..
-          "dns/balancer resolve for '"..balancer_address.host..
-          "' with: "..tostring(err))
-      end
-
-      -- if set `host_header` is the original header to be preserved
-      var.upstream_host = host_header or
-          balancer_address.hostname..":"..balancer_address.port
-
     end,
     -- Only executed if the `router` module found an API and allows nginx to proxy it.
-    after = function()
-      local ctx = ngx.ctx
+    after = function(ctx)
+      local var = ngx.var
+
+      do
+        -- Nginx's behavior when proxying a request with an empty querystring
+        -- `/foo?` is to keep `$is_args` an empty string, hence effectively
+        -- stripping the empty querystring.
+        -- We overcome this behavior with our own logic, to preserve user
+        -- desired semantics.
+        local upstream_uri = var.upstream_uri
+
+        if var.is_args == "?" or sub(var.request_uri, -1) == "?" then
+          var.upstream_uri = upstream_uri .. "?" .. (var.args or "")
+        end
+      end
+
+      local ok, err = balancer_execute(ctx.balancer_address)
+      if not ok then
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR(
+                          "failed the initial dns/balancer resolve for '" ..
+                          ctx.balancer_address.host .. "' with: "         ..
+                          tostring(err))
+      end
+
+      do
+        -- set the upstream host header if not `preserve_host`
+        local upstream_host = var.upstream_host
+
+        if not upstream_host or upstream_host == "" then
+          local addr = ctx.balancer_address
+          upstream_host = addr.hostname
+
+          local upstream_scheme = var.upstream_scheme
+          if upstream_scheme == "http"  and addr.port ~= 80 or
+             upstream_scheme == "https" and addr.port ~= 443
+          then
+            upstream_host = upstream_host .. ":" .. addr.port
+          end
+
+          var.upstream_host = upstream_host
+        end
+      end
+
       local now = get_now()
 
       ctx.KONG_ACCESS_TIME = now - ctx.KONG_ACCESS_START -- time spent in Kong's access_by_lua
@@ -145,18 +179,36 @@ return {
       ctx.KONG_PROXIED = true
     end
   },
-  header_filter = {
+  balancer = {
     before = function()
+      local addr = ngx.ctx.balancer_address
+      local current_try = addr.tries[addr.try_count]
+      current_try.balancer_start = get_now()
+    end,
+    after = function ()
       local ctx = ngx.ctx
+      local addr = ctx.balancer_address
+      local current_try = addr.tries[addr.try_count]
 
+      -- record try-latency
+      local try_latency = get_now() - current_try.balancer_start
+      current_try.balancer_latency = try_latency
+      current_try.balancer_start = nil
+
+      -- record overall latency
+      ctx.KONG_BALANCER_TIME = (ctx.KONG_BALANCER_TIME or 0) + try_latency
+    end
+  },
+  header_filter = {
+    before = function(ctx)
       if ctx.KONG_PROXIED then
         local now = get_now()
         ctx.KONG_WAITING_TIME = now - ctx.KONG_ACCESS_ENDED_AT -- time spent waiting for a response from upstream
         ctx.KONG_HEADER_FILTER_STARTED_AT = now
       end
     end,
-    after = function()
-      local ctx, header = ngx.ctx, ngx.header
+    after = function(ctx)
+      local header = ngx.header
 
       if ctx.KONG_PROXIED then
         if singletons.configuration.latency_tokens then
@@ -179,17 +231,17 @@ return {
     end
   },
   body_filter = {
-    after = function()
-      if ngx.arg[2] and ngx.ctx.KONG_PROXIED then
+    after = function(ctx)
+      if ngx.arg[2] and ctx.KONG_PROXIED then
         -- time spent receiving the response (header_filter + body_filter)
         -- we could uyse $upstream_response_time but we need to distinguish the waiting time
         -- from the receiving time in our logging plugins (especially ALF serializer).
-        ngx.ctx.KONG_RECEIVE_TIME = get_now() - ngx.ctx.KONG_HEADER_FILTER_STARTED_AT
+        ctx.KONG_RECEIVE_TIME = get_now() - ctx.KONG_HEADER_FILTER_STARTED_AT
       end
     end
   },
   log = {
-    after = function()
+    after = function(ctx)
       reports.log()
     end
   }

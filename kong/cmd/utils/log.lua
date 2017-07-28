@@ -54,7 +54,7 @@ local function log(lvl, ...)
     if lvl < _LEVELS.error then
       print(msg)
     else
-      io.stderr:write(msg.."\n")
+      io.stderr:write(msg .. "\n")
     end
   end
 end

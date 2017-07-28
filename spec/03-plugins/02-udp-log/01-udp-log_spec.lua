@@ -12,7 +12,7 @@ describe("Plugin: udp-log (log)", function()
     local api2 = assert(helpers.dao.apis:insert {
       name = "tests-udp-logging2",
       hosts = { "udp_logging2.com" },
-      upstream_url = "http://127.0.0.1:"..HTTP_DELAY_PORT,
+      upstream_url = "http://127.0.0.1:" .. HTTP_DELAY_PORT,
     })
     local api3 = assert(helpers.dao.apis:insert {
       name = "tests-udp-logging",

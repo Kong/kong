@@ -14,7 +14,7 @@ local function execute(args)
   }))
   log.enable()
   assert(pl_path.exists(default_conf.prefix),
-         "no such prefix: "..default_conf.prefix)
+         "no such prefix: " .. default_conf.prefix)
 
   -- load <PREFIX>/kong.conf containing running node's config
   local conf = assert(conf_loader(default_conf.kong_env))
@@ -54,8 +54,8 @@ If the timeout delay is reached, the node will be forcefully
 stopped (SIGTERM).
 
 Options:
- -p,--prefix  (optional string) prefix Kong is running at
- -t,--timeout (default 10) timeout before forced shutdown
+ -p,--prefix   (optional string) prefix Kong is running at
+ -t,--timeout  (default 10) timeout before forced shutdown
 ]]
 
 return {

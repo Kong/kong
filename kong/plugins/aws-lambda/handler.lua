@@ -98,7 +98,7 @@ function AWSLambdaHandler:access(conf)
     port = port,
     access_key = conf.aws_key,
     secret_key = conf.aws_secret,
-    query = conf.qualifier and "Qualifier="..conf.qualifier
+    query = conf.qualifier and "Qualifier=" .. conf.qualifier
   }
 
   local request, err = aws_v4(opts)
@@ -134,7 +134,7 @@ function AWSLambdaHandler:access(conf)
   end
 
   if conf.unhandled_status
-     and headers["X-Amzn-Function-Error"] == "Unhandled"
+     and headers["X-Amz-Function-Error"] == "Unhandled"
   then
     ngx.status = conf.unhandled_status
 

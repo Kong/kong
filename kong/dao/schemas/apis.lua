@@ -91,7 +91,7 @@ local function check_uri(uri)
   if match(esc, "%%") then
     -- % is remaining, so not properly encoded
     local err = uri:sub(esc:find("%%.?.?"))
-    return false, "must use proper encoding; '"..err.."' is invalid"
+    return false, "must use proper encoding; '" .. err .. "' is invalid"
   end
 
   -- From now on, the request_path is considered valid.
@@ -197,7 +197,7 @@ return {
     methods = {type = "array", func = check_methods},
     strip_uri = {type = "boolean", default = true},
     https_only = {type = "boolean", default = false},
-    http_if_terminated = {type = "boolean", default = true},
+    http_if_terminated = {type = "boolean", default = false},
     upstream_url = {type = "url", required = true, func = validate_upstream_url},
     preserve_host = {type = "boolean", default = false},
     retries = {type = "number", default = 5, func = check_smallint},

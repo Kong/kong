@@ -14,7 +14,7 @@ local function execute(args)
   }))
   log.enable()
   assert(pl_path.exists(default_conf.prefix),
-         "no such prefix: "..default_conf.prefix)
+         "no such prefix: " .. default_conf.prefix)
 
   -- load <PREFIX>/kong.conf containing running node's config
   local conf = assert(conf_loader(default_conf.kong_env, {
@@ -40,9 +40,9 @@ and stop the old ones when they have finished processing
 current requests.
 
 Options:
- -c,--conf    (optional string) configuration file
- -p,--prefix  (optional string) prefix Kong is running at
- --nginx-conf (optional string) custom Nginx configuration template
+ -c,--conf     (optional string) configuration file
+ -p,--prefix   (optional string) prefix Kong is running at
+ --nginx-conf  (optional string) custom Nginx configuration template
 ]]
 
 return {

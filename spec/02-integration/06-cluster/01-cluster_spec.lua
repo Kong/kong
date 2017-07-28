@@ -60,7 +60,7 @@ describe("Cluster", function()
 
   describe("Nodes", function()
     it("should register the node on startup", function()
-      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot1))
+      assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path, NODES.servroot1))
 
       -- Wait for node to be registered
       helpers.wait_until(function()
@@ -89,7 +89,7 @@ describe("Cluster", function()
       local conf = pl_tablex.deepcopy(NODES.servroot1)
       conf.cluster_advertise = "5.5.5.5:1234"
 
-      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, conf))
+      assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path, conf))
 
       -- Wait for node to be registered
       helpers.wait_until(function()
@@ -116,13 +116,13 @@ describe("Cluster", function()
 
   describe("Auto-join", function()
     it("should register the second node on startup and auto-join sequentially", function()
-      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot1))
+      assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path, NODES.servroot1))
       -- Wait for first node to be registered
       helpers.wait_until(function()
         return helpers.dao.nodes:count() == 1
       end)
 
-      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot2))
+      assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path, NODES.servroot2))
       -- Wait for second node to be registered
       helpers.wait_until(function()
         return helpers.dao.nodes:count() == 2
@@ -152,9 +152,9 @@ describe("Cluster", function()
     end)
 
     it("should register the second node on startup and auto-join asynchronously", function()
-      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot1))
-      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot2))
-      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot3))
+      assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path, NODES.servroot1))
+      assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path, NODES.servroot2))
+      assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path, NODES.servroot3))
 
       -- We need to wait a few seconds for the async job to kick in and join all the nodes together
       helpers.wait_until(function()
@@ -184,7 +184,7 @@ describe("Cluster", function()
 
   describe("Cache purges", function()
     it("must purge cache on all nodes on member-join", function()
-      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot1))
+      assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path, NODES.servroot1))
       -- Wait for first node to be registered
       helpers.wait_until(function()
         return helpers.dao.nodes:count() == 1
@@ -240,7 +240,7 @@ describe("Cluster", function()
       assert.True(body.requested)
 
       -- Starting second node
-      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot2))
+      assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path, NODES.servroot2))
       -- Wait for the second node to be registered
       helpers.wait_until(function()
         return helpers.dao.nodes:count() == 2
@@ -262,9 +262,9 @@ describe("Cluster", function()
     end)
 
     it("must purge cache on all nodes when a failed serf starts again (member-join event - simulation of a crash in a 3-node setup)", function()
-      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot1))
-      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot2))
-      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot3))
+      assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path, NODES.servroot1))
+      assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path, NODES.servroot2))
+      assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path, NODES.servroot3))
 
       helpers.wait_until(function()
         local api_client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.admin_port, CLIENT_TIMEOUT)
@@ -379,9 +379,9 @@ describe("Cluster", function()
 
       -- The member has now failed, let's bring it up again
       assert(helpers.execute(string.format("%s agent -profile=wan -node=%s -rpc-addr=%s"
-                             .." -bind=%s -event-handler=member-join,"
-                             .."member-leave,member-failed,member-update,"
-                             .."member-reap,user:kong=%s > /dev/null &",
+                             .. " -bind=%s -event-handler=member-join,"
+                             .. "member-leave,member-failed,member-update,"
+                             .. "member-reap,user:kong=%s > /dev/null &",
                             helpers.test_conf.serf_path,
                             node_name,
                             NODES.servroot2.cluster_listen_rpc,

@@ -26,13 +26,13 @@ do
     end,
   }, {
     __index = function(self, key)
-      return responses.send_HTTP_BAD_REQUEST("invalid cache type; '"..
-             tostring(key).."', valid caches are: "..cache_names)
+      return responses.send_HTTP_BAD_REQUEST("invalid cache type; '" ..
+             tostring(key) .. "', valid caches are: " .. cache_names)
     end,
   })
 
   -- build string with valid cache names (for error mesage above)
-  for name in pairs(caches) do cache_names[#cache_names+1] = "'"..name.."'" end
+  for name in pairs(caches) do cache_names[#cache_names+1] = "'" .. name .. "'" end
   table.sort(cache_names)  -- make order deterministic, for test purposes
   cache_names = table.concat(cache_names, ", ")
 end

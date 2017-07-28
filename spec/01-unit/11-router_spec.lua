@@ -605,6 +605,25 @@ describe("Router", function()
           assert.same(use_case[#use_case], api_t.api)
         end)
       end)
+
+      it("does not incorrectly match another API which has a longer [uri]", function()
+        local use_case = {
+          {
+            name = "api-1",
+            uris = { "/a", "/bbbbbbb" }
+          },
+          {
+            name = "api-2",
+            uris = { "/a/bb" }
+          },
+        }
+
+        local router = assert(Router.new(use_case))
+
+        local api_t = router.select("GET", "/a/bb/foobar")
+        assert.truthy(api_t)
+        assert.same(use_case[2], api_t.api)
+      end)
     end)
 
     describe("misses", function()
@@ -798,9 +817,6 @@ describe("Router", function()
           end
         }),
         req = {
-          set_uri = function(request_uri)
-            _ngx.var.request_uri = request_uri
-          end,
           get_method = function()
             return method
           end,
@@ -813,7 +829,7 @@ describe("Router", function()
       return _ngx
     end
 
-    it("returns api/scheme/host/port", function()
+    it("returns api/upstream info/host/uri", function()
       local use_case_apis = {
         {
           name = "api-1",
@@ -830,18 +846,22 @@ describe("Router", function()
       local router = assert(Router.new(use_case_apis))
 
       local _ngx = mock_ngx("GET", "/my-api", {})
-      local api, upstream = router.exec(_ngx)
+      local api, upstream, host_header, uri = router.exec(_ngx)
       assert.same(use_case_apis[1], api)
       assert.equal("http", upstream.scheme)
       assert.equal("httpbin.org", upstream.host)
       assert.equal(80, upstream.port)
+      assert.is_nil(host_header) -- only when `preserve_host = true`
+      assert.equal("/my-api", uri)
 
       local _ngx = mock_ngx("GET", "/my-api-2", {})
-      api, upstream = router.exec(_ngx)
+      api, upstream, host_header, uri = router.exec(_ngx)
       assert.same(use_case_apis[2], api)
       assert.equal("https", upstream.scheme)
       assert.equal("httpbin.org", upstream.host)
       assert.equal(443, upstream.port)
+      assert.is_nil(host_header) -- only when `preserve_host = true`
+      assert.equal("/my-api-2", uri)
     end)
 
     it("parses path component from upstream_url property", function()
@@ -897,9 +917,9 @@ describe("Router", function()
       local router = assert(Router.new(use_case_apis))
 
       local _ngx = mock_ngx("GET", "/endel%C3%B8st", {})
-      local api  = router.exec(_ngx)
+      local api, _, _, uri = router.exec(_ngx)
       assert.same(use_case_apis[1], api)
-      assert.equal("/endel%C3%B8st", _ngx.var.request_uri)
+      assert.equal("/endel%C3%B8st", uri)
     end)
 
     describe("grab_headers", function()
@@ -965,25 +985,25 @@ describe("Router", function()
       it("strips the specified uris from the given uri if matching", function()
         local _ngx = mock_ngx("GET", "/my-api/hello/world", {})
 
-        local api = router.exec(_ngx)
+        local api, _, _, uri = router.exec(_ngx)
         assert.same(use_case_apis[1], api)
-        assert.equal("/hello/world", _ngx.var.request_uri)
+        assert.equal("/hello/world", uri)
       end)
 
       it("strips if matched URI is plain (not a prefix)", function()
         local _ngx = mock_ngx("GET", "/my-api", {})
 
-        local api = router.exec(_ngx)
+        local api, _, _, uri = router.exec(_ngx)
         assert.same(use_case_apis[1], api)
-        assert.equal("/", _ngx.var.request_uri)
+        assert.equal("/", uri)
       end)
 
       it("doesn't strip if 'strip_uri' is not enabled", function()
         local _ngx = mock_ngx("POST", "/my-api/hello/world", {})
 
-        local api = router.exec(_ngx)
+        local api, _, _, uri = router.exec(_ngx)
         assert.same(use_case_apis[2], api)
-        assert.equal("/my-api/hello/world", _ngx.var.request_uri)
+        assert.equal("/my-api/hello/world", uri)
       end)
 
       it("does not strips root / URI", function()
@@ -999,45 +1019,45 @@ describe("Router", function()
 
         local _ngx = mock_ngx("POST", "/my-api/hello/world", {})
 
-        local api = router.exec(_ngx)
+        local api, _, _, uri = router.exec(_ngx)
         assert.same(use_case_apis[1], api)
-        assert.equal("/my-api/hello/world", _ngx.var.request_uri)
+        assert.equal("/my-api/hello/world", uri)
       end)
 
       it("can find an API with stripped URI several times in a row", function()
         local _ngx = mock_ngx("GET", "/my-api", {})
 
-        local api = router.exec(_ngx)
+        local api, _, _, uri = router.exec(_ngx)
         assert.same(use_case_apis[1], api)
-        assert.equal("/", _ngx.var.request_uri)
+        assert.equal("/", uri)
 
         _ngx = mock_ngx("GET", "/my-api", {})
-        local api2 = router.exec(_ngx)
+        local api2, _, _, uri = router.exec(_ngx)
         assert.same(use_case_apis[1], api2)
-        assert.equal("/", _ngx.var.request_uri)
+        assert.equal("/", uri)
       end)
 
       it("can proxy an API with stripped URI with different URIs in a row", function()
         local _ngx = mock_ngx("GET", "/my-api", {})
 
-        local api = router.exec(_ngx)
+        local api, _, _, uri = router.exec(_ngx)
         assert.same(use_case_apis[1], api)
-        assert.equal("/", _ngx.var.request_uri)
+        assert.equal("/", uri)
 
         _ngx = mock_ngx("GET", "/this-api", {})
-        api = router.exec(_ngx)
+        api, _, _, uri = router.exec(_ngx)
         assert.same(use_case_apis[1], api)
-        assert.equal("/", _ngx.var.request_uri)
+        assert.equal("/", uri)
 
         _ngx = mock_ngx("GET", "/my-api", {})
-        api = router.exec(_ngx)
+        api, _, _, uri = router.exec(_ngx)
         assert.same(use_case_apis[1], api)
-        assert.equal("/", _ngx.var.request_uri)
+        assert.equal("/", uri)
 
         _ngx = mock_ngx("GET", "/this-api", {})
-        api = router.exec(_ngx)
+        api, _, _, uri = router.exec(_ngx)
         assert.same(use_case_apis[1], api)
-        assert.equal("/", _ngx.var.request_uri)
+        assert.equal("/", uri)
       end)
 
       it("strips url encoded uris", function()
@@ -1052,9 +1072,9 @@ describe("Router", function()
         local router = assert(Router.new(use_case_apis))
 
         local _ngx = mock_ngx("GET", "/endel%C3%B8st", {})
-        local api  = router.exec(_ngx)
+        local api, _, _, uri = router.exec(_ngx)
         assert.same(use_case_apis[1], api)
-        assert.equal("/", _ngx.var.request_uri)
+        assert.equal("/", uri)
       end)
     end)
 
@@ -1211,10 +1231,10 @@ describe("Router", function()
           local router = assert(Router.new(use_case_apis) )
 
           local _ngx = mock_ngx("GET", args[3], {})
-          local api, upstream = router.exec(_ngx)
+          local api, upstream, _, uri = router.exec(_ngx)
           assert.same(use_case_apis[1], api)
           assert.equal(args[1], upstream.path)
-          assert.equal(args[4], _ngx.var.request_uri)
+          assert.equal(args[4], uri)
         end)
       end
     end)

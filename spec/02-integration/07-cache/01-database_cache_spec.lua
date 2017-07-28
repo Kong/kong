@@ -29,7 +29,7 @@ describe("Resolver", function()
       local client = helpers.proxy_client()
       assert(client:send {
         method = "GET",
-        path = "/status/200?sleep="..sleep_time,
+        path = "/status/200?sleep=" .. sleep_time,
         headers = {
           ["Host"] = "mockbin.com"
         }

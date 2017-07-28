@@ -109,7 +109,7 @@ describe("Plugin: basic-auth (access)", function()
         }
       })
       assert.res_status(401, res)
-      assert.equal('Basic realm="'..meta._NAME..'"', res.headers["WWW-Authenticate"])
+      assert.equal('Basic realm="' .. meta._NAME .. '"', res.headers["WWW-Authenticate"])
     end)
 
   end)

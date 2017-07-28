@@ -159,7 +159,7 @@ describe("Plugin: ldap-auth (access)", function()
       body = {},
       headers = {
         host = "ldap.com",
-        authorization = "ldap "..ngx.encode_base64("einstein:password"),
+        authorization = "ldap " .. ngx.encode_base64("einstein:password"),
         ["content-type"] = "application/x-www-form-urlencoded",
       }
     })
@@ -171,7 +171,7 @@ describe("Plugin: ldap-auth (access)", function()
       path = "/request",
       headers = {
         host = "ldap.com",
-        authorization = " ldap "..ngx.encode_base64("einstein:password")
+        authorization = " ldap " .. ngx.encode_base64("einstein:password")
       }
     })
     assert.response(r).has.status(200)
@@ -182,7 +182,7 @@ describe("Plugin: ldap-auth (access)", function()
       path = "/request",
       headers = {
         host = "ldap.com",
-        authorization = "LDAP "..ngx.encode_base64("einstein:password")
+        authorization = "LDAP " .. ngx.encode_base64("einstein:password")
       }
     })
     assert.response(r).has.status(200)
@@ -193,7 +193,7 @@ describe("Plugin: ldap-auth (access)", function()
       path = "/request",
       headers = {
         host = "ldap.com",
-        authorization = "ldap "..ngx.encode_base64("einstein:password")
+        authorization = "ldap " .. ngx.encode_base64("einstein:password")
       }
     })
     assert.response(r).has.status(200)
@@ -207,7 +207,7 @@ describe("Plugin: ldap-auth (access)", function()
       path = "/request",
       headers = {
         host = "ldap.com",
-        authorization = "ldap "..ngx.encode_base64("einstein:")
+        authorization = "ldap " .. ngx.encode_base64("einstein:")
       }
     })
     assert.response(r).has.status(403)
@@ -218,7 +218,7 @@ describe("Plugin: ldap-auth (access)", function()
       path = "/request",
       headers = {
         host = "ldap.com",
-        authorization = "ldap "..ngx.encode_base64("einstein:password:another_password")
+        authorization = "ldap " .. ngx.encode_base64("einstein:password:another_password")
       }
     })
     assert.response(r).has.status(403)
@@ -229,7 +229,7 @@ describe("Plugin: ldap-auth (access)", function()
       path = "/request",
       headers = {
         host = "ldap.com",
-        authorization = "ldap "..ngx.encode_base64("einstein:wrong_password")
+        authorization = "ldap " .. ngx.encode_base64("einstein:wrong_password")
       }
     })
     assert.response(r).has.status(403)
@@ -240,12 +240,12 @@ describe("Plugin: ldap-auth (access)", function()
       path = "/request",
       headers = {
         host = "ldap.com",
-        authorization = "ldap "..ngx.encode_base64("einstein:password")
+        authorization = "ldap " .. ngx.encode_base64("einstein:password")
       }
     })
     assert.response(r).has.status(200)
     local value = assert.request(r).has.header("authorization")
-    assert.equal("ldap "..ngx.encode_base64("einstein:password"), value)
+    assert.equal("ldap " .. ngx.encode_base64("einstein:password"), value)
   end)
   it("hides credential sent along with authorization header to upstream server", function()
     local r = assert(client:send {
@@ -253,7 +253,7 @@ describe("Plugin: ldap-auth (access)", function()
       path = "/request",
       headers = {
         host = "ldap2.com",
-        authorization = "ldap "..ngx.encode_base64("einstein:password")
+        authorization = "ldap " .. ngx.encode_base64("einstein:password")
       }
     })
     assert.response(r).has.status(200)
@@ -265,7 +265,7 @@ describe("Plugin: ldap-auth (access)", function()
       path = "/request",
       headers = {
         host = "ldap2.com",
-        authorization = "ldap "..ngx.encode_base64("einstein:password")
+        authorization = "ldap " .. ngx.encode_base64("einstein:password")
       }
     })
     assert.response(r).has.status(200)
@@ -275,7 +275,7 @@ describe("Plugin: ldap-auth (access)", function()
     helpers.wait_until(function()
       local res = assert(client_admin:send {
         method = "GET",
-        path = "/cache/"..cache_key
+        path = "/cache/" .. cache_key
       })
       res:read_body()
       return res.status == 200
@@ -285,7 +285,7 @@ describe("Plugin: ldap-auth (access)", function()
     helpers.wait_until(function()
       local res = client_admin:send {
         method = "GET",
-        path = "/cache/"..cache_key
+        path = "/cache/" .. cache_key
       }
       res:read_body()
       --if res.status ~= 404 then
@@ -302,7 +302,7 @@ describe("Plugin: ldap-auth (access)", function()
         path = "/request",
         headers = {
           host = "ldap3.com",
-          authorization = "ldap "..ngx.encode_base64("einstein:password")
+          authorization = "ldap " .. ngx.encode_base64("einstein:password")
         }
       })
       assert.response(r).has.status(200)
@@ -422,7 +422,7 @@ describe("Plugin: ldap-auth (access)", function()
         headers = {
           ["Host"] = "logical-and.com",
           ["apikey"] = "Mouse",
-          ["Authorization"] = "ldap "..ngx.encode_base64("einstein:password"),
+          ["Authorization"] = "ldap " .. ngx.encode_base64("einstein:password"),
         }
       })
       assert.response(res).has.status(200)
@@ -447,7 +447,7 @@ describe("Plugin: ldap-auth (access)", function()
         path = "/request",
         headers = {
           ["Host"] = "logical-and.com",
-          ["Authorization"] = "ldap "..ngx.encode_base64("einstein:password"),
+          ["Authorization"] = "ldap " .. ngx.encode_base64("einstein:password"),
         }
       })
       assert.response(res).has.status(401)
@@ -475,7 +475,7 @@ describe("Plugin: ldap-auth (access)", function()
         headers = {
           ["Host"] = "logical-or.com",
           ["apikey"] = "Mouse",
-          ["Authorization"] = "ldap "..ngx.encode_base64("einstein:password"),
+          ["Authorization"] = "ldap " .. ngx.encode_base64("einstein:password"),
         }
       })
       assert.response(res).has.status(200)
@@ -507,7 +507,7 @@ describe("Plugin: ldap-auth (access)", function()
         path = "/request",
         headers = {
           ["Host"] = "logical-or.com",
-          ["Authorization"] = "ldap "..ngx.encode_base64("einstein:password"),
+          ["Authorization"] = "ldap " .. ngx.encode_base64("einstein:password"),
         }
       })
       assert.response(res).has.status(200)

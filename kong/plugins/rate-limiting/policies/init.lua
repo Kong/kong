@@ -28,11 +28,10 @@ return {
       for period, period_date in pairs(periods) do
         if limits[period] then
           local cache_key = get_local_key(api_id, identifier, period_date, period)
-          cache.sh_add(cache_key, 0, EXPIRATIONS[period])
 
-          local _, err = cache.sh_incr(cache_key, value)
+          local _, err = cache.sh_incr(cache_key, value, 0)
           if err then
-            ngx_log("[rate-limiting] could not increment counter for period '"..period.."': "..tostring(err))
+            ngx_log("[rate-limiting] could not increment counter for period '" .. period .. "': " .. tostring(err))
             return nil, err
           end
         end
@@ -66,7 +65,9 @@ return {
       local db = singletons.dao.db
       local row, err = policy_cluster[db.name].find(db, api_id, identifier,
                                                      current_timestamp, name)
-      if err then return nil, err end
+      if err then
+        return nil, err
+      end
 
       return row and row.value or 0
     end

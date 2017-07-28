@@ -13,7 +13,7 @@ local function execute(args)
   }))
   log.enable()
   assert(pl_path.exists(default_conf.prefix),
-         "no such prefix: "..default_conf.prefix)
+         "no such prefix: " .. default_conf.prefix)
 
   -- load <PREFIX>/kong.conf containing running node's config
   local conf = assert(conf_loader(default_conf.kong_env))
@@ -32,7 +32,7 @@ prefix directory.
 This command sends a SIGTERM signal to Nginx.
 
 Options:
- -p,--prefix (optional string) prefix Kong is running at
+ -p,--prefix   (optional string) prefix Kong is running at
 ]]
 
 return {

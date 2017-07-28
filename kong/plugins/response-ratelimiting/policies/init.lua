@@ -27,11 +27,10 @@ return {
       local periods = timestamp.get_timestamps(current_timestamp)
       for period, period_date in pairs(periods) do
         local cache_key = get_local_key(api_id, identifier, period_date, name, period)
-        cache.sh_add(cache_key, 0, EXPIRATIONS[period])
 
-        local _, err = cache.sh_incr(cache_key, value)
+        local _, err = cache.sh_incr(cache_key, value, 0)
         if err then
-          ngx_log("[response-ratelimiting] could not increment counter for period '"..period.."': "..tostring(err))
+          ngx_log("[response-ratelimiting] could not increment counter for period '" .. period .. "': " .. tostring(err))
           return nil, err
         end
       end
@@ -66,7 +65,9 @@ return {
       local rows, err = policy_cluster[db.name].find(db, api_id, identifier,
                                                      current_timestamp, period,
                                                      name)
-      if err then return nil, err end
+      if err then
+        return nil, err
+      end
 
       return rows and rows.value or 0
     end

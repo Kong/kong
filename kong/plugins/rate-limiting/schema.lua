@@ -29,11 +29,11 @@ return {
       if plugin_t[v] then
         has_value = true
         if plugin_t[v] <=0 then
-          invalid_value = "Value for "..v.." must be greater than zero"
+          invalid_value = "Value for " .. v .. " must be greater than zero"
         else
           for t = i+1, #ordered_periods do
             if plugin_t[ordered_periods[t]] and plugin_t[ordered_periods[t]] < plugin_t[v] then
-              invalid_order = "The limit for "..ordered_periods[t].." cannot be lower than the limit for "..v
+              invalid_order = "The limit for " .. ordered_periods[t] .. " cannot be lower than the limit for " .. v
             end
           end
         end

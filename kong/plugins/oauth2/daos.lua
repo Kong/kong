@@ -9,10 +9,10 @@ local function validate_uris(v, t, column)
     for _, uri in ipairs(v) do
       local parsed_uri = url.parse(uri)
       if not (parsed_uri and parsed_uri.host and parsed_uri.scheme) then
-        return false, "cannot parse '"..uri.."'"
+        return false, "cannot parse '" .. uri .. "'"
       end
       if parsed_uri.fragment ~= nil then
-        return false, "fragment not allowed in '"..uri.."'"
+        return false, "fragment not allowed in '" .. uri .. "'"
       end
     end
   end

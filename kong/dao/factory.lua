@@ -94,19 +94,21 @@ function _M.new(kong_config, events_handler)
     plugin_names = kong_config.plugins or {}
   }
 
-  local DB = require("kong.dao.db."..self.db_type)
+  local DB = require("kong.dao.db." .. self.db_type)
   local db, err = DB.new(kong_config)
-  if not db then return ret_error_string(self.db_type, nil, err) end
+  if not db then
+    return ret_error_string(self.db_type, nil, err)
+  end
 
   self.db = db
 
   local schemas = {}
   for _, m_name in ipairs(CORE_MODELS) do
-    schemas[m_name] = require("kong.dao.schemas."..m_name)
+    schemas[m_name] = require("kong.dao.schemas." .. m_name)
   end
 
   for plugin_name in pairs(self.plugin_names) do
-    local has_schema, plugin_schemas = utils.load_module_if_exists("kong.plugins."..plugin_name..".daos")
+    local has_schema, plugin_schemas = utils.load_module_if_exists("kong.plugins." .. plugin_name .. ".daos")
     if has_schema then
       if plugin_schemas.tables then
         for _, v in ipairs(plugin_schemas.tables) do
@@ -184,11 +186,11 @@ end
 
 function _M:migrations_modules()
   local migrations = {
-    core = require("kong.dao.migrations."..self.db_type)
+    core = require("kong.dao.migrations." .. self.db_type)
   }
 
   for plugin_name in pairs(self.plugin_names) do
-    local ok, plugin_mig = utils.load_module_if_exists("kong.plugins."..plugin_name..".migrations."..self.db_type)
+    local ok, plugin_mig = utils.load_module_if_exists("kong.plugins." .. plugin_name .. ".migrations." .. self.db_type)
     if ok then
       migrations[plugin_name] = plugin_mig
     end
@@ -199,7 +201,9 @@ end
 
 function _M:current_migrations()
   local rows, err = self.db:current_migrations()
-  if err then return ret_error_string(self.db.name, nil, err) end
+  if err then
+    return ret_error_string(self.db.name, nil, err)
+  end
 
   local cur_migrations = {}
   for _, row in ipairs(rows) do
@@ -286,7 +290,9 @@ function _M:run_migrations(on_migrate, on_success)
   end
 
   local ok, err, migrations_ran = migrate(self, "core", migrations_modules, cur_migrations, on_migrate, on_success)
-  if not ok then return ret_error_string(self.db.name, nil, err) end
+  if not ok then
+    return ret_error_string(self.db.name, nil, err)
+  end
 
   for identifier in pairs(migrations_modules) do
     if identifier ~= "core" then
