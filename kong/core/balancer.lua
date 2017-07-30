@@ -171,7 +171,7 @@ local get_balancer = function(target)
   if not balancer then
     -- no balancer yet (or invalidated) so create a new one
     balancer, err = ring_balancer.new({
-        wheelsize = upstream.slots,
+        wheelSize = upstream.slots,
         order = upstream.orderlist,
         dns = dns_client,
       })
@@ -217,7 +217,7 @@ local get_balancer = function(target)
       -- and can replay changes, but not supported by ring-balancer yet.
       -- for now; create a new balancer from scratch
       balancer, err = ring_balancer.new({
-          wheelsize = upstream.slots,
+          wheelSize = upstream.slots,
           order = upstream.orderlist,
           dns = dns_client,
         })
