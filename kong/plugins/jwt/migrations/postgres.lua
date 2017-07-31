@@ -38,5 +38,28 @@ return {
       ALTER TABLE jwt_secrets DROP COLUMN algorithm;
       ALTER TABLE jwt_secrets DROP COLUMN rsa_public_key;
     ]]
-  }
+  },
+  {
+    name = "2017-07-31-113200_jwt_preflight_default",
+    up = function(_, _, dao)
+      local rows, err = dao.db:query([[
+        SELECT * FROM plugins WHERE name = 'jwt';
+      ]])
+      if err then
+        return err
+      end
+
+      for _, row in ipairs(rows) do
+        if row.config.run_on_preflight == nil then
+          local _, err = dao.apis:update({
+            run_on_preflight = true,
+          }, { id = row.id })
+          if err then
+            return err
+          end
+        end
+      end
+    end,
+    down = function(_, _, dao) end  -- not implemented
+  },
 }
