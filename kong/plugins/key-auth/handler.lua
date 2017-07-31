@@ -152,10 +152,6 @@ function KeyAuthHandler:access(conf)
 
   -- check if preflight request and whether it should be authenticated
   if conf.run_on_preflight == false and get_method() == "OPTIONS" then
-    -- FIXME: the above `== false` test is because existing entries in the db will
-    -- have `nil` and hence will by default start passing the preflight request
-    -- This should be fixed by a migration to update the actual entries
-    -- in the datastore
     return
   end
 
