@@ -286,6 +286,7 @@ local function issue_token(conf)
   if not is_https then
     response_params = {[ERROR] = "access_denied", error_description = err or "You must use HTTPS"}
   else
+    
     local grant_type = parameters[GRANT_TYPE]
     if not (grant_type == GRANT_AUTHORIZATION_CODE or
             grant_type == GRANT_REFRESH_TOKEN or
@@ -304,8 +305,11 @@ local function issue_token(conf)
         invalid_client_properties = { status = 401, www_authenticate = "Basic realm=\"OAuth2.0\""}
       end
     else
-      local redirect_uri = parameters[REDIRECT_URI] and parameters[REDIRECT_URI] or allowed_redirect_uris[1]
-      if not utils.table_contains_regex(allowed_redirect_uris, redirect_uri) then
+      
+      -- Since default redirect URIs are now patterns, it's not safe to use them directly before the
+      -- comparison below  as before. Instead, if one is not supplied, don't do the comparison
+      local redirect_uri = parameters[REDIRECT_URI]
+      if redirect_uri and not utils.table_contains_regex(allowed_redirect_uris, redirect_uri) then
         response_params = {[ERROR] = "invalid_request", error_description = "Invalid " .. REDIRECT_URI .. " that does not match with any redirect_uri created with the application" }
       end
     end

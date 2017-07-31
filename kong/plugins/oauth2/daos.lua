@@ -7,11 +7,7 @@ local function validate_uris(v, t, column)
       return false, "at least one URI is required"
     end
     for _, uri in ipairs(v) do
-      local parsed_uri = url.parse(uri)
-      if not (parsed_uri and parsed_uri.host and parsed_uri.scheme) then
-        return false, "cannot parse '" .. uri .. "'"
-      end
-      if parsed_uri.fragment ~= nil then
+      if string.find(uri, '#') ~= nil then
         return false, "fragment not allowed in '" .. uri .. "'"
       end
     end

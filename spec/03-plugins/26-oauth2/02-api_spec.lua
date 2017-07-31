@@ -120,21 +120,6 @@ describe("Plugin: oauth (API)", function()
             path = "/consumers/bob/oauth2",
             body = {
               name = "Test APP",
-              redirect_uri = "not-valid"
-            },
-            headers = {
-              ["Content-Type"] = "application/json"
-            }
-          })
-          local body = assert.res_status(400, res)
-          local json = cjson.decode(body)
-          assert.same({ redirect_uri = "cannot parse 'not-valid'" }, json)
-
-          local res = assert(admin_client:send {
-            method = "POST",
-            path = "/consumers/bob/oauth2",
-            body = {
-              name = "Test APP",
               redirect_uri = "http://test.com/#with-fragment"
             },
             headers = {
@@ -144,21 +129,6 @@ describe("Plugin: oauth (API)", function()
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
           assert.same({ redirect_uri = "fragment not allowed in 'http://test.com/#with-fragment'" }, json)
-
-          local res = assert(admin_client:send {
-            method = "POST",
-            path = "/consumers/bob/oauth2",
-            body = {
-              name = "Test APP",
-              redirect_uri = {"http://valid.com", "not-valid"}
-            },
-            headers = {
-              ["Content-Type"] = "application/json"
-            }
-          })
-          local body = assert.res_status(400, res)
-          local json = cjson.decode(body)
-          assert.same({ redirect_uri = "cannot parse 'not-valid'" }, json)
 
           local res = assert(admin_client:send {
             method = "POST",
@@ -342,7 +312,7 @@ describe("Plugin: oauth (API)", function()
             method = "PATCH",
             path = "/consumers/bob/oauth2/" .. credential.id,
             body = {
-              redirect_uri = "not-valid"
+              redirect_uri = "http://one.com/#fragment"
             },
             headers = {
               ["Content-Type"] = "application/json"
@@ -350,7 +320,7 @@ describe("Plugin: oauth (API)", function()
           })
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
-          assert.same({ redirect_uri = "cannot parse 'not-valid'" }, json)
+          assert.same({ redirect_uri = "fragment not allowed in 'http://one.com/#fragment'" }, json)
         end)
       end)
     end)

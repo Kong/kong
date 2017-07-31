@@ -106,9 +106,9 @@ describe("Plugin: oauth2 (access)", function()
       consumer_id = consumer.id
     })
     assert(helpers.dao.oauth2_credentials:insert {
-      client_id = "clientidwpattern",
+      client_id = "clientwpattern",
       client_secret = "secretforpattern",
-      redirect_uri = {"^http://one.com/one/$", "^http://two.com/two/.*$"},
+      redirect_uri = {'^http://one.com/one$', '^http://two.com/two/.*$'},
       name = "testapp3",
       consumer_id = consumer.id
     })
@@ -1166,7 +1166,7 @@ describe("Plugin: oauth2 (access)", function()
             client_secret="secret456",
             scope = "email",
             grant_type = "client_credentials",
-            redirect_uri = "http://two.com/two/hello"
+            redirect_uri = "http://two.com/hello"
           },
           headers = {
             ["Host"] = "oauth2_4.com",
