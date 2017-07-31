@@ -1,5 +1,4 @@
 local utils = require "kong.tools.utils"
-local url = require "socket.url"
 
 local function validate_uris(v, t, column)
   if v then
