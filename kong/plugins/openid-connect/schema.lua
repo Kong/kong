@@ -32,12 +32,18 @@ return {
     scopes                  = {
       required              = false,
       type                  = "array",
-      default               = { "openid" },
+      default               = {
+        "openid"
+      },
     },
     response_mode           = {
       required              = false,
       type                  = "string",
-      enum                  = { "query", "form_post", "fragment" },
+      enum                  = {
+        "query",
+        "form_post",
+        "fragment"
+      },
       default               = "query",
     },
     auth_methods            = {
@@ -50,6 +56,7 @@ return {
         "bearer",
         "introspection",
         "refresh_token",
+        "session",
       },
       default               = {
         "password",
@@ -57,7 +64,8 @@ return {
         "authorization_code",
         "bearer",
         "introspection",
-        "refresh_token"
+        "refresh_token",
+        "session",
       },
     },
     audience                = {
@@ -88,8 +96,16 @@ return {
     id_token_param_type     = {
       required              = false,
       type                  = "array",
-      enum                  = { "query", "header", "body" },
-      default               = { "query", "header", "body" },
+      enum                  = {
+        "query",
+        "header",
+        "body"
+      },
+      default               = {
+        "query",
+        "header",
+        "body"
+      },
     },
     id_token_header         = {
       required              = false,
@@ -114,14 +130,24 @@ return {
     login_action            = {
       required              = false,
       type                  = "string",
-      enum                  = { "upstream", "response", "redirect" },
+      enum                  = {
+        "upstream",
+        "response",
+        "redirect",
+      },
       default               = "upstream",
     },
     login_tokens            = {
       required              = false,
       type                  = "array",
-      enum                  = { "id_token", "access_token", "refresh_token" },
-      default               = { "id_token" },
+      enum                  = {
+        "id_token",
+        "access_token",
+        "refresh_token",
+      },
+      default               = {
+        "id_token",
+      },
     },
     login_redirect_uri      = {
       required              = false,
@@ -134,8 +160,15 @@ return {
     consumer_by             = {
       required              = false,
       type                  = "array",
-      enum                  = { "id", "username", "custom_id" },
-      default               = { "username", "custom_id" },
+      enum                  = {
+        "id",
+        "username",
+        "custom_id",
+      },
+      default               = {
+        "username",
+        "custom_id",
+      },
     },
     consumer_ttl            = {
       required              = false,
@@ -173,7 +206,10 @@ return {
     http_version            = {
       required              = false,
       type                  = "number",
-      enum                  = { 1.0, 1.1 },
+      enum                  = {
+        1.0,
+        1.1,
+      },
       default               = 1.1,
     },
     ssl_verify              = {

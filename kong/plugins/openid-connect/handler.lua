@@ -250,16 +250,16 @@ function OICHandler:access(conf)
   local secrets   = conf.client_secret
   local redirects = conf.redirect_uri or {}
 
-  local client_id, client_secret, redirection_uri
+  local client_id, client_secret, client_redirect_uri
 
-  -- try to find the right client
+  -- try to find the right client?
   if #clients > 1 then
     client_id = var.http_x_client_id
     if client_id then
       for i, client in ipairs(clients) do
         if client_id == client then
           client_secret   = secrets[i]
-          redirection_uri = redirects[i] or redirects[1]
+          client_redirect_uri = redirects[i] or redirects[1]
           break
         end
       end
@@ -270,7 +270,7 @@ function OICHandler:access(conf)
         for i, client in ipairs(clients) do
           if client_id == client then
             client_secret   = secrets[i]
-            redirection_uri = redirects[i] or redirects[1]
+            client_redirect_uri = redirects[i] or redirects[1]
             break
           end
         end
@@ -282,7 +282,7 @@ function OICHandler:access(conf)
           for i, client in ipairs(clients) do
             if client_id == client then
               client_secret   = secrets[i]
-              redirection_uri = redirects[i] or redirects[1]
+              client_redirect_uri = redirects[i] or redirects[1]
               break
             end
           end
@@ -293,8 +293,9 @@ function OICHandler:access(conf)
 
   -- fallback to default client
   if not client_secret then
-    client_id     = clients[1]
-    client_secret = secrets[1]
+    client_id           = clients[1]
+    client_secret       = secrets[1]
+    client_redirect_uri = redirects[1]
   end
 
   local o
@@ -302,7 +303,7 @@ function OICHandler:access(conf)
   o, err = oic.new({
     client_id         = client_id,
     client_secret     = client_secret,
-    redirect_uri      = redirection_uri   or redirect_uri(),
+    redirect_uri      = client_redirect_uri or redirect_uri(),
     scope             = conf.scopes       or { "openid" },
     response_mode     = conf.response_mode,
     audience          = conf.audience,
@@ -330,6 +331,7 @@ function OICHandler:access(conf)
   local auth_method_bearer
   local auth_method_introspection
   local auth_method_refresh_token
+  local auth_method_session
 
   local auth_methods = conf.auth_methods or {
     "password",
@@ -338,6 +340,7 @@ function OICHandler:access(conf)
     "bearer",
     "introspection",
     "refresh_token",
+    "session",
   }
 
   for _, auth_method in ipairs(auth_methods) do
@@ -358,6 +361,9 @@ function OICHandler:access(conf)
 
     elseif auth_method == "refresh_token" then
       auth_method_refresh_token = true
+
+    elseif auth_method == "session" then
+      auth_method_session = true
     end
   end
 
@@ -365,14 +371,19 @@ function OICHandler:access(conf)
 
   local args, bearer, state
 
-  local s, session_present = session.open()
+  local s, session_present, session_data
+
+  if auth_method_session then
+    s, session_present = session.open()
+    session_data = s.data
+  end
 
   if not session_present then
     -- bearer token authentication
     if auth_method_bearer or auth_method_introspection then
       bearer = o.authorization:bearer()
       if bearer then
-        s.data = {
+        session_data = {
           tokens = {
             access_token = bearer
           }
@@ -461,7 +472,7 @@ function OICHandler:access(conf)
           end
 
           if id_token then
-            s.data.tokens.id_token = id_token
+            session_data.tokens.id_token = id_token
           end
         end
       end
@@ -567,13 +578,17 @@ function OICHandler:access(conf)
     end
   end
 
-  local session_data = s.data or {}
+  if not session_data then
+    session_data = {}
+  end
 
   local default_expires_in = 3600
   local now = time()
   local exp = now + default_expires_in
   local expires
   local tokens_encoded, tokens_decoded, access_token_introspected = session_data.tokens, nil, nil
+
+  -- TODO: check cache for tokend_decoded?
 
   if bearer then
     tokens_decoded, err = o.token:verify(tokens_encoded)
@@ -582,6 +597,9 @@ function OICHandler:access(conf)
     end
 
     local access_token = tokens_decoded.access_token
+
+    -- introspection of opaque access token
+    -- TODO: cache result of introspection query?
     if type(access_token) ~= "table" then
       if auth_method_introspection then
         access_token_introspected, err = o.token:introspect(access_token, "access_token", {
@@ -599,8 +617,10 @@ function OICHandler:access(conf)
       expires = access_token.exp or exp
     end
 
-    s.data.expires = expires
-    s:save()
+    if auth_method_session then
+      s.data.expires = expires
+      s:save()
+    end
 
   elseif not tokens_encoded then
     for _, arg in ipairs(args) do
@@ -622,16 +642,18 @@ function OICHandler:access(conf)
 
     expires = (tonumber(tokens_encoded.expires_in) or default_expires_in) + now
 
-    s.data = {
-      tokens  = tokens_encoded,
-      expires = expires,
-    }
+    if auth_method_session then
+      s.data = {
+        tokens  = tokens_encoded,
+        expires = expires,
+      }
 
-    if session_present then
-      s:regenerate()
+      if session_present then
+        s:regenerate()
 
-    else
-      s:save()
+      else
+        s:save()
+      end
     end
 
     if state then
@@ -679,7 +701,10 @@ function OICHandler:access(conf)
   end
 
   if expires > now then
-    s:start()
+    if auth_method_session then
+      s:start()
+    end
+
     if conf.reverify then
       tokens_decoded, err = o.token:verify(tokens_encoded)
       if not tokens_decoded then
@@ -719,18 +744,21 @@ function OICHandler:access(conf)
 
       expires = (tonumber(tokens_encoded.expires_in) or default_expires_in) + now
 
-      s.data = {
-        tokens  = tokens_encoded,
-        expires = expires,
-      }
+      if auth_method_session then
+        s.data = {
+          tokens  = tokens_encoded,
+          expires = expires,
+        }
 
-      s:regenerate()
+        s:regenerate()
+      end
 
     else
       return forbidden(iss, err, s)
     end
   end
 
+  -- TODO: cache the results of this?
   local consumer_claim = conf.consumer_claim
   if consumer_claim and consumer_claim ~= "" then
     if not tokens_decoded then
@@ -804,13 +832,15 @@ function OICHandler:access(conf)
     end
   end
 
-  -- remove session cookie from the upstream request
-  s:hide()
+  -- remove session cookie from the upstream request?
+  if auth_method_session then
+    s:hide()
+  end
 
-  -- inject access token as a beaerer token in the headers
+  -- inject access token as a bearer token into the headers
   set_header("Authorization", "Bearer " .. tokens_encoded.access_token)
 
-  -- inject access token jwk in th headers?
+  -- inject access token jwk into the headers?
   local access_token_jwk_header = conf.access_token_jwk_header
   if access_token_jwk_header and access_token_jwk_header ~= "" then
     if not tokens_decoded then
@@ -860,6 +890,7 @@ function OICHandler:access(conf)
   end
 
   -- inject user info into the headers?
+  -- TODO: cache result of userinfo query?
   local userinfo_header = conf.userinfo_header
   if userinfo_header and userinfo_header ~= "" then
     local userinfo_data = o:userinfo(tokens_encoded.access_token, { userinfo_format = "base64" })
