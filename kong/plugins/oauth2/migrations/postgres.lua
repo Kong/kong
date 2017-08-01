@@ -213,10 +213,11 @@ return {
         return err
       end
 
-      for _, row in ipairs(rows) do
+      for i = 1, #rows do
         local converted = {}
-        for _, uri in ipairs(row.redirect_uri) do
-          converted[_] = "^" .. uri .. "$"
+        local row = rows[i]
+        for j = 1, #row.redirect_uri do
+          converted[j] = "^" .. row.redirect_uri[j] .. "$"
         end
 
         local _, err = factory.oauth2_credentials.db:update("oauth2_credentials", schema, nil, {id = row.id}, {redirect_uri = converted})

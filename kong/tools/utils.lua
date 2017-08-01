@@ -378,8 +378,8 @@ end
 -- @return Returns `true` if the table contains a regex matching the value, `false` otherwise
 function _M.table_contains_regex(arr, val)
   if arr then
-    for _, p in pairs(arr) do
-      if ngx.re.match(val, p) then
+    for i = 1,  #arr do
+      if re_find(val, arr[i], "jo") then
         return true
       end
     end

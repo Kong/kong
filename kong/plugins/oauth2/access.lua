@@ -165,9 +165,10 @@ local function authorize(conf)
 
       if not allowed_redirect_uris then
         response_params = {[ERROR] = "invalid_client", error_description = "Invalid client authentication" }
+
       else
-        -- Since default redirect URIs are now patterns, it's not safe to use them directly before the
-        -- comparison below  as before. Instead, if one is not supplied, just use the one registered with
+        -- Since default redirect URIs are now patterns, it's not safe to use them directly in the
+        -- comparison below. Instead, if one is not supplied, just use the one registered with
         -- the application. In either case, we should try to remove the start/end of string characters.
         -- This is pretty hacky, perhaps a "default redirect URI" option should be provided instead.
         redirect_uri = parameters[REDIRECT_URI]
@@ -178,6 +179,7 @@ local function authorize(conf)
             -- redirect_uri used in this case is the first one registered with the application
             redirect_uri = string.gsub(allowed_redirect_uris[1],"[%^%$]","")
           end
+
         else
           redirect_uri = string.gsub(allowed_redirect_uris[1],"[%^%$]","")
         end
@@ -286,7 +288,6 @@ local function issue_token(conf)
   if not is_https then
     response_params = {[ERROR] = "access_denied", error_description = err or "You must use HTTPS"}
   else
-    
     local grant_type = parameters[GRANT_TYPE]
     if not (grant_type == GRANT_AUTHORIZATION_CODE or
             grant_type == GRANT_REFRESH_TOKEN or
@@ -305,7 +306,6 @@ local function issue_token(conf)
         invalid_client_properties = { status = 401, www_authenticate = "Basic realm=\"OAuth2.0\""}
       end
     else
-      
       -- Since default redirect URIs are now patterns, it's not safe to use them directly before the
       -- comparison below  as before. Instead, if one is not supplied, don't do the comparison
       local redirect_uri = parameters[REDIRECT_URI]
