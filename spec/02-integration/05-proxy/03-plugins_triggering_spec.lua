@@ -3,6 +3,8 @@ local helpers = require "spec.helpers"
 describe("Plugins triggering", function()
   local client
   setup(function()
+    helpers.run_migrations()
+
     local consumer1 = assert(helpers.dao.consumers:insert {
       username = "consumer1"
     })
@@ -159,5 +161,85 @@ describe("Plugins triggering", function()
     })
     assert.res_status(200, res)
     assert.equal("5", res.headers["x-ratelimit-limit-hour"])
+  end)
+
+  describe("anonymous reports execution", function()
+    -- anonymous reports are implemented as a plugin which is being executed
+    -- by the plugins runloop, but which doesn't have a schema
+    --
+    -- This is a regression test after:
+    --     https://github.com/Mashape/kong/issues/2756
+    -- to ensure that this plugin plays well when it is being executed by
+    -- the runloop (which accesses plugins schemas and is vulnerable to
+    -- Lua indexing errors)
+    --
+    -- At the time of this test, the issue only arises when a request is
+    -- authenticated via an auth plugin, and the runloop runs again, and
+    -- tries to evaluate is the `schema.no_consumer` flag is set.
+    -- Since the reports plugin has no `schema`, this indexing fails.
+
+    setup(function()
+      if client then
+        client:close()
+      end
+
+      helpers.stop_kong()
+
+      helpers.dao:truncate_tables()
+
+      local api      = assert(helpers.dao.apis:insert {
+        name         = "example",
+        hosts        = { "httpbin.org" },
+        upstream_url = "http://httpbin.org",
+      })
+
+      assert(helpers.dao.plugins:insert {
+        name   = "key-auth",
+        api_id = api.id,
+      })
+
+      local consumer = assert(helpers.dao.consumers:insert {
+        username = "bob",
+      })
+
+      assert(helpers.dao.keyauth_credentials:insert {
+        key         = "abcd",
+        consumer_id = consumer.id,
+      })
+
+      assert(helpers.start_kong {
+        anonymous_reports = true,
+      })
+      client = helpers.proxy_client()
+    end)
+
+    teardown(function()
+      if client then
+        client:close()
+      end
+
+      helpers.stop_kong()
+    end)
+
+    it("runs without causing an internal error", function()
+      local res = assert(client:send {
+        method  = "GET",
+        path    = "/status/200",
+        headers = {
+          ["Host"] = "httpbin.org",
+        },
+      })
+      assert.res_status(401, res)
+
+      res = assert(client:send {
+        method  = "GET",
+        path    = "/status/200",
+        headers = {
+          ["Host"]   = "httpbin.org",
+          ["apikey"] = "abcd",
+        },
+      })
+      assert.res_status(200, res)
+    end)
   end)
 end)

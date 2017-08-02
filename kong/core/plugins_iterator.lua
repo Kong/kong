@@ -71,7 +71,7 @@ local function get_next(self)
       local consumer_id = consumer.id
       local schema      = plugin.schema
 
-      if not schema.no_consumer then
+      if schema and not schema.no_consumer then
         if api then
           plugin_configuration = load_plugin_configuration(api.id, consumer_id, plugin.name)
         end
