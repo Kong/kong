@@ -13,6 +13,7 @@ local uuid = require "resty.jit-uuid"
 local pl_stringx = require "pl.stringx"
 
 local C          = ffi.C
+local ffi_fill   = ffi.fill
 local ffi_new    = ffi.new
 local ffi_str    = ffi.string
 local type       = type
@@ -120,6 +121,7 @@ do
 
   function _M.get_rand_bytes(n_bytes)
     local buf = ffi_new(bytes_buf_t, n_bytes)
+    ffi_fill(buf, n_bytes, 0x0)
 
     if C.RAND_bytes(buf, n_bytes) == 0 then
       -- get error code

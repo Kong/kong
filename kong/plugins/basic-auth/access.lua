@@ -37,7 +37,7 @@ local function retrieve_credentials(request, header_name, conf)
       return
     end
 
-    if m and next(m) then
+    if m and m[1] then
       local decoded_basic = ngx.decode_base64(m[1])
       if decoded_basic then
         local basic_parts = utils.split(decoded_basic, ":")

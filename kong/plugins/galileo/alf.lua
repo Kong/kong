@@ -26,7 +26,6 @@ local req_start_time = ngx.req.start_time
 local req_get_method = ngx.req.get_method
 local req_get_headers = ngx.req.get_headers
 local req_get_uri_args = ngx.req.get_uri_args
-local req_raw_header = ngx.req.raw_header
 local encode_base64 = ngx.encode_base64
 local http_version = ngx.req.http_version
 local setmetatable = setmetatable
@@ -35,6 +34,7 @@ local os_date = os.date
 local pairs = pairs
 local type = type
 local gsub = string.gsub
+local fmt = string.format
 
 local _M = {
   _VERSION = "2.0.0",
@@ -80,6 +80,22 @@ local function hash_to_array(t)
   return arr
 end
 
+-- Calculate an approximation of header size (it doesn't calculate white 
+-- space that may be sorrounding values, other than that it's accurate)
+local function calculate_headers_size(request_line, headers)
+  local size = 0
+  for k, v in pairs(headers) do
+    if type(v) == "table" then
+      for _, y in ipairs(v) do
+        size = size + #k + 2 + #tostring(y) + 2 --First 2 is semicolon + space
+      end
+    else
+      size = size + #k + 2 + #tostring(v) + 2 --First 2 is semicolon + space
+    end
+  end
+  return #request_line + 2 + size + 2 -- 2 it's \r\n, 4 it's trailing \r\n\r\n
+end
+
 local function get_header(t, name, default)
   local v = t[name]
   if not v then
@@ -111,6 +127,7 @@ function _M:add_entry(_ngx, req_body_str, resp_body_str)
   local var = _ngx.var
   local ctx = _ngx.ctx
   local http_version = "HTTP/" .. http_version()
+  local method = req_get_method()
   local request_headers = req_get_headers()
   local request_content_len = get_header(request_headers, "content-length", 0)
   local request_transfer_encoding = get_header(request_headers, "transfer-encoding")
@@ -182,11 +199,13 @@ function _M:add_entry(_ngx, req_body_str, resp_body_str)
     clientIPAddress = var.remote_addr,
     request = {
       httpVersion = http_version,
-      method = req_get_method(),
+      method = method,
       url = var.scheme .. "://" .. var.host .. var.request_uri,
       queryString = hash_to_array(req_get_uri_args()),
       headers = hash_to_array(request_headers),
-      headersSize = #req_raw_header(),
+      headersSize = calculate_headers_size(
+                      fmt("%s %s %s", method, var.request_uri, http_version), 
+                      request_headers),
       postData = post_data,
       bodyCaptured = req_has_body,
       bodySize = req_body_size,

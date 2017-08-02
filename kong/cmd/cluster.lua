@@ -76,8 +76,8 @@ The available commands are:
                             number of members it is installed on to the console.
 
 Options:
- -c,--conf   (optional string) configuration file
- -p,--prefix (optional string) prefix Kong is running at
+ -c,--conf     (optional string) configuration file
+ -p,--prefix   (optional string) prefix Kong is running at
 ]]
 
 return {
