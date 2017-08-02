@@ -62,7 +62,11 @@ local function log(premature, conf, message)
     return
   end
   
-  local api_name = string_gsub(message.api.name, "%.", "_")
+  local api_name = "UNKNOWN_API"
+  if message.api ~= nil then
+    api_name = string_gsub(message.api.name, "%.", "_")
+  end
+
   for _, metric in pairs(conf.metrics) do
     local gauge = gauges[metric]
     if gauge ~= nil then
