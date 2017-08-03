@@ -42,11 +42,11 @@ describe("Entities Schemas", function()
       end)
 
       it("should not accept a name with reserved URI characters in it", function()
-        for _, name in ipairs({"mockbin#2", "mockbin/com", "mockbin\"", "mockbin:2", "mockbin?", "[mockbin]"}) do
+        for _, name in ipairs({"example#2", "example/com", "example\"", "example:2", "example?", "[example]"}) do
           local t = {
             name = name,
-            upstream_url = "http://mockbin.com",
-            hosts = { "mockbin.com" }
+            upstream_url = "http://example.com",
+            hosts = { "example.com" }
           }
 
           local valid, errors = validate_entity(t, api_schema)
@@ -60,9 +60,9 @@ describe("Entities Schemas", function()
     describe("upstream_url", function()
       it("should return error with wrong upstream_url", function()
         local valid, errors = validate_entity({
-          name = "mockbin",
+          name = "example",
           upstream_url = "asdasd",
-          hosts = { "mockbin.com" },
+          hosts = { "example.com" },
         }, api_schema)
         assert.is_false(valid)
         assert.equal("upstream_url is not a url", errors.upstream_url)
@@ -70,9 +70,9 @@ describe("Entities Schemas", function()
 
       it("should return error with wrong upstream_url protocol", function()
         local valid, errors = validate_entity({
-          name = "mockbin",
-          upstream_url = "wot://mockbin.com/",
-          hosts = { "mockbin.com" },
+          name = "example",
+          upstream_url = "wot://example.com/",
+          hosts = { "example.com" },
         }, api_schema)
         assert.is_false(valid)
         assert.equal("Supported protocols are HTTP and HTTPS", errors.upstream_url)
@@ -80,9 +80,9 @@ describe("Entities Schemas", function()
 
       it("should not return error with final slash in upstream_url", function()
         local valid, errors = validate_entity({
-          name = "mockbin",
-          upstream_url = "http://mockbin.com/",
-          hosts = { "mockbin.com" },
+          name = "example",
+          upstream_url = "http://example.com/",
+          hosts = { "example.com" },
         }, api_schema)
         assert.is_nil(errors)
         assert.is_true(valid)
@@ -90,9 +90,9 @@ describe("Entities Schemas", function()
 
       it("should validate with upper case protocol", function()
         local valid, errors = validate_entity({
-          name = "mockbin",
-          upstream_url = "HTTP://mockbin.com/world",
-          hosts = { "mockbin.com" },
+          name = "example",
+          upstream_url = "HTTP://example.com/world",
+          hosts = { "example.com" },
         }, api_schema)
         assert.falsy(errors)
         assert.is_true(valid)
@@ -102,9 +102,9 @@ describe("Entities Schemas", function()
     describe("hosts", function()
       it("accepts an array", function()
         local t = {
-          name = "httpbin",
-          upstream_url = "http://httpbin.org",
-          hosts = { "httpbin.org" },
+          name = "example",
+          upstream_url = "http://example.org",
+          hosts = { "example.org" },
         }
 
         local ok, errors = validate_entity(t, api_schema)
@@ -114,8 +114,8 @@ describe("Entities Schemas", function()
 
       it("accepts valid hosts", function()
         local valids = {"hello.com", "hello.fr", "test.hello.com", "1991.io", "hello.COM",
-                        "HELLO.com", "123helloWORLD.com", "mockbin.123", "mockbin-api.com",
-                        "hello.abcd", "mockbin_api.com", "localhost",
+                        "HELLO.com", "123helloWORLD.com", "example.123", "example-api.com",
+                        "hello.abcd", "example_api.com", "localhost",
                         -- punycode examples from RFC3492; https://tools.ietf.org/html/rfc3492#page-14
                         -- specifically the japanese ones as they mix ascii with escaped characters
                         "3B-ww4c5e180e575a65lsy2b", "-with-SUPER-MONKEYS-pc58ag80a8qai00g7n9n",
@@ -125,8 +125,8 @@ describe("Entities Schemas", function()
 
         for _, v in ipairs(valids) do
           local t = {
-            name = "mockbin",
-            upstream_url = "http://mockbin.com",
+            name = "example",
+            upstream_url = "http://example.com",
             hosts = { v },
           }
 
@@ -137,12 +137,12 @@ describe("Entities Schemas", function()
       end)
 
       it("accepts hosts with valid wildcard", function()
-        local valids = {"mockbin.*", "*.mockbin.org"}
+        local valids = {"example.*", "*.example.org"}
 
         for _, v in ipairs(valids) do
           local t = {
-            name = "mockbin",
-            upstream_url = "http://mockbin.com",
+            name = "example",
+            upstream_url = "http://example.com",
             hosts = { v },
           }
 
@@ -155,12 +155,12 @@ describe("Entities Schemas", function()
       describe("errors", function()
         pending("rejects if not a table", function()
           -- pending: currently, schema_validation uses `split()` which creates
-          -- a table containing { "mockbin.com" }, hence this test is not
+          -- a table containing { "example.com" }, hence this test is not
           -- relevant.
           local t = {
-            name = "mockbin",
-            upstream_url = "http://mockbin.com",
-            hosts = "mockbin.com",
+            name = "example",
+            upstream_url = "http://example.com",
+            hosts = "example.com",
           }
 
           local ok, errors = validate_entity(t, api_schema)
@@ -170,8 +170,8 @@ describe("Entities Schemas", function()
 
         it("rejects values that are not strings", function()
           local t = {
-            name = "mockbin",
-            upstream_url = "http://mockbin.com",
+            name = "example",
+            upstream_url = "http://example.com",
             hosts = { 123 },
           }
 
@@ -185,8 +185,8 @@ describe("Entities Schemas", function()
 
           for _, v in ipairs(invalids) do
             local t = {
-              name = "mockbin",
-              upstream_url = "http://mockbin.com",
+              name = "example",
+              upstream_url = "http://example.com",
               hosts = { v },
             }
 
@@ -197,15 +197,15 @@ describe("Entities Schemas", function()
         end)
 
         it("rejects invalid hosts", function()
-          local invalids = {"/mockbin", ".mockbin", "mockbin.", "mock;bin",
-                            "mockbin.com/org",
-                            "mockbin-.org", "mockbin.org-",
-                            "hello..mockbin.com", "hello-.mockbin.com"}
+          local invalids = {"/example", ".example", "example.", "mock;bin",
+                            "example.com/org",
+                            "example-.org", "example.org-",
+                            "hello..example.com", "hello-.example.com"}
 
           for _, v in ipairs(invalids) do
             local t = {
-              name = "mockbin",
-              upstream_url = "http://mockbin.com",
+              name = "example",
+              upstream_url = "http://example.com",
               hosts = { v },
             }
 
@@ -216,12 +216,12 @@ describe("Entities Schemas", function()
         end)
 
         it("rejects invalid wildcard placement", function()
-          local invalids = {"*mockbin.com", "www.mockbin*", "mock*bin.com"}
+          local invalids = {"*example.com", "www.example*", "mock*bin.com"}
 
           for _, v in ipairs(invalids) do
             local t = {
-              name = "mockbin",
-              upstream_url = "http://mockbin.com",
+              name = "example",
+              upstream_url = "http://example.com",
               hosts = { v },
             }
 
@@ -233,9 +233,9 @@ describe("Entities Schemas", function()
 
         it("rejects host with too many wildcards", function()
           local api_t = {
-            name = "mockbin",
-            upstream_url = "http://mockbin.com",
-            hosts = { "*.mockbin.*" },
+            name = "example",
+            upstream_url = "http://example.com",
+            hosts = { "*.example.*" },
           }
 
           local ok, errors = validate_entity(api_t, api_schema)
@@ -248,8 +248,8 @@ describe("Entities Schemas", function()
     describe("uris", function()
       it("accepts correct uris", function()
         local t = {
-          name = "httpbin",
-          upstream_url = "http://httpbin.org",
+          name = "example",
+          upstream_url = "http://example.org",
           uris = { "/path" },
         }
 
@@ -260,8 +260,8 @@ describe("Entities Schemas", function()
 
       it("accepts unreserved characters from RFC 3986", function()
         local t = {
-          name = "httpbin",
-          upstream_url = "http://httpbin.org",
+          name = "example",
+          upstream_url = "http://example.org",
           uris = { "/abcd~user~2" },
         }
 
@@ -272,8 +272,8 @@ describe("Entities Schemas", function()
 
       it("accepts reserved characters from RFC 3986 (considered as a regex)", function()
         local t = {
-          name = "httpbin",
-          upstream_url = "http://httpbin.org",
+          name = "example",
+          upstream_url = "http://example.org",
           uris = { "/users/[a-z]+/" },
         }
 
@@ -287,8 +287,8 @@ describe("Entities Schemas", function()
 
         for _, v in ipairs(valids) do
             local t = {
-              name = "mockbin",
-              upstream_url = "http://mockbin.com",
+              name = "example",
+              upstream_url = "http://example.com",
               uris = { v },
             }
 
@@ -303,8 +303,8 @@ describe("Entities Schemas", function()
 
         for _, v in ipairs(invalids) do
           local t = {
-            name = "mockbin",
-            upstream_url = "http://mockbin.com",
+            name = "example",
+            upstream_url = "http://example.com",
             uris = { v },
           }
 
@@ -316,8 +316,8 @@ describe("Entities Schemas", function()
 
       it("accepts root (prefix slash)", function()
         local ok, errors = validate_entity({
-          name = "mockbin",
-          upstream_url = "http://mockbin.com",
+          name = "example",
+          upstream_url = "http://example.com",
           uris = { "/" },
         }, api_schema)
 
@@ -330,8 +330,8 @@ describe("Entities Schemas", function()
 
         for _, v in ipairs(valids) do
           local t = {
-            name = "mockbin",
-            upstream_url = "http://mockbin.com",
+            name = "example",
+            upstream_url = "http://example.com",
             uris = { v },
           }
 
@@ -345,8 +345,8 @@ describe("Entities Schemas", function()
       describe("errors", function()
         it("rejects values that are not strings", function()
           local t = {
-            name = "mockbin",
-            upstream_url = "http://mockbin.com",
+            name = "example",
+            upstream_url = "http://example.com",
             uris = { 123 },
           }
 
@@ -360,8 +360,8 @@ describe("Entities Schemas", function()
 
           for _, v in ipairs(invalids) do
             local t = {
-              name = "mockbin",
-              upstream_url = "http://mockbin.com",
+              name = "example",
+              upstream_url = "http://example.com",
               uris = { v },
             }
 
@@ -385,8 +385,8 @@ describe("Entities Schemas", function()
 
           for i, v in ipairs(invalids) do
             local t = {
-              name = "mockbin",
-              upstream_url = "http://mockbin.com",
+              name = "example",
+              upstream_url = "http://example.com",
               uris = { v },
             }
 
@@ -401,8 +401,8 @@ describe("Entities Schemas", function()
 
           for _, v in ipairs(invalids) do
             local t = {
-              name = "mockbin",
-              upstream_url = "http://mockbin.com",
+              name = "example",
+              upstream_url = "http://example.com",
               uris = { v },
             }
 
@@ -417,8 +417,8 @@ describe("Entities Schemas", function()
 
           for _, v in ipairs(invalids) do
             local t = {
-              name = "mockbin",
-              upstream_url = "http://mockbin.com",
+              name = "example",
+              upstream_url = "http://example.com",
               uris = { v },
             }
 
@@ -433,8 +433,8 @@ describe("Entities Schemas", function()
 
           for _, v in ipairs(invalids) do
             local t = {
-              name = "mockbin",
-              upstream_url = "http://mockbin.com",
+              name = "example",
+              upstream_url = "http://example.com",
               uris = { v },
             }
 
@@ -449,8 +449,8 @@ describe("Entities Schemas", function()
     describe("methods", function()
       it("accepts correct methods", function()
         local t = {
-          name = "httpbin",
-          upstream_url = "http://httpbin.org",
+          name = "example",
+          upstream_url = "http://example.org",
           methods = { "GET", "POST" },
         }
 
@@ -462,8 +462,8 @@ describe("Entities Schemas", function()
       describe("errors", function()
         it("rejects values that are not strings", function()
           local t = {
-            name = "mockbin",
-            upstream_url = "http://mockbin.com",
+            name = "example",
+            upstream_url = "http://example.com",
             methods = { 123 },
           }
 
@@ -477,8 +477,8 @@ describe("Entities Schemas", function()
 
           for _, v in ipairs(invalids) do
             local t = {
-              name = "mockbin",
-              upstream_url = "http://mockbin.com",
+              name = "example",
+              upstream_url = "http://example.com",
               methods = { v },
             }
 
@@ -493,8 +493,8 @@ describe("Entities Schemas", function()
 
           for _, v in ipairs(invalids) do
             local t = {
-              name = "mockbin",
-              upstream_url = "http://mockbin.com",
+              name = "example",
+              upstream_url = "http://example.com",
               methods = { v },
             }
 
@@ -511,8 +511,8 @@ describe("Entities Schemas", function()
         local valids = {0, 5, 100, 32767}
         for _, v in ipairs(valids) do
           local t = {
-            name = "mockbin",
-            upstream_url = "http://mockbin.com",
+            name = "example",
+            upstream_url = "http://example.com",
             hosts = { "mydomain.com" },
             retries = v,
           }
@@ -526,8 +526,8 @@ describe("Entities Schemas", function()
         local valids = { -5, 32768}
         for _, v in ipairs(valids) do
           local t = {
-            name = "mockbin",
-            upstream_url = "http://mockbin.com",
+            name = "example",
+            upstream_url = "http://example.com",
             hosts = { "mydomain.com" },
             retries = v,
           }
@@ -541,8 +541,8 @@ describe("Entities Schemas", function()
 
     it("should complain if no [hosts] or [uris] or [methods]", function()
       local ok, errors, self_err = validate_entity({
-        name = "httpbin",
-        upstream_url = "http://httpbin.org",
+        name = "example",
+        upstream_url = "http://example.org",
       }, api_schema)
 
       assert.is_false(ok)
@@ -566,7 +566,7 @@ describe("Entities Schemas", function()
           for j = 1, #valids do
             assert(validate_entity({
               name         = "api",
-              upstream_url = "http://httpbin.org",
+              upstream_url = "http://example.org",
               methods      = "GET",
               [field]      = valids[j],
             }, api_schema))
@@ -579,7 +579,7 @@ describe("Entities Schemas", function()
           for j = 1, #invalids do
             local ok, errors = validate_entity({
               name         = "api",
-              upstream_url = "http://httpbin.org",
+              upstream_url = "http://example.org",
               methods      = "GET",
               [field]      = invalids[j],
             }, api_schema)
@@ -938,7 +938,7 @@ describe("Entities Schemas", function()
       -- does not complain about the missing "name" field
 
       local t = {
-        upstream_url = "http://mockbin.com",
+        upstream_url = "http://example.com",
         hosts = { "" },
       }
 
