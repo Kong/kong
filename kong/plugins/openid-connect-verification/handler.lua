@@ -134,7 +134,7 @@ local function unexpected(err)
 end
 
 
-local function consumer(conf, tok, claim, anon)
+local function consumer(issuer, tok, claim, anon, consumer_by)
   if not tok then
     return nil, "token for consumer mapping was not found"
   end
@@ -159,7 +159,7 @@ local function consumer(conf, tok, claim, anon)
     return nil, "claim (" .. claim .. ") was not found for consumer mapping"
   end
 
-  return cache.consumers.load(conf, subject, anon)
+  return cache.consumers.load(issuer, subject, anon, consumer_by)
 end
 
 
@@ -368,17 +368,18 @@ function OICVerificationHandler:access(conf)
 
   local claim = conf.consumer_claim
   if claim and claim ~= "" then
+    local consumer_by = conf.consumer_by
     local mapped_consumer
 
     local id_token = decoded.id_token
     if id_token then
-      mapped_consumer, err = consumer(conf, id_token, claim)
+      mapped_consumer, err = consumer(iss, id_token, claim, false, consumer_by)
       if not mapped_consumer then
-        mapped_consumer = consumer(conf, decoded.access_token, claim)
+        mapped_consumer = consumer(iss, decoded.access_token, claim, false, consumer_by)
       end
 
     else
-        mapped_consumer, err = consumer(conf, decoded.access_token, claim)
+        mapped_consumer, err = consumer(iss, decoded.access_token, claim, false, consumer_by)
     end
 
     local is_anonymous = false
@@ -402,7 +403,7 @@ function OICVerificationHandler:access(conf)
         }
       }
 
-      mapped_consumer, err = consumer(conf, tok, claim, true)
+      mapped_consumer, err = consumer(iss, tok, claim, true, consumer_by)
       if not mapped_consumer then
         if err then
           return unauthorized(iss, "anonymous consumer was not found (" .. err .. ")")

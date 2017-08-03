@@ -84,10 +84,6 @@ return {
       enum            = { "id", "username", "custom_id" },
       default         = { "custom_id" }
     },
-    consumer_ttl      = {
-      required        = false,
-      type            = "number",
-    },
     anonymous         = {
       type            = "string",
       func            = check_user,

@@ -151,7 +151,7 @@ local function multipart(name, timeout)
   return p
 end
 
-local function consumer(conf, token, claim, anonymous)
+local function consumer(issuer, token, claim, anonymous, consumer_by)
   if not token then
     return nil, "token for consumer mapping was not found"
   end
@@ -176,7 +176,7 @@ local function consumer(conf, token, claim, anonymous)
     return nil, "claim (" .. claim .. ") was not found for consumer mapping"
   end
 
-  return cache.consumers.load(conf, subject, anonymous)
+  return cache.consumers.load(issuer, subject, anonymous, consumer_by)
 end
 
 
@@ -543,6 +543,7 @@ function OICHandler:access(conf)
                 return unauthorized(iss, err)
               end
 
+              authorization:hide()
               authorization:destroy()
 
               uri_args.code  = nil
@@ -761,6 +762,8 @@ function OICHandler:access(conf)
   -- TODO: cache the results of this?
   local consumer_claim = conf.consumer_claim
   if consumer_claim and consumer_claim ~= "" then
+    local consumer_by = conf.consumer_by
+
     if not tokens_decoded then
       tokens_decoded, err = o.token:decode(tokens_encoded)
     end
@@ -770,18 +773,18 @@ function OICHandler:access(conf)
     if tokens_decoded then
       local id_token = tokens_decoded.id_token
       if id_token then
-        mapped_consumer, err = consumer(conf, id_token, consumer_claim)
+        mapped_consumer, err = consumer(iss, id_token, consumer_claim, false, consumer_by)
         if not mapped_consumer then
-          mapped_consumer = consumer(conf, tokens_decoded.access_token, consumer_claim)
+          mapped_consumer = consumer(iss, tokens_decoded.access_token, consumer_claim, false, consumer_by)
         end
 
       else
-        mapped_consumer, err = consumer(conf, tokens_decoded.access_token, consumer_claim)
+        mapped_consumer, err = consumer(iss, tokens_decoded.access_token, consumer_claim, false, consumer_by)
       end
     end
 
     if not mapped_consumer and access_token_introspected then
-      mapped_consumer, err = consumer(conf, access_token_introspected, consumer_claim)
+      mapped_consumer, err = consumer(iss, access_token_introspected, consumer_claim, false, consumer_by)
     end
 
     local is_anonymous = false
@@ -805,7 +808,7 @@ function OICHandler:access(conf)
         }
       }
 
-      mapped_consumer, err = consumer(conf, consumer_token, consumer_claim, true)
+      mapped_consumer, err = consumer(iss, consumer_token, consumer_claim, true, consumer_by)
       if not mapped_consumer then
         if err then
           return forbidden(iss, "anonymous consumer was not found (" .. err .. ")", s)
@@ -886,6 +889,15 @@ function OICHandler:access(conf)
           end
         end
       end
+    end
+  end
+
+  -- inject refresh token into the headers?
+  local refresh_token_header = conf.refresh_token_header
+  if refresh_token_header and refresh_token_header ~= "" then
+    local refresh_token = tokens_encoded.refresh_token
+    if refresh_token then
+      set_header(refresh_token_header, refresh_token)
     end
   end
 

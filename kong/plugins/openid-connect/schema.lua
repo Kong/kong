@@ -115,6 +115,10 @@ return {
       required              = false,
       type                  = "string",
     },
+    refresh_token_header    = {
+      required              = false,
+      type                  = "string",
+    },
     userinfo_header         = {
       required              = false,
       type                  = "string",
@@ -169,10 +173,6 @@ return {
         "username",
         "custom_id",
       },
-    },
-    consumer_ttl            = {
-      required              = false,
-      type                  = "number",
     },
     anonymous               = {
       type                  = "string",

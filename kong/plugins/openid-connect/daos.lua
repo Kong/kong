@@ -1,6 +1,7 @@
 return {
   oic_issuers            = {
     primary_key          = { "id" },
+    cache_key            = { "issuer" },
     table                = "oic_issuers",
     fields               = {
       id                 = {
@@ -24,12 +25,6 @@ return {
         dao_insert_value = true
       },
     },
-    marshall_event       = function(_, t)
-      return {
-        id               = t.id,
-        issuer           = t.issuer,
-      }
-    end,
   },
   oic_signout            = {
     primary_key          = { "id" },
@@ -60,16 +55,6 @@ return {
         dao_insert_value = true,
       },
     },
-    marshall_event       = function(_, t)
-      return {
-        id               = t.id,
-        jti              = t.jti,
-        iss              = t.iss,
-        sid              = t.sid,
-        sub              = t.sub,
-        aud              = t.aud,
-      }
-    end
   },
   oic_session            = {
     primary_key          = { "id" },
@@ -96,13 +81,6 @@ return {
         dao_insert_value = true,
       },
     },
-    marshall_event       = function(_, t)
-      return {
-        id               = t.id,
-        sid              = t.sid,
-        exp              = t.exp,
-      }
-    end
   },
   oic_revoked            = {
     primary_key          = { "id" },
@@ -126,12 +104,5 @@ return {
         dao_insert_value = true,
       },
     },
-    marshall_event       = function(_, t)
-      return {
-        id               = t.id,
-        hash             = t.hash,
-        exp              = t.exp,
-      }
-    end
   },
 }

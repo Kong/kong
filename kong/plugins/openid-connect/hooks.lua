@@ -5,7 +5,7 @@ local function invalidate(t)
   if t.collection == "oic_issuers" then
     local key = t.old_entity and t.old_entity.issuer or t.entity.issuer
     if key then
-      cache.delete("oic:" .. key)
+      cache.delete("oic_issuers:" .. key)
     end
   end
 end
