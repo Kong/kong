@@ -13,24 +13,24 @@ describe("Plugin: ldap-auth (access)", function()
     helpers.run_migrations()
 
     local api1 = assert(helpers.dao.apis:insert {
-      name = "test-ldap",
-      hosts = { "ldap.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "test-ldap",
+      hosts        = { "ldap.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     api2 = assert(helpers.dao.apis:insert {
-      name = "test-ldap2",
-      hosts = { "ldap2.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "test-ldap2",
+      hosts        = { "ldap2.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     local api3 = assert(helpers.dao.apis:insert {
-      name = "test-ldap3",
-      hosts = { "ldap3.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "test-ldap3",
+      hosts        = { "ldap3.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     local api4 = assert(helpers.dao.apis:insert {
-      name = "test-ldap4",
-      hosts = { "ldap4.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "test-ldap4",
+      hosts        = { "ldap4.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
 
     local anonymous_user = assert(helpers.dao.consumers:insert {
@@ -88,7 +88,9 @@ describe("Plugin: ldap-auth (access)", function()
       }
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
   end)
 
   teardown(function()
@@ -352,64 +354,66 @@ describe("Plugin: ldap-auth (access)", function()
 
   setup(function()
     local api1 = assert(helpers.dao.apis:insert {
-      name = "api-1",
-      hosts = { "logical-and.com" },
-      upstream_url = "http://mockbin.org/request"
+      name         = "api-1",
+      hosts        = { "logical-and.com" },
+      upstream_url = helpers.mock_upstream_url .. "/request",
     })
     assert(helpers.dao.plugins:insert {
       api_id = api1.id,
-      name = "ldap-auth",
+      name   = "ldap-auth",
       config = {
         ldap_host = ldap_host_aws,
         ldap_port = "389",
         start_tls = false,
-        base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com",
+        base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
         attribute = "uid",
-      }
+      },
     })
     assert(helpers.dao.plugins:insert {
-      name = "key-auth",
-      api_id = api1.id
+      name   = "key-auth",
+      api_id = api1.id,
     })
 
     anonymous = assert(helpers.dao.consumers:insert {
-      username = "Anonymous"
+      username = "Anonymous",
     })
     user1 = assert(helpers.dao.consumers:insert {
-      username = "Mickey"
+      username = "Mickey",
     })
 
     local api2 = assert(helpers.dao.apis:insert {
-      name = "api-2",
-      hosts = { "logical-or.com" },
-      upstream_url = "http://mockbin.org/request"
+      name         = "api-2",
+      hosts        = { "logical-or.com" },
+      upstream_url = helpers.mock_upstream_url .. "/request",
     })
     assert(helpers.dao.plugins:insert {
       api_id = api2.id,
-      name = "ldap-auth",
+      name   = "ldap-auth",
       config = {
         ldap_host = ldap_host_aws,
         ldap_port = "389",
         start_tls = false,
-        base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com",
+        base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
         attribute = "uid",
         anonymous = anonymous.id,
-      }
+      },
     })
     assert(helpers.dao.plugins:insert {
-      name = "key-auth",
+      name   = "key-auth",
       api_id = api2.id,
       config = {
-        anonymous = anonymous.id
-      }
+        anonymous = anonymous.id,
+      },
     })
 
     assert(helpers.dao.keyauth_credentials:insert {
-      key = "Mouse",
-      consumer_id = user1.id
+      key         = "Mouse",
+      consumer_id = user1.id,
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
     client = helpers.proxy_client()
   end)
 

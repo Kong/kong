@@ -37,9 +37,9 @@ describe("Plugin: ACL (invalidations)", function()
     })
 
     local api1 = assert(helpers.dao.apis:insert {
-      name = "api-1",
-      hosts = { "acl1.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-1",
+      hosts        = { "acl1.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
       name = "key-auth",
@@ -54,9 +54,9 @@ describe("Plugin: ACL (invalidations)", function()
     })
 
     local api2 = assert(helpers.dao.apis:insert {
-      name = "api-2",
-      hosts = { "acl2.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-2",
+      hosts        = { "acl2.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
       name = "key-auth",
@@ -70,7 +70,9 @@ describe("Plugin: ACL (invalidations)", function()
       }
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
     proxy_client = helpers.proxy_client()
     admin_client = helpers.admin_client()
   end)

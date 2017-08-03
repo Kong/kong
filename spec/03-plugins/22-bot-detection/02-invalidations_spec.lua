@@ -7,17 +7,19 @@ describe("Plugin: bot-detection (hooks)", function()
     helpers.run_migrations()
 
     local api1 = assert(helpers.dao.apis:insert {
-      name = "bot.com",
-      hosts = { "bot.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "bot.com",
+      hosts        = { "bot.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     plugin = assert(helpers.dao.plugins:insert {
       api_id = api1.id,
-      name = "bot-detection",
+      name   = "bot-detection",
       config = {},
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
   end)
 
   teardown(function()
