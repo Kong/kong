@@ -8,11 +8,11 @@ local default_server_header = _KONG._NAME .. "/" .. _KONG._VERSION
 local function start(config)
   return function()
     helpers.dao.apis:insert {
-      name = "api-1",
-      upstream_url = "http://localhost:9999/headers-inspect",
-      hosts = {
+      name         = "api-1",
+      upstream_url = helpers.mock_upstream_url,
+      hosts        = {
         "headers-inspect.com",
-      }
+      },
     }
 
     config = config or {}

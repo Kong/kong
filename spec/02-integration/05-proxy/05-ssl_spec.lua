@@ -21,45 +21,47 @@ describe("SSL", function()
     helpers.run_migrations()
 
     assert(helpers.dao.apis:insert {
-      name = "global-cert",
-      hosts = { "global.com" },
-      upstream_url = "http://httpbin.org"
+      name         = "global-cert",
+      hosts        = { "global.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
 
     assert(helpers.dao.apis:insert {
-      name = "api-1",
-      hosts = { "example.com", "ssl1.com" },
-      upstream_url = "http://httpbin.org",
-      https_only = true,
+      name               = "api-1",
+      hosts              = { "example.com", "ssl1.com" },
+      upstream_url       = helpers.mock_upstream_url,
+      https_only         = true,
       http_if_terminated = true,
     })
 
     assert(helpers.dao.apis:insert {
-      name = "api-2",
-      hosts = { "ssl2.com" },
-      upstream_url = "http://httpbin.org",
-      https_only = true,
+      name               = "api-2",
+      hosts              = { "ssl2.com" },
+      upstream_url       = helpers.mock_upstream_url,
+      https_only         = true,
       http_if_terminated = false,
     })
 
     assert(helpers.dao.apis:insert {
-      name = "api-3",
-      hosts = { "ssl3.com" },
-      upstream_url = "https://localhost:10001",
+      name          = "api-3",
+      hosts         = { "ssl3.com" },
+      upstream_url  = helpers.mock_upstream_ssl_url,
       preserve_host = true,
     })
 
     assert(helpers.dao.apis:insert {
-      name = "api-4",
-      hosts = { "no-sni.com" },
-      upstream_url = "https://localhost:10001",
+      name          = "api-4",
+      hosts         = { "no-sni.com" },
+      upstream_url  = helpers.mock_upstream_ssl_protocol .. "://" ..
+                      helpers.mock_upstream_hostname .. ":" ..
+                      helpers.mock_upstream_ssl_port,
       preserve_host = false,
     })
 
     assert(helpers.dao.apis:insert {
-      name = "api-5",
-      hosts = { "nil-sni.com" },
-      upstream_url = "https://127.0.0.1:10001",
+      name          = "api-5",
+      hosts         = { "nil-sni.com" },
+      upstream_url  = helpers.mock_upstream_ssl_url,
       preserve_host = false,
     })
 
@@ -227,38 +229,41 @@ describe("SSL", function()
     describe("properly sets the upstream SNI with preserve_host", function()
       it("true", function()
         local res = assert(https_client_sni:send {
-          method = "GET",
-          path = "/ssl-inspect",
+          method  = "GET",
+          path    = "/",
           headers = {
             Host = "ssl3.com"
-          }
+          },
         })
         local body = assert.res_status(200, res)
-        assert.equal("ssl3.com", body)
+        local json = cjson.decode(body)
+        assert.equal("ssl3.com", json.vars.ssl_server_name)
       end)
 
       it("false", function()
         local res = assert(https_client_sni:send {
-          method = "GET",
-          path = "/ssl-inspect",
+          method  = "GET",
+          path    = "/",
           headers = {
             Host = "no-sni.com"
-          }
+          },
         })
         local body = assert.res_status(200, res)
-        assert.equal("localhost", body)
+        local json = cjson.decode(body)
+        assert.equal("localhost", json.vars.ssl_server_name)
       end)
 
       it("false and IP-based upstream_url", function()
         local res = assert(https_client_sni:send {
           method = "GET",
-          path = "/ssl-inspect",
+          path = "/",
           headers = {
             Host = "nil-sni.com"
           }
         })
         local body = assert.res_status(200, res)
-        assert.equal("no SNI", body)
+        local json = cjson.decode(body)
+        assert.equal("no SNI", json.vars.ssl_server_name)
       end)
     end)
   end)

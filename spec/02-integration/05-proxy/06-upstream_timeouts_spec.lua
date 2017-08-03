@@ -31,27 +31,28 @@ dao_helpers.for_each_dao(function(kong_config)
 
       insert_apis {
         {
-          name = "api-1",
-          methods = "HEAD",
-          upstream_url = "http://httpbin.org:81",
+          name                     = "api-1",
+          methods                  = "HEAD",
+          upstream_url             = "http://httpbin.org:81",
           upstream_connect_timeout = 1, -- ms
         },
         {
-          name = "api-2",
-          methods = "POST",
-          upstream_url = "http://httpbin.org",
+          name                  = "api-2",
+          methods               = "POST",
+          upstream_url          = helpers.mock_upstream_url,
           upstream_send_timeout = 1, -- ms
         },
         {
-          name = "api-3",
-          methods = "GET",
-          upstream_url = "http://httpbin.org",
+          name                  = "api-3",
+          methods               = "GET",
+          upstream_url          = helpers.mock_upstream_url,
           upstream_read_timeout = 1, -- ms
         }
       }
 
       assert(helpers.start_kong({
-        database = kong_config.database
+        database   = kong_config.database,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
     end)
 
@@ -94,12 +95,12 @@ dao_helpers.for_each_dao(function(kong_config)
     describe("upstream_send_timeout", function()
       it("sets upstream send timeout value", function()
         local res = assert(client:send {
-          method = "POST",
-          path = "/post",
-          body = {
-            huge = string.rep("a", 2^20)
+          method  = "POST",
+          path    = "/post",
+          body    = {
+            huge = string.rep("a", 2^25)
           },
-          headers = { ["Content-Type"] = "application/json" }
+          headers = { ["Content-Type"] = "application/json" },
         })
 
         -- do *not* use assert.res_status() here in case of

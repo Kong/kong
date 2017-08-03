@@ -23,11 +23,11 @@ local helpers = require "spec.02-integration.03-dao.helpers"
 local Factory = require "kong.dao.factory"
 
 local api_tbl = {
-  name = "mockbin",
-  hosts = { "mockbin.com" },
-  uris = { "/mockbin" },
+  name = "example",
+  hosts = { "example.org" },
+  uris = { "/example" },
   strip_uri = true,
-  upstream_url = "https://mockbin.com"
+  upstream_url = "https://example.org"
 }
 
 helpers.for_each_dao(function(kong_config)
@@ -64,39 +64,39 @@ helpers.for_each_dao(function(kong_config)
       end)
       it("insert a valid API bis", function()
         local api, err = apis:insert {
-          name = "httpbin",
-          hosts = { "httpbin.org" },
-          upstream_url = "http://httpbin.org"
+          name = "example",
+          hosts = { "example.org" },
+          upstream_url = "http://example.org",
         }
         assert.falsy(err)
         assert.is_table(api)
-        assert.equal("httpbin", api.name)
+        assert.equal("example", api.name)
         assert.raw_table(api)
       end)
       it("insert a valid array field and return it properly", function()
         local res, err = oauth2_credentials:insert {
           name = "test_app",
-          redirect_uri = "https://mockbin.com"
+          redirect_uri = "https://example.org"
         }
         assert.falsy(err)
         assert.is_table(res)
         assert.equal("test_app", res.name)
         assert.is_table(res.redirect_uri)
         assert.equal(1, #res.redirect_uri)
-        assert.same({"https://mockbin.com"}, res.redirect_uri)
+        assert.same({"https://example.org"}, res.redirect_uri)
         assert.raw_table(res)
       end)
       it("insert a valid array field and return it properly bis", function()
         local res, err = oauth2_credentials:insert {
           name = "test_app",
-          redirect_uri = "https://mockbin.com, https://mockbin.org"
+          redirect_uri = "https://example.org, https://example.com"
         }
         assert.falsy(err)
         assert.is_table(res)
         assert.equal("test_app", res.name)
         assert.is_table(res.redirect_uri)
         assert.equal(2, #res.redirect_uri)
-        assert.same({"https://mockbin.com", "https://mockbin.org"}, res.redirect_uri)
+        assert.same({"https://example.org", "https://example.com"}, res.redirect_uri)
         assert.raw_table(res)
       end)
       it("add DAO-inserted values", function()
@@ -117,19 +117,19 @@ helpers.for_each_dao(function(kong_config)
         assert.falsy(api)
         assert.truthy(err)
         assert.True(err.unique)
-        assert.equal("already exists with value 'mockbin'", err.tbl.name)
+        assert.equal("already exists with value 'example'", err.tbl.name)
       end)
       it("ignores ngx.null fields", function()
         local api, err = apis:insert {
-          name = "httpbin",
-          hosts = { "httpbin.org" },
-          upstream_url = "http://httpbin.org",
+          name = "example",
+          hosts = { "example.org" },
+          upstream_url = "http://example.org",
           uris = ngx.null,
           methods = ngx.null,
         }
         assert.falsy(err)
         assert.is_table(api)
-        assert.equal("httpbin", api.name)
+        assert.equal("example", api.name)
         assert.is_nil(api.uris)
         assert.is_nil(api.methods)
         assert.raw_table(api)
@@ -138,15 +138,15 @@ helpers.for_each_dao(function(kong_config)
       describe("errors", function()
         it("refuse if invalid schema", function()
           local api, err = apis:insert {
-            name = "mockbin"
+            name = "example"
           }
           assert.falsy(api)
           assert.truthy(err)
           assert.True(err.schema)
 
           api, err = apis:insert {
-            name = "mockbin",
-            hosts = { "hostcom" }
+            name = "example",
+            hosts = { "example" }
           }
           assert.falsy(api)
           assert.truthy(err)
@@ -201,7 +201,7 @@ helpers.for_each_dao(function(kong_config)
       describe("errors", function()
         it("error if no primary key", function()
           assert.has_error(function()
-            apis:find {name = "mockbin"}
+            apis:find {name = "example"}
           end, "Missing PRIMARY KEY field")
         end)
         it("handle nil arg", function()
@@ -233,7 +233,7 @@ helpers.for_each_dao(function(kong_config)
 
         local res, err = oauth2_credentials:insert {
           name = "test_app",
-          redirect_uri = "https://mockbin.com, https://mockbin.org"
+          redirect_uri = "https://example.org, https://example.com"
         }
         assert.falsy(err)
         assert.truthy(res)
@@ -277,7 +277,7 @@ helpers.for_each_dao(function(kong_config)
         assert.equal("test_app", rows[1].name)
         assert.is_table(rows[1].redirect_uri)
         assert.equal(2, #rows[1].redirect_uri)
-        assert.same({"https://mockbin.com", "https://mockbin.org"}, rows[1].redirect_uri)
+        assert.same({ "https://example.org", "https://example.com" }, rows[1].redirect_uri)
       end)
       pending("return empty table if no row match", function()
         local rows, err = apis:find_all {
@@ -524,7 +524,7 @@ helpers.for_each_dao(function(kong_config)
       it("update with arbitrary filtering keys", function()
         api_fixture.name = "updated"
 
-        local api, err = apis:update(api_fixture, {name = "mockbin"})
+        local api, err = apis:update(api_fixture, { name = "example" })
         assert.falsy(err)
         assert.same(api_fixture, api)
         assert.raw_table(api)

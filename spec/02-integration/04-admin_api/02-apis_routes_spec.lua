@@ -64,16 +64,16 @@ describe("Admin API " .. kong_config.database, function()
       it_content_types("creates an API with complex routing", function(content_type)
         return function()
           local res = assert(client:send {
-            method = "POST",
-            path = "/apis",
-            body = {
-              name = "my-api",
-              upstream_url = "http://httpbin.org",
-              methods = "GET,POST,PATCH",
-              hosts = "foo.api.com,bar.api.com",
-              uris = "/foo,/bar",
+            method  = "POST",
+            path    = "/apis",
+            body    = {
+              name         = "my-api",
+              upstream_url = helpers.mock_upstream_url,
+              methods      = "GET,POST,PATCH",
+              hosts        = "foo.api.com,bar.api.com",
+              uris         = "/foo,/bar",
             },
-            headers = {["Content-Type"] = content_type}
+            headers = { ["Content-Type"] = content_type }
           })
 
           local body = assert.res_status(201, res)
