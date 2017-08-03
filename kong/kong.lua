@@ -123,7 +123,8 @@ local function load_plugins(kong_conf, dao)
     reports.toggle(true)
     sorted_plugins[#sorted_plugins+1] = {
       name = "reports",
-      handler = reports
+      handler = reports,
+      schema = {},
     }
   end
 
