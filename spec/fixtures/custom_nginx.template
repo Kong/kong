@@ -312,60 +312,157 @@ http {
 
     server {
         listen 55555;
+        server_name mock_upstream;
 
-        location /ws {
+        location = / {
+            access_by_lua_block {
+                local mu = require("spec.fixtures.mock_upstream")
+                return mu.filter_access_by_method("GET")
+            }
             content_by_lua_block {
-                local server = require "resty.websocket.server"
-                local wb, err = server:new{
-                  timeout = 5000,
-                  max_payload_len = 65535,
-                }
+                local mu = require("spec.fixtures.mock_upstream")
+                return mu.send_json_response({
+                    valid_routes = {
+                        ["/ws"] = "Web sockets echo server",
+                        ["/get"] = "Accepts a GET request and returns it in json format",
+                        ["/post"] = "Accepts a POST request and returns it in json format",
+                        ["/anything"] = "Accepts any request and returns it in json format",
+                        ["/request"] = "Alias to /anything",
+                        ["/delay/:duration"] = "Delay the response for <duration> seconds",
+                        ["/basic-auth/:usr/:pass"] = "Performs basic authentication with the given credentials",
+                        ["/status/:code"] = "Returns a response with the specified status code"
+                    }
+                })
+            }
+        }
 
-                if not wb then
-                  ngx.log(ngx.ERR, "failed to open websocket: ", err)
-                  return ngx.exit(444)
+        location = /ws {
+            content_by_lua_block {
+                local mu = require("spec.fixtures.mock_upstream")
+                return mu.serve_web_sockets()
+            }
+        }
+
+        location = /get {
+            access_by_lua_block {
+                local mu = require("spec.fixtures.mock_upstream")
+                return mu.filter_access_by_method("GET")
+            }
+            content_by_lua_block {
+                local mu = require("spec.fixtures.mock_upstream")
+
+                return mu.send_json_response({
+                    args    = ngx.req.get_uri_args(),
+                    headers = ngx.req.get_headers(),
+                    origin  = ngx.var.remote_addr,
+                    url     = mu.get_request_url(),
+                })
+            }
+        }
+
+        location = /post {
+            access_by_lua_block {
+                local mu = require("spec.fixtures.mock_upstream")
+                return mu.filter_access_by_method("POST")
+            }
+            content_by_lua_block {
+                local mu                 = require("spec.fixtures.mock_upstream")
+                local headers            = ngx.req.get_headers()
+                local data, form, params = mu.parse_post_data(headers)
+                return mu.send_json_response({
+                    args    = ngx.req.get_uri_args(),
+                    data    = data,
+                    form    = form,
+                    headers = headers,
+                    origin  = ngx.var.remote_addr,
+                    params  = params,
+                    url     = mu.get_request_url(),
+                })
+            }
+        }
+
+        location ~ "^/basic-auth/(?<username>[a-zA-Z0-9_]+)/(?<password>[.]+)$" {
+            access_by_lua_block {
+                local mu = require("spec.fixtures.mock_upstream")
+                return mu.filter_access_by_basic_auth(ngx.var.username,
+                                                      ngx.var.password)
+            }
+            content_by_lua_block {
+                local mu = require("spec.fixtures.mock_upstream")
+                return mu.send_json_response({
+                  authenticated = true,
+                  user          = ngx.var.username,
+                })
+            }
+        }
+
+        location ~ "^/(request|anything)$" {
+            content_by_lua_block {
+                local mu                 = require("spec.fixtures.mock_upstream")
+                local headers            = ngx.req.get_headers()
+                local data, form, params = mu.parse_post_data(headers)
+
+                return mu.send_json_response({
+                    args    = ngx.req.get_uri_args(),
+                    data    = data,
+                    form    = form,
+                    headers = headers,
+                    method  = ngx.var.request_method,
+                    origin  = ngx.var.remote_addr,
+                    params  = params,
+                    url     = mu.get_request_url(),
+                })
+            }
+        }
+
+        location ~ "^/delay/(?<delay_seconds>\d{3})$" {
+            content_by_lua_block {
+                local delay_seconds = tonumber(ngx.var.delay_seconds)
+                if not delay_seconds then
+                    return ngx.exit(ngx.HTTP_NOT_FOUND)
                 end
 
-                while true do
-                  local data, typ, err = wb:recv_frame()
-                  if wb.fatal then
-                    ngx.log(ngx.ERR, "failed to receive frame: ", err)
-                    return ngx.exit(444)
-                  end
+                ngx.sleep(delay_seconds)
 
-                  if data then
-                    if typ == "close" then
-                      break
-                    end
+                local mu                 = require("spec.fixtures.mock_upstream")
+                local headers            = ngx.req.get_headers()
+                local data, form, params = mu.parse_post_data(headers)
 
-                    if typ == "ping" then
-                      local bytes, err = wb:send_pong(data)
-                      if not bytes then
-                        ngx.log(ngx.ERR, "failed to send pong: ", err)
-                        return ngx.exit(444)
-                      end
+                return mu.send_json_response({
+                    args    = ngx.req.get_uri_args(),
+                    data    = data,
+                    delay   = delay_seconds,
+                    form    = form,
+                    headers = headers,
+                    method  = ngx.var.request_method,
+                    origin  = ngx.var.remote_addr,
+                    params  = params,
+                    url     = mu.get_request_url(),
+                })
+            }
+        }
 
-                    elseif typ == "pong" then
-                      ngx.log(ngx.INFO, "client ponged")
-
-                    elseif typ == "text" then
-                      local bytes, err = wb:send_text(data)
-                      if not bytes then
-                        ngx.log(ngx.ERR, "failed to send text: ", err)
-                        return ngx.exit(444)
-                      end
-                    end
-
-                  else
-                    local bytes, err = wb:send_ping()
-                    if not bytes then
-                      ngx.log(ngx.ERR, "failed to send ping: ", err)
-                      return ngx.exit(444)
-                    end
-                  end
+        location ~ "^/status/(?<code>\d{3})$" {
+            content_by_lua_block {
+                local mu   = require("spec.fixtures.mock_upstream")
+                local code = tonumber(ngx.var.code)
+                if not code then
+                    return ngx.exit(ngx.HTTP_NOT_FOUND)
                 end
-
-                wb:send_close()
+                ngx.status = code
+                if code == 418 then
+                    local teapot = [[
+        -=[ teapot ]=-
+           _...._
+         .'  _ _ `.
+        | ."` ^ `". _,
+        \_;`"---"`|//
+          |       ;/
+          \_     _/
+            `"""`]]
+                    ngx.header["X-More-Info"] = "http://tools.ietf.org/html/rfc2324"
+                    return mu.send_text_response(teapot)
+                end
             }
         }
     }
