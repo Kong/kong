@@ -31,9 +31,9 @@ describe("Admin API", function()
     setup(function()
       for i = 1, 3 do
         local api = assert(helpers.dao.apis:insert {
-          name = "api-" .. i,
-          hosts = { i .. "-api.com" },
-          upstream_url = "http://mockbin.com"
+          name         = "api-" .. i,
+          hosts        = { i .. "-api.com" },
+          upstream_url = "http://example.com",
         })
 
         plugins[i] = assert(helpers.dao.plugins:insert {

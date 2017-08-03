@@ -1,5 +1,5 @@
-local utils = require "kong.tools.utils"
-
+local utils      = require "kong.tools.utils"
+local cjson_safe = require "cjson.safe"
 
 local function filter_access_by_method(method)
   if ngx.req.get_method() ~= method then
@@ -62,6 +62,7 @@ end
 
 
 local function send_text_response(text, content_type)
+  content_type               = content_type or "text/plain"
   ngx.header["X-Powered-By"] = "mock_upstream"
 
   text = ngx.req.get_method() == "HEAD" and "" or tostring(text)
@@ -72,30 +73,67 @@ local function send_text_response(text, content_type)
 end
 
 
-local function send_json_response(tbl)
-  local cjson = require "cjson"
-  return send_text_response(cjson.encode(tbl), "application/json")
+local function get_ngx_vars()
+  local var = ngx.var
+  return {
+    uri                = var.uri,
+    host               = var.host,
+    hostname           = var.hostname,
+    https              = var.https,
+    scheme             = var.scheme,
+    is_args            = var.is_args,
+    server_addr        = var.server_addr,
+    server_port        = var.server_port,
+    server_name        = var.server_name,
+    server_protocol    = var.server_protocol,
+    remote_addr        = var.remote_addr,
+    remote_port        = var.remote_port,
+    realip_remote_addr = var.realip_remote_addr,
+    realip_remote_port = var.realip_remote_port,
+    binary_remote_addr = var.binary_remote_addr,
+    request            = var.request,
+    request_uri        = var.request_uri,
+    request_time       = var.request_time,
+    request_length     = var.request_length,
+    request_method     = var.request_method,
+    bytes_received     = var.bytes_received,
+    ssl_server_name    = var.ssl_server_name or "no SNI",
+  }
 end
 
 
-local function get_request_url()
-  return string.format("%s://%s%s", ngx.var.scheme,
-                       ngx.var.host, ngx.var.request_uri)
+local function get_body_data()
+  local req   = ngx.req
+  local data  = req.get_body_data()
+  if data then
+    return data
+  end
+
+  local file_path = req.get_body_file()
+  if file_path then
+    local file = io.open(file_path, "r")
+    data       = file:read("*all")
+    file:close()
+    return data
+  end
+
+  return nil, "could not read body data or body file"
 end
 
 
-local function parse_post_data(headers)
-  local cjson_safe         = require "cjson.safe"
+local function get_default_json_response()
+  local req                = ngx.req
+  local headers            = req.get_headers(0)
   local data, form, params = "", {}, cjson_safe.null
   local ct                 = headers["content-type"]
   if ct then
-    ngx.req.read_body()
+    req.read_body()
     if string.find(ct, "application/x-www-form-urlencoded", nil, true) then
-      form = ngx.req.get_post_args()
+      form = req.get_post_args()
 
     elseif string.find(ct, "application/json", nil, true) then
       local err
-      data, err = ngx.req.get_body_data()
+      data, err = get_body_data()
       if not data then
         ngx.log(ngx.ERR, "could not read body data: ", err)
         return ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
@@ -105,7 +143,23 @@ local function parse_post_data(headers)
     end
   end
 
-  return data, form, params
+  return {
+    args    = ngx.req.get_uri_args(),
+    data    = data,
+    form    = form,
+    headers = headers,
+    params  = params,
+    url     = string.format("%s://%s%s", ngx.var.scheme,
+                            ngx.var.host, ngx.var.request_uri),
+    vars    = get_ngx_vars(),
+  }
+end
+
+
+local function send_default_json_response(extra)
+  local cjson = require "cjson"
+  local tbl   = utils.table_merge(get_default_json_response(), extra)
+  return send_text_response(cjson.encode(tbl), "application/json")
 end
 
 
@@ -168,8 +222,6 @@ return {
   filter_access_by_method     = filter_access_by_method,
   filter_access_by_basic_auth = filter_access_by_basic_auth,
   send_text_response          = send_text_response,
-  send_json_response          = send_json_response,
-  get_request_url             = get_request_url,
-  parse_post_data             = parse_post_data,
+  send_default_json_response  = send_default_json_response,
   serve_web_sockets           = serve_web_sockets,
 }
