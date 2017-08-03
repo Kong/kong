@@ -3,11 +3,11 @@ local Factory = require "kong.dao.factory"
 local utils = require "kong.tools.utils"
 
 local api_tbl = {
-  name = "mockbin",
-  hosts = { "mockbin.com" },
-  uris = { "/mockbin" },
-  strip_uri = true,
-  upstream_url = "https://mockbin.com"
+  name         = "example",
+  hosts        = { "example.com" },
+  uris         = { "/example" },
+  strip_uri    = true,
+  upstream_url = "https://example.com",
 }
 
 local plugin_tbl = {
@@ -150,10 +150,10 @@ helpers.for_each_dao(function(kong_config)
       before_each(function()
         local err
         api_fixture, err = apis:insert {
-          name = "to-delete",
-          hosts = { "to-delete.com" },
-          uris = { "/to-delete" },
-          upstream_url = "https://mockbin.com"
+          name         = "to-delete",
+          hosts        = { "to-delete.com" },
+          uris         = { "/to-delete" },
+          upstream_url = "https://example.com",
         }
         assert.falsy(err)
 

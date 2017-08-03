@@ -7,18 +7,15 @@ describe("helpers: assertions and modifiers", function()
   setup(function()
     helpers.run_migrations()
     assert(helpers.dao.apis:insert {
-      name = "mockbin",
-      hosts = { "mockbin.com" },
-      upstream_url = "http://mockbin.com"
-    })
-    assert(helpers.dao.apis:insert {
-      name = "httpbin",
-      hosts = { "httpbin.org" },
-      upstream_url = "http://httpbin.org"
+      name         = "mock_upstream",
+      hosts        = { "mock_upstream" },
+      upstream_url = helpers.mock_upstream_url
     })
 
     helpers.prepare_prefix()
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
   end)
   teardown(function()
     helpers.stop_kong()
@@ -63,23 +60,23 @@ describe("helpers: assertions and modifiers", function()
       assert.error(function() assert.response(true).True(true) end)
       assert.error(function() assert.response("bad...").True(true) end)
     end)
-    it("succeeds with a mockbin response", function()
+    it("succeeds with a mock_upstream response", function()
       local r = assert(client:send {
-        method = "GET",
-        path = "/request",
+        method  = "GET",
+        path    = "/request",
         headers = {
-          host = "mockbin.com"
-        }
+          host = "mock_upstream",
+        },
       })
       assert.response(r).True(true)
     end)
-    it("succeeds with a httpbin response", function()
+    it("succeeds with a mock upstream response", function()
       local r = assert(client:send {
-        method = "GET",
-        path = "/anything",
+        method  = "GET",
+        path    = "/anything",
         headers = {
-          host = "httpbin.org"
-        }
+          host = "mock_upstream",
+        },
       })
       assert.response(r).True(true)
     end)
@@ -91,48 +88,48 @@ describe("helpers: assertions and modifiers", function()
       assert.error(function() assert.request(true).True(true) end)
       assert.error(function() assert.request("bad... ").True(true) end)
     end)
-    it("succeeds with a mockbin response", function()
+    it("succeeds with a mock_upstream response", function()
       local r = assert(client:send {
-        method = "GET",
-        path = "/request",
+        method  = "GET",
+        path    = "/request",
         headers = {
-          host = "mockbin.com"
-        }
+          host = "mock_upstream",
+        },
       })
       assert.request(r).True(true)
     end)
-    it("succeeds with a httpbin response", function()
+    it("succeeds with a mock_upstream response", function()
       -- GET request
       local r = assert(client:send {
-        method = "GET",
-        path = "/get",
+        method  = "GET",
+        path    = "/get",
         headers = {
-          host = "httpbin.org"
-        }
+          host = "mock_upstream",
+        },
       })
       assert.request(r).True(true)
 
       -- POST request
       local r = assert(client:send {
         method = "POST",
-        path = "/post",
-        body = {
-          v1 = "v2"
+        path   = "/post",
+        body   = {
+          v1 = "v2",
         },
         headers = {
-          host = "httpbin.org",
-          ["Content-Type"] = "www-form-urlencoded"
-        }
+          host             = "mock_upstream",
+          ["Content-Type"] = "www-form-urlencoded",
+        },
       })
       assert.request(r).True(true)
     end)
-    it("fails with a non httpbin/mockbin response", function()
+    it("fails with a non mock_upstream response", function()
       local r = assert(client:send {
-        method = "GET",
-        path = "/headers",   -- this path is not supported, but should yield valid json for the test
+        method  = "GET",
+        path    = "/headers",   -- this path is not supported, but should yield valid json for the test
         headers = {
-          host = "httpbin.org"
-        }
+          host = "127.0.0.1:55555",
+        },
       })
       assert.error(function() assert.request(r).True(true) end)
     end)
@@ -150,22 +147,22 @@ describe("helpers: assertions and modifiers", function()
   describe("status assertion", function()
     it("succeeds with a response", function()
       local r = assert(client:send {
-        method = "GET",
-        path = "/get",
+        method  = "GET",
+        path    = "/get",
         headers = {
-          host = "httpbin.org"
-        }
+          host = "mock_upstream",
+        },
       })
       assert.status(200, r)
       local body = assert.response(r).has.status(200)
       assert(cjson.decode(body))
 
       local r = assert(client:send {
-        method = "GET",
-        path = "/status/404",
+        method  = "GET",
+        path    = "/status/404",
         headers = {
-          host = "httpbin.org"
-        }
+          host = "mock_upstream",
+        },
       })
       assert.response(r).has.status(404)
     end)
@@ -180,66 +177,67 @@ describe("helpers: assertions and modifiers", function()
       assert.error(function() assert.jsonbody({}) end)
       assert.error(function() assert.jsonbody() end)
     end)
-    it("succeeds on a response object", function()
+    it("succeeds on a response object on /request", function()
       local r = assert(client:send {
-        method = "GET",
-        path = "/request",
+        method  = "GET",
+        path    = "/request",
         headers = {
-          host = "mockbin.com"
-        }
+          host = "mock_upstream",
+        },
       })
       local json = assert.response(r).has.jsonbody()
-      assert(json.url:find("mockbin%.com"), "expected a mockbin response")
+      assert(json.url:find(helpers.mock_upstream_host), "expected a mock_upstream response")
     end)
-    it("succeeds on a mockbin request object", function()
+    it("succeeds on a mock_upstream request object on /request", function()
       local r = assert(client:send {
-        method = "GET",
-        path = "/request",
-        body = { hello = "world" },
+        method  = "GET",
+        path    = "/request",
+        body    = { hello = "world" },
         headers = {
-          host = "mockbin.com",
-          ["Content-Type"] = "application/json"
-        }
+          host = "mock_upstream",
+          ["Content-Type"] = "application/json",
+        },
       })
       local json = assert.request(r).has.jsonbody()
-      assert.equals("world", json.hello)
+      assert.equals("world", json.params.hello)
     end)
-    it("fails on a httpbin request object", function()
+    it("succeeds on a mock_upstream request object on /post", function()
       local r = assert(client:send {
-        method = "POST",
-        path = "/post",
-        body = { hello = "world" },
+        method  = "POST",
+        path    = "/post",
+        body    = { hello = "world" },
         headers = {
-          host = "httpbin.org",
-          ["Content-Type"] = "application/json"
-        }
+          host             = "mock_upstream",
+          ["Content-Type"] = "application/json",
+        },
       })
-      assert.error(function() assert.request(r).has.jsonbody() end)
+      local json = assert.request(r).has.jsonbody()
+      assert.equals("world", json.params.hello)
     end)
   end)
 
   describe("header assertion", function()
     it("checks appropriate response headers", function()
       local r = assert(client:send {
-        method = "GET",
-        path = "/request",
-        body = { hello = "world" },
+        method  = "GET",
+        path    = "/request",
+        body    = { hello = "world" },
         headers = {
-          host = "mockbin.com",
-          ["Content-Type"] = "application/json"
-        }
+          host             = "mock_upstream",
+          ["Content-Type"] = "application/json",
+        },
       })
       local v1 = assert.response(r).has.header("x-powered-by")
       local v2 = assert.response(r).has.header("X-POWERED-BY")
       assert.equals(v1, v2)
       assert.error(function() assert.response(r).has.header("does not exists") end)
     end)
-    it("checks appropriate mockbin request headers", function()
+    it("checks appropriate mock_upstream request headers", function()
       local r = assert(client:send {
-        method = "GET",
-        path = "/request",
+        method  = "GET",
+        path    = "/request",
         headers = {
-          host = "mockbin.com",
+          host                   = "mock_upstream",
           ["just-a-test-header"] = "just-a-test-value"
         }
       })
@@ -249,12 +247,12 @@ describe("helpers: assertions and modifiers", function()
       assert.equals(v1, v2)
       assert.error(function() assert.response(r).has.header("does not exists") end)
     end)
-    it("checks appropriate httpbin request headers", function()
+    it("checks appropriate mock_upstream request headers", function()
       local r = assert(client:send {
-        method = "GET",
-        path = "/get",
+        method  = "GET",
+        path    = "/get",
         headers = {
-          host = "httpbin.org",
+          host                   = "mock_upstream",
           ["just-a-test-header"] = "just-a-test-value"
         }
       })
@@ -267,16 +265,16 @@ describe("helpers: assertions and modifiers", function()
   end)
 
   describe("queryParam assertion", function()
-    it("checks appropriate mockbin query parameters", function()
+    it("checks appropriate mock_upstream query parameters", function()
       local r = assert(client:send {
-        method = "GET",
-        path = "/request",
-        query = {
-          hello = "world"
+        method  = "GET",
+        path    = "/request",
+        query   = {
+          hello = "world",
         },
         headers = {
-          host = "mockbin.com"
-        }
+          host = "mock_upstream",
+        },
       })
       local v1 = assert.request(r).has.queryparam("hello")
       local v2 = assert.request(r).has.queryparam("HELLO")
@@ -284,20 +282,20 @@ describe("helpers: assertions and modifiers", function()
       assert.equals(v1, v2)
       assert.error(function() assert.response(r).has.queryparam("notHere") end)
     end)
-    it("checks appropriate httpbin query parameters", function()
+    it("checks appropriate mock_upstream query parameters", function()
       local r = assert(client:send {
-        method = "POST",
-        path = "/post",
-        query = {
-          hello = "world"
+        method  = "POST",
+        path    = "/post",
+        query   = {
+          hello = "world",
         },
-        body = {
-          hello2 = "world2"
+        body    = {
+          hello2 = "world2",
         },
         headers = {
-          host = "httpbin.org",
-          ["Content-Type"] = "application/json"
-        }
+          host             = "mock_upstream",
+          ["Content-Type"] = "application/json",
+        },
       })
       local v1 = assert.request(r).has.queryparam("hello")
       local v2 = assert.request(r).has.queryparam("HELLO")
@@ -308,17 +306,17 @@ describe("helpers: assertions and modifiers", function()
   end)
 
   describe("formparam assertion", function()
-    it("checks appropriate mockbin url-encoded form parameters", function()
+    it("checks appropriate mock_upstream url-encoded form parameters", function()
       local r = assert(client:send {
-        method = "POST",
-        path = "/request",
-        body = {
-          hello = "world"
+        method  = "POST",
+        path    = "/request",
+        body    = {
+          hello = "world",
         },
         headers = {
-          host = "mockbin.com",
-          ["Content-Type"] = "application/x-www-form-urlencoded"
-        }
+          host             = "mock_upstream",
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+        },
       })
       local v1 = assert.request(r).has.formparam("hello")
       local v2 = assert.request(r).has.formparam("HELLO")
@@ -326,31 +324,31 @@ describe("helpers: assertions and modifiers", function()
       assert.equals(v1, v2)
       assert.error(function() assert.request(r).has.queryparam("notHere") end)
     end)
-    it("fails with mockbin non-url-encoded form data", function()
+    it("fails with mock_upstream non-url-encoded form data", function()
       local r = assert(client:send {
-        method = "POST",
-        path = "/request",
-        body = {
-          hello = "world"
+        method  = "POST",
+        path    = "/request",
+        body    = {
+          hello = "world",
         },
         headers = {
-          host = "mockbin.com",
-          ["Content-Type"] = "application/json"
-        }
+          host             = "mock_upstream",
+          ["Content-Type"] = "application/json",
+        },
       })
       assert.error(function() assert.request(r).has.formparam("hello") end)
     end)
-    it("checks appropriate httpbin url-encoded form parameters", function()
+    it("checks appropriate mock_upstream url-encoded form parameters", function()
       local r = assert(client:send {
-        method = "POST",
-        path = "/post",
-        body = {
-          hello = "world"
+        method  = "POST",
+        path    = "/post",
+        body    = {
+          hello = "world",
         },
         headers = {
-          host = "httpbin.org",
-          ["Content-Type"] = "application/x-www-form-urlencoded"
-        }
+          host             = "mock_upstream",
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+        },
       })
       local v1 = assert.request(r).has.formparam("hello")
       local v2 = assert.request(r).has.formparam("HELLO")
@@ -358,17 +356,17 @@ describe("helpers: assertions and modifiers", function()
       assert.equals(v1, v2)
       assert.error(function() assert.request(r).has.queryparam("notHere") end)
     end)
-    it("fails with httpbin non-url-encoded form parameters", function()
+    it("fails with mock_upstream non-url-encoded form parameters", function()
       local r = assert(client:send {
-        method = "POST",
-        path = "/post",
-        body = {
+        method  = "POST",
+        path    = "/post",
+        body    = {
           hello = "world"
         },
         headers = {
-          host = "httpbin.org",
-          ["Content-Type"] = "application/json"
-        }
+          host             = "mock_upstream",
+          ["Content-Type"] = "application/json",
+        },
       })
       assert.error(function() assert.request(r).has.formparam("hello") end)
     end)
