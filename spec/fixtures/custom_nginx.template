@@ -64,10 +64,6 @@ http {
         kong.init_worker()
     }
 
-    rewrite_by_lua_block {
-        kong.rewrite()
-    }
-
     proxy_next_upstream_tries 999;
 
     upstream kong_upstream {
@@ -115,6 +111,10 @@ http {
             set $upstream_x_forwarded_proto  '';
             set $upstream_x_forwarded_host   '';
             set $upstream_x_forwarded_port   '';
+
+            rewrite_by_lua_block {
+                kong.rewrite()
+            }
 
             access_by_lua_block {
                 kong.access()
@@ -247,19 +247,22 @@ http {
         ssl_certificate_key ${{SSL_CERT_KEY}};
         ssl_protocols TLSv1.1 TLSv1.2;
 
+        set_real_ip_from 127.0.0.1;
+
         location = / {
             content_by_lua_block {
                 local mu = require "spec.fixtures.mock_upstream"
                 return mu.send_default_json_response({
                     valid_routes = {
-                        ["/ws"]                     = "Websocket echo server",
-                        ["/get"]                    = "Accepts a GET request and returns it in JSON format",
-                        ["/post"]                   = "Accepts a POST request and returns it in JSON format",
-                        ["/anything"]               = "Accepts any request and returns it in JSON format",
-                        ["/request"]                = "Alias to /anything",
-                        ["/delay/:duration"]        = "Delay the response for <duration> seconds",
-                        ["/basic-auth/:user/:pass"] = "Performs HTTP basic authentication with the given credentials",
-                        ["/status/:code"]           = "Returns a response with the specified <status code>"
+                        ["/ws"]                         = "Websocket echo server",
+                        ["/get"]                        = "Accepts a GET request and returns it in JSON format",
+                        ["/post"]                       = "Accepts a POST request and returns it in JSON format",
+                        ["/response-headers?:key=:val"] = "Returns given response headers",
+                        ["/anything"]                   = "Accepts any request and returns it in JSON format",
+                        ["/request"]                    = "Alias to /anything",
+                        ["/delay/:duration"]            = "Delay the response for <duration> seconds",
+                        ["/basic-auth/:user/:pass"]     = "Performs HTTP basic authentication with the given credentials",
+                        ["/status/:code"]               = "Returns a response with the specified <status code>"
                     },
                 })
             }
@@ -289,8 +292,19 @@ http {
                 return mu.filter_access_by_method("POST")
             }
             content_by_lua_block {
-                local mu  = require "spec.fixtures.mock_upstream"
+                local mu = require "spec.fixtures.mock_upstream"
                 return mu.send_default_json_response()
+            }
+        }
+
+        location = /response-headers {
+            access_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.filter_access_by_method("GET")
+            }
+            content_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.send_default_json_response({}, ngx.req.get_uri_args())
             }
         }
 
@@ -326,7 +340,7 @@ http {
 
                 ngx.sleep(delay_seconds)
 
-                return mu.send_json_response({
+                return mu.send_default_json_response({
                     delay = delay_seconds,
                 })
             }
@@ -340,20 +354,12 @@ http {
                     return ngx.exit(ngx.HTTP_NOT_FOUND)
                 end
                 ngx.status = code
-                if code == 418 then
-                    local teapot = [[
-        -=[ teapot ]=-
-           _...._
-         .'  _ _ `.
-        | ."` ^ `". _,
-        \_;`"---"`|//
-          |       ;/
-          \_     _/
-            `"""`]]
-                    ngx.header["X-More-Info"] = "http://tools.ietf.org/html/rfc2324"
-                    return mu.send_text_response(teapot)
-                end
+                return mu.send_default_json_response({
+                  code = code,
+                })
             }
         }
+
+
     }
 }

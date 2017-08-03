@@ -17,100 +17,102 @@ describe("Plugin: datadog (log)", function()
     })
 
     local api1 = assert(helpers.dao.apis:insert {
-      name = "dd1",
-      hosts = { "datadog1.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "dd1",
+      hosts        = { "datadog1.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
-      name = "key-auth",
+      name   = "key-auth",
       api_id = api1.id
     })
-    local api2 = assert(helpers.dao.apis:insert {
-      name = "dd2",
-      hosts = { "datadog2.com" },
-      upstream_url = "http://mockbin.com"
+    local api2     = assert(helpers.dao.apis:insert {
+      name         = "dd2",
+      hosts        = { "datadog2.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
-    local api3 = assert(helpers.dao.apis:insert {
-      name = "dd3",
-      hosts = { "datadog3.com" },
-      upstream_url = "http://mockbin.com"
+    local api3     = assert(helpers.dao.apis:insert {
+      name         = "dd3",
+      hosts        = { "datadog3.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
-    local api4 = assert(helpers.dao.apis:insert {
-      name = "dd4",
-      hosts = { "datadog4.com" },
-      upstream_url = "http://mockbin.com"
+    local api4     = assert(helpers.dao.apis:insert {
+      name         = "dd4",
+      hosts        = { "datadog4.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
-      name = "key-auth",
+      name   = "key-auth",
       api_id = api4.id
     })
     assert(helpers.dao.plugins:insert {
-      name = "datadog",
+      name   = "datadog",
       api_id = api1.id,
       config = {
         host = "127.0.0.1",
-        port = 9999
-      }
+        port = 9999,
+      },
     })
     assert(helpers.dao.plugins:insert {
-      name = "datadog",
+      name   = "datadog",
       api_id = api2.id,
       config = {
-        host = "127.0.0.1",
-        port = 9999,
+        host    = "127.0.0.1",
+        port    = 9999,
         metrics = {
           {
-            name = "status_count",
-            stat_type = "counter",
-            sample_rate = 1
+            name        = "status_count",
+            stat_type   = "counter",
+            sample_rate = 1,
           },
           {
-            name = "request_count",
-            stat_type = "counter",
-            sample_rate = 1
-          }
-        }
-      }
+            name        = "request_count",
+            stat_type   = "counter",
+            sample_rate = 1,
+          },
+        },
+      },
     })
     assert(helpers.dao.plugins:insert {
-      name = "datadog",
+      name   = "datadog",
       api_id = api3.id,
       config = {
-        host = "127.0.0.1",
-        port = 9999,
+        host    = "127.0.0.1",
+        port    = 9999,
         metrics = {
           {
-            name = "status_count",
-            stat_type = "counter",
+            name        = "status_count",
+            stat_type   = "counter",
             sample_rate = 1,
-            tags = {"T1:V1"},
+            tags        = {"T1:V1"},
           },
           {
-            name = "request_count",
-            stat_type = "counter",
+            name        = "request_count",
+            stat_type   = "counter",
             sample_rate = 1,
-            tags = {"T2:V2,T3:V3,T4"},
+            tags        = {"T2:V2,T3:V3,T4"},
           },
           {
-            name = "latency",
-            stat_type = "gauge",
+            name        = "latency",
+            stat_type   = "gauge",
             sample_rate = 1,
-            tags = {"T2:V2:V3,T4"}
-          }
-        }
-      }
+            tags        = {"T2:V2:V3,T4"},
+          },
+        },
+      },
     })
     assert(helpers.dao.plugins:insert {
-      name = "datadog",
+      name   = "datadog",
       api_id = api4.id,
       config = {
-        host = "127.0.0.1",
-        port = 9999,
-        prefix = "prefix"
-      }
+        host   = "127.0.0.1",
+        port   = 9999,
+        prefix = "prefix",
+      },
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
     client = helpers.proxy_client()
   end)
   teardown(function()
@@ -138,7 +140,7 @@ describe("Plugin: datadog (log)", function()
 
     local res = assert(client:send {
       method = "GET",
-      path = "/status/200/?apikey=kong",
+      path = "/status/200?apikey=kong",
       headers = {
         ["Host"] = "datadog1.com"
       }
@@ -184,7 +186,7 @@ describe("Plugin: datadog (log)", function()
 
     local res = assert(client:send {
       method = "GET",
-      path = "/status/200/?apikey=kong",
+      path = "/status/200?apikey=kong",
       headers = {
         ["Host"] = "datadog4.com"
       }
@@ -305,7 +307,7 @@ describe("Plugin: datadog (log)", function()
     })
 
     assert.res_status(404, res)
-    
+
     local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
     assert.not_matches("attempt to index field 'api' (a nil value)", err_log, nil, true)
   end)

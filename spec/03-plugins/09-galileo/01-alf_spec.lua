@@ -49,19 +49,19 @@ describe("ALF serializer", function()
   before_each(function()
     _ngx = {
       status = 200,
-      var = {
+      var    = {
         server_protocol = "HTTP/1.1",
-        scheme = "https",
-        host = "mockbin.com",
-        request_uri = "/request/path",
-        request_length = 32,
-        remote_addr = "127.0.0.1"
+        scheme          = "https",
+        host            = "example.com",
+        request_uri     = "/request/path",
+        request_length  = 32,
+        remote_addr     = "127.0.0.1",
       },
-      ctx = {
+      ctx   = {
         KONG_PROXY_LATENCY = 3,
-        KONG_WAITING_TIME = 15,
-        KONG_RECEIVE_TIME = 25
-      }
+        KONG_WAITING_TIME  = 15,
+        KONG_RECEIVE_TIME  = 25,
+      },
     }
   end)
   it("sanity", function()
@@ -107,7 +107,7 @@ describe("ALF serializer", function()
         local entry = assert(alf:add_entry(_ngx))
         assert.equal("HTTP/1.1", entry.request.httpVersion)
         assert.equal("GET", entry.request.method)
-        assert.equal("https://mockbin.com/request/path", entry.request.url)
+        assert.equal("https://example.com/request/path", entry.request.url)
         assert.is_table(entry.request.headers)
         assert.is_table(entry.request.queryString)
         --assert.is_table(entry.request.postData) -- none by default
@@ -125,7 +125,7 @@ describe("ALF serializer", function()
         local alf = alf_serializer.new()
         local entry = assert(alf:add_entry(_ngx))
         assert.contains({name = "accept", value = "application/json"}, entry.request.headers)
-        assert.contains({name = "host", value = "mockbin.com"}, entry.request.headers)
+        assert.contains({name = "host", value = "example.com"}, entry.request.headers)
         assert.equal(118, entry.request.headersSize)
       end)
       it("handles headers with multiple values", function()
@@ -141,7 +141,7 @@ describe("ALF serializer", function()
         }, entry.request.headers)
         assert.contains({
           name = "host",
-          value = "mockbin.com"
+          value = "example.com"
         }, entry.request.headers)
       end)
     end)
@@ -614,7 +614,7 @@ describe("ALF serializer", function()
       local json_encoded_alf = assert(alf:serialize("abcd", "test"))
       assert.matches([["value":"application/json"]], json_encoded_alf, nil, true)
       assert.matches([["httpVersion":"HTTP/1.1"]], json_encoded_alf, nil, true)
-      assert.matches([["url":"https://mockbin.com/request/path"]], json_encoded_alf, nil, true)
+      assert.matches([["url":"https://example.com/request/path"]], json_encoded_alf, nil, true)
     end)
   end)
 

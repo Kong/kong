@@ -104,7 +104,7 @@ dao_helpers.for_each_dao(function(kong_config)
         })
 
         -- do *not* use assert.res_status() here in case of
-        -- failure to avoid a 1MB long error log
+        -- failure to avoid a very large error log
         assert.equal(504, res.status)
       end)
     end)

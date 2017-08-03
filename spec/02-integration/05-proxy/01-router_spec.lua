@@ -214,8 +214,8 @@ describe("Router", function()
 
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      assert.equal("bar", json.args.foo)
-      assert.equal("world", json.args.hello)
+      assert.equal("bar", json.uri_args.foo)
+      assert.equal("world", json.uri_args.hello)
     end)
 
     it("does proxy an empty querystring if URI does not contain arguments", function()

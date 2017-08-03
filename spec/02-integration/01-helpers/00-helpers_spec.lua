@@ -194,7 +194,7 @@ describe("helpers: assertions and modifiers", function()
         path    = "/request",
         body    = { hello = "world" },
         headers = {
-          host = "mock_upstream",
+          host             = "mock_upstream",
           ["Content-Type"] = "application/json",
         },
       })
