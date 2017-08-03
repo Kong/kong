@@ -426,18 +426,18 @@ describe("Utils", function()
       end)
       it("validates hostnames", function()
         local valids = {"hello.com", "hello.fr", "test.hello.com", "1991.io", "hello.COM",
-                        "HELLO.com", "123helloWORLD.com", "mockbin.123", "mockbin-api.com",
-                        "hello.abcd", "mockbin_api.com", "localhost",
+                        "HELLO.com", "123helloWORLD.com", "example.123", "example-api.com",
+                        "hello.abcd", "example_api.com", "localhost",
                         -- punycode examples from RFC3492; https://tools.ietf.org/html/rfc3492#page-14
                         -- specifically the japanese ones as they mix ascii with escaped characters
                         "3B-ww4c5e180e575a65lsy2b", "-with-SUPER-MONKEYS-pc58ag80a8qai00g7n9n",
                         "Hello-Another-Way--fc4qua05auwb3674vfr0b", "2-u9tlzr9756bt3uc0v",
                         "MajiKoi5-783gue6qz075azm5e", "de-jg4avhby1noc0d", "d9juau41awczczp",
                         }
-        local invalids = {"/mockbin", ".mockbin", "mockbin.", "mock;bin",
-                          "mockbin.com/org",
-                          "mockbin-.org", "mockbin.org-",
-                          "hello..mockbin.com", "hello-.mockbin.com",
+        local invalids = {"/example", ".example", "example.", "exam;ple",
+                          "example.com/org",
+                          "example-.org", "example.org-",
+                          "hello..example.com", "hello-.example.com",
                          }
         for _, name in ipairs(valids) do
           assert.are.same(name, (utils.check_hostname(name)))
@@ -461,7 +461,7 @@ describe("Utils", function()
         assert.are.same({host = "0000:0000:0000:0000:0000:0000:0000:0001", type = "ipv6", port = nil}, utils.normalize_ip("::1"))
         assert.are.same({host = "localhost", type = "name", port = 80}, utils.normalize_ip("localhost:80"))
         assert.are.same({host = "mashape.com", type = "name", port = nil}, utils.normalize_ip("mashape.com"))
-      
+
         assert.is_nil((utils.normalize_ip("1.2.3.4:8x0")))
         assert.is_nil((utils.normalize_ip("1.2.3.400")))
         assert.is_nil((utils.normalize_ip("[::1]:8x0")))

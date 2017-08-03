@@ -39,7 +39,7 @@ describe("Schemas", function()
     }
 
     it("should confirm a valid entity is valid", function()
-      local values = {string = "mockbin entity", url = "mockbin.com"}
+      local values = {string = "example entity", url = "example.com"}
 
       local valid, err = validate_entity(values, schema)
       assert.falsy(err)
@@ -48,7 +48,7 @@ describe("Schemas", function()
 
     describe("[required]", function()
       it("should invalidate entity if required property is missing", function()
-        local values = {url = "mockbin.com"}
+        local values = {url = "example.com"}
 
         local valid, err = validate_entity(values, schema)
         assert.False(valid)
@@ -298,7 +298,7 @@ describe("Schemas", function()
     describe("[default]", function()
       it("should set default values if those are variables or functions specified in the validator", function()
         -- Variables
-        local values = {string = "mockbin entity", url = "mockbin.com"}
+        local values = {string = "example entity", url = "example.com"}
 
         local valid, err = validate_entity(values, schema)
         assert.falsy(err)
@@ -306,7 +306,7 @@ describe("Schemas", function()
         assert.are.same(123456, values.date)
 
         -- Functions
-        local values = {string = "mockbin entity", url = "mockbin.com"}
+        local values = {string = "example entity", url = "example.com"}
 
         local valid, err = validate_entity(values, schema)
         assert.falsy(err)
@@ -316,7 +316,7 @@ describe("Schemas", function()
 
       it("should override default values if specified", function()
         -- Variables
-        local values = {string = "mockbin entity", url = "mockbin.com", date = 654321}
+        local values = {string = "example entity", url = "example.com", date = 654321}
 
         local valid, err = validate_entity(values, schema)
         assert.falsy(err)
@@ -324,7 +324,7 @@ describe("Schemas", function()
         assert.are.same(654321, values.date)
 
         -- Functions
-        local values = {string = "mockbin entity", url = "mockbin.com", default = "abcdef"}
+        local values = {string = "example entity", url = "example.com", default = "abcdef"}
 
         local valid, err = validate_entity(values, schema)
         assert.falsy(err)
@@ -344,7 +344,7 @@ describe("Schemas", function()
 
     describe("[regex]", function()
       it("should validate a field against a regex", function()
-        local values = {string = "mockbin entity", url = "mockbin_!"}
+        local values = {string = "example entity", url = "example_!"}
 
         local valid, err = validate_entity(values, schema)
         assert.falsy(valid)
@@ -450,7 +450,7 @@ describe("Schemas", function()
     end)
 
     it("should return error when unexpected values are included in the schema", function()
-      local values = {string = "mockbin entity", url = "mockbin.com", unexpected = "abcdef"}
+      local values = {string = "example entity", url = "example.com", unexpected = "abcdef"}
 
       local valid, err = validate_entity(values, schema)
       assert.falsy(valid)
@@ -458,7 +458,7 @@ describe("Schemas", function()
     end)
 
     it("should be able to return multiple errors at once", function()
-      local values = {url = "mockbin.com", unexpected = "abcdef"}
+      local values = {url = "example.com", unexpected = "abcdef"}
 
       local valid, err = validate_entity(values, schema)
       assert.falsy(valid)
