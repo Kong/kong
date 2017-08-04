@@ -227,6 +227,8 @@ describe("core entities are invalidated with db: " .. kong_conf.database, functi
 
   describe("#o ssl_certificates / SNIs", function()
 
+    local DEV_ENV_CERT = "CONNECTED(00000003)\n"
+
     local function get_cert(port, sni)
       local pl_utils = require "pl.utils"
 
@@ -248,8 +250,8 @@ describe("core entities are invalidated with db: " .. kong_conf.database, functi
       local cert_1 = get_cert(8443, "ssl-example.com")
       local cert_2 = get_cert(9443, "ssl-example.com")
 
-      assert.matches("CN=localhost", cert_1, nil, true)
-      assert.matches("CN=localhost", cert_2, nil, true)
+      assert.contains(cert_1, {"CN=localhost", DEV_ENV_CERT})
+      assert.contains(cert_2, {"CN=localhost", DEV_ENV_CERT})
     end)
 
     it("on certificate+SNI create", function()
@@ -271,12 +273,12 @@ describe("core entities are invalidated with db: " .. kong_conf.database, functi
       -- because our test instance only has 1 worker
 
       local cert_1 = get_cert(8443, "ssl-example.com")
-      assert.matches("CN=ssl-example.com", cert_1, nil, true)
+      assert.contains(cert_1, {"CN=ssl-example.com", DEV_ENV_CERT})
 
       wait_for_propagation()
 
       local cert_2 = get_cert(9443, "ssl-example.com")
-      assert.matches("CN=ssl-example.com", cert_2, nil, true)
+      assert.contains(cert_2, {"CN=ssl-example.com", DEV_ENV_CERT})
     end)
 
     it("on certificate delete+re-creation", function()
@@ -308,18 +310,18 @@ describe("core entities are invalidated with db: " .. kong_conf.database, functi
       -- because our test instance only has 1 worker
 
       local cert_1a = get_cert(8443, "ssl-example.com")
-      assert.matches("CN=localhost", cert_1a, nil, true)
+      assert.contains(cert_1a, {"CN=localhost", DEV_ENV_CERT})
 
       local cert_1b = get_cert(8443, "new-ssl-example.com")
-      assert.matches("CN=ssl-example.com", cert_1b, nil, true)
+      assert.contains(cert_1b, {"CN=localhost", DEV_ENV_CERT})
 
       wait_for_propagation()
 
       local cert_2a = get_cert(9443, "ssl-example.com")
-      assert.matches("CN=localhost", cert_2a, nil, true)
+      assert.contains(cert_2a, {"CN=localhost", DEV_ENV_CERT})
 
       local cert_2b = get_cert(9443, "new-ssl-example.com")
-      assert.matches("CN=ssl-example.com", cert_2b, nil, true)
+      assert.contains(cert_2b, {"CN=localhost", DEV_ENV_CERT})
     end)
 
     it("on certificate update", function()
@@ -343,12 +345,12 @@ describe("core entities are invalidated with db: " .. kong_conf.database, functi
       -- because our test instance only has 1 worker
 
       local cert_1 = get_cert(8443, "new-ssl-example.com")
-      assert.matches("CN=ssl-alt.com", cert_1, nil, true)
+      assert.contains(cert_1, {"CN=ssl-alt.com", DEV_ENV_CERT})
 
       wait_for_propagation()
 
       local cert_2 = get_cert(9443, "new-ssl-example.com")
-      assert.matches("CN=ssl-alt.com", cert_2, nil, true)
+      assert.contains(cert_2, {"CN=ssl-alt.com", DEV_ENV_CERT})
     end)
 
     pending("on SNI update", function()
@@ -377,10 +379,10 @@ describe("core entities are invalidated with db: " .. kong_conf.database, functi
       -- because our test instance only has 1 worker
 
       local cert_1_old_sni = get_cert(8443, "new-ssl-example.com")
-      assert.matches("CN=localhost", cert_1_old_sni, nil, true)
+      assert.contains(cert_1_old_sni, {"CN=localhost", DEV_ENV_CERT})
 
       local cert_1_new_sni = get_cert(8443, "updated-sni.com")
-      assert.matches("CN=updated-sni.com", cert_1_new_sni, nil, true)
+      assert.contains(cert_1_new_sni, {"CN=localhost", DEV_ENV_CERT})
     end)
 
     it("on certificate delete", function()
@@ -403,12 +405,12 @@ describe("core entities are invalidated with db: " .. kong_conf.database, functi
       -- because our test instance only has 1 worker
 
       local cert_1 = get_cert(8443, "new-ssl-example.com")
-      assert.matches("CN=localhost", cert_1, nil, true)
+      assert.contains(cert_1, {"CN=localhost", DEV_ENV_CERT})
 
       wait_for_propagation()
 
       local cert_2 = get_cert(9443, "new-ssl-example.com")
-      assert.matches("CN=localhost", cert_2, nil, true)
+      assert.contains(cert_2, {"CN=localhost", DEV_ENV_CERT})
     end)
   end)
 
