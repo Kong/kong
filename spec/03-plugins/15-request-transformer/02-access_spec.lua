@@ -4,8 +4,6 @@ describe("Plugin: request-transformer (access)", function()
   local client
 
   setup(function()
-    helpers.run_migrations()
-
     local api1 = assert(helpers.dao.apis:insert { name = "api-1", hosts = { "test1.com" }, upstream_url = "http://mockbin.com"})
     local api2 = assert(helpers.dao.apis:insert { name = "api-2", hosts = { "test2.com" }, upstream_url = "http://httpbin.org"})
     local api3 = assert(helpers.dao.apis:insert { name = "api-3", hosts = { "test3.com" }, upstream_url = "http://mockbin.com"})
@@ -15,6 +13,17 @@ describe("Plugin: request-transformer (access)", function()
     local api7 = assert(helpers.dao.apis:insert { name = "api-7", hosts = { "test7.com" }, upstream_url = "http://mockbin.com"})
     local api8 = assert(helpers.dao.apis:insert { name = "api-8", hosts = { "test8.com" }, upstream_url = "http://mockbin.com"})
     local api9 = assert(helpers.dao.apis:insert { name = "api-9", hosts = { "test9.com" }, upstream_url = "http://mockbin.com"})
+    local api10 = assert(helpers.dao.apis:insert { name = "api-10", hosts = { "test10.com" }, uris = { "/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }, upstream_url = "http://mockbin.com", strip_uri = false})
+    local api11 = assert(helpers.dao.apis:insert { name = "api-11", hosts = { "test11.com" }, uris = { "/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }, upstream_url = "http://mockbin.com"})
+    local api12 = assert(helpers.dao.apis:insert { name = "api-12", hosts = { "test12.com" }, uris = { "/requests/" }, upstream_url = "http://mockbin.com", strip_uri = false})
+    local api13 = assert(helpers.dao.apis:insert { name = "api-13", hosts = { "test13.com" }, uris = { "/requests/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }, upstream_url = "http://mockbin.com"})
+    local api14 = assert(helpers.dao.apis:insert { name = "api-14", hosts = { "test14.com" }, uris = { "/user1/(?P<user1>\\w+)/user2/(?P<user2>\\S+)" }, upstream_url = "http://mockbin.com"})
+    local api15 = assert(helpers.dao.apis:insert { name = "api-15", hosts = { "test15.com" }, uris = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" }, upstream_url = "http://mockbin.com", strip_uri = false})
+    local api16 = assert(helpers.dao.apis:insert { name = "api-16", hosts = { "test16.com" }, uris = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" }, upstream_url = "http://mockbin.com", strip_uri = false})
+    local api17 = assert(helpers.dao.apis:insert { name = "api-17", hosts = { "test17.com" }, uris = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" }, upstream_url = "http://mockbin.com", strip_uri = false})
+    local api18 = assert(helpers.dao.apis:insert { name = "api-18", hosts = { "test18.com" }, uris = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" }, upstream_url = "http://mockbin.com", strip_uri = false})
+    local api19 = assert(helpers.dao.apis:insert { name = "api-19", hosts = { "test19.com" }, uris = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" }, upstream_url = "http://mockbin.com", strip_uri = false})
+
 
     assert(helpers.dao.plugins:insert {
       api_id = api1.id,
@@ -115,6 +124,123 @@ describe("Plugin: request-transformer (access)", function()
           headers = {"x-to-rename:x-is-renamed"},
           querystring = {"originalparam:renamedparam"},
           body = {"originalparam:renamedparam"}
+        }
+      }
+    })
+
+    assert(helpers.dao.plugins:insert {
+      api_id = api10.id,
+      name = "request-transformer",
+      config = {
+        add = {
+          querystring = {"uri_param1:$(uri_captures.user1)", "uri_param2[some_index][1]:$(uri_captures.user2)"},
+        }
+      }
+    })
+
+    assert(helpers.dao.plugins:insert {
+      api_id = api11.id,
+      name = "request-transformer",
+      config = {
+        replace = {
+          uri = "/requests/user2/$(uri_captures.user2)/user1/$(uri_captures.user1)",
+        }
+      }
+    })
+
+    assert(helpers.dao.plugins:insert {
+      api_id = api12.id,
+      name = "request-transformer",
+      config = {
+        add = {
+          querystring = {"uri_param1:$(uri_captures.user1 or 'default1')", "uri_param2:$(uri_captures.user2 or 'default2')"},
+        }
+      }
+    })
+
+    assert(helpers.dao.plugins:insert {
+      api_id = api13.id,
+      name = "request-transformer",
+      config = {
+        replace = {
+          uri = "/requests/user2/$(10 * uri_captures.user1)",
+        }
+      }
+    })
+
+    assert(helpers.dao.plugins:insert {
+      api_id = api14.id,
+      name = "request-transformer",
+      config = {
+        replace = {
+          uri = "/requests$(uri_captures[0])",
+        }
+      }
+    })
+
+    assert(helpers.dao.plugins:insert {
+      api_id = api15.id,
+      name = "request-transformer",
+      config = {
+        add = {
+          querystring = {"uri_param1:$(uri_captures.user1)", "uri_param2:$(headers.host)"},
+          headers = {"x-test-header:$(query_params.q1)"}
+        },
+        remove = {
+          querystring = {"q1"},
+        }
+      }
+    })
+
+    assert(helpers.dao.plugins:insert {
+      api_id = api16.id,
+      name = "request-transformer",
+      config = {
+        replace = {
+          querystring = {"q2:$(headers['x-remove-header'])"},
+        },
+        add = {
+          querystring = {"q1:$(uri_captures.user1)"},
+          headers = {"x-test-header:$(headers['x-remove-header'])"}
+        },
+        remove = {
+          headers = {"x-remove-header"}
+        },
+      }
+    })
+
+    assert(helpers.dao.plugins:insert {
+      api_id = api17.id,
+      name = "request-transformer",
+      config = {
+        replace = {
+          querystring = {"q2:$(headers['x-replace-header'])"},
+          headers = {"x-replace-header:the new value"}
+        },
+        add = {
+          querystring = {"q1:$(uri_captures.user1)"},
+          headers = {"x-test-header:$(headers['x-replace-header'])"}
+        }
+      }
+    })
+
+    assert(helpers.dao.plugins:insert {
+      api_id = api18.id,
+      name = "request-transformer",
+      config = {
+        add = {
+          querystring = {[[q1:$('$(uri_captures.user1)')]]},
+        }
+      }
+    })
+
+    assert(helpers.dao.plugins:insert {
+      api_id = api19.id,
+      name = "request-transformer",
+      config = {
+        add = {
+          -- not inserting a value, but the `uri_captures` table itself to provoke a rendering error
+          querystring = {[[q1:$(uri_captures)]]},
         }
       }
     })
@@ -1318,6 +1444,186 @@ describe("Plugin: request-transformer (access)", function()
       assert.equals("a2", value[2])
       local value = assert.request(r).has.queryparam("q1")
       assert.equals("20", value)
+    end)
+  end)
+  describe("request rewrite using template", function()
+    it("template as querystring parameters on GET", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/requests/user1/foo/user2/bar",
+        query = {
+          q1 = "20",
+        },
+        body = {
+          hello = "world",
+        },
+        headers = {
+          host = "test10.com",
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+        }
+      })
+      assert.response(r).has.status(200)
+      local value = assert.request(r).has.queryparam("uri_param1")
+      assert.equals("foo", value)
+      value = assert.request(r).has.queryparam("uri_param2")
+      assert.equals("bar", value.some_index[1])
+    end)
+    it("should update request path using hash", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/requests/user1/foo/user2/bar",
+        headers = {
+          host = "test11.com",
+        }
+      })
+      assert.response(r).has.status(200)
+      local body = assert(assert.response(r).has.jsonbody())
+      assert.equals("http://test11.com/requests/user2/bar/user1/foo", body.url)
+    end)
+    it("should not add querystring if hash missing", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/requests/",
+        query = {
+          q1 = "20",
+        },
+        headers = {
+          host = "test12.com",
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.request(r).has.queryparam("q1")
+      local value = assert.request(r).has.queryparam("uri_param1")
+      assert.equals("default1", value)
+      value = assert.request(r).has.queryparam("uri_param2")
+      assert.equals("default2", value)
+    end)
+    it("should fail when uri template is not a proper expression", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/requests/user1/foo/user2/bar",
+        headers = {
+          host = "test13.com",
+        }
+      })
+      assert.response(r).has.status(500)
+    end)
+    it("should not fail when uri template rendered using index", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/user1/foo/user2/bar",
+        headers = {
+          host = "test14.com",
+        }
+      })
+      assert.response(r).has.status(200)
+      local body = assert(assert.response(r).has.jsonbody())
+      assert.equals("http://test14.com/requests/user1/foo/user2/bar", body.url)
+    end)
+    it("validate using headers/req_querystring for rendering templates",
+      function()
+        local r = assert(client:send {
+          method = "GET",
+          path = "/requests/user1/foo/user2/bar",
+          query = {
+            q1 = "20",
+          },
+          headers = {
+            host = "test15.com",
+            ["Content-Type"] = "application/x-www-form-urlencoded",
+          }
+        })
+        assert.response(r).has.status(200)
+        assert.request(r).has.no.queryparam("q1")
+        local value = assert.request(r).has.queryparam("uri_param1")
+        assert.equals("foo", value)
+        value = assert.request(r).has.queryparam("uri_param2")
+        assert.equals("test15.com", value)
+        value = assert.request(r).has.header("x-test-header")
+        assert.equals("20", value)
+      end)
+    it("validate that removed header can be used as template", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/requests/user1/foo/user2/bar",
+        query = {
+          q2 = "20",
+        },
+        headers = {
+          host = "test16.com",
+          ["x-remove-header"] = "its a test",
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.request(r).has.no.header("x-remove-header")
+      local value = assert.request(r).has.queryparam("q1")
+      assert.equals("foo", value)
+      value = assert.request(r).has.queryparam("q2")
+      assert.equals("its a test", value)
+      value = assert.request(r).has.header("x-test-header")
+      assert.equals("its a test", value)
+    end)
+    it("validate template will be rendered with old value of replaced header",
+      function()
+        local r = assert(client:send {
+          method = "GET",
+          path = "/requests/user1/foo/user2/bar",
+          query = {
+            q2 = "20",
+          },
+          headers = {
+            host = "test17.com",
+            ["x-replace-header"] = "the old value",
+            ["Content-Type"] = "application/x-www-form-urlencoded",
+          }
+        })
+        assert.response(r).has.status(200)
+        local value = assert.request(r).has.queryparam("q1")
+        assert.equals("foo", value)
+        value = assert.request(r).has.queryparam("q2")
+        assert.equals("the old value", value)
+        value = assert.request(r).has.header("x-test-header")
+        assert.equals("the old value", value)
+        value = assert.request(r).has.header("x-replace-header")
+        assert.equals("the new value", value)
+      end)
+    it("validate template can be escaped",
+      function()
+        local r = assert(client:send {
+          method = "GET",
+          path = "/requests/user1/foo/user2/bar",
+          query = {
+            q2 = "20",
+          },
+          headers = {
+            host = "test18.com",
+            ["x-replace-header"] = "the old value",
+            ["Content-Type"] = "application/x-www-form-urlencoded",
+          }
+        })
+        assert.response(r).has.status(200)
+        local value = assert.request(r).has.queryparam("q1")
+        assert.equals([[$(uri_captures.user1)]], value)
+        value = assert.request(r).has.queryparam("q2")
+        assert.equals("20", value)
+      end)
+    it("should fail when rendering errors out", function()
+      -- FIXME: the engine is unsafe at render time until
+      -- https://github.com/stevedonovan/Penlight/pull/256 is merged and released
+      local r = assert(client:send {
+        method = "GET",
+        path = "/requests/user1/foo/user2/bar",
+        query = {
+          q2 = "20",
+        },
+        headers = {
+          host = "test19.com",
+          ["x-replace-header"] = "the old value",
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+        }
+      })
+      assert.response(r).has.status(500)
     end)
   end)
 end)

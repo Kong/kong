@@ -1,11 +1,21 @@
-local find = string.find
+local pl_template = require "pl.template"
+
 -- entries must have colons to set the key and value apart
 local function check_for_value(value)
-  for i, entry in ipairs(value) do
-    local ok = find(entry, ":")
-    if not ok then
-      return false, "key '" .. entry .. "' has no value"
+  for _, entry in ipairs(value) do
+
+    local name, value = entry:match("^([^:]+):*(.-)$")
+    if not name or not value or value == "" then
+      return false, "key '" ..name.. "' has no value"
     end
+
+    local status, res, err = pcall(pl_template.compile, value)
+    if not status or err then
+      return false, "value '" .. value ..
+              "' is not in supported format, error:" ..
+              (status and res or err)
+    end
+
   end
   return true
 end
@@ -51,7 +61,8 @@ return {
         fields = {
           body = {type = "array", default = {}, func = check_for_value},
           headers = {type = "array", default = {}, func = check_for_value},
-          querystring = {type = "array", default = {}, func = check_for_value}
+          querystring = {type = "array", default = {}, func = check_for_value },
+          uri = {type = "string"}
         }
       }
     },
