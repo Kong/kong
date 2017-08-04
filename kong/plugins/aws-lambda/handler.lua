@@ -9,6 +9,7 @@ local meta = require "kong.meta"
 local http = require "resty.http"
 local cjson = require "cjson.safe"
 local public_utils = require "kong.tools.public"
+local get_credentials_from_iam_role = require "kong.plugins.aws-lambda.iam-role-credentials"
 
 
 local tostring             = tostring
@@ -198,10 +199,18 @@ function AWSLambdaHandler:access(conf)
     path = path,
     host = host,
     port = port,
-    access_key = conf.aws_key,
-    secret_key = conf.aws_secret,
     query = conf.qualifier and "Qualifier=" .. conf.qualifier
   }
+
+  if conf.use_ec2_iam_role then
+    local iam_role_credentials = get_credentials_from_iam_role()
+    opts.access_key = iam_role_credentials.access_key
+    opts.secret_key = iam_role_credentials.secret_key
+    opts.headers['X-Amz-Security-Token'] = iam_role_credentials.session_token
+  else
+    opts.access_key = conf.aws_key
+    opts.secret_key = conf.aws_secret
+  end
 
   local request, err = aws_v4(opts)
   if err then

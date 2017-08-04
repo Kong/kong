@@ -1,3 +1,5 @@
+local Errors = require "kong.dao.errors"
+
 local function check_status(status)
   if status and (status < 100 or status > 999) then
     return false, "unhandled_status must be within 100 - 999."
@@ -20,11 +22,9 @@ return {
     },
     aws_key = {
       type = "string",
-      required = true,
     },
     aws_secret = {
       type = "string",
-      required = true,
     },
     aws_region = {
       type = "string",
@@ -101,5 +101,18 @@ return {
       type = "boolean",
       default = false,
     },
+    use_ec2_iam_role = {
+      type="boolean",
+    },
   },
+  self_check =  function(schema, plugin_t, dao, is_update)
+    if not plugin_t["use_ec2_iam_role"] or plugin_t["use_ec2_iam_role"] == false then
+      -- if iam_profile is not set, aws_key and aws_secret are required
+      if not plugin_t["aws_key"] or not plugin_t["aws_secret"] then
+        return false, Errors.schema "You need to set aws_key and aws_secret or need to use EC2 IAM roles"
+      end
+      return true
+    end
+    return true
+  end
 }
