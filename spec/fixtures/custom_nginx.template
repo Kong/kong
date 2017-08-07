@@ -423,5 +423,35 @@ http {
                 end
             }
         }
+
+        location = "/latest/meta-data/iam/security-credentials/" {
+            content_by_lua_block {
+                local IAM_ROLE_NAME = 'testrole'
+                ngx.header["Content-Length"] = #IAM_ROLE_NAME
+                ngx.header["Content-Type"] = "text/plain"
+                ngx.status = 200
+                ngx.say(IAM_ROLE_NAME)
+                ngx.exit(0)
+            }
+        }
+
+        location = "/latest/meta-data/iam/security-credentials/testrole" {
+            content_by_lua_block {
+                local IAM_ROLE_TEMPORARY_CREDS = {
+                    Code = "Success",
+                    Type = "AWS-HMAC",
+                    AccessKeyId = "test_iam_access_key_id",
+                    SecretAccessKey ="test_iam_secret_access_key",
+                    Token = "test_session_token"
+                 }
+                local IAM_ROLE_TEMPORARY_CREDS_TXT = require("cjson").encode(IAM_ROLE_TEMPORARY_CREDS)
+
+                ngx.status = 200
+                ngx.header["Content-Length"] = #IAM_ROLE_TEMPORARY_CREDS_TXT
+                ngx.header["Content-Type"] = "text/plain"
+                ngx.say(IAM_ROLE_TEMPORARY_CREDS_TXT)
+                ngx.exit(0)
+           }
+        }
     }
 }
