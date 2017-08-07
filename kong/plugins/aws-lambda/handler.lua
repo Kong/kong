@@ -206,7 +206,8 @@ function AWSLambdaHandler:access(conf)
     local iam_role_credentials = get_credentials_from_iam_role()
     opts.access_key = iam_role_credentials.access_key
     opts.secret_key = iam_role_credentials.secret_key
-    opts.headers['X-Amz-Security-Token'] = iam_role_credentials.session_token
+    opts.headers["X-Amz-Security-Token"] = iam_role_credentials.session_token
+
   else
     opts.access_key = conf.aws_key
     opts.secret_key = conf.aws_secret
