@@ -50,6 +50,11 @@ describe("Plugin: cors (access)", function()
       hosts = { "cors9.com" },
       upstream_url = "http://mockbin.com"
     })
+    local api10 = assert(helpers.dao.apis:insert {
+      name = "api-10",
+      hosts = { "cors10.com" },
+      upstream_url = "http://mockbin.com"
+    })
 
 
     assert(helpers.dao.plugins:insert {
@@ -139,6 +144,16 @@ describe("Plugin: cors (access)", function()
       }
     })
 
+    assert(helpers.dao.plugins:insert {
+      name = "cors",
+      api_id = api10.id,
+      config = {
+        origins = { "*" },
+        credentials = true,
+        override_origins = false
+      }
+    })
+
     assert(helpers.start_kong())
     client = helpers.proxy_client()
   end)
@@ -197,9 +212,9 @@ describe("Plugin: cors (access)", function()
       assert.res_status(204, res)
       assert.equal("GET,HEAD,PUT,PATCH,POST,DELETE", res.headers["Access-Control-Allow-Methods"])
       assert.equal("*", res.headers["Access-Control-Allow-Origin"])
+      assert.equal("true", res.headers["Access-Control-Allow-Credentials"])
       assert.is_nil(res.headers["Access-Control-Allow-Headers"])
       assert.is_nil(res.headers["Access-Control-Expose-Headers"])
-      assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
       assert.is_nil(res.headers["Access-Control-Max-Age"])
     end)
 
@@ -395,6 +410,19 @@ describe("Plugin: cors (access)", function()
       assert.res_status(200, res)
       assert.equals("*", res.headers["Access-Control-Allow-Origin"])
       assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
+    end)
+
+    it("responds with * when config.credentials=true and conf.override_origins=false", function()
+      local res = assert(client:send {
+        method = "GET",
+        headers = {
+          ["Host"] = "cors10.com",
+          ["Origin"] = "http://www.example.net"
+        }
+      })
+      assert.res_status(200, res)
+      assert.equals("*", res.headers["Access-Control-Allow-Origin"])
+      assert.equals("true", res.headers["Access-Control-Allow-Credentials"])
     end)
   end)
 end)

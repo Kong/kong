@@ -20,13 +20,11 @@ local function configure_origin(ngx, conf)
 
   if n_origins == 0 then
     ngx.header["Access-Control-Allow-Origin"] = "*"
-    ngx.ctx.cors_allow_all = true
     return
   end
 
   if n_origins == 1 then
     if conf.origins[1] == "*" then
-      ngx.ctx.cors_allow_all = true
       ngx.header["Access-Control-Allow-Origin"] = "*"
       return
     end
@@ -67,17 +65,15 @@ end
 
 local function configure_credentials(ngx, conf)
   if conf.credentials then
-    if not ngx.ctx.cors_allow_all then
-      ngx.header["Access-Control-Allow-Credentials"] = "true"
-      return
-    end
+    ngx.header["Access-Control-Allow-Credentials"] = "true"
 
     -- Access-Control-Allow-Origin is '*', must change it because ACAC cannot
     -- be 'true' if ACAO is '*'.
-    local req_origin = ngx.var.http_origin
-    if req_origin then
-      ngx.header["Access-Control-Allow-Origin"]      = req_origin
-      ngx.header["Access-Control-Allow-Credentials"] = "true"
+    if conf.override_origins then
+      local req_origin = ngx.var.http_origin
+      if req_origin then
+        ngx.header["Access-Control-Allow-Origin"] = req_origin
+      end
     end
   end
 end

@@ -16,6 +16,7 @@ return {
   no_consumer = true,
   fields = {
     origins = { type = "array", func = check_regex },
+    override_origins = { type = "boolean", default = true },
     headers = { type = "array" },
     exposed_headers = { type = "array" },
     methods = { type = "array", enum = { "HEAD", "GET", "POST", "PUT", "PATCH", "DELETE" } },
