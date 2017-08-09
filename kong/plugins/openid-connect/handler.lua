@@ -262,22 +262,44 @@ function OICHandler:access(conf)
   if #clients > 1 then
     client_id = var.http_x_client_id
     if client_id then
-      for i, client in ipairs(clients) do
-        if client_id == client then
-          client_secret   = secrets[i]
-          client_redirect_uri = redirects[i] or redirects[1]
-          break
+      local client_idx = tonumber(client_id)
+      if client_idx then
+        if clients[client_idx] then
+          client_id = clients[client_idx]
+          if client_id then
+            client_secret       = secrets[client_idx]
+            client_redirect_uri = redirects[client_idx] or redirects[1]
+          end
+        end
+      else
+        for i, client in ipairs(clients) do
+          if client_id == client then
+            client_secret       = secrets[i]
+            client_redirect_uri = redirects[i] or redirects[1]
+            break
+          end
         end
       end
     else
       local uri_args = get_uri_args()
       client_id = uri_args.client_id
       if client_id then
-        for i, client in ipairs(clients) do
-          if client_id == client then
-            client_secret   = secrets[i]
-            client_redirect_uri = redirects[i] or redirects[1]
-            break
+        local client_idx = tonumber(client_id)
+        if client_idx then
+          if clients[client_idx] then
+            client_id = clients[client_idx]
+            if client_id then
+              client_secret       = secrets[client_idx]
+              client_redirect_uri = redirects[client_idx] or redirects[1]
+            end
+          end
+        else
+          for i, client in ipairs(clients) do
+            if client_id == client then
+              client_secret       = secrets[i]
+              client_redirect_uri = redirects[i] or redirects[1]
+              break
+            end
           end
         end
       else
@@ -285,11 +307,22 @@ function OICHandler:access(conf)
         local post_args = get_post_args()
         client_id = post_args.client_id
         if client_id then
-          for i, client in ipairs(clients) do
-            if client_id == client then
-              client_secret   = secrets[i]
-              client_redirect_uri = redirects[i] or redirects[1]
-              break
+          local client_idx = tonumber(client_id)
+          if client_idx then
+            if clients[client_idx] then
+              client_id = clients[client_idx]
+              if client_id then
+                client_secret       = secrets[client_idx]
+                client_redirect_uri = redirects[client_idx] or redirects[1]
+              end
+            end
+          else
+            for i, client in ipairs(clients) do
+              if client_id == client then
+                client_secret       = secrets[i]
+                client_redirect_uri = redirects[i] or redirects[1]
+                break
+              end
             end
           end
         end
@@ -564,8 +597,9 @@ function OICHandler:access(conf)
 
               args = { args }
             end
+          end
 
-          else
+          if not args then
             -- authorization code request
             args, err = o.authorization:request()
             if not args then

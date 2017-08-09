@@ -1,25 +1,28 @@
-local BasePlugin = require "kong.plugins.base_plugin"
-local cache      = require "kong.plugins.openid-connect.cache"
-local responses  = require "kong.tools.responses"
-local oic        = require "kong.openid-connect"
-local uri        = require "kong.openid-connect.uri"
-local session    = require "resty.session"
+local BasePlugin    = require "kong.plugins.base_plugin"
+local cache         = require "kong.plugins.openid-connect.cache"
+local responses     = require "kong.tools.responses"
+local oic           = require "kong.openid-connect"
+local uri           = require "kong.openid-connect.uri"
+local session       = require "resty.session"
 
 
-local redirect   = ngx.redirect
-local var        = ngx.var
-local log        = ngx.log
-local time       = ngx.time
-local header     = ngx.header
-local tonumber   = tonumber
-local concat     = table.concat
-local find       = string.find
-local type       = type
-local sub        = string.sub
+local redirect      = ngx.redirect
+local var           = ngx.var
+local log           = ngx.log
+local time          = ngx.time
+local header        = ngx.header
+local read_body     = ngx.req.read_body
+local get_uri_args  = ngx.req.get_uri_args
+local get_post_args = ngx.req.get_post_args
+local tonumber      = tonumber
+local concat        = table.concat
+local find          = string.find
+local type          = type
+local sub           = string.sub
 
 
-local NOTICE     = ngx.NOTICE
-local ERR        = ngx.ERR
+local NOTICE        = ngx.NOTICE
+local ERR           = ngx.ERR
 
 
 local function request_url()
@@ -51,16 +54,32 @@ local function request_url()
 end
 
 
-local function unauthorized(s, iss, err)
+local function unauthorized(iss, err, s)
   if err then
     log(NOTICE, err)
   end
 
-  s:destroy()
+  if s then
+    s:destroy()
+  end
 
   local parts = uri.parse(iss)
   header["WWW-Authenticate"] = 'Bearer realm="' .. parts.host .. '"'
   return responses.send_HTTP_UNAUTHORIZED()
+end
+
+
+local function unexpected(err)
+  if err then
+    log(ERR, err)
+  end
+
+  return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+end
+
+
+local function success(response)
+  return responses.send_HTTP_OK(response)
 end
 
 
@@ -104,92 +123,121 @@ function OICAuthenticationHandler:access(conf)
   }, issuer.configuration, issuer.keys)
 
   if not o then
-    log(ERR, err)
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    return unexpected(err)
   end
 
   local iss    = o.configuration.issuer
   local tokens = conf.tokens or { "id_token", "access_token" }
 
-  -- TODO: Add support for session configuration (currently possible through nginx configuration)
-  local s, present = session.open()
+  local s, session_present = session.open { secret = issuer.secret }
 
-  if not present then
-    local args
-    args, err = o.authorization:request()
-    if not args then
-      log(ERR, err)
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
-    end
-
-    s.data = {
-      state         = args.state,
-      nonce         = args.nonce,
-      code_verifier = args.code_verifier,
+  if not session_present then
+    local authorization, authorization_present = session.open {
+      name   = "authorization",
+      secret = issuer.secret,
+      cookie = {
+        samesite = "off",
+      }
     }
 
-    s:save()
+    if not authorization_present then
+      local args
+      args, err = o.authorization:request()
+      if not args then
+        return unexpected(err)
+      end
 
-    return redirect(args.url)
-  end
+      authorization.data = {
+        state         = args.state,
+        nonce         = args.nonce,
+        code_verifier = args.code_verifier,
+      }
 
-  local data = s.data
+      authorization:save()
 
-  if data.state then
-    local toks, decoded
-    local args = {
-      state         = data.state,
-      nonce         = data.nonce,
-      code_verifier = data.code_verifier,
-    }
-
-    args, err = o.authorization:verify(args)
-    if not args then
-      return unauthorized(s, iss, err)
+      return redirect(args.url)
     end
 
-    toks, err = o.token:request(args)
-    if not toks then
-      return unauthorized(s, iss, err)
-    end
+    local authorization_data = authorization.data or {}
+    local state = authorization_data.state
 
-    decoded, err = o.token:verify(toks, args)
-    if not decoded then
-      return unauthorized(s, iss, err)
-    end
+    if state then
+      local toks, decoded
+      local args = {
+        state         = authorization_data.state,
+        nonce         = authorization_data.nonce,
+        code_verifier = authorization_data.code_verifier,
+      }
 
-    -- TODO: introspect tokens
-    -- TODO: call userinfo endpoint
+      local uri_args = get_uri_args()
 
-    local expires = (tonumber(toks.expires_in) or 3600) + time()
+      args, err = o.authorization:verify(args)
+      if not args then
+        if uri_args.state == state then
+          log(ERR, "a")
+          return unauthorized(iss, err, authorization)
 
-    s.data = {
-      tokens  = toks,
-      expires = expires,
-    }
+        else
+          read_body()
+          local post_args = get_post_args()
+          if post_args.state == state then
+            log(ERR, "b")
+            return unauthorized(iss, err, authorization)
+          end
+        end
 
-    s:regenerate()
+        log(ERR, "c")
+        return unauthorized(iss, err)
+      end
 
-    local login_uri = conf.login_redirect_uri
-    if login_uri then
-      return redirect(login_uri .. "#id_token=" .. toks.id_token)
+      authorization:destroy()
 
-    else
-      if type(decoded.id_token) == "table" then
-        return responses.send_HTTP_OK(toks.id_token or {})
+      toks, err = o.token:request(args)
+      if not toks then
+        log(ERR, "d")
+        return unauthorized(iss, err)
+      end
+
+      decoded, err = o.token:verify(toks, args)
+      if not decoded then
+        log(ERR, "e")
+        return unauthorized(iss, err)
+      end
+
+      -- TODO: introspect tokens
+      -- TODO: call userinfo endpoint
+
+      local expires = (tonumber(toks.expires_in) or 3600) + time()
+
+      s.data    = {
+        tokens  = toks,
+        expires = expires,
+      }
+
+      s:save()
+
+      local login_uri = conf.login_redirect_uri
+      if login_uri then
+        return redirect(login_uri .. "#id_token=" .. toks.id_token)
 
       else
-        return responses.send_HTTP_OK{}
+        if type(decoded.id_token) == "table" then
+          return success { id_token = toks.id_token }
+
+        else
+          return success {}
+        end
       end
     end
   end
 
+  local data = s.data      or {}
   local toks = data.tokens or {}
 
   local decoded
-  decoded, err = o.token:verify(toks, { nonce = data.nonce, tokens = tokens })
+  decoded, err = o.token:verify(toks, { tokens = tokens })
   if not decoded then
-    return unauthorized(s, iss, err)
+    return unauthorized(iss, err, s)
 
   else
     s:start()
@@ -199,7 +247,7 @@ function OICAuthenticationHandler:access(conf)
       return redirect(login_uri .. "#id_token=" .. toks.id_token)
 
     else
-      return responses.send_HTTP_OK(toks.id_token or {})
+      return success { id_token = toks.id_token }
     end
   end
 end
