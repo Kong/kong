@@ -214,12 +214,15 @@ function OICVerificationHandler:access(conf)
     local ct     = var.content_type  or ""
     local name   = conf.param_name   or "id_token"
     local typ    = conf.param_type   or { "query", "header", "body" }
-    local prefix = conf.param_prefix or "x_"
 
     for _, t in ipairs(typ) do
       if t == "header" then
-        local hdr = "http_" .. gsub(lower(prefix .. name), "-", "_")
-        idt = var[hdr]
+        local nme = gsub(lower(name), "-", "_")
+        idt = var["http_" .. nme]
+        if idt then
+          break
+        end
+        idt = var["http_x_" .. nme]
         if idt then
           break
         end

@@ -34,11 +34,6 @@ return {
       enum            = { "query", "header", "body" },
       default         = { "query", "header", "body" },
     },
-    param_prefix      = {
-      required        = false,
-      type            = "string",
-      default         = "x_"
-    },
     jwks_header       = {
       required        = false,
       type            = "string",
