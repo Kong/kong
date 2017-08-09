@@ -112,7 +112,6 @@ function OICAuthenticationHandler:access(conf)
     client_secret = conf.client_secret,
     redirect_uri  = conf.redirect_uri or request_url(),
     scope         = conf.scopes       or { "openid" },
-    claims        = conf.claims       or { "iss", "sub", "aud", "azp", "exp" },
     audience      = conf.audience,
     domains       = conf.domains,
     max_age       = conf.max_age,
@@ -126,8 +125,7 @@ function OICAuthenticationHandler:access(conf)
     return unexpected(err)
   end
 
-  local iss    = o.configuration.issuer
-  local tokens = conf.tokens or { "id_token", "access_token" }
+  local iss = o.configuration.issuer
 
   local s, session_present = session.open { secret = issuer.secret }
 
@@ -140,115 +138,122 @@ function OICAuthenticationHandler:access(conf)
       }
     }
 
-    if not authorization_present then
-      local args
-      args, err = o.authorization:request()
-      if not args then
-        return unexpected(err)
-      end
+    if authorization_present then
+      local authorization_data = authorization.data or {}
 
-      authorization.data = {
-        state         = args.state,
-        nonce         = args.nonce,
-        code_verifier = args.code_verifier,
-      }
+      local state = authorization_data.state
 
-      authorization:save()
+      if state then
+        local nonce         = authorization_data.nonce
+        local code_verifier = authorization_data.code_verifier
 
-      return redirect(args.url)
-    end
+        -- authorization code response
+        local args = {
+          state         = state,
+          nonce         = nonce,
+          code_verifier = code_verifier,
+        }
 
-    local authorization_data = authorization.data or {}
-    local state = authorization_data.state
+        local uri_args = get_uri_args()
 
-    if state then
-      local toks, decoded
-      local args = {
-        state         = authorization_data.state,
-        nonce         = authorization_data.nonce,
-        code_verifier = authorization_data.code_verifier,
-      }
+        args, err = o.authorization:verify(args)
+        if not args then
+          if uri_args.state == state then
+            return unauthorized(iss, err, authorization)
 
-      local uri_args = get_uri_args()
+          else
+            read_body()
+            local post_args = get_post_args()
+            if post_args.state == state then
+              return unauthorized(iss, err, authorization)
+            end
+          end
 
-      args, err = o.authorization:verify(args)
-      if not args then
-        if uri_args.state == state then
-          log(ERR, "a")
-          return unauthorized(iss, err, authorization)
+          -- it seems that user may have opened a second tab
+          -- lets redirect that to idp as well in case user
+          -- had closed the previous, but with same parameters
+          -- as before.
+          authorization:start()
+
+          args, err = o.authorization:request {
+            state         = state,
+            nonce         = nonce,
+            code_verifier = code_verifier
+          }
+
+          if not args then
+            return unexpected(err)
+          end
+
+          return redirect(args.url)
+        end
+
+        authorization:destroy()
+
+        local tokens_encoded
+        tokens_encoded, err = o.token:request(args)
+        if not tokens_encoded then
+          return unauthorized(iss, err)
+        end
+
+        local tokens_decoded
+        tokens_decoded, err = o.token:verify(tokens_encoded, args)
+        if not tokens_decoded then
+          return unauthorized(iss, err)
+        end
+
+        local expires = (tonumber(tokens_encoded.expires_in) or 3600) + time()
+
+        s.data    = {
+          tokens  = tokens_encoded,
+          expires = expires,
+        }
+
+        s:save()
+
+        local login_uri = conf.login_redirect_uri
+        if login_uri then
+          return redirect(login_uri .. "#id_token=" .. tokens_encoded.id_token)
 
         else
-          read_body()
-          local post_args = get_post_args()
-          if post_args.state == state then
-            log(ERR, "b")
-            return unauthorized(iss, err, authorization)
+          if type(tokens_decoded.id_token) == "table" then
+            return success { id_token = tokens_encoded.id_token }
+
+          else
+            return success {}
           end
         end
-
-        log(ERR, "c")
-        return unauthorized(iss, err)
-      end
-
-      authorization:destroy()
-
-      toks, err = o.token:request(args)
-      if not toks then
-        log(ERR, "d")
-        return unauthorized(iss, err)
-      end
-
-      decoded, err = o.token:verify(toks, args)
-      if not decoded then
-        log(ERR, "e")
-        return unauthorized(iss, err)
-      end
-
-      -- TODO: introspect tokens
-      -- TODO: call userinfo endpoint
-
-      local expires = (tonumber(toks.expires_in) or 3600) + time()
-
-      s.data    = {
-        tokens  = toks,
-        expires = expires,
-      }
-
-      s:save()
-
-      local login_uri = conf.login_redirect_uri
-      if login_uri then
-        return redirect(login_uri .. "#id_token=" .. toks.id_token)
-
-      else
-        if type(decoded.id_token) == "table" then
-          return success { id_token = toks.id_token }
-
-        else
-          return success {}
-        end
       end
     end
+
+    local args
+    args, err = o.authorization:request()
+    if not args then
+      return unexpected(err)
+    end
+
+    authorization.data = {
+      state         = args.state,
+      nonce         = args.nonce,
+      code_verifier = args.code_verifier,
+    }
+
+    authorization:save()
+
+    return redirect(args.url)
   end
 
   local data = s.data      or {}
   local toks = data.tokens or {}
 
-  local decoded
-  decoded, err = o.token:verify(toks, { tokens = tokens })
-  if not decoded then
-    return unauthorized(iss, err, s)
+  s:start()
+
+  local login_uri = conf.login_redirect_uri
+  if login_uri then
+    return redirect(login_uri .. "#id_token=" .. toks.id_token)
 
   else
-    s:start()
-
-    local login_uri = conf.login_redirect_uri
-    if login_uri then
-      return redirect(login_uri .. "#id_token=" .. toks.id_token)
-
-    else
-      return success { id_token = toks.id_token }
-    end
+    return success { id_token = toks.id_token }
   end
 end
 

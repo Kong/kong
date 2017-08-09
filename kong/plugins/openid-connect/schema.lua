@@ -42,7 +42,7 @@ return {
       enum                  = {
         "query",
         "form_post",
-        "fragment"
+        "fragment",
       },
       default               = "query",
     },
@@ -101,12 +101,12 @@ return {
       enum                  = {
         "query",
         "header",
-        "body"
+        "body",
       },
       default               = {
         "query",
         "header",
-        "body"
+        "body",
       },
     },
     id_token_header         = {

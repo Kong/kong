@@ -53,14 +53,35 @@ local function request_url()
 end
 
 
-local function unauthorized(iss, err)
+local function unauthorized(issuer, err, s)
   if err then
     log(NOTICE, err)
   end
-  local parts = uri.parse(iss)
+
+  if s then
+    s:destroy()
+  end
+
+  local parts = uri.parse(issuer)
   header["WWW-Authenticate"] = 'Bearer realm="' .. parts.host .. '"'
   return responses.send_HTTP_UNAUTHORIZED()
 end
+
+
+local function forbidden(issuer, err, s)
+  if err then
+    log(NOTICE, err)
+  end
+
+  if s then
+    s:destroy()
+  end
+
+  local parts = uri.parse(issuer)
+  header["WWW-Authenticate"] = 'Bearer realm="' .. parts.host .. '"'
+  return responses.send_HTTP_FORBIDDEN()
+end
+
 
 
 local function consumer(issuer, tok, claim, anon, consumer_by)
@@ -126,7 +147,6 @@ function OICProtectionHandler:access(conf)
     client_secret     = conf.client_secret,
     redirect_uri      = conf.redirect_uri or request_url(),
     scope             = conf.scopes       or { "openid" },
-    claims            = conf.claims       or { "iss", "sub", "aud", "azp", "exp" },
     audience          = conf.audience,
     domains           = conf.domains,
     max_age           = conf.max_age,
@@ -145,8 +165,7 @@ function OICProtectionHandler:access(conf)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
 
-  local iss    = o.configuration.issuer
-  local tokens = conf.tokens or { "id_token", "access_token" }
+  local iss = o.configuration.issuer
 
   -- TODO: Add support for session configuration (currently possible through nginx configuration)
   local s, session_present = session.open { secret = issuer.secret }
@@ -156,83 +175,81 @@ function OICProtectionHandler:access(conf)
   end
 
   local data = s.data
-  local toks = data.tokens
-
-  local decoded
+  local tokens_encoded = data.tokens
+  local tokens_decoded
+  local default_expires_in = 3600
+  local now = time()
 
   local expires = (data.expires or conf.leeway) - conf.leeway
   if expires > time() then
     s:start()
     if conf.reverify then
-      decoded, err = o.token:verify(toks, { nonce = data.nonce, tokens = tokens })
-      if not decoded then
-        return unauthorized(iss, err)
+      tokens_decoded, err = o.token:verify(tokens_encoded)
+      if not tokens_decoded then
+        return forbidden(iss, err)
       end
     end
 
   else
-    if not toks.refresh_token then
-      return unauthorized(iss)
+    if not tokens_encoded.refresh_token then
+      return forbidden(iss, "access token cannot be refreshed in absense of refresh token", s)
     end
 
-    local tks
-    local refresh_token = toks.refresh_token
-    tks, err = o.token:refresh(refresh_token)
+    local tokens_refreshed
+    local refresh_token = tokens_encoded.refresh_token
+    tokens_refreshed, err = o.token:refresh(refresh_token)
 
-    if not tks then
-      return unauthorized(iss, err)
+    if not tokens_refreshed then
+      return forbidden(iss, err, s)
     end
 
-    if not tks.id_token then
-      tks.id_token = toks.id_token
+    if not tokens_refreshed.id_token then
+      tokens_refreshed.id_token = tokens_encoded.id_token
     end
 
-    if not tks.refresh_token then
-      tks.refresh_token = refresh_token
+    if not tokens_refreshed.refresh_token then
+      tokens_refreshed.refresh_token = refresh_token
     end
 
-    decoded, err = o.token:verify(tks, { tokens = tokens })
-    if not decoded then
-      return unauthorized(iss, err)
+    tokens_decoded, err = o.token:verify(tokens_refreshed)
+    if not tokens_decoded then
+      return forbidden(iss, err, s)
     end
 
-    toks = tks
+    tokens_encoded = tokens_refreshed
 
-    -- TODO: introspect refreshed tokens?
-    -- TODO: call userinfo endpoint to refresh?
+    expires = (tonumber(tokens_encoded.expires_in) or default_expires_in) + now
 
-    expires = (tonumber(toks.expires_in) or 3600) + time()
-
-    s.data    = {
-      tokens  = toks,
+    s.data = {
+      tokens  = tokens_encoded,
       expires = expires,
     }
 
     s:regenerate()
+
   end
 
+  local consumer_claim = conf.consumer_claim
+  if consumer_claim and consumer_claim ~= "" then
+    local consumer_by = conf.consumer_by
 
-  local claim = conf.consumer_claim
-  if claim and claim ~= "" then
-    if not decoded then
-      decoded, err = o.token:decode(toks, { tokens = tokens })
-      if not decoded then
-        return unauthorized(iss, err)
-      end
+    if not tokens_decoded then
+      tokens_decoded, err = o.token:decode(tokens_encoded)
     end
 
-    local consumer_by = conf.consumer_by
     local mapped_consumer
 
-    local id_token = decoded.id_token
-    if id_token then
-      mapped_consumer, err = consumer(iss, id_token, claim, false, consumer_by)
-      if not mapped_consumer then
-        mapped_consumer = consumer(iss, decoded.access_token, claim, false, consumer_by)
-      end
+    if tokens_decoded then
+      local id_token = tokens_decoded.id_token
+      if id_token then
+        mapped_consumer, err = consumer(iss, id_token, consumer_claim, false, consumer_by)
+        if not mapped_consumer then
+          mapped_consumer = consumer(iss, tokens_decoded.access_token, consumer_claim, false, consumer_by)
+        end
 
-    else
-      mapped_consumer, err = consumer(iss, decoded.access_token, claim, false, consumer_by)
+      else
+        mapped_consumer, err = consumer(iss, tokens_decoded.access_token, consumer_claim, false, consumer_by)
+      end
     end
 
     local is_anonymous = false
@@ -241,35 +258,35 @@ function OICProtectionHandler:access(conf)
       local anonymous = conf.anonymous
       if anonymous == nil or anonymous == "" then
         if err then
-          return unauthorized(iss, "consumer was not found (" .. err .. ")")
+          return forbidden(iss, "consumer was not found (" .. err .. ")", s)
 
         else
-          return unauthorized(iss, "consumer was not found")
+          return forbidden(iss, "consumer was not found", s)
         end
       end
 
       is_anonymous = true
 
-      local tok = {
+      local consumer_token = {
         payload = {
-          [claim] = anonymous
+          [consumer_claim] = anonymous
         }
       }
 
-      mapped_consumer, err = consumer(iss, tok, claim, true, consumer_by)
+      mapped_consumer, err = consumer(iss, consumer_token, consumer_claim, true, consumer_by)
       if not mapped_consumer then
         if err then
-          return unauthorized(iss, "anonymous consumer was not found (" .. err .. ")")
+          return forbidden(iss, "anonymous consumer was not found (" .. err .. ")", s)
 
         else
-          return unauthorized(iss, "anonymous consumer was not found")
+          return forbidden(iss, "anonymous consumer was not found", s)
         end
       end
     end
 
     local headers = constants.HEADERS
 
-    ngx.ctx.authenticated_consumer   = mapped_consumer
+    ngx.ctx.authenticated_consumer = mapped_consumer
     ngx.ctx.authenticated_credential = {
       consumer_id = mapped_consumer.id
     }
@@ -285,8 +302,8 @@ function OICProtectionHandler:access(conf)
 
   s:hide()
 
-  if toks.access_token then
-    set_header("Authorization", "Bearer " .. toks.access_token)
+  if tokens_encoded.access_token then
+    set_header("Authorization", "Bearer " .. tokens_encoded.access_token)
   end
 
   -- TODO: check required scopes

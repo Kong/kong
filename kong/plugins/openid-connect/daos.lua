@@ -1,7 +1,11 @@
 return {
   oic_issuers            = {
-    primary_key          = { "id" },
-    cache_key            = { "issuer" },
+    primary_key          = {
+      "id",
+    },
+    cache_key            = {
+      "issuer",
+    },
     table                = "oic_issuers",
     fields               = {
       id                 = {
@@ -30,7 +34,9 @@ return {
     },
   },
   oic_signout            = {
-    primary_key          = { "id" },
+    primary_key          = {
+      "id",
+    },
     table                = "oic_signout",
     fields               = {
       id                 = {
@@ -60,7 +66,9 @@ return {
     },
   },
   oic_session            = {
-    primary_key          = { "id" },
+    primary_key          = {
+      "id",
+    },
     table                = "oic_session",
     fields               = {
       id                 = {
@@ -86,7 +94,9 @@ return {
     },
   },
   oic_revoked            = {
-    primary_key          = { "id" },
+    primary_key          = {
+      "id",
+    },
     table                = "oic_revoked",
     fields               = {
       id                 = {

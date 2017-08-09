@@ -151,6 +151,7 @@ local function multipart(name, timeout)
   return p
 end
 
+
 local function consumer(issuer, token, claim, anonymous, consumer_by)
   if not token then
     return nil, "token for consumer mapping was not found"
@@ -177,6 +178,34 @@ local function consumer(issuer, token, claim, anonymous, consumer_by)
   end
 
   return cache.consumers.load(issuer, subject, anonymous, consumer_by)
+end
+
+
+local function client(param, clients, secrets, redirects)
+  if param then
+    local client_id, client_secret, client_redirect_uri
+    local client_index = tonumber(param)
+    if client_index then
+      if clients[client_index] then
+        client_id = clients[client_index]
+        if client_id then
+          client_id           =   clients[client_index]
+          client_secret       =   secrets[client_index]
+          client_redirect_uri = redirects[client_index] or redirects[1]
+        end
+      end
+    else
+      for i, c in ipairs(clients) do
+        if param == c then
+          client_id           =   clients[i]
+          client_secret       =   secrets[i]
+          client_redirect_uri = redirects[i] or redirects[1]
+          break
+        end
+      end
+    end
+    return client_id, client_secret, client_redirect_uri
+  end
 end
 
 
@@ -258,73 +287,18 @@ function OICHandler:access(conf)
 
   local client_id, client_secret, client_redirect_uri
 
-  -- try to find the right client?
+  -- try to find the right client
   if #clients > 1 then
-    client_id = var.http_x_client_id
-    if client_id then
-      local client_idx = tonumber(client_id)
-      if client_idx then
-        if clients[client_idx] then
-          client_id = clients[client_idx]
-          if client_id then
-            client_secret       = secrets[client_idx]
-            client_redirect_uri = redirects[client_idx] or redirects[1]
-          end
-        end
-      else
-        for i, client in ipairs(clients) do
-          if client_id == client then
-            client_secret       = secrets[i]
-            client_redirect_uri = redirects[i] or redirects[1]
-            break
-          end
-        end
-      end
-    else
-      local uri_args = get_uri_args()
-      client_id = uri_args.client_id
-      if client_id then
-        local client_idx = tonumber(client_id)
-        if client_idx then
-          if clients[client_idx] then
-            client_id = clients[client_idx]
-            if client_id then
-              client_secret       = secrets[client_idx]
-              client_redirect_uri = redirects[client_idx] or redirects[1]
-            end
-          end
-        else
-          for i, client in ipairs(clients) do
-            if client_id == client then
-              client_secret       = secrets[i]
-              client_redirect_uri = redirects[i] or redirects[1]
-              break
-            end
-          end
-        end
-      else
-        read_body()
-        local post_args = get_post_args()
-        client_id = post_args.client_id
-        if client_id then
-          local client_idx = tonumber(client_id)
-          if client_idx then
-            if clients[client_idx] then
-              client_id = clients[client_idx]
-              if client_id then
-                client_secret       = secrets[client_idx]
-                client_redirect_uri = redirects[client_idx] or redirects[1]
-              end
-            end
-          else
-            for i, client in ipairs(clients) do
-              if client_id == client then
-                client_secret       = secrets[i]
-                client_redirect_uri = redirects[i] or redirects[1]
-                break
-              end
-            end
-          end
+    client_id, client_secret, client_redirect_uri = client(var.http_x_client_id, clients, secrets, redirects)
+    if not client_id then
+      client_id, client_secret, client_redirect_uri = client(var.http_client_id, clients, secrets, redirects)
+      if not client_id then
+        local uri_args = get_uri_args()
+        client_id, client_secret, client_redirect_uri = client(uri_args.client_id, clients, secrets, redirects)
+        if not client_id then
+          read_body()
+          local post_args = get_post_args()
+          client_id, client_secret, client_redirect_uri = client(post_args.client_id, clients, secrets, redirects)
         end
       end
     end
@@ -332,8 +306,8 @@ function OICHandler:access(conf)
 
   -- fallback to default client
   if not client_secret then
-    client_id           = clients[1]
-    client_secret       = secrets[1]
+    client_id           =   clients[1]
+    client_secret       =   secrets[1]
     client_redirect_uri = redirects[1]
   end
 
@@ -562,11 +536,14 @@ function OICHandler:access(conf)
             state = authorization_data.state
 
             if state then
+              local nonce         = authorization_data.nonce
+              local code_verifier = authorization_data.code_verifier
+
               -- authorization code response
               args = {
                 state         = state,
-                nonce         = authorization_data.nonce,
-                code_verifier = authorization_data.code_verifier,
+                nonce         = nonce,
+                code_verifier = code_verifier,
               }
 
               local uri_args = get_uri_args()
@@ -584,7 +561,23 @@ function OICHandler:access(conf)
                   end
                 end
 
-                return unauthorized(iss, err)
+                -- it seems that user may have opened a second tab
+                -- lets redirect that to idp as well in case user
+                -- had closed the previous, but with same parameters
+                -- as before.
+                authorization:start()
+
+                args, err = o.authorization:request {
+                  state         = state,
+                  nonce         = nonce,
+                  code_verifier = code_verifier
+                }
+
+                if not args then
+                  return unexpected(err)
+                end
+
+                return redirect(args.url)
               end
 
               authorization:hide()

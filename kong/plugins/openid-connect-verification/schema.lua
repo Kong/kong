@@ -20,8 +20,13 @@ return {
     tokens            = {
       required        = false,
       type            = "array",
-      enum            = { "id_token", "access_token" },
-      default         = { "id_token" },
+      enum            = {
+        "id_token",
+        "access_token",
+      },
+      default         = {
+        "id_token",
+      },
     },
     param_name        = {
       required        = false,
@@ -31,8 +36,16 @@ return {
     param_type        = {
       required        = false,
       type            = "array",
-      enum            = { "query", "header", "body" },
-      default         = { "query", "header", "body" },
+      enum            = {
+        "query",
+        "header",
+        "body",
+      },
+      default         = {
+        "query",
+        "header",
+        "body",
+      },
     },
     jwks_header       = {
       required        = false,
@@ -41,8 +54,26 @@ return {
     claims            = {
       required        = false,
       type            = "array",
-      enum            = { "iss", "sub", "aud", "azp", "exp", "iat", "auth_time", "at_hash", "alg", "nbf", "hd" },
-      default         = { "iss", "sub", "aud", "azp", "exp" },
+      enum            = {
+        "iss",
+        "sub",
+        "aud",
+        "azp",
+        "exp",
+        "iat",
+        "auth_time",
+        "at_hash",
+        "alg",
+        "nbf",
+        "hd",
+      },
+      default         = {
+        "iss",
+        "sub",
+        "aud",
+        "azp",
+        "exp",
+      },
     },
     clients           = {
       required        = false,
@@ -76,8 +107,14 @@ return {
     consumer_by       = {
       required        = false,
       type            = "array",
-      enum            = { "id", "username", "custom_id" },
-      default         = { "custom_id" }
+      enum            = {
+        "id",
+        "username",
+        "custom_id",
+      },
+      default         = {
+        "custom_id",
+      }
     },
     anonymous         = {
       type            = "string",
@@ -91,7 +128,10 @@ return {
     http_version      = {
       required        = false,
       type            = "number",
-      enum            = { 1.0, 1.1 },
+      enum            = {
+        1.0,
+        1.1,
+      },
       default         = 1.1,
     },
     ssl_verify        = {

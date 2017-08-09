@@ -425,7 +425,7 @@ function OICVerificationHandler:access(conf)
 
     local headers = constants.HEADERS
 
-    ngx.ctx.authenticated_consumer = mapped_consumer
+    ngx.ctx.authenticated_consumer   = mapped_consumer
     ngx.ctx.authenticated_credential = {
       consumer_id = mapped_consumer.id
     }

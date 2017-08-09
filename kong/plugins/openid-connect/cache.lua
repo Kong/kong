@@ -232,6 +232,11 @@ end
 local userinfo = {}
 
 
+function userinfo.init()
+
+end
+
+
 function userinfo.load()
 
 end
