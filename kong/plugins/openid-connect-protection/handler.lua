@@ -107,6 +107,12 @@ end
 function OICProtectionHandler:access(conf)
   OICProtectionHandler.super.access(self)
 
+  if ngx.ctx.authenticated_credential and conf.anonymous ~= ngx.null and conf.anonymous ~= "" then
+    -- we're already authenticated, and we're configured for using anonymous,
+    -- hence we're in a logical OR between auth methods and we're already done.
+    return
+  end
+
   local issuer, err = cache.issuers.load(conf)
   if not issuer then
     log(ERR, err)
@@ -143,12 +149,10 @@ function OICProtectionHandler:access(conf)
   local tokens = conf.tokens or { "id_token", "access_token" }
 
   -- TODO: Add support for session configuration (currently possible through nginx configuration)
-  local s, present = session.open()
+  local s, session_present = session.open { secret = issuer.secret }
 
-  if not present then
-    local parts = uri.parse(iss)
-    header["WWW-Authenticate"] = 'Bearer realm="' .. parts.host .. '"'
-    return responses.send_HTTP_UNAUTHORIZED()
+  if not session_present then
+    return unauthorized(iss, "openid connect authenticated session was not present")
   end
 
   local data = s.data
@@ -156,7 +160,7 @@ function OICProtectionHandler:access(conf)
 
   local decoded
 
-  local expires = data.expires - conf.leeway
+  local expires = (data.expires or conf.leeway) - conf.leeway
   if expires > time() then
     s:start()
     if conf.reverify then
@@ -199,7 +203,7 @@ function OICProtectionHandler:access(conf)
 
     expires = (tonumber(toks.expires_in) or 3600) + time()
 
-    s.data = {
+    s.data    = {
       tokens  = toks,
       expires = expires,
     }
@@ -265,7 +269,7 @@ function OICProtectionHandler:access(conf)
 
     local headers = constants.HEADERS
 
-    ngx.ctx.authenticated_consumer = mapped_consumer
+    ngx.ctx.authenticated_consumer   = mapped_consumer
     ngx.ctx.authenticated_credential = {
       consumer_id = mapped_consumer.id
     }
