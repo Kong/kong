@@ -1,6 +1,8 @@
 local configuration = require "kong.openid-connect.configuration"
 local keys          = require "kong.openid-connect.keys"
 local codec         = require "kong.openid-connect.codec"
+local timestamp     = require "kong.tools.timestamp"
+local utils         = require "kong.tools.utils"
 local singletons    = require "kong.singletons"
 
 
@@ -10,6 +12,7 @@ local json          = codec.json
 local type          = type
 local pcall         = pcall
 local log           = ngx.log
+local encode_base64 = ngx.encode_base64
 local sub           = string.sub
 
 
@@ -114,10 +117,13 @@ function issuers.init(conf)
     end
   end
 
+  local secret = sub(encode_base64(utils.get_random_bytes(32)), 1, 32)
+
   local data = {
     issuer        = issuer,
     configuration = claims,
     keys          = jwks,
+    secret        = secret,
   }
 
   data, err = singletons.dao.oic_issuers:insert(data)
@@ -187,6 +193,42 @@ function consumers.load(iss, subject, anon, consumer_by)
 end
 
 
+local oauth2 = {}
+
+
+function oauth2.init(access_token)
+  local credentials, err = singletons.dao.oauth2_tokens:find_all { access_token = access_token }
+
+  if err then
+    return nil, err
+  end
+
+  if #credentials > 0 then
+    return credentials[1]
+  end
+
+  return credentials
+end
+
+
+function oauth2.load(access_token)
+  local key = cache_key(access_token, "oauth2_tokens")
+  local token, err = cache_get(key, nil, oauth2.init, access_token)
+  if not token then
+    return nil, err
+  end
+
+  if token.expires_in > 0 then
+    local now = timestamp.get_utc()
+    if now - token.created_at > (token.expires_in * 1000) then
+      return nil, "The access token is invalid or has expired"
+    end
+  end
+
+  return token
+end
+
+
 local userinfo = {}
 
 
@@ -198,5 +240,6 @@ end
 return {
   issuers   = issuers,
   consumers = consumers,
+  oauth2    = oauth2,
   userinfo  = userinfo,
 }
