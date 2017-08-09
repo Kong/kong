@@ -117,7 +117,7 @@ function issuers.init(conf)
     end
   end
 
-  local secret = sub(encode_base64(utils.get_random_bytes(32)), 1, 32)
+  local secret = sub(encode_base64(utils.get_rand_bytes(32)), 1, 32)
 
   local data = {
     issuer        = issuer,
