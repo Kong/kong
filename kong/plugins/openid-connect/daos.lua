@@ -19,6 +19,9 @@ return {
       keys               = {
         type             = "text",
       },
+      secret             = {
+        type             = "text",
+      },
       created_at         = {
         type             = "timestamp",
         immutable        = true,

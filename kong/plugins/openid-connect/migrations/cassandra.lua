@@ -1,6 +1,6 @@
 return {
   {
-    name = "2017-06-08-000000_init_oic",
+    name = "2017-06-01-180000_init_oic",
     up = [[
       CREATE TABLE IF NOT EXISTS oic_issuers (
         id            uuid,
@@ -57,6 +57,15 @@ return {
       DROP TABLE oic_signout;
       DROP TABLE oic_session;
       DROP TABLE oic_revoked;
+    ]]
+  },
+  {
+    name = "2017-08-09-160000-add-secret-used-for-sessions",
+    up = [[
+      ALTER TABLE oic_issuers ADD secret text;
+    ]],
+    down = [[
+      ALTER TABLE oic_issuers DROP secret;
     ]]
   },
 }
