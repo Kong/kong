@@ -174,6 +174,12 @@ end
 function OICVerificationHandler:access(conf)
   OICVerificationHandler.super.access(self)
 
+  if ngx.ctx.authenticated_credential and conf.anonymous ~= ngx.null and conf.anonymous ~= "" then
+    -- we're already authenticated, and we're configured for using anonymous,
+    -- hence we're in a logical OR between auth methods and we're already done.
+    return
+  end
+
   local issuer, err = cache.issuers.load(conf)
   if not issuer then
     return unexpected(err)
