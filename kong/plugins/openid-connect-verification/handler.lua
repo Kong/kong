@@ -134,7 +134,7 @@ local function unexpected(err)
 end
 
 
-local function consumer(conf, tok, claim, anon)
+local function consumer(issuer, tok, claim, anon, consumer_by)
   if not tok then
     return nil, "token for consumer mapping was not found"
   end
@@ -159,7 +159,7 @@ local function consumer(conf, tok, claim, anon)
     return nil, "claim (" .. claim .. ") was not found for consumer mapping"
   end
 
-  return cache.consumers.load(conf, subject, anon)
+  return cache.consumers.load(issuer, subject, anon, consumer_by)
 end
 
 
@@ -173,6 +173,12 @@ end
 
 function OICVerificationHandler:access(conf)
   OICVerificationHandler.super.access(self)
+
+  if ngx.ctx.authenticated_credential and conf.anonymous ~= ngx.null and conf.anonymous ~= "" then
+    -- we're already authenticated, and we're configured for using anonymous,
+    -- hence we're in a logical OR between auth methods and we're already done.
+    return
+  end
 
   local issuer, err = cache.issuers.load(conf)
   if not issuer then
@@ -208,12 +214,15 @@ function OICVerificationHandler:access(conf)
     local ct     = var.content_type  or ""
     local name   = conf.param_name   or "id_token"
     local typ    = conf.param_type   or { "query", "header", "body" }
-    local prefix = conf.param_prefix or "x_"
 
     for _, t in ipairs(typ) do
       if t == "header" then
-        local hdr = "http_" .. gsub(lower(prefix .. name), "-", "_")
-        idt = var[hdr]
+        local nme = gsub(lower(name), "-", "_")
+        idt = var["http_" .. nme]
+        if idt then
+          break
+        end
+        idt = var["http_x_" .. nme]
         if idt then
           break
         end
@@ -368,17 +377,18 @@ function OICVerificationHandler:access(conf)
 
   local claim = conf.consumer_claim
   if claim and claim ~= "" then
+    local consumer_by = conf.consumer_by
     local mapped_consumer
 
     local id_token = decoded.id_token
     if id_token then
-      mapped_consumer, err = consumer(conf, id_token, claim)
+      mapped_consumer, err = consumer(iss, id_token, claim, false, consumer_by)
       if not mapped_consumer then
-        mapped_consumer = consumer(conf, decoded.access_token, claim)
+        mapped_consumer = consumer(iss, decoded.access_token, claim, false, consumer_by)
       end
 
     else
-        mapped_consumer, err = consumer(conf, decoded.access_token, claim)
+        mapped_consumer, err = consumer(iss, decoded.access_token, claim, false, consumer_by)
     end
 
     local is_anonymous = false
@@ -402,7 +412,7 @@ function OICVerificationHandler:access(conf)
         }
       }
 
-      mapped_consumer, err = consumer(conf, tok, claim, true)
+      mapped_consumer, err = consumer(iss, tok, claim, true, consumer_by)
       if not mapped_consumer then
         if err then
           return unauthorized(iss, "anonymous consumer was not found (" .. err .. ")")
@@ -415,7 +425,7 @@ function OICVerificationHandler:access(conf)
 
     local headers = constants.HEADERS
 
-    ngx.ctx.authenticated_consumer = mapped_consumer
+    ngx.ctx.authenticated_consumer   = mapped_consumer
     ngx.ctx.authenticated_credential = {
       consumer_id = mapped_consumer.id
     }

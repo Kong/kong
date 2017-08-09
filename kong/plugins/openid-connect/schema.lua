@@ -42,7 +42,7 @@ return {
       enum                  = {
         "query",
         "form_post",
-        "fragment"
+        "fragment",
       },
       default               = "query",
     },
@@ -55,6 +55,7 @@ return {
         "authorization_code",
         "bearer",
         "introspection",
+        "kong_oauth2",
         "refresh_token",
         "session",
       },
@@ -64,6 +65,7 @@ return {
         "authorization_code",
         "bearer",
         "introspection",
+        "kong_oauth2",
         "refresh_token",
         "session",
       },
@@ -99,12 +101,12 @@ return {
       enum                  = {
         "query",
         "header",
-        "body"
+        "body",
       },
       default               = {
         "query",
         "header",
-        "body"
+        "body",
       },
     },
     id_token_header         = {
@@ -112,6 +114,10 @@ return {
       type                  = "string",
     },
     id_token_jwk_header     = {
+      required              = false,
+      type                  = "string",
+    },
+    refresh_token_header    = {
       required              = false,
       type                  = "string",
     },
@@ -169,10 +175,6 @@ return {
         "username",
         "custom_id",
       },
-    },
-    consumer_ttl            = {
-      required              = false,
-      type                  = "number",
     },
     anonymous               = {
       type                  = "string",

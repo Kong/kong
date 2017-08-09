@@ -109,4 +109,13 @@ return {
       DROP TABLE oic_revoked;
     ]]
   },
+  {
+    name = "2017-08-09-160000-add-secret-used-for-sessions",
+    up = [[
+      ALTER TABLE oic_issuers ADD COLUMN secret text;
+    ]],
+    down = [[
+      ALTER TABLE oic_issuers ADD COLUMN secret text;
+    ]],
+  },
 }

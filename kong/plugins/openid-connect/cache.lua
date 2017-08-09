@@ -1,7 +1,8 @@
 local configuration = require "kong.openid-connect.configuration"
 local keys          = require "kong.openid-connect.keys"
 local codec         = require "kong.openid-connect.codec"
-local cache         = require "kong.tools.database_cache"
+local timestamp     = require "kong.tools.timestamp"
+local utils         = require "kong.tools.utils"
 local singletons    = require "kong.singletons"
 
 
@@ -9,7 +10,9 @@ local concat        = table.concat
 local ipairs        = ipairs
 local json          = codec.json
 local type          = type
+local pcall         = pcall
 local log           = ngx.log
+local encode_base64 = ngx.encode_base64
 local sub           = string.sub
 
 
@@ -17,15 +20,56 @@ local NOTICE        = ngx.NOTICE
 local ERR           = ngx.ERR
 
 
+local cache_get, cache_key
+do
+  local ok, cache = pcall(require, "kong.tools.database_cache")
+  if ok then
+    -- 0.10.x
+    cache_get = function(key, func, ...)
+      return cache.get_or_set(key, nil, func, ...)
+    end
+
+    cache_key = function(key, entity)
+      if entity then
+        return entity .. ":" .. key
+      end
+
+      return key
+    end
+
+  else
+    -- 0.11.x
+    cache_get = function(key, func, ...)
+      return singletons.cache:get(key, nil, func, ...)
+    end
+
+    cache_key = function(key, entity)
+      if entity then
+        return singletons.dao[entity]:cache_key(key)
+      end
+
+      return key
+    end
+  end
+end
+
+local function normalize_issuer(issuer)
+  if sub(issuer, -1) == "/" then
+    return sub(issuer, 1, #issuer - 1)
+  end
+  return issuer
+end
+
+
 local issuers = {}
 
 
 function issuers.init(conf)
-  log(NOTICE, "loading openid connect configuration for ", conf.issuer, " from database")
+  local issuer = normalize_issuer(conf.issuer)
 
-  local issuer = conf.issuer
+  log(NOTICE, "loading openid connect configuration for ", issuer, " from database")
 
-  local results = singletons.dao.oic_issuers:find_all { issuer = issuer }
+    local results = singletons.dao.oic_issuers:find_all { issuer = issuer }
   if results and results[1] then
     return {
       issuer        = issuer,
@@ -73,10 +117,13 @@ function issuers.init(conf)
     end
   end
 
+  local secret = sub(encode_base64(utils.get_rand_bytes(32)), 1, 32)
+
   local data = {
     issuer        = issuer,
     configuration = claims,
     keys          = jwks,
+    secret        = secret,
   }
 
   data, err = singletons.dao.oic_issuers:insert(data)
@@ -90,11 +137,9 @@ end
 
 
 function issuers.load(conf)
-  local issuer = conf.issuer
-  if sub(issuer, -1) == "/" then
-      issuer = sub(issuer, 1, #issuer - 1)
-  end
-  return cache.get_or_set("oic:" .. issuer, 604800, issuers.init, conf)
+  local issuer = normalize_issuer(conf.issuer)
+  local key    = cache_key(issuer, "oic_issuers")
+  return cache_get(key, issuers.init, conf)
 end
 
 
@@ -129,28 +174,67 @@ function consumers.init(cons, subject)
 end
 
 
-function consumers.load(conf, subject, anon)
-  local issuer = conf.issuer
-  if sub(issuer, -1) == "/" then
-    issuer = sub(issuer, 1, #issuer - 1)
-  end
-  local cons
+function consumers.load(iss, subject, anon, consumer_by)
+  local issuer = normalize_issuer(iss)
 
+  local cons
   if anon then
     cons = { "id" }
 
-  elseif conf.consumer_by then
-    cons = conf.consumer_by
+  elseif consumer_by then
+    cons = consumer_by
 
   else
     cons = { "custom_id" }
   end
 
-  return cache.get_or_set(concat{issuer, "#", subject }, conf.consumer_ttl, consumers.init, cons, subject)
+  local key = cache_key(concat{ issuer, "#", subject })
+  return cache_get(key, consumers.init, cons, subject)
+end
+
+
+local oauth2 = {}
+
+
+function oauth2.init(access_token)
+  local credentials, err = singletons.dao.oauth2_tokens:find_all { access_token = access_token }
+
+  if err then
+    return nil, err
+  end
+
+  if #credentials > 0 then
+    return credentials[1]
+  end
+
+  return credentials
+end
+
+
+function oauth2.load(access_token)
+  local key = cache_key(access_token, "oauth2_tokens")
+  local token, err = cache_get(key, nil, oauth2.init, access_token)
+  if not token then
+    return nil, err
+  end
+
+  if token.expires_in > 0 then
+    local now = timestamp.get_utc()
+    if now - token.created_at > (token.expires_in * 1000) then
+      return nil, "The access token is invalid or has expired"
+    end
+  end
+
+  return token
 end
 
 
 local userinfo = {}
+
+
+function userinfo.init()
+
+end
 
 
 function userinfo.load()
@@ -161,5 +245,6 @@ end
 return {
   issuers   = issuers,
   consumers = consumers,
+  oauth2    = oauth2,
   userinfo  = userinfo,
 }

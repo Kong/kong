@@ -151,7 +151,8 @@ local function multipart(name, timeout)
   return p
 end
 
-local function consumer(conf, token, claim, anonymous)
+
+local function consumer(issuer, token, claim, anonymous, consumer_by)
   if not token then
     return nil, "token for consumer mapping was not found"
   end
@@ -176,7 +177,35 @@ local function consumer(conf, token, claim, anonymous)
     return nil, "claim (" .. claim .. ") was not found for consumer mapping"
   end
 
-  return cache.consumers.load(conf, subject, anonymous)
+  return cache.consumers.load(issuer, subject, anonymous, consumer_by)
+end
+
+
+local function client(param, clients, secrets, redirects)
+  if param then
+    local client_id, client_secret, client_redirect_uri
+    local client_index = tonumber(param)
+    if client_index then
+      if clients[client_index] then
+        client_id = clients[client_index]
+        if client_id then
+          client_id           =   clients[client_index]
+          client_secret       =   secrets[client_index]
+          client_redirect_uri = redirects[client_index] or redirects[1]
+        end
+      end
+    else
+      for i, c in ipairs(clients) do
+        if param == c then
+          client_id           =   clients[i]
+          client_secret       =   secrets[i]
+          client_redirect_uri = redirects[i] or redirects[1]
+          break
+        end
+      end
+    end
+    return client_id, client_secret, client_redirect_uri
+  end
 end
 
 
@@ -240,6 +269,12 @@ end
 function OICHandler:access(conf)
   OICHandler.super.access(self)
 
+  if ngx.ctx.authenticated_credential and conf.anonymous ~= ngx.null and conf.anonymous ~= "" then
+    -- we're already authenticated, and we're configured for using anonymous,
+    -- hence we're in a logical OR between auth methods and we're already done.
+    return
+  end
+
   -- load issuer configuration
   local issuer, err = cache.issuers.load(conf)
   if not issuer then
@@ -252,40 +287,18 @@ function OICHandler:access(conf)
 
   local client_id, client_secret, client_redirect_uri
 
-  -- try to find the right client?
+  -- try to find the right client
   if #clients > 1 then
-    client_id = var.http_x_client_id
-    if client_id then
-      for i, client in ipairs(clients) do
-        if client_id == client then
-          client_secret   = secrets[i]
-          client_redirect_uri = redirects[i] or redirects[1]
-          break
-        end
-      end
-    else
-      local uri_args = get_uri_args()
-      client_id = uri_args.client_id
-      if client_id then
-        for i, client in ipairs(clients) do
-          if client_id == client then
-            client_secret   = secrets[i]
-            client_redirect_uri = redirects[i] or redirects[1]
-            break
-          end
-        end
-      else
-        read_body()
-        local post_args = get_post_args()
-        client_id = post_args.client_id
-        if client_id then
-          for i, client in ipairs(clients) do
-            if client_id == client then
-              client_secret   = secrets[i]
-              client_redirect_uri = redirects[i] or redirects[1]
-              break
-            end
-          end
+    client_id, client_secret, client_redirect_uri = client(var.http_x_client_id, clients, secrets, redirects)
+    if not client_id then
+      client_id, client_secret, client_redirect_uri = client(var.http_client_id, clients, secrets, redirects)
+      if not client_id then
+        local uri_args = get_uri_args()
+        client_id, client_secret, client_redirect_uri = client(uri_args.client_id, clients, secrets, redirects)
+        if not client_id then
+          read_body()
+          local post_args = get_post_args()
+          client_id, client_secret, client_redirect_uri = client(post_args.client_id, clients, secrets, redirects)
         end
       end
     end
@@ -293,8 +306,8 @@ function OICHandler:access(conf)
 
   -- fallback to default client
   if not client_secret then
-    client_id           = clients[1]
-    client_secret       = secrets[1]
+    client_id           =   clients[1]
+    client_secret       =   secrets[1]
     client_redirect_uri = redirects[1]
   end
 
@@ -330,6 +343,7 @@ function OICHandler:access(conf)
   local auth_method_authorization_code
   local auth_method_bearer
   local auth_method_introspection
+  local auth_method_kong_oauth2
   local auth_method_refresh_token
   local auth_method_session
 
@@ -359,6 +373,9 @@ function OICHandler:access(conf)
     elseif auth_method == "introspection" then
       auth_method_introspection = true
 
+    elseif auth_method == "kong_oauth2" then
+      auth_method_kong_oauth2 = true
+
     elseif auth_method == "refresh_token" then
       auth_method_refresh_token = true
 
@@ -374,7 +391,7 @@ function OICHandler:access(conf)
   local s, session_present, session_data
 
   if auth_method_session then
-    s, session_present = session.open()
+    s, session_present = session.open { secret = issuer.secret }
     session_data = s.data
   end
 
@@ -506,7 +523,8 @@ function OICHandler:access(conf)
         -- authorization code grant
         if auth_method_authorization_code then
           local authorization, authorization_present = session.open {
-            name = "authorization",
+            name   = "authorization",
+            secret = issuer.secret,
             cookie = {
               samesite = "off",
             }
@@ -518,11 +536,14 @@ function OICHandler:access(conf)
             state = authorization_data.state
 
             if state then
+              local nonce         = authorization_data.nonce
+              local code_verifier = authorization_data.code_verifier
+
               -- authorization code response
               args = {
                 state         = state,
-                nonce         = authorization_data.nonce,
-                code_verifier = authorization_data.code_verifier,
+                nonce         = nonce,
+                code_verifier = code_verifier,
               }
 
               local uri_args = get_uri_args()
@@ -540,9 +561,26 @@ function OICHandler:access(conf)
                   end
                 end
 
-                return unauthorized(iss, err)
+                -- it seems that user may have opened a second tab
+                -- lets redirect that to idp as well in case user
+                -- had closed the previous, but with same parameters
+                -- as before.
+                authorization:start()
+
+                args, err = o.authorization:request {
+                  state         = state,
+                  nonce         = nonce,
+                  code_verifier = code_verifier
+                }
+
+                if not args then
+                  return unexpected(err)
+                end
+
+                return redirect(args.url)
               end
 
+              authorization:hide()
               authorization:destroy()
 
               uri_args.code  = nil
@@ -552,8 +590,9 @@ function OICHandler:access(conf)
 
               args = { args }
             end
+          end
 
-          else
+          if not args then
             -- authorization code request
             args, err = o.authorization:request()
             if not args then
@@ -588,7 +627,7 @@ function OICHandler:access(conf)
   local expires
   local tokens_encoded, tokens_decoded, access_token_introspected = session_data.tokens, nil, nil
 
-  -- TODO: check cache for tokend_decoded?
+  -- TODO: check cache for tokens_decoded?
 
   if bearer then
     tokens_decoded, err = o.token:verify(tokens_encoded)
@@ -601,6 +640,9 @@ function OICHandler:access(conf)
     -- introspection of opaque access token
     -- TODO: cache result of introspection query?
     if type(access_token) ~= "table" then
+
+      -- TODO: add support for kong_oauth2 authentication method
+
       if auth_method_introspection then
         access_token_introspected, err = o.token:introspect(access_token, "access_token", {
           introspection_endpoint = conf.introspection_endpoint
@@ -684,7 +726,7 @@ function OICHandler:access(conf)
             login_redirect_uri[i+1] = name
             login_redirect_uri[i+2] = "="
             login_redirect_uri[i+3] = tokens_encoded[name]
-            i = i+4
+            i = i + 4
           end
         end
 
@@ -693,12 +735,14 @@ function OICHandler:access(conf)
     end
 
   else
-    expires = (session_data.expires or conf.leeway) - conf.leeway
+    expires = (session_data.expires or conf.leeway)
   end
 
   if not tokens_encoded.access_token then
     return unauthorized(iss, "access token was not found", s)
   end
+
+  expires = (expires or conf.leeway) - conf.leeway
 
   if expires > now then
     if auth_method_session then
@@ -761,6 +805,8 @@ function OICHandler:access(conf)
   -- TODO: cache the results of this?
   local consumer_claim = conf.consumer_claim
   if consumer_claim and consumer_claim ~= "" then
+    local consumer_by = conf.consumer_by
+
     if not tokens_decoded then
       tokens_decoded, err = o.token:decode(tokens_encoded)
     end
@@ -770,18 +816,18 @@ function OICHandler:access(conf)
     if tokens_decoded then
       local id_token = tokens_decoded.id_token
       if id_token then
-        mapped_consumer, err = consumer(conf, id_token, consumer_claim)
+        mapped_consumer, err = consumer(iss, id_token, consumer_claim, false, consumer_by)
         if not mapped_consumer then
-          mapped_consumer = consumer(conf, tokens_decoded.access_token, consumer_claim)
+          mapped_consumer = consumer(iss, tokens_decoded.access_token, consumer_claim, false, consumer_by)
         end
 
       else
-        mapped_consumer, err = consumer(conf, tokens_decoded.access_token, consumer_claim)
+        mapped_consumer, err = consumer(iss, tokens_decoded.access_token, consumer_claim, false, consumer_by)
       end
     end
 
     if not mapped_consumer and access_token_introspected then
-      mapped_consumer, err = consumer(conf, access_token_introspected, consumer_claim)
+      mapped_consumer, err = consumer(iss, access_token_introspected, consumer_claim, false, consumer_by)
     end
 
     local is_anonymous = false
@@ -805,7 +851,7 @@ function OICHandler:access(conf)
         }
       }
 
-      mapped_consumer, err = consumer(conf, consumer_token, consumer_claim, true)
+      mapped_consumer, err = consumer(iss, consumer_token, consumer_claim, true, consumer_by)
       if not mapped_consumer then
         if err then
           return forbidden(iss, "anonymous consumer was not found (" .. err .. ")", s)
@@ -886,6 +932,15 @@ function OICHandler:access(conf)
           end
         end
       end
+    end
+  end
+
+  -- inject refresh token into the headers?
+  local refresh_token_header = conf.refresh_token_header
+  if refresh_token_header and refresh_token_header ~= "" then
+    local refresh_token = tokens_encoded.refresh_token
+    if refresh_token then
+      set_header(refresh_token_header, refresh_token)
     end
   end
 

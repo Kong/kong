@@ -23,6 +23,8 @@ local function issuer(row)
       row.keys = {}
     end
   end
+
+  return row
 end
 
 return {

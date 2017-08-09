@@ -13,6 +13,10 @@ end
 return {
   no_consumer         = true,
   fields              = {
+    issuer            = {
+      required        = true,
+      type            = "url",
+    },
     client_id         = {
       required        = false,
       type            = "string",
@@ -21,16 +25,6 @@ return {
       required        = false,
       type            = "string",
     },
-    issuer            = {
-      required        = true,
-      type            = "url",
-    },
-    tokens            = {
-      required        = false,
-      type            = "array",
-      enum            = { "id_token", "access_token" },
-      default         = { "id_token", "access_token" },
-    },
     redirect_uri      = {
       required        = false,
       type            = "url",
@@ -38,13 +32,9 @@ return {
     scopes            = {
       required        = false,
       type            = "array",
-      default         = { "openid" },
-    },
-    claims            = {
-      required        = false,
-      type            = "array",
-      enum            = { "iss", "sub", "aud", "azp", "exp", "iat", "auth_time", "at_hash", "alg", "nbf", "hd" },
-      default         = { "iss", "sub", "aud", "azp", "exp", "at_hash" },
+      default         = {
+        "openid",
+      },
     },
     audience          = {
       required        = false,
@@ -70,12 +60,14 @@ return {
     consumer_by       = {
       required        = false,
       type            = "array",
-      enum            = { "id", "username", "custom_id" },
-      default         = { "custom_id" }
-    },
-    consumer_ttl      = {
-      required        = false,
-      type            = "number",
+      enum            = {
+        "id",
+        "username",
+        "custom_id",
+      },
+      default         = {
+        "custom_id",
+      }
     },
     anonymous         = {
       type            = "string",
@@ -89,7 +81,10 @@ return {
     http_version      = {
       required        = false,
       type            = "number",
-      enum            = { 1.0, 1.1 },
+      enum            = {
+        1.0,
+        1.1,
+      },
       default         = 1.1,
     },
     ssl_verify        = {

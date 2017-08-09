@@ -13,12 +13,6 @@ return {
       required          = true,
       type              = "url",
     },
-    tokens              = {
-      required          = false,
-      type              = "array",
-      enum              = { "id_token", "access_token" },
-      default           = { "id_token", "access_token" },
-    },
     redirect_uri        = {
       required          = false,
       type              = "url",
@@ -27,20 +21,12 @@ return {
       required          = false,
       type              = "url",
     },
-    logout_redirect_uri = {
-      required          = false,
-      type              = "url",
-    },
     scopes              = {
       required          = false,
       type              = "array",
-      default           = { "openid" },
-    },
-    claims              = {
-      required          = false,
-      type              = "array",
-      enum              = { "iss", "sub", "aud", "azp", "exp", "iat", "auth_time", "at_hash", "alg", "nbf", "hd" },
-      default           = { "iss", "sub", "aud", "azp", "exp", "at_hash" },
+      default           = {
+        "openid"
+      },
     },
     audience            = {
       required          = false,
@@ -62,7 +48,10 @@ return {
     http_version        = {
       required          = false,
       type              = "number",
-      enum              = { 1.0, 1.1 },
+      enum              = {
+        1.0,
+        1.1
+      },
       default           = 1.1,
     },
     ssl_verify          = {
