@@ -77,6 +77,12 @@ end
 
 function DatadogHandler:log(conf)
   DatadogHandler.super.log(self)
+  
+  -- unmatched apis are nil
+  if not ngx.ctx.api then
+    return
+  end
+
   local message = basic_serializer.serialize(ngx)
 
   local ok, err = ngx_timer_at(0, log, conf, message)
