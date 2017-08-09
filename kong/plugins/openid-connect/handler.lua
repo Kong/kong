@@ -240,6 +240,12 @@ end
 function OICHandler:access(conf)
   OICHandler.super.access(self)
 
+  if ngx.ctx.authenticated_credential and conf.anonymous ~= ngx.null and conf.anonymous ~= "" then
+    -- we're already authenticated, and we're configured for using anonymous,
+    -- hence we're in a logical OR between auth methods and we're already done.
+    return
+  end
+
   -- load issuer configuration
   local issuer, err = cache.issuers.load(conf)
   if not issuer then
@@ -330,6 +336,7 @@ function OICHandler:access(conf)
   local auth_method_authorization_code
   local auth_method_bearer
   local auth_method_introspection
+  local auth_method_kong_oauth2
   local auth_method_refresh_token
   local auth_method_session
 
@@ -359,6 +366,9 @@ function OICHandler:access(conf)
     elseif auth_method == "introspection" then
       auth_method_introspection = true
 
+    elseif auth_method == "kong_oauth2" then
+      auth_method_kong_oauth2 = true
+
     elseif auth_method == "refresh_token" then
       auth_method_refresh_token = true
 
@@ -374,7 +384,7 @@ function OICHandler:access(conf)
   local s, session_present, session_data
 
   if auth_method_session then
-    s, session_present = session.open()
+    s, session_present = session.open { secret = issuer.secret }
     session_data = s.data
   end
 
@@ -506,7 +516,8 @@ function OICHandler:access(conf)
         -- authorization code grant
         if auth_method_authorization_code then
           local authorization, authorization_present = session.open {
-            name = "authorization",
+            name   = "authorization",
+            secret = issuer.secret,
             cookie = {
               samesite = "off",
             }
@@ -589,7 +600,7 @@ function OICHandler:access(conf)
   local expires
   local tokens_encoded, tokens_decoded, access_token_introspected = session_data.tokens, nil, nil
 
-  -- TODO: check cache for tokend_decoded?
+  -- TODO: check cache for tokens_decoded?
 
   if bearer then
     tokens_decoded, err = o.token:verify(tokens_encoded)
@@ -602,6 +613,9 @@ function OICHandler:access(conf)
     -- introspection of opaque access token
     -- TODO: cache result of introspection query?
     if type(access_token) ~= "table" then
+
+      -- TODO: add support for kong_oauth2 authentication method
+
       if auth_method_introspection then
         access_token_introspected, err = o.token:introspect(access_token, "access_token", {
           introspection_endpoint = conf.introspection_endpoint
@@ -685,7 +699,7 @@ function OICHandler:access(conf)
             login_redirect_uri[i+1] = name
             login_redirect_uri[i+2] = "="
             login_redirect_uri[i+3] = tokens_encoded[name]
-            i = i+4
+            i = i + 4
           end
         end
 
@@ -694,12 +708,14 @@ function OICHandler:access(conf)
     end
 
   else
-    expires = (session_data.expires or conf.leeway) - conf.leeway
+    expires = (session_data.expires or conf.leeway)
   end
 
   if not tokens_encoded.access_token then
     return unauthorized(iss, "access token was not found", s)
   end
+
+  expires = (expires or conf.leeway) - conf.leeway
 
   if expires > now then
     if auth_method_session then
