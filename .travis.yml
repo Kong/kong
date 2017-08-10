@@ -10,12 +10,15 @@ notifications:
   email: false
 
 addons:
-  postgresql: "9.4"
+  postgresql: "9.5"
   apt:
     packages:
       - net-tools
       - libpcre3-dev
       - build-essential
+
+services:
+    - redis
 
 env:
   global:
