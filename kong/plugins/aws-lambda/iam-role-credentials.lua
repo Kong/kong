@@ -52,8 +52,8 @@ local function fetch_iam_credentials_from_metadata_service(metadata_service_host
     end
     
     if iam_security_token_request.status == 404 then
-        return nil, '[aws-lambda] Unable to request IAM credentials for role' .. iam_role_name ..
-                    ' Request returned status code ' .. iam_security_token_request.status
+        return nil, "[aws-lambda] Unable to request IAM credentials for role" .. iam_role_name ..
+                    " Request returned status code " .. iam_security_token_request.status
     end
 
     if iam_security_token_request.status ~= 200 then
@@ -73,7 +73,7 @@ local function fetch_iam_credentials_from_metadata_service(metadata_service_host
 end
 
 local function get_iam_credentials_from_instance_profile(metadata_service_host, metadata_service_port)
-    metadata_service_host = metadata_service_host or '169.254.169.254'
+    metadata_service_host = metadata_service_host or "169.254.169.254"
     metadata_service_port = metadata_service_port or 80
 
     return cache.get_or_set(IAM_CREDENTIALS_CACHE_KEY, CACHE_IAM_INSTANCE_CREDS_DURATION,
