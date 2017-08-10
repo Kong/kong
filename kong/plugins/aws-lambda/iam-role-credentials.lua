@@ -7,7 +7,9 @@ local IAM_CREDENTIALS_CACHE_KEY = "plugin.aws-lambda.iam_role_temp_creds"
 
 local function fetch_iam_credentials_from_metadata_service(metadata_service_host, metadata_service_port)
     local client = http.new()
-    local ok, err = client:connect(metadata_service_host, metadata_service_port) 
+    client:set_timeout(500)
+
+    local ok, err = client:connect(metadata_service_host, metadata_service_port)
     
     if not ok then
       ngx.log(ngx.ERR, "[aws-lambda] Could not connect to metadata service: ", err)
@@ -74,14 +76,8 @@ local function get_iam_credentials_from_instance_profile(metadata_service_host, 
     metadata_service_host = metadata_service_host or '169.254.169.254'
     metadata_service_port = metadata_service_port or 80
 
-    local iam_profile_credentials, err = cache.get_or_set(IAM_CREDENTIALS_CACHE_KEY, CACHE_IAM_INSTANCE_CREDS_DURATION,
+    return cache.get_or_set(IAM_CREDENTIALS_CACHE_KEY, CACHE_IAM_INSTANCE_CREDS_DURATION,
                                        fetch_iam_credentials_from_metadata_service, metadata_service_host, metadata_service_port)
-    if not iam_profile_credentials then
-      ngx.log(ngx.ERR, err)
-      return ngx.exit(ngx.ERROR)
-    end
-
-  return iam_profile_credentials
 end
 
 return get_iam_credentials_from_instance_profile

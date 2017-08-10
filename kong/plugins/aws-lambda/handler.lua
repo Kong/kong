@@ -203,7 +203,11 @@ function AWSLambdaHandler:access(conf)
   }
 
   if conf.use_ec2_iam_role then
-    local iam_role_credentials = get_credentials_from_iam_role()
+    local iam_role_credentials, err = get_credentials_from_iam_role()
+    if not iam_role_credentials then
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    end
+
     opts.access_key = iam_role_credentials.access_key
     opts.secret_key = iam_role_credentials.secret_key
     opts.headers["X-Amz-Security-Token"] = iam_role_credentials.session_token
