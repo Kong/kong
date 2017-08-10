@@ -5,6 +5,7 @@ describe("URI encoding", function()
   local client
 
   setup(function()
+    helpers.run_migrations()
     assert(helpers.dao.apis:insert {
       name = "api-1",
       hosts = { "httpbin.com" },

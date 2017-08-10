@@ -1,6 +1,8 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
+local DAOFactory = require "kong.dao.factory"
+
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 
 describe("Admin API - Kong routes", function()
@@ -9,6 +11,7 @@ describe("Admin API - Kong routes", function()
     local client
 
     setup(function()
+      helpers.run_migrations()
       assert(helpers.start_kong {
         pg_password = "hide_me"
       })
@@ -90,8 +93,12 @@ describe("Admin API - Kong routes", function()
   dao_helpers.for_each_dao(function(kong_conf)
     describe("/status with DB: " .. kong_conf.database, function()
       local client
+      local dao
 
       setup(function()
+        dao = assert(DAOFactory.new(kong_conf))
+        helpers.run_migrations(dao)
+
         assert(helpers.start_kong {
           database = kong_conf.database,
         })

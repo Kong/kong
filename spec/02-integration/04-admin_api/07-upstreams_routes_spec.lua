@@ -42,6 +42,7 @@ describe("Admin API", function()
   setup(function()
     dao = assert(DAOFactory.new(kong_config))
 
+    helpers.run_migrations(dao)
     assert(helpers.start_kong{
       database = kong_config.database
     })

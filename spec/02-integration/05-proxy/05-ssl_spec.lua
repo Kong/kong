@@ -18,6 +18,7 @@ describe("SSL", function()
 
   setup(function()
     helpers.dao:truncate_tables()
+    helpers.run_migrations()
 
     assert(helpers.dao.apis:insert {
       name = "global-cert",
