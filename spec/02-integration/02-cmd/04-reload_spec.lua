@@ -2,6 +2,7 @@ local helpers = require "spec.helpers"
 
 describe("kong reload", function()
   setup(function()
+    helpers.run_migrations()
     helpers.prepare_prefix()
   end)
   teardown(function()

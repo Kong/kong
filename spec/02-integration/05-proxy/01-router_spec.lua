@@ -30,6 +30,7 @@ describe("Router", function()
 
     setup(function()
       helpers.dao:truncate_tables()
+      helpers.run_migrations()
       assert(helpers.start_kong())
     end)
 
@@ -88,6 +89,7 @@ describe("Router", function()
         },
       }
 
+      helpers.run_migrations()
       assert(helpers.start_kong())
     end)
 
@@ -190,6 +192,7 @@ describe("Router", function()
         },
       }
 
+      helpers.run_migrations()
       assert(helpers.start_kong {
         nginx_conf = "spec/fixtures/custom_nginx.template",
       })
@@ -263,6 +266,7 @@ describe("Router", function()
         },
       }
 
+      helpers.run_migrations()
       assert(helpers.start_kong())
     end)
 
@@ -305,6 +309,7 @@ describe("Router", function()
         },
       }
 
+      helpers.run_migrations()
       assert(helpers.start_kong())
     end)
 
@@ -382,6 +387,7 @@ describe("Router", function()
         }
       }
 
+      helpers.run_migrations()
       assert(helpers.start_kong {
         nginx_conf = "spec/fixtures/custom_nginx.template",
       })
@@ -484,6 +490,7 @@ describe("Router", function()
         },
       }
 
+      helpers.run_migrations()
       assert(helpers.start_kong())
     end)
 
@@ -530,6 +537,7 @@ describe("Router", function()
         },
       }
 
+      helpers.run_migrations()
       assert(helpers.start_kong())
     end)
 
@@ -569,6 +577,7 @@ describe("Router", function()
         },
       }
 
+      helpers.run_migrations()
       assert(helpers.start_kong())
     end)
 
@@ -658,6 +667,7 @@ describe("Router", function()
         })
       end
 
+      helpers.run_migrations()
       assert(helpers.start_kong {
         nginx_conf = "spec/fixtures/custom_nginx.template",
       })

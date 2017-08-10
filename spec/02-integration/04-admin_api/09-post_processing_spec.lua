@@ -14,6 +14,7 @@ describe("Admin API post-processing", function()
   local client
 
   setup(function()
+    helpers.run_migrations()
     assert(helpers.start_kong {
       custom_plugins = "admin-api-post-process"
     })

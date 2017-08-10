@@ -24,6 +24,7 @@ describe("core entities are invalidated with db: " .. kong_conf.database, functi
     local kong_dao_factory = require "kong.dao.factory"
     dao = assert(kong_dao_factory.new(kong_conf))
     dao:truncate_tables()
+    helpers.run_migrations(dao)
 
     local db_update_propagation = kong_conf.database == "cassandra" and 3 or 0
 

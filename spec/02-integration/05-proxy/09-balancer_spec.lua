@@ -5,7 +5,6 @@ local helpers = require "spec.helpers"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local PORT = 21000
 
-
 -- modified http-server. Accepts (sequentially) a number of incoming
 -- connections, and returns the number of succesful ones.
 -- Also features a timeout setting.
@@ -78,6 +77,7 @@ dao_helpers.for_each_dao(function(kong_config)
     local config_db
 
     setup(function()
+      helpers.run_migrations()
       config_db = helpers.test_conf.database
       helpers.test_conf.database = kong_config.database
     end)
@@ -95,6 +95,7 @@ dao_helpers.for_each_dao(function(kong_config)
       local client, api_client, upstream, target1, target2
 
       before_each(function()
+        helpers.run_migrations()
         assert(helpers.dao.apis:insert {
           name = "balancer.test",
           hosts = { "balancer.test" },
