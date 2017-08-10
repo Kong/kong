@@ -757,6 +757,7 @@ function OICHandler:access(conf)
           end
         end
 
+        -- TODO: should we set downstream headers here as well?
         return success(response)
 
       elseif login_action == "redirect" and conf.login_redirect_uri then
@@ -778,6 +779,7 @@ function OICHandler:access(conf)
           end
         end
 
+        -- TODO: should we set downstream headers here as well?
         return redirect(concat(login_redirect_uri))
       end
     end
@@ -912,7 +914,7 @@ function OICHandler:access(conf)
 
     local headers = constants.HEADERS
 
-    ngx.ctx.authenticated_consumer = mapped_consumer
+    ngx.ctx.authenticated_consumer   = mapped_consumer
     ngx.ctx.authenticated_credential = {
       consumer_id = mapped_consumer.id
     }
@@ -930,6 +932,8 @@ function OICHandler:access(conf)
   if auth_method_session then
     s:hide()
   end
+
+  -- TODO: do we want to set downstream headers for users that authenticated with session
 
   -- now let's setup the upstream and downstream headers
   headers(
