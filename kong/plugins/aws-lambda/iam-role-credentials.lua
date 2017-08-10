@@ -1,6 +1,6 @@
-local http  = require 'resty.http'
-local json  = require 'cjson'
-local cache = require 'kong.tools.database_cache'
+local http  = require "resty.http"
+local json  = require "cjson"
+local cache = require "kong.tools.database_cache"
 
 local CACHE_IAM_INSTANCE_CREDS_DURATION = 60 -- seconds to cache credentials from metadata service
 local IAM_CREDENTIALS_CACHE_KEY = "plugin.aws-lambda.iam_role_temp_creds"
@@ -16,7 +16,7 @@ local function fetch_iam_credentials_from_metadata_service(metadata_service_host
     
     local role_name_request_res, err = client:request {
       method = "GET",
-      path = "/latest/meta-data/iam/security-credentials/"
+      path = "/latest/meta-data/iam/security-credentials/",
     }
      
     if not role_name_request_res or role_name_request_res == "" then
@@ -25,14 +25,13 @@ local function fetch_iam_credentials_from_metadata_service(metadata_service_host
     end 
      
     if role_name_request_res.status ~= 200 then
-      return nil, "[aws-lambda] Fetching role name from metadata service returned status code "..
+      return nil, "[aws-lambda] Fetching role name from metadata service returned status code " ..
                   role_name_request_res.status  .. "with body " .. role_name_request_res.body
     end
            
     local iam_role_name = role_name_request_res:read_body() 
     
-    ngx.log(ngx.DEBUG, "[aws-lambda] IAM role '" .. iam_role_name ..
-                       "' is available through metadata service, fetching IAM credentials")
+    ngx.log(ngx.DEBUG, "[aws-lambda] Found IAM role on instance with name: ", iam_role_name)
     
     local ok, err = client:connect(metadata_service_host, metadata_service_port) 
     
@@ -43,7 +42,7 @@ local function fetch_iam_credentials_from_metadata_service(metadata_service_host
     
     local iam_security_token_request, err = client:request {
       method = "GET",
-      path = "/latest/meta-data/iam/security-credentials/" .. iam_role_name
+      path = "/latest/meta-data/iam/security-credentials/" .. iam_role_name,
     }    
     
     if not iam_security_token_request then
@@ -61,13 +60,13 @@ local function fetch_iam_credentials_from_metadata_service(metadata_service_host
 
     local iam_security_token_data = json.decode(iam_security_token_request:read_body())
 
-    ngx.log(ngx.DEBUG, "[aws-lambda] Received temporary IAM credential from metadata service for role '" ..
-                       iam_role_name .. "' with session token " .. iam_security_token_data.Token)
+    ngx.log(ngx.DEBUG, "[aws-lambda] Received temporary IAM credential from metadata service for role '",
+                       iam_role_name, "' with session token: ", iam_security_token_data.Token)
 
     return {
-        access_key = iam_security_token_data.AccessKeyId,
-        secret_key = iam_security_token_data.SecretAccessKey,
-        session_token = iam_security_token_data.Token
+        access_key    = iam_security_token_data.AccessKeyId,
+        secret_key    = iam_security_token_data.SecretAccessKey,
+        session_token = iam_security_token_data.Token,
     }
 end
 

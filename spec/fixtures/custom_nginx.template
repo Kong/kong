@@ -443,7 +443,7 @@ http {
                     AccessKeyId = "test_iam_access_key_id",
                     SecretAccessKey ="test_iam_secret_access_key",
                     Token = "test_session_token"
-                 }
+                }
                 local IAM_ROLE_TEMPORARY_CREDS_TXT = require("cjson").encode(IAM_ROLE_TEMPORARY_CREDS)
 
                 ngx.status = 200
