@@ -87,18 +87,6 @@ return {
       type                             = "boolean",
       default                          = false,
     },
-    downstream_access_token_header     = {
-      required                         = false,
-      type                             = "string",
-    },
-    downstream_access_token_jwk_header = {
-      required                         = false,
-      type                             = "string",
-    },
-    access_token_jwk_header            = {
-      required                         = false,
-      type                             = "string",
-    },
     id_token_param_name                = {
       required                         = false,
       type                             = "string",
@@ -117,7 +105,24 @@ return {
         "body",
       },
     },
-    id_token_header                    = {
+    upstream_access_token_header       = {
+      required                         = false,
+      type                             = "string",
+      default                          = "authorization:bearer",
+    },
+    downstream_access_token_header     = {
+      required                         = false,
+      type                             = "string",
+    },
+    upstream_access_token_jwk_header   = {
+      required                         = false,
+      type                             = "string",
+    },
+    downstream_access_token_jwk_header = {
+      required                         = false,
+      type                             = "string",
+    },
+    upstream_id_token_header           = {
       required                         = false,
       type                             = "string",
     },
@@ -126,7 +131,7 @@ return {
       type                             = "string",
     },
 
-    id_token_jwk_header                = {
+    upstream_id_token_jwk_header       = {
       required                         = false,
       type                             = "string",
     },
@@ -134,7 +139,7 @@ return {
       required                         = false,
       type                             = "string",
     },
-    refresh_token_header               = {
+    upstream_refresh_token_header      = {
       required                         = false,
       type                             = "string",
     },
@@ -142,7 +147,7 @@ return {
       required                         = false,
       type                             = "string",
     },
-    userinfo_header                    = {
+    upstream_user_info_header           = {
       required                         = false,
       type                             = "string",
     },
@@ -150,7 +155,7 @@ return {
       required                         = false,
       type                             = "string",
     },
-    introspection_header               = {
+    upstream_introspection_header      = {
       required                         = false,
       type                             = "string",
     },

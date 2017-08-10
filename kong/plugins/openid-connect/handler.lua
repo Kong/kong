@@ -23,6 +23,7 @@ local get_body_data = ngx.req.get_body_data
 local get_body_file = ngx.req.get_body_file
 local get_post_args = ngx.req.get_post_args
 local tonumber      = tonumber
+local tostring      = tostring
 local ipairs        = ipairs
 local concat        = table.concat
 local find          = string.find
@@ -205,6 +206,53 @@ local function client(param, clients, secrets, redirects)
       end
     end
     return client_id, client_secret, client_redirect_uri
+  end
+end
+
+
+local function headers(upstream_header, downstream_header, header_value)
+  local val = header_value ~= nil and header_value ~= "" and header_value ~= ngx.null and header_value
+  if val then
+    local usm =   upstream_header ~= nil and   upstream_header ~= "" and   upstream_header ~= ngx.null and   upstream_header
+    local dsm = downstream_header ~= nil and downstream_header ~= "" and downstream_header ~= ngx.null and downstream_header
+
+    if usm or dsm then
+      local val_type = type(val)
+      if val_type == "table" then
+        val = json.encode(val)
+        if val then
+          val = base64.encode(val)
+        end
+
+      elseif val_type == "function" then
+        return headers(usm, dsm, val())
+
+      elseif val_type ~= "string" then
+        val = tostring(val)
+      end
+
+      if not val then
+        return
+      end
+    end
+
+    if usm then
+      if usm == "authorization:bearer" then
+        set_header("Authorization", "Bearer " .. val)
+
+      else
+        set_header(usm, val)
+      end
+    end
+
+    if dsm then
+      if dsm == "authorization:bearer" then
+        header["Authorization"] = "Bearer " .. val
+
+      else
+        header[dsm] = val
+      end
+    end
   end
 end
 
@@ -635,16 +683,16 @@ function OICHandler:access(conf)
       return unauthorized(iss, err, s)
     end
 
-    local access_token = tokens_decoded.access_token
+    local access_token_decoded = tokens_decoded.access_token
 
     -- introspection of opaque access token
     -- TODO: cache result of introspection query?
-    if type(access_token) ~= "table" then
+    if type(access_token_decoded) ~= "table" then
 
       -- TODO: add support for kong_oauth2 authentication method
 
       if auth_method_introspection then
-        access_token_introspected, err = o.token:introspect(access_token, "access_token", {
+        access_token_introspected, err = o.token:introspect(access_token_decoded, "access_token", {
           introspection_endpoint = conf.introspection_endpoint
         })
       end
@@ -656,7 +704,7 @@ function OICHandler:access(conf)
       expires = access_token_introspected.exp or exp
 
     else
-      expires = access_token.exp or exp
+      expires = access_token_decoded.exp or exp
     end
 
     if auth_method_session then
@@ -883,88 +931,70 @@ function OICHandler:access(conf)
     s:hide()
   end
 
-  -- inject access token as a bearer token into the headers
-  set_header("Authorization", "Bearer " .. tokens_encoded.access_token)
+  -- now let's setup the upstream and downstream headers
+  headers(
+    conf.upstream_access_token_header,
+    conf.downstream_access_token_header,
+    tokens_encoded.access_token
+  )
 
-  -- inject access token jwk into the headers?
-  local access_token_jwk_header = conf.access_token_jwk_header
-  if access_token_jwk_header and access_token_jwk_header ~= "" then
-    if not tokens_decoded then
-      tokens_decoded = o.token:decode(tokens_encoded)
+  headers(
+    conf.upstream_id_token_header,
+    conf.downstream_id_token_header,
+    tokens_encoded.id_token
+  )
+
+  headers(
+    conf.upstream_refresh_token_header,
+    conf.downstream_refresh_token_header,
+    tokens_encoded.refresh_token
+  )
+
+  headers(
+    conf.upstream_intropection_header,
+    conf.downstream_intropection_header,
+    access_token_introspected
+  )
+
+  headers(
+    conf.upstream_user_info_header,
+    conf.downstream_user_info_header,
+    function()
+      return o:userinfo(tokens_encoded.access_token, { userinfo_format = "base64" })
     end
-    if tokens_decoded then
-      local access_token = tokens_decoded.access_token
-      if access_token and access_token.jwk then
-        local jwk = json.encode(access_token.jwk)
-        if jwk then
-          jwk = base64.encode(jwk)
-          if jwk then
-            set_header(access_token_jwk_header, jwk)
-          end
+  )
+
+  headers(
+    conf.upstream_access_token_jwk_header,
+    conf.downstream_access_token_jwk_header,
+    function()
+      if not tokens_decoded then
+        tokens_decoded = o.token:decode(tokens_encoded)
+      end
+      if tokens_decoded then
+        local access_token = tokens_decoded.access_token
+        if access_token and access_token.jwk then
+          return access_token.jwk
         end
       end
     end
-  end
+  )
 
-  -- inject id token into the headers?
-  local id_token_header = conf.id_token_header
-  if id_token_header and id_token_header ~= "" then
-    local id_token = tokens_encoded.id_token
-    if id_token then
-      set_header(id_token_header, id_token)
-    end
-  end
-
-  -- inject id token jwk into the headers?
-  local id_token_jwk_header = conf.id_token_jwk_header
-  if id_token_jwk_header and id_token_jwk_header ~= "" then
-    if not tokens_decoded then
-      tokens_decoded = o.token:decode(tokens_encoded)
-    end
-    if tokens_decoded then
-      local id_token = tokens_decoded.id_token
-      if id_token and id_token.jwk then
-        local jwk = json.encode(id_token.jwk)
-        if jwk then
-          jwk = base64.encode(jwk)
-          if jwk then
-            set_header(id_token_jwk_header, jwk)
-          end
+  headers(
+    conf.upstream_id_token_jwk_header,
+    conf.downstream_id_token_jwk_header,
+    function()
+      if not tokens_decoded then
+        tokens_decoded = o.token:decode(tokens_encoded)
+      end
+      if tokens_decoded then
+        local id_token = tokens_decoded.id_token
+        if id_token and id_token.jwk then
+          return id_token.jwk
         end
       end
     end
-  end
-
-  -- inject refresh token into the headers?
-  local refresh_token_header = conf.refresh_token_header
-  if refresh_token_header and refresh_token_header ~= "" then
-    local refresh_token = tokens_encoded.refresh_token
-    if refresh_token then
-      set_header(refresh_token_header, refresh_token)
-    end
-  end
-
-  -- inject user info into the headers?
-  -- TODO: cache result of userinfo query?
-  local userinfo_header = conf.userinfo_header
-  if userinfo_header and userinfo_header ~= "" then
-    local userinfo_data = o:userinfo(tokens_encoded.access_token, { userinfo_format = "base64" })
-    if userinfo_data then
-      set_header(userinfo_header, userinfo_data)
-    end
-  end
-
-  -- inject introspected access token into the headers?
-  local introspection_header = conf.intropection_header
-  if introspection_header and access_token_introspected then
-    local introspected = json.encode(access_token_introspected)
-    if introspected then
-      introspected = base64.encode(introspected)
-      if introspected then
-        set_header(introspection_header, introspected)
-      end
-    end
-  end
+  )
 end
 
 
