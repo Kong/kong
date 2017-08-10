@@ -11,45 +11,45 @@ end
 
 
 return {
-  no_consumer               = true,
-  fields                    = {
-    issuer                  = {
-      required              = true,
-      type                  = "url",
+  no_consumer                          = true,
+  fields                               = {
+    issuer                             = {
+      required                         = true,
+      type                             = "url",
     },
-    client_id               = {
-      required              = true,
-      type                  = "array",
+    client_id                          = {
+      required                         = true,
+      type                             = "array",
     },
-    client_secret           = {
-      required              = true,
-      type                  = "array",
+    client_secret                      = {
+      required                         = true,
+      type                             = "array",
     },
-    redirect_uri            = {
-      required              = false,
-      type                  = "array",
+    redirect_uri                       = {
+      required                         = false,
+      type                             = "array",
     },
-    scopes                  = {
-      required              = false,
-      type                  = "array",
-      default               = {
+    scopes                             = {
+      required                         = false,
+      type                             = "array",
+      default                          = {
         "openid"
       },
     },
-    response_mode           = {
-      required              = false,
-      type                  = "string",
-      enum                  = {
+    response_mode                      = {
+      required                         = false,
+      type                             = "string",
+      enum                             = {
         "query",
         "form_post",
         "fragment",
       },
-      default               = "query",
+      default                          = "query",
     },
-    auth_methods            = {
-      required              = false,
-      type                  = "array",
-      enum                  = {
+    auth_methods                       = {
+      required                         = false,
+      type                             = "array",
+      enum                             = {
         "password",
         "client_credentials",
         "authorization_code",
@@ -59,7 +59,7 @@ return {
         "refresh_token",
         "session",
       },
-      default               = {
+      default                          = {
         "password",
         "client_credentials",
         "authorization_code",
@@ -70,159 +70,188 @@ return {
         "session",
       },
     },
-    audience                = {
-      required              = false,
-      type                  = "array",
+    audience                           = {
+      required                         = false,
+      type                             = "array",
     },
-    domains                 = {
-      required              = false,
-      type                  = "array",
+    domains                            = {
+      required                         = false,
+      type                             = "array",
     },
-    max_age                 = {
-      required              = false,
-      type                  = "number",
+    max_age                            = {
+      required                         = false,
+      type                             = "number",
     },
-    reverify                = {
-      required              = false,
-      type                  = "boolean",
-      default               = false,
+    reverify                           = {
+      required                         = false,
+      type                             = "boolean",
+      default                          = false,
     },
-    access_token_jwk_header = {
-      required              = false,
-      type                  = "string",
+    downstream_access_token_header     = {
+      required                         = false,
+      type                             = "string",
     },
-    id_token_param_name     = {
-      required              = false,
-      type                  = "string",
+    downstream_access_token_jwk_header = {
+      required                         = false,
+      type                             = "string",
     },
-    id_token_param_type     = {
-      required              = false,
-      type                  = "array",
-      enum                  = {
+    access_token_jwk_header            = {
+      required                         = false,
+      type                             = "string",
+    },
+    id_token_param_name                = {
+      required                         = false,
+      type                             = "string",
+    },
+    id_token_param_type                = {
+      required                         = false,
+      type                             = "array",
+      enum                             = {
         "query",
         "header",
         "body",
       },
-      default               = {
+      default                          = {
         "query",
         "header",
         "body",
       },
     },
-    id_token_header         = {
-      required              = false,
-      type                  = "string",
+    id_token_header                    = {
+      required                         = false,
+      type                             = "string",
     },
-    id_token_jwk_header     = {
-      required              = false,
-      type                  = "string",
+    downstream_id_token_header         = {
+      required                         = false,
+      type                             = "string",
     },
-    refresh_token_header    = {
-      required              = false,
-      type                  = "string",
+
+    id_token_jwk_header                = {
+      required                         = false,
+      type                             = "string",
     },
-    userinfo_header         = {
-      required              = false,
-      type                  = "string",
+    downstream_id_token_jwk_header     = {
+      required                         = false,
+      type                             = "string",
     },
-    introspection_header    = {
-      required              = false,
-      type                  = "string",
+    refresh_token_header               = {
+      required                         = false,
+      type                             = "string",
     },
-    introspection_endpoint  = {
-      required              = false,
-      type                  = "url",
+    downstream_refresh_token_header    = {
+      required                         = false,
+      type                             = "string",
     },
-    login_action            = {
-      required              = false,
-      type                  = "string",
-      enum                  = {
+    userinfo_header                    = {
+      required                         = false,
+      type                             = "string",
+    },
+    downstream_user_info_header        = {
+      required                         = false,
+      type                             = "string",
+    },
+    introspection_header               = {
+      required                         = false,
+      type                             = "string",
+    },
+    downstream_introspection_header    = {
+      required                         = false,
+      type                             = "string",
+    },
+    introspection_endpoint             = {
+      required                         = false,
+      type                             = "url",
+    },
+    login_action                       = {
+      required                         = false,
+      type                             = "string",
+      enum                             = {
         "upstream",
         "response",
         "redirect",
       },
-      default               = "upstream",
+      default                          = "upstream",
     },
-    login_tokens            = {
-      required              = false,
-      type                  = "array",
-      enum                  = {
+    login_tokens                       = {
+      required                         = false,
+      type                             = "array",
+      enum                             = {
         "id_token",
         "access_token",
         "refresh_token",
       },
-      default               = {
+      default                          = {
         "id_token",
       },
     },
-    login_redirect_uri      = {
-      required              = false,
-      type                  = "url",
+    login_redirect_uri                 = {
+      required                         = false,
+      type                             = "url",
     },
-    consumer_claim          = {
-      required              = false,
-      type                  = "string",
+    consumer_claim                     = {
+      required                         = false,
+      type                             = "string",
     },
-    consumer_by             = {
-      required              = false,
-      type                  = "array",
-      enum                  = {
+    consumer_by                        = {
+      required                         = false,
+      type                             = "array",
+      enum                             = {
         "id",
         "username",
         "custom_id",
       },
-      default               = {
+      default                          = {
         "username",
         "custom_id",
       },
     },
-    anonymous               = {
-      type                  = "string",
-      func                  = check_user,
+    anonymous                          = {
+      type                             = "string",
+      func                             = check_user,
     },
-    leeway                  = {
-      required              = false,
-      type                  = "number",
-      default               = 0,
+    leeway                             = {
+      required                         = false,
+      type                             = "number",
+      default                          = 0,
     },
-    verify_parameters       = {
-      required              = false,
-      type                  = "boolean",
-      default               = true,
+    verify_parameters                  = {
+      required                         = false,
+      type                             = "boolean",
+      default                          = true,
     },
-    verify_nonce            = {
-      required              = false,
-      type                  = "boolean",
-      default               = true,
+    verify_nonce                       = {
+      required                         = false,
+      type                             = "boolean",
+      default                          = true,
     },
-    verify_signature        = {
-      required              = false,
-      type                  = "boolean",
-      default               = true,
+    verify_signature                   = {
+      required                         = false,
+      type                             = "boolean",
+      default                          = true,
     },
-    verify_claims           = {
-      required              = false,
-      type                  = "boolean",
-      default               = true,
+    verify_claims                      = {
+      required                         = false,
+      type                             = "boolean",
+      default                          = true,
     },
-    http_version            = {
-      required              = false,
-      type                  = "number",
-      enum                  = {
+    http_version                       = {
+      required                         = false,
+      type                             = "number",
+      enum                             = {
         1.0,
         1.1,
       },
-      default               = 1.1,
+      default                          = 1.1,
     },
-    ssl_verify              = {
-      required              = false,
-      type                  = "boolean",
-      default               = true,
+    ssl_verify                         = {
+      required                         = false,
+      type                             = "boolean",
+      default                          = true,
     },
-    timeout                 = {
-      required              = false,
-      type                  = "number",
-      default               = 10000,
+    timeout                            = {
+      required                         = false,
+      type                             = "number",
+      default                          = 10000,
     },
   },
 }
