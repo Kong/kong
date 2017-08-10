@@ -77,7 +77,7 @@ local function get_iam_credentials_from_instance_profile(metadata_service_host, 
     metadata_service_port = metadata_service_port or 80
 
     return cache.get_or_set(IAM_CREDENTIALS_CACHE_KEY, CACHE_IAM_INSTANCE_CREDS_DURATION,
-                                       fetch_iam_credentials_from_metadata_service, metadata_service_host, metadata_service_port)
+                            fetch_iam_credentials_from_metadata_service, metadata_service_host, metadata_service_port)
 end
 
 return get_iam_credentials_from_instance_profile
