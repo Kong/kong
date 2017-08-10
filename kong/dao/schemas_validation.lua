@@ -117,9 +117,16 @@ function _M.validate_entity(tbl, schema, options)
               is_valid_type = bool == "true" or bool == "false"
               t[column] = bool == "true"
             elseif v.type == "array" then
-              t[column] = utils.strip(t[column]) == "" and {} or utils.split(t[column], ",") -- Handling empty arrays
+              -- handle escaped commas inside the comma-separated array
+              -- by flipping them into a \0 and then back
+              local escaped = t[column]:gsub("\\,", "\0")
+              if utils.strip(t[column]) == "" then
+                t[column] = {} -- Handling empty arrays
+              else
+                t[column] = utils.split(escaped, ",")
+              end
               for arr_k, arr_v in ipairs(t[column]) do
-                t[column][arr_k] = utils.strip(arr_v)
+                t[column][arr_k] = utils.strip(arr_v):gsub("%z", ",")
               end
               is_valid_type = validate_type(v.type, t[column])
             elseif v.type == "number" or v.type == "timestamp" then

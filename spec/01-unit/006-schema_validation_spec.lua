@@ -292,6 +292,22 @@ describe("Schemas", function()
         assert.falsy(err)
         assert.same({"hello", "world"}, values.array)
       end)
+
+      it("should handle escaped commas in comma-separated arrays", function()
+        local s = {
+          fields = {
+            array = {type = "array"}
+          }
+        }
+
+        -- It should also strip the resulting strings
+        local values = { array = "hello\\, world,goodbye world\\,,/hello/\\d{1\\,3}" }
+
+        local valid, err = validate_entity(values, s)
+        assert.True(valid)
+        assert.falsy(err)
+        assert.same({"hello, world", "goodbye world,", "/hello/\\d{1,3}"}, values.array)
+      end)
     end)
   end)
 
