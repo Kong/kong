@@ -36,7 +36,9 @@ describe("Plugins triggering", function()
     assert(helpers.dao.plugins:insert {
       name = "rate-limiting",
       config = {
-        hour = 1,
+        window_size = { 3600 },
+        limit       = { 1 },
+        sync_rate   = 10,
       }
     })
 
@@ -50,7 +52,9 @@ describe("Plugins triggering", function()
       name = "rate-limiting",
       api_id = api1.id,
       config = {
-        hour = 2,
+        window_size = { 3600 },
+        limit       = { 2 },
+        sync_rate   = 10,
       }
     })
 
@@ -59,7 +63,9 @@ describe("Plugins triggering", function()
       name = "rate-limiting",
       consumer_id = consumer2.id,
       config = {
-        hour = 3,
+        window_size = { 3600 },
+        limit       = { 3 },
+        sync_rate   = 10,
       }
     })
 
@@ -74,7 +80,9 @@ describe("Plugins triggering", function()
       api_id = api2.id,
       consumer_id = consumer2.id,
       config = {
-        hour = 4,
+        window_size = { 3600 },
+        limit       = { 4 },
+        sync_rate   = 10,
       }
     })
 
@@ -96,7 +104,9 @@ describe("Plugins triggering", function()
       consumer_id = consumer3.id,
       api_id = api3.id,
       config = {
-        hour = 5,
+        window_size = { 3600 },
+        limit       = { 5 },
+        sync_rate   = 10,
       }
     })
 

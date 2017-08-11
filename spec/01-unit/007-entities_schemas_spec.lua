@@ -647,11 +647,11 @@ describe("Entities Schemas", function()
       assert.is_true(valid)
 
       -- Failure
-      plugin = {name = "rate-limiting", api_id = "stub", config = { second = "hello" }}
+      plugin = {name = "cors", api_id = "stub", config = { max_age = "hello" }}
 
       local valid, errors = validate_entity(plugin, plugins_schema, {dao = dao_stub})
       assert.is_false(valid)
-      assert.equal("second is not a number", errors["config.second"])
+      assert.equal("max_age is not a number", errors["config.max_age"])
     end)
     it("should have an empty config if none is specified and if the config schema does not have default", function()
       -- Insert key-auth, whose config has some default values that should be set

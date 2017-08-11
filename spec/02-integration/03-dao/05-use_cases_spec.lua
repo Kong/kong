@@ -14,7 +14,7 @@ helpers.for_each_dao(function(kong_config)
       factory:truncate_tables()
     end)
 
-    it("#ee retrieves plugins for plugins_iterator", function()
+    it("retrieves plugins for plugins_iterator", function()
       local api, err = factory.apis:insert {
         name = "mockbin", hosts = { "mockbin.com" },
         upstream_url = "http://mockbin.com"
@@ -30,14 +30,12 @@ helpers.for_each_dao(function(kong_config)
       assert.falsy(err)
 
       local _, err = factory.plugins:insert {
-        name = "rate-limiting", api_id = api.id,
-        config = {minute = 1}
+        name = "correlation-id", api_id = api.id,
       }
       assert.falsy(err)
 
-      local rate_limiting_for_consumer, err = factory.plugins:insert {
-        name = "rate-limiting", api_id = api.id, consumer_id = consumer.id,
-        config = {minute = 1}
+      local correlation_id_for_consumer, err = factory.plugins:insert {
+        name = "correlation-id", api_id = api.id, consumer_id = consumer.id,
       }
       assert.falsy(err)
 
@@ -52,7 +50,7 @@ helpers.for_each_dao(function(kong_config)
 
       --
       rows, err = factory.plugins:find_all {
-        name = "rate-limiting",
+        name = "correlation-id",
         api_id = api.id
       }
       assert.falsy(err)
@@ -60,13 +58,13 @@ helpers.for_each_dao(function(kong_config)
 
       --
       rows, err = factory.plugins:find_all {
-        name = "rate-limiting",
+        name = "correlation-id",
         api_id = api.id,
         consumer_id = consumer.id
       }
       assert.falsy(err)
       assert.equal(1, #rows)
-      assert.same(rate_limiting_for_consumer, rows[1])
+      assert.same(correlation_id_for_consumer, rows[1])
     end)
 
     it("update a plugin config", function()

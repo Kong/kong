@@ -73,7 +73,7 @@ helpers.for_each_dao(function(kong_config)
                          "name=already exists with value 'key-auth'",
                          err, nil, true)
         end)
-        it("#ee API/Consumer/Plugin", function()
+        it("API/Consumer/Plugin", function()
           local consumer, err = factory.consumers:insert {
             username = "bob"
           }
@@ -81,10 +81,9 @@ helpers.for_each_dao(function(kong_config)
           assert.truthy(consumer)
 
           local plugin_tbl = {
-            name = "rate-limiting",
+            name = "correlation-id",
             api_id = api_fixture.id,
             consumer_id = consumer.id,
-            config = {minute = 1}
           }
 
           local plugin, err = plugins:insert(plugin_tbl)
@@ -97,7 +96,7 @@ helpers.for_each_dao(function(kong_config)
           assert.falsy(plugin)
           assert.True(err.unique)
           assert.matches("[" .. kong_config.database .. " error] " ..
-                         "name=already exists with value 'rate-limiting'",
+                         "name=already exists with value 'correlation-id'",
                          err, nil, true)
         end)
       end)
@@ -114,12 +113,11 @@ helpers.for_each_dao(function(kong_config)
         assert.True(err.foreign)
         assert.matches("api_id=does not exist with value '" .. plugin_fixture.api_id .. "'", tostring(err), nil, true)
       end)
-      it("#ee not insert plugin if invalid Consumer foreign key", function()
+      it("not insert plugin if invalid Consumer foreign key", function()
         local plugin_tbl = {
-          name = "rate-limiting",
+          name = "correlation-id",
           api_id = api_fixture.id,
           consumer_id = utils.uuid(),
-          config = {minute = 1}
         }
 
         local plugin, err = plugins:insert(plugin_tbl)
@@ -188,12 +186,11 @@ helpers.for_each_dao(function(kong_config)
         assert.falsy(plugin)
       end)
 
-      it("#ee delete bis", function()
+      it("delete bis", function()
         local plugin, err = plugins:insert {
-          name = "rate-limiting",
+          name = "correlation-id",
           api_id = api_fixture.id,
           consumer_id = consumer_fixture.id,
-          config = {minute = 1}
         }
         assert.falsy(err)
 
