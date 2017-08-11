@@ -293,17 +293,17 @@ describe("Schemas", function()
         assert.same({"hello", "world"}, values.array)
       end)
 
-      it("should handle escaped commas in comma-separated arrays", function()
+      it("preserves escaped commas in comma-separated arrays", function()
         -- Note: regression test for arrays of PCRE URIs:
         -- https://github.com/Mashape/kong/issues/2780
         local s = {
           fields = {
-            array = {type = "array"}
+            array = { type = "array" }
           }
         }
 
         local values = {
-          array = [[ hello\, world,goodbye world\,,/hello/\d{1\,3} ]]
+          array = [[hello\, world,goodbye world\,,/hello/\d{1\,3}]]
         }
 
         local valid, err = validate_entity(values, s)
