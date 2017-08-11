@@ -1,64 +1,165 @@
 local Errors = require "kong.dao.errors"
+local utils  = require "kong.tools.utils"
 
-local REDIS = "redis"
+local function validate_rl(value)
+  for i = 1, #value do
+    local x = tonumber(value[i])
 
-return {
+    if not x then
+      return false, "size/limit values must be numbers"
+    end
+  end
+
+  return true
+end
+
+local redis_schema = {
   fields = {
-    second = { type = "number" },
-    minute = { type = "number" },
-    hour = { type = "number" },
-    day = { type = "number" },
-    month = { type = "number" },
-    year = { type = "number" },
-    limit_by = { type = "string", enum = {"consumer", "credential", "ip"}, default = "consumer" },
-    policy = { type = "string", enum = {"local", "cluster", REDIS}, default = "cluster" },
-    fault_tolerant = { type = "boolean", default = true },
-    redis_host = { type = "string" },
-    redis_port = { type = "number", default = 6379 },
-    redis_password = { type = "string" },
-    redis_timeout = { type = "number", default = 2000 },
-    redis_database = { type = "number", default = 0 },
-    hide_client_headers = { type = "boolean", default = false },
+    host = {
+      type = "string",
+    },
+    port = {
+      type = "number",
+    },
+    timeout = {
+      type = "number",
+    },
+    password = {
+      type = "string",
+    },
+    database = {
+      type = "number",
+    },
+    sentinel_master = {
+      type = "string",
+    },
+    sentinel_role = {
+      type = "string",
+      enum = { "master", "slave", "any" },
+    },
+    sentinel_addresses = {
+      type = "array",
+    },
   },
-  self_check = function(schema, plugin_t, dao, is_update)
-    local ordered_periods = { "second", "minute", "hour", "day", "month", "year"}
-    local has_value
-    local invalid_order
-    local invalid_value
+  self_check = function(schema, plugin_t, dao, is_updating)
+    local is_sentinel = plugin_t.sentinel_master or
+                        plugin_t.sentinel_role or
+                        plugin_t.sentinel_addresses
 
-    for i, v in ipairs(ordered_periods) do
-      if plugin_t[v] then
-        has_value = true
-        if plugin_t[v] <=0 then
-          invalid_value = "Value for " .. v .. " must be greater than zero"
-        else
-          for t = i+1, #ordered_periods do
-            if plugin_t[ordered_periods[t]] and plugin_t[ordered_periods[t]] < plugin_t[v] then
-              invalid_order = "The limit for " .. ordered_periods[t] .. " cannot be lower than the limit for " .. v
-            end
+    if is_sentinel then
+      if not plugin_t.sentinel_master then
+        return false,
+               Errors.schema("You need to specify a Redis Sentinel master")
+      end
+
+      if not plugin_t.sentinel_role then
+        return false,
+               Errors.schema("You need to specify a Redis Sentinel role")
+      end
+
+      if not plugin_t.sentinel_addresses then
+        return false,
+               Errors.schema("You need to specify one or more " ..
+               "Redis Sentinel addresses")
+
+      else
+        if plugin_t.redis_host then
+          return false,
+                 Errors.schema("When Redis Sentinel is enabled you cannot " ..
+                 "set a 'redis_host'")
+        end
+
+        if #plugin_t.sentinel_addresses == 0 then
+          return false,
+                 Errors.schema("You need to specify one or more " ..
+                 "Redis Sentinel addresses")
+        end
+
+        for _, address in ipairs(plugin_t.sentinel_addresses) do
+          local parts = utils.split(address, ":")
+
+          if not (#parts == 2 and tonumber(parts[2])) then
+            return false,
+                   Errors.schema("Invalid Redis Sentinel address: " .. address)
           end
         end
       end
     end
+  end,
+}
 
-    if not has_value then
-      return false, Errors.schema "You need to set at least one limit: second, minute, hour, day, month, year"
-    elseif invalid_value then
-      return false, Errors.schema(invalid_value)
-    elseif invalid_order then
-      return false, Errors.schema(invalid_order)
-    end
+return {
+  fields = {
+    identifier = {
+      type = "string",
+      enum = { "ip", "credential", "consumer" },
+      required = true,
+      default = "ip",
+    },
+    window_size = {
+      type = "array",
+      required = true,
+      func = validate_rl,
+    },
+    limit = {
+      type = "array",
+      required = true,
+      func = validate_rl,
+    },
+    sync_rate = {
+      type = "number",
+      required = true,
+    },
+    namespace = {
+      type = "string",
+      required = true,
+      default = utils.random_string,
+    },
+    strategy = {
+      type = "string",
+      enum = { "cluster", "redis", },
+      required = true,
+      default = "cluster",
+    },
+    redis = {
+      type = "table",
+      schema = redis_schema,
+    },
+  },
+  self_check = function(schema, plugin_t, dao, is_updating)
+    -- empty semi-optional redis config, needs to be cluster strategy
+    if plugin_t.strategy == "redis" then
+      if not plugin_t.redis then
+        return false, Errors.schema("No redis config provided")
+      end
 
-    if plugin_t.policy == REDIS then
-      if not plugin_t.redis_host then
-        return false, Errors.schema "You need to specify a Redis host"
-      elseif not plugin_t.redis_port then
-        return false, Errors.schema "You need to specify a Redis port"
-      elseif not plugin_t.redis_timeout then
-        return false, Errors.schema "You need to specify a Redis timeout"
+      if not plugin_t.redis.host then
+        return false, Errors.schema("Redis host must be provided")
+      end
+
+      if not plugin_t.redis.port then
+        return false, Errors.schema("Redis port must be provided")
+      end
+
+      if not plugin_t.redis.database then
+        plugin_t.redis.database = 0
+      end
+
+      if not plugin_t.redis.timeout then
+        plugin_t.redis.timeout = 2000
       end
     end
 
+    if not plugin_t.window_size or not plugin_t.limit then
+      return false, Errors.schema(
+                    "Both window_size and limit must be provided")
+    end
+
+    if #plugin_t.window_size ~= #plugin_t.limit then
+      return false, Errors.schema(
+                    "You must provide the same number of windows and limits")
+    end
+
     return true
-  end
+  end,
 }

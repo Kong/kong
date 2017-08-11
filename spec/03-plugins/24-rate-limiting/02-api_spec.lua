@@ -1,15 +1,13 @@
-local cjson = require "cjson"
 local helpers = require "spec.helpers"
+local cjson = require "cjson"
 
-describe("Plugin: rate-limiting (API)", function()
+describe("rate-limiting API", function()
   local admin_client
 
-  setup(function()
-    helpers.run_migrations()
-  end)
-
   teardown(function()
-    if admin_client then admin_client:close() end
+    if admin_client then
+      admin_client:close()
+    end
     helpers.stop_kong()
   end)
 
@@ -25,38 +23,47 @@ describe("Plugin: rate-limiting (API)", function()
       admin_client = helpers.admin_client()
     end)
 
-    it("should not save with empty config", function()
-      local res = assert(admin_client:send {
-        method = "POST",
-        path = "/apis/test/plugins/",
-        body = {
-          name = "rate-limiting"
-        },
-        headers = {
-          ["Content-Type"] = "application/json"
-        }
-      })
-      local body = assert.res_status(400, res)
-      local json = cjson.decode(body)
-      assert.same({ config = "You need to set at least one limit: second, minute, hour, day, month, year" }, json)
-    end)
-
-    it("should save with proper config", function()
+    it("errors with size/limit mismatch", function()
       local res = assert(admin_client:send {
         method = "POST",
         path = "/apis/test/plugins/",
         body = {
           name = "rate-limiting",
           config = {
-            second = 10
+            window_size = { 10, 60 },
+            limit = { 10 },
+            sync_rate = 10,
           }
         },
         headers = {
           ["Content-Type"] = "application/json"
         }
       })
-      local body = cjson.decode(assert.res_status(201, res))
-      assert.equal(10, body.config.second)
+      local body = cjson.decode(assert.res_status(400, res))
+      assert.same({
+        config = "You must provide the same number of windows and limits",
+      }, body)
+    end)
+
+    it("errors with missing size/limit configs", function()
+      local res = assert(admin_client:send {
+        method = "POST",
+        path = "/apis/test/plugins/",
+        body = {
+          name = "rate-limiting",
+          config = {
+            limit = { 10 },
+            sync_rate = 10,
+          }
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+      local body = cjson.decode(assert.res_status(400, res))
+      assert.same({
+        ["config.window_size"] = "window_size is required",
+      }, body)
     end)
   end)
 end)

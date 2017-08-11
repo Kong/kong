@@ -1,40 +1,37 @@
-local schemas = require "kong.dao.schemas_validation"
-local plugin_schema = require "kong.plugins.rate-limiting.schema"
-local validate_entity = schemas.validate_entity
+local validate_entity = require("kong.dao.schemas_validation").validate_entity
+local rate_limiting_schema = require "kong.plugins.rate-limiting.schema"
 
-describe("Plugin: rate-limiting (schema)", function()
-  it("proper config validates", function()
-    local config = {second = 10}
-    local ok, _, err = validate_entity(config, plugin_schema)
-    assert.True(ok)
+describe("rate-limiting schema", function()
+  it("accepts a minimal config", function()
+    local ok, err = validate_entity({
+      window_size = { 60 },
+      limit = { 10 },
+      sync_rate = 10,
+    }, rate_limiting_schema)
+
     assert.is_nil(err)
-  end)
-  it("proper config validates (bis)", function()
-    local config = {second = 10, minute = 20, hour = 30, day = 40, month = 50, year = 60}
-    local ok, _, err = validate_entity(config, plugin_schema)
-    assert.True(ok)
-    assert.is_nil(err)
+    assert.is_true(ok)
   end)
 
-  describe("errors", function()
-    it("limits: smaller unit is less than bigger unit", function()
-      local config = {second = 20, hour = 10}
-      local ok, _, err = validate_entity(config, plugin_schema)
-      assert.False(ok)
-      assert.equal("The limit for hour cannot be lower than the limit for second", err.message)
-    end)
-    it("limits: smaller unit is less than bigger unit (bis)", function()
-      local config = {second = 10, minute = 20, hour = 30, day = 40, month = 60, year = 50}
-      local ok, _, err = validate_entity(config, plugin_schema)
-      assert.False(ok)
-      assert.equal("The limit for year cannot be lower than the limit for month", err.message)
-    end)
+  it("accepts a config with a custom identifier", function()
+    local ok, err = validate_entity({
+      window_size = { 60 },
+      limit = { 10 },
+      identifier = "consumer",
+      sync_rate = 10,
+    }, rate_limiting_schema)
 
-    it("invalid limit", function()
-      local config = {}
-      local ok, _, err = validate_entity(config, plugin_schema)
-      assert.False(ok)
-      assert.equal("You need to set at least one limit: second, minute, hour, day, month, year", err.message)
-    end)
+    assert.is_nil(err)
+    assert.is_true(ok)
+  end)
+
+  it("errors with an invalid size/limit type", function()
+    local ok, err = validate_entity({
+      window_size = { 60 },
+      limit = { "foo" },
+    }, rate_limiting_schema)
+
+    assert.is_false(ok)
+    assert.same("size/limit values must be numbers", err.limit)
   end)
 end)
