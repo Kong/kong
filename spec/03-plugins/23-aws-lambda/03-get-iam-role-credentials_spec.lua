@@ -13,7 +13,7 @@ describe("Plugin: AWS Lambda (metadata service credentials)", function()
   end)
 
   it("should return error if metadata service is not running on provided endpoint", function()
-    local iam_role_credentials, err = get_credentials_from_iam_role('192.0.2.0', 1234)
+    local iam_role_credentials, err = get_credentials_from_iam_role('192.0.2.0', 1234, 200, 0)
 
     assert.is_nil(iam_role_credentials)
     assert.is_not_nil(err)
@@ -21,7 +21,7 @@ describe("Plugin: AWS Lambda (metadata service credentials)", function()
   end)
 
   it("should fetch credentials from metadata service", function()
-    local iam_role_credentials, err = get_credentials_from_iam_role('127.0.0.1', 9999)
+    local iam_role_credentials, err = get_credentials_from_iam_role('127.0.0.1', 9999, 200, 0)
 
     assert.is_nil(err)
     assert.equal("test_iam_access_key_id", iam_role_credentials.access_key)
