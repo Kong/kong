@@ -105,7 +105,7 @@ return {
       type="boolean",
     },
   },
-  self_check =  function(schema, plugin_t, dao, is_update)
+  self_check = function(schema, plugin_t, dao, is_update)
     if not plugin_t.use_ec2_iam_role then
       -- if iam_profile is not set, aws_key and aws_secret are required
       if not plugin_t.aws_key or plugin_t.aws_key == "" or not plugin_t.aws_secret or plugin_t.aws_secret == "" then
