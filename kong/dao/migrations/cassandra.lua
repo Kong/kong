@@ -390,9 +390,9 @@ return {
       ALTER TABLE apis ADD upstream_read_timeout int;
     ]],
     down = [[
-      ALTER TABLE apis DROP COLUMN IF EXISTS upstream_connect_timeout;
-      ALTER TABLE apis DROP COLUMN IF EXISTS upstream_send_timeout;
-      ALTER TABLE apis DROP COLUMN IF EXISTS upstream_read_timeout;
+      ALTER TABLE apis DROP upstream_connect_timeout;
+      ALTER TABLE apis DROP upstream_send_timeout;
+      ALTER TABLE apis DROP upstream_read_timeout;
     ]]
   },
   {

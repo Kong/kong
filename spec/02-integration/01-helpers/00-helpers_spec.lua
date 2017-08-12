@@ -5,7 +5,7 @@ describe("helpers: assertions and modifiers", function()
   local client
 
   setup(function()
-    assert(helpers.dao:run_migrations())
+    helpers.run_migrations()
     assert(helpers.dao.apis:insert {
       name = "mockbin",
       hosts = { "mockbin.com" },

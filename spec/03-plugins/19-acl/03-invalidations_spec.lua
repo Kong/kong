@@ -5,9 +5,8 @@ describe("Plugin: ACL (invalidations)", function()
   local consumer1, acl1
 
   before_each(function()
-    helpers.run_migrations()
-
     helpers.dao:truncate_tables()
+    helpers.run_migrations()
 
     consumer1 = assert(helpers.dao.consumers:insert {
       username = "consumer1"
@@ -86,6 +85,10 @@ describe("Plugin: ACL (invalidations)", function()
   end)
 
   describe("ACL entity invalidation", function()
+    before_each(function()
+      helpers.run_migrations()
+    end)
+
     it("should invalidate when ACL entity is deleted", function()
       -- It should work
       local res = assert(proxy_client:send {
@@ -213,6 +216,10 @@ describe("Plugin: ACL (invalidations)", function()
   end)
 
   describe("Consumer entity invalidation", function()
+    before_each(function()
+      helpers.run_migrations()
+    end)
+
     it("should invalidate when Consumer entity is deleted", function()
       -- It should work
       local res = assert(proxy_client:send {

@@ -12,6 +12,7 @@ end
 describe("Admin API", function()
   local client
   setup(function()
+    helpers.run_migrations()
     assert(helpers.start_kong())
     client = helpers.admin_client()
   end)

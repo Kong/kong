@@ -35,6 +35,22 @@ local function validate_type(field_type, value)
   return type(value) == field_type
 end
 
+local function validate_array(v, tbl, column)
+  -- Handle empty arrays
+  if utils.strip(tbl[column]) == "" then
+    tbl[column] = {}
+    return true
+  end
+  -- handle escaped commas inside the comma-separated array
+  -- by flipping them into a \0 and then back
+  local escaped = tbl[column]:gsub("\\,", "\0")
+  tbl[column] = utils.split(escaped, ",")
+  for arr_k, arr_v in ipairs(tbl[column]) do
+    tbl[column][arr_k] = utils.strip(arr_v):gsub("%z", ",")
+  end
+  return validate_type(v.type, tbl[column])
+end
+
 local _M = {}
 
 --- Validate a table against a given schema.
@@ -117,11 +133,7 @@ function _M.validate_entity(tbl, schema, options)
               is_valid_type = bool == "true" or bool == "false"
               t[column] = bool == "true"
             elseif v.type == "array" then
-              t[column] = utils.strip(t[column]) == "" and {} or utils.split(t[column], ",") -- Handling empty arrays
-              for arr_k, arr_v in ipairs(t[column]) do
-                t[column][arr_k] = utils.strip(arr_v)
-              end
-              is_valid_type = validate_type(v.type, t[column])
+              is_valid_type = validate_array(v, t, column)
             elseif v.type == "number" or v.type == "timestamp" then
               t[column] = tonumber(t[column])
               is_valid_type = validate_type(v.type, t[column])
@@ -281,7 +293,7 @@ function _M.is_schema_subset(tbl, schema)
       errors = utils.add_error(errors, k, "unknown field")
     elseif schema.fields[k].type == "id" and v ~= nil then
       if not utils.is_valid_uuid(v) then
-        errors = utils.add_error(errors, k, v .. " is not a valid uuid")
+        errors = utils.add_error(errors, k, tostring(v) .. " is not a valid uuid")
       end
     end
   end

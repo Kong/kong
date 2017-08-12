@@ -18,6 +18,7 @@ describe("Admin API " .. kong_config.database, function()
   local dao
   setup(function()
     dao = assert(DAOFactory.new(kong_config))
+    helpers.run_migrations(dao)
 
     assert(helpers.start_kong{
       database = kong_config.database
@@ -1148,6 +1149,8 @@ describe("Admin API request size", function()
       hosts = "my.api.com",
       upstream_url = "http://api.com"
     })
+
+    helpers.run_migrations()
 
     assert(helpers.start_kong())
     client = assert(helpers.admin_client())

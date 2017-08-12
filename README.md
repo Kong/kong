@@ -155,6 +155,7 @@ Here is a list of third-party **tools** maintained by the community:
 - [Kong image for Tutum](https://github.com/Sillelien/docker-kong)
 - [Kong-UI](https://github.com/msaraf/kong-ui): Admin UI in JavaScript
 - [Konga](https://github.com/Floby/konga-cli): CLI Admin tool in JavaScript
+- [Konga](https://pantsel.github.io/konga/): Another elegant Kong UI in Javascript
 - [Kongfig](https://github.com/mybuilder/kongfig): Declarative configuration in JavaScript
 - [Kongfig on Puppet Forge](https://forge.puppet.com/mybuilder/kongfig)
 - [Puppet recipe](https://github.com/scottefein/puppet-nyt-kong)

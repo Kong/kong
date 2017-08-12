@@ -127,7 +127,7 @@ When contributing, be weary of a few things:
   When proposing a change in this part of the documentation, consider proposing
   it for older versions as well.
   Example: if you fix a typo in `app/docs/0.10.x/configuration.md`, this typo
-  may also be present in `app/docs/0.9.x/configuraiton.md`.
+  may also be present in `app/docs/0.9.x/configuration.md`.
 
 [Back to TOC](#table-of-contents)
 
@@ -192,12 +192,12 @@ to verify a few things:
 - Do not update CHANGELOG.md yourself. Your change will be included there in
   due time if it is accepted, no worries!
 
-If the above guidelines are respected, your Pull Requests has all its chances
+If the above guidelines are respected, your Pull Request has all its chances
 to be considered and will be reviewed by a maintainer.
 
 If you are asked to update your patch by a reviewer, please do so! Remember:
 **you are responsible for pushing your patch forward**. If you contributed it,
-you probably are the one in need of it. You must be prepared to apply changes
+you are probably the one in need of it. You must be prepared to apply changes
 to it if necessary.
 
 If your Pull Request was accepted, congratulations! You are now an official
@@ -408,7 +408,7 @@ suite.
 - `spec/02-integration` contains tests that start Kong (connected to a running
   database), execute Admin API and proxy requests against it, and verify the
   output
-- `spec/03-plugis` contains tests (both unit and integration) for the bundled
+- `spec/03-plugins` contains tests (both unit and integration) for the bundled
   plugins (those plugins still live in the core repository as of now, but will
   eventually be externalized)
 
@@ -508,9 +508,9 @@ practices:
   ```
 
 And finally, most importantly: use your best judgement to design an
-efficient algorithm. Doing so will always be more performant than a poorly
-design algorithms, even following all the performance tricks of the language
-you are using. :smile:
+efficient algorithm. Doing so will always be more performant than a
+poorly-designed algorithm, even following all the performance tricks of the
+language you are using. :smile:
 
 [Back to TOC](#table-of-contents)
 

@@ -5,9 +5,8 @@ describe("Plugin: key-auth (invalidations)", function()
   local admin_client, proxy_client
 
   before_each(function()
-    helpers.run_migrations()
-
     helpers.dao:truncate_tables()
+    helpers.run_migrations()
     local api = assert(helpers.dao.apis:insert {
       name = "api-1",
       hosts = { "key-auth.com" },
