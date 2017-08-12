@@ -1,5 +1,6 @@
 local helpers = require "spec.helpers"
 local threads = require "llthreads2.ex"
+local pl_file = require "pl.file"
 
 describe("Plugin: datadog (log)", function()
   local client
@@ -278,5 +279,34 @@ describe("Plugin: datadog (log)", function()
     assert.contains("kong.dd3.request.status.200:1|c|#T1:V1", gauges)
     assert.contains("kong.dd3.request.status.total:1|c|#T1:V1", gauges)
     assert.contains("kong.dd3.latency:%d+|g|#T2:V2:V3,T4", gauges, true)
+  end)
+
+  it("should not return a runtime error (regression)", function()
+    local thread = threads.new({
+      function()
+        local socket = require "socket"
+        local server = assert(socket.udp())
+        server:settimeout(1)
+        server:setoption("reuseaddr", true)
+        server:setsockname("127.0.0.1", 9999)
+        local gauge = server:receive()
+        server:close()
+        return gauge
+      end
+    })
+    thread:start()
+
+    local res = assert(client:send {
+      method = "GET",
+      path = "/NonMatch",
+      headers = {
+        ["Host"] = "fakedns.com"
+      }
+    })
+
+    assert.res_status(404, res)
+    
+    local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
+    assert.not_matches("attempt to index field 'api' (a nil value)", err_log, nil, true)
   end)
 end)
