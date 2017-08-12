@@ -37,7 +37,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
       helpers.kill_all()
       flush_redis()
       helpers.dao:drop_schema()
-      assert(helpers.dao:run_migrations())
+      helpers.run_migrations()
 
       local consumer1 = assert(helpers.dao.consumers:insert {
         custom_id = "provider_123"

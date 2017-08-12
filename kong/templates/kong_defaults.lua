@@ -7,6 +7,8 @@ admin_access_log = logs/admin_access.log
 admin_error_log = logs/error.log
 custom_plugins = NONE
 anonymous_reports = on
+enforce_rbac = off
+rbac_auth_header = Kong-Admin-Token
 
 proxy_listen = 0.0.0.0:8000
 proxy_listen_ssl = 0.0.0.0:8443

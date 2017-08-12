@@ -19,6 +19,8 @@ end
 
 return {
   ["/plugins"] = {
+    resource = "plugins",
+
     GET = function(self, dao_factory)
       crud.paginated_set(self, dao_factory.plugins)
     end,
@@ -35,6 +37,8 @@ return {
   },
 
   ["/plugins/schema/:name"] = {
+    resource = "plugins",
+
     GET = function(self, dao_factory, helpers)
       local ok, plugin_schema = utils.load_module_if_exists("kong.plugins." .. self.params.name .. ".schema")
       if not ok then
@@ -48,6 +52,8 @@ return {
   },
 
   ["/plugins/:id"] = {
+    resource = "plugins",
+
     before = function(self, dao_factory, helpers)
       crud.find_plugin_by_filter(self, dao_factory, {
         id = self.params.id
@@ -68,6 +74,8 @@ return {
   },
 
   ["/plugins/enabled"] = {
+    resource = "plugins",
+
     GET = function(self, dao_factory, helpers)
       local enabled_plugins = setmetatable({}, cjson.empty_array_mt)
       for k in pairs(singletons.configuration.plugins) do

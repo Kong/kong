@@ -2,6 +2,8 @@ local crud = require "kong.api.crud_helpers"
 
 return {
   ["/consumers/:username_or_id/acls/"] = {
+    resource = "acls",
+
     before = function(self, dao_factory, helpers)
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
       self.params.consumer_id = self.consumer.id
@@ -21,6 +23,8 @@ return {
   },
 
   ["/consumers/:username_or_id/acls/:group_or_id"] = {
+    resource = "acls",
+
     before = function(self, dao_factory, helpers)
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
       self.params.consumer_id = self.consumer.id

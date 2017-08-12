@@ -4,6 +4,8 @@ local reports = require "kong.core.reports"
 
 return {
   ["/apis/"] = {
+    resource = "apis",
+
     GET = function(self, dao_factory)
       crud.paginated_set(self, dao_factory.apis)
     end,
@@ -18,6 +20,8 @@ return {
   },
 
   ["/apis/:api_name_or_id"] = {
+    resource = "apis",
+
     before = function(self, dao_factory, helpers)
       crud.find_api_by_name_or_id(self, dao_factory, helpers)
     end,
@@ -36,6 +40,8 @@ return {
   },
 
   ["/apis/:api_name_or_id/plugins/"] = {
+    resource = "plugins",
+
     before = function(self, dao_factory, helpers)
       crud.find_api_by_name_or_id(self, dao_factory, helpers)
       self.params.api_id = self.api.id
@@ -57,6 +63,8 @@ return {
   },
 
   ["/apis/:api_name_or_id/plugins/:id"] = {
+    resource = "plugins",
+
     before = function(self, dao_factory, helpers)
       crud.find_api_by_name_or_id(self, dao_factory, helpers)
       crud.find_plugin_by_filter(self, dao_factory, {

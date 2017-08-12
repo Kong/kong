@@ -2,6 +2,8 @@ local crud = require "kong.api.crud_helpers"
 
 return {
   ["/oauth2_tokens/"] = {
+    resource = "oauth2",
+
     GET = function(self, dao_factory)
       crud.paginated_set(self, dao_factory.oauth2_tokens)
     end,
@@ -16,6 +18,8 @@ return {
   },
 
   ["/oauth2_tokens/:token_or_id"] = {
+    resource = "oauth2",
+
     before = function(self, dao_factory, helpers)
       local credentials, err = crud.find_by_id_or_field(
         dao_factory.oauth2_tokens,
@@ -48,12 +52,16 @@ return {
   },
 
   ["/oauth2/"] = {
+    resource = "oauth2",
+
     GET = function(self, dao_factory)
       crud.paginated_set(self, dao_factory.oauth2_credentials)
     end
   },
 
   ["/consumers/:username_or_id/oauth2/"] = {
+    resource = "oauth2",
+
     before = function(self, dao_factory, helpers)
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
       self.params.consumer_id = self.consumer.id
@@ -73,6 +81,8 @@ return {
   },
 
   ["/consumers/:username_or_id/oauth2/:clientid_or_id"] = {
+    resource = "oauth2",
+
     before = function(self, dao_factory, helpers)
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
       self.params.consumer_id = self.consumer.id

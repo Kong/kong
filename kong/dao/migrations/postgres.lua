@@ -549,4 +549,201 @@ return {
       DROP TABLE rl_counters;
     ]],
   },
+  {
+    name = "2017-07-19-160000_rbac_skeleton",
+    up = [[
+      CREATE TABLE IF NOT EXISTS rbac_users(
+        id uuid PRIMARY KEY,
+        name text UNIQUE NOT NULL,
+        user_token text UNIQUE NOT NULL,
+        comment text,
+        enabled boolean NOT NULL,
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
+      );
+
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('rbac_users_name_idx')) IS NULL THEN
+          CREATE INDEX rbac_users_name_idx on rbac_users(name);
+        END IF;
+        IF (SELECT to_regclass('rbac_users_token_idx')) IS NULL THEN
+          CREATE INDEX rbac_users_token_idx on rbac_users(user_token);
+        END IF;
+      END$$;
+
+      CREATE TABLE IF NOT EXISTS rbac_user_roles(
+        user_id uuid NOT NULL,
+        role_id uuid NOT NULL,
+        PRIMARY KEY(user_id, role_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS rbac_roles(
+        id uuid PRIMARY KEY,
+        name text UNIQUE NOT NULL,
+        comment text,
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
+      );
+
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('rbac_roles_name_idx')) IS NULL THEN
+          CREATE INDEX rbac_roles_name_idx on rbac_roles(name);
+        END IF;
+      END$$;
+
+      CREATE TABLE IF NOT EXISTS rbac_role_perms(
+        role_id uuid NOT NULL,
+        perm_id uuid NOT NULL,
+        PRIMARY KEY(role_id, perm_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS rbac_perms(
+        id uuid PRIMARY KEY,
+        name text UNIQUE NOT NULL,
+        resources integer NOT NULL,
+        actions smallint NOT NULL,
+        negative boolean NOT NULL,
+        comment text,
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
+      );
+
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('rbac_perms_name_idx')) IS NULL THEN
+          CREATE INDEX rbac_perms_name_idx on rbac_perms(name);
+        END IF;
+      END$$;
+
+      CREATE TABLE IF NOT EXISTS rbac_resources(
+        id uuid PRIMARY KEY,
+        name text UNIQUE NOT NULL,
+        bit_pos integer UNIQUE NOT NULL
+      );
+    ]],
+  },
+  {
+    name = "2017-07-23-100000_rbac_core_resources",
+    up = function(_, _, dao)
+      local rbac = require "kong.core.rbac"
+
+      for _, resource in ipairs {
+        "default",
+        "kong",
+        "status",
+        "apis",
+        "plugins",
+        "cache",
+        "certificates",
+        "consumers",
+        "snis",
+        "upstreams",
+        "targets",
+        "rbac",
+      } do
+          local ok, err = rbac.register_resource(resource, dao)
+          if not ok then
+            return err
+          end
+      end
+    end,
+  },
+  {
+    name = "2017-07-24-160000_rbac_default_roles",
+    up = function(_, _, dao)
+      local utils = require "kong.tools.utils"
+      local bit   = require "bit"
+      local rbac  = require "kong.core.rbac"
+      local bxor  = bit.bxor
+
+      -- default permissions and roles
+      -- load our default resources and create our initial permissions
+      rbac.load_resource_bitfields(dao)
+
+      -- action int for all
+      local action_bits_all = 0x0
+      for k, v in pairs(rbac.actions_bitfields) do
+        action_bits_all = bxor(action_bits_all, rbac.actions_bitfields[k])
+      end
+
+      -- resource int for all
+      local resource_bits_all = 0x0
+      for i = 1, #rbac.resource_bitfields do
+        resource_bits_all = bxor(resource_bits_all, 2 ^ (i - 1))
+      end
+
+      local perms = {}
+      local roles = {}
+
+      -- read-only permission across all objects
+      perms.read_only = dao.rbac_perms:insert({
+        id = utils.uuid(),
+        name = "read-only",
+        resources = resource_bits_all,
+        actions = rbac.actions_bitfields["read"],
+        negative = false,
+        comment = "Read-only permissions across all initial RBAC resources",
+      })
+
+      -- read,create,update,delete-resources for all objects
+      perms.crud_all = dao.rbac_perms:insert({
+        id = utils.uuid(),
+        name = "full-access",
+        resources = resource_bits_all,
+        actions = action_bits_all,
+        negative = false,
+        comment = "Read/create/update/delete permissions across all objects",
+      })
+
+      -- negative rbac permissions (for the default 'admin' role)
+      perms.no_rbac = dao.rbac_perms:insert({
+        id = utils.uuid(),
+        name = "no-rbac",
+        resources = rbac.resource_bitfields["rbac"],
+        actions = action_bits_all,
+        negative = true,
+        comment = "Explicit denial of all RBAC resources",
+      })
+
+      -- now, create the roles and assign permissions to them
+
+      -- first, a read-only role across everything
+      roles.read_only = dao.rbac_roles:insert({
+        id = utils.uuid(),
+        name = "read-only",
+        comment = "Read-only access across all initial RBAC resources",
+      })
+      -- this role only has the 'read-only' permissions
+      dao.rbac_role_perms:insert({
+        role_id = roles.read_only.id,
+        perm_id = perms.read_only.id,
+      })
+
+      -- admin role with CRUD access to all resources except RBAC resource
+      roles.admin = dao.rbac_roles:insert({
+        id = utils.uuid(),
+        name = "admin",
+        comment = "CRUD access to most initial resources (no RBAC)",
+      })
+      -- the 'admin' role has 'full-access' + 'no-rbac' permissions
+      dao.rbac_role_perms:insert({
+        role_id = roles.admin.id,
+        perm_id = perms.crud_all.id,
+      })
+      dao.rbac_role_perms:insert({
+        role_id = roles.admin.id,
+        perm_id = perms.no_rbac.id,
+      })
+
+      -- finally, a super user role who has access to all initial resources
+      roles.super_admin = dao.rbac_roles:insert({
+        id = utils.uuid(),
+        name = "super-admin",
+        comment = "Full CRUD access to all initial resources, including RBAC entities",
+      })
+      dao.rbac_role_perms:insert({
+        role_id = roles.super_admin.id,
+        perm_id = perms.crud_all.id,
+      })
+    end,
+  }
 }

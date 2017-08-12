@@ -51,6 +51,57 @@ function _M.find_by_id_or_field(dao, filter, value, alternate_field)
   return rows
 end
 
+function _M.find_rbac_user_by_name_or_id(self, dao_factory, helpers)
+  local rows, err = _M.find_by_id_or_field(dao_factory.rbac_users, {},
+                                           self.params.name_or_id, "name")
+
+  if err then
+    return helpers.yield_error(err)
+  end
+
+  self.rbac_user = rows[1]
+  if not self.rbac_user then
+    return helpers.responses.send_HTTP_NOT_FOUND("No RBAC user by name or id " ..
+                                                 self.params.name_or_id)
+  end
+
+  self.params.name_or_id = nil
+end
+
+function _M.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
+  local rows, err = _M.find_by_id_or_field(dao_factory.rbac_roles, {},
+                                           self.params.name_or_id, "name")
+
+  if err then
+    return helpers.yield_error(err)
+  end
+
+  self.rbac_role = rows[1]
+  if not self.rbac_role then
+    return helpers.responses.send_HTTP_NOT_FOUND("No RBAC role by name or id " ..
+                                                 self.params.name_or_id)
+  end
+
+  self.params.name_or_id = nil
+end
+
+function _M.find_rbac_perm_by_name_or_id(self, dao_factory, helpers)
+  local rows, err = _M.find_by_id_or_field(dao_factory.rbac_perms, {},
+                                           self.params.name_or_id, "name")
+
+  if err then
+    return helpers.yield_error(err)
+  end
+
+  self.rbac_perm = rows[1]
+  if not self.rbac_perm then
+    return helpers.responses.send_HTTP_NOT_FOUND("No RBAC permission by name or id " ..
+                                                 self.params.name_or_id)
+  end
+
+  self.params.name_or_id = nil
+end
+
 function _M.find_api_by_name_or_id(self, dao_factory, helpers)
   local rows, err = _M.find_by_id_or_field(dao_factory.apis, {},
                                            self.params.api_name_or_id, "name")

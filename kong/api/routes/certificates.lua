@@ -5,6 +5,8 @@ local cjson = require "cjson"
 
 return {
   ["/certificates/"] = {
+    resource = "certificates",
+
     POST = function(self, dao_factory, helpers)
       local snis
       if type(self.params.snis) == "string" then
@@ -113,6 +115,8 @@ return {
 
 
   ["/certificates/:sni_or_uuid"] = {
+    resource = "certificates",
+
     before = function(self, dao_factory, helpers)
       if utils.is_valid_uuid(self.params.sni_or_uuid) then
         self.ssl_certificate_id = self.params.sni_or_uuid

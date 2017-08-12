@@ -10,6 +10,12 @@ local CORE_MODELS = {
   "ssl_servers_names",
   "upstreams",
   "targets",
+  "rbac_users",
+  "rbac_user_roles",
+  "rbac_roles",
+  "rbac_role_perms",
+  "rbac_perms",
+  "rbac_resources",
 }
 
 -- returns db errors as strings, including the initial `nil`

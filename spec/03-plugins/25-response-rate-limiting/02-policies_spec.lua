@@ -15,6 +15,7 @@ describe("Plugin: response-ratelimiting (policies)", function()
       singletons.dao = helpers.dao
 
       helpers.dao:truncate_tables()
+      helpers.run_migrations()
     end)
 
     after_each(function()

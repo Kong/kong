@@ -48,6 +48,7 @@ require("kong.core.globalpatches")()
 local ip = require "kong.tools.ip"
 local dns = require "kong.tools.dns"
 local core = require "kong.core.handler"
+local rbac = require "kong.core.rbac"
 local utils = require "kong.tools.utils"
 local lapis = require "lapis"
 local responses = require "kong.tools.responses"
@@ -155,7 +156,10 @@ function Kong.init()
   singletons.dao = dao
   singletons.configuration = config
 
+  rbac.load_resource_bitfields(dao)
+
   assert(core.build_router(dao, "init"))
+
 end
 
 function Kong.init_worker()
@@ -248,7 +252,6 @@ function Kong.init_worker()
 
 
   singletons.dao:set_events_handler(worker_events)
-
 
   core.init_worker.before()
 
@@ -392,8 +395,10 @@ function Kong.serve_admin_api(options)
   header["Access-Control-Allow-Origin"] = options.allow_origin or "*"
 
   if ngx.req.get_method() == "OPTIONS" then
-    header["Access-Control-Allow-Methods"] = "GET, HEAD, PUT, PATCH, POST, DELETE"
-    header["Access-Control-Allow-Headers"] = "Content-Type"
+    header["Access-Control-Allow-Methods"] = options.acam or
+                                             "GET, HEAD, PATCH, POST, DELETE"
+
+    header["Access-Control-Allow-Headers"] = options.acah or "Content-Type"
 
     return ngx.exit(204)
   end

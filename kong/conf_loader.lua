@@ -129,6 +129,9 @@ local CONF_INFERENCES = {
   lua_code_cache = {typ = "ngx_boolean"},
   lua_ssl_verify_depth = {typ = "number"},
   lua_socket_pool_size = {typ = "number"},
+
+  enforce_rbac = {typ = "boolean"},
+  rbac_auth_header = {typ = "string"},
 }
 
 -- List of settings whose values must not be printed when
@@ -281,6 +284,12 @@ local function check_and_infer(conf)
     if conf.admin_ssl_cert_key and not pl_path.exists(conf.admin_ssl_cert_key) then
       errors[#errors+1] = "admin_ssl_cert_key: no such file at " .. conf.admin_ssl_cert_key
     end
+  end
+
+  -- warn user if ssl is disabled and rbac is enforced
+  if conf.enforce_rbac and not conf.admin_ssl then
+    log.warn("RBAC authorization is enabled but Admin API calls will not be " ..
+      "encrypted via SSL")
   end
 
   if conf.ssl_cipher_suite ~= "custom" then

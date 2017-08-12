@@ -87,6 +87,31 @@ local function run_migrations(given_dao)
   local d = given_dao or dao
 
   assert(d:run_migrations())
+
+  local rbac = require "kong.core.rbac"
+
+  for _, resource in ipairs {
+    "default",
+    "kong",
+    "status",
+    "apis",
+    "plugins",
+    "cache",
+    "certificates",
+    "consumers",
+    "snis",
+    "upstreams",
+    "targets",
+    "rbac",
+    "acls",
+    "basic-auth",
+    "hmac-auth",
+    "jwt",
+    "key-auth",
+    "oauth2",
+  } do
+    rbac.register_resource(resource, d)
+  end
 end
 
 -----------------

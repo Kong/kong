@@ -226,7 +226,9 @@ server {
     location / {
         default_type application/json;
         content_by_lua_block {
-            kong.serve_admin_api()
+            kong.serve_admin_api({
+                acah = "Content-Type, ${{RBAC_AUTH_HEADER}}",
+            })
         }
     }
 

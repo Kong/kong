@@ -2,6 +2,8 @@ local singletons = require "kong.singletons"
 
 return {
   ["/cache/:key"] = {
+    resource = "cache",
+
     GET = function(self, _, helpers)
       -- probe the cache to see if a key has been requested before
 
@@ -25,6 +27,8 @@ return {
   },
 
   ["/cache"] = {
+    resource = "cache",
+
     DELETE = function(self, _, helpers)
       singletons.cache:purge()
 

@@ -6,6 +6,8 @@ local singletons = require "kong.singletons"
 local app_helpers = require "lapis.application"
 local api_helpers = require "kong.api.api_helpers"
 
+local rbac = require "kong.core.rbac"
+
 
 local find = string.find
 
@@ -93,6 +95,28 @@ app:before_filter(function(self)
     and not self.req.headers["content-type"] then
     return responses.send_HTTP_UNSUPPORTED_MEDIA_TYPE()
   end
+
+  -- default route means either a silent redirect or a non-existent resource
+  if self.route_name == "default_route" then
+    return
+  end
+
+  if not singletons.configuration.enforce_rbac then
+    return
+  end
+
+  local rbac_auth_header = singletons.configuration.rbac_auth_header
+
+  local valid, err = rbac.validate(self.req.headers[rbac_auth_header],
+                                   self.route_name, ngx.req.get_method(),
+                                   singletons.dao)
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+  end
+
+  if not valid then
+    return responses.send_HTTP_UNAUTHORIZED()
+  end
 end)
 
 
@@ -101,10 +125,12 @@ local handler_helpers = {
   yield_error = app_helpers.yield_error
 }
 
-
 local function attach_routes(routes)
   for route_path, methods in pairs(routes) do
     methods.on_error = methods.on_error or on_error
+
+    rbac.register_resource_route(route_path, methods.resource or "default")
+    methods.resource = nil
 
     for method_name, method_handler in pairs(methods) do
       local wrapped_handler = function(self)
@@ -124,7 +150,7 @@ ngx.log(ngx.DEBUG, "Loading Admin API endpoints")
 
 -- Load core routes
 for _, v in ipairs({"kong", "apis", "consumers", "plugins", "cache",
-                    "certificates", "snis", "upstreams"}) do
+                    "certificates", "snis", "upstreams", "rbac"}) do
   local routes = require("kong.api.routes." .. v)
   attach_routes(routes)
 end

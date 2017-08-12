@@ -524,3 +524,15 @@
 #lua_socket_pool_size = 30       # Specifies the size limit for every cosocket
                                  # connection pool associated with every remote
                                  # server
+
+#enforce_rbac = off              # When enabled, Kong will deny requests to the
+                                 # Admin API when a nonexistent or invalid
+                                 # RBAC authorization token is passed, or the
+                                 # RBAC user with which the token is associated
+                                 # does not have permissions to access/modify
+                                 # the request resource.
+
+
+#rbac_auth_header = Kong-Admin-Token  # Defines the name of the HTTP request
+                                      # header from which the Admin API will
+                                      # attempt to identify the RBAC user.
