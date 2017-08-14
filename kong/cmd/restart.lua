@@ -1,3 +1,4 @@
+local log = require "kong.cmd.utils.log"
 local stop = require "kong.cmd.stop"
 local kill = require "kong.cmd.utils.kill"
 local start = require "kong.cmd.start"
@@ -7,6 +8,8 @@ local conf_loader = require "kong.conf_loader"
 local function execute(args)
   local conf
 
+  log.disable()
+
   if args.prefix then
     conf = assert(conf_loader(pl_path.join(args.prefix, ".kong_env")))
 
@@ -15,7 +18,9 @@ local function execute(args)
     args.prefix = conf.prefix
   end
 
-  pcall(stop.execute, args)
+  log.enable()
+
+  pcall(stop.execute, args, { quiet = true })
 
   -- ensure Nginx stopped
   local texp = ngx.time() + 5 -- 5s
