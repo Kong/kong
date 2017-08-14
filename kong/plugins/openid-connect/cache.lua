@@ -14,19 +14,25 @@ local pcall         = pcall
 local log           = ngx.log
 local encode_base64 = ngx.encode_base64
 local sub           = string.sub
+local tonumber      = tonumber
 
 
 local NOTICE        = ngx.NOTICE
 local ERR           = ngx.ERR
-
 
 local cache_get, cache_key
 do
   local ok, cache = pcall(require, "kong.tools.database_cache")
   if ok then
     -- 0.10.x
-    cache_get = function(key, func, ...)
-      return cache.get_or_set(key, nil, func, ...)
+    cache_get = function(key, opts, func, ...)
+      local ttl
+      if type(opts) == "table" then
+        tonumber(opts.ttl)
+      else
+        ttl = tonumber(opts)
+      end
+      return cache.get_or_set(key, opts, func, ...)
     end
 
     cache_key = function(key, entity)
@@ -39,8 +45,14 @@ do
 
   else
     -- 0.11.x
-    cache_get = function(key, func, ...)
-      return singletons.cache:get(key, nil, func, ...)
+    cache_get = function(key, opts, func, ...)
+      local options
+      if type(opts) == "number" then
+        options = { ttl = opts }
+      elseif type(opts) == "table" then
+        options = opts
+      end
+      return singletons.cache:get(key, options, func, ...)
     end
 
     cache_key = function(key, entity)
@@ -139,7 +151,7 @@ end
 function issuers.load(conf)
   local issuer = normalize_issuer(conf.issuer)
   local key    = cache_key(issuer, "oic_issuers")
-  return cache_get(key, issuers.init, conf)
+  return cache_get(key, nil, issuers.init, conf)
 end
 
 
@@ -189,7 +201,7 @@ function consumers.load(iss, subject, anon, consumer_by)
   end
 
   local key = cache_key(concat{ issuer, "#", subject })
-  return cache_get(key, consumers.init, cons, subject)
+  return cache_get(key, nil, consumers.init, cons, subject)
 end
 
 
@@ -197,6 +209,7 @@ local oauth2 = {}
 
 
 function oauth2.init(access_token)
+  log(NOTICE, "loading kong oauth2 token from database")
   local credentials, err = singletons.dao.oauth2_tokens:find_all { access_token = access_token }
 
   if err then
@@ -232,13 +245,15 @@ end
 local userinfo = {}
 
 
-function userinfo.init()
-
+function userinfo.init(o, access_token)
+  log(NOTICE, "loading user info using access token")
+  return o:userinfo(access_token, { userinfo_format = "base64" })
 end
 
 
-function userinfo.load()
-
+function userinfo.load(o, access_token, ttl)
+  local key = cache_key(access_token .. "#userinfo")
+  return cache_get(key, ttl, userinfo.init, o, access_token)
 end
 
 

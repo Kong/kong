@@ -964,7 +964,7 @@ function OICHandler:access(conf)
     conf.upstream_user_info_header,
     conf.downstream_user_info_header,
     function()
-      return o:userinfo(tokens_encoded.access_token, { userinfo_format = "base64" })
+      return cache.userinfo.load(o, tokens_encoded.access_token, expires - now)
     end
   )
 
