@@ -3,7 +3,7 @@ local cjson   = require "cjson"
 
 
 local S502_MESSAGE = "An invalid response was received from the upstream server"
-local RELOAD_DELAY = 0.5
+local RELOAD_DELAY = 1.0
 
 
 describe("error_default_type", function()
