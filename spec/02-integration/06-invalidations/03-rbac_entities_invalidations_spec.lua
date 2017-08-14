@@ -343,7 +343,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         },
       })
       assert.res_status(201, admin_res)
-      
+
       -- no need to wait for workers propagation (lua-resty-worker-events)
       -- because our test instance only has 1 worker
 
@@ -394,7 +394,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         },
       })
       assert.res_status(204, admin_res)
-      
+
       -- no need to wait for workers propagation (lua-resty-worker-events)
       -- because our test instance only has 1 worker
 
@@ -429,6 +429,100 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         },
       })
       assert.res_status(401, res_2)
+    end)
+  end)
+
+  describe("RBAC (enabled users)", function()
+    it("on create", function()
+      -- some initial prep
+      local res = assert(admin_client_1:send {
+        method  = "POST",
+        path    = "/rbac/users",
+        headers = {
+          ["Kong-Admin-Token"] = "god",
+          ["Content-Type"]     = "application/json",
+        },
+        body = {
+          name = "herb",
+          user_token = "herb",
+          enabled = false,
+        },
+      })
+      assert.res_status(201, res)
+
+      res = assert(admin_client_1:send {
+        method  = "POST",
+        path    = "/rbac/users/herb/roles",
+        headers = {
+          ["Kong-Admin-Token"] = "god",
+          ["Content-Type"]     = "application/json",
+        },
+        body = {
+          roles = "read-only",
+        },
+      })
+      assert.res_status(201, res)
+
+      -- herb cannot hit /
+      local res_1 = assert(admin_client_1:send {
+        method  = "GET",
+        path    = "/",
+        headers = {
+          ["Kong-Admin-Token"] = "herb",
+        },
+      })
+      assert.res_status(401, res_1)
+
+      wait_for_propagation()
+
+      local res_2 = assert(admin_client_2:send {
+        method  = "GET",
+        path    = "/",
+        headers = {
+          ["Kong-Admin-Token"] = "herb",
+        },
+      })
+      assert.res_status(401, res_2)
+    end)
+
+    it("on update", function()
+      local res = assert(admin_client_1:send {
+        method  = "PATCH",
+        path    = "/rbac/users/herb",
+        headers = {
+          ["Kong-Admin-Token"] = "god",
+          ["Content-Type"]     = "application/json",
+        },
+        body = {
+          name = "herb",
+          user_token = "herb",
+          enabled = true,
+        },
+      })
+      assert.res_status(200, res)
+
+      -- herb can now hit /
+      -- no need to wait for workers propagation (lua-resty-worker-events)
+      -- because our test instance only has 1 worker
+      local res_1 = assert(admin_client_1:send {
+        method  = "GET",
+        path    = "/",
+        headers = {
+          ["Kong-Admin-Token"] = "herb",
+        },
+      })
+      assert.res_status(200, res_1)
+
+      wait_for_propagation()
+
+      local res_2 = assert(admin_client_2:send {
+        method  = "GET",
+        path    = "/",
+        headers = {
+          ["Kong-Admin-Token"] = "herb",
+        },
+      })
+      assert.res_status(200, res_2)
     end)
   end)
 

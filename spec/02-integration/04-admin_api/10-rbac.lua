@@ -1372,6 +1372,58 @@ describe("Admin API RBAC with " .. kong_config.database, function()
       end
       assert.equals(18, n)
     end)
+
+    it("will give user permission regardless of their enabled status", function()
+      -- this is herb
+      -- herb has read-only access to all rbac resources
+      -- but he is not enabled, so it doesn't matter!
+      local res = assert(client:send {
+        method = "POST",
+        path = "/rbac/users",
+        body = {
+          name = "herb",
+          enabled = false,
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      })
+      assert.res_status(201, res)
+
+      res = assert(client:send {
+        method = "POST",
+        path = "/rbac/users/herb/roles",
+        body = {
+          roles = "read-only",
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      })
+
+      local body = assert.res_status(201, res)
+      local json = cjson.decode(body)
+
+      assert.equals(1, #json.roles)
+      assert.equals("herb", json.user.name)
+
+      res = assert(client:send {
+        method = "GET",
+        path = "/rbac/users/herb/permissions",
+      })
+
+      body = assert.res_status(200, res)
+      json = cjson.decode(body)
+
+      local n = 0
+      for k, v in pairs(json) do
+        n = n + 1
+        assert.is_false(utils.table_contains(json[k], "create"))
+        assert.is_false(utils.table_contains(json[k], "update"))
+        assert.is_false(utils.table_contains(json[k], "delete"))
+      end
+      assert.equals(18, n)
+    end)
   end)
 end)
 

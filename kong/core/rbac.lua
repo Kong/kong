@@ -207,6 +207,7 @@ _M.entity_relationships = entity_relationships
 local function retrieve_user(user_token)
   local user, err = singletons.dao.rbac_users:find_all({
     user_token = user_token,
+    enabled    = true,
   })
   if err then
     log(ngx.ERR, "error in retrieving user from token: ", err)
