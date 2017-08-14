@@ -12,9 +12,9 @@ possible to upgrade Kong **without downtime**:
 Assuming that Kong is already running on your system, acquire the latest
 version from any of the available [installation
 methods](https://getkong.org/install/) and proceed to install it, overriding
-your previous installation. 
+your previous installation.
 
-If you are planning to make modifications to your configuration, this is a 
+If you are planning to make modifications to your configuration, this is a
 good time to do so.
 
 Then, run migration to upgrade your database schema:
@@ -39,9 +39,9 @@ configuration, without dropping existing in-flight connections.
 ## Upgrade to `0.11.x`
 
 Along with the usual database migrations shipped with our major releases, this
-particular release introduces a few changes in behavior and, most notably, the
-removal of the Serf dependency for cache invalidation between Kong nodes of the
-same cluster.
+particular release introduces quite a few changes in behavior and, most
+notably, the enforced manual migrations process and the removal of the Serf
+dependency for cache invalidation between Kong nodes of the same cluster.
 
 This document will only highlight the breaking changes that you need to be
 aware of, and describe a recommended upgrade path. We recommend that you
@@ -51,22 +51,29 @@ complete list of changes and new features.
 
 Here is the list of breaking changes introduced in 0.11:
 
-- Migrations are **not** executed automatically by `kong start`
-  anymore. Migrations are now a **manual** process, via the `kong migrations`
-  command. This is to enforce the "single node running migrations" rule.
-- Kong is now entirely stateless, and as such, the `/cluster`
-  endpoint of the Admin API has for now disappeared. This endpoint, in previous
-  versions of Kong, retrieved the state of the Serf agent running on other
-  nodes to ensure they were part of the same cluster. Starting from 0.11, all
-  Kong nodes connected to the same datastore are guaranteed to be part of the
-  same cluster without requiring additional channels of communication.
+##### Configuration
+
 - Several updates were made to the Nginx configuration template. If you are
   using a custom template, you **must** apply those modifications. See below
   for a list of changes to apply.
-- The upstream URI is now determined via the Nginx `$upstream_uri` variable.
-  Custom plugins using the `ngx.req.set_uri()` API will not be taken into
-  consideration anymore. One must now set the `ngx.var.upstream_uri` variable
-  from the Lua land.
+
+##### Migrations & Deployment
+
+- Migrations are **not** executed automatically by `kong start`
+  anymore. Migrations are now a **manual** process, via the `kong migrations`
+  command. This is to enforce the "single node running migrations" rule.
+- Serf is **not** a dependency anymore. Kong nodes now handle cache
+  invalidation events via a built-in database polling mechanism. See the new
+  "Datastore Cache" section of the configuration file which contains 3 new
+  properties to configure this behavior. If you are using Cassandra, you
+  **must** pay a particular attention to the `db_update_propagation` setting,
+  as you should not use the default value of `0`.
+
+##### Core
+
+- Kong now requires OpenResty `1.11.2.4`. OpenResty's LuaJIT can now be built
+  with Lua 5.2 compatibility, and the `--without-luajit-lua52` flag can be
+  omitted.
 - While Kong now correctly proxies downstream `X-Forwarded-*` headers, the
   introduction of the new `trusted_ips` property also means that Kong will
   only do so when the request comes from a trusted client IP. This is also
@@ -80,11 +87,33 @@ Here is the list of breaking changes introduced in 0.11:
   options of your `resolv.conf` file. Make sure that DNS resolution is still
   consistent in your environment, and consider eventually not using FQDNs
   anymore.
+
+##### Admin API
+
+- Due to the removal of Serf, Kong is now entirely stateless. As such, the
+  `/cluster` endpoint has for now disappeared. This endpoint, in previous
+  versions of Kong, retrieved the state of the Serf agent running on other
+  nodes to ensure they were part of the same cluster. Starting from 0.11, all
+  Kong nodes connected to the same datastore are guaranteed to be part of the
+  same cluster without requiring additional channels of communication.
 - The Admin API `/status` endpoint does not return a count of the database
   entities anymore. Instead, it now returns a `database.reachable` boolean
   value, which reflects the state of the connection between Kong and the
   underlying database. Please note that this flag **does not** reflect the
   health of the database itself.
+
+##### Plugins development
+
+- The upstream URI is now determined via the Nginx `$upstream_uri` variable.
+  Custom plugins using the `ngx.req.set_uri()` API will not be taken into
+  consideration anymore. One must now set the `ngx.var.upstream_uri` variable
+  from the Lua land.
+- The `hooks.lua` module for custom plugins is dropped, along with the
+  `database_cache.lua` module. Database entities caching and eviction has been
+  greatly improved to simplify and automate most caching use-cases. See the
+  [plugins development
+  guide](https://getkong.org/docs/0.11.x/plugin-development/entities-cache/)
+  for more details.
 
 If you use a custom Nginx configuration template from Kong 0.10, before
 attempting to run any 0.11 node, make sure to apply the following changes to
@@ -287,7 +316,7 @@ releases:
    current datastore:
 
 ```
-$ kong migrations up <-c kong.conf>
+$ kong migrations up [-c kong.conf]
 ```
 
 As usual, this step should be executed from a **single node**.
