@@ -677,6 +677,7 @@ function OICHandler:access(conf)
 
   -- TODO: check cache for tokens_decoded?
 
+  -- bearer token was present in a request, let's verify it
   if bearer then
     tokens_decoded, err = o.token:verify(tokens_encoded)
     if not tokens_decoded then
@@ -704,6 +705,26 @@ function OICHandler:access(conf)
       expires = access_token_introspected.exp or exp
 
     else
+      -- additional non-standard verification of the claim against a jwt session cookie
+      local jwt_session_cookie = conf.jwt_session_cookie
+      if jwt_session_cookie and jwt_session_cookie ~= "" then
+        local jwt_session_cookie_value = var["cookie_" .. jwt_session_cookie]
+        if not jwt_session_cookie_value or jwt_session_cookie_value == "" then
+          return unauthorized(iss, "jwt session cookie was not specified for session claim verification", s)
+        end
+
+        local jwt_session_claim = conf.jwt_session_claim or "sid"
+        local jwt_session_claim_value = access_token_decoded.payload[jwt_session_claim]
+
+        if not jwt_session_claim_value then
+          return unauthorized(iss, "jwt session claim (" .. jwt_session_claim .. ") was not specified in jwt access token", s)
+        end
+
+        if jwt_session_claim_value ~= jwt_session_cookie_value then
+          return unauthorized(iss, "invalid jwt session claim (" .. jwt_session_claim .. ") was specified in jwt access token", s)
+        end
+      end
+
       expires = access_token_decoded.exp or exp
     end
 
@@ -713,6 +734,8 @@ function OICHandler:access(conf)
     end
 
   elseif not tokens_encoded then
+    -- let's try to retrieve tokens when using authorization code flow,
+    -- password credentials or client credentials
     for _, arg in ipairs(args) do
       tokens_encoded, err = o.token:request(arg)
       if tokens_encoded then
@@ -785,6 +808,7 @@ function OICHandler:access(conf)
     end
 
   else
+    -- it looks like we are using session authentication
     expires = (session_data.expires or conf.leeway)
   end
 

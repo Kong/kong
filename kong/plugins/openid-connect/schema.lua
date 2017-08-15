@@ -82,6 +82,15 @@ return {
       required                         = false,
       type                             = "number",
     },
+    jwt_session_cookie                 = {
+      required                         = false,
+      type                             = "string",
+    },
+    jwt_session_claim                  = {
+      required                         = false,
+      type                             = "string",
+      default                          = "sid",
+    },
     reverify                           = {
       required                         = false,
       type                             = "boolean",
