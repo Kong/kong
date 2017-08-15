@@ -199,7 +199,7 @@ describe("Plugin: basic-auth (access)", function()
         assert.is_string(body.headers["x-consumer-id"])
         assert.is_nil(res.headers["x-ratelimit-limit-minute"])
       end)
-      it("#only invokes other consumer-specific plugins", function()
+      it("invokes other consumer-specific plugins", function()
         local res = assert(client:send {
           method = "GET",
           path = "/request?access_token=valid_consumer_limited",
