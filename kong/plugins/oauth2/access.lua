@@ -488,6 +488,7 @@ local function set_consumer(consumer, credential, token)
     ngx_set_header("x-authenticated-scope", token.scope)
     ngx_set_header("x-authenticated-userid", token.authenticated_userid)
     ngx.ctx.authenticated_credential = credential
+    ngx.ctx.authenticated_token = token
     ngx_set_header(constants.HEADERS.ANONYMOUS, nil) -- in case of auth plugins concatenation
   else
     ngx_set_header(constants.HEADERS.ANONYMOUS, true)
