@@ -1,0 +1,24 @@
+From 577f7e7d1560ccc21a47220dff41977b641bd07b Mon Sep 17 00:00:00 2001
+From: Robert Paprocki <robert@cryptobells.com>
+Date: Tue, 15 Aug 2017 15:24:32 -0700
+Subject: [PATCH] patch(*) enable oauth2-introspection plugin
+
+---
+ kong/constants.lua | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/kong/constants.lua b/kong/constants.lua
+index 7ae1e98..5c33914 100644
+--- a/kong/constants.lua
++++ b/kong/constants.lua
+@@ -27,6 +27,7 @@ local plugins = {
+   "bot-detection",
+   "aws-lambda",
+   "request-termination",
++  "oauth2-introspection",
+ }
+ 
+ local plugin_map = {}
+-- 
+2.7.4
+
