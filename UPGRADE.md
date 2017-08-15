@@ -12,9 +12,9 @@ possible to upgrade Kong **without downtime**:
 Assuming that Kong is already running on your system, acquire the latest
 version from any of the available [installation
 methods](https://getkong.org/install/) and proceed to install it, overriding
-your previous installation. 
+your previous installation.
 
-If you are planning to make modifications to your configuration, this is a 
+If you are planning to make modifications to your configuration, this is a
 good time to do so.
 
 Then, run migration to upgrade your database schema:
@@ -39,9 +39,9 @@ configuration, without dropping existing in-flight connections.
 ## Upgrade to `0.11.x`
 
 Along with the usual database migrations shipped with our major releases, this
-particular release introduces a few changes in behavior and, most notably, the
-removal of the Serf dependency for cache invalidation between Kong nodes of the
-same cluster.
+particular release introduces quite a few changes in behavior and, most
+notably, the enforced manual migrations process and the removal of the Serf
+dependency for cache invalidation between Kong nodes of the same cluster.
 
 This document will only highlight the breaking changes that you need to be
 aware of, and describe a recommended upgrade path. We recommend that you
@@ -49,24 +49,31 @@ consult the full [0.11.0
 Changelog](https://github.com/Mashape/kong/blob/master/CHANGELOG.md) for a
 complete list of changes and new features.
 
-Here is the list of breaking changes introduced in 0.11:
+#### Breaking changes
+
+##### Configuration
+
+- Several updates were made to the Nginx configuration template. If you are
+  using a custom template, you **must** apply those modifications. See below
+  for a list of changes to apply.
+
+##### Migrations & Deployment
 
 - Migrations are **not** executed automatically by `kong start`
   anymore. Migrations are now a **manual** process, via the `kong migrations`
   command. This is to enforce the "single node running migrations" rule.
-- Kong is now entirely stateless, and as such, the `/cluster`
-  endpoint of the Admin API has for now disappeared. This endpoint, in previous
-  versions of Kong, retrieved the state of the Serf agent running on other
-  nodes to ensure they were part of the same cluster. Starting from 0.11, all
-  Kong nodes connected to the same datastore are guaranteed to be part of the
-  same cluster without requiring additional channels of communication.
-- Several updates were made to the Nginx configuration template. If you are
-  using a custom template, you **must** apply those modifications. See below
-  for a list of changes to apply.
-- The upstream URI is now determined via the Nginx `$upstream_uri` variable.
-  Custom plugins using the `ngx.req.set_uri()` API will not be taken into
-  consideration anymore. One must now set the `ngx.var.upstream_uri` variable
-  from the Lua land.
+- Serf is **not** a dependency anymore. Kong nodes now handle cache
+  invalidation events via a built-in database polling mechanism. See the new
+  "Datastore Cache" section of the configuration file which contains 3 new
+  properties to configure this behavior. If you are using Cassandra, you
+  **must** pay a particular attention to the `db_update_propagation` setting,
+  as you should not use the default value of `0`.
+
+##### Core
+
+- Kong now requires OpenResty `1.11.2.4`. OpenResty's LuaJIT can now be built
+  with Lua 5.2 compatibility, and the `--without-luajit-lua52` flag can be
+  omitted.
 - While Kong now correctly proxies downstream `X-Forwarded-*` headers, the
   introduction of the new `trusted_ips` property also means that Kong will
   only do so when the request comes from a trusted client IP. This is also
@@ -76,15 +83,62 @@ Here is the list of breaking changes introduced in 0.11:
   trusting any client IP by default. If you wish to rely on such headers, you
   will need to configure `trusted_ips` (see the Kong configuration file) to
   your needs.
+- The API Object property `http_if_terminated` is now set to `false` by
+  default. For Kong to evaluate the client `X-Forwarded-Proto` header, you must
+  now configure Kong to trust the client IP (see above change), **and** you
+  must explicitely set this value to `true`. This affects you if you are doing
+  SSL termination somwhere before your requests hit Kong, and if you have
+  configured `https_only` on the API, or if you use a plugin that requires
+  HTTPS traffic (e.g. OAuth2).
 - The internal DNS resolver now honours the `search` and `ndots` configuration
   options of your `resolv.conf` file. Make sure that DNS resolution is still
   consistent in your environment, and consider eventually not using FQDNs
   anymore.
+
+##### Admin API
+
+- Due to the removal of Serf, Kong is now entirely stateless. As such, the
+  `/cluster` endpoint has for now disappeared. This endpoint, in previous
+  versions of Kong, retrieved the state of the Serf agent running on other
+  nodes to ensure they were part of the same cluster. Starting from 0.11, all
+  Kong nodes connected to the same datastore are guaranteed to be part of the
+  same cluster without requiring additional channels of communication.
 - The Admin API `/status` endpoint does not return a count of the database
   entities anymore. Instead, it now returns a `database.reachable` boolean
   value, which reflects the state of the connection between Kong and the
   underlying database. Please note that this flag **does not** reflect the
   health of the database itself.
+
+##### Plugins development
+
+- The upstream URI is now determined via the Nginx `$upstream_uri` variable.
+  Custom plugins using the `ngx.req.set_uri()` API will not be taken into
+  consideration anymore. One must now set the `ngx.var.upstream_uri` variable
+  from the Lua land.
+- The `hooks.lua` module for custom plugins is dropped, along with the
+  `database_cache.lua` module. Database entities caching and eviction has been
+  greatly improved to simplify and automate most caching use-cases. See the
+  [plugins development
+  guide](https://getkong.org/docs/0.11.x/plugin-development/entities-cache/)
+  for more details about the new underlying mechasnism, or see the below
+  section of this document on how to update your plugin's cache invalidation
+  mechanism for 0.11.0.
+- To ensure that the order of execution of plugins is still the same for
+  vanilla Kong installations, we had to update the `PRIORITY` field of some of
+  our bundled plugins. If your custom plugin must run after or before a
+  specific bundled plugin, you might have to update your plugin's `PRIORITY`
+  field as well. The complete list of plugins and their priorities is available
+  on the [plugins development
+  guide](https://getkong.org/docs/0.11.x/plugin-development/custom-logic/).
+
+#### Deprecations
+
+##### CLI
+
+- The `kong compile` command has been deprecated. Instead, prefer using
+  the new `kong prepare` command.
+
+---
 
 If you use a custom Nginx configuration template from Kong 0.10, before
 attempting to run any 0.11 node, make sure to apply the following changes to
@@ -265,6 +319,160 @@ index 3c038595..faa97ffe 100644
 Once those changes have been applied, you will be able to benefit from the new
 configuration properties and bug fixes that 0.11 introduces.
 
+---
+
+If you are maintaining your own plugin, and if you are using the 0.10.x
+`database_cache.lua` module to cache your datastore entities, you probably
+included a `hooks.lua` module in your plugin as well.
+
+In 0.11, most of the clutter surrounding cache invalidation is now gone, and
+handled automatically by Kong for most use-cases.
+
+- The `hooks.lua` module is now ignored by Kong. You can safely remove it from
+  your plugins.
+- The `database_cache.lua` module is replaced with `singletons.cache`. You
+  should not require `database_cache` anymore in your plugin's code.
+
+To update your plugin's caching mechanism to 0.11, you must implement automatic
+or manual invalidation.
+
+##### Automatic cache invalidation
+
+Let's assume your plugin had the following code that we wish to update for
+0.11 compatibility:
+
+```lua
+local credential, err = cache.get_or_set(cache.keyauth_credential_key(key),
+                                         nil, load_credential, key)
+if err then
+  return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+end
+```
+
+Along with the following `hooks.lua` file:
+
+```lua
+local events = require "kong.core.events"
+local cache = require "kong.tools.database_cache"
+
+local function invalidate(message_t)
+  if message_t.collection == "keyauth_credentials" then
+    cache.delete(cache.keyauth_credential_key(message_t.old_entity     and
+                                              message_t.old_entity.key or
+                                              message_t.entity.key))
+  end
+end
+
+return {
+  [events.TYPES.ENTITY_UPDATED] = function(message_t)
+    invalidate(message_t)
+  end,
+  [events.TYPES.ENTITY_DELETED] = function(message_t)
+    invalidate(message_t)
+  end
+}
+```
+
+By adding the following `cache_key` property to your custom entity's schema:
+
+```lua
+local SCHEMA = {
+  primary_key = { "id" },
+  table = "keyauth_credentials",
+  cache_key = { "key" }, -- cache key for this entity
+  fields = {
+    id = { type = "id" },
+    consumer_id = { type = "id", required = true, foreign = "consumers:id"},
+    key = { type = "string", required = false, unique = true }
+  }
+}
+
+return { keyauth_credentials = SCHEMA }
+```
+
+You can now generate a unique cache key for that entity and cache it like so
+in your business logic and hot code paths:
+
+```lua
+local singletons = require "kong.singletons"
+
+local apikey = request.get_uri_args().apikey
+local cache_key = singletons.dao.keyauth_credentials:cache_key(apikey)
+
+local credential, err = singletons.cache:get(cache_key, nil, load_entity_key,
+                                             apikey)
+if err then
+  return response.HTTP_INTERNAL_SERVER_ERROR(err)
+end
+
+-- do something with the retrieved credential
+```
+
+Now, cache invalidation will be an automatic process: every CRUD operation that
+affects this API key will be make Kong auto-generate the affected `cache_key`,
+and send broadcast it to all of the other nodes on the cluster so they can
+evict that particular value from their cache, and fetch the fresh value from
+the datastore on the next request.
+
+When a parent entity is receiving a CRUD operation (e.g. the Consumer owning
+this API key, as per our schema's `consumer_id` attribute), Kong performs the
+cache invalidation mechanism for both the parent and the child entity.
+
+Thanks to this new property, the `hooks.lua` module is not required anymore and
+your plugins can perform datastore caching much more easily.
+
+##### Manual cache invalidation
+
+In some cases, the `cache_key` property of an entity's schema is not flexible
+enough, and one must manually invalidate its cache. Reasons for this could be
+that the plugin is not defining a relationship with another entity via the
+traditional `foreign = "parent_entity:parent_attribute"` syntax, or because
+it is not using the `cache_key` method from its DAO, or even because it is
+somehow abusing the caching mechanism.
+
+In those cases, you can manually setup your own subscriber to the same
+invalidation channels Kong is listening to, and perform your own, custom
+invalidation work. This process is similar to the old `hooks.lua` module.
+
+To listen on invalidation channels inside of Kong, implement the following in
+your plugin's `init_worker` handler:
+
+```lua
+local singletons = require "kong.singletons"
+
+function MyCustomHandler:init_worker()
+  local worker_events = singletons.worker_events
+
+  -- listen to all CRUD operations made on Consumers
+  worker_events.register(function(data)
+
+  end, "crud", "consumers")
+
+  -- or, listen to a specific CRUD operation only
+  worker_events.register(function(data)
+    print(data.operation)  -- "update"
+    print(data.old_entity) -- old entity table (only for "update")
+    print(data.entity)     -- new entity table
+    print(data.schema)     -- entity's schema
+  end, "crud", "consumers:update")
+end
+```
+
+Once the above listeners are in place for the desired entities, you can perform
+manual invalidations of any entity that your plugin has cached as you wish so.
+For instance:
+
+```lua
+singletons.worker_events.register(function(data)
+  if data.operation == "delete" then
+    local cache_key = data.entity.id
+    singletons.cache:invalidate("prefix:" .. cache_key)
+  end
+end, "crud", "consumers")
+```
+
+---
+
 You can now start migrating your cluster from `0.10.x` to `0.11`. If you are
 doing this upgrade "in-place", against the datastore of a running 0.10 cluster,
 then for a short period of time, your database schema won't be fully compatible
@@ -287,7 +495,7 @@ releases:
    current datastore:
 
 ```
-$ kong migrations up <-c kong.conf>
+$ kong migrations up [-c kong.conf]
 ```
 
 As usual, this step should be executed from a **single node**.
