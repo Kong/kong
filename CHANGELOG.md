@@ -18,7 +18,7 @@ considered **breaking changes**. Additionally, this release contains numerous
 breaking changes to the deployment process and proxying behavior that you
 should be familiar with.
 
-We strongly advise that you read this changeset thoroughfully, as well as the
+We strongly advise that you read this changeset fully, as well as the
 [0.11 Upgrade Path](https://github.com/Mashape/kong/blob/master/UPGRADE.md#upgrade-to-011x)
 if you are planning to upgrade a Kong cluster.
 
