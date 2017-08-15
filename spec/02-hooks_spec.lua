@@ -4,6 +4,7 @@ local cjson = require "cjson"
 describe("Plugin: oauth2-introspection (hooks)", function()
   local client, admin_client
   setup(function()
+    helpers.run_migrations()
     assert(helpers.dao.apis:insert {
       name = "introspection-api",
       uris = { "/introspect" },
@@ -33,8 +34,8 @@ describe("Plugin: oauth2-introspection (hooks)", function()
     })
 
     assert(helpers.start_kong({
-      custom_plugins = "introspection-endpoint",
-      lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua"
+      custom_plugins = "introspection-endpoint, oauth2-introspection",
+      lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua;/kong-plugin/spec/fixtures/custom_plugins/?.lua;;"
     }))
 
     client = helpers.proxy_client()
