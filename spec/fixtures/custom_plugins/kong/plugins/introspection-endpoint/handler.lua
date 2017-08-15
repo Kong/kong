@@ -1,5 +1,4 @@
 local BasePlugin = require "kong.plugins.base_plugin"
-local cache = require "kong.tools.database_cache"
 
 local IntrospectionEndpointHandler = BasePlugin:extend()
 
@@ -16,7 +15,7 @@ function IntrospectionEndpointHandler:access(conf)
 
   if ngx.req.get_method() == "POST" then
     ngx.req.read_body()
-    local args, err = ngx.req.get_post_args()
+    local args = ngx.req.get_post_args()
     if not args then
       return ngx.exit(500)
     end
