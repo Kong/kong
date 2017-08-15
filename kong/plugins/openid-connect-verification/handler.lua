@@ -453,8 +453,11 @@ function OICVerificationHandler:access(conf)
   end
 end
 
-
-OICVerificationHandler.PRIORITY = 980
+if cache.is_0_10 then
+  OICVerificationHandler.PRIORITY = 980
+else
+  OICVerificationHandler.PRIORITY = 1760
+end
 
 
 return OICVerificationHandler

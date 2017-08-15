@@ -692,6 +692,8 @@ function OICHandler:access(conf)
 
       -- TODO: add support for kong_oauth2 authentication method
 
+
+
       if auth_method_introspection then
         access_token_introspected, err = o.token:introspect(access_token_decoded, "access_token", {
           introspection_endpoint = conf.introspection_endpoint
@@ -1026,7 +1028,11 @@ function OICHandler:access(conf)
 end
 
 
-OICHandler.PRIORITY = 1000
+if cache.is_0_10 then
+  OICHandler.PRIORITY = 1000
+else
+  OICHandler.PRIORITY = 1790
+end
 
 
 return OICHandler

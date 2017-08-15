@@ -258,7 +258,11 @@ function OICAuthenticationHandler:access(conf)
 end
 
 
-OICAuthenticationHandler.PRIORITY = 1000
+if cache.is_0_10 then
+  OICAuthenticationHandler.PRIORITY = 1000
+else
+  OICAuthenticationHandler.PRIORITY = 1780
+end
 
 
 return OICAuthenticationHandler
