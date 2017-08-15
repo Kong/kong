@@ -22,6 +22,7 @@ local ERR           = ngx.ERR
 
 local cache_get, cache_key, is_0_10
 do
+  -- TODO: this check sucks, i know (but it is good enough now, as this supports only 0.10.x and 0.11.x
   local ok, cache = pcall(require, "kong.tools.database_cache")
   if ok then
     -- 0.10.x
@@ -243,25 +244,83 @@ function oauth2.load(access_token)
 end
 
 
+local introspection = {}
+
+
+function introspection.init(o, access_token, endpoint)
+  log(NOTICE, "introspecting access token with identity provider")
+  return o.token:introspect(access_token, "access_token", {
+    introspection_endpoint = endpoint
+  })
+end
+
+
+function introspection.load(o, access_token, endpoint, ttl)
+  local iss = o.configuration.issuer
+  local key = cache_key(iss "#introspection=" .. access_token)
+  return cache_get(key, ttl, introspection.init, o, access_token, endpoint)
+end
+
+
+local tokens = {}
+
+
+function tokens.init(o, args)
+  log(NOTICE, "loading tokens from the identity provider")
+  return o.token:request(args)
+end
+
+
+function tokens.load(o, args, ttl)
+  local iss = o.configuration.issuer
+  local key
+
+  if args.grant_type == "password" then
+    key = cache_key(iss .. "#username=" .. args.username)
+  elseif args.grant_type == "client_credentials" then
+    key = cache_key(iss .. "#client_id=" .. args.client_id)
+  else
+    -- we don't cache authorization code requests
+    return o.token:request(args)
+  end
+
+  return cache_get(key, ttl, tokens.init, o, args)
+end
+
+
+function tokens.verify()
+
+end
+
+
+function tokens.decode()
+
+end
+
+
+
 local userinfo = {}
 
 
 function userinfo.init(o, access_token)
-  log(NOTICE, "loading user info using access token")
+  log(NOTICE, "loading user info using access token from identity provider")
   return o:userinfo(access_token, { userinfo_format = "base64" })
 end
 
 
 function userinfo.load(o, access_token, ttl)
-  local key = cache_key(access_token .. "#userinfo")
+  local iss = o.configuration.issuer
+  local key = cache_key(iss .. "#userinfo=" .. access_token)
   return cache_get(key, ttl, userinfo.init, o, access_token)
 end
 
 
 return {
-  is_0_10   = is_0_10,
-  issuers   = issuers,
-  consumers = consumers,
-  oauth2    = oauth2,
-  userinfo  = userinfo,
+  is_0_10       = is_0_10,
+  issuers       = issuers,
+  consumers     = consumers,
+  oauth2        = oauth2,
+  introspection = introspection,
+  tokens        = tokens,
+  userinfo      = userinfo,
 }

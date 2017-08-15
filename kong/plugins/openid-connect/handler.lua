@@ -444,6 +444,8 @@ function OICHandler:access(conf)
   end
 
   if not session_present then
+    -- step 1: let's figure out the authentication method
+
     -- bearer token authentication
     if auth_method_bearer or auth_method_introspection then
       bearer = o.authorization:bearer()
@@ -675,10 +677,9 @@ function OICHandler:access(conf)
   local expires
   local tokens_encoded, tokens_decoded, access_token_introspected = session_data.tokens, nil, nil
 
-  -- TODO: check cache for tokens_decoded?
-
   -- bearer token was present in a request, let's verify it
   if bearer then
+    -- TODO: cache token verification(?)
     tokens_decoded, err = o.token:verify(tokens_encoded)
     if not tokens_decoded then
       return unauthorized(iss, err, s)
@@ -687,17 +688,21 @@ function OICHandler:access(conf)
     local access_token_decoded = tokens_decoded.access_token
 
     -- introspection of opaque access token
-    -- TODO: cache result of introspection query?
     if type(access_token_decoded) ~= "table" then
 
       -- TODO: add support for kong_oauth2 authentication method
 
-
-
       if auth_method_introspection then
-        access_token_introspected, err = o.token:introspect(access_token_decoded, "access_token", {
-          introspection_endpoint = conf.introspection_endpoint
-        })
+        if conf.cache_introspection then
+          -- TODO: we just cache this for default one hour, not sure if there should be another strategy
+          -- TODO: actually the alternative is already proposed, but needs changes in core where ttl
+          -- TODO: and neg_ttl can be set after the results are retrieved from identity provider
+          access_token_introspected = cache.intropection.load(o, access_token_decoded, conf.introspection_endpoint, exp)
+        else
+          access_token_introspected = o.token:introspect(access_token_decoded, "access_token", {
+            introspection_endpoint = conf.introspection_endpoint
+          })
+        end
       end
 
       if not access_token_introspected or not access_token_introspected.active then
@@ -738,11 +743,20 @@ function OICHandler:access(conf)
   elseif not tokens_encoded then
     -- let's try to retrieve tokens when using authorization code flow,
     -- password credentials or client credentials
-    for _, arg in ipairs(args) do
-      tokens_encoded, err = o.token:request(arg)
-      if tokens_encoded then
-        args = arg
-        break
+    if args then
+      for _, arg in ipairs(args) do
+        if conf.cache_tokens then
+          -- TODO: we just cache this for default one hour, not sure if there should be another strategy
+          -- TODO: actually the alternative is already proposed, but needs changes in core where ttl
+          -- TODO: and neg_ttl can be set after the results are retrieved from identity provider
+          tokens_encoded, err = cache.tokens.load(o, arg, exp)
+        else
+          tokens_encoded, err = o.token:request(arg)
+        end
+        if tokens_encoded then
+          args = arg
+          break
+        end
       end
     end
 
@@ -750,6 +764,7 @@ function OICHandler:access(conf)
       return unauthorized(iss, err, s)
     end
 
+    -- TODO: cache token verification(?)
     tokens_decoded, err = o.token:verify(tokens_encoded, args)
     if not tokens_decoded then
       return unauthorized(iss, err, s)
@@ -990,7 +1005,11 @@ function OICHandler:access(conf)
     conf.upstream_user_info_header,
     conf.downstream_user_info_header,
     function()
-      return cache.userinfo.load(o, tokens_encoded.access_token, expires - now)
+      if conf.cache_user_info then
+        return cache.userinfo.load(o, tokens_encoded.access_token, expires - now)
+      else
+        return o:userinfo(tokens_encoded.access_token, { userinfo_format = "base64" })
+      end
     end
   )
 
@@ -999,6 +1018,7 @@ function OICHandler:access(conf)
     conf.downstream_access_token_jwk_header,
     function()
       if not tokens_decoded then
+        -- TODO: cache token decoded(?)
         tokens_decoded = o.token:decode(tokens_encoded)
       end
       if tokens_decoded then
@@ -1015,6 +1035,7 @@ function OICHandler:access(conf)
     conf.downstream_id_token_jwk_header,
     function()
       if not tokens_decoded then
+        -- TODO: cache token decoded(?)
         tokens_decoded = o.token:decode(tokens_encoded)
       end
       if tokens_decoded then

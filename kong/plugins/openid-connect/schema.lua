@@ -248,6 +248,21 @@ return {
       type                             = "boolean",
       default                          = true,
     },
+    cache_introspection                = {
+      required                         = false,
+      type                             = "boolean",
+      default                          = true,
+    },
+    cache_tokens                       = {
+      required                         = false,
+      type                             = "boolean",
+      default                          = true,
+    },
+    cache_user_info                    = {
+      required                         = false,
+      type                             = "boolean",
+      default                          = true,
+    },
     http_version                       = {
       required                         = false,
       type                             = "number",
