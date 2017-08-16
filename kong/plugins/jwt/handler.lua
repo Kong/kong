@@ -10,7 +10,7 @@ local ngx_set_header = ngx.req.set_header
 
 local JwtHandler = BasePlugin:extend()
 
-JwtHandler.PRIORITY = 2000
+JwtHandler.PRIORITY = 1005
 
 --- Retrieve a JWT in a request.
 -- Checks for the JWT in URI parameters, then in the `Authorization` header.

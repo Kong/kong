@@ -13,7 +13,7 @@ local empty = {}
 
 local ACLHandler = BasePlugin:extend()
 
-ACLHandler.PRIORITY = 1400
+ACLHandler.PRIORITY = 950
 
 function ACLHandler:new()
   ACLHandler.super.new(self, "acl")

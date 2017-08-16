@@ -4,7 +4,7 @@ local cjson = require "cjson"
 
 local TcpLogHandler = BasePlugin:extend()
 
-TcpLogHandler.PRIORITY = 350
+TcpLogHandler.PRIORITY = 2
 
 local function log(premature, conf, message)
   if premature then
