@@ -671,6 +671,7 @@ function OICHandler:access(conf)
     session_data = {}
   end
 
+  local credential, consumer
   local default_expires_in = 3600
   local now = time()
   local exp = now + default_expires_in
@@ -690,23 +691,27 @@ function OICHandler:access(conf)
     -- introspection of opaque access token
     if type(access_token_decoded) ~= "table" then
 
-      -- TODO: add support for kong_oauth2 authentication method
-
-      if auth_method_introspection then
-        if conf.cache_introspection then
-          -- TODO: we just cache this for default one hour, not sure if there should be another strategy
-          -- TODO: actually the alternative is already proposed, but needs changes in core where ttl
-          -- TODO: and neg_ttl can be set after the results are retrieved from identity provider
-          access_token_introspected = cache.intropection.load(o, access_token_decoded, conf.introspection_endpoint, exp)
-        else
-          access_token_introspected = o.token:introspect(access_token_decoded, "access_token", {
-            introspection_endpoint = conf.introspection_endpoint
-          })
-        end
+      if auth_method_kong_oauth2 then
+        access_token_introspected, credential, consumer = cache.oauth2.load(access_token_decoded)
       end
 
-      if not access_token_introspected or not access_token_introspected.active then
-        return unauthorized(iss, err, s)
+      if not access_token_introspected then
+        if auth_method_introspection then
+          if conf.cache_introspection then
+            -- TODO: we just cache this for default one hour, not sure if there should be another strategy
+            -- TODO: actually the alternative is already proposed, but needs changes in core where ttl
+            -- TODO: and neg_ttl can be set after the results are retrieved from identity provider
+            access_token_introspected = cache.introspection.load(o, access_token_decoded, conf.introspection_endpoint, exp)
+          else
+            access_token_introspected = o.token:introspect(access_token_decoded, "access_token", {
+              introspection_endpoint = conf.introspection_endpoint
+            })
+          end
+        end
+
+        if not access_token_introspected or not access_token_introspected.active then
+          return unauthorized(iss, err, s)
+        end
       end
 
       expires = access_token_introspected.exp or exp
@@ -893,72 +898,80 @@ function OICHandler:access(conf)
     end
   end
 
-  -- TODO: cache the results of this?
-  local consumer_claim = conf.consumer_claim
-  if consumer_claim and consumer_claim ~= "" then
-    local consumer_by = conf.consumer_by
+  local mapped_consumer, is_anonymous
 
-    if not tokens_decoded then
-      tokens_decoded, err = o.token:decode(tokens_encoded)
-    end
+  if consumer then
+    mapped_consumer = consumer
+  else
+    local consumer_claim = conf.consumer_claim
+    if consumer_claim and consumer_claim ~= "" then
+      local consumer_by = conf.consumer_by
 
-    local mapped_consumer
-
-    if tokens_decoded then
-      local id_token = tokens_decoded.id_token
-      if id_token then
-        mapped_consumer, err = consumer(iss, id_token, consumer_claim, false, consumer_by)
-        if not mapped_consumer then
-          mapped_consumer = consumer(iss, tokens_decoded.access_token, consumer_claim, false, consumer_by)
-        end
-
-      else
-        mapped_consumer, err = consumer(iss, tokens_decoded.access_token, consumer_claim, false, consumer_by)
+      if not tokens_decoded then
+        tokens_decoded, err = o.token:decode(tokens_encoded)
       end
-    end
 
-    if not mapped_consumer and access_token_introspected then
-      mapped_consumer, err = consumer(iss, access_token_introspected, consumer_claim, false, consumer_by)
-    end
-
-    local is_anonymous = false
-
-    if not mapped_consumer then
-      local anonymous = conf.anonymous
-      if anonymous == nil or anonymous == "" then
-        if err then
-          return forbidden(iss, "consumer was not found (" .. err .. ")", s)
+      if tokens_decoded then
+        local id_token = tokens_decoded.id_token
+        if id_token then
+          mapped_consumer, err = consumer(iss, id_token, consumer_claim, false, consumer_by)
+          if not mapped_consumer then
+            mapped_consumer = consumer(iss, tokens_decoded.access_token, consumer_claim, false, consumer_by)
+          end
 
         else
-          return forbidden(iss, "consumer was not found", s)
+          mapped_consumer, err = consumer(iss, tokens_decoded.access_token, consumer_claim, false, consumer_by)
         end
       end
 
-      is_anonymous = true
+      if not mapped_consumer and access_token_introspected then
+        mapped_consumer, err = consumer(iss, access_token_introspected, consumer_claim, false, consumer_by)
+      end
 
-      local consumer_token = {
-        payload = {
-          [consumer_claim] = anonymous
-        }
-      }
-
-      mapped_consumer, err = consumer(iss, consumer_token, consumer_claim, true, consumer_by)
       if not mapped_consumer then
-        if err then
-          return forbidden(iss, "anonymous consumer was not found (" .. err .. ")", s)
+        local anonymous = conf.anonymous
+        if anonymous == nil or anonymous == "" then
+          if err then
+            return forbidden(iss, "consumer was not found (" .. err .. ")", s)
 
-        else
-          return forbidden(iss, "anonymous consumer was not found", s)
+          else
+            return forbidden(iss, "consumer was not found", s)
+          end
+        end
+
+        is_anonymous = true
+
+        local consumer_token = {
+          payload = {
+            [consumer_claim] = anonymous
+          }
+        }
+
+        mapped_consumer, err = consumer(iss, consumer_token, consumer_claim, true, consumer_by)
+        if not mapped_consumer then
+          if err then
+            return forbidden(iss, "anonymous consumer was not found (" .. err .. ")", s)
+
+          else
+            return forbidden(iss, "anonymous consumer was not found", s)
+          end
         end
       end
     end
+  end
 
+  if mapped_consumer then
     local headers = constants.HEADERS
 
     ngx.ctx.authenticated_consumer   = mapped_consumer
-    ngx.ctx.authenticated_credential = {
-      consumer_id = mapped_consumer.id
-    }
+
+    if credential then
+      ngx.ctx.authenticated_credential = credential
+    else
+      ngx.ctx.authenticated_credential = {
+        consumer_id = mapped_consumer.id
+      }
+    end
 
     set_header(headers.CONSUMER_ID,        mapped_consumer.id)
     set_header(headers.CONSUMER_CUSTOM_ID, mapped_consumer.custom_id)
@@ -996,8 +1009,8 @@ function OICHandler:access(conf)
   )
 
   headers(
-    conf.upstream_intropection_header,
-    conf.downstream_intropection_header,
+    conf.upstream_introspection_header,
+    conf.downstream_introspection_header,
     access_token_introspected
   )
 

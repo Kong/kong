@@ -22,7 +22,7 @@ local ERR           = ngx.ERR
 
 local cache_get, cache_key, is_0_10
 do
-  -- TODO: this check sucks, i know (but it is good enough now, as this supports only 0.10.x and 0.11.x
+  -- TODO: this check sucks but it is good enough now, as this supports only 0.10.x and 0.11.x
   local ok, cache = pcall(require, "kong.tools.database_cache")
   if ok then
     -- 0.10.x
@@ -83,7 +83,7 @@ function issuers.init(conf)
 
   log(NOTICE, "loading openid connect configuration for ", issuer, " from database")
 
-    local results = singletons.dao.oic_issuers:find_all { issuer = issuer }
+  local results = singletons.dao.oic_issuers:find_all { issuer = issuer }
   if results and results[1] then
     return {
       issuer        = issuer,
@@ -210,6 +210,16 @@ end
 local oauth2 = {}
 
 
+function oauth2.credential(credential_id)
+  return singletons.dao.oauth2_credentials:find { id = credential_id }
+end
+
+
+function oauth2.consumer(consumer_id)
+  return singletons.dao.consumers:find { id = consumer_id }
+end
+
+
 function oauth2.init(access_token)
   log(NOTICE, "loading kong oauth2 token from database")
   local credentials, err = singletons.dao.oauth2_tokens:find_all { access_token = access_token }
@@ -233,14 +243,35 @@ function oauth2.load(access_token)
     return nil, err
   end
 
+  if not token.access_token or token.access_token ~= access_token then
+    return nil, "kong oauth access token was not found"
+  end
+
   if token.expires_in > 0 then
     local now = timestamp.get_utc()
     if now - token.created_at > (token.expires_in * 1000) then
-      return nil, "The access token is invalid or has expired"
+      return nil, "kong access token is invalid or has expired"
     end
   end
 
-  return token
+
+  local credential
+  local credential_cache_key = cache_key(token.credential_id, "oauth2_credentials")
+  credential, err = cache_get(credential_cache_key, nil, oauth2.credential, token.credential_id)
+
+  if not credential then
+    return nil, err
+  end
+
+  local consumer
+  local consumer_cache_key = cache_key(credential.consumer_id, "consumers")
+  consumer, err = cache_get(consumer_cache_key, nil, oauth2.consumer, credential.consumer_id)
+
+  if not consumer then
+    return nil, err
+  end
+
+  return token, credential, consumer
 end
 
 
@@ -257,7 +288,7 @@ end
 
 function introspection.load(o, access_token, endpoint, ttl)
   local iss = o.configuration.issuer
-  local key = cache_key(iss "#introspection=" .. access_token)
+  local key = cache_key(iss .. "#introspection=" .. access_token)
   return cache_get(key, ttl, introspection.init, o, access_token, endpoint)
 end
 
@@ -286,17 +317,6 @@ function tokens.load(o, args, ttl)
 
   return cache_get(key, ttl, tokens.init, o, args)
 end
-
-
-function tokens.verify()
-
-end
-
-
-function tokens.decode()
-
-end
-
 
 
 local userinfo = {}
