@@ -28,6 +28,6 @@ function ResponseRateLimitingHandler:log(conf)
   end
 end
 
-ResponseRateLimitingHandler.PRIORITY = 1100
+ResponseRateLimitingHandler.PRIORITY = 900
 
 return ResponseRateLimitingHandler

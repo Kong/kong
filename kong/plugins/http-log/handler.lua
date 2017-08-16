@@ -8,7 +8,7 @@ local cjson_encode = cjson.encode
 
 local HttpLogHandler = BasePlugin:extend()
 
-HttpLogHandler.PRIORITY = 450
+HttpLogHandler.PRIORITY = 12
 
 local HTTP = "http"
 local HTTPS = "https"

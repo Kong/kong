@@ -37,6 +37,6 @@ function ResponseTransformerHandler:body_filter(conf)
   end
 end
 
-ResponseTransformerHandler.PRIORITY = 1000
+ResponseTransformerHandler.PRIORITY = 800
 
 return ResponseTransformerHandler
