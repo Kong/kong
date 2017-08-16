@@ -92,6 +92,11 @@
                                  # HTTPS requests to the admin API, if
                                  # `admin_ssl` is enabled.
 
+#nginx_user = nobody nobody      # Defines user and group credentials used by
+                                 # worker processes. If group is omitted, a
+                                 # group whose name equals that of user is
+                                 # used. Ex: [user] [group].
+
 #nginx_worker_processes = auto   # Determines the number of worker processes
                                  # spawned by Nginx.
 
@@ -131,6 +136,9 @@
                                  # the SSL key for the `proxy_listen_ssl`
                                  # address.
 
+#http2 = off                     # Enables HTTP2 support for HTTPS traffic on
+                                 # the `proxy_listen_ssl` address.
+
 #client_ssl = off                # Determines if Nginx should send client-side
                                  # SSL certificates when proxying requests.
 
@@ -162,6 +170,9 @@
                                  # to the SSL key for the `admin_listen_ssl`
                                  # address.
 
+#admin_http2 = off               # Enables HTTP2 support for HTTPS traffic on
+                                 # the `admin_listen_ssl` address.
+
 #upstream_keepalive = 60         # Sets the maximum number of idle keepalive
                                  # connections to upstream servers that are
                                  # preserved in the cache of each worker
@@ -178,12 +189,53 @@
                                  # and "X-Kong-Upstream-Latency" response
                                  # header fields.
 
-#error_default_type = text/plain  # Default MIME type to use when the request
-                                  # `Accept` header is missing and Nginx
-                                  # is returning an error for the request.
-                                  # Accepted values are `text/plain`,
-                                  # `text/html`, `application/json`, and
-                                  # `application/xml`.
+#trusted_ips =                   # Defines trusted IP addresses blocks that are
+                                 # known to send correct X-Forwarded-* headers.
+                                 # Requests from trusted IPs make Kong forward
+                                 # their X-Forwarded-* headers upstream.
+                                 # Non-trusted requests make Kong insert its
+                                 # own X-Forwarded-* headers.
+                                 #
+                                 # This property also sets the `set_real_ip_from`
+                                 # directive(s) in the Nginx configuration. It
+                                 # accepts the same type of values (CIDR blocks)
+                                 # but as a comma-separated list.
+                                 #
+                                 # To trust *all* /!\ IPs, set this value to
+                                 # `0.0.0.0/0,::/0`.
+                                 #
+                                 # If the special value `unix:` is specified,
+                                 # all UNIX-domain sockets will be trusted.
+# Note:
+#
+# See http://nginx.org/en/docs/http/ngx_http_realip_module.html for
+# examples of accepted values.
+
+#real_ip_header = X-Real-IP      # Defines the request header field whose value
+                                 # will be used to replace the client address.
+                                 # This value sets the ngx_http_realip_module
+                                 # directive of the same name in the Nginx
+                                 # configuration.
+                                 #
+                                 # If this value receives `proxy_protocol`, the
+                                 # `proxy_protocol` parameter will be appended
+                                 # to the `listen` directive of the Nginx
+                                 # template.
+# Note:
+#
+# See http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_header
+# for a description of this directive.
+#
+# See https://www.nginx.com/resources/admin-guide/proxy-protocol/ for more
+# details about the `proxy_protocol` parameter.
+
+#real_ip_recursive = off         # This value sets the ngx_http_realip_module
+                                 # directive of the same name in the Nginx
+                                 # configuration.
+# Note:
+#
+# See http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_recursive
+# for a description of this directive.
 
 #client_max_body_size = 0        # Defines the maximum request body size allowed
                                  # by requests proxied by Kong, specified in the
@@ -214,6 +266,13 @@
 # http://nginx.org/en/docs/http/ngx_http_core_module.html#client_body_buffer_size
 # for further description of this parameter. Numeric values may be suffixed with
 # 'k' or 'm' to denote limits in terms of kilobytes or megabytes.
+
+#error_default_type = text/plain  # Default MIME type to use when the request
+                                  # `Accept` header is missing and Nginx
+                                  # is returning an error for the request.
+                                  # Accepted values are `text/plain`,
+                                  # `text/html`, `application/json`, and
+                                  # `application/xml`.
 
 #------------------------------------------------------------------------------
 # DATASTORE
@@ -312,87 +371,92 @@
                                              # migrations.
 
 #------------------------------------------------------------------------------
-# CLUSTERING
+# DATASTORE CACHE
 #------------------------------------------------------------------------------
 
-# In addition to pointing to the same database, each Kong node must be
-# reachable by the other nodes in the cluster.
+# In order to avoid unecessary communication with the datastore, Kong caches
+# entities (such as APIs, Consumers, Credentials...) for a configurable period
+# of time. It also handles invalidations if such an entity is updated.
 #
-# Kong's clustering works on the IP layer (hostnames are not supported, only
-# IPs) and expects a flat network topology without any NAT between the
-# datacenters.
-#
-# A common pattern is to create a VPN between the two datacenters such that
-# the flat network assumption is not violated.
-#
-# See the clustering reference for more informations:
-# https://getkong.org/docs/latest/clustering/
+# This section allows for configuring the behavior of Kong regarding the
+# caching of such configuration entities.
 
-#cluster_listen = 0.0.0.0:7946   # Address and port used to communicate with
-                                 # other nodes in the cluster.
-                                 # All other Kong nodes in the same cluster
-                                 # must be able to communicate over both
-                                 # TCP and UDP on this address.
-                                 # Only IPv4 addresses are supported.
+#db_update_frequency = 5         # Frequency (in seconds) at which to check for
+                                 # updated entities with the datastore.
+                                 # When a node creates, updates, or deletes an
+                                 # entity via the Admin API, other nodes need
+                                 # to wait for the next poll (configured by
+                                 # this value) to eventually purge the old
+                                 # cached entity and start using the new one.
 
-#cluster_listen_rpc = 127.0.0.1:7373  # Address and port used to communicate
-                                      # with the cluster through the agent
-                                      # running on this node. Only contains
-                                      # TCP traffic local to this node.
+#db_update_propagation = 0       # Time (in seconds) taken for an entity in the
+                                 # datastore to be propagated to replica nodes
+                                 # of another datacenter.
+                                 # When in a distributed environment such as
+                                 # a multi-datacenter Cassandra cluster, this
+                                 # value should be the maximum number of
+                                 # seconds taken by Cassandra to propagate a
+                                 # row to other datacenters.
+                                 # When set, this property will increase the
+                                 # time taken by Kong to propagate the change
+                                 # of an entity.
+                                 # Single-datacenter setups or PostgreSQL
+                                 # servers should suffer no such delays, and
+                                 # this value can be safely set to 0.
 
-#cluster_advertise =             # By default, the `cluster_listen` address
-                                 # is advertised over the cluster.
-                                 # If the `cluster_listen` host is '0.0.0.0',
-                                 # then the first local, non-loopback IPv4
-                                 # address will be advertised to other nodes.
-                                 # However, in some cases (specifically NAT
-                                 # traversal), there may be a routable address
-                                 # that cannot be bound to. This flag enables
-                                 # advertising a different address to support
-                                 # this.
-
-#cluster_encrypt_key =           # base64-encoded 16-bytes key to encrypt
-                                 # cluster traffic with.
-
-#cluster_keyring_file =          # Specifies a file to load keyring data from.
-                                 # Kong is able to keep encryption keys in sync
-                                 # and perform key rotations. During a key
-                                 # rotation, there may be some period of time
-                                 # in which Kong is required to maintain more
-                                 # than one encryption key until all members
-                                 # have received the new key.
-
-#cluster_ttl_on_failure = 3600   # Time to live (in seconds) of a node in the
-                                 # cluster when it stops sending healthcheck
-                                 # pings, possibly caused by a node or network
-                                 # failure.
-                                 # If a node is not able to send a new
-                                 # healthcheck ping before the expiration,
-                                 # other nodes in the cluster will stop
-                                 # attempting to connect to it.
-                                 # Recommended to be at least `60`.
-
-#cluster_profile = wan           # The timing profile for inter-cluster pings
-                                 # and timeouts. If a `lan` or `local` profile
-                                 # is used over the Internet, a high rate of
-                                 # failures is risked as the timing contraints
-                                 # would be too tight.
-                                 # Accepted values are `local`, `lan`, `wan`.
+#db_cache_ttl = 3600             # Time-to-live (in seconds) of an entity from
+                                 # the datastore when cached by this node.
+                                 # Database misses (no entity) are also cached
+                                 # according to this setting.
+                                 # If set to 0, such cached entities/misses
+                                 # never expire.
 
 #------------------------------------------------------------------------------
 # DNS RESOLVER
 #------------------------------------------------------------------------------
 
+# By default the DNS resolver will use the standard configuration files
+# `/etc/hosts` and `/etc/resolv.conf`. The settings in the latter file will be
+# overridden by the environment variables `LOCALDOMAIN` and `RES_OPTIONS` if
+# they have been set.
+
 #dns_resolver =                  # Comma separated list of nameservers, each
-                                 # entry in `ipv4[:port]` format to be used by
+                                 # entry in `ip[:port]` format to be used by
                                  # Kong. If not specified the nameservers in
                                  # the local `resolv.conf` file will be used.
-                                 # Port defaults to 53 if omitted.
+                                 # Port defaults to 53 if omitted. Accepts
+                                 # both IPv4 and IPv6 addresses.
 
 #dns_hostsfile = /etc/hosts      # The hosts file to use. This file is read
                                  # once and its content is static in memory.
                                  # To read the file again after modifying it,
                                  # Kong must be reloaded.
+
+#dns_order = LAST,SRV,A,CNAME    # The order in which to resolve different
+                                 # record types. The `LAST` type means the
+                                 # type of the last successful lookup (for the
+                                 # specified name). The format is a (case
+                                 # insensitive) comma separated list.
+
+#dns_stale_ttl = 4               # Defines, in seconds, how long a record will
+                                 # remain in cache past its TTL. This value
+                                 # will be used while the new DNS record is
+                                 # fetched in the background.
+                                 # Stale data will be used from expiry of a
+                                 # record until either the refresh query
+                                 # completes, or the `dns_stale_ttl` number of
+                                 # seconds have passed.
+
+#dns_not_found_ttl = 30          # TTL in seconds for empty DNS responses and
+                                 # "(3) name error" responses.
+
+#dns_error_ttl = 1               # TTL in seconds for error responses.
+
+#dns_no_sync = off               # If enabled, then upon a cache-miss every
+                                 # request will trigger its own dns query.
+                                 # When disabled multiple requests for the
+                                 # same name/type will be synchronised to a
+                                 # single query.
 
 #------------------------------------------------------------------------------
 # DEVELOPMENT & MISCELLANEOUS

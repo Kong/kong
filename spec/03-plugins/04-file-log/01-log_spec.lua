@@ -10,6 +10,8 @@ local FILE_LOG_PATH = os.tmpname()
 describe("Plugin: file-log (log)", function()
   local client
   setup(function()
+    helpers.run_migrations()
+
     local api1 = assert(helpers.dao.apis:insert {
       name = "api-1",
       hosts = { "file_logging.com" },
@@ -65,7 +67,7 @@ describe("Plugin: file-log (log)", function()
   end)
   
   it("reopens file on each request", function()
-    local uuid1 = utils.random_string()
+    local uuid1 = utils.uuid()
 
     -- Making the request
     local res = assert(client:send({
@@ -86,7 +88,7 @@ describe("Plugin: file-log (log)", function()
     os.remove(FILE_LOG_PATH)
 
     -- Making the next request
-    local uuid2 = utils.random_string()
+    local uuid2 = utils.uuid()
     local res = assert(client:send({
       method = "GET",
       path = "/status/200",
@@ -97,7 +99,7 @@ describe("Plugin: file-log (log)", function()
     }))
     assert.res_status(200, res)
 
-    local uuid3 = utils.random_string()
+    local uuid3 = utils.uuid()
     local res = assert(client:send({
       method = "GET",
       path = "/status/200",

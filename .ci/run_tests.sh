@@ -1,7 +1,7 @@
 set -e
 
 export BUSTED_ARGS="-o gtest -v --exclude-tags=ci"
-export TEST_CMD="KONG_SERF_PATH=$SERF_PATH bin/busted $BUSTED_ARGS"
+export TEST_CMD="bin/busted $BUSTED_ARGS"
 
 createuser --createdb kong
 createdb -U kong kong_tests

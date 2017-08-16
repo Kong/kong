@@ -1,9 +1,9 @@
 local singletons = require "kong.singletons"
 local timestamp = require "kong.tools.timestamp"
-local cache = require "kong.tools.database_cache"
 local redis = require "resty.redis"
 local policy_cluster = require "kong.plugins.rate-limiting.policies.cluster"
 local ngx_log = ngx.log
+local shm = ngx.shared.kong_cache
 
 local pairs = pairs
 local fmt = string.format
@@ -29,9 +29,10 @@ return {
         if limits[period] then
           local cache_key = get_local_key(api_id, identifier, period_date, period)
 
-          local _, err = cache.sh_incr(cache_key, value, 0)
-          if err then
-            ngx_log("[rate-limiting] could not increment counter for period '" .. period .. "': " .. tostring(err))
+          local newval, err = shm:incr(cache_key, value, 0)
+          if not newval then
+            ngx_log(ngx.ERR, "[rate-limiting] could not increment counter ",
+                             "for period '", period, "': ", err)
             return nil, err
           end
         end
@@ -42,7 +43,7 @@ return {
     usage = function(conf, api_id, identifier, current_timestamp, name)
       local periods = timestamp.get_timestamps(current_timestamp)
       local cache_key = get_local_key(api_id, identifier, periods[name], name)
-      local current_metric, err = cache.sh_get(cache_key)
+      local current_metric, err = shm:get(cache_key)
       if err then
         return nil, err
       end
@@ -166,7 +167,12 @@ return {
         current_metric = nil
       end
 
-      return current_metric and current_metric or 0
+      local ok, err = red:set_keepalive(10000, 100)
+      if not ok then
+        ngx_log(ngx.ERR, "failed to set Redis keepalive: ", err)
+      end
+
+      return current_metric or 0
     end
   }
 }

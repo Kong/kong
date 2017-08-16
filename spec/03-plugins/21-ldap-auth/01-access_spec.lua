@@ -1,12 +1,17 @@
-local cache = require "kong.tools.database_cache"
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
+
+local function acl_cache_key(api_id, username)
+  return "ldap_auth_cache:" .. api_id .. ":" .. username
+end
 
 local ldap_host_aws = "ec2-54-172-82-117.compute-1.amazonaws.com"
 
 describe("Plugin: ldap-auth (access)", function()
   local client, client_admin, api2, plugin2
   setup(function()
+    helpers.run_migrations()
+
     local api1 = assert(helpers.dao.apis:insert {
       name = "test-ldap",
       hosts = { "ldap.com" },
@@ -271,7 +276,8 @@ describe("Plugin: ldap-auth (access)", function()
     assert.response(r).has.status(200)
 
     -- Check that cache is populated
-    local cache_key = cache.ldap_credential_key(api2.id , "einstein")
+    local cache_key = acl_cache_key(api2.id, "einstein")
+
     helpers.wait_until(function()
       local res = assert(client_admin:send {
         method = "GET",

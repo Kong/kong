@@ -11,6 +11,8 @@ describe("Plugin: rate-limiting (policies)", function()
     local identifier = uuid()
 
     setup(function()
+      helpers.run_migrations()
+
       local singletons = require "kong.singletons"
       singletons.dao = helpers.dao
 

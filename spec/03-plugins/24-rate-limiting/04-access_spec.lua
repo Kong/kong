@@ -52,7 +52,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       helpers.kill_all()
       flush_redis()
       helpers.dao:drop_schema()
-      assert(helpers.dao:run_migrations())
+      helpers.run_migrations()
 
       local consumer1 = assert(helpers.dao.consumers:insert {
         custom_id = "provider_123"
@@ -168,6 +168,26 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           minute = 6,
           fault_tolerant = true,
           policy = policy,
+          redis_host = REDIS_HOST,
+          redis_port = REDIS_PORT,
+          redis_password = REDIS_PASSWORD,
+          redis_database = REDIS_DATABASE
+        }
+      })
+
+      local api5 = assert(helpers.dao.apis:insert {
+        name = "api-5",
+        hosts = { "test5.com" },
+        upstream_url = "http://mockbin.com"
+      })
+      assert(helpers.dao.plugins:insert {
+        name = "rate-limiting",
+        api_id = api5.id,
+        config = {
+          policy = policy,
+          minute = 6,
+          hide_client_headers = true,
+          fault_tolerant = false,
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
           redis_password = REDIS_PASSWORD,
@@ -365,13 +385,29 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       end)
     end)
 
+    describe("Config with hide_client_headers", function()
+      it("does not send rate-limit headers when hide_client_headers==true", function()
+        local res = assert(helpers.proxy_client():send {
+          method = "GET",
+          path = "/status/200/",
+          headers = {
+            ["Host"] = "test5.com"
+          }
+        })
+
+        assert.res_status(200, res)
+        assert.is_nil(res.headers["x-ratelimit-limit-minute"])
+        assert.is_nil(res.headers["x-ratelimit-remaining-minute"])
+      end)
+    end)
+
     if policy == "cluster" then
       describe("Fault tolerancy", function()
 
         before_each(function()
           helpers.kill_all()
           helpers.dao:drop_schema()
-          assert(helpers.dao:run_migrations())
+          helpers.run_migrations()
 
           local api1 = assert(helpers.dao.apis:insert {
             name = "failtest1_com",
@@ -401,7 +437,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         teardown(function()
           helpers.kill_all()
           helpers.dao:drop_schema()
-          assert(helpers.dao:run_migrations())
+          helpers.run_migrations()
         end)
 
         it("does not work if an error occurs", function()
@@ -525,7 +561,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       setup(function()
         helpers.stop_kong()
         helpers.dao:drop_schema()
-        assert(helpers.dao:run_migrations())
+        helpers.run_migrations()
 
         api = assert(helpers.dao.apis:insert {
           name = "expire1_com",
@@ -549,9 +585,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         assert(helpers.start_kong())
       end)
 
-      it("expires a counter", function()
-        local periods = timestamp.get_timestamps()
-
+      describe("expires a counter", function()
         local res = assert(helpers.proxy_client():send {
           method = "GET",
           path = "/status/200/",
@@ -565,17 +599,6 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         assert.res_status(200, res)
         assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
         assert.are.same(5, tonumber(res.headers["x-ratelimit-remaining-minute"]))
-
-        if policy == "local" then
-          local res = assert(helpers.admin_client():send {
-            method = "GET",
-            path = "/cache/" .. string.format("ratelimit:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "minute"),
-            query = { cache = "shm" },
-          })
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-          assert.same({ message = 1 }, json)
-        end
 
         ngx.sleep(61) -- Wait for counter to expire
 
@@ -592,15 +615,6 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         assert.res_status(200, res)
         assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
         assert.are.same(5, tonumber(res.headers["x-ratelimit-remaining-minute"]))
-
-        if policy == "local" then
-          local res = assert(helpers.admin_client():send {
-            method = "GET",
-            path = "/cache/" .. string.format("ratelimit:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "minute"),
-            query = { cache = "shm" },
-          })
-          assert.res_status(404, res)
-        end
       end)
     end)
   end)

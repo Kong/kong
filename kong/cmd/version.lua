@@ -7,7 +7,7 @@ Print Kong's version. With the -a option, will print
 the version of all underlying dependencies.
 
 Options:
- -a,--all      get version of all dependencies
+ -a,--all         get version of all dependencies
 ]]
 
 local str = [[

@@ -60,6 +60,8 @@ describe("Plugin: oauth2 (access)", function()
   local proxy_ssl_client, proxy_client
   local client1
   setup(function()
+    helpers.run_migrations()
+
     local consumer = assert(helpers.dao.consumers:insert {
       username = "bob"
     })
@@ -301,7 +303,9 @@ describe("Plugin: oauth2 (access)", function()
       }
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      trusted_ips = "127.0.0.1",
+    }))
     proxy_client = helpers.proxy_client()
     proxy_ssl_client = helpers.proxy_ssl_client()
   end)
@@ -1786,6 +1790,14 @@ describe("Plugin: oauth2 (access)", function()
       assert.equal('no-body', body.headers["x-consumer-username"])
     end)
     it("errors when anonymous user doesn't exist", function()
+      finally(function()
+        if proxy_ssl_client then
+          proxy_ssl_client:close()
+        end
+
+        proxy_ssl_client = helpers.proxy_ssl_client()
+      end)
+
       local res = assert(proxy_ssl_client:send {
         method = "GET",
         path = "/request",
@@ -1793,7 +1805,7 @@ describe("Plugin: oauth2 (access)", function()
           ["Host"] = "oauth2_10.com"
         }
       })
-      assert.response(res).has.status(500)
+      assert.res_status(500, res)
     end)
     describe("Global Credentials", function()
       it("does not access two different APIs that are not sharing global credentials", function()

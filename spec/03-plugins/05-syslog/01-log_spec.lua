@@ -6,6 +6,8 @@ local pl_stringx = require "pl.stringx"
 describe("#ci Plugin: syslog (log)", function()
   local client, platform
   setup(function()
+    helpers.run_migrations()
+
     local api1 = assert(helpers.dao.apis:insert {
       name = "api-1",
       hosts = { "logging.com" },
@@ -71,7 +73,7 @@ describe("#ci Plugin: syslog (log)", function()
   end)
 
   local function do_test(host, expecting_same)
-    local uuid = utils.random_string()
+    local uuid = utils.uuid()
 
     local response = assert(client:send {
       method = "GET",

@@ -30,6 +30,7 @@ describe("Router", function()
 
     setup(function()
       helpers.dao:truncate_tables()
+      helpers.run_migrations()
       assert(helpers.start_kong())
     end)
 
@@ -77,11 +78,18 @@ describe("Router", function()
         {
           name = "api-4",
           upstream_url = "http://httpbin.org/basic-auth",
-          uris = { "/user" },
+          uris = { "/private" },
           strip_uri = false,
-        }
+        },
+        {
+          name = "api-5",
+          upstream_url = "http://httpbin.org/anything",
+          uris = { [[/users/\d+/profile]] },
+          strip_uri = true,
+        },
       }
 
+      helpers.run_migrations()
       assert(helpers.start_kong())
     end)
 
@@ -140,12 +148,31 @@ describe("Router", function()
     it("with strip_uri = false", function()
         local res = assert(client:send {
           method = "GET",
-          path = "/user/passwd",
+          path = "/private/passwd",
           headers = { ["kong-debug"] = 1 },
         })
 
         assert.res_status(401, res)
         assert.equal("api-4", res.headers["kong-api-name"])
+    end)
+
+    it("[uri] with a regex", function()
+      local res = assert(client:send {
+        method  = "GET",
+        path    = "/users/foo/profile",
+        headers = { ["kong-debug"] = 1 },
+      })
+
+      assert.res_status(404, res)
+
+      res = assert(client:send {
+        method  = "GET",
+        path    = "/users/123/profile",
+        headers = { ["kong-debug"] = 1 },
+      })
+
+      assert.res_status(200, res)
+      assert.equal("api-5", res.headers["kong-api-name"])
     end)
   end)
 
@@ -165,6 +192,7 @@ describe("Router", function()
         },
       }
 
+      helpers.run_migrations()
       assert(helpers.start_kong {
         nginx_conf = "spec/fixtures/custom_nginx.template",
       })
@@ -238,6 +266,7 @@ describe("Router", function()
         },
       }
 
+      helpers.run_migrations()
       assert(helpers.start_kong())
     end)
 
@@ -268,91 +297,6 @@ describe("Router", function()
     end)
   end)
 
-  describe("invalidation", function()
-    local admin_client
-
-    setup(function()
-      helpers.dao:truncate_tables()
-      assert(helpers.start_kong())
-
-      admin_client = helpers.admin_client()
-    end)
-
-    teardown(function()
-      if admin_client then
-        admin_client:close()
-      end
-
-      helpers.stop_kong()
-    end)
-
-    it("updates itself when updating APIs from the Admin API", function()
-      local res = assert(client:send {
-        method = "GET",
-        headers = {
-          host = "api.com"
-        }
-      })
-      local body = assert.response(res).has_status(404)
-      local json = cjson.decode(body)
-      assert.matches("^kong/", res.headers.server)
-      assert.equal("no API found with those values", json.message)
-
-      local admin_res = assert(admin_client:send {
-        method = "POST",
-        path = "/apis",
-        body = {
-          name = "my-api",
-          upstream_url = "http://httpbin.org",
-          hosts = "api.com",
-        },
-        headers = { ["Content-Type"] = "application/json" },
-      })
-      assert.response(admin_res).has_status(201)
-
-      ngx.sleep(1)
-
-      res = assert(client:send {
-        method = "GET",
-        headers = {
-          host = "api.com"
-        }
-      })
-      assert.response(res).has_status(200)
-
-      admin_res = assert(admin_client:send {
-        method = "PATCH",
-        path = "/apis/my-api",
-        body = {
-          hosts = "api.com,foo.com",
-          uris = "/foo",
-          strip_uri = true,
-        },
-        headers = { ["Content-Type"] = "application/json" },
-      })
-      assert.response(admin_res).has_status(200)
-
-      ngx.sleep(1)
-
-      res = assert(client:send {
-        method = "GET",
-        headers = {
-          host = "foo.com"
-        }
-      })
-      assert.response(res).has_status(404)
-
-      res = assert(client:send {
-        method = "GET",
-        path = "/foo",
-        headers = {
-          host = "foo.com"
-        }
-      })
-      assert.response(res).has_status(200)
-    end)
-  end)
-
   describe("strip_uri", function()
 
     setup(function()
@@ -365,6 +309,7 @@ describe("Router", function()
         },
       }
 
+      helpers.run_migrations()
       assert(helpers.start_kong())
     end)
 
@@ -381,7 +326,8 @@ describe("Router", function()
 
         local body = assert.res_status(200, res_uri_1)
         local json = cjson.decode(body)
-        assert.matches("httpbin.org/get", json.url, nil, true)
+        assert.matches("/get", json.url, nil, true)
+        assert.not_matches("/x/y/z/get", json.url, nil, true)
 
         local res_uri_2 = assert(client:send {
           method = "GET",
@@ -390,7 +336,8 @@ describe("Router", function()
 
         body = assert.res_status(200, res_uri_2)
         json = cjson.decode(body)
-        assert.matches("httpbin.org/get", json.url, nil, true)
+        assert.matches("/get", json.url, nil, true)
+        assert.not_matches("/z/y/x/get", json.url, nil, true)
 
         local res_2_uri_1 = assert(client:send {
           method = "GET",
@@ -399,7 +346,8 @@ describe("Router", function()
 
         body = assert.res_status(200, res_2_uri_1)
         json = cjson.decode(body)
-        assert.matches("httpbin.org/get", json.url, nil, true)
+        assert.matches("/get", json.url, nil, true)
+        assert.not_matches("/x/y/z/get", json.url, nil, true)
 
         local res_2_uri_2 = assert(client:send {
           method = "GET",
@@ -408,7 +356,8 @@ describe("Router", function()
 
         body = assert.res_status(200, res_2_uri_2)
         json = cjson.decode(body)
-        assert.matches("httpbin.org/get", json.url, nil, true)
+        assert.matches("/get", json.url, nil, true)
+        assert.not_matches("/x/y/z/get", json.url, nil, true)
       end)
     end)
   end)
@@ -438,6 +387,7 @@ describe("Router", function()
         }
       }
 
+      helpers.run_migrations()
       assert(helpers.start_kong {
         nginx_conf = "spec/fixtures/custom_nginx.template",
       })
@@ -540,6 +490,7 @@ describe("Router", function()
         },
       }
 
+      helpers.run_migrations()
       assert(helpers.start_kong())
     end)
 
@@ -586,6 +537,7 @@ describe("Router", function()
         },
       }
 
+      helpers.run_migrations()
       assert(helpers.start_kong())
     end)
 
@@ -625,6 +577,7 @@ describe("Router", function()
         },
       }
 
+      helpers.run_migrations()
       assert(helpers.start_kong())
     end)
 
@@ -714,6 +667,7 @@ describe("Router", function()
         })
       end
 
+      helpers.run_migrations()
       assert(helpers.start_kong {
         nginx_conf = "spec/fixtures/custom_nginx.template",
       })

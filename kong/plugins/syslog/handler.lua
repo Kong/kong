@@ -11,7 +11,7 @@ local string_upper = string.upper
 
 local SysLogHandler = BasePlugin:extend()
 
-SysLogHandler.PRIORITY = 1
+SysLogHandler.PRIORITY = 4
 
 local SENDER_NAME = "kong"
 
@@ -37,7 +37,7 @@ local function log(premature, conf, message)
   if premature then
     return
   end
-  
+
   if message.response.status >= 500 then
     send_to_syslog(conf.log_level, conf.server_errors_severity, message)
   elseif message.response.status >= 400 then

@@ -3,6 +3,7 @@ local utils = require "kong.tools.utils"
 local SCHEMA = {
   primary_key = {"id"},
   table = "hmacauth_credentials",
+  cache_key = { "username" },
   fields = {
     id = {type = "id", dao_insert_value = true},
     created_at = {type = "timestamp", immutable = true, dao_insert_value = true},

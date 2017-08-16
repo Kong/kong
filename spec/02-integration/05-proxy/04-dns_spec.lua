@@ -45,6 +45,7 @@ describe("DNS", function()
     local client
 
     setup(function()
+      helpers.run_migrations()
       assert(helpers.dao.apis:insert {
         name = "tests-retries",
         hosts = { "retries.com" },
@@ -85,6 +86,7 @@ describe("DNS", function()
     local client
 
     setup(function()
+      helpers.run_migrations()
       assert(helpers.dao.apis:insert {
         name = "tests-retries",
         hosts = { "retries.com" },

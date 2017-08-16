@@ -14,6 +14,7 @@ local xml_template = '<?xml version="1.0" encoding="UTF-8"?>\n<error><message>%s
 local html_template = '<html><head><title>Kong Error</title></head><body><h1>Kong Error</h1><p>%s.</p></body></html>'
 
 local BODIES = {
+  s400 = "Bad request",
   s404 = "Not found",
   s408 = "Request timeout",
   s411 = "Length required",

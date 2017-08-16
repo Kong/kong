@@ -4,6 +4,8 @@ local helpers = require "spec.helpers"
 describe("Plugin: basic-auth (API)", function()
   local consumer, admin_client
   setup(function()
+    helpers.run_migrations()
+
     assert(helpers.start_kong())
     admin_client = helpers.admin_client()
   end)

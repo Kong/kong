@@ -1,29 +1,97 @@
 local utils = require "kong.tools.utils"
-local cache = require "kong.tools.database_cache"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local singletons = require "kong.singletons"
+local crypto = require "crypto"
+local resty_sha256 = require "resty.sha256"
 
 local math_abs = math.abs
 local ngx_time = ngx.time
 local ngx_gmatch = ngx.re.gmatch
 local ngx_decode_base64 = ngx.decode_base64
+local ngx_encode_base64 = ngx.encode_base64
 local ngx_parse_time = ngx.parse_http_time
-local ngx_sha1 = ngx.hmac_sha1
 local ngx_set_header = ngx.req.set_header
 local ngx_get_headers = ngx.req.get_headers
 local ngx_log = ngx.log
-local fmt = string.format
-
+local req_read_body = ngx.req.read_body
+local req_get_body_data = ngx.req.get_body_data
+local ngx_hmac_sha1 = ngx.hmac_sha1
 local split = utils.split
+local fmt = string.format
+local ipairs = ipairs
 
 local AUTHORIZATION = "authorization"
 local PROXY_AUTHORIZATION = "proxy-authorization"
 local DATE = "date"
 local X_DATE = "x-date"
+local DIGEST = "digest"
 local SIGNATURE_NOT_VALID = "HMAC signature cannot be verified"
+local SIGNATURE_NOT_SAME = "HMAC signature does not match"
+
+local new_tab
+do
+  local ok
+  ok, new_tab = pcall(require, "table.new")
+  if not ok then
+    new_tab = function() return {} end
+  end
+end
 
 local _M = {}
+
+local hmac = {
+  ["hmac-sha1"] = function(secret, data)
+    return ngx_hmac_sha1(secret, data)
+  end,
+  ["hmac-sha256"] = function(secret, data)
+    return crypto.hmac.digest("sha256", data, secret, true)
+  end,
+  ["hmac-sha384"] = function(secret, data)
+    return crypto.hmac.digest("sha384", data, secret, true)
+  end,
+  ["hmac-sha512"] = function(secret, data)
+    return crypto.hmac.digest("sha512", data, secret, true)
+  end
+}
+
+local function list_as_set(list)
+  local set = new_tab(0, #list)
+  for _, v in ipairs(list) do
+    set[v] = true
+  end
+
+  return set
+end
+
+local function validate_params(params, conf)
+  -- check username and signature are present
+  if not params.username and params.signature then
+    return nil, "username or signature missing"
+  end
+
+  -- check enforced headers are present
+  if conf.enforce_headers and #conf.enforce_headers >= 1 then
+    local enforced_header_set = list_as_set(conf.enforce_headers)
+    for _, header in ipairs(params.hmac_headers) do
+      enforced_header_set[header] = nil
+    end
+    for _, header in ipairs(conf.enforce_headers) do
+      if enforced_header_set[header] then
+        return nil, "enforced header not used for signature creation"
+      end
+    end
+  end
+
+  -- check supported alorithm used
+  for _, algo in ipairs(conf.algorithms) do
+    if algo == params.algorithm then
+      return true
+    end
+  end
+
+  return nil, fmt("algorithm %s not supported", params.algorithm)
+end
 
 local function retrieve_hmac_fields(request, headers, header_name, conf)
   local hmac_params = {}
@@ -81,14 +149,14 @@ local function create_hash(request, hmac_params, headers)
       signing_string = signing_string .. "\n"
     end
   end
-  return ngx_sha1(hmac_params.secret, signing_string)
+  return hmac[hmac_params.algorithm](hmac_params.secret, signing_string)
 end
 
 local function validate_signature(request, hmac_params, headers)
-  local digest = create_hash(request, hmac_params, headers)
-  local sig = ngx_decode_base64(hmac_params.signature)
+  local signature_1 = create_hash(request, hmac_params, headers)
+  local signature_2 = ngx_decode_base64(hmac_params.signature)
 
-  return digest == sig
+  return signature_1 == signature_2
 end
 
 local function load_credential_into_memory(username)
@@ -102,8 +170,10 @@ end
 local function load_credential(username)
   local credential, err
   if username then
-    credential, err = cache.get_or_set(cache.hmacauth_credential_key(username),
-                                  nil, load_credential_into_memory, username)
+    local credential_cache_key = singletons.dao.hmacauth_credentials:cache_key(username)
+    credential, err = singletons.cache:get(credential_cache_key, nil,
+                                           load_credential_into_memory,
+                                           username)
   end
 
   if err then
@@ -131,6 +201,26 @@ local function validate_clock_skew(headers, date_header_name, allowed_clock_skew
   return true
 end
 
+local function validate_body(digest_recieved)
+  -- client doesnt want body validation
+  if not digest_recieved then
+    return true
+  end
+
+  req_read_body()
+  local body = req_get_body_data()
+  -- request must have body as client sent a digest header
+  if not body then
+    return false
+  end
+
+  local sha256 = resty_sha256:new()
+  sha256:update(body)
+  local digest_created = "SHA-256=" .. ngx_encode_base64(sha256:final())
+
+  return digest_created == digest_recieved
+end
+
 local function load_consumer_into_memory(consumer_id, anonymous)
   local result, err = singletons.dao.consumers:find { id = consumer_id }
   if not result then
@@ -154,7 +244,7 @@ local function set_consumer(consumer, credential)
   else
     ngx_set_header(constants.HEADERS.ANONYMOUS, true)
   end
-  
+
 end
 
 local function do_authentication(conf)
@@ -171,27 +261,41 @@ local function do_authentication(conf)
 
   -- retrieve hmac parameter from Proxy-Authorization header
   local hmac_params = retrieve_hmac_fields(ngx.req, headers, PROXY_AUTHORIZATION, conf)
+
   -- Try with the authorization header
   if not hmac_params.username then
     hmac_params = retrieve_hmac_fields(ngx.req, headers, AUTHORIZATION, conf)
   end
-  if not (hmac_params.username and hmac_params.signature) then
+
+  local ok, err = validate_params(hmac_params, conf)
+  if not ok then
+    ngx_log(ngx.DEBUG, err)
     return false, {status = 403, message = SIGNATURE_NOT_VALID}
   end
 
   -- validate signature
   local credential = load_credential(hmac_params.username)
   if not credential then
+    ngx_log(ngx.DEBUG, "failed to retrieve credential for ", hmac_params.username)
     return false, {status = 403, message = SIGNATURE_NOT_VALID}
   end
   hmac_params.secret = credential.secret
+
   if not validate_signature(ngx.req, hmac_params, headers) then
-    return false, {status = 403, message = "HMAC signature does not match"}
+    return false, { status = 403, message = SIGNATURE_NOT_SAME }
+  end
+
+  -- If request body validation is enabled, then verify digest.
+  if conf.validate_request_body and not validate_body(headers[DIGEST]) then
+    ngx_log(ngx.DEBUG, "digest validation failed")
+    return false, { status = 403, message = SIGNATURE_NOT_SAME }
   end
 
   -- Retrieve consumer
-  local consumer, err = cache.get_or_set(cache.consumer_key(credential.consumer_id),
-                   nil, load_consumer_into_memory, credential.consumer_id)
+  local consumer_cache_key = singletons.dao.consumers:cache_key(credential.consumer_id)
+  local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
+                                                  load_consumer_into_memory,
+                                                  credential.consumer_id)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
@@ -205,17 +309,19 @@ end
 function _M.execute(conf)
 
   if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
-    -- we're already authenticated, and we're configured for using anonymous, 
+    -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
     return
   end
 
   local ok, err = do_authentication(conf)
   if not ok then
-    if conf.anonymous ~= "" and conf.anonymous ~= nil then
+    if conf.anonymous ~= "" then
       -- get anonymous user
-      local consumer, err = cache.get_or_set(cache.consumer_key(conf.anonymous),
-                       nil, load_consumer_into_memory, conf.anonymous, true)
+      local consumer_cache_key = singletons.dao.consumers:cache_key(conf.anonymous)
+      local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
+                                                      load_consumer_into_memory,
+                                                      conf.anonymous, true)
       if err then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end

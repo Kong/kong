@@ -8,6 +8,8 @@ describe("Plugin: request-size-limiting (access)", function()
   local client
 
   setup(function()
+    helpers.run_migrations()
+
     local api = assert(helpers.dao.apis:insert {
       name = "limit.com",
       hosts = { "limit.com" },

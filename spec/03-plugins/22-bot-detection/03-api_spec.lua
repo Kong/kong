@@ -6,6 +6,8 @@ describe("Plugin: bot-detection (API)", function()
   local client
 
   setup(function()
+    helpers.run_migrations()
+
     assert(helpers.dao.apis:insert {
       name = "bot1.com",
       hosts = { "bot1.com" },

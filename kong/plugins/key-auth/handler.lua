@@ -1,4 +1,3 @@
-local cache = require "kong.tools.database_cache"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local singletons = require "kong.singletons"
@@ -19,7 +18,7 @@ local _realm = 'Key realm="' .. _KONG._NAME .. '"'
 
 local KeyAuthHandler = BasePlugin:extend()
 
-KeyAuthHandler.PRIORITY = 1000
+KeyAuthHandler.PRIORITY = 1003
 
 function KeyAuthHandler:new()
   KeyAuthHandler.super.new(self, "key-auth")
@@ -58,7 +57,7 @@ local function set_consumer(consumer, credential)
   else
     ngx_set_header(constants.HEADERS.ANONYMOUS, true)
   end
-  
+
 end
 
 local function do_authentication(conf)
@@ -118,8 +117,13 @@ local function do_authentication(conf)
   end
 
   -- retrieve our consumer linked to this API key
-  local credential, err = cache.get_or_set(cache.keyauth_credential_key(key),
-                                      nil, load_credential, key)
+
+  local cache = singletons.cache
+  local dao       = singletons.dao
+
+  local credential_cache_key = dao.keyauth_credentials:cache_key(key)
+  local credential, err = cache:get(credential_cache_key, nil,
+                                    load_credential, key)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
@@ -134,8 +138,10 @@ local function do_authentication(conf)
   -----------------------------------------
 
   -- retrieve the consumer linked to this API key, to set appropriate headers
-  local consumer, err = cache.get_or_set(cache.consumer_key(credential.consumer_id),
-                                    nil, load_consumer, credential.consumer_id)
+
+  local consumer_cache_key = dao.consumers:cache_key(credential.consumer_id)
+  local consumer, err = cache:get(consumer_cache_key, nil, load_consumer,
+                                  credential.consumer_id)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
@@ -150,17 +156,19 @@ function KeyAuthHandler:access(conf)
   KeyAuthHandler.super.access(self)
 
   if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
-    -- we're already authenticated, and we're configured for using anonymous, 
+    -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
     return
   end
 
   local ok, err = do_authentication(conf)
   if not ok then
-    if conf.anonymous ~= "" and conf.anonymous ~= nil then
+    if conf.anonymous ~= "" then
       -- get anonymous user
-      local consumer, err = cache.get_or_set(cache.consumer_key(conf.anonymous),
-                            nil, load_consumer, conf.anonymous, true)
+      local consumer_cache_key = singletons.dao.consumers:cache_key(conf.anonymous)
+      local consumer, err = singletons.cache:get(consumer_cache_key, nil,
+                                                 load_consumer,
+                                                 conf.anonymous, true)
       if err then
         responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end

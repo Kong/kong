@@ -15,11 +15,13 @@ end
 return {
   table = "plugins",
   primary_key = {"id", "name"},
+  cache_key = { "name", "api_id", "consumer_id" },
   fields = {
     id = {
       type = "id",
       dao_insert_value = true,
-      required = true
+      required = true,
+      unique = true,
     },
     created_at = {
       type = "timestamp",

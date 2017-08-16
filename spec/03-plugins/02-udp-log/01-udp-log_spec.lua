@@ -9,6 +9,8 @@ describe("Plugin: udp-log (log)", function()
   local client
 
   setup(function()
+    helpers.run_migrations()
+
     local api2 = assert(helpers.dao.apis:insert {
       name = "tests-udp-logging2",
       hosts = { "udp_logging2.com" },

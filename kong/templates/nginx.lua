@@ -1,4 +1,7 @@
 return [[
+> if nginx_user then
+user ${{NGINX_USER}};
+> end
 worker_processes ${{NGINX_WORKER_PROCESSES}};
 daemon ${{NGINX_DAEMON}};
 

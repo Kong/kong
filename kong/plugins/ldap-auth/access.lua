@@ -1,7 +1,6 @@
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local singletons = require "kong.singletons"
-local cache = require "kong.tools.database_cache"
 local ldap = require "kong.plugins.ldap-auth.ldap"
 
 local match = string.match
@@ -42,7 +41,7 @@ local function ldap_authenticate(given_username, given_password, conf)
   ok, err = sock:connect(conf.ldap_host, conf.ldap_port)
   if not ok then
     ngx_log(ngx_error, "[ldap-auth] failed to connect to " .. conf.ldap_host .. ":" .. tostring(conf.ldap_port) .. ": ", err)
-    return nil, err, responses.status_codes.HTTP_INTERNAL_SERVER_ERROR
+    return nil, err
   end
 
   if conf.start_tls then
@@ -68,15 +67,16 @@ end
 local function load_credential(given_username, given_password, conf)
   ngx_log(ngx_debug, "[ldap-auth] authenticating user against LDAP server: " .. conf.ldap_host .. ":" .. conf.ldap_port)
 
-  local ok, err, status = ldap_authenticate(given_username, given_password, conf)
-  if status ~= nil then
-    return nil, err, status
-  end
+  local ok, err = ldap_authenticate(given_username, given_password, conf)
   if err ~= nil then
     ngx_log(ngx_error, err)
   end
-  if not ok then
+
+  if ok == nil then
     return nil
+  end
+  if ok == false then
+    return false
   end
   return {username = given_username, password = given_password}
 end
@@ -87,10 +87,13 @@ local function authenticate(conf, given_credentials)
     return false
   end
 
-  local credential, err, status = cache.get_or_set(cache.ldap_credential_key(ngx.ctx.api.id, given_username), 
-      conf.cache_ttl, load_credential, given_username, given_password, conf)
-  if status then
-    responses.send(status, err)
+  local cache_key = "ldap_auth_cache:" .. ngx.ctx.api.id .. ":" .. given_username
+  local credential, err = singletons.cache:get(cache_key, {
+    ttl = conf.cache_ttl,
+    neg_ttl = conf.cache_ttl,
+  }, load_credential, given_username, given_password, conf)
+  if err or credential == nil then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
   return credential and credential.password == given_password, credential
@@ -173,10 +176,12 @@ function _M.execute(conf)
 
   local ok, err = do_authentication(conf)
   if not ok then
-    if conf.anonymous ~= "" and conf.anonymous ~= nil then
+    if conf.anonymous ~= "" then
       -- get anonymous user
-      local consumer, err = cache.get_or_set(cache.consumer_key(conf.anonymous),
-                       nil, load_consumer, conf.anonymous, true)
+      local consumer_cache_key = singletons.dao.consumers:cache_key(conf.anonymous)
+      local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
+                                                      load_consumer,
+                                                      conf.anonymous, true)
       if err then
         responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end

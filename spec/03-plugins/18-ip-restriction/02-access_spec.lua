@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local cache = require "kong.tools.database_cache"
 local cjson = require "cjson"
 
 describe("Plugin: ip-restriction (access)", function()
@@ -7,6 +6,8 @@ describe("Plugin: ip-restriction (access)", function()
   local client, admin_client
 
   setup(function()
+    helpers.run_migrations()
+
     local api1 = assert(helpers.dao.apis:insert {
       name = "api-1",
       hosts = { "ip-restriction1.com" },
@@ -97,7 +98,11 @@ describe("Plugin: ip-restriction (access)", function()
       }
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong {
+      real_ip_header    = "X-Forwarded-For",
+      real_ip_recursive = "on",
+      trusted_ips       = "0.0.0.0/0, ::/0",
+    })
     client = helpers.proxy_client()
     admin_client = helpers.admin_client()
   end)
@@ -287,7 +292,9 @@ describe("Plugin: ip-restriction (access)", function()
     })
     assert.res_status(200, res)
 
-    local cache_key = cache.plugin_key(plugin_config.name, plugin_config.api_id, plugin_config.consumer_id)
+    local cache_key = helpers.dao.plugins:cache_key(plugin_config.name,
+                                                    plugin_config.api_id,
+                                                    plugin_config.consumer_id)
 
     helpers.wait_until(function()
       res = assert(admin_client:send {

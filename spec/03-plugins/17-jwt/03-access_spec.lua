@@ -16,6 +16,8 @@ describe("Plugin: jwt (access)", function()
   local proxy_client, admin_client
 
   setup(function()
+    helpers.run_migrations()
+
     local api1 = assert(helpers.dao.apis:insert {name = "tests-jwt1", hosts = { "jwt.com" }, upstream_url = "http://mockbin.com"})
     local api2 = assert(helpers.dao.apis:insert {name = "tests-jwt2", hosts = { "jwt2.com" }, upstream_url = "http://mockbin.com"})
     local api3 = assert(helpers.dao.apis:insert {name = "tests-jwt3", hosts = { "jwt3.com" }, upstream_url = "http://mockbin.com"})
@@ -57,7 +59,11 @@ describe("Plugin: jwt (access)", function()
       rsa_public_key = fixtures.rs512_public_key
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong {
+      real_ip_header    = "X-Forwarded-For",
+      real_ip_recursive = "on",
+      trusted_ips       = "0.0.0.0/0, ::/0",
+    })
     proxy_client = helpers.proxy_client()
     admin_client = helpers.admin_client()
   end)

@@ -113,6 +113,7 @@ return function(options)
         set(self.data, key, value)
         return true, nil, false
       end
+      SharedDict.safe_add = SharedDict.add
       function SharedDict:replace(key, value)
         if self.data[key] == nil then
           return false, "not found", false
@@ -266,93 +267,81 @@ return function(options)
 
 
   do -- cosockets connect patch for dns resolution for: cli, rbusted and OpenResty
+    local sub = string.sub
 
-    if options.cli then
-      -- Because the CLI runs in `xpcall`, we cannot use yielding cosockets.
-      -- Hence, we need to stick to luasocket when using cassandra or pgmoon
-      -- in the CLI.
-      for _, namespace in ipairs({"cassandra", "pgmoon-mashape"}) do
-        local socket = require(namespace .. ".socket")
-        socket.force_luasocket(ngx.get_phase(), true)
+    --- Patch the TCP connect and UDP setpeername methods such that all
+    -- connections will be resolved first by the internal DNS resolver.
+    -- STEP 1: load code that should not be using the patched versions
+    require "resty.dns.resolver" -- will cache TCP and UDP functions
+
+    -- STEP 2: forward declaration of locals to hold stuff loaded AFTER patching
+    local toip
+
+    -- STEP 3: store original unpatched versions
+    local old_tcp = ngx.socket.tcp
+    local old_udp = ngx.socket.udp
+
+    local old_tcp_connect
+    local old_udp_setpeername
+
+    local function tcp_resolve_connect(sock, host, port, sock_opts)
+      local target_ip, target_port = toip(host, port)
+      if not target_ip then
+        return nil, "[toip() name lookup failed]: " .. tostring(target_port) -- err
       end
 
-    else
-      local sub = string.sub
+      -- need to do the extra check here: https://github.com/openresty/lua-nginx-module/issues/860
+      if not sock_opts then
+        return old_tcp_connect(sock, target_ip, target_port)
+      end
 
-      --- Patch the TCP connect and UDP setpeername methods such that all
-      -- connections will be resolved first by the internal DNS resolver.
-      -- STEP 1: load code that should not be using the patched versions
-      require "resty.dns.resolver" -- will cache TCP and UDP functions
+      return old_tcp_connect(sock, target_ip, target_port, sock_opts)
+    end
 
-      -- STEP 2: forward declaration of locals to hold stuff loaded AFTER patching
-      local toip
+    local function udp_resolve_setpeername(sock, host, port)
+      local target_ip, target_port
 
-      -- STEP 3: store original unpatched versions
-      local old_tcp = ngx.socket.tcp
-      local old_udp = ngx.socket.udp
+      if sub(host, 1, 5) == "unix:" then
+        target_ip = host -- unix domain socket, so just maintain the named values
 
-      local old_tcp_connect
-      local old_udp_setpeername
+      else
+        target_ip, target_port = toip(host, port)
 
-      local function tcp_resolve_connect(sock, host, port, sock_opts)
-        local target_ip, target_port = toip(host, port)
         if not target_ip then
           return nil, "[toip() name lookup failed]: " .. tostring(target_port) -- err
         end
-
-        -- need to do the extra check here: https://github.com/openresty/lua-nginx-module/issues/860
-        if not sock_opts then
-          return old_tcp_connect(sock, target_ip, target_port)
-        end
-
-        return old_tcp_connect(sock, target_ip, target_port, sock_opts)
       end
 
-      local function udp_resolve_setpeername(sock, host, port)
-        local target_ip, target_port
-
-        if sub(host, 1, 5) == "unix:" then
-          target_ip = host -- unix domain socket, so just maintain the named values
-
-        else
-          target_ip, target_port = toip(host, port)
-
-          if not target_ip then
-            return nil, "[toip() name lookup failed]: " .. tostring(target_port) -- err
-          end
-        end
-
-        return old_udp_setpeername(sock, target_ip, target_port)
-      end
-
-      -- STEP 4: patch globals
-      _G.ngx.socket.tcp = function(...)
-        local sock = old_tcp(...)
-
-        if not old_tcp_connect then
-          old_tcp_connect = sock.connect
-        end
-
-        sock.connect = tcp_resolve_connect
-
-        return sock
-      end
-
-      _G.ngx.socket.udp = function(...)
-        local sock = old_udp(...)
-
-        if not old_udp_setpeername then
-          old_udp_setpeername = sock.setpeername
-        end
-
-        sock.setpeername = udp_resolve_setpeername
-
-        return sock
-      end
-
-      -- STEP 5: load code that should be using the patched versions, if any (because of dependency chain)
-      toip = require("resty.dns.client").toip  -- this will load utils and penlight modules for example
+      return old_udp_setpeername(sock, target_ip, target_port)
     end
+
+    -- STEP 4: patch globals
+    _G.ngx.socket.tcp = function(...)
+      local sock = old_tcp(...)
+
+      if not old_tcp_connect then
+        old_tcp_connect = sock.connect
+      end
+
+      sock.connect = tcp_resolve_connect
+
+      return sock
+    end
+
+    _G.ngx.socket.udp = function(...)
+      local sock = old_udp(...)
+
+      if not old_udp_setpeername then
+        old_udp_setpeername = sock.setpeername
+      end
+
+      sock.setpeername = udp_resolve_setpeername
+
+      return sock
+    end
+
+    -- STEP 5: load code that should be using the patched versions, if any (because of dependency chain)
+    toip = require("resty.dns.client").toip  -- this will load utils and penlight modules for example
   end
 end
 
