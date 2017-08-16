@@ -12,7 +12,7 @@ local NGX_ERR       = ngx.ERR
 
 
 local DatadogHandler    = BasePlugin:extend()
-DatadogHandler.PRIORITY = 800
+DatadogHandler.PRIORITY = 10
 
 
 local get_consumer_id = {

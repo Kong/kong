@@ -4,7 +4,7 @@ local cjson = require "cjson"
 
 local LogglyLogHandler = BasePlugin:extend()
 
-LogglyLogHandler.PRIORITY = 650
+LogglyLogHandler.PRIORITY = 6
 
 local os_date = os.date
 local tostring = tostring

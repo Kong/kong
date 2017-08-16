@@ -57,6 +57,6 @@ function RunscopeLogHandler:log(conf)
   log.execute(conf, message)
 end
 
-RunscopeLogHandler.PRIORITY = 500
+RunscopeLogHandler.PRIORITY = 5
 
 return RunscopeLogHandler
