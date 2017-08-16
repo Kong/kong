@@ -27,8 +27,7 @@ return {
     end,
 
     POST = function(self, dao_factory)
-      crud.post(self.params, dao_factory.consumers, nil,
-                uppercase_table_values)
+      crud.post(self.params, dao_factory.consumers, uppercase_table_values)
     end,
   },
 

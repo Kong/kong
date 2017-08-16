@@ -18,7 +18,7 @@ local _realm = 'Key realm="' .. _KONG._NAME .. '"'
 
 local KeyAuthHandler = BasePlugin:extend()
 
-KeyAuthHandler.PRIORITY = 1700
+KeyAuthHandler.PRIORITY = 1003
 
 function KeyAuthHandler:new()
   KeyAuthHandler.super.new(self, "key-auth")

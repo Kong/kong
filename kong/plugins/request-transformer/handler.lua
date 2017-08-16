@@ -12,6 +12,6 @@ function RequestTransformerHandler:access(conf)
   access.execute(conf)
 end
 
-RequestTransformerHandler.PRIORITY = 990
+RequestTransformerHandler.PRIORITY = 801
 
 return RequestTransformerHandler

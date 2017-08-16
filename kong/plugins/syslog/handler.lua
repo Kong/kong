@@ -11,7 +11,7 @@ local string_upper = string.upper
 
 local SysLogHandler = BasePlugin:extend()
 
-SysLogHandler.PRIORITY = 600
+SysLogHandler.PRIORITY = 4
 
 local SENDER_NAME = "kong"
 

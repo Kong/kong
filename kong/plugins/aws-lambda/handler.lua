@@ -102,6 +102,6 @@ function AWSLambdaHandler:access(conf)
   return ngx.exit(res.status)
 end
 
-AWSLambdaHandler.PRIORITY = 900
+AWSLambdaHandler.PRIORITY = 750
 
 return AWSLambdaHandler

@@ -6,7 +6,7 @@ local server_header = meta._NAME .. "/" .. meta._VERSION
 
 local RequestTerminationHandler = BasePlugin:extend()
 
-RequestTerminationHandler.PRIORITY = 400
+RequestTerminationHandler.PRIORITY = 7
 
 function RequestTerminationHandler:new()
   RequestTerminationHandler.super.new(self, "request-termination")
