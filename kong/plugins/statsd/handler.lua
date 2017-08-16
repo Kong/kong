@@ -12,7 +12,7 @@ local NGX_ERR       = ngx.ERR
 
 
 local StatsdHandler = BasePlugin:extend()
-StatsdHandler.PRIORITY = 550
+StatsdHandler.PRIORITY = 11
 
 
 local get_consumer_id = {
