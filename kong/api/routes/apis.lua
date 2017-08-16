@@ -47,7 +47,9 @@ return {
 
     POST = function(self, dao_factory)
       crud.post(self.params, dao_factory.plugins, function(data)
-        reports.send("api", utils.deep_copy(data))
+        local r_data = utils.deep_copy(data)
+        r_data.config = nil
+        reports.send("api", r_data)
       end)
     end,
 
