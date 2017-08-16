@@ -30,11 +30,11 @@ do
     cache_get = function(key, opts, func, ...)
       local ttl
       if type(opts) == "table" then
-        tonumber(opts.ttl)
+        ttl = tonumber(opts.ttl)
       else
         ttl = tonumber(opts)
       end
-      return cache.get_or_set(key, opts, func, ...)
+      return cache.get_or_set(key, ttl, func, ...)
     end
 
     cache_key = function(key, entity)

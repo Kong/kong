@@ -213,8 +213,14 @@ end
 local function headers(upstream_header, downstream_header, header_value)
   local val = header_value ~= nil and header_value ~= "" and header_value ~= ngx.null and header_value
   if val then
-    local usm =   upstream_header ~= nil and   upstream_header ~= "" and   upstream_header ~= ngx.null and   upstream_header
-    local dsm = downstream_header ~= nil and downstream_header ~= "" and downstream_header ~= ngx.null and downstream_header
+    local usm =   upstream_header ~= nil      and
+                  upstream_header ~= ""       and
+                  upstream_header ~= ngx.null and
+                  upstream_header
+    local dsm = downstream_header ~= nil      and
+                downstream_header ~= ""       and
+                downstream_header ~= ngx.null and
+                downstream_header
 
     if usm or dsm then
       local val_type = type(val)
@@ -671,7 +677,7 @@ function OICHandler:access(conf)
     session_data = {}
   end
 
-  local credential, consumer
+  local credential, mapped_consumer
   local default_expires_in = 3600
   local now = time()
   local exp = now + default_expires_in
@@ -692,7 +698,7 @@ function OICHandler:access(conf)
     if type(access_token_decoded) ~= "table" then
 
       if auth_method_kong_oauth2 then
-        access_token_introspected, credential, consumer = cache.oauth2.load(access_token_decoded)
+        access_token_introspected, credential, mapped_consumer = cache.oauth2.load(access_token_decoded)
       end
 
       if not access_token_introspected then
@@ -701,7 +707,9 @@ function OICHandler:access(conf)
             -- TODO: we just cache this for default one hour, not sure if there should be another strategy
             -- TODO: actually the alternative is already proposed, but needs changes in core where ttl
             -- TODO: and neg_ttl can be set after the results are retrieved from identity provider
-            access_token_introspected = cache.introspection.load(o, access_token_decoded, conf.introspection_endpoint, exp)
+            access_token_introspected = cache.introspection.load(
+              o,access_token_decoded, conf.introspection_endpoint, exp
+            )
           else
             access_token_introspected = o.token:introspect(access_token_decoded, "access_token", {
               introspection_endpoint = conf.introspection_endpoint
@@ -729,11 +737,15 @@ function OICHandler:access(conf)
         local jwt_session_claim_value = access_token_decoded.payload[jwt_session_claim]
 
         if not jwt_session_claim_value then
-          return unauthorized(iss, "jwt session claim (" .. jwt_session_claim .. ") was not specified in jwt access token", s)
+          return unauthorized(
+            iss,"jwt session claim (" .. jwt_session_claim .. ") was not specified in jwt access token", s
+          )
         end
 
         if jwt_session_claim_value ~= jwt_session_cookie_value then
-          return unauthorized(iss, "invalid jwt session claim (" .. jwt_session_claim .. ") was specified in jwt access token", s)
+          return unauthorized(
+            iss, "invalid jwt session claim (" .. jwt_session_claim .. ") was specified in jwt access token", s
+          )
         end
       end
 
@@ -898,11 +910,9 @@ function OICHandler:access(conf)
     end
   end
 
-  local mapped_consumer, is_anonymous
+  local is_anonymous
 
-  if consumer then
-    mapped_consumer = consumer
-  else
+  if not mapped_consumer then
     local consumer_claim = conf.consumer_claim
     if consumer_claim and consumer_claim ~= "" then
       local consumer_by = conf.consumer_by
@@ -961,7 +971,7 @@ function OICHandler:access(conf)
   end
 
   if mapped_consumer then
-    local headers = constants.HEADERS
+    local head = constants.HEADERS
 
     ngx.ctx.authenticated_consumer   = mapped_consumer
 
@@ -973,12 +983,12 @@ function OICHandler:access(conf)
       }
     end
 
-    set_header(headers.CONSUMER_ID,        mapped_consumer.id)
-    set_header(headers.CONSUMER_CUSTOM_ID, mapped_consumer.custom_id)
-    set_header(headers.CONSUMER_USERNAME,  mapped_consumer.username)
+    set_header(head.CONSUMER_ID,        mapped_consumer.id)
+    set_header(head.CONSUMER_CUSTOM_ID, mapped_consumer.custom_id)
+    set_header(head.CONSUMER_USERNAME,  mapped_consumer.username)
 
     if is_anonymous then
-      set_header(headers.ANONYMOUS, is_anonymous)
+      set_header(head.ANONYMOUS, is_anonymous)
     end
   end
 
