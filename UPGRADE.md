@@ -67,6 +67,10 @@ complete list of changes and new features.
   avoid several nodes running migrations concurrently and potentially
   corrupting your database. Once the migrations are up-to-date, it is
   considered safe to start multiple Kong nodes concurrently.
+- When running a kong cluster using docker containers you will need to run the
+  initial migration from a single ephemeral container. You can follow the
+  [docker migration instructions](https://getkong.org/install/docker/) in step
+  2.
 - Serf is **not** a dependency anymore. Kong nodes now handle cache
   invalidation events via a built-in database polling mechanism. See the new
   "Datastore Cache" section of the configuration file which contains 3 new
