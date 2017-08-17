@@ -249,6 +249,8 @@ describe("core entities are invalidated with db: " .. kong_conf.database, functi
       local cert_1 = get_cert(8443, "ssl-example.com")
       local cert_2 = get_cert(9443, "ssl-example.com")
 
+      -- if you get an error when running these, you likely have an outdated version of openssl installed
+      -- to update in osx: https://github.com/Mashape/kong/pull/2776#issuecomment-320275043
       assert.matches("CN=localhost", cert_1, nil, true)
       assert.matches("CN=localhost", cert_2, nil, true)
     end)
