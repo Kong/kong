@@ -13,9 +13,9 @@ local tostring = tostring
 local ngx_timer_at = ngx.timer.at
 local new_from_timestamp = luatz.timetable.new_from_timestamp
 
-local RATELIMIT_RESET = "X-RateLimit-Reset"
 local RATELIMIT_LIMIT = "X-RateLimit-Limit"
 local RATELIMIT_REMAINING = "X-RateLimit-Remaining"
+local RATELIMIT_RESET = "X-RateLimit-Reset"
 
 local RateLimitingHandler = BasePlugin:extend()
 
@@ -76,11 +76,13 @@ local function get_period_end_in_secs(current_timestamp, limits)
     if limits[period] then
       timetable = new_from_timestamp(floor(period_date / 1000))
 
-      -- Unfortunately second & minute don't map correctly
+      -- Unfortunately 'second' & 'minute' are 'sec' and 'min' in timetable
       if period == "second" then
         timetable.sec = timetable.sec + 1
+
       elseif period == "minute" then
         timetable.min = timetable.min + 1
+
       else
         timetable[period] = timetable[period] + 1
       end
@@ -88,7 +90,7 @@ local function get_period_end_in_secs(current_timestamp, limits)
   end
 
   -- Mutates the current object's time and date components so that are integers within 'normal' ranges
-  timetable:normalise ( )
+  timetable:normalise()
   return timetable:timestamp()
 end
 
@@ -131,8 +133,8 @@ function RateLimitingHandler:access(conf)
       ngx.header[RATELIMIT_LIMIT .. "-" .. k] = v.limit
       ngx.header[RATELIMIT_REMAINING .. "-" .. k] = math.max(0, (stop == nil or stop == k) and v.remaining - 1 or v.remaining) -- -increment_value for this current request
     end
-    
-    -- Supply a timestamp, in UTC epoch seconds, for when to retry.
+
+    -- Add X-RateLimit-Reset header (timestamp in UTC epoch seconds, for when to retry).
     ngx.header[RATELIMIT_RESET] = get_period_end_in_secs(current_timestamp, limits)
 
     -- If limit is exceeded, terminate the request
