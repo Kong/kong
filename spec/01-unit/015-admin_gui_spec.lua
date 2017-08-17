@@ -40,6 +40,8 @@ describe("prepare_prefix", function()
   local mock_idx = [[
     <meta name="KONG:ADMIN_API_PORT" content="{{ADMIN_API_PORT}}" />
     <meta name="KONG:ADMIN_API_SSL_PORT" content="{{ADMIN_API_SSL_PORT}}" />
+    <meta name="KONG:RBAC_ENFORCED" content="{{RBAC_ENFORCED}}" />
+    <meta name="KONG:RBAC_HEADER" content="{{RBAC_HEADER}}" />
 ]]
 
   local mock_prefix = "servroot"
@@ -70,19 +72,33 @@ describe("prepare_prefix", function()
       prefix = mock_prefix,
       admin_port = 9001,
       admin_ssl_port = 9444,
+      enforce_rbac = false,
+      rbac_auth_header = "Kong-Admin-Token",
     })
 
     local gui_idx = pl_file.read(mock_prefix .. "/gui/index.html")
 
-    assert.matches('<meta name="KONG:ADMIN_API_PORT" content="9001" />', gui_idx)
-    assert.matches('<meta name="KONG:ADMIN_API_SSL_PORT" content="9444" />', gui_idx)
+    assert.matches('<meta name="KONG:ADMIN_API_PORT" content="9001" />',
+                   gui_idx, nil, true)
+    assert.matches('<meta name="KONG:ADMIN_API_SSL_PORT" content="9444" />',
+                   gui_idx, nil, true)
+    assert.matches('<meta name="KONG:RBAC_ENFORCED" content="false" />',
+                   gui_idx, nil, true)
+    assert.matches('<meta name="KONG:RBAC_HEADER" content="Kong-Admin-Token" />',
+                   gui_idx, nil, true)
   end)
 
   it("retains a template with the template placeholders", function()
     local gui_idx_tpl = pl_file.read(mock_prefix .. "/gui/index.html.tp")
 
-    assert.matches('<meta name="KONG:ADMIN_API_PORT" content="{{ADMIN_API_PORT}}" />', gui_idx_tpl)
-    assert.matches('<meta name="KONG:ADMIN_API_SSL_PORT" content="{{ADMIN_API_SSL_PORT}}" />', gui_idx_tpl)
+    assert.matches('<meta name="KONG:ADMIN_API_PORT" content="{{ADMIN_API_PORT}}" />',
+                   gui_idx_tpl, nil, true)
+    assert.matches('<meta name="KONG:ADMIN_API_SSL_PORT" content="{{ADMIN_API_SSL_PORT}}" />',
+                   gui_idx_tpl, nil, true)
+    assert.matches('<meta name="KONG:RBAC_ENFORCED" content="{{RBAC_ENFORCED}}" />',
+                   gui_idx_tpl, nil, true)
+    assert.matches('<meta name="KONG:RBAC_HEADER" content="{{RBAC_HEADER}}" />',
+                   gui_idx_tpl, nil, true)
   end)
 
   it("inserts new values when called again", function()
@@ -91,11 +107,19 @@ describe("prepare_prefix", function()
       prefix = mock_prefix,
       admin_port = 9002,
       admin_ssl_port = 9445,
+      enforce_rbac = true,
+      rbac_auth_header = "Kong-Other-Token",
     })
 
     local gui_idx = pl_file.read(mock_prefix .. "/gui/index.html")
 
-    assert.matches('<meta name="KONG:ADMIN_API_PORT" content="9002" />', gui_idx)
-    assert.matches('<meta name="KONG:ADMIN_API_SSL_PORT" content="9445" />', gui_idx)
+    assert.matches('<meta name="KONG:ADMIN_API_PORT" content="9002" />',
+                   gui_idx, nil, true)
+    assert.matches('<meta name="KONG:ADMIN_API_SSL_PORT" content="9445" />',
+                   gui_idx, nil, true)
+    assert.matches('<meta name="KONG:RBAC_ENFORCED" content="true" />',
+                   gui_idx, nil, true)
+    assert.matches('<meta name="KONG:RBAC_HEADER" content="Kong-Other-Token" />',
+                   gui_idx, nil, true)
   end)
 end)
