@@ -47,7 +47,7 @@ local function flush_redis()
 end
 
 for i, policy in ipairs({"local", "cluster", "redis"}) do
-  describe("#ci Plugin: rate-limiting (access) with policy: " .. policy, function()
+  describe("#flaky Plugin: rate-limiting (access) with policy: " .. policy, function()
     setup(function()
       helpers.kill_all()
       flush_redis()

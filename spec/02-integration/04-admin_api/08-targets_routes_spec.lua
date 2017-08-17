@@ -300,7 +300,7 @@ describe("Admin API", function()
         end
       end)
 
-      it("#ci only shows active targets", function()
+      it("#flaky only shows active targets", function()
         -- Pending (as of 2017/07/26) (CI-only)
         -- This test is failing to often on Travis CI because of the eventual
         -- consistency of the 3 C* nodes running on Travis (gossip seems to be
