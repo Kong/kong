@@ -289,7 +289,7 @@ function _M:are_migrations_uptodate()
       then
         local infos = self.db:infos()
         log.warn("%s %s '%s' is missing migration: (%s) %s",
-                 self.db_type, infos.desc, infos.name, module, migration.name)
+                 self.db_type, infos.desc, infos.name, module, migration.name or "(no name)")
         return ret_error_string(self.db.name, nil, "the current database "   ..
                                 "schema does not match this version of "     ..
                                 "Kong. Please run `kong migrations up` "     ..
