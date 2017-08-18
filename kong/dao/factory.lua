@@ -202,6 +202,37 @@ function _M:migrations_modules()
     end
   end
 
+  do
+    -- check that migrations have a name, and that no two migrations have the
+    -- same name.
+    local migration_names = {}
+
+    for plugin_name, plugin_migrations in pairs(migrations) do
+      for i, migration in ipairs(plugin_migrations) do
+        local s = plugin_name == "core" and
+                    "'core'" or "plugin '" .. plugin_name .. "'"
+
+        if migration.name == nil then
+          return nil, string.format("migration '%d' for %s has no " ..
+                                    "name", i, s)
+        end
+
+        if type(migration.name) ~= "string" then
+          return nil, string.format("migration '%d' for %s must be a string",
+                                    i, s)
+        end
+
+        if migration_names[migration.name] then
+          return nil, string.format("migration '%s' (%s) already " ..
+                                    "exists; migrations must have unique names",
+                                    migration.name, s)
+        end
+
+        migration_names[migration.name] = true
+      end
+    end
+  end
+
   return migrations
 end
 
@@ -273,7 +304,11 @@ local function default_on_success(identifier, migration_name, db_infos)
 end
 
 function _M:are_migrations_uptodate()
-  local migrations_modules = self:migrations_modules()
+  local migrations_modules, err = self:migrations_modules()
+  if not migrations_modules then
+    return ret_error_string(self.db.name, nil, err)
+  end
+
   local cur_migrations, err = self:current_migrations()
   if err then
     return ret_error_string(self.db.name, nil,
@@ -289,7 +324,7 @@ function _M:are_migrations_uptodate()
       then
         local infos = self.db:infos()
         log.warn("%s %s '%s' is missing migration: (%s) %s",
-                 self.db_type, infos.desc, infos.name, module, migration.name)
+                 self.db_type, infos.desc, infos.name, module, migration.name or "(no name)")
         return ret_error_string(self.db.name, nil, "the current database "   ..
                                 "schema does not match this version of "     ..
                                 "Kong. Please run `kong migrations up` "     ..
@@ -343,7 +378,11 @@ function _M:run_migrations(on_migrate, on_success)
     end
   end
 
-  local migrations_modules = self:migrations_modules()
+  local migrations_modules, err = self:migrations_modules()
+  if not migrations_modules then
+    return ret_error_string(self.db.name, nil, err)
+  end
+
   local cur_migrations, err = self:current_migrations()
   if err then
     return ret_error_string(self.db.name, nil,
