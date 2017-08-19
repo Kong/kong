@@ -69,9 +69,11 @@ describe("kong reload", function()
     ngx.sleep(1)
 
     -- new server
-    client = helpers.http_client("0.0.0.0", 9999, 5000)
+    client = helpers.http_client(helpers.mock_upstream_host,
+                                 helpers.mock_upstream_port,
+                                 5000)
     local res = assert(client:send {
-      path = "/custom_server_path"
+      path = "/get",
     })
     assert.res_status(200, res)
     client:close()

@@ -16,8 +16,9 @@ helpers.for_each_dao(function(kong_config)
 
     it("retrieves plugins for plugins_iterator", function()
       local api, err = factory.apis:insert {
-        name = "mockbin", hosts = { "mockbin.com" },
-        upstream_url = "http://mockbin.com"
+        name = "example",
+        hosts = { "example.com" },
+        upstream_url = "http://example.com",
       }
       assert.falsy(err)
 
@@ -71,8 +72,9 @@ helpers.for_each_dao(function(kong_config)
 
     it("update a plugin config", function()
       local api, err = factory.apis:insert {
-        name = "mockbin", hosts = { "mockbin.com" },
-        upstream_url = "http://mockbin.com"
+        name         = "example",
+        hosts        = { "example.com" },
+        upstream_url = "http://example.com",
       }
       assert.falsy(err)
 
@@ -90,8 +92,9 @@ helpers.for_each_dao(function(kong_config)
 
     it("does not override plugin config if partial update", function()
       local api, err = factory.apis:insert {
-        name = "mockbin", hosts = { "mockbin.com" },
-        upstream_url = "http://mockbin.com"
+        name         = "example",
+        hosts        = { "example.com" },
+        upstream_url = "http://example.com",
       }
       assert.falsy(err)
 

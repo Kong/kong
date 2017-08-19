@@ -64,6 +64,10 @@ http {
         kong.init_worker()
     }
 
+    rewrite_by_lua_block {
+        kong.rewrite()
+    }
+
     proxy_next_upstream_tries 999;
 
     upstream kong_upstream {
@@ -186,89 +190,12 @@ http {
     }
 
     server {
-        server_name custom_server;
-        listen 9999;
+        server_name mock_aws_lambda;
         listen 10001 ssl;
 
         ssl_certificate ${{SSL_CERT}};
         ssl_certificate_key ${{SSL_CERT_KEY}};
         ssl_protocols TLSv1.1 TLSv1.2;
-
-        location /custom_server_path {
-            return 200;
-        }
-
-        location / {
-            content_by_lua_block {
-                local cjson = require "cjson"
-                local var   = ngx.var
-                local req   = ngx.req
-
-                req.read_body()
-
-                local json = cjson.encode {
-                    vars = {
-                        uri                = var.uri,
-                        host               = var.host,
-                        hostname           = var.hostname,
-                        https              = var.https,
-                        scheme             = var.scheme,
-                        is_args            = var.is_args,
-                        server_addr        = var.server_addr,
-                        server_port        = var.server_port,
-                        server_name        = var.server_name,
-                        server_protocol    = var.server_protocol,
-                        remote_addr        = var.remote_addr,
-                        remote_port        = var.remote_port,
-                        realip_remote_addr = var.realip_remote_addr,
-                        realip_remote_port = var.realip_remote_port,
-                        binary_remote_addr = var.binary_remote_addr,
-                        request            = var.request,
-                        request_uri        = var.request_uri,
-                        request_time       = var.request_time,
-                        request_length     = var.request_length,
-                        request_method     = var.request_method,
-                        bytes_received     = var.bytes_received,
-                    },
-                    method       = req.get_method(),
-                    headers      = req.get_headers(0),
-                    uri_args     = req.get_uri_args(0),
-                    post_args    = req.get_post_args(0),
-                    http_version = req.http_version(),
-                }
-
-                ngx.status = 200
-                ngx.say(json)
-                ngx.exit(200)
-            }
-        }
-
-        location /headers-inspect {
-            content_by_lua_block {
-                local cjson = require "cjson"
-
-                local headers = ngx.req.get_headers()
-                local json = cjson.encode(headers)
-
-                ngx.status = 200
-                ngx.say(json)
-                ngx.exit(200)
-            }
-        }
-
-        # N.B. this fixture only exists because the current testing environment
-        # offers no other tenable method to inspect the upstream TLS handshake
-        # this fixture SHOULD NOT be used in the future to build further tests;
-        # the location blocks here must be treated as temporary exceptions, not
-        # an acceptable pattern on which to derive further test architectures
-        location /ssl-inspect {
-            content_by_lua_block {
-                local name = ngx.var.ssl_server_name and ngx.var.ssl_server_name
-                  or "no SNI"
-
-                ngx.say(name)
-            }
-        }
 
         location ~ "/2015-03-31/functions/(?:[^/])*/invocations" {
             content_by_lua_block {
@@ -311,18 +238,20 @@ http {
     }
 
     server {
-        listen 55555;
         server_name mock_upstream;
 
+        listen 55555;
+        listen 55556 ssl;
+
+        ssl_certificate ${{SSL_CERT}};
+        ssl_certificate_key ${{SSL_CERT_KEY}};
+        ssl_protocols TLSv1.1 TLSv1.2;
+
         location = / {
-            access_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
-                return mu.filter_access_by_method("GET")
-            }
             content_by_lua_block {
                 local mu = require "spec.fixtures.mock_upstream"
-                return mu.send_json_response({
-                    valid_routes                    = {
+                return mu.send_default_json_response({
+                    valid_routes = {
                         ["/ws"]                     = "Websocket echo server",
                         ["/get"]                    = "Accepts a GET request and returns it in JSON format",
                         ["/post"]                   = "Accepts a POST request and returns it in JSON format",
@@ -331,7 +260,7 @@ http {
                         ["/delay/:duration"]        = "Delay the response for <duration> seconds",
                         ["/basic-auth/:user/:pass"] = "Performs HTTP basic authentication with the given credentials",
                         ["/status/:code"]           = "Returns a response with the specified <status code>"
-                    }
+                    },
                 })
             }
         }
@@ -343,45 +272,29 @@ http {
             }
         }
 
-        location = /get {
+        location /get {
             access_by_lua_block {
                 local mu = require "spec.fixtures.mock_upstream"
                 return mu.filter_access_by_method("GET")
             }
             content_by_lua_block {
                 local mu = require "spec.fixtures.mock_upstream"
-
-                return mu.send_json_response({
-                    args    = ngx.req.get_uri_args(),
-                    headers = ngx.req.get_headers(),
-                    origin  = ngx.var.remote_addr,
-                    url     = mu.get_request_url(),
-                })
+                return mu.send_default_json_response()
             }
         }
 
-        location = /post {
+        location /post {
             access_by_lua_block {
                 local mu = require "spec.fixtures.mock_upstream"
                 return mu.filter_access_by_method("POST")
             }
             content_by_lua_block {
-                local mu                 = require "spec.fixtures.mock_upstream"
-                local headers            = ngx.req.get_headers()
-                local data, form, params = mu.parse_post_data(headers)
-                return mu.send_json_response({
-                    args    = ngx.req.get_uri_args(),
-                    data    = data,
-                    form    = form,
-                    headers = headers,
-                    origin  = ngx.var.remote_addr,
-                    params  = params,
-                    url     = mu.get_request_url(),
-                })
+                local mu  = require "spec.fixtures.mock_upstream"
+                return mu.send_default_json_response()
             }
         }
 
-        location ~ "^/basic-auth/(?<username>[a-zA-Z0-9_]+)/(?<password>[.]+)$" {
+        location ~ "^/basic-auth/(?<username>[a-zA-Z0-9_]+)/(?<password>.+)$" {
             access_by_lua_block {
                 local mu = require "spec.fixtures.mock_upstream"
                 return mu.filter_access_by_basic_auth(ngx.var.username,
@@ -389,34 +302,23 @@ http {
             }
             content_by_lua_block {
                 local mu = require "spec.fixtures.mock_upstream"
-                return mu.send_json_response({
-                  authenticated = true,
-                  user          = ngx.var.username,
+                return mu.send_default_json_response({
+                    authenticated = true,
+                    user          = ngx.var.username,
                 })
             }
         }
 
-        location ~ "^/(request|anything)$" {
+        location ~ "^/(request|anything)" {
             content_by_lua_block {
-                local mu                 = require "spec.fixtures.mock_upstream"
-                local headers            = ngx.req.get_headers()
-                local data, form, params = mu.parse_post_data(headers)
-
-                return mu.send_json_response({
-                    args    = ngx.req.get_uri_args(),
-                    data    = data,
-                    form    = form,
-                    headers = headers,
-                    method  = ngx.var.request_method,
-                    origin  = ngx.var.remote_addr,
-                    params  = params,
-                    url     = mu.get_request_url(),
-                })
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.send_default_json_response()
             }
         }
 
         location ~ "^/delay/(?<delay_seconds>\d{1,3})$" {
             content_by_lua_block {
+                local mu            = require "spec.fixtures.mock_upstream"
                 local delay_seconds = tonumber(ngx.var.delay_seconds)
                 if not delay_seconds then
                     return ngx.exit(ngx.HTTP_NOT_FOUND)
@@ -424,20 +326,8 @@ http {
 
                 ngx.sleep(delay_seconds)
 
-                local mu                 = require "spec.fixtures.mock_upstream"
-                local headers            = ngx.req.get_headers()
-                local data, form, params = mu.parse_post_data(headers)
-
                 return mu.send_json_response({
-                    args    = ngx.req.get_uri_args(),
-                    data    = data,
-                    delay   = delay_seconds,
-                    form    = form,
-                    headers = headers,
-                    method  = ngx.var.request_method,
-                    origin  = ngx.var.remote_addr,
-                    params  = params,
-                    url     = mu.get_request_url(),
+                    delay = delay_seconds,
                 })
             }
         }
