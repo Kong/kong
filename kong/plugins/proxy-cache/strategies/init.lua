@@ -1,5 +1,13 @@
 local _M = {}
 
+_M.STRATEGY_TYPES = {
+  "memory",
+}
+
+-- strategies that should delay writing cache storage to
+-- a dummy req, rather than doing so at the last body filter execution
+_M.DELAY_STRATEGY_STORE = {}
+
 local function require_strategy(name)
   return require("kong.plugins.proxy-cache.strategies." .. name)
 end
