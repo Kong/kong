@@ -202,6 +202,21 @@ function _M:migrations_modules()
     end
   end
 
+  local migration_names = {}
+  for plugin_name, plugin in pairs(migrations) do
+    for i, migration in ipairs(plugin) do
+      if not migration.name then
+        error("migration " .. i .. " for plugin " .. plugin_name .. " has no name")
+      end
+
+      if migration_names[migration.name] ~= nil then
+        error("migration " .. i .. " for plugin " .. plugin_name .. " must have a unique name")
+      end
+
+      migration_names[migration.name] = true
+    end
+  end
+
   return migrations
 end
 
