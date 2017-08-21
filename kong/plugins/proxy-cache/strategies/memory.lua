@@ -1,10 +1,10 @@
+local cjson = require "cjson.safe"
 
-local cjson = require "_json.safe"
 
-
-local ngx    = ngx
-local type   = type
-local shared = ngx.shared
+local ngx          = ngx
+local type         = type
+local time         = ngx.time
+local shared       = ngx.shared
 local cjson_encode = cjson.encode
 local cjson_decode = cjson.decode
 
@@ -13,17 +13,17 @@ local _M = {}
 
 
 --- Create new memory strategy object
--- @table opts Strategy options: contains 'name' and 'ttl' fields
+-- @table opts Strategy options: contains 'dictionary_name' and 'ttl' fields
 function _M.new(opts)
-  local dict = shared[opts.name]
+  local dict = shared[opts.dictionary_name]
 
   local self = {
     dict = dict,
-    opts = opts
+    opts = opts,
   }
 
   return setmetatable(self, {
-    __index = _M
+    __index = _M,
   })
 end
 
@@ -63,13 +63,13 @@ function _M:fetch(key)
   -- retrieve object from shared dict
   local req_json, err = self.dict:get(key)
   if not req_json then
-    return nil, "object not found"
+    return nil, "request object not in cache"
   end
 
   -- decode object from JSON to table
   local req_obj = cjson_decode(req_json)
   if not req_json then
-    return nil, "could not decode request"
+    return nil, "could not decode request object"
   end
 
   return req_obj
@@ -77,17 +77,19 @@ end
 
 
 --- Purge an entry from the request cache
+-- @return true on success, nil plus error message otherwise
 function _M:purge(key)
   if type(key) ~= "string" then
     return nil, "key must be a string"
   end
 
-  return self.dict:delete(key)
+  self.dict:delete(key)
+  return true
 end
 
 
 --- Reset TTL for a cached request
-function _M:touch(key)
+function _M:touch(key, req_ttl, timestamp)
   if type(key) ~= "string" then
     return nil, "key must be a string"
   end
@@ -95,17 +97,20 @@ function _M:touch(key)
   -- check if entry actually exists
   local req_json = self.dict:get(key)
   if not req_json then
-    return nil, "request not in cache"
+    return nil, "request object not in cache"
   end
 
   -- decode object from JSON to table
   local req_obj = cjson_decode(req_json)
   if not req_json then
-    return nil, "could not decode request"
+    return nil, "could not decode request object"
   end
 
+  -- refresh timestamp field
+  req_obj.timestamp = timestamp or time()
+
   -- store it again to reset the TTL
-  return _M:store(key, req_obj)
+  return _M:store(key, req_obj, req_ttl)
 end
 
 
@@ -121,3 +126,5 @@ function _M:flush(free_mem)
     self.dict:flush_expired()
   end
 end
+
+return _M

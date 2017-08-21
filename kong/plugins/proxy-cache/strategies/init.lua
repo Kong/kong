@@ -5,7 +5,7 @@ local function require_strategy(name)
 end
 
 return setmetatable(_M, {
-  __call = function(opts)
+  __call = function(_, opts)
     return require_strategy(opts.strategy_name).new(opts.strategy_opts)
   end
 })
