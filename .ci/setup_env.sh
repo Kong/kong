@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 set -e
 
 #---------
@@ -11,18 +12,18 @@ mkdir -p $OPENSSL_DOWNLOAD $OPENRESTY_DOWNLOAD $LUAROCKS_DOWNLOAD
 
 if [ ! "$(ls -A $OPENSSL_DOWNLOAD)" ]; then
   pushd $DOWNLOAD_CACHE
-    curl -L http://www.openssl.org/source/openssl-$OPENSSL.tar.gz | tar xz
+    curl -s -S -L http://www.openssl.org/source/openssl-$OPENSSL.tar.gz | tar xz
   popd
 fi
 
 if [ ! "$(ls -A $OPENRESTY_DOWNLOAD)" ]; then
   pushd $DOWNLOAD_CACHE
-    curl -L https://openresty.org/download/openresty-$OPENRESTY.tar.gz | tar xz
+    curl -s -S -L https://openresty.org/download/openresty-$OPENRESTY.tar.gz | tar xz
   popd
 fi
 
 if [ ! "$(ls -A $LUAROCKS_DOWNLOAD)" ]; then
-  git clone https://github.com/keplerproject/luarocks.git $LUAROCKS_DOWNLOAD
+  git clone -q https://github.com/keplerproject/luarocks.git $LUAROCKS_DOWNLOAD
 fi
 
 #--------
@@ -36,9 +37,9 @@ mkdir -p $OPENSSL_INSTALL $OPENRESTY_INSTALL $LUAROCKS_INSTALL
 
 if [ ! "$(ls -A $OPENSSL_INSTALL)" ]; then
   pushd $OPENSSL_DOWNLOAD
-    ./config shared --prefix=$OPENSSL_INSTALL
-    make
-    make install
+    ./config shared --prefix=$OPENSSL_INSTALL &> build.log || (cat build.log && exit 1)
+    make &> build.log || (cat build.log && exit 1)
+    make install &> build.log || (cat build.log && exit 1)
   popd
 fi
 
@@ -55,22 +56,23 @@ if [ ! "$(ls -A $OPENRESTY_INSTALL)" ]; then
   )
 
   pushd $OPENRESTY_DOWNLOAD
-    ./configure ${OPENRESTY_OPTS[*]}
-    make
-    make install
+    ./configure ${OPENRESTY_OPTS[*]} &> build.log || (cat build.log && exit 1)
+    make &> build.log || (cat build.log && exit 1)
+    make install &> build.log || (cat build.log && exit 1)
   popd
 fi
 
 if [ ! "$(ls -A $LUAROCKS_INSTALL)" ]; then
   pushd $LUAROCKS_DOWNLOAD
-    git checkout v$LUAROCKS
+    git checkout -q v$LUAROCKS
     ./configure \
       --prefix=$LUAROCKS_INSTALL \
       --lua-suffix=jit \
       --with-lua=$OPENRESTY_INSTALL/luajit \
-      --with-lua-include=$OPENRESTY_INSTALL/luajit/include/luajit-2.1
-    make build
-    make install
+      --with-lua-include=$OPENRESTY_INSTALL/luajit/include/luajit-2.1 \
+      &> build.log || (cat build.log && exit 1)
+    make build &> build.log || (cat build.log && exit 1)
+    make install &> build.log || (cat build.log && exit 1)
   popd
 fi
 
@@ -84,7 +86,7 @@ eval `luarocks path`
 # Install ccm & setup Cassandra cluster
 # -------------------------------------
 if [[ "$TEST_SUITE" != "unit" ]] && [[ "$TEST_SUITE" != "lint" ]]; then
-  pip install --user PyYAML six ccm
+  pip install --user PyYAML six ccm &> build.log || (cat build.log && exit 1)
   ccm create test -v $CASSANDRA -n 1 -d
   ccm start -v
   ccm status
