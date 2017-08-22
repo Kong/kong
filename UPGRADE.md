@@ -75,6 +75,12 @@ complete list of changes and new features.
   attention to the `db_update_propagation` setting, as you **should not** use
   the default value of `0`.
 
+**Note for Docker users:** Because of the aforementioned breaking change, if
+you are running Kong with Docker, you will now need to run the migrations from
+a single, ephemeral container. You can follow the [Docker installation
+instructions](https://getkong.org/install/docker/) (see "2. Prepare your
+database") for more details about this process.
+
 ##### Core
 
 - Kong now requires OpenResty `1.11.2.4`. OpenResty's LuaJIT can now be built

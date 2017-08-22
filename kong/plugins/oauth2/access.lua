@@ -536,22 +536,15 @@ function _M.execute(conf)
   end
 
   if ngx.req.get_method() == "POST" then
+    local uri = ngx.var.uri
 
-    local from, _, err = ngx.re.find(ngx.var.uri, [[\/oauth2\/token]], "oj")
-    if err then
-      ngx.log(ngx.ERR, "could not search for token path segment: ", err)
-      return
-    end
+    local from, _ = string_find(uri, "/oauth2/token", nil, true)
 
     if from then
       issue_token(conf)
 
     else
-      from, _, err = ngx.re.find(ngx.var.uri, [[\/oauth2\/authorize]], "oj")
-      if err then
-        ngx.log(ngx.ERR, "could not search for authorize path segment: ", err)
-        return
-      end
+      from, _ = string_find(uri, "/oauth2/authorize", nil, true)
 
       if from then
         authorize(conf)
