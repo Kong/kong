@@ -17,7 +17,6 @@ describe("proxy-cache schema", function()
       response_code = { 200, 301 },
       request_method = { "GET" },
       content_type = { "application/json" },
-      strategy = "memory",
     }, proxy_cache_schema)
 
     assert.is_nil(err)

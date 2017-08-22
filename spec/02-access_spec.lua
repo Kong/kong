@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local cjson = require "cjson"
 
 describe("proxy-cache access", function()
   local client
@@ -18,12 +17,12 @@ describe("proxy-cache access", function()
       hosts = { "api-2.com" },
       upstream_url = "http://httpbin.org",
     })
-    local api3 = assert(helpers.dao.apis:insert {
+    assert(helpers.dao.apis:insert {
       name = "api-3",
       hosts = { "api-3.com" },
       upstream_url = "http://httpbin.org",
     })
-    local api4 = assert(helpers.dao.apis:insert {
+    assert(helpers.dao.apis:insert {
       name = "api-4",
       hosts = { "api-4.com" },
       upstream_url = "http://httpbin.org",
@@ -121,7 +120,7 @@ describe("proxy-cache access", function()
     })
 
     assert(helpers.start_kong({
-      custom_plugins = "proxy-cache",      
+      custom_plugins = "proxy-cache",
     }))
     client = helpers.proxy_client()
   end)
@@ -143,7 +142,7 @@ describe("proxy-cache access", function()
       }
     })
 
-    local body = assert.res_status(200, res)
+    assert.res_status(200, res)
     assert.same("Miss", res.headers["X-Cache-Status"])
 
     -- cache key is an md5sum of the prefix uuid, method, and $request
@@ -159,7 +158,7 @@ describe("proxy-cache access", function()
       }
     })
 
-    body = assert.res_status(200, res)
+    assert.res_status(200, res)
 
     assert.same("Hit", res.headers["X-Cache-Status"])
     local cache_key2 = res.headers["X-Cache-Key"]
@@ -178,7 +177,7 @@ describe("proxy-cache access", function()
       }
     })
 
-    local body = assert.res_status(200, res)
+    assert.res_status(200, res)
     assert.same("Miss", res.headers["X-Cache-Status"])
 
     res = assert(client:send {
@@ -189,7 +188,7 @@ describe("proxy-cache access", function()
       }
     })
 
-    body = assert.res_status(200, res)
+    assert.res_status(200, res)
 
     assert.same("Hit", res.headers["X-Cache-Status"])
 
@@ -205,7 +204,7 @@ describe("proxy-cache access", function()
       }
     })
 
-    body = assert.res_status(200, res)
+    assert.res_status(200, res)
     assert.same("Miss", res.headers["X-Cache-Status"])
 
     res = assert(client:send {
@@ -216,7 +215,7 @@ describe("proxy-cache access", function()
       }
     })
 
-    body = assert.res_status(200, res)
+    assert.res_status(200, res)
 
     assert.same("Hit", res.headers["X-Cache-Status"])
   end)
@@ -230,7 +229,7 @@ describe("proxy-cache access", function()
       }
     })
 
-    local body = assert.res_status(200, res)
+    assert.res_status(200, res)
     assert.same("Miss", res.headers["X-Cache-Status"])
 
     res = assert(client:send {
@@ -241,7 +240,7 @@ describe("proxy-cache access", function()
       }
     })
 
-    body = assert.res_status(200, res)
+    assert.res_status(200, res)
 
     assert.same("Hit", res.headers["X-Cache-Status"])
   end)
@@ -255,7 +254,7 @@ describe("proxy-cache access", function()
       }
     })
 
-    local body = assert.res_status(200, res)
+    assert.res_status(200, res)
     assert.same("Miss", res.headers["X-Cache-Status"])
 
     local cache_key1 = res.headers["X-Cache-Key"]
@@ -270,7 +269,7 @@ describe("proxy-cache access", function()
       }
     })
 
-    body = assert.res_status(200, res)
+    assert.res_status(200, res)
 
     assert.same("Miss", res.headers["X-Cache-Status"])
     local cache_key2 = res.headers["X-Cache-Key"]
@@ -286,7 +285,7 @@ describe("proxy-cache access", function()
       }
     })
 
-    local body = assert.res_status(200, res)
+    assert.res_status(200, res)
     assert.same("Miss", res.headers["X-Cache-Status"])
 
     local cache_key1 = res.headers["X-Cache-Key"]
@@ -301,7 +300,7 @@ describe("proxy-cache access", function()
       }
     })
 
-    body = assert.res_status(200, res)
+    assert.res_status(200, res)
 
     assert.same("Hit", res.headers["X-Cache-Status"])
     local cache_key2 = res.headers["X-Cache-Key"]
@@ -319,7 +318,7 @@ describe("proxy-cache access", function()
       }
     })
 
-    local body = assert.res_status(200, res)
+    assert.res_status(200, res)
     assert.same("Miss", res.headers["X-Cache-Status"])
 
     res = assert(client:send {
@@ -330,7 +329,7 @@ describe("proxy-cache access", function()
       }
     })
 
-    body = assert.res_status(200, res)
+    assert.res_status(200, res)
 
     assert.same("Miss", res.headers["X-Cache-Status"])
   end)
@@ -345,8 +344,8 @@ describe("proxy-cache access", function()
         }
       })
 
-      local body = assert.res_status(401, res)
-      assert.is_nil(res.headers["X-Cache-Status"])   
+      assert.res_status(401, res)
+      assert.is_nil(res.headers["X-Cache-Status"])
     end)
 
     it("by maintaining a separate cache per consumer", function()
@@ -359,7 +358,7 @@ describe("proxy-cache access", function()
         }
       })
 
-      local body = assert.res_status(200, res)
+      assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
 
       res = assert(client:send {
@@ -371,7 +370,7 @@ describe("proxy-cache access", function()
         }
       })
 
-      local body = assert.res_status(200, res)
+      assert.res_status(200, res)
       assert.same("Hit", res.headers["X-Cache-Status"])
 
       local res = assert(client:send {
@@ -383,7 +382,7 @@ describe("proxy-cache access", function()
         }
       })
 
-      local body = assert.res_status(200, res)
+      assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
 
       res = assert(client:send {
@@ -395,7 +394,7 @@ describe("proxy-cache access", function()
         }
       })
 
-      local body = assert.res_status(200, res)
+      assert.res_status(200, res)
       assert.same("Hit", res.headers["X-Cache-Status"])
 
     end)
@@ -410,12 +409,12 @@ describe("proxy-cache access", function()
           host = "api-1.com",
           ["Content-Type"] = "application/json",
         },
-        body = {
+        {
           foo = "bar",
         },
       })
 
-      local body = assert.res_status(200, res)
+      assert.res_status(200, res)
       assert.same("Bypass", res.headers["X-Cache-Status"])
     end)
   end)
@@ -430,7 +429,7 @@ describe("proxy-cache access", function()
         },
       })
 
-      local body = assert.res_status(418, res)
+      assert.res_status(418, res)
       assert.same("Bypass", res.headers["X-Cache-Status"])
     end)
 
@@ -443,7 +442,7 @@ describe("proxy-cache access", function()
         },
       })
 
-      local body = assert.res_status(200, res)
+      assert.res_status(200, res)
       assert.same("Bypass", res.headers["X-Cache-Status"])
     end)
   end)

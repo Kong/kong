@@ -63,7 +63,12 @@ function _M:fetch(key)
   -- retrieve object from shared dict
   local req_json, err = self.dict:get(key)
   if not req_json then
-    return nil, "request object not in cache"
+    if not err then
+      return nil, "request object not in cache"
+
+    else
+      return nil, err
+    end
   end
 
   -- decode object from JSON to table
@@ -95,9 +100,14 @@ function _M:touch(key, req_ttl, timestamp)
   end
 
   -- check if entry actually exists
-  local req_json = self.dict:get(key)
+  local req_json, err = self.dict:get(key)
   if not req_json then
-    return nil, "request object not in cache"
+    if not err then
+      return nil, "request object not in cache"
+
+    else
+      return nil, err
+    end
   end
 
   -- decode object from JSON to table
