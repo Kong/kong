@@ -6,6 +6,7 @@ describe("Plugin: proxy-cache (API)", function()
   local proxy_client, admin_client, cache_key, plugin1, api1
 
   setup(function()
+    helpers.dao:truncate_tables()
     helpers.run_migrations()
 
     api1 = assert(helpers.dao.apis:insert {

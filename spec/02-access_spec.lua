@@ -5,6 +5,7 @@ describe("proxy-cache access", function()
   local cache_key
 
   setup(function()
+    helpers.dao:truncate_tables()
     helpers.run_migrations()
 
     local api1 = assert(helpers.dao.apis:insert {

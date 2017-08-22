@@ -3,8 +3,9 @@ local STRATEGY_PATH = "kong.plugins.proxy-cache.strategies"
 
 return {
   ["/proxy-cache"] = {
-    DELETE = function(_, dao, helpers)
+    resource = "proxy-cache",
 
+    DELETE = function(_, dao, helpers)
       local rows, err = dao.plugins:find_all {
         name = "proxy-cache"
       }
@@ -26,6 +27,8 @@ return {
     end
   },
   ["/proxy-cache/:plugin_id/caches/:cache_key"] = {
+    resource = "proxy-cache",
+
     GET = function(self, dao, helpers)
       local rows, err = dao.plugins:find_all {
         id   = self.params.plugin_id,
