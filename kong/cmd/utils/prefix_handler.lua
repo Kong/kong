@@ -140,6 +140,15 @@ end
 local function prepare_admin(kong_config)
   local ADMIN_GUI_PATH = kong_config.prefix .. "/gui"
 
+  -- if the gui directory does not exist, we needn't bother attempting
+  -- to update a non-existant template. this occurs in development
+  -- environments where the gui does not exist (it is bundled at build
+  -- time), so this effectively serves to quiet useless warnings in kong-ee
+  -- development
+  if not pl_path.exists(ADMIN_GUI_PATH) then
+    return
+  end
+
   local compile_env = {
     ADMIN_API_PORT = tostring(kong_config.admin_port),
     ADMIN_API_SSL_PORT = tostring(kong_config.admin_ssl_port),
