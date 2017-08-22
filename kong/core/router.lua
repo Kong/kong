@@ -15,7 +15,6 @@ local tonumber = tonumber
 local ipairs   = ipairs
 local pairs    = pairs
 local type     = type
-local next     = next
 local band     = bit.band
 local bor      = bit.bor
 local ERR      = ngx.ERR
@@ -588,9 +587,6 @@ function _M.new(apis)
   end)
 
 
-  local grab_host = #wildcard_hosts > 0 or next(plain_indexes.hosts) ~= nil
-
-
   local function find_api(req_method, req_uri, req_host, ngx)
     if type(req_method) ~= "string" then
       return error("arg #1 method must be a string")
@@ -598,7 +594,7 @@ function _M.new(apis)
     if type(req_uri) ~= "string" then
       return error("arg #2 uri must be a string")
     end
-    if req_host and type(req_host) ~= "string" then
+    if type(req_host) ~= "string" then
       return error("arg #3 host must be a string")
     end
 
@@ -831,13 +827,7 @@ function _M.new(apis)
       end
     end
 
-    --print("grab host header: ", grab_host)
-
-    local req_host
-
-    if grab_host then
-      req_host = ngx.var.http_host
-    end
+    local req_host = ngx.var.http_host
 
     local match_t = find_api(method, uri, req_host, ngx)
     if not match_t then
