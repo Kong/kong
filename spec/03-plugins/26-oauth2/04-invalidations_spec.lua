@@ -8,36 +8,38 @@ describe("Plugin: oauth2 (invalidations)", function()
     helpers.dao:truncate_tables()
 
     local api = assert(helpers.dao.apis:insert {
-      name = "api-1",
-      hosts = { "oauth2.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-1",
+      hosts        = { "oauth2.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
-      name = "oauth2",
+      name   = "oauth2",
       api_id = api.id,
       config = {
-        scopes = { "email", "profile" },
+        scopes                    = { "email", "profile" },
         enable_authorization_code = true,
-        mandatory_scope = true,
-        provision_key = "provision123",
-        token_expiration = 5,
-        enable_implicit_grant = true
-      }
+        mandatory_scope           = true,
+        provision_key             = "provision123",
+        token_expiration          = 5,
+        enable_implicit_grant     = true,
+      },
     })
 
     local consumer = assert(helpers.dao.consumers:insert {
-      username = "bob"
+      username = "bob",
     })
     assert(helpers.dao.oauth2_credentials:insert {
-      client_id = "clientid123",
+      client_id     = "clientid123",
       client_secret = "secret123",
-      redirect_uri = "http://google.com/kong",
-      name = "testapp",
-      consumer_id = consumer.id
+      redirect_uri  = "http://google.com/kong",
+      name          = "testapp",
+      consumer_id   = consumer.id,
     })
 
-    assert(helpers.start_kong())
-    admin_client = helpers.admin_client()
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
+    admin_client     = helpers.admin_client()
     proxy_ssl_client = helpers.proxy_ssl_client()
   end)
 

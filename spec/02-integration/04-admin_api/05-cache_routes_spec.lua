@@ -9,16 +9,18 @@ describe("Admin API /cache", function()
   setup(function()
     helpers.run_migrations()
     local api = assert(helpers.dao.apis:insert {
-      name = "api-cache",
-      hosts = { "cache.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-cache",
+      hosts        = { "cache.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
       api_id = api.id,
-      name = "cache",
+      name   = "cache",
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
     proxy_client = helpers.proxy_client()
     admin_client = helpers.admin_client()
   end)
