@@ -246,14 +246,14 @@ function ProxyCacheHandler:body_filter(conf)
     }
 
     if not strategies.DELAY_STRATEGY_STORE[conf.strategy] then
-      local ok, err = strategy:store(ctx.cache_key, res, conf.ttl)
+      local ok, err = strategy:store(ctx.cache_key, res, conf.cache_ttl)
       if not ok then
         ngx_log(ngx.ERR, "[proxy-cache] ", err)
       end
 
     else
       local ok, err = timer_at(0, async_store, strategy, ctx.cache_key,
-                               res, conf.ttl)
+                               res, conf.cache_ttl)
       if not ok then
         ngx_log(ngx.ERR, "[proxy-cache] ", err)
       end

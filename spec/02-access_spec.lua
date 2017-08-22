@@ -33,6 +33,11 @@ describe("proxy-cache access", function()
       hosts = { "api-5.com" },
       upstream_url = "http://httpbin.org",
     })
+    local api6 = assert(helpers.dao.apis:insert {
+      name = "api-6",
+      hosts = { "api-6.com" },
+      upstream_url = "http://httpbin.org",
+    })
 
     local consumer1 = assert(helpers.dao.consumers:insert {
       username = "bob",
@@ -102,6 +107,18 @@ describe("proxy-cache access", function()
       },
     })
 
+    assert(helpers.dao.plugins:insert {
+      name = "proxy-cache",
+      api_id = api6.id,
+      config = {
+        strategy = "memory",
+        content_type = { "text/plain", "application/json" },
+        memory = {
+          dictionary_name = "kong",
+        },
+        cache_ttl = 2,
+      },
+    })
 
     assert(helpers.start_kong({
       custom_plugins = "proxy-cache",      
@@ -150,6 +167,58 @@ describe("proxy-cache access", function()
 
     -- examine this cache key against another plugin's cache key for the same req
     cache_key = cache_key1
+  end)
+
+  it("#o respects cache ttl", function()
+    local res = assert(client:send {
+      method = "GET",
+      path = "/get",
+      headers = {
+        host = "api-6.com",
+      }
+    })
+
+    local body = assert.res_status(200, res)
+    assert.same("Miss", res.headers["X-Cache-Status"])
+
+    res = assert(client:send {
+      method = "GET",
+      path = "/get",
+      headers = {
+        host = "api-6.com",
+      }
+    })
+
+    body = assert.res_status(200, res)
+
+    assert.same("Hit", res.headers["X-Cache-Status"])
+
+    -- give ourselves time to expire
+    ngx.sleep(3)
+
+    -- and go through the cycle again
+    res = assert(client:send {
+      method = "GET",
+      path = "/get",
+      headers = {
+        host = "api-6.com",
+      }
+    })
+
+    body = assert.res_status(200, res)
+    assert.same("Miss", res.headers["X-Cache-Status"])
+
+    res = assert(client:send {
+      method = "GET",
+      path = "/get",
+      headers = {
+        host = "api-6.com",
+      }
+    })
+
+    body = assert.res_status(200, res)
+
+    assert.same("Hit", res.headers["X-Cache-Status"])
   end)
 
   it("caches a streaming request", function()
