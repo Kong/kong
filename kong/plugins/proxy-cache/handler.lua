@@ -2,6 +2,7 @@ local BasePlugin  = require "kong.plugins.base_plugin"
 local strategies  = require "kong.plugins.proxy-cache.strategies"
 
 
+local max              = math.max
 local floor            = math.floor
 local md5              = ngx.md5
 local get_method       = ngx.req.get_method
@@ -9,9 +10,15 @@ local resp_get_headers = ngx.resp.get_headers
 local timer_at         = ngx.timer.at
 local ngx_print        = ngx.print
 local ngx_log          = ngx.log
+local ngx_re_gmatch    = ngx.re.gmatch
+local ngx_re_match     = ngx.re.match
+local parse_http_time  = ngx.parse_http_time
 local str_find         = string.find
 local str_lower        = string.lower
 local time             = ngx.time
+
+
+local tab_new = require("table.new")
 
 
 local STRATEGY_PATH = "kong.plugins.proxy-cache.strategies"
@@ -33,21 +40,94 @@ local hop_by_hop_headers = {
 }
 
 
-local function cacheable_request(ngx, conf)
+local function parse_directive_header(h)
+  if not h then
+    return {}
+  end
+
+  if type(h) == "table" then
+    h = table.concat(h, ", ")
+  end
+
+  local t    = {}
+  local res  = tab_new(3, 0)
+  local iter = ngx_re_gmatch(h, "([^,]+)", "oj")
+
+  local m = iter()
+  while m do
+    local _, err = ngx_re_match(m[0], [[^\s*([^=]+)(?:=(.+))?]],
+                                "oj", nil, res)
+    if err then
+      ngx_log(ngx.ERR, "[proxy-cache] ", err)
+    end
+
+    -- store the directive token as a numeric value if it looks like a number;
+    -- otherwise, store the string value. for directives without token, we just
+    -- set the key to true
+    t[str_lower(res[1])] = tonumber(res[2]) or res[2] or true
+
+    m = iter()
+  end
+
+  return t
+end
+
+
+local function req_cc()
+  return parse_directive_header(ngx.var.http_cache_control)
+end
+
+
+local function res_cc()
+  return parse_directive_header(ngx.var.sent_http_cache_control)
+end
+
+
+local function resource_ttl(res_cc)
+  local max_age = res_cc["s-maxage"] or res_cc["max-age"]
+
+  if not max_age then
+    local expires = ngx.var.expires
+
+    -- if multiple Expires headers are present, last one wins
+    if type(expires) == "table" then
+      expires = expires[#expires]
+    end
+
+    local exp_time = parse_http_time(tostring(expires))
+    if exp_time then
+      max_age = exp_time - time()
+    end
+  end
+
+  return max_age and max(max_age, 0) or 0
+end
+
+
+local function cacheable_request(ngx, conf, cc)
   -- TODO refactor these searches to O(1)
   local method = get_method()
 
   for i = 1, #conf.request_method do
     if conf.request_method[i] == method then
-      return true
+      break
     end
+
+    return false
   end
 
-  return false
+  -- check for explicit disallow directives
+  -- TODO note that no-cache isnt quite accurate here
+  if conf.cache_control and (cc["no-store"] or cc["no-cache"] or
+     ngx.var.authorization) then
+    return false
+  end
+
+  return true
 end
 
 
-local function cacheable_response(ngx, conf)
+local function cacheable_response(ngx, conf, cc)
   -- TODO refactor these searches to O(1)
   do
     local status = ngx.status
@@ -75,14 +155,38 @@ local function cacheable_response(ngx, conf)
       return false
     end
 
+    local content_match = false
     for i = 1, #conf.content_type do
       if conf.content_type[i] == content_type then
-        return true
+        content_match = true
+        break
       end
     end
 
+    if not content_match then
+      return false
+    end
+  end
+
+  if conf.cache_control and (cc["private"] or cc["no-store"] or cc["no-cache"]) then
     return false
   end
+
+  if conf.cache_control and (not cc["public"] or resource_ttl(cc) <= 0) then
+    return false
+  end
+
+  return true
+end
+
+
+-- indicate that we should attempt to cache the response to this request
+local function signal_cache_req(cache_key)
+  ngx.ctx.proxy_cache = {
+    cache_key = cache_key,
+  }
+
+  ngx.header["X-Cache-Status"] = "Miss"
 end
 
 
@@ -154,8 +258,10 @@ end
 function ProxyCacheHandler:access(conf)
   ProxyCacheHandler.super.access(self)
 
+  local cc = res_cc()
+
   -- if we know this request isnt cacheable, bail out
-  if not cacheable_request(ngx, conf) then
+  if not cacheable_request(ngx, conf, cc) then
     ngx.header["X-Cache-Status"] = "Bypass"
     return
   end
@@ -176,17 +282,26 @@ function ProxyCacheHandler:access(conf)
     -- this request is cacheable but wasnt found in the data store
     -- make a note that we should store it in cache later,
     -- and pass the request upstream
-
-    ngx.ctx.proxy_cache = {
-      cache_key = cache_key,
-    }
-
-    ngx.header["X-Cache-Status"] = "Miss"
-    return
+    return signal_cache_req(cache_key)
 
   elseif err then
     ngx_log(ngx.ERR, "[proxy_cache] ", err)
     return
+  end
+
+  -- figure out if the client will accept our cache value
+  if conf.cache_control then
+    if cc["max-age"] and time() - res.timestamp > cc["max-age"] then
+      return signal_cache_req(cache_key)
+    end
+
+    if cc["max-stale"] and time() - res.timestamp - res.ttl > cc["max-stale"] then
+      return signal_cache_req(cache_key)
+    end
+
+    if cc["min-fresh"] and time() - res.timestamp < cc["min-fresh"] then
+      return signal_cache_req(cache_key)
+    end
   end
 
   -- we have cache data yo!
@@ -205,9 +320,12 @@ function ProxyCacheHandler:header_filter(conf)
     return
   end
 
+  local cc = res_cc()
+
   -- if this is a cacheable request, gather the headers and mark it so
-  if cacheable_response(ngx, conf) then
+  if cacheable_response(ngx, conf, cc) then
     ctx.res_headers = resp_get_headers(0, true)
+    ctx.res_ttl = resource_ttl(cc)
     ngx.ctx.proxy_cache = ctx
 
   else
@@ -243,17 +361,20 @@ function ProxyCacheHandler:body_filter(conf)
       headers   = ctx.res_headers,
       body      = ctx.res_body,
       timestamp = time(),
+      ttl       = ctx.res_ttl,
     }
 
+    local ttl = conf.cache_control and ctx.res_ttl or conf.cache_ttl
+
     if not strategies.DELAY_STRATEGY_STORE[conf.strategy] then
-      local ok, err = strategy:store(ctx.cache_key, res, conf.cache_ttl)
+      local ok, err = strategy:store(ctx.cache_key, res, ttl)
       if not ok then
         ngx_log(ngx.ERR, "[proxy-cache] ", err)
       end
 
     else
       local ok, err = timer_at(0, async_store, strategy, ctx.cache_key,
-                               res, conf.cache_ttl)
+                               res, ttl)
       if not ok then
         ngx_log(ngx.ERR, "[proxy-cache] ", err)
       end

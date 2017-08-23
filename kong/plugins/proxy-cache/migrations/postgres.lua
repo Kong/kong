@@ -1,4 +1,4 @@
-return { 
+return {
  {
     name = "2017-08-22-150000_rbac_proxy-cache_resources",
     up = function(_, _, dao)

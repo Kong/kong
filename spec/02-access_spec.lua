@@ -1,4 +1,5 @@
 local helpers = require "spec.helpers"
+local rbac = require "kong.core.rbac"
 
 describe("proxy-cache access", function()
   local client
@@ -7,6 +8,7 @@ describe("proxy-cache access", function()
   setup(function()
     helpers.dao:truncate_tables()
     helpers.run_migrations()
+    rbac.register_resource("proxy-cache", helpers.dao)
 
     local api1 = assert(helpers.dao.apis:insert {
       name = "api-1",
@@ -36,6 +38,11 @@ describe("proxy-cache access", function()
     local api6 = assert(helpers.dao.apis:insert {
       name = "api-6",
       hosts = { "api-6.com" },
+      upstream_url = "http://httpbin.org",
+    })
+    local api7 = assert(helpers.dao.apis:insert {
+      name = "api-7",
+      hosts = { "api-7.com" },
       upstream_url = "http://httpbin.org",
     })
 
@@ -120,6 +127,19 @@ describe("proxy-cache access", function()
       },
     })
 
+    assert(helpers.dao.plugins:insert {
+      name = "proxy-cache",
+      api_id = api7.id,
+      config = {
+        strategy = "memory",
+        content_type = { "text/plain", "application/json" },
+        memory = {
+          dictionary_name = "kong",
+        },
+        cache_control = true,
+      },
+    })
+
     assert(helpers.start_kong({
       custom_plugins = "proxy-cache",
     }))
@@ -169,7 +189,7 @@ describe("proxy-cache access", function()
     cache_key = cache_key1
   end)
 
-  it("#o respects cache ttl", function()
+  it("respects cache ttl", function()
     local res = assert(client:send {
       method = "GET",
       path = "/get",
@@ -219,6 +239,79 @@ describe("proxy-cache access", function()
     assert.res_status(200, res)
 
     assert.same("Hit", res.headers["X-Cache-Status"])
+  end)
+
+  it("respects cache ttl via cache control", function()
+    local res = assert(client:send {
+      method = "GET",
+      path = "/cache/2",
+      headers = {
+        host = "api-7.com",
+      }
+    })
+
+    assert.res_status(200, res)
+    assert.same("Miss", res.headers["X-Cache-Status"])
+
+    res = assert(client:send {
+      method = "GET",
+      path = "/cache/2",
+      headers = {
+        host = "api-7.com",
+      }
+    })
+
+    assert.res_status(200, res)
+    assert.same("Hit", res.headers["X-Cache-Status"])
+
+    -- give ourselves time to expire
+    ngx.sleep(3)
+
+    -- and go through the cycle again
+    res = assert(client:send {
+      method = "GET",
+      path = "/cache/2",
+      headers = {
+        host = "api-7.com",
+      }
+    })
+
+    assert.res_status(200, res)
+    assert.same("Miss", res.headers["X-Cache-Status"])
+
+    res = assert(client:send {
+      method = "GET",
+      path = "/cache/2",
+      headers = {
+        host = "api-7.com",
+      }
+    })
+
+    assert.res_status(200, res)
+    assert.same("Hit", res.headers["X-Cache-Status"])
+
+    -- assert that max-age=0 never results in caching
+    res = assert(client:send {
+      method = "GET",
+      path = "/cache/0",
+      headers = {
+        host = "api-7.com",
+      }
+    })
+
+    assert.res_status(200, res)
+    assert.same("Bypass", res.headers["X-Cache-Status"])
+
+    res = assert(client:send {
+      method = "GET",
+      path = "/cache/0",
+      headers = {
+        host = "api-7.com",
+      }
+    })
+
+    assert.res_status(200, res)
+    assert.same("Bypass", res.headers["X-Cache-Status"])
   end)
 
   it("caches a streaming request", function()

@@ -71,6 +71,11 @@ return {
       enum = strategies.STRATEGY_TYPES,
       required = true,
     },
+    cache_control = {
+      type = "boolean",
+      default = false,
+      required = true,
+    },
     memory = {
       type = "table",
       schema = memory_schema,
