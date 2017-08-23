@@ -37,7 +37,7 @@ describe("DAO propagates CRUD events with DB: " .. kong_conf.database, function(
       local api = assert(dao.apis:insert {
         name         = "api-1",
         hosts        = { "example.com" },
-        upstream_url = "http://httpbin.org",
+        upstream_url = "http://example.org",
       })
 
       assert.spy(mock_ipc.post_local).was_called(1)
@@ -52,7 +52,7 @@ describe("DAO propagates CRUD events with DB: " .. kong_conf.database, function(
       assert(dao.apis:insert({
         name         = "api-2",
         hosts        = { "example.com" },
-        upstream_url = "http://httpbin.org",
+        upstream_url = "http://example.org",
       }, { quiet = true }))
 
       assert.spy(mock_ipc.post_local).was_not_called()
@@ -66,13 +66,13 @@ describe("DAO propagates CRUD events with DB: " .. kong_conf.database, function(
       api = assert(dao.apis:insert({
         name         = "api-to-update",
         hosts        = { "example.com" },
-        upstream_url = "http://httpbin.org",
+        upstream_url = "http://example.org",
       }, { quiet = true }))
     end)
 
     it("= false (default)", function()
       local new_api = assert(dao.apis:update({
-                               upstream_url = "http://mockbin.com",
+                               upstream_url = "http://example.com",
                              }, { id = api.id }))
 
       assert.spy(mock_ipc.post_local).was_called(1)
@@ -86,7 +86,7 @@ describe("DAO propagates CRUD events with DB: " .. kong_conf.database, function(
 
     it("= true", function()
       assert(dao.apis:update({
-        upstream_url = "http://mockbin.com",
+        upstream_url = "http://example.com",
       }, { id = api.id }, { quiet = true }))
 
       assert.spy(mock_ipc.post_local).was_not_called()
@@ -100,7 +100,7 @@ describe("DAO propagates CRUD events with DB: " .. kong_conf.database, function(
       api = assert(dao.apis:insert({
         name         = "api-to-update",
         hosts        = { "example.com" },
-        upstream_url = "http://httpbin.org",
+        upstream_url = "http://example.org",
       }, { quiet = true }))
     end)
 

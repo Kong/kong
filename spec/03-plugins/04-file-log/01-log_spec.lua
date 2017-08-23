@@ -13,21 +13,23 @@ describe("Plugin: file-log (log)", function()
     helpers.run_migrations()
 
     local api1 = assert(helpers.dao.apis:insert {
-      name = "api-1",
-      hosts = { "file_logging.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-1",
+      hosts        = { "file_logging.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
 
     assert(helpers.dao.plugins:insert {
       api_id = api1.id,
-      name = "file-log",
+      name   = "file-log",
       config = {
-        path = FILE_LOG_PATH,
+        path   = FILE_LOG_PATH,
         reopen = true,
-      }
+      },
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
   end)
   teardown(function()
     helpers.stop_kong()
@@ -65,7 +67,7 @@ describe("Plugin: file-log (log)", function()
     assert.same("127.0.0.1", log_message.client_ip)
     assert.same(uuid, log_message.request.headers["file-log-uuid"])
   end)
-  
+
   it("reopens file on each request", function()
     local uuid1 = utils.uuid()
 

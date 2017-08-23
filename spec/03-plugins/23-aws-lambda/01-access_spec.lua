@@ -7,153 +7,153 @@ describe("Plugin: AWS Lambda (access)", function()
     helpers.run_migrations()
 
     local api1 = assert(helpers.dao.apis:insert {
-      name = "lambda.com",
-      hosts = { "lambda.com" } ,
-      upstream_url = "http://httpbin.org"
+      name         = "lambda.com",
+      hosts        = { "lambda.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
 
     local api2 = assert(helpers.dao.apis:insert {
-      name = "lambda2.com",
-      hosts = { "lambda2.com" },
-      upstream_url = "http://httpbin.org"
+      name         = "lambda2.com",
+      hosts        = { "lambda2.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
 
     local api3 = assert(helpers.dao.apis:insert {
-      name = "lambda3.com",
-      hosts = { "lambda3.com" },
-      upstream_url = "http://httpbin.org"
+      name         = "lambda3.com",
+      hosts        = { "lambda3.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
 
     local api4 = assert(helpers.dao.apis:insert {
-      name = "lambda4.com",
-      hosts = { "lambda4.com" },
-      upstream_url = "http://httpbin.org"
+      name         = "lambda4.com",
+      hosts        = { "lambda4.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
 
     local api5 = assert(helpers.dao.apis:insert {
-      name = "lambda5.com",
-      hosts = { "lambda5.com" },
-      upstream_url = "http://httpbin.org"
+      name         = "lambda5.com",
+      hosts        = { "lambda5.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
 
     local api6 = assert(helpers.dao.apis:insert {
-      name = "lambda6.com",
-      hosts = { "lambda6.com" },
-      upstream_url = "http://httpbin.org"
+      name         = "lambda6.com",
+      hosts        = { "lambda6.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
 
     local api7 = assert(helpers.dao.apis:insert {
-      name = "lambda7.com",
-      hosts = { "lambda7.com" },
-      upstream_url = "http://httpbin.org"
+      name         = "lambda7.com",
+      hosts        = { "lambda7.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
 
     local api8 = assert(helpers.dao.apis:insert {
-      name = "lambda8.com",
-      hosts = { "lambda8.com" },
-      upstream_url = "http://httpbin.org"
+      name         = "lambda8.com",
+      hosts        = { "lambda8.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
 
     assert(helpers.dao.plugins:insert {
-      name = "aws-lambda",
+      name   = "aws-lambda",
       api_id = api1.id,
       config = {
-        port = 10001,
-        aws_key = "mock-key",
-        aws_secret = "mock-secret",
-        aws_region = "us-east-1",
-        function_name = "kongLambdaTest"
-      }
+        port          = 10001,
+        aws_key       = "mock-key",
+        aws_secret    = "mock-secret",
+        aws_region    = "us-east-1",
+        function_name = "kongLambdaTest",
+      },
     })
 
     assert(helpers.dao.plugins:insert {
-      name = "aws-lambda",
+      name   = "aws-lambda",
       api_id = api2.id,
       config = {
-        port = 10001,
-        aws_key = "mock-key",
-        aws_secret = "mock-secret",
-        aws_region = "us-east-1",
-        function_name = "kongLambdaTest",
-        invocation_type = "Event"
-      }
+        port            = 10001,
+        aws_key         = "mock-key",
+        aws_secret      = "mock-secret",
+        aws_region      = "us-east-1",
+        function_name   = "kongLambdaTest",
+        invocation_type = "Event",
+      },
     })
 
     assert(helpers.dao.plugins:insert {
-      name = "aws-lambda",
+      name   = "aws-lambda",
       api_id = api3.id,
       config = {
-        port = 10001,
-        aws_key = "mock-key",
-        aws_secret = "mock-secret",
-        aws_region = "us-east-1",
-        function_name = "kongLambdaTest",
-        invocation_type = "DryRun"
-      }
+        port            = 10001,
+        aws_key         = "mock-key",
+        aws_secret      = "mock-secret",
+        aws_region      = "us-east-1",
+        function_name   = "kongLambdaTest",
+        invocation_type = "DryRun",
+      },
     })
 
     assert(helpers.dao.plugins:insert {
-      name = "aws-lambda",
+      name   = "aws-lambda",
       api_id = api4.id,
       config = {
         port = 10001,
-        aws_key = "mock-key",
-        aws_secret = "mock-secret",
-        aws_region = "us-east-1",
+        aws_key       = "mock-key",
+        aws_secret    = "mock-secret",
+        aws_region    = "us-east-1",
         function_name = "kongLambdaTest",
-        timeout = 100,
-      }
+        timeout       = 100,
+      },
     })
 
     assert(helpers.dao.plugins:insert {
-      name = "aws-lambda",
+      name   = "aws-lambda",
       api_id = api5.id,
       config = {
-        port = 10001,
-        aws_key = "mock-key",
-        aws_secret = "mock-secret",
-        aws_region = "us-east-1",
+        port          = 10001,
+        aws_key       = "mock-key",
+        aws_secret    = "mock-secret",
+        aws_region    = "us-east-1",
         function_name = "functionWithUnhandledError",
-      }
+      },
     })
 
     assert(helpers.dao.plugins:insert {
-      name = "aws-lambda",
+      name   = "aws-lambda",
       api_id = api6.id,
       config = {
-        port = 10001,
-        aws_key = "mock-key",
-        aws_secret = "mock-secret",
-        aws_region = "us-east-1",
-        function_name = "functionWithUnhandledError",
+        port            = 10001,
+        aws_key         = "mock-key",
+        aws_secret      = "mock-secret",
+        aws_region      = "us-east-1",
+        function_name   = "functionWithUnhandledError",
         invocation_type = "Event",
-      }
+      },
     })
 
     assert(helpers.dao.plugins:insert {
-      name = "aws-lambda",
+      name   = "aws-lambda",
       api_id = api7.id,
       config = {
         port = 10001,
-        aws_key = "mock-key",
-        aws_secret = "mock-secret",
-        aws_region = "us-east-1",
-        function_name = "functionWithUnhandledError",
+        aws_key         = "mock-key",
+        aws_secret      = "mock-secret",
+        aws_region      = "us-east-1",
+        function_name   = "functionWithUnhandledError",
         invocation_type = "DryRun",
-      }
+      },
     })
 
     assert(helpers.dao.plugins:insert {
-      name = "aws-lambda",
+      name   = "aws-lambda",
       api_id = api8.id,
       config = {
-        port = 10001,
-        aws_key = "mock-key",
-        aws_secret = "mock-secret",
-        aws_region = "us-east-1",
-        function_name = "functionWithUnhandledError",
+        port             = 10001,
+        aws_key          = "mock-key",
+        aws_secret       = "mock-secret",
+        aws_region       = "us-east-1",
+        function_name    = "functionWithUnhandledError",
         unhandled_status = 412,
-      }
+      },
     })
 
     assert(helpers.start_kong{

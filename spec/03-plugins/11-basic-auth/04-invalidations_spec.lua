@@ -8,25 +8,27 @@ describe("Plugin: basic-auth (invalidations)", function()
     helpers.dao:truncate_tables()
     helpers.run_migrations()
     local api = assert(helpers.dao.apis:insert {
-      name = "api-1",
-      hosts = { "basic-auth.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-1",
+      hosts        = { "basic-auth.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
-      name = "basic-auth",
-      api_id = api.id
+      name   = "basic-auth",
+      api_id = api.id,
     })
 
     local consumer = assert(helpers.dao.consumers:insert {
-      username = "bob"
+      username = "bob",
     })
     assert(helpers.dao.basicauth_credentials:insert {
-      username = "bob",
-      password = "kong",
-      consumer_id = consumer.id
+      username    = "bob",
+      password    = "kong",
+      consumer_id = consumer.id,
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
     proxy_client = helpers.proxy_client()
     admin_client = helpers.admin_client()
   end)

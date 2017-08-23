@@ -25,16 +25,16 @@ describe("Plugins triggering", function()
 
     -- Global configuration
     assert(helpers.dao.apis:insert {
-      name = "global1",
-      hosts = { "global1.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "global1",
+      hosts        = { "global1.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
-      name = "key-auth",
-      config = { }
+      name   = "key-auth",
+      config = {},
     })
     assert(helpers.dao.plugins:insert {
-      name = "rate-limiting",
+      name   = "rate-limiting",
       config = {
         window_size = { 3600 },
         limit       = { 1 },
@@ -44,12 +44,12 @@ describe("Plugins triggering", function()
 
     -- API Specific Configuration
     local api1 = assert(helpers.dao.apis:insert {
-      name = "api1",
-      hosts = { "api1.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api1",
+      hosts        = { "api1.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
-      name = "rate-limiting",
+      name   = "rate-limiting",
       api_id = api1.id,
       config = {
         window_size = { 3600 },
@@ -60,7 +60,7 @@ describe("Plugins triggering", function()
 
     -- Consumer Specific Configuration
     assert(helpers.dao.plugins:insert {
-      name = "rate-limiting",
+      name        = "rate-limiting",
       consumer_id = consumer2.id,
       config = {
         window_size = { 3600 },
@@ -71,13 +71,13 @@ describe("Plugins triggering", function()
 
     -- API and Consumer Configuration
     local api2 = assert(helpers.dao.apis:insert {
-      name = "api2",
-      hosts = { "api2.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api2",
+      hosts        = { "api2.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
-      name = "rate-limiting",
-      api_id = api2.id,
+      name        = "rate-limiting",
+      api_id      = api2.id,
       consumer_id = consumer2.id,
       config = {
         window_size = { 3600 },
@@ -88,9 +88,9 @@ describe("Plugins triggering", function()
 
     -- API with anonymous configuration
     local api3 = assert(helpers.dao.apis:insert {
-      name = "api3",
-      hosts = { "api3.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api3",
+      hosts        = { "api3.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
       name = "key-auth",
@@ -110,7 +110,9 @@ describe("Plugins triggering", function()
       }
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
     client = helpers.proxy_client()
   end)
 
@@ -199,8 +201,8 @@ describe("Plugins triggering", function()
 
       local api      = assert(helpers.dao.apis:insert {
         name         = "example",
-        hosts        = { "httpbin.org" },
-        upstream_url = "http://httpbin.org",
+        hosts        = { "mock_upstream" },
+        upstream_url = helpers.mock_upstream_url
       })
 
       assert(helpers.dao.plugins:insert {
@@ -218,6 +220,7 @@ describe("Plugins triggering", function()
       })
 
       assert(helpers.start_kong {
+        nginx_conf        = "spec/fixtures/custom_nginx.template",
         anonymous_reports = true,
       })
       client = helpers.proxy_client()
@@ -236,7 +239,7 @@ describe("Plugins triggering", function()
         method  = "GET",
         path    = "/status/200",
         headers = {
-          ["Host"] = "httpbin.org",
+          ["Host"] = "mock_upstream",
         },
       })
       assert.res_status(401, res)
@@ -245,7 +248,7 @@ describe("Plugins triggering", function()
         method  = "GET",
         path    = "/status/200",
         headers = {
-          ["Host"]   = "httpbin.org",
+          ["Host"]   = "mock_upstream",
           ["apikey"] = "abcd",
         },
       })

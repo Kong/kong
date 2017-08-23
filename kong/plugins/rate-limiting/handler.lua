@@ -1,3 +1,5 @@
+-- Copyright (C) Kong Inc.
+
 local BasePlugin   = require "kong.plugins.base_plugin"
 local ratelimiting = require "kong.tools.public.rate-limiting"
 local responses    = require "kong.tools.responses"

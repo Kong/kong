@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 set -e
 
 export BUSTED_ARGS="-o gtest -v --exclude-tags=ci"

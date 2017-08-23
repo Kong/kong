@@ -10,26 +10,28 @@ describe("Plugin: jwt (invalidations)", function()
     helpers.run_migrations()
 
     api1 = assert(helpers.dao.apis:insert {
-      name = "api-1",
-      hosts = { "jwt.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-1",
+      hosts        = { "jwt.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     consumer1 = assert(helpers.dao.consumers:insert {
-      username = "consumer1"
+      username = "consumer1",
     })
 
     assert(helpers.dao.plugins:insert {
-      name = "jwt",
+      name   = "jwt",
       config = {},
-      api_id = api1.id
+      api_id = api1.id,
     })
     assert(helpers.dao.jwt_secrets:insert {
-      key = "key123",
-      secret = "secret123",
-      consumer_id = consumer1.id
+      key         = "key123",
+      secret      = "secret123",
+      consumer_id = consumer1.id,
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
     admin_client = helpers.admin_client()
     proxy_client = helpers.proxy_client()
   end)

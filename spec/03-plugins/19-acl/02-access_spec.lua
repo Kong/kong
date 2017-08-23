@@ -69,9 +69,9 @@ describe("Plugin: ACL (access)", function()
     })
 
     local api1 = assert(helpers.dao.apis:insert {
-      name = "api-1",
-      hosts = { "acl1.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-1",
+      hosts        = { "acl1.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
       name = "acl",
@@ -82,9 +82,9 @@ describe("Plugin: ACL (access)", function()
     })
 
     local api2 = assert(helpers.dao.apis:insert {
-      name = "api-2",
-      hosts = { "acl2.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-2",
+      hosts        = { "acl2.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
       name = "acl",
@@ -100,9 +100,9 @@ describe("Plugin: ACL (access)", function()
     })
 
     local api3 = assert(helpers.dao.apis:insert {
-      name = "api-3",
-      hosts = { "acl3.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-3",
+      hosts        = { "acl3.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
       name = "acl",
@@ -118,9 +118,9 @@ describe("Plugin: ACL (access)", function()
     })
 
     local api4 = assert(helpers.dao.apis:insert {
-      name = "api-4",
-      hosts = { "acl4.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-4",
+      hosts        = { "acl4.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
       name = "acl",
@@ -136,9 +136,9 @@ describe("Plugin: ACL (access)", function()
     })
 
     local api5 = assert(helpers.dao.apis:insert {
-      name = "api-5",
-      hosts = { "acl5.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-5",
+      hosts        = { "acl5.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
       name = "acl",
@@ -154,9 +154,9 @@ describe("Plugin: ACL (access)", function()
     })
 
     local api6 = assert(helpers.dao.apis:insert {
-      name = "api-6",
-      hosts = { "acl6.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-6",
+      hosts        = { "acl6.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
       name = "acl",
@@ -172,9 +172,9 @@ describe("Plugin: ACL (access)", function()
     })
 
     local api7 = assert(helpers.dao.apis:insert {
-      name = "api-7",
-      hosts = { "acl7.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-7",
+      hosts        = { "acl7.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
       name = "acl",
@@ -190,9 +190,9 @@ describe("Plugin: ACL (access)", function()
     })
 
     local api8 = assert(helpers.dao.apis:insert {
-      name = "api-8",
-      hosts = { "acl8.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-8",
+      hosts        = { "acl8.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
 
     assert(helpers.dao.plugins:insert {
@@ -211,7 +211,9 @@ describe("Plugin: ACL (access)", function()
       }
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
   end)
 
   before_each(function()
@@ -442,16 +444,16 @@ describe("Plugin: ACL (access)", function()
       for i = 1, 3 do
         -- Create API
         local res = assert(api_client:send {
-          method = "POST",
-          path = "/apis/",
+          method  = "POST",
+          path    = "/apis/",
           headers = {
             ["Content-Type"] = "application/json"
           },
-          body = {
-            name = "acl_test" .. i,
-            hosts = { "acl_test" .. i .. ".com" },
-            upstream_url = "http://mockbin.com"
-          }
+          body    = {
+            name         = "acl_test" .. i,
+            hosts        = { "acl_test" .. i .. ".com" },
+            upstream_url = helpers.mock_upstream_url,
+          },
         })
         assert.res_status(201, res)
 
