@@ -182,7 +182,8 @@ describe("kong start/stop", function()
         thread:join()
       end)
 
-      local ok, err = helpers.kong_exec("start --conf " .. helpers.test_conf_path)
+      local ok, err = helpers.start_kong()
+
       assert.False(ok)
       assert.matches("Address already in use", err, nil, true)
     end)
