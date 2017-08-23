@@ -292,6 +292,7 @@ end
 
 
 return {
+  get_default_json_response   = get_default_json_response,
   filter_access_by_method     = filter_access_by_method,
   filter_access_by_basic_auth = filter_access_by_basic_auth,
   send_text_response          = send_text_response,
