@@ -65,7 +65,7 @@ describe("Router", function()
         end, "expected arg #1 apis to be a table", nil, true)
       end)
 
-      pending("enforces apis fields types", function()
+      it("enforces apis fields types", function()
         local router, err = Router.new {
           { name = "api-invalid" }
         }
