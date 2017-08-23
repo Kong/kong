@@ -95,14 +95,14 @@ describe("Router", function()
 
     it("[uri]", function()
       -- uri
-      local match_t = router.select("GET", "/my-api")
+      local match_t = router.select("GET", "/my-api", "domain.org")
       assert.truthy(match_t)
       assert.same(use_case[3], match_t.api)
     end)
 
     it("[method]", function()
       -- method
-      local match_t = router.select("TRACE", "/")
+      local match_t = router.select("TRACE", "/", "domain.org")
       assert.truthy(match_t)
       assert.same(use_case[2], match_t.api)
     end)
@@ -123,14 +123,15 @@ describe("Router", function()
 
     it("[uri + method]", function()
       -- uri + method
-      local match_t = router.select("PUT", "/api-6")
+      local match_t = router.select("PUT", "/api-6", "domain.org")
       assert.truthy(match_t)
       assert.same(use_case[6], match_t.api)
     end)
 
     it("[host + uri + method]", function()
       -- uri + method
-      local match_t = router.select("PUT", "/my-api-uri", "domain-with-uri-2.org")
+      local match_t = router.select("PUT", "/my-api-uri",
+                                    "domain-with-uri-2.org")
       assert.truthy(match_t)
       assert.same(use_case[7], match_t.api)
     end)
@@ -138,7 +139,7 @@ describe("Router", function()
     describe("[uri prefix]", function()
       it("matches when given [uri] is in request URI prefix", function()
         -- uri prefix
-        local match_t = router.select("GET", "/my-api/some/path")
+        local match_t = router.select("GET", "/my-api/some/path", "domain.org")
         assert.truthy(match_t)
         assert.same(use_case[3], match_t.api)
       end)
@@ -157,19 +158,19 @@ describe("Router", function()
 
         local router = assert(Router.new(use_case))
 
-        local match_t = router.select("GET", "/my-api/hello")
+        local match_t = router.select("GET", "/my-api/hello", "domain.org")
         assert.truthy(match_t)
         assert.same(use_case[1], match_t.api)
 
-        match_t = router.select("GET", "/my-api/hello/world")
+        match_t = router.select("GET", "/my-api/hello/world", "domain.org")
         assert.truthy(match_t)
         assert.same(use_case[1], match_t.api)
 
-        match_t = router.select("GET", "/my-api")
+        match_t = router.select("GET", "/my-api", "domain.org")
         assert.truthy(match_t)
         assert.same(use_case[2], match_t.api)
 
-        match_t = router.select("GET", "/my-api/world")
+        match_t = router.select("GET", "/my-api/world", "domain.org")
         assert.truthy(match_t)
         assert.same(use_case[2], match_t.api)
       end)
@@ -190,19 +191,19 @@ describe("Router", function()
 
         local router = assert(Router.new(use_case))
 
-        local match_t = router.select("GET", "/my-api/hello")
+        local match_t = router.select("GET", "/my-api/hello", "domain.org")
         assert.truthy(match_t)
         assert.same(use_case[2], match_t.api)
 
-        match_t = router.select("GET", "/my-api/hello/world")
+        match_t = router.select("GET", "/my-api/hello/world", "domain.org")
         assert.truthy(match_t)
         assert.same(use_case[2], match_t.api)
 
-        match_t = router.select("GET", "/my-api")
+        match_t = router.select("GET", "/my-api", "domain.org")
         assert.truthy(match_t)
         assert.same(use_case[1], match_t.api)
 
-        match_t = router.select("GET", "/my-api/world")
+        match_t = router.select("GET", "/my-api/world", "domain.org")
         assert.truthy(match_t)
         assert.same(use_case[1], match_t.api)
       end)
@@ -279,7 +280,7 @@ describe("Router", function()
 
         local router = assert(Router.new(use_case))
 
-        local match_t = router.select("GET", "/users/123/profile")
+        local match_t = router.select("GET", "/users/123/profile", "domain.org")
         assert.truthy(match_t)
         assert.same(use_case[1], match_t.api)
       end)
@@ -302,7 +303,7 @@ describe("Router", function()
 
         local router = assert(Router.new(use_case))
 
-        local match_t = router.select("GET", "/api/persons/456")
+        local match_t = router.select("GET", "/api/persons/456", "domain.org")
         assert.truthy(match_t)
         assert.same(use_case[1], match_t.api)
       end)
@@ -321,7 +322,8 @@ describe("Router", function()
 
         local router = assert(Router.new(use_case))
 
-        local match_t = router.select("GET", "/api/persons/123/profile")
+        local match_t = router.select("GET", "/api/persons/123/profile",
+                                      "domain.org")
         assert.truthy(match_t)
         assert.same(use_case[2], match_t.api)
       end)
@@ -346,7 +348,7 @@ describe("Router", function()
       local router = assert(Router.new(use_case))
 
       it("matches leftmost wildcards", function()
-        local match_t = router.select("GET", "/", "foo.api.com")
+        local match_t = router.select("GET", "/", "foo.api.com", "domain.org")
         assert.truthy(match_t)
         assert.same(use_case[1], match_t.api)
       end)
@@ -445,7 +447,8 @@ describe("Router", function()
 
         local router = assert(Router.new(use_case))
 
-        local match_t = router.select("GET", "/users/123/profile", "test.example.com")
+        local match_t = router.select("GET", "/users/123/profile",
+                                      "test.example.com")
         assert.truthy(match_t)
         assert.same(use_case[1], match_t.api)
 
@@ -463,7 +466,7 @@ describe("Router", function()
         assert.same(use_case[1], match_t.api)
 
         -- uri
-        local match_t = router.select("TRACE", "/my-api")
+        local match_t = router.select("TRACE", "/my-api", "domain.org")
         assert.truthy(match_t)
         assert.same(use_case[3], match_t.api)
       end)
@@ -539,11 +542,11 @@ describe("Router", function()
         }
 
         local router = assert(Router.new(use_case))
-        local match_t = router.select("GET", "/users/123/profile")
+        local match_t = router.select("GET", "/users/123/profile", "domain.org")
         assert.truthy(match_t)
         assert.same(use_case[1], match_t.api)
 
-        match_t = router.select("POST", "/users/123/profile")
+        match_t = router.select("POST", "/users/123/profile", "domain.org")
         assert.truthy(match_t)
         assert.same(use_case[2], match_t.api)
       end)
@@ -561,11 +564,11 @@ describe("Router", function()
         }
 
         local router = assert(Router.new(use_case))
-        local match_t = router.select("GET", "/example")
+        local match_t = router.select("GET", "/example", "domain.org")
         assert.truthy(match_t)
         assert.same(use_case[2], match_t.api)
 
-        match_t = router.select("GET", "/example/status/200")
+        match_t = router.select("GET", "/example/status/200", "domain.org")
         assert.truthy(match_t)
         assert.same(use_case[2], match_t.api)
       end)
@@ -585,7 +588,7 @@ describe("Router", function()
         }
 
         local router = assert(Router.new(use_case))
-        local match_t = router.select("GET", "/")
+        local match_t = router.select("GET", "/", "nothing.com")
         assert.truthy(match_t)
         assert.same(use_case[1], match_t.api)
 
@@ -608,7 +611,7 @@ describe("Router", function()
 
         local router = assert(Router.new(use_case))
 
-        local match_t = router.select("GET", "/a/bb/foobar")
+        local match_t = router.select("GET", "/a/bb/foobar", "domain.org")
         assert.truthy(match_t)
         assert.same(use_case[2], match_t.api)
       end)
@@ -627,25 +630,25 @@ describe("Router", function()
 
         it("request with [method]", function()
           local router = assert(Router.new(use_case))
-          local match_t = router.select("GET", "/")
+          local match_t = router.select("GET", "/", "domain.org")
           assert.truthy(match_t)
           assert.same(use_case[1], match_t.api)
         end)
 
         it("does not supersede another API", function()
           local router = assert(Router.new(use_case))
-          local match_t = router.select("GET", "/my-api")
+          local match_t = router.select("GET", "/my-api", "domain.org")
           assert.truthy(match_t)
           assert.same(use_case[4], match_t.api)
 
-          match_t = router.select("GET", "/my-api/hello/world")
+          match_t = router.select("GET", "/my-api/hello/world", "domain.org")
           assert.truthy(match_t)
           assert.same(use_case[4], match_t.api)
         end)
 
         it("acts as a catch-all API", function()
           local router = assert(Router.new(use_case))
-          local match_t = router.select("GET", "/foobar/baz")
+          local match_t = router.select("GET", "/foobar/baz", "domain.org")
           assert.truthy(match_t)
           assert.same(use_case[1], match_t.api)
         end)
@@ -707,7 +710,7 @@ describe("Router", function()
 
         local router = assert(Router.new(use_case))
 
-        local api_t = router.select("GET", "/a/bb/foobar")
+        local api_t = router.select("GET", "/a/bb/foobar", "domain.org")
         assert.truthy(api_t)
         assert.same(use_case[2], api_t.api)
       end)
@@ -731,11 +734,13 @@ describe("Router", function()
       end)
 
       it("invalid uri in [host + uri + method]", function()
-        assert.is_nil(router.select("PUT", "/some-uri-foo", "domain-with-uri-2.org"))
+        assert.is_nil(router.select("PUT", "/some-uri-foo",
+                                    "domain-with-uri-2.org"))
       end)
 
       it("does not match when given [uri] is in URI but not in prefix", function()
-        local match_t = router.select("GET", "/some-other-prefix/my-api")
+        local match_t = router.select("GET", "/some-other-prefix/my-api",
+                                      "domain.org")
         assert.is_nil(match_t)
       end)
     end)
@@ -877,7 +882,7 @@ describe("Router", function()
         end, "arg #2 uri must be a string", nil, true)
 
         assert.error_matches(function()
-          router.select("GET", "/", 1)
+          router.select("GET", "/")
         end, "arg #3 host must be a string", nil, true)
       end)
     end)
@@ -932,7 +937,7 @@ describe("Router", function()
 
       local router = assert(Router.new(use_case_apis))
 
-      local _ngx = mock_ngx("GET", "/my-api", {})
+      local _ngx = mock_ngx("GET", "/my-api", { ["host"] = "domain.org" })
       local match_t = router.exec(_ngx)
       assert.same(use_case_apis[1], match_t.api)
 
@@ -945,7 +950,7 @@ describe("Router", function()
       assert.is_nil(match_t.upstream_host) -- only when `preserve_host = true`
       assert.equal("/my-api", match_t.upstream_uri)
 
-      _ngx = mock_ngx("GET", "/my-api-2", {})
+      _ngx = mock_ngx("GET", "/my-api-2", { ["host"] = "domain.org" })
       match_t = router.exec(_ngx)
       assert.same(use_case_apis[2], match_t.api)
 
@@ -1018,7 +1023,7 @@ describe("Router", function()
       assert.is_nil(match_t.matches.uri)
       assert.is_nil(match_t.matches.method)
 
-      _ngx = mock_ngx("GET", "/users/123/profile", {})
+      _ngx = mock_ngx("GET", "/users/123/profile", { ["host"] = "domain.org" })
       match_t = router.exec(_ngx)
       assert.same(use_case_apis[4], match_t.api)
       assert.is_nil(match_t.matches.host)
@@ -1036,7 +1041,8 @@ describe("Router", function()
 
       local router = assert(Router.new(use_case))
 
-      local _ngx = mock_ngx("GET", "/users/1984/profile", {})
+      local _ngx = mock_ngx("GET", "/users/1984/profile",
+                            { ["host"] = "domain.org" })
       local match_t = router.exec(_ngx)
       assert.equal("1984", match_t.matches.uri_captures[1])
       assert.equal("1984", match_t.matches.uri_captures.user_id)
@@ -1060,7 +1066,8 @@ describe("Router", function()
       assert.is_nil(match_t.matches.uri_captures.stripped_uri)
       assert.equal(2, #match_t.matches.uri_captures)
 
-      _ngx = mock_ngx("GET", "/users/1984/profile/email", {})
+      _ngx = mock_ngx("GET", "/users/1984/profile/email",
+                      { ["host"] = "domain.org" })
       match_t = router.exec(_ngx)
       assert.equal("1984",  match_t.matches.uri_captures[1])
       assert.equal("1984",  match_t.matches.uri_captures.user_id)
@@ -1084,7 +1091,7 @@ describe("Router", function()
 
       local router = assert(Router.new(use_case))
 
-      local _ngx = mock_ngx("GET", "/hello/world", {})
+      local _ngx = mock_ngx("GET", "/hello/world", { ["host"] = "domain.org" })
       local match_t = router.exec(_ngx)
       assert.equal("/world", match_t.upstream_uri)
       assert.is_nil(match_t.matches.uri_captures)
@@ -1100,7 +1107,8 @@ describe("Router", function()
 
       local router = assert(Router.new(use_case))
 
-      local _ngx = mock_ngx("GET", "/users/1984/profile", {})
+      local _ngx = mock_ngx("GET", "/users/1984/profile",
+                            { ["host"] = "domain.org" })
       local match_t = router.exec(_ngx)
       assert.is_nil(match_t.matches.uri_captures)
     end)
@@ -1116,7 +1124,7 @@ describe("Router", function()
 
       local router = assert(Router.new(use_case_apis))
 
-      local _ngx = mock_ngx("GET", "/my-api", {})
+      local _ngx = mock_ngx("GET", "/my-api", { ["host"] = "domain.org" })
       local match_t = router.exec(_ngx)
       assert.same(use_case_apis[1], match_t.api)
       assert.equal("/get", match_t.upstream_url_t.path)
@@ -1138,11 +1146,11 @@ describe("Router", function()
 
       local router = assert(Router.new(use_case_apis))
 
-      local _ngx = mock_ngx("GET", "/my-api", {})
+      local _ngx = mock_ngx("GET", "/my-api", { ["host"] = "domain.org" })
       local match_t = router.exec(_ngx)
       assert.equal(8080, match_t.upstream_url_t.port)
 
-      _ngx = mock_ngx("GET", "/my-api-2", {})
+      _ngx = mock_ngx("GET", "/my-api-2", { ["host"] = "domain.org" })
       match_t = router.exec(_ngx)
       assert.equal(8443, match_t.upstream_url_t.port)
     end)
@@ -1157,50 +1165,10 @@ describe("Router", function()
 
       local router = assert(Router.new(use_case_apis))
 
-      local _ngx = mock_ngx("GET", "/endel%C3%B8st", {})
+      local _ngx = mock_ngx("GET", "/endel%C3%B8st", { ["host"] = "domain.org" })
       local match_t = router.exec(_ngx)
       assert.same(use_case_apis[1], match_t.api)
       assert.equal("/endel%C3%B8st", match_t.upstream_uri)
-    end)
-
-    describe("grab_headers", function()
-      local use_case_apis = {
-        {
-          name = "api-1",
-          uris = { "/my-api" },
-        }
-      }
-
-      it("does not read Host header if not required", function()
-        local _ngx = mock_ngx("GET", "/my-api", {})
-
-        spy.on(spy_stub, "nop")
-
-        local router = assert(Router.new(use_case_apis))
-
-        local match_t = router.exec(_ngx)
-        assert.same(use_case_apis[1], match_t.api)
-        assert.spy(spy_stub.nop).was.not_called()
-      end)
-
-      it("reads Host header if required", function()
-        table.insert(use_case_apis, {
-          name = "api-2",
-          uris = { "/my-api" },
-          headers = {
-            host = { "my-api.com" },
-          }
-        })
-
-        local _ngx = mock_ngx("GET", "/my-api", { host = "my-api.com" })
-        spy.on(spy_stub, "nop")
-
-        local router = assert(Router.new(use_case_apis))
-
-        local match_t = router.exec(_ngx)
-        assert.same(use_case_apis[2], match_t.api)
-        assert.spy(spy_stub.nop).was.called(1)
-      end)
     end)
 
     describe("stripped uris", function()
@@ -1224,7 +1192,8 @@ describe("Router", function()
       end)
 
       it("strips the specified uris from the given uri if matching", function()
-        local _ngx = mock_ngx("GET", "/my-api/hello/world", {})
+        local _ngx = mock_ngx("GET", "/my-api/hello/world",
+                              { ["host"] = "domain.org" })
 
         local match_t = router.exec(_ngx)
         assert.same(use_case_apis[1], match_t.api)
@@ -1232,7 +1201,7 @@ describe("Router", function()
       end)
 
       it("strips if matched URI is plain (not a prefix)", function()
-        local _ngx = mock_ngx("GET", "/my-api", {})
+        local _ngx = mock_ngx("GET", "/my-api", { ["host"] = "domain.org" })
 
         local match_t = router.exec(_ngx)
         assert.same(use_case_apis[1], match_t.api)
@@ -1240,7 +1209,8 @@ describe("Router", function()
       end)
 
       it("doesn't strip if 'strip_uri' is not enabled", function()
-        local _ngx = mock_ngx("POST", "/my-api/hello/world", {})
+        local _ngx = mock_ngx("POST", "/my-api/hello/world",
+                              { ["host"] = "domain.org" })
 
         local match_t = router.exec(_ngx)
         assert.same(use_case_apis[2], match_t.api)
@@ -1258,7 +1228,8 @@ describe("Router", function()
 
         local router = assert(Router.new(use_case_apis))
 
-        local _ngx = mock_ngx("POST", "/my-api/hello/world", {})
+        local _ngx = mock_ngx("POST", "/my-api/hello/world",
+                              { ["host"] = "domain.org" })
 
         local match_t = router.exec(_ngx)
         assert.same(use_case_apis[1], match_t.api)
@@ -1266,35 +1237,35 @@ describe("Router", function()
       end)
 
       it("can find an API with stripped URI several times in a row", function()
-        local _ngx = mock_ngx("GET", "/my-api", {})
+        local _ngx = mock_ngx("GET", "/my-api", { ["host"] = "domain.org" })
         local match_t = router.exec(_ngx)
         assert.same(use_case_apis[1], match_t.api)
         assert.equal("/", match_t.upstream_uri)
 
-        _ngx = mock_ngx("GET", "/my-api", {})
+        _ngx = mock_ngx("GET", "/my-api", { ["host"] = "domain.org" })
         match_t = router.exec(_ngx)
         assert.same(use_case_apis[1], match_t.api)
         assert.equal("/", match_t.upstream_uri)
       end)
 
       it("can proxy an API with stripped URI with different URIs in a row", function()
-        local _ngx = mock_ngx("GET", "/my-api", {})
+        local _ngx = mock_ngx("GET", "/my-api", { ["host"] = "domain.org" })
 
         local match_t = router.exec(_ngx)
         assert.same(use_case_apis[1], match_t.api)
         assert.equal("/", match_t.upstream_uri)
 
-        _ngx = mock_ngx("GET", "/this-api", {})
+        _ngx = mock_ngx("GET", "/this-api", { ["host"] = "domain.org" })
         match_t = router.exec(_ngx)
         assert.same(use_case_apis[1], match_t.api)
         assert.equal("/", match_t.upstream_uri)
 
-        _ngx = mock_ngx("GET", "/my-api", {})
+        _ngx = mock_ngx("GET", "/my-api", { ["host"] = "domain.org" })
         match_t = router.exec(_ngx)
         assert.same(use_case_apis[1], match_t.api)
         assert.equal("/", match_t.upstream_uri)
 
-        _ngx = mock_ngx("GET", "/this-api", {})
+        _ngx = mock_ngx("GET", "/this-api", { ["host"] = "domain.org" })
         match_t = router.exec(_ngx)
         assert.same(use_case_apis[1], match_t.api)
         assert.equal("/", match_t.upstream_uri)
@@ -1311,7 +1282,7 @@ describe("Router", function()
 
         local router = assert(Router.new(use_case_apis))
 
-        local _ngx = mock_ngx("GET", "/endel%C3%B8st", {})
+        local _ngx = mock_ngx("GET", "/endel%C3%B8st", { ["host"] = "domain.org" })
         local match_t = router.exec(_ngx)
         assert.same(use_case_apis[1], match_t.api)
         assert.equal("/", match_t.upstream_uri)
@@ -1328,7 +1299,8 @@ describe("Router", function()
 
         local router = assert(Router.new(use_case))
 
-        local _ngx = mock_ngx("GET", "/users/123/profile/hello/world", {})
+        local _ngx = mock_ngx("GET", "/users/123/profile/hello/world",
+                              { ["host"] = "domain.org" })
         local match_t = router.exec(_ngx)
         assert.equal("/hello/world", match_t.upstream_uri)
       end)
@@ -1344,7 +1316,8 @@ describe("Router", function()
 
         local router = assert(Router.new(use_case))
 
-        local _ngx = mock_ngx("GET", "/users/123/profile/hello/world", {})
+        local _ngx = mock_ngx("GET", "/users/123/profile/hello/world",
+                              { ["host"] = "domain.org" })
         local match_t = router.exec(_ngx)
         assert.equal("/hello/world", match_t.upstream_uri)
       end)
@@ -1421,6 +1394,36 @@ describe("Router", function()
           local match_t = router.exec(_ngx)
           assert.same(use_case_apis[1], match_t.api)
           assert.equal("preserve.com", match_t.upstream_host)
+        end)
+
+        it("uses the request's Host header if an API with no host was cached", function()
+          -- This is a regression test for:
+          -- https://github.com/Mashape/kong/issues/2825
+          -- Ensure cached APIs (in the LRU cache) still get proxied with the
+          -- correct Host header when preserve_host = true and no registered
+          -- API has a `hosts` property.
+
+          local use_case_apis = {
+            {
+              name          = "no-host",
+              uris          = { "/nohost" },
+              preserve_host = true,
+            }
+          }
+
+          local router = assert(Router.new(use_case_apis))
+
+          local _ngx = mock_ngx("GET", "/nohost", { ["host"] = "domain1.com" })
+
+          local match_t = router.exec(_ngx)
+          assert.same(use_case_apis[1], match_t.api)
+          assert.equal("domain1.com", match_t.upstream_host)
+
+          _ngx = mock_ngx("GET", "/nohost", { ["host"] = "domain2.com" })
+
+          match_t = router.exec(_ngx)
+          assert.same(use_case_apis[1], match_t.api)
+          assert.equal("domain2.com", match_t.upstream_host)
         end)
       end)
 
@@ -1502,7 +1505,7 @@ describe("Router", function()
 
           local router = assert(Router.new(use_case_apis) )
 
-          local _ngx = mock_ngx("GET", args[3], {})
+          local _ngx = mock_ngx("GET", args[3], { ["host"] = "domain.org" })
           local match_t = router.exec(_ngx)
           assert.same(use_case_apis[1], match_t.api)
           assert.equal(args[1], match_t.upstream_url_t.path)
