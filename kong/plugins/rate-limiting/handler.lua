@@ -1,4 +1,4 @@
--- Copyright (C) Mashape, Inc.
+-- Copyright (C) Kong Inc.
 
 local policies = require "kong.plugins.rate-limiting.policies"
 local timestamp = require "kong.tools.timestamp"

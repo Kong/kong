@@ -1,4 +1,4 @@
--- Copyright (C) Mashape, Inc.
+-- Copyright (C) Kong Inc.
 local ffi = require "ffi"
 local cjson = require "cjson"
 local system_constants = require "lua_system_constants"

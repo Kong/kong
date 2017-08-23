@@ -1,7 +1,7 @@
 ------------------------------------------------------------------
 -- Collection of utilities to help testing Kong features and plugins.
 --
--- @copyright Copyright 2016-2017 Mashape Inc. All rights reserved.
+-- @copyright Copyright 2016-2017 Kong Inc. All rights reserved.
 -- @license [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
 -- @module spec.helpers
 

@@ -1,4 +1,4 @@
--- Copyright (C) Mashape, Inc.
+-- Copyright (C) Kong Inc.
 
 local BasePlugin = require "kong.plugins.base_plugin"
 local responses = require "kong.tools.responses"
