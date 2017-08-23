@@ -1491,11 +1491,12 @@ describe("Plugin: request-transformer (access)", function()
           ["Content-Type"] = "application/x-www-form-urlencoded",
         }
       })
-      assert.response(r).has.status(200)
+      local body = assert.response(r).has.status(200)
+      local json_body = cjson.decode(body)
       local value = assert.request(r).has.queryparam("uri_param1")
       assert.equals("foo", value)
-      value = assert.request(r).has.queryparam("uri_param2")
-      assert.equals("bar", value.some_index[1])
+      assert.equals("/requests/user1/foo/user2/bar?q1=20&uri_param1=foo&uri_param2%5Bsome_index%5D%5B1%5D=bar",
+                    json_body.vars.request_uri)
     end)
     it("should update request path using hash", function()
       local r = assert(client:send {
