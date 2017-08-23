@@ -91,6 +91,10 @@ end
 
 
 local function marshall_api(api)
+  if not (api.headers or api.methods or api.uris) then
+    return nil, "could not categorize API"
+  end
+
   local api_t      = {
     api            = api,
     strip_uri      = api.strip_uri,
