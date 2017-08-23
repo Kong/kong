@@ -45,6 +45,16 @@ describe("proxy-cache access", function()
       hosts = { "api-7.com" },
       upstream_url = "http://httpbin.org",
     })
+    local api8 = assert(helpers.dao.apis:insert {
+      name = "api-8",
+      hosts = { "api-8.com" },
+      upstream_url = "http://httpbin.org",
+    })
+    local api9 = assert(helpers.dao.apis:insert {
+      name = "api-9",
+      hosts = { "api-9.com" },
+      upstream_url = "http://httpbin.org",
+    })
 
     local consumer1 = assert(helpers.dao.consumers:insert {
       username = "bob",
@@ -140,6 +150,34 @@ describe("proxy-cache access", function()
       },
     })
 
+    assert(helpers.dao.plugins:insert {
+      name = "proxy-cache",
+      api_id = api8.id,
+      config = {
+        strategy = "memory",
+        content_type = { "text/plain", "application/json" },
+        memory = {
+          dictionary_name = "kong",
+        },
+        cache_control = true,
+        storage_ttl = 600,
+      },
+    })
+
+    assert(helpers.dao.plugins:insert {
+      name = "proxy-cache",
+      api_id = api9.id,
+      config = {
+        strategy = "memory",
+        content_type = { "text/plain", "application/json" },
+        memory = {
+          dictionary_name = "kong",
+        },
+        cache_ttl = 2,
+        storage_ttl = 60,
+      },
+    })
+
     assert(helpers.start_kong({
       custom_plugins = "proxy-cache",
     }))
@@ -210,7 +248,6 @@ describe("proxy-cache access", function()
     })
 
     assert.res_status(200, res)
-
     assert.same("Hit", res.headers["X-Cache-Status"])
 
     -- give ourselves time to expire
@@ -237,7 +274,55 @@ describe("proxy-cache access", function()
     })
 
     assert.res_status(200, res)
+    assert.same("Hit", res.headers["X-Cache-Status"])
 
+    -- examine the behavior of keeping cache in memory for longer than ttl
+    res = assert(client:send {
+      method = "GET",
+      path = "/get",
+      headers = {
+        host = "api-9.com",
+      }
+    })
+
+    assert.res_status(200, res)
+    assert.same("Miss", res.headers["X-Cache-Status"])
+
+    res = assert(client:send {
+      method = "GET",
+      path = "/get",
+      headers = {
+        host = "api-9.com",
+      }
+    })
+
+    assert.res_status(200, res)
+    assert.same("Hit", res.headers["X-Cache-Status"])
+
+    -- give ourselves time to expire
+    ngx.sleep(3)
+
+    -- and go through the cycle again
+    res = assert(client:send {
+      method = "GET",
+      path = "/get",
+      headers = {
+        host = "api-9.com",
+      }
+    })
+
+    assert.res_status(200, res)
+    assert.same("Refresh", res.headers["X-Cache-Status"])
+
+    res = assert(client:send {
+      method = "GET",
+      path = "/get",
+      headers = {
+        host = "api-9.com",
+      }
+    })
+
+    assert.res_status(200, res)
     assert.same("Hit", res.headers["X-Cache-Status"])
   end)
 
@@ -312,6 +397,102 @@ describe("proxy-cache access", function()
 
     assert.res_status(200, res)
     assert.same("Bypass", res.headers["X-Cache-Status"])
+  end)
+
+  describe("respects cache-control", function()
+    it("min-fresh", function()
+      -- bypass via unsatisfied min-fresh
+      local res = assert(client:send {
+        method = "GET",
+        path = "/cache/2",
+        headers = {
+          host = "api-7.com",
+          ["Cache-Control"] = "min-fresh=30"
+        }
+      })
+
+      assert.res_status(200, res)
+
+      assert.same("Refresh", res.headers["X-Cache-Status"])
+    end)
+
+    it("max-age", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/cache/10",
+        headers = {
+          host = "api-7.com",
+          ["Cache-Control"] = "max-age=2"
+        }
+      })
+
+      assert.res_status(200, res)
+      assert.same("Miss", res.headers["X-Cache-Status"])
+
+      res = assert(client:send {
+        method = "GET",
+        path = "/cache/10",
+        headers = {
+          host = "api-7.com",
+          ["Cache-Control"] = "max-age=2"
+        }
+      })
+
+      assert.res_status(200, res)
+      assert.same("Hit", res.headers["X-Cache-Status"])
+
+      ngx.sleep(3)
+
+      res = assert(client:send {
+        method = "GET",
+        path = "/cache/10",
+        headers = {
+          host = "api-7.com",
+          ["Cache-Control"] = "max-age=2"
+        }
+      })
+
+      assert.res_status(200, res)
+      assert.same("Refresh", res.headers["X-Cache-Status"])
+    end)
+
+    it("max-stale", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/cache/2",
+        headers = {
+          host = "api-8.com",
+        }
+      })
+
+      assert.res_status(200, res)
+      assert.same("Miss", res.headers["X-Cache-Status"])
+
+      res = assert(client:send {
+        method = "GET",
+        path = "/cache/2",
+        headers = {
+          host = "api-8.com",
+        }
+      })
+
+      assert.res_status(200, res)
+      assert.same("Hit", res.headers["X-Cache-Status"])
+
+      ngx.sleep(4)
+
+      res = assert(client:send {
+        method = "GET",
+        path = "/cache/2",
+        headers = {
+          host = "api-8.com",
+          ["Cache-Control"] = "max-stale=1",
+        }
+      })
+
+      assert.res_status(200, res)
+      assert.same("Refresh", res.headers["X-Cache-Status"])
+    end)
   end)
 
   it("caches a streaming request", function()

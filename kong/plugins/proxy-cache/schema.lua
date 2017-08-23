@@ -76,6 +76,9 @@ return {
       default = false,
       required = true,
     },
+    storage_ttl = {
+      type = "number",
+    },
     memory = {
       type = "table",
       schema = memory_schema,

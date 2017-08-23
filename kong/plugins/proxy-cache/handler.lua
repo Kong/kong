@@ -181,12 +181,12 @@ end
 
 
 -- indicate that we should attempt to cache the response to this request
-local function signal_cache_req(cache_key)
+local function signal_cache_req(cache_key, cache_status)
   ngx.ctx.proxy_cache = {
     cache_key = cache_key,
   }
 
-  ngx.header["X-Cache-Status"] = "Miss"
+  ngx.header["X-Cache-Status"] = cache_status or "Miss"
 end
 
 
@@ -258,7 +258,7 @@ end
 function ProxyCacheHandler:access(conf)
   ProxyCacheHandler.super.access(self)
 
-  local cc = res_cc()
+  local cc = req_cc()
 
   -- if we know this request isnt cacheable, bail out
   if not cacheable_request(ngx, conf, cc) then
@@ -292,15 +292,21 @@ function ProxyCacheHandler:access(conf)
   -- figure out if the client will accept our cache value
   if conf.cache_control then
     if cc["max-age"] and time() - res.timestamp > cc["max-age"] then
-      return signal_cache_req(cache_key)
+      return signal_cache_req(cache_key, "Refresh")
     end
 
     if cc["max-stale"] and time() - res.timestamp - res.ttl > cc["max-stale"] then
-      return signal_cache_req(cache_key)
+      return signal_cache_req(cache_key, "Refresh")
     end
 
-    if cc["min-fresh"] and time() - res.timestamp < cc["min-fresh"] then
-      return signal_cache_req(cache_key)
+    if cc["min-fresh"] and res.ttl - (time() - res.timestamp) < cc["min-fresh"] then
+      return signal_cache_req(cache_key, "Refresh")
+    end
+
+  else
+    -- don't serve stale data; res may be stored for up to `conf.storage_ttl` secs
+    if time() - res.timestamp > conf.cache_ttl then
+      return signal_cache_req(cache_key, "Refresh")
     end
   end
 
@@ -364,7 +370,8 @@ function ProxyCacheHandler:body_filter(conf)
       ttl       = ctx.res_ttl,
     }
 
-    local ttl = conf.cache_control and ctx.res_ttl or conf.cache_ttl
+    local ttl = conf.storage_ttl or conf.cache_control and ctx.res_ttl or
+                conf.cache_ttl
 
     if not strategies.DELAY_STRATEGY_STORE[conf.strategy] then
       local ok, err = strategy:store(ctx.cache_key, res, ttl)
