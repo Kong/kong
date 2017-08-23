@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-export BUSTED_ARGS="-o gtest -v --exclude-tags=ci"
+export BUSTED_ARGS="-o gtest -v --exclude-tags=flaky"
 export TEST_CMD="bin/busted $BUSTED_ARGS"
 
 createuser --createdb kong
