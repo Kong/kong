@@ -262,7 +262,8 @@ http {
                         ["/request"]                    = "Alias to /anything",
                         ["/delay/:duration"]            = "Delay the response for <duration> seconds",
                         ["/basic-auth/:user/:pass"]     = "Performs HTTP basic authentication with the given credentials",
-                        ["/status/:code"]               = "Returns a response with the specified <status code>"
+                        ["/status/:code"]               = "Returns a response with the specified <status code>",
+                        ["/stream/:num"]                = "Stream <num> chunks of JSON data via chunked Transfer Encoding",
                     },
                 })
             }
@@ -360,6 +361,19 @@ http {
             }
         }
 
+        location ~ "^/stream/(?<num>\d+)$" {
+            content_by_lua_block {
+                local mu  = require "spec.fixtures.mock_upstream"
+                local rep = tonumber(ngx.var.num)
+                local res = require("cjson").encode(mu.get_default_json_response())
 
+                ngx.header["X-Powered-By"] = "mock_upstream"
+                ngx.header["Content-Type"] = "application/json"
+
+                for i = 1, rep do
+                  ngx.say(res)
+                end
+            }
+        }
     }
 }
