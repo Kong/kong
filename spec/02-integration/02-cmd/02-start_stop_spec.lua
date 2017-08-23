@@ -27,7 +27,9 @@ describe("kong start/stop", function()
       pg_database = helpers.test_conf.pg_database,
       cassandra_keyspace = helpers.test_conf.cassandra_keyspace
     }))
-    assert(helpers.kong_exec "stop")
+    assert(helpers.kong_exec("stop", {
+      prefix = helpers.test_conf.prefix,
+    }))
   end)
   it("start/stop custom Kong conf/prefix", function()
     assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path))
