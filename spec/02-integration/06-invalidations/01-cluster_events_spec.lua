@@ -9,7 +9,7 @@ local kong_cluster_events = require "kong.cluster_events"
 
 dao_helpers.for_each_dao(function(kong_conf)
 
-describe("cluster_events with db: " .. kong_conf.database, function()
+describe("cluster_events with db: #" .. kong_conf.database, function()
   local dao
 
   setup(function()
