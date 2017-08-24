@@ -22,9 +22,6 @@ local SCHEMA = {
     consumer_id = { type = "id", required = true, foreign = "consumers:id" },
     group = { type = "string", required = true, func = check_unique }
   },
-  marshall_event = function(self, t)
-    return {id = t.id, consumer_id = t.consumer_id} -- We don't need any data in the event
-  end
 }
 
 return {acls = SCHEMA}

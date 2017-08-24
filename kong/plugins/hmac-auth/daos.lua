@@ -11,9 +11,6 @@ local SCHEMA = {
     username = {type = "string", required = true, unique = true},
     secret = {type = "string", default = utils.random_string}
   },
-  marshall_event = function(self, t)
-    return {id = t.id, consumer_id = t.consumer_id, username = t.username}
-  end
 }
 
 return {hmacauth_credentials = SCHEMA}
