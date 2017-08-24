@@ -30,9 +30,6 @@ local SCHEMA = {
      end
     return true
   end,
-  marshall_event = function(self, t)
-    return {id = t.id, consumer_id = t.consumer_id, key = t.key}
-  end
 }
 
 return {jwt_secrets = SCHEMA}
