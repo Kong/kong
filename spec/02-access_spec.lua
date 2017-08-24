@@ -220,7 +220,7 @@ describe("proxy-cache access", function()
       }
     })
 
-    assert.res_status(200, res)
+    local body1 = assert.res_status(200, res)
     assert.same("Miss", res.headers["X-Cache-Status"])
 
     -- cache key is an md5sum of the prefix uuid, method, and $request
@@ -236,11 +236,14 @@ describe("proxy-cache access", function()
       }
     })
 
-    assert.res_status(200, res)
+    local body2 = assert.res_status(200, res)
 
     assert.same("Hit", res.headers["X-Cache-Status"])
     local cache_key2 = res.headers["X-Cache-Key"]
     assert.same(cache_key1, cache_key2)
+
+    -- assert that response bodies are identical
+    assert.same(body1, body2)
 
     -- examine this cache key against another plugin's cache key for the same req
     cache_key = cache_key1
@@ -523,8 +526,9 @@ describe("proxy-cache access", function()
       }
     })
 
-    assert.res_status(200, res)
+    local body1 = assert.res_status(200, res)
     assert.same("Miss", res.headers["X-Cache-Status"])
+    assert.is_nil(res.headers["Content-Length"])
 
     res = assert(client:send {
       method = "GET",
@@ -534,9 +538,15 @@ describe("proxy-cache access", function()
       }
     })
 
-    assert.res_status(200, res)
-
+    local body2 = assert.res_status(200, res)
     assert.same("Hit", res.headers["X-Cache-Status"])
+
+    -- transfer-encoding is a hop-by-hop header. we may not have seen a
+    -- content length last time, but Kong will always set Content-Length
+    -- when delivering the response
+    assert.is_not_nil(res.headers["Content-Length"])
+
+    assert.same(body1, body2)
   end)
 
   it("uses an separate cache key betweens apis as a global plugin", function()

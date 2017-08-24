@@ -213,12 +213,7 @@ local function send_response(res)
     end
   end
 
-  -- chunked responses have no content length, otherwise we set it ourselves
-  -- TODO store the length as part of the entity so we dont have to recalculate
-  if not res.headers["Transfer-Encoding"] or
-     not str_find(res.headers["Transfer-Encoding"], "chunked", nil, true) then
-    ngx.header["Content-Length"] = #res.body
-  end
+  ngx.header["Content-Length"] = res.body_len
 
   ngx.header["Age"] = floor(time() - res.timestamp)
   ngx.header["X-Cache-Status"] = "Hit"
@@ -372,6 +367,7 @@ function ProxyCacheHandler:body_filter(conf)
       status    = ngx.status,
       headers   = ctx.res_headers,
       body      = ctx.res_body,
+      body_len  = #ctx.res_body,
       timestamp = time(),
       ttl       = ctx.res_ttl,
     }
