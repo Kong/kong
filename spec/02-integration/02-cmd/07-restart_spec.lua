@@ -63,10 +63,11 @@ describe("kong restart", function()
     assert.res_status(200, res)
     client:close()
   end)
-  pending("restarts with default configuration and prefix", function()
+  it("restarts with default configuration and prefix", function()
     -- don't want to force migrations to be run on default
     -- keyspace/database
     local env = {
+      prefix = helpers.test_conf.prefix,
       database = helpers.test_conf.database,
       pg_database = helpers.test_conf.pg_database,
       cassandra_keyspace = helpers.test_conf.cassandra_keyspace,
