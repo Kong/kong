@@ -106,14 +106,20 @@ end
 
 local function cacheable_request(ngx, conf, cc)
   -- TODO refactor these searches to O(1)
-  local method = get_method()
+  do
+    local method = get_method()
 
-  for i = 1, #conf.request_method do
-    if conf.request_method[i] == method then
-      break
+    local method_match = false
+    for i = 1, #conf.request_method do
+      if conf.request_method[i] == method then
+        method_match = true
+        break
+      end
     end
 
-    return false
+    if not method_match then
+      return false
+    end
   end
 
   -- check for explicit disallow directives

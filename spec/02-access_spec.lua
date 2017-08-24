@@ -55,6 +55,11 @@ describe("proxy-cache access", function()
       hosts = { "api-9.com" },
       upstream_url = "http://httpbin.org",
     })
+    local api10 = assert(helpers.dao.apis:insert {
+      name = "api-10",
+      hosts = { "api-10.com" },
+      upstream_url = "http://httpbin.org",
+    })
 
     local consumer1 = assert(helpers.dao.consumers:insert {
       username = "bob",
@@ -175,6 +180,20 @@ describe("proxy-cache access", function()
         },
         cache_ttl = 2,
         storage_ttl = 60,
+      },
+    })
+
+    assert(helpers.dao.plugins:insert {
+      name = "proxy-cache",
+      api_id = api10.id,
+      config = {
+        strategy = "memory",
+        content_type = { "text/plain", "application/json" },
+        response_code = { 200, 418 },
+        request_method = { "GET", "HEAD", "POST" },
+        memory = {
+          dictionary_name = "kong",
+        },
       },
     })
 
@@ -694,8 +713,8 @@ describe("proxy-cache access", function()
     end)
   end)
 
-  describe("bypasses cache for uncacheable responses: ", function()
-    it("response content type", function()
+  describe("bypasses cache for uncacheable responses:", function()
+    it("response status", function()
       local res = assert(client:send {
         method = "GET",
         path = "/status/418",
@@ -720,5 +739,64 @@ describe("proxy-cache access", function()
       assert.res_status(200, res)
       assert.same("Bypass", res.headers["X-Cache-Status"])
     end)
+  end)
+
+  describe("caches non-default", function()
+    it("request methods", function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/post",
+        headers = {
+          host = "api-10.com",
+          ["Content-Type"] = "application/json",
+        },
+        {
+          foo = "bar",
+        },
+      })
+
+      assert.res_status(200, res)
+      assert.same("Miss", res.headers["X-Cache-Status"])
+
+      res = assert(client:send {
+        method = "POST",
+        path = "/post",
+        headers = {
+          host = "api-10.com",
+          ["Content-Type"] = "application/json",
+        },
+        {
+          foo = "bar",
+        },
+      })
+
+      assert.res_status(200, res)
+      assert.same("Hit", res.headers["X-Cache-Status"])
+    end)
+
+    it("response status", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/status/418",
+        headers = {
+          host = "api-10.com",
+        },
+      })
+
+      assert.res_status(418, res)
+      assert.same("Miss", res.headers["X-Cache-Status"])
+
+      res = assert(client:send {
+        method = "GET",
+        path = "/status/418",
+        headers = {
+          host = "api-10.com",
+        },
+      })
+
+      assert.res_status(418, res)
+      assert.same("Hit", res.headers["X-Cache-Status"])
+    end)
+
   end)
 end)
