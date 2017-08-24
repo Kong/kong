@@ -80,6 +80,6 @@ lua_code_cache = on
 lua_socket_pool_size = 30
 lua_ssl_trusted_certificate = NONE
 lua_ssl_verify_depth = 1
-lua_package_path = ?/init.lua;./kong/?.lua
+lua_package_path = ./?.lua;./?/init.lua;
 lua_package_cpath = NONE
 ]]
