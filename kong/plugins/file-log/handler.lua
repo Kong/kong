@@ -1,4 +1,4 @@
--- Copyright (C) Mashape, Inc.
+-- Copyright (C) Kong Inc.
 local ffi = require "ffi"
 local cjson = require "cjson"
 local system_constants = require "lua_system_constants"
@@ -18,10 +18,7 @@ local oflags = bit.bor(O_WRONLY, O_CREAT, O_APPEND)
 local mode = bit.bor(S_IRUSR, S_IWUSR, S_IRGRP, S_IROTH)
 
 ffi.cdef[[
-int open(const char * filename, int flags, int mode);
 int write(int fd, const void * ptr, int numbytes);
-int close(int fd);
-char *strerror(int errnum);
 ]]
 
 -- fd tracking utility functions
@@ -39,7 +36,7 @@ local function log(premature, conf, message)
   local msg = cjson.encode(message) .. "\n"
 
   local fd = file_descriptors[conf.path]
-  
+
   if fd and conf.reopen then
     -- close fd, we do this here, to make sure a previously cached fd also
     -- gets closed upon dynamic changes of the configuration
@@ -63,7 +60,7 @@ end
 
 local FileLogHandler = BasePlugin:extend()
 
-FileLogHandler.PRIORITY = 1
+FileLogHandler.PRIORITY = 9
 
 function FileLogHandler:new()
   FileLogHandler.super.new(self, "file-log")

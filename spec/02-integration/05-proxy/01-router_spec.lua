@@ -30,6 +30,7 @@ describe("Router", function()
 
     setup(function()
       helpers.dao:truncate_tables()
+      helpers.run_migrations()
       assert(helpers.start_kong())
     end)
 
@@ -57,32 +58,41 @@ describe("Router", function()
     setup(function()
       insert_apis {
         {
-          name = "api-1",
-          upstream_url = "http://httpbin.org",
-          methods = { "GET" },
+          name         = "api-1",
+          upstream_url = helpers.mock_upstream_url,
+          methods      = { "GET" },
         },
         {
-          name = "api-2",
-          upstream_url = "http://httpbin.org",
-          methods = { "POST", "PUT" },
-          uris = { "/post", "/put" },
-          strip_uri = false,
+          name         = "api-2",
+          upstream_url = helpers.mock_upstream_url,
+          methods      = { "POST", "PUT" },
+          uris         = { "/post", "/put" },
+          strip_uri    = false,
         },
         {
-          name = "api-3",
-          upstream_url = "http://httpbin.org/status",
-          uris = { "/httpbin" },
-          strip_uri = true,
+          name         = "api-3",
+          upstream_url = helpers.mock_upstream_url .. "/status",
+          uris         = { [[/mock_upstream]] },
+          strip_uri    = true,
         },
         {
-          name = "api-4",
-          upstream_url = "http://httpbin.org/basic-auth",
-          uris = { "/user" },
-          strip_uri = false,
-        }
+          name         = "api-4",
+          upstream_url = helpers.mock_upstream_url .. "/basic-auth",
+          uris         = { "/private" },
+          strip_uri    = false,
+        },
+        {
+          name         = "api-5",
+          upstream_url = helpers.mock_upstream_url .. "/anything",
+          uris         = { [[/users/\d+/profile]] },
+          strip_uri    = true,
+        },
       }
 
-      assert(helpers.start_kong())
+      helpers.run_migrations()
+      assert(helpers.start_kong({
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
     end)
 
     teardown(function()
@@ -127,8 +137,8 @@ describe("Router", function()
     describe("API with a path component in its upstream_url", function()
       it("with strip_uri = true", function()
         local res = assert(client:send {
-          method = "GET",
-          path = "/httpbin/201",
+          method  = "GET",
+          path    = "/mock_upstream/201",
           headers = { ["kong-debug"] = 1 },
         })
 
@@ -140,12 +150,31 @@ describe("Router", function()
     it("with strip_uri = false", function()
         local res = assert(client:send {
           method = "GET",
-          path = "/user/passwd",
+          path = "/private/passwd",
           headers = { ["kong-debug"] = 1 },
         })
 
         assert.res_status(401, res)
         assert.equal("api-4", res.headers["kong-api-name"])
+    end)
+
+    it("[uri] with a regex", function()
+      local res = assert(client:send {
+        method  = "GET",
+        path    = "/users/foo/profile",
+        headers = { ["kong-debug"] = 1 },
+      })
+
+      assert.res_status(404, res)
+
+      res = assert(client:send {
+        method  = "GET",
+        path    = "/users/123/profile",
+        headers = { ["kong-debug"] = 1 },
+      })
+
+      assert.res_status(200, res)
+      assert.equal("api-5", res.headers["kong-api-name"])
     end)
   end)
 
@@ -154,20 +183,16 @@ describe("Router", function()
     setup(function()
       insert_apis {
         {
-          name = "api-1",
-          upstream_url = "http://httpbin.org",
-          hosts = { "example.com" },
-        },
-        {
-          name = "api-2",
-          upstream_url = "http://localhost:9999",
-          hosts = { "localhost" },
+          name         = "api-1",
+          upstream_url = helpers.mock_upstream_url,
+          hosts        = { "mock_upstream" },
         },
       }
 
-      assert(helpers.start_kong {
+      helpers.run_migrations()
+      assert(helpers.start_kong({
         nginx_conf = "spec/fixtures/custom_nginx.template",
-      })
+      }))
     end)
 
     teardown(function()
@@ -176,43 +201,43 @@ describe("Router", function()
 
     it("preserves URI arguments", function()
       local res = assert(client:send {
-        method = "GET",
-        path   = "/get",
-        query  = {
+        method  = "GET",
+        path    = "/get",
+        query   = {
           foo   = "bar",
           hello = "world",
         },
         headers = {
-          ["Host"] = "example.com",
+          ["Host"] = "mock_upstream",
         },
       })
 
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      assert.equal("bar", json.args.foo)
-      assert.equal("world", json.args.hello)
+      assert.equal("bar", json.uri_args.foo)
+      assert.equal("world", json.uri_args.hello)
     end)
 
     it("does proxy an empty querystring if URI does not contain arguments", function()
       local res = assert(client:send {
         method = "GET",
-        path   = "/get?",
+        path   = "/request?",
         headers = {
-          ["Host"] = "localhost",
+          ["Host"] = "mock_upstream",
         },
       })
 
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      assert.matches("/get%?$", json.vars.request_uri)
+      assert.matches("/request%?$", json.vars.request_uri)
     end)
 
     it("does proxy a querystring with an empty value", function()
       local res = assert(client:send {
-        method = "GET",
-        path   = "/get?hello",
+        method  = "GET",
+        path    = "/get?hello",
         headers = {
-          ["Host"] = "example.com",
+          ["Host"] = "mock_upstream",
         },
       })
 
@@ -227,18 +252,21 @@ describe("Router", function()
     setup(function()
       insert_apis {
         {
-          name = "api-1",
-          upstream_url = "http://httpbin.org",
-          uris = "/endel%C3%B8st",
+          name         = "api-1",
+          upstream_url = helpers.mock_upstream_url,
+          uris         = "/endel%C3%B8st",
         },
         {
-          name = "api-2",
-          upstream_url = "http://httpbin.org",
-          uris = "/foo/../bar",
+          name         = "api-2",
+          upstream_url = helpers.mock_upstream_url,
+          uris         = "/foo/../bar",
         },
       }
 
-      assert(helpers.start_kong())
+      helpers.run_migrations()
+      assert(helpers.start_kong({
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
     end)
 
     teardown(function()
@@ -268,111 +296,29 @@ describe("Router", function()
     end)
   end)
 
-  describe("invalidation", function()
-    local admin_client
-
-    setup(function()
-      helpers.dao:truncate_tables()
-      assert(helpers.start_kong())
-
-      admin_client = helpers.admin_client()
-    end)
-
-    teardown(function()
-      if admin_client then
-        admin_client:close()
-      end
-
-      helpers.stop_kong()
-    end)
-
-    it("updates itself when updating APIs from the Admin API", function()
-      local res = assert(client:send {
-        method = "GET",
-        headers = {
-          host = "api.com"
-        }
-      })
-      local body = assert.response(res).has_status(404)
-      local json = cjson.decode(body)
-      assert.matches("^kong/", res.headers.server)
-      assert.equal("no API found with those values", json.message)
-
-      local admin_res = assert(admin_client:send {
-        method = "POST",
-        path = "/apis",
-        body = {
-          name = "my-api",
-          upstream_url = "http://httpbin.org",
-          hosts = "api.com",
-        },
-        headers = { ["Content-Type"] = "application/json" },
-      })
-      assert.response(admin_res).has_status(201)
-
-      ngx.sleep(1)
-
-      res = assert(client:send {
-        method = "GET",
-        headers = {
-          host = "api.com"
-        }
-      })
-      assert.response(res).has_status(200)
-
-      admin_res = assert(admin_client:send {
-        method = "PATCH",
-        path = "/apis/my-api",
-        body = {
-          hosts = "api.com,foo.com",
-          uris = "/foo",
-          strip_uri = true,
-        },
-        headers = { ["Content-Type"] = "application/json" },
-      })
-      assert.response(admin_res).has_status(200)
-
-      ngx.sleep(1)
-
-      res = assert(client:send {
-        method = "GET",
-        headers = {
-          host = "foo.com"
-        }
-      })
-      assert.response(res).has_status(404)
-
-      res = assert(client:send {
-        method = "GET",
-        path = "/foo",
-        headers = {
-          host = "foo.com"
-        }
-      })
-      assert.response(res).has_status(200)
-    end)
-  end)
-
   describe("strip_uri", function()
 
     setup(function()
       insert_apis {
         {
           name         = "api-strip-uri",
-          upstream_url = "http://httpbin.org",
+          upstream_url = helpers.mock_upstream_url,
           uris         = { "/x/y/z", "/z/y/x" },
           strip_uri    = true,
         },
       }
 
-      assert(helpers.start_kong())
+      helpers.run_migrations()
+      assert(helpers.start_kong({
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
     end)
 
     teardown(function()
       helpers.stop_kong()
     end)
 
-    describe(" = true", function()
+    describe("= true", function()
       it("strips subsequent calls to an API with different [uris]", function()
         local res_uri_1 = assert(client:send {
           method = "GET",
@@ -381,7 +327,8 @@ describe("Router", function()
 
         local body = assert.res_status(200, res_uri_1)
         local json = cjson.decode(body)
-        assert.matches("httpbin.org/get", json.url, nil, true)
+        assert.matches("/get", json.url, nil, true)
+        assert.not_matches("/x/y/z/get", json.url, nil, true)
 
         local res_uri_2 = assert(client:send {
           method = "GET",
@@ -390,7 +337,8 @@ describe("Router", function()
 
         body = assert.res_status(200, res_uri_2)
         json = cjson.decode(body)
-        assert.matches("httpbin.org/get", json.url, nil, true)
+        assert.matches("/get", json.url, nil, true)
+        assert.not_matches("/z/y/x/get", json.url, nil, true)
 
         local res_2_uri_1 = assert(client:send {
           method = "GET",
@@ -399,7 +347,8 @@ describe("Router", function()
 
         body = assert.res_status(200, res_2_uri_1)
         json = cjson.decode(body)
-        assert.matches("httpbin.org/get", json.url, nil, true)
+        assert.matches("/get", json.url, nil, true)
+        assert.not_matches("/x/y/z/get", json.url, nil, true)
 
         local res_2_uri_2 = assert(client:send {
           method = "GET",
@@ -408,7 +357,8 @@ describe("Router", function()
 
         body = assert.res_status(200, res_2_uri_2)
         json = cjson.decode(body)
-        assert.matches("httpbin.org/get", json.url, nil, true)
+        assert.matches("/get", json.url, nil, true)
+        assert.not_matches("/x/y/z/get", json.url, nil, true)
       end)
     end)
   end)
@@ -418,108 +368,111 @@ describe("Router", function()
     setup(function()
       insert_apis {
         {
-          name = "api-1",
+          name          = "api-1",
           preserve_host = true,
-          upstream_url = "http://localhost:9999/headers-inspect",
-          hosts = "preserved.com",
+          upstream_url  = helpers.mock_upstream_url .. "/request",
+          hosts         = "preserved.com",
         },
         {
-          name = "api-2",
+          name          = "api-2",
           preserve_host = false,
-          upstream_url = "http://localhost:9999/headers-inspect",
-          hosts = "discarded.com",
+          upstream_url  = helpers.mock_upstream_url .. "/request",
+          hosts         = "discarded.com",
         },
         {
-          name = "api-3",
-          strip_uri = false,
+          name          = "api-3",
+          strip_uri     = false,
           preserve_host = true,
-          upstream_url = "http://localhost:9999",
-          uris = "/headers-inspect",
+          upstream_url  = helpers.mock_upstream_url,
+          uris          = "/request",
         }
       }
 
-      assert(helpers.start_kong {
+      helpers.run_migrations()
+      assert(helpers.start_kong({
         nginx_conf = "spec/fixtures/custom_nginx.template",
-      })
+      }))
     end)
 
     teardown(function()
       helpers.stop_kong()
     end)
 
-    describe(" = false (default)", function()
+    describe("x = false (default)", function()
       it("uses hostname from upstream_url", function()
         local res = assert(client:send {
-          method = "GET",
-          path = "/get",
+          method  = "GET",
+          path    = "/get",
           headers = { ["Host"] = "discarded.com" },
         })
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.matches("localhost", json.host, nil, true) -- not testing :port
+        assert.matches(helpers.mock_upstream_host,
+                       json.headers.host, nil, true) -- not testing :port
       end)
 
       it("uses port value from upstream_url if not default", function()
         local res = assert(client:send {
-          method = "GET",
-          path = "/get",
+          method  = "GET",
+          path    = "/get",
           headers = { ["Host"] = "discarded.com" },
         })
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.matches(":9999", json.host, nil, true) -- not testing hostname
+        assert.matches(":" .. helpers.mock_upstream_port,
+                        json.headers.host, nil, true) -- not testing hostname
       end)
     end)
 
     describe(" = true", function()
       it("forwards request Host", function()
         local res = assert(client:send {
-          method = "GET",
-          path = "/",
+          method  = "GET",
+          path    = "/",
           headers = { ["Host"] = "preserved.com" },
         })
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal("preserved.com", json.host)
+        assert.equal("preserved.com", json.headers.host)
       end)
 
       it("forwards request Host:Port even if port is default", function()
         local res = assert(client:send {
-          method = "GET",
-          path = "/get",
+          method  = "GET",
+          path    = "/get",
           headers = { ["Host"] = "preserved.com:80" },
         })
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal("preserved.com:80", json.host)
+        assert.equal("preserved.com:80", json.headers.host)
       end)
 
       it("forwards request Host:Port if port isn't default", function()
         local res = assert(client:send {
-          method = "GET",
-          path = "/get",
+          method  = "GET",
+          path    = "/get",
           headers = { ["Host"] = "preserved.com:123" },
         })
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal("preserved.com:123", json.host)
+        assert.equal("preserved.com:123", json.headers.host)
       end)
 
       it("forwards request Host even if not matched by [hosts]", function()
         local res = assert(client:send {
-          method = "GET",
-          path = "/headers-inspect",
+          method  = "GET",
+          path    = "/get",
           headers = { ["Host"] = "preserved.com" },
         })
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        assert.equal("preserved.com", json.host)
+        assert.equal("preserved.com", json.headers.host)
       end)
     end)
   end)
@@ -529,18 +482,21 @@ describe("Router", function()
     setup(function()
       insert_apis {
         {
-          name = "root-uri",
-          upstream_url = "http://httpbin.org",
-          uris = "/",
+          name         = "root-uri",
+          upstream_url = helpers.mock_upstream_url,
+          uris         = "/",
         },
         {
-          name = "fixture-api",
-          upstream_url = "http://httpbin.org",
-          uris = "/foobar",
+          name         = "fixture-api",
+          upstream_url = helpers.mock_upstream_url,
+          uris         = "/foobar",
         },
       }
 
-      assert(helpers.start_kong())
+      helpers.run_migrations()
+      assert(helpers.start_kong({
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
     end)
 
     teardown(function()
@@ -576,17 +532,20 @@ describe("Router", function()
           name = "root-api",
           methods = { "GET" },
           uris = "/root",
-          upstream_url = "http://httpbin.org",
+          upstream_url = helpers.mock_upstream_url,
         },
         {
           name = "fixture-api",
           methods = { "GET" },
           uris = "/root/fixture",
-          upstream_url = "http://httpbin.org",
+          upstream_url = helpers.mock_upstream_url,
         },
       }
 
-      assert(helpers.start_kong())
+      helpers.run_migrations()
+      assert(helpers.start_kong({
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
     end)
 
     teardown(function()
@@ -612,20 +571,23 @@ describe("Router", function()
     setup(function()
       insert_apis {
         {
-          name = "root-api",
-          hosts = "api.com",
-          uris = "/root",
-          upstream_url = "http://httpbin.org",
+          name         = "root-api",
+          hosts        = "api.com",
+          uris         = "/root",
+          upstream_url = helpers.mock_upstream_url,
         },
         {
-          name = "fixture-api",
-          hosts = "api.com",
-          uris = "/root/fixture",
-          upstream_url = "http://httpbin.org",
+          name         = "fixture-api",
+          hosts        = "api.com",
+          uris         = "/root/fixture",
+          upstream_url = helpers.mock_upstream_url,
         },
       }
 
-      assert(helpers.start_kong())
+      helpers.run_migrations()
+      assert(helpers.start_kong({
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
     end)
 
     teardown(function()
@@ -651,50 +613,50 @@ describe("Router", function()
     local checks = {
       -- upstream url    uris            request path    expected path           strip uri
       {  "/",            "/",            "/",            "/",                    nil       },
-      {  "/",            "/",            "/foo/bar",     "/foo/bar",             nil       },
-      {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            nil       },
-      {  "/",            "/foo/bar",     "/foo/bar",     "/",                    nil       },
-      {  "/",            "/foo/bar/",    "/foo/bar/",    "/",                    nil       },
-      {  "/foo/bar",     "/",            "/",            "/foo/bar",             nil       },
-      {  "/foo/bar",     "/",            "/foo/bar",     "/foo/bar/foo/bar",     nil       },
-      {  "/foo/bar",     "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    nil       },
-      {  "/foo/bar",     "/foo/bar",     "/foo/bar",     "/foo/bar",             nil       },
-      {  "/foo/bar",     "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            nil       },
-      {  "/foo/bar/",    "/",            "/",            "/foo/bar/",            nil       },
-      {  "/foo/bar/",    "/",            "/foo/bar",     "/foo/bar/foo/bar",     nil       },
-      {  "/foo/bar/",    "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    nil       },
-      {  "/foo/bar/",    "/foo/bar",     "/foo/bar",     "/foo/bar",             nil       },
-      {  "/foo/bar/",    "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            nil       },
+      {  "/",            "/",            "/get/bar",     "/get/bar",             nil       },
+      {  "/",            "/",            "/get/bar/",    "/get/bar/",            nil       },
+      {  "/",            "/get/bar",     "/get/bar",     "/",                    nil       },
+      {  "/",            "/get/bar/",    "/get/bar/",    "/",                    nil       },
+      {  "/get/bar",     "/",            "/",            "/get/bar",             nil       },
+      {  "/get/bar",     "/",            "/get/bar",     "/get/bar/get/bar",     nil       },
+      {  "/get/bar",     "/",            "/get/bar/",    "/get/bar/get/bar/",    nil       },
+      {  "/get/bar",     "/get/bar",     "/get/bar",     "/get/bar",             nil       },
+      {  "/get/bar",     "/get/bar/",    "/get/bar/",    "/get/bar/",            nil       },
+      {  "/get/bar/",    "/",            "/",            "/get/bar/",            nil       },
+      {  "/get/bar/",    "/",            "/get/bar",     "/get/bar/get/bar",     nil       },
+      {  "/get/bar/",    "/",            "/get/bar/",    "/get/bar/get/bar/",    nil       },
+      {  "/get/bar/",    "/get/bar",     "/get/bar",     "/get/bar",             nil       },
+      {  "/get/bar/",    "/get/bar/",    "/get/bar/",    "/get/bar/",            nil       },
       {  "/",            "/",            "/",            "/",                    true      },
-      {  "/",            "/",            "/foo/bar",     "/foo/bar",             true      },
-      {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            true      },
-      {  "/",            "/foo/bar",     "/foo/bar",     "/",                    true      },
-      {  "/",            "/foo/bar/",    "/foo/bar/",    "/",                    true      },
-      {  "/foo/bar",     "/",            "/",            "/foo/bar",             true      },
-      {  "/foo/bar",     "/",            "/foo/bar",     "/foo/bar/foo/bar",     true      },
-      {  "/foo/bar",     "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    true      },
-      {  "/foo/bar",     "/foo/bar",     "/foo/bar",     "/foo/bar",             true      },
-      {  "/foo/bar",     "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            true      },
-      {  "/foo/bar/",    "/",            "/",            "/foo/bar/",            true      },
-      {  "/foo/bar/",    "/",            "/foo/bar",     "/foo/bar/foo/bar",     true      },
-      {  "/foo/bar/",    "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    true      },
-      {  "/foo/bar/",    "/foo/bar",     "/foo/bar",     "/foo/bar",             true      },
-      {  "/foo/bar/",    "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            true      },
+      {  "/",            "/",            "/get/bar",     "/get/bar",             true      },
+      {  "/",            "/",            "/get/bar/",    "/get/bar/",            true      },
+      {  "/",            "/get/bar",     "/get/bar",     "/",                    true      },
+      {  "/",            "/get/bar/",    "/get/bar/",    "/",                    true      },
+      {  "/get/bar",     "/",            "/",            "/get/bar",             true      },
+      {  "/get/bar",     "/",            "/get/bar",     "/get/bar/get/bar",     true      },
+      {  "/get/bar",     "/",            "/get/bar/",    "/get/bar/get/bar/",    true      },
+      {  "/get/bar",     "/get/bar",     "/get/bar",     "/get/bar",             true      },
+      {  "/get/bar",     "/get/bar/",    "/get/bar/",    "/get/bar/",            true      },
+      {  "/get/bar/",    "/",            "/",            "/get/bar/",            true      },
+      {  "/get/bar/",    "/",            "/get/bar",     "/get/bar/get/bar",     true      },
+      {  "/get/bar/",    "/",            "/get/bar/",    "/get/bar/get/bar/",    true      },
+      {  "/get/bar/",    "/get/bar",     "/get/bar",     "/get/bar",             true      },
+      {  "/get/bar/",    "/get/bar/",    "/get/bar/",    "/get/bar/",            true      },
       {  "/",            "/",            "/",            "/",                    false     },
-      {  "/",            "/",            "/foo/bar",     "/foo/bar",             false     },
-      {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            false     },
-      {  "/",            "/foo/bar",     "/foo/bar",     "/foo/bar",             false     },
-      {  "/",            "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            false     },
-      {  "/foo/bar",     "/",            "/",            "/foo/bar",             false     },
-      {  "/foo/bar",     "/",            "/foo/bar",     "/foo/bar/foo/bar",     false     },
-      {  "/foo/bar",     "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
-      {  "/foo/bar",     "/foo/bar",     "/foo/bar",     "/foo/bar/foo/bar",     false     },
-      {  "/foo/bar",     "/foo/bar/",    "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
-      {  "/foo/bar/",    "/",            "/",            "/foo/bar/",            false     },
-      {  "/foo/bar/",    "/",            "/foo/bar",     "/foo/bar/foo/bar",     false     },
-      {  "/foo/bar/",    "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
-      {  "/foo/bar/",    "/foo/bar",     "/foo/bar",     "/foo/bar/foo/bar",     false     },
-      {  "/foo/bar/",    "/foo/bar/",    "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
+      {  "/",            "/",            "/get/bar",     "/get/bar",             false     },
+      {  "/",            "/",            "/get/bar/",    "/get/bar/",            false     },
+      {  "/",            "/get/bar",     "/get/bar",     "/get/bar",             false     },
+      {  "/",            "/get/bar/",    "/get/bar/",    "/get/bar/",            false     },
+      {  "/get/bar",     "/",            "/",            "/get/bar",             false     },
+      {  "/get/bar",     "/",            "/get/bar",     "/get/bar/get/bar",     false     },
+      {  "/get/bar",     "/",            "/get/bar/",    "/get/bar/get/bar/",    false     },
+      {  "/get/bar",     "/get/bar",     "/get/bar",     "/get/bar/get/bar",     false     },
+      {  "/get/bar",     "/get/bar/",    "/get/bar/",    "/get/bar/get/bar/",    false     },
+      {  "/get/bar/",    "/",            "/",            "/get/bar/",            false     },
+      {  "/get/bar/",    "/",            "/get/bar",     "/get/bar/get/bar",     false     },
+      {  "/get/bar/",    "/",            "/get/bar/",    "/get/bar/get/bar/",    false     },
+      {  "/get/bar/",    "/get/bar",     "/get/bar",     "/get/bar/get/bar",     false     },
+      {  "/get/bar/",    "/get/bar/",    "/get/bar/",    "/get/bar/get/bar/",    false     },
     }
 
     setup(function()
@@ -704,7 +666,7 @@ describe("Router", function()
         assert(helpers.dao.apis:insert {
             name         = "localbin-" .. i,
             strip_uri    = args[5],
-            upstream_url = "http://localhost:9999" .. args[1],
+            upstream_url = helpers.mock_upstream_url .. args[1],
             uris         = {
               args[2],
             },
@@ -714,9 +676,10 @@ describe("Router", function()
         })
       end
 
-      assert(helpers.start_kong {
+      helpers.run_migrations()
+      assert(helpers.start_kong({
         nginx_conf = "spec/fixtures/custom_nginx.template",
-      })
+      }))
     end)
 
     teardown(function()

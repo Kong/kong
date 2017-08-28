@@ -11,9 +11,4 @@ return {
       required = true,
     },
   },
-  marshall_event = function(_, t)
-    return {
-      name = t.name
-    }
-  end,
 }

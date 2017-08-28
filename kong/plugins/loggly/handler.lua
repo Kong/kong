@@ -4,7 +4,7 @@ local cjson = require "cjson"
 
 local LogglyLogHandler = BasePlugin:extend()
 
-LogglyLogHandler.PRIORITY = 1
+LogglyLogHandler.PRIORITY = 6
 
 local os_date = os.date
 local tostring = tostring
@@ -92,7 +92,7 @@ local function log(premature, conf, message)
   if premature then
     return
   end
-  
+
   if message.response.status >= 500 then
     return decide_severity(conf, conf.server_errors_severity, message)
   elseif message.response.status >= 400 then
@@ -111,7 +111,7 @@ function LogglyLogHandler:log(conf)
   LogglyLogHandler.super.log(self)
 
   local message = basic_serializer.serialize(ngx)
-  
+
   local ok, err = ngx_timer_at(0, log, conf, message)
   if not ok then
     ngx_log(ngx.ERR, "failed to create timer: ", err)

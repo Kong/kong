@@ -1,4 +1,4 @@
--- Copyright (C) Mashape, Inc.
+-- Copyright (C) Kong Inc.
 
 local BasePlugin = require "kong.plugins.base_plugin"
 local req_set_header = ngx.req.set_header
@@ -6,6 +6,8 @@ local req_get_headers = ngx.req.get_headers
 local uuid = require("kong.tools.utils").uuid
 
 local CorrelationIdHandler = BasePlugin:extend()
+
+CorrelationIdHandler.PRIORITY = 1
 
 local worker_uuid
 local worker_counter

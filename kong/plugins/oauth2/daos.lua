@@ -22,18 +22,16 @@ end
 local OAUTH2_CREDENTIALS_SCHEMA = {
   primary_key = {"id"},
   table = "oauth2_credentials",
+  cache_key = { "client_id" },
   fields = {
     id = { type = "id", dao_insert_value = true },
     consumer_id = { type = "id", required = true, foreign = "consumers:id" },
     name = { type = "string", required = true },
     client_id = { type = "string", required = false, unique = true, default = utils.random_string },
-    client_secret = { type = "string", required = false, unique = true, default = utils.random_string },
+    client_secret = { type = "string", required = false, default = utils.random_string },
     redirect_uri = { type = "array", required = true, func = validate_uris },
     created_at = { type = "timestamp", immutable = true, dao_insert_value = true }
   },
-  marshall_event = function(self, t)
-    return { id = t.id, consumer_id = t.consumer_id, client_id = t.client_id }
-  end
 }
 
 local OAUTH2_AUTHORIZATION_CODES_SCHEMA = {
@@ -54,6 +52,7 @@ local BEARER = "bearer"
 local OAUTH2_TOKENS_SCHEMA = {
   primary_key = {"id"},
   table = "oauth2_tokens",
+  cache_key = { "access_token" },
   fields = {
     id = { type = "id", dao_insert_value = true },
     api_id = { type = "id", required = false, foreign = "apis:id" },
@@ -66,9 +65,6 @@ local OAUTH2_TOKENS_SCHEMA = {
     scope = { type = "string" },
     created_at = { type = "timestamp", immutable = true, dao_insert_value = true }
   },
-  marshall_event = function(self, t)
-    return { id = t.id, credential_id = t.credential_id, access_token = t.access_token }
-  end
 }
 
 return {

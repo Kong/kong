@@ -5,24 +5,28 @@ describe("Plugin: request-termination (integration)", function()
   local consumer1
 
   setup(function()
+    helpers.run_migrations()
+
     assert(helpers.dao.apis:insert {
-      name = "api-1",
-      hosts = { "api1.request-termination.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-1",
+      hosts        = { "api1.request-termination.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
       name = "key-auth",
     })
     consumer1 = assert(helpers.dao.consumers:insert {
-      username = "bob"
+      username = "bob",
     })
     assert(helpers.dao.keyauth_credentials:insert {
-      key = "kong",
-      consumer_id = consumer1.id
+      key         = "kong",
+      consumer_id = consumer1.id,
     })
 
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
     client = helpers.proxy_client()
     admin_client = helpers.admin_client()
   end)
@@ -50,7 +54,7 @@ describe("Plugin: request-termination (integration)", function()
       },
     })
     assert.response(res).has.status(201)
-    
+
     -- verify access being blocked
     res = assert(client:send {
       method = "GET",

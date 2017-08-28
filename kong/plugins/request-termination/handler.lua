@@ -6,7 +6,7 @@ local server_header = meta._NAME .. "/" .. meta._VERSION
 
 local RequestTerminationHandler = BasePlugin:extend()
 
-RequestTerminationHandler.PRIORITY = 1
+RequestTerminationHandler.PRIORITY = 7
 
 function RequestTerminationHandler:new()
   RequestTerminationHandler.super.new(self, "request-termination")
@@ -21,7 +21,7 @@ function RequestTerminationHandler:access(conf)
   local message = conf.message
   if body then
     ngx.status = status_code
-    
+
     if not content_type then
       content_type = "application/json; charset=utf-8";
     end
@@ -29,7 +29,7 @@ function RequestTerminationHandler:access(conf)
     ngx.header["Server"] = server_header
 
     ngx.say(body)
-  
+
     return ngx.exit(status_code)
    else
     return responses.send(status_code, message)

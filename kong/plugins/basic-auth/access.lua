@@ -1,5 +1,4 @@
 local utils = require "kong.tools.utils"
-local cache = require "kong.tools.database_cache"
 local crypto = require "kong.plugins.basic-auth.crypto"
 local singletons = require "kong.singletons"
 local constants = require "kong.constants"
@@ -79,8 +78,10 @@ local function load_credential_from_db(username)
     return
   end
   
-  local credential, err = cache.get_or_set(cache.basicauth_credential_key(username),
-                          nil, load_credential_into_memory, username)
+  local credential_cache_key = singletons.dao.basicauth_credentials:cache_key(username)
+  local credential, err      = singletons.cache:get(credential_cache_key, nil,
+                                                    load_credential_into_memory,
+                                                    username)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
@@ -138,8 +139,10 @@ local function do_authentication(conf)
   end
 
   -- Retrieve consumer
-  local consumer, err = cache.get_or_set(cache.consumer_key(credential.consumer_id),
-                   nil, load_consumer_into_memory, credential.consumer_id, false)
+  local consumer_cache_key = singletons.dao.consumers:cache_key(credential.consumer_id)
+  local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
+                                                  load_consumer_into_memory,
+                                                  credential.consumer_id)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
@@ -160,10 +163,12 @@ function _M.execute(conf)
 
   local ok, err = do_authentication(conf)
   if not ok then
-    if conf.anonymous ~= "" and conf.anonymous ~= nil then
+    if conf.anonymous ~= "" then
       -- get anonymous user
-      local consumer, err = cache.get_or_set(cache.consumer_key(conf.anonymous),
-                       nil, load_consumer_into_memory, conf.anonymous, true)
+      local consumer_cache_key = singletons.dao.consumers:cache_key(conf.anonymous)
+      local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
+                                                      load_consumer_into_memory,
+                                                      conf.anonymous, true)
       if err then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end

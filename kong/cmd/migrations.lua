@@ -66,7 +66,7 @@ The available commands are:
  reset  Reset the configured database (irreversible).
 
 Options:
- -c,--conf     (optional string) configuration file
+ -c,--conf        (optional string) configuration file
 ]]
 
 return {

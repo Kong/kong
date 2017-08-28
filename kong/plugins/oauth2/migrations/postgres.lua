@@ -155,5 +155,14 @@ return {
         end
       end
     end
+  },
+  {
+    name = "2017-04-24-oauth2_client_secret_not_unique",
+    up = [[
+      ALTER TABLE oauth2_credentials DROP CONSTRAINT IF EXISTS oauth2_credentials_client_secret_key;
+    ]],
+    down = [[
+      ALTER TABLE oauth2_credentials ADD CONSTRAINT oauth2_credentials_client_secret_key UNIQUE(client_secret);
+    ]],
   }
 }

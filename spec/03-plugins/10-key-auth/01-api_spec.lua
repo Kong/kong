@@ -5,20 +5,24 @@ describe("Plugin: key-auth (API)", function()
   local consumer
   local admin_client
   setup(function()
+    helpers.run_migrations()
+
     assert(helpers.dao.apis:insert {
-      name = "keyauth1",
-      upstream_url = "http://mockbin.com",
-      hosts = { "keyauth1.test" },
+      name         = "keyauth1",
+      upstream_url = helpers.mock_upstream_url,
+      hosts        = { "keyauth1.test" },
     })
     assert(helpers.dao.apis:insert {
-      name = "keyauth2",
-      upstream_url = "http://mockbin.com",
-      hosts = { "keyauth2.test" },
+      name         = "keyauth2",
+      upstream_url = helpers.mock_upstream_url,
+      hosts        = { "keyauth2.test" },
     })
     consumer = assert(helpers.dao.consumers:insert {
       username = "bob"
     })
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
     admin_client = helpers.admin_client()
   end)
   teardown(function()

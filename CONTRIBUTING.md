@@ -292,8 +292,9 @@ accepted types are:
 - **perf**: A code change that significantly improves performance
 - **refactor**: A code change that neither fixes a bug nor adds a feature, and
   is too big to be considered just `perf`
-- **chore**: Changes related to the build process, the dependencies, or
-  auxiliary tools and libraries such as LuaRocks, Travis-ci, etc...
+- **chore**: Maintenance changes related to code cleaning that isn't
+  considered part of a refactor, build process updates, dependency bumps, or
+  auxiliary tools and libraries updates (LuaRocks, Travis-ci, etc...).
 
 
 ##### Scope
@@ -786,15 +787,17 @@ if str then
 end
 ```
 
-When creating multiple branches **do** include a blank line above the `elseif`
-and `else` statements:
+When creating multiple branches that span multiple lines, **do** include a
+blank line above the `elseif` and `else` statements:
 
 ```lua
 -- bad
 if foo then
   do_stuff()
+  keep_doing_stuff()
 elseif bar then
   do_other_stuff()
+  keep_doing_other_stuff()
 else
   error()
 end
@@ -802,14 +805,31 @@ end
 -- good
 if thing then
   do_stuff()
+  keep_doing_stuff()
 
 elseif bar then
   do_other_stuff()
+  keep_doing_other_stuff()
 
 else
   error()
 end
 ```
+
+For one-line blocks, blank lines are not necessary:
+
+```lua
+--- good
+if foo then
+  do_stuff()
+else
+  error("failed!")
+end
+```
+
+Note in the correct "long" example that if some branches are long, then all
+branches are created with the preceding blank line (including the one-liner
+`else` case).
 
 When a branch returns, **do not** create subsequent branches, but write the
 rest of your logic on the parent branch:

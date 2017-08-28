@@ -14,33 +14,33 @@ describe("ALF Buffer", function()
     reload_buffer()
 
     conf = {
-      server_addr = "10.10.10.10",
-      service_token = "abcd",
-      environment = "test",
-      log_bodies = false,
-      retry_count = 0,
+      server_addr        = "10.10.10.10",
+      service_token      = "abcd",
+      environment        = "test",
+      log_bodies         = false,
+      retry_count        = 0,
       connection_timeout = 30,
-      flush_timeout = 2,
-      queue_size = 1000,
-      host = "collector.galileo.mashape.com",
-      port = 443
+      flush_timeout      = 2,
+      queue_size         = 1000,
+      host               = "collector.galileo.mashape.com",
+      port               = 443,
     }
 
     _ngx = {
       status = 200,
-      var = {
-        scheme = "https",
-        host = "mockbin.com",
-        request_uri = "/request/path",
+      var    = {
+        scheme         = "https",
+        host           = "example.com",
+        request_uri    = "/request/path",
         request_length = 32,
-        remote_addr = "127.0.0.1",
-        server_addr = "10.10.10.10"
+        remote_addr    = "127.0.0.1",
+        server_addr    = "10.10.10.10",
       },
-      ctx = {
+      ctx   = {
         KONG_PROXY_LATENCY = 3,
-        KONG_WAITING_TIME = 15,
-        KONG_RECEIVE_TIME = 25
-      }
+        KONG_WAITING_TIME  = 15,
+        KONG_RECEIVE_TIME  = 25,
+      },
     }
   end)
 

@@ -8,7 +8,7 @@ local cjson_encode = cjson.encode
 
 local HttpLogHandler = BasePlugin:extend()
 
-HttpLogHandler.PRIORITY = 1
+HttpLogHandler.PRIORITY = 12
 
 local HTTP = "http"
 local HTTPS = "https"
@@ -70,7 +70,7 @@ local function log(premature, conf, body, name)
     return
   end
   name = "[" .. name .. "] "
-  
+
   local ok, err
   local parsed_url = parse_url(conf.http_endpoint)
   local host = parsed_url.host

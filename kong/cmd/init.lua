@@ -6,8 +6,8 @@ local pl_app = require "pl.lapp"
 local log = require "kong.cmd.utils.log"
 
 local options = [[
- --v           verbose
- --vv          debug
+ --v              verbose
+ --vv             debug
 ]]
 
 local cmds_arr = {}
@@ -20,8 +20,8 @@ local cmds = {
   health = true,
   check = true,
   compile = true,
+  prepare = true,
   migrations = true,
-  cluster = true,
   version = true,
   roar = true
 }

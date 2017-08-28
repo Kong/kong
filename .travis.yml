@@ -13,19 +13,17 @@ addons:
   postgresql: "9.4"
   apt:
     packages:
-      - dnsmasq
       - net-tools
       - libpcre3-dev
       - build-essential
 
 env:
   global:
-    - SERF=0.8.0
     - LUAROCKS=2.4.2
     - OPENSSL=1.0.2l
     - CASSANDRA=2.2.8
-    - OPENRESTY_BASE=1.11.2.1
-    - OPENRESTY_LATEST=1.11.2.2
+    - OPENRESTY_BASE=1.11.2.4
+    - OPENRESTY_LATEST=1.11.2.4
     - OPENRESTY=$OPENRESTY_BASE
     - DOWNLOAD_CACHE=$HOME/download-cache
     - INSTALL_CACHE=$HOME/install-cache

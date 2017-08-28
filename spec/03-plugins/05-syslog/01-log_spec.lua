@@ -3,61 +3,65 @@ local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local pl_stringx = require "pl.stringx"
 
-describe("#ci Plugin: syslog (log)", function()
+describe("#flaky Plugin: syslog (log)", function()
   local client, platform
   setup(function()
+    helpers.run_migrations()
+
     local api1 = assert(helpers.dao.apis:insert {
-      name = "api-1",
-      hosts = { "logging.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-1",
+      hosts        = { "logging.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     local api2 = assert(helpers.dao.apis:insert {
-      name = "api-2",
-      hosts = { "logging2.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-2",
+      hosts        = { "logging2.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     local api3 = assert(helpers.dao.apis:insert {
-      name = "api-3",
-      hosts = { "logging3.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-3",
+      hosts        = { "logging3.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
 
     assert(helpers.dao.plugins:insert {
       api_id = api1.id,
-      name = "syslog",
+      name   = "syslog",
       config = {
-        log_level = "info",
-        successful_severity = "warning",
+        log_level              = "info",
+        successful_severity    = "warning",
         client_errors_severity = "warning",
-        server_errors_severity = "warning"
-      }
+        server_errors_severity = "warning",
+      },
     })
     assert(helpers.dao.plugins:insert {
       api_id = api2.id,
-      name = "syslog",
+      name   = "syslog",
       config = {
-        log_level = "err",
-        successful_severity = "warning",
+        log_level              = "err",
+        successful_severity    = "warning",
         client_errors_severity = "warning",
-        server_errors_severity = "warning"
-      }
+        server_errors_severity = "warning",
+      },
     })
     assert(helpers.dao.plugins:insert {
       api_id = api3.id,
-      name = "syslog",
+      name   = "syslog",
       config = {
-        log_level = "warning",
-        successful_severity = "warning",
+        log_level              = "warning",
+        successful_severity    = "warning",
         client_errors_severity = "warning",
-        server_errors_severity = "warning"
-      }
+        server_errors_severity = "warning",
+      },
     })
 
     local ok, _, stdout = helpers.execute("uname")
     assert(ok, "failed to retrieve platform name")
     platform = pl_stringx.strip(stdout)
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
   end)
   teardown(function()
     helpers.stop_kong()
@@ -71,7 +75,7 @@ describe("#ci Plugin: syslog (log)", function()
   end)
 
   local function do_test(host, expecting_same)
-    local uuid = utils.random_string()
+    local uuid = utils.uuid()
 
     local response = assert(client:send {
       method = "GET",

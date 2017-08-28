@@ -6,10 +6,12 @@ local pl_stringx = require "pl.stringx"
 local conf_loader = require "kong.conf_loader"
 
 local function execute(args)
+  log.disable()
   -- retrieve default prefix or use given one
   local default_conf = assert(conf_loader(nil, {
     prefix = args.prefix
   }))
+  log.enable()
   assert(pl_path.exists(default_conf.prefix),
          "no such prefix: " .. default_conf.prefix)
   assert(pl_path.exists(default_conf.kong_env),
@@ -19,7 +21,6 @@ local function execute(args)
   local conf = assert(conf_loader(default_conf.kong_env))
 
   local pids = {
-    serf = conf.serf_pid,
     nginx = conf.nginx_pid,
   }
 
@@ -47,7 +48,7 @@ Usage: kong health [OPTIONS]
 Check if the necessary services are running for this node.
 
 Options:
- -p,--prefix   (optional string) prefix at which Kong should be running
+ -p,--prefix      (optional string) prefix at which Kong should be running
 ]]
 
 return {

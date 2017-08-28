@@ -3,7 +3,7 @@ local cjson   = require "cjson"
 
 
 local S502_MESSAGE = "An invalid response was received from the upstream server"
-local RELOAD_DELAY = 0.5
+local RELOAD_DELAY = 1.0
 
 
 describe("error_default_type", function()
@@ -13,11 +13,11 @@ describe("error_default_type", function()
     helpers.dao:truncate_tables()
 
     assert(helpers.dao.apis:insert {
-      name = "api-1",
-      upstream_url = "http://127.0.0.1:3333/",
-      hosts = {
+      name         = "api-1",
+      upstream_url = helpers.mock_upstream_url .. "/status/500",
+      hosts        = {
         "example.com",
-      }
+      },
     })
 
     assert(helpers.start_kong {
@@ -42,6 +42,15 @@ describe("error_default_type", function()
 
   describe("request `Accept` is missing", function()
     describe("(default)", function()
+      setup(function()
+        assert(helpers.kong_exec("reload", {
+          prefix             = helpers.test_conf.prefix,
+          nginx_conf         = "spec/fixtures/custom_nginx.template",
+        }))
+
+        ngx.sleep(RELOAD_DELAY)
+      end)
+
       it("returns error messages in plain text", function()
         local res = assert(client:send {
           method  = "GET",

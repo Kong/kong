@@ -8,10 +8,12 @@ describe("Upstream Headers", function()
       name = "mockbin",
       hosts = { "test.com" },
       strip_uri = true,
-      upstream_url = "http://mockbin.com"
+      upstream_url = helpers.mock_upstream_url,
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
     client = helpers.proxy_client()
   end)
 

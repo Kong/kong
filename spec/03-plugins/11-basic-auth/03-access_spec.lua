@@ -8,73 +8,77 @@ describe("Plugin: basic-auth (access)", function()
   local client
 
   setup(function()
+    helpers.run_migrations()
+
     local api1 = assert(helpers.dao.apis:insert {
-      name = "api-1",
-      hosts = { "basic-auth1.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-1",
+      hosts        = { "basic-auth1.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
-      name = "basic-auth",
-      api_id = api1.id
+      name   = "basic-auth",
+      api_id = api1.id,
     })
 
     local api2 = assert(helpers.dao.apis:insert {
-      name = "api-2",
-      hosts = { "basic-auth2.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-2",
+      hosts        = { "basic-auth2.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
-      name = "basic-auth",
+      name   = "basic-auth",
       api_id = api2.id,
       config = {
-        hide_credentials = true
-      }
+        hide_credentials = true,
+      },
     })
 
     local consumer = assert(helpers.dao.consumers:insert {
-      username = "bob"
+      username = "bob",
     })
     local anonymous_user = assert(helpers.dao.consumers:insert {
-      username = "no-body"
+      username = "no-body",
     })
     assert(helpers.dao.basicauth_credentials:insert {
-      username = "bob",
-      password = "kong",
-      consumer_id = consumer.id
+      username    = "bob",
+      password    = "kong",
+      consumer_id = consumer.id,
     })
      assert(helpers.dao.basicauth_credentials:insert {
-      username = "user123",
-      password = "password123",
-      consumer_id = consumer.id
+      username    = "user123",
+      password    = "password123",
+      consumer_id = consumer.id,
     })
 
     local api3 = assert(helpers.dao.apis:insert {
-      name = "api-3",
-      hosts = { "basic-auth3.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-3",
+      hosts        = { "basic-auth3.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
-      name = "basic-auth",
+      name   = "basic-auth",
       api_id = api3.id,
       config = {
-        anonymous = anonymous_user.id
-      }
+        anonymous = anonymous_user.id,
+      },
     })
 
     local api4 = assert(helpers.dao.apis:insert {
-      name = "api-4",
-      hosts = { "basic-auth4.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-4",
+      hosts        = { "basic-auth4.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
-      name = "basic-auth",
+      name   = "basic-auth",
       api_id = api4.id,
       config = {
-        anonymous = utils.uuid() -- a non-existing consumer id
-      }
+        anonymous = utils.uuid(), -- a non-existing consumer id
+      },
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
     client = helpers.proxy_client()
   end)
 
@@ -330,60 +334,62 @@ describe("Plugin: basic-auth (access)", function()
 
   setup(function()
     local api1 = assert(helpers.dao.apis:insert {
-      name = "api-1",
-      hosts = { "logical-and.com" },
-      upstream_url = "http://mockbin.org/request"
+      name         = "api-1",
+      hosts        = { "logical-and.com" },
+      upstream_url = helpers.mock_upstream_url .. "/request",
     })
     assert(helpers.dao.plugins:insert {
-      name = "basic-auth",
-      api_id = api1.id
+      name   = "basic-auth",
+      api_id = api1.id,
     })
     assert(helpers.dao.plugins:insert {
-      name = "key-auth",
-      api_id = api1.id
+      name   = "key-auth",
+      api_id = api1.id,
     })
 
     anonymous = assert(helpers.dao.consumers:insert {
-      username = "Anonymous"
+      username = "Anonymous",
     })
     user1 = assert(helpers.dao.consumers:insert {
-      username = "Mickey"
+      username = "Mickey",
     })
     user2 = assert(helpers.dao.consumers:insert {
-      username = "Aladdin"
+      username = "Aladdin",
     })
 
     local api2 = assert(helpers.dao.apis:insert {
-      name = "api-2",
-      hosts = { "logical-or.com" },
-      upstream_url = "http://mockbin.org/request"
+      name         = "api-2",
+      hosts        = { "logical-or.com" },
+      upstream_url = helpers.mock_upstream_url .. "/request",
     })
     assert(helpers.dao.plugins:insert {
-      name = "basic-auth",
+      name   = "basic-auth",
       api_id = api2.id,
       config = {
-        anonymous = anonymous.id
-      }
+        anonymous = anonymous.id,
+      },
     })
     assert(helpers.dao.plugins:insert {
-      name = "key-auth",
+      name   = "key-auth",
       api_id = api2.id,
       config = {
-        anonymous = anonymous.id
-      }
+        anonymous = anonymous.id,
+      },
     })
 
     assert(helpers.dao.keyauth_credentials:insert {
-      key = "Mouse",
-      consumer_id = user1.id
+      key         = "Mouse",
+      consumer_id = user1.id,
     })
     assert(helpers.dao.basicauth_credentials:insert {
-      username = "Aladdin",
-      password = "OpenSesame",
-      consumer_id = user2.id
+      username    = "Aladdin",
+      password    = "OpenSesame",
+      consumer_id = user2.id,
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
     client = helpers.proxy_client()
   end)
 

@@ -1,30 +1,15 @@
-local ssl = require "ngx.ssl"
-local cache = require "kong.tools.database_cache"
---local lrucache = require "resty.lrucache"
+local ssl        = require "ngx.ssl"
 local singletons = require "kong.singletons"
 
 
 local ngx_log = ngx.log
 local ERR     = ngx.ERR
---local INFO    = ngx.INFO
 local DEBUG   = ngx.DEBUG
---local ssl_certs_cache
 
 
 local function log(lvl, ...)
   ngx_log(lvl, "[ssl] ", ...)
 end
-
-
---[[
-do
-  local err
-  ssl_certs_cache, err = lrucache.new(100)
-  if not ssl_certs_cache then
-    log(ERR, "could not create certs cache: ", err)
-  end
-end
---]]
 
 
 local _M = {}
@@ -39,7 +24,8 @@ local function find_certificate(sni)
   end
 
   if not row then
-    log(DEBUG, "no server name registered for client-provided SNI")
+    log(DEBUG, "no server name registered for client-provided SNI: '",
+               sni, "'")
     return true
   end
 
@@ -56,23 +42,9 @@ local function find_certificate(sni)
     return nil, "no SSL certificate configured for server name: " .. sni
   end
 
-  -- parse cert and priv key for later usage by ngx.ssl
-
-  local cert, err = ssl.parse_pem_cert(ssl_certificate.cert)
-  if not cert then
-    return nil, "could not parse PEM certificate: " .. err
-  end
-
-  local key, err = ssl.parse_pem_priv_key(ssl_certificate.key)
-  if not key then
-    return nil, "could not parse PEM private key: " .. err
-  end
-
-  -- cached value
-
   return {
-    cert = cert,
-    key  = key,
+    cert = ssl_certificate.cert,
+    key  = ssl_certificate.key,
   }
 end
 
@@ -85,33 +57,50 @@ function _M.execute()
     log(ERR, "could not retrieve Server Name Indication: ", err)
     return ngx.exit(ngx.ERROR)
   end
+
   if not sni then
-    log(DEBUG, "no Server Name Indication provided by client, serving ", 
+    log(DEBUG, "no Server Name Indication provided by client, serving ",
                "default proxy SSL certificate")
     -- use fallback certificate
     return
   end
 
-  local cert_and_key, err
-  --local cert_and_key = ssl_certs_cache:get(sni)
-  --if not cert_and_key then
-    -- miss
-    -- check shm cache
-    cert_and_key, err = cache.get_or_set(cache.certificate_key(sni), nil,
-                                         find_certificate, sni)
-    if not cert_and_key then
-      log(ERR, err)
-      return ngx.exit(ngx.ERROR)
-    end
+  local lru              = singletons.cache.mlcache.lru
+  local pem_cache_key    = "pem_ssl_certificates:" .. sni
+  local parsed_cache_key = "parsed_ssl_certificates:" .. sni
 
-    -- set Lua-land LRU cache
+  local pem_cert_and_key, err = singletons.cache:get(pem_cache_key, nil,
+                                                     find_certificate, sni)
+  if not pem_cert_and_key then
+    log(ERR, err)
+    return ngx.exit(ngx.ERROR)
+  end
 
-    --ssl_certs_cache:set(sni, cert_and_key)
-  --end
-
-  if cert_and_key == true then
+  if pem_cert_and_key == true then
     -- use fallback certificate
     return
+  end
+
+  local cert_and_key = lru:get(parsed_cache_key)
+  if not cert_and_key then
+    -- parse cert and priv key for later usage by ngx.ssl
+
+    local cert, err = ssl.parse_pem_cert(pem_cert_and_key.cert)
+    if not cert then
+      return nil, "could not parse PEM certificate: " .. err
+    end
+
+    local key, err = ssl.parse_pem_priv_key(pem_cert_and_key.key)
+    if not key then
+      return nil, "could not parse PEM private key: " .. err
+    end
+
+    cert_and_key = {
+      cert = cert,
+      key = key,
+    }
+
+    lru:set(parsed_cache_key, cert_and_key)
   end
 
   -- set the certificate for this connection

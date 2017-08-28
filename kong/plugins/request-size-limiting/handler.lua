@@ -1,4 +1,4 @@
--- Copyright (C) Mashape, Inc.
+-- Copyright (C) Kong Inc.
 
 local BasePlugin = require "kong.plugins.base_plugin"
 local responses = require "kong.tools.responses"
@@ -9,7 +9,7 @@ local MB = 2^20
 
 local RequestSizeLimitingHandler = BasePlugin:extend()
 
-RequestSizeLimitingHandler.PRIORITY = 950
+RequestSizeLimitingHandler.PRIORITY = 951
 
 local function check_size(length, allowed_size, headers)
   local allowed_bytes_size = allowed_size * MB

@@ -15,11 +15,13 @@ end
 return {
   table = "plugins",
   primary_key = {"id", "name"},
+  cache_key = { "name", "api_id", "consumer_id" },
   fields = {
     id = {
       type = "id",
       dao_insert_value = true,
-      required = true
+      required = true,
+      unique = true,
     },
     created_at = {
       type = "timestamp",
@@ -50,27 +52,6 @@ return {
       default = true
     }
   },
-  marshall_event = function(self, plugin_t)
-    local result = {
-      id = plugin_t.id,
-      api_id = plugin_t.api_id,
-      consumer_id = plugin_t.consumer_id,
-      name = plugin_t.name
-    }
-    if plugin_t and plugin_t.config then
-      local config_schema, err = self.fields.config.schema(plugin_t)
-      if err then
-        return false, Errors.schema(err)
-      end
-
-      if config_schema.marshall_event and type(config_schema.marshall_event) == "function" then
-        result.config = config_schema.marshall_event(plugin_t.config)
-      else
-        result.config = {}
-      end
-    end
-    return result
-  end,
   self_check = function(self, plugin_t, dao, is_update)
     -- Load the config schema
     local config_schema, err = self.fields.config.schema(plugin_t)

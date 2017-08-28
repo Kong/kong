@@ -1,5 +1,8 @@
 # This is a custom nginx configuration template for Kong specs
 
+> if nginx_user then
+user ${{NGINX_USER}};
+> end
 worker_processes ${{NGINX_WORKER_PROCESSES}};
 daemon ${{NGINX_DAEMON}};
 
@@ -33,21 +36,19 @@ http {
     proxy_ssl_server_name on;
     underscores_in_headers on;
 
-    real_ip_header X-Forwarded-For;
-    set_real_ip_from 0.0.0.0/0;
-    real_ip_recursive on;
-
     lua_package_path '${{LUA_PACKAGE_PATH}};;';
     lua_package_cpath '${{LUA_PACKAGE_CPATH}};;';
     lua_code_cache ${{LUA_CODE_CACHE}};
     lua_socket_pool_size ${{LUA_SOCKET_POOL_SIZE}};
     lua_max_running_timers 4096;
     lua_max_pending_timers 16384;
-    lua_shared_dict kong 4m;
-    lua_shared_dict cache ${{MEM_CACHE_SIZE}};
-    lua_shared_dict cache_locks 100k;
-    lua_shared_dict process_events 1m;
-    lua_shared_dict cassandra 5m;
+    lua_shared_dict kong                5m;
+    lua_shared_dict kong_cache          ${{MEM_CACHE_SIZE}};
+    lua_shared_dict kong_process_events 5m;
+    lua_shared_dict kong_cluster_events 5m;
+> if database == "cassandra" then
+    lua_shared_dict kong_cassandra      5m;
+> end
     lua_socket_log_errors off;
 > if lua_ssl_trusted_certificate then
     lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE}}';
@@ -55,7 +56,6 @@ http {
 > end
 
     init_by_lua_block {
-        require 'resty.core'
         kong = require 'kong'
         kong.init()
     }
@@ -74,20 +74,10 @@ http {
         keepalive ${{UPSTREAM_KEEPALIVE}};
     }
 
-    map $http_upgrade $upstream_connection {
-        default keep-alive;
-        websocket upgrade;
-    }
-
-    map $http_upgrade $upstream_upgrade {
-        default '';
-        websocket websocket;
-    }
-
     server {
         server_name kong;
-        listen ${{PROXY_LISTEN}};
-        error_page 404 408 411 412 413 414 417 /kong_error_handler;
+        listen ${{PROXY_LISTEN}}${{PROXY_PROTOCOL}};
+        error_page 400 404 408 411 412 413 414 417 /kong_error_handler;
         error_page 500 502 503 504 /kong_error_handler;
 
         access_log logs/access.log;
@@ -95,7 +85,7 @@ http {
         client_body_buffer_size ${{CLIENT_BODY_BUFFER_SIZE}};
 
 > if ssl then
-        listen ${{PROXY_LISTEN_SSL}} ssl;
+        listen ${{PROXY_LISTEN_SSL}} ssl${{HTTP2}}${{PROXY_PROTOCOL}};
         ssl_certificate ${{SSL_CERT}};
         ssl_certificate_key ${{SSL_CERT_KEY}};
         ssl_protocols TLSv1.1 TLSv1.2;
@@ -104,27 +94,45 @@ http {
         }
 > end
 
+        real_ip_header     ${{REAL_IP_HEADER}};
+        real_ip_recursive  ${{REAL_IP_RECURSIVE}};
+> for i = 1, #trusted_ips do
+        set_real_ip_from   $(trusted_ips[i]);
+> end
+
         location / {
-            set $upstream_host nil;
-            set $upstream_scheme nil;
-            set $upstream_uri nil;
+            set $upstream_host               '';
+            set $upstream_upgrade            '';
+            set $upstream_connection         '';
+            set $upstream_scheme             '';
+            set $upstream_uri                '';
+            set $upstream_host               '';
+            set $upstream_x_forwarded_for    '';
+            set $upstream_x_forwarded_proto  '';
+            set $upstream_x_forwarded_host   '';
+            set $upstream_x_forwarded_port   '';
+
+            rewrite_by_lua_block {
+                kong.rewrite()
+            }
 
             access_by_lua_block {
                 kong.access()
             }
 
             proxy_http_version 1.1;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_set_header Host $upstream_host;
-            proxy_set_header Upgrade $upstream_upgrade;
-            proxy_set_header Connection $upstream_connection;
-            proxy_pass_header Server;
-
-            proxy_ssl_name $upstream_host;
-
-            proxy_pass $upstream_scheme://kong_upstream$upstream_uri;
+            proxy_set_header   Host              $upstream_host;
+            proxy_set_header   Upgrade           $upstream_upgrade;
+            proxy_set_header   Connection        $upstream_connection;
+            proxy_set_header   X-Forwarded-For   $upstream_x_forwarded_for;
+            proxy_set_header   X-Forwarded-Proto $upstream_x_forwarded_proto;
+            proxy_set_header   X-Forwarded-Host  $upstream_x_forwarded_host;
+            proxy_set_header   X-Forwarded-Port  $upstream_x_forwarded_port;
+            proxy_set_header   X-Real-IP         $remote_addr;
+            proxy_pass_header  Server;
+            proxy_pass_header  Date;
+            proxy_ssl_name     $upstream_host;
+            proxy_pass         $upstream_scheme://kong_upstream$upstream_uri;
 
             header_filter_by_lua_block {
                 kong.header_filter()
@@ -142,7 +150,7 @@ http {
         location = /kong_error_handler {
             internal;
             content_by_lua_block {
-                require('kong.core.error_handlers')(ngx)
+                kong.handle_error()
             }
         }
     }
@@ -157,7 +165,7 @@ http {
         client_body_buffer_size 10m;
 
 > if admin_ssl then
-        listen ${{ADMIN_LISTEN_SSL}} ssl;
+        listen ${{ADMIN_LISTEN_SSL}} ssl${{ADMIN_HTTP2}};
         ssl_certificate ${{ADMIN_SSL_CERT}};
         ssl_certificate_key ${{ADMIN_SSL_CERT_KEY}};
         ssl_protocols TLSv1.1 TLSv1.2;
@@ -166,15 +174,7 @@ http {
         location / {
             default_type application/json;
             content_by_lua_block {
-                ngx.header['Access-Control-Allow-Origin'] = '*'
-                ngx.header['Access-Control-Allow-Credentials'] = 'false'
-                if ngx.req.get_method() == 'OPTIONS' then
-                    ngx.header['Access-Control-Allow-Methods'] = 'GET,HEAD,PUT,PATCH,POST,DELETE'
-                    ngx.header['Access-Control-Allow-Headers'] = 'Content-Type'
-                    ngx.exit(204)
-                end
-
-                require('lapis').serve('kong.api')
+                kong.serve_admin_api()
             }
         }
 
@@ -190,89 +190,12 @@ http {
     }
 
     server {
-        server_name custom_server;
-        listen 9999;
+        server_name mock_aws_lambda;
         listen 10001 ssl;
 
         ssl_certificate ${{SSL_CERT}};
         ssl_certificate_key ${{SSL_CERT_KEY}};
         ssl_protocols TLSv1.1 TLSv1.2;
-
-        location /custom_server_path {
-            return 200;
-        }
-
-        location / {
-            content_by_lua_block {
-                local cjson = require "cjson"
-                local var   = ngx.var
-                local req   = ngx.req
-
-                req.read_body()
-
-                local json = cjson.encode {
-                    vars = {
-                        uri                = var.uri,
-                        host               = var.host,
-                        hostname           = var.hostname,
-                        https              = var.https,
-                        scheme             = var.scheme,
-                        is_args            = var.is_args,
-                        server_addr        = var.server_addr,
-                        server_port        = var.server_port,
-                        server_name        = var.server_name,
-                        server_protocol    = var.server_protocol,
-                        remote_addr        = var.remote_addr,
-                        remote_port        = var.remote_port,
-                        realip_remote_addr = var.realip_remote_addr,
-                        realip_remote_port = var.realip_remote_port,
-                        binary_remote_addr = var.binary_remote_addr,
-                        request            = var.request,
-                        request_uri        = var.request_uri,
-                        request_time       = var.request_time,
-                        request_length     = var.request_length,
-                        request_method     = var.request_method,
-                        bytes_received     = var.bytes_received,
-                    },
-                    method       = req.get_method(),
-                    headers      = req.get_headers(0),
-                    uri_args     = req.get_uri_args(0),
-                    post_args    = req.get_post_args(0),
-                    http_version = req.http_version(),
-                }
-
-                ngx.status = 200
-                ngx.say(json)
-                ngx.exit(200)
-            }
-        }
-
-        location /headers-inspect {
-            content_by_lua_block {
-                local cjson = require "cjson"
-
-                local headers = ngx.req.get_headers()
-                local json = cjson.encode(headers)
-
-                ngx.status = 200
-                ngx.say(json)
-                ngx.exit(200)
-            }
-        }
-
-        # N.B. this fixture only exists because the current testing environment
-        # offers no other tenable method to inspect the upstream TLS handshake
-        # this fixture SHOULD NOT be used in the future to build further tests;
-        # the location blocks here must be treated as temporary exceptions, not
-        # an acceptable pattern on which to derive further test architectures
-        location /ssl-inspect {
-            content_by_lua_block {
-                local name = ngx.var.ssl_server_name and ngx.var.ssl_server_name
-                  or "no SNI"
-
-                ngx.say(name)
-            }
-        }
 
         location ~ "/2015-03-31/functions/(?:[^/])*/invocations" {
             content_by_lua_block {
@@ -310,6 +233,146 @@ http {
                 local args = require("cjson").decode(ngx.req.get_body_data())
 
                 say(string.format("%q", qargs.key1 or args.key1), 200)
+            }
+        }
+    }
+
+    server {
+        server_name mock_upstream;
+
+        listen 55555;
+        listen 55556 ssl;
+
+        ssl_certificate ${{SSL_CERT}};
+        ssl_certificate_key ${{SSL_CERT_KEY}};
+        ssl_protocols TLSv1.1 TLSv1.2;
+
+        set_real_ip_from 127.0.0.1;
+
+        location = / {
+            content_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.send_default_json_response({
+                    valid_routes = {
+                        ["/ws"]                         = "Websocket echo server",
+                        ["/get"]                        = "Accepts a GET request and returns it in JSON format",
+                        ["/post"]                       = "Accepts a POST request and returns it in JSON format",
+                        ["/response-headers?:key=:val"] = "Returns given response headers",
+                        ["/anything"]                   = "Accepts any request and returns it in JSON format",
+                        ["/request"]                    = "Alias to /anything",
+                        ["/delay/:duration"]            = "Delay the response for <duration> seconds",
+                        ["/basic-auth/:user/:pass"]     = "Performs HTTP basic authentication with the given credentials",
+                        ["/status/:code"]               = "Returns a response with the specified <status code>",
+                        ["/stream/:num"]                = "Stream <num> chunks of JSON data via chunked Transfer Encoding",
+                    },
+                })
+            }
+        }
+
+        location = /ws {
+            content_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.serve_web_sockets()
+            }
+        }
+
+        location /get {
+            access_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.filter_access_by_method("GET")
+            }
+            content_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.send_default_json_response()
+            }
+        }
+
+        location /post {
+            access_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.filter_access_by_method("POST")
+            }
+            content_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.send_default_json_response()
+            }
+        }
+
+        location = /response-headers {
+            access_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.filter_access_by_method("GET")
+            }
+            content_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.send_default_json_response({}, ngx.req.get_uri_args())
+            }
+        }
+
+        location ~ "^/basic-auth/(?<username>[a-zA-Z0-9_]+)/(?<password>.+)$" {
+            access_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.filter_access_by_basic_auth(ngx.var.username,
+                                                      ngx.var.password)
+            }
+            content_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.send_default_json_response({
+                    authenticated = true,
+                    user          = ngx.var.username,
+                })
+            }
+        }
+
+        location ~ "^/(request|anything)" {
+            content_by_lua_block {
+                local mu = require "spec.fixtures.mock_upstream"
+                return mu.send_default_json_response()
+            }
+        }
+
+        location ~ "^/delay/(?<delay_seconds>\d{1,3})$" {
+            content_by_lua_block {
+                local mu            = require "spec.fixtures.mock_upstream"
+                local delay_seconds = tonumber(ngx.var.delay_seconds)
+                if not delay_seconds then
+                    return ngx.exit(ngx.HTTP_NOT_FOUND)
+                end
+
+                ngx.sleep(delay_seconds)
+
+                return mu.send_default_json_response({
+                    delay = delay_seconds,
+                })
+            }
+        }
+
+        location ~ "^/status/(?<code>\d{3})$" {
+            content_by_lua_block {
+                local mu   = require "spec.fixtures.mock_upstream"
+                local code = tonumber(ngx.var.code)
+                if not code then
+                    return ngx.exit(ngx.HTTP_NOT_FOUND)
+                end
+                ngx.status = code
+                return mu.send_default_json_response({
+                  code = code,
+                })
+            }
+        }
+
+        location ~ "^/stream/(?<num>\d+)$" {
+            content_by_lua_block {
+                local mu  = require "spec.fixtures.mock_upstream"
+                local rep = tonumber(ngx.var.num)
+                local res = require("cjson").encode(mu.get_default_json_response())
+
+                ngx.header["X-Powered-By"] = "mock_upstream"
+                ngx.header["Content-Type"] = "application/json"
+
+                for i = 1, rep do
+                  ngx.say(res)
+                end
             }
         }
     }

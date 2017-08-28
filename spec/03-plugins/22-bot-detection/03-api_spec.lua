@@ -6,18 +6,22 @@ describe("Plugin: bot-detection (API)", function()
   local client
 
   setup(function()
+    helpers.run_migrations()
+
     assert(helpers.dao.apis:insert {
-      name = "bot1.com",
-      hosts = { "bot1.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "bot1.com",
+      hosts        = { "bot1.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.apis:insert {
-      name = "bot2.com",
-      hosts = { "bot2.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "bot2.com",
+      hosts        = { "bot2.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
   end)
 
   teardown(function()

@@ -1,6 +1,5 @@
 local url = require "socket.url"
 local utils = require "kong.tools.utils"
-local cache = require "kong.tools.database_cache"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local timestamp = require "kong.tools.timestamp"
@@ -81,8 +80,10 @@ end
 local function get_redirect_uri(client_id)
   local client, err
   if client_id then
-    client, err = cache.get_or_set(cache.oauth2_credential_key(client_id), nil,
-                   load_oauth2_credential_by_client_id_into_memory, client_id)
+    local credential_cache_key = singletons.dao.oauth2_credentials:cache_key(client_id)
+    client, err = singletons.cache:get(credential_cache_key, nil,
+                                       load_oauth2_credential_by_client_id_into_memory,
+                                       client_id)
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     end
@@ -122,7 +123,8 @@ local function authorize(conf)
   local allowed_redirect_uris, client, redirect_uri, parsed_redirect_uri
   local is_implicit_grant
 
-  local is_https, err = check_https(conf.accept_http_if_already_terminated)
+  local is_https, err = check_https(singletons.ip.trusted(ngx.var.realip_remote_addr),
+                                    conf.accept_http_if_already_terminated)
   if not is_https then
     response_params = {[ERROR] = "access_denied", error_description = err or "You must use HTTPS"}
   else
@@ -256,7 +258,8 @@ local function issue_token(conf)
   local parameters = retrieve_parameters()
   local state = parameters[STATE]
 
-  local is_https, err = check_https(conf.accept_http_if_already_terminated)
+  local is_https, err = check_https(singletons.ip.trusted(ngx.var.realip_remote_addr),
+                                    conf.accept_http_if_already_terminated)
   if not is_https then
     response_params = {[ERROR] = "access_denied", error_description = err or "You must use HTTPS"}
   else
@@ -387,8 +390,10 @@ end
 local function retrieve_token(conf, access_token)
   local token, err
   if access_token then
-    token, err = cache.get_or_set(cache.oauth2_token_key(access_token), nil,
-                             load_token_into_memory, conf, ngx.ctx.api, access_token)
+    local token_cache_key = singletons.dao.oauth2_tokens:cache_key(access_token)
+    token, err = singletons.cache:get(token_cache_key, nil,
+                                      load_token_into_memory, conf, ngx.ctx.api,
+                                      access_token)
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     end
@@ -499,16 +504,19 @@ local function do_authentication(conf)
   end
 
   -- Retrieve the credential from the token
-  local credential, err = cache.get_or_set(cache.oauth2_credential_key(token.credential_id), 
-                        nil, load_oauth2_credential_into_memory, token.credential_id)
+  local credential_cache_key = singletons.dao.oauth2_credentials:cache_key(token.credential_id)
+  local credential, err = singletons.cache:get(credential_cache_key, nil,
+                                               load_oauth2_credential_into_memory,
+                                               token.credential_id)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
   -- Retrieve the consumer from the credential
-  local consumer, err = cache.get_or_set(cache.consumer_key(credential.consumer_id),
-    nil, load_consumer_into_memory, credential.consumer_id)
-
+  local consumer_cache_key = singletons.dao.consumers:cache_key(credential.consumer_id)
+  local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
+                                                  load_consumer_into_memory,
+                                                  credential.consumer_id)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
@@ -528,22 +536,15 @@ function _M.execute(conf)
   end
 
   if ngx.req.get_method() == "POST" then
+    local uri = ngx.var.uri
 
-    local from, _, err = ngx.re.find(ngx.var.uri, [[\/oauth2\/token]], "oj")
-    if err then
-      ngx.log(ngx.ERR, "could not search for token path segment: ", err)
-      return
-    end
+    local from, _ = string_find(uri, "/oauth2/token", nil, true)
 
     if from then
       issue_token(conf)
 
     else
-      from, _, err = ngx.re.find(ngx.var.uri, [[\/oauth2\/authorize]], "oj")
-      if err then
-        ngx.log(ngx.ERR, "could not search for authorize path segment: ", err)
-        return
-      end
+      from, _ = string_find(uri, "/oauth2/authorize", nil, true)
 
       if from then
         authorize(conf)
@@ -553,10 +554,12 @@ function _M.execute(conf)
 
   local ok, err = do_authentication(conf)
   if not ok then
-    if conf.anonymous ~= "" and conf.anonymous ~= nil then
+    if conf.anonymous ~= "" then
       -- get anonymous user
-      local consumer, err = cache.get_or_set(cache.consumer_key(conf.anonymous),
-                       nil, load_consumer_into_memory, conf.anonymous, true)
+      local consumer_cache_key = singletons.dao.consumers:cache_key(conf.anonymous)
+      local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
+                                                      load_consumer_into_memory,
+                                                      conf.anonymous, true)
       if err then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end

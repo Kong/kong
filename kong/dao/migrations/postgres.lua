@@ -371,4 +371,159 @@ return {
     end,
     down = function(_, _, dao) end
   },
+  {
+    name = "2017-03-27-132300_anonymous",
+    -- this should have been in 0.10, but instead goes into 0.10.1 as a bugfix
+    up = function(_, _, dao)
+      for _, name in ipairs({
+        "basic-auth",
+        "hmac-auth",
+        "jwt",
+        "key-auth",
+        "ldap-auth",
+        "oauth2",
+      }) do
+        local rows, err = dao.plugins:find_all( { name = name } )
+        if err then
+          return err
+        end
+
+        for _, row in ipairs(rows) do
+          if not row.config.anonymous then
+            row.config.anonymous = ""
+            local _, err = dao.plugins:update(row, { id = row.id })
+            if err then
+              return err
+            end
+          end
+        end
+      end
+    end,
+    down = function(_, _, dao) end
+  },
+  {
+    name = "2017-04-18-153000_unique_plugins_id",
+    up = function(_, _, dao)
+      local duplicates, err = dao.db:query([[
+        SELECT plugins.*
+        FROM plugins
+        JOIN (
+          SELECT id
+          FROM plugins
+          GROUP BY id
+          HAVING COUNT(1) > 1)
+        AS x
+        USING (id)
+        ORDER BY id, name;
+      ]])
+      if err then
+        return err
+      end
+
+      -- we didnt find any duplicates; we're golden!
+      if #duplicates == 0 then
+        return
+      end
+
+      -- print a human-readable output of all the plugins with conflicting ids
+      local t = {}
+      t[#t + 1] = "\n\nPlease correct the following duplicate plugin entries and re-run this migration:\n"
+      for i = 1, #duplicates do
+        local d = duplicates[i]
+        local p = {}
+        for k, v in pairs(d) do
+          p[#p + 1] = k .. ": " .. tostring(v)
+        end
+        t[#t + 1] = table.concat(p, "\n")
+        t[#t + 1] = "\n"
+      end
+
+      return table.concat(t, "\n")
+    end,
+    down = function(_, _, dao) return end
+  },
+  {
+    name = "2017-04-18-153000_unique_plugins_id_2",
+    up = [[
+      ALTER TABLE plugins ADD CONSTRAINT plugins_id_key UNIQUE(id);
+    ]],
+    down = [[
+      ALTER TABLE plugins DROP CONSTRAINT plugins_id_key;
+    ]],
+  },
+  {
+    name = "2017-05-19-180200_cluster_events",
+    up = [[
+      CREATE TABLE IF NOT EXISTS cluster_events (
+          id uuid NOT NULL,
+          node_id uuid NOT NULL,
+          at TIMESTAMP WITH TIME ZONE NOT NULL,
+          nbf TIMESTAMP WITH TIME ZONE,
+          expire_at TIMESTAMP WITH TIME ZONE NOT NULL,
+          channel text,
+          data text,
+          PRIMARY KEY (id)
+      );
+
+      DO $$
+      BEGIN
+          IF (SELECT to_regclass('idx_cluster_events_at')) IS NULL THEN
+              CREATE INDEX idx_cluster_events_at ON cluster_events (at);
+          END IF;
+          IF (SELECT to_regclass('idx_cluster_events_channel')) IS NULL THEN
+              CREATE INDEX idx_cluster_events_channel ON cluster_events (channel);
+          END IF;
+      END$$;
+
+      CREATE OR REPLACE FUNCTION delete_expired_cluster_events() RETURNS trigger
+          LANGUAGE plpgsql
+          AS $$
+      BEGIN
+          DELETE FROM cluster_events WHERE expire_at <= NOW();
+          RETURN NEW;
+      END;
+      $$;
+
+      DO $$
+      BEGIN
+          IF NOT EXISTS(
+              SELECT FROM information_schema.triggers
+               WHERE event_object_table = 'cluster_events'
+                 AND trigger_name = 'delete_expired_cluster_events_trigger')
+          THEN
+              CREATE TRIGGER delete_expired_cluster_events_trigger
+               AFTER INSERT ON cluster_events
+               EXECUTE PROCEDURE delete_expired_cluster_events();
+          END IF;
+      END;
+      $$;
+    ]],
+    down = [[
+      DROP TABLE IF EXISTS cluster_events;
+      DROP FUNCTION IF EXISTS delete_expired_cluster_events;
+      DROP TRIGGER IF EXISTS delete_expired_cluster_events_trigger;
+    ]],
+  },
+  {
+    name = "2017-05-19-173100_remove_nodes_table",
+    up = [[
+      DELETE FROM ttls WHERE table_name = 'nodes';
+
+      DROP TABLE nodes;
+    ]],
+  },
+  {
+    name = "2017-06-16-283123_ttl_indexes",
+    up = [[
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('ttls_primary_uuid_value_idx')) IS NULL THEN
+          CREATE INDEX ttls_primary_uuid_value_idx ON ttls(primary_uuid_value);
+        END IF;
+      END$$;
+    ]],
+    down = [[
+      DROP INDEX ttls_primary_uuid_value_idx;
+    ]]
+  },
 }

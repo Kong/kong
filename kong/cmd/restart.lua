@@ -1,15 +1,35 @@
+local log = require "kong.cmd.utils.log"
 local stop = require "kong.cmd.stop"
+local kill = require "kong.cmd.utils.kill"
 local start = require "kong.cmd.start"
+local pl_path = require "pl.path"
 local conf_loader = require "kong.conf_loader"
 
 local function execute(args)
-  if args.conf then
-    -- retrieve the prefix for stop
-    local conf = assert(conf_loader(args.conf))
+  local conf
+
+  log.disable()
+
+  if args.prefix then
+    conf = assert(conf_loader(pl_path.join(args.prefix, ".kong_env")))
+
+  else
+    conf = assert(conf_loader(args.conf))
     args.prefix = conf.prefix
   end
 
-  pcall(stop.execute, args)
+  log.enable()
+
+  pcall(stop.execute, args, { quiet = true })
+
+  -- ensure Nginx stopped
+  local texp = ngx.time() + 5 -- 5s
+  local running
+  repeat
+    ngx.sleep(0.1)
+    running = kill.is_running(conf.nginx_pid)
+  until not running or ngx.time() >= texp
+
   start.execute(args)
 end
 
@@ -23,9 +43,10 @@ This command is equivalent to doing both 'kong stop' and
 'kong start'.
 
 Options:
- -c,--conf     (optional string) configuration file
- -p,--prefix   (optional string) prefix at which Kong should be running
- --nginx-conf  (optional string) custom Nginx configuration template
+ -c,--conf        (optional string)   configuration file
+ -p,--prefix      (optional string)   prefix at which Kong should be running
+ --nginx-conf     (optional string)   custom Nginx configuration template
+ --run-migrations (optional boolean)  optionally run migrations on the DB
 ]]
 
 return {

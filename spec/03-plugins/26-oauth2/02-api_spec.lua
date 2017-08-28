@@ -4,8 +4,12 @@ local helpers = require "spec.helpers"
 describe("Plugin: oauth (API)", function()
   local consumer, api, admin_client
   setup(function()
+    helpers.run_migrations()
+
     helpers.prepare_prefix()
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
 
     admin_client = helpers.admin_client()
   end)
@@ -18,12 +22,15 @@ describe("Plugin: oauth (API)", function()
   describe("/consumers/:consumer/oauth2/", function()
     setup(function()
       api = assert(helpers.dao.apis:insert {
-        name = "oauth2_token.com",
-        hosts = { "oauth2_token.com" },
-        upstream_url = "http://mockbin.com"
+        name         = "oauth2_token.com",
+        hosts        = { "oauth2_token.com" },
+        upstream_url = helpers.mock_upstream_url,
       })
       consumer = assert(helpers.dao.consumers:insert {
         username = "bob"
+      })
+      assert(helpers.dao.consumers:insert {
+        username = "sally"
       })
     end)
     after_each(function()
@@ -64,6 +71,34 @@ describe("Plugin: oauth (API)", function()
         assert.equal(consumer.id, body.consumer_id)
         assert.equal("Test APP", body.name)
         assert.equal(2, #body.redirect_uri)
+      end)
+      it("creates multiple oauth2 credentials with the same client_secret", function()
+        local res = assert(admin_client:send {
+          method = "POST",
+          path = "/consumers/bob/oauth2",
+          body = {
+            name = "Test APP",
+            redirect_uri = "http://google.com/",
+            client_secret = "secret123",
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        assert.res_status(201, res)
+        res = assert(admin_client:send {
+          method = "POST",
+          path = "/consumers/sally/oauth2",
+          body = {
+            name = "Test APP",
+            redirect_uri = "http://google.com/",
+            client_secret = "secret123",
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        assert.res_status(201, res)
       end)
       describe("errors", function()
         it("returns bad request", function()
@@ -182,9 +217,9 @@ describe("Plugin: oauth (API)", function()
       setup(function()
         for i = 1, 3 do
           assert(helpers.dao.oauth2_credentials:insert {
-            name = "app" .. i,
-            redirect_uri = "https://mockbin.org",
-            consumer_id = consumer.id
+            name         = "app" .. i,
+            redirect_uri = helpers.mock_upstream_ssl_url,
+            consumer_id  = consumer.id,
           })
         end
       end)
@@ -210,9 +245,9 @@ describe("Plugin: oauth (API)", function()
     before_each(function()
       helpers.dao:truncate_table("oauth2_credentials")
       credential = assert(helpers.dao.oauth2_credentials:insert {
-        name = "test app",
-        redirect_uri = "https://mockbin.org",
-        consumer_id = consumer.id
+        name         = "test app",
+        redirect_uri = helpers.mock_upstream_ssl_url,
+        consumer_id  = consumer.id,
       })
     end)
     describe("GET", function()
@@ -351,9 +386,9 @@ describe("Plugin: oauth (API)", function()
     local oauth2_credential
     setup(function()
       oauth2_credential = assert(helpers.dao.oauth2_credentials:insert {
-        name = "Test APP",
-        redirect_uri = "https://mockin.com",
-        consumer_id = consumer.id
+        name         = "Test APP",
+        redirect_uri = helpers.mock_upstream_ssl_url,
+        consumer_id  = consumer.id,
       })
     end)
     after_each(function()

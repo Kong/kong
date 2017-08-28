@@ -113,10 +113,4 @@ return {
 
     return true
   end,
-  marshall_event = function(self, t)
-    return {
-      id = t.id,
-      name = t.name,
-    }
-  end
 }

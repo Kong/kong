@@ -1,4 +1,4 @@
--- Copyright (C) Mashape, Inc.
+-- Copyright (C) Kong Inc.
 
 local policies = require "kong.plugins.rate-limiting.policies"
 local timestamp = require "kong.tools.timestamp"
@@ -15,7 +15,7 @@ local RATELIMIT_REMAINING = "X-RateLimit-Remaining"
 
 local RateLimitingHandler = BasePlugin:extend()
 
-RateLimitingHandler.PRIORITY = 900
+RateLimitingHandler.PRIORITY = 901
 
 local function get_identifier(conf)
   local identifier
@@ -99,9 +99,11 @@ function RateLimitingHandler:access(conf)
 
   if usage then
     -- Adding headers
-    for k, v in pairs(usage) do
-      ngx.header[RATELIMIT_LIMIT .. "-" .. k] = v.limit
-      ngx.header[RATELIMIT_REMAINING .. "-" .. k] = math.max(0, (stop == nil or stop == k) and v.remaining - 1 or v.remaining) -- -increment_value for this current request
+    if not conf.hide_client_headers then
+      for k, v in pairs(usage) do
+        ngx.header[RATELIMIT_LIMIT .. "-" .. k] = v.limit
+        ngx.header[RATELIMIT_REMAINING .. "-" .. k] = math.max(0, (stop == nil or stop == k) and v.remaining - 1 or v.remaining) -- -increment_value for this current request
+      end
     end
 
     -- If limit is exceeded, terminate the request

@@ -7,6 +7,8 @@ local fixtures = require "spec.03-plugins.17-jwt.fixtures"
 describe("Plugin: jwt (API)", function()
   local admin_client, consumer, jwt_secret
   setup(function()
+    helpers.run_migrations()
+
     assert(helpers.start_kong())
     admin_client = helpers.admin_client()
   end)
@@ -19,6 +21,9 @@ describe("Plugin: jwt (API)", function()
     setup(function()
       consumer = assert(helpers.dao.consumers:insert {
         username = "bob"
+      })
+      assert(helpers.dao.consumers:insert {
+        username = "alice"
       })
     end)
 
@@ -59,6 +64,41 @@ describe("Plugin: jwt (API)", function()
         assert.equal("bob2", body.key)
         assert.equal("tooshort", body.secret)
         jwt2 = body
+      end)
+      it("accepts duplicate `secret` parameters across jwt_secrets", function()
+        local res = assert(admin_client:send {
+          method = "POST",
+          path = "/consumers/alice/jwt/",
+          body = {
+            key = "alice",
+            secret = "foobarbaz"
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = cjson.decode(assert.res_status(201, res))
+        assert.equal("alice", body.key)
+        assert.equal("foobarbaz", body.secret)
+        jwt1 = body
+
+        res = assert(admin_client:send {
+          method = "POST",
+          path = "/consumers/bob/jwt/",
+          body = {
+            key = "bobsyouruncle",
+            secret = "foobarbaz"
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        body = cjson.decode(assert.res_status(201, res))
+        assert.equal("bobsyouruncle", body.key)
+        assert.equal("foobarbaz", body.secret)
+        jwt2 = body
+
+        assert.equals(jwt1.secret, jwt2.secret)
       end)
       it("accepts a valid public key for RS256 when posted urlencoded", function()
         local rsa_public_key = fixtures.rs256_public_key
@@ -151,7 +191,7 @@ describe("Plugin: jwt (API)", function()
         local json = assert.response(res).has.jsonbody()
         assert.string(json.secret)
         assert.equals(32, #json.secret)
-        assert.matches("^%x+$", json.secret)
+        assert.matches("^[%a%d]+$", json.secret)
       end)
     end)
 
@@ -180,7 +220,7 @@ describe("Plugin: jwt (API)", function()
           path = "/consumers/bob/jwt/",
         })
         local body = cjson.decode(assert.res_status(200, res))
-        assert.equal(4, #(body.data))
+        assert.equal(6, #(body.data))
       end)
     end)
   end)

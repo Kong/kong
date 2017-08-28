@@ -6,95 +6,99 @@ local utils = require "kong.tools.utils"
 describe("Plugin: key-auth (access)", function()
   local client
   setup(function()
+    helpers.run_migrations()
+
     local anonymous_user = assert(helpers.dao.consumers:insert {
-      username = "no-body"
+      username = "no-body",
     })
-    
+
     local api1 = assert(helpers.dao.apis:insert {
-      name = "api-1",
-      hosts = { "key-auth1.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-1",
+      hosts        = { "key-auth1.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
-      name = "key-auth",
-      api_id = api1.id
+      name   = "key-auth",
+      api_id = api1.id,
     })
 
     local api2 = assert(helpers.dao.apis:insert {
-      name = "api-2",
-      hosts = { "key-auth2.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-2",
+      hosts        = { "key-auth2.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
-      name = "key-auth",
+      name   = "key-auth",
       api_id = api2.id,
       config = {
-        hide_credentials = true
-      }
+        hide_credentials = true,
+      },
     })
 
     local consumer1 = assert(helpers.dao.consumers:insert {
       username = "bob"
     })
     assert(helpers.dao.keyauth_credentials:insert {
-      key = "kong",
-      consumer_id = consumer1.id
+      key         = "kong",
+      consumer_id = consumer1.id,
     })
 
     local api3 = assert(helpers.dao.apis:insert {
-      name = "api-3",
-      hosts = { "key-auth3.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-3",
+      hosts        = { "key-auth3.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
-      name = "key-auth",
+      name   = "key-auth",
       api_id = api3.id,
       config = {
-        anonymous = anonymous_user.id
-      }
+        anonymous = anonymous_user.id,
+      },
     })
 
     local api4 = assert(helpers.dao.apis:insert {
-      name = "api-4",
-      hosts = { "key-auth4.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-4",
+      hosts        = { "key-auth4.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
-      name = "key-auth",
+      name   = "key-auth",
       api_id = api4.id,
       config = {
-        anonymous = utils.uuid()  -- unknown consumer
-      }
+        anonymous = utils.uuid(),  -- unknown consumer
+      },
     })
 
     local api5 = assert(helpers.dao.apis:insert {
-      name = "api-5",
-      hosts = { "key-auth5.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-5",
+      hosts        = { "key-auth5.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
-      name = "key-auth",
+      name   = "key-auth",
       api_id = api5.id,
       config = {
         key_in_body = true,
-      }
+      },
     })
 
     local api6 = assert(helpers.dao.apis:insert {
-      name = "api-6",
-      hosts = { "key-auth6.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-6",
+      hosts        = { "key-auth6.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
       name = "key-auth",
       api_id = api6.id,
       config = {
-        key_in_body = true,
+        key_in_body      = true,
         hide_credentials = true,
-      }
+      },
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
     client = helpers.proxy_client()
   end)
   teardown(function()
@@ -166,7 +170,7 @@ describe("Plugin: key-auth (access)", function()
   end)
 
   describe("key in request body", function()
-    for _, type in pairs({ "application/www-form-urlencoded", "application/json", "multipart/form-data" }) do
+    for _, type in pairs({ "application/x-www-form-urlencoded", "application/json", "multipart/form-data" }) do
       describe(type, function()
         it("authenticates valid credentials", function()
           local res = assert(client:send {
@@ -266,79 +270,60 @@ describe("Plugin: key-auth (access)", function()
   describe("config.hide_credentials", function()
 
     local harness = {
-      queryString = {
+      uri_args = { -- query string
         {
           headers = { Host = "key-auth1.com" },
-          path = "/request?apikey=kong",
-          method = "GET",
+          path    = "/request?apikey=kong",
+          method  = "GET",
         },
         {
           headers = { Host = "key-auth2.com" },
-          path = "/request?apikey=kong",
-          method = "GET",
+          path    = "/request?apikey=kong",
+          method  = "GET",
         }
       },
       headers = {
         {
           headers = { Host = "key-auth1.com", ["apikey"] = "kong" },
-          path = "/request",
-          method = "GET",
+          path    = "/request",
+          method  = "GET",
         },
         {
           headers = { Host = "key-auth2.com", ["apikey"] = "kong" },
-          path = "/request",
-          method = "GET",
-        }
+          path    = "/request",
+          method  = "GET",
+        },
       },
-      postData = {
+      ["post_data.params"] = {
         {
-          headers = { ["Host"] = "key-auth5.com", ["Content-Type"] = "application/www-form-urlencoded" },
-          body = { apikey = "kong" },
-          method = "POST",
-          path = "/request",
+          headers = { ["Host"] = "key-auth5.com", ["Content-Type"] = "application/x-www-form-urlencoded" },
+          body    = { apikey = "kong" },
+          method  = "POST",
+          path    = "/request",
         },
         {
-          headers = { ["Host"] = "key-auth6.com", ["Content-Type"] = "application/www-form-urlencoded" },
-          body = { apikey = "kong" },
-          method = "POST",
-          path = "/request",
-        }
+          headers = { ["Host"] = "key-auth6.com", ["Content-Type"] = "application/x-www-form-urlencoded" },
+          body    = { apikey = "kong" },
+          method  = "POST",
+          path    = "/request",
+        },
       }
     }
 
     for type, _ in pairs(harness) do
       describe(type, function()
         it("false sends key to upstream", function()
-          local res = assert(client:send(harness[type][1]))
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-
-          -- small workaround for how mockbin sends body data
-          local field
-          if type == "postData" then
-            local t = json[type].text:sub(8)
-            field = { apikey = t ~= "" and t or nil }
-
-          else
-            field = json[type]
-          end
-
+          local res   = assert(client:send(harness[type][1]))
+          local body  = assert.res_status(200, res)
+          local json  = cjson.decode(body)
+          local field = type == "post_data.params" and json.post_data.params or json[type]
           assert.equal("kong", field.apikey)
         end)
         it("true doesn't send key to upstream", function()
-          local res = assert(client:send(harness[type][2]))
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-
-          local field
-          if type == "postData" then
-            local t = json[type].text:sub(8)
-            field = { apikey = t ~= "" and t or nil }
-
-          else
-            field = json[type]
-          end
-
+          local res   = assert(client:send(harness[type][2]))
+          local body  = assert.res_status(200, res)
+          local json  = cjson.decode(body)
+          local field = type == "post_data.params" and json.post_data.params or json[type]
           assert.is_nil(field.apikey)
         end)
       end)
@@ -390,60 +375,62 @@ describe("Plugin: key-auth (access)", function()
 
   setup(function()
     local api1 = assert(helpers.dao.apis:insert {
-      name = "api-1",
-      hosts = { "logical-and.com" },
-      upstream_url = "http://mockbin.org/request"
+      name         = "api-1",
+      hosts        = { "logical-and.com" },
+      upstream_url = helpers.mock_upstream_url .. "/request",
     })
     assert(helpers.dao.plugins:insert {
-      name = "basic-auth",
-      api_id = api1.id
+      name   = "basic-auth",
+      api_id = api1.id,
     })
     assert(helpers.dao.plugins:insert {
-      name = "key-auth",
-      api_id = api1.id
+      name   = "key-auth",
+      api_id = api1.id,
     })
 
     anonymous = assert(helpers.dao.consumers:insert {
-      username = "Anonymous"
+      username = "Anonymous",
     })
     user1 = assert(helpers.dao.consumers:insert {
-      username = "Mickey"
+      username = "Mickey",
     })
     user2 = assert(helpers.dao.consumers:insert {
-      username = "Aladdin"
+      username = "Aladdin",
     })
 
     local api2 = assert(helpers.dao.apis:insert {
-      name = "api-2",
-      hosts = { "logical-or.com" },
-      upstream_url = "http://mockbin.org/request"
+      name         = "api-2",
+      hosts        = { "logical-or.com" },
+      upstream_url = helpers.mock_upstream_url .. "/request",
     })
     assert(helpers.dao.plugins:insert {
-      name = "basic-auth",
+      name   = "basic-auth",
       api_id = api2.id,
       config = {
-        anonymous = anonymous.id
-      }
+        anonymous = anonymous.id,
+      },
     })
     assert(helpers.dao.plugins:insert {
-      name = "key-auth",
+      name   = "key-auth",
       api_id = api2.id,
       config = {
-        anonymous = anonymous.id
-      }
+        anonymous = anonymous.id,
+      },
     })
 
     assert(helpers.dao.keyauth_credentials:insert {
-      key = "Mouse",
-      consumer_id = user1.id
+      key         = "Mouse",
+      consumer_id = user1.id,
     })
     assert(helpers.dao.basicauth_credentials:insert {
-      username = "Aladdin",
-      password = "OpenSesame",
-      consumer_id = user2.id
+      username    = "Aladdin",
+      password    = "OpenSesame",
+      consumer_id = user2.id,
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
     client = helpers.proxy_client()
   end)
 
