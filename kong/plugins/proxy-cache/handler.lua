@@ -332,7 +332,7 @@ function ProxyCacheHandler:header_filter(conf)
   -- if this is a cacheable request, gather the headers and mark it so
   if cacheable_response(ngx, conf, cc) then
     ctx.res_headers = resp_get_headers(0, true)
-    ctx.res_ttl = resource_ttl(cc)
+    ctx.res_ttl = conf.cache_control and resource_ttl(cc) or conf.cache_ttl
     ngx.ctx.proxy_cache = ctx
 
   else
