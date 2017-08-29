@@ -62,7 +62,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
       local api1 = assert(helpers.dao.apis:insert {
         name = "api-1",
         hosts = { "test1.com" },
-        upstream_url = "http://httpbin.org"
+        upstream_url = helpers.mock_upstream_url
       })
       assert(helpers.dao.plugins:insert {
         name = "rate-limiting",
@@ -84,7 +84,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
       local api2 = assert(helpers.dao.apis:insert {
         name = "api-2",
         hosts = { "test2.com" },
-        upstream_url = "http://httpbin.org"
+        upstream_url = helpers.mock_upstream_url
       })
       assert(helpers.dao.plugins:insert {
         name = "rate-limiting",
@@ -106,7 +106,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
       local api3 = assert(helpers.dao.apis:insert {
         name = "api-3",
         hosts = { "test3.com" },
-        upstream_url = "http://httpbin.org"
+        upstream_url = helpers.mock_upstream_url
       })
       assert(helpers.dao.plugins:insert {
         name = "key-auth",
@@ -133,7 +133,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
       local api4 = assert(helpers.dao.apis:insert {
         name = "api-4",
         hosts = { "test4.com" },
-        upstream_url = "http://httpbin.org"
+        upstream_url = helpers.mock_upstream_url
       })
       assert(helpers.dao.plugins:insert {
         name = "rate-limiting",
@@ -156,7 +156,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
       local api5 = assert(helpers.dao.apis:insert {
         name = "api-5",
         hosts = { "test5.com" },
-        upstream_url = "http://httpbin.org"
+        upstream_url = helpers.mock_upstream_url
       })
       assert(helpers.dao.plugins:insert {
         name = "rate-limiting",
@@ -176,7 +176,9 @@ for i, policy in ipairs({"cluster", "redis"}) do
         }
       })
 
-      assert(helpers.start_kong())
+      assert(helpers.start_kong{
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      })
     end)
 
     teardown(function()
