@@ -8,7 +8,7 @@ describe("Log Serializer", function()
       ctx = {
         balancer_address = {
           tries = {
-            { 
+            {
               ip = "127.0.0.1",
               port = 8000,
             },
@@ -17,6 +17,7 @@ describe("Log Serializer", function()
       },
       var = {
         request_uri = "/request_uri",
+        upstream_uri = "/upstream_uri",
         scheme = "http",
         host = "test.com",
         server_port = 80,
@@ -57,9 +58,10 @@ describe("Log Serializer", function()
       assert.same({"header1", "header2"}, res.request.headers)
       assert.equal("POST", res.request.method)
       assert.same({"arg1", "arg2"}, res.request.querystring)
-      assert.equal("http://test.com:80/request_uri", res.request.request_uri)
+      assert.equal("http://test.com:80/request_uri", res.request.request_url)
+      assert.equal("/upstream_uri", res.request.upstream_uri)
       assert.equal(200, res.request.size)
-      assert.equal("/request_uri", res.request.uri)
+      assert.equal("/request_uri", res.request.request_uri)
 
       -- Response
       assert.is_table(res.response)
@@ -97,7 +99,7 @@ describe("Log Serializer", function()
     end)
 
     it("serializes the Authenticated Entity object", function()
-      ngx.ctx.authenticated_credential = {id = "somecred", 
+      ngx.ctx.authenticated_credential = {id = "somecred",
                                           consumer_id = "user1"}
 
       local res = basic.serialize(ngx)
