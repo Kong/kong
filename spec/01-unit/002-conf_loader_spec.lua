@@ -146,7 +146,6 @@ describe("Configuration loader", function()
     it("infer booleans (on/off/true/false strings)", function()
       local conf = assert(conf_loader())
       assert.equal("on", conf.nginx_daemon)
-      assert.equal("on", conf.lua_code_cache)
       assert.equal(30, conf.lua_socket_pool_size)
       assert.True(conf.anonymous_reports)
       assert.False(conf.cassandra_ssl)
@@ -188,19 +187,19 @@ describe("Configuration loader", function()
     end)
     it("infer ngx_boolean", function()
       local conf = assert(conf_loader(nil, {
-        lua_code_cache = true
+        nginx_daemon = true
       }))
-      assert.equal("on", conf.lua_code_cache)
+      assert.equal("on", conf.nginx_daemon)
 
       conf = assert(conf_loader(nil, {
-        lua_code_cache = false
+        nginx_daemon = false
       }))
-      assert.equal("off", conf.lua_code_cache)
+      assert.equal("off", conf.nginx_daemon)
 
       conf = assert(conf_loader(nil, {
-        lua_code_cache = "off"
+        nginx_daemon = "off"
       }))
-      assert.equal("off", conf.lua_code_cache)
+      assert.equal("off", conf.nginx_daemon)
     end)
   end)
 

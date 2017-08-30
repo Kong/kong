@@ -481,14 +481,6 @@
                                  # This includes the certificates configured
                                  # for Kong's database connections.
 
-#lua_code_cache = on             # When disabled, every request will run in a
-                                 # separate Lua VM instance: all Lua modules
-                                 # will be loaded from scratch. Useful for
-                                 # adopting an edit-and-refresh approach while
-                                 # developing a plugin.
-                                 # Turning this directive off has a severe
-                                 # impact on performance.
-
 #lua_package_path =              # Sets the Lua module search path (LUA_PATH).
                                  # Useful when developing or using custom
                                  # plugins not stored in the default search

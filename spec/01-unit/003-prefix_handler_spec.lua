@@ -58,7 +58,6 @@ describe("NGINX conf compiler", function()
     it("compiles the Kong NGINX conf chunk", function()
       local kong_nginx_conf = prefix_handler.compile_kong_conf(helpers.test_conf)
       assert.matches("lua_package_path './?.lua;./?/init.lua;;;'", kong_nginx_conf, nil, true)
-      assert.matches("lua_code_cache on;", kong_nginx_conf, nil, true)
       assert.matches("listen 0.0.0.0:9000;", kong_nginx_conf, nil, true)
       assert.matches("listen 0.0.0.0:9001;", kong_nginx_conf, nil, true)
       assert.matches("server_name kong;", kong_nginx_conf, nil, true)
@@ -67,13 +66,11 @@ describe("NGINX conf compiler", function()
     end)
     it("compiles with custom conf", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
-        lua_code_cache = false,
         mem_cache_size = "128k",
         proxy_listen = "0.0.0.0:80",
         admin_listen = "127.0.0.1:8001"
       }))
       local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
-      assert.matches("lua_code_cache off;", kong_nginx_conf, nil, true)
       assert.matches("lua_shared_dict kong_cache%s+128k;", kong_nginx_conf)
       assert.matches("listen 0.0.0.0:80;", kong_nginx_conf, nil, true)
       assert.matches("listen 127.0.0.1:8001;", kong_nginx_conf, nil, true)
