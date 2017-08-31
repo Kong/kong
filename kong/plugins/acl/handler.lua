@@ -1,15 +1,28 @@
 local BasePlugin = require "kong.plugins.base_plugin"
 local responses = require "kong.tools.responses"
-local utils = require "kong.tools.utils"
 local constants = require "kong.constants"
 local singletons = require "kong.singletons"
+local pl_tablex = require "pl.tablex"
 
-local table_insert = table.insert
 local table_concat = table.concat
+local set_header = ngx.req.set_header
 local ngx_error = ngx.ERR
 local ngx_log = ngx.log
-local ipairs = ipairs
-local empty = {}
+local EMPTY = pl_tablex.readonly {}
+local BLACK = "BLACK"
+local WHITE = "WHITE"
+
+local reverse_cache = setmetatable({}, { __mode = "k" })
+
+local new_tab
+do
+  local ok
+  ok, new_tab = pcall(require, "table.new")
+  if not ok then
+    new_tab = function() return {} end
+  end
+end
+
 
 local ACLHandler = BasePlugin:extend()
 
@@ -59,47 +72,94 @@ function ACLHandler:access(conf)
     responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
   if not acls then
-    acls = {}
+    acls = EMPTY
   end
 
-  local block
+  -- build and cache a reverse-lookup table from our plugins 'conf' table
+  local reverse = reverse_cache[conf]
+  if not reverse then
+    local groups = {}
+    reverse = {
+      groups = groups,
+      type = (conf.blacklist or EMPTY)[1] and BLACK or WHITE,
+    }
 
-  if next(conf.blacklist or empty) and next(acls or empty) then
-    for _, v in ipairs(acls) do
-      if utils.table_contains(conf.blacklist, v.group) then
-        block = true
-        break
+    -- cache by 'conf', the cache has weak keys, so invalidation of the
+    -- plugin 'conf' will also remove it from our local cache here
+    reverse_cache[conf] = reverse
+    -- build reverse tables for quick lookup
+    if reverse.type == BLACK then
+      for i = 1, #(conf.blacklist or EMPTY) do
+        local groupname = conf.blacklist[i]
+        groups[groupname] = groupname
+      end
+
+    else
+      for i = 1, #(conf.whitelist or EMPTY) do
+        local groupname = conf.whitelist[i]
+        groups[groupname] = groupname
       end
     end
+    -- now create another cache inside this cache for the consumer acls so we
+    -- only ever need to evaluate a white/blacklist once.
+    -- The key for this cache will be 'acls' which will be invalidated upon
+    -- changes. The weak key will make sure our local entry get's GC'ed.
+    -- One exception: a blacklist scenario, and a consumer that does
+    -- not have any groups. In that case 'acls == EMPTY' so all those users
+    -- will be indexed by that table, which is ok, as their result is the
+    -- same as well.
+    reverse.consumer_access = setmetatable({}, { __mode = "k" })
   end
 
-  if next(conf.whitelist or empty) then
-    if not next(acls or empty) then
-      block = true
-    else
-      local contains
-      for _, v in ipairs(acls) do
-        if utils.table_contains(conf.whitelist, v.group) then
-          contains = true
+  -- 'cached_block' is either 'true' if it's to be blocked, or the header
+  -- value if it is to be passed
+  local cached_block = reverse.consumer_access[acls]
+  if not cached_block then
+    -- nothing cached, so check our lists and groups
+    local block
+    if reverse.type == BLACK then
+      -- check blacklist
+      block = false
+      for i = 1, #acls do
+        if reverse.groups[acls[i].group] then
+          block = true
           break
         end
       end
-      if not contains then
-        block = true
+
+    else
+      -- check whitelist
+      block = true
+      for i = 1, #acls do
+        if reverse.groups[acls[i].group] then
+          block = false
+          break
+        end
       end
     end
+
+    if block then
+      cached_block = true
+
+    else
+      -- allowed, create the header
+      local n = #acls
+      local str_acls = new_tab(n, 0)
+      for i = 1, n do
+        str_acls[i] = acls[i].group
+      end
+      cached_block = table_concat(str_acls, ", ")
+    end
+
+    -- store the result in the cache
+    reverse.consumer_access[acls] = cached_block
   end
 
-  if block then
+  if cached_block == true then -- NOTE: we only catch the boolean here!
     return responses.send_HTTP_FORBIDDEN("You cannot consume this service")
   end
 
-  -- Prepare header
-  local str_acls = {}
-  for _, v in ipairs(acls) do
-    table_insert(str_acls, v.group)
-  end
-  ngx.req.set_header(constants.HEADERS.CONSUMER_GROUPS, table_concat(str_acls, ", "))
+  set_header(constants.HEADERS.CONSUMER_GROUPS, cached_block)
 end
 
 return ACLHandler
