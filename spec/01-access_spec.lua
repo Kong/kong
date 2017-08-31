@@ -4,6 +4,7 @@ local cjson = require "cjson"
 describe("Plugin: basic-auth (access)", function()
   local client, admin_client
   setup(function()
+    helpers.run_migrations()
     assert(helpers.dao.apis:insert {
       name = "introspection-api",
       uris = { "/introspect" },
@@ -53,17 +54,15 @@ describe("Plugin: basic-auth (access)", function()
       username = "limited-bob"
     })
     assert(helpers.dao.plugins:insert {
-      name = "rate-limiting",
+      name = "correlation-id",
       api_id = api1.id,
       consumer_id = consumer.id,
-      config = {
-        minute = 8,
-      }
+      config = {},
     })
 
     assert(helpers.start_kong({
-      custom_plugins = "introspection-endpoint",
-      lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua"
+      custom_plugins = "introspection-endpoint, oauth2-introspection",
+      lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua;/kong-plugin/spec/fixtures/custom_plugins/?.lua;;"
     }))
 
     client = helpers.proxy_client()
@@ -210,9 +209,7 @@ describe("Plugin: basic-auth (access)", function()
 
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal("limited-bob", body.headers["x-consumer-username"])
-        assert.is_string(body.headers["x-consumer-id"])
-        assert.are.same(8, tonumber(res.headers["x-ratelimit-limit-minute"]))
-        assert.are.same(7, tonumber(res.headers["x-ratelimit-remaining-minute"]))
+        assert.is_string(body.headers["kong-request-id"])
       end)
     end)
 

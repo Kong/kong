@@ -1,7 +1,6 @@
 -- Copyright (C) Mashape, Inc.
 
 local BasePlugin = require "kong.plugins.base_plugin"
-local cache = require "kong.tools.database_cache"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local singletons = require "kong.singletons"
@@ -23,6 +22,8 @@ local ngx_set_header = ngx.req.set_header
 local string_find = string.find
 local table_insert = table.insert
 local fmt = string.format
+local ngx_log = ngx.log
+local ERR = ngx.ERR
 
 function OAuth2Introspection:new()
   OAuth2Introspection.super.new(self, "oauth2-introspection")
@@ -143,24 +144,24 @@ end
 local function load_credential(conf, access_token)
   local ok, res = make_introspection_request(conf, access_token)
   if not ok then
-    return nil, {status=500, message=res}
+    return { err = { status = 500, message = res } }
   end
 
   local credential = cjson.decode(res)
   if not credential.active then
-    return nil, {status=401,
+    return { err = {status=401,
                  message={["error"] = "invalid_token",
                  error_description = "The access token is invalid or has expired"},
-                 headers = {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'}}
+                 headers = {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'}}}
   end
 
-  return credential
+  return { res = credential }
 end
 
 local function load_consumer(username)
   local result, err = singletons.dao.consumers:find_all { username = username }
   if not result then
-    return nil, err
+    error(err)
   elseif #result == 1 then
     return result[1]
   end
@@ -177,22 +178,36 @@ function OAuth2Introspection:access(conf)
       {["WWW-Authenticate"] = 'Bearer realm="service"'})
   end
 
-  local credential, err = cache.get_or_set(fmt("oauth2_introspection:%s", access_token), conf.ttl, 
-    load_credential, conf, access_token)
+  local cache = singletons.cache
+  local cache_key = fmt("oauth2_introspection:%s", access_token)
+  local credential, err = singletons.cache:get(cache_key,
+                                              { ttl = conf.ttl }, 
+                                              load_credential, conf, 
+                                              access_token)
   if err then
-    return responses.send(err.status, err.message, err.headers)
+    ngx_log(ERR, err)
+  end
+  local credential_err = credential.err
+  if credential_err then
+    return responses.send(credential_err.status, credential_err.message, 
+                          credential_err.headers)
   end
 
   -- Associate username with Kong consumer
-  if credential.username then
-    local consumer, err = cache.get_or_set(consumers_username_key(credential.username),
-                       nil, load_consumer, credential.username)
+  local credential_obj = credential.res
+  if credential_obj and credential_obj.username then
+    cache_key = consumers_username_key(credential_obj.username)
+    local consumer, err = cache:get(cache_key, nil, load_consumer, 
+                                           credential_obj.username)
     if err then
        responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     end
     if consumer then
-      local _, err = cache.get_or_set(consumers_id_key(consumer.id),
-                        nil, function(consumer) return consumer.username end, consumer)
+      cache_key = consumers_id_key(consumer.id)
+      local _, err = cache:get(cache_key, nil, 
+                                function(consumer) 
+                                  return consumer.username 
+                                end, consumer)
       if err then
         responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end
@@ -201,28 +216,46 @@ function OAuth2Introspection:access(conf)
       ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
       ngx_set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
       ngx.ctx.authenticated_consumer = consumer
-      credential.consumer_id = consumer.id
+      credential_obj.consumer_id = consumer.id
     end
   end
 
-  ngx.ctx.authenticated_credential = credential
+  ngx.ctx.authenticated_credential = credential_obj
 
   -- Set upstream headers
-  ngx_set_header("x-credential-scope", credential.scope)
-  ngx_set_header("x-credential-client-id", credential.client_id)
-  ngx_set_header("x-credential-username", credential.username)
-  ngx_set_header("x-credential-token-type", credential.token_type)
-  ngx_set_header("x-credential-exp", credential.exp)
-  ngx_set_header("x-credential-iat", credential.iat)
-  ngx_set_header("x-credential-nbf", credential.nbf)
-  ngx_set_header("x-credential-sub", credential.sub)
-  ngx_set_header("x-credential-aud", credential.aud)
-  ngx_set_header("x-credential-iss", credential.iss)
-  ngx_set_header("x-credential-jti", credential.jti)
+  ngx_set_header("x-credential-scope", credential_obj.scope)
+  ngx_set_header("x-credential-client-id", credential_obj.client_id)
+  ngx_set_header("x-credential-username", credential_obj.username)
+  ngx_set_header("x-credential-token-type", credential_obj.token_type)
+  ngx_set_header("x-credential-exp", credential_obj.exp)
+  ngx_set_header("x-credential-iat", credential_obj.iat)
+  ngx_set_header("x-credential-nbf", credential_obj.nbf)
+  ngx_set_header("x-credential-sub", credential_obj.sub)
+  ngx_set_header("x-credential-aud", credential_obj.aud)
+  ngx_set_header("x-credential-iss", credential_obj.iss)
+  ngx_set_header("x-credential-jti", credential_obj.jti)
   ngx_set_header(constants.HEADERS.ANONYMOUS, nil) -- in case of auth plugins concatenation
 end
 
-OAuth2Introspection.PRIORITY = 1000
+function OAuth2Introspection:init_worker()
+  local worker_events = singletons.worker_events
+  local cache = singletons.cache
+
+  worker_events.register(function(data)
+    local consumer_id_key = consumers_id_key(data.old_entity and 
+                              data.old_entity.id or data.entity.id)
+    local username, err = cache:get(consumer_id_key, nil, function() end)
+    if err then
+      ngx_log(ERR, err)
+      return
+    end
+
+    cache:invalidate(consumers_username_key(username))
+    cache:invalidate(consumer_id_key)
+  end, "crud", "consumers")
+end
+
+OAuth2Introspection.PRIORITY = 1700
 OAuth2Introspection.consumers_username_key = consumers_username_key
 OAuth2Introspection.consumers_id_key = consumers_id_key
 
