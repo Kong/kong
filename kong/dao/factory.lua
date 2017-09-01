@@ -202,6 +202,21 @@ function _M:migrations_modules()
     end
   end
 
+  local migration_names = {}
+  for plugin_name, plugin in pairs(migrations) do
+    for i, migration in ipairs(plugin) do
+      if not migration.name then
+        error("migration " .. i .. " for plugin " .. plugin_name .. " has no name")
+      end
+
+      if migration_names[migration.name] ~= nil then
+        error("migration " .. i .. " for plugin " .. plugin_name .. " must have a unique name")
+      end
+
+      migration_names[migration.name] = true
+    end
+  end
+
   return migrations
 end
 
@@ -289,7 +304,7 @@ function _M:are_migrations_uptodate()
       then
         local infos = self.db:infos()
         log.warn("%s %s '%s' is missing migration: (%s) %s",
-                 self.db_type, infos.desc, infos.name, module, migration.name)
+                 self.db_type, infos.desc, infos.name, module, migration.name or "(no name)")
         return ret_error_string(self.db.name, nil, "the current database "   ..
                                 "schema does not match this version of "     ..
                                 "Kong. Please run `kong migrations up` "     ..
