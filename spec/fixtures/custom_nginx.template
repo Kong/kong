@@ -232,7 +232,7 @@ http {
                 ngx.req.read_body()
                 local args = require("cjson").decode(ngx.req.get_body_data())
 
-                say(string.format("%q", qargs.key1 or args.key1), 200)
+                say(ngx.req.get_body_data(), 200)
             }
         }
     }
