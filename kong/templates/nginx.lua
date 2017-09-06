@@ -12,6 +12,8 @@ error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 worker_rlimit_nofile ${{WORKER_RLIMIT}};
 > end
 
+env KONG_LICENSE;
+
 events {
 > if nginx_optimizations then
     worker_connections ${{WORKER_CONNECTIONS}};
