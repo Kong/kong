@@ -94,7 +94,7 @@ helpers.for_each_dao(function(kong_config)
         local on_migration = spy.new(function() end)
         local on_success = spy.new(function() end)
 
-        local ok, err = factory:run_migrations()
+        local ok, err = factory:run_migrations(on_migration, on_success)
         assert.falsy(err)
         assert.True(ok)
 
