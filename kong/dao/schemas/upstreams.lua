@@ -26,6 +26,38 @@ return {
       unique = true, 
       required = true,
     },
+    hash_on = {
+      -- primary hash-key
+      type = "string",
+      default = "none",
+      enum = {
+        "none",
+        "consumer",
+        "ip",
+        "header",
+      },
+    },
+    hash_fallback = {
+      -- secondary key, if primary fails
+      type = "string",
+      default = "none",
+      enum = {
+        "none",
+        "consumer",
+        "ip",
+        "header",
+      },
+    },
+    hash_header1 = {
+      -- header name, if `hash_on == "header"`
+      type = "string",
+      default = "",
+    },
+    hash_header2 = {
+      -- header name, if `hash_fallback == "header"`
+      type = "string",
+      default = "",
+    },
     slots = {
       -- the number of slots in the loadbalancer algorithm
       type = "number",
@@ -45,7 +77,31 @@ return {
     if p.port then
       return false, Errors.schema("Invalid name; no port allowed")
     end
-    
+
+    if config.hash_header1 ~= "" then
+      local ok, err = utils.validate_header_name(config.hash_header1)
+      if not ok then
+        return false, Errors.schema("Header: " .. err)
+      end
+    end
+
+    if config.hash_header2 ~= "" then
+      local ok, err = utils.validate_header_name(config.hash_header2)
+      if not ok then
+        return false, Errors.schema("Header: " .. err)
+      end
+    end
+
+    if config.hash_on == "none" then
+      if config.hash_fallback ~= "none" then
+        return false, Errors.schema("Cannot set fallback if primary 'hash_on' is not set")
+      end
+    else
+      if config.hash_on == config.hash_fallback then
+        return false, Errors.schema("Cannot set fallback and primary hash to the same value")
+      end
+    end
+
     -- check the slots number
     if config.slots < SLOTS_MIN or config.slots > SLOTS_MAX then
       return false, Errors.schema(SLOTS_MSG)
