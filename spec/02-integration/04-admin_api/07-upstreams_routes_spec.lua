@@ -35,7 +35,7 @@ end
 
 dao_helpers.for_each_dao(function(kong_config)
 
-describe("Admin API", function()
+describe("Admin API: #" .. kong_config.database, function()
   local client
   local dao
 
@@ -54,7 +54,7 @@ describe("Admin API", function()
     helpers.stop_kong()
   end)
 
-  describe("/upstreams " .. kong_config.database, function()
+  describe("/upstreams #" .. kong_config.database, function()
     describe("POST", function()
       before_each(function()
         dao:truncate_tables()

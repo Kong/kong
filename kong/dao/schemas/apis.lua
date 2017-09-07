@@ -211,9 +211,6 @@ return {
     upstream_send_timeout = {type = "number", default = 60000, func = check_u_int},
     upstream_read_timeout = {type = "number", default = 60000, func = check_u_int},
   },
-  marshall_event = function(self, t)
-    return { id = t.id }
-  end,
   self_check = function(schema, api_t, dao, is_update)
     if is_update then
       return true

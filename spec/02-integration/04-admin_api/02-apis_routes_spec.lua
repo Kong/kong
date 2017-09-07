@@ -13,7 +13,7 @@ end
 
 dao_helpers.for_each_dao(function(kong_config)
 
-describe("Admin API " .. kong_config.database, function()
+describe("Admin API #" .. kong_config.database, function()
   local client
   local dao
   setup(function()

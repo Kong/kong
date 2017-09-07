@@ -91,7 +91,7 @@ describe("Admin API - Kong routes", function()
   end)
 
   dao_helpers.for_each_dao(function(kong_conf)
-    describe("/status with DB: " .. kong_conf.database, function()
+    describe("/status with DB: #" .. kong_conf.database, function()
       local client
       local dao
 

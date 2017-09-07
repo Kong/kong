@@ -156,7 +156,7 @@ Here is a list of third-party **tools** maintained by the community:
 - [Kong-UI](https://github.com/msaraf/kong-ui): Admin UI in JavaScript
 - [Konga](https://github.com/Floby/konga-cli): CLI Admin tool in JavaScript
 - [Konga](https://pantsel.github.io/konga/): Another elegant Kong UI in Javascript
-- [Kongfig](https://github.com/mybuilder/kongfig): Declarative configuration in JavaScript
+- [Kongfig](https://github.com/mybuilder/kongfig): Declarative Kong configuration in YAML, JSON, or JavaScript
 - [Kongfig on Puppet Forge](https://forge.puppet.com/mybuilder/kongfig)
 - [Puppet recipe](https://github.com/scottefein/puppet-nyt-kong)
 - [Puppet module on Puppet Forge](https://forge.puppet.com/juniorsysadmin/kong)
@@ -282,7 +282,7 @@ When developing, you can use the `Makefile` for doing the following operations:
 | `test`             | Run the unit tests suite                               |
 | `test-integration` | Run the integration tests suite                        |
 | `test-plugins`     | Run the plugins test suite                             |
-| `test-all`         | Run all unit + integration tests at once               |
+| `test-all`         | Run all unit + integration + plugins tests at once     |
 
 ## Enterprise Support & Demo
 

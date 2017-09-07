@@ -21,7 +21,7 @@ end
 
 dao_helpers.for_each_dao(function(kong_config)
 
-  describe("upstream timeouts with DB: " .. kong_config.database, function()
+  describe("upstream timeouts with DB: #" .. kong_config.database, function()
     local client
 
     setup(function()

@@ -15,7 +15,7 @@ end
 
 dao_helpers.for_each_dao(function(kong_config)
 
-describe("Admin API", function()
+describe("Admin API: #" .. kong_config.database, function()
   local client
   local dao
 
@@ -38,7 +38,7 @@ describe("Admin API", function()
     helpers.stop_kong()
   end)
 
-  describe("/certificates with " .. kong_config.database, function()
+  describe("/certificates", function()
 
     describe("POST", function()
       before_each(function()
@@ -275,7 +275,7 @@ describe("Admin API", function()
   end)
 
 
-  describe("/snis with " .. kong_config.database, function()
+  describe("/snis", function()
     local ssl_certificate
 
     describe("POST", function()

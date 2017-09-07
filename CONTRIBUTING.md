@@ -292,8 +292,9 @@ accepted types are:
 - **perf**: A code change that significantly improves performance
 - **refactor**: A code change that neither fixes a bug nor adds a feature, and
   is too big to be considered just `perf`
-- **chore**: Changes related to the build process, the dependencies, or
-  auxiliary tools and libraries such as LuaRocks, Travis-ci, etc...
+- **chore**: Maintenance changes related to code cleaning that isn't
+  considered part of a refactor, build process updates, dependency bumps, or
+  auxiliary tools and libraries updates (LuaRocks, Travis-ci, etc...).
 
 
 ##### Scope

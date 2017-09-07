@@ -12,7 +12,7 @@ local mock_ipc_module = {
 
 helpers.for_each_dao(function(kong_conf)
 
-describe("DAO propagates CRUD events with DB: " .. kong_conf.database, function()
+describe("DAO propagates CRUD events with DB: #" .. kong_conf.database, function()
   local dao
   local mock_ipc
 
