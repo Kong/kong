@@ -12,6 +12,7 @@ local clear_header = ngx.req.clear_header
 local ngx_req_read_body = ngx.req.read_body
 local ngx_req_set_body_data = ngx.req.set_body_data
 local ngx_encode_args = ngx.encode_args
+local get_method = ngx.req.get_method
 local type = type
 
 local _realm = 'Key realm="' .. _KONG._NAME .. '"'
@@ -155,6 +156,15 @@ end
 function KeyAuthHandler:access(conf)
   KeyAuthHandler.super.access(self)
 
+  -- check if preflight request and whether it should be authenticated
+  if conf.run_on_preflight == false and get_method() == "OPTIONS" then
+    -- FIXME: the above `== false` test is because existing entries in the db will
+    -- have `nil` and hence will by default start passing the preflight request
+    -- This should be fixed by a migration to update the actual entries
+    -- in the datastore
+    return
+  end
+ 
   if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
     -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
