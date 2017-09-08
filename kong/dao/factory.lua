@@ -251,10 +251,14 @@ end
 
 local function migrate(self, identifier, migrations_modules, cur_migrations, on_migrate, on_success)
   local migrations = migrations_modules[identifier]
-  local recorded = cur_migrations[identifier] or {}
+  local recorded = {}
+  for _, name in ipairs(cur_migrations[identifier] or {}) do
+    recorded[name] = true
+  end
+
   local to_run = {}
-  for i, mig in ipairs(migrations) do
-    if mig.name ~= recorded[i] then
+  for _, mig in ipairs(migrations) do
+    if not recorded[mig.name] then
       to_run[#to_run + 1] = mig
     end
   end
