@@ -5,7 +5,9 @@ local function validate_file(value)
   -- create file in case it doesn't exist
   if not pl_path.exists(value) then
     local ok, err = pl_file.write(value, "")
-    if not ok then return false, string.format("Cannot create file: %s", err) end
+    if not ok then
+      return false, string.format("Cannot create file: %s", err)
+    end
   end
 
   return true

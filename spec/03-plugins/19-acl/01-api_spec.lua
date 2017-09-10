@@ -4,6 +4,8 @@ local helpers = require "spec.helpers"
 describe("Plugin: acl (API)", function()
   local consumer, admin_client
   setup(function()
+    helpers.run_migrations()
+
     assert(helpers.start_kong())
     admin_client = helpers.admin_client()
   end)
@@ -95,7 +97,7 @@ describe("Plugin: acl (API)", function()
       setup(function()
         for i = 1, 3 do
           assert(helpers.dao.acls:insert {
-            group = "group"..i,
+            group = "group" .. i,
             consumer_id = consumer.id
           })
         end
@@ -134,7 +136,7 @@ describe("Plugin: acl (API)", function()
       it("retrieves by id", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/bob/acls/"..acl.id
+          path = "/consumers/bob/acls/" .. acl.id
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -143,7 +145,7 @@ describe("Plugin: acl (API)", function()
       it("retrieves by group", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/bob/acls/"..acl.group
+          path = "/consumers/bob/acls/" .. acl.group
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -156,26 +158,26 @@ describe("Plugin: acl (API)", function()
 
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/bob/acls/"..acl.id
+          path = "/consumers/bob/acls/" .. acl.id
         })
         assert.res_status(200, res)
 
         res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/alice/acls/"..acl.id
+          path = "/consumers/alice/acls/" .. acl.id
         })
         assert.res_status(404, res)
       end)
       it("retrieves ACL by group only if the ACL belongs to the specified consumer", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/bob/acls/"..acl.group
+          path = "/consumers/bob/acls/" .. acl.group
         })
         assert.res_status(200, res)
 
         res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/alice/acls/"..acl.group
+          path = "/consumers/alice/acls/" .. acl.group
         })
         assert.res_status(404, res)
       end)
@@ -187,7 +189,7 @@ describe("Plugin: acl (API)", function()
 
         local res = assert(admin_client:send {
           method = "PATCH",
-          path = "/consumers/bob/acls/"..acl.id,
+          path = "/consumers/bob/acls/" .. acl.id,
           body = {
             group = "updatedGroup"
           },
@@ -204,7 +206,7 @@ describe("Plugin: acl (API)", function()
 
         local res = assert(admin_client:send {
           method = "PATCH",
-          path = "/consumers/bob/acls/"..acl.group,
+          path = "/consumers/bob/acls/" .. acl.group,
           body = {
             group = "updatedGroup2"
           },
@@ -220,7 +222,7 @@ describe("Plugin: acl (API)", function()
         it("handles invalid input", function()
           local res = assert(admin_client:send {
             method = "PATCH",
-            path = "/consumers/bob/acls/"..acl.id,
+            path = "/consumers/bob/acls/" .. acl.id,
             body = {},
             headers = {
               ["Content-Type"] = "application/json"
@@ -237,14 +239,14 @@ describe("Plugin: acl (API)", function()
       it("deletes an ACL group by id", function()
         local res = assert(admin_client:send {
           method = "DELETE",
-          path = "/consumers/bob/acls/"..acl.id,
+          path = "/consumers/bob/acls/" .. acl.id,
         })
         assert.res_status(204, res)
       end)
       it("deletes an ACL group by group", function()
         local res = assert(admin_client:send {
           method = "DELETE",
-          path = "/consumers/bob/acls/"..acl2.group,
+          path = "/consumers/bob/acls/" .. acl2.group,
         })
         assert.res_status(204, res)
       end)

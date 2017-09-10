@@ -11,7 +11,7 @@ function _M.serialize(ngx)
 
   return {
     request = {
-      url = ngx.var.scheme.."://"..ngx.var.host..":"..ngx.var.server_port..ngx.var.request_uri,
+      url = ngx.var.scheme .. "://" .. ngx.var.host .. ":" .. ngx.var.server_port .. ngx.var.request_uri,
       method = req_get_method(),
       headers = req_get_headers(),
       body = runscope_ctx.req_body,

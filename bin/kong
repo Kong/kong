@@ -1,5 +1,7 @@
 #!/usr/bin/env resty
 
-package.path = "?/init.lua;"..package.path
+require "luarocks.loader"
+
+package.path = "./?.lua;./?/init.lua;" .. package.path
 
 require("kong.cmd.init")(arg)

@@ -32,13 +32,13 @@ end
 local function claculate_payload_length(encStr, pos, socket)
   local elen
   pos, elen = bunpack(encStr, 'C', pos)
-  if (elen > 128) then
+  if elen > 128 then
     elen = elen - 128
     local elenCalc = 0
     local elenNext
     for i = 1, elen do
       elenCalc = elenCalc * 256
-      encStr = encStr..socket:receive(1)
+      encStr = encStr .. socket:receive(1)
       pos, elenNext = bunpack(encStr, 'C', pos)
       elenCalc = elenCalc + elenNext
     end
@@ -76,7 +76,7 @@ function _M.bind_request(socket, username, password)
 
   pos, response.resultCode = decoder:decode(packet, pos)
 
-  if (response.resultCode ~= 0) then
+  if response.resultCode ~= 0 then
     local error_msg
     pos, response.matchedDN = decoder:decode(packet, pos)
     _, response.errorMessage = decoder:decode(packet, pos)
@@ -128,7 +128,7 @@ function _M.start_tls(socket)
 
   pos, response.resultCode = decoder:decode(packet, pos)
 
-  if (response.resultCode ~= 0) then
+  if response.resultCode ~= 0 then
     local error_msg
     pos, response.matchedDN = decoder:decode(packet, pos)
     _, response.errorMessage = decoder:decode(packet, pos)

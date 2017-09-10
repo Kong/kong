@@ -1,4 +1,4 @@
--- Copyright (C) Mashape, Inc.
+-- Copyright (C) Kong Inc.
 
 local BasePlugin = require "kong.plugins.base_plugin"
 local access = require "kong.plugins.basic-auth.access"
@@ -14,6 +14,6 @@ function BasicAuthHandler:access(conf)
   access.execute(conf)
 end
 
-BasicAuthHandler.PRIORITY = 1000
+BasicAuthHandler.PRIORITY = 1001
 
 return BasicAuthHandler

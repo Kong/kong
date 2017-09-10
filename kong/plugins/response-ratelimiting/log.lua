@@ -4,7 +4,9 @@ local pairs = pairs
 local _M = {}
 
 local function log(premature, conf, api_id, identifier, current_timestamp, increments, usage)
-  if premature then return end
+  if premature then
+    return
+  end
   
   -- Increment metrics for all periods if the request goes through
   for k, v in pairs(usage) do
