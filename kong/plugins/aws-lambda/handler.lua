@@ -9,7 +9,8 @@ local meta = require "kong.meta"
 local http = require "resty.http"
 local cjson = require "cjson.safe"
 local public_utils = require "kong.tools.public"
-local get_credentials_from_iam_role = require "kong.plugins.aws-lambda.iam-role-credentials"
+local fetch_iam_credentials_from_metadata_service = require "kong.plugins.aws-lambda.iam-role-credentials"
+local singletons = require "kong.singletons"
 
 
 local tostring             = tostring
@@ -23,6 +24,8 @@ local ngx_req_get_uri_args = ngx.req.get_uri_args
 local ngx_req_get_headers  = ngx.req.get_headers
 local ngx_encode_base64    = ngx.encode_base64
 
+local DEFAULT_CACHE_IAM_INSTANCE_CREDS_DURATION = 60
+local IAM_CREDENTIALS_CACHE_KEY = "plugin.aws-lambda.iam_role_temp_creds"
 
 local new_tab
 do
@@ -203,7 +206,9 @@ function AWSLambdaHandler:access(conf)
   }
 
   if conf.use_ec2_iam_role then
-    local iam_role_credentials, err = get_credentials_from_iam_role()
+    local iam_role_credentials, err = singletons.cache:get(IAM_CREDENTIALS_CACHE_KEY, { ttl = DEFAULT_CACHE_IAM_INSTANCE_CREDS_DURATION },
+                                                           fetch_iam_credentials_from_metadata_service)
+
     if not iam_role_credentials then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     end

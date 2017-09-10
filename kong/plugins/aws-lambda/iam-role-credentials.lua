@@ -1,15 +1,16 @@
 local http  = require "resty.http"
 local json  = require "cjson"
-local cache = require "kong.tools.database_cache"
 
-local DEFAULT_CACHE_IAM_INSTANCE_CREDS_DURATION = 60 -- seconds to cache credentials from metadata service
 local DEFAULT_METADATA_SERVICE_PORT = 80
-local DEFAULT_METADATA_SERVICE_HOST = "169.254.169.254"
 local DEFAULT_METADATA_SERVICE_REQUEST_TIMEOUT = 5000
-local IAM_CREDENTIALS_CACHE_KEY = "plugin.aws-lambda.iam_role_temp_creds"
+local DEFAULT_METADATA_SERVICE_HOST = "169.254.169.254"
 
 local function fetch_iam_credentials_from_metadata_service(metadata_service_host, metadata_service_port,
                                                            metadata_service_request_timeout)
+  metadata_service_host = metadata_service_host or DEFAULT_METADATA_SERVICE_HOST
+  metadata_service_port = metadata_service_port or DEFAULT_METADATA_SERVICE_PORT
+  metadata_service_request_timeout = metadata_service_request_timeout or DEFAULT_METADATA_SERVICE_REQUEST_TIMEOUT
+
   local client = http.new()
   client:set_timeout(metadata_service_request_timeout)
 
@@ -76,16 +77,4 @@ local function fetch_iam_credentials_from_metadata_service(metadata_service_host
   }
 end
 
-local function get_iam_credentials_from_instance_profile(metadata_service_host, metadata_service_port,
-                                                         metadata_service_request_timeout, credentials_cache_ttl)
-  metadata_service_host = metadata_service_host or DEFAULT_METADATA_SERVICE_HOST
-  metadata_service_port = metadata_service_port or DEFAULT_METADATA_SERVICE_PORT
-  metadata_service_request_timeout = metadata_service_request_timeout or DEFAULT_METADATA_SERVICE_REQUEST_TIMEOUT
-  credentials_cache_ttl = credentials_cache_ttl or DEFAULT_CACHE_IAM_INSTANCE_CREDS_DURATION
-
-  return cache.get_or_set(IAM_CREDENTIALS_CACHE_KEY, credentials_cache_ttl,
-                          fetch_iam_credentials_from_metadata_service, metadata_service_host, metadata_service_port,
-                          metadata_service_request_timeout)
-end
-
-return get_iam_credentials_from_instance_profile
+return fetch_iam_credentials_from_metadata_service
