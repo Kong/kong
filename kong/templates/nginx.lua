@@ -12,7 +12,7 @@ error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 worker_rlimit_nofile ${{WORKER_RLIMIT}};
 > end
 
-env KONG_LICENSE;
+env KONG_LICENSE_PATH;
 
 events {
 > if nginx_optimizations then

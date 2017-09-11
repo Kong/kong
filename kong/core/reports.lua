@@ -138,23 +138,6 @@ local function create_timer(...)
 end
 
 
-local function get_license_info()
-  local license = os.getenv("KONG_LICENSE")
-  if not license then
-    return "no license found"
-  end
-
-  local license_json, err = cjson.decode(license)
-  if err then
-    return "could not decode license"
-  end
-
-  return {
-    license_key = license_json.payload.license_key
-  }
-end
-
-
 local function ping_handler(premature)
   if premature then
     return
@@ -175,12 +158,19 @@ local function ping_handler(premature)
     n_requests = 0
   end
 
+  local license
+  if singletons.license then
+    license = {
+      license_key = singletons.license.license.payload.license_key
+    }
+  end
+
   send_report("ping", {
     requests = n_requests,
     unique_id = _unique_str,
     database = singletons.configuration.database,
     enterprise = true,
-    license = get_license_info()
+    license = license,
   })
 
   local ok, err = kong_dict:incr(BUFFERED_REQUESTS_COUNT_KEYS, -n_requests, n_requests)
