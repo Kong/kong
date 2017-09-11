@@ -24,7 +24,6 @@ describe("Admin API", function()
     upstream = assert(helpers.dao.upstreams:insert {
       name = upstream_name,
       slots = 10,
-      orderlist = { 1,2,3,4,5,6,7,8,9,10 }
     })
   end)
 
@@ -250,7 +249,6 @@ describe("Admin API", function()
           assert(helpers.dao.upstreams:insert {
             name = upstream_name2,
             slots = 10,
-            orderlist = { 1,2,3,4,5,6,7,8,9,10 }
           })
         end)
 

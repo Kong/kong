@@ -526,4 +526,11 @@ return {
       DROP INDEX ttls_primary_uuid_value_idx;
     ]]
   },
+  {
+    name = "2017-07-28-225000_balancer_orderlist_remove",
+    up = [[
+      ALTER TABLE upstreams DROP COLUMN IF EXISTS orderlist;
+    ]],
+    down = function(_, _, dao) end  -- not implemented
+  },
 }

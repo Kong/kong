@@ -5,13 +5,28 @@ local helpers = require "spec.helpers"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local PORT = 21000
 
+local TEST_LOG = false    -- extra verbose logging of test server
+
 -- modified http-server. Accepts (sequentially) a number of incoming
 -- connections, and returns the number of succesful ones.
 -- Also features a timeout setting.
 local function http_server(timeout, count, port, ...)
   local threads = require "llthreads2.ex"
   local thread = threads.new({
-    function(timeout, count, port)
+    function(timeout, count, port, TEST_LOG)
+
+      local function test_log(...)
+        if not TEST_LOG then
+          return
+        end
+
+        local t = { n = select( "#", ...), ...}
+        for i, v in ipairs(t) do
+          t[i] = tostring(v)
+        end
+        print(table.concat(t))
+      end
+
       local socket = require "socket"
       local server = assert(socket.tcp())
       assert(server:setoption('reuseaddr', true))
@@ -20,6 +35,7 @@ local function http_server(timeout, count, port, ...)
 
       local expire = socket.gettime() + timeout
       assert(server:settimeout(0.1))
+      test_log("test http server on port ", port, " started")
 
       local success = 0
       while count > 0 do
@@ -58,13 +74,16 @@ local function http_server(timeout, count, port, ...)
           if s then
             success = success + 1
           end
+          test_log("test http server on port ", port, ": ", success, "/",
+                   (success + count)," requests handled")
         end
       end
 
       server:close()
+      test_log("test http server on port ", port, " closed")
       return success
     end
-  }, timeout, count, port)
+  }, timeout, count, port, TEST_LOG)
 
   local server = thread:start(...)
   ngx.sleep(0.2)  -- attempt to make sure server is started for failing CI tests
@@ -80,6 +99,7 @@ dao_helpers.for_each_dao(function(kong_config)
       helpers.run_migrations()
       config_db = helpers.test_conf.database
       helpers.test_conf.database = kong_config.database
+      helpers.run_migrations()
     end)
     teardown(function()
       helpers.test_conf.database = config_db
