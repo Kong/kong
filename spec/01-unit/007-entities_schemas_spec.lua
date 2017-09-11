@@ -5,7 +5,6 @@ local targets_schema = require "kong.dao.schemas.targets"
 local upstreams_schema = require "kong.dao.schemas.upstreams"
 local validations = require "kong.dao.schemas_validation"
 local validate_entity = validations.validate_entity
-local utils = require "kong.tools.utils"
 
 describe("Entities Schemas", function()
 
@@ -773,94 +772,6 @@ describe("Entities Schemas", function()
         assert.is_nil(errors)
         assert.is_nil(check)
       end
-    end)
-
-    it("should require (optional) orderlist to be a proper list", function()
-      local data, valid, errors, check
-      local function validate_order(list, size)
-        assert(type(list) == "table", "expected list table, got " .. type(list))
-        assert(next(list), "table is empty")
-        assert(type(size) == "number", "expected size number, got " .. type(size))
-        assert(size > 0, "expected size to be > 0")
-        local c = {}
-        local max = 0
-        for i,v in pairs(list) do  --> note: pairs, not ipairs!!
-          if i > max then max = i end
-          c[i] = v
-        end
-        assert(max == size, "highest key is not equal to the size")
-        table.sort(c)
-        max = 0
-        for i, v in ipairs(c) do
-          assert(i == v, "expected sorted table to have equal keys and values")
-          if i>max then max = i end
-        end
-        assert(max == size, "expected array, but got list with holes")
-      end
-
-      for _ = 1, 20 do  -- have Kong generate 20 random sized arrays and verify them
-        data = {
-          name = "valid.host.name",
-          slots = math.random(slots_min, slots_max)
-        }
-        valid, errors, check = validate_entity(data, upstreams_schema)
-        assert.is_true(valid)
-        assert.is_nil(errors)
-        assert.is_nil(check)
-        validate_order(data.orderlist, data.slots)
-      end
-
-      local lst = { 9,7,5,3,1,2,4,6,8,10 }   -- a valid list
-      data = {
-        name = "valid.host.name",
-        slots = 10,
-        orderlist = utils.shallow_copy(lst)
-      }
-      valid, errors, check = validate_entity(data, upstreams_schema)
-      assert.is_true(valid)
-      assert.is_nil(errors)
-      assert.is_nil(check)
-      assert.same(lst, data.orderlist)
-
-      data = {
-        name = "valid.host.name",
-        slots = 10,
-        orderlist = { 9,7,5,3,1,2,4,6,8 }   -- too short (9)
-      }
-      valid, errors, check = validate_entity(data, upstreams_schema)
-      assert.is_false(valid)
-      assert.is_nil(errors)
-      assert.are.equal("size mismatch between 'slots' and 'orderlist'",check.message)
-
-      data = {
-        name = "valid.host.name",
-        slots = 10,
-        orderlist = { 9,7,5,3,1,2,4,6,8,10,11 }   -- too long (11)
-      }
-      valid, errors, check = validate_entity(data, upstreams_schema)
-      assert.is_false(valid)
-      assert.is_nil(errors)
-      assert.are.equal("size mismatch between 'slots' and 'orderlist'",check.message)
-
-      data = {
-        name = "valid.host.name",
-        slots = 10,
-        orderlist = { 9,7,5,3,1,2,4,6,8,8 }   -- a double value (2x 8, no 10)
-      }
-      valid, errors, check = validate_entity(data, upstreams_schema)
-      assert.is_false(valid)
-      assert.is_nil(errors)
-      assert.are.equal("invalid orderlist",check.message)
-
-      data = {
-        name = "valid.host.name",
-        slots = 10,
-        orderlist = { 9,7,5,3,1,2,4,6,8,11 }   -- a hole (10 missing)
-      }
-      valid, errors, check = validate_entity(data, upstreams_schema)
-      assert.is_false(valid)
-      assert.is_nil(errors)
-      assert.are.equal("invalid orderlist",check.message)
     end)
 
   end)
