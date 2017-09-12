@@ -13,6 +13,14 @@ local function validate_rl(value)
   return true
 end
 
+local function is_redis_sentinel(redis)
+  local is_sentinel = redis.sentinel_master or
+                      redis.sentinel_role or
+                      redis.sentinel_addresses
+
+  return is_sentinel and true or false
+end
+
 local redis_schema = {
   fields = {
     host = {
@@ -42,11 +50,7 @@ local redis_schema = {
     },
   },
   self_check = function(schema, plugin_t, dao, is_updating)
-    local is_sentinel = plugin_t.sentinel_master or
-                        plugin_t.sentinel_role or
-                        plugin_t.sentinel_addresses
-
-    if is_sentinel then
+    if is_redis_sentinel(plugin_t) then
       if not plugin_t.sentinel_master then
         return false,
                Errors.schema("You need to specify a Redis Sentinel master")
@@ -63,10 +67,16 @@ local redis_schema = {
                "Redis Sentinel addresses")
 
       else
-        if plugin_t.redis_host then
+        if plugin_t.host then
           return false,
                  Errors.schema("When Redis Sentinel is enabled you cannot " ..
-                 "set a 'redis_host'")
+                 "set a 'redis.host'")
+        end
+
+        if plugin_t.port then
+          return false,
+                 Errors.schema("When Redis Sentinel is enabled you cannot " ..
+                 "set a 'redis.port'")
         end
 
         if #plugin_t.sentinel_addresses == 0 then
@@ -133,12 +143,16 @@ return {
         return false, Errors.schema("No redis config provided")
       end
 
-      if not plugin_t.redis.host then
-        return false, Errors.schema("Redis host must be provided")
-      end
+      -- if sentinel is not used, we need to define host + port
+      -- if sentinel IS used, we cannot define host or port (checked above)
+      if not is_redis_sentinel(plugin_t.redis) then
+        if not plugin_t.redis.host then
+          return false, Errors.schema("Redis host must be provided")
+        end
 
-      if not plugin_t.redis.port then
-        return false, Errors.schema("Redis port must be provided")
+        if not plugin_t.redis.port then
+          return false, Errors.schema("Redis port must be provided")
+        end
       end
 
       if not plugin_t.redis.database then
@@ -148,6 +162,22 @@ return {
       if not plugin_t.redis.timeout then
         plugin_t.redis.timeout = 2000
       end
+    end
+
+    -- on update we dont need to enforce re-defining window_size and limit
+    -- e.g., skip the next checks if this is an update and the request body
+    -- did not contain either the window_size or limit values. the reason for
+    -- this is the check that is executing here looks at the request body, not
+    -- the entity post-update. so to simplify PATCH requests we do not want to
+    -- force the user to define window_size and limit when they don't need to
+    -- (say, they are only updating sync_rate)
+    --
+    -- if this request is an update, and window_size and/or limit are being
+    -- updated, then we do want to execute the manual checks on these entities.
+    -- in such case the condition below evaluates to false, and we fall through
+    -- to the next series of checks
+    if is_updating and not plugin_t.window_size and not plugin_t.limit then
+      return true
     end
 
     if not plugin_t.window_size or not plugin_t.limit then
