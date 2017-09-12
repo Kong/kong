@@ -134,7 +134,9 @@ function NewRLHandler:init_worker()
 
   -- new plugin? try to make a namespace!
   worker_events.register(function(config)
-    new_namespace(config, true)
+    if not ratelimiting.config[config.namespace] then
+      new_namespace(config, true)
+    end
   end, "rl", "create")
 
   -- updates should clear the existing config and create a new
@@ -171,6 +173,17 @@ function NewRLHandler:access(conf)
   end
 
   local deny
+
+  -- if this worker has not yet seen the "rl:create" event propagated by the
+  -- instatiation of a new plugin, create the namespace. in this case, the call
+  -- to new_namespace in the registered rl handler will never be called on this
+  -- worker
+  --
+  -- this workaround will not be necessary when real IPC is implemented for
+  -- inter-worker communications
+  if not ratelimiting.config[conf.namespace] then
+    new_namespace(conf, true)
+  end
 
   for i = 1, #conf.window_size do
     local window_size = tonumber(conf.window_size[i])
