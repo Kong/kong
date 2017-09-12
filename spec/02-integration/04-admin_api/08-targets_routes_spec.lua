@@ -304,7 +304,7 @@ describe("Admin API", function()
       it("only shows active targets", function()
         local res = assert(client:send {
           method = "GET",
-          path = "/upstreams/" .. upstream_name3 .. "/targets/active/",
+          path = "/upstreams/" .. upstream_name3 .. "/targets/active",
         })
         assert.response(res).has.status(200)
         local json = assert.response(res).has.jsonbody()
@@ -366,7 +366,7 @@ describe("Admin API", function()
 
         local active = assert(client:send {
           method = "GET",
-          path = "/upstreams/" .. upstream_name4 .. "/targets/active/",
+          path = "/upstreams/" .. upstream_name4 .. "/targets/active",
         })
         assert.response(active).has.status(200)
         json = assert.response(active).has.jsonbody()
@@ -393,7 +393,7 @@ describe("Admin API", function()
 
         local active = assert(client:send {
           method = "GET",
-          path = "/upstreams/" .. upstream_name4 .. "/targets/active/",
+          path = "/upstreams/" .. upstream_name4 .. "/targets/active",
         })
         assert.response(active).has.status(200)
         json = assert.response(active).has.jsonbody()
