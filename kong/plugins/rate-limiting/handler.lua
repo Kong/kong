@@ -145,8 +145,27 @@ function NewRLHandler:init_worker()
   worker_events.register(function(config)
     ngx.log(ngx.DEBUG, "clear and reset ", config.namespace)
 
+    -- if the previous config did not have a background timer,
+    -- we need to start one
+    local start_timer = false
+    if ratelimiting.config[config.namespace].sync_rate <= 0 and
+       config.sync_rate > 0 then
+
+      start_timer = true
+    end
+
     ratelimiting.clear_config(config.namespace)
-    new_namespace(config)
+    new_namespace(config, start_timer)
+
+    -- clear the timer if we dont need it
+    if config.sync_rate <= 0 then
+      if ratelimiting.config[config.namespace] then
+        ratelimiting.config[config.namespace].kill = true
+
+      else
+        ngx.log(ngx.WARN, "did not find namespace ", config.namespace, " to kill")
+      end
+    end
   end, "rl", "update")
 
   -- nuke this from orbit
