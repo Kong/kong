@@ -184,7 +184,7 @@ server {
     }
 
     gzip on;
-    gzip_types text/html text/plain text/css application/json application/javascript;
+    gzip_types text/plain text/css application/json application/javascript;
 
     location / {
         root /usr/local/kong/gui;
