@@ -27,19 +27,19 @@ local function flush_redis()
   red:set_timeout(2000)
   local ok, err = red:connect(REDIS_HOST, REDIS_PORT)
   if not ok then
-    error("failed to connect to Redis: ", err)
+    error("failed to connect to Redis: " .. err)
   end
 
   if REDIS_PASSWORD and REDIS_PASSWORD ~= "" then
     local ok, err = red:auth(REDIS_PASSWORD)
     if not ok then
-      error("failed to connect to Redis: ", err)
+      error("failed to connect to Redis: " .. err)
     end
   end
 
   local ok, err = red:select(REDIS_DATABASE)
   if not ok then
-    error("failed to change Redis database: ", err)
+    error("failed to change Redis database: " .. err)
   end
 
   red:flushall()
@@ -47,93 +47,93 @@ local function flush_redis()
 end
 
 for i, policy in ipairs({"local", "cluster", "redis"}) do
-  describe("#ci Plugin: rate-limiting (access) with policy: "..policy, function()
+  describe("#flaky Plugin: rate-limiting (access) with policy: " .. policy, function()
     setup(function()
       helpers.kill_all()
       flush_redis()
       helpers.dao:drop_schema()
-      assert(helpers.dao:run_migrations())
+      helpers.run_migrations()
 
       local consumer1 = assert(helpers.dao.consumers:insert {
-        custom_id = "provider_123"
+        custom_id = "provider_123",
       })
       assert(helpers.dao.keyauth_credentials:insert {
-        key = "apikey122",
-        consumer_id = consumer1.id
+        key         = "apikey122",
+        consumer_id = consumer1.id,
       })
 
       local consumer2 = assert(helpers.dao.consumers:insert {
-        custom_id = "provider_124"
+        custom_id = "provider_124",
       })
       assert(helpers.dao.keyauth_credentials:insert {
-        key = "apikey123",
-        consumer_id = consumer2.id
+        key         = "apikey123",
+        consumer_id = consumer2.id,
       })
       assert(helpers.dao.keyauth_credentials:insert {
-        key = "apikey333",
-        consumer_id = consumer2.id
+        key         = "apikey333",
+        consumer_id = consumer2.id,
       })
 
       local api1 = assert(helpers.dao.apis:insert {
-        name = "api-1",
-        hosts = { "test1.com" },
-        upstream_url = "http://mockbin.com"
+        name         = "api-1",
+        hosts        = { "test1.com" },
+        upstream_url = helpers.mock_upstream_url,
       })
       assert(helpers.dao.plugins:insert {
-        name = "rate-limiting",
+        name   = "rate-limiting",
         api_id = api1.id,
         config = {
-          policy = policy,
-          minute = 6,
+          policy         = policy,
+          minute         = 6,
           fault_tolerant = false,
-          redis_host = REDIS_HOST,
-          redis_port = REDIS_PORT,
+          redis_host     = REDIS_HOST,
+          redis_port     = REDIS_PORT,
           redis_password = REDIS_PASSWORD,
-          redis_database = REDIS_DATABASE
+          redis_database = REDIS_DATABASE,
         }
       })
 
       local api2 = assert(helpers.dao.apis:insert {
-        name = "api-2",
-        hosts = { "test2.com" },
-        upstream_url = "http://mockbin.com"
+        name         = "api-2",
+        hosts        = { "test2.com" },
+        upstream_url = helpers.mock_upstream_url,
       })
       assert(helpers.dao.plugins:insert {
-        name = "rate-limiting",
+        name   = "rate-limiting",
         api_id = api2.id,
         config = {
-          minute = 3,
-          hour = 5,
+          minute         = 3,
+          hour           = 5,
           fault_tolerant = false,
-          policy = policy,
-          redis_host = REDIS_HOST,
-          redis_port = REDIS_PORT,
+          policy         = policy,
+          redis_host     = REDIS_HOST,
+          redis_port     = REDIS_PORT,
           redis_password = REDIS_PASSWORD,
-          redis_database = REDIS_DATABASE
+          redis_database = REDIS_DATABASE,
         }
       })
 
       local api3 = assert(helpers.dao.apis:insert {
-        name = "api-3",
-        hosts = { "test3.com" },
-        upstream_url = "http://mockbin.com"
+        name         = "api-3",
+        hosts        = { "test3.com" },
+        upstream_url = helpers.mock_upstream_url,
       })
       assert(helpers.dao.plugins:insert {
-        name = "key-auth",
-        api_id = api3.id
+        name   = "key-auth",
+        api_id = api3.id,
       })
       assert(helpers.dao.plugins:insert {
-        name = "rate-limiting",
+        name   = "rate-limiting",
         api_id = api3.id,
         config = {
-          minute = 6,
-          limit_by = "credential",
+          minute         = 6,
+          limit_by       = "credential",
           fault_tolerant = false,
-          policy = policy,
-          redis_host = REDIS_HOST,
-          redis_port = REDIS_PORT,
+          policy         = policy,
+          redis_host     = REDIS_HOST,
+          redis_port     = REDIS_PORT,
           redis_password = REDIS_PASSWORD,
-          redis_database = REDIS_DATABASE
+          redis_database = REDIS_DATABASE,
         }
       })
       assert(helpers.dao.plugins:insert {
@@ -152,47 +152,47 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       })
 
       local api4 = assert(helpers.dao.apis:insert {
-        name = "api-4",
-        hosts = { "test4.com" },
-        upstream_url = "http://mockbin.com"
+        name         = "api-4",
+        hosts        = { "test4.com" },
+        upstream_url = helpers.mock_upstream_url,
       })
       assert(helpers.dao.plugins:insert {
-        name = "key-auth",
-        api_id = api4.id
-      })
-      assert(helpers.dao.plugins:insert {
-        name = "rate-limiting",
+        name   = "key-auth",
         api_id = api4.id,
+      })
+      assert(helpers.dao.plugins:insert {
+        name        = "rate-limiting",
+        api_id      = api4.id,
         consumer_id = consumer1.id,
-        config = {
-          minute = 6,
+        config           = {
+          minute         = 6,
           fault_tolerant = true,
-          policy = policy,
-          redis_host = REDIS_HOST,
-          redis_port = REDIS_PORT,
+          policy         = policy,
+          redis_host     = REDIS_HOST,
+          redis_port     = REDIS_PORT,
           redis_password = REDIS_PASSWORD,
-          redis_database = REDIS_DATABASE
-        }
+          redis_database = REDIS_DATABASE,
+        },
       })
 
       local api5 = assert(helpers.dao.apis:insert {
-        name = "api-5",
-        hosts = { "test5.com" },
-        upstream_url = "http://mockbin.com"
+        name         = "api-5",
+        hosts        = { "test5.com" },
+        upstream_url = helpers.mock_upstream_url,
       })
       assert(helpers.dao.plugins:insert {
-        name = "rate-limiting",
+        name   = "rate-limiting",
         api_id = api5.id,
         config = {
-          policy = policy,
-          minute = 6,
+          policy              = policy,
+          minute              = 6,
           hide_client_headers = true,
-          fault_tolerant = false,
-          redis_host = REDIS_HOST,
-          redis_port = REDIS_PORT,
-          redis_password = REDIS_PASSWORD,
-          redis_database = REDIS_DATABASE
-        }
+          fault_tolerant      = false,
+          redis_host          = REDIS_HOST,
+          redis_port          = REDIS_PORT,
+          redis_password      = REDIS_PASSWORD,
+          redis_database      = REDIS_DATABASE,
+        },
       })
 
      local api6 = assert(helpers.dao.apis:insert {
@@ -216,7 +216,9 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         }
       })
 
-      assert(helpers.start_kong())
+      assert(helpers.start_kong({
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
     end)
 
     teardown(function()
@@ -240,7 +242,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         for i = 1, 6 do
           local res = assert(helpers.proxy_client():send {
             method = "GET",
-            path = "/status/200/",
+            path = "/status/200",
             headers = {
               ["Host"] = "test1.com"
             }
@@ -256,7 +258,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         -- Additonal request, while limit is 6/minute
         local res = assert(helpers.proxy_client():send {
           method = "GET",
-          path = "/status/200/",
+          path = "/status/200",
           headers = {
             ["Host"] = "test1.com"
           }
@@ -275,7 +277,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         for i = 1, 3 do
           local res = assert(helpers.proxy_client():send {
             method = "GET",
-            path = "/status/200/",
+            path = "/status/200",
             headers = {
               ["Host"] = "test2.com"
             }
@@ -292,7 +294,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
 
         local res = assert(helpers.proxy_client():send {
           method = "GET",
-          path = "/status/200/",
+          path = "/status/200",
           headers = {
             ["Host"] = "test2.com"
           }
@@ -310,7 +312,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           for i = 1, 6 do
             local res = assert(helpers.proxy_client():send {
               method = "GET",
-              path = "/status/200/?apikey=apikey123",
+              path = "/status/200?apikey=apikey123",
               headers = {
                 ["Host"] = "test3.com"
               }
@@ -326,7 +328,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           -- Third query, while limit is 2/minute
           local res = assert(helpers.proxy_client():send {
             method = "GET",
-            path = "/status/200/?apikey=apikey123",
+            path = "/status/200?apikey=apikey123",
             headers = {
               ["Host"] = "test3.com"
             }
@@ -338,7 +340,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           -- Using a different key of the same consumer works
           local res = assert(helpers.proxy_client():send {
             method = "GET",
-            path = "/status/200/?apikey=apikey333",
+            path = "/status/200?apikey=apikey333",
             headers = {
               ["Host"] = "test3.com"
             }
@@ -351,7 +353,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           for i = 1, 8 do
             local res = assert(helpers.proxy_client():send {
               method = "GET",
-              path = "/status/200/?apikey=apikey122",
+              path = "/status/200?apikey=apikey122",
               headers = {
                 ["Host"] = "test3.com"
               }
@@ -366,7 +368,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
 
           local res = assert(helpers.proxy_client():send {
             method = "GET",
-            path = "/status/200/?apikey=apikey122",
+            path = "/status/200?apikey=apikey122",
             headers = {
               ["Host"] = "test3.com"
             }
@@ -379,7 +381,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           for i = 1, 6 do
             local res = assert(helpers.proxy_client():send {
               method = "GET",
-              path = "/status/200/?apikey=apikey122",
+              path = "/status/200?apikey=apikey122",
               headers = {
                 ["Host"] = "test4.com"
               }
@@ -394,7 +396,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
 
           local res = assert(helpers.proxy_client():send {
             method = "GET",
-            path = "/status/200/?apikey=apikey122",
+            path = "/status/200?apikey=apikey122",
             headers = {
               ["Host"] = "test4.com"
             }
@@ -410,7 +412,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       it("does not send rate-limit headers when hide_client_headers==true", function()
         local res = assert(helpers.proxy_client():send {
           method = "GET",
-          path = "/status/200/",
+          path = "/status/200",
           headers = {
             ["Host"] = "test5.com"
           }
@@ -487,43 +489,45 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         before_each(function()
           helpers.kill_all()
           helpers.dao:drop_schema()
-          assert(helpers.dao:run_migrations())
+          helpers.run_migrations()
 
           local api1 = assert(helpers.dao.apis:insert {
-            name = "failtest1_com",
-            hosts = { "failtest1.com" },
-            upstream_url = "http://mockbin.com"
+            name         = "failtest1_com",
+            hosts        = { "failtest1.com" },
+            upstream_url = helpers.mock_upstream_url,
           })
           assert(helpers.dao.plugins:insert {
-            name = "rate-limiting",
+            name   = "rate-limiting",
             api_id = api1.id,
             config = { minute = 6, fault_tolerant = false }
           })
 
           local api2 = assert(helpers.dao.apis:insert {
-            name = "failtest2_com",
-            hosts = { "failtest2.com" },
-            upstream_url = "http://mockbin.com"
+            name         = "failtest2_com",
+            hosts        = { "failtest2.com" },
+            upstream_url = helpers.mock_upstream_url,
           })
           assert(helpers.dao.plugins:insert {
-            name = "rate-limiting",
+            name   = "rate-limiting",
             api_id = api2.id,
-            config = { minute = 6, fault_tolerant = true }
+            config = { minute = 6, fault_tolerant = true },
           })
 
-          assert(helpers.start_kong())
+          assert(helpers.start_kong({
+            nginx_conf = "spec/fixtures/custom_nginx.template",
+          }))
         end)
 
         teardown(function()
           helpers.kill_all()
           helpers.dao:drop_schema()
-          assert(helpers.dao:run_migrations())
+          helpers.run_migrations()
         end)
 
         it("does not work if an error occurs", function()
           local res = assert(helpers.proxy_client():send {
             method = "GET",
-            path = "/status/200/",
+            path = "/status/200",
             headers = {
               ["Host"] = "failtest1.com"
             }
@@ -538,7 +542,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           -- Make another request
           local res = assert(helpers.proxy_client():send {
             method = "GET",
-            path = "/status/200/",
+            path = "/status/200",
             headers = {
               ["Host"] = "failtest1.com"
             }
@@ -550,7 +554,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         it("keeps working if an error occurs", function()
           local res = assert(helpers.proxy_client():send {
             method = "GET",
-            path = "/status/200/",
+            path = "/status/200",
             headers = {
               ["Host"] = "failtest2.com"
             }
@@ -565,7 +569,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           -- Make another request
           local res = assert(helpers.proxy_client():send {
             method = "GET",
-            path = "/status/200/",
+            path = "/status/200",
             headers = {
               ["Host"] = "failtest2.com"
             }
@@ -583,35 +587,37 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           helpers.kill_all()
 
           local api1 = assert(helpers.dao.apis:insert {
-            name = "failtest3_com",
-            hosts = { "failtest3.com" },
-            upstream_url = "http://mockbin.com"
+            name         = "failtest3_com",
+            hosts        = { "failtest3.com" },
+            upstream_url = helpers.mock_upstream_url,
           })
           assert(helpers.dao.plugins:insert {
-            name = "rate-limiting",
+            name   = "rate-limiting",
             api_id = api1.id,
-            config = { minute = 6, policy = policy, redis_host = "5.5.5.5", fault_tolerant = false }
+            config = { minute = 6, policy = policy, redis_host = "5.5.5.5", fault_tolerant = false },
           })
 
           local api2 = assert(helpers.dao.apis:insert {
-            name = "failtest4_com",
-            hosts = { "failtest4.com" },
-            upstream_url = "http://mockbin.com"
+            name         = "failtest4_com",
+            hosts        = { "failtest4.com" },
+            upstream_url = helpers.mock_upstream_url,
           })
           assert(helpers.dao.plugins:insert {
-            name = "rate-limiting",
+            name   = "rate-limiting",
             api_id = api2.id,
-            config = { minute = 6, policy = policy, redis_host = "5.5.5.5", fault_tolerant = true }
+            config = { minute = 6, policy = policy, redis_host = "5.5.5.5", fault_tolerant = true },
           })
 
-          assert(helpers.start_kong())
+          assert(helpers.start_kong({
+            nginx_conf = "spec/fixtures/custom_nginx.template",
+          }))
         end)
 
         it("does not work if an error occurs", function()
           -- Make another request
           local res = assert(helpers.proxy_client():send {
             method = "GET",
-            path = "/status/200/",
+            path = "/status/200",
             headers = {
               ["Host"] = "failtest3.com"
             }
@@ -624,7 +630,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           -- Make another request
           local res = assert(helpers.proxy_client():send {
             method = "GET",
-            path = "/status/200/",
+            path = "/status/200",
             headers = {
               ["Host"] = "failtest4.com"
             }
@@ -641,36 +647,36 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       setup(function()
         helpers.stop_kong()
         helpers.dao:drop_schema()
-        assert(helpers.dao:run_migrations())
+        helpers.run_migrations()
 
         api = assert(helpers.dao.apis:insert {
-          name = "expire1_com",
-          hosts = { "expire1.com" },
-          upstream_url = "http://mockbin.com"
+          name         = "expire1_com",
+          hosts        = { "expire1.com" },
+          upstream_url = helpers.mock_upstream_url,
         })
         assert(helpers.dao.plugins:insert {
-          name = "rate-limiting",
+          name   = "rate-limiting",
           api_id = api.id,
           config = {
-            minute = 6,
-            policy = policy,
-            redis_host = REDIS_HOST,
-            redis_port = REDIS_PORT,
+            minute         = 6,
+            policy         = policy,
+            redis_host     = REDIS_HOST,
+            redis_port     = REDIS_PORT,
             redis_password = REDIS_PASSWORD,
             fault_tolerant = false,
-            redis_database = REDIS_DATABASE
-          }
+            redis_database = REDIS_DATABASE,
+          },
         })
 
-        assert(helpers.start_kong())
+        assert(helpers.start_kong({
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        }))
       end)
 
-      it("expires a counter", function()
-        local periods = timestamp.get_timestamps()
-
+      describe("expires a counter", function()
         local res = assert(helpers.proxy_client():send {
           method = "GET",
-          path = "/status/200/",
+          path = "/status/200",
           headers = {
             ["Host"] = "expire1.com"
           }
@@ -681,23 +687,12 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         assert.res_status(200, res)
         assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
         assert.are.same(5, tonumber(res.headers["x-ratelimit-remaining-minute"]))
-
-        if policy == "local" then
-          local res = assert(helpers.admin_client():send {
-            method = "GET",
-            path = "/cache/"..string.format("ratelimit:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "minute"),
-            query = { cache = "shm" },
-          })
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-          assert.same({ message = 1 }, json)
-        end
 
         ngx.sleep(61) -- Wait for counter to expire
 
         local res = assert(helpers.proxy_client():send {
           method = "GET",
-          path = "/status/200/",
+          path = "/status/200",
           headers = {
             ["Host"] = "expire1.com"
           }
@@ -708,15 +703,6 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         assert.res_status(200, res)
         assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
         assert.are.same(5, tonumber(res.headers["x-ratelimit-remaining-minute"]))
-
-        if policy == "local" then
-          local res = assert(helpers.admin_client():send {
-            method = "GET",
-            path = "/cache/"..string.format("ratelimit:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "minute"),
-            query = { cache = "shm" },
-          })
-          assert.res_status(404, res)
-        end
       end)
     end)
   end)

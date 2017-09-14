@@ -19,6 +19,7 @@ end
 local SCHEMA = {
   primary_key = {"id"},
   table = "basicauth_credentials",
+  cache_key = { "username" },
   fields = {
     id = {type = "id", dao_insert_value = true},
     created_at = {type = "timestamp", immutable = true, dao_insert_value = true},
@@ -26,9 +27,6 @@ local SCHEMA = {
     username = {type = "string", required = true, unique = true },
     password = {type = "string", func = encrypt_password}
   },
-  marshall_event = function(self, t)
-    return {id = t.id, consumer_id = t.consumer_id, username = t.username}
-  end
 }
 
 return {basicauth_credentials = SCHEMA}

@@ -19,14 +19,18 @@ return {
     name = "2016-07-25-471385_ratelimiting_policies",
     up = function(_, _, dao)
       local rows, err = dao.plugins:find_all {name = "rate-limiting"}
-      if err then return err end
+      if err then
+        return err
+      end
 
       for i = 1, #rows do
         local rate_limiting = rows[i]
 
         -- Delete the old one to avoid conflicts when inserting the new one
         local _, err = dao.plugins:delete(rate_limiting)
-        if err then return err end
+        if err then
+          return err
+        end
 
         local _, err = dao.plugins:insert {
           name = "rate-limiting",
@@ -45,7 +49,9 @@ return {
             fault_tolerant = rate_limiting.config.continue_on_error
           }
         }
-        if err then return err end
+        if err then
+          return err
+        end
       end
     end
   }

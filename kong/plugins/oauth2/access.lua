@@ -1,6 +1,5 @@
 local url = require "socket.url"
 local utils = require "kong.tools.utils"
-local cache = require "kong.tools.database_cache"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local timestamp = require "kong.tools.timestamp"
@@ -81,8 +80,10 @@ end
 local function get_redirect_uri(client_id)
   local client, err
   if client_id then
-    client, err = cache.get_or_set(cache.oauth2_credential_key(client_id), nil,
-                   load_oauth2_credential_by_client_id_into_memory, client_id)
+    local credential_cache_key = singletons.dao.oauth2_credentials:cache_key(client_id)
+    client, err = singletons.cache:get(credential_cache_key, nil,
+                                       load_oauth2_credential_by_client_id_into_memory,
+                                       client_id)
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     end
@@ -103,13 +104,13 @@ local function retrieve_scopes(parameters, conf)
   if conf.scopes and scope then
     for v in scope:gmatch("%S+") do
       if not utils.table_contains(conf.scopes, v) then
-        return false, {[ERROR] = "invalid_scope", error_description = "\""..v.."\" is an invalid "..SCOPE}
+        return false, {[ERROR] = "invalid_scope", error_description = "\"" .. v .. "\" is an invalid " .. SCOPE}
       else
         table.insert(scopes, v)
       end
     end
   elseif not scope and conf.mandatory_scope then
-    return false, {[ERROR] = "invalid_scope", error_description = "You must specify a "..SCOPE}
+    return false, {[ERROR] = "invalid_scope", error_description = "You must specify a " .. SCOPE}
   end
 
   return true, scopes
@@ -122,7 +123,8 @@ local function authorize(conf)
   local allowed_redirect_uris, client, redirect_uri, parsed_redirect_uri
   local is_implicit_grant
 
-  local is_https, err = check_https(conf.accept_http_if_already_terminated)
+  local is_https, err = check_https(singletons.ip.trusted(ngx.var.realip_remote_addr),
+                                    conf.accept_http_if_already_terminated)
   if not is_https then
     response_params = {[ERROR] = "access_denied", error_description = err or "You must use HTTPS"}
   else
@@ -134,7 +136,7 @@ local function authorize(conf)
       local response_type = parameters[RESPONSE_TYPE]
       -- Check response_type
       if not ((response_type == CODE and conf.enable_authorization_code) or (conf.enable_implicit_grant and response_type == TOKEN)) then -- Authorization Code Grant (http://tools.ietf.org/html/rfc6749#section-4.1.1)
-        response_params = {[ERROR] = "unsupported_response_type", error_description = "Invalid "..RESPONSE_TYPE}
+        response_params = {[ERROR] = "unsupported_response_type", error_description = "Invalid " .. RESPONSE_TYPE}
       end
 
       -- Check scopes
@@ -152,7 +154,7 @@ local function authorize(conf)
         redirect_uri = parameters[REDIRECT_URI] and parameters[REDIRECT_URI] or allowed_redirect_uris[1]
 
         if not utils.table_contains(allowed_redirect_uris, redirect_uri) then
-          response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REDIRECT_URI.. " that does not match with any redirect_uri created with the application" }
+          response_params = {[ERROR] = "invalid_request", error_description = "Invalid " .. REDIRECT_URI .. " that does not match with any redirect_uri created with the application" }
           -- redirect_uri used in this case is the first one registered with the application
           redirect_uri = allowed_redirect_uris[1]
         end
@@ -219,7 +221,7 @@ end
 local function retrieve_client_credentials(parameters)
   local client_id, client_secret, from_authorization_header
   local authorization_header = ngx.req.get_headers()["authorization"]
-  if parameters[CLIENT_ID] then
+  if parameters[CLIENT_ID] and parameters[CLIENT_SECRET] then
     client_id = parameters[CLIENT_ID]
     client_secret = parameters[CLIENT_SECRET]
   elseif authorization_header then
@@ -256,7 +258,8 @@ local function issue_token(conf)
   local parameters = retrieve_parameters()
   local state = parameters[STATE]
 
-  local is_https, err = check_https(conf.accept_http_if_already_terminated)
+  local is_https, err = check_https(singletons.ip.trusted(ngx.var.realip_remote_addr),
+                                    conf.accept_http_if_already_terminated)
   if not is_https then
     response_params = {[ERROR] = "access_denied", error_description = err or "You must use HTTPS"}
   else
@@ -265,7 +268,7 @@ local function issue_token(conf)
             grant_type == GRANT_REFRESH_TOKEN or
             (conf.enable_client_credentials and grant_type == GRANT_CLIENT_CREDENTIALS) or
             (conf.enable_password_grant and grant_type == GRANT_PASSWORD)) then
-      response_params = {[ERROR] = "unsupported_grant_type", error_description = "Invalid "..GRANT_TYPE}
+      response_params = {[ERROR] = "unsupported_grant_type", error_description = "Invalid " .. GRANT_TYPE}
     end
 
     local client_id, client_secret, from_authorization_header = retrieve_client_credentials(parameters)
@@ -280,7 +283,7 @@ local function issue_token(conf)
     else
       local redirect_uri = parameters[REDIRECT_URI] and parameters[REDIRECT_URI] or allowed_redirect_uris[1]
       if not utils.table_contains(allowed_redirect_uris, redirect_uri) then
-        response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REDIRECT_URI.. " that does not match with any redirect_uri created with the application" }
+        response_params = {[ERROR] = "invalid_request", error_description = "Invalid " .. REDIRECT_URI .. " that does not match with any redirect_uri created with the application" }
       end
     end
 
@@ -300,9 +303,9 @@ local function issue_token(conf)
         end
         local authorization_code = code and singletons.dao.oauth2_authorization_codes:find_all({api_id = api_id, code = code})[1]
         if not authorization_code then
-          response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CODE}
+          response_params = {[ERROR] = "invalid_request", error_description = "Invalid " .. CODE}
         elseif authorization_code.credential_id ~= client.id then
-          response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CODE}
+          response_params = {[ERROR] = "invalid_request", error_description = "Invalid " .. CODE}
         else
           response_params = generate_token(conf, ngx.ctx.api, client, authorization_code.authenticated_userid, authorization_code.scope, state)
           singletons.dao.oauth2_authorization_codes:delete({id=authorization_code.id}) -- Delete authorization code so it cannot be reused
@@ -343,7 +346,7 @@ local function issue_token(conf)
         end
         local token = refresh_token and singletons.dao.oauth2_tokens:find_all({api_id = api_id, refresh_token = refresh_token})[1]
         if not token then
-          response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REFRESH_TOKEN}
+          response_params = {[ERROR] = "invalid_request", error_description = "Invalid " .. REFRESH_TOKEN}
         else
           -- Check that the token belongs to the client application
           if token.credential_id ~= client.id then
@@ -387,8 +390,10 @@ end
 local function retrieve_token(conf, access_token)
   local token, err
   if access_token then
-    token, err = cache.get_or_set(cache.oauth2_token_key(access_token), nil,
-                             load_token_into_memory, conf, ngx.ctx.api, access_token)
+    local token_cache_key = singletons.dao.oauth2_tokens:cache_key(access_token)
+    token, err = singletons.cache:get(token_cache_key, nil,
+                                      load_token_into_memory, conf, ngx.ctx.api,
+                                      access_token)
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     end
@@ -452,7 +457,7 @@ local function load_consumer_into_memory(consumer_id, anonymous)
   local result, err = singletons.dao.consumers:find { id = consumer_id }
   if not result then
     if anonymous and not err then
-      err = 'anonymous consumer "'..consumer_id..'" not found'
+      err = 'anonymous consumer "' .. consumer_id .. '" not found'
     end
     return nil, err
   end
@@ -499,16 +504,19 @@ local function do_authentication(conf)
   end
 
   -- Retrieve the credential from the token
-  local credential, err = cache.get_or_set(cache.oauth2_credential_key(token.credential_id), 
-                        nil, load_oauth2_credential_into_memory, token.credential_id)
+  local credential_cache_key = singletons.dao.oauth2_credentials:cache_key(token.credential_id)
+  local credential, err = singletons.cache:get(credential_cache_key, nil,
+                                               load_oauth2_credential_into_memory,
+                                               token.credential_id)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
   -- Retrieve the consumer from the credential
-  local consumer, err = cache.get_or_set(cache.consumer_key(credential.consumer_id),
-    nil, load_consumer_into_memory, credential.consumer_id)
-
+  local consumer_cache_key = singletons.dao.consumers:cache_key(credential.consumer_id)
+  local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
+                                                  load_consumer_into_memory,
+                                                  credential.consumer_id)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
@@ -528,22 +536,15 @@ function _M.execute(conf)
   end
 
   if ngx.req.get_method() == "POST" then
+    local uri = ngx.var.uri
 
-    local from, _, err = ngx.re.find(ngx.var.uri, [[\/oauth2\/token]], "oj")
-    if err then
-      ngx.log(ngx.ERR, "could not search for token path segment: ", err)
-      return
-    end
+    local from, _ = string_find(uri, "/oauth2/token", nil, true)
 
     if from then
       issue_token(conf)
 
     else
-      from, _, err = ngx.re.find(ngx.var.uri, [[\/oauth2\/authorize]], "oj")
-      if err then
-        ngx.log(ngx.ERR, "could not search for authorize path segment: ", err)
-        return
-      end
+      from, _ = string_find(uri, "/oauth2/authorize", nil, true)
 
       if from then
         authorize(conf)
@@ -553,10 +554,12 @@ function _M.execute(conf)
 
   local ok, err = do_authentication(conf)
   if not ok then
-    if conf.anonymous ~= "" and conf.anonymous ~= nil then
+    if conf.anonymous ~= "" then
       -- get anonymous user
-      local consumer, err = cache.get_or_set(cache.consumer_key(conf.anonymous),
-                       nil, load_consumer_into_memory, conf.anonymous, true)
+      local consumer_cache_key = singletons.dao.consumers:cache_key(conf.anonymous)
+      local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
+                                                      load_consumer_into_memory,
+                                                      conf.anonymous, true)
       if err then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end

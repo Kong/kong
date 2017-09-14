@@ -1,4 +1,4 @@
--- Copyright (C) Mashape, Inc.
+-- Copyright (C) Kong Inc.
 local ffi = require "ffi"
 local cjson = require "cjson"
 local system_constants = require "lua_system_constants"
@@ -29,12 +29,14 @@ local file_descriptors = {}
 -- @param `conf`     Configuration table, holds http endpoint details
 -- @param `message`  Message to be logged
 local function log(premature, conf, message)
-  if premature then return end
+  if premature then
+    return
+  end
 
-  local msg = cjson.encode(message).."\n"
+  local msg = cjson.encode(message) .. "\n"
 
   local fd = file_descriptors[conf.path]
-  
+
   if fd and conf.reopen then
     -- close fd, we do this here, to make sure a previously cached fd also
     -- gets closed upon dynamic changes of the configuration
@@ -58,7 +60,7 @@ end
 
 local FileLogHandler = BasePlugin:extend()
 
-FileLogHandler.PRIORITY = 1
+FileLogHandler.PRIORITY = 9
 
 function FileLogHandler:new()
   FileLogHandler.super.new(self, "file-log")

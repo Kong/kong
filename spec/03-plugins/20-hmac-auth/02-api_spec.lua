@@ -4,6 +4,8 @@ local cjson = require "cjson"
 describe("Plugin: hmac-auth (API)", function()
   local client, credential, consumer
   setup(function()
+    helpers.run_migrations()
+
     helpers.prepare_prefix()
     assert(helpers.start_kong())
     client = helpers.admin_client()
@@ -112,7 +114,7 @@ describe("Plugin: hmac-auth (API)", function()
       it("should retrieve by id", function()
         local res = assert(client:send {
           method = "GET",
-          path = "/consumers/bob/hmac-auth/"..credential.id,
+          path = "/consumers/bob/hmac-auth/" .. credential.id,
           body = {},
           headers = {["Content-Type"] = "application/json"}
         })
@@ -123,7 +125,7 @@ describe("Plugin: hmac-auth (API)", function()
       it("should retrieve by username", function()
         local res = assert(client:send {
           method = "GET",
-          path = "/consumers/bob/hmac-auth/"..credential.username,
+          path = "/consumers/bob/hmac-auth/" .. credential.username,
           body = {},
           headers = {["Content-Type"] = "application/json"}
         })
@@ -137,7 +139,7 @@ describe("Plugin: hmac-auth (API)", function()
       it("[SUCCESS] should update a credential by id", function()
         local res = assert(client:send {
           method = "PATCH",
-          path = "/consumers/bob/hmac-auth/"..credential.id,
+          path = "/consumers/bob/hmac-auth/" .. credential.id,
           body = {username = "alice"},
           headers = {["Content-Type"] = "application/json"}
         })
@@ -148,7 +150,7 @@ describe("Plugin: hmac-auth (API)", function()
       it("[SUCCESS] should update a credential by username", function()
         local res = assert(client:send {
           method = "PATCH",
-          path = "/consumers/bob/hmac-auth/"..credential.username,
+          path = "/consumers/bob/hmac-auth/" .. credential.username,
           body = {username = "aliceUPD"},
           headers = {["Content-Type"] = "application/json"}
         })
@@ -159,7 +161,7 @@ describe("Plugin: hmac-auth (API)", function()
       it("[FAILURE] should return proper errors", function()
         local res = assert(client:send {
           method = "PATCH",
-          path = "/consumers/bob/hmac-auth/"..credential.id,
+          path = "/consumers/bob/hmac-auth/" .. credential.id,
           body = {username = ""},
           headers = {["Content-Type"] = "application/json"}
         })
@@ -189,7 +191,7 @@ describe("Plugin: hmac-auth (API)", function()
       it("[SUCCESS] should delete a credential", function()
         local res = assert(client:send {
           method = "DELETE",
-          path = "/consumers/bob/hmac-auth/"..credential.id,
+          path = "/consumers/bob/hmac-auth/" .. credential.id,
           body = {},
           headers = {["Content-Type"] = "application/json"}
         })

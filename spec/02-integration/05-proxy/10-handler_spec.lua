@@ -8,22 +8,22 @@ describe("OpenResty phases", function()
       setup(function()
         -- insert plugin-less api and a global plugin
         assert(helpers.dao.apis:insert {
-          name = "rewrite1",
-          hosts = { "rewriter1.com" },
-          upstream_url = "http://mockbin.org"
+          name         = "mock_upstream",
+          hosts        = { "mock_upstream" },
+          upstream_url = helpers.mock_upstream_url,
         })
         assert(helpers.dao.plugins:insert {
-          name = "rewriter",
+          name   = "rewriter",
           config = {
             value = "global plugin",
           },
         })
 
         assert(helpers.start_kong({
-          custom_plugins = "rewriter",
+          nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
-        api_client = helpers.admin_client()
+        api_client   = helpers.admin_client()
         proxy_client = helpers.proxy_client()
       end)
 
@@ -34,10 +34,10 @@ describe("OpenResty phases", function()
 
       it("runs", function()
         local res = assert(proxy_client:send {
-          method = "GET",
-          path = "/request",
+          method  = "GET",
+          path    = "/request",
           headers = {
-            host = "rewriter1.com",
+            host = "mock_upstream",
           },
         })
         assert.response(res).has.status(200)
@@ -52,20 +52,20 @@ describe("OpenResty phases", function()
       setup(function()
         -- api specific plugin
         local api2 = assert(helpers.dao.apis:insert {
-          name = "rewrite2",
-          hosts = { "rewriter2.com" },
-          upstream_url = "http://mockbin.org"
+          name         = "mock_upstream",
+          hosts        = { "mock_upstream" },
+          upstream_url = helpers.mock_upstream_url,
         })
         assert(helpers.dao.plugins:insert {
           api_id = api2.id,
-          name = "rewriter",
+          name   = "rewriter",
           config = {
             value = "api-specific plugin",
           },
         })
 
         assert(helpers.start_kong({
-          custom_plugins = "rewriter",
+          nginx_conf = "spec/fixtures/custom_nginx.template"
         }))
 
         api_client = helpers.admin_client()
@@ -79,10 +79,10 @@ describe("OpenResty phases", function()
 
       it("doesn't run", function()
         local res = assert(proxy_client:send {
-          method = "GET",
-          path = "/request",
+          method  = "GET",
+          path    = "/request",
           headers = {
-            host = "rewriter2.com",
+            host = "mock_upstream",
           },
         })
         assert.response(res).has.status(200)
@@ -96,31 +96,31 @@ describe("OpenResty phases", function()
       setup(function()
         -- consumer specific plugin
         local api3 = assert(helpers.dao.apis:insert {
-          name = "rewrite3",
-          hosts = { "rewriter3.com" },
-          upstream_url = "http://mockbin.org"
+          name         = "mock_upstream",
+          hosts        = { "mock_upstream" },
+          upstream_url = helpers.mock_upstream_url,
         })
         assert(helpers.dao.plugins:insert {
           api_id = api3.id,
-          name = "key-auth",
+          name   = "key-auth",
         })
         local consumer3 = assert(helpers.dao.consumers:insert {
           username = "test-consumer",
         })
         assert(helpers.dao.keyauth_credentials:insert {
-          key = "kong",
-          consumer_id = consumer3.id
+          key         = "kong",
+          consumer_id = consumer3.id,
         })
         assert(helpers.dao.plugins:insert {
           consumer_id = consumer3.id,
-          name = "rewriter",
-          config = {
+          name        = "rewriter",
+          config      = {
             value = "consumer-specific plugin",
           },
         })
 
         assert(helpers.start_kong({
-          custom_plugins = "rewriter",
+          nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
         api_client = helpers.admin_client()
@@ -134,11 +134,11 @@ describe("OpenResty phases", function()
 
       it("doesn't run", function()
         local res = assert(proxy_client:send {
-          method = "GET",
-          path = "/request",
+          method  = "GET",
+          path    = "/request",
           headers = {
-            host = "rewriter3.com",
-            apikey = "kong"
+            host   = "mock_upstream",
+            apikey = "kong",
           },
         })
         assert.response(res).has.status(200)

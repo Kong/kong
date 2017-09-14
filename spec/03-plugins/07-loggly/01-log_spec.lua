@@ -6,73 +6,78 @@ local UDP_PORT = 20000
 describe("Plugin: loggly (log)", function()
   local client
   setup(function()
+    helpers.run_migrations()
+
     local api1 = assert(helpers.dao.apis:insert {
-      name = "api-1",
-      hosts = { "logging.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-1",
+      hosts        = { "logging.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     local api2 = assert(helpers.dao.apis:insert {
-      name = "api-2",
-      hosts = { "logging1.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-2",
+      hosts        = { "logging1.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     local api3 = assert(helpers.dao.apis:insert {
-      name = "api-3",
-      hosts = { "logging2.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-3",
+      hosts        = { "logging2.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     local api4 = assert(helpers.dao.apis:insert {
-      name = "api-4",
-      hosts = { "logging3.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-4",
+      hosts        = { "logging3.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
 
     assert(helpers.dao.plugins:insert {
       api_id = api1.id,
-      name = "loggly",
+      name   = "loggly",
       config = {
-        host = "127.0.0.1",
-        port = UDP_PORT,
-        key = "123456789",
-        log_level = "info",
+        host                = "127.0.0.1",
+        port                = UDP_PORT,
+        key                 = "123456789",
+        log_level           = "info",
         successful_severity = "warning"
       }
     })
-    assert(helpers.dao.plugins:insert {
+
+  assert(helpers.dao.plugins:insert {
       api_id = api2.id,
-      name = "loggly",
+      name   = "loggly",
       config = {
-        host = "127.0.0.1",
-        port = UDP_PORT,
-        key = "123456789",
-        log_level = "debug",
-        timeout = 2000,
-        successful_severity = "info"
+        host                = "127.0.0.1",
+        port                = UDP_PORT,
+        key                 = "123456789",
+        log_level           = "debug",
+        timeout             = 2000,
+        successful_severity = "info",
       }
     })
-    assert(helpers.dao.plugins:insert {
+  assert(helpers.dao.plugins:insert {
       api_id = api3.id,
-      name = "loggly",
+      name   = "loggly",
       config = {
-        host = "127.0.0.1",
-        port = UDP_PORT,
-        key = "123456789",
-        log_level = "crit",
-        successful_severity = "crit",
-        client_errors_severity = "warning"
+        host                   = "127.0.0.1",
+        port                   = UDP_PORT,
+        key                    = "123456789",
+        log_level              = "crit",
+        successful_severity    = "crit",
+        client_errors_severity = "warning",
       }
     })
-    assert(helpers.dao.plugins:insert {
+  assert(helpers.dao.plugins:insert {
       api_id = api4.id,
-      name = "loggly",
+      name   = "loggly",
       config = {
         host = "127.0.0.1",
         port = UDP_PORT,
-        key = "123456789"
+        key  = "123456789"
       }
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
   end)
   teardown(function()
     helpers.stop_kong()
@@ -162,7 +167,7 @@ describe("Plugin: loggly (log)", function()
   it("logs to UDP when severity and log level are default values and response status is 401", function()
     local pri, message = run({
       method = "GET",
-      path = "/status/401/",
+      path = "/status/401",
       headers = {
         host = "logging3.com"
       }
@@ -173,7 +178,7 @@ describe("Plugin: loggly (log)", function()
   it("logs to UDP when severity and log level are default values and response status is 500", function()
     local pri, message = run({
       method = "GET",
-      path = "/status/500/",
+      path = "/status/500",
       headers = {
         host = "logging3.com"
       }

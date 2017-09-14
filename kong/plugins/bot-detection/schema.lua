@@ -5,7 +5,7 @@ local check_regex = function(value)
     for _, rule in ipairs(value) do
       local _, err = re_match("just a string to test", rule)
       if err then
-        return false, "value '"..rule.."' is not a valid regex"
+        return false, "value '" .. rule .. "' is not a valid regex"
       end
     end
   end

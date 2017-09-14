@@ -4,6 +4,10 @@ local helpers = require "spec.helpers"
 describe("Plugin: rate-limiting (API)", function()
   local admin_client
 
+  setup(function()
+    helpers.run_migrations()
+  end)
+
   teardown(function()
     if admin_client then admin_client:close() end
     helpers.stop_kong()
@@ -12,12 +16,14 @@ describe("Plugin: rate-limiting (API)", function()
   describe("POST", function()
     setup(function()
       assert(helpers.dao.apis:insert {
-        name = "test",
-        hosts = { "test1.com" },
-        upstream_url = "http://mockbin.com"
+        name         = "test",
+        hosts        = { "test1.com" },
+        upstream_url = helpers.mock_upstream_url,
       })
 
-      assert(helpers.start_kong())
+      assert(helpers.start_kong({
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
       admin_client = helpers.admin_client()
     end)
 

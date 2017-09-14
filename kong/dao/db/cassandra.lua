@@ -24,8 +24,8 @@ _M.dao_insert_values = {
     return uuid()
   end,
   timestamp = function()
-    -- return time in UNIT millisecond, and PRECISION millisecond 
-    return math.floor(timestamp.get_utc_ms()) 
+    -- return time in UNIT millisecond, and PRECISION millisecond
+    return math.floor(timestamp.get_utc_ms())
   end
 }
 
@@ -37,8 +37,15 @@ function _M.new(kong_config)
     prepared = true
   }
 
+  if not ngx.shared.kong_cassandra then
+    error("cannot use Cassandra datastore: missing shared dict "            ..
+          "'kong_cassandra' in Nginx configuration, are you using a "       ..
+          "custom template? Make sure the 'lua_shared_dict kong_cassandra " ..
+          "[SIZE];' directive is defined.")
+  end
+
   local cluster_options = {
-    shm = "cassandra",
+    shm = "kong_cassandra",
     contact_points = kong_config.cassandra_contact_points,
     default_port = kong_config.cassandra_port,
     keyspace = kong_config.cassandra_keyspace,
@@ -77,18 +84,13 @@ function _M.new(kong_config)
   end
 
   local cluster, err = Cluster.new(cluster_options)
-  if not cluster then return nil, err end
+  if not cluster then
+    return nil, err
+  end
 
   self.cluster = cluster
   self.query_options = query_opts
   self.cluster_options = cluster_options
-
-  if ngx.IS_CLI then
-    -- we must manually call our init phase (usually called from `init_by_lua`)
-    -- to refresh the cluster.
-    local ok, err = self:init()
-    if not ok then return nil, err end
-  end
 
   return self
 end
@@ -104,13 +106,13 @@ local function cluster_release_version(peers)
   for i = 1, #peers do
     local release_version = peers[i].release_version
     if not release_version then
-      return nil, 'no release_version for peer '..peers[i].host
+      return nil, 'no release_version for peer ' .. peers[i].host
     end
 
     local major_version = extract_major(release_version)
     if not major_version then
-      return nil, 'failed to extract major version for peer '..peers[i].host..
-                  ' version: '..tostring(peers[i].release_version)
+      return nil, 'failed to extract major version for peer ' .. peers[i].host ..
+                  ' version: ' .. tostring(peers[i].release_version)
     end
     if i == 1 then
       first_release_version = major_version
@@ -139,14 +141,18 @@ _M.cluster_release_version = cluster_release_version
 
 function _M:init()
   local ok, err = self.cluster:refresh()
-  if not ok then return nil, err end
+  if not ok then
+    return nil, err
+  end
 
   local peers, err = self.cluster:get_peers()
   if err then return nil, err
   elseif not peers then return nil, 'no peers in shm' end
 
   self.release_version, err = cluster_release_version(peers)
-  if not self.release_version then return nil, err end
+  if not self.release_version then
+    return nil, err
+  end
 
   return true
 end
@@ -207,12 +213,41 @@ function _M:close_coordinator()
   return true
 end
 
-function _M:wait_for_schema_consensus()
+function _M:check_schema_consensus()
+  local close_coordinator
+
+  if not coordinator then
+    close_coordinator = true
+
+    local peer, err = self:first_coordinator()
+    if not peer then
+      return nil, "could not retrieve coordinator: " .. err
+    end
+
+    -- coordinator = peer -- done by first_coordinator()
+  end
+
+  local ok, err = self.cluster.check_schema_consensus(coordinator)
+
+  if close_coordinator then
+    -- ignore errors
+    self:close_coordinator()
+  end
+
+  if err then
+    return nil, err
+  end
+
+  return ok
+end
+
+-- timeout is optional, defaults to `max_schema_consensus_wait` setting
+function _M:wait_for_schema_consensus(timeout)
   if not coordinator then
     return nil, "no coordinator"
   end
 
-  return self.cluster:wait_schema_consensus(coordinator)
+  return self.cluster:wait_schema_consensus(coordinator, timeout)
 end
 
 function _M:query(query, args, options, schema, no_keyspace)
@@ -224,13 +259,17 @@ function _M:query(query, args, options, schema, no_keyspace)
 
   if coordinator then
     local res, err = coordinator:execute(query, args, coordinator_opts)
-    if not res then return nil, Errors.db(err) end
+    if not res then
+      return nil, Errors.db(err)
+    end
 
     return res
   end
 
   local res, err = self.cluster:execute(query, args, opts, coordinator_opts)
-  if not res then return nil, Errors.db(err) end
+  if not res then
+    return nil, Errors.db(err)
+  end
 
   if schema and res.type == "ROWS" then
     deserialize_rows(res, schema)
@@ -243,7 +282,7 @@ end
 -- @section query_building
 
 local function serialize_arg(field, value)
-  if value == nil then
+  if value == nil or value == ngx.null then
     return cassandra.null
   elseif field.type == "id" then
     return cassandra.uuid(value)
@@ -343,10 +382,14 @@ function _M:insert(table_name, schema, model, constraints, options)
   options = options or {}
 
   local ok, err = check_unique_constraints(self, table_name, constraints, model)
-  if not ok then return nil, err end
+  if not ok then
+    return nil, err
+  end
 
   ok, err = check_foreign_constaints(self, model, constraints)
-  if not ok then return nil, err end
+  if not ok then
+    return nil, err
+  end
 
   local cols, binds, args = {}, {}, {}
 
@@ -364,7 +407,9 @@ function _M:insert(table_name, schema, model, constraints, options)
                     options.ttl and fmt(" USING TTL %d", options.ttl) or "")
 
   local res, err = self:query(query, args)
-  if not res then return nil, err end
+  if not res then
+    return nil, err
+  end
 
   local primary_keys = model:extract_keys()
 
@@ -433,7 +478,9 @@ function _M:find_page(table_name, tbl, paging_state, page_size, schema)
 
   local query = select_query(table_name, where)
   local rows, err = self:query(query, args, {page_size = page_size, paging_state = paging_state}, schema)
-  if not rows then return nil, err end
+  if not rows then
+    return nil, err
+  end
 
   local paging_state
   if rows.meta and rows.meta.has_more_pages then
@@ -464,10 +511,14 @@ function _M:update(table_name, schema, constraints, filter_keys, values, nils, f
 
   -- must check unique constaints manually too
   local ok, err = check_unique_constraints(self, table_name, constraints, values, filter_keys, true)
-  if not ok then return nil, err end
+  if not ok then
+    return nil, err
+  end
 
   ok, err = check_foreign_constaints(self, values, constraints)
-  if not ok then return nil, err end
+  if not ok then
+    return nil, err
+  end
 
   -- Cassandra TTLs on update is per-column and not per-row,
   -- and TTLs cannot be updated on primary keys.
@@ -507,7 +558,7 @@ function _M:update(table_name, schema, constraints, filter_keys, values, nils, f
   -- unset nil fields if asked for
   if full then
     for col in pairs(nils) do
-      sets[#sets + 1] = col.." = ?"
+      sets[#sets + 1] = col .. " = ?"
       args[#args + 1] = cassandra.null
     end
   end
@@ -529,7 +580,9 @@ end
 
 function _M:delete(table_name, schema, primary_keys, constraints)
   local row, err = self:find(table_name, schema, primary_keys)
-  if not row or err then return nil, err end
+  if not row or err then
+    return nil, err
+  end
 
   local where, args = get_where(schema, primary_keys)
   local query = fmt("DELETE FROM %s WHERE %s", table_name, where)
@@ -540,7 +593,9 @@ function _M:delete(table_name, schema, primary_keys, constraints)
       for f_entity, cascade in pairs(constraints.cascade) do
         local tbl = {[cascade.f_col] = primary_keys[cascade.col]}
         local rows, err = self:find_all(cascade.table, tbl, cascade.schema)
-        if not rows then return nil, err end
+        if not rows then
+          return nil, err
+        end
 
         for _, row in ipairs(rows) do
           local primary_keys_to_delete = {}
@@ -549,7 +604,9 @@ function _M:delete(table_name, schema, primary_keys, constraints)
           end
 
           local ok, err = self:delete(cascade.table, cascade.schema, primary_keys_to_delete)
-          if not ok then return nil, err end
+          if not ok then
+            return nil, err
+          end
         end
       end
     end
@@ -568,27 +625,38 @@ function _M:queries(queries, no_keyspace)
         prepared = false,
         --consistency = cassandra.consistencies.all,
       }, nil, no_keyspace)
-      if not res then return err end
+      if not res then
+        return err
+      end
     end
   end
 end
 
 function _M:drop_table(table_name)
-  local res, err = self:query("DROP TABLE "..table_name)
-  if not res then return nil, err end
+  local res, err = self:query("DROP TABLE " .. table_name)
+  if not res then
+    return nil, err
+  end
   return true
 end
 
 function _M:truncate_table(table_name)
-  local res, err = self:query("TRUNCATE "..table_name)
-  if not res then return nil, err end
+  local res, err = self:query("TRUNCATE " .. table_name)
+  if not res then
+    return nil, err
+  end
   return true
 end
 
 function _M:current_migrations()
   local q_keyspace_exists, q_migrations_table_exists
 
-  assert(self.release_version, "release_version not set for Cassandra cluster")
+  if not self.release_version then
+    local ok, err = self:init()
+    if not ok then
+      return nil, err
+    end
+  end
 
   if self.release_version == 3 then
     q_keyspace_exists = [[
@@ -657,7 +725,9 @@ function _M:record_migration(id, name)
     prepared = false,
     --consistency = cassandra.consistencies.all,
   })
-  if not res then return nil, err end
+  if not res then
+    return nil, err
+  end
   return true
 end
 

@@ -4,15 +4,17 @@ describe("Plugin: response-transformer (filter)", function()
   local client
 
   setup(function()
+    helpers.run_migrations()
+
     local api1 = assert(helpers.dao.apis:insert {
-      name = "tests-response-transformer",
-      hosts = { "response.com" },
-      upstream_url = "http://httpbin.org"
+      name         = "tests-response-transformer",
+      hosts        = { "response.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     local api2 = assert(helpers.dao.apis:insert {
-      name = "tests-response-transformer-2",
-      hosts = { "response2.com" },
-      upstream_url = "http://httpbin.org"
+      name         = "tests-response-transformer-2",
+      hosts        = { "response2.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
 
     assert(helpers.dao.plugins:insert {
@@ -30,12 +32,14 @@ describe("Plugin: response-transformer (filter)", function()
       name = "response-transformer",
       config = {
         replace = {
-          json = {"headers:/hello/world", "args:this is a / test", "url:\"wot\""}
+          json = {"headers:/hello/world", "uri_args:this is a / test", "url:\"wot\""}
         }
       }
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
   end)
 
   teardown(function()
@@ -86,8 +90,8 @@ describe("Plugin: response-transformer (filter)", function()
       assert.response(r).status(200)
       local json = assert.response(r).has.jsonbody()
       assert.equals([[/hello/world]], json.headers)
-      assert.equals([[this is a / test]], json.args)
       assert.equals([["wot"]], json.url)
+      assert.equals([[this is a / test]], json.uri_args)
     end)
   end)
 end)

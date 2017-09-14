@@ -390,9 +390,9 @@ return {
       ALTER TABLE apis ADD upstream_read_timeout int;
     ]],
     down = [[
-      ALTER TABLE apis DROP COLUMN IF EXISTS upstream_connect_timeout;
-      ALTER TABLE apis DROP COLUMN IF EXISTS upstream_send_timeout;
-      ALTER TABLE apis DROP COLUMN IF EXISTS upstream_read_timeout;
+      ALTER TABLE apis DROP upstream_connect_timeout;
+      ALTER TABLE apis DROP upstream_send_timeout;
+      ALTER TABLE apis DROP upstream_read_timeout;
     ]]
   },
   {
@@ -452,5 +452,33 @@ return {
       end
     end,
     down = function(_, _, dao) end
+  },
+  {
+    name = "2017-04-04-145100_cluster_events",
+    up = [[
+      CREATE TABLE IF NOT EXISTS cluster_events(
+        channel text,
+        at      timestamp,
+        node_id uuid,
+        data    text,
+        id      uuid,
+        nbf     timestamp,
+        PRIMARY KEY ((channel), at, node_id, id)
+      ) WITH default_time_to_live = 86400
+         AND comment = 'Kong cluster events broadcasting and polling';
+    ]],
+  },
+  {
+    name = "2017-05-19-173100_remove_nodes_table",
+    up = [[
+      DROP TABLE nodes;
+    ]],
+  },
+  {
+    name = "2017-07-28-225000_balancer_orderlist_remove",
+    up = [[
+      ALTER TABLE upstreams DROP orderlist;
+    ]],
+    down = function(_, _, dao) end  -- not implemented
   },
 }

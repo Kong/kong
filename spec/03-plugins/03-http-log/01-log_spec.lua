@@ -29,6 +29,8 @@ pending("Plugin: http-log (log)", function()
   -- seems to be broken.
   local client
   setup(function()
+    helpers.run_migrations()
+
     local api1 = assert(helpers.dao.apis:insert {
       name = "api-1",
       hosts = { "http_logging.com" },
@@ -39,7 +41,7 @@ pending("Plugin: http-log (log)", function()
       api_id = api1.id,
       name = "http-log",
       config = {
-        http_endpoint = "http://mockbin.org/bin/"..mock_bin_http
+        http_endpoint = "http://mockbin.org/bin/" .. mock_bin_http
       }
     })
 
@@ -53,7 +55,7 @@ pending("Plugin: http-log (log)", function()
       api_id = api2.id,
       name = "http-log",
       config = {
-        http_endpoint = "https://mockbin.org/bin/"..mock_bin_https
+        http_endpoint = "https://mockbin.org/bin/" .. mock_bin_https
       }
     })
 
@@ -66,7 +68,7 @@ pending("Plugin: http-log (log)", function()
       api_id = api3.id,
       name = "http-log",
       config = {
-        http_endpoint = "http://testuser:testpassword@mockbin.org/bin/"..mock_bin_http_basic_auth
+        http_endpoint = "http://testuser:testpassword@mockbin.org/bin/" .. mock_bin_http_basic_auth
       }
     })
 
@@ -98,7 +100,7 @@ pending("Plugin: http-log (log)", function()
       local client = assert(helpers.http_client(mockbin_ip, 80))
       local res = assert(client:send {
         method = "GET",
-        path = "/bin/"..mock_bin_http.."/log",
+        path = "/bin/" .. mock_bin_http .. "/log",
         headers = {
           Host = "mockbin.org",
           Accept = "application/json"
@@ -127,7 +129,7 @@ pending("Plugin: http-log (log)", function()
       local client = assert(helpers.http_client(mockbin_ip, 80))
       local res = assert(client:send {
         method = "GET",
-        path = "/bin/"..mock_bin_https.."/log",
+        path = "/bin/" .. mock_bin_https .. "/log",
         headers = {
           Host = "mockbin.org",
           Accept = "application/json"
@@ -156,7 +158,7 @@ pending("Plugin: http-log (log)", function()
       local client = assert(helpers.http_client(mockbin_ip, 80))
       local res = assert(client:send {
         method = "GET",
-        path = "/bin/"..mock_bin_http_basic_auth.."/log",
+        path = "/bin/" .. mock_bin_http_basic_auth .. "/log",
         headers = {
           Host = "mockbin.org",
           Accept = "application/json"

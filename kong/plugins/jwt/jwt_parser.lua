@@ -27,6 +27,7 @@ local alg_sign = {
   --["HS384"] = function(data, key) return crypto.hmac.digest("sha384", data, key, true) end,
   --["HS512"] = function(data, key) return crypto.hmac.digest("sha512", data, key, true) end
   ["RS256"] = function(data, key) return crypto.sign('sha256', data, crypto.pkey.from_pem(key, true)) end,
+  ["RS512"] = function(data, key) return crypto.sign('sha512', data, crypto.pkey.from_pem(key, true)) end,
   ["ES256"] = function(data, key)
     local pkeyPrivate = crypto.pkey.from_pem(key, true)
     local signature = crypto.sign('sha256', data, pkeyPrivate)
@@ -48,6 +49,10 @@ local alg_verify = {
   ["RS256"] = function(data, signature, key)
     local pkey = assert(crypto.pkey.from_pem(key), "Consumer Public Key is Invalid")
     return crypto.verify('sha256', data, signature, pkey)
+  end,
+  ["RS512"] = function(data, signature, key)
+    local pkey = assert(crypto.pkey.from_pem(key), "Consumer Public Key is Invalid")
+    return crypto.verify('sha512', data, signature, pkey)
   end,
   ["ES256"] = function(data, signature, key)
     local pkey = assert(crypto.pkey.from_pem(key), "Consumer Public Key is Invalid")
@@ -77,7 +82,7 @@ local function b64_decode(input)
 
   if remainder > 0 then
     local padlen = 4 - remainder
-    input = input..string_rep('=', padlen)
+    input = input .. string_rep('=', padlen)
   end
 
   input = input:gsub("-", "+"):gsub("_", "/")
@@ -153,9 +158,15 @@ end
 
 -- For test purposes
 local function encode_token(data, key, alg, header)
-  if type(data) ~= "table" then error("Argument #1 must be table", 2) end
-  if type(key) ~= "string" then error("Argument #2 must be string", 2) end
-  if header and type(header) ~= "table" then error("Argument #4 must be a table", 2) end
+  if type(data) ~= "table" then
+    error("Argument #1 must be table", 2)
+  end
+  if type(key) ~= "string" then
+    error("Argument #2 must be string", 2)
+  end
+  if header and type(header) ~= "table" then
+    error("Argument #4 must be a table", 2)
+  end
 
   alg = alg or "HS256"
 
@@ -191,7 +202,9 @@ _M.__index = _M
 -- @return JWT parser
 -- @return error if any
 function _M:new(token)
-  if type(token) ~= "string" then error("Token must be a string, got "..tostring(token), 2) end
+  if type(token) ~= "string" then
+    error("Token must be a string, got " .. tostring(token), 2)
+  end
 
   local token, err = decode_token(token)
   if err then
@@ -206,7 +219,7 @@ end
 -- @param key Key against which to verify the signature
 -- @return A boolean indicating if the signature if verified or not
 function _M:verify_signature(key)
-  return alg_verify[self.header.alg](self.header_64.."."..self.claims_64, self.signature, key)
+  return alg_verify[self.header.alg](self.header_64 .. "." .. self.claims_64, self.signature, key)
 end
 
 function _M:b64_decode(input)
@@ -239,7 +252,9 @@ local registered_claims = {
 -- @return A boolean indicating true if no errors zere found
 -- @return A list of errors
 function _M:verify_registered_claims(claims_to_verify)
-  if not claims_to_verify then claims_to_verify = {} end
+  if not claims_to_verify then
+    claims_to_verify = {}
+  end
   local errors = nil
   local claim, claim_rules
 
@@ -247,7 +262,7 @@ function _M:verify_registered_claims(claims_to_verify)
     claim = self.claims[claim_name]
     claim_rules = registered_claims[claim_name]
     if type(claim) ~= claim_rules.type then
-      errors = utils.add_error(errors, claim_name, "must be a "..claim_rules.type)
+      errors = utils.add_error(errors, claim_name, "must be a " .. claim_rules.type)
     else
       local check_err = claim_rules.check(claim)
       if check_err then

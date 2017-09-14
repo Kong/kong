@@ -1,4 +1,4 @@
--- Copyright (C) Mashape, Inc.
+-- Copyright (C) Kong Inc.
 
 local BasePlugin = require "kong.plugins.base_plugin"
 local access = require "kong.plugins.response-ratelimiting.access"

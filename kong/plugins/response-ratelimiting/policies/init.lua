@@ -1,9 +1,9 @@
 local singletons = require "kong.singletons"
 local timestamp = require "kong.tools.timestamp"
-local cache = require "kong.tools.database_cache"
 local redis = require "resty.redis"
 local policy_cluster = require "kong.plugins.response-ratelimiting.policies.cluster"
 local ngx_log = ngx.log
+local shm = ngx.shared.kong_cache
 
 local pairs = pairs
 local fmt = string.format
@@ -27,11 +27,11 @@ return {
       local periods = timestamp.get_timestamps(current_timestamp)
       for period, period_date in pairs(periods) do
         local cache_key = get_local_key(api_id, identifier, period_date, name, period)
-        cache.sh_add(cache_key, 0, EXPIRATIONS[period])
 
-        local _, err = cache.sh_incr(cache_key, value)
-        if err then
-          ngx_log("[response-ratelimiting] could not increment counter for period '"..period.."': "..tostring(err))
+        local newval, err = shm:incr(cache_key, value, 0)
+        if not newval then
+          ngx_log(ngx.ERR, "[response-ratelimiting] could not increment counter ",
+                           "for period '", period, "': ", err)
           return nil, err
         end
       end
@@ -41,7 +41,7 @@ return {
     usage = function(conf, api_id, identifier, current_timestamp, period, name)
       local periods = timestamp.get_timestamps(current_timestamp)
       local cache_key = get_local_key(api_id, identifier, periods[period], name, period)
-      local current_metric, err = cache.sh_get(cache_key)
+      local current_metric, err = shm:get(cache_key)
       if err then
         return nil, err
       end
@@ -66,7 +66,9 @@ return {
       local rows, err = policy_cluster[db.name].find(db, api_id, identifier,
                                                      current_timestamp, period,
                                                      name)
-      if err then return nil, err end
+      if err then
+        return nil, err
+      end
 
       return rows and rows.value or 0
     end
@@ -163,7 +165,12 @@ return {
         current_metric = nil
       end
 
-      return current_metric and current_metric or 0
+      local ok, err = red:set_keepalive(10000, 100)
+      if not ok then
+        ngx_log(ngx.ERR, "failed to set Redis keepalive: ", err)
+      end
+
+      return current_metric or 0
     end
   }
 }

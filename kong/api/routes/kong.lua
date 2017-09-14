@@ -8,7 +8,7 @@ local ipairs = ipairs
 local select = select
 local tonumber = tonumber
 
-local tagline = "Welcome to ".._KONG._NAME
+local tagline = "Welcome to " .. _KONG._NAME
 local version = _KONG._VERSION
 local lua_version = jit and jit.version or _VERSION
 

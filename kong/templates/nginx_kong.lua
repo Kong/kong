@@ -19,7 +19,7 @@ error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 >-- reset_timedout_connection on; # disabled until benchmarked
 > end
 
-client_max_body_size 0;
+client_max_body_size ${{CLIENT_MAX_BODY_SIZE}};
 proxy_ssl_server_name on;
 underscores_in_headers on;
 
@@ -29,11 +29,13 @@ lua_code_cache ${{LUA_CODE_CACHE}};
 lua_socket_pool_size ${{LUA_SOCKET_POOL_SIZE}};
 lua_max_running_timers 4096;
 lua_max_pending_timers 16384;
-lua_shared_dict kong 4m;
-lua_shared_dict cache ${{MEM_CACHE_SIZE}};
-lua_shared_dict cache_locks 100k;
-lua_shared_dict process_events 1m;
-lua_shared_dict cassandra 5m;
+lua_shared_dict kong                5m;
+lua_shared_dict kong_cache          ${{MEM_CACHE_SIZE}};
+lua_shared_dict kong_process_events 5m;
+lua_shared_dict kong_cluster_events 5m;
+> if database == "cassandra" then
+lua_shared_dict kong_cassandra      5m;
+> end
 lua_socket_log_errors off;
 > if lua_ssl_trusted_certificate then
 lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE}}';
@@ -41,8 +43,6 @@ lua_ssl_verify_depth ${{LUA_SSL_VERIFY_DEPTH}};
 > end
 
 init_by_lua_block {
-    require 'luarocks.loader'
-    require 'resty.core'
     kong = require 'kong'
     kong.init()
 }
@@ -63,24 +63,17 @@ upstream kong_upstream {
 
 server {
     server_name kong;
-> if real_ip_header == "proxy_protocol" then
-    listen ${{PROXY_LISTEN}} proxy_protocol;
-> else
-    listen ${{PROXY_LISTEN}};
-> end
+    listen ${{PROXY_LISTEN}}${{PROXY_PROTOCOL}};
     error_page 400 404 408 411 412 413 414 417 /kong_error_handler;
     error_page 500 502 503 504 /kong_error_handler;
 
     access_log ${{PROXY_ACCESS_LOG}};
     error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
+    client_body_buffer_size ${{CLIENT_BODY_BUFFER_SIZE}};
 
 > if ssl then
-> if real_ip_header == "proxy_protocol" then
-    listen ${{PROXY_LISTEN_SSL}} proxy_protocol ssl;
-> else
-    listen ${{PROXY_LISTEN_SSL}} ssl;
-> end
+    listen ${{PROXY_LISTEN_SSL}} ssl${{HTTP2}}${{PROXY_PROTOCOL}};
     ssl_certificate ${{SSL_CERT}};
     ssl_certificate_key ${{SSL_CERT_KEY}};
     ssl_protocols TLSv1.1 TLSv1.2;
@@ -110,6 +103,7 @@ server {
         set $upstream_upgrade            '';
         set $upstream_connection         '';
         set $upstream_scheme             '';
+        set $upstream_uri                '';
         set $upstream_x_forwarded_for    '';
         set $upstream_x_forwarded_proto  '';
         set $upstream_x_forwarded_host   '';
@@ -135,7 +129,7 @@ server {
         proxy_pass_header  Server;
         proxy_pass_header  Date;
         proxy_ssl_name     $upstream_host;
-        proxy_pass         $upstream_scheme://kong_upstream;
+        proxy_pass         $upstream_scheme://kong_upstream$upstream_uri;
 
         header_filter_by_lua_block {
             kong.header_filter()
@@ -153,7 +147,7 @@ server {
     location = /kong_error_handler {
         internal;
         content_by_lua_block {
-            require('kong.core.error_handlers')(ngx)
+            kong.handle_error()
         }
     }
 }
@@ -169,7 +163,7 @@ server {
     client_body_buffer_size 10m;
 
 > if admin_ssl then
-    listen ${{ADMIN_LISTEN_SSL}} ssl;
+    listen ${{ADMIN_LISTEN_SSL}} ssl${{ADMIN_HTTP2}};
     ssl_certificate ${{ADMIN_SSL_CERT}};
     ssl_certificate_key ${{ADMIN_SSL_CERT_KEY}};
     ssl_protocols TLSv1.1 TLSv1.2;
@@ -183,15 +177,7 @@ server {
     location / {
         default_type application/json;
         content_by_lua_block {
-            ngx.header['Access-Control-Allow-Origin'] = '*'
-
-            if ngx.req.get_method() == 'OPTIONS' then
-                ngx.header['Access-Control-Allow-Methods'] = 'GET,HEAD,PUT,PATCH,POST,DELETE'
-                ngx.header['Access-Control-Allow-Headers'] = 'Content-Type'
-                ngx.exit(204)
-            end
-
-            require('lapis').serve('kong.api')
+            kong.serve_admin_api()
         }
     }
 

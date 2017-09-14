@@ -6,46 +6,50 @@ local FACEBOOK = "facebookexternalhit/1.1"  -- matches a known bot in `rules.lua
 describe("Plugin: bot-detection (access)", function()
   local client
   setup(function()
+    helpers.run_migrations()
+
     local api1 = assert(helpers.dao.apis:insert {
-      name = "api-1",
-      hosts = { "bot.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-1",
+      hosts        = { "bot.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     local api2 = assert(helpers.dao.apis:insert {
-      name = "api-2",
-      hosts = { "bot2.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-2",
+      hosts        = { "bot2.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     local api3 = assert(helpers.dao.apis:insert {
-      name = "api-3",
-      hosts = { "bot3.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-3",
+      hosts        = { "bot3.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
 
     -- plugin 1
     assert(helpers.dao.plugins:insert {
       api_id = api1.id,
-      name = "bot-detection",
+      name   = "bot-detection",
       config = {},
     })
     -- plugin 2
     assert(helpers.dao.plugins:insert {
       api_id = api2.id,
-      name = "bot-detection",
+      name   = "bot-detection",
       config = {
-        blacklist = HELLOWORLD
-      }
+        blacklist = HELLOWORLD,
+      },
     })
     -- plugin 3
     assert(helpers.dao.plugins:insert {
       api_id = api3.id,
-      name = "bot-detection",
+      name   = "bot-detection",
       config = {
-        whitelist = FACEBOOK
-      }
+        whitelist = FACEBOOK,
+      },
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
   end)
 
   teardown(function()
