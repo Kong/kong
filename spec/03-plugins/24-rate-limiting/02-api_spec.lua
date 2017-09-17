@@ -68,6 +68,28 @@ describe("rate-limiting API", function()
         ["config.window_size"] = "window_size is required",
       }, body)
     end)
+
+    it("transparently sorts limit/window_size pairs", function()
+      local res = assert(admin_client:send {
+        method = "POST",
+        path = "/plugins",
+        body = {
+          name = "rate-limiting",
+          config = {
+            window_size = { 3600, 60 },
+            limit = { 100, 10 },
+            sync_rate = 10,
+          }
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+      local body = assert.res_status(201, res)
+      local json = cjson.decode(body)
+      assert.same({ 10, 100 }, json.config.limit)
+      assert.same({ 60, 3600 }, json.config.window_size)
+    end)
   end)
 
   describe("PATCH", function()

@@ -231,4 +231,61 @@ describe("rate-limiting schema", function()
     assert.is_false(ok)
     assert.same("Invalid Redis Sentinel address: 127.0.0.2", err.redis)
   end)
+
+  it("transparently sorts the limit/window_size pairs", function()
+    local config = {
+      limit = {
+        100, 10,
+      },
+      window_size = {
+        3600, 60
+      },
+      sync_rate = 0,
+      strategy = "cluster",
+    }
+    local ok, err = validate_entity(config, rate_limiting_schema)
+
+    assert.is_true(ok)
+    assert.is_nil(err)
+    assert.same({ 10, 100 }, config.limit)
+    assert.same({ 60, 3600 }, config.window_size)
+
+    -- show we are sorting explicitly based on limit
+    -- this configuration doesnt actually make sense
+    -- but for tests purposes we need to verify our behavior
+    local config = {
+      limit = {
+        100, 10,
+      },
+      window_size = {
+        60, 3600
+      },
+      sync_rate = 0,
+      strategy = "cluster",
+    }
+    local ok, err = validate_entity(config, rate_limiting_schema)
+
+    assert.is_true(ok)
+    assert.is_nil(err)
+    assert.same({ 10, 100 }, config.limit)
+    assert.same({ 3600, 60 }, config.window_size)
+
+    -- slightly more complex example
+    local config = {
+      limit = {
+        100, 1000, 10,
+      },
+      window_size = {
+        3600, 86400, 60
+      },
+      sync_rate = 0,
+      strategy = "cluster",
+    }
+    local ok, err = validate_entity(config, rate_limiting_schema)
+
+    assert.is_true(ok)
+    assert.is_nil(err)
+    assert.same({ 10, 100, 1000 }, config.limit)
+    assert.same({ 60, 3600, 86400 }, config.window_size)
+  end)
 end)
