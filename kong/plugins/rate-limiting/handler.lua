@@ -208,7 +208,16 @@ function NewRLHandler:access(conf)
     local window_size = tonumber(conf.window_size[i])
     local limit       = tonumber(conf.limit[i])
 
-    local rate = ratelimiting.increment(key, window_size, 1, conf.namespace)
+    -- if we have exceeded any rate, we should not increment any other windows,
+    -- butwe should still show the rate to the client, maintaining a uniform
+    -- set of response headers regardless of whether we block the request
+    local rate
+    if deny then
+      rate = ratelimiting.sliding_window(key, window_size, nil, conf.namespace)
+
+    else
+      rate = ratelimiting.increment(key, window_size, 1, conf.namespace)
+    end
 
     -- legacy logic of naming rate limiting headers. if we configured a window
     -- size that looks like a human friendly name, give that name
