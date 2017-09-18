@@ -200,7 +200,7 @@ return {
       t[i] = { plugin_t.limit[i], plugin_t.window_size[i] }
     end
 
-    table.sort(t, function(a, b) return a[1] < b[1] end)
+    table.sort(t, function(a, b) return tonumber(a[1]) < tonumber(b[1]) end)
 
     for i = 1, #t do
       plugin_t.limit[i] = t[i][1]

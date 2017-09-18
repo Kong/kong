@@ -250,6 +250,24 @@ describe("rate-limiting schema", function()
     assert.same({ 10, 100 }, config.limit)
     assert.same({ 60, 3600 }, config.window_size)
 
+    local config = {
+      limit = {
+        10, 5,
+      },
+      window_size = {
+        3600, 60,
+      },
+      sync_rate = 0,
+      strategy = "cluster",
+    }
+    local ok, err = validate_entity(config, rate_limiting_schema)
+
+    assert.is_true(ok)
+    assert.is_nil(err)
+    assert.same({ 5, 100 }, config.limit)
+    assert.same({ 60, 3600 }, config.window_size)
+
+
     -- show we are sorting explicitly based on limit
     -- this configuration doesnt actually make sense
     -- but for tests purposes we need to verify our behavior
