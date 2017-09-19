@@ -263,6 +263,26 @@ local function headers(upstream_header, downstream_header, header_value)
 end
 
 
+local function get_conf_args(args_names, args_values)
+  if not args_names  or args_names  == "" or
+     not args_values or args_values == "" then
+    return nil
+  end
+
+  local args
+  for i, name in ipairs(args_names) do
+    if name and name ~= "" then
+      if not args then
+        args = {}
+      end
+
+      args[name] = args_values[i]
+    end
+  end
+  return args
+end
+
+
 local function unauthorized(issuer, err, s)
   if err then
     log(NOTICE, err)
@@ -624,9 +644,11 @@ function OICHandler:access(conf)
                 authorization:start()
 
                 args, err = o.authorization:request {
+                  args          = get_conf_args(conf.authorization_query_args_names,
+                                                conf.authorization_query_args_values),
                   state         = state,
                   nonce         = nonce,
-                  code_verifier = code_verifier
+                  code_verifier = code_verifier,
                 }
 
                 if not args then
@@ -656,6 +678,8 @@ function OICHandler:access(conf)
             end
 
             authorization.data = {
+              args          = get_conf_args(conf.authorization_query_args_names,
+                                            conf.authorization_query_args_values),
               state         = args.state,
               nonce         = args.nonce,
               code_verifier = args.code_verifier,
@@ -707,6 +731,7 @@ function OICHandler:access(conf)
             -- TODO: we just cache this for default one hour, not sure if there should be another strategy
             -- TODO: actually the alternative is already proposed, but needs changes in core where ttl
             -- TODO: and neg_ttl can be set after the results are retrieved from identity provider
+            -- TODO: see: https://github.com/thibaultcha/lua-resty-mlcache/pull/23
             access_token_introspected = cache.introspection.load(
               o,access_token_decoded, conf.introspection_endpoint, exp
             )
@@ -762,10 +787,14 @@ function OICHandler:access(conf)
     -- password credentials or client credentials
     if args then
       for _, arg in ipairs(args) do
+        arg.args = get_conf_args(conf.token_post_args_names,
+          conf.token_post_args_values)
+
         if conf.cache_tokens then
           -- TODO: we just cache this for default one hour, not sure if there should be another strategy
           -- TODO: actually the alternative is already proposed, but needs changes in core where ttl
           -- TODO: and neg_ttl can be set after the results are retrieved from identity provider
+          -- TODO: see: https://github.com/thibaultcha/lua-resty-mlcache/pull/23
           tokens_encoded, err = cache.tokens.load(o, arg, exp)
         else
           tokens_encoded, err = o.token:request(arg)

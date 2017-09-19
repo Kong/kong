@@ -114,6 +114,18 @@ return {
         "body",
       },
     },
+    authorization_query_args_names     = {
+      type                             = "array",
+    },
+    authorization_query_args_values    = {
+      type                             = "array",
+    },
+    token_post_args_names              = {
+      type                             = "array",
+    },
+    token_post_args_values             = {
+      type                             = "array",
+    },
     upstream_access_token_header       = {
       required                         = false,
       type                             = "string",
@@ -139,7 +151,6 @@ return {
       required                         = false,
       type                             = "string",
     },
-
     upstream_id_token_jwk_header       = {
       required                         = false,
       type                             = "string",
