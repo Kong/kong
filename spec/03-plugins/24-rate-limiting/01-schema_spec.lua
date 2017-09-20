@@ -264,7 +264,7 @@ describe("rate-limiting schema", function()
 
     assert.is_true(ok)
     assert.is_nil(err)
-    assert.same({ 5, 100 }, config.limit)
+    assert.same({ 5, 10 }, config.limit)
     assert.same({ 60, 3600 }, config.window_size)
 
 
