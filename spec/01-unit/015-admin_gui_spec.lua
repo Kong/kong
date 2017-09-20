@@ -1,6 +1,7 @@
 local helpers        = require "spec.helpers"
 local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local conf_loader    = require "kong.conf_loader"
+local meta           = require "kong.meta"
 
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
@@ -44,7 +45,9 @@ describe("prepare_prefix", function()
     <meta name="KONG:RBAC_HEADER" content="{{RBAC_HEADER}}" />
 ]]
 
-  local mock_prefix = "servroot"
+  local mock_prefix  = "servroot"
+  local idx_filename = mock_prefix .. "/gui/index.html"
+  local tp_filename  = mock_prefix .. "/gui/index.html.tp-" .. meta._VERSION
 
   setup(function()
     helpers.prepare_prefix(mock_prefix)
@@ -55,14 +58,14 @@ describe("prepare_prefix", function()
     assert(pl_path.isdir(mock_prefix))
 
     -- write a mock index.html
-    pl_file.write(mock_prefix .. "/gui/index.html", mock_idx)
-    assert(not pl_path.isfile(mock_prefix .. "/gui/index.html.tp"))
-    assert(pl_path.isfile(mock_prefix .. "/gui/index.html"))
+    pl_file.write(idx_filename, mock_idx)
+    assert(not pl_path.isfile(tp_filename))
+    assert(pl_path.isfile(idx_filename))
   end)
 
   teardown(function()
-    if pl_path.isfile(mock_prefix .. "/gui/index.html.tp") then
-      pl_file.delete(mock_prefix .. "/gui/index.html.tp")
+    if pl_path.isfile(tp_filename) then
+      pl_file.delete(tp_filename)
     end
   end)
 
@@ -76,7 +79,7 @@ describe("prepare_prefix", function()
       rbac_auth_header = "Kong-Admin-Token",
     })
 
-    local gui_idx = pl_file.read(mock_prefix .. "/gui/index.html")
+    local gui_idx = pl_file.read(idx_filename)
 
     assert.matches('<meta name="KONG:ADMIN_API_PORT" content="9001" />',
                    gui_idx, nil, true)
@@ -89,7 +92,7 @@ describe("prepare_prefix", function()
   end)
 
   it("retains a template with the template placeholders", function()
-    local gui_idx_tpl = pl_file.read(mock_prefix .. "/gui/index.html.tp")
+    local gui_idx_tpl = pl_file.read(tp_filename)
 
     assert.matches('<meta name="KONG:ADMIN_API_PORT" content="{{ADMIN_API_PORT}}" />',
                    gui_idx_tpl, nil, true)
@@ -111,7 +114,7 @@ describe("prepare_prefix", function()
       rbac_auth_header = "Kong-Other-Token",
     })
 
-    local gui_idx = pl_file.read(mock_prefix .. "/gui/index.html")
+    local gui_idx = pl_file.read(idx_filename)
 
     assert.matches('<meta name="KONG:ADMIN_API_PORT" content="9002" />',
                    gui_idx, nil, true)
