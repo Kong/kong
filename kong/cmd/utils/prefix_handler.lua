@@ -11,6 +11,7 @@ local socket = require "socket"
 local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
 local constants = require "kong.constants"
+local meta = require "kong.meta"
 local fmt = string.format
 
 local function gen_default_ssl_cert(kong_config, pair_type)
@@ -147,17 +148,19 @@ local function prepare_admin(kong_config)
     RBAC_HEADER = tostring(kong_config.rbac_auth_header),
   }
 
-  -- make the template if it doesn't exit
-  if not pl_path.isfile(ADMIN_GUI_PATH .. "/index.html.tp") then
-    if not pl_file.copy(ADMIN_GUI_PATH .. "/index.html",
-                        ADMIN_GUI_PATH .. "/index.html.tp") then
+  local idx_filename = ADMIN_GUI_PATH .. "/index.html"
+  local tp_filename  = ADMIN_GUI_PATH .. "/index.html.tp-" ..
+                       meta._VERSION
 
+  -- make the template if it doesn't exit
+  if not pl_path.isfile(tp_filename) then
+    if not pl_file.copy(idx_filename, tp_filename) then
       log.warn("Could not copy index to template")
     end
   end
 
   -- load the template, do our substitutions, and write it out
-  local index = pl_file.read(ADMIN_GUI_PATH .. "/index.html.tp")
+  local index = pl_file.read(tp_filename)
 
   if not index then
     log.warn("Could not read GUI index template")
@@ -171,7 +174,7 @@ local function prepare_admin(kong_config)
     log.warn("Error replacing templated values: " .. err)
   end
 
-  pl_file.write(ADMIN_GUI_PATH .. "/index.html", index)
+  pl_file.write(idx_filename, index)
 end
 
 local function prepare_prefix(kong_config, nginx_custom_template_path)
