@@ -1,4 +1,5 @@
-return {
+local is_ee, rbac = pcall(require, "kong.core.rbac")
+local migrations = {
   {
     name = "2017-06-01-180000_init_oic",
     up = [[
@@ -118,10 +119,13 @@ return {
       ALTER TABLE oic_issuers ADD COLUMN secret text;
     ]],
   },
-  {
+}
+
+
+if is_ee then
+  migrations[#migrations+1] = {
     name = "2017-08-26-150000_rbac_oic_resources",
     up = function(_, _, dao)
-      local rbac = require "kong.core.rbac"
       local bxor = require("bit").bxor
 
       local resource, err = rbac.register_resource("openid-connect", dao)
@@ -144,5 +148,8 @@ return {
         end
       end
     end,
-  },
-}
+  }
+end
+
+
+return migrations
