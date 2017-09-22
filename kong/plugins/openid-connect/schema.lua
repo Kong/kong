@@ -115,16 +115,37 @@ return {
       },
     },
     authorization_query_args_names     = {
+      required                         = false,
       type                             = "array",
     },
     authorization_query_args_values    = {
+      required                         = false,
       type                             = "array",
     },
     token_post_args_names              = {
+      required                         = false,
       type                             = "array",
     },
     token_post_args_values             = {
+      required                         = false,
       type                             = "array",
+    },
+    token_headers_replay               = {
+      required                         = false,
+      type                             = "array",
+    },
+    token_headers_prefix               = {
+      required                         = false,
+      type                             = "string",
+    },
+    token_headers_grants               = {
+      required                         = false,
+      type                             = "array",
+      enum                             = {
+        "password",
+        "client_credentials",
+        "authorization_code",
+      },
     },
     upstream_access_token_header       = {
       required                         = false,
@@ -231,6 +252,7 @@ return {
       },
     },
     anonymous                          = {
+      required                         = false,
       type                             = "string",
       func                             = check_user,
     },

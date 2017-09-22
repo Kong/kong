@@ -298,7 +298,12 @@ local tokens = {}
 
 function tokens.init(o, args)
   log(NOTICE, "loading tokens from the identity provider")
-  return o.token:request(args)
+  local tokens, err, headers = o.token:request(args)
+  if not tokens then
+    return nil, err
+  end
+
+  return { tokens, headers }
 end
 
 
@@ -315,7 +320,13 @@ function tokens.load(o, args, ttl)
     return o.token:request(args)
   end
 
-  return cache_get(key, ttl, tokens.init, o, args)
+  local res, err = cache_get(key, ttl, tokens.init, o, args)
+
+  if not res then
+    return nil, err
+  end
+
+  return res[1], nil, res[2]
 end
 
 

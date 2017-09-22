@@ -707,6 +707,8 @@ function OICHandler:access(conf)
   local exp = now + default_expires_in
   local expires
   local tokens_encoded, tokens_decoded, access_token_introspected = session_data.tokens, nil, nil
+  local grant_type
+  local extra_headers
 
   -- bearer token was present in a request, let's verify it
   if bearer then
@@ -787,7 +789,8 @@ function OICHandler:access(conf)
     -- password credentials or client credentials
     if args then
       for _, arg in ipairs(args) do
-        arg.args = get_conf_args(conf.token_post_args_names,
+        arg.args = get_conf_args(
+          conf.token_post_args_names,
           conf.token_post_args_values)
 
         if conf.cache_tokens then
@@ -795,11 +798,13 @@ function OICHandler:access(conf)
           -- TODO: actually the alternative is already proposed, but needs changes in core where ttl
           -- TODO: and neg_ttl can be set after the results are retrieved from identity provider
           -- TODO: see: https://github.com/thibaultcha/lua-resty-mlcache/pull/23
-          tokens_encoded, err = cache.tokens.load(o, arg, exp)
+          tokens_encoded, err, extra_headers = cache.tokens.load(o, arg, exp)
         else
-          tokens_encoded, err = o.token:request(arg)
+          tokens_encoded, err, extra_headers = o.token:request(arg)
         end
+
         if tokens_encoded then
+          grant_type = arg.grant_type or "authorization_code"
           args = arg
           break
         end
@@ -1002,7 +1007,7 @@ function OICHandler:access(conf)
   if mapped_consumer then
     local head = constants.HEADERS
 
-    ngx.ctx.authenticated_consumer   = mapped_consumer
+    ngx.ctx.authenticated_consumer = mapped_consumer
 
     if credential then
       ngx.ctx.authenticated_credential = credential
@@ -1027,6 +1032,42 @@ function OICHandler:access(conf)
   end
 
   -- TODO: do we want to set downstream headers for users that authenticated with session
+
+  -- here we replay token endpoint request response headers, if any
+  if extra_headers and grant_type then
+    local replay_for = conf.token_headers_grants
+    if replay_for ~= nil and
+       replay_for ~= ""  and
+       replay_for ~= ngx.null then
+
+      local replay_prefix = conf.token_headers_prefix
+      if replay_prefix == ""  or
+         replay_prefix == ngx.null then
+        replay_prefix = nil
+      end
+
+      for _, v in ipairs(replay_for) do
+        if v == grant_type then
+          local replay_headers = conf.token_headers_replay
+          if replay_headers ~= nil and
+             replay_headers ~= ""  and
+             replay_headers ~= ngx.null then
+            for _, replay_header in ipairs(replay_headers) do
+              local extra_header = extra_headers[replay_header]
+              if extra_header then
+                if replay_prefix then
+                  header[replay_prefix .. replay_header] = extra_header
+                else
+                  header[replay_header] = extra_header
+                end
+              end
+            end
+          end
+          break
+        end
+      end
+    end
+  end
 
   -- now let's setup the upstream and downstream headers
   headers(
