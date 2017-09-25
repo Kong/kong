@@ -62,8 +62,16 @@ end
 
 local function query_opts(self)
   local opts = self:clone_query_options()
-  opts.socket_type = forced_luasocket_phases[get_phase()] and
-                     "luasocket" or "nginx"
+
+  if ngx.IS_CLI or forced_luasocket_phases[get_phase()] then
+    -- Force LuaSocket usage in order to allow for self-signed certificates
+    -- to be trusted (via opts.cafile) in the resty-cli interpreter.
+    -- As usual, LuaSocket is also forced in non-supported cosocket contexts.
+    opts.socket_type = "luasocket"
+
+  else
+    opts.socket_type = "nginx"
+  end
 
   return opts
 end
