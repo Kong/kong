@@ -62,6 +62,12 @@ function _M.new(kong_config)
   if ngx.IS_CLI then
     local policy = require("resty.cassandra.policies.reconnection.const")
     cluster_options.reconn_policy = policy.new(100)
+
+    -- Force LuaSocket usage in order to allow for self-signed certificates
+    -- to be trusted (via opts.cafile) in the resty-cli interpreter.
+    -- As usual, LuaSocket is also forced in non-supported cosocket contexts.
+    local socket = require "cassandra.socket"
+    socket.force_luasocket("timer", true)
   end
 
   --
