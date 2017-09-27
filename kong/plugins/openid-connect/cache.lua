@@ -1,3 +1,5 @@
+pcall(require, "kong.plugins.openid-connect.env")
+
 local configuration = require "kong.openid-connect.configuration"
 local keys          = require "kong.openid-connect.keys"
 local codec         = require "kong.openid-connect.codec"
