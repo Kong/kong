@@ -181,6 +181,15 @@ end
 function JwtHandler:access(conf)
   JwtHandler.super.access(self)
 
+  -- add uri whitelist
+  local method = ngx.var.request_method
+  local uri = ngx.var.uri
+  for _, v in ipairs(conf.uri_whitelist) do
+    if (v.method == method) and (v.uri == uri) then
+      return
+    end
+  end
+
   -- check if preflight request and whether it should be authenticated
   if conf.run_on_preflight == false and get_method() == "OPTIONS" then
     -- FIXME: the above `== false` test is because existing entries in the db will
