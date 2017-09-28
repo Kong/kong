@@ -282,11 +282,11 @@ describe("Plugin: jwt (access)", function()
       local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
       local authorization = "Bearer " .. jwt
       local res = assert(proxy_client:send {
-        method  = "POST",
+        method  = "GET",
         path    = "/request",
         headers = {
           ["Host"] = "jwt1.com",
-          ["Set-Cookie"] = "Authorization=" .. authorization .. "; path=/;"
+          ["Set-Cookie"] = "Authorization=" .. authorization .. "; path=/;domain=.jwt1.com"
         }
       })
       assert.res_status(200, res)
