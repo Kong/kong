@@ -1,5 +1,5 @@
 dist: trusty
-sudo: false
+sudo: required
 
 language: java
 
@@ -54,16 +54,20 @@ install:
 script:
   - .ci/run_tests.sh
 
-deploy:
-  - provider: script
-    script: DOCKER_TAG_NAME=dev-master .ci/build_docker_image.sh; fi
-    on:
-      branch: master
-
-  - provider: script
-    script: DOCKER_TAG_NAME=released .ci/build_docker_image.sh; fi
-    on:
-      tags: true
+jobs:
+  include:
+    - stage: deploy
+      if: branch = master
+      script: .ci/build_docker_image.sh
+      env:
+        - DOCKER_TAG_NAME=dev-master
+        - TEST_SUITE=none
+    - stage: deploy
+      if: tag =~ 0.
+      script: .ci/build_docker_image.sh
+      env:
+        - DOCKER_TAG_NAME=released
+        - TEST_SUITE=none
 
 cache:
   apt: true

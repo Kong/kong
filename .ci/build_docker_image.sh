@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -e
 
+if [ ${TRAVIS_PULL_REQUEST} != "false" ]; then
+  exit 0
+fi
+
 docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
 
 git clone https://github.com/Mashape/docker-kong.git
@@ -19,7 +23,8 @@ docker run -it --rm \
   -e KONG_ENTERPRISE_INTROSPECTION_BRANCH=master \
   hutchic/docker-packer /src/package.sh -p alpine
 
-mv kong-*.tar.gz ../docker-kong/kong.tar.gz
-docker build -t mashape/kong-enterprise:"$DOCKER_TAG_NAME" ../docker-kong/
+popd
+sudo mv kong-distributions/output/kong-*.tar.gz docker-kong/kong.tar.gz
+docker build -t mashape/kong-enterprise:"$DOCKER_TAG_NAME" docker-kong/
 
-docker push mashape/kong-enterprise:dev-master
+docker push mashape/kong-enterprise:"$DOCKER_TAG_NAME"
