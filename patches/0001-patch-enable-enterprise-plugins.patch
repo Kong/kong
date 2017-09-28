@@ -1,25 +1,29 @@
-From 9cdf709596acf161efdf0bf84f44adc1d1e3f82b Mon Sep 17 00:00:00 2001
-From: Robert Paprocki <robert@cryptobells.com>
-Date: Tue, 15 Aug 2017 15:24:32 -0700
+From 2df09cf321cda42a4e074201709ace1d528d041c Mon Sep 17 00:00:00 2001
+From: Shashi Ranjan <shashi@mashape.com>
+Date: Thu, 28 Sep 2017 11:40:33 -0700
 Subject: [PATCH] patch(*) enable enterprise plugins
 
 ---
- kong/constants.lua | 2 ++
- 1 file changed, 2 insertions(+)
+ kong/constants.lua | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
 diff --git a/kong/constants.lua b/kong/constants.lua
-index 7ae1e98..a1a2629 100644
+index 7ae1e98..ef7d836 100644
 --- a/kong/constants.lua
 +++ b/kong/constants.lua
-@@ -27,6 +27,8 @@ local plugins = {
+@@ -27,6 +27,12 @@ local plugins = {
    "bot-detection",
    "aws-lambda",
    "request-termination",
 +  "oauth2-introspection",
 +  "proxy-cache",
++  "openid-connect",
++  "openid-connect-authentication",
++  "openid-connect-protection",
++  "openid-connect-verification",
  }
  
  local plugin_map = {}
 -- 
-2.7.4
+2.3.2
 
