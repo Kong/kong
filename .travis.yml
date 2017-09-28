@@ -18,7 +18,8 @@ addons:
       - build-essential
 
 services:
-    - redis
+  - redis
+  - docker
 
 env:
   global:
@@ -52,6 +53,17 @@ install:
 
 script:
   - .ci/run_tests.sh
+
+deploy:
+  - provider: script
+    script: DOCKER_TAG_NAME=dev-master .ci/build_docker_image.sh; fi
+    on:
+      branch: master
+
+  - provider: script
+    script: DOCKER_TAG_NAME=released .ci/build_docker_image.sh; fi
+    on:
+      tags: true
 
 cache:
   apt: true

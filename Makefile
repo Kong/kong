@@ -17,6 +17,7 @@ dev: install
       echo $$rock already installed, skipping ; \
     fi \
 	done;
+	luarocks install luacheck 0.20.0
 
 lint:
 	@luacheck -q .
