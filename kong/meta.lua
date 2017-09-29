@@ -2,7 +2,7 @@ local version = setmetatable({
   major = 0,
   minor = 11,
   patch = 0,
-  enterprise = 1,
+  enterprise = 3,
   suffix = "-enterprise-edition"
 }, {
   __tostring = function(t)

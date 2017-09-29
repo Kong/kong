@@ -311,18 +311,22 @@ for i, policy in ipairs({"cluster", "redis"}) do
           assert.same(limits["10"] - i, tonumber(res.headers["x-ratelimit-remaining-10"]))
         end
 
-        local res = assert(helpers.proxy_client():send {
-          method = "GET",
-          path = "/get",
-          headers = {
-            ["Host"] = "test2.com"
-          }
-        })
-        local body = assert.res_status(429, res)
-        local json = cjson.decode(body)
-        assert.same({ message = "API rate limit exceeded" }, json)
-        assert.same(1, tonumber(res.headers["x-ratelimit-remaining-10"]))
-        assert.same(0, tonumber(res.headers["x-ratelimit-remaining-5"]))
+        -- once we have reached a limit, ensure we do not dip below 0,
+        -- and do not alter other limits
+        for i = 1, 5 do
+          local res = assert(helpers.proxy_client():send {
+            method = "GET",
+            path = "/get",
+            headers = {
+              ["Host"] = "test2.com"
+            }
+          })
+          local body = assert.res_status(429, res)
+          local json = cjson.decode(body)
+          assert.same({ message = "API rate limit exceeded" }, json)
+          assert.same(2, tonumber(res.headers["x-ratelimit-remaining-10"]))
+          assert.same(0, tonumber(res.headers["x-ratelimit-remaining-5"]))
+        end
       end)
     end)
     describe("With authentication", function()

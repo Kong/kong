@@ -136,7 +136,9 @@ function NewRLHandler:init_worker()
 
   -- new plugin? try to make a namespace!
   worker_events.register(function(config)
-    new_namespace(config, true)
+    if not ratelimiting.config[config.namespace] then
+      new_namespace(config, true)
+    end
   end, "rl", "create")
 
   -- updates should clear the existing config and create a new
@@ -145,8 +147,27 @@ function NewRLHandler:init_worker()
   worker_events.register(function(config)
     ngx.log(ngx.DEBUG, "clear and reset ", config.namespace)
 
+    -- if the previous config did not have a background timer,
+    -- we need to start one
+    local start_timer = false
+    if ratelimiting.config[config.namespace].sync_rate <= 0 and
+       config.sync_rate > 0 then
+
+      start_timer = true
+    end
+
     ratelimiting.clear_config(config.namespace)
-    new_namespace(config)
+    new_namespace(config, start_timer)
+
+    -- clear the timer if we dont need it
+    if config.sync_rate <= 0 then
+      if ratelimiting.config[config.namespace] then
+        ratelimiting.config[config.namespace].kill = true
+
+      else
+        ngx.log(ngx.WARN, "did not find namespace ", config.namespace, " to kill")
+      end
+    end
   end, "rl", "update")
 
   -- nuke this from orbit
@@ -174,11 +195,31 @@ function NewRLHandler:access(conf)
 
   local deny
 
+  -- if this worker has not yet seen the "rl:create" event propagated by the
+  -- instatiation of a new plugin, create the namespace. in this case, the call
+  -- to new_namespace in the registered rl handler will never be called on this
+  -- worker
+  --
+  -- this workaround will not be necessary when real IPC is implemented for
+  -- inter-worker communications
+  if not ratelimiting.config[conf.namespace] then
+    new_namespace(conf, true)
+  end
+
   for i = 1, #conf.window_size do
     local window_size = tonumber(conf.window_size[i])
     local limit       = tonumber(conf.limit[i])
 
-    local rate = ratelimiting.increment(key, window_size, 1, conf.namespace)
+    -- if we have exceeded any rate, we should not increment any other windows,
+    -- butwe should still show the rate to the client, maintaining a uniform
+    -- set of response headers regardless of whether we block the request
+    local rate
+    if deny then
+      rate = ratelimiting.sliding_window(key, window_size, nil, conf.namespace)
+
+    else
+      rate = ratelimiting.increment(key, window_size, 1, conf.namespace)
+    end
 
     -- legacy logic of naming rate limiting headers. if we configured a window
     -- size that looks like a human friendly name, give that name

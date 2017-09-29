@@ -1,4 +1,4 @@
-DEV_ROCKS = busted luacheck lua-llthreads2
+DEV_ROCKS = busted "luacheck 0.20.0" lua-llthreads2
 BUSTED_ARGS ?= -v
 TEST_CMD ?= bin/busted $(BUSTED_ARGS)
 OPENSSL_DIR ?= /usr/local/opt/openssl

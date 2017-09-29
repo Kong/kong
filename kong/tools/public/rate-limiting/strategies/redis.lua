@@ -95,7 +95,7 @@ function _M.new(_, opts)
       parsed_addresses[#parsed_addresses + 1] = parsed_address
     end
 
-    conf.parsed_addresses = parsed_addresses
+    conf.parsed_sentinel_addresses = parsed_addresses
   end
 
   return setmetatable({
