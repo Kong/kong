@@ -287,7 +287,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
 
       local name = "handles multiple limits"
       if policy == "redis" then
-        name = "#ci " .. name
+        name = "#flaky " .. name
       end
       it(name, function()
         local limits = {
@@ -333,7 +333,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
       describe("API-specific plugin", function()
         local name = "blocks if exceeding limit"
         if policy == "redis" then
-          name = "#ci " .. name
+          name = "#flaky " .. name
         end
         it(name, function()
           for i = 1, 6 do
