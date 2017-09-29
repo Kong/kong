@@ -101,6 +101,29 @@ helpers.for_each_dao(function(kong_config)
         assert.spy(on_migration).was_not_called()
         assert.spy(on_success).was_not_called()
       end)
+      it("should not depend on order of the migration entries", function()
+        local old_fetcher = factory.current_migrations
+        finally(function()
+          factory.current_migrations = old_fetcher
+        end)
+
+        factory.current_migrations = function(...)
+          local mig = old_fetcher(...)
+          local core = mig.core
+          core[#core], core[#core-1] = core[#core-1], core[#core]
+          return mig
+        end
+
+        local on_migration = spy.new(function() end)
+        local on_success = spy.new(function() end)
+
+        local ok, err = factory:run_migrations(on_migration, on_success)
+        assert.falsy(err)
+        assert.True(ok)
+
+        assert.spy(on_migration).was_not_called()
+        assert.spy(on_success).was_not_called()
+      end)
     end)
 
     describe("errors", function()

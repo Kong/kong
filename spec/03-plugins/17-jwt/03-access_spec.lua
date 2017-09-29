@@ -20,7 +20,7 @@ describe("Plugin: jwt (access)", function()
 
     local apis = {}
 
-    for i = 1, 7 do
+    for i = 1, 8 do
       apis[i] = assert(helpers.dao.apis:insert({
         name         = "tests-jwt" .. i,
         hosts        = { "jwt" .. i .. ".com" },
@@ -64,6 +64,10 @@ describe("Plugin: jwt (access)", function()
     assert(pdao:insert({ name   = "jwt",
                          api_id = apis[7].id,
                          config = { anonymous = utils.uuid() },
+                       }))
+    assert(pdao:insert({ name   = "jwt",
+                         api_id = apis[8].id,
+                         config = { run_on_preflight = false },
                        }))
 
     jwt_secret = assert(helpers.dao.jwt_secrets:insert {consumer_id = consumer1.id})
@@ -173,6 +177,27 @@ describe("Plugin: jwt (access)", function()
       local body = assert.res_status(403, res)
       local json = cjson.decode(body)
       assert.same({ message = "Invalid algorithm" }, json)
+    end)
+    it("returns 200 on OPTIONS requests if run_on_preflight is false", function()
+      local res = assert(proxy_client:send {
+        method = "OPTIONS",
+        path = "/request",
+        headers = {
+          ["Host"] = "jwt8.com"
+        }
+      })
+      assert.res_status(200, res)
+    end)
+    it("returns Unauthorized on OPTIONS requests if run_on_preflight is true", function()
+      local res = assert(proxy_client:send {
+        method = "OPTIONS",
+        path = "/request",
+        headers = {
+          ["Host"] = "jwt1.com"
+        }
+      })
+      local body = assert.res_status(401, res)
+      assert.equal([[{"message":"Unauthorized"}]], body)
     end)
   end)
 

@@ -124,7 +124,7 @@ return {
     end,
   },
 
-  ["/upstreams/:upstream_name_or_id/targets/active/"] = {
+  ["/upstreams/:upstream_name_or_id/targets/active"] = {
     resource = "targets",
 
     before = function(self, dao_factory, helpers)
