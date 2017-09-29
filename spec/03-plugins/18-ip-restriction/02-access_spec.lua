@@ -97,6 +97,19 @@ describe("Plugin: ip-restriction (access)", function()
       }
     })
 
+    local api8 = assert(helpers.dao.apis:insert {
+      name         = "api-8",
+      hosts        = { "ip-restriction8.com" },
+      upstream_url = helpers.mock_upstream_url,
+    })
+    assert(helpers.dao.plugins:insert {
+      name   = "ip-restriction",
+      api_id = api8.id,
+      config = {
+        whitelist = { "0.0.0.0/0" },
+      },
+    })
+
     assert(helpers.start_kong())
     client = helpers.proxy_client()
     admin_client = helpers.admin_client()
@@ -308,5 +321,18 @@ describe("Plugin: ip-restriction (access)", function()
     local body = assert.res_status(403, res)
     local json = cjson.decode(body)
     assert.same({ message = "Your IP address is not allowed" }, json)
+  end)
+
+  describe("#regression", function()
+    it("handles a CIDR entry with 0.0.0.0/0", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["Host"] = "ip-restriction8.com"
+        }
+      })
+      assert.res_status(200, res)
+    end)
   end)
 end)

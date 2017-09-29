@@ -24,7 +24,7 @@ dependencies = {
   "pgmoon-mashape == 2.0.1",
   "luatz == 0.3",
   "lua_system_constants == 0.1.1",
-  "lua-resty-iputils == 0.2.1",
+  "lua-resty-iputils == 0.3.0",
   "luacrypto == 0.3.2",
   "luasyslog == 1.0.0",
   "lua_pack == 1.0.4",
