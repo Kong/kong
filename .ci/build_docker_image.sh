@@ -21,7 +21,7 @@ docker run -it --rm \
   -e KONG_PROXY_CACHE_BRANCH=master \
   -e KONG_ENTERPRISE_OIDC_BRANCH=master \
   -e KONG_ENTERPRISE_INTROSPECTION_BRANCH=master \
-  hutchic/docker-packer /src/package.sh -p alpine
+  hutchic/docker-packer /src/package.sh -p alpine -e
 
 popd
 sudo mv kong-distributions/output/kong-*.tar.gz docker-kong/kong.tar.gz
