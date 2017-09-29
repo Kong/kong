@@ -1,18 +1,11 @@
-# API Gateway & Microservice Management [![Build Status][badge-travis-image]][badge-travis-url]
+# The Microservice API Gateway [![Build Status][badge-travis-image]][badge-travis-url]
 [![][kong-logo]][kong-url]
 
-Kong is a scalable, open source API Layer *(also known as an API Gateway, or
-API Middleware)*. Kong was originally built at [Mashape][mashape-url] to
-secure, manage and extend over
-[15,000 Microservices](http://stackshare.io/mashape/how-mashape-manages-over-15000-apis-and-microservices)
-for its API Marketplace, which generates billions of requests per month.
-
-Backed by the battle-tested **NGINX** with a focus on high performance, Kong
+Kong is a scalable, open source Microservice & API Abstraction Layer *(also known as an API Gateway,
+API Middleware or Service-Mesh in sidecar deployments)*. Backed by the battle-tested **NGINX** with a focus on high performance, Kong
 was made available as an open-source platform in 2015. Under active
-development, Kong is now used in production at hundreds of organizations from
-startups, to large enterprises and government departments including: The New
-York Times, Expedia, Healthcare.gov, The Guardian, Condè Nast and The
-University of Auckland.
+development, Kong is enjoyed in production across thousands of organizations from
+startups to large enterprises and government departments.
 
 [Website][kong-url] |
 [Docs](https://getkong.org/docs) |
@@ -28,14 +21,13 @@ freenode: [#kong](http://webchat.freenode.net/?channels=kong)
 - [**Why Kong?**](#why-kong)
 - [**Benchmarks**](#benchmarks)
 - [**Distributions**](#distributions)
-- [**Community Resources and Tools**](#community-resources-and-tools)
 - [**Roadmap**](#roadmap)
 - [**Development**](#development)
-- [**Enterprise Support & Demo**](#enterprise-support--demo)
 - [**License**](#license)
 
 ## Features
 
+- **Dynamic Load Balancing**: tbd
 - **CLI**: Control your Kong cluster from the command line just like Neo in The
   Matrix.
 - **REST API**: Kong can be operated with its RESTful API for maximum
@@ -113,56 +105,6 @@ code, other repos are also under active development:
   Heroku in one click.
 - [Kong and Instaclustr](https://www.instaclustr.com/solutions/kong/): Let
   Instaclustr manage your Cassandra cluster.
-
-## Community Resources and Tools
-
-**Resources**:
-- [The story behind Kong](http://stackshare.io/mashape/how-mashape-manages-over-15000-apis-and-microservices)
-- [Kong mentioned for the Empire PaaS](http://engineering.remind.com/introducing-empire/)
-- [Realtime API Management with Pushpin](http://blog.fanout.io/2015/07/14/realtime-api-management-pushpin-kong/)
-- [How to create your own Kong plugin](http://streamdata.io/blog/developing-an-helloworld-kong-plugin/)
-- [Instaclustr partners with Kong](https://www.instaclustr.com/blog/2015/09/16/instaclustr-partners-with-mashape-to-deliver-managed-cassandra-for-kong/)
-- [How to deploy Kong on Azure](https://jeremiedevillard.wordpress.com/2015/10/12/deploy-kong-api-management-using-azure-resource-manager/)
-- [Kong intro in Portuguese](https://www.youtube.com/watch?v=0OIWr1yLs_4)
-- [Kong tutorial in Japanese 1](http://dev.classmethod.jp/etc/kong-api-aggregator/)
-- [Kong tutorial in Japanese 2](http://www.ryuzee.com/contents/blog/7048)
-- [HAProxy + Kong](http://47ron.in/blog/2015/10/23/haproxy-in-the-era-of-microservices.html)
-- [Learn Lua in 15 minutes](http://tylerneylon.com/a/learn-lua/)
-- [A Question about Microservices](http://marcotroisi.com/questions-about-microservices/)
-- [Kong Intro in Chinese](https://www.sdk.cn/news/1596)
-
-**Videos**:
-- [Kong Intro Tutorial](https://www.youtube.com/watch?v=S6CeWL2qvl4)
-- [Kong mentioned at Hashicorp Conf](https://www.youtube.com/watch?v=0r24K_0BGBY&feature=youtu.be&t=22m03s)
-- [Kong Demo in Portuguese](https://www.youtube.com/watch?v=0OIWr1yLs_4)
-- [OAuth2 with Kong](https://www.youtube.com/watch?v=nzySsFuV72M)
-- [Kong with Docker](https://www.youtube.com/watch?v=ME7MI2SwJ-E)
-
-**Podcasts**:
-- [Changelog #185](https://changelog.com/185)
-- [Three Devs and a Maybe #83](http://threedevsandamaybe.com/kong-the-api-microservice-management-layer-with-ahmad-nassri/)
-
-Here is a list of third-party **tools** maintained by the community:
-- [Ansible role for Kong on Ubuntu](https://github.com/Getsidecar/ansible-role-kong)
-- [Biplane](https://github.com/articulate/biplane): declarative configuration in Crystal
-- [Bonobo](https://github.com/guardian/bonobo): key management (with Mashery migration scripts)
-- [Chef cookbook](https://github.com/zuazo/kong-cookbook)
-- [Django Kong Admin](https://github.com/vikingco/django-kong-admin): Admin UI in Python
-- [Jungle](https://github.com/rsdevigo/jungle): Admin UI in JavaScript
-- [Kong Dashboard](https://github.com/PGBI/kong-dashboard): Admin UI in JavaScript
-- [Kong for CanopyCloud](https://github.com/CanopyCloud/cip-kong)
-- [Kong image waiting for Cassandra](https://github.com/articulate/docker-kong-wait)
-- [Kong image for Tutum](https://github.com/Sillelien/docker-kong)
-- [Kong-UI](https://github.com/msaraf/kong-ui): Admin UI in JavaScript
-- [Konga](https://github.com/Floby/konga-cli): CLI Admin tool in JavaScript
-- [Konga](https://pantsel.github.io/konga/): Another elegant Kong UI in Javascript
-- [Kongfig](https://github.com/mybuilder/kongfig): Declarative Kong configuration in YAML, JSON, or JavaScript
-- [Kongfig on Puppet Forge](https://forge.puppet.com/mybuilder/kongfig)
-- [Puppet recipe](https://github.com/scottefein/puppet-nyt-kong)
-- [Puppet module on Puppet Forge](https://forge.puppet.com/juniorsysadmin/kong)
-- [Python-Kong](https://pypi.python.org/pypi/python-kong/): Admin client library for Python
-- [.NET-Kong](https://www.nuget.org/packages/Kong/0.0.4): Admin client library for .NET
-- [kong-java-client](https://github.com/vaibhav-sinha/kong-java-client): Admin client library for Java
 
 ## Roadmap
 
@@ -284,10 +226,6 @@ When developing, you can use the `Makefile` for doing the following operations:
 | `test-plugins`     | Run the plugins test suite                             |
 | `test-all`         | Run all unit + integration + plugins tests at once     |
 
-## Enterprise Support & Demo
-
-[Learn more](https://getkong.org/enterprise) about Kong Priority Support,
-Products, HA, Demo, Training, API Certifications and Professional Services.
 
 ## License
 
