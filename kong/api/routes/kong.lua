@@ -53,6 +53,12 @@ return {
         end
       end
 
+      local license
+      if singletons.license then
+        license = utils.deep_copy(singletons.license).license.payload
+        license.license_key = nil
+      end
+
       return helpers.responses.send_HTTP_OK {
         tagline = tagline,
         version = version,
@@ -68,6 +74,7 @@ return {
         lua_version = lua_version,
         configuration = conf_loader.remove_sensitive(singletons.configuration),
         prng_seeds = prng_seeds,
+        license = license,
       }
     end
   },
