@@ -134,7 +134,8 @@ if is_ee then
       end
 
       for _, p in ipairs({ "read-only", "full-access" }) do
-        local perm, err = dao.rbac_perms:find_all({
+        local perm
+        perm, err = dao.rbac_perms:find_all({
           name = p,
         })
         if err then
@@ -142,7 +143,8 @@ if is_ee then
         end
         perm = perm[1]
         perm.resources = bxor(perm.resources, 2 ^ (resource.bit_pos - 1))
-        local ok, err = dao.rbac_perms:update(perm, { id = perm.id })
+        local ok
+        ok, err = dao.rbac_perms:update(perm, { id = perm.id })
         if not ok then
           return err
         end
