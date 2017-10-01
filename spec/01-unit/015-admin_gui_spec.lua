@@ -2,6 +2,7 @@ local helpers        = require "spec.helpers"
 local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local conf_loader    = require "kong.conf_loader"
 local meta           = require "kong.meta"
+local ee             = require "kong.enterprise_edition"
 
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
@@ -71,7 +72,7 @@ describe("prepare_prefix", function()
 
   it("inserts the appropriate values", function()
     -- prepare with some mock values
-    prefix_handler.prepare_admin({
+    ee.prepare_admin({
       prefix = mock_prefix,
       admin_port = 9001,
       admin_ssl_port = 9444,
@@ -106,7 +107,7 @@ describe("prepare_prefix", function()
 
   it("inserts new values when called again", function()
     -- prepare with some mock values
-    prefix_handler.prepare_admin({
+    ee.prepare_admin({
       prefix = mock_prefix,
       admin_port = 9002,
       admin_ssl_port = 9445,

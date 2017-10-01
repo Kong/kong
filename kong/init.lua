@@ -51,7 +51,6 @@ local core = require "kong.core.handler"
 local rbac = require "kong.core.rbac"
 local utils = require "kong.tools.utils"
 local lapis = require "lapis"
-local cjson = require "cjson.safe"
 local responses = require "kong.tools.responses"
 local singletons = require "kong.singletons"
 local DAOFactory = require "kong.dao.factory"
@@ -62,6 +61,7 @@ local balancer_execute = require("kong.core.balancer").execute
 local kong_cluster_events = require "kong.cluster_events"
 local kong_error_handlers = require "kong.core.error_handlers"
 local vitals = require "kong.vitals"
+local ee = require "kong.enterprise_edition"
 
 local ngx              = ngx
 local header           = ngx.header
@@ -134,36 +134,6 @@ local function load_plugins(kong_conf, dao)
   return sorted_plugins
 end
 
-local function read_license_info()
-  local license_path = os.getenv("KONG_LICENSE_PATH")
-  if not license_path then
-    ngx.log(ngx.ERR, "KONG_LICENSE_PATH is not set")
-    return nil
-  end
-
-  local license_file = io.open(license_path, "r")
-  if not license_file then
-    ngx.log(ngx.ERR, "could not open license file")
-    return nil
-  end
-
-  local license_data = license_file:read("*a")
-  if not license_data then
-    ngx.log(ngx.ERR, "could not read license file contents")
-    return nil
-  end
-
-  local license, err = cjson.decode(license_data)
-  if err then
-    ngx.log(ngx.ERR, "could not decode license JSON: " .. err)
-    return nil
-  end
-
-  license_file:close()
-
-  return license
-end
-
 -- Kong public context handlers.
 -- @section kong_handlers
 
@@ -187,7 +157,7 @@ function Kong.init()
   singletons.loaded_plugins = assert(load_plugins(config, dao))
   singletons.dao = dao
   singletons.configuration = config
-  singletons.license = read_license_info()
+  singletons.license = ee.read_license_info()
   singletons.vitals = vitals.new {
       dao             = dao,
       flush_interval  = 60,

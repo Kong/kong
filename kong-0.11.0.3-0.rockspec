@@ -49,6 +49,8 @@ build = {
 
     ["kong.mlcache"] = "kong/mlcache.lua",
 
+    ["kong.enterprise_edition"] = "kong/enterprise_edition.lua",
+
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
     ["kong.templates.kong_defaults"] = "kong/templates/kong_defaults.lua",
