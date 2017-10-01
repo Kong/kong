@@ -2,6 +2,7 @@ pcall(require, "kong.plugins.openid-connect.env")
 
 local configuration = require "kong.openid-connect.configuration"
 local keys          = require "kong.openid-connect.keys"
+local hash          = require "kong.openid-connect.hash"
 local codec         = require "kong.openid-connect.codec"
 local timestamp     = require "kong.tools.timestamp"
 local utils         = require "kong.tools.utils"
@@ -300,12 +301,11 @@ local tokens = {}
 
 function tokens.init(o, args)
   log(NOTICE, "loading tokens from the identity provider")
-  local tokens, err, headers = o.token:request(args)
-  if not tokens then
+  local toks, err, headers = o.token:request(args)
+  if not toks then
     return nil, err
   end
-
-  return { tokens, headers }
+  return { toks, headers }
 end
 
 
@@ -314,9 +314,9 @@ function tokens.load(o, args, ttl)
   local key
 
   if args.grant_type == "password" then
-    key = cache_key(iss .. "#username=" .. args.username)
+    key = cache_key(concat{ iss, "#username=", args.username, "&password=", hash.S256(args.password) })
   elseif args.grant_type == "client_credentials" then
-    key = cache_key(iss .. "#client_id=" .. args.client_id)
+    key = cache_key(concat{ iss, "#client_id=", args.client_id, "&client_secret=", hash.S256(args.client_secret) })
   else
     -- we don't cache authorization code requests
     return o.token:request(args)
