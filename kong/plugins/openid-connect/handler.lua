@@ -211,6 +211,21 @@ local function client(param, clients, secrets, redirects)
 end
 
 
+local function append_header(name, value)
+  local header_value = header[name]
+
+  if header_value ~= nil then
+    if type(header_value) == "table" then
+      header_value[#header_value+1] = value
+    else
+      header_value = { header_value, value }
+    end
+  end
+
+  header[name] = header_value
+end
+
+
 local function headers(upstream_header, downstream_header, header_value)
   local val = header_value ~= nil and header_value ~= "" and header_value ~= ngx.null and header_value
   if val then
@@ -254,10 +269,10 @@ local function headers(upstream_header, downstream_header, header_value)
 
     if dsm then
       if dsm == "authorization:bearer" then
-        header["Authorization"] = "Bearer " .. val
+        append_header("Authorization", "Bearer " .. val)
 
       else
-        header[dsm] = val
+        append_header(dsm, val)
       end
     end
   end
@@ -1087,9 +1102,10 @@ function OICHandler:access(conf)
               local extra_header = extra_headers[replay_header]
               if extra_header then
                 if replay_prefix then
-                  header[replay_prefix .. replay_header] = extra_header
+                  append_header(replay_prefix .. replay_header, extra_header)
+
                 else
-                  header[replay_header] = extra_header
+                  append_header(replay_header, extra_header)
                 end
               end
             end
