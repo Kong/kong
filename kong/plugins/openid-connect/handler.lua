@@ -22,6 +22,7 @@ local set_uri_args  = ngx.req.set_uri_args
 local get_body_data = ngx.req.get_body_data
 local get_body_file = ngx.req.get_body_file
 local get_post_args = ngx.req.get_post_args
+local get_headers   = ngx.req.get_headers
 local tonumber      = tonumber
 local tostring      = tostring
 local ipairs        = ipairs
@@ -465,7 +466,15 @@ function OICHandler:access(conf)
   local s, session_present, session_data
 
   if auth_method_session then
-    s, session_present = session.open { secret = issuer.secret }
+    local session_cookie_name = conf.session_cookie_name
+    if not session_cookie_name or session_cookie_name == "" then
+      session_cookie_name = "authorization"
+    end
+
+    s, session_present = session.open {
+      name = session_cookie_name,
+      secret = issuer.secret
+    }
     session_data = s.data
   end
 
@@ -598,8 +607,13 @@ function OICHandler:access(conf)
       if not args then
         -- authorization code grant
         if auth_method_authorization_code then
+          local authorization_cookie_name = conf.authorization_cookie_name
+          if not authorization_cookie_name or authorization_cookie_name == "" then
+            authorization_cookie_name = "authorization"
+          end
+
           local authorization, authorization_present = session.open {
-            name   = "authorization",
+            name   = authorization_cookie_name,
             secret = issuer.secret,
             cookie = {
               samesite = "off",
@@ -792,6 +806,23 @@ function OICHandler:access(conf)
         arg.args = get_conf_args(
           conf.token_post_args_names,
           conf.token_post_args_values)
+
+        local token_headers_client = conf.token_headers_client
+        if token_headers_client and token_headers_client ~= "" then
+          local req_headers = get_headers()
+          local token_headers = {}
+          local has_headers
+          for _, name in ipairs(token_headers_client) do
+            local req_header = req_headers[name]
+            if req_header then
+              token_headers[name] = req_header
+              has_headers = true
+            end
+          end
+          if has_headers then
+            arg.headers = token_headers
+          end
+        end
 
         if conf.cache_tokens then
           -- TODO: we just cache this for default one hour, not sure if there should be another strategy

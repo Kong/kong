@@ -82,6 +82,16 @@ return {
       required                         = false,
       type                             = "number",
     },
+    authorization_cookie_name          = {
+      required                         = false,
+      type                             = "string",
+      default                          = "authorization",
+    },
+    session_cookie_name                = {
+      required                         = false,
+      type                             = "string",
+      default                          = "session",
+    },
     jwt_session_cookie                 = {
       required                         = false,
       type                             = "string",
@@ -127,6 +137,10 @@ return {
       type                             = "array",
     },
     token_post_args_values             = {
+      required                         = false,
+      type                             = "array",
+    },
+    token_headers_client               = {
       required                         = false,
       type                             = "array",
     },
