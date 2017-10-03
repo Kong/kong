@@ -220,6 +220,9 @@ local function append_header(name, value)
     else
       header_value = { header_value, value }
     end
+
+  else
+    header_value = value
   end
 
   header[name] = header_value
