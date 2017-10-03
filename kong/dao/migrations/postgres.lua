@@ -42,7 +42,7 @@ return {
         strip_request_path boolean NOT NULL,
         upstream_url text,
         preserve_host boolean NOT NULL,
-        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(3) at time zone 'utc')
       );
       DO $$
       BEGIN
