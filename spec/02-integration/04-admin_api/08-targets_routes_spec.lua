@@ -300,24 +300,26 @@ describe("Admin API", function()
       end)
 
       it("only shows active targets", function()
-        local res = assert(client:send {
-          method = "GET",
-          path = "/upstreams/" .. upstream_name3 .. "/targets/active/",
-        })
-        assert.response(res).has.status(200)
-        local json = assert.response(res).has.jsonbody()
+        for _, append in ipairs({ "", "/" }) do
+          local res = assert(client:send {
+            method = "GET",
+            path = "/upstreams/" .. upstream_name3 .. "/targets/active" .. append,
+          })
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
 
-        -- we got three active targets for this upstream
-        assert.equal(3, #json.data)
-        assert.equal(3, json.total)
+          -- we got three active targets for this upstream
+          assert.equal(3, #json.data)
+          assert.equal(3, json.total)
 
-        -- when multiple active targets are present, we only see the last one
-        assert.equal(apis[4].id, json.data[1].id)
+          -- when multiple active targets are present, we only see the last one
+          assert.equal(apis[4].id, json.data[1].id)
 
-        -- validate the remaining returned targets
-        -- note the backwards order, because we walked the targets backwards
-        assert.equal(apis[3].target, json.data[2].target)
-        assert.equal(apis[2].target, json.data[3].target)
+          -- validate the remaining returned targets
+          -- note the backwards order, because we walked the targets backwards
+          assert.equal(apis[3].target, json.data[2].target)
+          assert.equal(apis[2].target, json.data[3].target)
+        end
       end)
     end)
   end)
@@ -364,7 +366,7 @@ describe("Admin API", function()
 
         local active = assert(client:send {
           method = "GET",
-          path = "/upstreams/" .. upstream_name4 .. "/targets/active/",
+          path = "/upstreams/" .. upstream_name4 .. "/targets/active",
         })
         assert.response(active).has.status(200)
         json = assert.response(active).has.jsonbody()
@@ -391,7 +393,7 @@ describe("Admin API", function()
 
         local active = assert(client:send {
           method = "GET",
-          path = "/upstreams/" .. upstream_name4 .. "/targets/active/",
+          path = "/upstreams/" .. upstream_name4 .. "/targets/active",
         })
         assert.response(active).has.status(200)
         json = assert.response(active).has.jsonbody()

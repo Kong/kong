@@ -892,6 +892,40 @@ local function wait_for_invalidation(key, timeout)
   end, timeout)
 end
 
+--- Waits for the termination of a pid.
+-- @param pid_path Filename of the pid file.
+-- @param timeout (optional) in seconds, defaults to 10.
+local function wait_pid(pid_path, timeout, is_retry)
+  local pid
+  local fd = io.open(pid_path)
+  if fd then
+    pid = fd:read("*l")
+    fd:close()
+  end
+
+  if pid then
+    local max_time = ngx.now() + (timeout or 10)
+
+    repeat
+      if not pl_utils.execute("ps -p " .. pid .. " >/dev/null 2>&1") then
+        return
+      end
+      -- still running, wait some more
+      ngx.sleep(0.05)
+    until ngx.now() >= max_time
+
+    if is_retry then
+      return
+    end
+
+    -- Timeout reached: kill with SIGKILL
+    pl_utils.execute("kill -9 " .. pid .. " >/dev/null 2>&1")
+
+    -- Sanity check: check pid again, but don't loop.
+    wait_pid(pid_path, timeout, true)
+  end
+end
+
 ----------
 -- Exposed
 ----------
@@ -958,6 +992,7 @@ return {
   stop_kong = function(prefix, preserve_prefix)
     prefix = prefix or conf.prefix
     local ok, err = kong_exec("stop --prefix " .. prefix)
+    wait_pid(conf.nginx_pid, nil)
     dao:truncate_tables()
     if not preserve_prefix then
       clean_prefix(prefix)
@@ -965,7 +1000,7 @@ return {
     return ok, err
   end,
   -- Only use in CLI tests from spec/02-integration/01-cmd
-  kill_all = function(prefix)
+  kill_all = function(prefix, timeout)
     local kill = require "kong.cmd.utils.kill"
 
     dao:truncate_tables()
@@ -974,12 +1009,11 @@ return {
     local running_conf = conf_loader(default_conf.kong_env)
     if not running_conf then return end
 
-    -- kill kong_tests.conf services
-    for _, pid_path in ipairs {running_conf.nginx_pid,
-                               running_conf.serf_pid} do
-      if pl_path.exists(pid_path) then
-        kill.kill(pid_path, "-TERM")
-      end
+    -- kill kong_tests.conf service
+    local pid_path = running_conf.nginx_pid
+    if pl_path.exists(pid_path) then
+      kill.kill(pid_path, "-TERM")
+      wait_pid(pid_path, timeout)
     end
   end
 }

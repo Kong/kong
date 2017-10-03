@@ -96,6 +96,19 @@ describe("Plugin: key-auth (access)", function()
       },
     })
 
+    local api7 = assert(helpers.dao.apis:insert {
+      name = "api-7",
+      hosts = { "key-auth7.com" },
+      upstream_url = "http://mockbin.com",
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "key-auth",
+      api_id = api7.id,
+      config = {
+        run_on_preflight = false,
+      },
+    })
+
     assert(helpers.start_kong({
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
@@ -107,6 +120,28 @@ describe("Plugin: key-auth (access)", function()
   end)
 
   describe("Unauthorized", function()
+    it("returns 200 on OPTIONS requests if run_on_preflight is false", function()
+      local res = assert(client:send {
+        method = "OPTIONS",
+        path = "/status/200",
+        headers = {
+          ["Host"] = "key-auth7.com"
+        }
+      })
+      assert.res_status(200, res)
+    end)
+    it("returns Unauthorized on OPTIONS requests if run_on_preflight is true", function()
+      local res = assert(client:send {
+        method = "OPTIONS",
+        path = "/status/200",
+        headers = {
+          ["Host"] = "key-auth1.com"
+        }
+      })
+      assert.res_status(401, res)
+      local body = assert.res_status(401, res)
+      assert.equal([[{"message":"No API key found in request"}]], body)
+    end)
     it("returns Unauthorized on missing credentials", function()
       local res = assert(client:send {
         method = "GET",

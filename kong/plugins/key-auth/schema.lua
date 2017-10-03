@@ -52,5 +52,9 @@ return {
       type = "boolean",
       default = false,
     },
+    run_on_preflight = {
+      type = "boolean",
+      default = true,
+    },
   }
 }

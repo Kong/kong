@@ -150,3 +150,79 @@ describe("Plugin: bot-detection (access)", function()
   end)
 
 end)
+
+describe("Plugin: bot-detection configured global (access)", function()
+  local client
+  setup(function()
+    helpers.run_migrations()
+
+    assert(helpers.dao.apis:insert {
+      name         = "api-1",
+      hosts        = { "bot.com" },
+      upstream_url = helpers.mock_upstream_url,
+    })
+
+    -- plugin 1
+    assert(helpers.dao.plugins:insert {
+      api_id = nil,  -- apply globally
+      name   = "bot-detection",
+      config = {},
+    })
+
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
+  end)
+
+  teardown(function()
+    helpers.stop_kong()
+  end)
+
+  before_each(function()
+    client = helpers.proxy_client()
+  end)
+
+  after_each(function()
+    if client then client:close() end
+  end)
+
+  it("allows regular requests", function()
+    local res = assert( client:send {
+      method = "GET",
+      path = "/request",
+      headers =  { host = "bot.com" }
+    })
+    assert.response(res).has.status(200)
+
+    local res = assert( client:send {
+      method = "GET",
+      path = "/request",
+      headers =  {
+        host = "bot.com",
+        ["user-agent"] = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36"
+      }
+    })
+    assert.response(res).has.status(200)
+
+    local res = assert( client:send {
+      method = "GET",
+      path = "/request",
+      headers =  {
+        host = "bot.com",
+        ["user-agent"] = HELLOWORLD
+      }
+    })
+    assert.response(res).has.status(200)
+
+    local res = assert( client:send {
+      method = "GET",
+      path = "/request",
+      headers =  {
+        host = "bot.com",
+        ["user-agent"] = "curl/7.43.0"
+      }
+    })
+    assert.response(res).has.status(200)
+  end)
+
+end)
