@@ -212,20 +212,27 @@ end
 
 
 local function append_header(name, value)
-  local header_value = header[name]
-
-  if header_value ~= nil then
-    if type(header_value) == "table" then
-      header_value[#header_value+1] = value
-    else
-      header_value = { header_value, value }
+  if type(value) == "table" then
+    for _, val in ipairs(value) do
+      append_header(name, val)
     end
 
   else
-    header_value = value
-  end
+    local header_value = header[name]
 
-  header[name] = header_value
+    if header_value ~= nil then
+      if type(header_value) == "table" then
+        header_value[#header_value+1] = value
+      else
+        header_value = { header_value, value }
+      end
+
+    else
+      header_value = value
+    end
+
+    header[name] = header_value
+  end
 end
 
 
