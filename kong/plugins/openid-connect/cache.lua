@@ -92,6 +92,7 @@ function issuers.init(conf)
       issuer        = issuer,
       configuration = results[1].configuration,
       keys          = results[1].keys,
+      secret        = results[1].secret,
     }
   end
 
