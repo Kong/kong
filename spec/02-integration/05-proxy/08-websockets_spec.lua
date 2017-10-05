@@ -8,7 +8,7 @@ describe("Websockets", function()
       name = "ws",
       uris = { "/up-ws" },
       strip_uri = true,
-      upstream_url = "http://127.0.0.1:55555/ws",
+      upstream_url = "http://127.0.0.1:15555/ws",
     })
 
     assert(helpers.start_kong({
@@ -42,7 +42,7 @@ describe("Websockets", function()
     end
 
     it("sends and gets text without Kong", function()
-      send_text_and_get_echo("ws://127.0.0.1:55555/ws")
+      send_text_and_get_echo("ws://127.0.0.1:15555/ws")
     end)
 
     it("sends and gets text with Kong", function()
@@ -72,7 +72,7 @@ describe("Websockets", function()
     end
 
     it("plays ping-pong without Kong", function()
-      send_ping_and_get_pong("ws://127.0.0.1:55555/ws")
+      send_ping_and_get_pong("ws://127.0.0.1:15555/ws")
     end)
 
     it("plays ping-pong with Kong", function()

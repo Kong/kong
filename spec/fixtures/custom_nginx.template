@@ -239,8 +239,8 @@ http {
     server {
         server_name mock_upstream;
 
-        listen 55555;
-        listen 55556 ssl;
+        listen 15555;
+        listen 15556 ssl;
 
         ssl_certificate ${{SSL_CERT}};
         ssl_certificate_key ${{SSL_CERT_KEY}};
