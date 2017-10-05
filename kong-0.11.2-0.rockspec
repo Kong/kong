@@ -117,6 +117,7 @@ build = {
     ["kong.dao.dao"] = "kong/dao/dao.lua",
     ["kong.dao.factory"] = "kong/dao/factory.lua",
     ["kong.dao.model_factory"] = "kong/dao/model_factory.lua",
+    ["kong.dao.migrations.helpers"] = "kong/dao/migrations/helpers.lua",
     ["kong.dao.migrations.cassandra"] = "kong/dao/migrations/cassandra.lua",
     ["kong.dao.migrations.postgres"] = "kong/dao/migrations/postgres.lua",
 
