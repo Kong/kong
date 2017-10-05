@@ -1,3 +1,5 @@
+local plugin_config_iterator = require("kong.dao.migrations.helpers").plugin_config_iterator
+
 return {
   {
     name = "2015-06-09-jwt-auth",
@@ -47,5 +49,23 @@ return {
     down = [[
       ALTER TABLE jwt_secrets ADD CONSTRAINT jwt_secrets_secret_key UNIQUE(secret);
     ]],
-  }
+  },
+  {
+    name = "2017-07-31-120200_jwt-auth_preflight_default",
+    up = function(_, _, dao)
+      for ok, config, update in plugin_config_iterator(dao, "jwt") do
+        if not ok then
+          return config
+        end
+        if config.run_on_preflight == nil then
+          config.run_on_preflight = true
+          local _, err = update(config)
+          if err then
+            return err
+          end
+        end
+      end
+    end,
+    down = function(_, _, dao) end  -- not implemented
+  },
 }

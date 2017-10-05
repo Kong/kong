@@ -196,6 +196,10 @@ function _M:first_coordinator()
   return true
 end
 
+function _M:get_coordinator()
+  return coordinator, coordinator and nil or "no coordinator has been set"
+end
+
 function _M:coordinator_change_keyspace(keyspace)
   if not coordinator then
     return nil, "no coordinator"
