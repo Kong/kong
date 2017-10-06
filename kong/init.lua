@@ -292,7 +292,7 @@ function Kong.balancer()
     local ok, err = balancer_execute(addr)
     if not ok then
       ngx.log(ngx.ERR, "failed to retry the dns/balancer resolver for ",
-              addr.upstream.host, "' with: ", tostring(err))
+              tostring(addr.host), "' with: ", tostring(err))
 
       return responses.send(500)
     end
