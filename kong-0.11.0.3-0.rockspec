@@ -85,6 +85,7 @@ build = {
     ["kong.api.routes.certificates"] = "kong/api/routes/certificates.lua",
     ["kong.api.routes.snis"] = "kong/api/routes/snis.lua",
     ["kong.api.routes.rbac" ] = "kong/api/routes/rbac.lua",
+    ["kong.api.routes.vitals" ] = "kong/api/routes/vitals.lua",
 
     ["kong.tools.ip"] = "kong/tools/ip.lua",
     ["kong.tools.ciphers"] = "kong/tools/ciphers.lua",
@@ -134,6 +135,12 @@ build = {
     ["kong.dao.model_factory"] = "kong/dao/model_factory.lua",
     ["kong.dao.migrations.cassandra"] = "kong/dao/migrations/cassandra.lua",
     ["kong.dao.migrations.postgres"] = "kong/dao/migrations/postgres.lua",
+
+    ["kong.vitals"] = "kong/vitals.lua",
+    ["kong.vitals.cassandra.strategy"] = "kong/vitals/cassandra/strategy.lua",
+    ["kong.vitals.postgres.aggregator"] = "kong/vitals/postgres/aggregator.lua",
+    ["kong.vitals.postgres.strategy"] = "kong/vitals/postgres/strategy.lua",
+    ["kong.vitals.postgres.table_rotater"] = "kong/vitals/postgres/table_rotater.lua",
 
     ["kong.plugins.base_plugin"] = "kong/plugins/base_plugin.lua",
 

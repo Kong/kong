@@ -528,3 +528,8 @@
 #rbac_auth_header = Kong-Admin-Token  # Defines the name of the HTTP request
                                       # header from which the Admin API will
                                       # attempt to identify the RBAC user.
+
+#vitals = off                    # When enabled, Kong will store and report
+                                 # metrics about its performance. This feature
+                                 # is experimental and currently available only
+                                 # on Postgres. Do not enable with Cassandra.

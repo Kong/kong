@@ -131,6 +131,8 @@ local CONF_INFERENCES = {
 
   enforce_rbac = {typ = "boolean"},
   rbac_auth_header = {typ = "string"},
+
+  vitals = {typ = "boolean"},
 }
 
 -- List of settings whose values must not be printed when
@@ -323,6 +325,10 @@ local function check_and_infer(conf)
         errors[#errors+1] = "dns_order: invalid entry '" .. tostring(name) .. "'"
       end
     end
+  end
+
+  if conf.vitals and conf.database == "cassandra" then
+    errors[#errors+1] = "vitals: not available on cassandra. Restart with vitals=off."
   end
 
   if not conf.lua_package_cpath then

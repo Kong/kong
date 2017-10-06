@@ -9,6 +9,7 @@ custom_plugins = NONE
 anonymous_reports = on
 enforce_rbac = off
 rbac_auth_header = Kong-Admin-Token
+vitals = off
 
 proxy_listen = 0.0.0.0:8000
 proxy_listen_ssl = 0.0.0.0:8443

@@ -745,5 +745,53 @@ return {
         perm_id = perms.crud_all.id,
       })
     end,
-  }
+  },
+  {
+    name = "2017-07-31-993505_vitals_stats_seconds",
+    up = [[
+      CREATE TABLE IF NOT EXISTS vitals_stats_seconds(
+          at integer,
+          l2_hit integer default 0,
+          l2_miss integer default 0,
+          plat_min integer,
+          plat_max integer,
+          PRIMARY KEY (at)
+      );
+    ]],
+    down = [[
+      DROP TABLE vitals_stats_seconds;
+    ]]
+  },
+  {
+    name = "2017-08-30-892844_vitals_stats_minutes",
+    up = [[
+      CREATE TABLE IF NOT EXISTS vitals_stats_minutes(
+          at integer,
+          l2_hit integer default 0,
+          l2_miss integer default 0,
+          plat_min integer,
+          plat_max integer,
+          PRIMARY KEY (at)
+      );
+    ]],
+    down = [[
+      DROP TABLE vitals_stats_minutes;
+    ]]
+  },
+  {
+    name = "2017-08-30-892844_vitals_stats_hours",
+    up = [[
+      CREATE TABLE IF NOT EXISTS vitals_stats_hours(
+          at integer,
+          l2_hit integer default 0,
+          l2_miss integer default 0,
+          plat_min integer,
+          plat_max integer,
+          PRIMARY KEY (at)
+      );
+    ]],
+    down = [[
+      DROP TABLE vitals_stats_hours;
+    ]]
+  },
 }

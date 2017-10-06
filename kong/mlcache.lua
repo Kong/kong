@@ -289,13 +289,13 @@ local function shmlru_set(self, key, value, ttl, neg_ttl)
 end
 
 
-local function unlock_and_ret(lock, res, err)
+local function unlock_and_ret(lock, res, err, hit_lvl)
     local ok, lerr = lock:unlock()
     if not ok then
         return nil, "could not unlock callback: " .. lerr
     end
 
-    return res, err
+    return res, err, hit_lvl
 end
 
 
@@ -354,11 +354,11 @@ function _M:get(key, opts, cb, ...)
 
     local data = self.lru:get(key)
     if data == CACHE_MISS_SENTINEL_LRU then
-        return nil
+        return nil, nil, 1
     end
 
     if data ~= nil then
-        return data
+        return data, nil, 1
     end
 
     -- not in worker's LRU cache, need shm lookup
@@ -370,11 +370,11 @@ function _M:get(key, opts, cb, ...)
     end
 
     if data == CACHE_MISS_SENTINEL_LRU then
-        return nil
+        return nil, nil, 2
     end
 
     if data ~= nil then
-        return data
+        return data, nil, 2
     end
 
     -- not in shm either
@@ -399,10 +399,10 @@ function _M:get(key, opts, cb, ...)
 
     if data then
         if data == CACHE_MISS_SENTINEL_LRU then
-            return unlock_and_ret(lock, nil)
+            return unlock_and_ret(lock, nil, nil, 2)
         end
 
-        return unlock_and_ret(lock, data)
+        return unlock_and_ret(lock, data, nil, 2)
     end
 
     -- still not in shm, we are responsible for running the callback
@@ -417,7 +417,7 @@ function _M:get(key, opts, cb, ...)
         return unlock_and_ret(lock, nil, err)
     end
 
-    return unlock_and_ret(lock, value)
+    return unlock_and_ret(lock, value, nil, 3)
 end
 
 

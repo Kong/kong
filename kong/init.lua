@@ -61,6 +61,7 @@ local plugins_iterator = require "kong.core.plugins_iterator"
 local balancer_execute = require("kong.core.balancer").execute
 local kong_cluster_events = require "kong.cluster_events"
 local kong_error_handlers = require "kong.core.error_handlers"
+local vitals = require "kong.vitals"
 
 local ngx              = ngx
 local header           = ngx.header
@@ -187,6 +188,10 @@ function Kong.init()
   singletons.dao = dao
   singletons.configuration = config
   singletons.license = read_license_info()
+  singletons.vitals = vitals.new {
+      dao             = dao,
+      flush_interval  = 60,
+  }
 
   rbac.load_resource_bitfields(dao)
 
@@ -276,6 +281,10 @@ function Kong.init_worker()
     ngx.log(ngx.CRIT, "could not set router version in cache: ", err)
     return
   end
+
+
+  -- vitals functions require a timer, so must start in worker context
+  singletons.vitals:init()
 
 
   singletons.cache          = cache

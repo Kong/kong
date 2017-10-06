@@ -1,4 +1,5 @@
 local kong_mlcache = require "kong.mlcache"
+local singletons = require "kong.singletons"
 
 
 local type    = type
@@ -83,6 +84,7 @@ function _M.new(opts)
     propagation_delay = max(opts.propagation_delay or 0, 0),
     cluster_events    = opts.cluster_events,
     mlcache           = mlcache,
+    vitals            = singletons.vitals,
   }
 
   local ok, err = self.cluster_events:subscribe("invalidations", function(key)
@@ -107,10 +109,12 @@ function _M:get(key, opts, cb, ...)
 
   --log(DEBUG, "get from key: ", key)
 
-  local v, err = self.mlcache:get(key, opts, cb, ...)
+  local v, err, hit_lvl = self.mlcache:get(key, opts, cb, ...)
   if err then
     return nil, "failed to get from node cache: " .. err
   end
+
+  singletons.vitals:cache_accessed(hit_lvl, key, v)
 
   return v
 end
