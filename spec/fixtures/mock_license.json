@@ -1,0 +1,14 @@
+{
+  "license": {
+    "payload": {
+      "customer": "<Account Name (Account) field in Salesforce>",
+      "product_subscription": "Enterprise",
+      "support_plan": "Silver",
+      "admin_seats": "5",
+      "license_creation_date": "<creation_date>",
+      "license_expiration_date": "<expire_date>",
+      "license_key": "0014100000LyLlf_00641000008di8T"
+    },
+    "signature": "LS0tLS1CRUdJTiBQR1AgTUVTU0FHRS0tLS0tCgpvd0did012TXdDVjJyL3J6aHlkL2I4OWdQTzJXeEJDNXc3Zk15TlFpMFRnbEtkWFFJTm5Dd3NMY3dNdzh6Y0xTCnhNelV4TUxjMGpMWjBDakpNdEU0emRna05jblEwdExJd2lBcE9TMHQwU3paMk5BbzBUVEoxQ3pOcktPVWhVR00KaTBGV1RKRkZhSjd2SWUrNVA0cDIzRzZUZ05uRHlnU3loSUdMVXdBbXNzYVo0Wi9HalhZRmhXTEhlNnZhOXlabgp1OWJVeVRaT3kxOGI3WDFyMXFrVlltRzdObnN3L05OZjBLK2xYc3BaYXhjNldhSi9hdUw1aElaTEowdVk1dDZkCmI3cW9VUEQrVm5ZQQo9ZnV1cgotLS0tLUVORCBQR1AgTUVTU0FHRS0tLS0tCg=="
+  }
+}

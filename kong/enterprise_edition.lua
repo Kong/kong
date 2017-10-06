@@ -8,7 +8,12 @@ local pl_path = require "pl.path"
 local _M = {}
 
 
-local function read_license_info()
+local function get_license_string()
+  local license_data_env = os.getenv("KONG_LICENSE_DATA")
+  if license_data_env then
+    return license_data_env
+  end
+
   local license_path = os.getenv("KONG_LICENSE_PATH")
   if not license_path then
     ngx.log(ngx.ERR, "KONG_LICENSE_PATH is not set")
@@ -27,13 +32,23 @@ local function read_license_info()
     return nil
   end
 
+  license_file:close()
+
+  return license_data
+end
+
+
+local function read_license_info()
+  local license_data = get_license_string()
+  if not license_data then
+    return nil
+  end
+
   local license, err = cjson.decode(license_data)
   if err then
     ngx.log(ngx.ERR, "could not decode license JSON: " .. err)
     return nil
   end
-
-  license_file:close()
 
   return license
 end
