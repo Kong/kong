@@ -12,8 +12,8 @@ local MOCK_UPSTREAM_PROTOCOL = "http"
 local MOCK_UPSTREAM_SSL_PROTOCOL = "https"
 local MOCK_UPSTREAM_HOST = "127.0.0.1"
 local MOCK_UPSTREAM_HOSTNAME = "localhost"
-local MOCK_UPSTREAM_PORT = 55555
-local MOCK_UPSTREAM_SSL_PORT = 55556
+local MOCK_UPSTREAM_PORT = 15555
+local MOCK_UPSTREAM_SSL_PORT = 15556
 
 local conf_loader = require "kong.conf_loader"
 local DAOFactory = require "kong.dao.factory"

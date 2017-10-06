@@ -51,6 +51,10 @@ local function build_router(dao, version)
     end
   end
 
+  table.sort(apis, function(api_a, api_b)
+    return api_a.created_at < api_b.created_at
+  end)
+
   router, err = Router.new(apis)
   if not router then
     return nil, "could not create router: " .. err

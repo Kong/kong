@@ -128,7 +128,7 @@ describe("helpers: assertions and modifiers", function()
         method  = "GET",
         path    = "/headers",   -- this path is not supported, but should yield valid json for the test
         headers = {
-          host = "127.0.0.1:55555",
+          host = "127.0.0.1:15555",
         },
       })
       assert.error(function() assert.request(r).True(true) end)
