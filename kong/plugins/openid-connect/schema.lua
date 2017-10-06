@@ -222,6 +222,22 @@ return {
       required                         = false,
       type                             = "url",
     },
+    login_methods                      = {
+      required                         = false,
+      type                             = "array",
+      enum                             = {
+        "password",
+        "client_credentials",
+        "authorization_code",
+        "bearer",
+        "introspection",
+        "kong_oauth2",
+        "session",
+      },
+      default                          = {
+        "authorization_code",
+      },
+    },
     login_action                       = {
       required                         = false,
       type                             = "string",

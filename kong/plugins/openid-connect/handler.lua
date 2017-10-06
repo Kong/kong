@@ -309,6 +309,16 @@ local function get_conf_args(args_names, args_values)
 end
 
 
+local function get_conf_arg(conf, name, default)
+  local value = conf[name]
+  if value ~= nil and value ~= ngx.null and value ~= "" then
+    return value
+  end
+
+  return default
+end
+
+
 local function unauthorized(issuer, err, s)
   if err then
     log(NOTICE, err)
@@ -381,9 +391,9 @@ function OICHandler:access(conf)
     return unexpected(err)
   end
 
-  local clients   = conf.client_id
-  local secrets   = conf.client_secret
-  local redirects = conf.redirect_uri or {}
+  local clients   = get_conf_arg(conf, "client_id",     {})
+  local secrets   = get_conf_arg(conf, "client_secret", {})
+  local redirects = get_conf_arg(conf, "redirect_uri",  {})
 
   local client_id, client_secret, client_redirect_uri
 
@@ -417,19 +427,19 @@ function OICHandler:access(conf)
     client_id         = client_id,
     client_secret     = client_secret,
     redirect_uri      = client_redirect_uri or redirect_uri(),
-    scope             = conf.scopes       or { "openid" },
-    response_mode     = conf.response_mode,
-    audience          = conf.audience,
-    domains           = conf.domains,
-    max_age           = conf.max_age,
-    timeout           = conf.timeout      or 10000,
-    leeway            = conf.leeway       or 0,
-    http_version      = conf.http_version or 1.1,
-    ssl_verify        = conf.ssl_verify == nil and true or conf.ssl_verify,
-    verify_parameters = conf.verify_parameters,
-    verify_nonce      = conf.verify_nonce,
-    verify_signature  = conf.verify_signature,
-    verify_claims     = conf.verify_claims,
+    scope             = get_conf_arg(conf, "scopes", { "openid" }),
+    response_mode     = get_conf_arg(conf, "response_mode"),
+    audience          = get_conf_arg(conf, "audience"),
+    domains           = get_conf_arg(conf, "domains"),
+    max_age           = get_conf_arg(conf, "max_age"),
+    timeout           = get_conf_arg(conf, "timeout", 10000),
+    leeway            = get_conf_arg(conf, "leeway", 0),
+    http_version      = get_conf_arg(conf, "http_version", 1.1),
+    ssl_verify        = get_conf_arg(conf, "ssl_verify", true),
+    verify_parameters = get_conf_arg(conf, "verify_parameters"),
+    verify_nonce      = get_conf_arg(conf, "verify_nonce"),
+    verify_signature  = get_conf_arg(conf, "verify_signature"),
+    verify_claims     = get_conf_arg(conf, "verify_claims"),
 
   }, issuer.configuration, issuer.keys)
 
@@ -447,7 +457,7 @@ function OICHandler:access(conf)
   local auth_method_refresh_token
   local auth_method_session
 
-  local auth_methods = conf.auth_methods or {
+  local auth_methods = get_conf_arg(conf, "auth_methods", {
     "password",
     "client_credentials",
     "authorization_code",
@@ -455,7 +465,7 @@ function OICHandler:access(conf)
     "introspection",
     "refresh_token",
     "session",
-  }
+  })
 
   for _, auth_method in ipairs(auth_methods) do
     if auth_method == "password" then
@@ -491,10 +501,7 @@ function OICHandler:access(conf)
   local s, session_present, session_data
 
   if auth_method_session then
-    local session_cookie_name = conf.session_cookie_name
-    if not session_cookie_name or session_cookie_name == "" then
-      session_cookie_name = "authorization"
-    end
+    local session_cookie_name = get_conf_arg(conf, "session_cookie_name",  "session")
 
     s, session_present = session.open {
       name = session_cookie_name,
@@ -521,9 +528,9 @@ function OICHandler:access(conf)
         local id_token
         local content_type = var.content_type  or ""
 
-        local id_token_param_name = conf.id_token_param_name
+        local id_token_param_name = get_conf_arg(conf, "id_token_param_name")
         if id_token_param_name then
-          local id_token_param_type = conf.id_token_param_type or { "query", "header", "body" }
+          local id_token_param_type = get_conf_arg(conf, "id_token_param_type", { "query", "header", "body" })
 
           for _, t in ipairs(id_token_param_type) do
             if t == "header" then
@@ -558,7 +565,7 @@ function OICHandler:access(conf)
                 end
 
               elseif sub(content_type, 1, 19) == "multipart/form-data" then
-                id_token = multipart(id_token_param_name, conf.timeout)
+                id_token = multipart(id_token_param_name, get_conf_arg(conf, "timeout"))
                 if id_token then
                   break
                 end
@@ -632,10 +639,7 @@ function OICHandler:access(conf)
       if not args then
         -- authorization code grant
         if auth_method_authorization_code then
-          local authorization_cookie_name = conf.authorization_cookie_name
-          if not authorization_cookie_name or authorization_cookie_name == "" then
-            authorization_cookie_name = "authorization"
-          end
+          local authorization_cookie_name = get_conf_arg(conf, "authorization_cookie_name", "authorization")
 
           local authorization, authorization_present = session.open {
             name   = authorization_cookie_name,
@@ -748,6 +752,7 @@ function OICHandler:access(conf)
   local tokens_encoded, tokens_decoded, access_token_introspected = session_data.tokens, nil, nil
   local grant_type
   local extra_headers
+  local leeway = get_conf_arg(conf, "leeway", 0)
 
   -- bearer token was present in a request, let's verify it
   if bearer then
@@ -768,17 +773,17 @@ function OICHandler:access(conf)
 
       if not access_token_introspected then
         if auth_method_introspection then
-          if conf.cache_introspection then
+          if get_conf_arg(conf, "cache_introspection") then
             -- TODO: we just cache this for default one hour, not sure if there should be another strategy
             -- TODO: actually the alternative is already proposed, but needs changes in core where ttl
             -- TODO: and neg_ttl can be set after the results are retrieved from identity provider
             -- TODO: see: https://github.com/thibaultcha/lua-resty-mlcache/pull/23
             access_token_introspected = cache.introspection.load(
-              o,access_token_decoded, conf.introspection_endpoint, exp
+              o,access_token_decoded, get_conf_arg(conf, "introspection_endpoint"), exp
             )
           else
             access_token_introspected = o.token:introspect(access_token_decoded, "access_token", {
-              introspection_endpoint = conf.introspection_endpoint
+              introspection_endpoint = get_conf_arg(conf, "introspection_endpoint")
             })
           end
         end
@@ -786,20 +791,25 @@ function OICHandler:access(conf)
         if not access_token_introspected or not access_token_introspected.active then
           return unauthorized(iss, err, s)
         end
+
+        grant_type = "introspection"
+
+      else
+        grant_type = "kong_oauth2"
       end
 
       expires = access_token_introspected.exp or exp
 
     else
       -- additional non-standard verification of the claim against a jwt session cookie
-      local jwt_session_cookie = conf.jwt_session_cookie
-      if jwt_session_cookie and jwt_session_cookie ~= "" then
+      local jwt_session_cookie = get_conf_arg(conf, "jwt_session_cookie")
+      if jwt_session_cookie then
         local jwt_session_cookie_value = var["cookie_" .. jwt_session_cookie]
         if not jwt_session_cookie_value or jwt_session_cookie_value == "" then
           return unauthorized(iss, "jwt session cookie was not specified for session claim verification", s)
         end
 
-        local jwt_session_claim = conf.jwt_session_claim or "sid"
+        local jwt_session_claim = get_conf_arg(conf, "jwt_session_claim", "sid")
         local jwt_session_claim_value = access_token_decoded.payload[jwt_session_claim]
 
         if not jwt_session_claim_value then
@@ -815,11 +825,15 @@ function OICHandler:access(conf)
         end
       end
 
+      grant_type = "bearer"
       expires = access_token_decoded.exp or exp
     end
 
     if auth_method_session then
-      s.data.expires = expires
+      s.data = {
+        tokens  = tokens_encoded,
+        expires = expires,
+      }
       s:save()
     end
 
@@ -832,8 +846,8 @@ function OICHandler:access(conf)
           conf.token_post_args_names,
           conf.token_post_args_values)
 
-        local token_headers_client = conf.token_headers_client
-        if token_headers_client and token_headers_client ~= "" then
+        local token_headers_client = get_conf_arg(conf, "token_headers_client")
+        if token_headers_client then
           local req_headers = get_headers()
           local token_headers = {}
           local has_headers
@@ -849,7 +863,7 @@ function OICHandler:access(conf)
           end
         end
 
-        if conf.cache_tokens then
+        if get_conf_arg(conf, "cache_tokens") then
           -- TODO: we just cache this for default one hour, not sure if there should be another strategy
           -- TODO: actually the alternative is already proposed, but needs changes in core where ttl
           -- TODO: and neg_ttl can be set after the results are retrieved from identity provider
@@ -893,61 +907,25 @@ function OICHandler:access(conf)
       end
     end
 
-    if state then
-      local login_action = conf.login_action
-      if login_action == "response" then
-        local response = {}
-        local login_tokens = conf.login_tokens
-        for _, name in ipairs(login_tokens) do
-          if tokens_encoded[name] then
-            response[name] = tokens_encoded[name]
-          end
-        end
-
-        -- TODO: should we set downstream headers here as well?
-        return success(response)
-
-      elseif login_action == "redirect" and conf.login_redirect_uri then
-        local login_redirect_uri, i = { conf.login_redirect_uri }, 2
-        local login_tokens = conf.login_tokens
-        for _, name in ipairs(login_tokens) do
-          if tokens_encoded[name] then
-            if i == 1 then
-              login_redirect_uri[i] = "#"
-
-            else
-              login_redirect_uri[i] = "&"
-            end
-
-            login_redirect_uri[i+1] = name
-            login_redirect_uri[i+2] = "="
-            login_redirect_uri[i+3] = tokens_encoded[name]
-            i = i + 4
-          end
-        end
-
-        -- TODO: should we set downstream headers here as well?
-        return redirect(concat(login_redirect_uri))
-      end
-    end
-
   else
     -- it looks like we are using session authentication
-    expires = (session_data.expires or conf.leeway)
+    grant_type = "session"
+    expires = (session_data.expires or leeway)
+
   end
 
   if not tokens_encoded.access_token then
     return unauthorized(iss, "access token was not found", s)
   end
 
-  expires = (expires or conf.leeway) - conf.leeway
+  expires = (expires or leeway) - leeway
 
   if expires > now then
     if auth_method_session then
       s:start()
     end
 
-    if conf.reverify then
+    if get_conf_arg(conf, "reverify") then
       tokens_decoded, err = o.token:verify(tokens_encoded)
       if not tokens_decoded then
         return forbidden(iss, err)
@@ -1003,9 +981,9 @@ function OICHandler:access(conf)
   local is_anonymous
 
   if not mapped_consumer then
-    local consumer_claim = conf.consumer_claim
-    if consumer_claim and consumer_claim ~= "" then
-      local consumer_by = conf.consumer_by
+    local consumer_claim = get_conf_arg(conf, "consumer_claim")
+    if consumer_claim then
+      local consumer_by = get_conf_arg(conf, "consumer_by")
 
       if not tokens_decoded then
         tokens_decoded, err = o.token:decode(tokens_encoded)
@@ -1029,7 +1007,7 @@ function OICHandler:access(conf)
       end
 
       if not mapped_consumer then
-        local anonymous = conf.anonymous
+        local anonymous = get_conf_arg(conf, "anonymous")
         if anonymous == nil or anonymous == "" then
           if err then
             return forbidden(iss, "consumer was not found (" .. err .. ")", s)
@@ -1087,21 +1065,11 @@ function OICHandler:access(conf)
     s:hide()
   end
 
-  -- TODO: do we want to set downstream headers for users that authenticated with session
-
   -- here we replay token endpoint request response headers, if any
   if extra_headers and grant_type then
-    local replay_for = conf.token_headers_grants
-    if replay_for ~= nil and
-       replay_for ~= ""  and
-       replay_for ~= ngx.null then
-
-      local replay_prefix = conf.token_headers_prefix
-      if replay_prefix == ""  or
-         replay_prefix == ngx.null then
-        replay_prefix = nil
-      end
-
+    local replay_for = get_conf_arg(conf, "token_headers_grants")
+    if replay_for then
+      local replay_prefix = get_conf_arg(conf, "token_headers_prefix")
       for _, v in ipairs(replay_for) do
         if v == grant_type then
           local replay_headers = conf.token_headers_replay
@@ -1155,7 +1123,7 @@ function OICHandler:access(conf)
     conf.upstream_user_info_header,
     conf.downstream_user_info_header,
     function()
-      if conf.cache_user_info then
+      if get_conf_arg(conf, "cache_user_info") then
         return cache.userinfo.load(o, tokens_encoded.access_token, expires - now)
       else
         return o:userinfo(tokens_encoded.access_token, { userinfo_format = "base64" })
@@ -1196,6 +1164,62 @@ function OICHandler:access(conf)
       end
     end
   )
+
+  local login_action = get_conf_arg(conf, "login_action")
+  if login_action == "response" or login_action == "redirect" then
+    local has_login_method
+    local login_methods = get_conf_arg(conf, "login_methods", { "authorization_code" })
+    for _, login_method in ipairs(login_methods) do
+      if grant_type == login_method then
+        has_login_method = true
+        break
+      end
+    end
+
+    if has_login_method then
+      if login_action == "response" then
+        local login_response = {}
+        local login_tokens = get_conf_arg(conf, "login_tokens")
+        if login_tokens then
+          for _, name in ipairs(login_tokens) do
+            if tokens_encoded[name] then
+              login_response[name] = tokens_encoded[name]
+            end
+          end
+        end
+
+        return success(login_response)
+
+      elseif login_action == "redirect" then
+        local login_redirect_uri = get_conf_arg(conf, "login_redirect_uri")
+        if login_redirect_uri then
+          local ruri, i = { login_redirect_uri }, 2
+          local login_tokens = get_conf_arg(conf, "login_tokens")
+          if login_tokens then
+            for _, name in ipairs(login_tokens) do
+              if tokens_encoded[name] then
+                if i == 1 then
+                  ruri[i] = "#"
+
+                else
+                  ruri[i] = "&"
+                end
+
+                ruri[i+1] = name
+                ruri[i+2] = "="
+                ruri[i+3] = tokens_encoded[name]
+                i = i + 4
+              end
+            end
+          end
+
+          return redirect(concat(ruri))
+        end
+      end
+    end
+  end
+
+  -- proxies to upstream
 end
 
 
