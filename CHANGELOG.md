@@ -1,3 +1,88 @@
+## [Unreleased][unreleased]
+
+### Changed
+
+##### Configuration
+
+- Drop the `lua_code_cache` configuration property. This setting has been
+  considered harmful since 0.11.0 as it interferes with Kong's internals.
+  [#2854](https://github.com/Mashape/kong/pull/2854)
+
+### Fixed
+
+##### Core
+
+- Fixed an edge-case where `preserve_host` would sometimes craft an upstream
+  request with a Host header from a previous client request instead of the
+  current one.
+  [#2832](https://github.com/Mashape/kong/pull/2832)
+- Ensure APIs with regex URIs are evaluated in the order that they are created.
+  [#2924](https://github.com/Mashape/kong/pull/2924)
+- Fixed a typo that caused the load balancing components to ignore the Upstream
+  slots property.
+  [#2747](https://github.com/Mashape/kong/pull/2747)
+- Fixed a load balancing issue with SRV records resolving to names.
+  [Mashape/lua-resty-dns-client#19](https://github.com/Mashape/lua-resty-dns-client/pull/19)
+
+##### CLI
+
+- Fixed the verification of self-signed SSL certificates for PostgreSQL and
+  Cassandra in the `kong migrations` command. Self-signed SSL certificates are
+  now properly verified during migrations according to the
+  `lua_ssl_trusted_certificate` configuration property.
+  [#2908](https://github.com/Mashape/kong/pull/2908)
+
+##### Admin API
+
+- The `/upstream/{upstream}/targets/active` endpoint used to return HTTP
+  `405 Method Not Allowed` when called with a trailing slash. Both notations
+  (with and without the trailing slash) are now supported.
+  [#2884](https://github.com/Mashape/kong/pull/2884)
+
+##### Plugins
+
+- bot-detection: Fixed an issue which would prevent the plugin from running and
+  result in an HTTP `500` error if configured globally.
+  [#2906](https://github.com/Mashape/kong/pull/2906)
+- ip-restriction: Fixed support for the `0.0.0.0/0` CIDR block. This block is
+  now supported and won't trigger an error when used in the `whitelist` or
+  `blacklist` properties.
+  [#2918](https://github.com/Mashape/kong/pull/2918)
+
+### Added
+
+##### Plugins
+
+- aws-lambda: Added support to forward the client request's HTTP method,
+  headers, URI, and body to the Lambda function.
+  [#2823](https://github.com/Mashape/kong/pull/2823)
+- key-auth: New `run_on_preflight` configuration option to control
+  authentication on preflight requests.
+  [#2857](https://github.com/Mashape/kong/pull/2857)
+- jwt: New `run_on_preflight` configuration option to control authentication
+  on preflight requests.
+  [#2857](https://github.com/Mashape/kong/pull/2857)
+
+##### Plugin development
+
+- Ensure migrations have valid, unique names to avoid conflicts between custom
+  plugins.
+  Thanks [@ikogan](https://github.com/ikogan) for the patch!
+  [#2821](https://github.com/Mashape/kong/pull/2821)
+
+### Improved
+
+##### Migrations & Deployments
+
+- Improve migrations reliability for future major releases.
+  [#2869](https://github.com/Mashape/kong/pull/2869)
+
+##### Plugins
+
+- Improve the performance of the acl and oauth2 plugins.
+  [#2736](https://github.com/Mashape/kong/pull/2736)
+  [#2806](https://github.com/Mashape/kong/pull/2806)
+
 ## [0.11.0] - 2017/08/16
 
 The latest and greatest version of Kong features improvements all over the
@@ -1635,7 +1720,7 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.11.0...next
+[unreleased]: https://github.com/mashape/kong/compare/0.11.0...master
 [0.11.0]: https://github.com/mashape/kong/compare/0.10.3...0.11.0
 [0.10.3]: https://github.com/mashape/kong/compare/0.10.2...0.10.3
 [0.10.2]: https://github.com/mashape/kong/compare/0.10.1...0.10.2
