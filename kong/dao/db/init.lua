@@ -1,4 +1,5 @@
-local utils = require "kong.tools.utils"
+local utils    = require("kong.tools.utils")
+local readfile = require("pl.utils").readfile
 
 local _M = {}
 
@@ -23,13 +24,23 @@ function _M.new_db(name)
     check_schema_consensus    = function() error("check_schema_consensus() not implemented") end,
     wait_for_schema_consensus = function() error("wait_for_schema_consensus() not implemented") end,
     clone_query_options       = function(self, options)
-      options                 = options or {}
-      local opts              = utils.shallow_copy(self.query_options)
+      options = options or {}
+      local opts = utils.shallow_copy(self.query_options)
       for k, v in pairs(options) do
         opts[k] = v
       end
       return opts
-    end
+    end,
+    get_credential            = function(self, kong_config, from_file, option_name)
+      if not from_file then
+        return kong_config[option_name]
+      end
+      local filename = kong_config[option_name .. "_file"]
+      if filename and filename ~= "" then
+        return assert(readfile(filename))
+      end
+      return nil
+    end,
   }
 
   db_mt.__index = db_mt

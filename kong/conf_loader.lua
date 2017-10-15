@@ -76,12 +76,18 @@ local CONF_INFERENCES = {
   database = {enum = {"postgres", "cassandra"}},
   pg_port = {typ = "number"},
   pg_password = {typ = "string"},
+  pg_cred_from_file = {typ = "boolean"},
+  pg_user_file = {typ = "string"},
+  pg_password_file = {typ = "string"},
   pg_ssl = {typ = "boolean"},
   pg_ssl_verify = {typ = "boolean"},
 
   cassandra_contact_points = {typ = "array"},
   cassandra_port = {typ = "number"},
   cassandra_password = {typ = "string"},
+  cassandra_cred_from_file = {typ = "boolean"},
+  cassandra_password_file = {typ = "string"},
+  cassandra_username_file = {typ = "string"},
   cassandra_timeout = {typ = "number"},
   cassandra_ssl = {typ = "boolean"},
   cassandra_ssl_verify = {typ = "boolean"},
@@ -126,8 +132,18 @@ local CONF_INFERENCES = {
 -- List of settings whose values must not be printed when
 -- using the CLI in debug mode (which prints all settings).
 local CONF_SENSITIVE = {
-  pg_password = true,
-  cassandra_password = true,
+  pg_password = function(conf)
+      if conf.pg_cred_from_file then
+        return false
+      end
+      return true
+    end,
+  cassandra_password = function(conf)
+      if conf.cassandra_cred_from_file then
+        return false
+      end
+      return true
+    end,
 }
 
 local CONF_SENSITIVE_PLACEHOLDER = "******"

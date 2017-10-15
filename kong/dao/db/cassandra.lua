@@ -74,10 +74,15 @@ function _M.new(kong_config)
   -- cluster options from Kong config
   --
 
-  if kong_config.cassandra_username and kong_config.cassandra_password then
+  if (kong_config.cassandra_username and kong_config.cassandra_password) or
+     kong_config.cassandra_cred_from_file then
     cluster_options.auth = cassandra.auth_providers.plain_text(
-      kong_config.cassandra_username,
-      kong_config.cassandra_password
+      self:get_credential(kong_config, 
+                          kong_config.cassandra_cred_from_file,
+                          "cassandra_username"),
+      self:get_credential(kong_config,
+                          kong_config.cassandra_cred_from_file,
+                          "cassandra_password")
     )
   end
 
