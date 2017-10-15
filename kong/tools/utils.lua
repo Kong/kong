@@ -711,4 +711,32 @@ _M.validate_header_name = function(name)
               "', allowed characters are A-Z, a-z, 0-9, '_', and '-'"
 end
 
+--- Debug function for development purposes.
+-- Will dump all passed in parameters in a pretty-printed way
+-- as a `debug` log message. Includes color markers to make it stand out.
+-- @param ... list of parameters to dump
+_M.dump = function(...)
+  local info = debug.getinfo(2) or {}
+  local input = { n = select("#", ...), ...}
+  local write = require("pl.pretty").write
+  local serialized
+  if input.n == 1 and type(input[1]) == "table" then
+    serialized = "(" .. type(input[1]) .. "): " .. write(input[1])
+  elseif input.n == 1 then
+    serialized = "(" .. type(input[1]) .. "): " .. tostring(input[1]) .. "\n"
+  else
+    local n
+    n, input.n = input.n, nil
+    serialized = "(list, #" .. n .. "): " .. write(input)
+  end
+
+  ngx.log(ngx.WARN,
+          "\027[31m\n",
+          "function '", tostring(info.name), ":" , tostring(info.currentline),
+          "' in '", tostring(info.short_src), "' wants you to know:\n",
+          serialized,
+          "\027[0m")
+end
+
+
 return _M
