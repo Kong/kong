@@ -28,11 +28,10 @@ local function retrieve_token(request, conf)
     end
   end
 
-  local jwt_key = "authorization"
   local authorization_header
-  authorization_header = ngx.unescape_uri(ngx.var["cookie_" .. jwt_key])
+  authorization_header = ngx.unescape_uri(ngx.var["cookie_authorization"])
   if authorization_header == "" then
-    authorization_header = request.get_headers()[jwt_key]
+    authorization_header = request.get_headers()["authorization"]
   end
   
   if authorization_header then
@@ -180,15 +179,6 @@ end
 
 function JwtHandler:access(conf)
   JwtHandler.super.access(self)
-
-  -- add uri whitelist
-  local method = ngx.var.request_method
-  local uri = ngx.var.uri
-  for _, v in ipairs(conf.uri_whitelist) do
-    if (v.method == method) and (v.uri == uri) then
-      return
-    end
-  end
 
   -- check if preflight request and whether it should be authenticated
   if conf.run_on_preflight == false and get_method() == "OPTIONS" then
