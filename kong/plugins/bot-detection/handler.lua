@@ -11,6 +11,7 @@ local re_find = ngx.re.find
 local BotDetectionHandler = BasePlugin:extend()
 
 BotDetectionHandler.PRIORITY = 2500
+BotDetectionHandler.VERSION = "0.1.0"
 
 local MATCH_EMPTY     = 0
 local MATCH_WHITELIST = 1
