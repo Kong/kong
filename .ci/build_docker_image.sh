@@ -19,7 +19,7 @@ docker run -it --rm \
   hutchic/docker-packer /src/package.sh -p alpine -e
 
 popd
-sudo mv kong-distributions/output/kong-*.tar.gz kong.tar.gz
+sudo mv kong-distributions/output/kong-*.tar.gz .ci/kong.tar.gz
 docker build -t mashape/kong-enterprise:"$DOCKER_TAG_NAME" .ci/
 
 docker push mashape/kong-enterprise:"$DOCKER_TAG_NAME"
