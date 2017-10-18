@@ -109,6 +109,24 @@ describe("Plugin: proxy-cache (API)", function()
 
       assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
+
+      -- delete directly, having to look up all proxy-cache instances
+      res = assert(admin_client:send {
+        method = "DELETE",
+        path = "/proxy-cache/" .. cache_key,
+      })
+      assert.res_status(204, res)
+
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/get",
+        headers = {
+          host = "api-1.com",
+        }
+      })
+
+      assert.res_status(200, res)
+      assert.same("Miss", res.headers["X-Cache-Status"])
     end)
     it("purge all the cache entries", function()
       -- make a `Hit` request to `api-1`
@@ -225,6 +243,13 @@ describe("Plugin: proxy-cache (API)", function()
         path = "/proxy-cache/" .. plugin1.id .. "/caches/" .. cache_key,
       })
       assert.res_status(404, res)
+
+      -- attempt to list an entry directly via cache key
+      local res = assert(admin_client:send {
+        method = "GET",
+        path = "/proxy-cache/" .. cache_key,
+      })
+      assert.res_status(404, res)
     end)
     it("get a existing cache", function()
       -- add request to cache
@@ -240,6 +265,15 @@ describe("Plugin: proxy-cache (API)", function()
       local res = assert(admin_client:send {
         method = "GET",
         path = "/proxy-cache/" .. plugin1.id .. "/caches/" .. cache_key,
+      })
+      local body = assert.res_status(200, res)
+      local json_body = cjson.decode(body)
+      assert.same(cache_key, json_body.headers["X-Cache-Key"])
+
+      -- list an entry directly via cache key
+      local res = assert(admin_client:send {
+        method = "GET",
+        path = "/proxy-cache/" ..  cache_key,
       })
       local body = assert.res_status(200, res)
       local json_body = cjson.decode(body)

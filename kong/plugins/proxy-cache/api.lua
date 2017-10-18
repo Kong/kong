@@ -26,6 +26,71 @@ return {
       return helpers.responses.send_HTTP_NO_CONTENT()
     end
   },
+  ["/proxy-cache/:cache_key"] = {
+    resource = "proxy-cache",
+
+    GET = function(self, dao, helpers)
+      local rows, err = dao.plugins:find_all {
+        name = "proxy-cache",
+      }
+      if err then
+        return helpers.yield_error(err)
+      end
+
+      for _, plugin in ipairs(rows) do
+        local conf = plugin.config
+        local strategy = require(STRATEGY_PATH)({
+          strategy_name = conf.strategy,
+          strategy_opts = conf[conf.strategy],
+        })
+
+        local cache_val, err = strategy:fetch(self.params.cache_key)
+        if err and err ~= "request object not in cache" then
+          return helpers.yield_error(err)
+        end
+
+        if cache_val then
+          return helpers.responses.send_HTTP_OK(cache_val)
+        end
+      end
+
+      -- fell through, not found
+      return helpers.responses.send_HTTP_NOT_FOUND()
+    end,
+
+    DELETE = function(self, dao, helpers)
+      local rows, err = dao.plugins:find_all {
+        name = "proxy-cache",
+      }
+      if err then
+        return helpers.yield_error(err)
+      end
+
+      for _, plugin in ipairs(rows) do
+        local conf = plugin.config
+        local strategy = require(STRATEGY_PATH)({
+          strategy_name = conf.strategy,
+          strategy_opts = conf[conf.strategy],
+        })
+
+        local cache_val, err = strategy:fetch(self.params.cache_key)
+        if err and err ~= "request object not in cache" then
+          return helpers.yield_error(err)
+        end
+
+        if cache_val then
+          local _, err = strategy:purge(self.params.cache_key)
+          if err then
+            return helpers.yield_error(err)
+          end
+          return helpers.responses.send_HTTP_NO_CONTENT()
+        end
+      end
+
+      -- fell through, not found
+      return helpers.responses.send_HTTP_NOT_FOUND()
+    end,
+  },
   ["/proxy-cache/:plugin_id/caches/:cache_key"] = {
     resource = "proxy-cache",
 
