@@ -1,5 +1,6 @@
 local BasePlugin  = require "kong.plugins.base_plugin"
 local strategies  = require "kong.plugins.proxy-cache.strategies"
+local responses   = require "kong.tools.responses"
 
 
 local max              = math.max
@@ -280,7 +281,14 @@ function ProxyCacheHandler:access(conf)
 
   local res, err = strategy:fetch(cache_key)
   if err == "request object not in cache" then -- TODO make this a utils enum err
-    -- this request is cacheable but wasnt found in the data store
+
+    -- this request wasn't found in the data store, but the client only wanted
+    -- cache data. see https://tools.ietf.org/html/rfc7234#section-5.2.1.7
+    if conf.cache_control and cc["only-if-cached"] then
+      return responses.send(ngx.HTTP_GATEWAY_TIMEOUT)
+    end
+
+    -- this request is cacheable but wasn't found in the data store
     -- make a note that we should store it in cache later,
     -- and pass the request upstream
     return signal_cache_req(cache_key)

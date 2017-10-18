@@ -515,6 +515,19 @@ describe("proxy-cache access", function()
       assert.res_status(200, res)
       assert.same("Refresh", res.headers["X-Cache-Status"])
     end)
+
+    it("only-if-cached", function()
+      local res = assert(client:send {
+        method = "GET",
+        path   = "/get?not=here",
+        headers = {
+          host = "api-8.com",
+          ["Cache-Control"] = "only-if-cached",
+        }
+      })
+
+      assert.res_status(504, res)
+    end)
   end)
 
   it("caches a streaming request", function()
