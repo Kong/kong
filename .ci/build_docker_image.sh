@@ -21,7 +21,7 @@ docker run -it --rm \
 
 popd
 sudo mv kong-distributions/output/kong-*.tar.gz docker-kong/kong.tar.gz
-sed -i -e '3 a COPY kong.tar.gz kong.tar.gz' Dockerfile
+sed -i -e '3 a COPY kong.tar.gz kong.tar.gz' docker-kong/Dockerfile
 sed -i -e"/.*wget -O.*/,+1 d" docker-kong/Dockerfile
 
 docker build -t mashape/kong-enterprise:"$DOCKER_TAG_NAME" docker-kong/
