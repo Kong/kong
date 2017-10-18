@@ -878,4 +878,60 @@ describe("proxy-cache access", function()
                      err_log, nil, true)
     end)
   end)
+
+  describe("displays Kong core headers:", function()
+    it("X-Kong-Proxy-Latency", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/get?show-me=proxy-latency",
+        headers = {
+          host = "api-1.com",
+        }
+      })
+
+      local body = assert.res_status(200, res)
+      assert.same("Miss", res.headers["X-Cache-Status"])
+      assert.matches("^%d+$", res.headers["X-Kong-Proxy-Latency"])
+
+      res = assert(client:send {
+        method = "GET",
+        path = "/get?show-me=proxy-latency",
+        headers = {
+          host = "api-1.com",
+        }
+      })
+
+      local body = assert.res_status(200, res)
+      assert.same("Hit", res.headers["X-Cache-Status"])
+      assert.matches("^%d+$", res.headers["X-Kong-Proxy-Latency"])
+      assert.equals(0, tonumber(res.headers["X-Kong-Proxy-Latency"]))
+    end)
+
+    it("X-Kong-Upstream-Latency", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/get?show-me=upstream-latency",
+        headers = {
+          host = "api-1.com",
+        }
+      })
+
+      local body = assert.res_status(200, res)
+      assert.same("Miss", res.headers["X-Cache-Status"])
+      assert.matches("^%d+$", res.headers["X-Kong-Upstream-Latency"])
+
+      res = assert(client:send {
+        method = "GET",
+        path = "/get?show-me=upstream-latency",
+        headers = {
+          host = "api-1.com",
+        }
+      })
+
+      local body = assert.res_status(200, res)
+      assert.same("Hit", res.headers["X-Cache-Status"])
+      assert.matches("^%d+$", res.headers["X-Kong-Upstream-Latency"])
+      assert.equals(0, tonumber(res.headers["X-Kong-Upstream-Latency"]))
+    end)
+  end)
 end)

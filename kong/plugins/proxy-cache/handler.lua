@@ -13,6 +13,7 @@ local resp_get_headers = ngx.resp.get_headers
 local timer_at         = ngx.timer.at
 local ngx_print        = ngx.print
 local ngx_log          = ngx.log
+local ngx_now          = ngx.now
 local ngx_re_gmatch    = ngx.re.gmatch
 local ngx_re_match     = ngx.re.match
 local parse_http_time  = ngx.parse_http_time
@@ -26,6 +27,11 @@ local tab_new = require("table.new")
 
 local STRATEGY_PATH = "kong.plugins.proxy-cache.strategies"
 local CACHE_VERSION = 1
+
+
+local function get_now()
+  return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
+end
 
 
 -- http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html#sec13.5.1
@@ -208,6 +214,22 @@ end
 -- define our own response sender instead of using kong.tools.responses
 -- as the included response generator always send JSON content
 local function send_response(res)
+  -- simulate the access.after handler
+  --===========================================================
+  local now = get_now()
+
+  ngx.ctx.KONG_ACCESS_TIME = now - ngx.ctx.KONG_ACCESS_START
+  ngx.ctx.KONG_ACCESS_ENDED_AT = now
+
+  local proxy_latency = now - ngx.req.start_time() * 1000
+
+
+  ngx.ctx.KONG_PROXY_LATENCY = proxy_latency
+  singletons.vitals:log_latency(proxy_latency)
+
+  ngx.ctx.KONG_PROXIED = true
+  --===========================================================
+
   ngx.status = res.status
 
   -- TODO refactor this to not use pairs
@@ -221,8 +243,6 @@ local function send_response(res)
 
   ngx.header["Age"] = floor(time() - res.timestamp)
   ngx.header["X-Cache-Status"] = "Hit"
-
-  -- TODO handle Kong-specific headers
 
   ngx_print(res.body)
   return ngx.exit(res.status)
