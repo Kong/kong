@@ -23,6 +23,7 @@ local tab_new = require("table.new")
 
 
 local STRATEGY_PATH = "kong.plugins.proxy-cache.strategies"
+local CACHE_VERSION = 1
 
 
 -- http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html#sec13.5.1
@@ -298,6 +299,12 @@ function ProxyCacheHandler:access(conf)
     return
   end
 
+  if res.version ~= CACHE_VERSION then
+    ngx_log(ngx.NOTICE, "[proxy-cache] cache format mismatch, purging ", cache_key)
+    strategy:purge(cache_key)
+    return signal_cache_req(cache_key, "Bypass")
+  end
+
   -- figure out if the client will accept our cache value
   if conf.cache_control then
     if cc["max-age"] and time() - res.timestamp > cc["max-age"] then
@@ -378,6 +385,7 @@ function ProxyCacheHandler:body_filter(conf)
       body_len  = #ctx.res_body,
       timestamp = time(),
       ttl       = ctx.res_ttl,
+      version   = CACHE_VERSION,
     }
 
     local ttl = conf.storage_ttl or conf.cache_control and ctx.res_ttl or

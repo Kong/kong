@@ -1,8 +1,10 @@
 local helpers = require "spec.helpers"
 local rbac = require "kong.core.rbac"
+local json = require "cjson"
+local pl_file = require "pl.file"
 
 describe("proxy-cache access", function()
-  local client
+  local client, admin_client
   local cache_key
 
   setup(function()
@@ -201,11 +203,16 @@ describe("proxy-cache access", function()
       custom_plugins = "proxy-cache",
     }))
     client = helpers.proxy_client()
+    admin_client = helpers.admin_client()
   end)
 
   teardown(function()
     if client then
       client:close()
+    end
+
+    if admin_client then
+      admin_client:close()
     end
 
     helpers.stop_kong()
@@ -821,5 +828,54 @@ describe("proxy-cache access", function()
       assert.same("Hit", res.headers["X-Cache-Status"])
     end)
 
+  end)
+
+  describe("cache versioning", function()
+    local cache_key
+
+    setup(function()
+      -- busta rhyme? not today. just busta cache
+      assert(admin_client:send {
+        method = "DELETE",
+        path = "/proxy-cache",
+      })
+
+      -- prime the cache and mangle its versioning
+      local res = assert(client:send {
+        method = "GET",
+        path = "/get",
+        headers = {
+          host = "api-1.com",
+        }
+      })
+
+      local body1 = assert.res_status(200, res)
+      assert.same("Miss", res.headers["X-Cache-Status"])
+      cache_key = res.headers["X-Cache-Key"]
+
+      local dict = ngx.shared.kong_cache
+      local cache = dict:get(cache_key)
+
+      local cache_obj = json.decode(cache)
+      cache_obj.version = "yolo"
+      dict:set(cache_key, cjson.encode(cache_obj))
+    end)
+
+    it("bypasses old cache version data", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/get",
+        headers = {
+          host = "api-1.com",
+        }
+      })
+
+      local body = assert.res_status(200, res)
+      assert.same("Bypass", res.headers["X-Cache-Status"])
+
+      local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
+      assert.matches("[proxy-cache] cache format mismatch, purging " .. cache_key,
+                     err_log, nil, true)
+    end)
   end)
 end)
