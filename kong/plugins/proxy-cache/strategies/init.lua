@@ -8,6 +8,13 @@ _M.STRATEGY_TYPES = {
 -- a dummy req, rather than doing so at the last body filter execution
 _M.DELAY_STRATEGY_STORE = {}
 
+-- strategies that store cache data only on the node, instead of
+-- cluster-wide. this is typically used to handle purge notifications
+_M.LOCAL_DATA_STRATEGIES = {
+  memory = true,
+  [1]    = "memory",
+}
+
 local function require_strategy(name)
   return require("kong.plugins.proxy-cache.strategies." .. name)
 end

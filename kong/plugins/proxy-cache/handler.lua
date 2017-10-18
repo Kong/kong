@@ -1,6 +1,8 @@
 local BasePlugin  = require "kong.plugins.base_plugin"
 local strategies  = require "kong.plugins.proxy-cache.strategies"
 local responses   = require "kong.tools.responses"
+local singletons  = require "kong.singletons"
+local utils       = require "kong.tools.utils"
 
 
 local max              = math.max
@@ -256,6 +258,47 @@ ProxyCacheHandler.PRIORITY = 100
 
 function ProxyCacheHandler:new()
   ProxyCacheHandler.super.new(self, "proxy-cache")
+end
+
+function ProxyCacheHandler:init_worker()
+  -- catch notifications from other nodes that we purged a cache entry
+  local cluster_events = singletons.cluster_events
+  local dao            = singletons.dao
+
+  -- only need one worker to handle purges like this
+  -- if/when we introduce inline LRU caching this needs to involve
+  -- worker events as well
+  cluster_events:subscribe("proxy-cache:purge", function(data)
+    ngx.log(ngx.DEBUG, "[proxy-cache] handling purge of '", data, "'")
+
+    local plugin_id, cache_key = unpack(utils.split(data, ":"))
+
+    local plugin, err = dao.plugins:find({
+      id   = plugin_id,
+      name = "proxy-cache",
+    })
+    if err then
+      ngx_log(ngx.ERR, "[proxy-cache] error in retrieving plugins: ", err)
+      return
+    end
+
+    local strategy = require(STRATEGY_PATH)({
+      strategy_name = plugin.config.strategy,
+      strategy_opts = plugin.config[plugin.config.strategy],
+    })
+
+    if cache_key ~= "nil" then
+      local ok, err = strategy:purge(cache_key)
+      if not ok then
+        ngx_log(ngx.ERR, "[proxy-cache] failed to purge cache key '", cache_key,
+              "': ", err)
+        return
+      end
+
+    else
+      strategy:flush(true)
+    end
+  end)
 end
 
 function ProxyCacheHandler:access(conf)

@@ -1,6 +1,19 @@
 local STRATEGY_PATH = "kong.plugins.proxy-cache.strategies"
 
 
+local singletons = require "kong.singletons"
+
+
+local cluster_events = singletons.cluster_events
+
+
+local function broadcast_purge(plugin_id, cache_key)
+  local data = string.format("%s:%s", plugin_id, cache_key or "nil")
+  ngx.log(ngx.DEBUG, "[proxy-cache] broadcasting purge '", data, "'")
+  return cluster_events:broadcast("proxy-cache:purge", data)
+end
+
+
 return {
   ["/proxy-cache"] = {
     resource = "proxy-cache",
@@ -21,6 +34,14 @@ return {
         })
 
         strategy:flush(true)
+
+        if require(STRATEGY_PATH).LOCAL_DATA_STRATEGIES[conf.strategy] then
+          local ok, err = broadcast_purge(row.id, nil)
+          if not ok then
+            ngx.log(ngx.ERR, "failed broadcasting proxy cache purge to cluster: ",
+                    err)
+          end
+        end
       end
 
       return helpers.responses.send_HTTP_NO_CONTENT()
@@ -83,6 +104,15 @@ return {
           if err then
             return helpers.yield_error(err)
           end
+
+          if require(STRATEGY_PATH).LOCAL_DATA_STRATEGIES[conf.strategy] then
+            local ok, err = broadcast_purge(plugin.id, self.params.cache_key)
+            if not ok then
+              ngx.log(ngx.ERR, "failed broadcasting proxy cache purge to cluster: ",
+                      err)
+            end
+          end
+
           return helpers.responses.send_HTTP_NO_CONTENT()
         end
       end
@@ -151,6 +181,14 @@ return {
       local _, err = strategy:purge(self.params.cache_key)
       if err then
         return helpers.yield_error(err)
+      end
+
+      if require(STRATEGY_PATH).LOCAL_DATA_STRATEGIES[conf.strategy] then
+        local ok, err = broadcast_purge(rows[1].id, self.params.cache_key)
+        if not ok then
+          ngx.log(ngx.ERR, "failed broadcasting proxy cache purge to cluster: ",
+                  err)
+        end
       end
 
       return helpers.responses.send_HTTP_NO_CONTENT()
