@@ -1,5 +1,53 @@
 ## [Unreleased][unreleased]
 
+## [0.10.4] - 2017/10/24
+
+### Fixed
+
+##### Core
+
+- DNS: SRV records pointing to an A record are now properly handled by the
+  load balancer when `preserve_host` is disabled. Such records used to throw
+  Lua errors on the proxy code path.
+  [Kong/lua-resty-dns-client#19](https://github.com/Kong/lua-resty-dns-client/pull/19)
+- HTTP `400` errors thrown by Nginx are now correctly caught by Kong and return
+  a native, Kong-friendly response.
+  [#2476](https://github.com/Mashape/kong/pull/2476)
+- Fix an edge-case where an API with multiple `uris` and `strip_uri = true`
+  would not always strip the client URI.
+  [#2562](https://github.com/Mashape/kong/issues/2562)
+- Fix an issue where Kong would match an API with a shorter URI (from its
+  `uris` value) as a prefix instead of a longer, matching prefix from
+  another API.
+  [#2662](https://github.com/Mashape/kong/issues/2662)
+- Fixed a typo that caused the load balancing components to ignore the
+  Upstream `slots` property.
+  [#2747](https://github.com/Mashape/kong/pull/2747)
+
+##### Configuration
+
+- Octothorpes (`#`) can now be escaped (`\#`) and included in the Kong
+  configuration values such as your datastore passwords or usernames.
+  [#2411](https://github.com/Mashape/kong/pull/2411)
+
+##### Admin API
+
+- The `data` response field of the `/upstreams/{upstream}/targets/active`
+  Admin API endpoint now returns a list (`[]`) instead of an object (`{}`)
+  when no active targets are present.
+  [#2619](https://github.com/Mashape/kong/pull/2619)
+
+##### Plugins
+
+- datadog: Avoid a runtime error if the plugin is configured as a global plugin
+  but the downstream request did not match any configured API.
+  Thanks [@kjsteuer](https://github.com/kjsteuer) for the fix!
+  [#2702](https://github.com/Mashape/kong/pull/2702)
+- ip-restriction: Fixed support for the `0.0.0.0/0` CIDR block. This block is
+  now supported and won't trigger an error when used in the `whitelist` or
+  `blacklist` properties.
+  [#2918](https://github.com/Mashape/kong/pull/2918)
+
 ## [0.10.3] - 2017/05/24
 
 ### Changed
@@ -1304,6 +1352,7 @@ First version running with Cassandra.
 - Database migrations (using `db.lua`).
 
 [unreleased]: https://github.com/mashape/kong/compare/0.10.3...next
+[0.10.4]: https://github.com/mashape/kong/compare/0.10.3...0.10.3
 [0.10.3]: https://github.com/mashape/kong/compare/0.10.2...0.10.3
 [0.10.2]: https://github.com/mashape/kong/compare/0.10.1...0.10.2
 [0.10.1]: https://github.com/mashape/kong/compare/0.10.0...0.10.1
