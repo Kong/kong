@@ -1,9 +1,11 @@
 local helpers = require "spec.helpers"
 
 local function create_big_data(size)
-  return string.format([[
-    {"mock_json":{"big_field":"%s"}}
-  ]], string.rep("*", size))
+  return {
+    mock_json = {
+      big_field = string.rep("*", size),
+    },
+  }
 end
 
 describe("Plugin: response-transformer", function()
@@ -11,24 +13,26 @@ describe("Plugin: response-transformer", function()
 
   setup(function()
     local api = assert(helpers.dao.apis:insert {
-      name = "tests-response-transformer",
-      hosts = { "response.com" },
-      upstream_url = "http://httpbin.org",
+      name         = "tests-response-transformer",
+      hosts        = { "response.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
       api_id = api.id,
-      name = "response-transformer",
+      name   = "response-transformer",
       config = {
-        add = {
+        add    = {
           json = {"p1:v1"},
         },
         remove = {
-          json = {"json"},
+          json = {"params"},
         }
-      }
+      },
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
   end)
 
 
@@ -48,7 +52,7 @@ describe("Plugin: response-transformer", function()
     local r = assert(client:send {
       method = "POST",
       path = "/post",
-      body = {create_big_data(1 * 1024 * 1024)},
+      body = create_big_data(1024 * 1024),
       headers = {
         host = "response.com",
         ["content-type"] = "application/json",
@@ -62,7 +66,7 @@ describe("Plugin: response-transformer", function()
     local r = assert(client:send {
       method = "POST",
       path = "/post",
-      body = {create_big_data(1 * 1024 * 1024)},
+      body = create_big_data(1024 * 1024),
       headers = {
         host = "response.com",
         ["content-type"] = "application/json",
@@ -70,6 +74,6 @@ describe("Plugin: response-transformer", function()
     })
     assert.response(r).has.status(200)
     local json = assert.response(r).has.jsonbody()
-    assert.is_nil(json.json)
+    assert.is_nil(json.params)
   end)
 end)

@@ -1,11 +1,12 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local cache = require "kong.tools.database_cache"
 
 describe("Plugin: ACL (access)", function()
   local client, api_client
 
   setup(function()
+    helpers.run_migrations()
+
     local consumer1 = assert(helpers.dao.consumers:insert {
       username = "consumer1"
     })
@@ -58,10 +59,19 @@ describe("Plugin: ACL (access)", function()
       consumer_id = consumer4.id
     })
 
+    local anonymous = assert(helpers.dao.consumers:insert {
+      username = "anonymous"
+    })
+
+    assert(helpers.dao.acls:insert {
+      group = "anonymous",
+      consumer_id = anonymous.id
+    })
+
     local api1 = assert(helpers.dao.apis:insert {
-      name = "api-1",
-      hosts = { "acl1.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-1",
+      hosts        = { "acl1.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
       name = "acl",
@@ -72,9 +82,9 @@ describe("Plugin: ACL (access)", function()
     })
 
     local api2 = assert(helpers.dao.apis:insert {
-      name = "api-2",
-      hosts = { "acl2.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-2",
+      hosts        = { "acl2.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
       name = "acl",
@@ -90,9 +100,9 @@ describe("Plugin: ACL (access)", function()
     })
 
     local api3 = assert(helpers.dao.apis:insert {
-      name = "api-3",
-      hosts = { "acl3.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-3",
+      hosts        = { "acl3.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
       name = "acl",
@@ -108,9 +118,9 @@ describe("Plugin: ACL (access)", function()
     })
 
     local api4 = assert(helpers.dao.apis:insert {
-      name = "api-4",
-      hosts = { "acl4.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-4",
+      hosts        = { "acl4.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
       name = "acl",
@@ -126,9 +136,9 @@ describe("Plugin: ACL (access)", function()
     })
 
     local api5 = assert(helpers.dao.apis:insert {
-      name = "api-5",
-      hosts = { "acl5.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-5",
+      hosts        = { "acl5.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
       name = "acl",
@@ -144,9 +154,9 @@ describe("Plugin: ACL (access)", function()
     })
 
     local api6 = assert(helpers.dao.apis:insert {
-      name = "api-6",
-      hosts = { "acl6.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-6",
+      hosts        = { "acl6.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
       name = "acl",
@@ -162,9 +172,9 @@ describe("Plugin: ACL (access)", function()
     })
 
     local api7 = assert(helpers.dao.apis:insert {
-      name = "api-7",
-      hosts = { "acl7.com" },
-      upstream_url = "http://mockbin.com"
+      name         = "api-7",
+      hosts        = { "acl7.com" },
+      upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
       name = "acl",
@@ -179,7 +189,31 @@ describe("Plugin: ACL (access)", function()
       config = {}
     })
 
-    assert(helpers.start_kong())
+    local api8 = assert(helpers.dao.apis:insert {
+      name         = "api-8",
+      hosts        = { "acl8.com" },
+      upstream_url = helpers.mock_upstream_url,
+    })
+
+    assert(helpers.dao.plugins:insert {
+      name = "acl",
+      api_id = api8.id,
+      config = {
+        whitelist = {"anonymous"}
+      }
+    })
+
+    assert(helpers.dao.plugins:insert {
+      name = "key-auth",
+      api_id = api8.id,
+      config = {
+        anonymous = anonymous.id,
+      }
+    })
+
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
   end)
 
   before_each(function()
@@ -196,6 +230,36 @@ describe("Plugin: ACL (access)", function()
     helpers.stop_kong()
   end)
 
+
+  describe("Mapping to Consumer", function()
+    it("should work with consumer with credentials", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request?apikey=apikey124",
+        headers = {
+          ["Host"] = "acl2.com"
+        }
+      })
+
+      local body = cjson.decode(assert.res_status(200, res))
+      assert.equal("admin", body.headers["x-consumer-groups"])
+    end)
+
+    it("should work with consumer without credentials", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "acl8.com"
+        }
+      })
+
+      local body = cjson.decode(assert.res_status(200, res))
+      assert.equal("anonymous", body.headers["x-consumer-groups"])
+    end)
+  end)
+
+
   describe("Simple lists", function()
     it("should fail when an authentication plugin is missing", function()
       local res = assert(client:send {
@@ -207,7 +271,7 @@ describe("Plugin: ACL (access)", function()
       })
       local body = assert.res_status(403, res)
       local json = cjson.decode(body)
-      assert.same({ message = "Cannot identify the consumer, add an authentication plugin to use the ACL plugin" }, json)
+      assert.same({ message = "You cannot consume this service" }, json)
     end)
 
     it("should fail when not in whitelist", function()
@@ -380,29 +444,29 @@ describe("Plugin: ACL (access)", function()
       for i = 1, 3 do
         -- Create API
         local res = assert(api_client:send {
-          method = "POST",
-          path = "/apis/",
+          method  = "POST",
+          path    = "/apis/",
           headers = {
             ["Content-Type"] = "application/json"
           },
-          body = {
-            name = "acl_test"..i,
-            hosts = { "acl_test"..i..".com" },
-            upstream_url = "http://mockbin.com"
-          }
+          body    = {
+            name         = "acl_test" .. i,
+            hosts        = { "acl_test" .. i .. ".com" },
+            upstream_url = helpers.mock_upstream_url,
+          },
         })
         assert.res_status(201, res)
 
         -- Add the ACL plugin to the new API with the new group
         local res = assert(api_client:send {
           method = "POST",
-          path = "/apis/acl_test"..i.."/plugins/",
+          path = "/apis/acl_test" .. i .. "/plugins/",
           headers = {
             ["Content-Type"] = "application/json"
           },
           body = {
             name = "acl",
-            ["config.whitelist"] = "admin"..i
+            ["config.whitelist"] = "admin" .. i
           }
         })
         assert.res_status(201, res)
@@ -410,7 +474,7 @@ describe("Plugin: ACL (access)", function()
         -- Add key-authentication to API
         local res = assert(api_client:send {
           method = "POST",
-          path = "/apis/acl_test"..i.."/plugins/",
+          path = "/apis/acl_test" .. i .. "/plugins/",
           headers = {
             ["Content-Type"] = "application/json"
           },
@@ -428,16 +492,18 @@ describe("Plugin: ACL (access)", function()
             ["Content-Type"] = "application/json"
           },
           body = {
-            group = "admin"..i
+            group = "admin" .. i
           }
         })
         assert.res_status(201, res)
 
         -- Wait for cache to be invalidated
+        local cache_key = helpers.dao.acls:cache_key(consumer_id)
+
         helpers.wait_until(function()
           local res = assert(api_client:send {
             method = "GET",
-            path = "/cache/"..cache.acls_key(consumer_id)
+            path = "/cache/" .. cache_key
           })
           res:read_body()
           return res.status == 404
@@ -451,7 +517,7 @@ describe("Plugin: ACL (access)", function()
             method = "GET",
             path = "/status/200?apikey=secret123",
             headers = {
-              ["Host"] = "acl_test"..i..".com"
+              ["Host"] = "acl_test" .. i .. ".com"
             }
           })
           res:read_body()

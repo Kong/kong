@@ -16,30 +16,41 @@ CorsHandler.PRIORITY = 2000
 
 
 local function configure_origin(ngx, conf)
-  if not conf.origins then
+  local n_origins = conf.origins ~= nil and #conf.origins or 0
+
+  if n_origins == 0 then
     ngx.header["Access-Control-Allow-Origin"] = "*"
     ngx.ctx.cors_allow_all = true
     return
   end
 
-  if #conf.origins == 1 then
+  if n_origins == 1 then
     if conf.origins[1] == "*" then
       ngx.ctx.cors_allow_all = true
-
-    else
-      ngx.header["Vary"] = "Origin"
+      ngx.header["Access-Control-Allow-Origin"] = "*"
+      return
     end
 
-    ngx.header["Access-Control-Allow-Origin"] = conf.origins[1]
-    return
+    ngx.header["Vary"] = "Origin"
+
+    -- if this doesnt look like a regex, set the ACAO header directly
+    -- otherwise, we'll fall through to an iterative search and
+    -- set the ACAO header based on the client Origin
+    local from, _, err = re_find(conf.origins[1], "^[A-Za-z0-9.:/-]+$", "jo")
+    if err then
+      ngx.log(ngx.ERR, "[cors] could not inspect origin for type: ", err)
+    end
+
+    if from then
+      ngx.header["Access-Control-Allow-Origin"] = conf.origins[1]
+      return
+    end
   end
 
   local req_origin = ngx.var.http_origin
   if req_origin then
     for _, domain in ipairs(conf.origins) do
-      local from, _, err = re_find(req_origin,
-                                   [[\Q]] .. domain .. [[\E$]],
-                                   "jo")
+      local from, _, err = re_find(req_origin, domain, "jo")
       if err then
         ngx.log(ngx.ERR, "[cors] could not search for domain: ", err)
       end
@@ -115,6 +126,11 @@ function CorsHandler:access(conf)
   CorsHandler.super.access(self)
 
   if req_get_method() == "OPTIONS" then
+    -- don't add any response header because we are delegating the preflight to
+    -- the upstream API (conf.preflight_continue=true), or because we already
+    -- added them all
+    ngx.ctx.skip_response_headers = true
+
     if not conf.preflight_continue then
       configure_origin(ngx, conf)
       configure_credentials(ngx, conf)
@@ -122,15 +138,8 @@ function CorsHandler:access(conf)
       configure_methods(ngx, conf)
       configure_max_age(ngx, conf)
 
-      -- Don't add response headers because we already added them all
-      ngx.ctx.skip_response_headers = true
-
       return responses.send_HTTP_NO_CONTENT()
     end
-
-    -- Don't add any response header because we are delegating the preflight to
-    -- the upstream API (conf.preflight_continue=true)
-    ngx.ctx.skip_response_headers = true
   end
 end
 

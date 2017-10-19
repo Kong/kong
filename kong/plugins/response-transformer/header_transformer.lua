@@ -15,7 +15,9 @@ local function iter(config_array)
     end
 
     local header_to_test_name, header_to_test_value = match(header_to_test, "^([^:]+):*(.-)$")
-    if header_to_test_value == "" then header_to_test_value = nil end
+    if header_to_test_value == "" then
+      header_to_test_value = nil
+    end
     
     return i, header_to_test_name, header_to_test_value  
   end, config_array, 0

@@ -1,6 +1,5 @@
 local singletons = require "kong.singletons"
 local BasePlugin = require "kong.plugins.base_plugin"
-local cache = require "kong.tools.database_cache"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local jwt_decoder = require "kong.plugins.jwt.jwt_parser"
@@ -8,10 +7,11 @@ local string_format = string.format
 local ngx_re_gmatch = ngx.re.gmatch
 
 local ngx_set_header = ngx.req.set_header
+local get_method = ngx.req.get_method
 
 local JwtHandler = BasePlugin:extend()
 
-JwtHandler.PRIORITY = 1000
+JwtHandler.PRIORITY = 1005
 
 --- Retrieve a JWT in a request.
 -- Checks for the JWT in URI parameters, then in the `Authorization` header.
@@ -62,7 +62,7 @@ local function load_consumer(consumer_id, anonymous)
   local result, err = singletons.dao.consumers:find { id = consumer_id }
   if not result then
     if anonymous and not err then
-      err = 'anonymous consumer "'..consumer_id..'" not found'
+      err = 'anonymous consumer "' .. consumer_id .. '" not found'
     end
     return nil, err
   end
@@ -80,7 +80,7 @@ local function set_consumer(consumer, jwt_secret)
   else
     ngx_set_header(constants.HEADERS.ANONYMOUS, true)
   end
-  
+
 end
 
 local function do_authentication(conf)
@@ -99,29 +99,30 @@ local function do_authentication(conf)
       return false, {status = 401, message = "Unrecognizable token"}
     end
   end
-  
+
   -- Decode token to find out who the consumer is
   local jwt, err = jwt_decoder:new(token)
   if err then
-    return false, {status = 401, message = "Bad token; "..tostring(err)}
+    return false, {status = 401, message = "Bad token; " .. tostring(err)}
   end
 
   local claims = jwt.claims
 
   local jwt_secret_key = claims[conf.key_claim_name]
   if not jwt_secret_key then
-    return false, {status = 401, message = "No mandatory '"..conf.key_claim_name.."' in claims"}
+    return false, {status = 401, message = "No mandatory '" .. conf.key_claim_name .. "' in claims"}
   end
 
   -- Retrieve the secret
-  local jwt_secret, err = cache.get_or_set(cache.jwtauth_credential_key(jwt_secret_key),
-                                      nil, load_credential, jwt_secret_key)
+  local jwt_secret_cache_key = singletons.dao.jwt_secrets:cache_key(jwt_secret_key)
+  local jwt_secret, err      = singletons.cache:get(jwt_secret_cache_key, nil,
+                                                    load_credential, jwt_secret_key)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
   if not jwt_secret then
-    return false, {status = 403, message = "No credentials found for given '"..conf.key_claim_name.."'"}
+    return false, {status = 403, message = "No credentials found for given '" .. conf.key_claim_name .. "'"}
   end
 
   local algorithm = jwt_secret.algorithm or "HS256"
@@ -139,7 +140,7 @@ local function do_authentication(conf)
   if not jwt_secret_value then
     return false, {status = 403, message = "Invalid key/secret"}
   end
-  
+
   -- Now verify the JWT signature
   if not jwt:verify_signature(jwt_secret_value) then
     return false, {status = 403, message = "Invalid signature"}
@@ -152,8 +153,10 @@ local function do_authentication(conf)
   end
 
   -- Retrieve the consumer
-  local consumer, err = cache.get_or_set(cache.consumer_key(jwt_secret_key),
-                                    nil, load_consumer, jwt_secret.consumer_id)
+  local consumer_cache_key = singletons.dao.consumers:cache_key(jwt_secret.consumer_id)
+  local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
+                                                  load_consumer,
+                                                  jwt_secret.consumer_id, true)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
@@ -171,9 +174,18 @@ end
 
 function JwtHandler:access(conf)
   JwtHandler.super.access(self)
-  
+
+  -- check if preflight request and whether it should be authenticated
+  if conf.run_on_preflight == false and get_method() == "OPTIONS" then
+    -- FIXME: the above `== false` test is because existing entries in the db will
+    -- have `nil` and hence will by default start passing the preflight request
+    -- This should be fixed by a migration to update the actual entries
+    -- in the datastore
+    return
+  end
+
   if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
-    -- we're already authenticated, and we're configured for using anonymous, 
+    -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
     return
   end
@@ -182,8 +194,10 @@ function JwtHandler:access(conf)
   if not ok then
     if conf.anonymous ~= "" then
       -- get anonymous user
-      local consumer, err = cache.get_or_set(cache.consumer_key(conf.anonymous),
-                       nil, load_consumer, conf.anonymous, true)
+      local consumer_cache_key = singletons.dao.consumers:cache_key(conf.anonymous)
+      local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
+                                                      load_consumer,
+                                                      conf.anonymous, true)
       if err then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end

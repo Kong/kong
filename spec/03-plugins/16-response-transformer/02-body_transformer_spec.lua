@@ -162,7 +162,7 @@ describe("Plugin: response-transformer", function()
   end)
 
   describe("leave body alone", function()
-    -- Related to issue https://github.com/Mashape/kong/issues/1207 
+    -- Related to issue https://github.com/Kong/kong/issues/1207 
     -- unit test to check body remains unaltered
 
     local old_ngx, handler

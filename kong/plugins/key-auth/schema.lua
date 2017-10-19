@@ -48,5 +48,13 @@ return {
       default = "",
       func = check_user,
     },
+    key_in_body = {
+      type = "boolean",
+      default = false,
+    },
+    run_on_preflight = {
+      type = "boolean",
+      default = true,
+    },
   }
 }

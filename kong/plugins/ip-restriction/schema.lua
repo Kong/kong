@@ -6,7 +6,7 @@ local function validate_ips(v, t, column)
     for _, ip in ipairs(v) do
       local _, err = iputils.parse_cidr(ip)
       if type(err) == "string" then -- It's an error only if the second variable is a string
-        return false, "cannot parse '"..ip.."': "..err
+        return false, "cannot parse '" .. ip .. "': " .. err
       end
     end
   end

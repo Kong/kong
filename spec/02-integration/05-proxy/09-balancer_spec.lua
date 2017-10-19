@@ -2,10 +2,8 @@
 -- for dns-record balancing see the `dns_spec` files
 
 local helpers = require "spec.helpers"
-local cache = require "kong.tools.database_cache"
-local dao_helpers = require "spec.02-integration.02-dao.helpers"
+local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local PORT = 21000
-
 
 -- modified http-server. Accepts (sequentially) a number of incoming
 -- connections, and returns the number of succesful ones.
@@ -75,10 +73,11 @@ end
 
 dao_helpers.for_each_dao(function(kong_config)
 
-  describe("Ring-balancer #"..kong_config.database, function()
-
+  describe("Ring-balancer #" .. kong_config.database, function()
     local config_db
+
     setup(function()
+      helpers.run_migrations()
       config_db = helpers.test_conf.database
       helpers.test_conf.database = kong_config.database
     end)
@@ -96,6 +95,7 @@ dao_helpers.for_each_dao(function(kong_config)
       local client, api_client, upstream, target1, target2
 
       before_each(function()
+        helpers.run_migrations()
         assert(helpers.dao.apis:insert {
           name = "balancer.test",
           hosts = { "balancer.test" },
@@ -106,12 +106,12 @@ dao_helpers.for_each_dao(function(kong_config)
           slots = 10,
         })
         target1 = assert(helpers.dao.targets:insert {
-          target = "127.0.0.1:"..PORT,
+          target = "127.0.0.1:" .. PORT,
           weight = 10,
           upstream_id = upstream.id,
         })
         target2 = assert(helpers.dao.targets:insert {
-          target = "127.0.0.1:"..(PORT+1),
+          target = "127.0.0.1:" .. (PORT+1),
           weight = 10,
           upstream_id = upstream.id,
         })
@@ -137,7 +137,7 @@ dao_helpers.for_each_dao(function(kong_config)
           client:close()
           api_client:close()
         end
-        helpers.stop_kong()
+        helpers.stop_kong(nil, true)
       end)
 
       it("over multiple targets", function()
@@ -199,19 +199,16 @@ dao_helpers.for_each_dao(function(kong_config)
         -- add a new target 3
         local res = assert(api_client:send {
           method = "POST",
-          path = "/upstreams/"..upstream.name.."/targets",
+          path = "/upstreams/" .. upstream.name .. "/targets",
           headers = {
             ["Content-Type"] = "application/json"
           },
           body = {
-            target = "127.0.0.1:"..(PORT+2),
+            target = "127.0.0.1:" .. (PORT+2),
             weight = target1.weight/2 ,  -- shift proportions from 50/50 to 40/40/20
           },
         })
         assert.response(res).has.status(201)
-
-        -- wait for the change to become effective
-        helpers.wait_for_invalidation(cache.targets_key(upstream.id))
 
         -- now go and hit the same balancer again
         -----------------------------------------
@@ -274,7 +271,7 @@ dao_helpers.for_each_dao(function(kong_config)
         -- modify weight for target 2, set to 0
         local res = assert(api_client:send {
           method = "POST",
-          path = "/upstreams/"..upstream.name.."/targets",
+          path = "/upstreams/" .. upstream.name .. "/targets",
           headers = {
             ["Content-Type"] = "application/json"
           },
@@ -284,9 +281,6 @@ dao_helpers.for_each_dao(function(kong_config)
           },
         })
         assert.response(res).has.status(201)
-
-        -- wait for the change to become effective
-        helpers.wait_for_invalidation(cache.targets_key(target2.upstream_id))
 
         -- now go and hit the same balancer again
         -----------------------------------------
@@ -343,7 +337,7 @@ dao_helpers.for_each_dao(function(kong_config)
         -- modify weight for target 2
         local res = assert(api_client:send {
           method = "POST",
-          path = "/upstreams/"..target2.upstream_id.."/targets",
+          path = "/upstreams/" .. target2.upstream_id .. "/targets",
           headers = {
             ["Content-Type"] = "application/json"
           },
@@ -353,9 +347,6 @@ dao_helpers.for_each_dao(function(kong_config)
           },
         })
         assert.response(res).has.status(201)
-
-        -- wait for the change to become effective
-        helpers.wait_for_invalidation(cache.targets_key(target2.upstream_id))
 
         -- now go and hit the same balancer again
         -----------------------------------------
@@ -415,7 +406,7 @@ dao_helpers.for_each_dao(function(kong_config)
         -- modify weight for both targets, set to 0
         local res = assert(api_client:send {
           method = "POST",
-          path = "/upstreams/"..upstream.name.."/targets",
+          path = "/upstreams/" .. upstream.name .. "/targets",
           headers = {
             ["Content-Type"] = "application/json"
           },
@@ -428,7 +419,7 @@ dao_helpers.for_each_dao(function(kong_config)
 
         res = assert(api_client:send {
           method = "POST",
-          path = "/upstreams/"..upstream.name.."/targets",
+          path = "/upstreams/" .. upstream.name .. "/targets",
           headers = {
             ["Content-Type"] = "application/json"
           },
@@ -438,9 +429,6 @@ dao_helpers.for_each_dao(function(kong_config)
           },
         })
         assert.response(res).has.status(201)
-
-        -- wait for the change to become effective
-        helpers.wait_for_invalidation(cache.targets_key(target2.upstream_id))
 
         -- now go and hit the same balancer again
         -----------------------------------------

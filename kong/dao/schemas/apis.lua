@@ -83,15 +83,20 @@ local function check_uri(uri)
     return false, "invalid"
 
   elseif not match(uri, "^/[%w%.%-%_~%/%%]*$") then
-    -- Check if characters are in RFC 3986 unreserved list, and % for percent encoding
-    return false, "must only contain alphanumeric and '., -, _, ~, /, %' characters"
+    -- URI contains characters outside of the reserved list of
+    -- RFC 3986: the value will be interpreted as a regex;
+    -- but is it a valid one?
+    local _, _, err = ngx.re.find("", uri, "aj")
+    if err then
+      return false, "invalid regex '" .. uri .. "' PCRE returned: " .. err
+    end
   end
 
   local esc = uri:gsub("%%%x%x", "___") -- drop all proper %-encodings
   if match(esc, "%%") then
     -- % is remaining, so not properly encoded
     local err = uri:sub(esc:find("%%.?.?"))
-    return false, "must use proper encoding; '"..err.."' is invalid"
+    return false, "must use proper encoding; '" .. err .. "' is invalid"
   end
 
   -- From now on, the request_path is considered valid.
@@ -188,6 +193,7 @@ end
 return {
   table = "apis",
   primary_key = {"id"},
+  -- no cache key
   fields = {
     id = {type = "id", dao_insert_value = true, required = true},
     created_at = {type = "timestamp", immutable = true, dao_insert_value = true, required = true},
@@ -197,7 +203,7 @@ return {
     methods = {type = "array", func = check_methods},
     strip_uri = {type = "boolean", default = true},
     https_only = {type = "boolean", default = false},
-    http_if_terminated = {type = "boolean", default = true},
+    http_if_terminated = {type = "boolean", default = false},
     upstream_url = {type = "url", required = true, func = validate_upstream_url},
     preserve_host = {type = "boolean", default = false},
     retries = {type = "number", default = 5, func = check_smallint},
@@ -205,9 +211,6 @@ return {
     upstream_send_timeout = {type = "number", default = 60000, func = check_u_int},
     upstream_read_timeout = {type = "number", default = 60000, func = check_u_int},
   },
-  marshall_event = function(self, t)
-    return { id = t.id }
-  end,
   self_check = function(schema, api_t, dao, is_update)
     if is_update then
       return true

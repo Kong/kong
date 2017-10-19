@@ -4,7 +4,7 @@ local function check_for_value(value)
   for i, entry in ipairs(value) do
     local ok = find(entry, ":")
     if not ok then 
-      return false, "key '"..entry.."' has no value"
+      return false, "key '" .. entry .. "' has no value"
     end
   end
   return true

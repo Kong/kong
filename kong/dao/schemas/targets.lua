@@ -8,7 +8,7 @@ local utils = require "kong.tools.utils"
 local DEFAULT_PORT = 8000
 local DEFAULT_WEIGHT = 100
 local WEIGHT_MIN, WEIGHT_MAX = 0, 1000
-local WEIGHT_MSG = "weight must be from "..WEIGHT_MIN.." to "..WEIGHT_MAX
+local WEIGHT_MSG = "weight must be from " .. WEIGHT_MIN .. " to " .. WEIGHT_MAX
 
 return {
   table = "targets",
@@ -57,12 +57,4 @@ return {
 
     return true
   end,
-  marshall_event = function(self, t)
-    -- when sending cluster events, we must include the upstream id, as the 
-    -- upstream cache needs to be invalidated, not the target itself.
-    return {
-      id = t.id,
-      upstream_id = t.upstream_id,
-    }
-  end
 }

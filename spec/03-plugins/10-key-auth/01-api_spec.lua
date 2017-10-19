@@ -5,20 +5,24 @@ describe("Plugin: key-auth (API)", function()
   local consumer
   local admin_client
   setup(function()
+    helpers.run_migrations()
+
     assert(helpers.dao.apis:insert {
-      name = "keyauth1",
-      upstream_url = "http://mockbin.com",
-      hosts = { "keyauth1.test" },
+      name         = "keyauth1",
+      upstream_url = helpers.mock_upstream_url,
+      hosts        = { "keyauth1.test" },
     })
     assert(helpers.dao.apis:insert {
-      name = "keyauth2",
-      upstream_url = "http://mockbin.com",
-      hosts = { "keyauth2.test" },
+      name         = "keyauth2",
+      upstream_url = helpers.mock_upstream_url,
+      hosts        = { "keyauth2.test" },
     })
     consumer = assert(helpers.dao.consumers:insert {
       username = "bob"
     })
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
     admin_client = helpers.admin_client()
   end)
   teardown(function()
@@ -154,7 +158,7 @@ describe("Plugin: key-auth (API)", function()
       it("retrieves key-auth credential by id", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/bob/key-auth/"..credential.id
+          path = "/consumers/bob/key-auth/" .. credential.id
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -163,7 +167,7 @@ describe("Plugin: key-auth (API)", function()
       it("retrieves key-auth credential by key", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/bob/key-auth/"..credential.key
+          path = "/consumers/bob/key-auth/" .. credential.key
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -176,13 +180,13 @@ describe("Plugin: key-auth (API)", function()
 
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/bob/key-auth/"..credential.id
+          path = "/consumers/bob/key-auth/" .. credential.id
         })
         assert.res_status(200, res)
 
         res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/alice/key-auth/"..credential.id
+          path = "/consumers/alice/key-auth/" .. credential.id
         })
         assert.res_status(404, res)
       end)
@@ -192,7 +196,7 @@ describe("Plugin: key-auth (API)", function()
       it("updates a credential by id", function()
         local res = assert(admin_client:send {
           method = "PATCH",
-          path = "/consumers/bob/key-auth/"..credential.id,
+          path = "/consumers/bob/key-auth/" .. credential.id,
           body = {
             key = "4321"
           },
@@ -207,7 +211,7 @@ describe("Plugin: key-auth (API)", function()
       it("updates a credential by key", function()
         local res = assert(admin_client:send {
           method = "PATCH",
-          path = "/consumers/bob/key-auth/"..credential.key,
+          path = "/consumers/bob/key-auth/" .. credential.key,
           body = {
             key = "4321UPD"
           },
@@ -223,7 +227,7 @@ describe("Plugin: key-auth (API)", function()
         it("handles invalid input", function()
           local res = assert(admin_client:send {
             method = "PATCH",
-            path = "/consumers/bob/key-auth/"..credential.id,
+            path = "/consumers/bob/key-auth/" .. credential.id,
             body = {
               key = 123
             },
@@ -242,7 +246,7 @@ describe("Plugin: key-auth (API)", function()
       it("deletes a credential", function()
         local res = assert(admin_client:send {
           method = "DELETE",
-          path = "/consumers/bob/key-auth/"..credential.id,
+          path = "/consumers/bob/key-auth/" .. credential.id,
         })
         assert.res_status(204, res)
       end)

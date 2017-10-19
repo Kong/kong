@@ -1,4 +1,4 @@
-DEV_ROCKS = busted luacheck lua-llthreads2
+DEV_ROCKS = "busted 2.0.rc12" "luacheck 0.20.0" "lua-llthreads2 0.1.4"
 BUSTED_ARGS ?= -v
 TEST_CMD ?= bin/busted $(BUSTED_ARGS)
 OPENSSL_DIR ?= /usr/local/opt/openssl
@@ -10,12 +10,12 @@ install:
 
 dev: install
 	@for rock in $(DEV_ROCKS) ; do \
-		if ! luarocks list | grep $$rock > /dev/null ; then \
-      echo $$rock not found, installing via luarocks... ; \
-      luarocks install $$rock ; \
-    else \
-      echo $$rock already installed, skipping ; \
-    fi \
+	  if luarocks list --porcelain $$rock | grep -q "installed" ; then \
+	    echo $$rock already installed, skipping ; \
+	  else \
+	    echo $$rock not found, installing via luarocks... ; \
+	    luarocks install $$rock ; \
+	  fi \
 	done;
 
 lint:

@@ -4,8 +4,12 @@ local helpers = require "spec.helpers"
 describe("Plugin: oauth (API)", function()
   local consumer, api, admin_client
   setup(function()
+    helpers.run_migrations()
+
     helpers.prepare_prefix()
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    }))
 
     admin_client = helpers.admin_client()
   end)
@@ -18,12 +22,15 @@ describe("Plugin: oauth (API)", function()
   describe("/consumers/:consumer/oauth2/", function()
     setup(function()
       api = assert(helpers.dao.apis:insert {
-        name = "oauth2_token.com",
-        hosts = { "oauth2_token.com" },
-        upstream_url = "http://mockbin.com"
+        name         = "oauth2_token.com",
+        hosts        = { "oauth2_token.com" },
+        upstream_url = helpers.mock_upstream_url,
       })
       consumer = assert(helpers.dao.consumers:insert {
         username = "bob"
+      })
+      assert(helpers.dao.consumers:insert {
+        username = "sally"
       })
     end)
     after_each(function()
@@ -64,6 +71,34 @@ describe("Plugin: oauth (API)", function()
         assert.equal(consumer.id, body.consumer_id)
         assert.equal("Test APP", body.name)
         assert.equal(2, #body.redirect_uri)
+      end)
+      it("creates multiple oauth2 credentials with the same client_secret", function()
+        local res = assert(admin_client:send {
+          method = "POST",
+          path = "/consumers/bob/oauth2",
+          body = {
+            name = "Test APP",
+            redirect_uri = "http://google.com/",
+            client_secret = "secret123",
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        assert.res_status(201, res)
+        res = assert(admin_client:send {
+          method = "POST",
+          path = "/consumers/sally/oauth2",
+          body = {
+            name = "Test APP",
+            redirect_uri = "http://google.com/",
+            client_secret = "secret123",
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        assert.res_status(201, res)
       end)
       describe("errors", function()
         it("returns bad request", function()
@@ -182,9 +217,9 @@ describe("Plugin: oauth (API)", function()
       setup(function()
         for i = 1, 3 do
           assert(helpers.dao.oauth2_credentials:insert {
-            name = "app"..i,
-            redirect_uri = "https://mockbin.org",
-            consumer_id = consumer.id
+            name         = "app" .. i,
+            redirect_uri = helpers.mock_upstream_ssl_url,
+            consumer_id  = consumer.id,
           })
         end
       end)
@@ -210,16 +245,16 @@ describe("Plugin: oauth (API)", function()
     before_each(function()
       helpers.dao:truncate_table("oauth2_credentials")
       credential = assert(helpers.dao.oauth2_credentials:insert {
-        name = "test app",
-        redirect_uri = "https://mockbin.org",
-        consumer_id = consumer.id
+        name         = "test app",
+        redirect_uri = helpers.mock_upstream_ssl_url,
+        consumer_id  = consumer.id,
       })
     end)
     describe("GET", function()
       it("retrieves oauth2 credential by id", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/bob/oauth2/"..credential.id
+          path = "/consumers/bob/oauth2/" .. credential.id
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -228,7 +263,7 @@ describe("Plugin: oauth (API)", function()
       it("retrieves oauth2 credential by client id", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/bob/oauth2/"..credential.client_id
+          path = "/consumers/bob/oauth2/" .. credential.client_id
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -241,26 +276,26 @@ describe("Plugin: oauth (API)", function()
 
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/bob/oauth2/"..credential.id
+          path = "/consumers/bob/oauth2/" .. credential.id
         })
         assert.res_status(200, res)
 
         res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/alice/oauth2/"..credential.id
+          path = "/consumers/alice/oauth2/" .. credential.id
         })
         assert.res_status(404, res)
       end)
       it("retrieves credential by clientid only if the credential belongs to the specified consumer", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/bob/oauth2/"..credential.client_id
+          path = "/consumers/bob/oauth2/" .. credential.client_id
         })
         assert.res_status(200, res)
 
         res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/alice/oauth2/"..credential.client_id
+          path = "/consumers/alice/oauth2/" .. credential.client_id
         })
         assert.res_status(404, res)
       end)
@@ -272,7 +307,7 @@ describe("Plugin: oauth (API)", function()
 
         local res = assert(admin_client:send {
           method = "PATCH",
-          path = "/consumers/bob/oauth2/"..credential.id,
+          path = "/consumers/bob/oauth2/" .. credential.id,
           body = {
             name = "4321"
           },
@@ -289,7 +324,7 @@ describe("Plugin: oauth (API)", function()
 
         local res = assert(admin_client:send {
           method = "PATCH",
-          path = "/consumers/bob/oauth2/"..credential.client_id,
+          path = "/consumers/bob/oauth2/" .. credential.client_id,
           body = {
             name = "4321UDP"
           },
@@ -305,7 +340,7 @@ describe("Plugin: oauth (API)", function()
         it("handles invalid input", function()
           local res = assert(admin_client:send {
             method = "PATCH",
-            path = "/consumers/bob/oauth2/"..credential.id,
+            path = "/consumers/bob/oauth2/" .. credential.id,
             body = {
               redirect_uri = "not-valid"
             },
@@ -324,7 +359,7 @@ describe("Plugin: oauth (API)", function()
       it("deletes a credential", function()
         local res = assert(admin_client:send {
           method = "DELETE",
-          path = "/consumers/bob/oauth2/"..credential.id,
+          path = "/consumers/bob/oauth2/" .. credential.id,
         })
         assert.res_status(204, res)
       end)
@@ -351,9 +386,9 @@ describe("Plugin: oauth (API)", function()
     local oauth2_credential
     setup(function()
       oauth2_credential = assert(helpers.dao.oauth2_credentials:insert {
-        name = "Test APP",
-        redirect_uri = "https://mockin.com",
-        consumer_id = consumer.id
+        name         = "Test APP",
+        redirect_uri = helpers.mock_upstream_ssl_url,
+        consumer_id  = consumer.id,
       })
     end)
     after_each(function()
@@ -478,7 +513,7 @@ describe("Plugin: oauth (API)", function()
         it("retrieves oauth2 token by id", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/oauth2_tokens/"..token.id
+            path = "/oauth2_tokens/" .. token.id
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
@@ -487,7 +522,7 @@ describe("Plugin: oauth (API)", function()
         it("retrieves oauth2 token by access_token", function()
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/oauth2_tokens/"..token.access_token
+            path = "/oauth2_tokens/" .. token.access_token
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
@@ -501,7 +536,7 @@ describe("Plugin: oauth (API)", function()
 
           local res = assert(admin_client:send {
             method = "PATCH",
-            path = "/oauth2_tokens/"..token.id,
+            path = "/oauth2_tokens/" .. token.id,
             body = {
               expires_in = 20
             },
@@ -518,7 +553,7 @@ describe("Plugin: oauth (API)", function()
 
           local res = assert(admin_client:send {
             method = "PATCH",
-            path = "/oauth2_tokens/"..token.access_token,
+            path = "/oauth2_tokens/" .. token.access_token,
             body = {
               expires_in = 400
             },
@@ -534,7 +569,7 @@ describe("Plugin: oauth (API)", function()
           it("handles invalid input", function()
             local res = assert(admin_client:send {
               method = "PATCH",
-              path = "/oauth2_tokens/"..token.id,
+              path = "/oauth2_tokens/" .. token.id,
               body = {
                 expires_in = "hello"
               },
@@ -553,7 +588,7 @@ describe("Plugin: oauth (API)", function()
         it("deletes a token", function()
           local res = assert(admin_client:send {
             method = "DELETE",
-            path = "/oauth2_tokens/"..token.id,
+            path = "/oauth2_tokens/" .. token.id,
           })
           assert.res_status(204, res)
         end)

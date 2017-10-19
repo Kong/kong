@@ -1,3 +1,5 @@
+local singletons = require "kong.singletons"
+
 local find = string.find
 local format = string.format
 
@@ -12,6 +14,7 @@ local xml_template = '<?xml version="1.0" encoding="UTF-8"?>\n<error><message>%s
 local html_template = '<html><head><title>Kong Error</title></head><body><h1>Kong Error</h1><p>%s.</p></body></html>'
 
 local BODIES = {
+  s400 = "Bad request",
   s404 = "Not found",
   s408 = "Request timeout",
   s411 = "Length required",
@@ -26,16 +29,17 @@ local BODIES = {
   default = "The upstream server responded with %d"
 }
 
-local SERVER_HEADER = _KONG._NAME.."/".._KONG._VERSION
+local SERVER_HEADER = _KONG._NAME .. "/" .. _KONG._VERSION
 
 return function(ngx)
   local accept_header = ngx.req.get_headers()["accept"]
   local template, message, content_type
 
   if accept_header == nil then
-    template = text_template
-    content_type = TYPE_PLAIN
-  elseif find(accept_header, TYPE_HTML, nil, true) then
+    accept_header = singletons.configuration.error_default_type
+  end
+
+  if find(accept_header, TYPE_HTML, nil, true) then
     template = html_template
     content_type = TYPE_HTML
   elseif find(accept_header, TYPE_JSON, nil, true) then
@@ -50,9 +54,12 @@ return function(ngx)
   end
 
   local status = ngx.status
-  message = BODIES["s"..status] and BODIES["s"..status] or format(BODIES.default, status)
+  message = BODIES["s" .. status] and BODIES["s" .. status] or format(BODIES.default, status)
 
-  ngx.header["Server"] = SERVER_HEADER
+  if singletons.configuration.server_tokens then
+    ngx.header["Server"] = SERVER_HEADER
+  end
+
   ngx.header["Content-Type"] = content_type
   ngx.say(format(template, message))
 end

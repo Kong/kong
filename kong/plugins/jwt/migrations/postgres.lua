@@ -38,5 +38,14 @@ return {
       ALTER TABLE jwt_secrets DROP COLUMN algorithm;
       ALTER TABLE jwt_secrets DROP COLUMN rsa_public_key;
     ]]
+  },
+  {
+    name = "2017-05-22-jwt_secret_not_unique",
+    up = [[
+      ALTER TABLE jwt_secrets DROP CONSTRAINT IF EXISTS jwt_secrets_secret_key;
+    ]],
+    down = [[
+      ALTER TABLE jwt_secrets ADD CONSTRAINT jwt_secrets_secret_key UNIQUE(secret);
+    ]],
   }
 }

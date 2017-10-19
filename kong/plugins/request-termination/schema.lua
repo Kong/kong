@@ -1,8 +1,6 @@
 local Errors = require "kong.dao.errors"
-local utils = require "kong.tools.utils"
 
 return {
-  no_consumer = true,
   fields = {
     status_code = { type = "number", default = 503 },
     message = { type = "string" },
@@ -12,7 +10,7 @@ return {
   self_check = function(schema, plugin_t, dao, is_updating)
     if plugin_t.status_code then
       if plugin_t.status_code < 100 or plugin_t.status_code > 599 then
-        return false, Errors.schema("status_code must be between 100..599")
+        return false, Errors.schema("status_code must be between 100 .. 599")
       end
     end
     

@@ -1,3 +1,6 @@
+local pl_utils = require "pl.utils"
+
+
 -- test fixtures. we have to load them before requiring the
 -- ALF serializer, since it caches those functions at the
 -- module chunk level.
@@ -10,16 +13,15 @@ return {
     get_method = function() return "GET" end,
     http_version = function() return 1.1 end,
     raw_header = function ()
-      return [[
-GET /request/path HTTP/1.1\r
-Host: mockbin.com\r
-Accept: application/json\r
-\r\n\r\n]]
+      return "GET /request/path HTTP/1.1\r\n"..
+             "Host: example.com\r\n"..
+             "Accept: application/json\r\n"..
+             "Accept: application/x-www-form-urlencoded\r\n\r\n"
     end,
     get_headers = function()
       return {
         accept = {"application/json", "application/x-www-form-urlencoded"},
-        host = "mockbin.com"
+        host = "example.com"
       }
     end,
     get_uri_args = function()
@@ -50,7 +52,7 @@ Accept: application/json\r
     return t
   end,
   sleep = function(t)
-    os.execute("sleep " .. t/1000)
+    pl_utils.execute("sleep " .. t/1000)
   end,
   timer = {
     at = function() end
