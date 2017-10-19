@@ -3,11 +3,12 @@ local BasePlugin = require "kong.plugins.base_plugin"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local jwt_decoder = require "kong.plugins.jwt.jwt_parser"
-local string_format = string.format
-local ngx_re_gmatch = ngx.re.gmatch
 
+local ipairs         = ipairs
+local string_format  = string.format
+local ngx_re_gmatch  = ngx.re.gmatch
 local ngx_set_header = ngx.req.set_header
-local get_method = ngx.req.get_method
+local get_method     = ngx.req.get_method
 
 local JwtHandler = BasePlugin:extend()
 
@@ -15,7 +16,8 @@ JwtHandler.PRIORITY = 1005
 JwtHandler.VERSION = "0.1.0"
 
 --- Retrieve a JWT in a request.
--- Checks for the JWT in URI parameters, then in the `Authorization` header.
+-- Checks for the JWT in URI parameters, then in cookies, and finally
+-- in the `Authorization` header.
 -- @param request ngx request object
 -- @param conf Plugin configuration
 -- @return token JWT token contained in request (can be a table) or nil
@@ -26,6 +28,14 @@ local function retrieve_token(request, conf)
   for _, v in ipairs(conf.uri_param_names) do
     if uri_parameters[v] then
       return uri_parameters[v]
+    end
+  end
+
+  local ngx_var = ngx.var
+  for _, v in ipairs(conf.cookie_names) do
+    local jwt_cookie = ngx_var["cookie_" .. v]
+    if jwt_cookie and jwt_cookie ~= "" then
+      return jwt_cookie
     end
   end
 
