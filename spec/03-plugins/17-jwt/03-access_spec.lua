@@ -20,7 +20,7 @@ describe("Plugin: jwt (access)", function()
 
     local apis = {}
 
-    for i = 1, 8 do
+    for i = 1, 9 do
       apis[i] = assert(helpers.dao.apis:insert({
         name         = "tests-jwt" .. i,
         hosts        = { "jwt" .. i .. ".com" },
@@ -68,6 +68,10 @@ describe("Plugin: jwt (access)", function()
     assert(pdao:insert({ name   = "jwt",
                          api_id = apis[8].id,
                          config = { run_on_preflight = false },
+                       }))
+    assert(pdao:insert({ name   = "jwt",
+                         api_id = apis[9].id,
+                         config = { cookie_names = { "silly", "crumble" } },
                        }))
 
     jwt_secret = assert(helpers.dao.jwt_secrets:insert {consumer_id = consumer1.id})
@@ -276,6 +280,84 @@ describe("Plugin: jwt (access)", function()
         }
       })
       assert.res_status(200, res)
+    end)
+    it("returns 200 the JWT is found in the cookie crumble", function()
+      PAYLOAD.iss = jwt_secret.key
+      local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          ["Host"] = "jwt9.com",
+          ["Cookie"] = "crumble=" .. jwt .. "; path=/;domain=.jwt9.com",
+        }
+      })
+      assert.res_status(200, res)
+    end)
+    it("returns 200 if the JWT is found in the cookie silly", function()
+      PAYLOAD.iss = jwt_secret.key
+      local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          ["Host"] = "jwt9.com",
+          ["Cookie"] = "silly=" .. jwt .. "; path=/;domain=.jwt9.com",
+        }
+      })
+      assert.res_status(200, res)
+    end)
+    it("returns 403 if the JWT found in the cookie does not match a credential", function()
+      PAYLOAD.iss = "incorrect-issuer"
+      local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          ["Host"] = "jwt9.com",
+          ["Cookie"] = "silly=" .. jwt .. "; path=/;domain=.jwt9.com",
+        }
+      })
+      local body = assert.res_status(403, res)
+      local json = cjson.decode(body)
+      assert.same({ message = "No credentials found for given 'iss'" }, json)
+    end)
+    it("returns a 401 if the JWT in the cookie is corrupted", function()
+      PAYLOAD.iss = jwt_secret.key
+      local jwt = "no-way-this-works" .. jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          ["Host"] = "jwt9.com",
+          ["Cookie"] = "silly=" .. jwt .. "; path=/;domain=.jwt9.com",
+        }
+      })
+      local body = assert.res_status(401, res)
+      assert.equal([[{"message":"Bad token; invalid JSON"}]], body)
+    end)
+    it("reports a 200 without cookies but with a JWT token in the Authorization header", function()
+      PAYLOAD.iss = jwt_secret.key
+      local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          ["Host"] = "jwt9.com",
+          ["Authorization"] = "Bearer " .. jwt,
+        }
+      })
+      assert.res_status(200, res)
+    end)
+    it("returns 401 if no JWT tokens are found in cookies or Authorization header", function()
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          ["Host"] = "jwt9.com",
+        }
+      })
+      assert.res_status(401, res)
     end)
     it("finds the JWT if given in a custom URL parameter", function()
       PAYLOAD.iss = jwt_secret.key
