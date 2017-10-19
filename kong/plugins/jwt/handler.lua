@@ -35,7 +35,7 @@ local function retrieve_token(request, conf)
     end
   end
   
-  authorization_header = request.get_headers()["authorization"]
+  local authorization_header = request.get_headers()["authorization"]
   if authorization_header then
     local iterator, iter_err = ngx_re_gmatch(authorization_header, "\\s*[Bb]earer\\s+(.+)")
     if not iterator then

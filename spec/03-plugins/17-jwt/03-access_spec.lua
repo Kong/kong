@@ -310,7 +310,6 @@ describe("Plugin: jwt (access)", function()
     it("no cookie with JWT token, defaults to 'Authorization'", function()
       PAYLOAD.iss = jwt_secret.key
       local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
-      local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
       local res = assert(proxy_client:send {
         method  = "GET",
         path    = "/request",
@@ -319,7 +318,7 @@ describe("Plugin: jwt (access)", function()
           ["Authorization"] = "Bearer " .. jwt,
         }
       })
-      local body = assert.res_status(200, res)
+      assert.res_status(200, res)
     end)
     it("finds the JWT if given in a custom URL parameter", function()
       PAYLOAD.iss = jwt_secret.key
