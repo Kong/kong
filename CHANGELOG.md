@@ -1,5 +1,7 @@
 ## [Unreleased][unreleased]
 
+## [0.11.1] - 2017/10/24
+
 ### Changed
 
 ##### Configuration
@@ -12,6 +14,10 @@
 
 ##### Core
 
+- DNS: SRV records pointing to an A record are now properly handled by the
+  load balancer when `preserve_host` is disabled. Such records used to throw
+  Lua errors on the proxy code path.
+  [Kong/lua-resty-dns-client#19](https://github.com/Kong/lua-resty-dns-client/pull/19)
 - Fixed an edge-case where `preserve_host` would sometimes craft an upstream
   request with a Host header from a previous client request instead of the
   current one.
@@ -21,8 +27,6 @@
 - Fixed a typo that caused the load balancing components to ignore the Upstream
   slots property.
   [#2747](https://github.com/Kong/kong/pull/2747)
-- Fixed a load balancing issue with SRV records resolving to names.
-  [Mashape/lua-resty-dns-client#19](https://github.com/Kong/lua-resty-dns-client/pull/19)
 
 ##### CLI
 
@@ -1720,7 +1724,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/Kong/kong/compare/0.11.0...master
+[unreleased]: https://github.com/Kong/kong/compare/0.11.1...master
+[0.11.1]: https://github.com/Kong/kong/compare/0.11.0...0.11.1
 [0.11.0]: https://github.com/Kong/kong/compare/0.10.3...0.11.0
 [0.10.3]: https://github.com/Kong/kong/compare/0.10.2...0.10.3
 [0.10.2]: https://github.com/Kong/kong/compare/0.10.1...0.10.2
