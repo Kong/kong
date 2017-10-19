@@ -20,7 +20,7 @@ describe("Plugin: jwt (access)", function()
 
     local apis = {}
 
-    for i = 1, 8 do
+    for i = 1, 9 do
       apis[i] = assert(helpers.dao.apis:insert({
         name         = "tests-jwt" .. i,
         hosts        = { "jwt" .. i .. ".com" },
@@ -68,6 +68,10 @@ describe("Plugin: jwt (access)", function()
     assert(pdao:insert({ name   = "jwt",
                          api_id = apis[8].id,
                          config = { run_on_preflight = false },
+                       }))
+    assert(pdao:insert({ name   = "jwt",
+                         api_id = apis[9].id,
+                         config = { cookie_names = {  "silly", "crumble" } },
                        }))
 
     jwt_secret = assert(helpers.dao.jwt_secrets:insert {consumer_id = consumer1.id})
@@ -276,6 +280,46 @@ describe("Plugin: jwt (access)", function()
         }
       })
       assert.res_status(200, res)
+    end)
+    it("finds the JWT if given in cookie crumble", function()
+      PAYLOAD.iss = jwt_secret.key
+      local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          ["Host"] = "jwt9.com",
+          ["Cookie"] = "crumble=" .. jwt .. "; path=/;domain=.jwt9.com"
+        }
+      })
+      assert.res_status(200, res)
+    end)
+    it("finds the JWT if given in cookie silly", function()
+      PAYLOAD.iss = jwt_secret.key
+      local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          ["Host"] = "jwt9.com",
+          ["Cookie"] = "silly=" .. jwt .. "; path=/;domain=.jwt9.com"
+        }
+      })
+      assert.res_status(200, res)
+    end)
+    it("no cookie with JWT token, defaults to 'Authorization'", function()
+      PAYLOAD.iss = jwt_secret.key
+      local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+      local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          ["Host"] = "jwt9.com",
+          ["Authorization"] = "Bearer " .. jwt,
+        }
+      })
+      local body = assert.res_status(200, res)
     end)
     it("finds the JWT if given in a custom URL parameter", function()
       PAYLOAD.iss = jwt_secret.key
