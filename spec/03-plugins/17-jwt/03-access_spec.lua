@@ -307,6 +307,20 @@ describe("Plugin: jwt (access)", function()
       })
       assert.res_status(200, res)
     end)
+    it("reports a 401 if the JWT in cookie is corrupt", function()
+      PAYLOAD.iss = jwt_secret.key
+      local jwt = 'no-way-this-works' .. jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          ["Host"] = "jwt9.com",
+          ["Cookie"] = "silly=" .. jwt .. "; path=/;domain=.jwt9.com"
+        }
+      })
+      local body = assert.res_status(401, res)
+      assert.equal([[{"message":"Bad token; invalid JSON"}]], body)
+    end)
     it("no cookie with JWT token, defaults to 'Authorization'", function()
       PAYLOAD.iss = jwt_secret.key
       local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
