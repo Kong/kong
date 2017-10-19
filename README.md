@@ -1,5 +1,6 @@
-# The Microservice API Gateway [![Build Status][badge-travis-image]][badge-travis-url]
 [![][kong-logo]][kong-url]
+
+[![Build Status][badge-travis-image]][badge-travis-url]
 
 Kong is a cloud-native, fast, scalable, and distributed Microservice
 Abstraction Layer *(also known as an API Gateway, API Middleware or in some
@@ -20,13 +21,23 @@ freenode: [#kong](http://webchat.freenode.net/?channels=kong)
 
 ## Summary
 
-- [**Features**](#features)
 - [**Why Kong?**](#why-kong)
+- [**Features**](#features)
 - [**Benchmarks**](#benchmarks)
 - [**Distributions**](#distributions)
 - [**Development**](#development)
 - [**Enterprise Support & Demo**](#enterprise-support--demo)
 - [**License**](#license)
+
+## Why Kong?
+
+If you are building for web, mobile or IoT (Internet of Things) you will likely
+end up needing common functionality to run your actual software. Kong can
+help by acting as a gateway (or a sidecar) for microservices requests while
+providing load balancing, logging, authentication, rate-limiting and more
+through plugins.
+
+[![][kong-benefits]][kong-url]
 
 ## Features
 
@@ -39,45 +50,35 @@ freenode: [#kong](http://webchat.freenode.net/?channels=kong)
 - **Serverless**: Invoke and secure AWS Lambda or OpenWhisk fuctions directly
   from Kong.
 - **WebSockets**: Communicate to your upstream services via WebSockets.
-- **OAuth2.0**: Add easily an OAuth2.0 authentication to your APIs.
-- **Logging**: Log requests and responses to your system over HTTP, TCP, UDP or
-  to disk.
+- **OAuth2.0**: Easily add OAuth2.0 authentication to your APIs.
+- **Logging**: Log requests and responses to your system over HTTP, TCP, UDP,
+  or to disk.
 - **Security**: ACL, Bot detection, whitelist/blacklist IPs, etc...
 - **Syslog**: Logging to System log.
 - **SSL**: Setup a Specific SSL Certificate for an underlying service or API.
 - **Monitoring**: Live monitoring provides key load and performance server
   metrics.
 - **Authentications**: HMAC, JWT, Basic, and more.
-- **Rate-limiting**: Block and throttle requests based on many variable.
-- **Transformations**: Add, remove or manipulate HTTP requests and responses.
+- **Rate-limiting**: Block and throttle requests based on many variables.
+- **Transformations**: Add, remove, or manipulate HTTP requests and responses.
 - **Caching**: Cache and serve responses at the proxy layer.
-- **CLI**: Control your Kong cluster from the command line just like Neo in The
-  Matrix.
+- **CLI**: Control your Kong cluster from the command line.
 - **REST API**: Kong can be operated with its RESTful API for maximum
   flexibility.
 - **Geo-Replicated**: Configs are always up-to-date across different regions.
 - **Failure Detection & Recovery**: Kong is unaffected if one of your Cassandra
   nodes goes down.
-- **Clustering**: All Kongs auto-join the cluster keeping their config updated
-  across nodes.
-- **Scalability**: Distributed by nature, Kong scales horizontally simply by
+- **Clustering**: All Kong nodes auto-join the cluster keeping their config
+  updated across nodes.
+- **Scalability**: Distributed by nature, Kong scales horizontally by simply
   adding nodes.
 - **Performance**: Kong handles load with ease by scaling and using NGINX at
   the core.
-- **Plugins**: Extendable architecture for adding functionality to Kong and APIs.
+- **Plugins**: Extendable architecture for adding functionality to Kong and
+  APIs.
 
-For more info about plugins, you can check out the [Plugin
-Gallery](https://konghq.com/plugins/).
-
-## Why Kong?
-
-If you are building for web, mobile or IoT (Internet of Things) you will likely
-end up needing common functionality to run your actual software. Kong can
-help by acting as a gateway (or a sidecar) for microservices requests while
-providing load balancing, logging, authentication, rate-limiting and more
-through plugins.
-
-[![][kong-benefits]][kong-url]
+For more info about plugins, you can check out the [Plugins
+Hub](https://konghq.com/plugins/).
 
 ## Benchmarks
 
