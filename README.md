@@ -254,8 +254,8 @@ limitations under the License.
 [gitter-url]: https://gitter.im/Mashape/kong
 [gitter-badge]: https://img.shields.io/badge/Gitter-Join%20Chat-blue.svg
 [google-groups-url]: https://groups.google.com/forum/#!forum/konglayer
-[badge-travis-url]: https://travis-ci.org/Mashape/kong/branches
-[badge-travis-image]: https://travis-ci.org/Mashape/kong.svg?branch=master
+[badge-travis-url]: https://travis-ci.org/Kong/kong/branches
+[badge-travis-image]: https://travis-ci.org/Kong/kong.svg?branch=master
 
 [busted]: https://github.com/Olivine-Labs/busted
 [luacheck]: https://github.com/mpeterv/luacheck
