@@ -1398,7 +1398,7 @@ describe("Router", function()
 
         it("uses the request's Host header if an API with no host was cached", function()
           -- This is a regression test for:
-          -- https://github.com/Mashape/kong/issues/2825
+          -- https://github.com/Kong/kong/issues/2825
           -- Ensure cached APIs (in the LRU cache) still get proxied with the
           -- correct Host header when preserve_host = true and no registered
           -- API has a `hosts` property.

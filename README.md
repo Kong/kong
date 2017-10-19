@@ -90,19 +90,19 @@ here](https://getkong.org/about/benchmark/).
 Kong comes in many shapes. While this repository contains its core's source
 code, other repos are also under active development:
 
-- [Kong Docker](https://github.com/Mashape/docker-kong): A Dockerfile for
+- [Kong Docker](https://github.com/Kong/docker-kong): A Dockerfile for
   running Kong in Docker.
-- [Kong Packages](https://github.com/Mashape/kong/releases): Pre-built packages
+- [Kong Packages](https://github.com/Kong/kong/releases): Pre-built packages
   for Debian, Red Hat, and OS X distributions (shipped with each release).
-- [Kong Vagrant](https://github.com/Mashape/kong-vagrant): A Vagrantfile for
+- [Kong Vagrant](https://github.com/Kong/kong-vagrant): A Vagrantfile for
   provisioning a development ready environment for Kong.
-- [Kong Homebrew](https://github.com/Mashape/homebrew-kong): Homebrew Formula
+- [Kong Homebrew](https://github.com/Kong/homebrew-kong): Homebrew Formula
   for Kong.
-- [Kong CloudFormation](https://github.com/Mashape/kong-dist-cloudformation):
+- [Kong CloudFormation](https://github.com/Kong/kong-dist-cloudformation):
   Kong in a 1-click deployment for AWS EC2
 - [Kong AWS AMI](https://aws.amazon.com/marketplace/pp/B014GHERVU): Kong AMI on
   the AWS Marketplace.
-- [Kong on Microsoft Azure](https://github.com/Mashape/kong-dist-azure): Run Kong
+- [Kong on Microsoft Azure](https://github.com/Kong/kong-dist-azure): Run Kong
   using Azure Resource Manager.
 - [Kong on Heroku](https://github.com/heroku/heroku-kong): Deploy Kong on
   Heroku in one click.
@@ -123,7 +123,7 @@ Reference](https://getkong.org/docs/latest/lua-reference/).
 #### Vagrant
 
 You can use a Vagrant box running Kong and Postgres that you can find at
-[Mashape/kong-vagrant](https://github.com/Mashape/kong-vagrant).
+[Mashape/kong-vagrant](https://github.com/Kong/kong-vagrant).
 
 #### Source Install
 
@@ -136,7 +136,7 @@ Instead of following the second step (Install Kong), clone this repository
 and install the latest Lua sources instead of the currently released ones:
 
 ```shell
-$ git clone https://github.com/Mashape/kong
+$ git clone https://github.com/Kong/kong
 $ cd kong/
 
 # you might want to switch to the development branch. See CONTRIBUTING.md
@@ -148,7 +148,7 @@ $ luarocks make
 
 #### Running for development
 
-Check out the [development section](https://github.com/Mashape/kong/blob/next/kong.conf.default#L244)
+Check out the [development section](https://github.com/Kong/kong/blob/next/kong.conf.default#L244)
 of the default configuration file for properties to tweak in order to ease
 the development process for Kong.
 

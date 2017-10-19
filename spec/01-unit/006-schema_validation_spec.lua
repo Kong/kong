@@ -295,7 +295,7 @@ describe("Schemas", function()
 
       it("preserves escaped commas in comma-separated arrays", function()
         -- Note: regression test for arrays of PCRE URIs:
-        -- https://github.com/Mashape/kong/issues/2780
+        -- https://github.com/Kong/kong/issues/2780
         local s = {
           fields = {
             array = { type = "array" }

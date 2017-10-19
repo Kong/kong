@@ -170,7 +170,7 @@ describe("Plugins triggering", function()
     -- by the plugins runloop, but which doesn't have a schema
     --
     -- This is a regression test after:
-    --     https://github.com/Mashape/kong/issues/2756
+    --     https://github.com/Kong/kong/issues/2756
     -- to ensure that this plugin plays well when it is being executed by
     -- the runloop (which accesses plugins schemas and is vulnerable to
     -- Lua indexing errors)
