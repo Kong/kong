@@ -31,6 +31,7 @@ return {
     accept_http_if_already_terminated = { required = false, type = "boolean", default = false },
     anonymous = {type = "string", default = "", func = check_user},
     global_credentials = {type = "boolean", default = false},
+    auth_header_name = {required = false, type = "string", default = "authorization"},
   },
   self_check = function(schema, plugin_t, dao, is_update)
     if not plugin_t.enable_authorization_code and not plugin_t.enable_implicit_grant
