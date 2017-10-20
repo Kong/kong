@@ -18,10 +18,16 @@ local PROXY_AUTHORIZATION = "proxy-authorization"
 
 local _M = {}
 
-local function retrieve_credentials(authorization_header_value)
+local function case_insensitive(pattern)
+  return pattern:gsub("(.)", function(letter)
+    return string.format("[%s%s]", letter:lower(), letter:upper())
+  end)
+end
+
+local function retrieve_credentials(authorization_header_value, conf)
   local username, password
   if authorization_header_value then
-    local cred = match(authorization_header_value, "%s*[ldap|LDAP]%s+(.*)")
+    local cred = match(authorization_header_value, "%s*" .. case_insensitive(conf.header_type) .. "%s+(.*)")
 
     if cred ~= nil then
       local decoded_cred = decode_base64(cred)
@@ -82,7 +88,7 @@ local function load_credential(given_username, given_password, conf)
 end
 
 local function authenticate(conf, given_credentials)
-  local given_username, given_password = retrieve_credentials(given_credentials)
+  local given_username, given_password = retrieve_credentials(given_credentials, conf)
   if given_username == nil then
     return false
   end
