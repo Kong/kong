@@ -96,6 +96,13 @@ describe("Plugin: oauth2 (access)", function()
       name = "testapp3",
       consumer_id = consumer.id
     })
+    assert(helpers.dao.oauth2_credentials:insert {
+          client_id = "clientid1011",
+          client_secret = "secret1011",
+          redirect_uri = "http://google.com/kong",
+          name = "testapp31",
+          consumer_id = consumer.id
+    })
 
     local api1 = assert(helpers.dao.apis:insert {
       name         = "api-1",
@@ -302,7 +309,45 @@ describe("Plugin: oauth2 (access)", function()
         anonymous                 = utils.uuid(), -- a non existing consumer
       },
     })
-
+    local api11 = assert(helpers.dao.apis:insert {
+          name         = "oauth2_11.com",
+          hosts        = { "oauth2_11.com" },
+          upstream_url = helpers.mock_upstream_url,
+        })
+        assert(helpers.dao.plugins:insert {
+          name   = "oauth2",
+          api_id = api11.id,
+          config = {
+            scopes                    = { "email", "profile", "user.email" },
+            enable_authorization_code = true,
+            mandatory_scope           = true,
+            provision_key             = "provision123",
+            token_expiration          = 7,
+            enable_implicit_grant     = true,
+            global_credentials        = true,
+            auth_header_name          = "custom_header_name",
+          },
+        })
+    local api12 = assert(helpers.dao.apis:insert {
+          name         = "oauth2_12.com",
+          hosts        = { "oauth2_12.com" },
+          upstream_url = helpers.mock_upstream_url,
+        })
+        assert(helpers.dao.plugins:insert {
+          name   = "oauth2",
+          api_id = api12.id,
+          config = {
+            scopes                    = { "email", "profile", "user.email" },
+            enable_authorization_code = true,
+            mandatory_scope           = true,
+            provision_key             = "provision123",
+            token_expiration          = 7,
+            enable_implicit_grant     = true,
+            global_credentials        = true,
+            auth_header_name          = "custom_header_name",
+            hide_credentials          = true,
+          },
+        })
     assert(helpers.start_kong({
       trusted_ips = "127.0.0.1",
       nginx_conf  = "spec/fixtures/custom_nginx.template",
@@ -804,6 +849,35 @@ describe("Plugin: oauth2 (access)", function()
         assert.are.equal(m[1], data[1].access_token)
         assert.are.equal(5, data[1].expires_in)
         assert.falsy(data[1].refresh_token)
+      end)
+      it("returns success and the token should have the right expiration when a custom header is passed", function()
+              local res = assert(proxy_ssl_client:send {
+                method = "POST",
+                path = "/oauth2/authorize",
+                body = {
+                  provision_key = "provision123",
+                  authenticated_userid = "id123",
+                  client_id = "clientid1011",
+                  scope = "email",
+                  response_type = "token"
+                },
+                headers = {
+                  ["Host"] = "oauth2_11.com",
+                  ["Content-Type"] = "application/json"
+                }
+              })
+              local body = cjson.decode(assert.res_status(200, res))
+              assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.com/kong\\#access_token=[\\w]{32,32}&expires_in=[\\d]+&token_type=bearer$"))
+
+              local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.com/kong\\#access_token=([\\w]{32,32})&expires_in=[\\d]+&token_type=bearer$")
+              assert.is_nil(err)
+              local m, err = iterator()
+              assert.is_nil(err)
+              local data = helpers.dao.oauth2_tokens:find_all {access_token = m[1]}
+              assert.are.equal(1, #data)
+              assert.are.equal(m[1], data[1].access_token)
+              assert.are.equal(7, data[1].expires_in)
+              assert.falsy(data[1].refresh_token)
       end)
       it("returns success and store authenticated user properties", function()
         local res = assert(proxy_ssl_client:send {
@@ -1695,6 +1769,32 @@ describe("Plugin: oauth2 (access)", function()
       })
       assert.res_status(200, res)
     end)
+    it("work when a correct access_token is being sent in the custom header", function()
+          local token = provision_token("oauth2_11.com",nil,"clientid1011","secret1011")
+
+          local res = assert(proxy_ssl_client:send {
+            method = "GET",
+            path = "/request",
+            headers = {
+              ["Host"] = "oauth2_11.com",
+              ["custom_header_name"] = "bearer " .. token.access_token,
+            }
+          })
+          assert.res_status(200, res)
+    end)
+    it("fail when a correct access_token is being sent in the wrong header", function()
+          local token = provision_token("oauth2_11.com",nil,"clientid1011","secret1011")
+
+          local res = assert(proxy_ssl_client:send {
+            method = "GET",
+            path = "/request",
+            headers = {
+              ["Host"] = "oauth2_11.com",
+              ["authorization"] = "bearer " .. token.access_token,
+            }
+          })
+          assert.res_status(401, res)
+    end)
     it("does not work when requesting a different API", function()
       local token = provision_token()
 
@@ -2124,6 +2224,19 @@ describe("Plugin: oauth2 (access)", function()
       local body = cjson.decode(assert.res_status(200, res))
       assert.is_nil(body.uri_args.access_token)
     end)
+    it("hides credentials in the querystring for api with custom header", function()
+      local token = provision_token("oauth2_12.com",nil,"clientid1011","secret1011")
+
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/request?access_token=" .. token.access_token,
+        headers = {
+          ["Host"] = "oauth2_12.com"
+        }
+      })
+      local body = cjson.decode(assert.res_status(200, res))
+      assert.is_nil(body.uri_args.access_token)
+    end)
     it("does not hide credentials in the header", function()
       local token = provision_token()
 
@@ -2151,6 +2264,21 @@ describe("Plugin: oauth2 (access)", function()
       })
       local body = cjson.decode(assert.res_status(200, res))
       assert.is_nil(body.headers.authorization)
+    end)
+    it("hides credentials in the custom header", function()
+          local token = provision_token("oauth2_12.com",nil,"clientid1011","secret1011")
+
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/request",
+            headers = {
+              ["Host"] = "oauth2_12.com",
+              ["custom_header_name"] = "bearer " .. token.access_token
+            }
+          })
+          local body = cjson.decode(assert.res_status(200, res))
+          assert.is_nil(body.headers.authorization)
+          assert.is_nil(body.headers.custom_header_name)
     end)
     it("does not abort when the request body is a multipart form upload", function()
       local token = provision_token("oauth2_3.com")
