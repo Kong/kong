@@ -218,9 +218,9 @@ local function authorize(conf)
   })
 end
 
-local function retrieve_client_credentials(parameters)
+local function retrieve_client_credentials(parameters, conf)
   local client_id, client_secret, from_authorization_header
-  local authorization_header = ngx.req.get_headers()["authorization"]
+  local authorization_header = ngx.req.get_headers()[conf.auth_header_name]
   if parameters[CLIENT_ID] and parameters[CLIENT_SECRET] then
     client_id = parameters[CLIENT_ID]
     client_secret = parameters[CLIENT_SECRET]
@@ -271,7 +271,7 @@ local function issue_token(conf)
       response_params = {[ERROR] = "unsupported_grant_type", error_description = "Invalid " .. GRANT_TYPE}
     end
 
-    local client_id, client_secret, from_authorization_header = retrieve_client_credentials(parameters)
+    local client_id, client_secret, from_authorization_header = retrieve_client_credentials(parameters, conf)
 
     -- Check client_id and redirect_uri
     local allowed_redirect_uris, client = get_redirect_uri(client_id)
@@ -405,7 +405,7 @@ local function parse_access_token(conf)
   local found_in = {}
   local result = retrieve_parameters()["access_token"]
   if not result then
-    local authorization = ngx.req.get_headers()["authorization"]
+    local authorization = ngx.req.get_headers()[conf.auth_header_name]
     if authorization then
       local parts = {}
       for v in authorization:gmatch("%S+") do -- Split by space
@@ -420,7 +420,7 @@ local function parse_access_token(conf)
 
   if conf.hide_credentials then
     if found_in.authorization_header then
-      ngx.req.clear_header("authorization")
+      ngx.req.clear_header(conf.auth_header_name)
     else
       -- Remove from querystring
       local parameters = ngx.req.get_uri_args()
