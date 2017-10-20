@@ -4,6 +4,9 @@ local singletons = require "kong.singletons"
 local ldap = require "kong.plugins.ldap-auth.ldap"
 
 local match = string.match
+local lower = string.lower
+local find = string.find
+local sub = string.sub
 local ngx_log = ngx.log
 local request = ngx.req
 local ngx_error = ngx.ERR
@@ -18,18 +21,12 @@ local PROXY_AUTHORIZATION = "proxy-authorization"
 
 local _M = {}
 
-local function case_insensitive(pattern)
-  return pattern:gsub("(.)", function(letter)
-    return string.format("[%s%s]", letter:lower(), letter:upper())
-  end)
-end
-
 local function retrieve_credentials(authorization_header_value, conf)
   local username, password
   if authorization_header_value then
-    local cred = match(authorization_header_value, "%s*" .. case_insensitive(conf.header_type) .. "%s+(.*)")
-
-    if cred ~= nil then
+    local s, e = find(lower(authorization_header_value), "%s*" .. lower(conf.header_type) .. "%s+")
+    if s == 1 then
+      local cred = sub(authorization_header_value, e + 1)
       local decoded_cred = decode_base64(cred)
       username, password = match(decoded_cred, "(.+):(.+)")
     end
