@@ -14,7 +14,8 @@ end
 
 function ResponseTransformerHandler:access(conf)
   ResponseTransformerHandler.super.access(self)
-  ngx.ctx.buffer = ""
+  ngx.ctx.chunks = {}
+  ngx.ctx.chunk_number = 1
 end
 
 function ResponseTransformerHandler:header_filter(conf)
@@ -28,10 +29,11 @@ function ResponseTransformerHandler:body_filter(conf)
   if is_body_transform_set(conf) and is_json_body(ngx.header["content-type"]) then
     local chunk, eof = ngx.arg[1], ngx.arg[2]
     if eof then
-      local body = body_filter.transform_json_body(conf, ngx.ctx.buffer)
+      local body = body_filter.transform_json_body(conf, table.concat(ngx.ctx.chunks))
       ngx.arg[1] = body
     else
-      ngx.ctx.buffer = ngx.ctx.buffer .. chunk
+      ngx.ctx.chunks[ngx.ctx.chunk_number] = chunk
+      ngx.ctx.chunk_number = ngx.ctx.chunk_number + 1
       ngx.arg[1] = nil
     end
   end
