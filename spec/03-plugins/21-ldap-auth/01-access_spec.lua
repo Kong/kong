@@ -172,6 +172,19 @@ describe("Plugin: ldap-auth (access)", function()
     })
     assert.response(r).has.status(200)
   end)
+  it("fails if credential type is invalid in post request", function()
+    local r = assert(client:send {
+      method = "POST",
+      path = "/request",
+      body = {},
+      headers = {
+        host = "ldap.com",
+        authorization = "invalidldap " .. ngx.encode_base64("einstein:password"),
+        ["content-type"] = "application/x-www-form-urlencoded",
+      }
+    })
+    assert.response(r).has.status(403)
+  end)
   it("passes if credential is valid and starts with space in post request", function()
     local r = assert(client:send {
       method = "POST",
