@@ -32,6 +32,11 @@ describe("Plugin: ldap-auth (access)", function()
       hosts        = { "ldap4.com" },
       upstream_url = helpers.mock_upstream_url,
     })
+    local api5 = assert(helpers.dao.apis:insert {
+      name         = "test-ldap5",
+      hosts        = { "ldap5.com" },
+      upstream_url = helpers.mock_upstream_url,
+    })
 
     local anonymous_user = assert(helpers.dao.consumers:insert {
       username = "no-body"
@@ -85,6 +90,18 @@ describe("Plugin: ldap-auth (access)", function()
         attribute = "uid",
         cache_ttl = 2,
         anonymous = utils.uuid(), -- non existing consumer
+      }
+    })
+    assert(helpers.dao.plugins:insert {
+      api_id = api5.id,
+      name = "ldap-auth",
+      config = {
+        ldap_host = ldap_host_aws,
+        ldap_port = "389",
+        start_tls = false,
+        base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com",
+        attribute = "uid",
+        header_type = "basic",
       }
     })
 
@@ -278,6 +295,32 @@ describe("Plugin: ldap-auth (access)", function()
     })
     assert.response(r).has.status(200)
     assert.request(r).has.no.header("authorization")
+  end)
+  it("passes if custom credential type is given in post request", function()
+    local r = assert(client:send {
+      method = "POST",
+      path = "/request",
+      body = {},
+      headers = {
+        host = "ldap5.com",
+        authorization = "basic " .. ngx.encode_base64("einstein:password"),
+        ["content-type"] = "application/x-www-form-urlencoded",
+      }
+    })
+    assert.response(r).has.status(200)
+  end)
+  it("fails if custom credential type is invalid in post request", function()
+    local r = assert(client:send {
+      method = "POST",
+      path = "/request",
+      body = {},
+      headers = {
+        host = "ldap5.com",
+        authorization = "invalidldap " .. ngx.encode_base64("einstein:password"),
+        ["content-type"] = "application/x-www-form-urlencoded",
+      }
+    })
+    assert.response(r).has.status(403)
   end)
   it("caches LDAP Auth Credential", function()
     local r = assert(client:send {
