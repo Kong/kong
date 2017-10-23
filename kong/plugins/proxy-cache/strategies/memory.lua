@@ -127,6 +127,7 @@ end
 --- Marks all entries as expired and remove them from the memory
 -- @param free_mem Boolean indicating whether to free the memory; if false,
 --   entries will only be marked as expired
+-- @return true on success, nil plus error message otherwise
 function _M:flush(free_mem)
   -- mark all items as expired
   self.dict:flush_all()
@@ -135,6 +136,8 @@ function _M:flush(free_mem)
   if free_mem then
     self.dict:flush_expired()
   end
+
+  return true
 end
 
 return _M

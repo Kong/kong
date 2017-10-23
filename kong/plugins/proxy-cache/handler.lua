@@ -316,7 +316,10 @@ function ProxyCacheHandler:init_worker()
       end
 
     else
-      strategy:flush(true)
+      local ok, err = strategy:flush(true)
+      if not ok then
+        ngx_log(ngx.ERR, "[proxy-cache] error in flushing cache data: ", err)
+      end
     end
   end)
 end

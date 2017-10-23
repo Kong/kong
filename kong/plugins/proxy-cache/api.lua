@@ -33,7 +33,10 @@ return {
           strategy_opts = conf[conf.strategy],
         })
 
-        strategy:flush(true)
+        local ok, err = strategy:flush(true)
+        if not ok then
+          helpers.yield_error(err)
+        end
 
         if require(STRATEGY_PATH).LOCAL_DATA_STRATEGIES[conf.strategy] then
           local ok, err = broadcast_purge(row.id, nil)
