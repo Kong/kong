@@ -264,6 +264,15 @@ return {
       required                         = false,
       type                             = "url",
     },
+    login_redirect_mode                = {
+      required                         = false,
+      type                             = "string",
+      enum                             = {
+        "query",
+        --"form_post",
+        "fragment",
+      },
+    },
     consumer_claim                     = {
       required                         = false,
       type                             = "string",

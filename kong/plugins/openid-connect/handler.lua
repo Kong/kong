@@ -37,6 +37,7 @@ local base64        = codec.base64
 local open          = io.open
 
 
+local DEBUG         = ngx.DEBUG
 local NOTICE        = ngx.NOTICE
 local ERR           = ngx.ERR
 
@@ -382,10 +383,12 @@ function OICHandler:access(conf)
   if ngx.ctx.authenticated_credential and conf.anonymous ~= ngx.null and conf.anonymous ~= "" then
     -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
+    log(DEBUG, "[openid-connect] skipping because user is already authenticated")
     return
   end
 
   -- load issuer configuration
+  log(DEBUG, "[openid-connect] loading discovery information")
   local issuer, err = cache.issuers.load(conf)
   if not issuer then
     return unexpected(err)
@@ -423,6 +426,7 @@ function OICHandler:access(conf)
 
   local o
 
+  log(DEBUG, "[openid-connect] initializing library")
   o, err = oic.new({
     client_id         = client_id,
     client_secret     = client_secret,
@@ -503,6 +507,8 @@ function OICHandler:access(conf)
   if auth_method_session then
     local session_cookie_name = get_conf_arg(conf, "session_cookie_name",  "session")
 
+    log(DEBUG, "[openid-connect] trying to open session")
+
     s, session_present = session.open {
       name = session_cookie_name,
       secret = issuer.secret
@@ -511,12 +517,15 @@ function OICHandler:access(conf)
   end
 
   if not session_present then
-    -- step 1: let's figure out the authentication method
+    log(DEBUG, "[openid-connect] session was not found")
 
     -- bearer token authentication
     if auth_method_bearer or auth_method_introspection then
+      log(DEBUG, "[openid-connect] trying to find bearer token")
       bearer = o.authorization:bearer()
       if bearer then
+        log(DEBUG, "[openid-connect] found bearer token")
+
         session_data = {
           tokens = {
             access_token = bearer
@@ -530,6 +539,8 @@ function OICHandler:access(conf)
 
         local id_token_param_name = get_conf_arg(conf, "id_token_param_name")
         if id_token_param_name then
+          log(DEBUG, "[openid-connect] trying to find id token")
+
           local id_token_param_type = get_conf_arg(conf, "id_token_param_type", { "query", "header", "body" })
 
           for _, t in ipairs(id_token_param_type) do
@@ -606,17 +617,28 @@ function OICHandler:access(conf)
           end
 
           if id_token then
+            log(DEBUG, "[openid-connect] found id token")
             session_data.tokens.id_token = id_token
+
+          else
+            log(DEBUG, "[openid-connect] id token was not found")
           end
         end
+
+      else
+        log(DEBUG, "[openid-connect] bearer token was not found")
       end
     end
 
     if not bearer then
       -- resource owner password and client credentials grants
       if auth_method_password or auth_method_client_credentials then
+        log(DEBUG, "[openid-connect] trying to find basic authentication")
+
         local identity, secret = o.authorization:basic()
         if identity and secret then
+          log(DEBUG, "[openid-connect] found basic authentication")
+
           args = {}
           if auth_method_password then
             args[1] = {
@@ -633,12 +655,17 @@ function OICHandler:access(conf)
               grant_type    = "client_credentials",
             }
           end
+
+        else
+          log(DEBUG, "[openid-connect] basic authentication was not found")
         end
       end
 
       if not args then
         -- authorization code grant
         if auth_method_authorization_code then
+          log(DEBUG, "[openid-connect] trying to open authorization code flow session")
+
           local authorization_cookie_name = get_conf_arg(conf, "authorization_cookie_name", "authorization")
 
           local authorization, authorization_present = session.open {
@@ -650,11 +677,17 @@ function OICHandler:access(conf)
           }
 
           if authorization_present then
+            log(DEBUG, "[openid-connect] found authorization code flow session")
+
             local authorization_data = authorization.data or {}
+
+            log(DEBUG, "[openid-connect] checking authorization code flow state")
 
             state = authorization_data.state
 
             if state then
+              log(DEBUG, "[openid-connect] found authorization code flow state")
+
               local nonce         = authorization_data.nonce
               local code_verifier = authorization_data.code_verifier
 
@@ -667,8 +700,12 @@ function OICHandler:access(conf)
 
               local uri_args = get_uri_args()
 
+              log(DEBUG, "[openid-connect] verifying authorization code flow")
+
               args, err = o.authorization:verify(args)
               if not args then
+                log(DEBUG, "[openid-connect] invalid authorization code flow")
+
                 if uri_args.state == state then
                   return unauthorized(iss, err, authorization)
 
@@ -680,12 +717,14 @@ function OICHandler:access(conf)
                   end
                 end
 
+                log(DEBUG, "[openid-connect] starting a new authorization code flow with previous parameters")
                 -- it seems that user may have opened a second tab
                 -- lets redirect that to idp as well in case user
                 -- had closed the previous, but with same parameters
                 -- as before.
                 authorization:start()
 
+                log(DEBUG, "[openid-connect] creating authorization code flow request with previous parameters")
                 args, err = o.authorization:request {
                   args          = get_conf_args(conf.authorization_query_args_names,
                                                 conf.authorization_query_args_values),
@@ -695,11 +734,15 @@ function OICHandler:access(conf)
                 }
 
                 if not args then
+                  log(DEBUG, "[openid-connect] unable to start authorization code flow request with previous parameters")
                   return unexpected(err)
                 end
 
+                log(DEBUG, "[openid-connect] redirecting client to openid connect provider with previous parameters")
                 return redirect(args.url)
               end
+
+              log(DEBUG, "[openid-connect] authorization code flow verified")
 
               authorization:hide()
               authorization:destroy()
@@ -711,12 +754,17 @@ function OICHandler:access(conf)
 
               args = { args }
             end
+
+          else
+            log(DEBUG, "[openid-connect] authorization code flow session was not found")
           end
 
           if not args then
+            log(DEBUG, "[openid-connect] creating authorization code flow request")
             -- authorization code request
             args, err = o.authorization:request()
             if not args then
+              log(DEBUG, "[openid-connect] unable to start authorization code flow request")
               return unexpected(err)
             end
 
@@ -730,14 +778,24 @@ function OICHandler:access(conf)
 
             authorization:save()
 
+            log(DEBUG, "[openid-connect] redirecting client to openid connect provider")
             return redirect(args.url)
+
+          else
+            log(DEBUG, "[openid-connect] authenticating using authorization code flow")
           end
 
         else
           return unauthorized(iss, "no suitable authorization credentials were provided")
         end
       end
+
+    else
+      log(DEBUG, "[openid-connect] authenticating using bearer token")
     end
+
+  else
+    log(DEBUG, "[openid-connect] authenticating using session")
   end
 
   if not session_data then
@@ -756,24 +814,39 @@ function OICHandler:access(conf)
 
   -- bearer token was present in a request, let's verify it
   if bearer then
+    log(DEBUG, "[openid-connect] verifying bearer token")
+
     -- TODO: cache token verification(?)
     tokens_decoded, err = o.token:verify(tokens_encoded)
     if not tokens_decoded then
+      log(DEBUG, "[openid-connect] unable to verify bearer token")
       return unauthorized(iss, err, s)
     end
 
+    log(DEBUG, "[openid-connect] bearer token verified")
     local access_token_decoded = tokens_decoded.access_token
 
     -- introspection of opaque access token
     if type(access_token_decoded) ~= "table" then
+      log(DEBUG, "[openid-connect] opaque bearer token was provided")
 
       if auth_method_kong_oauth2 then
+        log(DEBUG, "[openid-connect] trying to find matching kong oauth2 token")
         access_token_introspected, credential, mapped_consumer = cache.oauth2.load(access_token_decoded)
+
+        if access_token_introspected then
+          log(DEBUG, "[openid-connect] found matching kong oauth2 token")
+
+        else
+          log(DEBUG, "[openid-connect] matching kong oauth2 token was not found")
+        end
       end
 
       if not access_token_introspected then
         if auth_method_introspection then
           if get_conf_arg(conf, "cache_introspection") then
+            log(DEBUG, "[openid-connect] trying to authenticate using oauth2 introspection with caching enabled")
+
             -- TODO: we just cache this for default one hour, not sure if there should be another strategy
             -- TODO: actually the alternative is already proposed, but needs changes in core where ttl
             -- TODO: and neg_ttl can be set after the results are retrieved from identity provider
@@ -782,13 +855,28 @@ function OICHandler:access(conf)
               o,access_token_decoded, get_conf_arg(conf, "introspection_endpoint"), exp
             )
           else
+            log(DEBUG, "[openid-connect] trying to authenticate using oauth2 introspection")
+
             access_token_introspected = o.token:introspect(access_token_decoded, "access_token", {
               introspection_endpoint = get_conf_arg(conf, "introspection_endpoint")
             })
           end
+
+          if access_token_introspected then
+            if access_token_introspected.active then
+              log(DEBUG, "[openid-connect] authenticated using oauth2 introspection")
+
+            else
+              log(DEBUG, "[openid-connect] opaque token is not active anymore")
+            end
+
+          else
+            log(DEBUG, "[openid-connect] unable to authenticate using oauth2 introspection")
+          end
         end
 
         if not access_token_introspected or not access_token_introspected.active then
+          log(DEBUG, "[openid-connect] authentication with opaque bearer token failed")
           return unauthorized(iss, err, s)
         end
 
@@ -801,9 +889,12 @@ function OICHandler:access(conf)
       expires = access_token_introspected.exp or exp
 
     else
+      log(DEBUG, "[openid-connect] jwt bearer token was provided")
+
       -- additional non-standard verification of the claim against a jwt session cookie
       local jwt_session_cookie = get_conf_arg(conf, "jwt_session_cookie")
       if jwt_session_cookie then
+        log(DEBUG, "[openid-connect] validating jwt claim against jwt session cookie")
         local jwt_session_cookie_value = var["cookie_" .. jwt_session_cookie]
         if not jwt_session_cookie_value or jwt_session_cookie_value == "" then
           return unauthorized(iss, "jwt session cookie was not specified for session claim verification", s)
@@ -823,7 +914,11 @@ function OICHandler:access(conf)
             iss, "invalid jwt session claim (" .. jwt_session_claim .. ") was specified in jwt access token", s
           )
         end
+
+        log(DEBUG, "[openid-connect] jwt claim matches jwt session cookie")
       end
+
+      log(DEBUG, "[openid-connect] authenticated using jwt bearer token")
 
       grant_type = "bearer"
       expires = access_token_decoded.exp or exp
@@ -859,21 +954,27 @@ function OICHandler:access(conf)
             end
           end
           if has_headers then
+            log(DEBUG, "[openid-connect] injecting client headers to token request")
             arg.headers = token_headers
           end
         end
 
         if get_conf_arg(conf, "cache_tokens") then
+          log(DEBUG, "[openid-connect] trying to exchange credentials using token endpoint with caching enabled")
+
           -- TODO: we just cache this for default one hour, not sure if there should be another strategy
           -- TODO: actually the alternative is already proposed, but needs changes in core where ttl
           -- TODO: and neg_ttl can be set after the results are retrieved from identity provider
           -- TODO: see: https://github.com/thibaultcha/lua-resty-mlcache/pull/23
           tokens_encoded, err, extra_headers = cache.tokens.load(o, arg, exp)
+
         else
+          log(DEBUG, "[openid-connect] trying to exchange credentials using token endpoint")
           tokens_encoded, err, extra_headers = o.token:request(arg)
         end
 
         if tokens_encoded then
+          log(DEBUG, "[openid-connect] exchanged credentials with tokens")
           grant_type = arg.grant_type or "authorization_code"
           args = arg
           break
@@ -882,13 +983,20 @@ function OICHandler:access(conf)
     end
 
     if not tokens_encoded then
+      log(DEBUG, "[openid-connect] unable to exchange credentials with tokens")
       return unauthorized(iss, err, s)
     end
+
+    log(DEBUG, "[openid-connect] verifying tokens")
 
     -- TODO: cache token verification(?)
     tokens_decoded, err = o.token:verify(tokens_encoded, args)
     if not tokens_decoded then
+      log(DEBUG, "[openid-connect] token verification failed")
       return unauthorized(iss, err, s)
+
+    else
+      log(DEBUG, "[openid-connect] tokens verified")
     end
 
     expires = (tonumber(tokens_encoded.expires_in) or default_expires_in) + now
@@ -909,42 +1017,66 @@ function OICHandler:access(conf)
 
   else
     -- it looks like we are using session authentication
+    log(DEBUG, "[openid-connect] authenticated using session")
+
     grant_type = "session"
     expires = (session_data.expires or leeway)
 
   end
 
+  log(DEBUG, "[openid-connect] checking for access token")
   if not tokens_encoded.access_token then
+    log(DEBUG, "[openid-connect] access token was not found")
     return unauthorized(iss, "access token was not found", s)
+
+  else
+    log(DEBUG, "[openid-connect] found access token")
   end
 
   expires = (expires or leeway) - leeway
 
+  log(DEBUG, "[openid-connect] checking for access token expiration")
+
   if expires > now then
+    log(DEBUG, "[openid-connect] access token is valid and has not expired")
+
     if auth_method_session then
       s:start()
     end
 
     if get_conf_arg(conf, "reverify") then
+      log(DEBUG, "[openid-connect] reverifying tokens")
       tokens_decoded, err = o.token:verify(tokens_encoded)
       if not tokens_decoded then
+        log(DEBUG, "[openid-connect] reverifying tokens failed")
         return forbidden(iss, err)
+
+      else
+        log(DEBUG, "[openid-connect] reverified tokens")
       end
     end
 
   else
+    log(DEBUG, "[openid-connect] access token has expired")
+
     if auth_method_refresh_token then
       -- access token has expired, try to refresh the access token before proxying
       if not tokens_encoded.refresh_token then
         return forbidden(iss, "access token cannot be refreshed in absense of refresh token", s)
       end
 
+      log(DEBUG, "[openid-connect] trying to refresh access token using refresh token")
+
       local tokens_refreshed
       local refresh_token = tokens_encoded.refresh_token
       tokens_refreshed, err = o.token:refresh(refresh_token)
 
       if not tokens_refreshed then
+        log(DEBUG, "[openid-connect] unable to refresh access token using refresh token")
         return forbidden(iss, err, s)
+
+      else
+        log(DEBUG, "[openid-connect] refreshed access token using refresh token")
       end
 
       if not tokens_refreshed.id_token then
@@ -955,9 +1087,14 @@ function OICHandler:access(conf)
         tokens_refreshed.refresh_token = refresh_token
       end
 
+      log(DEBUG, "[openid-connect] verifying refreshed tokens")
       tokens_decoded, err = o.token:verify(tokens_refreshed)
       if not tokens_decoded then
+        log(DEBUG, "[openid-connect] unable to verify refreshed tokens")
         return forbidden(iss, err, s)
+
+      else
+        log(DEBUG, "[openid-connect] verified refreshed tokens")
       end
 
       tokens_encoded = tokens_refreshed
@@ -974,7 +1111,7 @@ function OICHandler:access(conf)
       end
 
     else
-      return forbidden(iss, err, s)
+      return forbidden(iss, "access token has expired and could not be refreshed", s)
     end
   end
 
@@ -983,32 +1120,42 @@ function OICHandler:access(conf)
   if not mapped_consumer then
     local consumer_claim = get_conf_arg(conf, "consumer_claim")
     if consumer_claim then
+      log(DEBUG, "[openid-connect] trying to find kong consumer")
+
       local consumer_by = get_conf_arg(conf, "consumer_by")
 
       if not tokens_decoded then
+        log(DEBUG, "[openid-connect] decoding tokens")
         tokens_decoded, err = o.token:decode(tokens_encoded)
       end
 
       if tokens_decoded then
+        log(DEBUG, "[openid-connect] decoded tokens")
+
         local id_token = tokens_decoded.id_token
         if id_token then
+          log(DEBUG, "[openid-connect] trying to find consumer using id token")
           mapped_consumer, err = consumer(iss, id_token, consumer_claim, false, consumer_by)
           if not mapped_consumer then
+            log(DEBUG, "[openid-connect] trying to find consumer using access token")
             mapped_consumer = consumer(iss, tokens_decoded.access_token, consumer_claim, false, consumer_by)
           end
 
         else
+          log(DEBUG, "[openid-connect] trying to find consumer using access token")
           mapped_consumer, err = consumer(iss, tokens_decoded.access_token, consumer_claim, false, consumer_by)
         end
       end
 
       if not mapped_consumer and access_token_introspected then
+        log(DEBUG, "[openid-connect] trying to find consumer using introspection response")
         mapped_consumer, err = consumer(iss, access_token_introspected, consumer_claim, false, consumer_by)
       end
 
       if not mapped_consumer then
+        log(DEBUG, "[openid-connect] kong consumer was not found")
         local anonymous = get_conf_arg(conf, "anonymous")
-        if anonymous == nil or anonymous == "" then
+        if anonymous then
           if err then
             return forbidden(iss, "consumer was not found (" .. err .. ")", s)
 
@@ -1016,6 +1163,8 @@ function OICHandler:access(conf)
             return forbidden(iss, "consumer was not found", s)
           end
         end
+
+        log(DEBUG, "[openid-connect] trying with anonymous kong consumer")
 
         is_anonymous = true
 
@@ -1027,18 +1176,28 @@ function OICHandler:access(conf)
 
         mapped_consumer, err = consumer(iss, consumer_token, consumer_claim, true, consumer_by)
         if not mapped_consumer then
+          log(DEBUG, "[openid-connect] anonymous kong consumer was not found")
+
           if err then
             return forbidden(iss, "anonymous consumer was not found (" .. err .. ")", s)
 
           else
             return forbidden(iss, "anonymous consumer was not found", s)
           end
+
+        else
+          log(DEBUG, "[openid-connect] found anonymous kong consumer")
         end
+
+      else
+        log(DEBUG, "[openid-connect] found kong consumer")
       end
     end
   end
 
   if mapped_consumer then
+    log(DEBUG, "[openid-connect] setting kong consumer context and headers")
+
     local head = constants.HEADERS
 
     ngx.ctx.authenticated_consumer = mapped_consumer
@@ -1062,6 +1221,7 @@ function OICHandler:access(conf)
 
   -- remove session cookie from the upstream request?
   if auth_method_session then
+    log(DEBUG, "[openid-connect] hiding session cookie from upstream")
     s:hide()
   end
 
@@ -1069,6 +1229,7 @@ function OICHandler:access(conf)
   if extra_headers and grant_type then
     local replay_for = get_conf_arg(conf, "token_headers_grants")
     if replay_for then
+      log(DEBUG, "[openid-connect] replaying token endpoint request headers")
       local replay_prefix = get_conf_arg(conf, "token_headers_prefix")
       for _, v in ipairs(replay_for) do
         if v == grant_type then
@@ -1093,6 +1254,8 @@ function OICHandler:access(conf)
       end
     end
   end
+
+  log(DEBUG, "[openid-connect] setting upstream and downstream headers")
 
   -- now let's setup the upstream and downstream headers
   headers(
@@ -1181,6 +1344,7 @@ function OICHandler:access(conf)
         local login_response = {}
         local login_tokens = get_conf_arg(conf, "login_tokens")
         if login_tokens then
+          log(DEBUG, "[openid-connect] adding login tokens to response")
           for _, name in ipairs(login_tokens) do
             if tokens_encoded[name] then
               login_response[name] = tokens_encoded[name]
@@ -1188,6 +1352,7 @@ function OICHandler:access(conf)
           end
         end
 
+        log(DEBUG, "[openid-connect] login with response login action")
         return success(login_response)
 
       elseif login_action == "redirect" then
@@ -1196,10 +1361,31 @@ function OICHandler:access(conf)
           local ruri, i = { login_redirect_uri }, 2
           local login_tokens = get_conf_arg(conf, "login_tokens")
           if login_tokens then
+            log(DEBUG, "[openid-connect] adding login tokens to redirect uri")
+
+            local login_redirect_mode   = get_conf_arg(conf, "login_redirect_mode", "fragment")
+            local redirect_params_added = false
+
+            if login_redirect_mode == "query" then
+              if find(login_redirect_uri, "?", 1, true) then
+                redirect_params_added = true
+              end
+
+            else
+              if find(login_redirect_uri, "#", 1, true) then
+                redirect_params_added = true
+              end
+            end
+
             for _, name in ipairs(login_tokens) do
               if tokens_encoded[name] then
-                if i == 1 then
-                  ruri[i] = "#"
+                if not redirect_params_added then
+                  if login_redirect_mode == "query" then
+                    ruri[i] = "?"
+                  else
+                    ruri[i] = "#"
+                  end
+                  redirect_params_added = true
 
                 else
                   ruri[i] = "&"
@@ -1213,12 +1399,14 @@ function OICHandler:access(conf)
             end
           end
 
+          log(DEBUG, "[openid-connect] login with redirect login action")
           return redirect(concat(ruri))
         end
       end
     end
   end
 
+  log(DEBUG, "[openid-connect] proxying to upstream")
   -- proxies to upstream
 end
 
