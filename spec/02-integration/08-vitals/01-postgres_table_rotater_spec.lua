@@ -4,6 +4,21 @@ local dao_helpers   = require "spec.02-integration.03-dao.helpers"
 local ngx_time      = ngx.time
 
 
+local function drop_vitals_seconds_tables(db)
+  local query = [[
+  select table_name from information_schema.tables
+   where table_schema = 'public'
+     and table_name like 'vitals_stats_seconds_%'
+  ]]
+
+  local res = db:query(query)
+
+  for i = 1, #res do
+    assert(db:query("drop table if exists " .. res[i].table_name))
+  end
+end
+
+
 dao_helpers.for_each_dao(function(kong_conf)
   if kong_conf.database == "cassandra" then
     return
@@ -31,6 +46,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
 
     before_each(function()
+      drop_vitals_seconds_tables(db)
       snapshot = assert:snapshot()
     end)
 
@@ -50,6 +66,26 @@ dao_helpers.for_each_dao(function(kong_conf)
         local expected     = "vitals_stats_seconds_" .. current_hour
 
         assert.same(expected, rotater:current_table_name())
+      end)
+    end)
+
+
+    describe(":table_names_for_select()", function()
+      it("returns only the current table name when no previous tables exist", function()
+        stub(rotater, "current_table_name").returns("vitals_stats_seconds_1505865600")
+
+        assert.same({ "vitals_stats_seconds_1505865600" }, rotater:table_names_for_select())
+      end)
+
+      it("returns the most recent table name when previous tables exist", function()
+        assert(db:query("create table if not exists vitals_stats_seconds_1505862000 (like vitals_stats_seconds)"))
+        assert(db:query("create table if not exists vitals_stats_seconds_1505865600 (like vitals_stats_seconds)"))
+
+        stub(rotater, "current_table_name").returns("vitals_stats_seconds_1505865600")
+
+        local res = rotater:table_names_for_select()
+
+        assert.same({ "vitals_stats_seconds_1505865600", "vitals_stats_seconds_1505862000" }, res)
       end)
     end)
 
@@ -80,7 +116,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
 
     describe(":drop_previous_table()", function()
-      it("drops all tables prior to current one", function()
+      it("drops all tables prior to previous one", function()
         assert(db:query("create table if not exists vitals_stats_seconds_1505865600 (like vitals_stats_seconds)"))
         assert(db:query("create table if not exists vitals_stats_seconds_1505862000 (like vitals_stats_seconds)"))
         assert(db:query("create table if not exists vitals_stats_seconds_1505858400 (like vitals_stats_seconds)"))
@@ -101,13 +137,18 @@ dao_helpers.for_each_dao(function(kong_conf)
         local res, err = db:query(query)
 
         assert.is_nil(err)
-        assert.equals(0, #res)
+        assert.equals(1, #res)
       end)
 
 
-      it("does not drop tables at or after current one", function()
+      it("does not drop tables at or after previous one", function()
         -- initialize current and future tables
         rotater:init()
+
+        -- create previous hour table
+        local now           = ngx_time()
+        local previous_hour = now - 3600 - (now % 3600)
+        assert(db:query("create table if not exists vitals_stats_seconds_" .. previous_hour .. "(like vitals_stats_seconds)"))
 
         stub(rotater.aggregator, "aggregate_minutes").returns("ok response for tests")
 
@@ -118,15 +159,33 @@ dao_helpers.for_each_dao(function(kong_conf)
         select table_name from information_schema.tables
          where table_schema = 'public'
            and table_name like 'vitals_stats_seconds_%'
-           and table_name >= '
-        ]] .. rotater:current_table_name() .. "'"
+           and table_name >= 'vitals_stats_seconds_]] .. previous_hour .. "'"
 
         local res, err = db:query(query)
 
         assert.is_nil(err)
-        assert.equals(2, #res)
+        assert.equals(3, #res)
       end)
 
+      it("does not drop tables if previous table does not exist", function()
+        -- initialize current and future tables
+        rotater:init()
+
+        stub(rotater.aggregator, "aggregate_minutes").returns("ok response for tests")
+
+        local now           = ngx_time()
+        local previous_hour = now - 3600 - (now % 3600)
+
+        local query = [[
+        select table_name from information_schema.tables
+         where table_schema = 'public'
+           and table_name like 'vitals_stats_seconds_%'
+           and table_name >= 'vitals_stats_seconds_]] .. previous_hour .. "'"
+
+        local select_res, err = db:query(query)
+        assert.is_nil(err)
+        assert.equals(2, #select_res)
+      end)
 
       it("does not drop table if it couldn't aggregate minutes", function()
         assert(db:query("create table if not exists vitals_stats_seconds_1505865600 (like vitals_stats_seconds)"))

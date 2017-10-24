@@ -107,16 +107,17 @@ end
 function _M:get_stats(query_type)
   local res, err = self.strategy:select_stats(query_type)
 
-  return self:convert_stats(res, err)
+  if err then
+    log(WARN, _log_prefix, err)
+    return {}
+  end
+
+  return self:convert_stats(res)
 end
 
 
 -- converts the db query result into a standardized format for the admin API
-function _M:convert_stats(res, err)
-  if err then
-    return nil, err
-  end
-
+function _M:convert_stats(res)
   local stats = {}
 
   -- convert [timestamp, l2_hit, l2_miss, latency_min, latency_max]

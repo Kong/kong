@@ -34,6 +34,8 @@ local SELECT_PREVIOUS_VITALS_STATS_SECONDS = [[
 
 local DROP_PREVIOUS_VITALS_STATS_SECONDS = "DROP TABLE IF EXISTS %s"
 
+local NO_PREVIOUS_TABLE = "No previous table"
+
 
 function _M.new(opts)
 
@@ -105,6 +107,29 @@ function _M:current_table_name()
   return "vitals_stats_seconds_" .. current_interval
 end
 
+--[[
+  returns the current table name and the previous table name (if previous table exists)
+  data: [ current_table_name, previous_table_name ]
+ ]]
+function _M:table_names_for_select()
+  local current_table_name = self:current_table_name()
+
+  local q = SELECT_PREVIOUS_VITALS_STATS_SECONDS .. "'" .. current_table_name ..
+            "'" .. " order by table_name desc limit 1"
+
+  log(DEBUG, _log_prefix, q)
+
+  local previous_table, err = self.db:query(q)
+
+  if err then
+    return err
+  elseif previous_table[1] then
+    return { current_table_name, previous_table[1].table_name }
+  else
+    return { current_table_name }
+  end
+end
+
 
 function _M:create_next_table()
   local now           = time()
@@ -125,15 +150,31 @@ function _M:create_next_table()
 end
 
 
+--[[
+  only drop tables before the previous table. If the previous table doesn't
+  exist, then return and don't drop tables.
+]]
 function _M:drop_previous_table()
-  local q = SELECT_PREVIOUS_VITALS_STATS_SECONDS .. "'" .. self:current_table_name() .. "'"
+  local previous_table
+
+  local ok, err = self:table_names_for_select()
+
+  if err then
+    return nil, "Failed to select tables. error: " .. err
+  elseif ok[2] then
+    previous_table = ok[2]
+  else
+    return nil, NO_PREVIOUS_TABLE
+  end
+
+  local q = SELECT_PREVIOUS_VITALS_STATS_SECONDS .. "'" .. previous_table .. "'"
 
   log(DEBUG, _log_prefix, q)
 
-  local select_res, err = self.db:query(q)
+  local select_res, select_err = self.db:query(q)
 
-  if err then
-    return nil, "Failed to select tables. query: " .. q .. ". error: " .. err
+  if select_err then
+    return nil, "Failed to select tables. query: " .. q .. ". error: " .. select_err
   end
 
   for i = 1, #select_res do

@@ -44,8 +44,8 @@ end
 
 
 --[[
-  returns the last 60 rows in the vitals_stats_seconds table
-  if query_type is seconds.
+  returns the last 60 rows from the previous and current vitals_stats_seconds
+  tables if query_type is seconds.
 
   returns all rows in the vitals_stats_minutes table
   if query_type is minutes.
@@ -57,10 +57,20 @@ function _M:select_stats(query_type)
     return nil, "query_type must be 'minutes' or 'seconds'"
   end
 
-  local query, res, err
+  local query, res, err, table_names
 
   if query_type == "seconds" then
-    query = fmt(SELECT_STATS, self:current_table_name())
+    table_names, err = self:table_names_for_select()
+
+    if err then
+      return nil, err
+    elseif table_names[2] then
+      -- union query from previous and current seconds tables
+      query = fmt("select * from %s union " .. SELECT_STATS, table_names[2], table_names[1])
+    else
+      -- query only from current seconds table
+      query = fmt(SELECT_STATS, table_names[1])
+    end
   elseif query_type == "minutes" then
     query = fmt(SELECT_MINUTE_STATS)
   end
@@ -113,6 +123,10 @@ end
 
 function _M:current_table_name()
   return self.table_rotater:current_table_name()
+end
+
+function _M:table_names_for_select()
+  return self.table_rotater:table_names_for_select()
 end
 
 
