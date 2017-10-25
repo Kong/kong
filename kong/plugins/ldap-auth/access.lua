@@ -24,7 +24,7 @@ local _M = {}
 local function retrieve_credentials(authorization_header_value, conf)
   local username, password
   if authorization_header_value then
-    local s, e = find(lower(authorization_header_value), "%s*" .. lower(conf.header_type) .. "%s+")
+    local s, e = find(lower(authorization_header_value), "^%s*" .. lower(conf.header_type) .. "%s+")
     if s == 1 then
       local cred = sub(authorization_header_value, e + 1)
       local decoded_cred = decode_base64(cred)
