@@ -622,4 +622,44 @@ return {
     end,
     down = function(_, _, dao) end  -- n.a. since the columns will be dropped
   },
+  {
+    name = "2017-09-14-121200_routes_and_services",
+    up = [[
+      CREATE TABLE IF NOT EXISTS "services" (
+        "id"               UUID        PRIMARY KEY,
+        "created_at"       TIMESTAMP,
+        "updated_at"       TIMESTAMP,
+        "name"             TEXT,
+        "protocol"         TEXT,
+        "host"             TEXT,
+        "port"             BIGINT,
+        "path"             TEXT,
+        "retries"          BIGINT,
+        "connect_timeout"  BIGINT,
+        "write_timeout"    BIGINT,
+        "read_timeout"     BIGINT
+      );
+      CREATE TABLE IF NOT EXISTS "routes" (
+        "id"             UUID        PRIMARY KEY,
+        "created_at"     TIMESTAMP,
+        "updated_at"     TIMESTAMP,
+        "protocols"      TEXT[],
+        "methods"        TEXT[],
+        "hosts"          TEXT[],
+        "paths"          TEXT[],
+        "regex_priority" BIGINT,
+        "strip_path"     BOOLEAN,
+        "preserve_host"  BOOLEAN,
+        "service_id"     UUID        REFERENCES "services" ("id")
+      );
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('routes_fkey_service') IS NULL) THEN
+          CREATE INDEX "routes_fkey_service"
+                    ON "routes" ("service_id");
+        END IF;
+      END$$;
+    ]],
+    down = nil
+  },
 }

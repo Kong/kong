@@ -550,4 +550,47 @@ return {
     end,
     down = function(_, _, dao) end  -- n.a. since the columns will be dropped
   },
+  {
+    name = "2017-09-14-140200_routes_and_services",
+    up = [[
+      CREATE TABLE IF NOT EXISTS routes (
+          partition       text,
+          id              uuid,
+          created_at      timestamp,
+          updated_at      timestamp,
+          protocols       set<text>,
+          methods         set<text>,
+          hosts           list<text>,
+          paths           list<text>,
+          regex_priority  int,
+          strip_path      boolean,
+          preserve_host   boolean,
+
+          service_id      uuid,
+
+          PRIMARY KEY     (partition, id)
+      );
+
+      CREATE INDEX IF NOT EXISTS routes_service_id_idx ON routes(service_id);
+
+      CREATE TABLE IF NOT EXISTS services (
+          partition       text,
+          id              uuid,
+          created_at      timestamp,
+          updated_at      timestamp,
+          name            text,
+          protocol        text,
+          host            text,
+          port            int,
+          path            text,
+          retries         int,
+          connect_timeout int,
+          write_timeout   int,
+          read_timeout    int,
+
+          PRIMARY KEY (partition, id)
+      );
+    ]],
+    down = nil
+  },
 }
