@@ -58,7 +58,7 @@ end
 --   ]]
 --
 -- will return: "hello world\nfoo bar"
-local function unindent(str, concat_newlines)
+local function unindent(str, concat_newlines, spaced_newlines)
   str = string.match(str, "^%s*(%S.-%S*)%s*$")
   if not str then
     return ""
@@ -78,6 +78,7 @@ local function unindent(str, concat_newlines)
   end
 
   local repl = concat_newlines and "" or "\n"
+  repl = spaced_newlines and " " or repl
 
   return (str:gsub("\n" .. prefix, repl):gsub("\n$", "")):gsub("\\r", "\r")
 end
@@ -95,6 +96,30 @@ local function run_migrations(given_dao)
   local d = given_dao or dao
 
   assert(d:run_migrations())
+end
+
+local each_strategy
+
+do
+    local default_strategies = { "postgres", "cassandra" }
+
+    local function iter(strategies, i)
+      i = i + 1
+      local strategy = strategies[i]
+      if strategy then
+        return i, strategy
+      end
+    end
+
+    each_strategy = function(...)
+      local args = { ... }
+      local strategies = default_strategies
+      if #args > 0 then
+        strategies = args
+      end
+
+      return iter, strategies, 0
+    end
 end
 
 -----------------
@@ -1046,6 +1071,7 @@ return {
   clean_prefix = clean_prefix,
   wait_for_invalidation = wait_for_invalidation,
   run_migrations = run_migrations,
+  each_strategy = each_strategy,
 
   -- miscellaneous
   intercept = intercept,

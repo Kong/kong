@@ -1,0 +1,1202 @@
+local DB      = require "kong.db"
+local Errors  = require "kong.db.errors"
+local utils   = require "kong.tools.utils"
+local helpers = require "spec.helpers"
+local cjson   = require "cjson"
+
+
+local a_blank_uuid = "00000000-0000-0000-0000-000000000000"
+
+
+for _, strategy in helpers.each_strategy() do
+  describe("kong.db [#" .. strategy .. "]", function()
+    local db
+
+    setup(function()
+      do
+        -- old DAO to run the migrations
+        local test_conf = helpers.test_conf
+        local old_strategy = test_conf.database
+        test_conf.database = strategy
+
+        local DAOFactory = require "kong.dao.factory"
+        local dao = assert(DAOFactory.new(test_conf))
+        assert(dao:run_migrations())
+
+        test_conf.database = old_strategy
+      end
+
+      db = assert(DB.new(helpers.test_conf, strategy))
+      assert(db:init_connector())
+      assert(db:truncate())
+    end)
+
+    --[[
+    -- Routes entity
+
+    db.routes:insert(entity)
+    db.routes:select(primary_key)
+    db.routes:update(primary_key, entity)
+    db.routes:delete(primary_key)
+    db.routes:for_service(service_id)
+    --]]
+
+    describe("Routes", function()
+      describe(":insert()", function()
+        -- no I/O
+        it("errors on invalid arg", function()
+          assert.has_error(function()
+            db.routes:insert()
+          end, "entity must be a table")
+        end)
+
+        it("errors on invalid fields", function()
+          local route, err, err_t = db.routes:insert({})
+          assert.is_nil(route)
+          assert.is_string(err)
+          assert.is_table(err_t)
+          assert.same({
+            code     = Errors.codes.SCHEMA_VIOLATION,
+            name     = "schema violation",
+            strategy = strategy,
+            message  = ngx.null,
+            fields   = {
+              protocol    = "required field missing",
+              service     = "required field missing",
+              ["@entity"] = {
+                at_least_one_of = "at least one of 'methods', 'hosts' or 'paths' must be non-empty",
+              }
+            },
+
+          }, err_t)
+        end)
+
+        it("cannot insert if foreign primary_key is invalid", function()
+          local service = {
+            protocol = "http"
+          }
+
+          local route, err, err_t = db.routes:insert({
+            protocol = "http",
+            hosts = { "example.com" },
+            service = service,
+          })
+          assert.is_nil(route)
+          assert.equal("schema violation", err)
+          assert.same({
+            code      = Errors.codes.SCHEMA_VIOLATION,
+            name      = "schema violation",
+            strategy  = strategy,
+            message   = ngx.null,
+            fields    = {
+              service = {
+                id    = "missing primary key",
+              }
+            },
+          }, err_t)
+          --TODO: enable when implemented
+          --assert.equal("invalid primary key for Service: id=(missing)", tostring(err_t))
+        end)
+
+        -- I/O
+        it("cannot insert if foreign Service does not exist", function()
+          local u = utils.uuid()
+          local service = {
+            id = u
+          }
+
+          local route, err, err_t = db.routes:insert({
+            protocol = "http",
+            hosts = { "example.com" },
+            service = service,
+          })
+          assert.is_nil(route)
+          assert.equal("foreign key violation", err)
+          assert.same({
+            code     = Errors.codes.FOREIGN_KEY_VIOLATION,
+            name     = "foreign key violation",
+            strategy = strategy,
+            message  = "the provided foreign key does not reference an existing 'services' entity",
+            fields   = {
+              service = {
+                id = u,
+              }
+            },
+          }, err_t)
+          -- TODO: enable when done
+          --assert.equal("foreign entity Service does not exist: id=( " .. u .. ")", tostring(err_t))
+        end)
+
+        it("creates a Route and injects defaults", function()
+          local route, err, err_t = db.routes:insert({
+            protocol = "http",
+            hosts = { "example.com" },
+            service = assert(db.services:insert({ protocol = "http" })),
+          })
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+
+          assert.is_table(route)
+          assert.is_number(route.created_at)
+          assert.is_number(route.updated_at)
+          assert.is_true(utils.is_valid_uuid(route.id))
+
+          assert.same({
+            id              = route.id,
+            created_at      = route.created_at,
+            updated_at      = route.updated_at,
+            protocol        = "http",
+            methods         = ngx.null,
+            hosts           = { "example.com" },
+            paths           = ngx.null,
+            regex_priority  = 0,
+            preserve_host   = false,
+            strip_path      = false,
+            service         = route.service,
+          }, route)
+        end)
+
+        it("creates a Route with user-specified values", function()
+          local route, err, err_t = db.routes:insert({
+            protocol        = "http",
+            hosts           = { "example.com" },
+            paths           = { "/example" },
+            regex_priority  = 3,
+            strip_path      = true,
+            service         = assert(db.services:insert({ protocol = "http" })),
+          })
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+
+          assert.is_table(route)
+          assert.is_number(route.created_at)
+          assert.is_number(route.updated_at)
+          assert.is_true(utils.is_valid_uuid(route.id))
+
+          assert.same({
+            id              = route.id,
+            created_at      = route.created_at,
+            updated_at      = route.updated_at,
+            protocol        = "http",
+            methods         = ngx.null,
+            hosts           = { "example.com" },
+            paths           = { "/example" },
+            regex_priority  = 3,
+            strip_path      = true,
+            preserve_host   = false,
+            service         = route.service,
+          }, route)
+        end)
+
+        it("created_at/updated_at defaults and formats are respected", function()
+          local now = ngx.time()
+
+          local route = assert(db.routes:insert({
+            protocol = "http",
+            hosts = { "example.com" },
+            service = assert(db.services:insert({ protocol = "http" })),
+          }))
+
+          local route_in_db = assert(db.routes:select({ id = route.id }))
+          assert.equal(now, route_in_db.created_at)
+          assert.equal(now, route_in_db.updated_at)
+        end)
+
+        it("created_at/updated_at cannot be overriden", function()
+          local route, err, err_t = db.routes:insert({
+            protocol   = "http",
+            hosts      = { "example.com" },
+            service    = assert(db.services:insert({ protocol = "http" })),
+            created_at = 0,
+            updated_at = 0,
+          })
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+
+          assert.is_table(route)
+          assert.not_equal(0, route.created_at)
+          assert.not_equal(0, route.updated_at)
+        end)
+
+        pending("cannot create a Route with an existing PK", function()
+          -- TODO: the uuid type is `auto` for now, so cannot be overidden for
+          -- such a test.
+          -- We need to test that we receive a primary key violation error in
+          -- this case.
+        end)
+      end)
+
+      describe(":select()", function()
+        -- no I/O
+        it("errors on invalid arg", function()
+          assert.has_error(function()
+            db.routes:select()
+          end, "primary_key must be a table")
+        end)
+
+        -- I/O
+        it("return nothing on non-existing Route", function()
+          local route, err, err_t = db.routes:select({ id = utils.uuid() })
+          assert.is_nil(route)
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+        end)
+
+        it("returns an existing Route", function()
+          local route_inserted = assert(db.routes:insert({
+            protocol = "http",
+            hosts    = { "example.com" },
+            service  = assert(db.services:insert({ protocol = "http" })),
+          }))
+
+          local route, err, err_t = db.routes:select({ id = route_inserted.id })
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+          assert.same(route_inserted, route)
+        end)
+      end)
+
+      describe(":update()", function()
+        -- no I/O
+        it("errors on invalid arg", function()
+          assert.has_error(function()
+            db.routes:update()
+          end, "primary_key must be a table")
+        end)
+
+        it("errors on invalid values", function()
+          local u = utils.uuid()
+          local new_route, err, err_t = db.routes:update({ id = u }, {
+            protocol = 123
+          })
+          assert.is_nil(new_route)
+          assert.equal("schema violation", err)
+          assert.same({
+            code        = Errors.codes.SCHEMA_VIOLATION,
+            name = "schema violation",
+            message     = ngx.null,
+            strategy    = strategy,
+            fields      = {
+              protocol  = "expected a string",
+            }
+          }, err_t)
+        end)
+
+        -- I/O
+        it("returns not found error", function()
+          local u = utils.uuid()
+          local new_route, err, err_t = db.routes:update({ id = u }, {
+            protocol = "https"
+          })
+          assert.is_nil(new_route)
+          assert.equal("not found", err)
+          assert.same({
+            code        = Errors.codes.NOT_FOUND,
+            name = "not found",
+            strategy    = strategy,
+            message     = ngx.null,
+            fields      = {
+              id        = u
+            }
+          }, err_t)
+          --TODO: enable when done
+          --assert.equal("no such route: id=(" .. u .. ")", tostring(err_t))
+        end)
+
+        it("updates an existing Route", function()
+          local route = assert(db.routes:insert({
+            protocol = "http",
+            hosts    = { "example.com" },
+            service  = assert(db.services:insert({ protocol = "http" })),
+          }))
+
+          ngx.sleep(1)
+
+          local new_route, err, err_t = db.routes:update({ id = route.id }, {
+            protocol = "https",
+            regex_priority = 5,
+          })
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+          assert.same({
+            id              = route.id,
+            created_at      = route.created_at,
+            updated_at      = new_route.updated_at,
+            protocol        = "https",
+            methods         = route.methods,
+            hosts           = route.hosts,
+            paths           = route.paths,
+            regex_priority  = 5,
+            strip_path      = route.strip_path,
+            preserve_host   = route.preserve_host,
+            service         = route.service,
+          }, new_route)
+
+
+          --TODO: enable when it works again
+          --assert.not_equal(new_route.created_at, new_route.updated_at)
+        end)
+
+        pending("created_at/updated_at cannot be overriden", function()
+          local route = assert(db.routes:insert({
+            protocol = "http",
+            hosts    = { "example.com" },
+            service  = assert(db.services:insert({ protocol = "http" })),
+          }))
+
+          local new_route, err, err_t = db.routes:update({ id = route.id }, {
+            protocol = "https",
+            created_at = 1,
+            updated_at = 1,
+          })
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+          assert.not_equal(1, new_route.created_at)
+          assert.not_equal(1, new_route.updated_at)
+        end)
+
+        it("fails trying to unset an interdependent field by itself", function()
+          local route = assert(db.routes:insert({
+            protocol = "http",
+            hosts    = { "example.com" },
+            methods  = { "GET" },
+            service  = assert(db.services:insert({ protocol = "http" })),
+          }))
+
+          local new_route, err, err_t = db.routes:update({ id = route.id }, {
+            methods = ngx.null
+          })
+          assert.is_nil(new_route)
+          assert.equal("schema violation", err)
+          assert.same({
+            code        = Errors.codes.SCHEMA_VIOLATION,
+            name        = "schema violation",
+            strategy    = strategy,
+            message     = ngx.null,
+            fields = {
+              ["@entity"] = {
+                at_least_one_of = "fields missing for entity check",
+              },
+              hosts = "field required for entity check",
+              paths = "field required for entity check",
+            }
+          }, err_t)
+        end)
+
+        it("unsets a non-required field with ngx.null", function()
+          local route = assert(db.routes:insert({
+            protocol = "http",
+            hosts    = { "example.com" },
+            methods  = { "GET" },
+            service  = assert(db.services:insert({ protocol = "http" })),
+          }))
+
+          local new_route, err, err_t = db.routes:update({ id = route.id }, {
+            hosts   = { "example.com" },
+            methods = ngx.null,
+            paths   = ngx.null,
+          })
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+          assert.equal(ngx.null, new_route.methods)
+          route.methods     = nil
+          new_route.methods = nil
+          assert.same(route, new_route)
+        end)
+
+        it("errors when unsetting a required field with ngx.null", function()
+          local route = assert(db.routes:insert({
+            protocol = "http",
+            hosts    = { "example.com" },
+            methods  = { "GET" },
+            service  = assert(db.services:insert({ protocol = "http" })),
+          }))
+
+          local new_route, _, err_t = db.routes:update({ id = route.id }, {
+            hosts   = ngx.null,
+            methods = ngx.null,
+          })
+          assert.is_nil(new_route)
+          assert.same({
+            code        = Errors.codes.SCHEMA_VIOLATION,
+            name = "schema violation",
+            strategy    = strategy,
+            message     = ngx.null,
+            fields      = {
+              ["@entity"] = {
+                at_least_one_of = "fields missing for entity check",
+              },
+              paths = "field required for entity check",
+            }
+          }, err_t)
+        end)
+      end)
+
+      describe(":delete()", function()
+        -- no I/O
+        it("errors on invalid arg", function()
+          assert.has_error(function()
+            db.routes:delete()
+          end, "primary_key must be a table")
+        end)
+
+        -- I/O
+        it("returns nothing if the Route does not exist", function()
+          local u = utils.uuid()
+          local ok, err, err_t = db.routes:delete({
+            id = u
+          })
+          assert.is_true(ok)
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+        end)
+
+        it("deletes an existing Route", function()
+          local route = assert(db.routes:insert({
+            protocol = "http",
+            hosts = { "example.com" },
+            service = assert(db.services:insert({ protocol = "http" })),
+          }))
+
+          local ok, err, err_t = db.routes:delete({
+            id = route.id
+          })
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+          assert.is_true(ok)
+
+          local route_in_db, err, err_t = db.routes:select({
+            id = route.id
+          })
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+          assert.is_nil(route_in_db)
+        end)
+      end)
+
+      describe(":page()", function()
+        -- no I/O
+        it("errors on invalid size", function()
+          assert.has_error(function()
+            db.routes:page("")
+          end, "size must be a number")
+          assert.has_error(function()
+            db.routes:page({})
+          end, "size must be a number")
+          assert.has_error(function()
+            db.routes:page(true)
+          end, "size must be a number")
+          assert.has_error(function()
+            db.routes:page(false)
+          end, "size must be a number")
+          assert.has_error(function()
+            db.routes:page(-1)
+          end, "size must be positive (> 0)")
+        end)
+
+        it("errors on invalid offset", function()
+          assert.has_error(function()
+            db.routes:page(nil, 0)
+          end, "offset must be a string")
+          assert.has_error(function()
+            db.routes:page(nil, {})
+          end, "offset must be a string")
+          assert.has_error(function()
+            db.routes:page(nil, true)
+          end, "offset must be a string")
+          assert.has_error(function()
+            db.routes:page(nil, false)
+          end, "offset must be a string")
+        end)
+
+        -- I/O
+        it("returns empty array when there are no rows", function()
+          assert(db:truncate())
+
+          local rows, err, err_t, offset = db.routes:page()
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+          assert.is_table(rows)
+          assert.equal(#rows, 0)
+          assert.is_nil(offset)
+          assert.equals(cjson.empty_array_mt, getmetatable(rows))
+        end)
+
+        describe("page size", function()
+          setup(function()
+            assert(db:truncate())
+
+            for i = 1, 2000 do
+              assert(db.routes:insert({
+                protocol = "http",
+                hosts    = {
+                  "example-" .. i .. ".com"
+                },
+                service = assert(db.services:insert({ protocol = "http" })),
+              }))
+            end
+          end)
+
+          it("defaults page_size = 100", function()
+            local rows, err, err_t = db.routes:page()
+            assert.is_nil(err_t)
+            assert.is_nil(err)
+            assert.is_table(rows)
+            assert.equal(#rows, 100)
+          end)
+
+          it("max page_size = 1000", function()
+            local rows, err, err_t = db.routes:page(2000)
+            assert.is_nil(err_t)
+            assert.is_nil(err)
+            assert.is_table(rows)
+            assert.equal(#rows, 1000)
+          end)
+        end)
+
+        describe("page offset", function()
+          setup(function()
+            assert(db:truncate())
+
+            for i = 1, 10 do
+              assert(db.routes:insert({
+                protocol = "http",
+                hosts    = {
+                  "example-" .. i .. ".com"
+                },
+                service = assert(db.services:insert({ protocol = "http" })),
+              }))
+            end
+          end)
+
+          it("fetches all rows in one page", function()
+            local rows, err, err_t, offset = db.routes:page()
+            assert.is_nil(err_t)
+            assert.is_nil(err)
+            assert.is_table(rows)
+            assert.equal(#rows, 10)
+            assert.is_nil(offset)
+          end)
+
+          it("fetched rows are returned in a table without hash part", function()
+            local rows, err, err_t = db.routes:page()
+            assert.is_nil(err_t)
+            assert.is_nil(err)
+            assert.is_table(rows)
+
+            local keys = {}
+
+            for k in pairs(rows) do
+              table.insert(keys, k)
+            end
+
+            assert.equal(#rows, #keys) -- no hash part in rows
+          end)
+
+          it("fetches rows always in same order", function()
+            local rows1 = db.routes:page()
+            local rows2 = db.routes:page()
+            assert.is_table(rows1)
+            assert.is_table(rows2)
+            assert.same(rows1, rows2)
+          end)
+
+          it("returns offset when page_size < total", function()
+            local rows, err, err_t, offset = db.routes:page(5)
+            assert.is_nil(err_t)
+            assert.is_nil(err)
+            assert.is_table(rows)
+            assert.equal(#rows, 5)
+            assert.is_string(offset)
+          end)
+
+          it("fetches subsequent pages with offset", function()
+            local rows_1, err, err_t, offset = db.routes:page(5)
+            assert.is_nil(err_t)
+            assert.is_nil(err)
+            assert.is_table(rows_1)
+            assert.equal(#rows_1, 5)
+            assert.is_string(offset)
+
+            local page_size = 5
+            if strategy == "cassandra" then
+              -- 5 + 1: cassandra only detects the end of a pagination when
+              -- we go past the number of rows in the iteration - it doesn't
+              -- seem to detect the pages ending at the limit
+              page_size = page_size + 1
+            end
+
+            local rows_2, err, err_t, offset = db.routes:page(page_size, offset)
+            assert.is_nil(err_t)
+            assert.is_nil(err)
+            assert.is_table(rows_2)
+            assert.equal(#rows_2, 5)
+            assert.is_nil(offset) -- last page reached
+
+            for i = 1, 5 do
+              local row_1 = rows_1[i]
+              for j = 1, 5 do
+                local row_2 = rows_2[j]
+                assert.not_same(row_1, row_2)
+              end
+            end
+          end)
+
+          it("fetches same page with same offset", function()
+            local _, err, err_t, offset = db.routes:page(3)
+            assert.is_nil(err_t)
+            assert.is_nil(err)
+            assert.is_string(offset)
+
+            local rows_a, err, err_t = db.routes:page(3, offset)
+            assert.is_nil(err_t)
+            assert.is_nil(err)
+            assert.is_table(rows_a)
+            assert.equal(#rows_a, 3)
+
+            local rows_b, err, err_t = db.routes:page(3, offset)
+            assert.is_nil(err_t)
+            assert.is_nil(err)
+            assert.is_table(rows_b)
+            assert.equal(#rows_b, 3)
+
+            for i = 1, #rows_a do
+              assert.same(rows_a[i], rows_b[i])
+            end
+          end)
+
+          it("fetches pages with last page having a single row", function()
+            local rows, offset
+
+            repeat
+              local err, err_t
+
+              rows, err, err_t, offset = db.routes:page(3, offset)
+              assert.is_nil(err_t)
+              assert.is_nil(err)
+
+              if offset then
+                assert.equal(#rows, 3)
+              end
+            until offset == nil
+
+            assert.equal(#rows, 1) -- last page
+          end)
+
+          it("fetches first page with invalid offset", function()
+            local rows, err, err_t = db.routes:page(3, "hello")
+            assert.is_nil(rows)
+            assert.equal("invalid offset", err)
+            assert.same({
+              code     = Errors.codes.INVALID_OFFSET,
+              message  = "'hello' is not a valid offset for this strategy: bad base64 encoding",
+              name     = "invalid offset",
+              strategy = strategy,
+            }, err_t)
+          end)
+        end)
+      end)
+
+      describe(":each()", function()
+        setup(function()
+          assert(db:truncate())
+
+          for i = 1, 100 do
+            assert(db.routes:insert({
+              protocol = "http",
+              hosts    = {
+                "example-" .. i .. ".com"
+              },
+              service = assert(db.services:insert({ protocol = "http" })),
+            }))
+          end
+        end)
+
+        -- no I/O
+        it("errors on invalid arg", function()
+          assert.has_error(function()
+            db.routes:each(false)
+          end, "size must be a number")
+
+          assert.has_error(function()
+            db.routes:each(-1)
+          end, "size must be positive (> 0)")
+        end)
+
+        -- I/O
+        it("iterates over all rows", function()
+          local n_rows = 0
+
+          for row, err, page in db.routes:each() do
+            assert.is_nil(err)
+            assert.equal(1, page)
+            n_rows = n_rows + 1
+          end
+
+          assert.equal(100, n_rows)
+        end)
+
+        it("page is smaller than total rows", function()
+          local n_rows = 0
+          local pages = {}
+
+          for row, err, page in db.routes:each(10) do
+            assert.is_nil(err)
+            pages[page] = true
+            n_rows = n_rows + 1
+          end
+
+          assert.equal(100, n_rows)
+          assert.same({
+            [1] = true,
+            [2] = true,
+            [3] = true,
+            [4] = true,
+            [5] = true,
+            [6] = true,
+            [7] = true,
+            [8] = true,
+            [9] = true,
+            [10] = true,
+          }, pages)
+        end)
+      end)
+    end)
+
+    --[[
+    -- Services entity
+
+    db.services:insert(entity)
+    db.services:select(primary_key)
+    db.services:update(primary_key, entity)
+    db.services:delete(primary_key)
+    --]]
+
+    describe("Services", function()
+      describe(":insert()", function()
+        -- no I/O
+        it("errors on invalid arg", function()
+          assert.has_error(function()
+            db.services:insert()
+          end, "entity must be a table")
+        end)
+
+        it("errors on invalid fields", function()
+          local route, err, err_t = db.services:insert({})
+          assert.is_nil(route)
+          assert.is_string(err)
+          assert.is_table(err_t)
+          assert.same({
+            code        = Errors.codes.SCHEMA_VIOLATION,
+            name = "schema violation",
+            message     = ngx.null,
+            strategy    = strategy,
+            fields      = {
+              protocol = "required field missing",
+            }
+          }, err_t)
+        end)
+
+        -- I/O
+        it("creates a Service and injects defaults", function()
+          local service, err, err_t = db.services:insert({
+            --name     = "example service",
+            protocol = "http",
+          })
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+
+          assert.is_table(service)
+          assert.is_number(service.created_at)
+          assert.is_number(service.updated_at)
+          assert.is_true(utils.is_valid_uuid(service.id))
+
+          assert.same({
+            id              = service.id,
+            created_at      = service.created_at,
+            updated_at      = service.updated_at,
+            name            = ngx.null,
+            protocol        = "http",
+            host            = ngx.null,
+            port            = 80,
+            connect_timeout = 60000,
+            write_timeout   = 60000,
+            read_timeout    = 60000,
+          }, service)
+        end)
+
+        it("creates a Service with user-specified values", function()
+          local service, err, err_t = db.services:insert({
+            name            = "example service",
+            protocol        = "http",
+            host            = "example.com",
+            port            = 443,
+            connect_timeout = 10000,
+            write_timeout   = 10000,
+            read_timeout    = 10000,
+          })
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+
+          assert.is_table(service)
+          assert.is_number(service.created_at)
+          assert.is_number(service.updated_at)
+          assert.is_true(utils.is_valid_uuid(service.id))
+
+          assert.same({
+            id              = service.id,
+            created_at      = service.created_at,
+            updated_at      = service.updated_at,
+            name            = "example service",
+            protocol        = "http",
+            host            = "example.com",
+            port            = 443,
+            connect_timeout = 10000,
+            write_timeout   = 10000,
+            read_timeout    = 10000,
+          }, service)
+        end)
+
+        it("created_at/updated_at cannot be overriden", function()
+          local service, err, err_t = db.services:insert({
+            name       = "example service",
+            protocol   = "http",
+            created_at = 0,
+            updated_at = 0,
+          })
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+
+          assert.is_table(service)
+          assert.not_equal(0, service.created_at)
+          assert.not_equal(0, service.updated_at)
+        end)
+
+        pending("cannot create a Service with an existing name", function()
+          -- TODO: need to implement a "UNIQUE" constraint for this behavior
+        end)
+      end)
+
+      describe(":select()", function()
+        -- no I/O
+        it("errors on invalid arg", function()
+          assert.has_error(function()
+            db.services:select()
+          end, "primary_key must be a table")
+        end)
+
+        -- I/O
+        it("returns nothing on non-existing Service", function()
+          local service, err, err_t = db.services:select({
+            id = utils.uuid()
+          })
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+          assert.is_nil(service)
+        end)
+
+        it("returns existing Service", function()
+          local service = assert(db.services:insert({
+            protocol = "http"
+          }))
+
+          local service_in_db, err, err_t = db.services:select({
+            id = service.id
+          })
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+          assert.equal("http", service_in_db.protocol)
+        end)
+      end)
+
+      describe(":update()", function()
+        -- no I/O
+        it("errors on invalid arg", function()
+          assert.has_error(function()
+            db.services:update()
+          end, "primary_key must be a table")
+
+          assert.has_error(function()
+            db.services:update({})
+          end, "entity must be a table")
+        end)
+
+        it("errors on invalid values", function()
+          local u = utils.uuid()
+          local new_service, err, err_t = db.services:update({ id = u }, {
+            protocol = 123
+          })
+          assert.is_nil(new_service)
+          assert.equal("schema violation", err)
+          assert.same({
+            code        = Errors.codes.SCHEMA_VIOLATION,
+            name = "schema violation",
+            message     = ngx.null,
+            strategy    = strategy,
+            fields      = {
+              protocol  = "expected a string",
+            }
+          }, err_t)
+        end)
+
+        -- I/O
+        it("returns not found error", function()
+          local service, err, err_t = db.services:update({ id = utils.uuid() }, {
+            protocol = "http"
+          })
+          assert.is_nil(service)
+          assert.equal("not found", err)
+          assert.equal(Errors.codes.NOT_FOUND, err_t.code)
+        end)
+
+        it("updates an existing Service", function()
+          local service = assert(db.services:insert({
+            protocol = "http"
+          }))
+
+          local updated_service, err, err_t = db.services:update({
+            id = service.id
+          }, { protocol = "https" })
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+          assert.equal("https", updated_service.protocol)
+
+          local service_in_db, err, err_t = db.services:select({
+            id = service.id
+          })
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+          assert.equal("https", service_in_db.protocol)
+        end)
+      end)
+
+      describe(":delete()", function()
+        -- no I/O
+        it("errors on invalid arg", function()
+          assert.has_error(function()
+            db.services:delete()
+          end, "primary_key must be a table")
+        end)
+
+        -- I/O
+        it("returns nothing if the Service does not exist", function()
+          local u = utils.uuid()
+          local ok, err, err_t = db.services:delete({
+            id = u
+          })
+          assert.is_true(ok)
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+        end)
+
+        it("deletes an existing Service", function()
+          local service = assert(db.services:insert({
+            protocol = "http"
+          }))
+
+          local ok, err, err_t = db.services:delete({
+            id = service.id
+          })
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+          assert.is_true(ok)
+
+          local service_in_db, err, err_t = db.services:select({
+            id = service.id
+          })
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+          assert.is_nil(service_in_db)
+        end)
+      end)
+    end)
+
+    --[[
+    -- Services and Routes relationships
+    --
+    --]]
+
+    describe("Services and Routes association", function()
+      it(":insert() a Route with a relation to a Service", function()
+        local service = assert(db.services:insert({
+          protocol = "http",
+          host     = "service.com"
+        }))
+
+        local route, err, err_t = db.routes:insert({
+          protocol = "http",
+          hosts    = { "example.com" },
+          service  = service,
+        })
+        assert.is_nil(err_t)
+        assert.is_nil(err)
+        assert.same({
+          id              = route.id,
+          created_at      = route.created_at,
+          updated_at      = route.updated_at,
+          protocol        = "http",
+          methods         = ngx.null,
+          hosts           = { "example.com" },
+          paths           = ngx.null,
+          regex_priority  = 0,
+          strip_path      = false,
+          preserve_host   = false,
+          service = {
+            id = service.id
+          },
+        }, route)
+
+        local route_in_db, err, err_t = db.routes:select({ id = route.id })
+        assert.is_nil(err_t)
+        assert.is_nil(err)
+        assert.same(route, route_in_db)
+      end)
+
+      it(":for_service() lists no Routes associated to an inexsistent Service", function()
+        local rows, err, err_t = db.routes:for_service({
+          id = a_blank_uuid,
+        })
+
+        assert.same({}, rows)
+        assert.is_nil(err)
+        assert.is_nil(err_t)
+      end)
+
+      it(":for_service() lists Routes associated to a Service", function()
+        local service = assert(db.services:insert({
+          protocol = "http",
+          host     = "service.com"
+        }))
+
+        local route1, err, err_t = db.routes:insert({
+          protocol = "http",
+          hosts    = { "example.com" },
+          service  = service,
+        })
+        assert.is_nil(err)
+        assert.is_nil(err_t)
+
+        local _, err, err_t = db.routes:insert({
+          protocol = "http",
+          hosts    = { "example.com" },
+          service  = assert(db.services:insert({ protocol = "http" })),
+        })
+        assert.is_nil(err)
+        assert.is_nil(err_t)
+
+        local rows, err, err_t = db.routes:for_service({
+          id = service.id,
+        })
+
+        assert.same({ route1 }, rows)
+        assert.is_nil(err)
+        assert.is_nil(err_t)
+      end)
+
+      it(":update() attaches a Route to an existing Service", function()
+        local service1 = assert(db.services:insert({
+          protocol = "http",
+          host     = "service1.com"
+        }))
+
+        local service2 = assert(db.services:insert({
+          protocol = "http",
+          host     = "service2.com"
+        }))
+
+        local route = assert(db.routes:insert({
+          protocol = "http",
+          hosts    = { "example.com" },
+          service  = service1,
+        }))
+
+        local new_route, err, err_t = db.routes:update({ id = route.id }, {
+          service = service2
+        })
+        assert.is_nil(err_t)
+        assert.is_nil(err)
+        assert.same(new_route.service, { id = service2.id })
+      end)
+
+      it(":update() cannot attach a Route to a non-existing Service", function()
+        local service = {
+          id = utils.uuid()
+        }
+
+        local route = assert(db.routes:insert({
+          protocol = "http",
+          hosts    = { "example.com" },
+          service  = assert(db.services:insert({ protocol = "http" })),
+        }))
+
+        local new_route, err, err_t = db.routes:update({ id = route.id }, {
+          service = service
+        })
+        assert.is_nil(new_route)
+        assert.equal("foreign key violation", err)
+        assert.same({
+          code     = Errors.codes.FOREIGN_KEY_VIOLATION,
+          name     = "foreign key violation",
+          strategy = strategy,
+          message  = "the provided foreign key does not reference an existing 'services' entity",
+          fields   = {
+            service = {
+              id = service.id,
+            }
+          }
+        }, err_t)
+      end)
+
+      it(":delete() a Service is not allowed if a Route is associated to it", function()
+        local service = assert(db.services:insert({
+          protocol = "http",
+          host     = "service.com"
+        }))
+
+        assert(db.routes:insert({
+          protocol = "http",
+          hosts    = { "example.com" },
+          service  = service,
+        }))
+
+        local ok, err, err_t = db.services:delete({ id = service.id })
+        assert.is_nil(ok)
+        assert.equal("foreign key violation", err)
+        assert.same({
+          code     = Errors.codes.FOREIGN_KEY_VIOLATION,
+          name     = "foreign key violation",
+          strategy = strategy,
+          message  = "an existing 'routes' entity references this 'services' entity",
+          fields   = {
+            ["@referenced_by"] = "routes",
+          },
+        }, err_t)
+      end)
+
+      it(":delete() a Route without deleting the associated Service", function()
+        local service = assert(db.services:insert({
+          protocol = "http",
+          host     = "service.com"
+        }))
+
+        local route = assert(db.routes:insert({
+          protocol = "http",
+          hosts    = { "example.com" },
+          service  = service,
+        }))
+
+        local ok, err, err_t = db.routes:delete({ id = route.id })
+        assert.is_nil(err_t)
+        assert.is_nil(err)
+        assert.is_true(ok)
+
+        local service_in_db, err, err_t = db.services:select({
+          id = service.id
+        })
+        assert.is_nil(err_t)
+        assert.is_nil(err)
+        assert.same(service, service_in_db)
+      end)
+    end)
+  end)
+end
