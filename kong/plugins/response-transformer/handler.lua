@@ -14,8 +14,11 @@ end
 
 function ResponseTransformerHandler:access(conf)
   ResponseTransformerHandler.super.access(self)
-  ngx.ctx.chunks = {}
-  ngx.ctx.chunk_number = 1
+
+  local ctx = ngx.ctx
+
+  ctx.rt_body_chunks = {}
+  ctx.rt_body_chunk_number = 1
 end
 
 function ResponseTransformerHandler:header_filter(conf)
@@ -26,14 +29,16 @@ end
 function ResponseTransformerHandler:body_filter(conf)
   ResponseTransformerHandler.super.body_filter(self)
 
+  local ctx = ngx.ctx
+
   if is_body_transform_set(conf) and is_json_body(ngx.header["content-type"]) then
     local chunk, eof = ngx.arg[1], ngx.arg[2]
     if eof then
-      local body = body_filter.transform_json_body(conf, table.concat(ngx.ctx.chunks))
+      local body = body_filter.transform_json_body(conf, table.concat(ctx.rt_body_chunks))
       ngx.arg[1] = body
     else
-      ngx.ctx.chunks[ngx.ctx.chunk_number] = chunk
-      ngx.ctx.chunk_number = ngx.ctx.chunk_number + 1
+      ctx.rt_body_chunks[ctx.rt_body_chunk_number] = chunk
+      ctx.rt_body_chunk_number = ctx.rt_body_chunk_number + 1
       ngx.arg[1] = nil
     end
   end
