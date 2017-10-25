@@ -669,5 +669,41 @@ return {
         perm_id = perms.crud_all.id,
       })
     end,
+  },
+  {
+    name = "2017-10-03-174200_vitals_stats_seconds",
+    up = [[
+      CREATE TABLE IF NOT EXISTS vitals_stats_seconds(
+        node_id uuid,
+        minute timestamp,
+        at timestamp,
+        l2_hit int,
+        l2_miss int,
+        plat_min int,
+        plat_max int,
+        PRIMARY KEY((node_id, minute), at)
+      ) WITH CLUSTERING ORDER BY (at DESC);
+    ]],
+    down = [[
+      DROP TABLE vitals_stats_seconds;
+    ]]
+  },
+  {
+    name = "2017-10-03-174200_vitals_stats_minutes",
+    up = [[
+      CREATE TABLE IF NOT EXISTS vitals_stats_minutes(
+        node_id uuid,
+        hour timestamp,
+        at timestamp,
+        l2_hit int,
+        l2_miss int,
+        plat_min int,
+        plat_max int,
+        PRIMARY KEY((node_id, hour), at)
+      ) WITH CLUSTERING ORDER BY (at DESC);
+    ]],
+    down = [[
+      DROP TABLE vitals_stats_minutes;
+    ]]
   }
 }

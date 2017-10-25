@@ -1,3 +1,5 @@
+local utils = require "kong.tools.utils"
+
 local timer_at   = ngx.timer.at
 local time       = ngx.time
 local math_min   = math.min
@@ -12,6 +14,7 @@ local singletons = require "kong.singletons"
 local persistence_handler
 
 local _log_prefix = "[vitals] "
+local NODE_ID_KEY = "vitals:node_id"
 
 local _M = {}
 local mt = { __index = _M }
@@ -54,12 +57,31 @@ function _M.new(opts)
   }
 
   local self = {
+    shm            = ngx.shared.kong,
     strategy       = strategy,
     counters       = counters,
     flush_interval = opts.flush_interval,
     timer_started  = false,
+    node_id        = nil,
   }
 
+  -- set node id (uuid)
+  local ok, err = self.shm:safe_add(NODE_ID_KEY, utils.uuid())
+  if not ok and err ~= "exists" then
+    log(WARN, _log_prefix, "failed to set 'node_id' in shm: " .. err)
+    return nil
+  end
+
+  self.node_id, err = self.shm:get(NODE_ID_KEY)
+  if err then
+    log(WARN, _log_prefix, "failed to set 'node_id' in shm: " .. err)
+    return nil
+  end
+
+  if not self.node_id then
+    log(WARN, _log_prefix, "no 'node_id' set in shm")
+    return nil
+  end
 
   return setmetatable(self, mt)
 end
@@ -123,7 +145,7 @@ function _M:convert_stats(res)
   -- convert [timestamp, l2_hit, l2_miss, latency_min, latency_max]
   -- to {timestamp = [hit, miss, latency_min, latency_max]}
   for _, row in ipairs(res) do
-    stats[tostring(row.at)] = {
+    stats[self.strategy:get_timestamp_str(row.at)] = {
       row.l2_hit,
       row.l2_miss,
       row.plat_min or json_null,
@@ -138,7 +160,7 @@ end
 function _M:flush_counters(data)
   data = data or self:prepare_counters_for_insert()
 
-  local _, err = self.strategy:insert_stats(data)
+  local _, err = self.strategy:insert_stats(data, self.node_id)
   if err then
     return nil, err
   end

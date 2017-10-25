@@ -120,6 +120,9 @@ function _M:insert_stats(data)
   return true
 end
 
+function _M:get_timestamp_str(ts) 
+  return tostring(ts)
+end
 
 function _M:current_table_name()
   return self.table_rotater:current_table_name()
