@@ -734,7 +734,8 @@ function OICHandler:access(conf)
                 }
 
                 if not args then
-                  log(DEBUG, "[openid-connect] unable to start authorization code flow request with previous parameters")
+                  log(DEBUG,
+                    "[openid-connect] unable to start authorization code flow request with previous parameters")
                   return unexpected(err)
                 end
 
@@ -1040,20 +1041,20 @@ function OICHandler:access(conf)
   if expires > now then
     log(DEBUG, "[openid-connect] access token is valid and has not expired")
 
-    if auth_method_session then
-      s:start()
-    end
-
     if get_conf_arg(conf, "reverify") then
       log(DEBUG, "[openid-connect] reverifying tokens")
       tokens_decoded, err = o.token:verify(tokens_encoded)
       if not tokens_decoded then
         log(DEBUG, "[openid-connect] reverifying tokens failed")
-        return forbidden(iss, err)
+        return forbidden(iss, err, s)
 
       else
         log(DEBUG, "[openid-connect] reverified tokens")
       end
+    end
+
+    if auth_method_session then
+      s:start()
     end
 
   else
