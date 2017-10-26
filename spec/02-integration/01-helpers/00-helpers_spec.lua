@@ -28,6 +28,24 @@ describe("helpers: assertions and modifiers", function()
     if client then client:close() end
   end)
 
+  describe("http_client", function()
+
+    it("encodes arrays correctly when using form-urlencoded content-type", function()
+      local r = client:get("/", {
+        headers = {
+          ["Content-type"] = "application/x-www-form-urlencoded",
+          host             = "mock_upstream",
+        },
+        body    = {
+          names = { "alice", "bob", "casius" },
+        },
+      })
+      local json = assert.response(r).has.jsonbody()
+      assert.same(json.post_data.params.names, { "alice", "bob", "casius" })
+    end)
+  end)
+
+
   describe("wait_until()", function()
     it("does not errors out if thing happens", function()
       assert.has_no_error(function()
