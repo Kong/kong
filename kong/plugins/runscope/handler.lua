@@ -58,5 +58,6 @@ function RunscopeLogHandler:log(conf)
 end
 
 RunscopeLogHandler.PRIORITY = 5
+RunscopeLogHandler.VERSION = "0.1.0"
 
 return RunscopeLogHandler

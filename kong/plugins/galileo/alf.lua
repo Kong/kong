@@ -1,7 +1,7 @@
 -- ALF implementation for ngx_lua/Kong
 -- ALF version: 1.1.0
 -- @version 2.0.0
--- @see https://github.com/Mashape/galileo-agent-spec
+-- @see https://github.com/Kong/galileo-agent-spec
 --
 -- Incompatibilities with ALF 1.1 and important notes
 -- ==================================================

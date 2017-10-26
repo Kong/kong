@@ -1,3 +1,140 @@
+## [Unreleased][unreleased]
+
+## [0.11.1] - 2017/10/24
+
+### Changed
+
+##### Configuration
+
+- Drop the `lua_code_cache` configuration property. This setting has been
+  considered harmful since 0.11.0 as it interferes with Kong's internals.
+  [#2854](https://github.com/Kong/kong/pull/2854)
+
+### Fixed
+
+##### Core
+
+- DNS: SRV records pointing to an A record are now properly handled by the
+  load balancer when `preserve_host` is disabled. Such records used to throw
+  Lua errors on the proxy code path.
+  [Kong/lua-resty-dns-client#19](https://github.com/Kong/lua-resty-dns-client/pull/19)
+- Fixed an edge-case where `preserve_host` would sometimes craft an upstream
+  request with a Host header from a previous client request instead of the
+  current one.
+  [#2832](https://github.com/Kong/kong/pull/2832)
+- Ensure APIs with regex URIs are evaluated in the order that they are created.
+  [#2924](https://github.com/Kong/kong/pull/2924)
+- Fixed a typo that caused the load balancing components to ignore the Upstream
+  slots property.
+  [#2747](https://github.com/Kong/kong/pull/2747)
+
+##### CLI
+
+- Fixed the verification of self-signed SSL certificates for PostgreSQL and
+  Cassandra in the `kong migrations` command. Self-signed SSL certificates are
+  now properly verified during migrations according to the
+  `lua_ssl_trusted_certificate` configuration property.
+  [#2908](https://github.com/Kong/kong/pull/2908)
+
+##### Admin API
+
+- The `/upstream/{upstream}/targets/active` endpoint used to return HTTP
+  `405 Method Not Allowed` when called with a trailing slash. Both notations
+  (with and without the trailing slash) are now supported.
+  [#2884](https://github.com/Kong/kong/pull/2884)
+
+##### Plugins
+
+- bot-detection: Fixed an issue which would prevent the plugin from running and
+  result in an HTTP `500` error if configured globally.
+  [#2906](https://github.com/Kong/kong/pull/2906)
+- ip-restriction: Fixed support for the `0.0.0.0/0` CIDR block. This block is
+  now supported and won't trigger an error when used in the `whitelist` or
+  `blacklist` properties.
+  [#2918](https://github.com/Kong/kong/pull/2918)
+
+### Added
+
+##### Plugins
+
+- aws-lambda: Added support to forward the client request's HTTP method,
+  headers, URI, and body to the Lambda function.
+  [#2823](https://github.com/Kong/kong/pull/2823)
+- key-auth: New `run_on_preflight` configuration option to control
+  authentication on preflight requests.
+  [#2857](https://github.com/Kong/kong/pull/2857)
+- jwt: New `run_on_preflight` configuration option to control authentication
+  on preflight requests.
+  [#2857](https://github.com/Kong/kong/pull/2857)
+
+##### Plugin development
+
+- Ensure migrations have valid, unique names to avoid conflicts between custom
+  plugins.
+  Thanks [@ikogan](https://github.com/ikogan) for the patch!
+  [#2821](https://github.com/Kong/kong/pull/2821)
+
+### Improved
+
+##### Migrations & Deployments
+
+- Improve migrations reliability for future major releases.
+  [#2869](https://github.com/Kong/kong/pull/2869)
+
+##### Plugins
+
+- Improve the performance of the acl and oauth2 plugins.
+  [#2736](https://github.com/Kong/kong/pull/2736)
+  [#2806](https://github.com/Kong/kong/pull/2806)
+
+## [0.10.4] - 2017/10/24
+
+### Fixed
+
+##### Core
+
+- DNS: SRV records pointing to an A record are now properly handled by the
+  load balancer when `preserve_host` is disabled. Such records used to throw
+  Lua errors on the proxy code path.
+  [Kong/lua-resty-dns-client#19](https://github.com/Kong/lua-resty-dns-client/pull/19)
+- HTTP `400` errors thrown by Nginx are now correctly caught by Kong and return
+  a native, Kong-friendly response.
+  [#2476](https://github.com/Mashape/kong/pull/2476)
+- Fix an edge-case where an API with multiple `uris` and `strip_uri = true`
+  would not always strip the client URI.
+  [#2562](https://github.com/Mashape/kong/issues/2562)
+- Fix an issue where Kong would match an API with a shorter URI (from its
+  `uris` value) as a prefix instead of a longer, matching prefix from
+  another API.
+  [#2662](https://github.com/Mashape/kong/issues/2662)
+- Fixed a typo that caused the load balancing components to ignore the
+  Upstream `slots` property.
+  [#2747](https://github.com/Mashape/kong/pull/2747)
+
+##### Configuration
+
+- Octothorpes (`#`) can now be escaped (`\#`) and included in the Kong
+  configuration values such as your datastore passwords or usernames.
+  [#2411](https://github.com/Mashape/kong/pull/2411)
+
+##### Admin API
+
+- The `data` response field of the `/upstreams/{upstream}/targets/active`
+  Admin API endpoint now returns a list (`[]`) instead of an object (`{}`)
+  when no active targets are present.
+  [#2619](https://github.com/Mashape/kong/pull/2619)
+
+##### Plugins
+
+- datadog: Avoid a runtime error if the plugin is configured as a global plugin
+  but the downstream request did not match any configured API.
+  Thanks [@kjsteuer](https://github.com/kjsteuer) for the fix!
+  [#2702](https://github.com/Mashape/kong/pull/2702)
+- ip-restriction: Fixed support for the `0.0.0.0/0` CIDR block. This block is
+  now supported and won't trigger an error when used in the `whitelist` or
+  `blacklist` properties.
+  [#2918](https://github.com/Mashape/kong/pull/2918)
+
 ## [0.11.0] - 2017/08/16
 
 The latest and greatest version of Kong features improvements all over the
@@ -19,7 +156,7 @@ breaking changes to the deployment process and proxying behavior that you
 should be familiar with.
 
 We strongly advise that you read this changeset thoroughly, as well as the
-[0.11 Upgrade Path](https://github.com/Mashape/kong/blob/master/UPGRADE.md#upgrade-to-011x)
+[0.11 Upgrade Path](https://github.com/Kong/kong/blob/master/UPGRADE.md#upgrade-to-011x)
 if you are planning to upgrade a Kong cluster.
 
 ### Breaking changes
@@ -29,7 +166,7 @@ if you are planning to upgrade a Kong cluster.
 - :warning: Numerous updates were made to the Nginx configuration template.
   If you are using a custom template, you **must** apply those
   modifications. See the [0.11 Upgrade
-  Path](https://github.com/Mashape/kong/blob/master/UPGRADE.md#upgrade-to-011x)
+  Path](https://github.com/Kong/kong/blob/master/UPGRADE.md#upgrade-to-011x)
   for a complete list of changes to apply.
 
 ##### Migrations & Deployment
@@ -42,7 +179,7 @@ if you are planning to upgrade a Kong cluster.
   to avoid several nodes running migrations concurrently and potentially
   corrupting your database. Once the migrations are up-to-date, it is
   considered safe to start multiple Kong nodes concurrently.
-  [#2421](https://github.com/Mashape/kong/pull/2421)
+  [#2421](https://github.com/Kong/kong/pull/2421)
 - :warning: :fireworks: Serf is **not** a dependency anymore. Kong nodes now
   handle cache invalidation events via a built-in database polling mechanism.
   See the new "Datastore Cache" section of the configuration file which
@@ -50,14 +187,14 @@ if you are planning to upgrade a Kong cluster.
   `db_update_propagation`, and `db_cache_ttl`. If you are using Cassandra, you
   **should** pay a particular attention to the `db_update_propagation` setting,
   as you **should not** use the default value of `0`.
-  [#2561](https://github.com/Mashape/kong/pull/2561)
+  [#2561](https://github.com/Kong/kong/pull/2561)
 
 ##### Core
 
 - :warning: Kong now requires OpenResty `1.11.2.4`. OpenResty's LuaJIT can
   now be built with Lua 5.2 compatibility.
-  [#2489](https://github.com/Mashape/kong/pull/2489)
-  [#2790](https://github.com/Mashape/kong/pull/2790)
+  [#2489](https://github.com/Kong/kong/pull/2489)
+  [#2790](https://github.com/Kong/kong/pull/2790)
 - :warning: Previously, the `X-Forwarded-*` and `X-Real-IP` headers were
   trusted from any client by default, and forwarded upstream. With the
   introduction of the new `trusted_ips` property (see the below "Added"
@@ -67,7 +204,7 @@ if you are planning to upgrade a Kong cluster.
   trusted IP addresses blocks. This setting also affects the API
   `check_https` field, which itself relies on *trusted* `X-Forwarded-Proto`
   headers **only**.
-  [#2236](https://github.com/Mashape/kong/pull/2236)
+  [#2236](https://github.com/Kong/kong/pull/2236)
 - :warning: The API Object property `http_if_terminated` is now set to `false`
   by default. For Kong to evaluate the client `X-Forwarded-Proto` header, you
   must now configure Kong to trust the client IP (see above change), **and**
@@ -75,24 +212,24 @@ if you are planning to upgrade a Kong cluster.
   doing SSL termination somewhere before your requests hit Kong, and if you
   have configured `https_only` on the API, or if you use a plugin that requires
   HTTPS traffic (e.g. OAuth2).
-  [#2588](https://github.com/Mashape/kong/pull/2588)
+  [#2588](https://github.com/Kong/kong/pull/2588)
 - :warning: The internal DNS resolver now honours the `search` and `ndots`
   configuration options of your `resolv.conf` file. Make sure that DNS
   resolution is still consistent in your environment, and consider
   eventually not using FQDNs anymore.
-  [#2425](https://github.com/Mashape/kong/pull/2425)
+  [#2425](https://github.com/Kong/kong/pull/2425)
 
 ##### Admin API
 
 - :warning: As a result of the Serf removal, Kong is now entirely stateless,
   and as such, the `/cluster` endpoint has disappeared.
-  [#2561](https://github.com/Mashape/kong/pull/2561)
+  [#2561](https://github.com/Kong/kong/pull/2561)
 - :warning: The Admin API `/status` endpoint does not return a count of the
   database entities anymore. Instead, it now returns a `database.reachable`
   boolean value, which reflects the state of the connection between Kong
   and the underlying database. Please note that this flag **does not**
   reflect the health of the database itself.
-  [#2567](https://github.com/Mashape/kong/pull/2567)
+  [#2567](https://github.com/Kong/kong/pull/2567)
 
 ##### Plugin development
 
@@ -100,16 +237,16 @@ if you are planning to upgrade a Kong cluster.
   `$upstream_uri` variable. Custom plugins using the `ngx.req.set_uri()`
   API will not be taken into consideration anymore. One must now set the
   `ngx.var.upstream_uri` variable from the Lua land.
-  [#2519](https://github.com/Mashape/kong/pull/2519)
+  [#2519](https://github.com/Kong/kong/pull/2519)
 - :warning: The `hooks.lua` module for custom plugins is dropped, along
   with the `database_cache.lua` module. Database entities caching and
   eviction has been greatly improved to simplify and automate most caching
   use-cases. See the [Plugins Development
   Guide](https://getkong.org/docs/0.11.x/plugin-development/entities-cache/)
   and the [0.11 Upgrade
-  Path](https://github.com/Mashape/kong/blob/master/UPGRADE.md#upgrade-to-011x)
+  Path](https://github.com/Kong/kong/blob/master/UPGRADE.md#upgrade-to-011x)
   for more details.
-  [#2561](https://github.com/Mashape/kong/pull/2561)
+  [#2561](https://github.com/Kong/kong/pull/2561)
 - :warning: To ensure that the order of execution of plugins is still the same
   for vanilla Kong installations, we had to update the `PRIORITY` field of some
   of our bundled plugins. If your custom plugin must run after or before a
@@ -117,8 +254,8 @@ if you are planning to upgrade a Kong cluster.
   field as well. The complete list of plugins and their priorities is available
   on the [Plugins Development
   Guide](https://getkong.org/docs/0.11.x/plugin-development/custom-logic/).
-  [#2489](https://github.com/Mashape/kong/pull/2489)
-  [#2813](https://github.com/Mashape/kong/pull/2813)
+  [#2489](https://github.com/Kong/kong/pull/2489)
+  [#2813](https://github.com/Kong/kong/pull/2813)
 
 ### Deprecated
 
@@ -126,7 +263,7 @@ if you are planning to upgrade a Kong cluster.
 
 - The `kong compile` command has been deprecated. Instead, prefer using
   the new `kong prepare` command.
-  [#2706](https://github.com/Mashape/kong/pull/2706)
+  [#2706](https://github.com/Kong/kong/pull/2706)
 
 ### Changed
 
@@ -134,20 +271,20 @@ if you are planning to upgrade a Kong cluster.
 
 - Performance around DNS resolution has been greatly improved in some
   cases.
-  [#2625](https://github.com/Mashape/kong/pull/2425)
+  [#2625](https://github.com/Kong/kong/pull/2425)
 - Secret values are now generated with a kernel-level, Cryptographically
   Secure PRNG.
-  [#2536](https://github.com/Mashape/kong/pull/2536)
+  [#2536](https://github.com/Kong/kong/pull/2536)
 - The `.kong_env` file created by Kong in its running prefix is now written
   without world-read permissions.
-  [#2611](https://github.com/Mashape/kong/pull/2611)
+  [#2611](https://github.com/Kong/kong/pull/2611)
 
 ##### Plugin development
 
 - The `marshall_event` function on schemas is now ignored by Kong, and can be
   safely removed as the new cache invalidation mechanism natively handles
   safer events broadcasting.
-  [#2561](https://github.com/Mashape/kong/pull/2561)
+  [#2561](https://github.com/Kong/kong/pull/2561)
 
 ### Added
 
@@ -159,33 +296,33 @@ if you are planning to upgrade a Kong cluster.
   (useful for URI rewriting). See the [Proxy
   Guide](https://getkong.org/docs/0.11.x/proxy/#using-regexes-in-uris) for
   documentation on how to use regex URIs.
-  [#2681](https://github.com/Mashape/kong/pull/2681)
+  [#2681](https://github.com/Kong/kong/pull/2681)
 - :fireworks: Support for HTTP/2. A new `http2` directive now enables
   HTTP/2 traffic on the `proxy_listen_ssl` address.
-  [#2541](https://github.com/Mashape/kong/pull/2541)
+  [#2541](https://github.com/Kong/kong/pull/2541)
 - :fireworks: Support for the `search` and `ndots` configuration options of
   your `resolv.conf` file.
-  [#2425](https://github.com/Mashape/kong/pull/2425)
+  [#2425](https://github.com/Kong/kong/pull/2425)
 - Kong now forwards new headers to your upstream services:
   `X-Forwarded-Host`, `X-Forwarded-Port`, and `X-Forwarded-Proto`.
-  [#2236](https://github.com/Mashape/kong/pull/2236)
+  [#2236](https://github.com/Kong/kong/pull/2236)
 - Support for the PROXY protocol. If the new `real_ip_header` configuration
   property is set to `real_ip_header = proxy_protocol`, then Kong will
   append the `proxy_protocol` parameter to the Nginx `listen` directive of
   the Kong proxy port.
-  [#2236](https://github.com/Mashape/kong/pull/2236)
+  [#2236](https://github.com/Kong/kong/pull/2236)
 - Support for BDR compatibility in the PostgreSQL migrations.
   Thanks [@AlexBloor](https://github.com/AlexBloor) for the patch!
-  [#2672](https://github.com/Mashape/kong/pull/2672)
+  [#2672](https://github.com/Kong/kong/pull/2672)
 
 ##### Configuration
 
 - Support for DNS nameservers specified in IPv6 format.
-  [#2634](https://github.com/Mashape/kong/pull/2634)
+  [#2634](https://github.com/Kong/kong/pull/2634)
 - A few new DNS configuration properties allow you to tweak the Kong DNS
   resolver, and in particular, how it handles the resolution of different
   record types or the eviction of stale records.
-  [#2625](https://github.com/Mashape/kong/pull/2625)
+  [#2625](https://github.com/Kong/kong/pull/2625)
 - A new `trusted_ips` configuration property allows you to define a list of
   trusted IP address blocks that are known to send trusted `X-Forwarded-*`
   headers. Requests from trusted IPs will make Kong forward those headers
@@ -195,35 +332,35 @@ if you are planning to upgrade a Kong cluster.
   directive(s), which makes Kong trust the incoming `X-Real-IP` header as
   well, which is used for operations such as rate-limiting by IP address,
   and that Kong forwards upstream as well.
-  [#2236](https://github.com/Mashape/kong/pull/2236)
+  [#2236](https://github.com/Kong/kong/pull/2236)
 - You can now configure the ngx_http_realip_module from the Kong
   configuration.  In addition to `trusted_ips` which sets the
   `set_real_ip_from` directives(s), two new properties, `real_ip_header`
   and `real_ip_recursive` allow you to configure the ngx_http_realip_module
   directives bearing the same name.
-  [#2236](https://github.com/Mashape/kong/pull/2236)
+  [#2236](https://github.com/Kong/kong/pull/2236)
 - Ability to hide Kong-specific response headers. Two new configuration
   fields: `server_tokens` and `latency_tokens` will respectively toggle
   whether the `Server` and `X-Kong-*-Latency` headers should be sent to
   downstream clients.
-  [#2259](https://github.com/Mashape/kong/pull/2259)
+  [#2259](https://github.com/Kong/kong/pull/2259)
 - New configuration property to tune handling request body data via the
   `client_max_body_size` and `client_body_buffer_size` directives
   (mirroring their Nginx counterparts). Note these settings are only
   defined for proxy requests; request body handling in the Admin API
   remains unchanged.
-  [#2602](https://github.com/Mashape/kong/pull/2602)
+  [#2602](https://github.com/Kong/kong/pull/2602)
 - New `error_default_type` configuration property. This setting is to
   specify a MIME type that will be used as the error response body format
   when Nginx encounters an error, but no `Accept` header was present in the
   request. The default value is `text/plain` for backwards compatibility.
   Thanks [@therealgambo](https://github.com/therealgambo) for the
   contribution!
-  [#2500](https://github.com/Mashape/kong/pull/2500)
+  [#2500](https://github.com/Kong/kong/pull/2500)
 - New `nginx_user` configuration property, which interfaces with the Nginx
   `user` directive.
   Thanks [@depay](https://github.com/depay) for the contribution!
-  [#2180](https://github.com/Mashape/kong/pull/2180)
+  [#2180](https://github.com/Kong/kong/pull/2180)
 
 ##### CLI
 
@@ -232,46 +369,46 @@ if you are planning to upgrade a Kong cluster.
   the `nginx` binary. This is useful for environments like containers,
   where the foreground process should be the Nginx master process. The
   `kong compile` command has been deprecated as a result of this addition.
-  [#2706](https://github.com/Mashape/kong/pull/2706)
+  [#2706](https://github.com/Kong/kong/pull/2706)
 
 ##### Admin API
 
 - Ability to retrieve plugins added to a Consumer via two new endpoints:
   `/consumers/:username_or_id/plugins/` and
   `/consumers/:username_or_id/plugins/:plugin_id`.
-  [#2714](https://github.com/Mashape/kong/pull/2714)
+  [#2714](https://github.com/Kong/kong/pull/2714)
 - Support for JSON `null` in `PATCH` requests to unset a value on any
   entity.
-  [#2700](https://github.com/Mashape/kong/pull/2700)
+  [#2700](https://github.com/Kong/kong/pull/2700)
 
 ##### Plugins
 
 - jwt: Support for RS512 signed tokens.
   Thanks [@sarraz1](https://github.com/sarraz1) for the patch!
-  [#2666](https://github.com/Mashape/kong/pull/2666)
+  [#2666](https://github.com/Kong/kong/pull/2666)
 - rate-limiting/response-ratelimiting: Optionally hide informative response
   headers.
-  [#2087](https://github.com/Mashape/kong/pull/2087)
+  [#2087](https://github.com/Kong/kong/pull/2087)
 - aws-lambda: Define a custom response status when the upstream
   `X-Amz-Function-Error` header is "Unhandled".
   Thanks [@erran](https://github.com/erran) for the contribution!
-  [#2587](https://github.com/Mashape/kong/pull/2587)
+  [#2587](https://github.com/Kong/kong/pull/2587)
 - aws-lambda: Add new AWS regions that were previously unsupported.
-  [#2769](https://github.com/Mashape/kong/pull/2769)
+  [#2769](https://github.com/Kong/kong/pull/2769)
 - hmac: New option to validate the client-provided SHA-256 of the request
   body.
   Thanks [@vaibhavatul47](https://github.com/vaibhavatul47) for the
   contribution!
-  [#2419](https://github.com/Mashape/kong/pull/2419)
+  [#2419](https://github.com/Kong/kong/pull/2419)
 - hmac: Added support for `enforce_headers` option and added HMAC-SHA256,
   HMAC-SHA384, and HMAC-SHA512 support.
-  [#2644](https://github.com/Mashape/kong/pull/2644)
+  [#2644](https://github.com/Kong/kong/pull/2644)
 - statsd: New metrics and more flexible configuration. Support for
   prefixes, configurable stat type, and added metrics.
-  [#2400](https://github.com/Mashape/kong/pull/2400)
+  [#2400](https://github.com/Kong/kong/pull/2400)
 - datadog: New metrics and more flexible configuration. Support for
   prefixes, configurable stat type, and added metrics.
-  [#2394](https://github.com/Mashape/kong/pull/2394)
+  [#2394](https://github.com/Kong/kong/pull/2394)
 
 ### Fixed
 
@@ -280,51 +417,51 @@ if you are planning to upgrade a Kong cluster.
 - Kong now ensures that your clients URIs are transparently proxied
   upstream.  No percent-encoding/decoding or querystring stripping will
   occur anymore.
-  [#2519](https://github.com/Mashape/kong/pull/2519)
+  [#2519](https://github.com/Kong/kong/pull/2519)
 - Fix an issue where Kong would match an API with a shorter URI (from its
   `uris` value) as a prefix instead of a longer, matching prefix from
   another API.
-  [#2662](https://github.com/Mashape/kong/issues/2662)
+  [#2662](https://github.com/Kong/kong/issues/2662)
 - Fix an edge-case where an API with multiple `uris` and `strip_uri = true`
   would not always strip the client URI.
-  [#2562](https://github.com/Mashape/kong/issues/2562)
+  [#2562](https://github.com/Kong/kong/issues/2562)
 - HTTP `400` errors thrown by Nginx are now correctly caught by Kong and return
   a native, Kong-friendly response.
-  [#2476](https://github.com/Mashape/kong/pull/2476)
+  [#2476](https://github.com/Kong/kong/pull/2476)
 
 ##### Configuration
 
 - Octothorpes (`#`) can now be escaped (`\#`) and included in the Kong
   configuration values such as your datastore passwords or usernames.
-  [#2411](https://github.com/Mashape/kong/pull/2411)
+  [#2411](https://github.com/Kong/kong/pull/2411)
 
 ##### Admin API
 
 - The `data` response field of the `/upstreams/{upstream}/targets/active`
   Admin API endpoint now returns a list (`[]`) instead of an object (`{}`)
   when no active targets are present.
-  [#2619](https://github.com/Mashape/kong/pull/2619)
+  [#2619](https://github.com/Kong/kong/pull/2619)
 
 ##### Plugins
 
 - The `unique` constraint on OAuth2 `client_secrets` has been removed.
-  [#2447](https://github.com/Mashape/kong/pull/2447)
+  [#2447](https://github.com/Kong/kong/pull/2447)
 - The `unique` constraint on JWT Credentials `secrets` has been removed.
-  [#2548](https://github.com/Mashape/kong/pull/2548)
+  [#2548](https://github.com/Kong/kong/pull/2548)
 - oauth2: When requesting a token from `/oauth2/token`, one can now pass the
   `client_id` as a request body parameter, while `client_id:client_secret` is
   passed via the Authorization header. This allows for better integration
   with some OAuth2 flows proposed out there, such as from Cloudflare Apps.
   Thanks [@cedum](https://github.com/cedum) for the patch!
-  [#2577](https://github.com/Mashape/kong/pull/2577)
+  [#2577](https://github.com/Kong/kong/pull/2577)
 - datadog: Avoid a runtime error if the plugin is configured as a global plugin
   but the downstream request did not match any configured API.
   Thanks [@kjsteuer](https://github.com/kjsteuer) for the fix!
-  [#2702](https://github.com/Mashape/kong/pull/2702)
+  [#2702](https://github.com/Kong/kong/pull/2702)
 - Logging plugins: the produced logs `latencies.kong` field used to omit the
   time Kong spent in its Load Balancing logic, which includes DNS resolution
   time. This latency is now included in `latencies.kong`.
-  [#2494](https://github.com/Mashape/kong/pull/2494)
+  [#2494](https://github.com/Kong/kong/pull/2494)
 
 ## [0.10.3] - 2017/05/24
 
@@ -337,7 +474,7 @@ if you are planning to upgrade a Kong cluster.
   We now compile OpenResty against a JITable PCRE source for
   those platforms, which should result in significant performance
   improvements in regex matching.
-  [Mashape/kong-distributions #9](https://github.com/Mashape/kong-distributions/pull/9)
+  [Mashape/kong-distributions #9](https://github.com/Kong/kong-distributions/pull/9)
 - TLS connections are now handled with a modern list of
   accepted ciphers, as per the Mozilla recommended TLS
   ciphers list.
@@ -350,63 +487,63 @@ if you are planning to upgrade a Kong cluster.
     `cluster` policy. The number of round trips to the
     database has been limited to the number of configured
     limits.
-    [#2488](https://github.com/Mashape/kong/pull/2488)
+    [#2488](https://github.com/Kong/kong/pull/2488)
 
 ### Added
 
 - New `ssl_cipher_suite` and `ssl_ciphers` configuration
   properties to configure the desired set of accepted ciphers,
   based on the Mozilla recommended TLS ciphers list.
-  [#2555](https://github.com/Mashape/kong/pull/2555)
+  [#2555](https://github.com/Kong/kong/pull/2555)
 - New `proxy_ssl_certificate` and `proxy_ssl_certificate_key`
   configuration properties. These properties configure the
   Nginx directives bearing the same name, to set client
   certificates to Kong when connecting to your upstream services.
-  [#2556](https://github.com/Mashape/kong/pull/2556)
+  [#2556](https://github.com/Kong/kong/pull/2556)
 - Proxy and Admin API access and error log paths are now
   configurable. Access logs can be entirely disabled if
   desired.
-  [#2552](https://github.com/Mashape/kong/pull/2552)
+  [#2552](https://github.com/Kong/kong/pull/2552)
 - Plugins:
   - Logging plugins: The produced logs include a new `tries`
     field which contains, which includes the upstream
     connection successes and failures of the load-balancer.
-    [#2429](https://github.com/Mashape/kong/pull/2429)
+    [#2429](https://github.com/Kong/kong/pull/2429)
   - key-auth: Credentials can now be sent in the request body.
-    [#2493](https://github.com/Mashape/kong/pull/2493)
+    [#2493](https://github.com/Kong/kong/pull/2493)
   - cors: Origins can now be defined as regular expressions.
-    [#2482](https://github.com/Mashape/kong/pull/2482)
+    [#2482](https://github.com/Kong/kong/pull/2482)
 
 ### Fixed
 
 - APIs matching: prioritize APIs with longer `uris` when said
   APIs also define `hosts` and/or `methods` as well. Thanks
   [@leonzz](https://github.com/leonzz) for the patch.
-  [#2523](https://github.com/Mashape/kong/pull/2523)
+  [#2523](https://github.com/Kong/kong/pull/2523)
 - SSL connections to Cassandra can now properly verify the
   certificate in use (when `cassandra_ssl_verify` is enabled).
-  [#2531](https://github.com/Mashape/kong/pull/2531)
+  [#2531](https://github.com/Kong/kong/pull/2531)
 - The DNS resolver no longer sends a A or AAAA DNS queries for SRV
   records. This should improve performance by avoiding unecessary
   lookups.
-  [#2563](https://github.com/Mashape/kong/pull/2563) &
-  [Mashape/lua-resty-dns-client #12](https://github.com/Mashape/lua-resty-dns-client/pull/12)
+  [#2563](https://github.com/Kong/kong/pull/2563) &
+  [Mashape/lua-resty-dns-client #12](https://github.com/Kong/lua-resty-dns-client/pull/12)
 - Plugins
   - All authentication plugins don't throw an error anymore when
     invalid credentials are given and the `anonymous` user isn't
     configured.
-    [#2508](https://github.com/Mashape/kong/pull/2508)
+    [#2508](https://github.com/Kong/kong/pull/2508)
   - rate-limiting: Effectively use the desired Redis database when
     the `redis` policy is in use and the `config.redis_database`
     property is set.
-    [#2481](https://github.com/Mashape/kong/pull/2481)
+    [#2481](https://github.com/Kong/kong/pull/2481)
   - cors: The regression introduced in 0.10.1 regarding not
     sending the `*` wildcard when `conf.origin` was not specified
     has been fixed.
-    [#2518](https://github.com/Mashape/kong/pull/2518)
+    [#2518](https://github.com/Kong/kong/pull/2518)
   - oauth2: properly check the client application ownership of a
     token before refreshing it.
-    [#2461](https://github.com/Mashape/kong/pull/2461)
+    [#2461](https://github.com/Kong/kong/pull/2461)
 
 ## [0.10.2] - 2017/05/01
 
@@ -414,19 +551,19 @@ if you are planning to upgrade a Kong cluster.
 
 - The Kong DNS resolver now honors the `MAXNS` setting (3) when parsing the
   nameservers specified in `resolv.conf`.
-  [#2290](https://github.com/Mashape/kong/issues/2290)
+  [#2290](https://github.com/Kong/kong/issues/2290)
 - Kong now matches incoming requests via the `$request_uri` property, instead
   of `$uri`, in order to better handle percent-encoded URIS. A more detailed
   explanation will be included in the below "Fixed" section.
-  [#2377](https://github.com/Mashape/kong/pull/2377)
+  [#2377](https://github.com/Kong/kong/pull/2377)
 - Upstream calls do not unconditionally include a trailing `/` anymore. See the
   below "Added" section for more details.
-  [#2315](https://github.com/Mashape/kong/pull/2315)
+  [#2315](https://github.com/Kong/kong/pull/2315)
 - Admin API:
   - The "active targets" endpoint now only return the most recent nonzero
     weight Targets, instead of all nonzero weight targets. This is to provide
     a better picture of the Targets currently in use by the Kong load balancer.
-    [#2310](https://github.com/Mashape/kong/pull/2310)
+    [#2310](https://github.com/Kong/kong/pull/2310)
 
 ### Added
 
@@ -434,62 +571,62 @@ if you are planning to upgrade a Kong cluster.
   the Nginx rewrite phase. This phase is executed prior to matching a
   registered Kong API, and prior to any authentication plugin. As such, only
   global plugins (neither tied to an API or Consumer) will execute this phase.
-  [#2354](https://github.com/Mashape/kong/pull/2354)
+  [#2354](https://github.com/Kong/kong/pull/2354)
 - Ability for the client to chose whether the upstream request (Kong <->
   upstream) should contain a trailing slash in its URI. Prior to this change,
   Kong 0.10 would unconditionally append a trailing slash to all upstream
   requests. The added functionality is described in
-  [#2211](https://github.com/Mashape/kong/issues/2211), and was implemented in
-  [#2315](https://github.com/Mashape/kong/pull/2315).
+  [#2211](https://github.com/Kong/kong/issues/2211), and was implemented in
+  [#2315](https://github.com/Kong/kong/pull/2315).
 - Ability to hide Kong-specific response headers. Two new configuration fields:
   `server_tokens` and `latency_tokens` will respectively toggle whether the
   `Server` and `X-Kong-*-Latency` headers should be sent to downstream clients.
-  [#2259](https://github.com/Mashape/kong/pull/2259)
+  [#2259](https://github.com/Kong/kong/pull/2259)
 - New `cassandra_schema_consensus_timeout` configuration property, to allow for
   Kong to wait for the schema consensus of your Cassandra cluster during
   migrations.
-  [#2326](https://github.com/Mashape/kong/pull/2326)
+  [#2326](https://github.com/Kong/kong/pull/2326)
 - Serf commands executed by a running Kong node are now logged in the Nginx
   error logs with a `DEBUG` level.
-  [#2410](https://github.com/Mashape/kong/pull/2410)
+  [#2410](https://github.com/Kong/kong/pull/2410)
 - Ensure the required shared dictionaries are defined in the Nginx
   configuration. This will prevent custom Nginx templates from potentially
   resulting in a breaking upgrade for users.
-  [#2466](https://github.com/Mashape/kong/pull/2466)
+  [#2466](https://github.com/Kong/kong/pull/2466)
 - Admin API:
   - Target Objects can now be deleted with their ID as well as their name. The
     endpoint becomes: `/upstreams/:name_or_id/targets/:target_or_id`.
-    [#2304](https://github.com/Mashape/kong/pull/2304)
+    [#2304](https://github.com/Kong/kong/pull/2304)
 - Plugins:
   - :fireworks: **New Request termination plugin**. This plugin allows to
     temporarily disable an API and return a pre-configured response status and
     body to your client. Useful for use-cases such as maintenance mode for your
     upstream services. Thanks to [@pauldaustin](https://github.com/pauldaustin)
     for the contribution.
-    [#2051](https://github.com/Mashape/kong/pull/2051)
+    [#2051](https://github.com/Kong/kong/pull/2051)
   - Logging plugins: The produced logs include two new fields: a `consumer`
     field, which contains the properties of the authenticated Consumer
     (`id`, `custom_id`, and `username`), if any, and a `tries` field, which
     includes the upstream connection successes and failures of the load-
     balancer.
-    [#2367](https://github.com/Mashape/kong/pull/2367)
-    [#2429](https://github.com/Mashape/kong/pull/2429)
+    [#2367](https://github.com/Kong/kong/pull/2367)
+    [#2429](https://github.com/Kong/kong/pull/2429)
   - http-log: Now set an upstream HTTP basic access authentication header if
     the configured `conf.http_endpoint` parameter includes an authentication
     section. Thanks [@amir](https://github.com/amir) for the contribution.
-    [#2432](https://github.com/Mashape/kong/pull/2432)
+    [#2432](https://github.com/Kong/kong/pull/2432)
   - file-log: New `config.reopen` property to close and reopen the log file on
     every request, in order to effectively rotate the logs.
-    [#2348](https://github.com/Mashape/kong/pull/2348)
+    [#2348](https://github.com/Kong/kong/pull/2348)
   - jwt: Returns `401 Unauthorized` on invalid claims instead of the previous
     `403 Forbidden` status.
-    [#2433](https://github.com/Mashape/kong/pull/2433)
+    [#2433](https://github.com/Kong/kong/pull/2433)
   - key-auth: Allow setting API key header names with an underscore.
-    [#2370](https://github.com/Mashape/kong/pull/2370)
+    [#2370](https://github.com/Kong/kong/pull/2370)
   - cors: When `config.credentials = true`, we do not send an ACAO header with
     value `*`. The ACAO header value will be that of the request's `Origin: `
     header.
-    [#2451](https://github.com/Mashape/kong/pull/2451)
+    [#2451](https://github.com/Kong/kong/pull/2451)
 
 ### Fixed
 
@@ -497,77 +634,77 @@ if you are planning to upgrade a Kong cluster.
   value is taken from the upstream `Host` header value, and thus also depends
   on the `preserve_host` setting of your API. Thanks
   [@konrade](https://github.com/konrade) for the original patch.
-  [#2225](https://github.com/Mashape/kong/pull/2225)
+  [#2225](https://github.com/Kong/kong/pull/2225)
 - Correctly match APIs with percent-encoded URIs in their `uris` property.
   Generally, this change also avoids normalizing (and thus, potentially
   altering) the request URI when trying to match an API's `uris` value. Instead
   of relying on the Nginx `$uri` variable, we now use `$request_uri`.
-  [#2377](https://github.com/Mashape/kong/pull/2377)
+  [#2377](https://github.com/Kong/kong/pull/2377)
 - Handle a routing edge-case under some conditions with the `uris` matching
   rule of APIs that would falsely lead Kong into believing no API was matched
   for what would actually be a valid request.
-  [#2343](https://github.com/Mashape/kong/pull/2343)
+  [#2343](https://github.com/Kong/kong/pull/2343)
 - If no API was configured with a `hosts` matching rule, then the
   `preserve_host` flag would never be honored.
-  [#2344](https://github.com/Mashape/kong/pull/2344)
+  [#2344](https://github.com/Kong/kong/pull/2344)
 - The `X-Forwarded-For` header sent to your upstream services by Kong is not
   set from the Nginx `$proxy_add_x_forwarded_for` variable anymore. Instead,
   Kong uses the `$realip_remote_addr` variable to append the real IP address
   of a client, instead of `$remote_addr`, which can come from a previous proxy
   hop.
-  [#2236](https://github.com/Mashape/kong/pull/2236)
+  [#2236](https://github.com/Kong/kong/pull/2236)
 - CNAME records are now properly being cached by the DNS resolver. This results
   in a performance improvement over previous 0.10 versions.
-  [#2303](https://github.com/Mashape/kong/pull/2303)
+  [#2303](https://github.com/Kong/kong/pull/2303)
 - When using Cassandra, some migrations would not be performed on the same
   coordinator as the one originally chosen. The same migrations would also
   require a response from other replicas in a cluster, but were not waiting
   for a schema consensus beforehand, causing indeterministic failures in the
   migrations, especially if the cluster's inter-nodes communication is slow.
-  [#2326](https://github.com/Mashape/kong/pull/2326)
+  [#2326](https://github.com/Kong/kong/pull/2326)
 - The `cassandra_timeout` configuration property is now correctly taken into
   consideration by Kong.
-  [#2326](https://github.com/Mashape/kong/pull/2326)
+  [#2326](https://github.com/Kong/kong/pull/2326)
 - Correctly trigger plugins configured on the anonymous Consumer for anonymous
   requests (from auth plugins with the new `config.anonymous` parameter).
-  [#2424](https://github.com/Mashape/kong/pull/2424)
+  [#2424](https://github.com/Kong/kong/pull/2424)
 - When multiple auth plugins were configured with the recent `config.anonymous`
   parameter for "OR" authentication, such plugins would override each other's
   results and response headers, causing false negatives.
-  [#2222](https://github.com/Mashape/kong/pull/2222)
+  [#2222](https://github.com/Kong/kong/pull/2222)
 - Ensure the `cassandra_contact_points` property does not contain any port
   information. Those should be specified in `cassandra_port`. Thanks
   [@Vermeille](https://github.com/Vermeille) for the contribution.
-  [#2263](https://github.com/Mashape/kong/pull/2263)
+  [#2263](https://github.com/Kong/kong/pull/2263)
 - Prevent an upstream or legitimate internal error in the load balancing code
   from throwing a Lua-land error as well.
-  [#2327](https://github.com/Mashape/kong/pull/2327)
+  [#2327](https://github.com/Kong/kong/pull/2327)
 - Allow backwards compatibility with custom Nginx configurations that still
   define the `resolver ${{DNS_RESOLVER}}` directive. Vales from the Kong
   `dns_resolver` property will be flattened to a string and appended to the
   directive.
-  [#2386](https://github.com/Mashape/kong/pull/2386)
+  [#2386](https://github.com/Kong/kong/pull/2386)
 - Plugins:
   - hmac: Better handling of invalid base64-encoded signatures. Previously Kong
     would return an HTTP 500 error. We now properly return HTTP 403 Forbidden.
-    [#2283](https://github.com/Mashape/kong/pull/2283)
+    [#2283](https://github.com/Kong/kong/pull/2283)
 - Admin API:
   - Detect conflicts between SNI Objects in the `/snis` and `/certificates`
     endpoint.
-    [#2285](https://github.com/Mashape/kong/pull/2285)
+    [#2285](https://github.com/Kong/kong/pull/2285)
   - The `/certificates` route used to not return the `total` and `data` JSON
     fields. We now send those fields back instead of a root list of certificate
     objects.
-    [#2463](https://github.com/Mashape/kong/pull/2463)
+    [#2463](https://github.com/Kong/kong/pull/2463)
   - Endpoints with path parameters like `/xxx_or_id` will now also yield the
     proper result if the `xxx` field is formatted as a UUID. Most notably, this
     fixes a problem for Consumers whose `username` is a UUID, that could not be
     found when requesting `/consumers/{username_as_uuid}`.
-    [#2420](https://github.com/Mashape/kong/pull/2420)
+    [#2420](https://github.com/Kong/kong/pull/2420)
   - The "active targets" endpoint does not require a trailing slash anymore.
-    [#2307](https://github.com/Mashape/kong/pull/2307)
+    [#2307](https://github.com/Kong/kong/pull/2307)
   - Upstream Objects can now be deleted properly when using Cassandra.
-    [#2404](https://github.com/Mashape/kong/pull/2404)
+    [#2404](https://github.com/Kong/kong/pull/2404)
 
 ## [0.10.1] - 2017/03/27
 
@@ -581,7 +718,7 @@ if you are planning to upgrade a Kong cluster.
   `cluster_advertise` configuration property.
 - :warning: The [CORS Plugin](https://getkong.org/plugins/cors/) parameter
   `config.origin` is now `config.origins`.
-  [#2203](https://github.com/Mashape/kong/pull/2203)
+  [#2203](https://github.com/Kong/kong/pull/2203)
 
    :red_circle: **Post-release note (as of 2017/05/12)**: A faulty behavior
    has been observed with this change. Previously, the plugin would send the
@@ -595,62 +732,62 @@ if you are planning to upgrade a Kong cluster.
    release for more details.
 - Admin API:
   - Disable support for TLS/1.0.
-    [#2212](https://github.com/Mashape/kong/pull/2212)
+    [#2212](https://github.com/Kong/kong/pull/2212)
 
 ### Added
 
 - Admin API:
   - Active targets can be pulled with `GET /upstreams/{name}/targets/active`.
-    [#2230](https://github.com/Mashape/kong/pull/2230)
+    [#2230](https://github.com/Kong/kong/pull/2230)
   - Provide a convenience endpoint to disable targets at:
     `DELETE /upstreams/{name}/targets/{target}`.
     Under the hood, this creates a new target with `weight = 0` (the
     correct way of disabling targets, which used to cause confusion).
-    [#2256](https://github.com/Mashape/kong/pull/2256)
+    [#2256](https://github.com/Kong/kong/pull/2256)
 - Plugins:
   - cors: Support for configuring multiple Origin domains.
-    [#2203](https://github.com/Mashape/kong/pull/2203)
+    [#2203](https://github.com/Kong/kong/pull/2203)
 
 ### Fixed
 
 - Use an LRU cache for Lua-land entities caching to avoid exhausting the Lua
   VM memory in long-running instances.
-  [#2246](https://github.com/Mashape/kong/pull/2246)
+  [#2246](https://github.com/Kong/kong/pull/2246)
 - Avoid potential deadlocks upon callback errors in the caching module for
   database entities.
-  [#2197](https://github.com/Mashape/kong/pull/2197)
+  [#2197](https://github.com/Kong/kong/pull/2197)
 - Relax multipart MIME type parsing. A space is allowed in between values
   of the Content-Type header.
-  [#2215](https://github.com/Mashape/kong/pull/2215)
+  [#2215](https://github.com/Kong/kong/pull/2215)
 - Admin API:
   - Better handling of non-supported HTTP methods on endpoints of the Admin
     API. In some cases this used to throw an internal error. Calling any
     endpoint with a non-supported HTTP method now always returns `405 Method
     Not Allowed` as expected.
-    [#2213](https://github.com/Mashape/kong/pull/2213)
+    [#2213](https://github.com/Kong/kong/pull/2213)
 - CLI:
   - Better error handling when missing Serf executable.
-    [#2218](https://github.com/Mashape/kong/pull/2218)
+    [#2218](https://github.com/Kong/kong/pull/2218)
   - Fix a bug in the `kong migrations` command that would prevent it to run
     correctly.
-    [#2238](https://github.com/Mashape/kong/pull/2238)
+    [#2238](https://github.com/Kong/kong/pull/2238)
   - Trim list values specified in the configuration file.
-    [#2206](https://github.com/Mashape/kong/pull/2206)
+    [#2206](https://github.com/Kong/kong/pull/2206)
   - Align the default configuration file's values to the actual, hard-coded
     default values to avoid confusion.
-    [#2254](https://github.com/Mashape/kong/issues/2254)
+    [#2254](https://github.com/Kong/kong/issues/2254)
 - Plugins:
   - hmac: Generate an HMAC secret value if none is provided.
-    [#2158](https://github.com/Mashape/kong/pull/2158)
+    [#2158](https://github.com/Kong/kong/pull/2158)
   - oauth2: Don't try to remove credential values from request bodies if the
     MIME type is multipart, since such attempts would result in an error.
-    [#2176](https://github.com/Mashape/kong/pull/2176)
+    [#2176](https://github.com/Kong/kong/pull/2176)
   - ldap: This plugin should not be applied to a single Consumer, however, this
     was not properly enforced. It is now impossible to apply this plugin to a
     single Consumer (as per all authentication plugin).
-    [#2237](https://github.com/Mashape/kong/pull/2237)
+    [#2237](https://github.com/Kong/kong/pull/2237)
   - aws-lambda: Support for `us-west-2` region in schema.
-    [#2257](https://github.com/Mashape/kong/pull/2257)
+    [#2257](https://github.com/Kong/kong/pull/2257)
 
 ## [0.10.0] - 2017/03/07
 
@@ -674,110 +811,110 @@ perform significantly better than any previous version.
   incoming requests according to a combination of Host headers, URIs, and HTTP
   methods.
 - :warning: Final slashes in `upstream_url` are no longer allowed.
-  [#2115](https://github.com/Mashape/kong/pull/2115)
+  [#2115](https://github.com/Kong/kong/pull/2115)
 - :warning: The SSL plugin has been removed and dynamic SSL capabilities have
   been added to Kong core, and are configurable via new properties on the API
   entity. See the related PR for a detailed explanation of this change.
-  [#1970](https://github.com/Mashape/kong/pull/1970)
+  [#1970](https://github.com/Kong/kong/pull/1970)
 - :warning: Drop the Dnsmasq dependency. We now internally resolve both A and
   SRV DNS records.
-  [#1587](https://github.com/Mashape/kong/pull/1587)
+  [#1587](https://github.com/Kong/kong/pull/1587)
 - :warning: Dropping support for insecure `TLS/1.0` and defaulting `Upgrade`
   responses to `TLS/1.2`.
-  [#2119](https://github.com/Mashape/kong/pull/2119)
+  [#2119](https://github.com/Kong/kong/pull/2119)
 - Bump the compatible OpenResty version to `1.11.2.1` and `1.11.2.2`. Support
   for OpenResty `1.11.2.2` requires the `--without-luajit-lua52` compilation
   flag.
 - Separate Admin API and Proxy error logs. Admin API logs are now written to
   `logs/admin_access.log`.
-  [#1782](https://github.com/Mashape/kong/pull/1782)
+  [#1782](https://github.com/Kong/kong/pull/1782)
 - Auto-generates stronger SHA-256 with RSA encryption SSL certificates.
-  [#2117](https://github.com/Mashape/kong/pull/2117)
+  [#2117](https://github.com/Kong/kong/pull/2117)
 
 ### Added
 
 - :fireworks: Support for Cassandra 3.x.
-  [#1709](https://github.com/Mashape/kong/pull/1709)
+  [#1709](https://github.com/Kong/kong/pull/1709)
 - :fireworks: SRV records resolution.
-  [#1587](https://github.com/Mashape/kong/pull/1587)
+  [#1587](https://github.com/Kong/kong/pull/1587)
 - :fireworks: Load balancing. When an A or SRV record resolves to multiple
   entries, Kong now rotates those upstream targets with a Round-Robin
   algorithm. This is a first step towards implementing more load balancing
   algorithms.
   Another way to specify multiple upstream targets is to use the newly
   introduced `/upstreams` and `/targets` entities of the Admin API.
-  [#1587](https://github.com/Mashape/kong/pull/1587)
-  [#1735](https://github.com/Mashape/kong/pull/1735)
+  [#1587](https://github.com/Kong/kong/pull/1587)
+  [#1735](https://github.com/Kong/kong/pull/1735)
 - :fireworks: Multiple hosts and paths per API. Kong can now route incoming
   requests to your services based on a combination of Host headers, URIs and
   HTTP methods. See the related PR for a detailed explanation of the new
   properties and capabilities of the new router.
-  [#1970](https://github.com/Mashape/kong/pull/1970)
+  [#1970](https://github.com/Kong/kong/pull/1970)
 - :fireworks: Maintain upstream connection pools which should greatly improve
   performance, especially for HTTPS upstream connections.  We now use HTTP/1.1
   for upstream connections as well as an nginx `upstream` block with a
   configurable`keepalive` directive, thanks to the new `nginx_keepalive`
   configuration property.
-  [#1587](https://github.com/Mashape/kong/pull/1587)
-  [#1827](https://github.com/Mashape/kong/pull/1827)
+  [#1587](https://github.com/Kong/kong/pull/1587)
+  [#1827](https://github.com/Kong/kong/pull/1827)
 - :fireworks: Websockets support. Kong can now upgrade client connections to
   use the `ws` protocol when `Upgrade: websocket` is present.
-  [#1827](https://github.com/Mashape/kong/pull/1827)
+  [#1827](https://github.com/Kong/kong/pull/1827)
 - Use an in-memory caching strategy for database entities in order to reduce
   CPU load during requests proxying.
-  [#1688](https://github.com/Mashape/kong/pull/1688)
+  [#1688](https://github.com/Kong/kong/pull/1688)
 - Provide negative-caching for missed database entities. This should improve
   performance in some cases.
-  [#1914](https://github.com/Mashape/kong/pull/1914)
+  [#1914](https://github.com/Kong/kong/pull/1914)
 - Support for serving the Admin API over SSL. This introduces new properties in
   the configuration file: `admin_listen_ssl`, `admin_ssl`, `admin_ssl_cert` and
   `admin_ssl_cert_key`.
-  [#1706](https://github.com/Mashape/kong/pull/1706)
+  [#1706](https://github.com/Kong/kong/pull/1706)
 - Support for upstream connection timeouts. APIs now have 3 new fields:
   `upstream_connect_timeout`, `upstream_send_timeout`, `upstream_read_timeout`
   to specify, in milliseconds, a timeout value for requests between Kong and
   your APIs.
-  [#2036](https://github.com/Mashape/kong/pull/2036)
+  [#2036](https://github.com/Kong/kong/pull/2036)
 - Support for clustering key rotation in the underlying Serf process:
   - new `cluster_keyring_file` property in the configuration file.
   - new `kong cluster keys ..` CLI commands that expose the underlying
     `serf keys ..` commands.
-  [#2069](https://github.com/Mashape/kong/pull/2069)
+  [#2069](https://github.com/Kong/kong/pull/2069)
 - Support for `lua_socket_pool_size` property in configuration file.
-  [#2109](https://github.com/Mashape/kong/pull/2109)
+  [#2109](https://github.com/Kong/kong/pull/2109)
 - Plugins:
   - :fireworks: **New AWS Lambda plugin**. Thanks Tim Erickson for his
     collaboration on this new addition.
-    [#1777](https://github.com/Mashape/kong/pull/1777)
-    [#1190](https://github.com/Mashape/kong/pull/1190)
+    [#1777](https://github.com/Kong/kong/pull/1777)
+    [#1190](https://github.com/Kong/kong/pull/1190)
   - Anonymous authentication for auth plugins. When such plugins receive the
     `config.anonymous=<consumer_id>` property, even non-authenticated requests
     will be proxied by Kong, with the traditional Consumer headers set to the
     designated anonymous consumer, but also with a `X-Anonymous-Consumer`
     header. Multiple auth plugins will work in a logical `OR` fashion.
-    [#1666](https://github.com/Mashape/kong/pull/1666) and
-    [#2035](https://github.com/Mashape/kong/pull/2035)
+    [#1666](https://github.com/Kong/kong/pull/1666) and
+    [#2035](https://github.com/Kong/kong/pull/2035)
   - request-transformer: Ability to change the HTTP method of the upstream
-    request. [#1635](https://github.com/Mashape/kong/pull/1635)
+    request. [#1635](https://github.com/Kong/kong/pull/1635)
   - jwt: Support for ES256 signatures.
-    [#1920](https://github.com/Mashape/kong/pull/1920)
+    [#1920](https://github.com/Kong/kong/pull/1920)
   - rate-limiting: Ability to select the Redis database to use via the new
     `config.redis_database` plugin property.
-    [#1941](https://github.com/Mashape/kong/pull/1941)
+    [#1941](https://github.com/Kong/kong/pull/1941)
 
 ### Fixed
 
 - Looking for Serf in known installation paths.
-  [#1997](https://github.com/Mashape/kong/pull/1997)
+  [#1997](https://github.com/Kong/kong/pull/1997)
 - Including port in upstream `Host` header.
-  [#2045](https://github.com/Mashape/kong/pull/2045)
+  [#2045](https://github.com/Kong/kong/pull/2045)
 - Clarify the purpose of the `cluster_listen_rpc` property in
   the configuration file. Thanks Jeremy Monin for the patch.
-  [#1860](https://github.com/Mashape/kong/pull/1860)
+  [#1860](https://github.com/Kong/kong/pull/1860)
 - Admin API:
   - Properly Return JSON responses (instead of HTML) on HTTP 409 Conflict
     when adding Plugins.
-    [#2014](https://github.com/Mashape/kong/issues/2014)
+    [#2014](https://github.com/Kong/kong/issues/2014)
 - CLI:
   - Avoid double-prefixing migration error messages with the database name
     (PostgreSQL/Cassandra).
@@ -785,9 +922,9 @@ perform significantly better than any previous version.
   - Fix fault tolerance logic and error reporting in rate-limiting plugins.
   - CORS: Properly return `Access-Control-Allow-Credentials: false` if
     `Access-Control-Allow-Origin: *`.
-    [#2104](https://github.com/Mashape/kong/pull/2104)
+    [#2104](https://github.com/Kong/kong/pull/2104)
   - key-auth: enforce `key_names` to be proper header names according to Nginx.
-    [#2142](https://github.com/Mashape/kong/pull/2142)
+    [#2142](https://github.com/Kong/kong/pull/2142)
 
 ## [0.9.9] - 2017/02/02
 
@@ -796,15 +933,15 @@ perform significantly better than any previous version.
 - Correctly put Cassandra sockets into the Nginx connection pool for later
   reuse. This greatly improves the performance for rate-limiting and
   response-ratelimiting plugins.
-  [f8f5306](https://github.com/Mashape/kong/commit/f8f53061207de625a29bbe5d80f1807da468a1bc)
+  [f8f5306](https://github.com/Kong/kong/commit/f8f53061207de625a29bbe5d80f1807da468a1bc)
 - Correct length of a year in seconds for rate-limiting and
   response-ratelimiting plugins. A year was wrongly assumed to only be 360
   days long.
-  [e4fdb2a](https://github.com/Mashape/kong/commit/e4fdb2a3af4a5f2bf298c7b6488d88e67288c98b)
+  [e4fdb2a](https://github.com/Kong/kong/commit/e4fdb2a3af4a5f2bf298c7b6488d88e67288c98b)
 - Prevent misinterpretation of the `%` character in proxied URLs encoding.
   Thanks Thomas Jouannic for the patch.
-  [#1998](https://github.com/Mashape/kong/pull/1998)
-  [#2040](https://github.com/Mashape/kong/pull/2040)
+  [#1998](https://github.com/Kong/kong/pull/1998)
+  [#2040](https://github.com/Kong/kong/pull/2040)
 
 ## [0.9.8] - 2017/01/19
 
@@ -816,7 +953,7 @@ perform significantly better than any previous version.
 
 - Provide negative-caching for missed database entities. This should improve
   performance in some cases.
-  [#1914](https://github.com/Mashape/kong/pull/1914)
+  [#1914](https://github.com/Kong/kong/pull/1914)
 
 ### Fixed
 
@@ -829,39 +966,39 @@ perform significantly better than any previous version.
 
 - Fixed a performance issue in Cassandra by removing an old workaround that was
   forcing Cassandra to use LuaSocket instead of cosockets.
-  [#1916](https://github.com/Mashape/kong/pull/1916)
+  [#1916](https://github.com/Kong/kong/pull/1916)
 - Fixed an issue that was causing a recursive attempt to stop Kong's services
   when an error was occurring.
-  [#1877](https://github.com/Mashape/kong/pull/1877)
+  [#1877](https://github.com/Kong/kong/pull/1877)
 - Custom plugins are now properly loaded again.
-  [#1910](https://github.com/Mashape/kong/pull/1910)
+  [#1910](https://github.com/Kong/kong/pull/1910)
 - Plugins:
   - Galileo: properly encode empty arrays.
-    [#1909](https://github.com/Mashape/kong/pull/1909)
+    [#1909](https://github.com/Kong/kong/pull/1909)
   - OAuth 2: implements a missing Postgres migration for `redirect_uri` in
-    every OAuth 2 credential. [#1911](https://github.com/Mashape/kong/pull/1911)
+    every OAuth 2 credential. [#1911](https://github.com/Kong/kong/pull/1911)
   - OAuth 2: safely parse the request body even when no data has been sent.
-    [#1915](https://github.com/Mashape/kong/pull/1915)
+    [#1915](https://github.com/Kong/kong/pull/1915)
 
 ## [0.9.6] - 2016/11/29
 
 ### Fixed
 
 - Resolve support for PostgreSQL SSL connections.
-  [#1720](https://github.com/Mashape/kong/issues/1720)
+  [#1720](https://github.com/Kong/kong/issues/1720)
 - Ensure `kong start` honors the `--conf` flag is a config file already exists
   at one of the default locations (`/etc/kong.conf`, `/etc/kong/kong.conf`).
-  [#1681](https://github.com/Mashape/kong/pull/1681)
+  [#1681](https://github.com/Kong/kong/pull/1681)
 - Obfuscate sensitive properties from the `/` Admin API route which returns
   the current node's configuration.
-  [#1650](https://github.com/Mashape/kong/pull/1650)
+  [#1650](https://github.com/Kong/kong/pull/1650)
 
 ## [0.9.5] - 2016/11/07
 
 ### Changed
 
 - Dropping support for OpenResty 1.9.15.1 in favor of 1.11.2.1
-  [#1797](https://github.com/Mashape/kong/pull/1797)
+  [#1797](https://github.com/Kong/kong/pull/1797)
 
 ### Fixed
 
@@ -872,24 +1009,24 @@ perform significantly better than any previous version.
 ### Fixed
 
 - Fixed the random string generator that was causing some problems, especially
-  in Serf for clustering. [#1754](https://github.com/Mashape/kong/pull/1754)
+  in Serf for clustering. [#1754](https://github.com/Kong/kong/pull/1754)
 - Seed random number generator in CLI.
-  [#1641](https://github.com/Mashape/kong/pull/1641)
+  [#1641](https://github.com/Kong/kong/pull/1641)
 - Reducing log noise in the Admin API.
-  [#1781](https://github.com/Mashape/kong/pull/1781)
+  [#1781](https://github.com/Kong/kong/pull/1781)
 - Fixed the reports lock implementation that was generating a periodic error
-  message. [#1783](https://github.com/Mashape/kong/pull/1783)
+  message. [#1783](https://github.com/Kong/kong/pull/1783)
 
 ## [0.9.3] - 2016/10/07
 
 ### Added
 
-- Added support for Serf 0.8. [#1693](https://github.com/Mashape/kong/pull/1693)
+- Added support for Serf 0.8. [#1693](https://github.com/Kong/kong/pull/1693)
 
 ### Fixed
 
 - Properly invalidate global plugins.
-  [#1723](https://github.com/Mashape/kong/pull/1723)
+  [#1723](https://github.com/Kong/kong/pull/1723)
 
 ## [0.9.2] - 2016/09/20
 
@@ -897,34 +1034,34 @@ perform significantly better than any previous version.
 
 - Correctly report migrations errors. This was caused by an error being thrown
   from the error handler, and superseding the actual error. [#1605]
-  (https://github.com/Mashape/kong/pull/1605)
+  (https://github.com/Kong/kong/pull/1605)
 - Prevent Kong from silently failing to start. This would be caused by an
   erroneous error handler. [28f5d10]
-  (https://github.com/Mashape/kong/commit/28f5d10)
+  (https://github.com/Kong/kong/commit/28f5d10)
 - Only report a random number generator seeding error when it is not already
-  seeded. [#1613](https://github.com/Mashape/kong/pull/1613)
+  seeded. [#1613](https://github.com/Kong/kong/pull/1613)
 - Reduce intra-cluster noise by not propagating keepalive requests events.
-  [#1660](https://github.com/Mashape/kong/pull/1660)
+  [#1660](https://github.com/Kong/kong/pull/1660)
 - Admin API:
   - Obfuscates sensitive configuration settings from the `/` route.
-    [#1650](https://github.com/Mashape/kong/pull/1650)
+    [#1650](https://github.com/Kong/kong/pull/1650)
 - CLI:
   - Prevent a failed `kong start` to stop an already running Kong node.
-    [#1645](https://github.com/Mashape/kong/pull/1645)
+    [#1645](https://github.com/Kong/kong/pull/1645)
   - Remove unset configuration placeholders from the nginx configuration
     template. This would occur when no Internet connection would be
     available and would cause Kong to compile an erroneous nginx config.
-    [#1606](https://github.com/Mashape/kong/pull/1606)
+    [#1606](https://github.com/Kong/kong/pull/1606)
   - Properly count the number of executed migrations.
-    [#1649](https://github.com/Mashape/kong/pull/1649)
+    [#1649](https://github.com/Kong/kong/pull/1649)
 - Plugins:
   - OAuth2: remove the "Kong" mentions in missing `provision_key` error
-    messages. [#1633](https://github.com/Mashape/kong/pull/1633)
+    messages. [#1633](https://github.com/Kong/kong/pull/1633)
   - OAuth2: allow to correctly delete applications when using Cassandra.
-    [#1659](https://github.com/Mashape/kong/pull/1659)
+    [#1659](https://github.com/Kong/kong/pull/1659)
   - galileo: provide a default `bodySize` value when `log_bodies=true` but the
     current request/response has no body.
-    [#1657](https://github.com/Mashape/kong/pull/1657)
+    [#1657](https://github.com/Kong/kong/pull/1657)
 
 ## [0.9.1] - 2016/09/02
 
@@ -932,46 +1069,46 @@ perform significantly better than any previous version.
 
 - Plugins:
   - ACL: allow to retrieve/update/delete an ACL by group name.
-    [#1544](https://github.com/Mashape/kong/pull/1544)
+    [#1544](https://github.com/Kong/kong/pull/1544)
   - Basic Authentication: allow to retrieve/update/delete a credential by `username`.
-    [#1570](https://github.com/Mashape/kong/pull/1570)
+    [#1570](https://github.com/Kong/kong/pull/1570)
   - HMAC Authentication: allow to retrieve/update/delete a credential by `username`.
-    [#1570](https://github.com/Mashape/kong/pull/1570)
+    [#1570](https://github.com/Kong/kong/pull/1570)
   - JWT Authentication: allow to retrieve/update/delete a credential by `key`.
-    [#1570](https://github.com/Mashape/kong/pull/1570)
+    [#1570](https://github.com/Kong/kong/pull/1570)
   - Key Authentication: allow to retrieve/update/delete a credential by `key`.
-    [#1570](https://github.com/Mashape/kong/pull/1570)
+    [#1570](https://github.com/Kong/kong/pull/1570)
   - OAuth2 Authentication: allow to retrieve/update/delete a credential by `client_id` and tokens by `access_token`.
-    [#1570](https://github.com/Mashape/kong/pull/1570)
+    [#1570](https://github.com/Kong/kong/pull/1570)
 
 ### Fixed
 
 - Correctly parse configuration file settings containing comments.
-  [#1569](https://github.com/Mashape/kong/pull/1569)
+  [#1569](https://github.com/Kong/kong/pull/1569)
 - Prevent third-party Lua modules (and plugins) to override the seed for random
   number generation. This prevents the creation of conflicting UUIDs.
-  [#1558](https://github.com/Mashape/kong/pull/1558)
-- Use [pgmoon-mashape](https://github.com/Mashape/pgmoon) `2.0.0` which
+  [#1558](https://github.com/Kong/kong/pull/1558)
+- Use [pgmoon-mashape](https://github.com/Kong/pgmoon) `2.0.0` which
   properly namespaces our fork, avoiding conflicts with other versions of
   pgmoon, such as the one installed by Lapis.
-  [#1582](https://github.com/Mashape/kong/pull/1582)
+  [#1582](https://github.com/Kong/kong/pull/1582)
 - Avoid exposing OpenResty's information on HTTP `4xx` errors.
-  [#1567](https://github.com/Mashape/kong/pull/1567)
+  [#1567](https://github.com/Kong/kong/pull/1567)
 - ulimit with `unlimited` value is now properly handled.
-  [#1545](https://github.com/Mashape/kong/pull/1545)
+  [#1545](https://github.com/Kong/kong/pull/1545)
 - CLI:
   - Stop third-party services (Dnsmasq/Serf) when Kong could not start.
-    [#1588](https://github.com/Mashape/kong/pull/1588)
+    [#1588](https://github.com/Kong/kong/pull/1588)
   - Prefix database migration errors (such as Postgres' `connection refused`)
     with the database name (`postgres`/`cassandra`) to avoid confusions.
-    [#1583](https://github.com/Mashape/kong/pull/1583)
+    [#1583](https://github.com/Kong/kong/pull/1583)
 - Plugins:
   - galileo: Use `Content-Length` header to get request/response body size when
     `log_bodies` is disabled.
-    [#1584](https://github.com/Mashape/kong/pull/1584)
+    [#1584](https://github.com/Kong/kong/pull/1584)
 - Admin API:
   - Revert the `/plugins/enabled` endpoint's response to be a JSON array, and
-    not an Object. [#1529](https://github.com/Mashape/kong/pull/1529)
+    not an Object. [#1529](https://github.com/Kong/kong/pull/1529)
 
 ## [0.9.0] - 2016/08/18
 
@@ -991,22 +1128,22 @@ The main focus of this release is Kong's new CLI. With a simpler configuration f
 ### Added
 
 - :fireworks: Support for overriding configuration settings with environment variables.
-- :fireworks: Support for SSL connections between Kong and PostgreSQL. [#1425](https://github.com/Mashape/kong/pull/1425)
-- :fireworks: Ability to apply plugins with more granularity: per-consumer, and global plugins are now possible. [#1403](https://github.com/Mashape/kong/pull/1403)
+- :fireworks: Support for SSL connections between Kong and PostgreSQL. [#1425](https://github.com/Kong/kong/pull/1425)
+- :fireworks: Ability to apply plugins with more granularity: per-consumer, and global plugins are now possible. [#1403](https://github.com/Kong/kong/pull/1403)
 - New `kong check` command: validates a Kong configuration file.
-- Better version check for third-party dependencies (OpenResty, Serf, Dnsmasq). [#1307](https://github.com/Mashape/kong/pull/1307)
-- Ability to configure the validation depth of database SSL certificates from the configuration file. [#1420](https://github.com/Mashape/kong/pull/1420)
-- `request_host`: internationalized url support; utf-8 domain names through punycode support and paths through %-encoding. [#1300](https://github.com/Mashape/kong/issues/1300)
-- Implements caching locks when fetching database configuration (APIs, Plugins...) to avoid dog pile effect on cold nodes. [#1402](https://github.com/Mashape/kong/pull/1402)
+- Better version check for third-party dependencies (OpenResty, Serf, Dnsmasq). [#1307](https://github.com/Kong/kong/pull/1307)
+- Ability to configure the validation depth of database SSL certificates from the configuration file. [#1420](https://github.com/Kong/kong/pull/1420)
+- `request_host`: internationalized url support; utf-8 domain names through punycode support and paths through %-encoding. [#1300](https://github.com/Kong/kong/issues/1300)
+- Implements caching locks when fetching database configuration (APIs, Plugins...) to avoid dog pile effect on cold nodes. [#1402](https://github.com/Kong/kong/pull/1402)
 - Plugins:
-  - :fireworks: **New bot-detection plugin**: protect your APIs by detecting and rejecting common bots and crawlers. [#1413](https://github.com/Mashape/kong/pull/1413)
-  - correlation-id: new "tracker" generator, identifying requests per worker and connection. [#1288](https://github.com/Mashape/kong/pull/1288)
-  - request/response-transformer: ability to add strings including colon characters. [#1353](https://github.com/Mashape/kong/pull/1353)
+  - :fireworks: **New bot-detection plugin**: protect your APIs by detecting and rejecting common bots and crawlers. [#1413](https://github.com/Kong/kong/pull/1413)
+  - correlation-id: new "tracker" generator, identifying requests per worker and connection. [#1288](https://github.com/Kong/kong/pull/1288)
+  - request/response-transformer: ability to add strings including colon characters. [#1353](https://github.com/Kong/kong/pull/1353)
   - rate-limiting: support for new rate-limiting policies (`cluster`, `local` and `redis`), and for a new `limit_by` property to force rate-limiting by `consumer`, `credential` or `ip`.
   - response-rate-limiting: support for new rate-limiting policies (`cluster`, `local` and `redis`), and for a new `limit_by` property to force rate-limiting by `consumer`, `credential` or `ip`.
-  - galileo: performance improvements of ALF serialization. ALFs are not discarded when exceeding 20MBs anymore. [#1463](https://github.com/Mashape/kong/issues/1463)
-  - statsd: new `upstream_stream` latency metric. [#1466](https://github.com/Mashape/kong/pull/1466)
-  - datadog: new `upstream_stream` latency metric and tagging support for each metric. [#1473](https://github.com/Mashape/kong/pull/1473)
+  - galileo: performance improvements of ALF serialization. ALFs are not discarded when exceeding 20MBs anymore. [#1463](https://github.com/Kong/kong/issues/1463)
+  - statsd: new `upstream_stream` latency metric. [#1466](https://github.com/Kong/kong/pull/1466)
+  - datadog: new `upstream_stream` latency metric and tagging support for each metric. [#1473](https://github.com/Kong/kong/pull/1473)
 
 ### Removed
 
@@ -1014,13 +1151,13 @@ The main focus of this release is Kong's new CLI. With a simpler configuration f
 
 ### Fixed
 
-- Sensitive configuration settings are not printed to stdout anymore. [#1256](https://github.com/Mashape/kong/issues/1256)
-- Fixed bug that caused nodes to remove themselves from the database when they attempted to join the cluster. [#1437](https://github.com/Mashape/kong/pull/1437)
+- Sensitive configuration settings are not printed to stdout anymore. [#1256](https://github.com/Kong/kong/issues/1256)
+- Fixed bug that caused nodes to remove themselves from the database when they attempted to join the cluster. [#1437](https://github.com/Kong/kong/pull/1437)
 - Plugins:
-  - request-size-limiting: use proper constant for MB units while setting the size limit. [#1416](https://github.com/Mashape/kong/pull/1416)
-  - OAuth2: security and config validation fixes. [#1409](https://github.com/Mashape/kong/pull/1409) [#1112](https://github.com/Mashape/kong/pull/1112)
-  - request/response-transformer: better validation of fields provided without a value. [#1399](https://github.com/Mashape/kong/pull/1399)
-  - JWT: handle some edge-cases that could result in HTTP 500 errors. [#1362](https://github.com/Mashape/kong/pull/1362)
+  - request-size-limiting: use proper constant for MB units while setting the size limit. [#1416](https://github.com/Kong/kong/pull/1416)
+  - OAuth2: security and config validation fixes. [#1409](https://github.com/Kong/kong/pull/1409) [#1112](https://github.com/Kong/kong/pull/1112)
+  - request/response-transformer: better validation of fields provided without a value. [#1399](https://github.com/Kong/kong/pull/1399)
+  - JWT: handle some edge-cases that could result in HTTP 500 errors. [#1362](https://github.com/Kong/kong/pull/1362)
 
 > **internal**
 > - new test suite using resty-cli and removing the need to monkey-patch the `ngx` global.
@@ -1039,12 +1176,12 @@ This release includes some bugfixes:
 
 ### Fixed
 
-- New nodes are now properly registered into the `nodes` table when running on the same machine. [#1281](https://github.com/Mashape/kong/pull/1281)
-- Fixed a failed error parsing on Postgres. [#1269](https://github.com/Mashape/kong/pull/1269)
+- New nodes are now properly registered into the `nodes` table when running on the same machine. [#1281](https://github.com/Kong/kong/pull/1281)
+- Fixed a failed error parsing on Postgres. [#1269](https://github.com/Kong/kong/pull/1269)
 - Plugins:
-  - Response Transformer: Slashes are now encoded properly, and fixed a bug that hang the execution of the plugin. [#1257](https://github.com/Mashape/kong/pull/1257) and [#1263](https://github.com/Mashape/kong/pull/1263)
+  - Response Transformer: Slashes are now encoded properly, and fixed a bug that hang the execution of the plugin. [#1257](https://github.com/Kong/kong/pull/1257) and [#1263](https://github.com/Kong/kong/pull/1263)
   - JWT: If a value for `algorithm` is missing, it's now `HS256` by default. This problem occurred when migrating from older versions of Kong.
-  - OAuth 2.0: Fixed a Postgres problem that was preventing an application from being created, and fixed a check on the `redirect_uri` field. [#1264](https://github.com/Mashape/kong/pull/1264) and [#1267](https://github.com/Mashape/kong/issues/1267)
+  - OAuth 2.0: Fixed a Postgres problem that was preventing an application from being created, and fixed a check on the `redirect_uri` field. [#1264](https://github.com/Kong/kong/pull/1264) and [#1267](https://github.com/Kong/kong/issues/1267)
 
 ## [0.8.2] - 2016/05/25
 
@@ -1052,27 +1189,27 @@ This release includes bugfixes and minor updates:
 
 ### Added
 
-- Support for a simple slash in `request_path`. [#1227](https://github.com/Mashape/kong/pull/1227)
+- Support for a simple slash in `request_path`. [#1227](https://github.com/Kong/kong/pull/1227)
 - Plugins:
-  - Response Rate Limiting: it now appends usage headers to the upstream requests in the form of `X-Ratelimit-Remaining-{limit_name}` and introduces a new `config.block_on_first_violation` property. [#1235](https://github.com/Mashape/kong/pull/1235)
+  - Response Rate Limiting: it now appends usage headers to the upstream requests in the form of `X-Ratelimit-Remaining-{limit_name}` and introduces a new `config.block_on_first_violation` property. [#1235](https://github.com/Kong/kong/pull/1235)
 
 #### Changed
 
 - Plugins:
-  - **Mashape Analytics: The plugin is now called "Galileo", and added support for Galileo v3. [#1159](https://github.com/Mashape/kong/pull/1159)**
+  - **Mashape Analytics: The plugin is now called "Galileo", and added support for Galileo v3. [#1159](https://github.com/Kong/kong/pull/1159)**
 
 #### Fixed
 
-- Postgres now relies on the `search_path` configured on the database and its default value `$user, public`. [#1196](https://github.com/Mashape/kong/issues/1196)
-- Kong now properly encodes an empty querystring parameter like `?param=` when proxying the request. [#1210](https://github.com/Mashape/kong/pull/1210)
-- The configuration now checks that `cluster.ttl_on_failure` is at least 60 seconds. [#1199](https://github.com/Mashape/kong/pull/1199)
+- Postgres now relies on the `search_path` configured on the database and its default value `$user, public`. [#1196](https://github.com/Kong/kong/issues/1196)
+- Kong now properly encodes an empty querystring parameter like `?param=` when proxying the request. [#1210](https://github.com/Kong/kong/pull/1210)
+- The configuration now checks that `cluster.ttl_on_failure` is at least 60 seconds. [#1199](https://github.com/Kong/kong/pull/1199)
 - Plugins:
-  - Loggly: Fixed an issue that was triggering 400 and 500 errors. [#1184](https://github.com/Mashape/kong/pull/1184)
-  - JWT: The `TYP` value in the header is not optional and case-insensitive. [#1192](https://github.com/Mashape/kong/pull/1192)
-  - Request Transformer: Fixed a bug when transforming request headers. [#1202](https://github.com/Mashape/kong/pull/1202)
-  - OAuth 2.0: Multiple redirect URIs are now supported. [#1112](https://github.com/Mashape/kong/pull/1112)
-  - IP Restriction: Fixed that prevented the plugin for working properly when added on an API. [#1245](https://github.com/Mashape/kong/pull/1245)
-  - CORS: Fixed an issue when `config.preflight_continue` was enabled. [#1240](https://github.com/Mashape/kong/pull/1240)
+  - Loggly: Fixed an issue that was triggering 400 and 500 errors. [#1184](https://github.com/Kong/kong/pull/1184)
+  - JWT: The `TYP` value in the header is not optional and case-insensitive. [#1192](https://github.com/Kong/kong/pull/1192)
+  - Request Transformer: Fixed a bug when transforming request headers. [#1202](https://github.com/Kong/kong/pull/1202)
+  - OAuth 2.0: Multiple redirect URIs are now supported. [#1112](https://github.com/Kong/kong/pull/1112)
+  - IP Restriction: Fixed that prevented the plugin for working properly when added on an API. [#1245](https://github.com/Kong/kong/pull/1245)
+  - CORS: Fixed an issue when `config.preflight_continue` was enabled. [#1240](https://github.com/Kong/kong/pull/1240)
 
 ## [0.8.1] - 2016/04/27
 
@@ -1080,17 +1217,17 @@ This release includes some fixes and minor updates:
 
 ### Added
 
-- Adds `X-Forwarded-Host` and `X-Forwarded-Prefix` to the upstream request headers. [#1180](https://github.com/Mashape/kong/pull/1180)
+- Adds `X-Forwarded-Host` and `X-Forwarded-Prefix` to the upstream request headers. [#1180](https://github.com/Kong/kong/pull/1180)
 - Plugins:
-  - Datadog: Added two new metrics, `unique_users` and `request_per_user`, that log the consumer information. [#1179](https://github.com/Mashape/kong/pull/1179)
+  - Datadog: Added two new metrics, `unique_users` and `request_per_user`, that log the consumer information. [#1179](https://github.com/Kong/kong/pull/1179)
 
 ### Fixed
 
-- Fixed a DAO bug that affected full entity updates. [#1163](https://github.com/Mashape/kong/pull/1163)
+- Fixed a DAO bug that affected full entity updates. [#1163](https://github.com/Kong/kong/pull/1163)
 - Fixed a bug when setting the authentication provider in Cassandra.
 - Updated the Cassandra driver to v0.5.2.
-- Properly enforcing required fields in PUT requests. [#1177](https://github.com/Mashape/kong/pull/1177)
-- Fixed a bug that prevented to retrieve the hostname of the local machine on certain systems. [#1178](https://github.com/Mashape/kong/pull/1178)
+- Properly enforcing required fields in PUT requests. [#1177](https://github.com/Kong/kong/pull/1177)
+- Fixed a bug that prevented to retrieve the hostname of the local machine on certain systems. [#1178](https://github.com/Kong/kong/pull/1178)
 
 ## [0.8.0] - 2016/04/18
 
@@ -1102,27 +1239,27 @@ This release includes support for PostgreSQL as Kong's primary datastore!
 
 ### Added
 
-- Support for PostgreSQL 9.4+ as Kong's primary datastore. [#331](https://github.com/Mashape/kong/issues/331) [#1054](https://github.com/Mashape/kong/issues/1054)
-- Configurable Cassandra reading/writing consistency. [#1026](https://github.com/Mashape/kong/pull/1026)
-- Admin API: including pending and running timers count in the response to `/`. [#992](https://github.com/Mashape/kong/pull/992)
+- Support for PostgreSQL 9.4+ as Kong's primary datastore. [#331](https://github.com/Kong/kong/issues/331) [#1054](https://github.com/Kong/kong/issues/1054)
+- Configurable Cassandra reading/writing consistency. [#1026](https://github.com/Kong/kong/pull/1026)
+- Admin API: including pending and running timers count in the response to `/`. [#992](https://github.com/Kong/kong/pull/992)
 - Plugins
-  - **New correlation-id plugin**: assign unique identifiers to the requests processed by Kong. Courtesy of [@opyate](https://github.com/opyate). [#1094](https://github.com/Mashape/kong/pull/1094)
-  - LDAP: add support for LDAP authentication. [#1133](https://github.com/Mashape/kong/pull/1133)
-  - StatsD: add support for StatsD logging. [#1142](https://github.com/Mashape/kong/pull/1142)
-  - JWT: add support for RS256 signed tokens thanks to [@kdstew](https://github.com/kdstew)! [#1053](https://github.com/Mashape/kong/pull/1053)
-  - ACL: appends `X-Consumer-Groups` to the request, so the upstream service can check what groups the consumer belongs to. [#1154](https://github.com/Mashape/kong/pull/1154)
-  - Galileo (mashape-analytics): increase batch sending timeout to 30s. [#1091](https://github.com/Mashape/kong/pull/1091)
-- Added `ttl_on_failure` option in the cluster configuration, to configure the TTL of failed nodes. [#1125](https://github.com/Mashape/kong/pull/1125)
+  - **New correlation-id plugin**: assign unique identifiers to the requests processed by Kong. Courtesy of [@opyate](https://github.com/opyate). [#1094](https://github.com/Kong/kong/pull/1094)
+  - LDAP: add support for LDAP authentication. [#1133](https://github.com/Kong/kong/pull/1133)
+  - StatsD: add support for StatsD logging. [#1142](https://github.com/Kong/kong/pull/1142)
+  - JWT: add support for RS256 signed tokens thanks to [@kdstew](https://github.com/kdstew)! [#1053](https://github.com/Kong/kong/pull/1053)
+  - ACL: appends `X-Consumer-Groups` to the request, so the upstream service can check what groups the consumer belongs to. [#1154](https://github.com/Kong/kong/pull/1154)
+  - Galileo (mashape-analytics): increase batch sending timeout to 30s. [#1091](https://github.com/Kong/kong/pull/1091)
+- Added `ttl_on_failure` option in the cluster configuration, to configure the TTL of failed nodes. [#1125](https://github.com/Kong/kong/pull/1125)
 
 ### Fixed
 
-- Introduce a new `port` option when connecting to your Cassandra cluster instead of using the CQL default (9042). [#1139](https://github.com/Mashape/kong/issues/1139)
+- Introduce a new `port` option when connecting to your Cassandra cluster instead of using the CQL default (9042). [#1139](https://github.com/Kong/kong/issues/1139)
 - Plugins
-  - Request/Response Transformer: add missing migrations for upgrades from ` <= 0.5.x`. [#1064](https://github.com/Mashape/kong/issues/1064)
+  - Request/Response Transformer: add missing migrations for upgrades from ` <= 0.5.x`. [#1064](https://github.com/Kong/kong/issues/1064)
   - OAuth2
-    - Error responses comply to RFC 6749. [#1017](https://github.com/Mashape/kong/issues/1017)
-    - Handle multipart requests. [#1067](https://github.com/Mashape/kong/issues/1067)
-    - Make access_tokens correctly expire. [#1089](https://github.com/Mashape/kong/issues/1089)
+    - Error responses comply to RFC 6749. [#1017](https://github.com/Kong/kong/issues/1017)
+    - Handle multipart requests. [#1067](https://github.com/Kong/kong/issues/1067)
+    - Make access_tokens correctly expire. [#1089](https://github.com/Kong/kong/issues/1089)
 
 > **internal**
 > - replace globals with singleton pattern thanks to [@mars](https://github.com/mars).
@@ -1132,37 +1269,37 @@ This release includes support for PostgreSQL as Kong's primary datastore!
 
 ### Breaking changes
 
-Due to the NGINX security fixes (CVE-2016-0742, CVE-2016-0746, CVE-2016-0747), OpenResty was bumped to `1.9.7.3` which is not backwards compatible, and thus requires changes to be made to the `nginx` property of Kong's configuration file. See the [0.7 upgrade path](https://github.com/Mashape/kong/blob/master/UPGRADE.md#upgrade-to-07x) for instructions.
+Due to the NGINX security fixes (CVE-2016-0742, CVE-2016-0746, CVE-2016-0747), OpenResty was bumped to `1.9.7.3` which is not backwards compatible, and thus requires changes to be made to the `nginx` property of Kong's configuration file. See the [0.7 upgrade path](https://github.com/Kong/kong/blob/master/UPGRADE.md#upgrade-to-07x) for instructions.
 
 However by upgrading the underlying OpenResty version, source installations do not have to patch the NGINX core and use the old `ssl-cert-by-lua` branch of ngx_lua anymore. This will make source installations much easier.
 
 ### Added
 
-- Support for OpenResty `1.9.7.*`. This includes NGINX security fixes (CVE-2016-0742, CVE-2016-0746, CVE-2016-0747). [#906](https://github.com/Mashape/kong/pull/906)
+- Support for OpenResty `1.9.7.*`. This includes NGINX security fixes (CVE-2016-0742, CVE-2016-0746, CVE-2016-0747). [#906](https://github.com/Kong/kong/pull/906)
 - Plugins
-  - **New Runscope plugin**: Monitor your APIs from Kong with Runscope. Courtesy of [@mansilladev](https://github.com/mansilladev). [#924](https://github.com/Mashape/kong/pull/924)
-  - Datadog: New `response.size` metric. [#923](https://github.com/Mashape/kong/pull/923)
+  - **New Runscope plugin**: Monitor your APIs from Kong with Runscope. Courtesy of [@mansilladev](https://github.com/mansilladev). [#924](https://github.com/Kong/kong/pull/924)
+  - Datadog: New `response.size` metric. [#923](https://github.com/Kong/kong/pull/923)
   - Rate-Limiting and Response Rate-Limiting
-    - New `config.async` option to asynchronously increment counters to reduce latency at the cost of slightly reducing the accuracy. [#912](https://github.com/Mashape/kong/pull/912)
-    - New `config.continue_on_error` option to keep proxying requests in case the datastore is unreachable. rate-limiting operations will be disabled until the datastore is responsive again. [#953](https://github.com/Mashape/kong/pull/953)
+    - New `config.async` option to asynchronously increment counters to reduce latency at the cost of slightly reducing the accuracy. [#912](https://github.com/Kong/kong/pull/912)
+    - New `config.continue_on_error` option to keep proxying requests in case the datastore is unreachable. rate-limiting operations will be disabled until the datastore is responsive again. [#953](https://github.com/Kong/kong/pull/953)
 - CLI
-  - Perform a simple permission check on the NGINX working directory when starting, to prevent errors during execution. [#939](https://github.com/Mashape/kong/pull/939)
-- Send 50x errors with the appropriate format. [#927](https://github.com/Mashape/kong/pull/927) [#970](https://github.com/Mashape/kong/pull/970)
+  - Perform a simple permission check on the NGINX working directory when starting, to prevent errors during execution. [#939](https://github.com/Kong/kong/pull/939)
+- Send 50x errors with the appropriate format. [#927](https://github.com/Kong/kong/pull/927) [#970](https://github.com/Kong/kong/pull/970)
 
 ### Fixed
 
 - Plugins
   - OAuth2
-    - Better handling of `redirect_uri` (prevent the use of fragments and correctly handle querystrings). Courtesy of [@PGBI](https://github.com/PGBI). [#930](https://github.com/Mashape/kong/pull/930)
-    - Add `PUT` support to the `/auth2_tokens` route. [#897](https://github.com/Mashape/kong/pull/897)
-    - Better error message when the `access_token` is missing. [#1003](https://github.com/Mashape/kong/pull/1003)
-  - IP restriction: Fix an issue that could arise when restarting Kong. Now Kong does not need to be restarted for the ip-restriction configuration to take effect. [#782](https://github.com/Mashape/kong/pull/782) [#960](https://github.com/Mashape/kong/pull/960)
-  - ACL: Properly invalidating entities when assigning a new ACL group. [#996](https://github.com/Mashape/kong/pull/996)
-  - SSL: Replace shelled out openssl calls with native `ngx.ssl` conversion utilities, which preserve the certificate chain. [#968](https://github.com/Mashape/kong/pull/968)
-- Avoid user warning on start when the user is not root. [#964](https://github.com/Mashape/kong/pull/964)
-- Store Serf logs in NGINX working directory to prevent eventual permission issues. [#975](https://github.com/Mashape/kong/pull/975)
-- Allow plugins configured on a Consumer *without* being configured on an API to run. [#978](https://github.com/Mashape/kong/issues/978) [#980](https://github.com/Mashape/kong/pull/980)
-- Fixed an edge-case where Kong nodes would not be registered in the `nodes` table. [#1008](https://github.com/Mashape/kong/pull/1008)
+    - Better handling of `redirect_uri` (prevent the use of fragments and correctly handle querystrings). Courtesy of [@PGBI](https://github.com/PGBI). [#930](https://github.com/Kong/kong/pull/930)
+    - Add `PUT` support to the `/auth2_tokens` route. [#897](https://github.com/Kong/kong/pull/897)
+    - Better error message when the `access_token` is missing. [#1003](https://github.com/Kong/kong/pull/1003)
+  - IP restriction: Fix an issue that could arise when restarting Kong. Now Kong does not need to be restarted for the ip-restriction configuration to take effect. [#782](https://github.com/Kong/kong/pull/782) [#960](https://github.com/Kong/kong/pull/960)
+  - ACL: Properly invalidating entities when assigning a new ACL group. [#996](https://github.com/Kong/kong/pull/996)
+  - SSL: Replace shelled out openssl calls with native `ngx.ssl` conversion utilities, which preserve the certificate chain. [#968](https://github.com/Kong/kong/pull/968)
+- Avoid user warning on start when the user is not root. [#964](https://github.com/Kong/kong/pull/964)
+- Store Serf logs in NGINX working directory to prevent eventual permission issues. [#975](https://github.com/Kong/kong/pull/975)
+- Allow plugins configured on a Consumer *without* being configured on an API to run. [#978](https://github.com/Kong/kong/issues/978) [#980](https://github.com/Kong/kong/pull/980)
+- Fixed an edge-case where Kong nodes would not be registered in the `nodes` table. [#1008](https://github.com/Kong/kong/pull/1008)
 
 ## [0.6.1] - 2016/02/03
 
@@ -1170,32 +1307,32 @@ This release contains tiny bug fixes that were especially annoying for complex C
 
 ### Added
 
-- A `timeout` property for the Cassandra configuration. In ms, this timeout is effective as a connection and a reading timeout. [#937](https://github.com/Mashape/kong/pull/937)
+- A `timeout` property for the Cassandra configuration. In ms, this timeout is effective as a connection and a reading timeout. [#937](https://github.com/Kong/kong/pull/937)
 
 ### Fixed
 
-- Correctly set the Cassandra SSL certificate in the Nginx configuration while starting Kong. [#921](https://github.com/Mashape/kong/pull/921)
-- Rename the `user` Cassandra property to `username` (Kong looks for `username`, hence `user` would fail). [#922](https://github.com/Mashape/kong/pull/922)
-- Allow Cassandra authentication with arbitrary plain text auth providers (such as Instaclustr uses), fixing authentication with them. [#937](https://github.com/Mashape/kong/pull/937)
+- Correctly set the Cassandra SSL certificate in the Nginx configuration while starting Kong. [#921](https://github.com/Kong/kong/pull/921)
+- Rename the `user` Cassandra property to `username` (Kong looks for `username`, hence `user` would fail). [#922](https://github.com/Kong/kong/pull/922)
+- Allow Cassandra authentication with arbitrary plain text auth providers (such as Instaclustr uses), fixing authentication with them. [#937](https://github.com/Kong/kong/pull/937)
 - Admin API
-  - Fix the `/plugins/:id` route for `PATCH` method. [#941](https://github.com/Mashape/kong/pull/941)
+  - Fix the `/plugins/:id` route for `PATCH` method. [#941](https://github.com/Kong/kong/pull/941)
 - Plugins
-  - HTTP logging: remove the additional `\r\n` at the end of the logging request body. [#926](https://github.com/Mashape/kong/pull/926)
-  - Galileo: catch occasional internal errors happening when a request was cancelled by the client and fix missing shm for the retry policy. [#931](https://github.com/Mashape/kong/pull/931)
+  - HTTP logging: remove the additional `\r\n` at the end of the logging request body. [#926](https://github.com/Kong/kong/pull/926)
+  - Galileo: catch occasional internal errors happening when a request was cancelled by the client and fix missing shm for the retry policy. [#931](https://github.com/Kong/kong/pull/931)
 
 ## [0.6.0] - 2016/01/22
 
 ### Breaking changes
 
- We would recommended to consult the suggested [0.6 upgrade path](https://github.com/Mashape/kong/blob/master/UPGRADE.md#upgrade-to-06x) for this release.
+ We would recommended to consult the suggested [0.6 upgrade path](https://github.com/Kong/kong/blob/master/UPGRADE.md#upgrade-to-06x) for this release.
 
 - [Serf](https://www.serfdom.io) is now a Kong dependency. It allows Kong nodes to communicate between each other opening the way to many features and improvements.
 - The configuration file changed. Some properties were renamed, others were moved, and some are new. We would recommended checking out the new default configuration file.
-- Drop the Lua 5.1 dependency which was only used by the CLI. The CLI now runs with LuaJIT, which is consistent with other Kong components (Luarocks and OpenResty) already relying on LuaJIT. Make sure the LuaJIT interpreter is included in your `$PATH`. [#799](https://github.com/Mashape/kong/pull/799)
+- Drop the Lua 5.1 dependency which was only used by the CLI. The CLI now runs with LuaJIT, which is consistent with other Kong components (Luarocks and OpenResty) already relying on LuaJIT. Make sure the LuaJIT interpreter is included in your `$PATH`. [#799](https://github.com/Kong/kong/pull/799)
 
 ### Added
 
-One of the biggest new features of this release is the cluster-awareness added to Kong in [#729](https://github.com/Mashape/kong/pull/729), which deserves its own section:
+One of the biggest new features of this release is the cluster-awareness added to Kong in [#729](https://github.com/Kong/kong/pull/729), which deserves its own section:
 
 - Each Kong node is now aware of belonging to a cluster through Serf. Nodes automatically join the specified cluster according to the configuration file's settings.
 - The datastore cache is not invalidated by expiration time anymore, but following an invalidation strategy between the nodes of a same cluster, leading to improved performance.
@@ -1208,87 +1345,87 @@ One of the biggest new features of this release is the cluster-awareness added t
 
 Other additions include:
 
-- New Cassandra driver which makes Kong aware of the Cassandra cluster. Kong is now unaffected if one of your Cassandra nodes goes down as long as a replica is available on another node. Load balancing policies also improve the performance along with many other smaller improvements. [#803](https://github.com/Mashape/kong/pull/803)
+- New Cassandra driver which makes Kong aware of the Cassandra cluster. Kong is now unaffected if one of your Cassandra nodes goes down as long as a replica is available on another node. Load balancing policies also improve the performance along with many other smaller improvements. [#803](https://github.com/Kong/kong/pull/803)
 - Admin API
-  - A new `total` field in API responses, that counts the total number of entities in the datastore. [#635](https://github.com/Mashape/kong/pull/635)
+  - A new `total` field in API responses, that counts the total number of entities in the datastore. [#635](https://github.com/Kong/kong/pull/635)
 - Configuration
-  - Possibility to configure the keyspace replication strategy for Cassandra. It will be taken into account by the migrations when the configured keyspace does not already exist. [#350](https://github.com/Mashape/kong/issues/350)
-  - Dnsmasq is now optional. You can specify a custom DNS resolver address that Kong will use when resolving hostnames. This can be configured in `kong.yml`. [#625](https://github.com/Mashape/kong/pull/625)
+  - Possibility to configure the keyspace replication strategy for Cassandra. It will be taken into account by the migrations when the configured keyspace does not already exist. [#350](https://github.com/Kong/kong/issues/350)
+  - Dnsmasq is now optional. You can specify a custom DNS resolver address that Kong will use when resolving hostnames. This can be configured in `kong.yml`. [#625](https://github.com/Kong/kong/pull/625)
 - Plugins
-  - **New "syslog" plugin**: send logs to local system log. [#698](https://github.com/Mashape/kong/pull/698)
-  - **New "loggly" plugin**: send logs to Loggly over UDP. [#698](https://github.com/Mashape/kong/pull/698)
-  - **New "datadog" plugin**: send logs to Datadog server. [#758](https://github.com/Mashape/kong/pull/758)
+  - **New "syslog" plugin**: send logs to local system log. [#698](https://github.com/Kong/kong/pull/698)
+  - **New "loggly" plugin**: send logs to Loggly over UDP. [#698](https://github.com/Kong/kong/pull/698)
+  - **New "datadog" plugin**: send logs to Datadog server. [#758](https://github.com/Kong/kong/pull/758)
   - OAuth2
-    - Add support for `X-Forwarded-Proto` header. [#650](https://github.com/Mashape/kong/pull/650)
-    - Expose a new `/oauth2_tokens` endpoint with the possibility to retrieve, update or delete OAuth 2.0 access tokens. [#729](https://github.com/Mashape/kong/pull/729)
+    - Add support for `X-Forwarded-Proto` header. [#650](https://github.com/Kong/kong/pull/650)
+    - Expose a new `/oauth2_tokens` endpoint with the possibility to retrieve, update or delete OAuth 2.0 access tokens. [#729](https://github.com/Kong/kong/pull/729)
   - JWT
-    - Support for base64 encoded secrets. [#838](https://github.com/Mashape/kong/pull/838) [#577](https://github.com/Mashape/kong/issues/577)
-    - Support to configure the claim in which the key is given into the token (not `iss` only anymore). [#838](https://github.com/Mashape/kong/pull/838)
+    - Support for base64 encoded secrets. [#838](https://github.com/Kong/kong/pull/838) [#577](https://github.com/Kong/kong/issues/577)
+    - Support to configure the claim in which the key is given into the token (not `iss` only anymore). [#838](https://github.com/Kong/kong/pull/838)
   - Request transformer
-    - Support for more transformation options: `remove`, `replace`, `add`, `append` motivated by [#393](https://github.com/Mashape/kong/pull/393). See [#824](https://github.com/Mashape/kong/pull/824)
-    - Support JSON body transformation. [#569](https://github.com/Mashape/kong/issues/569)
+    - Support for more transformation options: `remove`, `replace`, `add`, `append` motivated by [#393](https://github.com/Kong/kong/pull/393). See [#824](https://github.com/Kong/kong/pull/824)
+    - Support JSON body transformation. [#569](https://github.com/Kong/kong/issues/569)
   - Response transformer
-    - Support for more transformation options: `remove`, `replace`, `add`, `append` motivated by [#393](https://github.com/Mashape/kong/pull/393). See [#822](https://github.com/Mashape/kong/pull/822)
+    - Support for more transformation options: `remove`, `replace`, `add`, `append` motivated by [#393](https://github.com/Kong/kong/pull/393). See [#822](https://github.com/Kong/kong/pull/822)
 
 ### Changed
 
-- As mentioned in the breaking changes section, a new configuration file format and validation. All properties are now documented and commented out with their default values. This allows for a lighter configuration file and more clarity as to what properties relate to. It also catches configuration mistakes. [#633](https://github.com/Mashape/kong/pull/633)
-- Replace the UUID generator library with a new implementation wrapping lib-uuid, fixing eventual conflicts happening in cases such as described in [#659](https://github.com/Mashape/kong/pull/659). See [#695](https://github.com/Mashape/kong/pull/695)
+- As mentioned in the breaking changes section, a new configuration file format and validation. All properties are now documented and commented out with their default values. This allows for a lighter configuration file and more clarity as to what properties relate to. It also catches configuration mistakes. [#633](https://github.com/Kong/kong/pull/633)
+- Replace the UUID generator library with a new implementation wrapping lib-uuid, fixing eventual conflicts happening in cases such as described in [#659](https://github.com/Kong/kong/pull/659). See [#695](https://github.com/Kong/kong/pull/695)
 - Admin API
-  - Increase the maximum body size to 10MB in order to handle configuration requests with heavy payloads. [#700](https://github.com/Mashape/kong/pull/700)
+  - Increase the maximum body size to 10MB in order to handle configuration requests with heavy payloads. [#700](https://github.com/Kong/kong/pull/700)
   - Disable access logs for the `/status` endpoint.
-  - The `/status` endpoint now includes `database` statistics, while the previous stats have been moved to a `server` response field. [#635](https://github.com/Mashape/kong/pull/635)
+  - The `/status` endpoint now includes `database` statistics, while the previous stats have been moved to a `server` response field. [#635](https://github.com/Kong/kong/pull/635)
 
 ### Fixed
 
-- Behaviors described in [#603](https://github.com/Mashape/kong/issues/603) related to the failure of Cassandra nodes thanks to the new driver. [#803](https://github.com/Mashape/kong/issues/803)
-- Latency headers are now properly included in responses sent to the client. [#708](https://github.com/Mashape/kong/pull/708)
-- `strip_request_path` does not add a trailing slash to the API's `upstream_url` anymore before proxying. [#675](https://github.com/Mashape/kong/issues/675)
-- Do not URL decode querystring before proxying the request to the upstream service. [#749](https://github.com/Mashape/kong/issues/749)
-- Handle cases when the request would be terminated prior to the Kong execution (that is, before ngx_lua reaches the `access_by_lua` context) in cases such as the use of a custom nginx module. [#594](https://github.com/Mashape/kong/issues/594)
+- Behaviors described in [#603](https://github.com/Kong/kong/issues/603) related to the failure of Cassandra nodes thanks to the new driver. [#803](https://github.com/Kong/kong/issues/803)
+- Latency headers are now properly included in responses sent to the client. [#708](https://github.com/Kong/kong/pull/708)
+- `strip_request_path` does not add a trailing slash to the API's `upstream_url` anymore before proxying. [#675](https://github.com/Kong/kong/issues/675)
+- Do not URL decode querystring before proxying the request to the upstream service. [#749](https://github.com/Kong/kong/issues/749)
+- Handle cases when the request would be terminated prior to the Kong execution (that is, before ngx_lua reaches the `access_by_lua` context) in cases such as the use of a custom nginx module. [#594](https://github.com/Kong/kong/issues/594)
 - Admin API
-  - The PUT method now correctly updates boolean fields (such as `strip_request_path`). [#765](https://github.com/Mashape/kong/pull/765)
-  - The PUT method now correctly resets a plugin configuration. [#720](https://github.com/Mashape/kong/pull/720)
-  - PATCH correctly set previously unset fields. [#861](https://github.com/Mashape/kong/pull/861)
-  - In the responses, the `next` link is not being displayed anymore if there are no more entities to be returned. [#635](https://github.com/Mashape/kong/pull/635)
-  - Prevent the update of `created_at` fields. [#820](https://github.com/Mashape/kong/pull/820)
-  - Better `request_path` validation for APIs. "/" is not considered a valid path anymore. [#881](https://github.com/Mashape/kong/pull/881)
+  - The PUT method now correctly updates boolean fields (such as `strip_request_path`). [#765](https://github.com/Kong/kong/pull/765)
+  - The PUT method now correctly resets a plugin configuration. [#720](https://github.com/Kong/kong/pull/720)
+  - PATCH correctly set previously unset fields. [#861](https://github.com/Kong/kong/pull/861)
+  - In the responses, the `next` link is not being displayed anymore if there are no more entities to be returned. [#635](https://github.com/Kong/kong/pull/635)
+  - Prevent the update of `created_at` fields. [#820](https://github.com/Kong/kong/pull/820)
+  - Better `request_path` validation for APIs. "/" is not considered a valid path anymore. [#881](https://github.com/Kong/kong/pull/881)
 - Plugins
-  - Galileo: ensure the `mimeType` value is always a string in ALFs. [#584](https://github.com/Mashape/kong/issues/584)
-  - JWT: allow to update JWT credentials using the PATCH method. It previously used to reply with `405 Method not allowed` because the PATCH method was not implemented. [#667](https://github.com/Mashape/kong/pull/667)
-  - Rate limiting: fix a warning when many periods are configured. [#681](https://github.com/Mashape/kong/issues/681)
-  - Basic Authentication: do not re-hash the password field when updating a credential. [#726](https://github.com/Mashape/kong/issues/726)
-  - File log: better permissions for on file creation for file-log plugin. [#877](https://github.com/Mashape/kong/pull/877)
+  - Galileo: ensure the `mimeType` value is always a string in ALFs. [#584](https://github.com/Kong/kong/issues/584)
+  - JWT: allow to update JWT credentials using the PATCH method. It previously used to reply with `405 Method not allowed` because the PATCH method was not implemented. [#667](https://github.com/Kong/kong/pull/667)
+  - Rate limiting: fix a warning when many periods are configured. [#681](https://github.com/Kong/kong/issues/681)
+  - Basic Authentication: do not re-hash the password field when updating a credential. [#726](https://github.com/Kong/kong/issues/726)
+  - File log: better permissions for on file creation for file-log plugin. [#877](https://github.com/Kong/kong/pull/877)
   - OAuth2
-    - Implement correct responses when the OAuth2 challenges are refused. [#737](https://github.com/Mashape/kong/issues/737)
-    - Handle querystring on `/authorize` and `/token` URLs. [#687](https://github.com/Mashape/kong/pull/667)
-    - Handle punctuation in scopes on `/authorize` and `/token` endpoints. [#658](https://github.com/Mashape/kong/issues/658)
+    - Implement correct responses when the OAuth2 challenges are refused. [#737](https://github.com/Kong/kong/issues/737)
+    - Handle querystring on `/authorize` and `/token` URLs. [#687](https://github.com/Kong/kong/pull/667)
+    - Handle punctuation in scopes on `/authorize` and `/token` endpoints. [#658](https://github.com/Kong/kong/issues/658)
 
 > ***internal***
 > - Event bus for local and cluster-wide events propagation. Plans for this event bus is to be widely used among Kong in the future.
 > - The Kong Public Lua API (Lua helpers integrated in Kong such as DAO and Admin API helpers) is now documented with [ldoc](http://stevedonovan.github.io/ldoc/) format and published on [the online documentation](https://getkong.org/docs/latest/lua-reference/).
 > - Work has been done to restore the reliability of the CI platforms.
-> - Migrations can now execute DML queries (instead of DDL queries only). Handy for migrations implying plugin configuration changes, plugins renamings etc... [#770](https://github.com/Mashape/kong/pull/770)
+> - Migrations can now execute DML queries (instead of DDL queries only). Handy for migrations implying plugin configuration changes, plugins renamings etc... [#770](https://github.com/Kong/kong/pull/770)
 
 ## [0.5.4] - 2015/12/03
 
 ### Fixed
 
 - Mashape Analytics plugin (renamed Galileo):
-  - Improve stability under heavy load. [#757](https://github.com/Mashape/kong/issues/757)
-  - base64 encode ALF request/response bodies, enabling proper support for Galileo bodies inspection capabilities. [#747](https://github.com/Mashape/kong/pull/747)
-  - Do not include JSON bodies in ALF `postData.params` field. [#766](https://github.com/Mashape/kong/pull/766)
+  - Improve stability under heavy load. [#757](https://github.com/Kong/kong/issues/757)
+  - base64 encode ALF request/response bodies, enabling proper support for Galileo bodies inspection capabilities. [#747](https://github.com/Kong/kong/pull/747)
+  - Do not include JSON bodies in ALF `postData.params` field. [#766](https://github.com/Kong/kong/pull/766)
 
 ## [0.5.3] - 2015/11/16
 
 ### Fixed
 
-- Avoids additional URL encoding when proxying to an upstream service. [#691](https://github.com/Mashape/kong/pull/691)
-- Potential timing comparison bug in HMAC plugin. [#704](https://github.com/Mashape/kong/pull/704)
+- Avoids additional URL encoding when proxying to an upstream service. [#691](https://github.com/Kong/kong/pull/691)
+- Potential timing comparison bug in HMAC plugin. [#704](https://github.com/Kong/kong/pull/704)
 
 ### Added
 
-- The Galileo plugin now supports arbitrary host, port and path values. [#721](https://github.com/Mashape/kong/pull/721)
+- The Galileo plugin now supports arbitrary host, port and path values. [#721](https://github.com/Kong/kong/pull/721)
 
 ## [0.5.2] - 2015/10/21
 
@@ -1298,8 +1435,8 @@ A few fixes requested by the community!
 
 - Kong properly search the `nginx` in your $PATH variable.
 - Plugins:
-  - OAuth2: can detect that the originating protocol for a request was HTTPS through the `X-Forwarded-Proto` header and work behind another reverse proxy (load balancer). [#650](https://github.com/Mashape/kong/pull/650)
-  - HMAC signature: support for `X-Date` header to sign the request for usage in browsers (since the `Date` header is protected). [#641](https://github.com/Mashape/kong/issues/641)
+  - OAuth2: can detect that the originating protocol for a request was HTTPS through the `X-Forwarded-Proto` header and work behind another reverse proxy (load balancer). [#650](https://github.com/Kong/kong/pull/650)
+  - HMAC signature: support for `X-Date` header to sign the request for usage in browsers (since the `Date` header is protected). [#641](https://github.com/Kong/kong/issues/641)
 
 ## [0.5.1] - 2015/10/13
 
@@ -1308,23 +1445,23 @@ Fixing a few glitches we let out with 0.5.0!
 ### Added
 
 - Basic Authentication and HMAC Authentication plugins now also send the `X-Credential-Username` to the upstream server.
-- Admin API now accept JSON when receiving a CORS request. [#580](https://github.com/Mashape/kong/pull/580)
-- Add a `WWW-Authenticate` header for HTTP 401 responses for basic-auth and key-auth. [#588](https://github.com/Mashape/kong/pull/588)
+- Admin API now accept JSON when receiving a CORS request. [#580](https://github.com/Kong/kong/pull/580)
+- Add a `WWW-Authenticate` header for HTTP 401 responses for basic-auth and key-auth. [#588](https://github.com/Kong/kong/pull/588)
 
 ### Changed
 
-- Protect Kong from POODLE SSL attacks by omitting SSLv3 (CVE-2014-3566). [#563](https://github.com/Mashape/kong/pull/563)
-- Remove support for key-auth key in body. [#566](https://github.com/Mashape/kong/pull/566)
+- Protect Kong from POODLE SSL attacks by omitting SSLv3 (CVE-2014-3566). [#563](https://github.com/Kong/kong/pull/563)
+- Remove support for key-auth key in body. [#566](https://github.com/Kong/kong/pull/566)
 
 ### Fixed
 
 - Plugins
   - HMAC
-    - The migration for this plugin is now correctly being run. [#611](https://github.com/Mashape/kong/pull/611)
-    - Wrong username doesn't return HTTP 500 anymore, but 403. [#602](https://github.com/Mashape/kong/pull/602)
-  - JWT: `iss` not being found doesn't return HTTP 500 anymore, but 403. [#578](https://github.com/Mashape/kong/pull/578)
-  - OAuth2: client credentials flow does not include a refresh token anymore. [#562](https://github.com/Mashape/kong/issues/562)
-- Fix an occasional error when updating a plugin without a config. [#571](https://github.com/Mashape/kong/pull/571)
+    - The migration for this plugin is now correctly being run. [#611](https://github.com/Kong/kong/pull/611)
+    - Wrong username doesn't return HTTP 500 anymore, but 403. [#602](https://github.com/Kong/kong/pull/602)
+  - JWT: `iss` not being found doesn't return HTTP 500 anymore, but 403. [#578](https://github.com/Kong/kong/pull/578)
+  - OAuth2: client credentials flow does not include a refresh token anymore. [#562](https://github.com/Kong/kong/issues/562)
+- Fix an occasional error when updating a plugin without a config. [#571](https://github.com/Kong/kong/pull/571)
 
 ## [0.5.0] - 2015/09/25
 
@@ -1334,14 +1471,14 @@ With new plugins, many improvements and bug fixes, this release comes with break
 
 Several breaking changes are introduced. You will have to slightly change your configuration file and a migration script will take care of updating your database cluster. **Please follow the instructions in [UPDATE.md](/UPDATE.md#update-to-kong-050) for an update without downtime**.
 
-- Many plugins were renamed due to new naming conventions for consistency. [#480](https://github.com/Mashape/kong/issues/480)
-- In the configuration file, the Cassandra `hosts` property was renamed to `contact_points`. [#513](https://github.com/Mashape/kong/issues/513)
-- Properties belonging to APIs entities have been renamed for clarity. [#513](https://github.com/Mashape/kong/issues/513)
+- Many plugins were renamed due to new naming conventions for consistency. [#480](https://github.com/Kong/kong/issues/480)
+- In the configuration file, the Cassandra `hosts` property was renamed to `contact_points`. [#513](https://github.com/Kong/kong/issues/513)
+- Properties belonging to APIs entities have been renamed for clarity. [#513](https://github.com/Kong/kong/issues/513)
   - `public_dns` -> `request_host`
   - `path` -> `request_path`
   - `strip_path` -> `strip_request_path`
   - `target_url` -> `upstream_url`
-- `plugins_configurations` have been renamed to `plugins`, and their `value` property has been renamed to `config` to avoid confusions. [#513](https://github.com/Mashape/kong/issues/513)
+- `plugins_configurations` have been renamed to `plugins`, and their `value` property has been renamed to `config` to avoid confusions. [#513](https://github.com/Kong/kong/issues/513)
 - The database schema has been updated to handle the separation of plugins outside of the core repository.
 - The Key authentication and Basic authentication plugins routes have changed:
 
@@ -1362,122 +1499,122 @@ The old routes are still maintained but will be removed in upcoming versions. Co
 #### Added
 
 - Plugins
-  - **New Response Rate Limiting plugin**: Give a usage quota to your users based on a parameter in your response. [#247](https://github.com/Mashape/kong/pull/247)
-  - **New ACL (Access Control) plugin**: Configure authorizations for your Consumers. [#225](https://github.com/Mashape/kong/issues/225)
-  - **New JWT (JSON Web Token) plugin**: Verify and authenticate JWTs. [#519](https://github.com/Mashape/kong/issues/519)
-  - **New HMAC signature plugin**: Verify and authenticate HMAC signed HTTP requests. [#549](https://github.com/Mashape/kong/pull/549)
-  - Plugins migrations. Each plugin can now have its own migration scripts if it needs to store data in your cluster. This is a step forward to improve Kong's pluggable architecture. [#443](https://github.com/Mashape/kong/pull/443)
-  - Basic Authentication: the password field is now sha1 encrypted. [#33](https://github.com/Mashape/kong/issues/33)
-  - Basic Authentication: now supports credentials in the `Proxy-Authorization` header. [#460](https://github.com/Mashape/kong/issues/460)
+  - **New Response Rate Limiting plugin**: Give a usage quota to your users based on a parameter in your response. [#247](https://github.com/Kong/kong/pull/247)
+  - **New ACL (Access Control) plugin**: Configure authorizations for your Consumers. [#225](https://github.com/Kong/kong/issues/225)
+  - **New JWT (JSON Web Token) plugin**: Verify and authenticate JWTs. [#519](https://github.com/Kong/kong/issues/519)
+  - **New HMAC signature plugin**: Verify and authenticate HMAC signed HTTP requests. [#549](https://github.com/Kong/kong/pull/549)
+  - Plugins migrations. Each plugin can now have its own migration scripts if it needs to store data in your cluster. This is a step forward to improve Kong's pluggable architecture. [#443](https://github.com/Kong/kong/pull/443)
+  - Basic Authentication: the password field is now sha1 encrypted. [#33](https://github.com/Kong/kong/issues/33)
+  - Basic Authentication: now supports credentials in the `Proxy-Authorization` header. [#460](https://github.com/Kong/kong/issues/460)
 
 #### Changed
 
-- Basic Authentication and Key Authentication now require authentication parameters even when the `Expect: 100-continue` header is being sent. [#408](https://github.com/Mashape/kong/issues/408)
-- Key Auth plugin does not support passing the key in the request payload anymore. [#566](https://github.com/Mashape/kong/pull/566)
-- APIs' names cannot contain characters from the RFC 3986 reserved list. [#589](https://github.com/Mashape/kong/pull/589)
+- Basic Authentication and Key Authentication now require authentication parameters even when the `Expect: 100-continue` header is being sent. [#408](https://github.com/Kong/kong/issues/408)
+- Key Auth plugin does not support passing the key in the request payload anymore. [#566](https://github.com/Kong/kong/pull/566)
+- APIs' names cannot contain characters from the RFC 3986 reserved list. [#589](https://github.com/Kong/kong/pull/589)
 
 #### Fixed
 
 - Resolver
-  - Making a request with a querystring will now correctly match an API's path. [#496](https://github.com/Mashape/kong/pull/496)
+  - Making a request with a querystring will now correctly match an API's path. [#496](https://github.com/Kong/kong/pull/496)
 - Admin API
-  - Data associated to a given API/Consumer will correctly be deleted if related Consumer/API is deleted. [#107](https://github.com/Mashape/kong/issues/107) [#438](https://github.com/Mashape/kong/issues/438) [#504](https://github.com/Mashape/kong/issues/504)
-  - The `/api/{api_name_or_id}/plugins/{plugin_name_or_id}` changed to `/api/{api_name_or_id}/plugins/{plugin_id}` to avoid requesting the wrong plugin if two are configured for one API. [#482](https://github.com/Mashape/kong/pull/482)
-  - APIs created without a `name` but with a `request_path` will now have a name which defaults to the set `request_path`. [#547](https://github.com/Mashape/kong/issues/547)
+  - Data associated to a given API/Consumer will correctly be deleted if related Consumer/API is deleted. [#107](https://github.com/Kong/kong/issues/107) [#438](https://github.com/Kong/kong/issues/438) [#504](https://github.com/Kong/kong/issues/504)
+  - The `/api/{api_name_or_id}/plugins/{plugin_name_or_id}` changed to `/api/{api_name_or_id}/plugins/{plugin_id}` to avoid requesting the wrong plugin if two are configured for one API. [#482](https://github.com/Kong/kong/pull/482)
+  - APIs created without a `name` but with a `request_path` will now have a name which defaults to the set `request_path`. [#547](https://github.com/Kong/kong/issues/547)
 - Plugins
-  - Mashape Analytics: More robust buffer and better error logging. [#471](https://github.com/Mashape/kong/pull/471)
-  - Mashape Analytics: Several ALF (API Log Format) serialization fixes. [#515](https://github.com/Mashape/kong/pull/515)
-  - Oauth2: A response is now returned on `http://kong:8001/consumers/{consumer}/oauth2/{oauth2_id}`. [#469](https://github.com/Mashape/kong/issues/469)
-  - Oauth2: Saving `authenticated_userid` on Password Grant. [#476](https://github.com/Mashape/kong/pull/476)
-  - Oauth2: Proper handling of the `/oauth2/authorize` and `/oauth2/token` endpoints in the OAuth 2.0 Plugin when an API with a `path` is being consumed using the `public_dns` instead. [#503](https://github.com/Mashape/kong/issues/503)
-  - OAuth2: Properly returning `X-Authenticated-UserId` in the `client_credentials` and `password` flows. [#535](https://github.com/Mashape/kong/issues/535)
+  - Mashape Analytics: More robust buffer and better error logging. [#471](https://github.com/Kong/kong/pull/471)
+  - Mashape Analytics: Several ALF (API Log Format) serialization fixes. [#515](https://github.com/Kong/kong/pull/515)
+  - Oauth2: A response is now returned on `http://kong:8001/consumers/{consumer}/oauth2/{oauth2_id}`. [#469](https://github.com/Kong/kong/issues/469)
+  - Oauth2: Saving `authenticated_userid` on Password Grant. [#476](https://github.com/Kong/kong/pull/476)
+  - Oauth2: Proper handling of the `/oauth2/authorize` and `/oauth2/token` endpoints in the OAuth 2.0 Plugin when an API with a `path` is being consumed using the `public_dns` instead. [#503](https://github.com/Kong/kong/issues/503)
+  - OAuth2: Properly returning `X-Authenticated-UserId` in the `client_credentials` and `password` flows. [#535](https://github.com/Kong/kong/issues/535)
   - Response-Transformer: Properly handling JSON responses that have a charset specified in their `Content-Type` header.
 
 ## [0.4.2] - 2015/08/10
 
 #### Added
 
-- Cassandra authentication and SSL encryption. [#405](https://github.com/Mashape/kong/pull/405)
-- `preserve_host` flag on APIs to preserve the Host header when a request is proxied. [#444](https://github.com/Mashape/kong/issues/444)
-- Added the Resource Owner Password Credentials Grant to the OAuth 2.0 Plugin. [#448](https://github.com/Mashape/kong/issues/448)
-- Auto-generation of default SSL certificate. [#453](https://github.com/Mashape/kong/issues/453)
+- Cassandra authentication and SSL encryption. [#405](https://github.com/Kong/kong/pull/405)
+- `preserve_host` flag on APIs to preserve the Host header when a request is proxied. [#444](https://github.com/Kong/kong/issues/444)
+- Added the Resource Owner Password Credentials Grant to the OAuth 2.0 Plugin. [#448](https://github.com/Kong/kong/issues/448)
+- Auto-generation of default SSL certificate. [#453](https://github.com/Kong/kong/issues/453)
 
 #### Changed
 
-- Remove `cassandra.port` property in configuration. Ports are specified by having `cassandra.hosts` addresses using the `host:port` notation (RFC 3986). [#457](https://github.com/Mashape/kong/pull/457)
+- Remove `cassandra.port` property in configuration. Ports are specified by having `cassandra.hosts` addresses using the `host:port` notation (RFC 3986). [#457](https://github.com/Kong/kong/pull/457)
 - Default SSL certificate is now auto-generated and stored in the `nginx_working_dir`.
 - OAuth 2.0 plugin now properly forces HTTPS.
 
 #### Fixed
 
-- Better handling of multi-nodes Cassandra clusters. [#450](https://github.com/Mashape/kong/pull/405)
-- mashape-analytics plugin: handling of numerical values in querystrings. [#449](https://github.com/Mashape/kong/pull/405)
-- Path resolver `strip_path` option wrongfully matching the `path` property multiple times in the request URI. [#442](https://github.com/Mashape/kong/issues/442)
-- File Log Plugin bug that prevented the file creation in some environments. [#461](https://github.com/Mashape/kong/issues/461)
-- Clean output of the Kong CLI. [#235](https://github.com/Mashape/kong/issues/235)
+- Better handling of multi-nodes Cassandra clusters. [#450](https://github.com/Kong/kong/pull/405)
+- mashape-analytics plugin: handling of numerical values in querystrings. [#449](https://github.com/Kong/kong/pull/405)
+- Path resolver `strip_path` option wrongfully matching the `path` property multiple times in the request URI. [#442](https://github.com/Kong/kong/issues/442)
+- File Log Plugin bug that prevented the file creation in some environments. [#461](https://github.com/Kong/kong/issues/461)
+- Clean output of the Kong CLI. [#235](https://github.com/Kong/kong/issues/235)
 
 ## [0.4.1] - 2015/07/23
 
 #### Fixed
 
-- Issues with the Mashape Analytics plugin. [#425](https://github.com/Mashape/kong/pull/425)
-- Handle hyphens when executing path routing with `strip_path` option enabled. [#431](https://github.com/Mashape/kong/pull/431)
-- Adding the Client Credentials OAuth 2.0 flow. [#430](https://github.com/Mashape/kong/issues/430)
-- A bug that prevented "dnsmasq" from being started on some systems, including Debian. [f7da790](https://github.com/Mashape/kong/commit/f7da79057ce29c7d1f6d90f4bc160cc3d9c8611f)
-- File Log plugin: optimizations by avoiding the buffered I/O layer. [20bb478](https://github.com/Mashape/kong/commit/20bb478952846faefec6091905bd852db24a0289)
+- Issues with the Mashape Analytics plugin. [#425](https://github.com/Kong/kong/pull/425)
+- Handle hyphens when executing path routing with `strip_path` option enabled. [#431](https://github.com/Kong/kong/pull/431)
+- Adding the Client Credentials OAuth 2.0 flow. [#430](https://github.com/Kong/kong/issues/430)
+- A bug that prevented "dnsmasq" from being started on some systems, including Debian. [f7da790](https://github.com/Kong/kong/commit/f7da79057ce29c7d1f6d90f4bc160cc3d9c8611f)
+- File Log plugin: optimizations by avoiding the buffered I/O layer. [20bb478](https://github.com/Kong/kong/commit/20bb478952846faefec6091905bd852db24a0289)
 
 ## [0.4.0] - 2015/07/15
 
 #### Added
 
-- Implement wildcard subdomains for APIs' `public_dns`. [#381](https://github.com/Mashape/kong/pull/381) [#297](https://github.com/Mashape/kong/pull/297)
+- Implement wildcard subdomains for APIs' `public_dns`. [#381](https://github.com/Kong/kong/pull/381) [#297](https://github.com/Kong/kong/pull/297)
 - Plugins
-  - **New OAuth 2.0 plugin.** [#341](https://github.com/Mashape/kong/pull/341) [#169](https://github.com/Mashape/kong/pull/169)
-  - **New Mashape Analytics plugin.** [#360](https://github.com/Mashape/kong/pull/360) [#272](https://github.com/Mashape/kong/pull/272)
-  - **New IP whitelisting/blacklisting plugin.** [#379](https://github.com/Mashape/kong/pull/379)
-  - Ratelimiting: support for multiple limits. [#382](https://github.com/Mashape/kong/pull/382) [#205](https://github.com/Mashape/kong/pull/205)
-  - HTTP logging: support for HTTPS endpoint. [#342](https://github.com/Mashape/kong/issues/342)
-  - Logging plugins: new properties for logs timing. [#351](https://github.com/Mashape/kong/issues/351)
-  - Key authentication: now auto-generates a key if none is specified. [#48](https://github.com/Mashape/kong/pull/48)
+  - **New OAuth 2.0 plugin.** [#341](https://github.com/Kong/kong/pull/341) [#169](https://github.com/Kong/kong/pull/169)
+  - **New Mashape Analytics plugin.** [#360](https://github.com/Kong/kong/pull/360) [#272](https://github.com/Kong/kong/pull/272)
+  - **New IP whitelisting/blacklisting plugin.** [#379](https://github.com/Kong/kong/pull/379)
+  - Ratelimiting: support for multiple limits. [#382](https://github.com/Kong/kong/pull/382) [#205](https://github.com/Kong/kong/pull/205)
+  - HTTP logging: support for HTTPS endpoint. [#342](https://github.com/Kong/kong/issues/342)
+  - Logging plugins: new properties for logs timing. [#351](https://github.com/Kong/kong/issues/351)
+  - Key authentication: now auto-generates a key if none is specified. [#48](https://github.com/Kong/kong/pull/48)
 - Resolver
-  - `path` property now accepts arbitrary depth. [#310](https://github.com/Mashape/kong/issues/310)
+  - `path` property now accepts arbitrary depth. [#310](https://github.com/Kong/kong/issues/310)
 - Admin API
-  - Enable CORS by default. [#371](https://github.com/Mashape/kong/pull/371)
-  - Expose a new endpoint to get a plugin configuration's schema. [#376](https://github.com/Mashape/kong/pull/376) [#309](https://github.com/Mashape/kong/pull/309)
-  - Expose a new endpoint to retrieve a node's status. [417c137](https://github.com/Mashape/kong/commit/417c1376c08d3562bebe0c0816c6b54df045f515)
+  - Enable CORS by default. [#371](https://github.com/Kong/kong/pull/371)
+  - Expose a new endpoint to get a plugin configuration's schema. [#376](https://github.com/Kong/kong/pull/376) [#309](https://github.com/Kong/kong/pull/309)
+  - Expose a new endpoint to retrieve a node's status. [417c137](https://github.com/Kong/kong/commit/417c1376c08d3562bebe0c0816c6b54df045f515)
 - CLI
-  - `$ kong migrations reset` now asks for confirmation. [#365](https://github.com/Mashape/kong/pull/365)
+  - `$ kong migrations reset` now asks for confirmation. [#365](https://github.com/Kong/kong/pull/365)
 
 #### Fixed
 
 - Plugins
-  - Basic authentication not being executed if added to an API with default configuration. [6d732cd](https://github.com/Mashape/kong/commit/6d732cd8b0ec92ef328faa843215d8264f50fb75)
-  - SSL plugin configuration parsing. [#353](https://github.com/Mashape/kong/pull/353)
-  - SSL plugin doesn't accept a `consumer_id` anymore, as this wouldn't make sense. [#372](https://github.com/Mashape/kong/pull/372) [#322](https://github.com/Mashape/kong/pull/322)
-  - Authentication plugins now return `401` when missing credentials. [#375](https://github.com/Mashape/kong/pull/375) [#354](https://github.com/Mashape/kong/pull/354)
+  - Basic authentication not being executed if added to an API with default configuration. [6d732cd](https://github.com/Kong/kong/commit/6d732cd8b0ec92ef328faa843215d8264f50fb75)
+  - SSL plugin configuration parsing. [#353](https://github.com/Kong/kong/pull/353)
+  - SSL plugin doesn't accept a `consumer_id` anymore, as this wouldn't make sense. [#372](https://github.com/Kong/kong/pull/372) [#322](https://github.com/Kong/kong/pull/322)
+  - Authentication plugins now return `401` when missing credentials. [#375](https://github.com/Kong/kong/pull/375) [#354](https://github.com/Kong/kong/pull/354)
 - Admin API
-  - Non supported HTTP methods now return `405` instead of `500`. [38f1b7f](https://github.com/Mashape/kong/commit/38f1b7fa9f45f60c4130ef5ff9fe2c850a2ba586)
-  - Prevent PATCH requests from overriding a plugin's configuration if partially updated. [9a7388d](https://github.com/Mashape/kong/commit/9a7388d695c9de105917cde23a684a7d6722a3ca)
-- Handle occasionally missing `schema_migrations` table. [#365](https://github.com/Mashape/kong/pull/365) [#250](https://github.com/Mashape/kong/pull/250)
+  - Non supported HTTP methods now return `405` instead of `500`. [38f1b7f](https://github.com/Kong/kong/commit/38f1b7fa9f45f60c4130ef5ff9fe2c850a2ba586)
+  - Prevent PATCH requests from overriding a plugin's configuration if partially updated. [9a7388d](https://github.com/Kong/kong/commit/9a7388d695c9de105917cde23a684a7d6722a3ca)
+- Handle occasionally missing `schema_migrations` table. [#365](https://github.com/Kong/kong/pull/365) [#250](https://github.com/Kong/kong/pull/250)
 
 > **internal**
 > - DAO:
->   - Complete refactor. No more need for hard-coded queries. [#346](https://github.com/Mashape/kong/pull/346)
+>   - Complete refactor. No more need for hard-coded queries. [#346](https://github.com/Kong/kong/pull/346)
 > - Schemas:
->   - New `self_check` test for schema definitions. [5bfa7ca](https://github.com/Mashape/kong/commit/5bfa7ca13561173161781f872244d1340e4152c1)
+>   - New `self_check` test for schema definitions. [5bfa7ca](https://github.com/Kong/kong/commit/5bfa7ca13561173161781f872244d1340e4152c1)
 
 ## [0.3.2] - 2015/06/08
 
 #### Fixed
 
 - Uppercase Cassandra keyspace bug that prevented Kong to work with [kongdb.org](http://kongdb.org/)
-- Multipart requests not properly parsed in the admin API. [#344](https://github.com/Mashape/kong/issues/344)
+- Multipart requests not properly parsed in the admin API. [#344](https://github.com/Kong/kong/issues/344)
 
 ## [0.3.1] - 2015/06/07
 
 #### Fixed
 
-- Schema migrations are now automatic, which was missing from previous releases. [#303](https://github.com/Mashape/kong/issues/303)
+- Schema migrations are now automatic, which was missing from previous releases. [#303](https://github.com/Kong/kong/issues/303)
 
 ## [0.3.0] - 2015/06/04
 
@@ -1485,30 +1622,30 @@ The old routes are still maintained but will be removed in upcoming versions. Co
 
 - Support for SSL.
 - Plugins
-  - New HTTP logging plugin. [#226](https://github.com/Mashape/kong/issues/226) [#251](https://github.com/Mashape/kong/pull/251)
+  - New HTTP logging plugin. [#226](https://github.com/Kong/kong/issues/226) [#251](https://github.com/Kong/kong/pull/251)
   - New SSL plugin.
-  - New request size limiting plugin. [#292](https://github.com/Mashape/kong/pull/292)
-  - Default logging format improvements. [#226](https://github.com/Mashape/kong/issues/226) [#262](https://github.com/Mashape/kong/issues/262)
-  - File logging now logs to a custom file. [#202](https://github.com/Mashape/kong/issues/202)
+  - New request size limiting plugin. [#292](https://github.com/Kong/kong/pull/292)
+  - Default logging format improvements. [#226](https://github.com/Kong/kong/issues/226) [#262](https://github.com/Kong/kong/issues/262)
+  - File logging now logs to a custom file. [#202](https://github.com/Kong/kong/issues/202)
   - Keyauth plugin now defaults `key_names` to "apikey".
 - Admin API
-  - RESTful routing. Much nicer Admin API routing. Ex: `/apis/{name_or_id}/plugins`. [#98](https://github.com/Mashape/kong/issues/98) [#257](https://github.com/Mashape/kong/pull/257)
+  - RESTful routing. Much nicer Admin API routing. Ex: `/apis/{name_or_id}/plugins`. [#98](https://github.com/Kong/kong/issues/98) [#257](https://github.com/Kong/kong/pull/257)
   - Support `PUT` method for endpoints such as `/apis/`, `/apis/plugins/`, `/consumers/`
-  - Support for `application/json` and `x-www-form-urlencoded` Content Types for all `PUT`, `POST` and `PATCH` endpoints by passing a `Content-Type` header. [#236](https://github.com/Mashape/kong/pull/236)
+  - Support for `application/json` and `x-www-form-urlencoded` Content Types for all `PUT`, `POST` and `PATCH` endpoints by passing a `Content-Type` header. [#236](https://github.com/Kong/kong/pull/236)
 - Resolver
-  - Support resolving APIs by Path as well as by Header. [#192](https://github.com/Mashape/kong/pull/192) [#282](https://github.com/Mashape/kong/pull/282)
-  - Support for `X-Host-Override` as an alternative to `Host` for browsers. [#203](https://github.com/Mashape/kong/issues/203) [#246](https://github.com/Mashape/kong/pull/246)
-- Auth plugins now send user informations to your upstream services. [#228](https://github.com/Mashape/kong/issues/228)
-- Invalid `target_url` value are now being caught when creating an API. [#149](https://github.com/Mashape/kong/issues/149)
+  - Support resolving APIs by Path as well as by Header. [#192](https://github.com/Kong/kong/pull/192) [#282](https://github.com/Kong/kong/pull/282)
+  - Support for `X-Host-Override` as an alternative to `Host` for browsers. [#203](https://github.com/Kong/kong/issues/203) [#246](https://github.com/Kong/kong/pull/246)
+- Auth plugins now send user informations to your upstream services. [#228](https://github.com/Kong/kong/issues/228)
+- Invalid `target_url` value are now being caught when creating an API. [#149](https://github.com/Kong/kong/issues/149)
 
 #### Fixed
 
-- Uppercase Cassandra keyspace causing migration failure. [#249](https://github.com/Mashape/kong/issues/249)
-- Guarantee that ratelimiting won't allow requests in case the atomicity of the counter update is not guaranteed. [#289](https://github.com/Mashape/kong/issues/289)
+- Uppercase Cassandra keyspace causing migration failure. [#249](https://github.com/Kong/kong/issues/249)
+- Guarantee that ratelimiting won't allow requests in case the atomicity of the counter update is not guaranteed. [#289](https://github.com/Kong/kong/issues/289)
 
 > **internal**
 > - Schemas:
->   - New property type: `array`. [#277](https://github.com/Mashape/kong/pull/277)
+>   - New property type: `array`. [#277](https://github.com/Kong/kong/pull/277)
 >   - Entities schemas now live in their own files and are starting to be unit tested.
 >   - Subfields are handled better: (notify required subfields and auto-vivify is subfield has default values).
 > - Way faster unit tests. Not resetting the DB anymore between tests.
@@ -1517,7 +1654,7 @@ The old routes are still maintained but will be removed in upcoming versions. Co
 > - Way faster Travis setup.
 > - Added a new HTTP client for in-nginx usage, using the cosocket API.
 > - Various refactorings.
-> - Fix [#196](https://github.com/Mashape/kong/issues/196).
+> - Fix [#196](https://github.com/Kong/kong/issues/196).
 > - Disabled ipv6 in resolver.
 
 ## [0.2.1] - 2015/05/12
@@ -1525,30 +1662,30 @@ The old routes are still maintained but will be removed in upcoming versions. Co
 This is a maintenance release including several bug fixes and usability improvements.
 
 #### Added
-- Support for local DNS resolution. [#194](https://github.com/Mashape/kong/pull/194)
+- Support for local DNS resolution. [#194](https://github.com/Kong/kong/pull/194)
 - Support for Debian 8 and Ubuntu 15.04.
 - DAO
   - Cassandra version bumped to 2.1.5
-  - Support for Cassandra downtime. If Cassandra goes down and is brought back up, Kong will not need to restart anymore, statements will be re-prepared on-the-fly. This is part of an ongoing effort from [jbochi/lua-resty-cassandra#47](https://github.com/jbochi/lua-resty-cassandra/pull/47), [#146](https://github.com/Mashape/kong/pull/146) and [#187](https://github.com/Mashape/kong/pull/187).
-Queries effectuated during the downtime will still be lost. [#11](https://github.com/Mashape/kong/pull/11)
-  - Leverage reused sockets. If the DAO reuses a socket, it will not re-set their keyspace. This should give a small but appreciable performance improvement. [#170](https://github.com/Mashape/kong/pull/170)
-  - Cascade delete plugins configurations when deleting a Consumer or an API associated with it. [#107](https://github.com/Mashape/kong/pull/107)
-  - Allow Cassandra hosts listening on different ports than the default. [#185](https://github.com/Mashape/kong/pull/185)
+  - Support for Cassandra downtime. If Cassandra goes down and is brought back up, Kong will not need to restart anymore, statements will be re-prepared on-the-fly. This is part of an ongoing effort from [jbochi/lua-resty-cassandra#47](https://github.com/jbochi/lua-resty-cassandra/pull/47), [#146](https://github.com/Kong/kong/pull/146) and [#187](https://github.com/Kong/kong/pull/187).
+Queries effectuated during the downtime will still be lost. [#11](https://github.com/Kong/kong/pull/11)
+  - Leverage reused sockets. If the DAO reuses a socket, it will not re-set their keyspace. This should give a small but appreciable performance improvement. [#170](https://github.com/Kong/kong/pull/170)
+  - Cascade delete plugins configurations when deleting a Consumer or an API associated with it. [#107](https://github.com/Kong/kong/pull/107)
+  - Allow Cassandra hosts listening on different ports than the default. [#185](https://github.com/Kong/kong/pull/185)
 - CLI
-  - Added a notice log when Kong tries to connect to Cassandra to avoid user confusion. [#168](https://github.com/Mashape/kong/pull/168)
+  - Added a notice log when Kong tries to connect to Cassandra to avoid user confusion. [#168](https://github.com/Kong/kong/pull/168)
   - The CLI now tests if the ports are already being used before starting and warns.
 - Admin API
-  - `name` is now an optional property for APIs. If none is being specified, the name will be the API `public_dns`. [#181](https://github.com/Mashape/kong/pull/181)
+  - `name` is now an optional property for APIs. If none is being specified, the name will be the API `public_dns`. [#181](https://github.com/Kong/kong/pull/181)
 - Configuration
-  - The memory cache size is now configurable. [#208](https://github.com/Mashape/kong/pull/208)
+  - The memory cache size is now configurable. [#208](https://github.com/Kong/kong/pull/208)
 
 #### Fixed
 - Resolver
   - More explicit "API not found" message from the resolver if the Host was not found in the system. "Api not foun with Host: %s".
-  - If multiple hosts headers are being sent, Kong will test them all to see if one of the API is in the system. [#186](https://github.com/Mashape/kong/pull/186)
-- Admin API: responses now have a new line after the body. [#164](https://github.com/Mashape/kong/issues/164)
+  - If multiple hosts headers are being sent, Kong will test them all to see if one of the API is in the system. [#186](https://github.com/Kong/kong/pull/186)
+- Admin API: responses now have a new line after the body. [#164](https://github.com/Kong/kong/issues/164)
 - DAO: keepalive property is now properly passed when Kong calls `set_keepalive` on Cassandra sockets.
-- Multipart dependency throwing error at startup. [#213](https://github.com/Mashape/kong/pull/213)
+- Multipart dependency throwing error at startup. [#213](https://github.com/Kong/kong/pull/213)
 
 > **internal**
 > - Separate Migrations from the DAO factory.
@@ -1566,23 +1703,23 @@ First public release of Kong. This version brings a lot of internal improvements
   - Request transformation plugin.
   - NGINX plus monitoring plugin.
 - Configuration
-  - New properties: `proxy_port` and `api_admin_port`. [#142](https://github.com/Mashape/kong/issues/142)
+  - New properties: `proxy_port` and `api_admin_port`. [#142](https://github.com/Kong/kong/issues/142)
 - CLI
-  - Better info, help and error messages. [#118](https://github.com/Mashape/kong/issues/118) [#124](https://github.com/Mashape/kong/issues/124)
-  - New commands: `kong reload`, `kong quit`. [#114](https://github.com/Mashape/kong/issues/114) Alias of `version`: `kong --version` [#119](https://github.com/Mashape/kong/issues/119)
-  - `kong restart` simply starts Kong if not previously running + better pid file handling. [#131](https://github.com/Mashape/kong/issues/131)
+  - Better info, help and error messages. [#118](https://github.com/Kong/kong/issues/118) [#124](https://github.com/Kong/kong/issues/124)
+  - New commands: `kong reload`, `kong quit`. [#114](https://github.com/Kong/kong/issues/114) Alias of `version`: `kong --version` [#119](https://github.com/Kong/kong/issues/119)
+  - `kong restart` simply starts Kong if not previously running + better pid file handling. [#131](https://github.com/Kong/kong/issues/131)
 - Package distributions: .rpm, .deb and .pkg for easy installs on most common platforms.
 
 #### Fixed
 - Admin API: trailing slash is not necessary anymore for core resources such as `/apis` or `/consumers`.
-- Leaner default configuration. [#156](https://github.com/Mashape/kong/issues/156)
+- Leaner default configuration. [#156](https://github.com/Kong/kong/issues/156)
 
 > **internal**
 > - All scripts moved to the CLI as "hidden" commands (`kong db`, `kong config`).
 > - More tests as always, and they are structured better. The coverage went down mainly because of plugins which will later move to their own repos. We are all eagerly waiting for that!
 > - `src/` was renamed to `kong/` for ease of development
 > - All system dependencies versions for package building and travis-ci are now listed in `versions.sh`
-> - DAO doesn't need to `:prepare()` prior to run queries. Queries can be prepared at runtime. [#146](https://github.com/Mashape/kong/issues/146)
+> - DAO doesn't need to `:prepare()` prior to run queries. Queries can be prepared at runtime. [#146](https://github.com/Kong/kong/issues/146)
 
 ## [0.1.1beta-2] - 2015/03/30
 
@@ -1597,22 +1734,22 @@ First public beta. Includes caching and better usability.
 #### Added
 - Required Openresty is now `1.7.10.1`.
 - Freshly built CLI, rewritten in Lua
-- `kong start` using a new DB keyspace will automatically migrate the schema. [#68](https://github.com/Mashape/kong/issues/68)
-- Anonymous error reporting on Proxy and API. [#64](https://github.com/Mashape/kong/issues/64)
+- `kong start` using a new DB keyspace will automatically migrate the schema. [#68](https://github.com/Kong/kong/issues/68)
+- Anonymous error reporting on Proxy and API. [#64](https://github.com/Kong/kong/issues/64)
 - Configuration
   - Simplified configuration file (unified in `kong.yml`).
-  - In configuration, `plugins_installed` was renamed to `plugins_available`. [#59](https://github.com/Mashape/kong/issues/59)
-  - Order of `plugins_available` doesn't matter anymore. [#17](https://github.com/Mashape/kong/issues/17)
+  - In configuration, `plugins_installed` was renamed to `plugins_available`. [#59](https://github.com/Kong/kong/issues/59)
+  - Order of `plugins_available` doesn't matter anymore. [#17](https://github.com/Kong/kong/issues/17)
   - Better handling of plugins: Kong now detects which plugins are configured and if they are installed on the current machine.
-  - `bin/kong` now defaults on `/etc/kong.yml` for config and `/var/logs/kong` for output. [#71](https://github.com/Mashape/kong/issues/71)
+  - `bin/kong` now defaults on `/etc/kong.yml` for config and `/var/logs/kong` for output. [#71](https://github.com/Kong/kong/issues/71)
 - Proxy: APIs/Consumers caching with expiration for faster authentication.
-- Admin API: Plugins now use plain form parameters for configuration. [#70](https://github.com/Mashape/kong/issues/70)
-- Keep track of already executed migrations. `rollback` now behaves as expected. [#8](https://github.com/Mashape/kong/issues/8)
+- Admin API: Plugins now use plain form parameters for configuration. [#70](https://github.com/Kong/kong/issues/70)
+- Keep track of already executed migrations. `rollback` now behaves as expected. [#8](https://github.com/Kong/kong/issues/8)
 
 #### Fixed
-- `Server` header now sends Kong. [#57](https://github.com/Mashape/kong/issues/57)
+- `Server` header now sends Kong. [#57](https://github.com/Kong/kong/issues/57)
 - migrations not being executed in order on Linux. This issue wasn't noticed until unit testing the migrations because for now we only have 1 migration file.
-- Admin API: Errors responses are now sent as JSON. [#58](https://github.com/Mashape/kong/issues/58)
+- Admin API: Errors responses are now sent as JSON. [#58](https://github.com/Kong/kong/issues/58)
 
 > **internal**
 > - We now have code linting and coverage.
@@ -1635,42 +1772,44 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.11.0...next
-[0.11.0]: https://github.com/mashape/kong/compare/0.10.3...0.11.0
-[0.10.3]: https://github.com/mashape/kong/compare/0.10.2...0.10.3
-[0.10.2]: https://github.com/mashape/kong/compare/0.10.1...0.10.2
-[0.10.1]: https://github.com/mashape/kong/compare/0.10.0...0.10.1
-[0.10.0]: https://github.com/mashape/kong/compare/0.9.9...0.10.0
-[0.9.9]: https://github.com/mashape/kong/compare/0.9.8...0.9.9
-[0.9.8]: https://github.com/mashape/kong/compare/0.9.7...0.9.8
-[0.9.7]: https://github.com/mashape/kong/compare/0.9.6...0.9.7
-[0.9.6]: https://github.com/mashape/kong/compare/0.9.5...0.9.6
-[0.9.5]: https://github.com/mashape/kong/compare/0.9.4...0.9.5
-[0.9.4]: https://github.com/mashape/kong/compare/0.9.3...0.9.4
-[0.9.3]: https://github.com/mashape/kong/compare/0.9.2...0.9.3
-[0.9.2]: https://github.com/mashape/kong/compare/0.9.1...0.9.2
-[0.9.1]: https://github.com/mashape/kong/compare/0.9.0...0.9.1
-[0.9.0]: https://github.com/mashape/kong/compare/0.8.3...0.9.0
-[0.8.3]: https://github.com/mashape/kong/compare/0.8.2...0.8.3
-[0.8.2]: https://github.com/mashape/kong/compare/0.8.1...0.8.2
-[0.8.1]: https://github.com/mashape/kong/compare/0.8.0...0.8.1
-[0.8.0]: https://github.com/mashape/kong/compare/0.7.0...0.8.0
-[0.7.0]: https://github.com/mashape/kong/compare/0.6.1...0.7.0
-[0.6.1]: https://github.com/mashape/kong/compare/0.6.0...0.6.1
-[0.6.0]: https://github.com/mashape/kong/compare/0.5.4...0.6.0
-[0.5.4]: https://github.com/mashape/kong/compare/0.5.3...0.5.4
-[0.5.3]: https://github.com/mashape/kong/compare/0.5.2...0.5.3
-[0.5.2]: https://github.com/mashape/kong/compare/0.5.1...0.5.2
-[0.5.1]: https://github.com/mashape/kong/compare/0.5.0...0.5.1
-[0.5.0]: https://github.com/mashape/kong/compare/0.4.2...0.5.0
-[0.4.2]: https://github.com/mashape/kong/compare/0.4.1...0.4.2
-[0.4.1]: https://github.com/mashape/kong/compare/0.4.0...0.4.1
-[0.4.0]: https://github.com/mashape/kong/compare/0.3.2...0.4.0
-[0.3.2]: https://github.com/mashape/kong/compare/0.3.1...0.3.2
-[0.3.1]: https://github.com/mashape/kong/compare/0.3.0...0.3.1
-[0.3.0]: https://github.com/mashape/kong/compare/0.2.1...0.3.0
-[0.2.1]: https://github.com/mashape/kong/compare/0.2.0-2...0.2.1
-[0.2.0-2]: https://github.com/mashape/kong/compare/0.1.1beta-2...0.2.0-2
-[0.1.1beta-2]: https://github.com/mashape/kong/compare/0.1.0beta-3...0.1.1beta-2
-[0.1.0beta-3]: https://github.com/mashape/kong/compare/2236374d5624ad98ea21340ca685f7584ec35744...0.1.0beta-3
-[0.0.1alpha-1]: https://github.com/mashape/kong/compare/ffd70b3101ba38d9acc776038d124f6e2fccac3c...2236374d5624ad98ea21340ca685f7584ec35744
+[unreleased]: https://github.com/Kong/kong/compare/0.11.1...master
+[0.11.1]: https://github.com/Kong/kong/compare/0.11.0...0.11.1
+[0.10.4]: https://github.com/Kong/kong/compare/0.10.3...0.10.4
+[0.11.0]: https://github.com/Kong/kong/compare/0.10.3...0.11.0
+[0.10.3]: https://github.com/Kong/kong/compare/0.10.2...0.10.3
+[0.10.2]: https://github.com/Kong/kong/compare/0.10.1...0.10.2
+[0.10.1]: https://github.com/Kong/kong/compare/0.10.0...0.10.1
+[0.10.0]: https://github.com/Kong/kong/compare/0.9.9...0.10.0
+[0.9.9]: https://github.com/Kong/kong/compare/0.9.8...0.9.9
+[0.9.8]: https://github.com/Kong/kong/compare/0.9.7...0.9.8
+[0.9.7]: https://github.com/Kong/kong/compare/0.9.6...0.9.7
+[0.9.6]: https://github.com/Kong/kong/compare/0.9.5...0.9.6
+[0.9.5]: https://github.com/Kong/kong/compare/0.9.4...0.9.5
+[0.9.4]: https://github.com/Kong/kong/compare/0.9.3...0.9.4
+[0.9.3]: https://github.com/Kong/kong/compare/0.9.2...0.9.3
+[0.9.2]: https://github.com/Kong/kong/compare/0.9.1...0.9.2
+[0.9.1]: https://github.com/Kong/kong/compare/0.9.0...0.9.1
+[0.9.0]: https://github.com/Kong/kong/compare/0.8.3...0.9.0
+[0.8.3]: https://github.com/Kong/kong/compare/0.8.2...0.8.3
+[0.8.2]: https://github.com/Kong/kong/compare/0.8.1...0.8.2
+[0.8.1]: https://github.com/Kong/kong/compare/0.8.0...0.8.1
+[0.8.0]: https://github.com/Kong/kong/compare/0.7.0...0.8.0
+[0.7.0]: https://github.com/Kong/kong/compare/0.6.1...0.7.0
+[0.6.1]: https://github.com/Kong/kong/compare/0.6.0...0.6.1
+[0.6.0]: https://github.com/Kong/kong/compare/0.5.4...0.6.0
+[0.5.4]: https://github.com/Kong/kong/compare/0.5.3...0.5.4
+[0.5.3]: https://github.com/Kong/kong/compare/0.5.2...0.5.3
+[0.5.2]: https://github.com/Kong/kong/compare/0.5.1...0.5.2
+[0.5.1]: https://github.com/Kong/kong/compare/0.5.0...0.5.1
+[0.5.0]: https://github.com/Kong/kong/compare/0.4.2...0.5.0
+[0.4.2]: https://github.com/Kong/kong/compare/0.4.1...0.4.2
+[0.4.1]: https://github.com/Kong/kong/compare/0.4.0...0.4.1
+[0.4.0]: https://github.com/Kong/kong/compare/0.3.2...0.4.0
+[0.3.2]: https://github.com/Kong/kong/compare/0.3.1...0.3.2
+[0.3.1]: https://github.com/Kong/kong/compare/0.3.0...0.3.1
+[0.3.0]: https://github.com/Kong/kong/compare/0.2.1...0.3.0
+[0.2.1]: https://github.com/Kong/kong/compare/0.2.0-2...0.2.1
+[0.2.0-2]: https://github.com/Kong/kong/compare/0.1.1beta-2...0.2.0-2
+[0.1.1beta-2]: https://github.com/Kong/kong/compare/0.1.0beta-3...0.1.1beta-2
+[0.1.0beta-3]: https://github.com/Kong/kong/compare/2236374d5624ad98ea21340ca685f7584ec35744...0.1.0beta-3
+[0.0.1alpha-1]: https://github.com/Kong/kong/compare/ffd70b3101ba38d9acc776038d124f6e2fccac3c...2236374d5624ad98ea21340ca685f7584ec35744

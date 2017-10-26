@@ -99,6 +99,9 @@ return {
         end
       end
 
+      local keys = {}
+      local expirations = {}
+      local idx = 0
       local periods = timestamp.get_timestamps(current_timestamp)
       for period, period_date in pairs(periods) do
         local cache_key = get_local_key(api_id, identifier, period_date, name, period)
@@ -108,19 +111,26 @@ return {
           return nil, err
         end
 
-        red:init_pipeline((not exists or exists == 0) and 2 or 1)
-        red:incrby(cache_key, value)
+        idx = idx + 1
+        keys[idx] = cache_key
         if not exists or exists == 0 then
-          red:expire(cache_key, EXPIRATIONS[period])
-        end
-
-        local _, err = red:commit_pipeline()
-        if err then
-          ngx_log(ngx.ERR, "failed to commit pipeline in Redis: ", err)
-          return nil, err
+          expirations[idx] = EXPIRATIONS[period]
         end
       end
 
+      red:init_pipeline()
+      for i = 1, idx do
+        red:incrby(keys[i], value)
+        if expirations[i] then
+          red:expire(keys[i], expirations[i])
+        end
+      end
+
+      local _, err = red:commit_pipeline()
+      if err then
+        ngx_log(ngx.ERR, "failed to commit pipeline in Redis: ", err)
+        return nil, err
+      end
       local ok, err = red:set_keepalive(10000, 100)
       if not ok then
         ngx_log(ngx.ERR, "failed to set Redis keepalive: ", err)

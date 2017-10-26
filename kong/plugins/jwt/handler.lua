@@ -12,6 +12,7 @@ local get_method = ngx.req.get_method
 local JwtHandler = BasePlugin:extend()
 
 JwtHandler.PRIORITY = 1005
+JwtHandler.VERSION = "0.1.0"
 
 --- Retrieve a JWT in a request.
 -- Checks for the JWT in URI parameters, then in the `Authorization` header.
