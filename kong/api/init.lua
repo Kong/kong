@@ -5,6 +5,7 @@ local responses = require "kong.tools.responses"
 local singletons = require "kong.singletons"
 local app_helpers = require "lapis.application"
 local api_helpers = require "kong.api.api_helpers"
+local crud = require "kong.api.crud_helpers"
 
 
 local find = string.find
@@ -133,12 +134,25 @@ end
 -- Loading plugins routes
 if singletons.configuration and singletons.configuration.plugins then
   for k in pairs(singletons.configuration.plugins) do
-    local loaded, mod = utils.load_module_if_exists("kong.plugins." .. k .. ".api")
+    -- First attach routes for DAOs
+    local loaded, daos = utils.load_module_if_exists("kong.plugins." .. k .. ".daos")
+    if loaded then
+      for k, v in pairs(daos) do
+        ngx.log(ngx.DEBUG, "Auto-Generating API endpoints for entity: ", k)
+        local routes, err = crud.generate_generic_route(k, v)
+        if not routes then
+          ngx.log(ngx.ERR, "Not auto-generating API endpoint: ", err)
+        else
+          attach_routes(routes)
+        end
+      end
+    end
 
+    -- Attach the explicit API endpoints
+    local loaded, mod = utils.load_module_if_exists("kong.plugins." .. k .. ".api")
     if loaded then
       ngx.log(ngx.DEBUG, "Loading API endpoints for plugin: ", k)
       attach_routes(mod)
-
     else
       ngx.log(ngx.DEBUG, "No API endpoints loaded for plugin: ", k)
     end
