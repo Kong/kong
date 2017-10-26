@@ -178,6 +178,7 @@ local function do_authentication(conf)
   end
 
   set_consumer(consumer, jwt_secret)
+  ngx.ctx.jwt_token = token
 
   return true
 end
