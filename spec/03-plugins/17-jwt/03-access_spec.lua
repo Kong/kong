@@ -73,6 +73,10 @@ describe("Plugin: jwt (access)", function()
                          api_id = apis[9].id,
                          config = { cookie_names = { "silly", "crumble" } },
                        }))
+    assert(pdao:insert({ name   = "ctx-checker",
+                         api_id = apis[1].id,
+                         config = { ctx_field = "authenticated_jwt_token" },
+                       }))
 
     jwt_secret = assert(helpers.dao.jwt_secrets:insert {consumer_id = consumer1.id})
     base64_jwt_secret = assert(helpers.dao.jwt_secrets:insert {consumer_id = consumer2.id})
@@ -97,6 +101,7 @@ describe("Plugin: jwt (access)", function()
       real_ip_recursive = "on",
       trusted_ips       = "0.0.0.0/0, ::/0",
       nginx_conf        = "spec/fixtures/custom_nginx.template",
+      custom_plugins    = "ctx-checker",
     })
     proxy_client = helpers.proxy_client()
     admin_client = helpers.admin_client()
@@ -408,7 +413,7 @@ describe("Plugin: jwt (access)", function()
     end)
   end)
 
-describe("RS512", function()
+  describe("RS512", function()
     it("verifies JWT", function()
       PAYLOAD.iss = rsa_jwt_secret_3.key
       local jwt = jwt_encoder.encode(PAYLOAD, fixtures.rs512_private_key, "RS512")
@@ -492,6 +497,24 @@ describe("RS512", function()
       })
       local body = assert.res_status(401, res)
       assert.equal('{"nbf":"token not valid yet"}', body)
+    end)
+  end)
+
+  describe("ctx.authenticated_jwt_token", function()
+    it("is added to ngx.ctx when authenticated", function()
+      PAYLOAD.iss = jwt_secret.key
+      local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+      local authorization = "Bearer " .. jwt
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          ["Authorization"] = authorization,
+          ["Host"]          = "jwt1.com",
+        }
+      })
+      local body = cjson.decode(assert.res_status(200, res))
+      assert.equal(body.headers["ctx-checker-plugin-field"], jwt)
     end)
   end)
 
