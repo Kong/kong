@@ -3,6 +3,7 @@ local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 local fmt = string.format
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
+local bp = helpers.blueprints
 
 local function provision_code(host, extra_headers, client_id)
   local request_client = helpers.proxy_ssl_client()
@@ -106,209 +107,86 @@ describe("Plugin: oauth2 (access)", function()
           consumer_id = consumer.id
     })
 
-    local api1 = assert(helpers.dao.apis:insert {
-      name         = "api-1",
-      hosts        = { "oauth2.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-    assert(helpers.dao.plugins:insert {
-      name   = "oauth2",
+    local api1 = bp.apis:insert({ hosts = { "oauth2.com" } })
+    bp.oauth2_plugins:insert({
       api_id = api1.id,
-      config = {
-        scopes                    = { "email", "profile", "user.email" },
-        enable_authorization_code = true,
-        mandatory_scope           = true,
-        provision_key             = "provision123",
-        token_expiration          = 5,
-        enable_implicit_grant     = true,
-      },
+      config = { scopes = { "email", "profile", "user.email" } },
     })
 
-    local api2 = assert(helpers.dao.apis:insert {
-      name         = "api-2",
-      hosts        = { "example-path.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-    assert(helpers.dao.plugins:insert {
-      name   = "oauth2",
-      api_id = api2.id,
-      config = {
-        scopes                    = { "email", "profile" },
-        enable_authorization_code = true,
-        mandatory_scope           = true,
-        provision_key             = "provision123",
-        token_expiration          = 5,
-        enable_implicit_grant     = true,
-      }
-    })
+    local api2 = bp.apis:insert({ hosts = { "example-path.com" } })
+    bp.oauth2_plugins:insert({ api_id = api2.id })
 
-    local api2bis = assert(helpers.dao.apis:insert {
-      name         = "api-2-bis",
-      uris         = { "/somepath" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-    assert(helpers.dao.plugins:insert {
-      name   = "oauth2",
-      api_id = api2bis.id,
-      config = {
-        scopes                    = { "email", "profile" },
-        enable_authorization_code = true,
-        mandatory_scope           = true,
-        provision_key             = "provision123",
-        token_expiration          = 5,
-        enable_implicit_grant     = true,
-      },
-    })
+    local api2bis = bp.apis:insert({ uris = { "/somepath" } })
+    bp.oauth2_plugins:insert({ api_id = api2bis.id })
 
-    local api3 = assert(helpers.dao.apis:insert {
-      name         = "api-3",
-      hosts        = { "oauth2_3.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-    assert(helpers.dao.plugins:insert {
-      name   = "oauth2",
+    local api3 = bp.apis:insert({ hosts = { "oauth2_3.com" } })
+    bp.oauth2_plugins:insert({
       api_id = api3.id,
-      config = {
-        scopes                    = { "email", "profile" },
-        enable_authorization_code = true,
-        mandatory_scope           = true,
-        provision_key             = "provision123",
-        token_expiration          = 5,
-        enable_implicit_grant     = true,
-        hide_credentials          = true,
-      },
+      config = { hide_credentials = true },
     })
 
-    local api4 = assert(helpers.dao.apis:insert {
-      name         = "api-4",
-      hosts        = { "oauth2_4.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-    assert(helpers.dao.plugins:insert {
-      name   = "oauth2",
+    local api4 = bp.apis:insert({ hosts = { "oauth2_4.com" } })
+    bp.oauth2_plugins:insert({
       api_id = api4.id,
       config = {
-        scopes                    = { "email", "profile" },
-        mandatory_scope           = true,
-        provision_key             = "provision123",
-        token_expiration          = 5,
         enable_client_credentials = true,
         enable_authorization_code = false,
       },
     })
 
-    local api5 = assert(helpers.dao.apis:insert {
-      name         = "api-5",
-      hosts        = { "oauth2_5.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-    assert(helpers.dao.plugins:insert {
-      name   = "oauth2",
+    local api5 = bp.apis:insert({ hosts = { "oauth2_5.com" } })
+    bp.oauth2_plugins:insert({
       api_id = api5.id,
       config = {
-        scopes                    = { "email", "profile" },
-        mandatory_scope           = true,
-        provision_key             = "provision123",
-        token_expiration          = 5,
         enable_password_grant     = true,
         enable_authorization_code = false,
       },
     })
 
-    local api6 = assert(helpers.dao.apis:insert {
-      name         = "api-6",
-      hosts        = { "oauth2_6.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-    assert(helpers.dao.plugins:insert {
-      name   = "oauth2",
+    local api6 = bp.apis:insert({ hosts = { "oauth2_6.com" } })
+    bp.oauth2_plugins:insert({
       api_id = api6.id,
       config = {
         scopes                            = { "email", "profile", "user.email" },
-        enable_authorization_code         = true,
-        mandatory_scope                   = true,
         provision_key                     = "provision123",
-        token_expiration                  = 5,
-        enable_implicit_grant             = true,
         accept_http_if_already_terminated = true,
       },
     })
 
-    local api7 = assert(helpers.dao.apis:insert {
-      name         = "api-7",
-      hosts        = { "oauth2_7.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-    assert(helpers.dao.plugins:insert {
-      name   = "oauth2",
+    local api7 = bp.apis:insert({ hosts = { "oauth2_7.com" } })
+    bp.oauth2_plugins:insert({
       api_id = api7.id,
       config = {
-        scopes                    = { "email", "profile", "user.email" },
-        enable_authorization_code = true,
-        mandatory_scope           = true,
-        provision_key             = "provision123",
-        token_expiration          = 5,
-        enable_implicit_grant     = true,
-        anonymous                 = anonymous_user.id,
-        global_credentials        = false,
+        scopes    = { "email", "profile", "user.email" },
+        anonymous = anonymous_user.id,
       },
     })
 
-    local api8 = assert(helpers.dao.apis:insert {
-      name         = "oauth2_8.com",
-      hosts        = { "oauth2_8.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-    assert(helpers.dao.plugins:insert {
-      name   = "oauth2",
+    local api8 = bp.apis:insert({ hosts = { "oauth2_8.com" } })
+    bp.oauth2_plugins:insert({
       api_id = api8.id,
       config = {
-        scopes                    = { "email", "profile", "user.email" },
-        enable_authorization_code = true,
-        mandatory_scope           = true,
-        provision_key             = "provision123",
-        token_expiration          = 5,
-        enable_implicit_grant     = true,
-        global_credentials        = true,
+        scopes             = { "email", "profile", "user.email" },
+        global_credentials = true,
       },
     })
 
-    local api9 = assert(helpers.dao.apis:insert {
-      name         = "oauth2_9.com",
-      hosts        = { "oauth2_9.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-    assert(helpers.dao.plugins:insert {
-      name   = "oauth2",
+    local api9 = bp.apis:insert({ hosts = { "oauth2_9.com"  } })
+    bp.oauth2_plugins:insert({
       api_id = api9.id,
       config = {
-        scopes                    = { "email", "profile", "user.email" },
-        enable_authorization_code = true,
-        mandatory_scope           = true,
-        provision_key             = "provision123",
-        token_expiration          = 5,
-        enable_implicit_grant     = true,
-        global_credentials        = true,
+        scopes             = { "email", "profile", "user.email" },
+        global_credentials = true,
       },
     })
 
-    local api10 = assert(helpers.dao.apis:insert {
-      name         = "oauth2_10.com",
-      hosts        = { "oauth2_10.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-    assert(helpers.dao.plugins:insert {
-      name   = "oauth2",
+    local api10 = bp.apis:insert({ hosts = { "oauth2_10.com" } })
+    bp.oauth2_plugins:insert({
       api_id = api10.id,
       config = {
-        scopes                    = { "email", "profile", "user.email" },
-        enable_authorization_code = true,
-        mandatory_scope           = true,
-        provision_key             = "provision123",
-        token_expiration          = 5,
-        enable_implicit_grant     = true,
-        global_credentials        = true,
-        anonymous                 = utils.uuid(), -- a non existing consumer
+        scopes             = { "email", "profile", "user.email" },
+        global_credentials = true,
+        anonymous          = utils.uuid(), -- a non existing consumer
       },
     })
     local api11 = assert(helpers.dao.apis:insert {
@@ -2344,23 +2222,13 @@ describe("Plugin: oauth2 (access)", function()
   local client, user1, user2, anonymous
 
   setup(function()
-    local api1 = assert(helpers.dao.apis:insert {
-      name         = "api-1",
+    local api1 = bp.apis:insert({
       hosts        = { "logical-and.com" },
       upstream_url = helpers.mock_upstream_url .. "/request",
     })
-    assert(helpers.dao.plugins:insert {
-      name   = "oauth2",
+    bp.oauth2_plugins:insert({
       api_id = api1.id,
-      config = {
-        scopes                    = { "email", "profile", "user.email" },
-        enable_authorization_code = true,
-        mandatory_scope           = true,
-        provision_key             = "provision123",
-        token_expiration          = 5,
-        enable_implicit_grant     = true,
-        global_credentials        = false,
-      },
+      config = { scopes = { "email", "profile", "user.email" } },
     })
     assert(helpers.dao.plugins:insert {
       name   = "key-auth",
@@ -2377,23 +2245,15 @@ describe("Plugin: oauth2 (access)", function()
       username = "Aladdin",
     })
 
-    local api2 = assert(helpers.dao.apis:insert {
-      name         = "api-2",
+    local api2 = bp.apis:insert({
       hosts        = { "logical-or.com" },
       upstream_url = helpers.mock_upstream_url .. "/request",
     })
-    assert(helpers.dao.plugins:insert {
-      name   = "oauth2",
+    bp.oauth2_plugins:insert({
       api_id = api2.id,
       config = {
-        scopes                    = { "email", "profile", "user.email" },
-        enable_authorization_code = true,
-        mandatory_scope           = true,
-        provision_key             = "provision123",
-        token_expiration          = 5,
-        enable_implicit_grant     = true,
-        global_credentials        = false,
-        anonymous                 = anonymous.id,
+        scopes    = { "email", "profile", "user.email" },
+        anonymous = anonymous.id,
       },
     })
     assert(helpers.dao.plugins:insert {
