@@ -6,6 +6,7 @@ max_line_length = false
 
 globals = {
     "_KONG",
+    "ngx.IS_CLI",
 }
 
 
