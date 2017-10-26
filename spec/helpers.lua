@@ -17,15 +17,20 @@ local MOCK_UPSTREAM_SSL_PORT = 15556
 
 local conf_loader = require "kong.conf_loader"
 local DAOFactory = require "kong.dao.factory"
+local Blueprints = require "spec.fixtures.blueprints"
 local pl_stringx = require "pl.stringx"
 local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local pl_dir = require "pl.dir"
 local cjson = require "cjson.safe"
+local utils = require "kong.tools.utils"
 local http = require "resty.http"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local log = require "kong.cmd.utils.log"
+local DB = require "kong.db"
+
+local table_merge = utils.table_merge
 
 log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
 
@@ -88,6 +93,8 @@ end
 ---------------
 local conf = assert(conf_loader(TEST_CONF_PATH))
 local dao = assert(DAOFactory.new(conf))
+local db = assert(DB.new(conf))
+local blueprints = assert(Blueprints.new(dao, db))
 -- make sure migrations are up-to-date
 
 local function run_migrations(given_dao)
@@ -276,6 +283,16 @@ function resty_http_proxy_mt:send(opts)
   end
 
   return res, err
+end
+
+-- Implements http_client:get("path", [options]), as well as post, put, etc.
+-- These methods are equivalent to calling http_client:send, but are shorter
+-- They also come with a built-in assert
+for method_name in ("get post put patch delete"):gmatch("%w+") do
+  resty_http_proxy_mt[method_name] = function(self, path, options)
+    local full_options = table_merge({ method = method_name:upper(), path = path}, options or {})
+    return assert(self:send(full_options))
+  end
 end
 
 function resty_http_proxy_mt:__index(k)
@@ -1036,6 +1053,8 @@ return {
 
   -- Kong testing properties
   dao = dao,
+  db = db,
+  blueprints = blueprints,
   bin_path = BIN_PATH,
   test_conf = conf,
   test_conf_path = TEST_CONF_PATH,
@@ -1116,5 +1135,5 @@ return {
       kill.kill(pid_path, "-TERM")
       wait_pid(pid_path, timeout)
     end
-  end
+end
 }

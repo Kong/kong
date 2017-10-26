@@ -437,6 +437,7 @@ end
 -- @return Returns a table representing a deep merge of the new table
 function _M.deep_merge(t1, t2)
   local res = _M.deep_copy(t1)
+
   for k, v in pairs(t2) do
     if type(v) == "table" and type(res[k]) == "table" then
       res[k] = _M.deep_merge(res[k], v)
@@ -444,6 +445,7 @@ function _M.deep_merge(t1, t2)
       res[k] = _M.deep_copy(v) -- returns v when it is not a table
     end
   end
+
   return res
 end
 
