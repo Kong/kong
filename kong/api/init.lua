@@ -1,14 +1,22 @@
 local lapis = require "lapis"
 local utils = require "kong.tools.utils"
 local tablex = require "pl.tablex"
+local pl_pretty = require "pl.pretty"
 local responses = require "kong.tools.responses"
 local singletons = require "kong.singletons"
 local app_helpers = require "lapis.application"
 local api_helpers = require "kong.api.api_helpers"
+local Endpoints = require "kong.api.endpoints"
+local Errors = require "kong.db.errors"
 
 
-local find = string.find
-local sub  = string.sub
+local sub      = string.sub
+local find     = string.find
+local type     = type
+local pcall    = pcall
+local pairs    = pairs
+local ipairs   = ipairs
+local tostring = tostring
 
 
 local app = lapis.Application()
@@ -21,11 +29,14 @@ local function parse_params(fn)
   return app_helpers.json_params(function(self, ...)
     if NEEDS_BODY[ngx.req.get_method()] then
       local content_type = self.req.headers["content-type"]
+      if content_type then
+        content_type = content_type:lower()
 
-      if content_type and find(content_type:lower(), "application/json",
-                               nil, true) then
-        if not self.json then
+        if find(content_type, "application/json", 1, true) and not self.json then
           return responses.send_HTTP_BAD_REQUEST("Cannot parse JSON body")
+
+        elseif find(content_type, "application/x-www-form-urlencode", 1, true) then
+          self.params = utils.decode_args(self.params)
         end
       end
     end
@@ -37,23 +48,56 @@ local function parse_params(fn)
 end
 
 
+-- old DAO
 local function on_error(self)
   local err = self.errors[1]
 
-  if type(err) == "table" then
-    if err.db then
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err.message)
-
-    elseif err.unique then
-      return responses.send_HTTP_CONFLICT(err.tbl)
-
-    elseif err.foreign then
-      return responses.send_HTTP_NOT_FOUND(err.tbl)
-
-    else
-      return responses.send_HTTP_BAD_REQUEST(err.tbl or err.message)
-    end
+  if type(err) ~= "table" then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(tostring(err))
   end
+
+  if err.db then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err.message)
+  end
+
+  if err.unique then
+    return responses.send_HTTP_CONFLICT(err.tbl)
+  end
+
+  if err.foreign then
+    return responses.send_HTTP_NOT_FOUND(err.tbl)
+  end
+
+  return responses.send_HTTP_BAD_REQUEST(err.tbl or err.message)
+end
+
+-- new DB
+local function new_db_on_error(self)
+  local err = self.errors[1]
+
+  if type(err) ~= "table" then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(tostring(err))
+  end
+
+  if err.code == Errors.codes.SCHEMA_VIOLATION
+  or err.code == Errors.codes.INVALID_PRIMARY_KEY
+  or err.code == Errors.codes.FOREIGN_KEY_VIOLATION
+  or err.code == Errors.codes.INVALID_OFFSET
+  then
+    return responses.send_HTTP_BAD_REQUEST(err)
+  end
+
+  if err.code == Errors.codes.NOT_FOUND then
+    return responses.send_HTTP_NOT_FOUND(err)
+  end
+
+  if err.code == Errors.codes.PRIMARY_KEY_VIOLATION
+ -- or err.code == Errors.codes.UNIQUE_VIOLATION
+  then
+    return responses.send_HTTP_CONFLICT(err)
+  end
+
+  return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
 end
 
 
@@ -77,8 +121,13 @@ end
 
 
 app.handle_error = function(self, err, trace)
-  if err and find(err, "don't know how to respond to", nil, true) then
-    return responses.send_HTTP_METHOD_NOT_ALLOWED()
+  if err then
+    if type(err) ~= "string" then
+      err = pl_pretty.write(err)
+    end
+    if find(err, "don't know how to respond to", nil, true) then
+      return responses.send_HTTP_METHOD_NOT_ALLOWED()
+    end
   end
 
   ngx.log(ngx.ERR, err, "\n", trace)
@@ -141,6 +190,23 @@ local function attach_routes(routes)
 end
 
 
+local function attach_new_db_routes(routes)
+  for route_path, methods in pairs(routes) do
+    methods.on_error = methods.on_error or new_db_on_error
+
+    for method_name, method_handler in pairs(methods) do
+      local wrapped_handler = function(self)
+        return method_handler(self, singletons.db, handler_helpers)
+      end
+
+      methods[method_name] = parse_params(wrapped_handler)
+    end
+
+    app:match(route_path, route_path, app_helpers.respond_to(methods))
+  end
+end
+
+
 ngx.log(ngx.DEBUG, "Loading Admin API endpoints")
 
 
@@ -149,6 +215,26 @@ for _, v in ipairs({"kong", "apis", "consumers", "plugins", "cache",
                     "certificates", "snis", "upstreams"}) do
   local routes = require("kong.api.routes." .. v)
   attach_routes(routes)
+end
+
+
+do
+  for _, dao in pairs(singletons.db.daos) do
+    local schema = dao.schema
+
+    local endpoints, err = Endpoints.new(schema)
+    if not endpoints then
+      return nil, nil, err
+    end
+
+    -- TODO: custom endpoints go here
+    local ok, custom_endpoints = pcall(require, "kong.api.routes." .. schema.name)
+    if ok then
+      endpoints = utils.table_merge(endpoints, custom_endpoints)
+    end
+
+    attach_new_db_routes(endpoints)
+  end
 end
 
 
