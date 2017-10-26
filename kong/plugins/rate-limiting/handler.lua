@@ -16,6 +16,7 @@ local RATELIMIT_REMAINING = "X-RateLimit-Remaining"
 local RateLimitingHandler = BasePlugin:extend()
 
 RateLimitingHandler.PRIORITY = 901
+RateLimitingHandler.VERSION = "0.1.0"
 
 local function get_identifier(conf)
   local identifier

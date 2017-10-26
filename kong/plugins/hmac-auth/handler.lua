@@ -15,5 +15,6 @@ function HMACAuthHandler:access(conf)
 end
 
 HMACAuthHandler.PRIORITY = 1000
+HMACAuthHandler.VERSION = "0.1.0"
 
 return HMACAuthHandler

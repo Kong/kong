@@ -27,6 +27,7 @@ end
 local ACLHandler = BasePlugin:extend()
 
 ACLHandler.PRIORITY = 950
+ACLHandler.VERSION = "0.1.0"
 
 function ACLHandler:new()
   ACLHandler.super.new(self, "acl")

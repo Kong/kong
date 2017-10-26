@@ -13,6 +13,7 @@ local CorsHandler = BasePlugin:extend()
 
 
 CorsHandler.PRIORITY = 2000
+CorsHandler.VERSION = "0.1.0"
 
 
 local function configure_origin(ngx, conf)
