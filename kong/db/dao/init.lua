@@ -1,12 +1,12 @@
 local cjson        = require "cjson"
 
 local setmetatable = setmetatable
+local tonumber     = tonumber
 local require      = require
 local error        = error
 local pairs        = pairs
 local type         = type
 local min          = math.min
-
 
 
 local _M    = {}
@@ -20,7 +20,7 @@ local function generate_foreign_key_methods(self)
   for name, field in schema:each_field() do
     if field.type == "foreign" then
       local method_name = "for_" .. name
-      self[method_name] = function(self, foreign_key)
+      self[method_name] = function(self, foreign_key, size, offset)
         if type(foreign_key) ~= "table" then
           error("foreign_key must be a table", 2)
         end
@@ -31,12 +31,28 @@ local function generate_foreign_key_methods(self)
           return nil, err_t.name, err_t
         end
 
-        local rows, err_t = self.strategy[method_name](self.strategy, foreign_key)
+        size = tonumber(size == nil and 100 or size)
+
+        if not size then
+          error("size must be a number", 2)
+        end
+
+        size = min(size, 1000)
+
+        if size < 0 then
+          error("size must be positive (> 0)", 2)
+        end
+
+        if offset ~= nil and type(offset) ~= "string" then
+          error("offset must be a string", 2)
+        end
+
+        local rows, err_t, new_offset = self.strategy[method_name](self.strategy, foreign_key, size, offset)
         if err_t then
           return nil, err_t.name, err_t
         end
 
-        return rows, nil, nil
+        return rows, nil, nil, new_offset
       end
     end
   end
@@ -84,18 +100,20 @@ end
 
 
 function DAO:page(size, offset)
-  if size ~= nil and type(size) ~= "number" then
+  size = tonumber(size == nil and 100 or size)
+
+  if not size then
     error("size must be a number", 2)
+  end
+
+  size = min(size, 1000)
+
+  if size < 0 then
+    error("size must be positive (> 0)", 2)
   end
 
   if offset ~= nil and type(offset) ~= "string" then
     error("offset must be a string", 2)
-  end
-
-  size = min(size or 100, 1000)
-
-  if size < 0 then
-    error("size must be positive (> 0)", 2)
   end
 
   local rows, err_t, new_offset = self.strategy:page(size, offset)
@@ -105,18 +123,18 @@ function DAO:page(size, offset)
 
   setmetatable(rows, cjson.empty_array_mt)
 
-  return rows, nil, nil, new_offset, size
+  return rows, nil, nil, new_offset
 end
 
 
 function DAO:each(size)
-  if size ~= nil and type(size) ~= "number" then
+  size = tonumber(size == nil and 100 or size)
+
+  if not size then
     error("size must be a number", 2)
   end
 
-  if not size then
-    size = 1000
-  end
+  size = min(size, 1000)
 
   if size < 0 then
     error("size must be positive (> 0)", 2)
