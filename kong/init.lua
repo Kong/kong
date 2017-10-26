@@ -46,6 +46,7 @@ end
 require("kong.core.globalpatches")()
 
 local ip = require "kong.tools.ip"
+local DB = require "kong.db"
 local dns = require "kong.tools.dns"
 local core = require "kong.core.handler"
 local utils = require "kong.tools.utils"
@@ -160,6 +161,7 @@ function Kong.init()
   local config = assert(conf_loader(conf_path))
 
   local dao = assert(DAOFactory.new(config)) -- instantiate long-lived DAO
+  local db  = assert(DB.new(config))
   assert(dao:init())
   assert(dao:are_migrations_uptodate())
 
@@ -169,8 +171,9 @@ function Kong.init()
   singletons.loaded_plugins = assert(load_plugins(config, dao))
   singletons.dao = dao
   singletons.configuration = config
+  singletons.db = db
 
-  assert(core.build_router(dao, "init"))
+  assert(core.build_router(db, "init"))
 end
 
 function Kong.init_worker()
