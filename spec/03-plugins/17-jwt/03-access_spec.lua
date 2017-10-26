@@ -281,7 +281,7 @@ describe("Plugin: jwt (access)", function()
       })
       assert.res_status(200, res)
     end)
-    it("finds the JWT if given in cookie crumble", function()
+    it("returns 200 the JWT is found in the cookie crumble", function()
       PAYLOAD.iss = jwt_secret.key
       local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
       local res = assert(proxy_client:send {
@@ -294,7 +294,7 @@ describe("Plugin: jwt (access)", function()
       })
       assert.res_status(200, res)
     end)
-    it("finds the JWT if given in cookie silly", function()
+    it("returns 200 if the JWT is found in the cookie silly", function()
       PAYLOAD.iss = jwt_secret.key
       local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
       local res = assert(proxy_client:send {
@@ -307,9 +307,9 @@ describe("Plugin: jwt (access)", function()
       })
       assert.res_status(200, res)
     end)
-    it("reports a 401 if the JWT in cookie is corrupt", function()
+    it("reports a 401 if the JWT in the cookie is corrupt", function()
       PAYLOAD.iss = jwt_secret.key
-      local jwt = 'no-way-this-works' .. jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+      local jwt = "no-way-this-works" .. jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
       local res = assert(proxy_client:send {
         method  = "GET",
         path    = "/request",
@@ -321,7 +321,7 @@ describe("Plugin: jwt (access)", function()
       local body = assert.res_status(401, res)
       assert.equal([[{"message":"Bad token; invalid JSON"}]], body)
     end)
-    it("no cookie with JWT token, defaults to 'Authorization'", function()
+    it("reports a 200 without cookies but with a JWT token in the Authorization header", function()
       PAYLOAD.iss = jwt_secret.key
       local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
       local res = assert(proxy_client:send {
@@ -333,6 +333,16 @@ describe("Plugin: jwt (access)", function()
         }
       })
       assert.res_status(200, res)
+    end)
+    it("returns 401 if no JWT tokens are found in cookies or Authorization header", function()
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          ["Host"] = "jwt9.com",
+        }
+      })
+      assert.res_status(401, res)
     end)
     it("finds the JWT if given in a custom URL parameter", function()
       PAYLOAD.iss = jwt_secret.key
