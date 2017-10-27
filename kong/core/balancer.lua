@@ -269,7 +269,7 @@ local create_hash = function(upstream)
 
     elseif hash_on == "header" then
       identifier = ngx.req.get_headers()[upstream[header_field_names[i]]]
-      if type(indentifier) == "table" then
+      if type(identifier) == "table" then
         identifier = table_concat(identifier)
       end
     end
@@ -387,4 +387,5 @@ return {
   _load_upstreams_dict_into_memory = load_upstreams_dict_into_memory,
   _load_upstream_into_memory = load_upstream_into_memory,
   _load_targets_into_memory = load_targets_into_memory,
+  _create_hash = create_hash,
 }

@@ -90,6 +90,11 @@ return {
       end
     end
 
+    if (config.hash_on == "header" and not config.hash_on_header) or
+       (config.hash_fallback == "header" and not config.hash_fallback_header) then
+      return false, Errors.schema("Hashing on 'header', but no header name provided")
+    end
+
     if config.hash_on == "none" then
       if config.hash_fallback ~= "none" then
         return false, Errors.schema("Cannot set fallback if primary 'hash_on' is not set")

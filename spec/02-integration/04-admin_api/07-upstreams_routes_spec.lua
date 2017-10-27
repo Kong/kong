@@ -280,6 +280,38 @@ describe("Admin API: #" .. kong_config.database, function()
             local json = cjson.decode(body)
             assert.same({ message = "Cannot set fallback and primary hash to the same value" }, json)
 
+            -- No headername provided
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                hash_on = "header",
+                hash_fallback = "header",
+                hash_on_header = nil,  -- not given
+                hash_fallback_header = "HeaderName",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "Hashing on 'header', but no header name provided" }, json)
+
+            -- No fallback headername provided
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                hash_on = "consumer",
+                hash_fallback = "header",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "Hashing on 'header', but no header name provided" }, json)
+
           end
         end)
         it_content_types("returns 409 on conflict", function(content_type)
