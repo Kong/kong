@@ -277,6 +277,35 @@ describe("Plugin: jwt (access)", function()
       })
       assert.res_status(200, res)
     end)
+    it("illegal formatted JWT token", function()
+      PAYLOAD.iss = jwt_secret.key
+      local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+      local authorization = "Bearer+" .. jwt
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          ["Authorization"] = authorization,
+          ["Host"]          = "jwt1.com",
+        }
+      })
+      local body = assert.res_status(401, res)
+      assert.equal('{"message":"Unauthorized"}', body)
+    end)
+    it("finds the JWT if given in cookie", function()
+      PAYLOAD.iss = jwt_secret.key
+      local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+      local authorization = "Bearer " .. jwt
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          ["Host"] = "jwt1.com",
+          ["Set-Cookie"] = "Authorization=" .. authorization .. "; path=/;domain=.jwt1.com"
+        }
+      })
+      assert.res_status(200, res)
+    end)
     it("finds the JWT if given in a custom URL parameter", function()
       PAYLOAD.iss = jwt_secret.key
       local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
