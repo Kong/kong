@@ -115,6 +115,7 @@ describe("Balancer", function()
 
   describe("creating hash values", function()
     local headers
+    local backup
     before_each(function()
       headers = setmetatable({}, {
           __newindex = function(self, key, value)
@@ -124,14 +125,15 @@ describe("Balancer", function()
             return rawget(self, key:upper())
           end,
       })
+      backup = { ngx.req, ngx.var, ngx.ctx }
       ngx.req = { get_headers = function() return headers end }
       ngx.var = {}
       ngx.ctx = {}
     end)
     after_each(function()
-      ngx.req = nil
-      ngx.var = nil
-      ngx.ctx = nil
+      ngx.req = backup[1]
+      ngx.var = backup[2]
+      ngx.ctx = backup[3]
     end)
     it("none", function()
       local hash = balancer._create_hash({

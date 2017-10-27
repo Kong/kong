@@ -153,12 +153,12 @@ dao_helpers.for_each_dao(function(kong_config)
           hash_on = "header",
           hash_on_header = "hashme",
         })
-        target1 = assert(helpers.dao.targets:insert {
+        assert(helpers.dao.targets:insert {
           target = "127.0.0.1:" .. PORT+2,
           weight = 10,
           upstream_id = upstream2.id,
         })
-        target2 = assert(helpers.dao.targets:insert {
+        assert(helpers.dao.targets:insert {
           target = "127.0.0.1:" .. (PORT+3),
           weight = 10,
           upstream_id = upstream2.id,
