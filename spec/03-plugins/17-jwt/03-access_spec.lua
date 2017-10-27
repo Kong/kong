@@ -307,6 +307,21 @@ describe("Plugin: jwt (access)", function()
       })
       assert.res_status(200, res)
     end)
+    it("returns 403 if the JWT found in the cookie does not match a credential", function()
+      PAYLOAD.iss = 'incorrect-issuer'
+      local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          ["Host"] = "jwt9.com",
+          ["Cookie"] = "silly=" .. jwt .. "; path=/;domain=.jwt9.com"
+        }
+      })
+      local body = assert.res_status(403, res)
+      local json = cjson.decode(body)
+      assert.same({ message = "No credentials found for given 'iss'" }, json)
+    end)
     it("reports a 401 if the JWT in the cookie is corrupt", function()
       PAYLOAD.iss = jwt_secret.key
       local jwt = "no-way-this-works" .. jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
