@@ -272,6 +272,7 @@ return {
         --"form_post",
         "fragment",
       },
+      default                          = "fragment",
     },
     consumer_claim                     = {
       required                         = false,
