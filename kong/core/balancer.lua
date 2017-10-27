@@ -317,11 +317,10 @@ local function execute(target)
     balancer = target.balancer
 
   else
-    local err
     -- first try, so try and find a matching balancer/upstream object
     balancer, upstream = get_balancer(target)
     if balancer == nil then -- `false` means no balancer, `nil` is error
-      return nil, err
+      return nil, upstream
     end
 
     if balancer then
