@@ -15,7 +15,8 @@ JwtHandler.PRIORITY = 1005
 JwtHandler.VERSION = "0.1.0"
 
 --- Retrieve a JWT in a request.
--- Checks for the JWT in URI parameters, then in the `Authorization` header.
+-- Checks for the JWT in URI parameters, then for a JWT token in cookies
+-- and finally in the `Authorization` header.
 -- @param request ngx request object
 -- @param conf Plugin configuration
 -- @return token JWT token contained in request (can be a table) or nil
@@ -29,6 +30,14 @@ local function retrieve_token(request, conf)
     end
   end
 
+  local ngx_var = ngx.var
+  for _, v in ipairs(conf.cookie_names) do
+    local jwt_cookie = ngx_var["cookie_" .. v]
+    if jwt_cookie and jwt_cookie ~= "" then
+      return jwt_cookie
+    end
+  end
+  
   local authorization_header = request.get_headers()["authorization"]
   if authorization_header then
     local iterator, iter_err = ngx_re_gmatch(authorization_header, "\\s*[Bb]earer\\s+(.+)")
