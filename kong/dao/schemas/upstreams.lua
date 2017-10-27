@@ -96,7 +96,13 @@ return {
       end
     else
       if config.hash_on == config.hash_fallback then
-        return false, Errors.schema("Cannot set fallback and primary hash to the same value")
+        if config.hash_on ~= "header" then
+          return false, Errors.schema("Cannot set fallback and primary hash to the same value")
+        else
+          if config.hash_on_header:upper() == config.hash_fallback_header:upper() then
+            return false, Errors.schema("Cannot set fallback and primary hash to the same value")
+          end
+        end
       end
     end
 
