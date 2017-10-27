@@ -48,12 +48,12 @@ return {
         "header",
       },
     },
-    hash_header1 = {
+    hash_on_header = {
       -- header name, if `hash_on == "header"`
       type = "string",
       default = "",
     },
-    hash_header2 = {
+    hash_fallback_header = {
       -- header name, if `hash_fallback == "header"`
       type = "string",
       default = "",
@@ -78,15 +78,15 @@ return {
       return false, Errors.schema("Invalid name; no port allowed")
     end
 
-    if config.hash_header1 ~= "" then
-      local ok, err = utils.validate_header_name(config.hash_header1)
+    if config.hash_on_header ~= "" then
+      local ok, err = utils.validate_header_name(config.hash_on_header)
       if not ok then
         return false, Errors.schema("Header: " .. err)
       end
     end
 
-    if config.hash_header2 ~= "" then
-      local ok, err = utils.validate_header_name(config.hash_header2)
+    if config.hash_fallback_header ~= "" then
+      local ok, err = utils.validate_header_name(config.hash_fallback_header)
       if not ok then
         return false, Errors.schema("Header: " .. err)
       end
