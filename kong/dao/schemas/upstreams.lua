@@ -51,12 +51,10 @@ return {
     hash_on_header = {
       -- header name, if `hash_on == "header"`
       type = "string",
-      default = "",
     },
     hash_fallback_header = {
       -- header name, if `hash_fallback == "header"`
       type = "string",
-      default = "",
     },
     slots = {
       -- the number of slots in the loadbalancer algorithm
@@ -78,14 +76,14 @@ return {
       return false, Errors.schema("Invalid name; no port allowed")
     end
 
-    if config.hash_on_header ~= "" then
+    if config.hash_on_header then
       local ok, err = utils.validate_header_name(config.hash_on_header)
       if not ok then
         return false, Errors.schema("Header: " .. err)
       end
     end
 
-    if config.hash_fallback_header ~= "" then
+    if config.hash_fallback_header then
       local ok, err = utils.validate_header_name(config.hash_fallback_header)
       if not ok then
         return false, Errors.schema("Header: " .. err)

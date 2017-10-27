@@ -542,4 +542,43 @@ return {
       ALTER TABLE apis ALTER COLUMN created_at SET DEFAULT CURRENT_TIMESTAMP(0);
     ]]
   },
+  {
+    name = "2017-10-27-134100_consistent_hashing_1",
+    up = [[
+      ALTER TABLE upstreams ADD hash_on text;
+      ALTER TABLE upstreams ADD hash_fallback text;
+      ALTER TABLE upstreams ADD hash_on_header text;
+      ALTER TABLE upstreams ADD hash_fallback_header text;
+    ]],
+    down = [[
+      ALTER TABLE upstreams DROP COLUMN IF EXISTS hash_on;
+      ALTER TABLE upstreams DROP COLUMN IF EXISTS hash_fallback;
+      ALTER TABLE upstreams DROP COLUMN IF EXISTS hash_on_header;
+      ALTER TABLE upstreams DROP COLUMN IF EXISTS hash_fallback_header;
+    ]]
+  },
+  {
+    name = "2017-10-27-134100_consistent_hashing_2",
+    up = function(_, _, dao)
+      local rows, err = dao.db:query([[
+        SELECT * FROM upstreams;
+      ]])
+      if err then
+        return err
+      end
+
+      for _, row in ipairs(rows) do
+        if not row.hash_on or not row.hash_fallback then
+          row.hash_on = "none"
+          row.hash_fallback = "none"
+          row.created_at = nil
+          local _, err = dao.upstreams:update(row, { id = row.id })
+          if err then
+            return err
+          end
+        end
+      end
+    end,
+    down = function(_, _, dao) end  -- n.a. since the columns will be dropped
+  },
 }
