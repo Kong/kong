@@ -6,7 +6,6 @@ local jwt_decoder = require "kong.plugins.jwt.jwt_parser"
 local string_format = string.format
 local ngx_re_gmatch = ngx.re.gmatch
 
-local ngx_var = ngx.var
 local ngx_set_header = ngx.req.set_header
 local get_method = ngx.req.get_method
 
@@ -31,7 +30,7 @@ local function retrieve_token(request, conf)
   end
 
   for _, v in ipairs(conf.cookie_names) do
-    local jwt_cookie = ngx_var["cookie_" .. v]
+    local jwt_cookie = ngx.var["cookie_" .. v]
     if jwt_cookie and jwt_cookie ~= "" then
       return jwt_cookie
     end
