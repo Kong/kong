@@ -4,6 +4,7 @@ local header_filter = require "kong.plugins.response-transformer.header_transfor
 
 local is_body_transform_set = header_filter.is_body_transform_set
 local is_json_body = header_filter.is_json_body
+local table_concat = table.concat
 
 local ResponseTransformerHandler = BasePlugin:extend()
 
@@ -33,7 +34,7 @@ function ResponseTransformerHandler:body_filter(conf)
     local ctx = ngx.ctx
     local chunk, eof = ngx.arg[1], ngx.arg[2]
     if eof then
-      local body = body_filter.transform_json_body(conf, table.concat(ctx.rt_body_chunks))
+      local body = body_filter.transform_json_body(conf, table_concat(ctx.rt_body_chunks))
       ngx.arg[1] = body
     else
       ctx.rt_body_chunks[ctx.rt_body_chunk_number] = chunk
