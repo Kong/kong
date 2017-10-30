@@ -1160,6 +1160,21 @@ describe("Plugin: hmac-auth (access)", function()
       assert.res_status(403, res)
     end)
 
+    it("should return a 403 with an invalid authorization header", function()
+      local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
+      local res = assert(client:send {
+        method  = "GET",
+        path    = "/request",
+        body    = {},
+        headers = {
+          ["HOST"]                = "hmacauth6.com",
+          date                    = date,
+          ["proxy-authorization"] = "this is no hmac token at all is it?",
+        },
+      })
+      assert.res_status(403, res)
+    end)
+
     it("should pass with hmac-sha1", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
       local encodedSignature = ngx.encode_base64(

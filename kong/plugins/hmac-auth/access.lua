@@ -73,8 +73,10 @@ local function validate_params(params, conf)
   -- check enforced headers are present
   if conf.enforce_headers and #conf.enforce_headers >= 1 then
     local enforced_header_set = list_as_set(conf.enforce_headers)
-    for _, header in ipairs(params.hmac_headers) do
-      enforced_header_set[header] = nil
+    if params.hmac_headers then
+      for _, header in ipairs(params.hmac_headers) do
+        enforced_header_set[header] = nil
+      end
     end
     for _, header in ipairs(conf.enforce_headers) do
       if enforced_header_set[header] then
