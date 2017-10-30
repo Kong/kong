@@ -55,9 +55,13 @@ describe("Admin API: #" .. kong_config.database, function()
           assert.is_number(json.created_at)
           assert.is_string(json.id)
           assert.are.equal(slots_default, json.slots)
+          assert.are.equal("none", json.hash_on)
+          assert.are.equal("none", json.hash_fallback)
+          assert.is_nil(json.hash_on_header)
+          assert.is_nil(json.hash_fallback_header)
         end
       end)
-      it_content_types("creates an upstream without defaults with application/json", function(content_type)
+      it_content_types("creates an upstream without defaults", function(content_type)
         return function()
           local res = assert(client:send {
             method = "POST",
@@ -65,6 +69,10 @@ describe("Admin API: #" .. kong_config.database, function()
             body = {
               name = "my.upstream",
               slots = 10,
+              hash_on = "consumer",
+              hash_fallback = "ip",
+              hash_on_header = "HeaderName",
+              hash_fallback_header = "HeaderFallback",
             },
             headers = {["Content-Type"] = content_type}
           })
@@ -74,6 +82,37 @@ describe("Admin API: #" .. kong_config.database, function()
           assert.is_number(json.created_at)
           assert.is_string(json.id)
           assert.are.equal(10, json.slots)
+          assert.are.equal("consumer", json.hash_on)
+          assert.are.equal("ip", json.hash_fallback)
+          assert.are.equal("HeaderName", json.hash_on_header)
+          assert.are.equal("HeaderFallback", json.hash_fallback_header)
+        end
+      end)
+      it_content_types("creates an upstream with 2 header hashes", function(content_type)
+        return function()
+          local res = assert(client:send {
+            method = "POST",
+            path = "/upstreams",
+            body = {
+              name = "my.upstream",
+              slots = 10,
+              hash_on = "header",
+              hash_fallback = "header",
+              hash_on_header = "HeaderName1",
+              hash_fallback_header = "HeaderName2",
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          assert.response(res).has.status(201)
+          local json = assert.response(res).has.jsonbody()
+          assert.equal("my.upstream", json.name)
+          assert.is_number(json.created_at)
+          assert.is_string(json.id)
+          assert.are.equal(10, json.slots)
+          assert.are.equal("header", json.hash_on)
+          assert.are.equal("header", json.hash_fallback)
+          assert.are.equal("HeaderName1", json.hash_on_header)
+          assert.are.equal("HeaderName2", json.hash_fallback_header)
         end
       end)
       it_content_types("creates an upstream with " .. slots_max .. " slots", function(content_type)
@@ -133,6 +172,7 @@ describe("Admin API: #" .. kong_config.database, function()
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
             assert.same({ message = "Invalid name; must be a valid hostname" }, json)
+
             -- Invalid slots parameter
             res = assert(client:send {
               method = "POST",
@@ -146,6 +186,132 @@ describe("Admin API: #" .. kong_config.database, function()
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
             assert.same({ message = "number of slots must be between 10 and 65536" }, json)
+
+            -- Invalid hash_on entries
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                hash_on = "something that is invalid",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ hash_on = '"something that is invalid" is not allowed. Allowed values are: "none", "consumer", "ip", "header"' }, json)
+
+            -- Invalid hash_fallback entries
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                hash_on = "consumer",
+                hash_fallback = "something that is invalid",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ hash_fallback = '"something that is invalid" is not allowed. Allowed values are: "none", "consumer", "ip", "header"' }, json)
+
+            -- same hash entries
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                hash_on = "consumer",
+                hash_fallback = "consumer",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "Cannot set fallback and primary hashes to the same value" }, json)
+
+            -- Invalid header
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                hash_on = "header",
+                hash_fallback = "consumer",
+                hash_on_header = "not a <> valid <> header name",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "Header: bad header name 'not a <> valid <> header name', allowed characters are A-Z, a-z, 0-9, '_', and '-'" }, json)
+
+            -- Invalid header
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                hash_on = "consumer",
+                hash_fallback = "header",
+                hash_fallback_header = "not a <> valid <> header name",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "Header: bad header name 'not a <> valid <> header name', allowed characters are A-Z, a-z, 0-9, '_', and '-'" }, json)
+
+            -- Same headers
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                hash_on = "header",
+                hash_fallback = "header",
+                hash_on_header = "headername",
+                hash_fallback_header = "HeaderName",  --> validate case insensitivity
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "Cannot set fallback and primary hashes to the same value" }, json)
+
+            -- No headername provided
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                hash_on = "header",
+                hash_fallback = "header",
+                hash_on_header = nil,  -- not given
+                hash_fallback_header = "HeaderName",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "Hashing on 'header', but no header name provided" }, json)
+
+            -- No fallback headername provided
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                hash_on = "consumer",
+                hash_fallback = "header",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "Hashing on 'header', but no header name provided" }, json)
+
           end
         end)
         it_content_types("returns 409 on conflict", function(content_type)

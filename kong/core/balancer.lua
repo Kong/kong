@@ -4,6 +4,8 @@ local singletons = require "kong.singletons"
 local dns_client = require "resty.dns.client"  -- due to startup/require order, cannot use the one from 'singletons' here
 local ring_balancer = require "resty.dns.balancer"
 
+local table_concat = table.concat
+local crc32 = ngx.crc32_short
 local toip = dns_client.toip
 local log = ngx.log
 
@@ -146,7 +148,7 @@ end
 
 -- looks up a balancer for the target.
 -- @param target the table with the target details
--- @return balancer if found, or `false` if not found, or nil+error on error
+-- @return balancer+upstream if found, `false` if not found, or nil+error on error
 local get_balancer = function(target)
   -- NOTE: only called upon first lookup, so `cache_only` limitations do not apply here
   local hostname = target.host
@@ -233,9 +235,54 @@ local get_balancer = function(target)
     end
   end
 
-  return balancer
+  return balancer, upstream
 end
 
+
+-- Calculates hash-value.
+-- Will only be called once per request, on first try.
+-- @param upstream the upstream enity
+-- @return integer value or nil if there is no hash to calculate
+local create_hash = function(upstream)
+  local hash_on = upstream.hash_on
+  if hash_on == "none" then
+    return -- not hashing, exit fast
+  end
+
+  local ctx = ngx.ctx
+  local identifier
+  local header_field_name = "hash_on_header"
+
+  for _ = 1,2 do
+
+    if hash_on == "consumer" then
+      -- consumer, fallback to credential
+      identifier = (ctx.authenticated_consumer or EMPTY_T).id or
+                   (ctx.authenticated_credential or EMPTY_T).id
+
+    elseif hash_on == "ip" then
+      identifier = ngx.var.remote_addr
+
+    elseif hash_on == "header" then
+      identifier = ngx.req.get_headers()[upstream[header_field_name]]
+      if type(identifier) == "table" then
+        identifier = table_concat(identifier)
+      end
+    end
+
+    if identifier then
+      return crc32(identifier)
+    end
+
+    -- we missed the first, so now try the fallback
+    hash_on = upstream.hash_fallback
+    header_field_name = "hash_fallback_header"
+    if hash_on == "none" then
+      return nil
+    end
+  end
+  -- nothing found, leave without a hash  
+end
 
 --===========================================================
 -- Main entry point when resolving
@@ -260,29 +307,38 @@ local function execute(target)
   -- when tries == 0 it runs before the `balancer` context (in the `access` context),
   -- when tries >= 2 then it performs a retry in the `balancer` context
   local dns_cache_only = target.try_count ~= 0
-  local balancer
+  local balancer, upstream, hash_value
 
   if dns_cache_only then
     -- retry, so balancer is already set if there was one
     balancer = target.balancer
 
   else
-    local err
     -- first try, so try and find a matching balancer/upstream object
-    balancer, err = get_balancer(target)
-    if err then -- check on err, `nil` without `err` means we do dns resolution
-      return nil, err
+    balancer, upstream = get_balancer(target)
+    if balancer == nil then -- `false` means no balancer, `nil` is error
+      return nil, upstream
     end
 
-    -- store for retries
-    target.balancer = balancer
+    if balancer then
+      -- store for retries
+      target.balancer = balancer
+      
+      -- calculate hash-value
+      -- only add it if it doesn't exist, in case a plugin inserted one
+      hash_value = target.hash_value
+      if not hash_value then
+        hash_value = create_hash(upstream)
+        target.hash_value = hash_value
+      end
+    end
   end
 
   if balancer then
     -- have to invoke the ring-balancer
-    local hashValue = nil  -- TODO: implement, nil does simple round-robin
-
-    local ip, port, hostname = balancer:getPeer(hashValue, nil, dns_cache_only)
+    local ip, port, hostname = balancer:getPeer(hash_value,
+                                                target.try_count,
+                                                dns_cache_only)
     if not ip then
       if port == "No peers are available" then
         -- in this case a "503 service unavailable", others will be a 500.
@@ -297,6 +353,7 @@ local function execute(target)
     target.ip = ip
     target.port = port
     target.hostname = hostname
+    target.hash_value = hash_value
     return true
   end
 
@@ -326,4 +383,5 @@ return {
   _load_upstreams_dict_into_memory = load_upstreams_dict_into_memory,
   _load_upstream_into_memory = load_upstream_into_memory,
   _load_targets_into_memory = load_targets_into_memory,
+  _create_hash = create_hash,
 }
