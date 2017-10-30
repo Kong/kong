@@ -46,7 +46,7 @@ dependency for cache invalidation between Kong nodes of the same cluster.
 This document will only highlight the breaking changes that you need to be
 aware of, and describe a recommended upgrade path. We recommend that you
 consult the full [0.11.0
-Changelog](https://github.com/Mashape/kong/blob/master/CHANGELOG.md) for a
+Changelog](https://github.com/Kong/kong/blob/master/CHANGELOG.md) for a
 complete list of changes and new features.
 
 #### Breaking changes
@@ -564,7 +564,7 @@ Kong 0.10 introduced the following breaking changes:
   in a future release.
 
 We recommend that you consult the full [0.10.0
-Changelog](https://github.com/Mashape/kong/blob/master/CHANGELOG.md) for a full
+Changelog](https://github.com/Kong/kong/blob/master/CHANGELOG.md) for a full
 list of changes and new features, including load balancing capabilities,
 support for Cassandra 3.x, SRV records resolution, and much more.
 
@@ -695,7 +695,7 @@ as flexible as possible and allow you to bend your NGINX instance to your
 needs. We are aware that many of you do not need to customize it and such
 changes should not affect you. Plans are to embed the NGINX configuration in
 Kong, while still allowing customization for the most demanding users.
-[#217](https://github.com/Mashape/kong/pull/217) is the place to discuss this
+[#217](https://github.com/Kong/kong/pull/217) is the place to discuss this
 and share thoughts/needs.
 
 ## Upgrade to `0.6.x`
@@ -812,7 +812,7 @@ properties:
 ##### 2. Migration script
 
 [This Python
-script](https://github.com/Mashape/kong/blob/0.5.0/scripts/migration.py) will
+script](https://github.com/Kong/kong/blob/0.5.0/scripts/migration.py) will
 take care of migrating your database schema should you execute the following
 instructions:
 
@@ -820,7 +820,7 @@ instructions:
 # First, make sure you are already running Kong 0.4.2
 
 # Clone the Kong git repository if you don't already have it:
-$ git clone https://github.com/Mashape/kong.git
+$ git clone https://github.com/Kong/kong.git
 
 # Go to the 'scripts/' folder:
 $ cd kong/scripts

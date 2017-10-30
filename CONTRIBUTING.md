@@ -68,7 +68,7 @@ more than willing to assist you on those channels!
 
 ## Where to report bugs?
 
-Feel free to [submit an issue](https://github.com/Mashape/kong/issues/new) on
+Feel free to [submit an issue](https://github.com/Kong/kong/issues/new) on
 the GitHub repository, we would be grateful to hear about it! Please make sure
 to respect the GitHub issue template, and include:
 
@@ -111,7 +111,7 @@ The documentation hosted at https://getkong.org is open source and built with
 (correct typos, add examples or clarifications...)!
 
 The repository is also hosted on GitHub at:
-https://github.com/Mashape/getkong.org/
+https://github.com/Kong/getkong.org/
 
 To run and test your changes locally, follow the installation instructions in
 its README.md. You will need Ruby, Node.js (for npm), and Python 2.7 on your
@@ -448,7 +448,7 @@ assert.same(t1, t2)
 
 #### Writing performant code
 
-We write code for the [LuaJIT](https://github.com/Mashape/kong/issues/new)
+We write code for the [LuaJIT](https://github.com/Kong/kong/issues/new)
 interpreter, **not** Lua-PUC. As such, you should follow the LuaJIT best
 practices:
 
