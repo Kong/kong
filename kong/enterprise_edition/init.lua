@@ -72,6 +72,7 @@ local function prepare_admin(kong_config)
     ADMIN_API_SSL_PORT = tostring(kong_config.admin_ssl_port),
     RBAC_ENFORCED = tostring(kong_config.enforce_rbac),
     RBAC_HEADER = tostring(kong_config.rbac_auth_header),
+    KONG_VERSION = tostring(meta.versions.package),
   }
 
   local idx_filename = ADMIN_GUI_PATH .. "/index.html"
