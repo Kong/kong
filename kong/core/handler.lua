@@ -312,6 +312,7 @@ return {
         -- ip                = nil,            -- final target IP address
         -- balancer          = nil,            -- the balancer object, in case of a balancer
         -- hostname          = nil,            -- the hostname belonging to the final target IP
+        -- hash_value        = nil,            -- balancer hash (integer)
       }
 
       ctx.api              = api

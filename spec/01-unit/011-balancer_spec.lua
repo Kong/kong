@@ -2,7 +2,8 @@ describe("Balancer", function()
   local singletons, balancer
   local UPSTREAMS_FIXTURES
   local TARGETS_FIXTURES
-  --local uuid = require("kong.tools.utils").uuid
+  local crc32 = ngx.crc32_short
+  local uuid = require("kong.tools.utils").uuid
 
   
   setup(function()
@@ -111,4 +112,117 @@ describe("Balancer", function()
       assert(targets[4].id == "a1")
     end)
   end)
+
+  describe("creating hash values", function()
+    local headers
+    local backup
+    before_each(function()
+      headers = setmetatable({}, {
+          __newindex = function(self, key, value)
+            rawset(self, key:upper(), value)
+          end,
+          __index = function(self, key)
+            return rawget(self, key:upper())
+          end,
+      })
+      backup = { ngx.req, ngx.var, ngx.ctx }
+      ngx.req = { get_headers = function() return headers end }
+      ngx.var = {}
+      ngx.ctx = {}
+    end)
+    after_each(function()
+      ngx.req = backup[1]
+      ngx.var = backup[2]
+      ngx.ctx = backup[3]
+    end)
+    it("none", function()
+      local hash = balancer._create_hash({
+          hash_on = "none",
+      })
+      assert.is_nil(hash)
+    end)
+    it("consumer", function()
+      local value = uuid()
+      ngx.ctx.authenticated_consumer = { id = value }
+      local hash = balancer._create_hash({
+          hash_on = "consumer",
+      })
+      assert.are.same(crc32(value), hash)
+    end)
+    it("ip", function()
+      local value = "1.2.3.4"
+      ngx.var.remote_addr = value
+      local hash = balancer._create_hash({
+          hash_on = "ip",
+      })
+      assert.are.same(crc32(value), hash)
+    end)
+    it("header", function()
+      local value = "some header value"
+      headers.HeaderName = value
+      local hash = balancer._create_hash({
+          hash_on = "header",
+          hash_on_header = "HeaderName",
+      })
+      assert.are.same(crc32(value), hash)
+    end)
+    it("multi-header", function()
+      local value = { "some header value", "another value" }
+      headers.HeaderName = value
+      local hash = balancer._create_hash({
+          hash_on = "header",
+          hash_on_header = "HeaderName",
+      })
+      assert.are.same(crc32(table.concat(value)), hash)
+    end)
+    describe("fallback", function()
+      it("none", function()
+        local hash = balancer._create_hash({
+            hash_on = "consumer",
+            hash_fallback = "none",
+        })
+        assert.is_nil(hash)
+      end)
+      it("consumer", function()
+        local value = uuid()
+        ngx.ctx.authenticated_consumer = { id = value }
+        local hash = balancer._create_hash({
+            hash_on = "header",
+            hash_on_header = "non-existing",
+            hash_fallback = "consumer",
+        })
+        assert.are.same(crc32(value), hash)
+      end)
+      it("ip", function()
+        local value = "1.2.3.4"
+        ngx.var.remote_addr = value
+        local hash = balancer._create_hash({
+            hash_on = "consumer",
+            hash_fallback = "ip",
+        })
+        assert.are.same(crc32(value), hash)
+      end)
+      it("header", function()
+        local value = "some header value"
+        headers.HeaderName = value
+        local hash = balancer._create_hash({
+            hash_on = "consumer",
+            hash_fallback = "header",
+            hash_fallback_header = "HeaderName",
+        })
+        assert.are.same(crc32(value), hash)
+      end)
+      it("multi-header", function()
+        local value = { "some header value", "another value" }
+        headers.HeaderName = value
+        local hash = balancer._create_hash({
+            hash_on = "consumer",
+            hash_fallback = "header",
+            hash_fallback_header = "HeaderName",
+        })
+        assert.are.same(crc32(table.concat(value)), hash)
+      end)
+    end)
+  end)
+
 end)
