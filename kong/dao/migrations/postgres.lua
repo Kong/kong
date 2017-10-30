@@ -526,4 +526,20 @@ return {
       DROP INDEX ttls_primary_uuid_value_idx;
     ]]
   },
+  {
+    name = "2017-07-28-225000_balancer_orderlist_remove",
+    up = [[
+      ALTER TABLE upstreams DROP COLUMN IF EXISTS orderlist;
+    ]],
+    down = function(_, _, dao) end  -- not implemented
+  },
+  {
+    name = "2017-10-02-173400_apis_created_at_ms_precision",
+    up = [[
+      ALTER TABLE apis ALTER COLUMN created_at SET DEFAULT CURRENT_TIMESTAMP(3);
+    ]],
+    down = [[
+      ALTER TABLE apis ALTER COLUMN created_at SET DEFAULT CURRENT_TIMESTAMP(0);
+    ]]
+  },
 }

@@ -117,6 +117,7 @@ build = {
     ["kong.dao.dao"] = "kong/dao/dao.lua",
     ["kong.dao.factory"] = "kong/dao/factory.lua",
     ["kong.dao.model_factory"] = "kong/dao/model_factory.lua",
+    ["kong.dao.migrations.helpers"] = "kong/dao/migrations/helpers.lua",
     ["kong.dao.migrations.cassandra"] = "kong/dao/migrations/cassandra.lua",
     ["kong.dao.migrations.postgres"] = "kong/dao/migrations/postgres.lua",
 
@@ -244,6 +245,8 @@ build = {
     ["kong.plugins.hmac-auth.api"] = "kong/plugins/hmac-auth/api.lua",
     ["kong.plugins.hmac-auth.daos"] = "kong/plugins/hmac-auth/daos.lua",
 
+    ["kong.plugins.ldap-auth.migrations.cassandra"] = "kong/plugins/ldap-auth/migrations/cassandra.lua",
+    ["kong.plugins.ldap-auth.migrations.postgres"] = "kong/plugins/ldap-auth/migrations/postgres.lua",
     ["kong.plugins.ldap-auth.handler"] = "kong/plugins/ldap-auth/handler.lua",
     ["kong.plugins.ldap-auth.access"] = "kong/plugins/ldap-auth/access.lua",
     ["kong.plugins.ldap-auth.schema"] = "kong/plugins/ldap-auth/schema.lua",
