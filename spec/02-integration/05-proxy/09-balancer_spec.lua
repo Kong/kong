@@ -141,7 +141,7 @@ dao_helpers.for_each_dao(function(kong_config)
           upstream_id = upstream1.id,
         })
 
-        -- insert an api with round-robin balancer
+        -- insert an api with consistent-hashing balancer
         assert(helpers.dao.apis:insert {
           name = "hashing.test",
           hosts = { "hashing.test" },
