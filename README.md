@@ -315,7 +315,7 @@ limitations under the License.
 [gitter-badge]: https://img.shields.io/badge/Gitter-Join%20Chat-blue.svg
 [google-groups-url]: https://groups.google.com/forum/#!forum/konglayer
 [badge-travis-url]: https://travis-ci.com/Kong/kong-ee/branches
-[badge-travis-image]: https://travis-ci.com/Kong/kong.svg?branch=master
+[badge-travis-image]: https://travis-ci.com/Kong/kong-ee.svg?token=BfzyBZDa3icGPsKGmBHb&branch=master
 
 [busted]: https://github.com/Olivine-Labs/busted
 [luacheck]: https://github.com/mpeterv/luacheck
