@@ -21,8 +21,8 @@ describe("Plugin: oauth2-introspection (hooks)", function()
       api_id = api1.id,
       config = {
         introspection_url = string.format(
-                      "http://%s:%s/introspect", 
-                      helpers.test_conf.proxy_ip, 
+                      "http://%s:%s/introspect",
+                      helpers.test_conf.proxy_ip,
                       helpers.test_conf.proxy_port),
         authorization_value = "hello",
         ttl = 1

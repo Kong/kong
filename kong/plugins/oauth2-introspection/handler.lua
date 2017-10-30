@@ -1,4 +1,4 @@
--- Copyright (C) Mashape, Inc.
+-- Copyright (C) Kong Inc.
 
 local BasePlugin = require "kong.plugins.base_plugin"
 local responses = require "kong.tools.responses"
@@ -19,6 +19,7 @@ local ACCESS_TOKEN = "access_token"
 
 local req_get_headers = ngx.req.get_headers
 local ngx_set_header = ngx.req.set_header
+local get_method = ngx.req.get_method
 local string_find = string.find
 local table_insert = table.insert
 local fmt = string.format
@@ -150,7 +151,7 @@ local function load_credential(conf, access_token)
   local credential = cjson.decode(res)
   if not credential.active then
     return { err = {status=401,
-                 message={["error"] = "invalid_token",
+                 message = {error = "invalid_token",
                  error_description = "The access token is invalid or has expired"},
                  headers = {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'}}}
   end
@@ -167,51 +168,76 @@ local function load_consumer(username)
   end
 end
 
-function OAuth2Introspection:access(conf)
-  OAuth2Introspection.super.access(self)
-  
+local function load_consumer_mem(consumer_id, anonymous)
+  local result, err = singletons.dao.consumers:find { id = consumer_id }
+  if not result then
+    if anonymous and not err then
+      err = 'anonymous consumer "' .. consumer_id .. '" not found'
+    end
+    return nil, err
+  end
+  return result
+end
+
+local function set_anonymous_consumer(consumer)
+  ngx_set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
+  ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
+  ngx_set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
+  ngx.ctx.authenticated_consumer = consumer
+  ngx_set_header(constants.HEADERS.ANONYMOUS, true)
+end
+
+local function do_authentication(conf)
+
   local access_token = parse_access_token(conf);
   if not access_token or access_token == "" then
-    return responses.send(401,
-      {["error"] = "invalid_request",
-      error_description = "The access token is missing"},
-      {["WWW-Authenticate"] = 'Bearer realm="service"'})
+    return false, {
+      status = 401,
+      message = {
+        error = "invalid_request",
+        error_description = "The access token is missing"
+      },
+      headers = {["WWW-Authenticate"] = 'Bearer realm="service"'},
+    }
   end
 
   local cache = singletons.cache
   local cache_key = fmt("oauth2_introspection:%s", access_token)
   local credential, err = singletons.cache:get(cache_key,
-                                              { ttl = conf.ttl }, 
-                                              load_credential, conf, 
+                                              { ttl = conf.ttl },
+                                              load_credential, conf,
                                               access_token)
   if err then
     ngx_log(ERR, err)
   end
   local credential_err = credential.err
   if credential_err then
-    return responses.send(credential_err.status, credential_err.message, 
-                          credential_err.headers)
+    return false, {
+      status = credential_err.status,
+      message = credential_err.message,
+      headers = credential_err.headers,
+    }
   end
 
   -- Associate username with Kong consumer
   local credential_obj = credential.res
   if credential_obj and credential_obj.username then
     cache_key = consumers_username_key(credential_obj.username)
-    local consumer, err = cache:get(cache_key, nil, load_consumer, 
+    local consumer, err = cache:get(cache_key, nil, load_consumer,
                                            credential_obj.username)
     if err then
-       responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      return false, {status = 500, message = err}
     end
     if consumer then
       cache_key = consumers_id_key(consumer.id)
-      local _, err = cache:get(cache_key, nil, 
-                                function(consumer) 
-                                  return consumer.username 
+      local _, err = cache:get(cache_key, nil,
+                                function(consumer)
+                                  return consumer.username
                                 end, consumer)
       if err then
-        responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+        return false, {status = 500, message = err}
       end
-      
+
       ngx_set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
       ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
       ngx_set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
@@ -235,6 +261,39 @@ function OAuth2Introspection:access(conf)
   ngx_set_header("x-credential-iss", credential_obj.iss)
   ngx_set_header("x-credential-jti", credential_obj.jti)
   ngx_set_header(constants.HEADERS.ANONYMOUS, nil) -- in case of auth plugins concatenation
+  return true
+end
+
+function OAuth2Introspection:access(conf)
+  OAuth2Introspection.super.access(self)
+
+  if not conf.run_on_preflight and get_method() == "OPTIONS" then
+    return
+  end
+
+  if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
+    -- we're already authenticated, and we're configured for using anonymous,
+    -- hence we're in a logical OR between auth methods and we're already done.
+    return
+  end
+
+  local ok, err = do_authentication(conf)
+  if not ok then
+    if conf.anonymous ~= "" then
+      -- get anonymous user
+      local consumer_cache_key = singletons.dao.consumers:cache_key(conf.anonymous)
+      local consumer, err = singletons.cache:get(consumer_cache_key, nil,
+        load_consumer_mem,
+        conf.anonymous, true)
+      if err then
+        responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      end
+      set_anonymous_consumer(consumer)
+
+    else
+      return responses.send(err.status, err.message, err.headers)
+    end
+  end
 end
 
 function OAuth2Introspection:init_worker()
@@ -242,7 +301,7 @@ function OAuth2Introspection:init_worker()
   local cache = singletons.cache
 
   worker_events.register(function(data)
-    local consumer_id_key = consumers_id_key(data.old_entity and 
+    local consumer_id_key = consumers_id_key(data.old_entity and
                               data.old_entity.id or data.entity.id)
     local username, err = cache:get(consumer_id_key, nil, function() end)
     if err then

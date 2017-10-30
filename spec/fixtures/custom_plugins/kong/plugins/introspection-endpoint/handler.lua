@@ -19,19 +19,19 @@ function IntrospectionEndpointHandler:access(conf)
     if not args then
       return ngx.exit(500)
     end
-    if args.token == "valid" or 
-      args.token == "valid_consumer" or 
-      args.token == "valid_consumer_limited" or 
+    if args.token == "valid" or
+      args.token == "valid_consumer" or
+      args.token == "valid_consumer_limited" or
       args.token == "valid_complex" then
 
       if args.token == "valid_consumer" then
-        ngx.say([[{"active":true, 
+        ngx.say([[{"active":true,
                    "username":"bob"}]])
       elseif args.token == "valid_consumer_limited" then
-        ngx.say([[{"active":true, 
+        ngx.say([[{"active":true,
                    "username":"limited-bob"}]])
       elseif args.token == "valid_complex" then
-        ngx.say([[{"active":true, 
+        ngx.say([[{"active":true,
                    "username":"some_username",
                    "client_id":"some_client_id",
                    "scope":"some_scope",
