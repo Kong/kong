@@ -90,22 +90,32 @@ return {
       end
     end
 
-    if (config.hash_on == "header" and not config.hash_on_header) or
-       (config.hash_fallback == "header" and not config.hash_fallback_header) then
-      return false, Errors.schema("Hashing on 'header', but no header name provided")
+    if (config.hash_on == "header"
+        and not config.hash_on_header) or
+       (config.hash_fallback == "header"
+        and not config.hash_fallback_header) then
+      return false, Errors.schema("Hashing on 'header', " ..
+                                  "but no header name provided")
     end
 
     if config.hash_on == "none" then
       if config.hash_fallback ~= "none" then
-        return false, Errors.schema("Cannot set fallback if primary 'hash_on' is not set")
+        return false, Errors.schema("Cannot set fallback if primary " ..
+                                    "'hash_on' is not set")
       end
+
     else
       if config.hash_on == config.hash_fallback then
         if config.hash_on ~= "header" then
-          return false, Errors.schema("Cannot set fallback and primary hash to the same value")
+          return false, Errors.schema("Cannot set fallback and primary " ..
+                                      "hashes to the same value")
+
         else
-          if config.hash_on_header:upper() == config.hash_fallback_header:upper() then
-            return false, Errors.schema("Cannot set fallback and primary hash to the same value")
+          local upper_hash_on = config.hash_on_header:upper()
+          local upper_hash_fallback = config.hash_fallback_header:upper()
+          if upper_hash_on == upper_hash_fallback then
+            return false, Errors.schema("Cannot set fallback and primary "..
+                                        "hashes to the same value")
           end
         end
       end

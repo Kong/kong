@@ -229,7 +229,7 @@ describe("Admin API: #" .. kong_config.database, function()
             })
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ message = "Cannot set fallback and primary hash to the same value" }, json)
+            assert.same({ message = "Cannot set fallback and primary hashes to the same value" }, json)
 
             -- Invalid header
             res = assert(client:send {
@@ -278,7 +278,7 @@ describe("Admin API: #" .. kong_config.database, function()
             })
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ message = "Cannot set fallback and primary hash to the same value" }, json)
+            assert.same({ message = "Cannot set fallback and primary hashes to the same value" }, json)
 
             -- No headername provided
             res = assert(client:send {

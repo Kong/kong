@@ -239,11 +239,6 @@ local get_balancer = function(target)
 end
 
 
-local header_field_names = {
-  [1] = "hash_on_header",
-  [2] = "hash_fallback_header",
-}
-
 -- Calculates hash-value.
 -- Will only be called once per request, on first try.
 -- @param upstream the upstream enity
@@ -256,8 +251,9 @@ local create_hash = function(upstream)
 
   local ctx = ngx.ctx
   local identifier
+  local header_field_name = "hash_on_header"
 
-  for i = 1,2 do
+  for _ = 1,2 do
 
     if hash_on == "consumer" then
       -- consumer, fallback to credential
@@ -268,7 +264,7 @@ local create_hash = function(upstream)
       identifier = ngx.var.remote_addr
 
     elseif hash_on == "header" then
-      identifier = ngx.req.get_headers()[upstream[header_field_names[i]]]
+      identifier = ngx.req.get_headers()[upstream[header_field_name]]
       if type(identifier) == "table" then
         identifier = table_concat(identifier)
       end
@@ -276,12 +272,13 @@ local create_hash = function(upstream)
 
     if identifier then
       return crc32(identifier)
-    else
-      -- we missed the first, so now try the fallback
-      hash_on = upstream.hash_fallback
-      if hash_on == "none" then
-        return nil
-      end
+    end
+
+    -- we missed the first, so now try the fallback
+    hash_on = upstream.hash_fallback
+    header_field_name = "hash_fallback_header"
+    if hash_on == "none" then
+      return nil
     end
   end
   -- nothing found, leave without a hash  
