@@ -1,9 +1,9 @@
 package = "kong"
-version = "0.11.0.3-0"
+version = "0.11.1-0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Mashape/kong-ee",
-  tag = "0.11.0.2"
+  tag = "0.11.1"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -49,7 +49,8 @@ build = {
 
     ["kong.mlcache"] = "kong/mlcache.lua",
 
-    ["kong.enterprise_edition"] = "kong/enterprise_edition.lua",
+    ["kong.enterprise_edition"] = "kong/enterprise_edition/init.lua",
+    ["kong.enterprise_edition.meta"] = "kong/enterprise_edition/meta.lua",
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",

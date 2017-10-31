@@ -43,7 +43,7 @@ describe("URI encoding", function()
   end)
 
   it("issue #1975 does not double percent-encode proxied args", function()
-    -- https://github.com/Mashape/kong/pull/1975
+    -- https://github.com/Kong/kong/pull/1975
 
     local res = assert(client:send {
       method  = "GET",

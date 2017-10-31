@@ -1,13 +1,12 @@
 local version = setmetatable({
   major = 0,
   minor = 11,
-  patch = 0,
-  enterprise = 3,
-  suffix = "-enterprise-edition"
+  patch = 1,
+  --suffix = ""
 }, {
   __tostring = function(t)
-    return string.format("%d.%d.%d.%d%s", t.major, t.minor, t.patch,
-                         t.enterprise, t.suffix and t.suffix or "")
+    return string.format("%d.%d.%d%s", t.major, t.minor, t.patch,
+                         t.suffix and t.suffix or "")
   end
 })
 
