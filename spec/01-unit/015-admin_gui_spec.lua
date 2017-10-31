@@ -1,7 +1,7 @@
 local helpers        = require "spec.helpers"
 local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local conf_loader    = require "kong.conf_loader"
-local meta           = require "kong.meta"
+local meta           = require "kong.enterprise_edition.meta"
 local ee             = require "kong.enterprise_edition"
 
 local pl_file = require "pl.file"
@@ -48,7 +48,8 @@ describe("prepare_prefix", function()
 
   local mock_prefix  = "servroot"
   local idx_filename = mock_prefix .. "/gui/index.html"
-  local tp_filename  = mock_prefix .. "/gui/index.html.tp-" .. meta._VERSION
+  local tp_filename  = mock_prefix .. "/gui/index.html.tp-" ..
+                       tostring(meta.versions.package)
 
   setup(function()
     helpers.prepare_prefix(mock_prefix)

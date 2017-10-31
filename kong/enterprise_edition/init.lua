@@ -1,6 +1,6 @@
 local cjson   = require "cjson.safe"
 local log     = require "kong.cmd.utils.log"
-local meta    = require "kong.meta"
+local meta    = require "kong.enterprise_edition.meta"
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 
@@ -76,12 +76,15 @@ local function prepare_admin(kong_config)
 
   local idx_filename = ADMIN_GUI_PATH .. "/index.html"
   local tp_filename  = ADMIN_GUI_PATH .. "/index.html.tp-" ..
-                       meta._VERSION
+                       tostring(meta.versions.package)
 
   -- make the template if it doesn't exit
   if not pl_path.isfile(tp_filename) then
     if not pl_file.copy(idx_filename, tp_filename) then
-      log.warn("Could not copy index to template")
+      log.warn("Could not copy index to template. Ensure that the Kong CLI " ..
+               "user has permissions to read the file '" .. idx_filename ..
+               "', and has permissions to write to the directory '" ..
+               ADMIN_GUI_PATH .. "'")
     end
   end
 
@@ -89,7 +92,11 @@ local function prepare_admin(kong_config)
   local index = pl_file.read(tp_filename)
 
   if not index then
-    log.warn("Could not read GUI index template")
+    log.warn("Could not read GUI index template. Ensure that the template " ..
+             "file '" .. tp_filename .. "' exists and that the Kong CLI " ..
+             "user has permissions to read this file, and that the Kong CLI " ..
+             "user has permissions to write to the index file '" ..
+             idx_filename .. "'")
     return
   end
 
