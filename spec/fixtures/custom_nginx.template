@@ -108,7 +108,6 @@ http {
             set $upstream_connection         '';
             set $upstream_scheme             '';
             set $upstream_uri                '';
-            set $upstream_host               '';
             set $upstream_x_forwarded_for    '';
             set $upstream_x_forwarded_proto  '';
             set $upstream_x_forwarded_host   '';

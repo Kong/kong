@@ -19,8 +19,33 @@ for _, strategy in helpers.each_strategy() do
       bp = assert(Blueprints.new({}, db))
     end)
 
+    local service
+
+    it("inserts services", function()
+      local s = bp.services:insert()
+      assert.matches(UUID_PATTERN, s.id)
+      assert.equal("http", s.protocol)
+      assert.equal("number", type(s.created_at))
+      assert.equal("number", type(s.updated_at))
+
+      local s2 = bp.services:insert({ protocol = "https" })
+      assert.matches(UUID_PATTERN, s2.id)
+      assert.equal("https", s2.protocol)
+      assert.equal("number", type(s2.created_at))
+      assert.equal("number", type(s2.updated_at))
+
+      service = s
+    end)
+
     it("inserts routes", function()
-      local r = assert(bp.routes:insert())
+      if not service then
+        assert.fail("could not run: missing Service from previous test")
+      end
+
+      local r = bp.routes:insert({
+        methods = { "GET" },
+        hosts   = { "example.com" },
+      })
       assert.matches(UUID_PATTERN, r.id)
       assert.same({ "http" }, r.protocols)
       assert.same({ "GET" }, r.methods)
@@ -29,27 +54,13 @@ for _, strategy in helpers.each_strategy() do
       assert.equal(0, r.regex_priority)
       assert.not_nil(r.service) -- automatically inserted by blueprint as well
 
-      local r2 = assert(bp.routes:insert({ regex_priority = 200 }))
+      local r2 = bp.routes:insert({ service = service, regex_priority = 200 })
       assert.matches(UUID_PATTERN, r2.id)
       assert.same({ "http" }, r2.protocols)
       assert.same({ "GET" }, r2.methods)
       assert.equal("number", type(r.created_at))
       assert.equal("number", type(r.updated_at))
       assert.equal(200, r2.regex_priority)
-    end)
-
-    it("inserts services", function()
-      local s = assert(bp.services:insert())
-      assert.matches(UUID_PATTERN, s.id)
-      assert.equal("http", s.protocol)
-      assert.equal("number", type(s.created_at))
-      assert.equal("number", type(s.updated_at))
-
-      local s2 = assert(bp.services:insert({ protocol = "https" }))
-      assert.matches(UUID_PATTERN, s2.id)
-      assert.equal("https", s2.protocol)
-      assert.equal("number", type(s2.created_at))
-      assert.equal("number", type(s2.updated_at))
     end)
   end)
 end
