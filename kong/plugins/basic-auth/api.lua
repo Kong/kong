@@ -52,5 +52,34 @@ return {
     DELETE = function(self, dao_factory)
       crud.delete(self.basicauth_credential, dao_factory.basicauth_credentials)
     end
+  },
+  ["/basic-auths/"] = {
+    GET = function(self, dao_factory)
+      crud.paginated_set(self, dao_factory.basicauth_credentials)
+    end
+  },
+  ["/basic-auths/:credential_username_or_id/consumer"] = {
+    before = function(self, dao_factory, helpers)
+      local credentials, err = crud.find_by_id_or_field(
+        dao_factory.basicauth_credentials,
+        nil,
+        self.params.credential_username_or_id,
+        "username"
+      )
+
+      self.params.credential_username_or_id = nil
+      if err then
+        return helpers.yield_error(err)
+      elseif next(credentials) == nil then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      self.params.username_or_id = credentials[1].consumer_id
+      crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
+    end,
+
+    GET = function(self, dao_factory,helpers)
+      return helpers.responses.send_HTTP_OK(self.consumer)
+    end
   }
 }
