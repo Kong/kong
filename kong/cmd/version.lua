@@ -1,4 +1,4 @@
-local meta = require "kong.meta"
+local ee_meta = require "kong.enterprise_edition.meta"
 
 local lapp = [[
 Usage: kong version [OPTIONS]
@@ -11,7 +11,7 @@ Options:
 ]]
 
 local str = [[
-Kong: %s
+Kong Enterprise: %s
 ngx_lua: %s
 nginx: %s
 Lua: %s]]
@@ -19,13 +19,13 @@ Lua: %s]]
 local function execute(args)
   if args.all then
     print(string.format(str,
-      meta._VERSION,
+      tostring(ee_meta.versions.package),
       ngx.config.ngx_lua_version,
       ngx.config.nginx_version,
       jit and jit.version or _VERSION
     ))
   else
-    print(meta._VERSION)
+    print("Kong Enterprise " .. tostring(ee_meta.versions.package))
   end
 end
 
