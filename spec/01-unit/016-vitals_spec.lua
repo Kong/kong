@@ -31,10 +31,6 @@ dao_helpers.for_each_dao(function(kong_conf)
       dao = assert(dao_factory.new(kong_conf))
 
       assert(dao:run_migrations())
-
-      local vitals = assert(kong_vitals.new { dao = dao })
-      vitals.strategy:init()
-
     end)
 
 
@@ -155,7 +151,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
     end)
     describe("init()", function()
-      it("doesn't start table rotation when vitals is off", function()
+      it("doesn't initialize strategy  when vitals is off", function()
         singletons.configuration = { vitals = false }
 
         local vitals = kong_vitals.new { dao = dao }
@@ -167,7 +163,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         assert.spy(s_strategy).was_called(0)
       end)
-      it("does start table rotation when vitals is on", function()
+      it("does initialize strategy when vitals is on", function()
         singletons.configuration = { vitals = true }
 
         local vitals = kong_vitals.new { dao = dao }

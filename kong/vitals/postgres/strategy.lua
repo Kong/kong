@@ -39,7 +39,13 @@ end
 
 
 function _M:init()
-  self.table_rotater:init()
+  local ok, err = self.table_rotater:init()
+
+  if not ok then
+    return nil, "failed to init table rotator: " .. err
+  end
+
+  return true
 end
 
 
