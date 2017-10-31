@@ -286,8 +286,8 @@ do
     for _, key in ipairs(keys) do
       local value = args[key]
       if type(value) == "table" then
-        for i, sub_value in ipairs(value) do
-          query[#query+1] = encode_args_value(("%s[%d]"):format(key, i), sub_value, raw)
+        for sub_key, sub_value in pairs(value) do
+          query[#query+1] = encode_args_value(("%s[%s]"):format(key, tostring(sub_key)), sub_value, raw)
         end
       elseif value == ngx.null then
         query[#query+1] = encode_args_value(key, "")

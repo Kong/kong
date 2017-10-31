@@ -227,12 +227,13 @@ describe("Utils", function()
       end)
       it("should encode complex query args", function()
         local str = utils.encode_args {
-          multiple = {"hello, world"},
+          array = {"hello, world"},
+          hash = { answer = 42 },
           hello = "world",
           falsy = false,
           ["multiple values"] = true
         }
-        assert.equal("falsy=false&hello=world&multiple%5b1%5d=hello%2c%20world&multiple%20values=true", str)
+        assert.equal("array%5b1%5d=hello%2c%20world&falsy=false&hash%5banswer%5d=42&hello=world&multiple%20values=true", str)
       end)
       it("should not interpret the `%` character followed by 2 characters in the [0-9a-f] group as an hexadecimal value", function()
         local str = utils.encode_args {
