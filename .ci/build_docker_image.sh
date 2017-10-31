@@ -7,8 +7,8 @@ fi
 
 docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
 
-git clone https://github.com/Mashape/docker-kong.git
-git clone https://"$GITHUB_TOKEN"@github.com/Mashape/kong-distributions.git
+git clone https://github.com/Kong/docker-kong.git
+git clone https://"$GITHUB_TOKEN"@github.com/Kong/kong-distributions.git
 pushd kong-distributions
 sed -i -e "s/^\([[:blank:]]*\)version.*$/\1version: master/" kong-images/build.yml
 docker pull hutchic/docker-packer

@@ -90,12 +90,14 @@ function _M:init()
     ok, err = self:create_next_table()
 
     if not ok then
-      log(ERR, _log_prefix, "failed to create next table", err)
+      return nil, "failed to create next table: " .. err
     end
 
   else
-    log(ERR, _log_prefix, "failed to start rotater timer (1): ", err)
+    return nil, "failed to start rotater timer (1):" .. err
   end
+
+  return true
 
 end
 

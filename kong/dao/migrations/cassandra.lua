@@ -705,5 +705,19 @@ return {
     down = [[
       DROP TABLE vitals_stats_minutes;
     ]]
-  }
+  },
+  {
+    name = "2017-10-25-114500_vitals_node_meta",
+    up = [[
+      CREATE TABLE IF NOT EXISTS vitals_node_meta(
+        node_id uuid PRIMARY KEY,
+        first_report timestamp,
+        last_report timestamp,
+        hostname text
+      );
+    ]],
+    down = [[
+      DROP TABLE vitals_node_meta;
+    ]]
+  },
 }

@@ -65,24 +65,6 @@ function _M.new(opts)
     node_id        = nil,
   }
 
-  -- set node id (uuid)
-  local ok, err = self.shm:safe_add(NODE_ID_KEY, utils.uuid())
-  if not ok and err ~= "exists" then
-    log(WARN, _log_prefix, "failed to set 'node_id' in shm: " .. err)
-    return nil
-  end
-
-  self.node_id, err = self.shm:get(NODE_ID_KEY)
-  if err then
-    log(WARN, _log_prefix, "failed to set 'node_id' in shm: " .. err)
-    return nil
-  end
-
-  if not self.node_id then
-    log(WARN, _log_prefix, "no 'node_id' set in shm")
-    return nil
-  end
-
   return setmetatable(self, mt)
 end
 
@@ -98,7 +80,27 @@ function _M:init()
   end
 
   log(DEBUG, _log_prefix, "init")
-  self.strategy:init()
+
+  -- set node id (uuid) on shm
+  local ok, err = self.shm:safe_add(NODE_ID_KEY, utils.uuid())
+  if not ok and err ~= "exists" then
+    return nil,  "failed to set 'node_id' in shm: " .. err
+  end
+
+  self.node_id, err = self.shm:get(NODE_ID_KEY)
+  if err then
+    return nil, "failed to get 'node_id' from shm: " .. err
+  end
+
+  if not self.node_id then
+    return nil, "no 'node_id' set in shm"
+  end
+
+  -- init strategy, recording node id and hostname in db
+  local ok, err = self.strategy:init(self.node_id, utils.get_hostname())
+  if not ok then
+    return nil, "failed to init vitals strategy " .. err
+  end
 
   return "ok"
 end

@@ -254,7 +254,11 @@ function Kong.init_worker()
 
 
   -- vitals functions require a timer, so must start in worker context
-  singletons.vitals:init()
+  local ok, err = singletons.vitals:init()
+  if not ok then
+    ngx.log(ngx.CRIT, "could not initialize vitals: ", err)
+    return
+  end
 
 
   singletons.cache          = cache
