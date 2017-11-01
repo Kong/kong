@@ -23,7 +23,7 @@ popd
 sudo mv kong-distributions/output/kong-*.tar.gz docker-kong/alpine/kong.tar.gz
 sed -i -e '3 a COPY kong.tar.gz kong.tar.gz' docker-kong/alpine/Dockerfile
 sed -i -e"/.*wget -O.*/,+1 d" docker-kong/alpine/Dockerfile
-sed -i -e '/apk update.*/a  && apk install gnupg \\' docker-kong/alpine/Dockerfile
+sed -i -e '/apk update.*/a  && apk add gnupg \\' docker-kong/alpine/Dockerfile
 
 
 docker build --no-cache -t mashape/kong-enterprise:"$DOCKER_TAG_NAME" docker-kong/alpine/
