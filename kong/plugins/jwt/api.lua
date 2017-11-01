@@ -53,5 +53,34 @@ return {
     DELETE = function(self, dao_factory)
       crud.delete(self.jwt_secret, dao_factory.jwt_secrets)
     end
+  },
+  ["/jwts/"] = {
+    GET = function(self, dao_factory)
+      crud.paginated_set(self, dao_factory.jwt_secrets)
+    end
+  },
+  ["/jwts/:jwt_key_or_id/consumer"] = {
+    before = function(self, dao_factory, helpers)
+      local credentials, err = crud.find_by_id_or_field(
+        dao_factory.jwt_secrets,
+        nil,
+        self.params.jwt_key_or_id,
+        "key"
+      )
+
+      if err then
+        return helpers.yield_error(err)
+      elseif next(credentials) == nil then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      self.params.jwt_key_or_id = nil
+      self.params.username_or_id = credentials[1].consumer_id
+      crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
+    end,
+
+    GET = function(self, dao_factory,helpers)
+      return helpers.responses.send_HTTP_OK(self.consumer)
+    end
   }
 }
