@@ -42,6 +42,11 @@ local function generate_token(conf, api, credential, authenticated_userid, scope
     refresh_token = utils.random_string()
   end
 
+  local refresh_token_ttl
+  if conf.refresh_token_ttl and conf.refresh_token_ttl > 0 then
+    refresh_token_ttl = conf.refresh_token_ttl
+  end
+
   local api_id
   if not conf.global_credentials then
     api_id = api.id
@@ -53,8 +58,8 @@ local function generate_token(conf, api, credential, authenticated_userid, scope
     expires_in = token_expiration,
     refresh_token = refresh_token,
     scope = scope
-  }, {ttl = token_expiration > 0 and 1209600 or nil}) -- Access tokens (and their associated refresh token) are being
-                                                      -- permanently deleted after 14 days (1209600 seconds)
+  }, {ttl = token_expiration > 0 and refresh_token_ttl or nil}) -- Access tokens (and their associated refresh token) are being
+                                                                -- permanently deleted after 'refresh_token_ttl' seconds
 
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)

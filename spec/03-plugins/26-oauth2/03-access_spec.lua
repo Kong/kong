@@ -1,6 +1,8 @@
 local cjson = require "cjson"
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
+local fmt = string.format
+local dao_helpers = require "spec.02-integration.03-dao.helpers"
 
 local function provision_code(host, extra_headers, client_id)
   local request_client = helpers.proxy_ssl_client()
@@ -2517,6 +2519,115 @@ describe("Plugin: oauth2 (access)", function()
       assert.request(res).has.header("x-anonymous-consumer")
       local id = assert.request(res).has.header("x-consumer-id")
       assert.equal(id, anonymous.id)
+    end)
+
+  end)
+
+end)
+
+dao_helpers.for_each_dao(function(kong_config)
+  describe("Plugin: oauth2 (ttl) with #"..kong_config.database, function()
+
+    local client
+
+    setup(function()
+
+      local api11 = assert(helpers.dao.apis:insert {
+        name = "api-11",
+        hosts = { "oauth2_11.com" },
+        upstream_url = "http://mockbin.com"
+      })
+
+      assert(helpers.dao.plugins:insert {
+        name = "oauth2",
+        api_id = api11.id,
+        config = {
+          enable_authorization_code = true,
+          mandatory_scope = false,
+          provision_key = "provision123",
+          anonymous = "",
+          global_credentials = false,
+          refresh_token_ttl = 2
+        }
+      })
+
+      local api12 = assert(helpers.dao.apis:insert {
+        name = "api-12",
+        hosts = { "oauth2_12.com" },
+        upstream_url = "http://mockbin.com"
+      })
+
+      assert(helpers.dao.plugins:insert {
+        name = "oauth2",
+        api_id = api12.id,
+        config = {
+          enable_authorization_code = true,
+          mandatory_scope = false,
+          provision_key = "provision123",
+          anonymous = "",
+          global_credentials = false,
+          refresh_token_ttl = 0
+        }
+      })
+
+      local consumer = assert(helpers.dao.consumers:insert {
+        username = "bob"
+      })
+      assert(helpers.dao.oauth2_credentials:insert {
+        client_id = "clientid123",
+        client_secret = "secret123",
+        redirect_uri = "http://google.com/kong",
+        name = "testapp",
+        consumer_id = consumer.id
+      })
+      assert(helpers.start_kong())
+      client = helpers.proxy_client()
+    end)
+
+    teardown(function()
+      if client then client:close() end
+      helpers.stop_kong()
+    end)
+
+    local function assert_ttls_records_for_token(uuid, count)
+      local DB = require "kong.dao.db.postgres"
+      local _db = DB.new(kong_config)
+      local query = fmt("SELECT COUNT(*) FROM ttls where table_name='oauth2_tokens' AND primary_uuid_value = '%s'", tostring(uuid))
+      local result, error = _db:query(query)
+      assert.falsy(error)
+      assert.truthy(result[1].count == count)
+    end
+
+    describe("refresh token", function()
+      it("is deleted after defined TTL", function()
+        local token = provision_token("oauth2_11.com")
+        local token_entity = helpers.dao.oauth2_tokens:find_all { access_token = token.access_token }
+        assert.equal(1, #token_entity)
+
+        if kong_config.database == "postgres" then
+          assert_ttls_records_for_token(token_entity[1].id, 1)
+        end
+
+        ngx.sleep(3)
+
+        token_entity = helpers.dao.oauth2_tokens:find_all { access_token = token.access_token }
+        assert.equal(0, #token_entity)
+      end)
+
+      it("is not deleted when when TTL is 0 == never", function()
+        local token = provision_token("oauth2_12.com")
+        local token_entity = helpers.dao.oauth2_tokens:find_all { access_token = token.access_token }
+        assert.equal(1, #token_entity)
+
+        if kong_config.database == "postgres" then
+          assert_ttls_records_for_token(token_entity[1].id, 0)
+        end
+
+        ngx.sleep(3)
+
+        token_entity = helpers.dao.oauth2_tokens:find_all { access_token = token.access_token }
+        assert.equal(1, #token_entity)
+      end)
     end)
 
   end)
