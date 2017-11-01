@@ -627,7 +627,17 @@ describe("Entities Schemas", function()
     local dao_stub = {
       find_all = function()
         return {}
-      end
+      end,
+      db = {
+        new_db = {
+          services = {
+            select = function() return true end,
+          },
+          routes = {
+            select = function() return true end,
+          },
+        }
+      }
     }
 
     it("has a cache_key", function()
@@ -641,12 +651,12 @@ describe("Entities Schemas", function()
     end)
     it("should validate a plugin configuration's `config` field", function()
       -- Success
-      local plugin = {name = "key-auth", api_id = "stub", config = {key_names = {"x-kong-key"}}}
+      local plugin = {name = "key-auth", service_id = "stub", config = {key_names = {"x-kong-key"}}}
       local valid = validate_entity(plugin, plugins_schema, {dao = dao_stub})
       assert.is_true(valid)
 
       -- Failure
-      plugin = {name = "rate-limiting", api_id = "stub", config = { second = "hello" }}
+      plugin = {name = "rate-limiting", service_id = "stub", config = { second = "hello" }}
 
       local valid, errors = validate_entity(plugin, plugins_schema, {dao = dao_stub})
       assert.is_false(valid)
@@ -654,7 +664,7 @@ describe("Entities Schemas", function()
     end)
     it("should have an empty config if none is specified and if the config schema does not have default", function()
       -- Insert key-auth, whose config has some default values that should be set
-      local plugin = {name = "key-auth", api_id = "stub"}
+      local plugin = {name = "key-auth", service_id = "stub"}
       local valid = validate_entity(plugin, plugins_schema, {dao = dao_stub})
       assert.same({
           key_names = {"apikey"},
@@ -667,7 +677,7 @@ describe("Entities Schemas", function()
     end)
     it("should be valid if no value is specified for a subfield and if the config schema has default as empty array", function()
       -- Insert response-transformer, whose default config has no default values, and should be empty
-      local plugin2 = {name = "response-transformer", api_id = "stub"}
+      local plugin2 = {name = "response-transformer", service_id = "stub"}
       local valid = validate_entity(plugin2, plugins_schema, {dao = dao_stub})
       assert.same({
         remove = {
@@ -703,11 +713,11 @@ describe("Entities Schemas", function()
           return stub_config_schema
         end
 
-        local valid, _, err = validate_entity({name = "stub", api_id = "0000", consumer_id = "0000", config = {string = "foo"}}, plugins_schema)
+        local valid, _, err = validate_entity({name = "stub", service_id = "0000", consumer_id = "0000", config = {string = "foo"}}, plugins_schema, {dao = dao_stub})
         assert.is_false(valid)
         assert.equal("No consumer can be configured for that plugin", err.message)
 
-        valid, err = validate_entity({name = "stub", api_id = "0000", config = {string = "foo"}}, plugins_schema, {dao = dao_stub})
+        valid, err = validate_entity({name = "stub", service_id = "0000", config = {string = "foo"}}, plugins_schema, {dao = dao_stub})
         assert.is_true(valid)
         assert.falsy(err)
       end)

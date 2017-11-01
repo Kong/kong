@@ -45,10 +45,28 @@ function _M.new(kong_config, strategy, schemas, errors)
 
     if Strategy.CUSTOM_STRATEGIES then
       local custom_strategy = Strategy.CUSTOM_STRATEGIES[schema.name]
+
       if custom_strategy then
-        for name, method in pairs(custom_strategy) do
-          strategy[name] = method
-        end
+        local parent_mt = getmetatable(strategy)
+        local mt = {
+          __index = function(t, k)
+            -- explicit parent
+            if k == "super" then
+              return parent_mt
+            end
+
+            -- override
+            local f = custom_strategy[k]
+            if f then
+              return f
+            end
+
+            -- parent fallback
+            return parent_mt[k]
+          end
+        }
+
+        setmetatable(strategy, mt)
       end
     end
 

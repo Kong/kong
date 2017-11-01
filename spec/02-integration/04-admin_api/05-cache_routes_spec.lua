@@ -1,24 +1,34 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
-describe("Admin API /cache", function()
+for _, strategy in helpers.each_strategy() do
+describe("Admin API /cache [#" .. strategy .. "]", function()
   local proxy_client
   local admin_client
+  local db
+  local dao
+  local bp
 
 
   setup(function()
-    helpers.run_migrations()
-    local api = assert(helpers.dao.apis:insert {
-      name         = "api-cache",
-      hosts        = { "cache.com" },
-      upstream_url = helpers.mock_upstream_url,
+    db, dao, bp = helpers.get_db_utils(strategy)
+    helpers.run_migrations(dao)
+    assert(db:truncate())
+    dao:truncate_tables()
+
+    local service = assert(bp.services:insert())
+    assert(bp.routes:insert {
+      hosts   = { "cache.com" },
+      service = service,
     })
-    assert(helpers.dao.plugins:insert {
-      api_id = api.id,
-      name   = "cache",
+
+    assert(bp.plugins:insert {
+      name       = "cache",
+      service_id = service.id,
     })
 
     assert(helpers.start_kong({
+      database   = strategy,
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
     proxy_client = helpers.proxy_client()
@@ -162,3 +172,4 @@ describe("Admin API /cache", function()
     end)
   end)
 end)
+end

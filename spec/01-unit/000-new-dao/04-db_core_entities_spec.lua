@@ -3,6 +3,7 @@ local Errors  = require "kong.db.errors"
 local utils   = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
+local Blueprints = require "spec.fixtures.blueprints"
 
 
 local a_blank_uuid = "00000000-0000-0000-0000-000000000000"
@@ -10,7 +11,7 @@ local a_blank_uuid = "00000000-0000-0000-0000-000000000000"
 
 for _, strategy in helpers.each_strategy() do
   describe("kong.db [#" .. strategy .. "]", function()
-    local db
+    local db, bp
 
     setup(function()
       do
@@ -29,6 +30,7 @@ for _, strategy in helpers.each_strategy() do
       db = assert(DB.new(helpers.test_conf, strategy))
       assert(db:init_connector())
       assert(db:truncate())
+      bp = Blueprints.new({}, db)
     end)
 
     --[[
@@ -61,7 +63,7 @@ for _, strategy in helpers.each_strategy() do
             strategy = strategy,
             message  = ngx.null,
             fields   = {
-              protocol    = "required field missing",
+              protocols   = "required field missing",
               service     = "required field missing",
               ["@entity"] = {
                 at_least_one_of = "at least one of 'methods', 'hosts' or 'paths' must be non-empty",
@@ -77,7 +79,7 @@ for _, strategy in helpers.each_strategy() do
           }
 
           local route, err, err_t = db.routes:insert({
-            protocol = "http",
+            protocols = { "http" },
             hosts = { "example.com" },
             service = service,
           })
@@ -106,7 +108,7 @@ for _, strategy in helpers.each_strategy() do
           }
 
           local route, err, err_t = db.routes:insert({
-            protocol = "http",
+            protocols = { "http" },
             hosts = { "example.com" },
             service = service,
           })
@@ -129,7 +131,7 @@ for _, strategy in helpers.each_strategy() do
 
         it("creates a Route and injects defaults", function()
           local route, err, err_t = db.routes:insert({
-            protocol = "http",
+            protocols = { "http" },
             hosts = { "example.com" },
             service = assert(db.services:insert({ protocol = "http" })),
           })
@@ -145,7 +147,7 @@ for _, strategy in helpers.each_strategy() do
             id              = route.id,
             created_at      = route.created_at,
             updated_at      = route.updated_at,
-            protocol        = "http",
+            protocols       = { "http" },
             methods         = ngx.null,
             hosts           = { "example.com" },
             paths           = ngx.null,
@@ -158,12 +160,12 @@ for _, strategy in helpers.each_strategy() do
 
         it("creates a Route with user-specified values", function()
           local route, err, err_t = db.routes:insert({
-            protocol        = "http",
+            protocols       = { "http" },
             hosts           = { "example.com" },
             paths           = { "/example" },
             regex_priority  = 3,
             strip_path      = true,
-            service         = assert(db.services:insert({ protocol = "http" })),
+            service         = bp.services:insert(),
           })
           assert.is_nil(err_t)
           assert.is_nil(err)
@@ -177,7 +179,7 @@ for _, strategy in helpers.each_strategy() do
             id              = route.id,
             created_at      = route.created_at,
             updated_at      = route.updated_at,
-            protocol        = "http",
+            protocols       = { "http" },
             methods         = ngx.null,
             hosts           = { "example.com" },
             paths           = { "/example" },
@@ -192,9 +194,9 @@ for _, strategy in helpers.each_strategy() do
           local now = ngx.time()
 
           local route = assert(db.routes:insert({
-            protocol = "http",
+            protocols = { "http" },
             hosts = { "example.com" },
-            service = assert(db.services:insert({ protocol = "http" })),
+            service = bp.services:insert(),
           }))
 
           local route_in_db = assert(db.routes:select({ id = route.id }))
@@ -204,9 +206,9 @@ for _, strategy in helpers.each_strategy() do
 
         it("created_at/updated_at cannot be overriden", function()
           local route, err, err_t = db.routes:insert({
-            protocol   = "http",
+            protocols  = { "http" },
             hosts      = { "example.com" },
-            service    = assert(db.services:insert({ protocol = "http" })),
+            service    = bp.services:insert(),
             created_at = 0,
             updated_at = 0,
           })
@@ -243,12 +245,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("returns an existing Route", function()
-          local route_inserted = assert(db.routes:insert({
-            protocol = "http",
-            hosts    = { "example.com" },
-            service  = assert(db.services:insert({ protocol = "http" })),
-          }))
-
+          local route_inserted = bp.routes:insert()
           local route, err, err_t = db.routes:select({ id = route_inserted.id })
           assert.is_nil(err_t)
           assert.is_nil(err)
@@ -267,7 +264,7 @@ for _, strategy in helpers.each_strategy() do
         it("errors on invalid values", function()
           local u = utils.uuid()
           local new_route, err, err_t = db.routes:update({ id = u }, {
-            protocol = 123
+            protocols = { 123 },
           })
           assert.is_nil(new_route)
           assert.equal("schema violation", err)
@@ -277,7 +274,7 @@ for _, strategy in helpers.each_strategy() do
             message     = ngx.null,
             strategy    = strategy,
             fields      = {
-              protocol  = "expected a string",
+              protocols  = "expected a string",
             }
           }, err_t)
         end)
@@ -286,7 +283,7 @@ for _, strategy in helpers.each_strategy() do
         it("returns not found error", function()
           local u = utils.uuid()
           local new_route, err, err_t = db.routes:update({ id = u }, {
-            protocol = "https"
+            protocols = { "https" }
           })
           assert.is_nil(new_route)
           assert.equal("not found", err)
@@ -304,16 +301,12 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("updates an existing Route", function()
-          local route = assert(db.routes:insert({
-            protocol = "http",
-            hosts    = { "example.com" },
-            service  = assert(db.services:insert({ protocol = "http" })),
-          }))
+          local route = bp.routes:insert()
 
           ngx.sleep(1)
 
           local new_route, err, err_t = db.routes:update({ id = route.id }, {
-            protocol = "https",
+            protocols = { "https" },
             regex_priority = 5,
           })
           assert.is_nil(err_t)
@@ -322,7 +315,7 @@ for _, strategy in helpers.each_strategy() do
             id              = route.id,
             created_at      = route.created_at,
             updated_at      = new_route.updated_at,
-            protocol        = "https",
+            protocols       = { "https" },
             methods         = route.methods,
             hosts           = route.hosts,
             paths           = route.paths,
@@ -338,11 +331,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         pending("created_at/updated_at cannot be overriden", function()
-          local route = assert(db.routes:insert({
-            protocol = "http",
-            hosts    = { "example.com" },
-            service  = assert(db.services:insert({ protocol = "http" })),
-          }))
+          local route = bp.routes:insert()
 
           local new_route, err, err_t = db.routes:update({ id = route.id }, {
             protocol = "https",
@@ -356,12 +345,10 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("fails trying to unset an interdependent field by itself", function()
-          local route = assert(db.routes:insert({
-            protocol = "http",
-            hosts    = { "example.com" },
-            methods  = { "GET" },
-            service  = assert(db.services:insert({ protocol = "http" })),
-          }))
+          local route = bp.routes:insert({
+            hosts   = { "example.com" },
+            methods = { "GET" },
+          })
 
           local new_route, err, err_t = db.routes:update({ id = route.id }, {
             methods = ngx.null
@@ -384,12 +371,11 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("unsets a non-required field with ngx.null", function()
-          local route = assert(db.routes:insert({
-            protocol = "http",
-            hosts    = { "example.com" },
-            methods  = { "GET" },
-            service  = assert(db.services:insert({ protocol = "http" })),
-          }))
+          local route = bp.routes:insert({
+            hosts   = { "example.com" },
+            methods = { "GET" },
+            paths   = ngx.null,
+          })
 
           local new_route, err, err_t = db.routes:update({ id = route.id }, {
             hosts   = { "example.com" },
@@ -405,12 +391,10 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("errors when unsetting a required field with ngx.null", function()
-          local route = assert(db.routes:insert({
-            protocol = "http",
-            hosts    = { "example.com" },
-            methods  = { "GET" },
-            service  = assert(db.services:insert({ protocol = "http" })),
-          }))
+          local route = bp.routes:insert({
+            hosts   = { "example.com" },
+            methods = { "GET" },
+          })
 
           local new_route, _, err_t = db.routes:update({ id = route.id }, {
             hosts   = ngx.null,
@@ -452,11 +436,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("deletes an existing Route", function()
-          local route = assert(db.routes:insert({
-            protocol = "http",
-            hosts = { "example.com" },
-            service = assert(db.services:insert({ protocol = "http" })),
-          }))
+          local route = bp.routes:insert()
 
           local ok, err, err_t = db.routes:delete({
             id = route.id
@@ -527,13 +507,7 @@ for _, strategy in helpers.each_strategy() do
             assert(db:truncate())
 
             for i = 1, 2000 do
-              assert(db.routes:insert({
-                protocol = "http",
-                hosts    = {
-                  "example-" .. i .. ".com"
-                },
-                service = assert(db.services:insert({ protocol = "http" })),
-              }))
+              bp.routes:insert({ hosts = { "example-" .. i .. ".com" } })
             end
           end)
 
@@ -559,13 +533,7 @@ for _, strategy in helpers.each_strategy() do
             assert(db:truncate())
 
             for i = 1, 10 do
-              assert(db.routes:insert({
-                protocol = "http",
-                hosts    = {
-                  "example-" .. i .. ".com"
-                },
-                service = assert(db.services:insert({ protocol = "http" })),
-              }))
+              bp.routes:insert({ hosts = { "example-" .. i .. ".com" } })
             end
           end)
 
@@ -702,13 +670,7 @@ for _, strategy in helpers.each_strategy() do
           assert(db:truncate())
 
           for i = 1, 100 do
-            assert(db.routes:insert({
-              protocol = "http",
-              hosts    = {
-                "example-" .. i .. ".com"
-              },
-              service = assert(db.services:insert({ protocol = "http" })),
-            }))
+            bp.routes:insert({ hosts = { "example-" .. i .. ".com" } })
           end
         end)
 
@@ -819,9 +781,11 @@ for _, strategy in helpers.each_strategy() do
             protocol        = "http",
             host            = ngx.null,
             port            = 80,
+            path            = ngx.null,
             connect_timeout = 60000,
             write_timeout   = 60000,
             read_timeout    = 60000,
+            retries         = 5,
           }, service)
         end)
 
@@ -831,9 +795,11 @@ for _, strategy in helpers.each_strategy() do
             protocol        = "http",
             host            = "example.com",
             port            = 443,
+            path            = "/foo",
             connect_timeout = 10000,
             write_timeout   = 10000,
             read_timeout    = 10000,
+            retries         = 6,
           })
           assert.is_nil(err_t)
           assert.is_nil(err)
@@ -851,9 +817,11 @@ for _, strategy in helpers.each_strategy() do
             protocol        = "http",
             host            = "example.com",
             port            = 443,
+            path            = "/foo",
             connect_timeout = 10000,
             write_timeout   = 10000,
             read_timeout    = 10000,
+            retries         = 6,
           }, service)
         end)
 
@@ -1024,9 +992,9 @@ for _, strategy in helpers.each_strategy() do
         }))
 
         local route, err, err_t = db.routes:insert({
-          protocol = "http",
-          hosts    = { "example.com" },
-          service  = service,
+          protocols = { "http" },
+          hosts     = { "example.com" },
+          service   = service,
         })
         assert.is_nil(err_t)
         assert.is_nil(err)
@@ -1034,7 +1002,7 @@ for _, strategy in helpers.each_strategy() do
           id              = route.id,
           created_at      = route.created_at,
           updated_at      = route.updated_at,
-          protocol        = "http",
+          protocols       = { "http" },
           methods         = ngx.null,
           hosts           = { "example.com" },
           paths           = ngx.null,
@@ -1052,7 +1020,10 @@ for _, strategy in helpers.each_strategy() do
         assert.same(route, route_in_db)
       end)
 
-      it(":for_service() lists no Routes associated to an inexsistent Service", function()
+      local t = strategy == "postgres" and it or pending
+
+      t(":for_service() lists no Routes associated to an inexsistent Service", function()
+        -- TODO: implement :for_service() for Cassandra strategy
         local rows, err, err_t = db.routes:for_service({
           id = a_blank_uuid,
         })
@@ -1062,27 +1033,11 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(err_t)
       end)
 
-      it(":for_service() lists Routes associated to a Service", function()
-        local service = assert(db.services:insert({
-          protocol = "http",
-          host     = "service.com"
-        }))
-
-        local route1, err, err_t = db.routes:insert({
-          protocol = "http",
-          hosts    = { "example.com" },
-          service  = service,
-        })
-        assert.is_nil(err)
-        assert.is_nil(err_t)
-
-        local _, err, err_t = db.routes:insert({
-          protocol = "http",
-          hosts    = { "example.com" },
-          service  = assert(db.services:insert({ protocol = "http" })),
-        })
-        assert.is_nil(err)
-        assert.is_nil(err_t)
+      t(":for_service() lists Routes associated to a Service", function()
+        -- TODO: implement :for_service() for Cassandra strategy
+        local service = bp.services:insert()
+        local route1 = bp.routes:insert({ service = service })
+        local route2 = bp.routes:insert()
 
         local rows, err, err_t = db.routes:for_service({
           id = service.id,
@@ -1094,21 +1049,10 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it(":update() attaches a Route to an existing Service", function()
-        local service1 = assert(db.services:insert({
-          protocol = "http",
-          host     = "service1.com"
-        }))
+        local service1 = bp.services:insert({ host = "service1.com" })
+        local service2 = bp.services:insert({ host = "service2.com" })
 
-        local service2 = assert(db.services:insert({
-          protocol = "http",
-          host     = "service2.com"
-        }))
-
-        local route = assert(db.routes:insert({
-          protocol = "http",
-          hosts    = { "example.com" },
-          service  = service1,
-        }))
+        local route = bp.routes:insert({ service = service1 })
 
         local new_route, err, err_t = db.routes:update({ id = route.id }, {
           service = service2
@@ -1123,11 +1067,7 @@ for _, strategy in helpers.each_strategy() do
           id = utils.uuid()
         }
 
-        local route = assert(db.routes:insert({
-          protocol = "http",
-          hosts    = { "example.com" },
-          service  = assert(db.services:insert({ protocol = "http" })),
-        }))
+        local route = bp.routes:insert()
 
         local new_route, err, err_t = db.routes:update({ id = route.id }, {
           service = service
@@ -1148,16 +1088,9 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it(":delete() a Service is not allowed if a Route is associated to it", function()
-        local service = assert(db.services:insert({
-          protocol = "http",
-          host     = "service.com"
-        }))
+        local service = bp.services:insert()
 
-        assert(db.routes:insert({
-          protocol = "http",
-          hosts    = { "example.com" },
-          service  = service,
-        }))
+        bp.routes:insert({ service = service })
 
         local ok, err, err_t = db.services:delete({ id = service.id })
         assert.is_nil(ok)
@@ -1174,16 +1107,9 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it(":delete() a Route without deleting the associated Service", function()
-        local service = assert(db.services:insert({
-          protocol = "http",
-          host     = "service.com"
-        }))
+        local service = bp.services:insert()
 
-        local route = assert(db.routes:insert({
-          protocol = "http",
-          hosts    = { "example.com" },
-          service  = service,
-        }))
+        local route = bp.routes:insert({ service = service })
 
         local ok, err, err_t = db.routes:delete({ id = route.id })
         assert.is_nil(err_t)

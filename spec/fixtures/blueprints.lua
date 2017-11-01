@@ -75,16 +75,6 @@ local _M = {}
 function _M.new(dao, db)
   local res = {}
 
-  local api_name_seq = new_sequence("api-%d")
-  res.apis = new_blueprint(dao.apis, function()
-    return {
-      name                     = api_name_seq:next(),
-      upstream_url             = "http://127.0.0.1:15555", -- helpers.mock_upstream_url
-    }
-  end)
-
-
-
   local ssl_name_seq = new_sequence("ssl-server-%d")
   res.ssl_servers_names = new_blueprint(dao.ssl_servers_names, function()
     return {
@@ -103,7 +93,7 @@ function _M.new(dao, db)
   res.upstreams = new_blueprint(dao.upstreams, function()
     local slots = 100
     local orderlist = {}
-    for i=1,slots do orderlist[i] = i end
+    for i = 1, slots do orderlist[i] = i end
 
     return {
       name      = upstream_name_seq:next(),

@@ -375,6 +375,8 @@ return {
     name = "2017-03-27-132300_anonymous",
     -- this should have been in 0.10, but instead goes into 0.10.1 as a bugfix
     up = function(_, _, dao)
+      local cjson = require "cjson"
+
       for _, name in ipairs({
         "basic-auth",
         "hmac-auth",
@@ -383,15 +385,24 @@ return {
         "ldap-auth",
         "oauth2",
       }) do
-        local rows, err = dao.plugins:find_all( { name = name } )
+        local q = string.format("SELECT id, config FROM plugins WHERE name = '%s'",
+                                name)
+
+        local rows, err = dao.db:query(q)
         if err then
           return err
         end
 
         for _, row in ipairs(rows) do
-          if not row.config.anonymous then
-            row.config.anonymous = ""
-            local _, err = dao.plugins:update(row, { id = row.id })
+          local config = cjson.decode(row.config)
+
+          if not config.anonymous then
+            config.anonymous = ""
+
+            local q = string.format("UPDATE plugins SET config = '%s' WHERE id = '%s'",
+                                    cjson.encode(config), row.id)
+
+            local _, err = dao.db:query(q)
             if err then
               return err
             end
@@ -659,6 +670,26 @@ return {
                     ON "routes" ("service_id");
         END IF;
       END$$;
+    ]],
+    down = nil
+  },
+  {
+    name = "2017-10-25-180700_plugins_routes_and_services",
+    up = [[
+      ALTER TABLE plugins ADD route_id uuid REFERENCES routes(id) ON DELETE CASCADE;
+      ALTER TABLE plugins ADD service_id uuid REFERENCES services(id) ON DELETE CASCADE;
+
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('plugins_route_id_idx')) IS NULL THEN
+          CREATE INDEX plugins_route_id_idx ON plugins(route_id);
+        END IF;
+        IF (SELECT to_regclass('plugins_service_id_idx')) IS NULL THEN
+          CREATE INDEX plugins_service_id_idx ON plugins(service_id);
+        END IF;
+      END$$;
+
+      ALTER TABLE plugins DROP COLUMN IF EXISTS api_id;
     ]],
     down = nil
   },

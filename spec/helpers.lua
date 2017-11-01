@@ -92,8 +92,8 @@ end
 -- Conf and DAO
 ---------------
 local conf = assert(conf_loader(TEST_CONF_PATH))
-local dao = assert(DAOFactory.new(conf))
 local db = assert(DB.new(conf))
+local dao = assert(DAOFactory.new(conf, db))
 local blueprints = assert(Blueprints.new(dao, db))
 -- make sure migrations are up-to-date
 
@@ -127,6 +127,23 @@ do
 
       return iter, strategies, 0
     end
+end
+
+local function get_db_utils(strategy)
+  -- new DAO (DB module)
+  local db = assert(DB.new(conf, strategy))
+  assert(db:init_connector())
+
+  -- legacy DAO
+  local database = conf.database
+  conf.database = strategy
+  local dao = assert(DAOFactory.new(conf, db))
+  conf.database = database
+
+  -- blueprints
+  local bp = assert(Blueprints.new(dao, db))
+
+  return db, dao, bp
 end
 
 -----------------
@@ -1055,6 +1072,7 @@ return {
   dao = dao,
   db = db,
   blueprints = blueprints,
+  get_db_utils = get_db_utils,
   bin_path = BIN_PATH,
   test_conf = conf,
   test_conf_path = TEST_CONF_PATH,

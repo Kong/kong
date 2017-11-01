@@ -593,4 +593,18 @@ return {
     ]],
     down = nil
   },
+  {
+    name = "2017-10-25-180700_plugins_routes_and_services",
+    up = [[
+      ALTER TABLE plugins ADD route_id uuid;
+      ALTER TABLE plugins ADD service_id uuid;
+
+      CREATE INDEX IF NOT EXISTS ON plugins(route_id);
+      CREATE INDEX IF NOT EXISTS ON plugins(service_id);
+
+      DROP INDEX plugins_api_id_idx;
+      ALTER TABLE plugins DROP api_id;
+    ]],
+    down = nil
+  },
 }

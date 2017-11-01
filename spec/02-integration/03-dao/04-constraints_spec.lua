@@ -1,83 +1,79 @@
-local helpers = require "spec.02-integration.03-dao.helpers"
+local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local Factory = require "kong.dao.factory"
 local utils = require "kong.tools.utils"
+local DB = require "kong.db"
 
-local api_tbl = {
-  name         = "example",
-  hosts        = { "example.com" },
-  uris         = { "/example" },
-  strip_uri    = true,
-  upstream_url = "https://example.com",
-}
-
-local plugin_tbl = {
-  name = "key-auth"
-}
-
-helpers.for_each_dao(function(kong_config)
+dao_helpers.for_each_dao(function(kong_config)
   describe("Model (Constraints) with DB: #" .. kong_config.database, function()
-    local plugin_fixture, api_fixture
-    local factory, apis, plugins
-    setup(function()
-      factory = assert(Factory.new(kong_config))
-      apis = factory.apis
-      plugins = factory.plugins
-      assert(factory:run_migrations())
+    local service_fixture
+    local plugin_fixture
+    local dao
+    local db
 
-      factory:truncate_tables()
+    setup(function()
+      db = assert(DB.new(kong_config, kong_config.database))
+      assert(db:init_connector())
+
+      dao = assert(Factory.new(kong_config, db))
+      assert(dao:run_migrations())
     end)
+
     before_each(function()
-      plugin_fixture = utils.shallow_copy(plugin_tbl)
-      local api, err = apis:insert(api_tbl)
-      assert.falsy(err)
-      api_fixture = api
-    end)
-    after_each(function()
-      factory:truncate_tables()
+      dao:truncate_tables()
+      assert(db:truncate())
+
+      local service, _, err_t = db.services:insert {
+        protocol = "http",
+        host = "example.com",
+      }
+      assert.is_nil(err_t)
+
+      service_fixture = service
+
+      plugin_fixture = {
+        name = "key-auth",
+        service_id = service.id,
+      }
     end)
 
     -- Check behavior just in case
     describe("plugins insert()", function()
       it("insert a valid plugin", function()
-        plugin_fixture.api_id = api_fixture.id
-
-        local plugin, err = plugins:insert(plugin_fixture)
+        local plugin, err = dao.plugins:insert(plugin_fixture)
         assert.falsy(err)
         assert.is_table(plugin)
-        assert.equal(api_fixture.id, plugin.api_id)
+        assert.equal(service_fixture.id, plugin.service_id)
         assert.same({
-            run_on_preflight = true,
-            hide_credentials = false,
-            key_names = {"apikey"},
-            anonymous = "",
-            key_in_body = false,
-          }, plugin.config)
+          run_on_preflight = true,
+          hide_credentials = false,
+          key_names = {"apikey"},
+          anonymous = "",
+          key_in_body = false,
+        }, plugin.config)
       end)
       it("insert a valid plugin bis", function()
-        plugin_fixture.api_id = api_fixture.id
-        plugin_fixture.config = {key_names = {"api-key"}}
+        plugin_fixture.config = { key_names = { "api-key" } }
 
-        local plugin, err = plugins:insert(plugin_fixture)
+        local plugin, err = dao.plugins:insert(plugin_fixture)
         assert.falsy(err)
         assert.is_table(plugin)
-        assert.equal(api_fixture.id, plugin.api_id)
+        assert.equal(service_fixture.id, plugin.service_id)
         assert.same({
-            run_on_preflight = true,
-            hide_credentials = false,
-            key_names = {"api-key"},
-            anonymous = "",
-            key_in_body = false,
-          }, plugin.config)
+          run_on_preflight = true,
+          hide_credentials = false,
+          key_names = {"api-key"},
+          anonymous = "",
+          key_in_body = false,
+        }, plugin.config)
       end)
-      describe("unique per API/Consumer", function()
-        it("API/Plugin", function()
-          plugin_fixture.api_id = api_fixture.id
 
-          local plugin, err = plugins:insert(plugin_fixture)
+      describe("uniqueness", function()
+        it("per Service", function()
+          local plugin, err = dao.plugins:insert(plugin_fixture)
           assert.falsy(err)
           assert.truthy(plugin)
 
-          plugin, err = plugins:insert(plugin_fixture)
+          plugin, err = dao.plugins:insert(plugin_fixture)
           assert.truthy(err)
           assert.falsy(plugin)
           assert.True(err.unique)
@@ -85,8 +81,9 @@ helpers.for_each_dao(function(kong_config)
                          "name=already exists with value 'key-auth'",
                          err, nil, true)
         end)
-        it("API/Consumer/Plugin", function()
-          local consumer, err = factory.consumers:insert {
+
+        it("Service/Consumer", function()
+          local consumer, err = dao.consumers:insert {
             username = "bob"
           }
           assert.falsy(err)
@@ -94,17 +91,117 @@ helpers.for_each_dao(function(kong_config)
 
           local plugin_tbl = {
             name = "rate-limiting",
-            api_id = api_fixture.id,
+            service_id = service_fixture.id,
             consumer_id = consumer.id,
-            config = {minute = 1}
+            config = { minute = 1 }
           }
 
-          local plugin, err = plugins:insert(plugin_tbl)
+          local plugin, err = dao.plugins:insert(plugin_tbl)
           assert.falsy(err)
           assert.truthy(plugin)
           assert.equal(consumer.id, plugin.consumer_id)
 
-          plugin, err = plugins:insert(plugin_tbl)
+          plugin, err = dao.plugins:insert(plugin_tbl)
+          assert.truthy(err)
+          assert.falsy(plugin)
+          assert.True(err.unique)
+          assert.matches("[" .. kong_config.database .. " error] " ..
+                         "name=already exists with value 'rate-limiting'",
+                         err, nil, true)
+        end)
+
+        it("Service/Route", function()
+          local route, _, err_t = db.routes:insert {
+            protocol = "http",
+            hosts = { "example.com" },
+          }
+          assert.is_nil(err_t)
+
+          local plugin_tbl = {
+            name = "rate-limiting",
+            service_id = service_fixture.id,
+            route_id = route.id,
+            config = { minute = 1 }
+          }
+
+          local plugin, err = dao.plugins:insert(plugin_tbl)
+          assert.falsy(err)
+          assert.truthy(plugin)
+          assert.equal(route.id, plugin.route_id)
+
+          plugin, err = dao.plugins:insert(plugin_tbl)
+          assert.truthy(err)
+          assert.falsy(plugin)
+          assert.True(err.unique)
+          assert.matches("[" .. kong_config.database .. " error] " ..
+                         "name=already exists with value 'rate-limiting'",
+                         err, nil, true)
+        end)
+
+        it("Route/Consumer", function()
+          local route, _, err_t = db.routes:insert {
+            protocol = "http",
+            hosts = { "example.com" },
+          }
+          assert.is_nil(err_t)
+
+          local consumer, err = dao.consumers:insert {
+            username = "bob"
+          }
+          assert.falsy(err)
+          assert.truthy(consumer)
+
+          local plugin_tbl = {
+            name = "rate-limiting",
+            route_id = route.id,
+            consumer_id = consumer.id,
+            config = { minute = 1 }
+          }
+
+          local plugin, err = dao.plugins:insert(plugin_tbl)
+          assert.falsy(err)
+          assert.truthy(plugin)
+          assert.equal(route.id, plugin.route_id)
+          assert.equal(consumer.id, plugin.consumer_id)
+
+          plugin, err = dao.plugins:insert(plugin_tbl)
+          assert.truthy(err)
+          assert.falsy(plugin)
+          assert.True(err.unique)
+          assert.matches("[" .. kong_config.database .. " error] " ..
+                         "name=already exists with value 'rate-limiting'",
+                         err, nil, true)
+        end)
+
+        it("Service/Route/Consumer", function()
+          local route, _, err_t = db.routes:insert {
+            protocol = "http",
+            hosts = { "example.com" },
+          }
+          assert.is_nil(err_t)
+
+          local consumer, err = dao.consumers:insert {
+            username = "bob"
+          }
+          assert.falsy(err)
+          assert.truthy(consumer)
+
+          local plugin_tbl = {
+            name = "rate-limiting",
+            service_id = service_fixture.id,
+            route_id = route.id,
+            consumer_id = consumer.id,
+            config = { minute = 1 }
+          }
+
+          local plugin, err = dao.plugins:insert(plugin_tbl)
+          assert.falsy(err)
+          assert.truthy(plugin)
+          assert.equal(route.id, plugin.route_id)
+          assert.equal(service_fixture.id, plugin.service_id)
+          assert.equal(consumer.id, plugin.consumer_id)
+
+          plugin, err = dao.plugins:insert(plugin_tbl)
           assert.truthy(err)
           assert.falsy(plugin)
           assert.True(err.unique)
@@ -116,108 +213,156 @@ helpers.for_each_dao(function(kong_config)
     end)
 
     describe("FOREIGN constraints", function()
+      it("not insert plugin if invalid Service foreign key", function()
+        plugin_fixture.service_id = utils.uuid()
 
-      it("not insert plugin if invalid API foreign key", function()
-        plugin_fixture.api_id = utils.uuid()
-
-        local plugin, err = plugins:insert(plugin_fixture)
+        local plugin, err = dao.plugins:insert(plugin_fixture)
         assert.falsy(plugin)
         assert.truthy(err)
         assert.True(err.foreign)
-        assert.matches("api_id=does not exist with value '" .. plugin_fixture.api_id .. "'", tostring(err), nil, true)
+        assert.equal("no such Service (id=" .. plugin_fixture.service_id .. ")",
+                     err.message)
       end)
+
+      it("not insert plugin if invalid Route foreign key", function()
+        plugin_fixture.service_id = nil
+        plugin_fixture.route_id = utils.uuid()
+
+        local plugin, err = dao.plugins:insert(plugin_fixture)
+        assert.falsy(plugin)
+        assert.truthy(err)
+        assert.True(err.foreign)
+        assert.equal("no such Route (id=" .. plugin_fixture.route_id .. ")",
+                     err.message)
+      end)
+
       it("not insert plugin if invalid Consumer foreign key", function()
         local plugin_tbl = {
           name = "rate-limiting",
-          api_id = api_fixture.id,
+          service_id = service_fixture.id,
           consumer_id = utils.uuid(),
           config = {minute = 1}
         }
 
-        local plugin, err = plugins:insert(plugin_tbl)
+        local plugin, err = dao.plugins:insert(plugin_tbl)
         assert.falsy(plugin)
         assert.truthy(err)
         assert.True(err.foreign)
         assert.matches("consumer_id=does not exist with value '" .. plugin_tbl.consumer_id .. "'", tostring(err), nil, true)
       end)
-      it("does not update plugin if invalid foreign key", function()
-        plugin_fixture.api_id = api_fixture.id
 
-        local plugin, err = plugins:insert(plugin_fixture)
+      it("does not update plugin if invalid foreign key", function()
+        local plugin, err = dao.plugins:insert(plugin_fixture)
         assert.falsy(err)
         assert.truthy(plugin)
 
-        local fake_api_id = utils.uuid()
-        plugin.api_id = fake_api_id
-        plugin, err = plugins:update(plugin, {id = plugin.id})
+        local fake_service_id = utils.uuid()
+        plugin.service_id = fake_service_id
+        plugin, err = dao.plugins:update(plugin, {id = plugin.id})
         assert.falsy(plugin)
         assert.truthy(err)
         assert.True(err.foreign)
-        assert.matches("api_id=does not exist with value '" .. fake_api_id .. "'", tostring(err), nil, true)
+        assert.equal("no such Service (id=" .. fake_service_id .. ")",
+                     err.message)
       end)
     end)
 
     describe("CASCADE delete", function()
-      local api_fixture, consumer_fixture
-      before_each(function()
-        local err
-        api_fixture, err = apis:insert {
-          name         = "to-delete",
-          hosts        = { "to-delete.com" },
-          uris         = { "/to-delete" },
-          upstream_url = "https://example.com",
-        }
-        assert.falsy(err)
-
-        consumer_fixture, err = factory.consumers:insert {
-          username = "bob"
-        }
-        assert.falsy(err)
-      end)
-      after_each(function()
-        factory:truncate_tables()
-      end)
-
-      it("delete", function()
-        local plugin, err = plugins:insert {
+      it("deleting Service deletes associated Plugin", function()
+        local plugin, err = dao.plugins:insert {
           name = "key-auth",
-          api_id = api_fixture.id
+          service_id = service_fixture.id
         }
         assert.falsy(err)
 
-        local res, err = apis:delete(api_fixture)
+        -- plugin exists
+        plugin, err = dao.plugins:find(plugin)
         assert.falsy(err)
-        assert.is_table(res)
+        assert.truthy(plugin)
 
-        -- no more API
-        local api, err = apis:find(api_fixture)
+        -- delete Service
+        local ok, err, err_t = db.services:delete {
+          id = service_fixture.id
+        }
+        assert.is_nil(err_t)
+        assert.is_nil(err)
+        assert.is_true(ok)
+
+        -- no more Service
+        local api, err = db.services:select {
+          id = service_fixture.id
+        }
         assert.falsy(err)
         assert.falsy(api)
 
         -- no more plugin
-        local plugin, err = plugins:find(plugin)
+        plugin, err = dao.plugins:find(plugin)
         assert.falsy(err)
         assert.falsy(plugin)
       end)
 
-      it("delete bis", function()
-        local plugin, err = plugins:insert {
+      it("deleting Route deletes associated Plugin", function()
+        local route, _, err_t = db.routes:insert {
+          protocol = "http",
+          hosts = { "example.com" },
+        }
+        assert.is_nil(err_t)
+
+        local plugin, err = dao.plugins:insert {
+          name = "key-auth",
+          route_id = route.id,
+        }
+        assert.falsy(err)
+
+        -- plugin exists
+        plugin, err = dao.plugins:find(plugin)
+        assert.falsy(err)
+        assert.truthy(plugin)
+
+        -- delete Route
+        local ok, err, err_t = db.routes:delete {
+          id = route.id
+        }
+        assert.is_nil(err_t)
+        assert.is_nil(err)
+        assert.is_true(ok)
+
+        -- no more Route
+        local api, err = db.routes:select {
+          id = route.id
+        }
+        assert.falsy(err)
+        assert.falsy(api)
+
+        -- no more Plugin
+        plugin, err = dao.plugins:find(plugin)
+        assert.falsy(err)
+        assert.falsy(plugin)
+      end)
+
+      it("deleting Consumer deletes associated Plugin", function()
+        local consumer_fixture, err = dao.consumers:insert {
+          username = "bob"
+        }
+
+        assert.falsy(err)
+        local plugin, err = dao.plugins:insert {
           name = "rate-limiting",
-          api_id = api_fixture.id,
+          service_id = service_fixture.id,
           consumer_id = consumer_fixture.id,
           config = {minute = 1}
         }
         assert.falsy(err)
 
-        local res, err = factory.consumers:delete(consumer_fixture)
+        local res, err = dao.consumers:delete(consumer_fixture)
         assert.falsy(err)
         assert.is_table(res)
 
-        local consumer, err = factory.consumers:find(consumer_fixture)
+        local consumer, err = dao.consumers:find(consumer_fixture)
         assert.falsy(err)
         assert.falsy(consumer)
 
-        plugin, err = plugins:find(plugin)
+        plugin, err = dao.plugins:find(plugin)
         assert.falsy(err)
         assert.falsy(plugin)
       end)

@@ -1,5 +1,6 @@
 local utils = require "kong.tools.utils"
 local Errors = require "kong.dao.errors"
+local db_errors = require "kong.db.errors"
 
 local function load_config_schema(plugin_t)
   if plugin_t.name then
@@ -15,7 +16,7 @@ end
 return {
   table = "plugins",
   primary_key = {"id", "name"},
-  cache_key = { "name", "api_id", "consumer_id" },
+  cache_key = { "name", "route_id", "service_id", "consumer_id" },
   fields = {
     id = {
       type = "id",
@@ -29,9 +30,13 @@ return {
       dao_insert_value = true,
       required = true
     },
-    api_id = {
+    route_id = {
       type = "id",
-      foreign = "apis:id"
+      --foreign = "routes:id" -- manually tested in self_check
+    },
+    service_id = {
+      type = "id",
+      --foreign = "services:id" -- manually tested in self_check
     },
     consumer_id = {
       type = "id",
@@ -53,6 +58,42 @@ return {
     }
   },
   self_check = function(self, plugin_t, dao, is_update)
+    if plugin_t.service_id ~= nil then
+      local service, err, err_t = dao.db.new_db.services:select({
+        id = plugin_t.service_id
+      })
+      if err then
+        if err_t.code == db_errors.codes.DATABASE_ERROR then
+          return false, Errors.db(err)
+        end
+
+        return false, Errors.schema(err_t)
+      end
+
+      if not service then
+        return false, Errors.foreign("no such Service (id=" ..
+                                     plugin_t.service_id .. ")")
+      end
+    end
+
+    if plugin_t.route_id ~= nil then
+      local route, err, err_t = dao.db.new_db.routes:select({
+        id = plugin_t.route_id
+      })
+      if err then
+        if err_t.code == db_errors.codes.DATABASE_ERROR then
+          return false, Errors.db(err)
+        end
+
+        return false, Errors.schema(err_t)
+      end
+
+      if not route then
+        return false, Errors.foreign("no such Route (id=" ..
+                                     plugin_t.route_id .. ")")
+      end
+    end
+
     -- Load the config schema
     local config_schema, err = self.fields.config.schema(plugin_t)
     if err then
@@ -74,14 +115,20 @@ return {
     if not is_update then
       local rows, err = dao:find_all {
         name = plugin_t.name,
-        api_id = plugin_t.api_id,
+        route_id = plugin_t.route_id,
+        service_id = plugin_t.service_id,
         consumer_id = plugin_t.consumer_id
       }
+
       if err then
         return false, err
       elseif #rows > 0 then
         for _, row in ipairs(rows) do
-          if row.name == plugin_t.name and row.api_id == plugin_t.api_id and row.consumer_id == plugin_t.consumer_id then
+          if row.name == plugin_t.name and
+             row.route_id == plugin_t.route_id and
+             row.service_id == plugin_t.service_id and
+             row.consumer_id == plugin_t.consumer_id
+          then
             return false, Errors.unique { name = plugin_t.name }
           end
         end

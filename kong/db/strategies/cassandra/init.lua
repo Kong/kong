@@ -36,8 +36,15 @@ local APPLIED_COLUMN = "[applied]"
 local _constraints = {}
 
 
-local _M  = {}
-local _mt = { __index = _M }
+local _M  = {
+  CUSTOM_STRATEGIES = {
+    services = require("kong.db.strategies.cassandra.services"),
+    routes   = require("kong.db.strategies.cassandra.routes"),
+  }
+}
+
+local _mt = {}
+_mt.__index = _mt
 
 
 local function extract_pk_values(schema, entity)
@@ -295,7 +302,7 @@ function _M.new(connector, schema, errors)
 end
 
 
-function _M:insert(entity)
+function _mt:insert(entity)
   local schema = self.schema
   local cql = self.queries.insert
   local args = new_tab(#schema.fields, 0)
@@ -428,7 +435,7 @@ local function select(self, cql, args)
   return deserialize_row(self, row)
 end
 
-function _M:select(primary_key)
+function _mt:select(primary_key)
   local schema = self.schema
   local cql = self.queries.select
   local args = new_tab(#schema.primary_key, 0)
@@ -449,7 +456,7 @@ do
   local opts = new_tab(0, 2)
 
 
-  function _M:page(size, offset)
+  function _mt:page(size, offset)
     if offset then
       local offset_decoded = decode_base64(offset)
       if not offset_decoded then
@@ -531,7 +538,7 @@ do
   local iter_mt = { __call = iter }
 
 
-  function _M:each(size)
+  function _mt:each(size)
     local iter_ctx = {
       page         = 0,
       rows         = nil,
@@ -546,7 +553,7 @@ do
 end
 
 
-function _M:update(primary_key, entity)
+function _mt:update(primary_key, entity)
   local schema = self.schema
   local cql = self.queries.update
   local args = new_tab(#schema.fields, 0)
@@ -644,7 +651,7 @@ do
   end
 
 
-  function _M:delete(primary_key)
+  function _mt:delete(primary_key)
     local schema = self.schema
     local cql = self.queries.delete
     local args = new_tab(#schema.primary_key, 0)

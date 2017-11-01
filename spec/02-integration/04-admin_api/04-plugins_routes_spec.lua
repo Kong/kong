@@ -5,6 +5,8 @@ describe("Admin API", function()
   local client
   setup(function()
     helpers.run_migrations()
+    assert(helpers.db:truncate())
+
     assert(helpers.start_kong())
     client = helpers.admin_client()
   end)
@@ -28,17 +30,21 @@ describe("Admin API", function()
 
   describe("/plugins", function()
     local plugins = {}
+
     setup(function()
       for i = 1, 3 do
-        local api = assert(helpers.dao.apis:insert {
-          name         = "api-" .. i,
-          hosts        = { i .. "-api.com" },
-          upstream_url = "http://example.com",
-        })
+        local service, err, err_t = helpers.db.services:insert {
+          name = "service-" .. i,
+          protocol = "http",
+          host = "127.0.0.1",
+          port = 15555,
+        }
+        assert.is_nil(err_t)
+        assert.is_nil(err)
 
         plugins[i] = assert(helpers.dao.plugins:insert {
           name = "key-auth",
-          api_id = api.id
+          service_id = service.id,
         })
       end
     end)

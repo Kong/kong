@@ -8,12 +8,14 @@ local Factory     = require "kong.dao.factory"
 local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 
 
-for _, strategy in helpers.each_strategy("fake") do
+for _, strategy in helpers.each_strategy() do
   describe(string.format("blueprints db [%s]", strategy), function()
 
     local bp
     setup(function()
       local db = assert(DB.new(helpers.test_conf, strategy))
+      assert(db:init_connector())
+      assert(db:truncate())
       bp = assert(Blueprints.new({}, db))
     end)
 
@@ -54,16 +56,23 @@ end
 
 dao_helpers.for_each_dao(function(kong_config)
   local bp, dao
+
   setup(function()
-    dao = assert(Factory.new(kong_config))
-    bp  = assert(Blueprints.new(dao, {}))
+    local db = assert(DB.new(helpers.test_conf, kong_config.database))
+    assert(db:init_connector())
+
+    dao = assert(Factory.new(kong_config, db))
+    bp  = assert(Blueprints.new(dao, db))
   end)
+
   teardown(function()
     dao:truncate_tables()
     ngx.shared.kong_cassandra:flush_expired()
   end)
+
   describe(string.format("blueprints for %s", kong_config.database), function()
-    it("inserts apis", function()
+    pending("inserts apis", function()
+      -- TODO: remove this test when APIs are removed
       local a = bp.apis:insert({ hosts = { "localhost" } })
       assert.matches(UUID_PATTERN, a.id)
       assert.equal("number", type(a.created_at))
@@ -71,11 +80,11 @@ dao_helpers.for_each_dao(function(kong_config)
     end)
 
     it("inserts oauth2 plugins", function()
-      local a = bp.apis:insert({ hosts = { "localhost" } })
-      local p = bp.oauth2_plugins:insert({ api_id = a.id })
+      local s = bp.services:insert()
+      local p = bp.oauth2_plugins:insert({ service_id = s.id })
 
       assert.equal("oauth2", p.name)
-      assert.equal(a.id, p.api_id)
+      assert.equal(s.id, p.service_id)
       assert.same({ "email", "profile" }, p.config.scopes)
     end)
 
