@@ -821,9 +821,11 @@ function _M.new(apis)
 
   function self.exec(ngx)
     local method      = ngx.req.get_method()
-    local request_uri = ngx.var.request_uri
-    local uri         = request_uri
-
+    local request_uri = ngx.var.upstream_uri
+	    if(request_uri == nil or request_uri == '') then
+        request_uri = ngx.var.request_uri
+      end
+    local uri = request_uri
     do
       local idx = find(uri, "?", 2, true)
       if idx then
