@@ -1,6 +1,7 @@
 local utils = require "kong.tools.utils"
 local singletons = require "kong.singletons"
 local conf_loader = require "kong.conf_loader"
+local cjson = require "cjson"
 
 local sub = string.sub
 local find = string.find
@@ -16,6 +17,7 @@ return {
   ["/"] = {
     GET = function(self, dao, helpers)
       local distinct_plugins = {}
+      setmetatable(distinct_plugins, cjson.empty_array_mt)      
       local prng_seeds = {}
 
       do
