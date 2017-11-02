@@ -127,15 +127,15 @@ return {
                                              data.operation)
 
         -- crud:apis
-        local ok, err = worker_events.post_local("crud", entity_channel, data)
-        if not ok then
+        local _, err = worker_events.post_local("crud", entity_channel, data)
+        if err then
           log(ngx.ERR, "[events] could not broadcast crud event: ", err)
           return
         end
 
         -- crud:apis:create
-        ok, err = worker_events.post_local("crud", entity_operation_channel, data)
-        if not ok then
+        _, err = worker_events.post_local("crud", entity_operation_channel, data)
+        if err then
           log(ngx.ERR, "[events] could not broadcast crud event: ", err)
           return
         end
