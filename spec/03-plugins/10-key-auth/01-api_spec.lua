@@ -333,7 +333,7 @@ describe("Plugin: key-auth (API)", function()
       it("retrieve all the key-auths", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/key-auth/"
+          path = "/key-auths/"
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -344,7 +344,7 @@ describe("Plugin: key-auth (API)", function()
       it("retrieve all the key-auths", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/key-auth"
+          path = "/key-auths"
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -355,7 +355,7 @@ describe("Plugin: key-auth (API)", function()
       it("retrieve key-auths for a consumer_id", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/key-auth?consumer_id=" .. consumer.id
+          path = "/key-auths?consumer_id=" .. consumer.id
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -366,7 +366,7 @@ describe("Plugin: key-auth (API)", function()
       it("return empty for a non-existing consumer_id", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/key-auth?consumer_id=" .. utils.uuid(),
+          path = "/key-auths?consumer_id=" .. utils.uuid(),
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -376,7 +376,7 @@ describe("Plugin: key-auth (API)", function()
       end)
     end)
   end)
-  describe("/key-auth/:credential_key_or_id/consumer", function()
+  describe("/key-auths/:credential_key_or_id/consumer", function()
     describe("GET", function()
       local credential
       setup(function()
@@ -388,7 +388,7 @@ describe("Plugin: key-auth (API)", function()
       it("retrieve consumer from a key id", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/key-auth/" .. credential.id .. "/consumer"
+          path = "/key-auths/" .. credential.id .. "/consumer"
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -397,7 +397,7 @@ describe("Plugin: key-auth (API)", function()
       it("retrieve a Consumer from a credential's key", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/key-auth/" .. credential.key .. "/consumer"
+          path = "/key-auths/" .. credential.key .. "/consumer"
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -406,14 +406,14 @@ describe("Plugin: key-auth (API)", function()
       it("returns 404 for a random non-existing id", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/key-auth/" .. utils.uuid()  .. "/consumer"
+          path = "/key-auths/" .. utils.uuid()  .. "/consumer"
         })
         assert.res_status(404, res)
       end)
       it("returns 404 for a random non-existing key", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/key-auth/" .. utils.random_string()  .. "/consumer"
+          path = "/key-auths/" .. utils.random_string()  .. "/consumer"
         })
         assert.res_status(404, res)
       end)

@@ -53,12 +53,12 @@ return {
       crud.delete(self.keyauth_credential, dao_factory.keyauth_credentials)
     end
   },
-  ["/key-auth/"] = {
+  ["/key-auths/"] = {
     GET = function(self, dao_factory)
       crud.paginated_set(self, dao_factory.keyauth_credentials)
     end
   },
-  ["/key-auth/:credential_key_or_id/consumer"] = {
+  ["/key-auths/:credential_key_or_id/consumer"] = {
     before = function(self, dao_factory, helpers)
       local credentials, err = crud.find_by_id_or_field(
         dao_factory.keyauth_credentials,
