@@ -1,5 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
+local utils = require "kong.tools.utils"
 
 describe("Plugin: hmac-auth (API)", function()
   local client, credential, consumer
@@ -196,6 +197,137 @@ describe("Plugin: hmac-auth (API)", function()
           headers = {["Content-Type"] = "application/json"}
         })
         assert.res_status(204, res)
+      end)
+    end)
+  end)
+  describe("/hmac-auths", function()
+    local consumer2
+    describe("GET", function()
+      setup(function()
+        helpers.dao:truncate_table("hmacauth_credentials")
+        assert(helpers.dao.hmacauth_credentials:insert {
+          consumer_id = consumer.id,
+          username = "bob"
+        })
+        consumer2 = assert(helpers.dao.consumers:insert {
+          username = "bob-the-buidler"
+        })
+        assert(helpers.dao.hmacauth_credentials:insert {
+          consumer_id = consumer2.id,
+          username = "bob-the-buidler"
+        })
+      end)
+      it("retrieves all the hmac-auths with trailing slash", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/hmac-auths/"
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.is_table(json.data)
+        assert.equal(2, #json.data)
+        assert.equal(2, json.total)
+      end)
+      it("retrieves all the hmac-auths without trailing slash", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/hmac-auths"
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.is_table(json.data)
+        assert.equal(2, #json.data)
+        assert.equal(2, json.total)
+      end)
+      it("paginates through the hmac-auths", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/hmac-auths?size=1",
+        })
+        local body = assert.res_status(200, res)
+        local json_1 = cjson.decode(body)
+        assert.is_table(json_1.data)
+        assert.equal(1, #json_1.data)
+        assert.equal(2, json_1.total)
+
+        res = assert(client:send {
+          method = "GET",
+          path = "/hmac-auths?size=1&offset=" .. json_1.offset,
+        })
+        body = assert.res_status(200, res)
+        local json_2 = cjson.decode(body)
+        assert.is_table(json_2.data)
+        assert.equal(1, #json_2.data)
+        assert.equal(2, json_2.total)
+
+        assert.not_same(json_1.data, json_2.data)
+        assert.is_nil(json_2.offset) -- last page
+      end)
+      it("retrieve hmac-auths for a consumer_id", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/hmac-auths?consumer_id=" .. consumer.id
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.is_table(json.data)
+        assert.equal(1, #json.data)
+        assert.equal(1, json.total)
+      end)
+      it("return empty for a non-existing consumer_id", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/hmac-auths?consumer_id=" .. utils.uuid(),
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.is_table(json.data)
+        assert.equal(0, #json.data)
+        assert.equal(0, json.total)
+      end)
+    end)
+  end)
+  describe("/hmac-auths/:hmac_username_or_id/consumer", function()
+    describe("GET", function()
+      local credential
+      setup(function()
+        helpers.dao:truncate_table("hmacauth_credentials")
+        credential = assert(helpers.dao.hmacauth_credentials:insert {
+          consumer_id = consumer.id,
+          username = "bob"
+        })
+      end)
+      it("retrieve consumer from a hmac-auth id", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/hmac-auths/" .. credential.id .. "/consumer"
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.same(consumer,json)
+      end)
+      it("retrieve consumer from a hmac-auth username", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/hmac-auths/" .. credential.username .. "/consumer"
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.same(consumer,json)
+      end)
+      it("returns 404 for a random non-existing hmac-auth id", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/hmac-auths/" .. utils.uuid()  .. "/consumer"
+        })
+        assert.res_status(404, res)
+      end)
+      it("returns 404 for a random non-existing hmac-auth username", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/hmac-auths/" .. utils.random_string()  .. "/consumer"
+        })
+        assert.res_status(404, res)
       end)
     end)
   end)
