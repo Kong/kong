@@ -116,6 +116,8 @@
                                  # itself on `proxy_listen`, and all SSL
                                  # settings will be ignored.
 
+#ssl_protocols = TLSv1.1 TLSv1.2 # Define the SSL protocols used by Nginx.
+
 #ssl_cipher_suite = modern       # Defines the TLS ciphers served by Nginx.
                                  # Accepted values are `modern`, `intermediate`,
                                  # `old`, or `custom`.

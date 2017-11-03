@@ -368,6 +368,20 @@ describe("Configuration loader", function()
           assert.True(helpers.path.isabs(conf.ssl_cert))
           assert.True(helpers.path.isabs(conf.ssl_cert_key))
         end)
+        it("defines ssl_protocols by default", function()
+          local conf, err = conf_loader(nil, {})
+          assert.is_nil(err)
+          -- looks kinda like a cipher suite
+          assert.equal("TLSv1.1 TLSv1.2", conf.ssl_protocols, nil, true)
+        end)
+        it("defines ssl_protocols by default", function()
+          local conf, err = conf_loader(nil, {
+            ssl_protocols = "TLSv1 TLSv1.1 TLSv1.2"
+          })
+          assert.is_nil(err)
+          -- looks kinda like a cipher suite
+          assert.equal("TLSv1 TLSv1.1 TLSv1.2", conf.ssl_protocols, nil, true)
+        end)
         it("defines ssl_ciphers by default", function()
           local conf, err = conf_loader(nil, {})
           assert.is_nil(err)
