@@ -2,6 +2,7 @@ local table_rotater = require "kong.vitals.postgres.table_rotater"
 local dao_factory   = require "kong.dao.factory"
 local dao_helpers   = require "spec.02-integration.03-dao.helpers"
 local ngx_time      = ngx.time
+local fmt           = string.format
 
 
 local function drop_vitals_seconds_tables(db)
@@ -53,6 +54,30 @@ dao_helpers.for_each_dao(function(kong_conf)
 
     after_each(function()
       snapshot:revert()
+    end)
+
+
+
+    describe(":init()", function()
+      it("does not bomb if current table already exists", function()
+        -- create current table
+        local q = [[
+          CREATE TABLE IF NOT EXISTS %s
+          (LIKE vitals_stats_seconds INCLUDING defaults INCLUDING constraints INCLUDING indexes);
+        ]]
+
+        local query = fmt(q, rotater:current_table_name())
+        assert(db:query(query))
+
+        assert(rotater:init())
+      end)
+
+      it("does not bomb if postgres thinks it exists", function()
+        db = rotater.db
+        stub(db, "query").returns(nil, "typname, typnamespace=already exists with value")
+
+        assert(rotater:init())
+      end)
     end)
 
 

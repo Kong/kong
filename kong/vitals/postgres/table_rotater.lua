@@ -1,4 +1,5 @@
 local fmt        = string.format
+local match      = string.match
 local timer_at   = ngx.timer.at
 local log        = ngx.log
 local ERR        = ngx.ERR
@@ -79,9 +80,11 @@ end
 function _M:init()
   -- make sure we have a current vitals_stats_seconds table
   local query = fmt(CREATE_VITALS_STATS_SECONDS, self:current_table_name())
-  local res, query_err = self.db:query(query)
-  if not res then
-    return nil, "could not create vitals_stats_seconds table: " .. query_err
+  local _, err = self.db:query(query)
+
+  if err and not match(err, "exists") then
+    -- if the error isn't "table already exists", it's a real problem
+    return nil, "could not create current table: " .. err
   end
 
   -- start a timer to make the next table
@@ -142,10 +145,10 @@ function _M:create_next_table()
 
   log(DEBUG, _log_prefix, query)
 
-  local ok, err = self.db:query(query)
+  local _, err = self.db:query(query)
 
-  if not ok then
-    return nil, err
+  if err and not match(err, "exists") then
+    return nil, "could not create next table: " .. err
   end
 
   return table_name
