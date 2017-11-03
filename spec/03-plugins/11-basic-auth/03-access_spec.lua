@@ -49,6 +49,11 @@ describe("Plugin: basic-auth (access)", function()
       password    = "password123",
       consumer_id = consumer.id,
     })
+    assert(helpers.dao.basicauth_credentials:insert {
+      username    = "user321",
+      password    = "password:123",
+      consumer_id = consumer.id,
+    })
 
     local api3 = assert(helpers.dao.apis:insert {
       name         = "api-3",
@@ -200,6 +205,19 @@ describe("Plugin: basic-auth (access)", function()
       })
       local body = cjson.decode(assert.res_status(200, res))
       assert.equal('bob', body.headers["x-consumer-username"])
+    end)
+
+    it("authenticates with a password containing ':'", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Authorization"] = "Basic dXNlcjMyMTpwYXNzd29yZDoxMjM=",
+          ["Host"] = "basic-auth1.com"
+        }
+      })
+      local body = cjson.decode(assert.res_status(200, res))
+      assert.equal("bob", body.headers["x-consumer-username"])
     end)
 
     it("returns 403 for valid Base64 encoding", function()
