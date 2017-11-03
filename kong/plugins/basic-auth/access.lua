@@ -39,7 +39,7 @@ local function retrieve_credentials(request, header_name, conf)
     if m and m[1] then
       local decoded_basic = ngx.decode_base64(m[1])
       if decoded_basic then
-        local basic_parts = utils.split(decoded_basic, ":")
+        local basic_parts = utils.split(decoded_basic, ":", 2)
         username = basic_parts[1]
         password = basic_parts[2]
       end
@@ -77,7 +77,7 @@ local function load_credential_from_db(username)
   if not username then
     return
   end
-  
+
   local credential_cache_key = singletons.dao.basicauth_credentials:cache_key(username)
   local credential, err      = singletons.cache:get(credential_cache_key, nil,
                                                     load_credential_into_memory,
@@ -111,7 +111,7 @@ local function set_consumer(consumer, credential)
   else
     ngx_set_header(constants.HEADERS.ANONYMOUS, true)
   end
-  
+
 end
 
 local function do_authentication(conf)
@@ -156,7 +156,7 @@ end
 function _M.execute(conf)
 
   if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
-    -- we're already authenticated, and we're configured for using anonymous, 
+    -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
     return
   end
