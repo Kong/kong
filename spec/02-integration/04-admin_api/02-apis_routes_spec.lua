@@ -1,5 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
+local utils = require "kong.tools.utils"
 
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local DAOFactory = require "kong.dao.factory"
@@ -192,6 +193,32 @@ describe("Admin API #" .. kong_config.database, function()
           assert.True(json.strip_uri)
           assert.equals(0, json.retries)
         end
+      end)
+      it_content_types("returns 404 when specifying non-existent primary key values", function(content_type)
+        -- Note: while not an appropriate behavior for PUT, our current
+        -- behavior for this method is the following:
+        -- 1. if the payload does not have the entity's primary key values,
+        --    we attempt an insert()
+        -- 2. if the payload has primary key values, we attempt an update()
+        --
+        -- This is a regression added after investigating the following issue:
+        --     https://github.com/Kong/kong/issues/2774
+        --
+        -- Eventually, our Admin endpoint will follow a more appropriate
+        -- behavior for PUT.
+        local res = assert(client:send {
+          method = "PUT",
+          path = "/apis",
+          body = {
+            id = utils.uuid(),
+            name = "my-api",
+            hosts = "my.api.com",
+            created_at = 1461276890000,
+            upstream_url = "http://my-api.com",
+          },
+          headers = { ["Content-Type"] = content_type },
+        })
+        assert.res_status(404, res)
       end)
       it_content_types("replaces if exists", function(content_type)
         return function()

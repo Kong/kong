@@ -1,6 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local escape = require("socket.url").escape
+local utils = require "kong.tools.utils"
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
@@ -159,6 +160,30 @@ describe("Admin API", function()
           assert.equal("0000", updated_json.custom_id)
           assert.equal(json.id, updated_json.id)
         end
+      end)
+      it_content_types("returns 404 when specifying non-existent primary key values", function(content_type)
+        -- Note: while not an appropriate behavior for PUT, our current
+        -- behavior for this method is the following:
+        -- 1. if the payload does not have the entity's primary key values,
+        --    we attempt an insert()
+        -- 2. if the payload has primary key values, we attempt an update()
+        --
+        -- This is a regression added after investigating the following issue:
+        --     https://github.com/Kong/kong/issues/2774
+        --
+        -- Eventually, our Admin endpoint will follow a more appropriate
+        -- behavior for PUT.
+        local res = assert(client:send {
+          method = "PUT",
+          path = "/consumers",
+          body = {
+            id = utils.uuid(),
+            username = "alice",
+            created_at = 1461276890000,
+          },
+          headers = { ["Content-Type"] = content_type },
+        })
+        assert.res_status(404, res)
       end)
       describe("errors", function()
         it_content_types("handles invalid input", function(content_type)
