@@ -245,6 +245,10 @@ function _M.put(params, dao_collection, post_process)
     -- If entity body has primary key, deal with update
     new_entity, err = dao_collection:update(params, params, {full = true})
     if not err then
+      if not new_entity then
+        return responses.send_HTTP_NOT_FOUND()
+      end
+
       return responses.send_HTTP_OK(post_process_row(new_entity, post_process))
     end
   end
