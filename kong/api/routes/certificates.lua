@@ -90,13 +90,6 @@ return {
         for j = 1, #rows do
           table.insert(ssl_certificates[i].snis, rows[j].name)
         end
-
-        -- FIXME: remove and stick to previous `empty_array_mt` metatable
-        -- assignment once https://github.com/openresty/lua-cjson/pull/16
-        -- is included in the OpenResty release we use.
-        if #ssl_certificates[i].snis == 0 then
-          ssl_certificates[i].snis = cjson.empty_array
-        end
       end
 
       return helpers.responses.send_HTTP_OK({
@@ -163,13 +156,6 @@ return {
 
       for i = 1, #rows do
         table.insert(row.snis, rows[i].name)
-      end
-
-      -- FIXME: remove and stick to previous `empty_array_mt` metatable
-      -- assignment once https://github.com/openresty/lua-cjson/pull/16
-      -- is included in the OpenResty release we use.
-      if #row.snis == 0 then
-        row.snis = cjson.empty_array
       end
 
       return helpers.responses.send_HTTP_OK(row)
