@@ -24,7 +24,7 @@ describe("Configuration loader", function()
     -- overrides
     assert.is_nil(conf.nginx_user)
     assert.equal("1",            conf.nginx_worker_processes)
-    assert.equal("127.0.01:9001", conf.admin_listen)
+    assert.equal("127.0.0.1:9001", conf.admin_listen)
     assert.equal("0.0.0.0:9000", conf.proxy_listen)
     assert.equal("0.0.0.0:9443", conf.proxy_listen_ssl)
     assert.is_nil(getmetatable(conf))
