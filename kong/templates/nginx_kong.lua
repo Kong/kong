@@ -32,6 +32,7 @@ lua_shared_dict kong                5m;
 lua_shared_dict kong_cache          ${{MEM_CACHE_SIZE}};
 lua_shared_dict kong_process_events 5m;
 lua_shared_dict kong_cluster_events 5m;
+lua_shared_dict kong_healthchecks   5m;
 > if database == "cassandra" then
 lua_shared_dict kong_cassandra      5m;
 > end
