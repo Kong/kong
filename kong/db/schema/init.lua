@@ -895,7 +895,7 @@ function Schema:process_auto_fields(input, context)
 
     if context ~= "update" then
 
-      if not output[key] then
+      if output[key] == nil then
         handle_missing_field(key, field, output)
       end
 

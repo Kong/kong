@@ -20,7 +20,7 @@ describe("routes schema", function()
       hosts          = { "example.com" },
       paths          = { "/", "/ovo" },
       regex_priority = 1,
-      strip_path     = true,
+      strip_path     = false,
       preserve_host  = true,
       service        = { id = another_uuid },
     }
@@ -29,10 +29,11 @@ describe("routes schema", function()
     assert.truthy(route.updated_at)
     assert.same(route.created_at, route.updated_at)
     assert.truthy(Routes:validate(route))
+    assert.falsy(route.strip_path)
   end)
 
   it("fails when protocol is missing", function()
-    local route = {}
+    local route = { protocols = ngx.null }
     route = Routes:process_auto_fields(route, "insert")
     local ok, errs = Routes:validate_insert(route)
     assert.falsy(ok)

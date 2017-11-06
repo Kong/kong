@@ -24,9 +24,15 @@ describe("Admin API: #" .. kong_config.database, function()
     client = assert(helpers.admin_client())
   end)
 
+  after_each(function()
+    if client then
+      client:close()
+    end
+  end)
+
   setup(function()
     dao = assert(DAOFactory.new(kong_config))
-    helpers.run_migrations(dao)
+    assert(dao:run_migrations())
 
     assert(helpers.start_kong({
       database = kong_config.database
@@ -34,10 +40,6 @@ describe("Admin API: #" .. kong_config.database, function()
   end)
 
   teardown(function()
-    if client then
-      client:close()
-    end
-
     helpers.stop_kong()
   end)
 

@@ -1,6 +1,6 @@
 local ssl_fixtures = require "spec.fixtures.ssl"
-local helpers = require "spec.helpers"
-local cjson = require "cjson"
+local helpers      = require "spec.helpers"
+local cjson        = require "cjson"
 
 
 local function get_cert(server_name)
@@ -12,259 +12,303 @@ local function get_cert(server_name)
   return stdout
 end
 
+for _, strategy in helpers.each_strategy() do
+  describe("SSL [#" .. strategy .. "]", function()
+    local admin_client
+    local proxy_client
+    local https_client
+    local db
+    local dao
+    local bp
 
-describe("SSL", function()
-  local admin_client, client, https_client
+    setup(function()
+      db, dao, bp = helpers.get_db_utils(strategy)
 
-  setup(function()
-    helpers.dao:truncate_tables()
-    helpers.run_migrations()
+      assert(db:truncate())
+      dao:truncate_tables()
 
-    assert(helpers.dao.apis:insert {
-      name         = "global-cert",
-      hosts        = { "global.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
+      helpers.run_migrations(dao)
 
-    assert(helpers.dao.apis:insert {
-      name               = "api-1",
-      hosts              = { "example.com", "ssl1.com" },
-      upstream_url       = helpers.mock_upstream_url,
-      https_only         = true,
-      http_if_terminated = true,
-    })
-
-    assert(helpers.dao.apis:insert {
-      name               = "api-2",
-      hosts              = { "ssl2.com" },
-      upstream_url       = helpers.mock_upstream_url,
-      https_only         = true,
-      http_if_terminated = false,
-    })
-
-    assert(helpers.dao.apis:insert {
-      name          = "api-3",
-      hosts         = { "ssl3.com" },
-      upstream_url  = helpers.mock_upstream_ssl_url,
-      preserve_host = true,
-    })
-
-    assert(helpers.dao.apis:insert {
-      name          = "api-4",
-      hosts         = { "no-sni.com" },
-      upstream_url  = helpers.mock_upstream_ssl_protocol .. "://" ..
-                      helpers.mock_upstream_hostname .. ":" ..
-                      helpers.mock_upstream_ssl_port,
-      preserve_host = false,
-    })
-
-    assert(helpers.dao.apis:insert {
-      name          = "api-5",
-      hosts         = { "nil-sni.com" },
-      upstream_url  = helpers.mock_upstream_ssl_url,
-      preserve_host = false,
-    })
-
-    assert(helpers.start_kong {
-      nginx_conf  = "spec/fixtures/custom_nginx.template",
-      trusted_ips = "127.0.0.1",
-    })
-
-    admin_client = helpers.admin_client()
-    client = helpers.proxy_client()
-    https_client = helpers.proxy_ssl_client()
-
-    assert(admin_client:send {
-      method = "POST",
-      path = "/certificates",
-      body = {
-        cert = ssl_fixtures.cert,
-        key  = ssl_fixtures.key,
-        snis = "example.com,ssl1.com",
-      },
-      headers = { ["Content-Type"] = "application/json" },
-    })
-  end)
-
-  teardown(function()
-    helpers.stop_kong()
-  end)
-
-  describe("global SSL", function()
-    it("fallbacks on the default proxy SSL certificate when SNI is not provided by client", function()
-      local res = assert(https_client:send {
-        method = "GET",
-        path = "/status/200",
-        headers = {
-          Host = "global.com"
-        }
-      })
-      assert.res_status(200, res)
-    end)
-  end)
-
-  describe("handshake", function()
-    it("sets the default fallback SSL certificate if no SNI match", function()
-      local cert = get_cert("test.com")
-      assert.matches("CN=localhost", cert, nil, true)
-    end)
-
-    it("sets the configured SSL certificate if SNI match", function()
-      local cert = get_cert("ssl1.com")
-      assert.matches("CN=ssl-example.com", cert, nil, true)
-
-      cert = get_cert("example.com")
-      assert.matches("CN=ssl-example.com", cert, nil, true)
-    end)
-  end)
-
-  describe("https_only", function()
-
-    it("blocks request without HTTPS", function()
-      local res = assert(client:send {
-        method = "GET",
-        path = "/",
-        headers = {
-          ["Host"] = "example.com",
-        }
+      local service = assert(bp.services:insert {
+        name = "global-cert",
       })
 
-      local body = assert.res_status(426, res)
-      local json = cjson.decode(body)
-      assert.same({ message = "Please use HTTPS protocol" }, json)
-      assert.contains("Upgrade", res.headers.connection)
-      assert.equal("TLS/1.2, HTTP/1.1", res.headers.upgrade)
-    end)
-
-    it("blocks request with HTTPS in x-forwarded-proto but no http_if_already_terminated", function()
-      local res = assert(client:send {
-        method = "GET",
-        path = "/status/200",
-        headers = {
-          Host = "ssl2.com",
-          ["x-forwarded-proto"] = "https"
-        }
+      assert(db.routes:insert {
+        protocols = { "https" },
+        service   = service,
+        hosts     = { "global.com" },
       })
-      assert.res_status(426, res)
-    end)
 
-    it("allows requests with x-forwarded-proto and http_if_terminated", function()
-      local res = assert(client:send {
-        method  = "GET",
-        path    = "/status/200",
-        headers = {
-          Host = "example.com",
-          ["x-forwarded-proto"] = "https",
-        }
+      local service2 = assert(bp.services:insert {
+        name = "api-1",
       })
-      assert.res_status(200, res)
-    end)
 
-    it("blocks with invalid x-forwarded-proto but http_if_terminated", function()
-      local res = assert(client:send {
-        method = "GET",
-        path = "/status/200",
-        headers = {
-          Host = "example.com",
-          ["x-forwarded-proto"] = "httpsa"
-        }
+      assert(db.routes:insert {
+        protocols = { "https" },
+        service   = service2,
+        hosts     = { "example.com", "ssl1.com" },
       })
-      assert.res_status(426, res)
-    end)
 
-    it("allows with https x-forwarded-proto from trusted client", function()
-      local res = assert(client:send {
-        method = "GET",
-        path = "/status/200",
-        headers = {
-          Host = "example.com",
-          ["x-forwarded-proto"] = "https"
-        }
+      local service4 = assert(bp.services:insert {
+        name     = "api-3",
+        protocol = helpers.mock_upstream_ssl_protocol,
+        host     = helpers.mock_upstream_hostname,
+        port     = helpers.mock_upstream_ssl_port,
       })
-      assert.res_status(200, res)
+
+      assert(db.routes:insert {
+        protocols     = { "https" },
+        service       = service4,
+        hosts         = { "ssl3.com" },
+        preserve_host = true,
+      })
+
+      local service5 = assert(bp.services:insert {
+        name     = "api-4",
+        protocol = helpers.mock_upstream_ssl_protocol,
+        host     = helpers.mock_upstream_hostname,
+        port     = helpers.mock_upstream_ssl_port,
+      })
+
+      assert(db.routes:insert {
+        protocols     = { "https" },
+        service       = service5,
+        hosts         = { "no-sni.com" },
+        preserve_host = false,
+      })
+
+      local service6 = assert(bp.services:insert {
+        name     = "api-5",
+        protocol = helpers.mock_upstream_ssl_protocol,
+        host     = "127.0.0.1",
+        port     = helpers.mock_upstream_ssl_port,
+      })
+
+      assert(db.routes:insert {
+        protocols     = { "https" },
+        service       = service6,
+        hosts         = { "nil-sni.com" },
+        preserve_host = false,
+      })
+
+      assert(helpers.start_kong {
+        database    = strategy,
+        nginx_conf  = "spec/fixtures/custom_nginx.template",
+        trusted_ips = "127.0.0.1",
+      })
+
+      admin_client = helpers.admin_client()
+      proxy_client = helpers.proxy_client()
+      https_client = helpers.proxy_ssl_client()
+
+      assert(admin_client:send {
+        method  = "POST",
+        path    = "/certificates",
+        body    = {
+          cert  = ssl_fixtures.cert,
+          key   = ssl_fixtures.key,
+          snis  = "example.com,ssl1.com",
+        },
+        headers = { ["Content-Type"] = "application/json" },
+      })
     end)
 
-    describe("blocks with https x-forwarded-proto from untrusted client", function()
-      local client
+    teardown(function()
+      helpers.stop_kong()
+    end)
 
-      -- restart kong and use a new client to simulate a connection from an
-      -- untrusted ip
-      setup(function()
-        assert(helpers.kong_exec("restart -c " .. helpers.test_conf_path, {
-          trusted_ips = "1.2.3.4", -- explicitly trust an IP that is not us
-        }))
-
-        client = helpers.proxy_client()
-      end)
-
-      -- despite reloading here with no trusted IPs, this
-      it("", function()
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
+    describe("global SSL", function()
+      it("fallbacks on the default proxy SSL certificate when SNI is not provided by client", function()
+        local res = assert(https_client:send {
+          method  = "GET",
+          path    = "/status/200",
           headers = {
-            Host = "example.com",
-            ["x-forwarded-proto"] = "https"
+            Host  = "global.com"
           }
         })
-        assert.res_status(426, res)
+        assert.res_status(200, res)
       end)
     end)
-  end)
 
-  describe("proxy_ssl_name", function()
-    local https_client_sni
+    describe("handshake", function()
+      it("sets the default fallback SSL certificate if no SNI match", function()
+        local cert = get_cert("test.com")
+        assert.matches("CN=localhost", cert, nil, true)
+      end)
 
-    before_each(function()
-      assert(helpers.kong_exec("restart --conf " .. helpers.test_conf_path ..
-                               " --nginx-conf spec/fixtures/custom_nginx.template"))
+      it("sets the configured SSL certificate if SNI match", function()
+        local cert = get_cert("ssl1.com")
+        assert.matches("CN=ssl-example.com", cert, nil, true)
 
-      https_client_sni = helpers.proxy_ssl_client()
+        cert = get_cert("example.com")
+        assert.matches("CN=ssl-example.com", cert, nil, true)
+      end)
     end)
 
-    after_each(function()
-      https_client_sni:close()
-    end)
+    describe("SSL termination", function()
 
-    describe("properly sets the upstream SNI with preserve_host", function()
-      it("true", function()
-        local res = assert(https_client_sni:send {
+      it("blocks request without HTTPS if protocols = { http }", function()
+        local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/",
           headers = {
-            Host = "ssl3.com"
-          },
-        })
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.equal("ssl3.com", json.vars.ssl_server_name)
-      end)
-
-      it("false", function()
-        local res = assert(https_client_sni:send {
-          method  = "GET",
-          path    = "/",
-          headers = {
-            Host = "no-sni.com"
-          },
-        })
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.equal("localhost", json.vars.ssl_server_name)
-      end)
-
-      it("false and IP-based upstream_url", function()
-        local res = assert(https_client_sni:send {
-          method = "GET",
-          path = "/",
-          headers = {
-            Host = "nil-sni.com"
+            ["Host"] = "example.com",
           }
         })
-        local body = assert.res_status(200, res)
+
+        local body = assert.res_status(426, res)
         local json = cjson.decode(body)
-        assert.equal("no SNI", json.vars.ssl_server_name)
+        assert.same({ message = "Please use HTTPS protocol" }, json)
+        assert.contains("Upgrade", res.headers.connection)
+        assert.equal("TLS/1.2, HTTP/1.1", res.headers.upgrade)
+      end)
+
+      describe("from not trusted_ip", function()
+        setup(function()
+          helpers.stop_kong()
+
+          assert(helpers.start_kong {
+            database    = strategy,
+            nginx_conf  = "spec/fixtures/custom_nginx.template",
+            trusted_ips = nil,
+          })
+
+          proxy_client = helpers.proxy_client()
+        end)
+
+        it("blocks HTTP request with HTTPS in x-forwarded-proto", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/status/200",
+            headers = {
+              Host  = "ssl1.com",
+              ["x-forwarded-proto"] = "https"
+            }
+          })
+          assert.res_status(426, res)
+        end)
+      end)
+
+      describe("from trusted_ip", function()
+        setup(function()
+          helpers.stop_kong()
+
+          assert(helpers.start_kong {
+            database    = strategy,
+            nginx_conf  = "spec/fixtures/custom_nginx.template",
+            trusted_ips = "127.0.0.1",
+          })
+
+          proxy_client = helpers.proxy_client()
+        end)
+
+        it("allows HTTP requests with x-forwarded-proto", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/status/200",
+            headers = {
+              Host  = "example.com",
+              ["x-forwarded-proto"] = "https",
+            }
+          })
+          assert.res_status(200, res)
+        end)
+
+        it("blocks HTTP requests with invalid x-forwarded-proto", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/status/200",
+            headers = {
+              Host  = "example.com",
+              ["x-forwarded-proto"] = "httpsa"
+            }
+          })
+          assert.res_status(426, res)
+        end)
+      end)
+
+      describe("blocks with https x-forwarded-proto from untrusted client", function()
+        local client
+
+        -- restart kong and use a new client to simulate a connection from an
+        -- untrusted ip
+        setup(function()
+          assert(helpers.kong_exec("restart -c " .. helpers.test_conf_path, {
+            trusted_ips = "1.2.3.4", -- explicitly trust an IP that is not us
+          }))
+
+          client = helpers.proxy_client()
+        end)
+
+        -- despite reloading here with no trusted IPs, this
+        it("", function()
+          local res = assert(client:send {
+            method  = "GET",
+            path    = "/status/200",
+            headers = {
+              Host  = "example.com",
+              ["x-forwarded-proto"] = "https"
+            }
+          })
+          assert.res_status(426, res)
+        end)
+      end)
+    end)
+
+    describe("proxy_ssl_name", function()
+      local https_client_sni
+
+      before_each(function()
+        assert(helpers.kong_exec("restart --conf " .. helpers.test_conf_path ..
+                                 " --nginx-conf spec/fixtures/custom_nginx.template"))
+
+        https_client_sni = helpers.proxy_ssl_client()
+      end)
+
+      after_each(function()
+        https_client_sni:close()
+      end)
+
+      describe("properly sets the upstream SNI with preserve_host", function()
+        it("true", function()
+          local res = assert(https_client_sni:send {
+            method  = "GET",
+            path    = "/",
+            headers = {
+              Host  = "ssl3.com"
+            },
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal("ssl3.com", json.vars.ssl_server_name)
+        end)
+
+        it("false", function()
+          local res = assert(https_client_sni:send {
+            method  = "GET",
+            path    = "/",
+            headers = {
+              Host  = "no-sni.com"
+            },
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal("localhost", json.vars.ssl_server_name)
+        end)
+
+        it("false and IP-based upstream_url", function()
+          local res = assert(https_client_sni:send {
+            method  = "GET",
+            path    = "/",
+            headers = {
+              Host  = "nil-sni.com"
+            }
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal("no SNI", json.vars.ssl_server_name)
+        end)
       end)
     end)
   end)
-end)
+end

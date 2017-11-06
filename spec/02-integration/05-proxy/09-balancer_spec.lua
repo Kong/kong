@@ -2,10 +2,8 @@
 -- for dns-record balancing see the `dns_spec` files
 
 local helpers = require "spec.helpers"
-local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local PORT = 21000
 local utils = require "kong.tools.utils"
-local cjson = require "cjson"
 
 local healthchecks_defaults = {
   active = {
@@ -76,8 +74,8 @@ local function post_target_endpoint(upstream_name, host, port, endpoint)
                             .. "/targets/"
                             .. utils.format_host(host, port)
                             .. "/" .. endpoint
-  local api_client = helpers.admin_client()
-  local res, err = assert(api_client:send {
+  local admin_client = helpers.admin_client()
+  local res, err = assert(admin_client:send {
     method = "POST",
     path = url,
     headers = {
@@ -85,7 +83,7 @@ local function post_target_endpoint(upstream_name, host, port, endpoint)
     },
     body = {},
   })
-  api_client:close()
+  admin_client:close()
   return res, err
 end
 
@@ -313,20 +311,15 @@ local localhosts = {
 for ipv, localhost in pairs(localhosts) do
 
 
-dao_helpers.for_each_dao(function(kong_config)
-
-  describe("Ring-balancer #" .. kong_config.database .. " #" .. ipv, function()
-    local config_db
+for _, strategy in helpers.each_strategy() do
+  describe("Ring-balancer [#" .. strategy .. "] #" .. ipv, function()
+    local db
+    local dao
+    local bp
 
     setup(function()
-      helpers.run_migrations()
-      config_db = helpers.test_conf.database
-      helpers.test_conf.database = kong_config.database
-      helpers.run_migrations()
-    end)
-    teardown(function()
-      helpers.test_conf.database = config_db
-      config_db = nil
+      db, dao, bp = helpers.get_db_utils(strategy)
+      helpers.run_migrations(dao)
     end)
 
     before_each(function()
@@ -502,30 +495,47 @@ dao_helpers.for_each_dao(function(kong_config)
 
     describe("#healthchecks", function()
       local upstream
+      local route_id
 
       local slots = 20
 
       before_each(function()
-        helpers.run_migrations()
-        helpers.dao.apis:insert {
-          name = "balancer.test",
-          hosts = { "balancer.test" },
-          upstream_url = "http://service.xyz.v1/path",
-        }
-        upstream = assert(helpers.dao.upstreams:insert {
+        assert(db:truncate())
+        dao:truncate_tables()
+        helpers.run_migrations(dao)
+
+        local service = assert(bp.services:insert {
+          name     = "balancer.test",
+          protocol = "http",
+          host     = "service.xyz.v1",
+          port     = 80,
+          path     = "/path",
+        })
+
+        local route = assert(db.routes:insert {
+          protocols = { "http" },
+          hosts     = { "balancer.test" },
+          service   = service,
+        })
+        route_id = route.id
+
+        upstream = assert(dao.upstreams:insert {
           name = "service.xyz.v1",
           slots = slots,
         })
-        assert(helpers.dao.targets:insert {
+
+        assert(dao.targets:insert {
           target = utils.format_host(localhost, PORT),
           weight = 10,
           upstream_id = upstream.id,
         })
-        assert(helpers.dao.targets:insert {
+
+        assert(dao.targets:insert {
           target = utils.format_host(localhost, PORT + 1),
           weight = 10,
           upstream_id = upstream.id,
         })
+
         helpers.start_kong()
       end)
 
@@ -536,8 +546,8 @@ dao_helpers.for_each_dao(function(kong_config)
       it("do not count Kong-generated errors as failures", function()
 
         -- configure healthchecks with a 1-error threshold
-        local api_client = helpers.admin_client()
-        assert(api_client:send {
+        local admin_client = helpers.admin_client()
+        assert(admin_client:send {
           method = "PATCH",
           path = "/upstreams/" .. upstream.name,
           headers = {
@@ -559,23 +569,29 @@ dao_helpers.for_each_dao(function(kong_config)
             }
           },
         })
-        api_client:close()
+        admin_client:close()
 
         -- add a plugin
-        api_client = helpers.admin_client()
-        local res = assert(api_client:send {
-          method = "POST",
-          path = "/apis/balancer.test/plugins/",
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
-          body = {
-            name = "key-auth",
-          },
+        local plugin = assert(dao.plugins:insert {
+          name = "key-auth",
+          route_id = route_id,
         })
-        local plugin_id = cjson.decode((res:read_body())).id
-        assert.string(plugin_id)
-        api_client:close()
+        local plugin_id = plugin.id
+
+--        admin_client = helpers.admin_client()
+--        local res = assert(admin_client:send {
+--          method = "POST",
+--          path = "/services/" .. service_id .. "/plugins/",
+--          headers = {
+--            ["Content-Type"] = "application/json",
+--          },
+--          body = {
+--            name = "key-auth",
+--          },
+--        })
+--        local plugin_id = cjson.decode((res:read_body())).id
+--        assert.string(plugin_id)
+--        admin_client:close()
 
         -- run request: fails with 401, but doesn't hit the 1-error threshold
         local oks, fails, last_status = client_requests(1)
@@ -584,23 +600,24 @@ dao_helpers.for_each_dao(function(kong_config)
         assert.same(401, last_status)
 
         -- delete the plugin
-        api_client = helpers.admin_client()
-        assert(api_client:send {
+        admin_client = helpers.admin_client()
+        assert(admin_client:send {
           method = "DELETE",
-          path = "/apis/balancer.test/plugins/" .. plugin_id,
+          path = "/plugins/" .. plugin_id,
           headers = {
             ["Content-Type"] = "application/json",
           },
           body = {},
         })
-        api_client:close()
+        admin_client:close()
 
         -- start servers, they are unaffected by the failure above
         local timeout = 10
         local server1 = http_server(timeout, localhost, PORT,     { upstream.slots })
         local server2 = http_server(timeout, localhost, PORT + 1, { upstream.slots })
 
-        oks, fails = client_requests(upstream.slots * 2)
+        oks, fails, last_status = client_requests(upstream.slots * 2)
+        assert.same(200, last_status)
         assert.same(upstream.slots * 2, oks)
         assert.same(0, fails)
 
@@ -621,8 +638,8 @@ dao_helpers.for_each_dao(function(kong_config)
         for nfails = 1, slots do
 
           -- configure healthchecks
-          local api_client = helpers.admin_client()
-          assert(api_client:send {
+          local admin_client = helpers.admin_client()
+          assert(admin_client:send {
             method = "PATCH",
             path = "/upstreams/" .. upstream.name,
             headers = {
@@ -638,7 +655,7 @@ dao_helpers.for_each_dao(function(kong_config)
               }
             },
           })
-          api_client:close()
+          admin_client:close()
 
           local timeout = 10
           local requests = upstream.slots * 2 -- go round the balancer twice
@@ -680,8 +697,8 @@ dao_helpers.for_each_dao(function(kong_config)
         for nfails = 1, 5 do
 
           -- configure healthchecks
-          local api_client = helpers.admin_client()
-          assert(api_client:send {
+          local admin_client = helpers.admin_client()
+          assert(admin_client:send {
             method = "PATCH",
             path = "/upstreams/" .. upstream.name,
             headers = {
@@ -703,7 +720,7 @@ dao_helpers.for_each_dao(function(kong_config)
               }
             },
           })
-          api_client:close()
+          admin_client:close()
 
           local timeout = 10
           local requests = upstream.slots * 2 -- go round the balancer twice
@@ -753,8 +770,8 @@ dao_helpers.for_each_dao(function(kong_config)
         for nchecks = 1, 5 do
 
           -- configure healthchecks
-          local api_client = helpers.admin_client()
-          assert(api_client:send {
+          local admin_client = helpers.admin_client()
+          assert(admin_client:send {
             method = "PATCH",
             path = "/upstreams/" .. upstream.name,
             headers = {
@@ -776,7 +793,7 @@ dao_helpers.for_each_dao(function(kong_config)
               }
             },
           })
-          api_client:close()
+          admin_client:close()
 
           local timeout = 10
 
@@ -834,8 +851,8 @@ dao_helpers.for_each_dao(function(kong_config)
 
         for nfails = 1, 5 do
           -- configure healthchecks
-          local api_client = helpers.admin_client()
-          assert(api_client:send {
+          local admin_client = helpers.admin_client()
+          assert(admin_client:send {
             method = "PATCH",
             path = "/upstreams/" .. upstream.name,
             headers = {
@@ -851,7 +868,7 @@ dao_helpers.for_each_dao(function(kong_config)
               }
             },
           })
-          api_client:close()
+          admin_client:close()
 
           local timeout = 10
 
@@ -909,8 +926,8 @@ dao_helpers.for_each_dao(function(kong_config)
       it("perform passive health checks -- manual shutdown", function()
 
         -- configure healthchecks
-        local api_client = helpers.admin_client()
-        assert(api_client:send {
+        local admin_client = helpers.admin_client()
+        assert(admin_client:send {
           method = "PATCH",
           path = "/upstreams/" .. upstream.name,
           headers = {
@@ -926,7 +943,7 @@ dao_helpers.for_each_dao(function(kong_config)
             }
           },
         })
-        api_client:close()
+        admin_client:close()
 
         local timeout = 10
 
@@ -979,80 +996,123 @@ dao_helpers.for_each_dao(function(kong_config)
     end)
 
     describe("Balancing", function()
-      local client, api_client, upstream1, upstream2, target1, target2
+      local proxy_client
+      local admin_client
+      local upstream1
+      local upstream2
+      local target1
+      local target2
 
       before_each(function()
-        helpers.run_migrations()
-        -- insert an api with round-robin balancer
-        assert(helpers.dao.apis:insert {
-          name = "balancer.test",
-          hosts = { "balancer.test" },
-          upstream_url = "http://service.xyz.v1/path",
+        assert(db:truncate())
+        dao:truncate_tables()
+        helpers.run_migrations(dao)
+
+        local service = assert(bp.services:insert {
+          name     = "balancer.test",
+          protocol = "http",
+          host     = "service.xyz.v1",
+          port     = 80,
+          path     = "/path",
         })
-        upstream1 = assert(helpers.dao.upstreams:insert {
-          name = "service.xyz.v1",
-          slots = 10,
+
+        assert(db.routes:insert {
+          protocols = { "http" },
+          hosts     = { "balancer.test" },
+          service   = service,
         })
-        target1 = assert(helpers.dao.targets:insert {
-          target = utils.format_host(localhost, PORT),
-          weight = 10,
+
+        upstream1 = assert(dao.upstreams:insert {
+          name   = "service.xyz.v1",
+          slots  = 10,
+        })
+
+        target1 = assert(dao.targets:insert {
+          target      = utils.format_host(localhost, PORT),
+          weight      = 10,
           upstream_id = upstream1.id,
         })
-        target2 = assert(helpers.dao.targets:insert {
-          target = utils.format_host(localhost, PORT + 1),
-          weight = 10,
+
+        target2 = assert(dao.targets:insert {
+          target      = utils.format_host(localhost, PORT + 1),
+          weight      = 10,
           upstream_id = upstream1.id,
         })
 
         -- insert an api with consistent-hashing balancer
-        assert(helpers.dao.apis:insert {
-          name = "hashing.test",
-          hosts = { "hashing.test" },
-          upstream_url = "http://service.hashing.v1/path",
+
+        local service1 = assert(bp.services:insert {
+          name     = "hashing.test",
+          protocol = "http",
+          host     = "service.hashing.v1",
+          port     = 80,
+          path     = "/path",
         })
-        upstream2 = assert(helpers.dao.upstreams:insert {
-          name = "service.hashing.v1",
-          slots = 10,
+
+        assert(db.routes:insert {
+          protocols = { "http" },
+          hosts     = { "hashing.test" },
+          service   = service1,
+        })
+
+        upstream2 = assert(dao.upstreams:insert {
+          name   = "service.hashing.v1",
+          slots  = 10,
           hash_on = "header",
           hash_on_header = "hashme",
         })
-        assert(helpers.dao.targets:insert {
-          target = utils.format_host(localhost, PORT + 2),
-          weight = 10,
+
+        assert(dao.targets:insert {
+          target      = utils.format_host(localhost, PORT + 2),
+          weight      = 10,
           upstream_id = upstream2.id,
         })
-        assert(helpers.dao.targets:insert {
-          target = utils.format_host(localhost, PORT + 3),
-          weight = 10,
+
+        assert(dao.targets:insert {
+          target      = utils.format_host(localhost, PORT + 3),
+          weight      = 10,
           upstream_id = upstream2.id,
         })
 
         -- insert additional api + upstream with no targets
-        assert(helpers.dao.apis:insert {
-          name = "balancer.test2",
-          hosts = { "balancer.test2" },
-          upstream_url = "http://service.xyz.v2/path",
+
+        local service2 = assert(bp.services:insert {
+          name     = "balancer.test2",
+          protocol = "http",
+          host     = "service.xyz.v2",
+          port     = 80,
+          path     = "/path",
         })
-        assert(helpers.dao.upstreams:insert {
-          name = "service.xyz.v2",
+
+        assert(db.routes:insert {
+          protocols = { "http" },
+          hosts     = { "balancer.test2" },
+          service   = service2,
+        })
+
+        assert(dao.upstreams:insert {
+          name  = "service.xyz.v2",
           slots = 10,
         })
 
-        helpers.start_kong()
-        client = helpers.proxy_client()
-        api_client = helpers.admin_client()
+        assert(helpers.start_kong {
+          database = strategy,
+        })
+
+        proxy_client = helpers.proxy_client()
+        admin_client = helpers.admin_client()
       end)
 
       after_each(function()
-        if client and api_client then
-          client:close()
-          api_client:close()
+        if proxy_client and admin_client then
+          proxy_client:close()
+          admin_client:close()
         end
         helpers.stop_kong(nil, true)
       end)
 
-      it("over multiple targets", function()
-        local timeout = 10
+      it("distributes over multiple targets", function()
+        local timeout  = 10
         local requests = upstream1.slots * 2 -- go round the balancer twice
 
         -- setup target servers
@@ -1071,6 +1131,7 @@ dao_helpers.for_each_dao(function(kong_config)
         assert.are.equal(requests / 2, count1)
         assert.are.equal(requests / 2, count2)
       end)
+
       it("over multiple targets, with hashing", function()
         local timeout = 5
         local requests = upstream2.slots * 2 -- go round the balancer twice
@@ -1120,7 +1181,7 @@ dao_helpers.for_each_dao(function(kong_config)
         assert.are.equal(requests / 2, count2)
 
         -- add a new target 3
-        local res = assert(api_client:send {
+        local res = assert(admin_client:send {
           method = "POST",
           path = "/upstreams/" .. upstream1.name .. "/targets",
           headers = {
@@ -1177,13 +1238,13 @@ dao_helpers.for_each_dao(function(kong_config)
         assert.are.equal(requests / 2, count2)
 
         -- modify weight for target 2, set to 0
-        local res = assert(api_client:send {
+        local res = assert(admin_client:send {
           method = "POST",
           path = "/upstreams/" .. upstream1.name .. "/targets",
           headers = {
             ["Content-Type"] = "application/json"
           },
-          body = {
+          body    = {
             target = target2.target,
             weight = 0,   -- disable this target
           },
@@ -1227,13 +1288,13 @@ dao_helpers.for_each_dao(function(kong_config)
         assert.are.equal(requests / 2, count2)
 
         -- modify weight for target 2
-        local res = assert(api_client:send {
-          method = "POST",
-          path = "/upstreams/" .. target2.upstream_id .. "/targets",
+        local res = assert(admin_client:send {
+          method  = "POST",
+          path    = "/upstreams/" .. target2.upstream_id .. "/targets",
           headers = {
             ["Content-Type"] = "application/json"
           },
-          body = {
+          body    = {
             target = target2.target,
             weight = target1.weight * 1.5,   -- shift proportions from 50/50 to 40/60
           },
@@ -1280,26 +1341,26 @@ dao_helpers.for_each_dao(function(kong_config)
         assert.are.equal(requests / 2, count2)
 
         -- modify weight for both targets, set to 0
-        local res = assert(api_client:send {
+        local res = assert(admin_client:send {
           method = "POST",
           path = "/upstreams/" .. upstream1.name .. "/targets",
           headers = {
             ["Content-Type"] = "application/json"
           },
-          body = {
+          body    = {
             target = target1.target,
             weight = 0,   -- disable this target
           },
         })
         assert.response(res).has.status(201)
 
-        res = assert(api_client:send {
-          method = "POST",
-          path = "/upstreams/" .. upstream1.name .. "/targets",
+        res = assert(admin_client:send {
+          method  = "POST",
+          path    = "/upstreams/" .. upstream1.name .. "/targets",
           headers = {
             ["Content-Type"] = "application/json"
           },
-          body = {
+          body    = {
             target = target2.target,
             weight = 0,   -- disable this target
           },
@@ -1309,9 +1370,9 @@ dao_helpers.for_each_dao(function(kong_config)
         -- now go and hit the same balancer again
         -----------------------------------------
 
-        res = assert(client:send {
-          method = "GET",
-          path = "/",
+        res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/",
           headers = {
             ["Host"] = "balancer.test"
           }
@@ -1321,9 +1382,9 @@ dao_helpers.for_each_dao(function(kong_config)
       end)
       it("failure due to no targets", function()
         -- Go hit it with a request
-        local res = assert(client:send {
-          method = "GET",
-          path = "/",
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/",
           headers = {
             ["Host"] = "balancer.test2"
           }
@@ -1334,6 +1395,6 @@ dao_helpers.for_each_dao(function(kong_config)
     end)
   end)
 
-end) -- for 'database type'
+end
 
 end

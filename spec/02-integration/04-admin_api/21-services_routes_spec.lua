@@ -131,12 +131,13 @@ for _, strategy in helpers.each_strategy("postgres") do
             local body = assert.res_status(400, res)
             local json = cjson.decode(body)
             assert.same({
-                protocol = "required field missing",
+                host = "required field missing",
               }, json.fields)
 
             -- Invalid parameter
             res = client:post("/services", {
                 body = {
+                  host     = "example.com",
                   protocol = "foo",
                 },
                 headers = { ["Content-Type"] = content_type }
@@ -153,7 +154,7 @@ for _, strategy in helpers.each_strategy("postgres") do
           before_each(function()
             for i = 1, 10 do
               assert(db.services:insert {
-                protocol = "http",
+                host = ("example%d.com"):format(i)
               })
             end
           end)

@@ -24,14 +24,14 @@ dao_helpers.for_each_dao(function(kong_config)
 
       local service, _, err_t = db.services:insert {
         protocol = "http",
-        host = "example.com",
+        host     = "example.com",
       }
       assert.is_nil(err_t)
 
       service_fixture = service
 
       plugin_fixture = {
-        name = "key-auth",
+        name       = "key-auth",
         service_id = service.id,
       }
     end)
@@ -46,9 +46,9 @@ dao_helpers.for_each_dao(function(kong_config)
         assert.same({
           run_on_preflight = true,
           hide_credentials = false,
-          key_names = {"apikey"},
-          anonymous = "",
-          key_in_body = false,
+          key_names        = {"apikey"},
+          anonymous        = "",
+          key_in_body      = false,
         }, plugin.config)
       end)
       it("insert a valid plugin bis", function()
@@ -61,9 +61,9 @@ dao_helpers.for_each_dao(function(kong_config)
         assert.same({
           run_on_preflight = true,
           hide_credentials = false,
-          key_names = {"api-key"},
-          anonymous = "",
-          key_in_body = false,
+          key_names        = {"api-key"},
+          anonymous        = "",
+          key_in_body      = false,
         }, plugin.config)
       end)
 
@@ -111,17 +111,27 @@ dao_helpers.for_each_dao(function(kong_config)
         end)
 
         it("Service/Route", function()
-          local route, _, err_t = db.routes:insert {
-            protocol = "http",
-            hosts = { "example.com" },
+          local err_t, service, route, _
+
+          service, _, err_t = db.services:insert {
+            host = "example.com",
           }
+
+          assert.is_nil(err_t)
+
+          route, _, err_t = db.routes:insert {
+            protocols = { "http" },
+            hosts     = { "example.com" },
+            service   = service,
+          }
+
           assert.is_nil(err_t)
 
           local plugin_tbl = {
-            name = "rate-limiting",
+            name       = "rate-limiting",
             service_id = service_fixture.id,
-            route_id = route.id,
-            config = { minute = 1 }
+            route_id   = route.id,
+            config     = { minute = 1 }
           }
 
           local plugin, err = dao.plugins:insert(plugin_tbl)
@@ -139,9 +149,18 @@ dao_helpers.for_each_dao(function(kong_config)
         end)
 
         it("Route/Consumer", function()
-          local route, _, err_t = db.routes:insert {
-            protocol = "http",
-            hosts = { "example.com" },
+          local err_t, service, route, _
+
+          service, _, err_t = db.services:insert {
+            host = "example.com",
+          }
+
+          assert.is_nil(err_t)
+
+          route, _, err_t = db.routes:insert {
+            protocols = { "http" },
+            hosts     = { "example.com" },
+            service   = service,
           }
           assert.is_nil(err_t)
 
@@ -152,10 +171,10 @@ dao_helpers.for_each_dao(function(kong_config)
           assert.truthy(consumer)
 
           local plugin_tbl = {
-            name = "rate-limiting",
-            route_id = route.id,
+            name        = "rate-limiting",
+            route_id    = route.id,
             consumer_id = consumer.id,
-            config = { minute = 1 }
+            config      = { minute = 1 }
           }
 
           local plugin, err = dao.plugins:insert(plugin_tbl)
@@ -174,10 +193,20 @@ dao_helpers.for_each_dao(function(kong_config)
         end)
 
         it("Service/Route/Consumer", function()
-          local route, _, err_t = db.routes:insert {
-            protocol = "http",
-            hosts = { "example.com" },
+          local err_t, service, route, _
+
+          service, _, err_t = db.services:insert {
+            host = "example.com",
           }
+
+          assert.is_nil(err_t)
+
+          route, _, err_t = db.routes:insert {
+            protocols = { "http" },
+            hosts     = { "example.com" },
+            service   = service,
+          }
+
           assert.is_nil(err_t)
 
           local consumer, err = dao.consumers:insert {
@@ -187,11 +216,11 @@ dao_helpers.for_each_dao(function(kong_config)
           assert.truthy(consumer)
 
           local plugin_tbl = {
-            name = "rate-limiting",
-            service_id = service_fixture.id,
-            route_id = route.id,
+            name        = "rate-limiting",
+            service_id  = service_fixture.id,
+            route_id    = route.id,
             consumer_id = consumer.id,
-            config = { minute = 1 }
+            config      = { minute = 1 }
           }
 
           local plugin, err = dao.plugins:insert(plugin_tbl)
@@ -238,10 +267,10 @@ dao_helpers.for_each_dao(function(kong_config)
 
       it("not insert plugin if invalid Consumer foreign key", function()
         local plugin_tbl = {
-          name = "rate-limiting",
-          service_id = service_fixture.id,
+          name        = "rate-limiting",
+          service_id  = service_fixture.id,
           consumer_id = utils.uuid(),
-          config = {minute = 1}
+          config      = {minute = 1}
         }
 
         local plugin, err = dao.plugins:insert(plugin_tbl)
@@ -302,15 +331,25 @@ dao_helpers.for_each_dao(function(kong_config)
       end)
 
       it("deleting Route deletes associated Plugin", function()
-        local route, _, err_t = db.routes:insert {
-          protocol = "http",
-          hosts = { "example.com" },
+        local err_t, service, route, _
+
+        service, _, err_t = db.services:insert {
+          host = "example.com",
+        }
+
+        assert.is_nil(err_t)
+
+        route, _, err_t = db.routes:insert {
+          protocols = { "http" },
+          hosts     = { "example.com" },
+          service   = service,
         }
         assert.is_nil(err_t)
 
         local plugin, err = dao.plugins:insert {
-          name = "key-auth",
-          route_id = route.id,
+          name       = "key-auth",
+          route_id   = route.id,
+          service_id = service.id,
         }
         assert.falsy(err)
 
@@ -347,10 +386,10 @@ dao_helpers.for_each_dao(function(kong_config)
 
         assert.falsy(err)
         local plugin, err = dao.plugins:insert {
-          name = "rate-limiting",
-          service_id = service_fixture.id,
+          name        = "rate-limiting",
+          service_id  = service_fixture.id,
           consumer_id = consumer_fixture.id,
-          config = {minute = 1}
+          config      = { minute = 1 },
         }
         assert.falsy(err)
 

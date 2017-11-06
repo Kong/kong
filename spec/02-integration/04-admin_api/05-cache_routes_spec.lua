@@ -22,6 +22,12 @@ describe("Admin API /cache [#" .. strategy .. "]", function()
       service = service,
     })
 
+    assert(bp.routes:insert {
+      hosts   = { "cache.com" },
+      service = service,
+      methods = { "POST" }
+    })
+
     assert(bp.plugins:insert {
       name       = "cache",
       service_id = service.id,

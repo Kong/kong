@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 
 
-for _, strategy, utils in helpers.each_strategy() do
+for _, strategy in helpers.each_strategy() do
   describe("use-cases with DB: #" .. strategy, function()
     local db
     local dao

@@ -15,7 +15,6 @@ local use_case = {
   {
     service = service,
     route   = {
-      name  = "route-1",
     },
     headers = {
       host  = {
@@ -28,7 +27,6 @@ local use_case = {
   {
     service = service,
     route   = {
-      name    = "route-2",
       methods = {
         "TRACE"
       },
@@ -38,7 +36,6 @@ local use_case = {
   {
     service = service,
     route   = {
-      name  = "route-3",
       paths = {
         "/my-route"
       },
@@ -48,7 +45,6 @@ local use_case = {
   {
     service = service,
     route   = {
-      name  = "route-4",
       paths = {
         "/route-4"
       },
@@ -64,7 +60,6 @@ local use_case = {
   {
     service = service,
     route   = {
-      name    = "route-5",
       methods = {
         "POST",
         "PUT",
@@ -82,7 +77,6 @@ local use_case = {
   {
     service = service,
     route   = {
-      name    = "route-6",
       methods = {
         "POST",
         "PUT",
@@ -97,7 +91,6 @@ local use_case = {
   {
     service = service,
     route   = {
-      name    = "route-7",
       methods = {
         "POST",
         "PUT",
@@ -129,7 +122,6 @@ describe("Router", function()
         local router, err = Router.new {
           {
             route   = {
-              name  = "route-invalid"
             },
             service = {
               name  = "service-invalid"
@@ -216,14 +208,12 @@ describe("Router", function()
           {
             service = service,
             route   = {
-              name  = "route-1",
               paths = { "/my-route/hello" },
             },
           },
           {
             service = service,
             route   = {
-              name  = "route-2",
               paths = { "/my-route" },
             },
           },
@@ -253,7 +243,6 @@ describe("Router", function()
           {
             service   = service,
             route     = {
-              name    = "route-1",
               methods = { "POST", "PUT", "GET" },
               paths   = { "/my-route" },
             },
@@ -261,7 +250,6 @@ describe("Router", function()
           {
             service   = service,
             route     = {
-              name    = "route-2",
               methods = { "POST", "PUT", "GET" },
               paths   = { "/my-route/hello" },
             },
@@ -292,7 +280,6 @@ describe("Router", function()
           {
             service = service,
             route   = {
-              name  = "route-1",
               paths = { "/my-route" },
             },
             headers = {
@@ -302,7 +289,6 @@ describe("Router", function()
           {
             service = service,
             route   = {
-              name  = "route-2",
               paths = { "/my-route/hello" },
             },
             headers = {
@@ -335,14 +321,12 @@ describe("Router", function()
           {
             service = service,
             route   = {
-              name  = "route-1",
               paths = { "/something/my-route" },
             },
           },
           {
             service = service,
             route   = {
-              name  = "route-2",
               paths = { "/my-route" },
             },
             headers = {
@@ -366,7 +350,6 @@ describe("Router", function()
           {
             service = service,
             route   = {
-              name  = "route-1",
               paths = { [[/users/\d+/profile]] },
             },
           },
@@ -384,21 +367,18 @@ describe("Router", function()
           {
             service = service,
             route   = {
-              name  = "route-1",
               paths = { [[/route/persons/\d{3}]] },
             },
           },
           {
             service = service,
             route   = {
-              name  = "route-2",
               paths = { [[/route/persons/\d{3}/following]] },
             },
           },
           {
             service = service,
             route   = {
-              name  = "route-3",
               paths = { [[/route/persons/\d{3}/[a-z]+]] },
             },
           },
@@ -416,14 +396,12 @@ describe("Router", function()
           {
             service = service,
             route   = {
-              name  = "route-1",
               paths = { [[/route/persons]] },
             },
           },
           {
             service = service,
             route   = {
-              name  = "route-2",
               paths = { [[/route/persons/\d+/profile]] },
             },
           },
@@ -443,7 +421,6 @@ describe("Router", function()
         {
           service = service,
           route   = {
-            name  = "route-1",
           },
           headers = {
             host  = { "*.route.com" },
@@ -452,7 +429,6 @@ describe("Router", function()
         {
           service = service,
           route   = {
-            name  = "route-2",
           },
           headers = {
             host  = { "route.*" },
@@ -478,7 +454,6 @@ describe("Router", function()
         table.insert(use_case, 1, {
           service = service,
           route   = {
-            name  = "route-3",
           },
           headers = {
             host  = { "plain.route.com" },
@@ -488,7 +463,6 @@ describe("Router", function()
         table.insert(use_case, {
           service = service,
           route   = {
-            name  = "route-4",
           },
           headers = {
             host  = { "route.com" },
@@ -529,7 +503,6 @@ describe("Router", function()
         table.insert(use_case, {
           service   = service,
           route     = {
-            name    = "route-5",
             paths   = { "/path" },
             methods = { "GET", "TRACE" },
           },
@@ -562,7 +535,6 @@ describe("Router", function()
           {
             service = service,
             route   = {
-              name  = "route-1",
               paths = { [[/users/\d+/profile]] },
             },
             headers = {
@@ -572,7 +544,6 @@ describe("Router", function()
           {
             service = service,
             route   = {
-              name  = "route-2",
               paths = { [[/users]] },
             },
             headers = {
@@ -612,7 +583,6 @@ describe("Router", function()
           {
             service = service,
             route   = {
-              name  = "route-1",
               paths = { "/v1/path" },
             },
             headers = {
@@ -622,7 +592,6 @@ describe("Router", function()
           {
             service = service,
             route   = {
-              name  = "route-2",
               paths = { "/" },
             },
             headers = {
@@ -646,7 +615,6 @@ describe("Router", function()
           {
             service   = service,
             route     = {
-              name    = "route-1",
               methods = { "GET" },
             },
             headers   = {
@@ -656,7 +624,6 @@ describe("Router", function()
           {
             service   = service,
             route     = {
-              name    = "route-2",
               methods = { "POST" },
             },
             headers   = {
@@ -680,7 +647,6 @@ describe("Router", function()
           {
             service   = service,
             route     = {
-              name    = "route-1",
               methods = { "GET" },
               paths   = { [[/users/\d+/profile]] },
             },
@@ -688,7 +654,6 @@ describe("Router", function()
           {
             service   = service,
             route     = {
-              name    = "route-2",
               methods = { "POST" },
               paths   = { [[/users/\d*/profile]] },
             },
@@ -710,14 +675,12 @@ describe("Router", function()
           {
             service   = service,
             route     = {
-              name    = "route-1",
               methods = { "GET" },
             },
           },
           {
             service   = service,
             route     = {
-              name    = "route-2",
               paths   = { "/example" },
             },
           },
@@ -738,14 +701,12 @@ describe("Router", function()
           {
             service    = service,
             route      = {
-              name     = "route-1",
               methods  = { "GET" },
             },
           },
           {
             service    = service,
             route      = {
-              name     = "route-2",
             },
             headers    = {
               ["Host"] = { "domain.*" },
@@ -768,14 +729,12 @@ describe("Router", function()
           {
             service = service,
             route   = {
-              name  = "route-1",
               paths = { "/a", "/bbbbbbb" },
             },
           },
           {
             service = service,
             route   = {
-              name  = "route-2",
               paths = { "/a/bb" },
             },
           },
@@ -793,7 +752,6 @@ describe("Router", function()
           table.insert(use_case, 1, {
             service = service,
             route   = {
-              name  = "route-root-uri",
               paths = { "/" },
             }
           })
@@ -842,7 +800,6 @@ describe("Router", function()
             table.insert(use_case, {
               service = service,
               route   = {
-                name  = "route [host + uri]",
                 paths = { "/my-uri" },
               },
               headers = {
@@ -854,7 +811,6 @@ describe("Router", function()
           table.insert(use_case, {
             service = service,
             route   = {
-              name  = "target route",
               paths = { "/my-target-uri" },
             },
             headers = {
@@ -882,14 +838,12 @@ describe("Router", function()
           {
             service = service,
             route   = {
-              name  = "route-1",
               paths = { "/a", "/bbbbbbb" },
             },
           },
           {
             service = service,
             route   = {
-              name  = "route-2",
               paths = { "/a/bb" },
             },
           },
@@ -953,7 +907,6 @@ describe("Router", function()
             benchmark_use_cases[i] = {
               service = service,
               route   = {
-                name  = "route-" .. i,
               },
               headers = {
                 host  = { "domain-" .. i .. ".org" },
@@ -988,7 +941,6 @@ describe("Router", function()
             benchmark_use_cases[i] = {
               service = service,
               route   = {
-                name  = "route-" .. i,
                 paths = { "/my-route-" .. n },
               },
               headers = {
@@ -1001,7 +953,6 @@ describe("Router", function()
           benchmark_use_cases[n] = {
             service   = service,
             route     = {
-              name    = "route-" .. n,
               methods = { "POST" },
               paths   = { "/my-route-" .. n },
             },
@@ -1037,7 +988,6 @@ describe("Router", function()
             benchmark_use_cases[i] = {
               service = service,
               route   = {
-                name  = "route-" .. i,
                 paths = { "/my-route-" .. n },
               },
               headers = {
@@ -1051,7 +1001,6 @@ describe("Router", function()
           benchmark_use_cases[n] = {
             service = service,
             route   = {
-              name  = "route-" .. n,
               paths = { "/my-real-route" },
             },
             headers = {
@@ -1131,7 +1080,6 @@ describe("Router", function()
             protocol = "http"
           },
           route      = {
-            name     = "route-1",
             paths    = { "/my-route" },
           },
         },
@@ -1142,7 +1090,6 @@ describe("Router", function()
             protocol = "https"
           },
           route      = {
-            name     = "route-2",
             paths    = { "/my-route-2" },
           },
         },
@@ -1182,7 +1129,6 @@ describe("Router", function()
         {
           service   = service,
           route     = {
-            name    = "route-1",
             methods = { "GET" },
             paths   = { "/my-route" },
           },
@@ -1193,7 +1139,6 @@ describe("Router", function()
         {
           service   = service,
           route     = {
-            name    = "route-2",
             paths   = { "/my-route" },
           },
           headers   = {
@@ -1203,7 +1148,6 @@ describe("Router", function()
         {
           service   = service,
           route     = {
-            name    = "route-3",
           },
           headers   = {
             host    = { "*.host.com" },
@@ -1212,7 +1156,6 @@ describe("Router", function()
         {
           service   = service,
           route     = {
-            name    = "route-4",
             paths   = { [[/users/\d+/profile]] },
           },
         },
@@ -1261,7 +1204,6 @@ describe("Router", function()
         {
           service = service,
           route   = {
-            name  = "route-1",
             paths = { [[/users/(?P<user_id>\d+)/profile/?(?P<scope>[a-z]*)]] },
           },
         },
@@ -1313,7 +1255,6 @@ describe("Router", function()
         {
           service      = service,
           route        = {
-            name       = "route-1",
             paths      = { "/hello" },
             strip_path = true,
           },
@@ -1333,7 +1274,6 @@ describe("Router", function()
         {
           service = service,
           route   = {
-            name  = "route-1",
             paths = { [[/users/\d+/profile]] },
           },
         },
@@ -1357,7 +1297,6 @@ describe("Router", function()
             protocol = "http"
           },
           route      = {
-            name     = "route-1",
             paths    = { "/my-route" },
           },
         },
@@ -1381,7 +1320,6 @@ describe("Router", function()
             protocol = "http"
           },
           route      = {
-            name     = "route-1",
             paths    = { "/my-route" },
           },
         },
@@ -1393,7 +1331,6 @@ describe("Router", function()
             protocol = "https"
           },
           route      = {
-            name     = "route-2",
             paths    = { "/my-route-2" },
           },
         },
@@ -1415,7 +1352,6 @@ describe("Router", function()
         {
           service = service,
           route   = {
-            name  = "route-1",
             paths = { "/endel%C3%B8st" },
           },
         },
@@ -1435,7 +1371,6 @@ describe("Router", function()
         {
           service      = service,
           route        = {
-            name       = "route-1",
             paths      = { "/my-route", "/this-route" },
             strip_path = true
           }
@@ -1444,7 +1379,6 @@ describe("Router", function()
         {
           service      = service,
           route        = {
-            name       = "route-2",
             methods    = { "POST" },
             paths      = { "/my-route", "/this-route" },
           },
@@ -1486,7 +1420,6 @@ describe("Router", function()
           {
             service      = service,
             route        = {
-              name       = "root-uri",
               paths      = { "/" },
               strip_path = true,
             },
@@ -1543,7 +1476,6 @@ describe("Router", function()
           {
             service      = service,
             route        = {
-              name       = "route-1",
               paths      = { "/endel%C3%B8st" },
               strip_path = true,
             },
@@ -1563,7 +1495,6 @@ describe("Router", function()
           {
             service      = service,
             route        = {
-              name       = "route-1",
               paths      = { [[/users/\d+/profile]] },
               strip_path = true,
             },
@@ -1583,7 +1514,6 @@ describe("Router", function()
           {
             service      = service,
             route        = {
-              name       = "route-1",
               paths      = { [[/users/(\d+)/profile]] },
               strip_path = true,
             },
@@ -1610,7 +1540,6 @@ describe("Router", function()
             protocol      = "http"
           },
           route           = {
-            name          = "route-1",
             preserve_host = true,
           },
           headers         = {
@@ -1625,7 +1554,6 @@ describe("Router", function()
             protocol      = "http"
           },
           route           = {
-            name          = "route-2",
             preserve_host = false,
           },
           headers         = {
@@ -1793,7 +1721,6 @@ describe("Router", function()
                 path       = args[1],
               },
               route        = {
-                name       = "route-1",
                 strip_path = args[5],
                 paths      = { args[2] },
               },

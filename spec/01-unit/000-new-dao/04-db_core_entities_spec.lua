@@ -63,7 +63,6 @@ for _, strategy in helpers.each_strategy() do
             strategy = strategy,
             message  = ngx.null,
             fields   = {
-              protocols   = "required field missing",
               service     = "required field missing",
               ["@entity"] = {
                 at_least_one_of = "at least one of 'methods', 'hosts' or 'paths' must be non-empty",
@@ -133,7 +132,7 @@ for _, strategy in helpers.each_strategy() do
           local route, err, err_t = db.routes:insert({
             protocols = { "http" },
             hosts = { "example.com" },
-            service = assert(db.services:insert({ protocol = "http" })),
+            service = assert(db.services:insert({ host = "service.com" })),
           })
           assert.is_nil(err_t)
           assert.is_nil(err)
@@ -153,7 +152,7 @@ for _, strategy in helpers.each_strategy() do
             paths           = ngx.null,
             regex_priority  = 0,
             preserve_host   = false,
-            strip_path      = false,
+            strip_path      = true,
             service         = route.service,
           }, route)
         end)
@@ -750,11 +749,11 @@ for _, strategy in helpers.each_strategy() do
           assert.is_table(err_t)
           assert.same({
             code        = Errors.codes.SCHEMA_VIOLATION,
-            name = "schema violation",
+            name        = "schema violation",
             message     = ngx.null,
             strategy    = strategy,
             fields      = {
-              protocol = "required field missing",
+              host = "required field missing",
             }
           }, err_t)
         end)
@@ -763,7 +762,7 @@ for _, strategy in helpers.each_strategy() do
         it("creates a Service and injects defaults", function()
           local service, err, err_t = db.services:insert({
             --name     = "example service",
-            protocol = "http",
+            host = "example.com",
           })
           assert.is_nil(err_t)
           assert.is_nil(err)
@@ -779,7 +778,7 @@ for _, strategy in helpers.each_strategy() do
             updated_at      = service.updated_at,
             name            = ngx.null,
             protocol        = "http",
-            host            = ngx.null,
+            host            = "example.com",
             port            = 80,
             path            = ngx.null,
             connect_timeout = 60000,
@@ -829,6 +828,7 @@ for _, strategy in helpers.each_strategy() do
           local service, err, err_t = db.services:insert({
             name       = "example service",
             protocol   = "http",
+            host       = "example.com",
             created_at = 0,
             updated_at = 0,
           })
@@ -865,7 +865,7 @@ for _, strategy in helpers.each_strategy() do
 
         it("returns existing Service", function()
           local service = assert(db.services:insert({
-            protocol = "http"
+            host = "example.com"
           }))
 
           local service_in_db, err, err_t = db.services:select({
@@ -873,7 +873,7 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.is_nil(err_t)
           assert.is_nil(err)
-          assert.equal("http", service_in_db.protocol)
+          assert.equal("example.com", service_in_db.host)
         end)
       end)
 
@@ -919,7 +919,7 @@ for _, strategy in helpers.each_strategy() do
 
         it("updates an existing Service", function()
           local service = assert(db.services:insert({
-            protocol = "http"
+            host = "service.com"
           }))
 
           local updated_service, err, err_t = db.services:update({
@@ -959,7 +959,7 @@ for _, strategy in helpers.each_strategy() do
 
         it("deletes an existing Service", function()
           local service = assert(db.services:insert({
-            protocol = "http"
+            host = "example.com"
           }))
 
           local ok, err, err_t = db.services:delete({
@@ -999,17 +999,17 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(err_t)
         assert.is_nil(err)
         assert.same({
-          id              = route.id,
-          created_at      = route.created_at,
-          updated_at      = route.updated_at,
-          protocols       = { "http" },
-          methods         = ngx.null,
-          hosts           = { "example.com" },
-          paths           = ngx.null,
-          regex_priority  = 0,
-          strip_path      = false,
-          preserve_host   = false,
-          service = {
+          id               = route.id,
+          created_at       = route.created_at,
+          updated_at       = route.updated_at,
+          protocols        = { "http" },
+          methods          = ngx.null,
+          hosts            = { "example.com" },
+          paths            = ngx.null,
+          regex_priority   = 0,
+          strip_path       = true,
+          preserve_host    = false,
+          service          = {
             id = service.id
           },
         }, route)

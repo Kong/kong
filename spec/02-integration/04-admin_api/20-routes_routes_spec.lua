@@ -77,7 +77,7 @@ for _, strategy in helpers.each_strategy("postgres") do
             assert.is_string(json.id)
             assert.equals(cjson.null, json.paths)
             assert.False(json.preserve_host)
-            assert.False(json.strip_path)
+            assert.True(json.strip_path)
           end
         end)
 
@@ -132,7 +132,6 @@ for _, strategy in helpers.each_strategy("postgres") do
                 name    = "schema violation",
                 message = cjson.null,
                 fields  = {
-                  protocols = "required field missing",
                   service   = "required field missing",
                   ["@entity"] = {
                     at_least_one_of = "at least one of 'methods', 'hosts' or 'paths' must be non-empty"

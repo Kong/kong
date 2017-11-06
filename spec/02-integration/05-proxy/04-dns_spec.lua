@@ -39,78 +39,121 @@ local function bad_tcp_server(port, duration, ...)
   return unpack(result)
 end
 
-describe("DNS", function()
-  describe("retries", function()
-    local retries = 3
-    local client
+for _, strategy in helpers.each_strategy() do
+  describe("DNS [#" ..  strategy .. "]", function()
+    describe("retries", function()
+      local retries = 3
+      local proxy_client
+      local db
+      local dao
+      local bp
 
-    setup(function()
-      helpers.run_migrations()
-      assert(helpers.dao.apis:insert {
-        name = "tests-retries",
-        hosts = { "retries.com" },
-        upstream_url = "http://127.0.0.1:" .. TCP_PORT,
-        retries = retries,
-      })
+      setup(function()
+        db, dao, bp = helpers.get_db_utils(strategy)
 
-      assert(helpers.start_kong())
-      client = helpers.proxy_client()
-    end)
+        assert(db:truncate())
+        dao:truncate_tables()
 
-    teardown(function()
-      if client then client:close() end
-      helpers.stop_kong()
-    end)
+        helpers.run_migrations(dao)
 
-    it("validates the number of retries", function()
-      -- setup a bad server
-      local thread = bad_tcp_server(TCP_PORT, 1)
+        local service = assert(bp.services:insert {
+          name    = "tests-retries",
+          port    = TCP_PORT,
+          retries = retries,
+        })
 
-      -- make a request to it
-      local r = client:send {
-        method = "GET",
-        path = "/",
-        headers = {
-          host = "retries.com"
+        assert(db.routes:insert {
+          hosts     = { "retries.com" },
+          protocols = { "http" },
+          service   = service
+        })
+
+        assert(helpers.start_kong{
+          database = strategy,
+        })
+
+        proxy_client = helpers.proxy_client()
+      end)
+
+      teardown(function()
+        if proxy_client then
+          proxy_client:close()
+        end
+
+        helpers.stop_kong()
+      end)
+
+      it("validates the number of retries", function()
+        -- setup a bad server
+        local thread = bad_tcp_server(TCP_PORT, 1)
+
+        -- make a request to it
+        local r = proxy_client:send {
+          method  = "GET",
+          path    = "/",
+          headers = {
+            host  = "retries.com"
+          }
         }
-      }
-      assert.response(r).has.status(502)
+        assert.response(r).has.status(502)
 
-      -- Getting back the TCP server count of the tries
-      local ok, tries = thread:join()
-      assert.True(ok)
-      assert.equals(retries, tries-1 ) -- the -1 is because the initial one is not a retry.
+        -- Getting back the TCP server count of the tries
+        local ok, tries = thread:join()
+        assert.True(ok)
+        assert.equals(retries, tries-1 ) -- the -1 is because the initial one is not a retry.
+      end)
+    end)
+    describe("upstream resolve failure", function()
+      local proxy_client
+      local db
+      local dao
+      local bp
+
+      setup(function()
+        db, dao, bp = helpers.get_db_utils(strategy)
+
+        assert(db:truncate())
+        dao:truncate_tables()
+
+        helpers.run_migrations(dao)
+
+        local service = assert(bp.services:insert {
+          name     = "tests-retries",
+          host     = "now.this.does.not",
+          path     = "/exist",
+          port     = 80,
+          protocol = "http"
+        })
+
+        assert(db.routes:insert {
+          hosts     = { "retries.com" },
+          protocols = { "http" },
+          service   = service
+        })
+
+
+        assert(helpers.start_kong())
+        proxy_client = helpers.proxy_client()
+      end)
+
+      teardown(function()
+        if proxy_client then
+          proxy_client:close()
+        end
+
+        helpers.stop_kong()
+      end)
+
+      it("fails with 503", function()
+        local r   = proxy_client:send {
+          method  = "GET",
+          path    = "/",
+          headers = {
+            host  = "retries.com"
+          }
+        }
+        assert.response(r).has.status(503)
+      end)
     end)
   end)
-  describe("upstream resolve failure", function()
-    local client
-
-    setup(function()
-      helpers.run_migrations()
-      assert(helpers.dao.apis:insert {
-        name = "tests-retries",
-        hosts = { "retries.com" },
-        upstream_url = "http://now.this.does.not/exist",
-      })
-
-      assert(helpers.start_kong())
-      client = helpers.proxy_client()
-    end)
-
-    teardown(function()
-      if client then client:close() end
-      helpers.stop_kong()
-    end)
-
-    it("fails with 503", function()
-      local r = client:send {
-        method = "GET",
-        path = "/",
-        headers = {
-          host = "retries.com"
-        }
-      }
-      assert.response(r).has.status(503)
-    end)
-  end)
-end)
+end

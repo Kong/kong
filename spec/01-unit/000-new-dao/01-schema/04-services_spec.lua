@@ -30,6 +30,7 @@ describe("services", function()
 
   it("missing protocol produces error", function()
     local service = {
+      protocol = ngx.null,
     }
     service = Services:process_auto_fields(service, "insert")
     local ok, errs = Services:validate(service)
@@ -47,6 +48,15 @@ describe("services", function()
     assert.truthy(errs["protocol"])
   end)
 
+  it("missing host produces error", function()
+    local service = {
+    }
+    service = Services:process_auto_fields(service, "insert")
+    local ok, errs = Services:validate(service)
+    assert.falsy(ok)
+    assert.truthy(errs["host"])
+  end)
+
   it("invalid retries produces error", function()
     local service = Services:process_auto_fields({ retries = -1 }, "insert")
     local ok, errs = Services:validate(service)
@@ -60,7 +70,7 @@ describe("services", function()
 
   it("produces defaults", function()
     local service = {
-      protocol = "http"
+      host = "www.example.com",
     }
     service = Services:process_auto_fields(service, "insert")
     local ok, err = Services:validate(service)
@@ -69,7 +79,7 @@ describe("services", function()
     assert.match(uuid_pattern, service.id)
     assert.same(service.name, ngx.null)
     assert.same(service.protocol, "http")
-    assert.same(service.host, ngx.null)
+    assert.same(service.host, "www.example.com")
     assert.same(service.port, 80)
     assert.same(service.path, ngx.null)
     assert.same(service.retries, 5)
