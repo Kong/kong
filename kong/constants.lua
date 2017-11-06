@@ -72,5 +72,6 @@ return {
     "kong_cache",
     "kong_process_events",
     "kong_cluster_events",
+    "kong_healthchecks",
   },
 }

@@ -299,12 +299,20 @@ function Kong.balancer()
     local previous_try = tries[addr.try_count - 1]
     previous_try.state, previous_try.code = get_last_failure()
 
-    local ok, err = balancer_execute(addr)
+    -- Report HTTP status for health checks
+    if addr.balancer then
+      if previous_try.state == "failed" then
+        addr.balancer.report_tcp_failure(addr.ip, addr.port)
+      else
+        addr.balancer.report_http_status(addr.ip, addr.port, previous_try.code)
+      end
+    end
+
+    local ok, err, errcode = balancer_execute(addr)
     if not ok then
       ngx_log(ngx_ERR, "failed to retry the dns/balancer resolver for ",
               tostring(addr.host), "' with: ", tostring(err))
-
-      return responses.send(500)
+      return ngx.exit(errcode)
     end
 
   else
@@ -326,8 +334,7 @@ function Kong.balancer()
     ngx_log(ngx_ERR, "failed to set the current peer (address: ",
             tostring(addr.ip), " port: ", tostring(addr.port),"): ",
             tostring(err))
-
-    return responses.send(500)
+    return ngx.exit(500)
   end
 
   ok, err = set_timeouts(addr.connect_timeout / 1000,
@@ -356,6 +363,7 @@ end
 
 function Kong.access()
   local ctx = ngx.ctx
+
   core.access.before(ctx)
 
   ctx.delay_response = true
