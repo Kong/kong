@@ -657,6 +657,8 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         permission1 = json
+
+        assert.not_number(json.resources)
       end)
 
       it("retrieves a specific permission by id", function()
@@ -670,6 +672,39 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         permission2 = json
 
         assert.same(permission1, permission2)
+      end)
+
+      it("transforms actions and resources values (#regression)", function()
+        -- ensure that resources and actions are disabled as human-readable
+        -- structures (lists)
+        local res = assert(client:send {
+          method = "GET",
+          path = "/rbac/permissions/read-only",
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.not_number(json.resources)
+        assert.is_table(json.resources)
+        assert.not_number(json.actions)
+        assert.is_table(json.actions)
+
+        -- test against an empty permission
+        res = assert(client:send {
+          method = "GET",
+          path = "/rbac/permissions/foo",
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.not_number(json.resources)
+        assert.is_table(json.resources)
+        assert.equals(0, #json.resources)
+        assert.not_number(json.actions)
+        assert.is_table(json.actions)
+        assert.equals(0, #json.actions)
       end)
     end)
 

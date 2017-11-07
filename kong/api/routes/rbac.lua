@@ -567,16 +567,8 @@ return {
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
-      local action_t = {}
-      for k in pairs(rbac.actions_bitfields) do
-        local n = rbac.actions_bitfields[k]
-
-        if band(n, permission.actions) == n then
-          action_t[#action_t + 1] = k
-        end
-      end
-
-      permission.actions = action_t
+      readable_actions(permission)
+      readable_resources(permission)
 
       return helpers.responses.send_HTTP_OK(permission)
     end,
