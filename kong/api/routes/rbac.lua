@@ -112,7 +112,7 @@ local function readable_actions(permission)
     end
   end
 
-  permission.actions = action_t_idx > 0 and action_t or nil
+  permission.actions = action_t
 end
 
 local function readable_resources(permission)
@@ -129,7 +129,7 @@ local function readable_resources(permission)
     end
   end
 
-  permission.resources = resource_t_idx > 0 and resource_t or nil
+  permission.resources = resource_t
 end
 
 return {
