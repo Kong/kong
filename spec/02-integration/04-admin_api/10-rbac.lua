@@ -534,8 +534,10 @@ describe("Admin API RBAC with " .. kong_config.database, function()
 
         assert.equal("foo", json.name)
         assert.is_true(utils.is_valid_uuid(json.id))
-        assert.is_nil(json.resources)
-        assert.is_nil(json.actions)
+        assert.is_table(json.resources)
+        assert.is_table(json.actions)
+        assert.equals(0, #json.resources)
+        assert.equals(0, #json.actions)
 
         -- 'nil' is presented to the user; we are represented as 0 here
         local row = dao.rbac_perms:find({ id = json.id })
