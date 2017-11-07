@@ -8,16 +8,25 @@ local pl_path = require "pl.path"
 local _M = {}
 
 
+local DEFAULT_KONG_LICENSE_PATH = "/etc/kong/license.json"
+
+
 local function get_license_string()
   local license_data_env = os.getenv("KONG_LICENSE_DATA")
   if license_data_env then
     return license_data_env
   end
 
-  local license_path = os.getenv("KONG_LICENSE_PATH")
-  if not license_path then
-    ngx.log(ngx.ERR, "KONG_LICENSE_PATH is not set")
-    return nil
+  local license_path
+  if pl_path.exists(DEFAULT_KONG_LICENSE_PATH) then
+    license_path = DEFAULT_KONG_LICENSE_PATH
+
+  else
+    license_path = os.getenv("KONG_LICENSE_PATH")
+    if not license_path then
+      ngx.log(ngx.ERR, "KONG_LICENSE_PATH is not set")
+      return nil
+    end
   end
 
   local license_file = io.open(license_path, "r")
