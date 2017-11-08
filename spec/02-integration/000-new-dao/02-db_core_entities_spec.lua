@@ -1,9 +1,7 @@
-local DB      = require "kong.db"
 local Errors  = require "kong.db.errors"
 local utils   = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
-local Blueprints = require "spec.fixtures.blueprints"
 
 
 local a_blank_uuid = "00000000-0000-0000-0000-000000000000"
@@ -14,23 +12,7 @@ for _, strategy in helpers.each_strategy() do
     local db, bp
 
     setup(function()
-      do
-        -- old DAO to run the migrations
-        local test_conf = helpers.test_conf
-        local old_strategy = test_conf.database
-        test_conf.database = strategy
-
-        local DAOFactory = require "kong.dao.factory"
-        local dao = assert(DAOFactory.new(test_conf))
-        assert(dao:run_migrations())
-
-        test_conf.database = old_strategy
-      end
-
-      db = assert(DB.new(helpers.test_conf, strategy))
-      assert(db:init_connector())
-      assert(db:truncate())
-      bp = Blueprints.new({}, db)
+      bp, db = helpers.get_db_utils(strategy)
     end)
 
     --[[
@@ -244,7 +226,9 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("returns an existing Route", function()
-          local route_inserted = bp.routes:insert()
+          local route_inserted = bp.routes:insert({
+            hosts = { "example.com" },
+          })
           local route, err, err_t = db.routes:select({ id = route_inserted.id })
           assert.is_nil(err_t)
           assert.is_nil(err)
@@ -300,7 +284,9 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("updates an existing Route", function()
-          local route = bp.routes:insert()
+          local route = bp.routes:insert({
+            hosts = { "example.com" },
+          })
 
           ngx.sleep(1)
 
@@ -330,7 +316,9 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         pending("created_at/updated_at cannot be overriden", function()
-          local route = bp.routes:insert()
+          local route = bp.routes:insert {
+            hosts = { "example.com" },
+          }
 
           local new_route, err, err_t = db.routes:update({ id = route.id }, {
             protocol = "https",
@@ -435,7 +423,9 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("deletes an existing Route", function()
-          local route = bp.routes:insert()
+          local route = bp.routes:insert({
+            hosts = { "example.com" },
+          })
 
           local ok, err, err_t = db.routes:delete({
             id = route.id
@@ -1073,7 +1063,9 @@ for _, strategy in helpers.each_strategy() do
           service = service,
           methods = { "GET" }
         })
-        bp.routes:insert() -- route 2
+        bp.routes:insert({
+          hosts = { "example.com" },
+        }) -- route 2
 
         local rows, err, err_t = db.routes:for_service({
           id = service.id,
@@ -1085,7 +1077,9 @@ for _, strategy in helpers.each_strategy() do
 
       t(":for_service() invokes Schema post_processing", function()
         -- TODO: implement :for_service() for Cassandra strategy
-        local service = bp.services:insert()
+        local service = bp.services:insert({
+          host = "example.com",
+        })
         bp.routes:insert({ service = service, methods = { "GET" } })
 
         local rows, err, err_t = db.routes:for_service({
@@ -1106,7 +1100,7 @@ for _, strategy in helpers.each_strategy() do
         local service1 = bp.services:insert({ host = "service1.com" })
         local service2 = bp.services:insert({ host = "service2.com" })
 
-        local route = bp.routes:insert({ service = service1 })
+        local route = bp.routes:insert({ service = service1, methods = { "GET" } })
 
         local new_route, err, err_t = db.routes:update({ id = route.id }, {
           service = service2
@@ -1121,7 +1115,9 @@ for _, strategy in helpers.each_strategy() do
           id = utils.uuid()
         }
 
-        local route = bp.routes:insert()
+        local route = bp.routes:insert({
+          hosts = { "example.com" },
+        })
 
         local new_route, err, err_t = db.routes:update({ id = route.id }, {
           service = service
@@ -1142,9 +1138,11 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it(":delete() a Service is not allowed if a Route is associated to it", function()
-        local service = bp.services:insert()
+        local service = bp.services:insert({
+          host = "example.com",
+        })
 
-        bp.routes:insert({ service = service })
+        bp.routes:insert({ service = service, methods = { "GET" } })
 
         local ok, err, err_t = db.services:delete({ id = service.id })
         assert.is_nil(ok)
@@ -1161,9 +1159,11 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it(":delete() a Route without deleting the associated Service", function()
-        local service = bp.services:insert()
+        local service = bp.services:insert({
+          host = "example.com",
+        })
 
-        local route = bp.routes:insert({ service = service })
+        local route = bp.routes:insert({ service = service, methods = { "GET" } })
 
         local ok, err, err_t = db.routes:delete({ id = route.id })
         assert.is_nil(err_t)

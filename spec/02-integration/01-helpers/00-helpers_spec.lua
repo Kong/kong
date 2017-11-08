@@ -5,31 +5,24 @@ local cjson   = require "cjson"
 for _, strategy in helpers.each_strategy() do
   describe("helpers [#" .. strategy .. "]: assertions and modifiers", function()
     local proxy_client
-    local db
-    local dao
 
     setup(function()
-      db, dao = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy)
 
-      assert(db:truncate())
-      dao:truncate_tables()
-
-      helpers.run_migrations(dao)
-
-      local service = assert(db.services:insert {
+      local service = bp.services:insert {
         host     = helpers.mock_upstream_host,
         port     = helpers.mock_upstream_port,
         protocol = helpers.mock_upstream_protocol,
-      })
+      }
 
-      assert(db.routes:insert {
+      bp.routes:insert {
         hosts     = { "mock_upstream" },
         protocols = { "http" },
         service   = service
-      })
+      }
 
-      helpers.prepare_prefix()
       assert(helpers.start_kong({
+        database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
     end)

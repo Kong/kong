@@ -8,19 +8,13 @@ local default_server_header = _KONG._NAME .. "/" .. _KONG._VERSION
 for _, strategy in helpers.each_strategy() do
   describe("Server Tokens [#" .. strategy .. "]", function()
     local proxy_client
-    local db
-    local dao
     local bp
 
     local function start(config)
       return function()
-        local service = assert(bp.services:insert())
-
-        assert(db.routes:insert {
-          protocols = { "http" },
-          hosts     = { "headers-inspect.com" },
-          service   = service,
-        })
+        bp.routes:insert {
+          hosts = { "headers-inspect.com" },
+        }
 
         config = config or {}
         config.database   = strategy
@@ -31,12 +25,7 @@ for _, strategy in helpers.each_strategy() do
     end
 
     setup(function()
-      db, dao, bp = helpers.get_db_utils(strategy)
-
-      assert(db:truncate())
-      dao:truncate_tables()
-
-      helpers.run_migrations(dao)
+      bp = helpers.get_db_utils(strategy)
     end)
 
     before_each(function()
@@ -166,19 +155,13 @@ for _, strategy in helpers.each_strategy() do
 
   describe("Latency Tokens", function()
     local proxy_client
-    local db
-    local dao
     local bp
 
     local function start(config)
       return function()
-        local service = assert(bp.services:insert())
-
-        assert(db.routes:insert {
-          protocols = { "http" },
-          hosts     = { "headers-inspect.com" },
-          service   = service,
-        })
+        bp.routes:insert {
+          hosts = { "headers-inspect.com" },
+        }
 
         config = config or {}
         config.database   = strategy
@@ -189,12 +172,7 @@ for _, strategy in helpers.each_strategy() do
     end
 
     setup(function()
-      db, dao, bp = helpers.get_db_utils(strategy)
-
-      assert(db:truncate())
-      dao:truncate_tables()
-
-      helpers.run_migrations(dao)
+      bp = helpers.get_db_utils(strategy)
     end)
 
 

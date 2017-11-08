@@ -3,8 +3,7 @@ local helpers = require "spec.helpers"
 for _, strategy in helpers.each_strategy() do
   describe("upstream timeouts with DB: #" .. strategy, function()
     local proxy_client
-    local db
-    local dao
+    local bp
 
     local function insert_routes(routes)
       if type(routes) ~= "table" then
@@ -31,31 +30,20 @@ for _, strategy in helpers.each_strategy() do
           service.protocol = helpers.mock_upstream_protocol
         end
 
-        route.service = assert(db.services:insert(service))
+        route.service = bp.services:insert(service)
 
         if not route.protocols then
           route.protocols = { "http" }
         end
 
-        local r, err = db.routes:insert(route)
-        if type(r) ~= "table" then
-          print(err)
-          require "pl.pretty".dump(route)
-        end
-
-        assert(db.routes:insert(route))
+        bp.routes:insert(route)
       end
 
       return true
     end
 
     setup(function()
-      db, dao = helpers.get_db_utils(strategy)
-
-      assert(db:truncate())
-      dao:truncate_tables()
-
-      helpers.run_migrations(dao)
+      bp = helpers.get_db_utils(strategy)
 
       insert_routes {
         {

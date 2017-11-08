@@ -17,79 +17,71 @@ for _, strategy in helpers.each_strategy() do
     local admin_client
     local proxy_client
     local https_client
-    local db
-    local dao
-    local bp
 
     setup(function()
-      db, dao, bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy)
 
-      assert(db:truncate())
-      dao:truncate_tables()
-
-      helpers.run_migrations(dao)
-
-      local service = assert(bp.services:insert {
+      local service = bp.services:insert {
         name = "global-cert",
-      })
+      }
 
-      assert(db.routes:insert {
+      bp.routes:insert {
         protocols = { "https" },
-        service   = service,
         hosts     = { "global.com" },
-      })
+        service   = service,
+      }
 
-      local service2 = assert(bp.services:insert {
+      local service2 = bp.services:insert {
         name = "api-1",
-      })
+      }
 
-      assert(db.routes:insert {
+      bp.routes:insert {
         protocols = { "https" },
-        service   = service2,
         hosts     = { "example.com", "ssl1.com" },
-      })
+        service   = service2,
+      }
 
-      local service4 = assert(bp.services:insert {
+      local service4 = bp.services:insert {
         name     = "api-3",
         protocol = helpers.mock_upstream_ssl_protocol,
         host     = helpers.mock_upstream_hostname,
         port     = helpers.mock_upstream_ssl_port,
-      })
+      }
 
-      assert(db.routes:insert {
+      bp.routes:insert {
         protocols     = { "https" },
-        service       = service4,
         hosts         = { "ssl3.com" },
+        service       = service4,
         preserve_host = true,
-      })
+      }
 
-      local service5 = assert(bp.services:insert {
+      local service5 = bp.services:insert {
         name     = "api-4",
         protocol = helpers.mock_upstream_ssl_protocol,
         host     = helpers.mock_upstream_hostname,
         port     = helpers.mock_upstream_ssl_port,
-      })
+      }
 
-      assert(db.routes:insert {
+      bp.routes:insert {
         protocols     = { "https" },
-        service       = service5,
         hosts         = { "no-sni.com" },
+        service       = service5,
         preserve_host = false,
-      })
+      }
 
-      local service6 = assert(bp.services:insert {
+      local service6 = bp.services:insert {
         name     = "api-5",
         protocol = helpers.mock_upstream_ssl_protocol,
         host     = "127.0.0.1",
         port     = helpers.mock_upstream_ssl_port,
-      })
+      }
 
-      assert(db.routes:insert {
+      bp.routes:insert {
         protocols     = { "https" },
-        service       = service6,
         hosts         = { "nil-sni.com" },
+        service       = service6,
         preserve_host = false,
-      })
+      }
 
       assert(helpers.start_kong {
         database    = strategy,
@@ -146,7 +138,6 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("SSL termination", function()
-
       it("blocks request without HTTPS if protocols = { http }", function()
         local res = assert(proxy_client:send {
           method  = "GET",

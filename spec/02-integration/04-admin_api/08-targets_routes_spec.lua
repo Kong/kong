@@ -17,9 +17,11 @@ describe("Admin API", function()
   local default_port = 8000
 
   before_each(function()
-    helpers.run_migrations()
+    assert(helpers.dao:run_migrations())
     assert(helpers.start_kong())
     client = assert(helpers.admin_client())
+
+    helpers.dao:truncate_tables()
 
     upstream = assert(helpers.dao.upstreams:insert {
       name = upstream_name,

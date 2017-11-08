@@ -4,28 +4,20 @@ local cjson = require "cjson"
 
 for _, strategy in helpers.each_strategy() do
   describe("Websockets [#" .. strategy .. "]", function()
-    local db
-    local dao
-    local bp
-
     setup(function()
-      db, dao, bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy)
 
-      assert(db:truncate())
-      dao:truncate_tables()
-
-      helpers.run_migrations(dao)
-
-      local service = assert(bp.services:insert {
+      local service = bp.services:insert {
         name = "ws",
         path = "/ws",
-      })
-      assert(db.routes:insert {
+      }
+
+      bp.routes:insert {
         protocols   = { "http" },
         paths       = { "/up-ws" },
         service     = service,
         strip_path  = true,
-      })
+      }
 
       assert(helpers.start_kong({
         database   = strategy,

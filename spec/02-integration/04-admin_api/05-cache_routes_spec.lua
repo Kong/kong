@@ -5,33 +5,27 @@ for _, strategy in helpers.each_strategy() do
 describe("Admin API /cache [#" .. strategy .. "]", function()
   local proxy_client
   local admin_client
-  local db
-  local dao
-  local bp
-
 
   setup(function()
-    db, dao, bp = helpers.get_db_utils(strategy)
-    helpers.run_migrations(dao)
-    assert(db:truncate())
-    dao:truncate_tables()
+    local bp = helpers.get_db_utils(strategy)
 
-    local service = assert(bp.services:insert())
-    assert(bp.routes:insert {
+    local service = bp.services:insert()
+
+    bp.routes:insert {
       hosts   = { "cache.com" },
       service = service,
-    })
+    }
 
-    assert(bp.routes:insert {
+    bp.routes:insert {
       hosts   = { "cache.com" },
+      methods = { "POST" },
       service = service,
-      methods = { "POST" }
-    })
+    }
 
-    assert(bp.plugins:insert {
+    bp.plugins:insert {
       name       = "cache",
       service_id = service.id,
-    })
+    }
 
     assert(helpers.start_kong({
       database   = strategy,

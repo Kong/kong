@@ -15,24 +15,15 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client_1
     local proxy_client_2
 
-    local db
-    local dao
-    local bp
-
     local wait_for_propagation
 
     local service_fixture
 
     setup(function()
-      db, dao, bp = helpers.get_db_utils(strategy)
-
-      assert(db:truncate())
-      dao:truncate_tables()
-
-      helpers.run_migrations(dao)
+      local bp = helpers.get_db_utils(strategy)
 
       -- insert single fixture Service
-      service_fixture = assert(bp.services:insert())
+      service_fixture = bp.services:insert()
 
       local db_update_propagation = strategy == "cassandra" and 3 or 0
 
@@ -70,8 +61,6 @@ for _, strategy in helpers.each_strategy() do
     teardown(function()
       helpers.stop_kong("servroot1")
       helpers.stop_kong("servroot2")
-
-      dao:truncate_tables()
     end)
 
     before_each(function()

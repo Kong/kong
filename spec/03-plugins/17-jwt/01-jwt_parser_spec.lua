@@ -1,14 +1,17 @@
 local jwt_parser = require "kong.plugins.jwt.jwt_parser"
-local fixtures = require "spec.03-plugins.17-jwt.fixtures"
-local helpers = require "spec.helpers"
-local u = helpers.unindent
+local fixtures   = require "spec.03-plugins.17-jwt.fixtures"
+local helpers    = require "spec.helpers"
+
+
+local u          = helpers.unindent
+
 
 describe("Plugin: jwt (parser)", function()
   describe("Encoding", function()
     it("should properly encode using HS256", function()
       local token = jwt_parser.encode({
-        sub = "1234567890",
-        name = "John Doe",
+        sub   = "1234567890",
+        name  = "John Doe",
         admin = true
       }, "secret")
 
@@ -28,8 +31,8 @@ describe("Plugin: jwt (parser)", function()
     end)
     it("should properly encode using RS256", function()
       local token = jwt_parser.encode({
-        sub = "1234567890",
-        name = "John Doe",
+        sub   = "1234567890",
+        name  = "John Doe",
         admin = true
       }, fixtures.rs256_private_key, 'RS256')
 
@@ -88,8 +91,8 @@ describe("Plugin: jwt (parser)", function()
 
     it("should encode using ES256", function()
       local token = jwt_parser.encode({
-        sub = "5656565656",
-        name = "Jane Doe",
+        sub   = "5656565656",
+        name  = "Jane Doe",
         admin = true
       }, fixtures.es256_private_key, 'ES256')
       assert.truthy(token)

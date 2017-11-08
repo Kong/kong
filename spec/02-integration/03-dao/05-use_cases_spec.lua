@@ -3,14 +3,12 @@ local helpers = require "spec.helpers"
 
 for _, strategy in helpers.each_strategy() do
   describe("use-cases with DB: #" .. strategy, function()
-    local db
     local dao
     local bp
 
     setup(function()
-      db, dao, bp = helpers.get_db_utils(strategy)
-      assert(db:truncate())
-      dao:truncate_tables()
+      local _
+      bp, _, dao = helpers.get_db_utils(strategy)
     end)
 
     it("retrieves plugins for plugins_iterator", function()

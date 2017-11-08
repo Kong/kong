@@ -21,7 +21,7 @@ Blueprint.__index = Blueprint
 
 function Blueprint:build(overrides)
   overrides = overrides or {}
-  return deep_merge(self:build_function(overrides), overrides)
+  return deep_merge(self.build_function(overrides), overrides)
 end
 
 
@@ -90,8 +90,8 @@ function _M.new(dao, db)
   end)
 
   local upstream_name_seq = new_sequence("upstream-%d")
-  res.upstreams = new_blueprint(dao.upstreams, function()
-    local slots = 100
+  res.upstreams = new_blueprint(dao.upstreams, function(overrides)
+    local slots = overrides.slots or 100
     local orderlist = {}
     for i = 1, slots do orderlist[i] = i end
 
@@ -140,6 +140,10 @@ function _M.new(dao, db)
       name   = "acl",
       config = {},
     }
+  end)
+
+  res.acls = new_blueprint(dao.acls, function()
+    return {}
   end)
 
   res.cors_plugins = new_blueprint(dao.plugins, function()
@@ -257,6 +261,10 @@ function _M.new(dao, db)
     return {
       key = keyauth_key_seq:next(),
     }
+  end)
+
+  res.basicauth_credentials = new_blueprint(dao.basicauth_credentials, function()
+    return {}
   end)
 
   res.hmac_auth_plugins = new_blueprint(dao.plugins, function()

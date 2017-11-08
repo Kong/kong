@@ -4,47 +4,29 @@ local helpers = require "spec.helpers"
 for _, strategy in helpers.each_strategy() do
   describe("URI encoding [#" ..  strategy .. "]", function()
     local proxy_client
-    local db
-    local dao
-    local bp
 
     setup(function()
-      db, dao, bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy)
 
-      assert(db:truncate())
-      dao:truncate_tables()
-
-      helpers.run_migrations(dao)
-
-      local service1 = assert(bp.services:insert())
-      assert(db.routes:insert {
-        protocols = { "http" },
+      bp.routes:insert {
         hosts     = { "mock_upstream" },
-        service   = service1,
-      })
+      }
 
-      local service2 = assert(bp.services:insert())
-      assert(db.routes:insert {
-        protocols = { "http" },
+      bp.routes:insert {
         hosts     = { "mock_upstream" },
-        service   = service2,
-      })
+      }
 
-      local service3 = assert(bp.services:insert())
-      assert(db.routes:insert {
+      bp.routes:insert {
         protocols  = { "http" },
         paths      = { "/request" },
-        service    = service3,
         strip_path = false,
-      })
+      }
 
-      local service4 = assert(bp.services:insert())
-      assert(db.routes:insert {
+      bp.routes:insert {
         protocols   = { "http" },
         paths       = { "/stripped-path" },
-        service     = service4,
         strip_path  = true,
-      })
+      }
 
       assert(helpers.start_kong({
         database   = strategy,

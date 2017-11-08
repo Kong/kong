@@ -272,8 +272,11 @@ do
   -- @see https://github.com/Mashape/kong/issues/749
   -- @param[type=table] args A key/value table containing the query args to encode.
   -- @param[type=boolean] raw If true, will not percent-encode any key/value and will ignore special boolean rules.
+  -- @param[type=boolean] no_array_indexes If true, arrays/map elements will be
+  --                      encoded without an index: 'my_array[]='. By default,
+  --                      array elements will have an index: 'my_array[0]='.
   -- @treturn string A valid querystring (without the prefixing '?')
-  function _M.encode_args(args, raw)
+  function _M.encode_args(args, raw, no_array_indexes)
     local query = {}
     local keys = {}
 
@@ -287,7 +290,14 @@ do
       local value = args[key]
       if type(value) == "table" then
         for sub_key, sub_value in pairs(value) do
-          query[#query+1] = encode_args_value(("%s[%s]"):format(key, tostring(sub_key)), sub_value, raw)
+          if no_array_indexes then
+            query[#query+1] = encode_args_value(key, sub_value, raw)
+
+          else
+            query[#query+1] = encode_args_value(("%s[%s]")
+                                :format(key, tostring(sub_key)), sub_value,
+                                        raw)
+          end
         end
       elseif value == ngx.null then
         query[#query+1] = encode_args_value(key, "")

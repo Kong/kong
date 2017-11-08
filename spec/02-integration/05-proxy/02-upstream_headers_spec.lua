@@ -9,7 +9,7 @@ for _, strategy in helpers.each_strategy("postgres") do
   describe("Upstream header(s) [#" .. strategy .. "]", function()
 
     local proxy_client
-    local db, bp
+    local bp, db
 
     local function insert_routes(arr)
       if type(arr) ~= "table" then
@@ -57,8 +57,7 @@ for _, strategy in helpers.each_strategy("postgres") do
     end
 
     setup(function()
-      local _
-      db, _, bp = helpers.get_db_utils(strategy)
+      bp, db = helpers.get_db_utils(strategy)
     end)
 
     before_each(function()

@@ -1,7 +1,8 @@
 local validate_entity = require("kong.dao.schemas_validation").validate_entity
-local oauth2_schema = require "kong.plugins.oauth2.schema"
+local oauth2_schema   = require "kong.plugins.oauth2.schema"
 
-describe("Plugin: oauth2 (schema)", function()
+
+pending("Plugin: oauth2 (schema)", function()
   it("does not require `scopes` when `mandatory_scope` is false", function()
     local ok, errors = validate_entity({enable_authorization_code = true, mandatory_scope = false}, oauth2_schema)
     assert.True(ok)

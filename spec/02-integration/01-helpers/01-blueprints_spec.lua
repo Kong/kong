@@ -47,14 +47,19 @@ for _, strategy in helpers.each_strategy() do
         hosts   = { "example.com" },
       })
       assert.matches(UUID_PATTERN, r.id)
-      assert.same({ "http" }, r.protocols)
+      assert.same({ "http", "https" }, r.protocols)
       assert.same({ "GET" }, r.methods)
       assert.equal("number", type(r.created_at))
       assert.equal("number", type(r.updated_at))
       assert.equal(0, r.regex_priority)
       assert.not_nil(r.service) -- automatically inserted by blueprint as well
 
-      local r2 = bp.routes:insert({ service = service, regex_priority = 200 })
+      local r2 = bp.routes:insert({
+        protocols = { "http" },
+        methods   = { "GET" },
+        regex_priority  = 200,
+        service   = service,
+      })
       assert.matches(UUID_PATTERN, r2.id)
       assert.same({ "http" }, r2.protocols)
       assert.same({ "GET" }, r2.methods)
@@ -77,7 +82,10 @@ dao_helpers.for_each_dao(function(kong_config)
   end)
 
   teardown(function()
-    dao:truncate_tables()
+    if dao then
+      dao:truncate_tables()
+    end
+
     ngx.shared.kong_cassandra:flush_expired()
   end)
 

@@ -1,13 +1,16 @@
-local cjson = require "cjson"
-local helpers = require "spec.helpers"
-local timestamp = require "kong.tools.timestamp"
+local cjson          = require "cjson"
+local helpers        = require "spec.helpers"
+local timestamp      = require "kong.tools.timestamp"
 
-local REDIS_HOST = "127.0.0.1"
-local REDIS_PORT = 6379
+
+local REDIS_HOST     = "127.0.0.1"
+local REDIS_PORT     = 6379
 local REDIS_PASSWORD = ""
 local REDIS_DATABASE = 1
 
-local SLEEP_TIME = 1
+
+local SLEEP_TIME     = 1
+
 
 local function wait(second_offset)
   -- If the minute elapses in the middle of the test, then the test will
@@ -19,7 +22,9 @@ local function wait(second_offset)
   end
 end
 
+
 wait() -- Wait before starting
+
 
 local function flush_redis()
   local redis = require "resty.redis"
@@ -46,312 +51,252 @@ local function flush_redis()
   red:close()
 end
 
-for i, policy in ipairs({"local", "cluster", "redis"}) do
-  describe("#flaky Plugin: response-ratelimiting (access) with policy: " .. policy, function()
-    setup(function()
-      flush_redis()
-      helpers.dao:drop_schema()
-      helpers.run_migrations()
 
-      local consumer1 = assert(helpers.dao.consumers:insert {custom_id = "provider_123"})
-      assert(helpers.dao.keyauth_credentials:insert {
-        key = "apikey123",
-        consumer_id = consumer1.id
-      })
+for _, strategy in helpers.each_strategy() do
+  for i, policy in ipairs({"local", "cluster", "redis"}) do
+    aescribe("#flaky Plugin: response-ratelimiting (access) with policy: " .. policy .. "[#" .. strategy .. "]", function()
+      local db
+      local dao
+      local bp
 
-      local consumer2 = assert(helpers.dao.consumers:insert {custom_id = "provider_124"})
-      assert(helpers.dao.keyauth_credentials:insert {
-        key = "apikey124",
-        consumer_id = consumer2.id
-      })
+      setup(function()
+        bp, db, dao = helpers.get_db_utils(strategy)
 
-      local consumer3 = assert(helpers.dao.consumers:insert {custom_id = "provider_125"})
-      assert(helpers.dao.keyauth_credentials:insert {
-        key = "apikey125",
-        consumer_id = consumer3.id
-      })
+        flush_redis()
 
-      local api = assert(helpers.dao.apis:insert {
-        name         = "test1_com",
-        hosts        = { "test1.com" },
-        upstream_url = helpers.mock_upstream_url,
-      })
-      assert(helpers.dao.plugins:insert {
-        name   = "response-ratelimiting",
-        api_id = api.id,
-        config = {
-          fault_tolerant = false,
-          policy         = policy,
-          redis_host     = REDIS_HOST,
-          redis_port     = REDIS_PORT,
-          redis_password = REDIS_PASSWORD,
-          redis_database = REDIS_DATABASE,
-          limits         = { video = { minute = 6 } },
-        }
-      })
+        local consumer1 = assert(dao.consumers:insert {custom_id = "provider_123"})
+        assert(dao.keyauth_credentials:insert {
+          key         = "apikey123",
+          consumer_id = consumer1.id
+        })
 
-      api = assert(helpers.dao.apis:insert {
-        name         = "test2_com",
-        hosts        = { "test2.com" },
-        upstream_url = helpers.mock_upstream_url,
-      })
-      assert(helpers.dao.plugins:insert {
-        name   = "response-ratelimiting",
-        api_id = api.id,
-        config = {
-          fault_tolerant = false,
-          policy         = policy,
-          redis_host     = REDIS_HOST,
-          redis_port     = REDIS_PORT,
-          redis_password = REDIS_PASSWORD,
-          redis_database = REDIS_DATABASE,
-          limits         = { video = { minute = 6, hour = 10 },
-                             image = { minute = 4 } },
-        }
-      })
+        local consumer2 = assert(dao.consumers:insert {custom_id = "provider_124"})
+        assert(dao.keyauth_credentials:insert {
+          key         = "apikey124",
+          consumer_id = consumer2.id
+        })
 
-      api = assert(helpers.dao.apis:insert {
-        name         = "test3_com",
-        hosts        = { "test3.com" },
-        upstream_url = helpers.mock_upstream_url,
-      })
-      assert(helpers.dao.plugins:insert {
-        name   = "key-auth",
-        api_id = api.id,
-      })
-      assert(helpers.dao.plugins:insert {
-        name   = "response-ratelimiting",
-        api_id = api.id,
-        config = { limits = { video = { minute = 6 } } },
-      })
-      assert(helpers.dao.plugins:insert {
-        name        = "response-ratelimiting",
-        api_id      = api.id,
-        consumer_id = consumer1.id,
-        config      = {
-          fault_tolerant = false,
-          policy         = policy,
-          redis_host     = REDIS_HOST,
-          redis_port     = REDIS_PORT,
-          redis_password = REDIS_PASSWORD,
-          redis_database = REDIS_DATABASE,
-          limits         = { video = { minute = 2 } },
-        }
-      })
+        local consumer3 = assert(dao.consumers:insert {custom_id = "provider_125"})
+        assert(dao.keyauth_credentials:insert {
+          key         = "apikey125",
+          consumer_id = consumer3.id
+        })
 
-      api = assert(helpers.dao.apis:insert {
-        name         = "test4_com",
-        hosts        = { "test4.com" },
-        upstream_url = helpers.mock_upstream_url,
-      })
-      assert(helpers.dao.plugins:insert {
-        name   = "response-ratelimiting",
-        api_id = api.id,
-        config = {
-          fault_tolerant = false,
-          policy         = policy,
-          redis_host     = REDIS_HOST,
-          redis_port     = REDIS_PORT,
-          redis_password = REDIS_PASSWORD,
-          redis_database = REDIS_DATABASE,
-          limits         = { video = { minute = 6 }, image = { minute = 4 } },
-        }
-      })
+        local service1 = bp.services:insert()
 
-      api = assert(helpers.dao.apis:insert {
-        name         = "test7_com",
-        hosts        = { "test7.com" },
-        upstream_url = helpers.mock_upstream_url,
-      })
-      assert(helpers.dao.plugins:insert {
-        name   = "response-ratelimiting",
-        api_id = api.id,
-        config = {
-          fault_tolerant = false,
-          policy         = policy,
-          redis_host     = REDIS_HOST,
-          redis_port     = REDIS_PORT,
-          redis_password = REDIS_PASSWORD,
-          redis_database = REDIS_DATABASE,
-          block_on_first_violation = true,
-          limits         = {
-            video = {
-              minute = 6,
-              hour  = 10,
-            },
-            image = {
-              minute = 4,
-            },
-          },
-        }
-      })
+        local route1 = assert(db.routes:insert {
+          hosts      = { "test1.com" },
+          protocols  = { "http", "https" },
+          service    = service1
+        })
 
-      api = assert(helpers.dao.apis:insert {
-        name         = "test8_com",
-        hosts        = { "test8.com" },
-        upstream_url = helpers.mock_upstream_url,
-      })
-      assert(helpers.dao.plugins:insert {
-        name   = "response-ratelimiting",
-        api_id = api.id,
-        config = {
-          fault_tolerant = false,
-          policy         = policy,
-          redis_host     = REDIS_HOST,
-          redis_port     = REDIS_PORT,
-          redis_password = REDIS_PASSWORD,
-          redis_database = REDIS_DATABASE,
-          limits         = { video = { minute = 6, hour = 10 },
-                             image = { minute = 4 } },
-        }
-      })
-
-      api = assert(helpers.dao.apis:insert {
-        name         = "test9_com",
-        hosts        = { "test9.com" },
-        upstream_url = helpers.mock_upstream_url,
-      })
-      assert(helpers.dao.plugins:insert {
-        name   = "response-ratelimiting",
-        api_id = api.id,
-        config = {
-          fault_tolerant      = false,
-          policy              = policy,
-          hide_client_headers = true,
-          redis_host          = REDIS_HOST,
-          redis_port          = REDIS_PORT,
-          redis_password      = REDIS_PASSWORD,
-          redis_database      = REDIS_DATABASE,
-          limits              = { video = { minute = 6 } },
-        }
-      })
-
-      assert(helpers.start_kong({
-        nginx_conf = "spec/fixtures/custom_nginx.template",
-      }))
-    end)
-
-    teardown(function()
-      helpers.stop_kong()
-    end)
-
-    local client, admin_client
-    before_each(function()
-      wait(45)
-      client = helpers.proxy_client()
-      admin_client = helpers.admin_client()
-    end)
-
-    after_each(function()
-      if client then client:close() end
-      if admin_client then admin_client:close() end
-    end)
-
-    describe("Without authentication (IP address)", function()
-      it("blocks if exceeding limit", function()
-        for i = 1, 6 do
-          local res = assert(helpers.proxy_client():send {
-            method = "GET",
-            path = "/response-headers?x-kong-limit=video=1, test=5",
-            headers = {
-              ["Host"] = "test1.com"
-            }
-          })
-
-          ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
-
-          assert.res_status(200, res)
-          assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
-          assert.equal(6 - i, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
-        end
-
-        local res = assert(helpers.proxy_client():send {
-          method = "GET",
-          path = "/response-headers?x-kong-limit=video=1",
-          headers = {
-            ["Host"] = "test1.com"
+        assert(dao.plugins:insert {
+          name     = "response-ratelimiting",
+          route_id = route1.id,
+          config   = {
+            fault_tolerant = false,
+            policy         = policy,
+            redis_host     = REDIS_HOST,
+            redis_port     = REDIS_PORT,
+            redis_password = REDIS_PASSWORD,
+            redis_database = REDIS_DATABASE,
+            limits         = { video = { minute = 6 } },
           }
         })
-        local body = assert.res_status(429, res)
-        assert.equal([[]], body)
-      end)
 
-      it("handles multiple limits", function()
-        for i = 1, 3 do
-          local res = assert(helpers.proxy_client():send {
-            method = "GET",
-            path = "/response-headers?x-kong-limit=video=2, image=1",
-            headers = {
-              ["Host"] = "test2.com"
-            }
-          })
+        local service2 = bp.services:insert()
 
-          ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
+        local route2 = assert(db.routes:insert {
+          hosts      = { "test2.com" },
+          protocols  = { "http", "https" },
+          service    = service2
+        })
 
-          assert.res_status(200, res)
-          assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
-          assert.equal(6 - (i * 2), tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
-          assert.equal(10, tonumber(res.headers["x-ratelimit-limit-video-hour"]))
-          assert.equal(10 - (i * 2), tonumber(res.headers["x-ratelimit-remaining-video-hour"]))
-          assert.equal(4, tonumber(res.headers["x-ratelimit-limit-image-minute"]))
-          assert.equal(4 - i, tonumber(res.headers["x-ratelimit-remaining-image-minute"]))
-        end
-
-        local res = assert(helpers.proxy_client():send {
-          method = "GET",
-          path = "/response-headers?x-kong-limit=video=2, image=1",
-          headers = {
-            ["Host"] = "test2.com"
+        assert(dao.plugins:insert {
+          name     = "response-ratelimiting",
+          route_id = route2.id,
+          config   = {
+            fault_tolerant = false,
+            policy         = policy,
+            redis_host     = REDIS_HOST,
+            redis_port     = REDIS_PORT,
+            redis_password = REDIS_PASSWORD,
+            redis_database = REDIS_DATABASE,
+            limits         = { video = { minute = 6, hour = 10 },
+                               image = { minute = 4 } },
           }
         })
-        local body = assert.res_status(429, res)
-        assert.equal([[]], body)
-        assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
-        assert.equal(4, tonumber(res.headers["x-ratelimit-remaining-video-hour"]))
-        assert.equal(1, tonumber(res.headers["x-ratelimit-remaining-image-minute"]))
+
+        local service3 = bp.services:insert()
+
+        local route3 = assert(db.routes:insert {
+          hosts      = { "test3.com" },
+          protocols  = { "http", "https" },
+          service    = service3
+        })
+
+        assert(dao.plugins:insert {
+          name     = "key-auth",
+          route_id = route3.id,
+        })
+
+        assert(dao.plugins:insert {
+          name     = "response-ratelimiting",
+          route_id = route3.id,
+          config   = { limits = { video = { minute = 6 } } },
+        })
+
+        assert(dao.plugins:insert {
+          name        = "response-ratelimiting",
+          route_id    = route3.id,
+          consumer_id = consumer1.id,
+          config      = {
+            fault_tolerant = false,
+            policy         = policy,
+            redis_host     = REDIS_HOST,
+            redis_port     = REDIS_PORT,
+            redis_password = REDIS_PASSWORD,
+            redis_database = REDIS_DATABASE,
+            limits         = { video = { minute = 2 } },
+          }
+        })
+
+        local service4 = bp.services:insert()
+
+        local route4 = assert(db.routes:insert {
+          hosts      = { "test4.com" },
+          protocols  = { "http", "https" },
+          service    = service4
+        })
+
+        assert(dao.plugins:insert {
+          name     = "response-ratelimiting",
+          route_id = route4.id,
+          config   = {
+            fault_tolerant = false,
+            policy         = policy,
+            redis_host     = REDIS_HOST,
+            redis_port     = REDIS_PORT,
+            redis_password = REDIS_PASSWORD,
+            redis_database = REDIS_DATABASE,
+            limits         = { video = { minute = 6 }, image = { minute = 4 } },
+          }
+        })
+
+        local service7 = bp.services:insert()
+
+        local route7 = assert(db.routes:insert {
+          hosts      = { "test7.com" },
+          protocols  = { "http", "https" },
+          service    = service7
+        })
+
+        assert(dao.plugins:insert {
+          name     = "response-ratelimiting",
+          route_id = route7.id,
+          config   = {
+            fault_tolerant           = false,
+            policy                   = policy,
+            redis_host               = REDIS_HOST,
+            redis_port               = REDIS_PORT,
+            redis_password           = REDIS_PASSWORD,
+            redis_database           = REDIS_DATABASE,
+            block_on_first_violation = true,
+            limits                   = {
+              video = {
+                minute = 6,
+                hour  = 10,
+              },
+              image = {
+                minute = 4,
+              },
+            },
+          }
+        })
+
+        local service8 = bp.services:insert()
+
+        local route8 = assert(db.routes:insert {
+          hosts      = { "test8.com" },
+          protocols  = { "http", "https" },
+          service    = service8
+        })
+
+        assert(dao.plugins:insert {
+          name     = "response-ratelimiting",
+          route_id = route8.id,
+          config   = {
+            fault_tolerant = false,
+            policy         = policy,
+            redis_host     = REDIS_HOST,
+            redis_port     = REDIS_PORT,
+            redis_password = REDIS_PASSWORD,
+            redis_database = REDIS_DATABASE,
+            limits         = { video = { minute = 6, hour = 10 },
+                               image = { minute = 4 } },
+          }
+        })
+
+        local service9 = bp.services:insert()
+
+        local route9 = assert(db.routes:insert {
+          hosts      = { "test9.com" },
+          protocols  = { "http", "https" },
+          service    = service9
+        })
+
+        assert(dao.plugins:insert {
+          name     = "response-ratelimiting",
+          route_id = route9.id,
+          config   = {
+            fault_tolerant      = false,
+            policy              = policy,
+            hide_client_headers = true,
+            redis_host          = REDIS_HOST,
+            redis_port          = REDIS_PORT,
+            redis_password      = REDIS_PASSWORD,
+            redis_database      = REDIS_DATABASE,
+            limits              = { video = { minute = 6 } },
+          }
+        })
+
+        assert(helpers.start_kong({
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        }))
       end)
-    end)
 
-    describe("With authentication", function()
-      describe("API-specific plugin", function()
-        it("blocks if exceeding limit and a per consumer setting", function()
-          for i = 1, 2 do
-            local res = assert(helpers.proxy_client():send {
-              method = "GET",
-              path = "/response-headers?apikey=apikey123&x-kong-limit=video=1",
-              headers = {
-                ["Host"] = "test3.com"
-              }
-            })
+      teardown(function()
+        helpers.stop_kong()
+      end)
 
-            ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
+      local proxy_client
+      local admin_client
 
-            assert.res_status(200, res)
-            assert.equal(2, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
-            assert.equal(2 - i, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
-          end
+      before_each(function()
+        wait(1)
+        proxy_client = helpers.proxy_client()
+        admin_client = helpers.admin_client()
+      end)
 
-          -- Third query, while limit is 2/minute
-          local res = assert(helpers.proxy_client():send {
-            method = "GET",
-            path = "/response-headers?apikey=apikey123&x-kong-limit=video=1",
-            headers = {
-              ["Host"] = "test3.com"
-            }
-          })
-          local body = assert.res_status(429, res)
-          assert.equal([[]], body)
-          assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
-          assert.equal(2, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
-        end)
+      after_each(function()
+        if proxy_client then
+          proxy_client:close()
+        end
 
-        it("blocks if exceeding limit and a per consumer setting", function()
+        if admin_client then
+          admin_client:close()
+        end
+      end)
+
+      describe("Without authentication (IP address)", function()
+        it("blocks if exceeding limit", function()
           for i = 1, 6 do
             local res = assert(helpers.proxy_client():send {
-              method = "GET",
-              path = "/response-headers?apikey=apikey124&x-kong-limit=video=1",
+              method  = "GET",
+              path    = "/response-headers?x-kong-limit=video=1, test=5",
               headers = {
-                ["Host"] = "test3.com"
+                ["Host"] = "test1.com"
               }
             })
 
@@ -363,399 +308,515 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           end
 
           local res = assert(helpers.proxy_client():send {
-            method = "GET",
-            path = "/response-headers?apikey=apikey124",
+            method  = "GET",
+            path    = "/response-headers?x-kong-limit=video=1",
             headers = {
-              ["Host"] = "test3.com"
+              ["Host"] = "test1.com"
             }
           })
-          assert.res_status(200, res)
-          assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
-          assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
+          local body = assert.res_status(429, res)
+          assert.equal([[]], body)
         end)
 
-        it("blocks if exceeding limit", function()
-          for i = 1, 6 do
+        it("handles multiple limits", function()
+          for i = 1, 3 do
             local res = assert(helpers.proxy_client():send {
-              method = "GET",
-              path = "/response-headers?apikey=apikey125&x-kong-limit=video=1",
+              method  = "GET",
+              path    = "/response-headers?x-kong-limit=video=2, image=1",
               headers = {
-                ["Host"] = "test3.com"
+                ["Host"] = "test2.com"
               }
             })
 
             ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
 
             assert.res_status(200, res)
-            assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
-            assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+            assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
+            assert.equal(6 - (i * 2), tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+            assert.equal(10, tonumber(res.headers["x-ratelimit-limit-video-hour"]))
+            assert.equal(10 - (i * 2), tonumber(res.headers["x-ratelimit-remaining-video-hour"]))
+            assert.equal(4, tonumber(res.headers["x-ratelimit-limit-image-minute"]))
+            assert.equal(4 - i, tonumber(res.headers["x-ratelimit-remaining-image-minute"]))
           end
 
-          -- Third query, while limit is 2/minute
           local res = assert(helpers.proxy_client():send {
-            method = "GET",
-            path = "/response-headers?apikey=apikey125&x-kong-limit=video=1",
+            method  = "GET",
+            path    = "/response-headers?x-kong-limit=video=2, image=1",
             headers = {
-              ["Host"] = "test3.com"
+              ["Host"] = "test2.com"
             }
           })
           local body = assert.res_status(429, res)
           assert.equal([[]], body)
           assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
-          assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
+          assert.equal(4, tonumber(res.headers["x-ratelimit-remaining-video-hour"]))
+          assert.equal(1, tonumber(res.headers["x-ratelimit-remaining-image-minute"]))
         end)
       end)
-    end)
 
-    describe("Upstream usage headers", function()
-      it("should append the headers with multiple limits", function()
-        local res = assert(helpers.proxy_client():send {
-          method = "GET",
-          path = "/get",
-          headers = {
-            ["Host"] = "test8.com"
-          }
-        })
-        local json = cjson.decode(assert.res_status(200, res))
-        assert.equal(4, tonumber(json.headers["x-ratelimit-remaining-image"]))
-        assert.equal(6, tonumber(json.headers["x-ratelimit-remaining-video"]))
+      describe("With authentication", function()
+        describe("API-specific plugin", function()
+          it("blocks if exceeding limit and a per consumer setting", function()
+            for i = 1, 2 do
+              local res = assert(helpers.proxy_client():send {
+                method  = "GET",
+                path    = "/response-headers?apikey=apikey123&x-kong-limit=video=1",
+                headers = {
+                  ["Host"] = "test3.com"
+                }
+              })
 
-        -- Actually consume the limits
-        local res = assert(helpers.proxy_client():send {
-          method = "GET",
-          path = "/response-headers?x-kong-limit=video=2, image=1",
-          headers = {
-            ["Host"] = "test8.com"
-          }
-        })
-        assert.res_status(200, res)
+              ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
 
-        ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
+              assert.res_status(200, res)
+              assert.equal(2, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
+              assert.equal(2 - i, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+            end
 
-        local res = assert(helpers.proxy_client():send {
-          method = "GET",
-          path = "/get",
-          headers = {
-            ["Host"] = "test8.com"
-          }
-        })
-        local body = cjson.decode(assert.res_status(200, res))
-        assert.equal(3, tonumber(body.headers["x-ratelimit-remaining-image"]))
-        assert.equal(4, tonumber(body.headers["x-ratelimit-remaining-video"]))
+            -- Third query, while limit is 2/minute
+            local res = assert(helpers.proxy_client():send {
+              method  = "GET",
+              path    = "/response-headers?apikey=apikey123&x-kong-limit=video=1",
+              headers = {
+                ["Host"] = "test3.com"
+              }
+            })
+            local body = assert.res_status(429, res)
+            assert.equal([[]], body)
+            assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+            assert.equal(2, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
+          end)
+
+          it("blocks if exceeding limit and a per consumer setting", function()
+            for i = 1, 6 do
+              local res = assert(helpers.proxy_client():send {
+                method  = "GET",
+                path    = "/response-headers?apikey=apikey124&x-kong-limit=video=1",
+                headers = {
+                  ["Host"] = "test3.com"
+                }
+              })
+
+              ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
+
+              assert.res_status(200, res)
+              assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
+              assert.equal(6 - i, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+            end
+
+            local res = assert(helpers.proxy_client():send {
+              method  = "GET",
+              path    = "/response-headers?apikey=apikey124",
+              headers = {
+                ["Host"] = "test3.com"
+              }
+            })
+            assert.res_status(200, res)
+            assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+            assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
+          end)
+
+          it("blocks if exceeding limit", function()
+            for i = 1, 6 do
+              local res = assert(helpers.proxy_client():send {
+                method  = "GET",
+                path    = "/response-headers?apikey=apikey125&x-kong-limit=video=1",
+                headers = {
+                  ["Host"] = "test3.com"
+                }
+              })
+
+              ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
+
+              assert.res_status(200, res)
+              assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
+              assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+            end
+
+            -- Third query, while limit is 2/minute
+            local res = assert(helpers.proxy_client():send {
+              method  = "GET",
+              path    = "/response-headers?apikey=apikey125&x-kong-limit=video=1",
+              headers = {
+                ["Host"] = "test3.com"
+              }
+            })
+            local body = assert.res_status(429, res)
+            assert.equal([[]], body)
+            assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+            assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
+          end)
+        end)
       end)
 
-      it("combines multiple x-kong-limit headers from upstream", function()
-        for i = 1, 3 do
-          local res = assert(client:send {
-            method = "GET",
-            path = "/response-headers?x-kong-limit=video%3D2&x-kong-limit=image%3D1",
+      describe("Upstream usage headers", function()
+        it("should append the headers with multiple limits", function()
+          local res = assert(helpers.proxy_client():send {
+            method  = "GET",
+            path    = "/get",
+            headers = {
+              ["Host"] = "test8.com"
+            }
+          })
+          local json = cjson.decode(assert.res_status(200, res))
+          assert.equal(4, tonumber(json.headers["x-ratelimit-remaining-image"]))
+          assert.equal(6, tonumber(json.headers["x-ratelimit-remaining-video"]))
+
+          -- Actually consume the limits
+          local res = assert(helpers.proxy_client():send {
+            method  = "GET",
+            path    = "/response-headers?x-kong-limit=video=2, image=1",
+            headers = {
+              ["Host"] = "test8.com"
+            }
+          })
+          assert.res_status(200, res)
+
+          ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
+
+          local res = assert(helpers.proxy_client():send {
+            method  = "GET",
+            path    = "/get",
+            headers = {
+              ["Host"] = "test8.com"
+            }
+          })
+          local body = cjson.decode(assert.res_status(200, res))
+          assert.equal(3, tonumber(body.headers["x-ratelimit-remaining-image"]))
+          assert.equal(4, tonumber(body.headers["x-ratelimit-remaining-video"]))
+        end)
+
+        it("combines multiple x-kong-limit headers from upstream", function()
+          for i = 1, 3 do
+            local res = assert(proxy_client:send {
+              method  = "GET",
+              path    = "/response-headers?x-kong-limit=video%3D2&x-kong-limit=image%3D1",
+              headers = {
+                ["Host"] = "test4.com"
+              }
+            })
+
+            assert.res_status(200, res)
+            assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
+            assert.equal(6 - (i * 2), tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+            assert.equal(4, tonumber(res.headers["x-ratelimit-limit-image-minute"]))
+            assert.equal(4 - i, tonumber(res.headers["x-ratelimit-remaining-image-minute"]))
+
+            ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
+          end
+
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/response-headers?x-kong-limit=video%3D2&x-kong-limit=image%3D1",
             headers = {
               ["Host"] = "test4.com"
             }
           })
 
-          assert.res_status(200, res)
-          assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
-          assert.equal(6 - (i * 2), tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
-          assert.equal(4, tonumber(res.headers["x-ratelimit-limit-image-minute"]))
-          assert.equal(4 - i, tonumber(res.headers["x-ratelimit-remaining-image-minute"]))
-
-          ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
-        end
-
-        local res = assert(client:send {
-          method = "GET",
-          path = "/response-headers?x-kong-limit=video%3D2&x-kong-limit=image%3D1",
-          headers = {
-            ["Host"] = "test4.com"
-          }
-        })
-
-        local body = assert.res_status(429, res)
-        assert.equal("", body)
-        assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
-        assert.equal(1, tonumber(res.headers["x-ratelimit-remaining-image-minute"]))
+          local body = assert.res_status(429, res)
+          assert.equal("", body)
+          assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+          assert.equal(1, tonumber(res.headers["x-ratelimit-remaining-image-minute"]))
+        end)
       end)
-    end)
 
-    it("should block on first violation", function()
-      local res = assert(helpers.proxy_client():send {
-        method = "GET",
-        path = "/response-headers?x-kong-limit=video=2, image=4",
-        headers = {
-          ["Host"] = "test7.com"
-        }
-      })
-      assert.res_status(200, res)
-
-      ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
-
-      local res = assert(helpers.proxy_client():send {
-        method = "GET",
-        path = "/response-headers?x-kong-limit=video=2",
-        headers = {
-          ["Host"] = "test7.com"
-        }
-      })
-      local body = assert.res_status(429, res)
-      local json = cjson.decode(body)
-      assert.same({ message = "API rate limit exceeded for 'image'" }, json)
-    end)
-
-    describe("Config with hide_client_headers", function()
-      it("does not send rate-limit headers when hide_client_headers==true", function()
+      it("should block on first violation", function()
         local res = assert(helpers.proxy_client():send {
-          method = "GET",
-          path = "/status/200",
+          method  = "GET",
+          path    = "/response-headers?x-kong-limit=video=2, image=4",
           headers = {
-            ["Host"] = "test9.com"
+            ["Host"] = "test7.com"
           }
         })
-
         assert.res_status(200, res)
-        assert.is_nil(res.headers["x-ratelimit-remaining-video-minute"])
-        assert.is_nil(res.headers["x-ratelimit-limit-video-minute"])
+
+        ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
+
+        local res = assert(helpers.proxy_client():send {
+          method  = "GET",
+          path    = "/response-headers?x-kong-limit=video=2",
+          headers = {
+            ["Host"] = "test7.com"
+          }
+        })
+        local body = assert.res_status(429, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "API rate limit exceeded for 'image'" }, json)
       end)
-    end)
 
-    if policy == "cluster" then
-      describe("Fault tolerancy", function()
-
-        before_each(function()
-          helpers.kill_all()
-          helpers.dao:drop_schema()
-          helpers.run_migrations()
-
-          local api1 = assert(helpers.dao.apis:insert {
-            name         = "failtest1_com",
-            hosts        = { "failtest1.com" },
-            upstream_url = helpers.mock_upstream_url,
-          })
-          assert(helpers.dao.plugins:insert {
-            name   = "response-ratelimiting",
-            api_id = api1.id,
-            config = {
-              fault_tolerant = false,
-              policy         = policy,
-              redis_host     = REDIS_HOST,
-              redis_port     = REDIS_PORT,
-              redis_password = REDIS_PASSWORD,
-              limits         = { video = { minute = 6} },
+      describe("Config with hide_client_headers", function()
+        it("does not send rate-limit headers when hide_client_headers==true", function()
+          local res = assert(helpers.proxy_client():send {
+            method  = "GET",
+            path    = "/status/200",
+            headers = {
+              ["Host"] = "test9.com"
             }
           })
 
-          local api2 = assert(helpers.dao.apis:insert {
-            name         = "failtest2_com",
-            hosts        = { "failtest2.com" },
-            upstream_url = helpers.mock_upstream_url,
+          assert.res_status(200, res)
+          assert.is_nil(res.headers["x-ratelimit-remaining-video-minute"])
+          assert.is_nil(res.headers["x-ratelimit-limit-video-minute"])
+        end)
+      end)
+
+      if policy == "cluster" then
+        describe("Fault tolerancy", function()
+
+          before_each(function()
+            helpers.kill_all()
+            dao:drop_schema()
+            assert(dao:run_migrations())
+
+            local route1 = bp.routes:insert {
+              hosts = { "failtest1.com" },
+            }
+
+            bp.plugins:insert {
+              name     = "response-ratelimiting",
+              route_id = route1.id,
+              config   = {
+                fault_tolerant = false,
+                policy         = policy,
+                redis_host     = REDIS_HOST,
+                redis_port     = REDIS_PORT,
+                redis_password = REDIS_PASSWORD,
+                limits         = { video = { minute = 6} },
+              }
+            }
+
+            local route2 = bp.routes:insert {
+              hosts = { "failtest2.com" },
+            }
+
+            bp.plugins:insert {
+              name     = "response-ratelimiting",
+              route_id = route2.id,
+              config   = {
+                fault_tolerant = true,
+                policy         = policy,
+                redis_host     = REDIS_HOST,
+                redis_port     = REDIS_PORT,
+                redis_password = REDIS_PASSWORD,
+                limits         = { video = {minute = 6} }
+              }
+            }
+
+            assert(helpers.start_kong({
+              database   = strategy,
+              nginx_conf = "spec/fixtures/custom_nginx.template",
+            }))
+          end)
+
+          teardown(function()
+            helpers.kill_all()
+            dao:drop_schema()
+            assert(dao:run_migrations())
+          end)
+
+          it("does not work if an error occurs", function()
+            local res = assert(helpers.proxy_client():send {
+              method  = "GET",
+              path    = "/response-headers?x-kong-limit=video=1",
+              headers = {
+                ["Host"] = "failtest1.com"
+              }
+            })
+            assert.res_status(200, res)
+            assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
+            assert.equal(5, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+
+            -- Simulate an error on the database
+            assert(dao.db:drop_table("response_ratelimiting_metrics"))
+
+            -- Make another request
+            local res = assert(helpers.proxy_client():send {
+              method  = "GET",
+              path    = "/response-headers?x-kong-limit=video=1",
+              headers = {
+                ["Host"] = "failtest1.com"
+              }
+            })
+            local body = assert.res_status(500, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "An unexpected error occurred" }, json)
+          end)
+
+          it("keeps working if an error occurs", function()
+            local res = assert(helpers.proxy_client():send {
+              method  = "GET",
+              path    = "/response-headers?x-kong-limit=video=1",
+              headers = {
+                ["Host"] = "failtest2.com"
+              }
+            })
+            assert.res_status(200, res)
+            assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
+            assert.equal(5, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+
+            -- Simulate an error on the database
+            assert(dao.db:drop_table("response_ratelimiting_metrics"))
+
+            -- Make another request
+            local res = assert(helpers.proxy_client():send {
+              method  = "GET",
+              path    = "/response-headers?x-kong-limit=video=1",
+              headers = {
+                ["Host"] = "failtest2.com"
+              }
+            })
+            assert.res_status(200, res)
+            assert.is_nil(res.headers["x-ratelimit-limit-video-minute"])
+            assert.is_nil(res.headers["x-ratelimit-remaining-video-minute"])
+          end)
+        end)
+
+      elseif policy == "redis" then
+        describe("Fault tolerancy", function()
+
+          before_each(function()
+            helpers.kill_all()
+            dao:drop_schema()
+            assert(dao:run_migrations())
+
+            local service1 = bp.services:insert()
+
+            local route1 = assert(db.routes:insert {
+              hosts      = { "failtest3.com" },
+              protocols  = { "http", "https" },
+              service    = service1
+            })
+
+            assert(dao.plugins:insert {
+              name     = "response-ratelimiting",
+              route_id = route1.id,
+              config   = {
+                fault_tolerant = false,
+                policy         = policy,
+                redis_host     = "5.5.5.5",
+                limits         = { video = { minute = 6 } },
+              }
+            })
+
+            local service2 = bp.services:insert()
+
+            local route2 = assert(db.routes:insert {
+              hosts      = { "failtest4.com" },
+              protocols  = { "http", "https" },
+              service    = service2
+            })
+
+            assert(dao.plugins:insert {
+              name     = "response-ratelimiting",
+              route_id = route2.id,
+              config   = {
+                fault_tolerant = true,
+                policy         = policy,
+                redis_host     = "5.5.5.5",
+                limits         = { video = { minute = 6 } },
+              }
+            })
+
+            assert(helpers.start_kong({
+              database   = strategy,
+              nginx_conf = "spec/fixtures/custom_nginx.template",
+            }))
+          end)
+
+          it("does not work if an error occurs", function()
+            -- Make another request
+            local res = assert(helpers.proxy_client():send {
+              method  = "GET",
+              path    = "/status/200",
+              headers = {
+                ["Host"] = "failtest3.com"
+              }
+            })
+            local body = assert.res_status(500, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "An unexpected error occurred" }, json)
+          end)
+          it("keeps working if an error occurs", function()
+            -- Make another request
+            local res = assert(helpers.proxy_client():send {
+              method  = "GET",
+              path    = "/status/200",
+              headers = {
+                ["Host"] = "failtest4.com"
+              }
+            })
+            assert.res_status(200, res)
+            assert.falsy(res.headers["x-ratelimit-limit-video-minute"])
+            assert.falsy(res.headers["x-ratelimit-remaining-video-minute"])
+          end)
+        end)
+      end
+
+      describe("Expirations", function()
+        setup(function()
+          helpers.stop_kong()
+          dao:drop_schema()
+          assert(dao:run_migrations())
+
+          local service = bp.services:insert()
+
+          local route = assert(db.routes:insert {
+            hosts      = { "expire1.com" },
+            protocols  = { "http", "https" },
+            service    = service
           })
-          assert(helpers.dao.plugins:insert {
-            name = "response-ratelimiting",
-            api_id = api2.id,
-            config = {
-              fault_tolerant = true,
+
+          assert(dao.plugins:insert {
+            name     = "response-ratelimiting",
+            route_id = route.id,
+            config   = {
               policy         = policy,
               redis_host     = REDIS_HOST,
               redis_port     = REDIS_PORT,
               redis_password = REDIS_PASSWORD,
-              limits         = { video = {minute = 6} }
+              fault_tolerant = false,
+              limits         = { video = { minute = 6 } },
             }
           })
 
           assert(helpers.start_kong({
+            database   = strategy,
             nginx_conf = "spec/fixtures/custom_nginx.template",
           }))
         end)
 
-        teardown(function()
-          helpers.kill_all()
-          helpers.dao:drop_schema()
-          helpers.run_migrations()
-        end)
-
-        it("does not work if an error occurs", function()
+        it("expires a counter", function()
           local res = assert(helpers.proxy_client():send {
-            method = "GET",
-            path = "/response-headers?x-kong-limit=video=1",
+            method  = "GET",
+            path    = "/response-headers?x-kong-limit=video=1",
             headers = {
-              ["Host"] = "failtest1.com"
+              ["Host"] = "expire1.com"
             }
           })
+
+          ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
+
           assert.res_status(200, res)
           assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
           assert.equal(5, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
 
-          -- Simulate an error on the database
-          assert(helpers.dao.db:drop_table("response_ratelimiting_metrics"))
+          ngx.sleep(61) -- Wait for counter to expire
 
-          -- Make another request
           local res = assert(helpers.proxy_client():send {
-            method = "GET",
-            path = "/response-headers?x-kong-limit=video=1",
+            method  = "GET",
+            path    = "/response-headers?x-kong-limit=video=1",
             headers = {
-              ["Host"] = "failtest1.com"
+              ["Host"] = "expire1.com"
             }
           })
-          local body = assert.res_status(500, res)
-          local json = cjson.decode(body)
-          assert.same({ message = "An unexpected error occurred" }, json)
-        end)
 
-        it("keeps working if an error occurs", function()
-          local res = assert(helpers.proxy_client():send {
-            method = "GET",
-            path = "/response-headers?x-kong-limit=video=1",
-            headers = {
-              ["Host"] = "failtest2.com"
-            }
-          })
+          ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
+
           assert.res_status(200, res)
           assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
           assert.equal(5, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
-
-          -- Simulate an error on the database
-          assert(helpers.dao.db:drop_table("response_ratelimiting_metrics"))
-
-          -- Make another request
-          local res = assert(helpers.proxy_client():send {
-            method = "GET",
-            path = "/response-headers?x-kong-limit=video=1",
-            headers = {
-              ["Host"] = "failtest2.com"
-            }
-          })
-          assert.res_status(200, res)
-          assert.is_nil(res.headers["x-ratelimit-limit-video-minute"])
-          assert.is_nil(res.headers["x-ratelimit-remaining-video-minute"])
         end)
-      end)
-
-    elseif policy == "redis" then
-      describe("Fault tolerancy", function()
-
-        before_each(function()
-          local api1 = assert(helpers.dao.apis:insert {
-            name         = "failtest3_com",
-            hosts        = { "failtest3.com" },
-            upstream_url = helpers.mock_upstream_url,
-          })
-          assert(helpers.dao.plugins:insert {
-            name   = "response-ratelimiting",
-            api_id = api1.id,
-            config = {
-              fault_tolerant = false,
-              policy         = policy,
-              redis_host     = "5.5.5.5",
-              limits         = { video = { minute = 6 } },
-            }
-          })
-
-          local api2 = assert(helpers.dao.apis:insert {
-            name         = "failtest4_com",
-            hosts        = { "failtest4.com" },
-            upstream_url = helpers.mock_upstream_url,
-          })
-          assert(helpers.dao.plugins:insert {
-            name   = "response-ratelimiting",
-            api_id = api2.id,
-            config = {
-              fault_tolerant = true,
-              policy         = policy,
-              redis_host     = "5.5.5.5",
-              limits         = { video = { minute = 6 } },
-            }
-          })
-        end)
-
-        it("does not work if an error occurs", function()
-          -- Make another request
-          local res = assert(helpers.proxy_client():send {
-            method = "GET",
-            path = "/status/200",
-            headers = {
-              ["Host"] = "failtest3.com"
-            }
-          })
-          local body = assert.res_status(500, res)
-          local json = cjson.decode(body)
-          assert.same({ message = "An unexpected error occurred" }, json)
-        end)
-        it("keeps working if an error occurs", function()
-          -- Make another request
-          local res = assert(helpers.proxy_client():send {
-            method = "GET",
-            path = "/status/200",
-            headers = {
-              ["Host"] = "failtest4.com"
-            }
-          })
-          assert.res_status(200, res)
-          assert.falsy(res.headers["x-ratelimit-limit-video-minute"])
-          assert.falsy(res.headers["x-ratelimit-remaining-video-minute"])
-        end)
-      end)
-    end
-
-    describe("Expirations", function()
-      local api
-      setup(function()
-        helpers.stop_kong()
-        helpers.dao:drop_schema()
-        helpers.run_migrations()
-        assert(helpers.start_kong({
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
-
-        api = assert(helpers.dao.apis:insert {
-          name         = "expire1_com",
-          hosts        = { "expire1.com" },
-          upstream_url = helpers.mock_upstream_url,
-        })
-        assert(helpers.dao.plugins:insert {
-          name   = "response-ratelimiting",
-          api_id = api.id,
-          config = {
-            policy         = policy,
-            redis_host     = REDIS_HOST,
-            redis_port     = REDIS_PORT,
-            redis_password = REDIS_PASSWORD,
-            fault_tolerant = false,
-            limits         = { video = { minute = 6 } },
-          }
-        })
-      end)
-
-      it("expires a counter", function()
-        local res = assert(helpers.proxy_client():send {
-          method = "GET",
-          path = "/response-headers?x-kong-limit=video=1",
-          headers = {
-            ["Host"] = "expire1.com"
-          }
-        })
-
-        ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
-
-        assert.res_status(200, res)
-        assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
-        assert.equal(5, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
-
-        ngx.sleep(61) -- Wait for counter to expire
-
-        local res = assert(helpers.proxy_client():send {
-          method = "GET",
-          path = "/response-headers?x-kong-limit=video=1",
-          headers = {
-            ["Host"] = "expire1.com"
-          }
-        })
-
-        ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
-
-        assert.res_status(200, res)
-        assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
-        assert.equal(5, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
       end)
     end)
-  end)
+  end
 end

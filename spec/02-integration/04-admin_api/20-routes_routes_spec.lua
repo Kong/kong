@@ -1,9 +1,7 @@
-local DB      = require "kong.db"
 local cjson   = require "cjson"
 local utils   = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 local Errors  = require "kong.db.errors"
-local Blueprints = require "spec.fixtures.blueprints"
 
 
 local function it_content_types(title, fn)
@@ -16,33 +14,18 @@ end
 
 for _, strategy in helpers.each_strategy("postgres") do
   describe("Admin API #" .. strategy, function()
+    local bp
     local db
     local client
-    local bp
 
     setup(function()
-      do
-        -- old DAO to run the migrations
-        local test_conf = helpers.test_conf
-        local old_strategy = test_conf.database
-        test_conf.database = strategy
-
-        local DAOFactory = require "kong.dao.factory"
-        local dao = assert(DAOFactory.new(test_conf))
-        assert(dao:run_migrations())
-
-        test_conf.database = old_strategy
-      end
-
-      db = assert(DB.new(helpers.test_conf, strategy))
-      assert(db:init_connector())
+      bp, db = helpers.get_db_utils(strategy)
 
       assert(helpers.start_kong({
         database = strategy,
       }))
 
       client = assert(helpers.admin_client())
-      bp = Blueprints.new({}, db)
     end)
 
     teardown(function()

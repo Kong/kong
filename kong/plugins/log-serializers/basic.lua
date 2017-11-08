@@ -38,7 +38,8 @@ function _M.serialize(ngx)
       request = ngx.var.request_time * 1000
     },
     authenticated_entity = authenticated_entity,
-    api = ngx.ctx.api,
+    route = ngx.ctx.route,
+    service = ngx.ctx.service,
     consumer = ngx.ctx.authenticated_consumer,
     client_ip = ngx.var.remote_addr,
     started_at = ngx.req.start_time() * 1000

@@ -1,4 +1,3 @@
-local DB      = require "kong.db"
 local cjson   = require "cjson"
 local helpers = require "spec.helpers"
 
@@ -17,21 +16,8 @@ for _, strategy in helpers.each_strategy("postgres") do
     local client
 
     setup(function()
-      do
-        -- old DAO to run the migrations
-        local test_conf = helpers.test_conf
-        local old_strategy = test_conf.database
-        test_conf.database = strategy
-
-        local DAOFactory = require "kong.dao.factory"
-        local dao = assert(DAOFactory.new(test_conf))
-        assert(dao:run_migrations())
-
-        test_conf.database = old_strategy
-      end
-
-      db = assert(DB.new(helpers.test_conf, strategy))
-      assert(db:init_connector())
+      local _
+      _, db = helpers.get_db_utils(strategy)
 
       assert(helpers.start_kong({
         database = strategy,

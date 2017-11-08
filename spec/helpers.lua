@@ -97,14 +97,6 @@ local dao = assert(DAOFactory.new(conf, db))
 local blueprints = assert(Blueprints.new(dao, db))
 -- make sure migrations are up-to-date
 
-local function run_migrations(given_dao)
-  -- either use the dao provided to this call, or use
-  -- the helper dao
-  local d = given_dao or dao
-
-  assert(d:run_migrations())
-end
-
 local each_strategy
 
 do
@@ -132,18 +124,28 @@ end
 local function get_db_utils(strategy)
   -- new DAO (DB module)
   local db = assert(DB.new(conf, strategy))
-  assert(db:init_connector())
 
   -- legacy DAO
-  local database = conf.database
-  conf.database = strategy
-  local dao = assert(DAOFactory.new(conf, db))
-  conf.database = database
+  local dao
+
+  do
+    local database = conf.database
+    conf.database = strategy
+    dao = assert(DAOFactory.new(conf, db))
+    conf.database = database
+
+    assert(dao:run_migrations())
+    dao:truncate_tables()
+  end
+
+  -- cleanup new DB tables
+  assert(db:init_connector())
+  assert(db:truncate())
 
   -- blueprints
   local bp = assert(Blueprints.new(dao, db))
 
-  return db, dao, bp
+  return bp, db, dao
 end
 
 -----------------
@@ -253,7 +255,7 @@ function resty_http_proxy_mt:send(opts)
   if string.find(content_type, "application/json") and t_body_table then
     opts.body = cjson.encode(opts.body)
   elseif string.find(content_type, "www-form-urlencoded", nil, true) and t_body_table then
-    opts.body = utils.encode_args(opts.body, true) -- true: not % encoded
+    opts.body = utils.encode_args(opts.body, true, opts.no_array_indexes)
   elseif string.find(content_type, "multipart/form-data", nil, true) and t_body_table then
     local form = opts.body
     local boundary = "8fd84e9444e3946c"
@@ -1107,7 +1109,6 @@ return {
   prepare_prefix = prepare_prefix,
   clean_prefix = clean_prefix,
   wait_for_invalidation = wait_for_invalidation,
-  run_migrations = run_migrations,
   each_strategy = each_strategy,
 
   -- miscellaneous
@@ -1131,7 +1132,7 @@ return {
     prefix = prefix or conf.prefix
     local ok, err = kong_exec("stop --prefix " .. prefix)
     wait_pid(conf.nginx_pid, nil)
-    dao:truncate_tables()
+    --dao:truncate_tables()
     if not preserve_prefix then
       clean_prefix(prefix)
     end

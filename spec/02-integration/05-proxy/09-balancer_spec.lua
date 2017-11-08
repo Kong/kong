@@ -318,8 +318,7 @@ for _, strategy in helpers.each_strategy() do
     local bp
 
     setup(function()
-      db, dao, bp = helpers.get_db_utils(strategy)
-      helpers.run_migrations(dao)
+      bp, db, dao = helpers.get_db_utils(strategy)
     end)
 
     before_each(function()
@@ -1008,24 +1007,23 @@ for _, strategy in helpers.each_strategy() do
         dao:truncate_tables()
         helpers.run_migrations(dao)
 
-        local service = assert(bp.services:insert {
+        local service = bp.services:insert {
           name     = "balancer.test",
           protocol = "http",
           host     = "service.xyz.v1",
           port     = 80,
           path     = "/path",
-        })
+        }
 
-        assert(db.routes:insert {
-          protocols = { "http" },
-          hosts     = { "balancer.test" },
-          service   = service,
-        })
+        bp.routes:insert {
+          hosts   = { "balancer.test" },
+          service = service,
+        }
 
-        upstream1 = assert(dao.upstreams:insert {
+        upstream1 = bp.upstreams:insert {
           name   = "service.xyz.v1",
           slots  = 10,
-        })
+        }
 
         target1 = assert(dao.targets:insert {
           target      = utils.format_host(localhost, PORT),
@@ -1076,24 +1074,24 @@ for _, strategy in helpers.each_strategy() do
 
         -- insert additional api + upstream with no targets
 
-        local service2 = assert(bp.services:insert {
+        local service2 = bp.services:insert {
           name     = "balancer.test2",
           protocol = "http",
           host     = "service.xyz.v2",
           port     = 80,
           path     = "/path",
-        })
+        }
 
-        assert(db.routes:insert {
+        bp.routes:insert {
           protocols = { "http" },
           hosts     = { "balancer.test2" },
           service   = service2,
-        })
+        }
 
-        assert(dao.upstreams:insert {
+        bp.upstreams:insert {
           name  = "service.xyz.v2",
           slots = 10,
-        })
+        }
 
         assert(helpers.start_kong {
           database = strategy,

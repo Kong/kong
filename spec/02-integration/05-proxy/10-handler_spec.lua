@@ -6,34 +6,27 @@ for _, strategy in helpers.each_strategy() do
       describe("enabled on all routes", function()
         local admin_client
         local proxy_client
-        local db
-        local dao
-        local bp
 
         setup(function()
-          db, dao, bp = helpers.get_db_utils(strategy)
-
-          assert(db:truncate())
-          dao:truncate_tables()
-
-          helpers.run_migrations(dao)
+          local bp = helpers.get_db_utils(strategy)
 
           -- insert plugin-less route and a global plugin
-          local service = assert(bp.services:insert {
+          local service = bp.services:insert {
             name = "mock_upstream",
-          })
-          assert(db.routes:insert {
+          }
+
+          bp.routes:insert {
             protocols = { "http" },
             hosts     = { "mock_upstream" },
             service   = service,
-          })
+          }
 
-          assert(dao.plugins:insert {
+          bp.plugins:insert {
             name    = "rewriter",
             config  = {
               value = "global plugin",
             },
-          })
+          }
 
           assert(helpers.start_kong({
             database   = strategy,
@@ -66,39 +59,31 @@ for _, strategy in helpers.each_strategy() do
       describe("enabled on a specific routes", function()
         local admin_client
         local proxy_client
-        local db
-        local dao
-        local bp
 
         setup(function()
-          db, dao, bp = helpers.get_db_utils(strategy)
-
-          assert(db:truncate())
-          dao:truncate_tables()
-
-          helpers.run_migrations(dao)
+          local bp = helpers.get_db_utils(strategy)
 
           -- route specific plugin
-          local service = assert(bp.services:insert {
+          local service = bp.services:insert {
             name = "mock_upstream",
-          })
+          }
 
-          local route = assert(db.routes:insert {
-            protocols = { "http" },
-            hosts     = { "mock_upstream" },
-            service   = service,
-          })
+          local route = bp.routes:insert {
+            hosts   = { "mock_upstream" },
+            service = service,
+          }
 
-          assert(dao.plugins:insert {
+          bp.plugins:insert {
             route_id   = route.id,
             service_id = service.id,
             name       = "rewriter",
             config     = {
               value    = "route-specific plugin",
             },
-          })
+          }
 
           assert(helpers.start_kong({
+            database   = strategy,
             nginx_conf = "spec/fixtures/custom_nginx.template"
           }))
 
@@ -127,50 +112,43 @@ for _, strategy in helpers.each_strategy() do
       describe("enabled on a specific Consumer", function()
         local admin_client
         local proxy_client
-        local db
-        local dao
-        local bp
 
         setup(function()
-          db, dao, bp = helpers.get_db_utils(strategy)
-
-          assert(db:truncate())
-          dao:truncate_tables()
-
-          helpers.run_migrations(dao)
+          local bp = helpers.get_db_utils(strategy)
 
           -- consumer specific plugin
-          local service = assert(bp.services:insert {
+          local service = bp.services:insert {
             name = "mock_upstream",
-          })
-          local route = assert(db.routes:insert {
+          }
+
+          local route = bp.routes:insert {
             protocols = { "http" },
             hosts     = { "mock_upstream" },
             service   = service,
-          })
+          }
 
-          assert(dao.plugins:insert {
+          bp.plugins:insert {
             name       = "key-auth",
             route_id   = route.id,
             service_id = service.id,
-          })
+          }
 
-          local consumer3 = assert(dao.consumers:insert {
+          local consumer3 = bp.consumers:insert {
             username = "test-consumer",
-          })
+          }
 
-          assert(dao.keyauth_credentials:insert {
+          bp.keyauth_credentials:insert {
             consumer_id = consumer3.id,
             key         = "kong",
-          })
+          }
 
-          assert(dao.plugins:insert {
+          bp.plugins:insert {
             consumer_id = consumer3.id,
             name        = "rewriter",
             config      = {
               value     = "consumer-specific plugin",
             },
-          })
+          }
 
           assert(helpers.start_kong({
             database   = strategy,

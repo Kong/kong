@@ -7,16 +7,11 @@ local kong_cluster_events = require "kong.cluster_events"
 
 for _, strategy in helpers.each_strategy() do
   describe("cluster_events with db [#" .. strategy .. "]", function()
-    local db
     local dao
 
     setup(function()
-      db, dao = helpers.get_db_utils(strategy)
-
-      assert(db:truncate())
-      dao:truncate_tables()
-
-      helpers.run_migrations(dao)
+      local _
+      _, _, dao = helpers.get_db_utils(strategy)
     end)
 
     teardown(function()

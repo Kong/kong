@@ -8,30 +8,22 @@ local RESPONSE_MESSAGE = "The upstream server is timing out"
 for _, strategy in helpers.each_strategy() do
   describe("Proxy errors Content-Type [#" .. strategy .. "]", function()
     local proxy_client
-    local db
-    local dao
-    local bp
 
     setup(function()
-      db, dao, bp = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy)
 
-      assert(db:truncate())
-      dao:truncate_tables()
-
-      helpers.run_migrations(dao)
-
-      local service = assert(bp.services:insert {
+      local service = bp.services:insert {
         name            = "api-1",
         protocol        = "http",
         host            = "konghq.com",
         port            = 81,
         connect_timeout = 1,
-      })
-      assert(db.routes:insert {
-        protocols = { "http" },
-        methods   = { "GET" },
-        service   = service,
-      })
+      }
+
+      bp.routes:insert {
+        methods = { "GET" },
+        service = service,
+      }
 
       assert(helpers.start_kong {
         database           = strategy,

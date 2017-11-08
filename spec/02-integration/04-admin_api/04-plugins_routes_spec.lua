@@ -4,7 +4,7 @@ local cjson = require "cjson"
 describe("Admin API", function()
   local client
   setup(function()
-    helpers.run_migrations()
+    assert(helpers.dao:run_migrations())
     assert(helpers.db:truncate())
 
     assert(helpers.start_kong())

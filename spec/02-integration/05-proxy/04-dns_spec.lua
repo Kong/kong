@@ -44,29 +44,20 @@ for _, strategy in helpers.each_strategy() do
     describe("retries", function()
       local retries = 3
       local proxy_client
-      local db
-      local dao
-      local bp
 
       setup(function()
-        db, dao, bp = helpers.get_db_utils(strategy)
+        local bp = helpers.get_db_utils(strategy)
 
-        assert(db:truncate())
-        dao:truncate_tables()
-
-        helpers.run_migrations(dao)
-
-        local service = assert(bp.services:insert {
+        local service = bp.services:insert {
           name    = "tests-retries",
           port    = TCP_PORT,
           retries = retries,
-        })
+        }
 
-        assert(db.routes:insert {
+        bp.routes:insert {
           hosts     = { "retries.com" },
-          protocols = { "http" },
           service   = service
-        })
+        }
 
         assert(helpers.start_kong{
           database = strategy,
@@ -105,34 +96,27 @@ for _, strategy in helpers.each_strategy() do
     end)
     describe("upstream resolve failure", function()
       local proxy_client
-      local db
-      local dao
-      local bp
 
       setup(function()
-        db, dao, bp = helpers.get_db_utils(strategy)
+        local bp = helpers.get_db_utils(strategy)
 
-        assert(db:truncate())
-        dao:truncate_tables()
-
-        helpers.run_migrations(dao)
-
-        local service = assert(bp.services:insert {
+        local service = bp.services:insert {
           name     = "tests-retries",
           host     = "now.this.does.not",
           path     = "/exist",
           port     = 80,
           protocol = "http"
-        })
+        }
 
-        assert(db.routes:insert {
+        bp.routes:insert {
           hosts     = { "retries.com" },
           protocols = { "http" },
           service   = service
-        })
+        }
 
-
-        assert(helpers.start_kong())
+        assert(helpers.start_kong({
+          database = strategy,
+        }))
         proxy_client = helpers.proxy_client()
       end)
 
