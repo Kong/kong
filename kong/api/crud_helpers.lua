@@ -163,21 +163,11 @@ function _M.paginated_set(self, dao_collection, post_process)
     })
   end
 
-  local data
+  local data = setmetatable(rows, cjson.empty_array_mt)
 
-  if #rows == 0 then
-    -- FIXME: remove and stick to previous `empty_array_mt` metatable
-    -- assignment once https://github.com/openresty/lua-cjson/pull/16
-    -- is included in the OpenResty release we use.
-    data = cjson.empty_array
-
-  else
-    data = rows
-
-    if type(post_process) == "function" then
-      for i, row in ipairs(rows) do
-        data[i] = post_process(row)
-      end
+  if type(post_process) == "function" then
+    for i, row in ipairs(rows) do
+      data[i] = post_process(row)
     end
   end
 

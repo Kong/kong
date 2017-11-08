@@ -164,14 +164,6 @@ return {
         end
       end
 
-      -- FIXME: remove and stick to previous `empty_array_mt` metatable
-      -- assignment once https://github.com/openresty/lua-cjson/pull/16
-      -- is included in the OpenResty release we use.
-      if #active == 0 then
-        active = cjson.empty_array
-      end
-
-
       -- for now lets not worry about rolling our own pagination
       -- we also end up returning a "backwards" list of targets because
       -- of how we sorted- do we care?
