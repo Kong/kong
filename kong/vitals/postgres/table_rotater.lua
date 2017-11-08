@@ -71,7 +71,7 @@ rotation_handler = function(premature, self)
 
 
   local _, err = self:drop_previous_table()
-  if err and not err ==  NO_PREVIOUS_TABLE then
+  if err and err ~=  NO_PREVIOUS_TABLE then
     log(WARN, _log_prefix, err)
   end
 end
