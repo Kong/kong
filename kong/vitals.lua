@@ -215,7 +215,7 @@ function _M:increment_counter(counter_name)
   if bucket then
     self.counters[counter_name][bucket] = self.counters[counter_name][bucket] + 1
   else
-    log(WARN, _log_prefix, err)
+    log(DEBUG, _log_prefix, err)
   end
 end
 
