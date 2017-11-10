@@ -280,4 +280,133 @@ describe("Plugin: proxy-cache (API)", function()
       assert.same(cache_key, json_body.headers["X-Cache-Key"])
     end)
   end)
+  describe("POST", function()
+    it("accepts an array of numbers as strings", function()
+      local res = assert(admin_client:send {
+        method = "POST",
+        path = "/plugins",
+        body = {
+          name = "proxy-cache",
+          config = {
+            strategy = "memory",
+            memory = {
+              dictionary_name = "kong_proxy_cache",
+            },
+            response_code = {"123", "200"},
+            cache_ttl = 600,
+            request_method = "GET",
+            content_type = "text/json",
+          },
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      })
+      assert.res_status(201, res)
+    end)
+    it("errors if response_code is an empty array", function()
+      local res = assert(admin_client:send {
+        method = "POST",
+        path = "/plugins",
+        body = {
+          name = "proxy-cache",
+          config = {
+            strategy = "memory",
+            memory = {
+              dictionary_name = "kong_proxy_cache",
+            },
+            response_code = {},
+            cache_ttl = 600,
+            request_method = "GET",
+            content_type = "text/json",
+          },
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      })
+      local body = assert.res_status(400, res)
+      local json_body = cjson.decode(body)
+      assert.same("response_code must be an array of numbers",
+        json_body["config.response_code"])
+    end)
+    it("errors if response_code is a string", function()
+      local res = assert(admin_client:send {
+        method = "POST",
+        path = "/plugins",
+        body = {
+          name = "proxy-cache",
+          config = {
+            strategy = "memory",
+            memory = {
+              dictionary_name = "kong_proxy_cache",
+            },
+            response_code="",
+            cache_ttl = 600,
+            request_method = "GET",
+            content_type = "text/json",
+          },
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      })
+      local body = assert.res_status(400, res)
+      local json_body = cjson.decode(body)
+      assert.same("response_code must be an array of numbers",
+        json_body["config.response_code"])
+    end)
+    it("errors if response_code has non-numeric values", function()
+      local res = assert(admin_client:send {
+        method = "POST",
+        path = "/plugins",
+        body = {
+          name = "proxy-cache",
+          config = {
+            strategy = "memory",
+            memory = {
+              dictionary_name = "kong_proxy_cache",
+            },
+            response_code = {true, "alo", 123},
+            cache_ttl = 600,
+            request_method = "GET",
+            content_type = "text/json",
+          },
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      })
+      local body = assert.res_status(400, res)
+      local json_body = cjson.decode(body)
+      assert.same("response_code must be an array of numbers",
+        json_body["config.response_code"])
+    end)
+    it("errors if response_code has float value", function()
+      local res = assert(admin_client:send {
+        method = "POST",
+        path = "/plugins",
+        body = {
+          name = "proxy-cache",
+          config = {
+            strategy = "memory",
+            memory = {
+              dictionary_name = "kong_proxy_cache",
+            },
+            response_code = {100.5},
+            cache_ttl = 600,
+            request_method = "GET",
+            content_type = "text/json",
+          },
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+      })
+      local body = assert.res_status(400, res)
+      local json_body = cjson.decode(body)
+      assert.same("response_code must be an integer within 100 - 999",
+        json_body["config.response_code"])
+    end)
+  end)
 end)
