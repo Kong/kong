@@ -160,7 +160,8 @@ function Kong.init()
   local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
   local config = assert(conf_loader(conf_path))
 
-  local db  = assert(DB.new(config))
+  local db = assert(DB.new(config))
+  assert(db:init_connector())
 
   local dao = assert(DAOFactory.new(config, db)) -- instantiate long-lived DAO
   assert(dao:init())
