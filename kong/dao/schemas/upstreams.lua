@@ -65,15 +65,17 @@ return {
   self_check = function(schema, config, dao, is_updating)
 
     -- check the name
-    local p = utils.normalize_ip(config.name)
-    if not p then
-      return false, Errors.schema("Invalid name; must be a valid hostname")
-    end
-    if p.type ~= "name" then
-      return false, Errors.schema("Invalid name; no ip addresses allowed")
-    end
-    if p.port then
-      return false, Errors.schema("Invalid name; no port allowed")
+    if config.name then
+      local p = utils.normalize_ip(config.name)
+      if not p then
+        return false, Errors.schema("Invalid name; must be a valid hostname")
+      end
+      if p.type ~= "name" then
+        return false, Errors.schema("Invalid name; no ip addresses allowed")
+      end
+      if p.port then
+        return false, Errors.schema("Invalid name; no port allowed")
+      end
     end
 
     if config.hash_on_header then
@@ -98,32 +100,36 @@ return {
                                   "but no header name provided")
     end
 
-    if config.hash_on == "none" then
-      if config.hash_fallback ~= "none" then
-        return false, Errors.schema("Cannot set fallback if primary " ..
-                                    "'hash_on' is not set")
-      end
+    if config.hash_on and config.hash_fallback then
+      if config.hash_on == "none" then
+        if config.hash_fallback ~= "none" then
+          return false, Errors.schema("Cannot set fallback if primary " ..
+                                      "'hash_on' is not set")
+        end
 
-    else
-      if config.hash_on == config.hash_fallback then
-        if config.hash_on ~= "header" then
-          return false, Errors.schema("Cannot set fallback and primary " ..
-                                      "hashes to the same value")
-
-        else
-          local upper_hash_on = config.hash_on_header:upper()
-          local upper_hash_fallback = config.hash_fallback_header:upper()
-          if upper_hash_on == upper_hash_fallback then
-            return false, Errors.schema("Cannot set fallback and primary "..
+      else
+        if config.hash_on == config.hash_fallback then
+          if config.hash_on ~= "header" then
+            return false, Errors.schema("Cannot set fallback and primary " ..
                                         "hashes to the same value")
+
+          else
+            local upper_hash_on = config.hash_on_header:upper()
+            local upper_hash_fallback = config.hash_fallback_header:upper()
+            if upper_hash_on == upper_hash_fallback then
+              return false, Errors.schema("Cannot set fallback and primary "..
+                                          "hashes to the same value")
+            end
           end
         end
       end
     end
 
-    -- check the slots number
-    if config.slots < SLOTS_MIN or config.slots > SLOTS_MAX then
-      return false, Errors.schema(SLOTS_MSG)
+    if config.slots then
+      -- check the slots number
+      if config.slots < SLOTS_MIN or config.slots > SLOTS_MAX then
+        return false, Errors.schema(SLOTS_MSG)
+      end
     end
 
     return true
