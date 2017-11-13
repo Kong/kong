@@ -550,9 +550,12 @@ return {
       reports.log()
       local addr = ctx.balancer_address
 
-      -- Report HTTP status for health checks
-      if addr and addr.balancer and addr.ip then
-        addr.balancer.report_http_status(addr.ip, addr.port, ngx.status)
+      -- If response was produced by an upstream (ie, not by a Kong plugin)
+      if ctx.KONG_PROXIED == true then
+        -- Report HTTP status for health checks
+        if addr and addr.balancer and addr.ip then
+          addr.balancer.report_http_status(addr.ip, addr.port, ngx.status)
+        end
       end
     end
   }
