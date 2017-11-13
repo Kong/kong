@@ -420,7 +420,7 @@ return {
       end
 
       local protocols = route.protocols
-      if protocols[1] == "https" and protocols[2] == nil and forwarded_proto ~= "https" then
+      if protocols.https and not protocols.http and forwarded_proto ~= "https" then
         ngx.header["connection"] = "Upgrade"
         ngx.header["upgrade"]    = "TLS/1.2, HTTP/1.1"
         return responses.send(426, "Please use HTTPS protocol")
