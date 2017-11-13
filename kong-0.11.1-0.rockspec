@@ -139,7 +139,7 @@ build = {
     ["kong.dao.migrations.cassandra"] = "kong/dao/migrations/cassandra.lua",
     ["kong.dao.migrations.postgres"] = "kong/dao/migrations/postgres.lua",
 
-    ["kong.vitals"] = "kong/vitals.lua",
+    ["kong.vitals"] = "kong/vitals/init.lua",
     ["kong.vitals.cassandra.strategy"] = "kong/vitals/cassandra/strategy.lua",
     ["kong.vitals.postgres.aggregator"] = "kong/vitals/postgres/aggregator.lua",
     ["kong.vitals.postgres.strategy"] = "kong/vitals/postgres/strategy.lua",
