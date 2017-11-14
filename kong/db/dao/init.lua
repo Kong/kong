@@ -167,6 +167,18 @@ function DAO:insert(entity)
     return nil, err_t.name, err_t
   end
 
+  if self.events then
+    local ok, err = self.events.post_local("dao:crud", "create", {
+      operation = "create",
+      schema    = self.schema,
+      entity    = row,
+      new_db    = true,
+    })
+    if not ok then
+      ngx.log(ngx.ERR, "[db] failed to propagate CRUD operation: ", err)
+    end
+  end
+
   return row
 end
 
@@ -199,6 +211,19 @@ function DAO:update(primary_key, entity)
     return nil, err_t.name, err_t
   end
 
+  if self.events then
+    local ok, err = self.events.post_local("dao:crud", "update", {
+      operation = "update",
+      schema    = self.schema,
+      entity    = row,
+      new_db    = true,
+      --old_entity = nil, -- not in new DB module: we avoid read-before-write
+    })
+    if not ok then
+      ngx.log(ngx.ERR, "[db] failed to propagate CRUD operation: ", err)
+    end
+  end
+
   return row
 end
 
@@ -217,6 +242,18 @@ function DAO:delete(primary_key)
   local _, err_t = self.strategy:delete(primary_key)
   if err_t then
     return nil, err_t.name, err_t
+  end
+
+  if self.events then
+    local ok, err = self.events.post_local("dao:crud", "delete", {
+      operation = "delete",
+      schema    = self.schema,
+      new_db    = true,
+      --entity    = nil, -- not in new DB module: we avoid read-before-write
+    })
+    if not ok then
+      ngx.log(ngx.ERR, "[db] failed to propagate CRUD operation: ", err)
+    end
   end
 
   return true

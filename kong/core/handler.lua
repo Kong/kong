@@ -128,53 +128,57 @@ return {
 
 
       worker_events.register(function(data)
-        if not data.schema then
-          log(ngx.ERR, "[events] missing schema in crud subscriber")
-          return
-        end
+        if not data.new_db then
+          if not data.schema then
+            log(ngx.ERR, "[events] missing schema in crud subscriber")
+            return
+          end
 
-        if not data.entity then
-          log(ngx.ERR, "[events] missing entity in crud subscriber")
-          return
-        end
+          if not data.entity then
+            log(ngx.ERR, "[events] missing entity in crud subscriber")
+            return
+          end
 
-        -- invalidate this entity anywhere it is cached if it has a
-        -- caching key
+          -- invalidate this entity anywhere it is cached if it has a
+          -- caching key
 
-        local cache_key = dao[data.schema.table]:entity_cache_key(data.entity)
-        if cache_key then
-          cache:invalidate(cache_key)
-        end
-
-        -- if we had an update, but the cache key was part of what was updated,
-        -- we need to invalidate the previous entity as well
-
-        if data.old_entity then
-          cache_key = dao[data.schema.table]:entity_cache_key(data.old_entity)
+          local cache_key = dao[data.schema.table]:entity_cache_key(data.entity)
           if cache_key then
             cache:invalidate(cache_key)
           end
+
+          -- if we had an update, but the cache key was part of what was updated,
+          -- we need to invalidate the previous entity as well
+
+          if data.old_entity then
+            cache_key = dao[data.schema.table]:entity_cache_key(data.old_entity)
+            if cache_key then
+              cache:invalidate(cache_key)
+            end
+          end
+
+          if not data.operation then
+            log(ngx.ERR, "[events] missing operation in crud subscriber")
+            return
+          end
         end
 
-        if not data.operation then
-          log(ngx.ERR, "[events] missing operation in crud subscriber")
-          return
-        end
+        -- new DB module and old DAO: public worker events propagation
 
-        local entity_channel           = data.schema.table
+        local entity_channel           = data.schema.table or data.schema.name
         local entity_operation_channel = fmt("%s:%s", data.schema.table,
                                              data.operation)
 
-        -- crud:apis
-        local _, err = worker_events.post_local("crud", entity_channel, data)
-        if err then
+        -- crud:routes
+        local ok, err = worker_events.post_local("crud", entity_channel, data)
+        if not ok then
           log(ngx.ERR, "[events] could not broadcast crud event: ", err)
           return
         end
 
-        -- crud:apis:create
-        _, err = worker_events.post_local("crud", entity_operation_channel, data)
-        if err then
+        -- crud:routes:create
+        ok, err = worker_events.post_local("crud", entity_operation_channel, data)
+        if not ok then
           log(ngx.ERR, "[events] could not broadcast crud event: ", err)
           return
         end
@@ -184,11 +188,24 @@ return {
       -- local events (same worker)
 
 
-      -- TODO: not yet supported in new model
-      --worker_events.register(function()
-      --  log(DEBUG, "[events] API updated, invalidating router")
-      --  cache:invalidate("router:version")
-      --end, "crud", "apis")
+      worker_events.register(function()
+        log(DEBUG, "[events] Route updated, invalidating router")
+        cache:invalidate("router:version")
+      end, "crud", "routes")
+
+
+      worker_events.register(function(data)
+        if data.operation ~= "create" and
+           data.operation ~= "delete"
+        then
+          -- no need to rebuild the router if we just added a Service
+          -- since no Route is pointing to that Service yet.
+          -- ditto for deletion: if a Service if being deleted, it is
+          -- only allowed because no Route is pointing to it anymore.
+          log(DEBUG, "[events] Service updated, invalidating router")
+          cache:invalidate("router:version")
+        end
+      end, "crud", "services")
 
 
       -- SSL certs / SNIs invalidations

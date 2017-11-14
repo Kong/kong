@@ -125,4 +125,11 @@ function DB:truncate()
 end
 
 
+function DB:set_events_handler(events)
+  for _, dao in pairs(self.daos) do
+    dao.events = events
+  end
+end
+
+
 return DB

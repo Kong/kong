@@ -129,6 +129,7 @@ function _M.new(dao, db)
 
   res.services = new_blueprint(db.services, function()
     return {
+      protocol = "http",
       host = "127.0.0.1",
       port = 15555,
     }

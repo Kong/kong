@@ -267,6 +267,7 @@ function Kong.init_worker()
   singletons.cluster_events = cluster_events
 
 
+  singletons.db:set_events_handler(worker_events)
   singletons.dao:set_events_handler(worker_events)
 
 
