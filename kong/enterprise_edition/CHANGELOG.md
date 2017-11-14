@@ -20,6 +20,11 @@
 - Release the first iteration of Kong Vitals, storing and visualizing metrics
   related to Kong's in-memory caching and latency.
   (https://support.mashape.com/hc/en-us/articles/115002321753).
+  - Vitals is initially available on **Postgres 9.5+ only** - Cassandra support will be added 
+  in a future release of Kong EE.
+  - **All functionality is subject to change in upcoming releases of Kong EE with no guaranteed 
+  backward compatibility.** ** Vitals API will change completely in the next release, with zero 
+  backward compatibility.
 - Add the Forward Proxy plugin, allowing Kong to communicate to upstream services
   via a transparent HTTP proxy.
   (https://support.mashape.com/hc/en-us/articles/115002941293).
