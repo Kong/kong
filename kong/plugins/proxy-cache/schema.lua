@@ -10,7 +10,7 @@ local function check_status(status_t)
   for i = 1, #status_t do
     local status = tonumber(status_t[i])
     if not status then
-      return false, "response_code must contain at least one value"
+      return false, "response_code value must be an integer"
     end
 
     if status % 1 ~= 0 or status < 100 or status > 999 then

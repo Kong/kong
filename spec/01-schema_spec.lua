@@ -69,7 +69,7 @@ describe("proxy-cache schema", function()
       response_code = {true, "alo", 123},
     }, proxy_cache_schema)
 
-    assert.same("response_code must contain at least one value", err.response_code)
+    assert.same("response_code value must be an integer", err.response_code)
     assert.is_false(ok)
   end)
 
