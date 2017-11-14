@@ -327,7 +327,7 @@ describe("Plugin: proxy-cache (API)", function()
       })
       local body = assert.res_status(400, res)
       local json_body = cjson.decode(body)
-      assert.same("response_code must be an array of numbers",
+      assert.same("response_code must contain at least one value",
         json_body["config.response_code"])
     end)
     it("errors if response_code is a string", function()
@@ -353,7 +353,7 @@ describe("Plugin: proxy-cache (API)", function()
       })
       local body = assert.res_status(400, res)
       local json_body = cjson.decode(body)
-      assert.same("response_code must be an array of numbers",
+      assert.same("response_code must contain at least one value",
         json_body["config.response_code"])
     end)
     it("errors if response_code has non-numeric values", function()
@@ -379,7 +379,7 @@ describe("Plugin: proxy-cache (API)", function()
       })
       local body = assert.res_status(400, res)
       local json_body = cjson.decode(body)
-      assert.same("response_code must be an array of numbers",
+      assert.same("response_code must contain at least one value",
         json_body["config.response_code"])
     end)
     it("errors if response_code has float value", function()

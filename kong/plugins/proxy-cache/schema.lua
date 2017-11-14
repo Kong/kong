@@ -4,13 +4,13 @@ local errors     = require "kong.dao.errors"
 
 local function check_status(status_t)
   if #status_t == 0 then
-    return false, "response_code must be an array of numbers"
+    return false, "response_code must contain at least one value"
   end
 
   for i = 1, #status_t do
     local status = tonumber(status_t[i])
     if not status then
-      return false, "response_code must be an array of numbers"
+      return false, "response_code must contain at least one value"
     end
 
     if status % 1 ~= 0 or status < 100 or status > 999 then
