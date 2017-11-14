@@ -122,7 +122,6 @@ return {
     },
     namespace = {
       type = "string",
-      required = true,
       default = utils.random_string,
     },
     strategy = {

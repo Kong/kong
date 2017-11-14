@@ -66,13 +66,13 @@ rotation_handler = function(premature, self)
   local _, err = self:create_next_table()
   if err then
     -- don't return here -- still want to try to drop previous table(s)
-    log(ERR, _log_prefix, "create_next_table() threw an error: ", err)
+    log(WARN, _log_prefix, "create_next_table() threw an error: ", err)
   end
 
 
   local _, err = self:drop_previous_table()
-  if err then
-    log(ERR, _log_prefix, "drop_previous_table() threw an error: ", err)
+  if err and err ~=  NO_PREVIOUS_TABLE then
+    log(WARN, _log_prefix, err)
   end
 end
 
@@ -82,7 +82,7 @@ function _M:init()
   local query = fmt(CREATE_VITALS_STATS_SECONDS, self:current_table_name())
   local _, err = self.db:query(query)
 
-  if err and not match(err, "exists") then
+  if err and not match(tostring(err), "exists") then
     -- if the error isn't "table already exists", it's a real problem
     return nil, "could not create current table: " .. err
   end
@@ -127,7 +127,7 @@ function _M:table_names_for_select()
   local previous_table, err = self.db:query(q)
 
   if err then
-    return err
+    return tostring(err)
   elseif previous_table[1] then
     return { current_table_name, previous_table[1].table_name }
   else
@@ -147,7 +147,7 @@ function _M:create_next_table()
 
   local _, err = self.db:query(query)
 
-  if err and not match(err, "exists") then
+  if err and not match(tostring(err), "exists") then
     return nil, "could not create next table: " .. err
   end
 
@@ -179,7 +179,7 @@ function _M:drop_previous_table()
   local select_res, select_err = self.db:query(q)
 
   if select_err then
-    return nil, "Failed to select tables. query: " .. q .. ". error: " .. select_err
+    return nil, "Failed to select tables. query: " .. q .. ". error: " .. tostring(select_err)
   end
 
   for i = 1, #select_res do
@@ -200,7 +200,7 @@ function _M:drop_previous_table()
     local _, err = self.db:query(q)
 
     if err then
-      log(WARN, _log_prefix, "Failed to drop table ", row.table_name, err)
+      log(WARN, _log_prefix, "Failed to drop table ", row.table_name, tostring(err))
     end
   end
 end
