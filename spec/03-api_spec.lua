@@ -72,7 +72,7 @@ describe("Plugin: proxy-cache", function()
           config = {
             strategy = "memory",
             memory = {
-              dictionary_name = "kong_proxy_cache",
+              dictionary_name = "kong",
             },
             response_code = {"123", "200"},
             cache_ttl = 600,
@@ -95,7 +95,7 @@ describe("Plugin: proxy-cache", function()
           config = {
             strategy = "memory",
             memory = {
-              dictionary_name = "kong_proxy_cache",
+              dictionary_name = "kong",
             },
             response_code = {},
             cache_ttl = 600,
@@ -121,7 +121,7 @@ describe("Plugin: proxy-cache", function()
           config = {
             strategy = "memory",
             memory = {
-              dictionary_name = "kong_proxy_cache",
+              dictionary_name = "kong",
             },
             response_code="",
             cache_ttl = 600,
@@ -147,7 +147,7 @@ describe("Plugin: proxy-cache", function()
           config = {
             strategy = "memory",
             memory = {
-              dictionary_name = "kong_proxy_cache",
+              dictionary_name = "kong",
             },
             response_code = {true, "alo", 123},
             cache_ttl = 600,
@@ -173,7 +173,7 @@ describe("Plugin: proxy-cache", function()
           config = {
             strategy = "memory",
             memory = {
-              dictionary_name = "kong_proxy_cache",
+              dictionary_name = "kong",
             },
             response_code = {100.5},
             cache_ttl = 600,
