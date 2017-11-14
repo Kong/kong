@@ -425,6 +425,28 @@ function _M.shallow_copy(orig)
   return copy
 end
 
+--- Merges two tables recursively
+-- For each subtable in t1 and t2, an equivalent (but different) table will
+-- be created in the resulting merge. If t1 and t2 have a subtable with in the
+-- same key k, res[k] will be a deep merge of both subtables.
+-- Metatables are not taken into account.
+-- Keys are copied by reference (if tables are used as keys they will not be
+-- duplicated)
+-- @param t1 one of the tables to merge
+-- @param t2 one of the tables to merge
+-- @return Returns a table representing a deep merge of the new table
+function _M.deep_merge(t1, t2)
+  local res = _M.deep_copy(t1)
+  for k, v in pairs(t2) do
+    if type(v) == "table" and type(res[k]) == "table" then
+      res[k] = _M.deep_merge(res[k], v)
+    else
+      res[k] = _M.deep_copy(v) -- returns v when it is not a table
+    end
+  end
+  return res
+end
+
 local err_list_mt = {}
 
 --- Concatenates lists into a new table.
