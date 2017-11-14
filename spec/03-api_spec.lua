@@ -3,7 +3,6 @@ local cjson = require "cjson"
 local rbac = require "kong.core.rbac"
 
 
-
 describe("Plugin: proxy-cache", function()
   local proxy_client, admin_client, cache_key, plugin1, api1
 
