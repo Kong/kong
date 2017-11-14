@@ -12,6 +12,12 @@ function _M.serialize(ngx)
       consumer_id = ngx.ctx.authenticated_credential.consumer_id
     }
   end
+
+  local request_body, response_body
+  if ngx.ctx.req_resp_bodies ~= nil then
+    request_body = ngx.ctx.req_resp_bodies.request_body
+    response_body = ngx.ctx.req_resp_bodies.response_body
+  end
   
   return {
     request = {
@@ -20,12 +26,14 @@ function _M.serialize(ngx)
       querystring = ngx.req.get_uri_args(), -- parameters, as a table
       method = ngx.req.get_method(), -- http method
       headers = ngx.req.get_headers(),
-      size = ngx.var.request_length
+      size = ngx.var.request_length,
+      body = request_body
     },
     response = {
       status = ngx.status,
       headers = ngx.resp.get_headers(),
-      size = ngx.var.bytes_sent
+      size = ngx.var.bytes_sent,
+      body = response_body
     },
     tries = (ngx.ctx.balancer_address or EMPTY).tries,
     latencies = {

@@ -43,6 +43,29 @@ function TcpLogHandler:new()
   TcpLogHandler.super.new(self, "tcp-log")
 end
 
+function TcpLogHandler:access(conf)
+  TcpLogHandler.super.access(self)  
+
+  if conf.log_body then
+    ngx.req.read_body()
+    ngx.ctx.req_resp_bodies = {
+      request_body = ngx.req.get_body_data(),
+      response_body = ""
+    }
+  end
+end
+
+function TcpLogHandler:body_filter(conf)
+  TcpLogHandler.super.body_filter(self)
+
+  if conf.log_body then
+    local chunk = ngx.arg[1]
+    local req_resp_bodies = ngx.ctx.req_resp_bodies or { response_body = "" }
+    req_resp_bodies.response_body = req_resp_bodies.response_body .. chunk
+    ngx.ctx.req_resp_bodies = req_resp_bodies
+  end
+end
+
 function TcpLogHandler:log(conf)
   TcpLogHandler.super.log(self)
 

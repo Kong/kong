@@ -41,6 +41,29 @@ function UdpLogHandler:new()
   UdpLogHandler.super.new(self, "udp-log")
 end
 
+function UdpLogHandler:access(conf)
+  UdpLogHandler.super.access(self)  
+
+  if conf.log_body then
+    ngx.req.read_body()
+    ngx.ctx.req_resp_bodies = {
+      request_body = ngx.req.get_body_data(),
+      response_body = ""
+    }
+  end
+end
+
+function UdpLogHandler:body_filter(conf)
+  UdpLogHandler.super.body_filter(self)
+
+  if conf.log_body then
+    local chunk = ngx.arg[1]
+    local req_resp_bodies = ngx.ctx.req_resp_bodies or { response_body = "" }
+    req_resp_bodies.response_body = req_resp_bodies.response_body .. chunk
+    ngx.ctx.req_resp_bodies = req_resp_bodies
+  end
+end
+
 function UdpLogHandler:log(conf)
   UdpLogHandler.super.log(self)
 
