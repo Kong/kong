@@ -9,7 +9,7 @@ function Routes:for_service(service_id)
       key, route = next(routes, key)
       if route then
         if route.service.id == service_id then
-          return route
+          return self:row_to_entity(route)
         end
       end
     until not key

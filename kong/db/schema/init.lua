@@ -847,11 +847,22 @@ function Schema:validate_primary_key(pk, ignore_others)
 end
 
 
---- Removes duplicates of an array, preserving its order
+local Set_mt = {
+  __index = function(set, key)
+    for i = 1, #set do
+      if set[i] == key then
+        return i
+      end
+    end
+  end
+}
+
+
+--- Transforms an array into a set, removing duplicates and changing its metatable
 -- @param array Input array (may be ngx.null).
 -- @return A copy with duplicates removed if array was a table,
 --         or array if its not a table (i.e. ngx.null or other value)
-local function remove_duplicates(array)
+local function make_set(array)
   if type(array) ~= "table" then
     return array
   end
@@ -862,18 +873,9 @@ local function remove_duplicates(array)
     if not set[v] then
       set[v] = true
       table.insert(output, v)
-      -- When declaring a set, for set of strings,
-      -- you also get a my_set.my_entry shortcut syntax.
-      -- (We conservatively add this feature to strings only
-      -- because it cannot be applied to all types:
-      -- using this in sets of numbers would produce a conflict,
-      -- and some other types are not referentially transparent.)
-      if type(v) == "string" then
-        output[v] = true
-      end
     end
   end
-  return output
+  return setmetatable(output, Set_mt)
 end
 
 
@@ -902,7 +904,7 @@ function Schema:process_auto_fields(input, context)
     end
 
     if output[key] and field.type == "set" then
-      output[key] = remove_duplicates(output[key])
+      output[key] = make_set(output[key])
     end
 
     if field.auto then

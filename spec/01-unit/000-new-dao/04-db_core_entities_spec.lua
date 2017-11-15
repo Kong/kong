@@ -498,7 +498,7 @@ for _, strategy in helpers.each_strategy() do
           assert.is_table(rows)
           assert.equal(#rows, 0)
           assert.is_nil(offset)
-          assert.equals(cjson.empty_array_mt, getmetatable(rows))
+          assert.equals("[]", cjson.encode(rows))
         end)
 
         describe("page size", function()
@@ -532,7 +532,18 @@ for _, strategy in helpers.each_strategy() do
             assert(db:truncate())
 
             for i = 1, 10 do
-              bp.routes:insert({ hosts = { "example-" .. i .. ".com" } })
+              bp.routes:insert({
+                hosts = { "example-" .. i .. ".com" },
+                methods = { "GET" },
+              })
+            end
+          end)
+
+          it("preserves the set functionality", function()
+            local rows = db.routes:page()
+
+            for i=1, #rows do
+              assert.is_truthy(rows[i].methods.GET)
             end
           end)
 
@@ -669,7 +680,10 @@ for _, strategy in helpers.each_strategy() do
           assert(db:truncate())
 
           for i = 1, 100 do
-            bp.routes:insert({ hosts = { "example-" .. i .. ".com" } })
+            bp.routes:insert({
+              hosts   = { "example-" .. i .. ".com" },
+              methods = { "GET" }
+            })
           end
         end)
 
@@ -685,13 +699,15 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         -- I/O
-        it("iterates over all rows", function()
+        it("iterates over all rows and its sets work as sets", function()
           local n_rows = 0
 
           for row, err, page in db.routes:each() do
             assert.is_nil(err)
             assert.equal(1, page)
             n_rows = n_rows + 1
+            -- check that sets work like sets
+            assert.is_truthy(row.methods.GET)
           end
 
           assert.equal(100, n_rows)
@@ -1031,12 +1047,29 @@ for _, strategy in helpers.each_strategy() do
         assert.same({}, rows)
         assert.is_nil(err)
         assert.is_nil(err_t)
+        assert.equals("[]", cjson.encode(rows))
+      end)
+
+      t(":for_service() returns table with cjson.empty_array_mt metatable", function()
+        -- TODO: implement :for_service() for Cassandra strategy
+        local rows, err, err_t = db.routes:for_service({
+          id = a_blank_uuid,
+        })
+
+        if #rows > 0 then
+          -- ignore this test, the previous one will fail already
+          return
+        end
+
+        assert.is_nil(err)
+        assert.is_nil(err_t)
+        assert.equals("[]", cjson.encode(rows))
       end)
 
       t(":for_service() lists Routes associated to a Service", function()
         -- TODO: implement :for_service() for Cassandra strategy
         local service = bp.services:insert()
-        local route1 = bp.routes:insert({ service = service })
+        local route1 = bp.routes:insert({ service = service, methods = { 'GET' } })
         local route2 = bp.routes:insert()
 
         local rows, err, err_t = db.routes:for_service({
@@ -1046,6 +1079,9 @@ for _, strategy in helpers.each_strategy() do
         assert.same({ route1 }, rows)
         assert.is_nil(err)
         assert.is_nil(err_t)
+
+        -- check that sets work properly
+        assert.is_truthy(rows[1].methods.GET)
       end)
 
       it(":update() attaches a Route to an existing Service", function()
