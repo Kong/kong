@@ -128,6 +128,13 @@ function _mt:connect()
 
   self.connection = db
 
+  if db.sock:getreusedtimes() == 0 then
+    ok, err = self:query("SET TIME ZONE 'UTC';");
+    if not ok then
+      return nil, err
+    end
+  end
+
   return true
 end
 

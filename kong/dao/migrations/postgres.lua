@@ -637,23 +637,24 @@ return {
     name = "2017-09-14-121200_routes_and_services",
     up = [[
       CREATE TABLE IF NOT EXISTS "services" (
-        "id"               UUID        PRIMARY KEY,
-        "created_at"       TIMESTAMP,
-        "updated_at"       TIMESTAMP,
+        "id"               UUID                       PRIMARY KEY,
+        "created_at"       TIMESTAMP WITH TIME ZONE,
+        "updated_at"       TIMESTAMP WITH TIME ZONE,
         "name"             TEXT,
+        "retries"          BIGINT,
         "protocol"         TEXT,
         "host"             TEXT,
         "port"             BIGINT,
         "path"             TEXT,
-        "retries"          BIGINT,
         "connect_timeout"  BIGINT,
         "write_timeout"    BIGINT,
         "read_timeout"     BIGINT
       );
+
       CREATE TABLE IF NOT EXISTS "routes" (
-        "id"             UUID        PRIMARY KEY,
-        "created_at"     TIMESTAMP,
-        "updated_at"     TIMESTAMP,
+        "id"             UUID                       PRIMARY KEY,
+        "created_at"     TIMESTAMP WITH TIME ZONE,
+        "updated_at"     TIMESTAMP WITH TIME ZONE,
         "protocols"      TEXT[],
         "methods"        TEXT[],
         "hosts"          TEXT[],
@@ -661,7 +662,7 @@ return {
         "regex_priority" BIGINT,
         "strip_path"     BOOLEAN,
         "preserve_host"  BOOLEAN,
-        "service_id"     UUID        REFERENCES "services" ("id")
+        "service_id"     UUID                       REFERENCES "services" ("id")
       );
       DO $$
       BEGIN

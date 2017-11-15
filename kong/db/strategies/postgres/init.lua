@@ -213,7 +213,7 @@ local function escape_identifier(connector, identifier, field)
 
   if field then
     if field.timestamp then
-      return concat { "EXTRACT(EPOCH FROM ", identifier, ") AS ", identifier }
+      return concat { "EXTRACT(EPOCH FROM ", identifier, " AT TIME ZONE 'UTC') AS ", identifier }
     end
   end
 
@@ -287,7 +287,7 @@ end
 
 local function field_type_to_postgres_type(field)
   if field.timestamp then
-    return "TIMESTAMP"
+    return "TIMESTAMP WITH TIME ZONE"
 
   elseif field.uuid then
     return "UUID"
@@ -311,7 +311,7 @@ local function field_type_to_postgres_type(field)
     local elements = field.elements
 
     if elements.timestamp then
-      return "TIMESTAMP[]", 1
+      return "TIMESTAMP[] WITH TIME ZONE", 1
 
     elseif field.uuid then
       return "UUID[]", 1
@@ -343,7 +343,7 @@ local function field_type_to_postgres_type(field)
       local brackets = rep("[]", dm)
 
       if el.timestamp then
-        return "TIMESTAMP" .. brackets, dm
+        return "TIMESTAMP" .. brackets .. " WITH TIME ZONE", dm
 
       elseif field.uuid then
         return "UUID" .. brackets, dm
