@@ -166,7 +166,11 @@ dao_helpers.for_each_dao(function(kong_conf)
       it("does initialize strategy when vitals is on", function()
         singletons.configuration = { vitals = true }
 
-        local vitals = kong_vitals.new { dao = dao }
+        local vitals = kong_vitals.new({
+          dao = dao,
+          flush_interval = 60,
+          postgres_rotation_interval = 3600,
+        })
         vitals:reset_counters()
 
         local s_strategy = spy.on(vitals.strategy, "init")

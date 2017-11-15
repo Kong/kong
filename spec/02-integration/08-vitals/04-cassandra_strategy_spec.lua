@@ -19,8 +19,13 @@ dao_helpers.for_each_dao(function(kong_conf)
 
 
     setup(function()
+      local opts = {
+        cassandra_seconds_ttl = 900,
+        cassandra_minutes_ttl = 86400,
+      }
+
       dao      = assert(dao_factory.new(kong_conf))
-      strategy = cassandra_strategy.new(dao)
+      strategy = cassandra_strategy.new(dao, opts)
       cluster  = dao.db.cluster
       uuid     = utils.uuid()
       hostname = "my_hostname"

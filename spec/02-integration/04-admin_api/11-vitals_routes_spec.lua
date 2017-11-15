@@ -27,7 +27,11 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         singletons.configuration = { vitals = true }
         
-        vitals = kong_vitals.new({ dao = dao })
+        vitals = kong_vitals.new({
+          dao = dao,
+          flush_interval = 60,
+          postgres_rotation_interval = 3600,
+        })
         vitals:init()
 
         assert(helpers.start_kong({

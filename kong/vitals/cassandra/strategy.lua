@@ -69,11 +69,11 @@ local function aggregate_seconds(acc, current_hit, current_miss, current_plat_mi
 end
 
 
-function _M.new(dao_factory)
+function _M.new(dao_factory, opts)
   local self = {
-    cluster = dao_factory.db.cluster,
-    seconds_ttl = 900, -- This will eventually be set by kong.conf
-    minutes_ttl = 84600, -- This will eventually be set by kong.conf
+    cluster     = dao_factory.db.cluster,
+    seconds_ttl = opts.cassandra_seconds_ttl,
+    minutes_ttl = opts.cassandra_minutes_ttl,
   }
 
   return setmetatable(self, mt)

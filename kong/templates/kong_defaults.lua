@@ -11,6 +11,9 @@ enforce_rbac = off
 rbac_auth_header = Kong-Admin-Token
 vitals = off
 vitals_flush_interval = 60
+vitals_postgres_rotation_interval = 3600
+vitals_cassandra_seconds_ttl = 900
+vitals_cassandra_minutes_ttl = 86400
 
 proxy_listen = 0.0.0.0:8000
 proxy_listen_ssl = 0.0.0.0:8443

@@ -37,6 +37,12 @@ function _M.new(opts)
     local db_strategy
     local dao_factory = opts.dao
 
+    local strategy_opts = {
+      postgres_rotation_interval = opts.postgres_rotation_interval,
+      cassandra_seconds_ttl      = opts.cassandra_seconds_ttl,
+      cassandra_minutes_ttl      = opts.cassandra_minutes_ttl,
+    }
+
     if dao_factory.db_type == "postgres" then
       db_strategy = require "kong.vitals.postgres.strategy"
     elseif dao_factory.db_type == "cassandra" then
@@ -45,7 +51,7 @@ function _M.new(opts)
       return error("no vitals strategy for " .. dao_factory.db_type)
     end
 
-    strategy = db_strategy.new(dao_factory)
+    strategy = db_strategy.new(dao_factory, strategy_opts)
   end
 
   local counters = {

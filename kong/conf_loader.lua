@@ -134,6 +134,9 @@ local CONF_INFERENCES = {
 
   vitals = {typ = "boolean"},
   vitals_flush_interval = {typ = "number"},
+  vitals_postgres_rotation_interval = {typ = "number"},
+  vitals_cassandra_seconds_ttl = {typ = "number"},
+  vitals_cassandra_minutes_ttl = {typ = "number"},
 }
 
 -- List of settings whose values must not be printed when

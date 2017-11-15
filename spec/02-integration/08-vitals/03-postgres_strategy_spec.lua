@@ -20,8 +20,12 @@ dao_helpers.for_each_dao(function(kong_conf)
     setup(function()
       helpers.run_migrations()
 
+      local opts = {
+        postgres_rotation_interval = 3600
+      }
+
       dao      = assert(dao_factory.new(kong_conf))
-      strategy = pg_strategy.new(dao)
+      strategy = pg_strategy.new(dao, opts)
 
       db  = dao.db
     end)

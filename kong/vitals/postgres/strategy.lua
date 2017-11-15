@@ -21,11 +21,11 @@ local SELECT_STATS = "select * from %s order by at desc limit 60"
 local SELECT_MINUTE_STATS = "select * from vitals_stats_minutes order by at desc"
 
 
-function _M.new(dao_factory)
+function _M.new(dao_factory, opts)
   local table_rotater = table_rotater_module.new(
     {
       db = dao_factory.db,
-      rotation_interval = 3600,
+      rotation_interval = opts.postgres_rotation_interval,
     }
   )
 
