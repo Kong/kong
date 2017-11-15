@@ -4,16 +4,60 @@
 local helpers = require "spec.helpers"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local PORT = 21000
+local utils = require "kong.tools.utils"
+
+local healthchecks_defaults = {
+  active = {
+    timeout = 1,
+    concurrency = 10,
+    http_path = "/",
+    healthy = {
+      interval = 0, -- 0 = disabled by default
+      http_statuses = { 200, 302 },
+      successes = 2,
+    },
+    unhealthy = {
+      interval = 0, -- 0 = disabled by default
+      http_statuses = { 429, 404,
+                        500, 501, 502, 503, 504, 505 },
+      tcp_failures = 2,
+      timeouts = 3,
+      http_failures = 5,
+    },
+  },
+  passive = {
+    healthy = {
+      http_statuses = { 200, 201, 202, 203, 204, 205, 206, 207, 208, 226,
+                        300, 301, 302, 303, 304, 305, 306, 307, 308 },
+      successes = 5,
+    },
+    unhealthy = {
+      http_statuses = { 429, 500, 503 },
+      tcp_failures = 2,
+      timeouts = 7,
+      http_failures = 5,
+    },
+  },
+}
+
+local function healthchecks_config(config)
+  return utils.deep_merge(healthchecks_defaults, config)
+end
 
 local TEST_LOG = false    -- extra verbose logging of test server
 
--- modified http-server. Accepts (sequentially) a number of incoming
--- connections, and returns the number of succesful ones.
--- Also features a timeout setting.
-local function http_server(timeout, count, port, no_timeout)
+-- Modified http-server. Accepts (sequentially) a number of incoming
+-- connections and then rejects a given number of connections.
+-- @param timeout Server timeout.
+-- @param ok_count Number of 200 OK responses to give.
+-- @param port Port number to use.
+-- @param fail_count (optional, default 0) Number of 500 errors to respond.
+-- @return Returns the number of succesful and failure responses.
+local function http_server(timeout, ok_count, port, fail_count)
+  fail_count = fail_count or 0
   local threads = require "llthreads2.ex"
   local thread = threads.new({
-    function(timeout, count, port, no_timeout, TEST_LOG)
+    function(timeout, ok_count, port, fail_count)
 
       local function test_log(...)
         if not TEST_LOG then
@@ -33,65 +77,125 @@ local function http_server(timeout, count, port, no_timeout)
       assert(server:bind("*", port))
       assert(server:listen())
 
+      local handshake_done = false
+
       local expire = socket.gettime() + timeout
-      assert(server:settimeout(0.1))
+      assert(server:settimeout(0.5))
       test_log("test http server on port ", port, " started")
 
-      local success = 0
-      while count > 0 do
+      local ok_responses, fail_responses = 0, 0
+      local total_reqs = ok_count + fail_count
+      local n_reqs = 0
+      while n_reqs < total_reqs do
         local client, err
         client, err = server:accept()
         if err == "timeout" then
           if socket.gettime() > expire then
             server:close()
-            if no_timeout then
-              return success
-            else
-              error("timeout")
-            end
+            break
           end
         elseif not client then
           server:close()
           error(err)
         else
-          count = count - 1
-
           local lines = {}
           local line, err
           while #lines < 7 do
             line, err = client:receive()
             if err then
               break
+            elseif #line == 0 then
+              break
             else
               table.insert(lines, line)
             end
           end
 
-          if err then
+          if err and err ~= "closed" then
             client:close()
             server:close()
             error(err)
           end
+          local got_handshake = lines[1]:match("/handshake")
+          if got_handshake then
+            client:send("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
+            client:close()
+            handshake_done = true
 
-          local s = client:send("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
-          client:close()
-          if s then
-            success = success + 1
+          elseif lines[1]:match("/shutdown") then
+            client:send("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
+            client:close()
+            break
+
+          elseif handshake_done and not got_handshake then
+            n_reqs = n_reqs + 1
+            local do_ok = ok_count > 0
+            local response
+            if do_ok then
+              ok_count = ok_count - 1
+              response = "HTTP/1.1 200 OK"
+            else
+              response = "HTTP/1.1 500 Internal Server Error"
+            end
+            local sent = client:send(response .. "\r\nConnection: close\r\n\r\n")
+            client:close()
+            if sent then
+              if do_ok then
+                ok_responses = ok_responses + 1
+              else
+                fail_responses = fail_responses + 1
+              end
+            end
+          else
+            error("got a request before the handshake was complete")
           end
-          test_log("test http server on port ", port, ": ", success, "/",
-                   (success + count)," requests handled")
+          test_log("test http server on port ", port, ": ", ok_responses, " oks, ",
+                   fail_responses," fails handled")
         end
       end
-
       server:close()
       test_log("test http server on port ", port, " closed")
-      return success
+      return ok_responses, fail_responses
     end
-  }, timeout, count, port, no_timeout, TEST_LOG)
+  }, timeout, ok_count, port, fail_count, TEST_LOG)
 
   local server = thread:start()
-  ngx.sleep(0.2)  -- attempt to make sure server is started for failing CI tests
+
+  local expire = ngx.now() + timeout
+  repeat
+    local res, err
+    local pok = pcall(function()
+      local client = helpers.http_client("127.0.0.1", port, 10)
+      if client then
+        res, err = client:send {
+          method = "GET",
+          path = "/handshake",
+          headers = { ["Host"] = "whatever" }
+        }
+        client:close()
+      else
+        err = "waiting"
+      end
+      if err then
+        ngx.sleep(0.01) -- busy-wait
+      end
+    end)
+  until (ngx.now() > expire) or (pok and not err)
+
   return server
+end
+
+local function request_immediate_shutdown(host, port)
+  local pok, client = pcall(helpers.http_client, host, port)
+  if not pok then
+    return
+  end
+  client:send {
+    method = "GET",
+    path = "/shutdown",
+    headers = { ["Host"] = "whatever" }
+  }
+  client:close()
 end
 
 dao_helpers.for_each_dao(function(kong_config)
@@ -113,6 +217,115 @@ dao_helpers.for_each_dao(function(kong_config)
     before_each(function()
       collectgarbage()
       collectgarbage()
+    end)
+
+    describe("#healthchecks", function()
+      local upstream
+
+      local slots = 20
+
+      before_each(function()
+        helpers.run_migrations()
+        assert(helpers.dao.apis:insert {
+          name = "balancer.test",
+          hosts = { "balancer.test" },
+          upstream_url = "http://service.xyz.v1/path",
+        })
+        upstream = assert(helpers.dao.upstreams:insert {
+          name = "service.xyz.v1",
+          slots = slots,
+        })
+        assert(helpers.dao.targets:insert {
+          target = "127.0.0.1:" .. PORT,
+          weight = 10,
+          upstream_id = upstream.id,
+        })
+        assert(helpers.dao.targets:insert {
+          target = "127.0.0.1:" .. (PORT+1),
+          weight = 10,
+          upstream_id = upstream.id,
+        })
+
+        helpers.start_kong()
+      end)
+
+      after_each(function()
+        helpers.stop_kong(nil, true)
+      end)
+
+      it("perform passive health checks", function()
+
+        for fails = 1, slots do
+
+          -- configure healthchecks
+          local api_client = helpers.admin_client()
+          assert(api_client:send {
+            method = "PATCH",
+            path = "/upstreams/" .. upstream.name,
+            headers = {
+              ["Content-Type"] = "application/json",
+              -- ["Kong-Debug"] = "1",
+            },
+            body = {
+              healthchecks = healthchecks_config {
+                passive = {
+                  unhealthy = {
+                    http_failures = fails,
+                  }
+                }
+              }
+            },
+          })
+          api_client:close()
+
+          local timeout = 10
+          local requests = upstream.slots * 2 -- go round the balancer twice
+
+          -- setup target servers:
+          -- server2 will only respond for part of the test,
+          -- then server1 will take over.
+          local server2_oks = math.floor(requests / 4)
+          local server1 = http_server(timeout, requests - server2_oks - fails, PORT)
+          local server2 = http_server(timeout, server2_oks, PORT+1, fails)
+
+          -- Go hit them with our test requests
+          local client_oks, client_fails = 0, 0
+
+          for _ = 1, requests do
+            local client = helpers.proxy_client()
+            local res = client:send {
+              method = "GET",
+              path = "/",
+              headers = {
+                ["Host"] = "balancer.test"
+              }
+            }
+            if res.status == 200 then
+              client_oks = client_oks + 1
+            elseif res.status == 500 then
+              client_fails = client_fails + 1
+            end
+            client:close()
+          end
+
+          -- collect server results; hitcount
+          local _, ok1, fail1 = server1:join()
+          local _, ok2, fail2 = server2:join()
+
+          -- verify
+          assert.are.equal(requests * 0.75 - fails, ok1)
+          assert.are.equal(requests * 0.25, ok2)
+          assert.are.equal(0, fail1)
+          assert.are.equal(fails, fail2)
+
+          assert.are.equal(requests - fails, client_oks)
+          assert.are.equal(fails, client_fails)
+        end
+      end)
+
+      pending("perform active health checks", function()
+      end)
+
     end)
 
     describe("Balancing", function()
@@ -221,8 +434,8 @@ dao_helpers.for_each_dao(function(kong_config)
         local requests = upstream2.slots * 2 -- go round the balancer twice
 
         -- setup target servers
-        local server1 = http_server(timeout, requests, PORT+2, true)
-        local server2 = http_server(timeout, requests, PORT+3, true)
+        local server1 = http_server(timeout, requests, PORT+2, 0, true)
+        local server2 = http_server(timeout, requests, PORT+3, 0, true)
 
         -- Go hit them with our test requests
         for _ = 1, requests do
@@ -231,11 +444,14 @@ dao_helpers.for_each_dao(function(kong_config)
             path = "/",
             headers = {
               ["Host"] = "hashing.test",
-              ["hashme"] = "just a value", 
+              ["hashme"] = "just a value",
             }
           })
           assert.response(res).has.status(200)
         end
+
+        request_immediate_shutdown("127.0.0.1", PORT + 2)
+        request_immediate_shutdown("127.0.0.1", PORT + 3)
 
         -- collect server results; hitcount
         -- one should get all the hits, the other 0, and hence a timeout
