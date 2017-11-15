@@ -133,6 +133,7 @@ local CONF_INFERENCES = {
   rbac_auth_header = {typ = "string"},
 
   vitals = {typ = "boolean"},
+  vitals_flush_interval = {typ = "number"},
 }
 
 -- List of settings whose values must not be printed when

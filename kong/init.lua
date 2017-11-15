@@ -160,7 +160,7 @@ function Kong.init()
   singletons.license = ee.read_license_info()
   singletons.vitals = vitals.new {
       dao             = dao,
-      flush_interval  = 60,
+      flush_interval  = config.vitals_flush_interval,
   }
 
   rbac.load_resource_bitfields(dao)
