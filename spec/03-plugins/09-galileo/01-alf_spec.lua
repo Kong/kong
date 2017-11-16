@@ -26,17 +26,6 @@ local alf_serializer = require "kong.plugins.galileo.alf"
 -- input sets to the serializer.
 local function reload_alf_serializer()
   package.loaded["kong.plugins.galileo.alf"] = nil
-
-  -- FIXME: temporary double-loading of the cjson module
-  -- for the encoding JSON as empty array tests in the
-  -- serialize() suite.
-  -- remove once https://github.com/openresty/lua-cjson/pull/16
-  -- is included in a formal OpenResty release.
-  package.loaded["cjson"] = nil
-  package.loaded["cjson.safe"] = nil
-  require "cjson.safe"
-  require "cjson"
-
   alf_serializer = require "kong.plugins.galileo.alf"
 end
 
@@ -516,12 +505,6 @@ describe("ALF serializer", function()
   end) -- add_entry()
 
   describe("serialize()", function()
-    -- FIXME: temporary double-loading of the cjson module
-    -- for the encoding JSON as empty array tests in the
-    -- serialize() suite.
-    -- remove once https://github.com/openresty/lua-cjson/pull/16
-    -- is included in a formal OpenResty release.
-    reload_alf_serializer()
 
     local cjson = require "cjson.safe"
     it("returns a JSON encoded ALF object", function()

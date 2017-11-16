@@ -162,7 +162,7 @@ describe("Plugin: response-transformer", function()
   end)
 
   describe("leave body alone", function()
-    -- Related to issue https://github.com/Kong/kong/issues/1207 
+    -- Related to issue https://github.com/Kong/kong/issues/1207
     -- unit test to check body remains unaltered
 
     local old_ngx, handler
@@ -184,6 +184,7 @@ describe("Plugin: response-transformer", function()
     end)
 
     teardown(function()
+      -- luacheck: globals ngx
       ngx = old_ngx
     end)
 
@@ -229,7 +230,7 @@ describe("Plugin: response-transformer", function()
     }
 
   ]]
-      
+
       ngx.arg[1] = body
       handler:body_filter(conf)
       local result = ngx.arg[1]
@@ -237,7 +238,7 @@ describe("Plugin: response-transformer", function()
       ngx.arg[2] = true -- end of body marker
       handler:body_filter(conf)
       result = result .. ngx.arg[1]
-      
+
       -- body filter should not execute, it would parse and re-encode the json, removing
       -- the whitespace. So check equality to make sure whitespace is still there, and hence
       -- body was not touched.

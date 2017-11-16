@@ -106,7 +106,7 @@ code, other repos are also under active development:
   using Azure Resource Manager.
 - [Kong on Heroku](https://github.com/heroku/heroku-kong): Deploy Kong on
   Heroku in one click.
-- [Kong and Instaclustr](https://www.instaclustr.com/solutions/kong/): Let
+- [Kong and Instaclustr](https://www.instaclustr.com/solutions/managed-cassandra-for-kong/): Let
   Instaclustr manage your Cassandra cluster.
 
 

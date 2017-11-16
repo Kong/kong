@@ -70,13 +70,6 @@ local function hash_to_array(t)
     end
   end
 
-  -- FIXME: temporary workardound
-  -- remove once https://github.com/openresty/lua-cjson/pull/16
-  -- is included in a formal OpenResty release.
-  if #arr == 0 then
-    return cjson.empty_array
-  end
-
   return arr
 end
 

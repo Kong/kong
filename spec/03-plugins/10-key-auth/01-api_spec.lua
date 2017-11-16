@@ -1,5 +1,6 @@
 local cjson = require "cjson"
 local helpers = require "spec.helpers"
+local utils = require "kong.tools.utils"
 
 describe("Plugin: key-auth (API)", function()
   local consumer
@@ -308,6 +309,147 @@ describe("Plugin: key-auth (API)", function()
       assert.response(res).has.status(201)
       local body = assert.response(res).has.jsonbody()
       assert.equal(key_name, body.config.key_names[1])
+    end)
+  end)
+
+  describe("/key-auths", function()
+    local consumer2
+
+    describe("GET", function()
+      setup(function()
+        helpers.dao:truncate_table("keyauth_credentials")
+
+        for i = 1, 3 do
+          assert(helpers.dao.keyauth_credentials:insert {
+            consumer_id = consumer.id
+          })
+        end
+
+        consumer2 = assert(helpers.dao.consumers:insert {
+          username = "bob-the-buidler"
+        })
+
+        for i = 1, 3 do
+          assert(helpers.dao.keyauth_credentials:insert {
+            consumer_id = consumer2.id
+          })
+        end
+      end)
+
+      it("retrieves all the key-auths with trailing slash", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/key-auths/",
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.is_table(json.data)
+        assert.equal(6, #json.data)
+        assert.equal(6, json.total)
+      end)
+      it("retrieves all the key-auths without trailing slash", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/key-auths",
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.is_table(json.data)
+        assert.equal(6, #json.data)
+        assert.equal(6, json.total)
+      end)
+      it("paginates through the key-auths", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/key-auths?size=3",
+        })
+        local body = assert.res_status(200, res)
+        local json_1 = cjson.decode(body)
+        assert.is_table(json_1.data)
+        assert.equal(3, #json_1.data)
+        assert.equal(6, json_1.total)
+
+        res = assert(admin_client:send {
+          method = "GET",
+          path = "/key-auths?size=3&offset=" .. json_1.offset,
+        })
+        body = assert.res_status(200, res)
+        local json_2 = cjson.decode(body)
+        assert.is_table(json_2.data)
+        assert.equal(3, #json_2.data)
+        assert.equal(6, json_2.total)
+
+        assert.not_same(json_1.data, json_2.data)
+        assert.is_nil(json_2.offset) -- last page
+      end)
+      it("retrieves key-auths for a consumer_id", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/key-auths?consumer_id=" .. consumer.id
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.is_table(json.data)
+        assert.equal(3, #json.data)
+        assert.equal(3, json.total)
+      end)
+      it("return empty for a non-existing consumer_id", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/key-auths?consumer_id=" .. utils.uuid(),
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.is_table(json.data)
+        assert.equal(0, #json.data)
+        assert.equal(0, json.total)
+      end)
+    end)
+  end)
+
+  describe("/key-auths/:credential_key_or_id/consumer", function()
+    describe("GET", function()
+      local credential
+
+      setup(function()
+        helpers.dao:truncate_table("keyauth_credentials")
+        credential = assert(helpers.dao.keyauth_credentials:insert {
+          consumer_id = consumer.id
+        })
+      end)
+
+      it("retrieve Consumer from a credential's id", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/key-auths/" .. credential.id .. "/consumer"
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.same(consumer, json)
+      end)
+      it("retrieve a Consumer from a credential's key", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/key-auths/" .. credential.key .. "/consumer"
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.same(consumer, json)
+      end)
+      it("returns 404 for a random non-existing id", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/key-auths/" .. utils.uuid()  .. "/consumer"
+        })
+        assert.res_status(404, res)
+      end)
+      it("returns 404 for a random non-existing key", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/key-auths/" .. utils.random_string()  .. "/consumer"
+        })
+        assert.res_status(404, res)
+      end)
     end)
   end)
 end)
