@@ -1,4 +1,65 @@
-## [Unreleased][unreleased]
+# Planned
+
+This section describes planned releases of Kong and their thematic fomr a
+high-level perspective. Those releases do not have a fixed release date yet.
+
+## [0.12.0] - TBD
+
+This release will mainly focus around two new major features:
+
+- The introduction of **health checks** in the load-balancer. See issue
+  [#112](https://github.com/Kong/kong/issues/112)
+- The decoupling of the API entity into **Routes** and **Services** for better
+  granularity when configuring plugins.
+
+# Scheduled
+
+This section describes upcoming releases that have a release date, along with
+a detailed changeset of their content.
+
+## [0.11.2] - Estimated 2017/11/29
+
+##### Core
+
+- Avoid logging some unharmful error messages related to clustering.
+  [#3002](https://github.com/Kong/kong/pull/3002)
+- Improve performance and memory footprint when parsing multipart request
+  bodies.
+  [Kong/lua-multipart#13](https://github.com/Kong/lua-multipart/pull/13)
+
+##### Admin API
+
+- PUT requests with payloads containing non-existing primary keys for entities
+  now return HTTP 404 Not Found, instead of HTTP 200 OK without a response
+  body.
+  [#3007](https://github.com/Kong/kong/pull/3007)
+- On the `/` endpoint, ensure `enabled_in_cluster` shows up as an empty JSON
+  Array (`[]`), instead of an empty JSON Object (`{}`).
+  Thanks [@hbadgi](https://github.com/hbagdi) for the patch!
+  [#2982](https://github.com/Kong/kong/issues/2982)
+
+##### Plugins
+
+- :fireworks: key-auth: New endpoints to manipulate API keys!
+  Thanks [@hbadgi](https://github.com/hbagdi) for the contribution.
+  [#2955](https://github.com/Kong/kong/pull/2955)
+    - `/key-auths/` to paginate through all keys.
+    - `/key-auths/:credential_key_or_id/consumer` to retrieve the Consumer
+      associated with a key.
+- hmac-auth: Better parsing of the `Authorization` header to avoid internal
+  errors resulting in HTTP 500.
+  Thanks [@mvanholsteijn](https://github.com/mvanholsteijn) for the patch!
+  [#2996](https://github.com/Kong/kong/pull/2996)
+- Improve the performance of the rate-limiting and response-rate-limiting
+  plugins when using the Redis policy.
+  [#2956](https://github.com/Kong/kong/pull/2956)
+- Improve the performance of the response-transformer plugin.
+  [#2977](https://github.com/Kong/kong/pull/2977)
+
+# Released
+
+This section describes publicly available releases and a detailed changeset of
+their content.
 
 ## [0.11.1] - 2017/10/24
 
@@ -1772,7 +1833,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/Kong/kong/compare/0.11.1...master
+[0.12.0]: https://github.com/Kong/kong/compare/0.11.1...next
+[0.11.2]: https://github.com/Kong/kong/compare/0.11.1...master
 [0.11.1]: https://github.com/Kong/kong/compare/0.11.0...0.11.1
 [0.10.4]: https://github.com/Kong/kong/compare/0.10.3...0.10.4
 [0.11.0]: https://github.com/Kong/kong/compare/0.10.3...0.11.0
