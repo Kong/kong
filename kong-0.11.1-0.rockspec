@@ -198,10 +198,11 @@ build = {
     ["kong.plugins.galileo.buffer"] = "kong/plugins/galileo/buffer.lua",
     ["kong.plugins.galileo.alf"] = "kong/plugins/galileo/alf.lua",
 
-    ["kong.plugins.rate-limiting.migrations.cassandra"] = "kong/plugins/rate-limiting/migrations/cassandra.lua",
-    ["kong.plugins.rate-limiting.migrations.postgres"] = "kong/plugins/rate-limiting/migrations/postgres.lua",
-    ["kong.plugins.rate-limiting.handler"] = "kong/plugins/rate-limiting/handler.lua",
-    ["kong.plugins.rate-limiting.schema"] = "kong/plugins/rate-limiting/schema.lua",
+    ["kong.plugins.rate-limiting-advanced.migrations.cassandra"] = "kong/plugins/rate-limiting-advanced/migrations/cassandra.lua",
+    ["kong.plugins.rate-limiting-advanced.migrations.postgres"] = "kong/plugins/rate-limiting-advanced/migrations/postgres.lua",
+    ["kong.plugins.rate-limiting-advanced.migrations.common"] = "kong/plugins/rate-limiting-advanced/migrations/common.lua",
+    ["kong.plugins.rate-limiting-advanced.handler"] = "kong/plugins/rate-limiting-advanced/handler.lua",
+    ["kong.plugins.rate-limiting-advanced.schema"] = "kong/plugins/rate-limiting-advanced/schema.lua",
 
     ["kong.plugins.response-ratelimiting.migrations.cassandra"] = "kong/plugins/response-ratelimiting/migrations/cassandra.lua",
     ["kong.plugins.response-ratelimiting.migrations.postgres"] = "kong/plugins/response-ratelimiting/migrations/postgres.lua",
