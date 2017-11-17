@@ -485,6 +485,7 @@ local function load(path, custom_conf)
     local proxy_ssl_ip, proxy_ssl_port = string.match(conf.proxy_listen_ssl, ip_port_pat)
 
     if not admin_port then return nil, "admin_listen must be of form 'address:port'"
+    elseif not admin_ssl_port then return nil, "admin_listen_ssl must be of form 'address:port'"
     elseif not proxy_port then return nil, "proxy_listen must be of form 'address:port'"
     elseif not proxy_ssl_port then return nil, "proxy_listen_ssl must be of form 'address:port'" end
     conf.admin_ip = admin_ip

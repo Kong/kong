@@ -234,6 +234,12 @@ describe("Configuration loader", function()
       assert.equal("admin_listen must be of form 'address:port'", err)
 
       conf, err = conf_loader(nil, {
+        admin_listen_ssl = "127.0.0.1"
+      })
+      assert.is_nil(conf)
+      assert.equal("admin_listen_ssl must be of form 'address:port'", err)
+
+      conf, err = conf_loader(nil, {
         proxy_listen = "127.0.0.1"
       })
       assert.is_nil(conf)
