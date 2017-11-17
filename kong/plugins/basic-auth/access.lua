@@ -1,4 +1,3 @@
-local utils = require "kong.tools.utils"
 local crypto = require "kong.plugins.basic-auth.crypto"
 local singletons = require "kong.singletons"
 local constants = require "kong.constants"
@@ -6,6 +5,7 @@ local responses = require "kong.tools.responses"
 
 local ngx_set_header = ngx.req.set_header
 local ngx_get_headers = ngx.req.get_headers
+local ngx_re_match = ngx.re.match
 
 local realm = 'Basic realm="' .. _KONG._NAME .. '"'
 
@@ -39,9 +39,17 @@ local function retrieve_credentials(request, header_name, conf)
     if m and m[1] then
       local decoded_basic = ngx.decode_base64(m[1])
       if decoded_basic then
-        local basic_parts = utils.split(decoded_basic, ":", 2)
-        username = basic_parts[1]
-        password = basic_parts[2]
+        local basic_parts, err = ngx_re_match(decoded_basic, "([^:]+):(.+)", "oj")
+        if basic_parts then
+          username = basic_parts[1]
+          password = basic_parts[2]
+        else
+          if err then
+            ngx.log(ngx.ERR, err)
+            return
+          end
+          ngx.log(ngx.ERR, "basic auth header has unrecognized format")
+        end
       end
     end
   end
