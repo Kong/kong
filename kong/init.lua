@@ -251,8 +251,8 @@ function Kong.init_worker()
     return "init"
   end)
   if not ok then
+    -- log the problem, but don't block further initialization
     ngx.log(ngx.CRIT, "could not set router version in cache: ", err)
-    return
   end
 
 

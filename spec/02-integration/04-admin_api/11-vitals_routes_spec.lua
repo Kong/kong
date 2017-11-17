@@ -8,11 +8,11 @@ local time        = ngx.time
 
 
 dao_helpers.for_each_dao(function(kong_conf)
+
   if kong_conf.database == "cassandra" then
-    -- only supporting postgres right now
+    -- only test postgres currently
     return
   end
-
 
   describe("Admin API Vitals with " .. kong_conf.database, function()
     local client, dao, vitals
@@ -52,7 +52,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
       describe("/vitals", function()
         describe("GET", function()
-          local now = time()
+          local now = time() + 1000
 
           before_each(function()
             assert(vitals.strategy:insert_stats({ { now, 0, 1 } }))
@@ -66,7 +66,182 @@ dao_helpers.for_each_dao(function(kong_conf)
             res = assert.res_status(200, res)
             local json = cjson.decode(res)
 
-            assert.same({ 0, 1, cjson.null, cjson.null }, json.stats[tostring(now)])
+            assert.same({ 0, 1, cjson.null, cjson.null }, json.stats.cluster[tostring(now)])
+          end)
+        end)
+      end)
+
+      describe("/vitals/cluster", function()
+        describe("GET", function()
+          local now = time() + 2000
+          local minute = now - (now % 60)
+
+          before_each(function()
+            assert(vitals.strategy:insert_stats({ { now, 0, 1 } }))
+          end)
+
+          it("retrieves the vitals seconds cluster data", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/cluster",
+              query = {
+                interval = 'seconds'
+              }
+            })
+            res = assert.res_status(200, res)
+            local json = cjson.decode(res)
+
+            assert.same({ 0, 1, cjson.null, cjson.null }, json.stats.cluster[tostring(now)])
+          end)
+
+          pending("retrieves the vitals minutes cluster data", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/cluster",
+              query = {
+                interval = 'minutes'
+              }
+            })
+            res = assert.res_status(200, res)
+            local json = cjson.decode(res)
+
+            assert.same({ 0, 1, cjson.null, cjson.null }, json.stats.cluster[tostring(minute)])
+          end)
+
+          it("returns a 400 if called with invalid query param", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/cluster",
+              query = {
+                interval = 'so-wrong'
+              }
+            })
+            res = assert.res_status(400, res)
+            local json = cjson.decode(res)
+
+            assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+          end)
+        end)
+      end)
+
+      describe("/vitals/nodes", function()
+        describe("GET", function()
+          local now = time() + 3000
+          local minute = now - (now % 60)
+          local node_id = vitals.shm:get("vitals:node_id")
+
+          before_each(function()
+            assert(vitals.strategy:insert_stats({ { now, 0, 1 } }))
+          end)
+
+          it("retrieves the vitals seconds data for all nodes", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/nodes",
+              query = {
+                interval = 'seconds'
+              }
+            })
+            res = assert.res_status(200, res)
+            local json = cjson.decode(res)
+
+            assert.same({ 0, 1, cjson.null, cjson.null }, json.stats[node_id][tostring(now)])
+          end)
+
+          pending("retrieves the vitals minutes data for all nodes", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/nodes",
+              query = {
+                interval = 'minutes'
+              }
+            })
+            res = assert.res_status(200, res)
+            local json = cjson.decode(res)
+
+            assert.same({ 0, 1, cjson.null, cjson.null }, json.stats[node_id][tostring(minute)])
+          end)
+
+          it("returns a 400 if called with invalid query param", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/nodes",
+              query = {
+                interval = 'so-wrong'
+              }
+            })
+            res = assert.res_status(400, res)
+            local json = cjson.decode(res)
+
+            assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+          end)
+        end)
+      end)
+
+      describe("/vitals/nodes/{node_id}", function()
+        describe("GET", function()
+          local now = time() + 4000
+          local minute = now - (now % 60)
+          local node_id = vitals.shm:get("vitals:node_id")
+
+          before_each(function()
+            assert(vitals.strategy:insert_stats({ { now, 0, 1 } }))
+          end)
+
+          it("retrieves the vitals seconds data for a requested node", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/nodes/" .. node_id,
+              query = {
+                interval = 'seconds'
+              }
+            })
+            res = assert.res_status(200, res)
+            local json = cjson.decode(res)
+
+            assert.same({ 0, 1, cjson.null, cjson.null }, json.stats[node_id][tostring(now)])
+          end)
+
+          pending("retrieves the vitals minutes data for a requested node", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/nodes/" .. node_id,
+              query = {
+                interval = 'minutes'
+              }
+            })
+            res = assert.res_status(200, res)
+            local json = cjson.decode(res)
+
+            assert.same({ 0, 1, cjson.null, cjson.null }, json.stats[node_id][tostring(minute)])
+          end)
+
+          it("returns a 400 if called with invalid query param", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/nodes/totally-fake-uuid",
+              query = {
+                interval = 'seconds'
+              }
+            })
+            res = assert.res_status(400, res)
+            local json = cjson.decode(res)
+
+            assert.same("Invalid query params: invalid node_id", json.message)
+          end)
+
+          it("returns a 400 if called with invalid query param", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/nodes/totally-fake-uuid",
+              query = {
+                interval = 'minutes'
+              }
+            })
+            res = assert.res_status(400, res)
+            local json = cjson.decode(res)
+
+            assert.same("Invalid query params: invalid node_id", json.message)
           end)
         end)
       end)

@@ -2,6 +2,8 @@ local pg_strategy = require "kong.vitals.postgres.strategy"
 local dao_factory = require "kong.dao.factory"
 local helpers     = require "spec.helpers"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
+local utils       = require "kong.tools.utils"
+local fmt         = string.format
 
 
 dao_helpers.for_each_dao(function(kong_conf)
@@ -10,7 +12,7 @@ dao_helpers.for_each_dao(function(kong_conf)
   end
 
 
-  describe("Postgres aggregator", function()
+  describe("Postgres strategy", function()
     local strategy
     local dao
     local db
@@ -28,18 +30,43 @@ dao_helpers.for_each_dao(function(kong_conf)
       strategy = pg_strategy.new(dao, opts)
 
       db  = dao.db
+
+      -- simulate a "previous" seconds table
+      assert(db:query("create table if not exists vitals_stats_seconds_2 " ..
+             "(like vitals_stats_seconds including defaults including constraints including indexes)"))
     end)
 
 
     before_each(function()
       snapshot = assert:snapshot()
 
+      assert(db:query("truncate table vitals_stats_minutes"))
       assert(db:query("truncate table vitals_stats_seconds"))
+      assert(db:query("truncate table vitals_stats_seconds_2"))
+      assert(db:query("truncate table vitals_node_meta"))
     end)
 
 
     after_each(function()
       snapshot:revert()
+    end)
+
+
+    describe(":init()", function()
+      it("inserts node metadata", function()
+
+        local node_id  = utils.uuid()
+        local hostname = "testhostname"
+
+        assert(strategy:init(node_id, hostname))
+
+        local res, _ = db:query("select * from vitals_node_meta where node_id = '{" .. node_id .. "}'")
+
+        assert.same(1, #res)
+        assert.same("testhostname", res[1].hostname)
+        assert.not_nil(res[1].first_report)
+        assert.same(res[1].first_report, res[1].last_report)
+      end)
     end)
 
 
@@ -53,6 +80,10 @@ dao_helpers.for_each_dao(function(kong_conf)
           { 1505964714, 19, 99, 0, 120 },
         }
 
+        local node_id = utils.uuid()
+
+        strategy:init(node_id, "testhostname")
+
         assert(strategy:insert_stats(data))
 
         local res, _ = db:query("select * from vitals_stats_seconds")
@@ -60,11 +91,13 @@ dao_helpers.for_each_dao(function(kong_conf)
         local expected = {
           {
             at       = 1505964713,
+            node_id  = node_id,
             l2_hit   = 0,
             l2_miss  = 0,
           },
           {
             at       = 1505964714,
+            node_id  = node_id,
             l2_hit   = 19,
             l2_miss  = 99,
             plat_min = 0,
@@ -73,17 +106,274 @@ dao_helpers.for_each_dao(function(kong_conf)
         }
         assert.same(expected, res)
       end)
+
+      it("records the last_report time for this node", function()
+        stub(strategy, "current_table_name").returns("vitals_stats_seconds")
+
+
+        local data = {
+          { 1505964713, 0, 0, nil, nil },
+          { 1505964714, 19, 99, 0, 120 },
+        }
+
+        local node_id = utils.uuid()
+
+        strategy:init(node_id, "testhostname")
+
+        local report_q = "select last_report from vitals_node_meta where node_id = '{" .. node_id .. "}'"
+
+        local res, _   = db:query(report_q)
+        local orig_rep = res[1].last_report
+
+        assert(strategy:insert_stats(data))
+
+        local res, _  = db:query(report_q)
+        local new_rep = res[1].last_report
+
+        assert.not_same(new_rep, orig_rep)
+      end)
     end)
 
 
     describe(":select_stats()", function()
-      it("rejects invalid function arguments", function()
-        local res, err = strategy.select_stats("foo")
+      local node_1 = "20426633-55dc-4050-89ef-2382c95a611e"
+      local node_2 = "8374682f-17fd-42cb-b1dc-7694d6f65ba0"
 
-        local expected = "query_type must be 'minutes' or 'seconds'"
+      before_each(function()
+        local q, query
+        local at = 1509667484
 
-        assert.is_nil(res)
-        assert.same(expected, err)
+        -- add some data we can query
+        for i = 1, 2 do
+          q = "insert into %s(at, node_id, l2_hit, l2_miss, " ..
+              "plat_min, plat_max) values(%d, '{%s}', %d, %d, %s, %s)"
+
+          query = fmt(q, "vitals_stats_seconds", at + i, node_1, i + 3, i, i, i * 10)
+          assert(db:query(query))
+
+          query = fmt(q, "vitals_stats_seconds", at + i, node_2, i + 5, i + 1, i, i * 5)
+          assert(db:query(query))
+
+          query = fmt(q, "vitals_stats_minutes", at + i, node_1, i + 10, i + 20, 0, i * 20)
+          assert(db:query(query))
+
+          query = fmt(q, "vitals_stats_minutes", at + i, node_2, i + 2, i + 7, i, i * 6)
+          assert(db:query(query))
+        end
+
+        -- include some null data
+        query = fmt(q, "vitals_stats_seconds", at + 3, node_1, 19, 23, "null", "null")
+        assert(db:query(query))
+
+        query = fmt(q, "vitals_stats_minutes", at + 3, node_1, 19, 23, "null", "null")
+        assert(db:query(query))
+
+        -- put some data in the previous seconds table
+        at = at - 60
+
+        query = fmt(q, "vitals_stats_seconds_2", at, node_1, 3, 5, 7, 9)
+        assert(db:query(query))
+
+        query = fmt(q, "vitals_stats_seconds_2", at, node_2, 2, 4, 6, 8)
+        assert(db:query(query))
+      end)
+
+      it("returns seconds stats for a node", function()
+        stub(strategy, "table_names_for_select").returns({ "vitals_stats_seconds", "vitals_stats_seconds_2"})
+
+        local res, err = strategy:select_stats("seconds", "node", node_1)
+
+        assert.is_nil(err)
+
+        local expected = {
+          {
+            node_id = node_1,
+            at = 1509667424,
+            l2_hit = 3,
+            l2_miss = 5,
+            plat_min = 7,
+            plat_max = 9,
+          }, {
+            node_id = node_1,
+            at = 1509667485,
+            l2_hit = 4,
+            l2_miss = 1,
+            plat_min = 1,
+            plat_max = 10,
+          }, {
+            node_id = node_1,
+            at = 1509667486,
+            l2_hit = 5,
+            l2_miss = 2,
+            plat_min = 2,
+            plat_max = 20,
+          }, {
+            node_id = node_1,
+            at = 1509667487,
+            l2_hit = 19,
+            l2_miss = 23,
+          }
+        }
+
+        assert.same(expected, res)
+      end)
+
+      it("returns minutes stats for a node", function()
+        local res, err = strategy:select_stats("minutes", "node", node_1)
+
+        assert.is_nil(err)
+
+        local expected = {
+          {
+            node_id = node_1,
+            at = 1509667485,
+            l2_hit = 11,
+            l2_miss = 21,
+            plat_max = 20,
+            plat_min = 0,
+          }, {
+            node_id = node_1,
+            at = 1509667486,
+            l2_hit = 12,
+            l2_miss = 22,
+            plat_max = 40,
+            plat_min = 0,
+          }, {
+            node_id = node_1,
+            at = 1509667487,
+            l2_hit = 19,
+            l2_miss = 23,
+          }
+        }
+
+        assert.same(expected, res)
+      end)
+
+      it("returns seconds stats for all nodes", function()
+        stub(strategy, "table_names_for_select").returns({ "vitals_stats_seconds", "vitals_stats_seconds_2"})
+
+        local res, err = strategy:select_stats("seconds", "node")
+
+        -- we can't guarantee the sort order coming out since we can't sort
+        -- by uuid. just assert we haven't left out any rows.
+        assert.is_nil(err)
+        assert.equals(7, #res)
+      end)
+
+      it("returns minutes stats for all nodes", function()
+        local res, err = strategy:select_stats("minutes", "node")
+
+        assert.is_nil(err)
+
+        local expected = {
+          {
+            at = 1509667485,
+            l2_hit = 11,
+            l2_miss = 21,
+            node_id = node_1,
+            plat_max = 20,
+            plat_min = 0
+          }, {
+            at = 1509667485,
+            l2_hit = 3,
+            l2_miss = 8,
+            node_id = node_2,
+            plat_max = 6,
+            plat_min = 1
+          }, {
+            at = 1509667486,
+            l2_hit = 12,
+            l2_miss = 22,
+            node_id = node_1,
+            plat_max = 40,
+            plat_min = 0
+          },  {
+            at = 1509667486,
+            l2_hit = 4,
+            l2_miss = 9,
+            node_id = node_2,
+            plat_max = 12,
+            plat_min = 2
+          }, {
+            at = 1509667487,
+            l2_hit = 19,
+            l2_miss = 23,
+            node_id = node_1
+          }
+        }
+
+        assert.same(expected, res)
+      end)
+
+      it("returns seconds stats for a cluster", function()
+        stub(strategy, "table_names_for_select").returns({ "vitals_stats_seconds", "vitals_stats_seconds_2"})
+
+        local res, err = strategy:select_stats("seconds", "cluster")
+
+        assert.is_nil(err)
+
+        local expected = {
+          {
+            at = 1509667424,
+            node_id = 'cluster',
+            l2_hit = 5,
+            l2_miss = 9,
+            plat_min = 6,
+            plat_max = 9,
+          }, {
+            at = 1509667485,
+            node_id = 'cluster',
+            l2_hit = 10,
+            l2_miss = 3,
+            plat_min = 1,
+            plat_max = 10,
+          }, {
+            at = 1509667486,
+            node_id = 'cluster',
+            l2_hit = 12,
+            l2_miss = 5,
+            plat_min = 2,
+            plat_max = 20,
+          }, {
+            at = 1509667487,
+            node_id = 'cluster',
+            l2_hit = 19,
+            l2_miss = 23,
+          }
+        }
+
+        assert.same(expected, res)
+      end)
+
+      it("returns minutes stats for a cluster", function()
+        local res, err = strategy:select_stats("minutes", "cluster")
+
+        assert.is_nil(err)
+
+        local expected = {
+          {
+            at = 1509667485,
+            node_id = 'cluster',
+            l2_hit = 14,
+            l2_miss = 29,
+            plat_max = 20,
+            plat_min = 0
+          }, {
+            at = 1509667486,
+            node_id = 'cluster',
+            l2_hit = 16,
+            l2_miss = 31,
+            plat_max = 40,
+            plat_min = 0
+          }, {
+            at = 1509667487,
+            node_id = 'cluster',
+            l2_hit = 19,
+            l2_miss = 23
+          }
+        }
+
+        assert.same(expected, res)
       end)
     end)
   end)

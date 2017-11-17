@@ -73,6 +73,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert.same(expected, res)
       end)
     end)
+
     describe("current_bucket()", function()
       it("returns the current bucket", function()
         local vitals = kong_vitals.new { dao = dao }
@@ -119,6 +120,8 @@ dao_helpers.for_each_dao(function(kong_conf)
         singletons.configuration = { vitals = true }
 
         local vitals = kong_vitals.new { dao = dao, flush_interval = 1 }
+        stub(vitals, "enabled").returns(true)
+
         vitals:reset_counters()
 
         local initial_l2_counter = vitals.counters["l2_hits"][1]
@@ -141,6 +144,8 @@ dao_helpers.for_each_dao(function(kong_conf)
         singletons.configuration = { vitals = true }
 
         local vitals = kong_vitals.new { dao = dao }
+        stub(vitals, "enabled").returns(true)
+
         vitals:reset_counters()
 
         vitals:log_latency(7)
@@ -178,6 +183,40 @@ dao_helpers.for_each_dao(function(kong_conf)
         vitals:init()
 
         assert.spy(s_strategy).was_called(1)
+      end)
+    end)
+
+    describe("select_stats()", function()
+      local vitals
+      setup(function()
+        vitals = kong_vitals.new { dao = dao }
+      end)
+
+      it("rejects invalid query_type", function()
+        local res, err = vitals:get_stats("foo")
+
+        local expected = "Invalid query params: interval must be 'minutes' or 'seconds'"
+
+        assert.is_nil(res)
+        assert.same(expected, err)
+      end)
+
+      it("rejects invalid level", function()
+        local res, err = vitals:get_stats("minutes", "not_legit")
+
+        local expected = "Invalid query params: level must be 'cluster' or 'node'"
+
+        assert.is_nil(res)
+        assert.same(expected, err)
+      end)
+
+      it("rejects invalid node_id", function()
+        local res, err = vitals:get_stats("minutes", "cluster", "nope")
+
+        local expected = "Invalid query params: invalid node_id"
+
+        assert.is_nil(res)
+        assert.same(expected, err)
       end)
     end)
   end)

@@ -49,10 +49,10 @@ dao_helpers.for_each_dao(function(kong_conf)
         -- add some seconds
         local insert_seconds = [[
         insert into vitals_stats_seconds_1 values
-        (1505929137, 0, 0, null, null),
-        (1505929138, 0, 15, 0, 23),
-        (1505929139, 12, 2, 3, 8),
-        (1505929140, 1, 2, 3, 4)
+        ('{5b573229-565a-4264-b5f4-e0b42cff87b8}', 1505929137, 0, 0, null, null),
+        ('{5b573229-565a-4264-b5f4-e0b42cff87b8}', 1505929138, 0, 15, 0, 23),
+        ('{5b573229-565a-4264-b5f4-e0b42cff87b8}', 1505929139, 12, 2, 3, 8),
+        ('{5b573229-565a-4264-b5f4-e0b42cff87b8}', 1505929140, 1, 2, 3, 4)
       ]]
         assert(db:query(insert_seconds))
       end)
@@ -69,6 +69,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         local expected = {
           {
+            node_id  = "5b573229-565a-4264-b5f4-e0b42cff87b8",
             at       = 1505929080,
             l2_hit   = 12,
             l2_miss  = 17,
@@ -76,6 +77,7 @@ dao_helpers.for_each_dao(function(kong_conf)
             plat_max = 23,
           },
           {
+            node_id  = "5b573229-565a-4264-b5f4-e0b42cff87b8",
             at       = 1505929140,
             l2_hit   = 1,
             l2_miss  = 2,
@@ -90,15 +92,16 @@ dao_helpers.for_each_dao(function(kong_conf)
 
       it("deletes old minutes", function()
         local old_minutes = [[
-        insert into vitals_stats_minutes values
-        (1503283380, 0, 0, null, null),
-        (1503283440, 0, 15, 0, 23),
-        (1503283500, 12, 2, 3, 8),
-        (1503283560, 1, 2, 3, 4)
-      ]]
+            insert into vitals_stats_minutes values
+            ('{5b573229-565a-4264-b5f4-e0b42cff87b8}', 1503283380, 0, 0, null, null),
+            ('{5b573229-565a-4264-b5f4-e0b42cff87b8}', 1503283440, 0, 15, 0, 23),
+            ('{5b573229-565a-4264-b5f4-e0b42cff87b8}', 1503283500, 12, 2, 3, 8),
+            ('{5b573229-565a-4264-b5f4-e0b42cff87b8}', 1503283560, 1, 2, 3, 4)
+        ]]
+
         assert(db:query(old_minutes))
 
-        aggregator:aggregate_minutes("vitals_stats_seconds_1")
+        assert(aggregator:aggregate_minutes("vitals_stats_seconds_1"))
 
         local res, _ = db:query("select * from vitals_stats_minutes where at <= 1503283560")
 

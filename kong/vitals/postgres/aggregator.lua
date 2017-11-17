@@ -5,6 +5,7 @@ local DEBUG    = ngx.DEBUG
 local time     = ngx.time
 local math_min = math.min
 local math_max = math.max
+local pgmoon   = require "pgmoon"
 
 
 local _log_prefix = "[vitals-aggregator] "
@@ -65,6 +66,7 @@ function _M:aggregate_minutes(seconds_table)
       self:calculate_aggregates(current_values, row)
     else
       rows_to_insert[index] = {
+        pgmoon.Postgres.escape_literal(nil, seconds_rows[1].node_id),
         tostring(start_at),
         tostring(current_values.hit),
         tostring(current_values.miss),
@@ -89,6 +91,7 @@ function _M:aggregate_minutes(seconds_table)
 
   -- add the last row we accumulated
   rows_to_insert[index] = {
+    pgmoon.Postgres.escape_literal(nil, seconds_rows[1].node_id),
     tostring(start_at),
     tostring(current_values.hit),
     tostring(current_values.miss),
@@ -97,12 +100,13 @@ function _M:aggregate_minutes(seconds_table)
   }
 
   -- insert new rows
-  local q = "INSERT INTO vitals_stats_minutes (at,l2_hit,l2_miss,plat_min,plat_max) VALUES "
+  local q = "INSERT INTO vitals_stats_minutes " ..
+      "(node_id,at,l2_hit,l2_miss,plat_min,plat_max) VALUES "
 
   for i = 1, #rows_to_insert do
     q = q .. "(" .. table.concat(rows_to_insert[i], ",") .. "),"
   end
-  q = string.sub(q, 1, -2) .. " ON CONFLICT (at) DO NOTHING"
+  q = string.sub(q, 1, -2) .. " ON CONFLICT (node_id, at) DO NOTHING"
 
   local _, err = self.db:query(q)
 
@@ -113,6 +117,8 @@ function _M:aggregate_minutes(seconds_table)
 
   -- delete old minutes
   self:delete_before("vitals_stats_minutes", time() - MINUTES_EXPIRY)
+
+  return true
 end
 
 

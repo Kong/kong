@@ -794,4 +794,45 @@ return {
       DROP TABLE vitals_stats_hours;
     ]]
   },
+
+--  recreate vitals tables with new primary key to support node-level stats
+  {
+    name = "2017-10-31-145721_vitals_stats_add_node_id",
+    up = [[
+      DROP TABLE IF EXISTS vitals_stats_seconds;
+      CREATE TABLE vitals_stats_seconds(
+          node_id uuid,
+          at integer,
+          l2_hit integer default 0,
+          l2_miss integer default 0,
+          plat_min integer,
+          plat_max integer,
+          PRIMARY KEY (node_id, at)
+      );
+
+      DROP TABLE IF EXISTS vitals_stats_minutes;
+      CREATE TABLE vitals_stats_minutes
+      (LIKE vitals_stats_seconds INCLUDING defaults INCLUDING constraints INCLUDING indexes);
+
+      DROP TABLE IF EXISTS vitals_stats_hours;
+    ]],
+    down = [[
+      DROP TABLE vitals_stats_seconds;
+      DROP TABLE vitals_stats_minutes;
+    ]]
+  },
+  {
+    name = "2017-10-31-145722_vitals_node_meta",
+    up = [[
+      CREATE TABLE IF NOT EXISTS vitals_node_meta(
+        node_id uuid PRIMARY KEY,
+        first_report timestamp without time zone,
+        last_report timestamp without time zone,
+        hostname text
+      );
+    ]],
+    down = [[
+      DROP TABLE vitals_node_meta;
+    ]]
+  },
 }

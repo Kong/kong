@@ -8,6 +8,7 @@ local math_max = math.max
 local time     = ngx.time
 local unpack   = unpack
 
+
 local _M = {}
 local mt = { __index = _M }
 
@@ -47,7 +48,7 @@ local QUERY_OPTIONS = {
 }
 
 
-local function aggregate_seconds(acc, current_hit, current_miss, current_plat_min, current_plat_max)
+local function aggregate_stats(acc, current_hit, current_miss, current_plat_min, current_plat_max)
   acc.l2_hit  = acc.l2_hit + current_hit
   acc.l2_miss = acc.l2_miss + current_miss
 
@@ -69,11 +70,41 @@ local function aggregate_seconds(acc, current_hit, current_miss, current_plat_mi
 end
 
 
+local function aggregate_cluster(stats)
+  local timestamp_to_index = {}
+  local cluster_stats = {}
+
+  for _, row in ipairs(stats) do
+    -- if first time seeing this timestamp...
+    if not timestamp_to_index[row.at] then
+      -- insert a new accumulator in the cluster_stats array
+      table.insert(cluster_stats, {
+        at       = row.at,
+        l2_hit   = 0,
+        l2_miss  = 0,
+        plat_min = nil,
+        plat_max = nil,
+        node_id = "cluster"
+      })
+
+      -- save its index in the timestamp_to_index hash
+      timestamp_to_index[row.at] = #cluster_stats
+    end
+    
+    -- add the current row to the accumulator
+    aggregate_stats(cluster_stats[timestamp_to_index[row.at]], row.l2_hit, row.l2_miss, row.plat_min, row.plat_max)
+  end
+
+  return cluster_stats
+end
+
+
 function _M.new(dao_factory, opts)
   local self = {
     cluster     = dao_factory.db.cluster,
     seconds_ttl = opts.cassandra_seconds_ttl,
     minutes_ttl = opts.cassandra_minutes_ttl,
+    node_id     = nil,
   }
 
   return setmetatable(self, mt)
@@ -81,10 +112,16 @@ end
 
 
 function _M:init(node_id, hostname)
+  if not node_id then
+    return nil, "node_id is required"
+  end
+
+  self.node_id = cassandra.uuid(node_id)
+
   local now = cassandra.timestamp(time() * 1000)
   
   local res, err = self.cluster:execute(RECORD_NODE, {
-    cassandra.uuid(node_id),
+    self.node_id,
     now,
     now,
     hostname
@@ -103,25 +140,28 @@ function _M:get_timestamp_str(ts)
 end
 
 
-function _M:select_stats(query_type)
-  if query_type ~= "minutes" and query_type ~= "seconds" then
-    return nil, "query_type must be 'minutes' or 'seconds'"
-  end
-
+function _M:select_stats(query_type, level, node_id)
   local query, buckets, res, err
   local now = time()
   local node_ids = {}
 
-  -- Determine which nodes to query on
-  res, err = self.cluster:execute(SELECT_NODES)
-  
-  if not res then
-    return nil, "could not select nodes. query: " .. SELECT_NODES .. " error: " .. err
-  end
+  -- If node_id is nil (cluster level or node level with nil node_id passed)
+  -- Query db for list of nodes
+  if node_id == nil then
+    res, err = self.cluster:execute(SELECT_NODES)
+    
+    if not res then
+      return nil, "could not select nodes. query: " .. SELECT_NODES .. " error: " .. err
+    end
 
-  -- map the node ids to array, cast to cassandra uuid
-  for i = 1, #res do
-    node_ids[i] = cassandra.uuid(res[i].node_id)
+    -- map the node ids to array, cast to cassandra uuid
+    for i = 1, #res do
+      node_ids[i] = cassandra.uuid(res[i].node_id)
+    end
+
+  else 
+    -- otherwise, we have a single requested node_id
+    node_ids[1] = cassandra.uuid(node_id)
   end
 
   -- construct query
@@ -152,21 +192,25 @@ function _M:select_stats(query_type)
     return nil, "could not select stats. query: " .. query .. " error: " .. err
   end
 
+  -- if cluster level, aggregate stats into a single node_id key "cluster"
+  if level == "cluster" then
+    return aggregate_cluster(res)
+  end
+
   return res
 end
 
 
-function _M:insert_stats(data, node_id)
+function _M:insert_stats(data)
   local at, hit, miss, plat_min, plat_max, query, res, err
-  local cass_node_id = cassandra.uuid(node_id)
   local now = time()
   local minute = cassandra.timestamp(self:get_minute(now))
   local hour = cassandra.timestamp(self:get_hour(now))
 
   -- accumulator for minutes data
   local minute_acc = {
-    l2_hit      = 0,
-    l2_miss     = 0,
+    l2_hit   = 0,
+    l2_miss  = 0,
     plat_min = cassandra.null,
     plat_max = cassandra.null,
   }
@@ -179,13 +223,13 @@ function _M:insert_stats(data, node_id)
     plat_max = plat_max or cassandra.null
 
     -- add current second data to minute accumulator
-    aggregate_seconds(minute_acc, hit, miss, plat_min, plat_max)
+    aggregate_stats(minute_acc, hit, miss, plat_min, plat_max)
 
     query = fmt(INSERT_STATS, 'vitals_stats_seconds', 'minute', self.seconds_ttl)
 
     -- insert seconds row
     res, err = self.cluster:execute(query, {
-      cass_node_id,
+      self.node_id,
       minute,
       cassandra.timestamp(at * 1000),
       hit,
@@ -203,7 +247,7 @@ function _M:insert_stats(data, node_id)
 
   -- insert minute row
   res, err = self.cluster:execute(query, {
-    cass_node_id,
+    self.node_id,
     hour,
     minute,
     minute_acc.l2_hit,
@@ -219,7 +263,7 @@ function _M:insert_stats(data, node_id)
   -- finally, update last_reported in vitals_node_meta
   res, err = self.cluster:execute(UPDATE_NODE, {
     cassandra.timestamp(now * 1000),
-    cass_node_id
+    self.node_id,
   }, QUERY_OPTIONS)
 
   if not res then

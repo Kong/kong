@@ -1,4 +1,7 @@
-local utils = require "kong.tools.utils"
+local utils      = require "kong.tools.utils"
+local json_null  = require("cjson").null
+local singletons = require "kong.singletons"
+
 
 local timer_at   = ngx.timer.at
 local time       = ngx.time
@@ -7,14 +10,12 @@ local math_max   = math.max
 local log        = ngx.log
 local DEBUG      = ngx.DEBUG
 local WARN       = ngx.WARN
-local json_null  = require("cjson").null
-local singletons = require "kong.singletons"
 
 
 local persistence_handler
-
 local _log_prefix = "[vitals] "
 local NODE_ID_KEY = "vitals:node_id"
+
 
 local _M = {}
 local mt = { __index = _M }
@@ -68,7 +69,7 @@ function _M.new(opts)
     counters       = counters,
     flush_interval = opts.flush_interval,
     timer_started  = false,
-    node_id        = nil,
+    initialized    = false,
   }
 
   return setmetatable(self, mt)
@@ -76,12 +77,12 @@ end
 
 
 function _M:enabled()
-  return singletons.configuration.vitals
+  return singletons.configuration.vitals and self.initialized
 end
 
 
 function _M:init()
-  if not self:enabled() then
+  if not singletons.configuration.vitals then
     return "vitals not enabled"
   end
 
@@ -93,20 +94,22 @@ function _M:init()
     return nil,  "failed to set 'node_id' in shm: " .. err
   end
 
-  self.node_id, err = self.shm:get(NODE_ID_KEY)
+  local node_id, err = self.shm:get(NODE_ID_KEY)
   if err then
     return nil, "failed to get 'node_id' from shm: " .. err
   end
 
-  if not self.node_id then
+  if not node_id then
     return nil, "no 'node_id' set in shm"
   end
 
   -- init strategy, recording node id and hostname in db
-  local ok, err = self.strategy:init(self.node_id, utils.get_hostname())
+  local ok, err = self.strategy:init(node_id, utils.get_hostname())
   if not ok then
     return nil, "failed to init vitals strategy " .. err
   end
+
+  self.initialized = true
 
   return "ok"
 end
@@ -129,13 +132,25 @@ persistence_handler = function(premature, self)
   if err then
     return nil, "flush_counters() threw an error: " .. err
   end
-
 end
 
 
--- returns formatted vitals seconds or minutes data based on the query_type
-function _M:get_stats(query_type)
-  local res, err = self.strategy:select_stats(query_type)
+-- returns formatted vitals seconds or minutes data based on the query_type, level, and node_id
+function _M:get_stats(query_type, level, node_id)
+  if query_type ~= "minutes" and query_type ~= "seconds" then
+    return nil, "Invalid query params: interval must be 'minutes' or 'seconds'"
+  end
+
+  if level ~= "cluster" and level ~= "node" then
+    return nil, "Invalid query params: level must be 'cluster' or 'node'"
+  end
+
+
+  if not utils.is_valid_uuid(node_id) and node_id ~= nil then
+    return nil, "Invalid query params: invalid node_id"
+  end
+
+  local res, err = self.strategy:select_stats(query_type, level, node_id)
 
   if err then
     log(WARN, _log_prefix, err)
@@ -150,10 +165,16 @@ end
 function _M:convert_stats(res)
   local stats = {}
 
-  -- convert [timestamp, l2_hit, l2_miss, latency_min, latency_max]
-  -- to {timestamp = [hit, miss, latency_min, latency_max]}
+  -- convert [timestamp, node_id, l2_hit, l2_miss, latency_min, latency_max]
+  -- to {
+  --   node_id = {
+  --     timestamp = [hit, miss, latency_min, latency_max]
+  --   }
+  -- }
   for _, row in ipairs(res) do
-    stats[self.strategy:get_timestamp_str(row.at)] = {
+    stats[row.node_id] = stats[row.node_id] or {}
+    
+    stats[row.node_id][self.strategy:get_timestamp_str(row.at)] = {
       row.l2_hit,
       row.l2_miss,
       row.plat_min or json_null,
@@ -168,7 +189,7 @@ end
 function _M:flush_counters(data)
   data = data or self:prepare_counters_for_insert()
 
-  local _, err = self.strategy:insert_stats(data, self.node_id)
+  local _, err = self.strategy:insert_stats(data)
   if err then
     return nil, err
   end

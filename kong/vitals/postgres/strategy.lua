@@ -8,18 +8,16 @@ local mt = { __index = _M }
 
 
 local INSERT_STATS = [[
-  insert into %s (at, l2_hit, l2_miss, plat_min, plat_max) values (%d, %d, %d, %s, %s)
-  on conflict (at) do update set
+  insert into %s (at, node_id, l2_hit, l2_miss, plat_min, plat_max)
+  values (%d, '%s', %d, %d, %s, %s)
+  on conflict (node_id, at) do update set
     l2_hit = %s.l2_hit + excluded.l2_hit,
     l2_miss = %s.l2_miss + excluded.l2_miss,
     plat_min = least(%s.plat_min, excluded.plat_min),
     plat_max = greatest(%s.plat_max, excluded.plat_max)
 ]]
 
-local SELECT_STATS = "select * from %s order by at desc limit 60"
-
-local SELECT_MINUTE_STATS = "select * from vitals_stats_minutes order by at desc"
-
+local UPDATE_NODE_META = "update vitals_node_meta set last_report = now() where node_id = '%s'"
 
 function _M.new(dao_factory, opts)
   local table_rotater = table_rotater_module.new(
@@ -32,17 +30,31 @@ function _M.new(dao_factory, opts)
   local self = {
     db = dao_factory.db,
     table_rotater = table_rotater,
+    node_id = nil,
+    hostname = nil,
   }
 
   return setmetatable(self, mt)
 end
 
 
-function _M:init()
+function _M:init(node_id, hostname)
+  if not node_id then
+    return nil, "node_id is required"
+  end
+
   local ok, err = self.table_rotater:init()
 
   if not ok then
     return nil, "failed to init table rotator: " .. err
+  end
+
+  self.node_id = node_id
+  self.hostname = hostname
+
+  local ok, err = self:insert_node_meta()
+  if not ok then
+    return nil, "failed to record node info: " .. err
   end
 
   return true
@@ -50,37 +62,71 @@ end
 
 
 --[[
-  returns the last 60 rows from the previous and current vitals_stats_seconds
-  tables if query_type is seconds.
+  Note: all parameters are validated in vitals:get_stats()
 
-  returns all rows in the vitals_stats_minutes table
-  if query_type is minutes.
-
-  TODO: make interval length configurable
+  query_type: "seconds" or "minutes"
+  level: "node" to get stats for all nodes or "cluster"
+  node_id: if given, selects stats just for that node
  ]]
-function _M:select_stats(query_type)
-  if query_type ~= "minutes" and query_type ~= "seconds" then
-    return nil, "query_type must be 'minutes' or 'seconds'"
+function _M:select_stats(query_type, level, node_id)
+  local query, res, err
+
+  -- for constructing dynamic SQL
+  local select, from_t1, where, from_t2
+  local group = ""
+
+  -- construct the SELECT clause
+  if level == "node" then
+    select = "SELECT * "
+  else
+    -- must be cluster
+    select = [[
+      SELECT at,
+             'cluster' as node_id,
+             sum(l2_hit) as l2_hit,
+             sum(l2_miss) as l2_miss,
+             min(plat_min) as plat_min,
+             max(plat_max) as plat_max
+      ]]
+    group = " GROUP BY at "
   end
 
-  local query, res, err, table_names
-
+  -- construct the FROM clause
   if query_type == "seconds" then
-    table_names, err = self:table_names_for_select()
+    local table_names, err = self:table_names_for_select()
 
     if err then
       return nil, err
-    elseif table_names[2] then
-      -- union query from previous and current seconds tables
-      query = fmt("select * from %s union " .. SELECT_STATS, table_names[2], table_names[1])
-    else
-      -- query only from current seconds table
-      query = fmt(SELECT_STATS, table_names[1])
     end
-  elseif query_type == "minutes" then
-    query = fmt(SELECT_MINUTE_STATS)
+
+    from_t1 = " FROM " .. table_names[1]
+
+    if table_names[2] then
+      from_t2 = " FROM " .. table_names[2]
+    end
+  else
+    -- must be minutes
+    from_t1 = " FROM vitals_stats_minutes "
   end
 
+  -- construct the WHERE clause
+  where = " WHERE 1=1 "
+  if level == "node" then
+    if node_id then
+      where = where .. " AND node_id = '{" .. node_id .. "}' "
+    end
+  end
+
+  -- put it all together
+  query = select .. from_t1 .. where .. group
+
+  if from_t2 then
+    query = query .. " UNION " .. select .. from_t2 .. where .. group
+  end
+
+  query = query .. " ORDER BY at"
+
+  -- BOOM
   res, err = self.db:query(query)
   if not res then
     return nil, "could not select stats. query: " .. query .. " error: " .. err
@@ -113,14 +159,48 @@ function _M:insert_stats(data)
     plat_min = plat_min or "null"
     plat_max = plat_max or "null"
 
-    query = fmt(INSERT_STATS, table_name, at, hit, miss, plat_min, plat_max,
-                table_name, table_name, table_name, table_name)
+    query = fmt(INSERT_STATS, table_name, at, self.node_id, hit, miss, plat_min,
+                plat_max, table_name, table_name, table_name, table_name)
 
     res, err = self.db:query(query)
 
     if not res then
       return nil, "could not insert stats. query: " .. query .. " error: " .. err
     end
+  end
+
+  local ok, err = self:update_node_meta()
+  if not ok then
+    return nil, "could not update metadata. query: " .. query .. " error: " .. err
+  end
+
+  return true
+end
+
+
+function _M:insert_node_meta()
+  -- we only perform this query once, so concatenation here is okay
+  local q = "insert into vitals_node_meta " ..
+            "(node_id, hostname, first_report, last_report) " ..
+            "values('{%s}', '%s', now(), now()) on conflict(node_id) do nothing"
+
+  local query = fmt(q, self.node_id, self.hostname)
+
+  local ok, err = self.db:query(query)
+  if not ok then
+    return nil, "could not insert metadata. query: " .. query .. " error " .. err
+  end
+
+  return true
+end
+
+
+function _M:update_node_meta()
+  local query = fmt(UPDATE_NODE_META, self.node_id)
+
+  local ok, err = self.db:query(query)
+  if not ok then
+    return nil, "could not update metadata. query: " .. query  .. " error " .. err
   end
 
   return true
