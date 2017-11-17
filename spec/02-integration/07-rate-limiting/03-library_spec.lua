@@ -140,6 +140,15 @@ describe("rate-limiting", function()
         window_sizes = { 60 },
         dao_factory = dao,
       }))
+
+      assert(ratelimit.new({
+        dict         = "foo",
+        sync_rate    = -1,
+        strategy     = "postgres",
+        namespace    = "tiny",
+        window_sizes = { 2 },
+        dao_factory  = dao,
+      }))
     end)
 
     teardown(function()
@@ -180,6 +189,51 @@ describe("rate-limiting", function()
           assert.same(2, n)
           n = ratelimit.increment("bar", 60, 1, "other")
           assert.same(3, n)
+        end)
+      end)
+
+      describe("accepts a value defining how to associate the previous weight",
+               function()
+        local rate = 2
+
+        before_each(function()
+          -- sleep til the start of the next window
+          ngx.sleep(rate - (ngx.now() - (math.floor(ngx.now() / rate) * rate)))
+        end)
+
+        it("associates to a calculated weight by default", function()
+          local n
+          local m, o = 5, 5
+          for i = 1, m do
+            n = ratelimit.increment("foo", rate, 1, "tiny")
+            assert.same(i, n)
+          end
+
+          -- sleep to the end of our window plus a _bit_
+          ngx.sleep(rate + 0.3)
+
+          for i = 1, o do
+            n = ratelimit.increment("foo", rate, 1, "tiny")
+            assert.is_true(n > i and n <= m + o)
+          end
+        end)
+
+        it("defines a static weight to send to sliding_window", function()
+          local n
+          local m, o = 5, 5
+          for i = 1, m do
+            n = ratelimit.increment("foo", rate, 1, "tiny", 0)
+            assert.same(i, n)
+          end
+
+          -- sleep to the end of our window plus a _bit_
+          ngx.sleep(rate + 0.3)
+
+          for i = 1, o do
+            n = ratelimit.increment("foo", rate, 1, "tiny", 0)
+            assert.same(i, n)
+          end
+
         end)
       end)
     end)

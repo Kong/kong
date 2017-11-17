@@ -30,6 +30,11 @@ local function log(lvl, ...)
 end
 
 
+local function calculate_weight(window_size)
+  return (window_size - (time() % window_size)) / window_size
+end
+
+
 -- namespace configurations
 local config = {
   -- default = {
@@ -261,16 +266,13 @@ end
 -- third param cur_diff is an optional arg of the current diff of the key
 -- this allows us to save a shm fetch whiling calculating
 -- the sliding window from increment()
-local function sliding_window(key, window_size, cur_diff, namespace)
+local function sliding_window(key, window_size, cur_diff, namespace, weight)
   namespace  = namespace or "default"
   local cfg  = config[namespace]
   local dict = ngx.shared[cfg.dict]
 
   local cur_window  = window_floor(window_size, time())
   local prev_window = cur_window - window_size
-
-  -- how much of the previous window should we take into consideration
-  local weight = (window_size - (time() % window_size)) / window_size
 
   -- incr(k, 0, 0) is a branch free way to dict:get(...) or 0
   --
@@ -295,14 +297,22 @@ local function sliding_window(key, window_size, cur_diff, namespace)
   cur = cur + dict:incr(cur_prefix .. "|sync", 0, 0)
   log(DEBUG, "cur sum: ", cur)
 
-  local prev = dict:incr(prev_prefix .. "|diff", 0, 0)
-  log(DEBUG, "prev diff: ", prev)
+  local prev = 0
 
-  prev = prev + dict:incr(prev_prefix .. "|sync", 0, 0)
-  log(DEBUG, "prev sum: ", prev)
+  if not weight then
+    weight = calculate_weight(window_size)
+  end
 
-  prev = prev * weight
-  log(DEBUG, "weighted prev: ", prev)
+  if weight > 0 then
+    prev = dict:incr(prev_prefix .. "|diff", 0, 0)
+    log(DEBUG, "prev diff: ", prev)
+
+    prev = prev + dict:incr(prev_prefix .. "|sync", 0, 0)
+    log(DEBUG, "prev sum: ", prev)
+
+    prev = prev * weight
+    log(DEBUG, "weighted prev: ", prev)
+  end
 
   return cur + prev
 end
@@ -311,7 +321,7 @@ _M.sliding_window = sliding_window
 
 -- increment our diff counter for this key,window
 -- returns the sliding window value for this key
-function _M.increment(key, window_size, value, namespace)
+function _M.increment(key, window_size, value, namespace, prev_window_weight)
   namespace  = namespace or "default"
   local cfg  = config[namespace]
   local dict = ngx.shared[cfg.dict]
@@ -371,8 +381,11 @@ function _M.increment(key, window_size, value, namespace)
     newval = nil -- make sliding window refetch the diff
   end
 
+  -- how much of the previous window should we take into consideration
+  local weight = prev_window_weight or calculate_weight(window_size)
+
   -- return the current sliding window for this key
-  return sliding_window(key, window_size, newval, namespace)
+  return sliding_window(key, window_size, newval, namespace, weight)
 end
 
 
