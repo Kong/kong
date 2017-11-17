@@ -59,6 +59,13 @@ follows:
 
 Where `time()` is the value of the current Unix timestamp.
 
+In addition to sliding window calculations, this library can also be used to
+provide a fixed window rate limiting implementation. By design, fixed window
+and sliding window calculations are very similar. A fixed window calculation
+simply ignores the value of the previous window. An alternative way to imagine
+this is that, in fixed window calculations, the `weight` associated with the
+previous window is always `0`.
+
 Each node in the Kong cluster relies on its own in-memory data store as the
 source of truth for rate limiting counters. Periodically, each node pushes a
 counter increment for each key it saw to the cluster, which is expected to
@@ -116,7 +123,7 @@ Define configurations for a new namespace. The following options are accepted:
 
 #### ratelimiting.increment
 
-*syntax: rate = ratelimiting.increment(key, window_size, value, namespace?)*
+*syntax: rate = ratelimiting.increment(key, window_size, value, namespace?, weight?)*
 
 Increment a given key for window_size by value. If `namespace` is undefined, the
 "default" namespace is used. `value` can be any number Lua type (but ensure that
@@ -127,7 +134,7 @@ this key/window_size after the increment of value has been applied.
 
 #### ratelimit.sliding_window
 
-*syntax: rate = ratelimit.sliding_window(key, window_size, cur_diff?, namespace?)*
+*syntax: rate = ratelimit.sliding_window(key, window_size, cur_diff?, namespace?, weight?)*
 
 Return the current sliding rate for this key/window_size. An optional `cur_diff`
 value can be provided that overrides the current stored diff for this key.

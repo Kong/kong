@@ -111,6 +111,11 @@ return {
       required = true,
       func = validate_rl,
     },
+    window_type = {
+      type = "string",
+      enum = { "fixed", "sliding" },
+      default = "sliding",
+    },
     limit = {
       type = "array",
       required = true,

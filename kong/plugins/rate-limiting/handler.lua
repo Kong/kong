@@ -218,7 +218,8 @@ function NewRLHandler:access(conf)
       rate = ratelimiting.sliding_window(key, window_size, nil, conf.namespace)
 
     else
-      rate = ratelimiting.increment(key, window_size, 1, conf.namespace)
+      rate = ratelimiting.increment(key, window_size, 1, conf.namespace,
+                                    conf.window_type == "fixed" and 0 or nil)
     end
 
     -- legacy logic of naming rate limiting headers. if we configured a window

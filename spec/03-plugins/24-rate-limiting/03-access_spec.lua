@@ -32,6 +32,8 @@ local function flush_redis()
 end
 
 for i, policy in ipairs({"cluster", "redis"}) do
+  local MOCK_RATE = 3
+
   describe("rate-limiting (access) with policy: " .. policy, function()
     setup(function()
       helpers.kill_all()
@@ -69,7 +71,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
         api_id = api1.id,
         config = {
           strategy = policy,
-          window_size = { 3 },
+          window_size = { MOCK_RATE },
           limit = { 6 },
           sync_rate = 10,
           redis = {
@@ -118,7 +120,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
         config = {
           identifier = "credential",
           strategy = policy,
-          window_size = { 3 },
+          window_size = { MOCK_RATE },
           limit = { 6 },
           sync_rate = 10,
           redis = {
@@ -140,7 +142,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
         api_id = api4.id,
         config = {
           strategy = policy,
-          window_size = { 3 },
+          window_size = { MOCK_RATE },
           limit = { 3 },
           sync_rate = 10,
           namespace = "foo",
@@ -163,10 +165,33 @@ for i, policy in ipairs({"cluster", "redis"}) do
         api_id = api5.id,
         config = {
           strategy = policy,
-          window_size = { 3 },
+          window_size = { MOCK_RATE },
           limit = { 3 },
           sync_rate = 10,
           namespace = "foo",
+          redis = {
+            host = REDIS_HOST,
+            port = REDIS_PORT,
+            database = REDIS_DATABASE,
+            password = REDIS_PASSWORD,
+          }
+        }
+      })
+
+      local api6 = assert(helpers.dao.apis:insert {
+        name = "api-6",
+        hosts = { "test6.com" },
+        upstream_url = helpers.mock_upstream_url
+      })
+      assert(helpers.dao.plugins:insert {
+        name = "rate-limiting",
+        api_id = api6.id,
+        config = {
+          strategy = policy,
+          window_size = { MOCK_RATE },
+          window_type = "fixed",
+          limit = { 6 },
+          sync_rate = 10,
           redis = {
             host = REDIS_HOST,
             port = REDIS_PORT,
@@ -189,6 +214,9 @@ for i, policy in ipairs({"cluster", "redis"}) do
     before_each(function()
       client = helpers.proxy_client()
       admin_client = helpers.admin_client()
+
+      local rate = MOCK_RATE
+      ngx.sleep(rate - (ngx.now() - (math.floor(ngx.now() / rate) * rate)))
     end)
 
     after_each(function()
@@ -225,7 +253,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
         assert.same({ message = "API rate limit exceeded" }, json)
 
         -- wait a bit longer than our window size
-        ngx.sleep(3 + 1)
+        ngx.sleep(MOCK_RATE + 1)
 
         -- Additonal request, sliding window is 0 < rate <= limit
         res = assert(helpers.proxy_client():send {
@@ -242,7 +270,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
 
       it("resets the counter", function()
         -- clear our windows entirely
-        ngx.sleep(3 * 2)
+        ngx.sleep(MOCK_RATE * 2)
 
         -- Additonal request, sliding window is reset and one less than limit
         local res = assert(helpers.proxy_client():send {
@@ -327,6 +355,49 @@ for i, policy in ipairs({"cluster", "redis"}) do
           assert.same(2, tonumber(res.headers["x-ratelimit-remaining-10"]))
           assert.same(0, tonumber(res.headers["x-ratelimit-remaining-5"]))
         end
+      end)
+
+      it("implements a fixed window if instructed to do so", function()
+        for i = 1, 6 do
+          local res = assert(helpers.proxy_client():send {
+            method = "GET",
+            path = "/get",
+            headers = {
+              ["Host"] = "test6.com"
+            }
+          })
+
+          assert.res_status(200, res)
+          assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-3"]))
+          assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-3"]))
+        end
+
+        -- Additonal request, while limit is 6/window
+        local res = assert(helpers.proxy_client():send {
+          method = "GET",
+          path = "/get",
+          headers = {
+            ["Host"] = "test6.com"
+          }
+        })
+        local body = assert.res_status(429, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "API rate limit exceeded" }, json)
+
+        -- wait a bit longer than our window size
+        ngx.sleep(MOCK_RATE + 0.1)
+
+        -- Additonal request, window/rate is reset
+        res = assert(helpers.proxy_client():send {
+          method = "GET",
+          path = "/get",
+          headers = {
+            ["Host"] = "test6.com"
+          }
+        })
+        assert.res_status(200, res)
+        local remaining = tonumber(res.headers["x-ratelimit-remaining-3"])
+        assert.same(5, remaining)
       end)
     end)
     describe("With authentication", function()
