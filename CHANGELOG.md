@@ -53,13 +53,13 @@ a detailed changeset of their content.
   [#3007](https://github.com/Kong/kong/pull/3007)
 - On the `/` endpoint, ensure `enabled_in_cluster` shows up as an empty JSON
   Array (`[]`), instead of an empty JSON Object (`{}`).
-  Thanks [@hbadgi](https://github.com/hbagdi) for the patch!
+  Thanks [@hbagdi](https://github.com/hbagdi) for the patch!
   [#2982](https://github.com/Kong/kong/issues/2982)
 
 ##### Plugins
 
 - :fireworks: key-auth: New endpoints to manipulate API keys!
-  Thanks [@hbadgi](https://github.com/hbagdi) for the contribution.
+  Thanks [@hbagdi](https://github.com/hbagdi) for the contribution.
   [#2955](https://github.com/Kong/kong/pull/2955)
     - `/key-auths/` to paginate through all keys.
     - `/key-auths/:credential_key_or_id/consumer` to retrieve the Consumer
