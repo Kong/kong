@@ -20,7 +20,7 @@ return {
     end
   },
 
-  ["/consumers/:username_or_id/jwt/:credential_key_or_id"] = {
+  ["/consumers/:username_or_id/jwt/:jwt_key_or_id"] = {
     before = function(self, dao_factory, helpers)
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
       self.params.consumer_id = self.consumer.id
@@ -28,7 +28,7 @@ return {
       local credentials, err = crud.find_by_id_or_field(
         dao_factory.jwt_secrets,
         { consumer_id = self.params.consumer_id },
-        self.params.credential_key_or_id,
+        self.params.jwt_key_or_id,
         "key"
       )
 
@@ -37,7 +37,7 @@ return {
       elseif next(credentials) == nil then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
-      self.params.credential_key_or_id = nil
+      self.params.jwt_key_or_id = nil
 
       self.jwt_secret = credentials[1]
     end,
