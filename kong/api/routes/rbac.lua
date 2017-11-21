@@ -100,7 +100,7 @@ local function resource_bitfield(self)
 end
 
 local function readable_actions(permission)
-  local action_t     = {}
+  local action_t     = setmetatable({}, cjson.empty_array_mt)
   local action_t_idx = 0
 
   for k in pairs(rbac.actions_bitfields) do
@@ -116,7 +116,7 @@ local function readable_actions(permission)
 end
 
 local function readable_resources(permission)
-  local resource_t     = {}
+  local resource_t     = setmetatable({}, cjson.empty_array_mt)
   local resource_t_idx = 0
 
   for i, _ in ipairs(rbac.resource_bitfields) do
@@ -224,6 +224,7 @@ return {
         return helpers.yield_error(err)
       end
 
+      setmetatable(roles, cjson.empty_array_mt)
       return helpers.responses.send_HTTP_OK({
         user  = self.rbac_user,
         roles = roles,
@@ -383,6 +384,7 @@ return {
       end
 
       local perms = utils.deep_copy(p)
+      setmetatable(perms, cjson.empty_array_mt)
 
       for i = 1, #perms do
         readable_actions(perms[i])
