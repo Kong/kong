@@ -104,7 +104,7 @@ return {
       type = "string",
       enum = { "ip", "credential", "consumer" },
       required = true,
-      default = "ip",
+      default = "consumer",
     },
     window_size = {
       type = "array",

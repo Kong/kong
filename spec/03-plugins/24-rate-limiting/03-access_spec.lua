@@ -35,13 +35,15 @@ for i, policy in ipairs({"cluster", "redis"}) do
   local MOCK_RATE = 3
 
   describe("rate-limiting (access) with policy: " .. policy, function()
+    local consumer1, consumer2
+
     setup(function()
       helpers.kill_all()
       flush_redis()
       helpers.dao:drop_schema()
       helpers.run_migrations()
 
-      local consumer1 = assert(helpers.dao.consumers:insert {
+      consumer1 = assert(helpers.dao.consumers:insert {
         custom_id = "provider_123"
       })
       assert(helpers.dao.keyauth_credentials:insert {
@@ -49,7 +51,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
         consumer_id = consumer1.id
       })
 
-      local consumer2 = assert(helpers.dao.consumers:insert {
+      consumer2 = assert(helpers.dao.consumers:insert {
         custom_id = "provider_124"
       })
       assert(helpers.dao.keyauth_credentials:insert {
@@ -190,6 +192,59 @@ for i, policy in ipairs({"cluster", "redis"}) do
           strategy = policy,
           window_size = { MOCK_RATE },
           window_type = "fixed",
+          limit = { 6 },
+          sync_rate = 10,
+          redis = {
+            host = REDIS_HOST,
+            port = REDIS_PORT,
+            database = REDIS_DATABASE,
+            password = REDIS_PASSWORD,
+          }
+        }
+      })
+
+      local api7 = assert(helpers.dao.apis:insert {
+        name = "api-7",
+        hosts = { "test7.com" },
+        upstream_url = helpers.mock_upstream_url
+      })
+      assert(helpers.dao.plugins:insert {
+        name = "key-auth",
+        api_id = api7.id
+      })
+      assert(helpers.dao.plugins:insert {
+        name = "rate-limiting",
+        api_id = api7.id,
+        config = {
+          strategy = policy,
+          window_size = { MOCK_RATE },
+          limit = { 6 },
+          sync_rate = 10,
+          redis = {
+            host = REDIS_HOST,
+            port = REDIS_PORT,
+            database = REDIS_DATABASE,
+            password = REDIS_PASSWORD,
+          }
+        }
+      })
+
+      local api8 = assert(helpers.dao.apis:insert {
+        name = "api-8",
+        hosts = { "test8.com" },
+        upstream_url = helpers.mock_upstream_url
+      })
+      assert(helpers.dao.plugins:insert {
+        name = "key-auth",
+        api_id = api8.id
+      })
+      assert(helpers.dao.plugins:insert {
+        name = "rate-limiting",
+        api_id = api8.id,
+        config = {
+          identifier = "ip",
+          strategy = policy,
+          window_size = { MOCK_RATE },
           limit = { 6 },
           sync_rate = 10,
           redis = {
@@ -442,6 +497,99 @@ for i, policy in ipairs({"cluster", "redis"}) do
             }
           })
           assert.res_status(200, res)
+        end)
+      end)
+    end)
+    describe("With identifier", function()
+      describe("not set, use default `consumer`", function()
+        it("should not block consumer1 when limit exceed for consumer2", function()
+          for i = 1, 6 do
+            local res = assert(helpers.proxy_client():send {
+              method = "GET",
+              path = "/get?apikey=apikey123",
+              headers = {
+                ["Host"] = "test7.com"
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+
+            assert.are.same(consumer2.id, json.headers["x-consumer-id"])
+            assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-3"]))
+            assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-3"]))
+          end
+
+          -- Additonal request, while limit is 6/window, for
+          -- consumer2 should be blocked
+          local res = assert(helpers.proxy_client():send {
+            method = "GET",
+            path = "/get?apikey=apikey123",
+            headers = {
+              ["Host"] = "test7.com"
+            }
+          })
+          local body = assert.res_status(429, res)
+          local json = cjson.decode(body)
+          assert.same({ message = "API rate limit exceeded" }, json)
+
+          -- consumer1 should still be able to make request as
+          -- limit is set by consumer not IP
+          local res = assert(helpers.proxy_client():send {
+            method = "GET",
+            path = "/get?apikey=apikey122",
+            headers = {
+              ["Host"] = "test7.com"
+            }
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.are.same(consumer1.id, json.headers["x-consumer-id"])
+
+          -- wait a bit longer than our window size
+          ngx.sleep(MOCK_RATE + 1)
+        end)
+      end)
+      describe("set to `ip`", function()
+        it("should block consumer1 when consumer2 breach limit", function()
+          for i = 1, 6 do
+            local res = assert(helpers.proxy_client():send {
+              method = "GET",
+              path = "/get?apikey=apikey123",
+              headers = {
+                ["Host"] = "test8.com"
+              }
+            })
+
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.are.same(consumer2.id, json.headers["x-consumer-id"])
+            assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-3"]))
+            assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-3"]))
+          end
+
+          -- Additonal request, while limit is 6/window, for consumer2
+          local res = assert(helpers.proxy_client():send {
+            method = "GET",
+            path = "/get?apikey=apikey123",
+            headers = {
+              ["Host"] = "test8.com"
+            }
+          })
+          local body = assert.res_status(429, res)
+          local json = cjson.decode(body)
+          assert.same({ message = "API rate limit exceeded" }, json)
+
+          -- consumer1 should still be able to make request as
+          -- limit is set by consumer not IP
+          local res = assert(helpers.proxy_client():send {
+            method = "GET",
+            path = "/get?apikey=apikey122",
+            headers = {
+              ["Host"] = "test8.com"
+            }
+          })
+          assert.res_status(429, res)
         end)
       end)
     end)
