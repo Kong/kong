@@ -1,15 +1,30 @@
 local utils      = require "kong.tools.utils"
 local json_null  = require("cjson").null
 local singletons = require "kong.singletons"
+local ffi        = require "ffi"
 
 
 local timer_at   = ngx.timer.at
 local time       = ngx.time
+local sleep      = ngx.sleep
 local math_min   = math.min
 local math_max   = math.max
 local log        = ngx.log
 local DEBUG      = ngx.DEBUG
 local WARN       = ngx.WARN
+local ERR        = ngx.ERR
+
+
+local new_tab
+do
+  local ok
+  ok, new_tab = pcall(require, "table.new")
+  if not ok then
+    new_tab = function(narr, nrec)
+      return {}
+    end
+  end
+end
 
 
 local persistence_handler
@@ -17,8 +32,75 @@ local _log_prefix = "[vitals] "
 local NODE_ID_KEY = "vitals:node_id"
 
 
+local FLUSH_LOCK_KEY = "vitals:flush_lock"
+local FLUSH_LIST_KEY = "vitals:flush_list:"
+
+
+local worker_count = ngx.worker.count()
+
+
 local _M = {}
 local mt = { __index = _M }
+
+
+ffi.cdef[[
+  typedef uint32_t time_t;
+
+  typedef struct vitals_metrics_s {
+    uint32_t    l2_hits;
+    uint32_t    l2_misses;
+    uint32_t    proxy_latency_min;
+    int32_t     proxy_latency_max;
+    /* signed int so we can math.max() off an initial -1 sentinel */
+    time_t      timestamp;
+  } vitals_metrics_t;
+]]
+
+
+local vitals_metrics_t_arr_type  = ffi.typeof("vitals_metrics_t[?]")
+local vitals_metrics_t_size      = ffi.sizeof("vitals_metrics_t")
+local const_vitals_metrics_t_ptr = ffi.typeof("const vitals_metrics_t*")
+
+
+-- generate the initializers for an array of vitals_metrics_t structs
+-- of size `sz`. this table will be fed as the third param of the ffi.new()
+-- call to generate our vitals_metrics_t[?]. the first two elements are
+-- initialized to 0, as they are just incrementing counters. the third and
+-- fourth initializers (for proxy_latency_min and proxy_latency_max,
+-- respectively) serve as sentinel values. we call math.min/max on these values
+-- so they must be initialized to some value that is handle in Lua land as a
+-- number. when we prepare to push stats to our strategy, we check for the
+-- presence of this sentinel value; if it exists, we never called the path to
+-- which the values are associated, meaning that the vitals strategy expects
+-- these to be nil. the final element is the timestamp associated with the
+-- bucket
+local function metrics_t_arr_init(sz)
+  local t = new_tab(sz, 0)
+
+  local timestamp = time()
+
+  for i = 1, sz do
+    t[i] = { 0, 0, 0xFFFFFFFF, -1, timestamp + i - 1 }
+  end
+
+  return t
+end
+
+
+-- acquire a flush local
+function _M:flush_lock()
+  local ok, err = self.shm:safe_add(FLUSH_LOCK_KEY, true,
+                                    self.flush_interval - 0.01)
+  if not ok then
+    if err ~= "exists" then
+      log(ERR, "failed to acquire vitals flush lock: ", err)
+    end
+
+    return false
+  end
+
+  return true
+end
 
 
 function _M.new(opts)
@@ -28,8 +110,14 @@ function _M.new(opts)
     return error("opts.dao is required")
   end
 
-  if opts.flush_interval and type(opts.flush_interval) ~= "number" then
-    return error("opts.flush_interval must be a number")
+  if opts.flush_interval                   and
+     type(opts.flush_interval) ~= "number" and
+     opts.flush_interval % 1 ~= 0          then
+    return error("opts.flush_interval must be an integer")
+  end
+
+  if not opts.flush_interval then
+    opts.flush_interval = 60 -- hardcoded to make our lives easier
   end
 
   local strategy
@@ -55,20 +143,11 @@ function _M.new(opts)
     strategy = db_strategy.new(dao_factory, strategy_opts)
   end
 
-  local counters = {
-    l2_hits           = {},
-    l2_misses         = {},
-    proxy_latency_min = {},
-    proxy_latency_max = {},
-    start_at          = 0,
-  }
-
   local self = {
     shm            = ngx.shared.kong,
     strategy       = strategy,
-    counters       = counters,
+    counters       = {},
     flush_interval = opts.flush_interval,
-    timer_started  = false,
     initialized    = false,
   }
 
@@ -103,6 +182,17 @@ function _M:init()
     return nil, "no 'node_id' set in shm"
   end
 
+  local delay = self.flush_interval
+  local when  = delay - (ngx.now() - (math.floor(ngx.now() / delay) * delay))
+  log(DEBUG, _log_prefix, "starting vitals timer (1) (", when, ") seconds")
+
+  local ok, err = timer_at(when, persistence_handler, self)
+  if ok then
+    self:reset_counters()
+  else
+    return nil, "failed to start recurring vitals timer (1): " .. err
+  end
+
   -- init strategy, recording node id and hostname in db
   local ok, err = self.strategy:init(node_id, utils.get_hostname())
   if not ok then
@@ -130,7 +220,7 @@ persistence_handler = function(premature, self)
 
   local _, err = self:flush_counters()
   if err then
-    return nil, "flush_counters() threw an error: " .. err
+    log(ERR, _log_prefix, "flush_counters() threw an error: ", err)
   end
 end
 
@@ -186,16 +276,177 @@ function _M:convert_stats(res)
 end
 
 
-function _M:flush_counters(data)
-  data = data or self:prepare_counters_for_insert()
+function _M:build_flush_key()
+  local timestamp = time()
 
-  local _, err = self.strategy:insert_stats(data)
-  if err then
-    return nil, err
+  -- hack around minor timing differences among worker processes. its possible
+  -- that some workers start the recurring timer at slightly before the
+  -- floor timestamp of our flush interval. to account for this we check
+  -- manually to ensure that, if we did hit an off-by-one condition, we will
+  -- still associated this push with the correct timestamp.
+  --
+  -- TODO this whole situation can be avoided by synchronizing the flush key
+  -- amongst the node workers via worker events
+  if timestamp % self.flush_interval ~= 0 then
+    log(DEBUG, _log_prefix, "tried to build flush key at invalid timestamp")
+
+    if (timestamp + 1) % self.flush_interval == 0 then
+      log(DEBUG, _log_prefix, "cheat timestamp up 1 sec")
+      timestamp = timestamp + 1
+    end
   end
 
-  -- reset counters table
+  return FLUSH_LIST_KEY .. timestamp
+end
+
+
+function _M:poll_worker_data(flush_key, expected)
+  local i = 0
+
+  if not expected then
+    expected = worker_count
+  end
+
+  while true do
+    sleep(math_max(self.flush_interval / 100, 0.001))
+
+    local num_posted, err = self.shm:llen(flush_key)
+    if err then
+      return nil, err
+    end
+
+    log(DEBUG, _log_prefix, "found ", num_posted, " workers posted data")
+
+    if num_posted == expected then
+      break
+    end
+
+    i = i + 1
+    if i > 10 then
+      return nil, "timeout waiting for workers to post vitals data"
+    end
+  end
+
+  return true
+end
+
+
+function _M:merge_worker_data(flush_key)
+  local flush_data = new_tab(self.flush_interval, 0)
+
+  -- for each elt in our list, pop it off and convert it to a read-only
+  -- vitals_metrics_t[] (technically a vitals_metrics_t*). from here we can
+  -- transform it as the strategy expects
+  --
+  -- n.b. currently this is a nasty polynomial function. this could use
+  -- improvement in the future
+  for i = 1, worker_count do
+    local v, err = self.shm:rpop(flush_key)
+
+    if not v then
+      return nil, err
+    end
+
+    local vitals_metrics_t = ffi.cast(const_vitals_metrics_t_ptr, v)
+
+    for i = 1, self.flush_interval do
+      local c = vitals_metrics_t[i - 1]
+
+      -- this is an expected condition, particularly the first time a worker
+      -- flushes data
+      if time() - c.timestamp < 1 then
+        log(DEBUG, _log_prefix, "timestamp overrun at idx ", i)
+        break
+      end
+
+      local f = flush_data[i]
+
+      -- hits and misses are just a cumulative sum
+      local l2_hits = f and f[2] + c.l2_hits or c.l2_hits
+      local l2_misses = f and f[3] + c.l2_misses or c.l2_misses
+
+      -- if this was previously defined, the result is the min of the previous
+      -- definition and our value (since our value is a sentinel the resulting
+      -- min is correct). otherwise, we check for the presence of our sentinel
+      -- and assign accordingly (either a nil type, or the bucket value)
+      local min = f and f[4] and math_min(f[4], c.proxy_latency_min) or
+                  c.proxy_latency_min
+
+      -- the same logic applies for max as did for min
+      local max = f and f[5] and math_max(f[5], c.proxy_latency_max) or
+                  c.proxy_latency_max
+
+      flush_data[i] = {
+        c.timestamp,
+        l2_hits,
+        l2_misses,
+        min,
+        max,
+      }
+
+      if flush_data[i][4] == 0xFFFFFFFF then
+        flush_data[i][4] = nil
+        flush_data[i][5] = nil
+      end
+    end
+  end
+
+  self.shm:delete(flush_key)
+
+  return flush_data
+end
+
+
+function _M:flush_counters()
+  -- acquire the lock at the beginning of our lock routine. we may not have the
+  -- lock here, but we are still going to push up our data
+  local lock = self:flush_lock()
+  local flush_key
+
+  -- create a new string object that we can push to our shared list
+  do
+    local buf = ffi.string(self.counters.metrics,
+                           vitals_metrics_t_size * self.flush_interval)
+
+    flush_key = self:build_flush_key()
+    log(DEBUG, _log_prefix, flush_key)
+
+    local ok, err = self.shm:rpush(flush_key, buf)
+    if not ok then
+      -- this is likely an OOM error, dont want to stop processing here
+      log(ERR, _log_prefix, "error attempting to push to list: ", err)
+    end
+  end
+
+  -- reset counters table. this applies to all workers
   self:reset_counters()
+
+  -- if we're in charge of pushing to the strategy, lets hang tight for a bit
+  -- and wait for each worker to push up their data. we will then coallese it
+  -- into the data form that vitals strategies expect
+  if lock then
+    log(DEBUG, "acquired flush lock on pid ", ngx.worker.pid())
+    local ok, err = self:poll_worker_data(flush_key)
+    if not ok then
+      -- timeout while polling data
+      return nil, err
+    end
+
+    log(DEBUG, _log_prefix, "merging worker data")
+    local flush_data, err = self:merge_worker_data(flush_key)
+    if not ok then
+      return nil, err
+    end
+
+    -- we're done? :shipit:
+    log(DEBUG, _log_prefix, "execute strategy insert")
+    local ok, err = self.strategy:insert_stats(flush_data)
+    if not ok then
+      return nil, err
+    end
+  end
+
+  log(DEBUG, _log_prefix, "flush done")
 
   return true
 end
@@ -204,20 +455,6 @@ end
 function _M:cache_accessed(hit_lvl, key, value)
   if not self:enabled() then
     return "vitals not enabled"
-  end
-
-  if not self.timer_started then
-    log(DEBUG, _log_prefix, "starting vitals timer (1)")
-
-    local ok, err = timer_at(self.flush_interval, persistence_handler, self)
-    if ok then
-      self.timer_started = true
-      self:reset_counters()
-
-    else
-      return nil, "failed to start recurring vitals timer (1): " .. err
-    end
-
   end
 
   local counter_name
@@ -240,7 +477,7 @@ function _M:increment_counter(counter_name)
   local bucket, err = self:current_bucket()
 
   if bucket then
-    self.counters[counter_name][bucket] = self.counters[counter_name][bucket] + 1
+   self.counters.metrics[bucket][counter_name] = self.counters.metrics[bucket][counter_name] + 1
   else
     log(DEBUG, _log_prefix, err)
   end
@@ -248,9 +485,9 @@ end
 
 
 function _M:current_bucket()
-  local bucket = time() - self.counters.start_at + 1
+  local bucket = time() - self.counters.start_at
 
-  if bucket < 1 or bucket > 60 then
+  if bucket < 0 or bucket > self.flush_interval - 1 then
     return nil, "bucket " .. bucket ..
         " out of range for counters starting at " .. self.counters.start_at
   end
@@ -259,41 +496,12 @@ function _M:current_bucket()
 end
 
 
-function _M:prepare_counters_for_insert()
-  local data_to_insert = {}
-  local timestamp      = self.counters.start_at
-
-  -- last_bucket can't be more than 60 seconds from start_at
-  local last_bucket = math_min(time() - timestamp, 60)
-
-  for i = 1, last_bucket do
-    data_to_insert[i] = {
-      timestamp,
-      self.counters.l2_hits[i],
-      self.counters.l2_misses[i],
-      self.counters.proxy_latency_min[i],
-      self.counters.proxy_latency_max[i],
-    }
-
-    timestamp = timestamp + 1
-  end
-
-  return data_to_insert
-end
-
-
 function _M:reset_counters(counters)
   local counters = counters or self.counters
 
   counters.start_at = time()
-
-  for i = 1, 60 do
-    counters.l2_hits[i] = 0
-    counters.l2_misses[i] = 0
-    counters.proxy_latency_min[i] = nil
-    counters.proxy_latency_max[i] = nil
-  end
-
+  counters.metrics  = ffi.new(vitals_metrics_t_arr_type, self.flush_interval,
+                        metrics_t_arr_init(self.flush_interval))
 
   return counters
 end
@@ -307,11 +515,11 @@ function _M:log_latency(latency)
   local bucket = self:current_bucket()
 
   if bucket then
-    self.counters.proxy_latency_min[bucket] =
-      math_min(self.counters.proxy_latency_min[bucket] or 999999, latency)
+    self.counters.metrics[bucket].proxy_latency_min =
+      math_min(self.counters.metrics[bucket].proxy_latency_min, latency)
 
-    self.counters.proxy_latency_max[bucket] =
-      math_max(self.counters.proxy_latency_max[bucket] or 0, latency)
+    self.counters.metrics[bucket].proxy_latency_max =
+      math_max(self.counters.metrics[bucket].proxy_latency_max, latency)
   end
 
   return "ok"

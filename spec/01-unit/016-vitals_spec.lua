@@ -33,44 +33,72 @@ dao_helpers.for_each_dao(function(kong_conf)
       assert(dao:run_migrations())
     end)
 
-
-    describe("prepare_counters_for_insert()", function()
-      local vitals
-
-      setup(function()
-        vitals = kong_vitals.new { dao = dao }
-
-        local at = ngx_time() - 60
-
-        local counter_table = {
-          l2_hits           = {},
-          l2_misses         = {},
-          proxy_latency_min = {},
-          proxy_latency_max = {},
-          start_at          = at,
-        }
-
-
-        for i=1,60 do
-          counter_table.l2_hits[i]           = i
-          counter_table.l2_misses[i]         = i
-          counter_table.proxy_latency_min[i] = i
-          counter_table.proxy_latency_max[i] = i
-        end
-
-        vitals.counters = counter_table
+    describe("flush_lock()", function()
+      before_each(function()
+        ngx.shared.kong:delete("vitals:flush_lock")
       end)
 
-      it("converts counters table to 2-D array", function()
-        local res = vitals:prepare_counters_for_insert()
+      teardown(function()
+        ngx.shared.kong:delete("vitals:flush_lock")
 
-        local expected = {}
-        for i=1,60 do
-          expected[i] = { vitals.counters.start_at - 1 + i, i, i, i, i }
+        local v = ngx.shared.kong:get("vitals:flush_lock")
+        assert.is_nil(v)
+      end)
+
+      it("returns true upon acquiring a lock", function()
+        local vitals = kong_vitals.new { dao = dao }
+
+        local ok, err = vitals:flush_lock()
+        assert.is_true(ok)
+        assert.is_nil(err)
+      end)
+
+      it("returns false when failing to acquire a lock, without err", function()
+        local vitals = kong_vitals.new { dao = dao }
+
+        local ok, err = vitals:flush_lock()
+        assert.is_true(ok)
+        assert.is_nil(err)
+
+        local vitals2 = kong_vitals.new { dao = dao }
+
+        ok, err = vitals2:flush_lock()
+        assert.is_false(ok)
+        assert.is_nil(err)
+      end)
+    end)
+
+    -- pending until we can mock out list shm functions
+    pending("poll_worker_data()", function()
+      local flush_key = "vitals:flush_list:" .. ngx.time()
+      local expected  = 3
+
+      setup(function()
+        ngx.shared.kong:delete(flush_key)
+
+        for i = 1, expected do
+          ngx.shared.kong:rpush(flush_key, "foo")
         end
+      end)
 
+      it("returns true when all workers have posted data", function()
+        local vitals = kong_vitals.new { dao = dao }
 
-        assert.same(expected, res)
+        local ok, err = vitals:poll_worker_data(flush_key, expected)
+        assert.is_true(ok)
+        assert.is_nil(err)
+      end)
+
+      it("returns false when it times out", function()
+        setup(function()
+          ngx.shared.kong:lpop(flush_key)
+        end)
+
+        local vitals = kong_vitals.new { dao = dao }
+
+        local ok, err = vitals:poll_worker_data(flush_key, expected)
+        assert.is_false(ok)
+        assert.same("timeout waiting for workers to post vitals data", err)
       end)
     end)
 
@@ -82,7 +110,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         local res, err = vitals:current_bucket()
 
         assert.is_nil(err)
-        assert.same(1, res)
+        assert.same(0, res)
       end)
       it("only returns good bucket indexes (lower-bound check)", function()
         local vitals = kong_vitals.new { dao = dao }
@@ -92,7 +120,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         local res, err = vitals:current_bucket()
 
-        assert.same("bucket 0 out of range for counters starting at " .. vitals.counters.start_at, err)
+        assert.same("bucket -1 out of range for counters starting at " .. vitals.counters.start_at, err)
         assert.is_nil(res)
       end)
       it("only returns good bucket indexes (upper-bound check)", function()
@@ -103,7 +131,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         local res, err = vitals:current_bucket()
 
-        assert.same("bucket 61 out of range for counters starting at " .. vitals.counters.start_at, err)
+        assert.same("bucket 60 out of range for counters starting at " .. vitals.counters.start_at, err)
         assert.is_nil(res)
       end)
     end)
@@ -124,11 +152,11 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         vitals:reset_counters()
 
-        local initial_l2_counter = vitals.counters["l2_hits"][1]
+        local initial_l2_counter = vitals.counters.metrics[0].l2_hits
 
         vitals:cache_accessed(2)
 
-        assert.same(initial_l2_counter + 1, vitals.counters["l2_hits"][1])
+        assert.same(initial_l2_counter + 1, vitals.counters.metrics[0].l2_hits)
       end)
     end)
     describe("log_latency()", function()
@@ -151,8 +179,8 @@ dao_helpers.for_each_dao(function(kong_conf)
         vitals:log_latency(7)
         vitals:log_latency(91)
 
-        assert.same({ 7 }, vitals.counters.proxy_latency_min)
-        assert.same({ 91 }, vitals.counters.proxy_latency_max)
+        assert.same(7, vitals.counters.metrics[0].proxy_latency_min)
+        assert.same(91, vitals.counters.metrics[0].proxy_latency_max)
       end)
     end)
     describe("init()", function()
