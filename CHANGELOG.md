@@ -16,8 +16,8 @@
 
 # Planned
 
-This section describes planned releases of Kong and their thematic fomr a
-high-level perspective. Those releases do not have a fixed release date yet.
+This section describes planned releases of Kong and their general "themes".
+Those releases do not have a fixed release date yet.
 
 ## [0.12.0] - TBD
 
@@ -37,6 +37,37 @@ a detailed changeset of their content.
 
 ## [0.11.2] - Estimated 2017/11/29
 
+### Added
+
+##### Plugins
+
+- key-auth: New endpoints to manipulate API keys.
+  Thanks [@hbagdi](https://github.com/hbagdi) for the contribution.
+  [#2955](https://github.com/Kong/kong/pull/2955)
+    - `/key-auths/` to paginate through all keys.
+    - `/key-auths/:credential_key_or_id/consumer` to retrieve the Consumer
+      associated with a key.
+- basic-auth: New endpoints to manipulate basic-auth credentials.
+  Thanks [@hbagdi](https://github.com/hbagdi) for the contribution.
+  [#2998](https://github.com/Kong/kong/pull/2998)
+    - `/basic-auths/` to paginate through all basic-auth credentials.
+    - `/basic-auths/:credential_username_or_id/consumer` to retrieve the
+      Consumer associated with a credential.
+- jwt: New endpoints to manipulate JWTs.
+  Thanks [@hbagdi](https://github.com/hbagdi) for the contribution.
+  [#3003](https://github.com/Kong/kong/pull/3003)
+    - `/jwts/` to paginate through all JWTs.
+    - `/jwts/:jwt_key_or_id/consumer` to retrieve the Consumer
+      associated with a JWT.
+- hmac-auth: New endpoints to manipulate hmac-auth credentials.
+  Thanks [@hbagdi](https://github.com/hbagdi) for the contribution.
+  [#3009](https://github.com/Kong/kong/pull/3009)
+    - `/hmac-auths/` to paginate through all hmac-auth credentials.
+    - `/hmac-auths/:hmac_username_or_id/consumer` to retrieve the Consumer
+      associated with a credential.
+
+### Fixed
+
 ##### Core
 
 - Avoid logging some unharmful error messages related to clustering.
@@ -44,6 +75,12 @@ a detailed changeset of their content.
 - Improve performance and memory footprint when parsing multipart request
   bodies.
   [Kong/lua-multipart#13](https://github.com/Kong/lua-multipart/pull/13)
+
+##### Configuration
+
+- Add a format check for the `admin_listen_ssl` property, ensuring it contains
+  a valid port.
+  [#3031](https://github.com/Kong/kong/pull/3031)
 
 ##### Admin API
 
@@ -58,12 +95,6 @@ a detailed changeset of their content.
 
 ##### Plugins
 
-- :fireworks: key-auth: New endpoints to manipulate API keys!
-  Thanks [@hbagdi](https://github.com/hbagdi) for the contribution.
-  [#2955](https://github.com/Kong/kong/pull/2955)
-    - `/key-auths/` to paginate through all keys.
-    - `/key-auths/:credential_key_or_id/consumer` to retrieve the Consumer
-      associated with a key.
 - hmac-auth: Better parsing of the `Authorization` header to avoid internal
   errors resulting in HTTP 500.
   Thanks [@mvanholsteijn](https://github.com/mvanholsteijn) for the patch!
