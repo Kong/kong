@@ -256,6 +256,30 @@ for i, policy in ipairs({"cluster", "redis"}) do
         }
       })
 
+      local api9 = assert(helpers.dao.apis:insert {
+        name = "api-9",
+        hosts = { "test9.com" },
+        upstream_url = helpers.mock_upstream_url
+      })
+      assert(helpers.dao.plugins:insert {
+        name = "rate-limiting",
+        api_id = api9.id,
+        config = {
+          strategy = policy,
+          window_size = { MOCK_RATE },
+          window_type = "fixed",
+          limit = { 6 },
+          sync_rate = 10,
+          redis = {
+            host = REDIS_HOST,
+            port = REDIS_PORT,
+            database = REDIS_DATABASE,
+            password = REDIS_PASSWORD,
+          },
+          hide_client_headers = true
+        }
+      })
+
       assert(helpers.start_kong{
         nginx_conf = "spec/fixtures/custom_nginx.template",
       })
@@ -453,6 +477,19 @@ for i, policy in ipairs({"cluster", "redis"}) do
         assert.res_status(200, res)
         local remaining = tonumber(res.headers["x-ratelimit-remaining-3"])
         assert.same(5, remaining)
+      end)
+
+      it("hides headers if hide_client_headers is true", function()
+        local res = assert(helpers.proxy_client():send {
+          method = "GET",
+          path = "/get",
+          headers = {
+            ["Host"] = "test9.com"
+          }
+        })
+
+        assert.is_nil(res.headers["x-ratelimit-remaining-3"])
+        assert.is_nil(res.headers["x-ratelimit-limit-3"])
       end)
     end)
     describe("With authentication", function()

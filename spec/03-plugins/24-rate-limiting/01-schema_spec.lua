@@ -51,6 +51,18 @@ describe("rate-limiting schema", function()
     assert.is_true(ok)
   end)
 
+  it("accepts a hide_client_headers config", function ()
+    local ok, err = validate_entity({
+      window_size = {60},
+      limit = {10},
+      sync_rate = 10,
+      hide_client_headers = true,
+    }, rate_limiting_schema)
+
+    assert.is_nil(err)
+    assert.is_true(ok)
+  end)
+
   it("errors with invalid redis data", function()
     local ok, err  = validate_entity({
       window_size = { 60 },

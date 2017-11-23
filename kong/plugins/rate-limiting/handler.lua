@@ -226,8 +226,10 @@ function NewRLHandler:access(conf)
     -- size that looks like a human friendly name, give that name
     local window_name = human_window_size_lookup[window_size] or window_size
 
-    ngx.header[RATELIMIT_LIMIT .. "-" .. window_name] = limit
-    ngx.header[RATELIMIT_REMAINING .. "-" .. window_name] = max(limit - rate, 0)
+    if not conf.hide_client_headers then
+      ngx.header[RATELIMIT_LIMIT .. "-" .. window_name] = limit
+      ngx.header[RATELIMIT_REMAINING .. "-" .. window_name] = max(limit - rate, 0)
+    end
 
     if rate > limit then
       deny = true

@@ -139,6 +139,10 @@ return {
       type = "table",
       schema = redis_schema,
     },
+    hide_client_headers = {
+      type = "boolean",
+      default = false,
+    },
   },
   self_check = function(schema, plugin_t, dao, is_updating)
     -- empty semi-optional redis config, needs to be cluster strategy
