@@ -1,5 +1,3 @@
-local LOG_BODY_MODE = { "none", "memory", "file" }
-
 return {
   fields = {
     host = { required = true, type = "string" },
