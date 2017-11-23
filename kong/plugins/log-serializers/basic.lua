@@ -13,12 +13,6 @@ function _M.serialize(ngx)
     }
   end
 
-  local request_body, response_body
-  if ngx.ctx.req_resp_bodies ~= nil then
-    request_body = ngx.ctx.req_resp_bodies.request_body
-    response_body = ngx.ctx.req_resp_bodies.response_body
-  end
-  
   return {
     request = {
       uri = ngx.var.request_uri,
@@ -27,13 +21,13 @@ function _M.serialize(ngx)
       method = ngx.req.get_method(), -- http method
       headers = ngx.req.get_headers(),
       size = ngx.var.request_length,
-      body = request_body
+      body = ngx.ctx.request_body
     },
     response = {
       status = ngx.status,
       headers = ngx.resp.get_headers(),
       size = ngx.var.bytes_sent,
-      body = response_body
+      body = ngx.ctx.response_body
     },
     tries = (ngx.ctx.balancer_address or EMPTY).tries,
     latencies = {
