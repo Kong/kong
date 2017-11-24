@@ -180,7 +180,7 @@ describe("Plugin: tcp-log (log)", function()
       headers = {
         host = "tcp_logging_128_byte_body.com",
       },
-      body = string.rep("a", 16*1024) -- 32 Kb body
+      body = string.rep("a", 16*1024)
     })
     assert.response(res).has.status(200)
 

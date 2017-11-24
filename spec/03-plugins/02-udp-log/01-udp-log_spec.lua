@@ -69,7 +69,7 @@ describe("Plugin: udp-log (log)", function()
   end)
 
   it("logs proper latencies", function()
-    local udp_thread = helpers.udp_server(UDP_PORT)
+    local udp_thread = helpers.udp_server(UDP_PORT) -- Starting the mock UDP server
 
     -- Making the request
     local r = assert(client:send {
@@ -181,7 +181,7 @@ describe("Plugin: udp-log (log)", function()
           headers = {
             host = "udp_logging_128_bytes_body.com",
           },
-          body = string.rep("a", 16*1024) -- 32 Kb body
+          body = string.rep("a", 16*1024)
         })
         assert.response(res).has.status(200)
     
