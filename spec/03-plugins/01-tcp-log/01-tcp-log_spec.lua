@@ -33,7 +33,8 @@ describe("Plugin: tcp-log (log)", function()
       config = {
         host = "127.0.0.1",
         port = TCP_PORT,
-      },
+        log_body = false
+      }
     })
 
     assert(helpers.dao.plugins:insert {
@@ -44,7 +45,7 @@ describe("Plugin: tcp-log (log)", function()
         port = TCP_PORT,
         log_body = true,
         max_body_size = 128
-      },
+      }
     })
 
     assert(helpers.dao.plugins:insert {
@@ -54,7 +55,7 @@ describe("Plugin: tcp-log (log)", function()
         host = "127.0.0.1",
         port = TCP_PORT,
         log_body = true
-      },
+      }
     })
 
     assert(helpers.start_kong({
@@ -68,7 +69,7 @@ describe("Plugin: tcp-log (log)", function()
   end)
 
   it("logs to TCP", function()
-    local thread = helpers.tcp_server(TCP_PORT) -- Starting the mock TCP server
+    local tcp_thread = helpers.tcp_server(TCP_PORT) -- Starting the mock TCP server
 
     -- Making the request
     local r = assert(client:send {
@@ -81,7 +82,7 @@ describe("Plugin: tcp-log (log)", function()
     assert.response(r).has.status(200)
 
     -- Getting back the TCP server input
-    local ok, res = thread:join()
+    local ok, res = tcp_thread:join()
     assert.True(ok)
     assert.is_string(res)
 
@@ -116,21 +117,22 @@ describe("Plugin: tcp-log (log)", function()
   end)
 
   it("does not log req/resp body if not configured to", function()
-    local thread = helpers.tcp_server(TCP_PORT) -- Starting the mock TCP server
-
+    local tcp_thread = helpers.tcp_server(TCP_PORT) -- Starting the mock TCP server
+    
     -- Making the request
     local res = assert(client:send {
       method  = "POST",
       path    = "/request",
       headers = {
-        host = "tcp_logging.com",
+        host  = "tcp_logging.com",
       },
-      body = string.rep("a", 8*1024)
+      body = string.rep("a", 32*1024)
     })
-    assert.response(res).has.status(200)
 
-    -- Getting back the UDP server input
-    local ok, res = thread:join()
+    assert.response(res).has.status(200)
+    -- Getting back the TCP server input
+    local ok, res = tcp_thread:join()
+
     assert.True(ok)
     assert.is_string(res)
 
@@ -143,7 +145,7 @@ describe("Plugin: tcp-log (log)", function()
   end)
 
   it("should log whole request body if it less then maximum body size", function()
-    local thread = helpers.tcp_server(TCP_PORT) -- Starting the mock TCP server
+    local tcp_thread = helpers.tcp_server(TCP_PORT) -- Starting the mock TCP server
     
     local max_expected_body_size = 64*1024;
     local sent_payload = "This is payload which should not be truncated"
@@ -159,7 +161,7 @@ describe("Plugin: tcp-log (log)", function()
     assert.response(res).has.status(200)
 
     -- Getting back the UDP server input
-    local ok, res = thread:join()
+    local ok, res = tcp_thread:join()
     assert.True(ok)
     assert.is_string(res)
 
@@ -170,7 +172,7 @@ describe("Plugin: tcp-log (log)", function()
   end)
 
   it("logs request and response bodies with custom body size", function()
-    local thread = helpers.tcp_server(TCP_PORT) -- Starting the mock TCP server
+    local tcp_thread = helpers.tcp_server(TCP_PORT) -- Starting the mock TCP server
     
     local max_expected_body_size = 128;
     -- Making the request
@@ -184,8 +186,8 @@ describe("Plugin: tcp-log (log)", function()
     })
     assert.response(res).has.status(200)
 
-    -- Getting back the UDP server input
-    local ok, res = thread:join()
+    -- Getting back the TCP server input
+    local ok, res = tcp_thread:join()
     assert.True(ok)
     assert.is_string(res)
 

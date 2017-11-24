@@ -12,19 +12,19 @@ describe("Plugin: udp-log (log)", function()
     local api1 = assert(helpers.dao.apis:insert {
       name         = "tests-udp-logging",
       hosts        = { "udp_logging.com" },
-      upstream_url = helpers.mock_upstream_url,
+      upstream_url = helpers.mock_upstream_url
     })
 
     local api2 = assert(helpers.dao.apis:insert {
       name         = "tests-udp-logging-body-logs-100-bytes",
       hosts        = { "udp_logging_128_bytes_body.com" },
-      upstream_url = helpers.mock_upstream_url,
+      upstream_url = helpers.mock_upstream_url
     })
 
     local api3 = assert(helpers.dao.apis:insert {
       name         = "tests-udp-logging-body-logs-default",
       hosts        = { "udp_logging_default_body_size.com" },
-      upstream_url = helpers.mock_upstream_url,
+      upstream_url = helpers.mock_upstream_url
     })
 
     assert(helpers.dao.plugins:insert {
@@ -33,7 +33,7 @@ describe("Plugin: udp-log (log)", function()
       config = {
         host = "127.0.0.1",
         port = UDP_PORT
-      },
+      }
     })
 
     assert(helpers.dao.plugins:insert {
@@ -44,7 +44,7 @@ describe("Plugin: udp-log (log)", function()
         port = UDP_PORT,
         log_body = true,
         max_body_size = 128
-      },
+      }
     })
 
     assert(helpers.dao.plugins:insert {
@@ -54,7 +54,7 @@ describe("Plugin: udp-log (log)", function()
         host = "127.0.0.1",
         port = UDP_PORT,
         log_body = true
-      },
+      }
     })
 
     assert(helpers.start_kong({
@@ -94,7 +94,7 @@ describe("Plugin: udp-log (log)", function()
   end)
 
   it("logs to UDP", function()
-    local thread = helpers.udp_server(UDP_PORT) -- Starting the mock UDP server
+    local udp_thread = helpers.udp_server(UDP_PORT) -- Starting the mock UDP server
 
     -- Making the request
     local res = assert(client:send {
@@ -107,7 +107,7 @@ describe("Plugin: udp-log (log)", function()
     assert.response(res).has.status(200)
 
     -- Getting back the UDP server input
-    local ok, res = thread:join()
+    local ok, res = udp_thread:join()
     assert.True(ok)
     assert.is_string(res)
 
@@ -117,7 +117,7 @@ describe("Plugin: udp-log (log)", function()
   end)
 
   it("does not log req/resp body if not configured to", function()
-    local thread = helpers.udp_server(UDP_PORT) -- Starting the mock UDP server
+    local udp_thread = helpers.udp_server(UDP_PORT) -- Starting the mock UDP server
 
     -- Making the request
     local res = assert(client:send {
@@ -126,12 +126,12 @@ describe("Plugin: udp-log (log)", function()
       headers = {
         host = "udp_logging.com",
       },
-      body = string.rep("a", 8*1024)
+      body = string.rep("a", 32*1024)
     })
     assert.response(res).has.status(200)
 
     -- Getting back the UDP server input
-    local ok, res = thread:join()
+    local ok, res = udp_thread:join()
     assert.True(ok)
     assert.is_string(res)
 
@@ -144,7 +144,7 @@ describe("Plugin: udp-log (log)", function()
   end)
 
   it("should log whole request body if it less then maximum body size", function()
-    local thread = helpers.udp_server(UDP_PORT) -- Starting the mock UDP server
+    local udp_thread = helpers.udp_server(UDP_PORT) -- Starting the mock UDP server
     
     local max_expected_body_size = 64*1024;
     local sent_payload = "This is payload which should not be truncated"
@@ -160,7 +160,7 @@ describe("Plugin: udp-log (log)", function()
     assert.response(res).has.status(200)
 
     -- Getting back the UDP server input
-    local ok, res = thread:join()
+    local ok, res = udp_thread:join()
     assert.True(ok)
     assert.is_string(res)
 
@@ -171,7 +171,7 @@ describe("Plugin: udp-log (log)", function()
   end)
 
   it("logs request and response bodies with custom body size", function()
-    local thread = helpers.udp_server(UDP_PORT) -- Starting the mock UDP server
+    local udp_thread = helpers.udp_server(UDP_PORT) -- Starting the mock UDP server
     
     local max_expected_body_size = 128;
     -- Making the request
@@ -181,12 +181,12 @@ describe("Plugin: udp-log (log)", function()
       headers = {
         host = "udp_logging_128_bytes_body.com",
       },
-      body = string.rep("a", 16*1024)
+      body = string.rep("a", 32*1024)
     })
     assert.response(res).has.status(200)
 
     -- Getting back the UDP server input
-    local ok, res = thread:join()
+    local ok, res = udp_thread:join()
     assert.True(ok)
     assert.is_string(res)
 
