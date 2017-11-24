@@ -26,18 +26,41 @@ return {
       unique = true, 
       required = true,
     },
+    hash_on = {
+      -- primary hash-key
+      type = "string",
+      default = "none",
+      enum = {
+        "none",
+        "consumer",
+        "ip",
+        "header",
+      },
+    },
+    hash_fallback = {
+      -- secondary key, if primary fails
+      type = "string",
+      default = "none",
+      enum = {
+        "none",
+        "consumer",
+        "ip",
+        "header",
+      },
+    },
+    hash_on_header = {
+      -- header name, if `hash_on == "header"`
+      type = "string",
+    },
+    hash_fallback_header = {
+      -- header name, if `hash_fallback == "header"`
+      type = "string",
+    },
     slots = {
       -- the number of slots in the loadbalancer algorithm
       type = "number",
       default = DEFAULT_SLOTS,
     },
-    orderlist = {
-      -- a list of sequential, but randomly ordered, integer numbers. In the datastore
-      -- because all Kong nodes need the exact-same 'randomness'. If changed, consistency is lost.
-      -- must have exactly `slots` number of entries.
-      type = "array",
-      default = {},
-    }
   },
   self_check = function(schema, config, dao, is_updating)
     
@@ -52,65 +75,57 @@ return {
     if p.port then
       return false, Errors.schema("Invalid name; no port allowed")
     end
-    
+
+    if config.hash_on_header then
+      local ok, err = utils.validate_header_name(config.hash_on_header)
+      if not ok then
+        return false, Errors.schema("Header: " .. err)
+      end
+    end
+
+    if config.hash_fallback_header then
+      local ok, err = utils.validate_header_name(config.hash_fallback_header)
+      if not ok then
+        return false, Errors.schema("Header: " .. err)
+      end
+    end
+
+    if (config.hash_on == "header"
+        and not config.hash_on_header) or
+       (config.hash_fallback == "header"
+        and not config.hash_fallback_header) then
+      return false, Errors.schema("Hashing on 'header', " ..
+                                  "but no header name provided")
+    end
+
+    if config.hash_on == "none" then
+      if config.hash_fallback ~= "none" then
+        return false, Errors.schema("Cannot set fallback if primary " ..
+                                    "'hash_on' is not set")
+      end
+
+    else
+      if config.hash_on == config.hash_fallback then
+        if config.hash_on ~= "header" then
+          return false, Errors.schema("Cannot set fallback and primary " ..
+                                      "hashes to the same value")
+
+        else
+          local upper_hash_on = config.hash_on_header:upper()
+          local upper_hash_fallback = config.hash_fallback_header:upper()
+          if upper_hash_on == upper_hash_fallback then
+            return false, Errors.schema("Cannot set fallback and primary "..
+                                        "hashes to the same value")
+          end
+        end
+      end
+    end
+
     -- check the slots number
     if config.slots < SLOTS_MIN or config.slots > SLOTS_MAX then
       return false, Errors.schema(SLOTS_MSG)
     end
     
-    -- check the order array
-    local order = config.orderlist
-    if #order == config.slots then
-      -- array size unchanged, check consistency
-
-      local t = utils.shallow_copy(order)
-      table.sort(t)
-      local count, max = 0, 0
-      for i, v in pairs(t) do
-        if i ~= v then
-          return false, Errors.schema("invalid orderlist")
-        end
-
-        count = count + 1
-        if i > max then
-          max = i
-        end
-      end
-
-      if count ~= config.slots or max ~= config.slots then
-        return false, Errors.schema("invalid orderlist")
-      end
-
-    else
-      -- size mismatch
-      if #order > 0 then
-        -- size given, but doesn't match the size of the also given orderlist
-        return false, Errors.schema("size mismatch between 'slots' and 'orderlist'")
-      end
-
-      -- No list given, generate order array
-      local t = {}
-      for i = 1, config.slots do
-        t[i] = {
-          id = i, 
-          order = math.random(1, config.slots),
-        }
-      end
-
-      -- sort the array (we don't check for -accidental- duplicates as the 
-      -- id field is used for the order and that one is always unique)
-      table.sort(t, function(a,b) 
-        return a.order < b.order
-      end)
-
-      -- replace the created 'record' with only the id
-      for i, v in ipairs(t) do
-        t[i] = v.id
-      end
-      
-      config.orderlist = t
-    end
-
     return true
   end,
 }

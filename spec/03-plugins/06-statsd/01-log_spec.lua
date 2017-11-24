@@ -299,6 +299,7 @@ describe("Plugin: statsd (log)", function()
         end
       }, UDP_PORT)
       thread:start()
+      ngx.sleep(0.1)
 
       local response = assert(client:send {
         method = "GET",
@@ -345,6 +346,7 @@ describe("Plugin: statsd (log)", function()
         end
       }, UDP_PORT)
       thread:start()
+      ngx.sleep(0.1)
 
       local response = assert(client:send {
         method = "GET",
@@ -405,6 +407,8 @@ describe("Plugin: statsd (log)", function()
         end
       }, UDP_PORT)
       thread:start()
+      ngx.sleep(0.1)
+
       local response = assert(client:send {
         method = "GET",
         path = "/request",
@@ -528,6 +532,8 @@ describe("Plugin: statsd (log)", function()
         end
       }, UDP_PORT)
       thread:start()
+      ngx.sleep(0.1)
+
       local response = assert(client:send {
         method = "GET",
         path = "/request?apikey=kong",

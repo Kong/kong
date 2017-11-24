@@ -137,6 +137,7 @@ describe("Plugin: datadog (log)", function()
       end
     })
     thread:start()
+    ngx.sleep(0.1)
 
     local res = assert(client:send {
       method = "GET",
@@ -183,6 +184,7 @@ describe("Plugin: datadog (log)", function()
       end
     })
     thread:start()
+    ngx.sleep(0.1)
 
     local res = assert(client:send {
       method = "GET",
@@ -230,6 +232,7 @@ describe("Plugin: datadog (log)", function()
       end
     })
     thread:start()
+    ngx.sleep(0.1)
 
     local res = assert(client:send {
       method = "GET",
@@ -265,6 +268,7 @@ describe("Plugin: datadog (log)", function()
       end
     })
     thread:start()
+    ngx.sleep(0.1)
 
     local res = assert(client:send {
       method = "GET",
@@ -297,6 +301,7 @@ describe("Plugin: datadog (log)", function()
       end
     })
     thread:start()
+    ngx.sleep(0.1)
 
     local res = assert(client:send {
       method = "GET",
