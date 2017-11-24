@@ -126,7 +126,7 @@ describe("Plugin: udp-log (log)", function()
       headers = {
         host = "udp_logging.com",
       },
-      body = string.rep("a", 64*1024)
+      body = string.rep("a", 16*1024)
     })
     assert.response(res).has.status(200)
 
@@ -167,7 +167,7 @@ describe("Plugin: udp-log (log)", function()
         -- Making sure it's alright
         local log_message = cjson.decode(res)
         assert.equal(log_message.request.body, sent_payload); 
-        assert.True(string.len(log_message.response.body) <= max_expected_body_size);
+        assert.True(log_message.response.body:len() <= max_expected_body_size);
   end)
 
   it("logs request and response bodies with custom body size", function()
@@ -181,7 +181,7 @@ describe("Plugin: udp-log (log)", function()
           headers = {
             host = "udp_logging_128_bytes_body.com",
           },
-          body = string.rep("a", 32*1024) -- 32 Kb body
+          body = string.rep("a", 16*1024) -- 32 Kb body
         })
         assert.response(res).has.status(200)
     
@@ -193,6 +193,6 @@ describe("Plugin: udp-log (log)", function()
         -- Making sure it's alright
         local log_message = cjson.decode(res)
         assert.equal(log_message.request.body, string.rep("a", max_expected_body_size));
-        assert.True(string.len(log_message.response.body) <= max_expected_body_size) ;
+        assert.True(log_message.response.body:len() <= max_expected_body_size) ;
   end)
 end)
