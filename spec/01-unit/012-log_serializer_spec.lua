@@ -146,5 +146,30 @@ describe("Log Serializer", function()
 
       assert.is_nil(res.tries)
     end)
+    
+    it("should log request and response bodies if present in ngx context", function()
+      ngx.ctx.request_body = "request body"
+      ngx.ctx.response_body = "response body"
+      
+      local res = basic.serialize(ngx)
+
+      assert.is_table(res)
+      assert.equal(res.request.body, "request body")
+      assert.equal(res.response.body, "response body")
+
+    end)
+
+    it("should not log request and response bodies if not present in ngx context", function()
+      ngx.ctx.request_body = nil
+      ngx.ctx.response_body = nil
+      
+      local res = basic.serialize(ngx)
+
+      assert.is_table(res)
+      assert.is_nil(res.request.body)
+      assert.is_nil(res.response.body)
+
+    end)
+
   end)
 end)
