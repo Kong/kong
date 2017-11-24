@@ -146,53 +146,53 @@ describe("Plugin: udp-log (log)", function()
   it("should log whole request body if it less then maximum body size", function()
     local thread = helpers.udp_server(UDP_PORT) -- Starting the mock UDP server
     
-        local max_expected_body_size = 64*1024;
-        local sent_payload = "This is payload which should not be truncated"
-        -- Making the request
-        local res = assert(client:send {
-          method  = "POST",
-          path    = "/request",
-          headers = {
-            host = "udp_logging_default_body_size.com",
-          },
-          body = sent_payload
-        })
-        assert.response(res).has.status(200)
-    
-        -- Getting back the UDP server input
-        local ok, res = thread:join()
-        assert.True(ok)
-        assert.is_string(res)
-    
-        -- Making sure it's alright
-        local log_message = cjson.decode(res)
-        assert.equal(log_message.request.body, sent_payload); 
-        assert.True(log_message.response.body:len() <= max_expected_body_size);
+    local max_expected_body_size = 64*1024;
+    local sent_payload = "This is payload which should not be truncated"
+    -- Making the request
+    local res = assert(client:send {
+      method  = "POST",
+      path    = "/request",
+      headers = {
+        host = "udp_logging_default_body_size.com",
+      },
+      body = sent_payload
+    })
+    assert.response(res).has.status(200)
+
+    -- Getting back the UDP server input
+    local ok, res = thread:join()
+    assert.True(ok)
+    assert.is_string(res)
+
+    -- Making sure it's alright
+    local log_message = cjson.decode(res)
+    assert.equal(log_message.request.body, sent_payload); 
+    assert.True(log_message.response.body:len() <= max_expected_body_size);
   end)
 
   it("logs request and response bodies with custom body size", function()
     local thread = helpers.udp_server(UDP_PORT) -- Starting the mock UDP server
     
-        local max_expected_body_size = 128;
-        -- Making the request
-        local res = assert(client:send {
-          method  = "POST",
-          path    = "/request",
-          headers = {
-            host = "udp_logging_128_bytes_body.com",
-          },
-          body = string.rep("a", 16*1024)
-        })
-        assert.response(res).has.status(200)
-    
-        -- Getting back the UDP server input
-        local ok, res = thread:join()
-        assert.True(ok)
-        assert.is_string(res)
-    
-        -- Making sure it's alright
-        local log_message = cjson.decode(res)
-        assert.equal(log_message.request.body, string.rep("a", max_expected_body_size));
-        assert.True(log_message.response.body:len() <= max_expected_body_size) ;
+    local max_expected_body_size = 128;
+    -- Making the request
+    local res = assert(client:send {
+      method  = "POST",
+      path    = "/request",
+      headers = {
+        host = "udp_logging_128_bytes_body.com",
+      },
+      body = string.rep("a", 16*1024)
+    })
+    assert.response(res).has.status(200)
+
+    -- Getting back the UDP server input
+    local ok, res = thread:join()
+    assert.True(ok)
+    assert.is_string(res)
+
+    -- Making sure it's alright
+    local log_message = cjson.decode(res)
+    assert.equal(log_message.request.body, string.rep("a", max_expected_body_size));
+    assert.True(log_message.response.body:len() <= max_expected_body_size) ;
   end)
 end)

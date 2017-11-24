@@ -23,7 +23,7 @@ describe("Plugin: tcp-log (log)", function()
 
     local api3 = assert(helpers.dao.apis:insert {
       name         = "api-3",
-      hosts        = { "tcp_logging_64Kb_byte_body.com" },
+      hosts        = { "udp_logging_default_body_size.com" },
       upstream_url = helpers.mock_upstream_url
     })
 
@@ -152,7 +152,7 @@ describe("Plugin: tcp-log (log)", function()
       method  = "POST",
       path    = "/request",
       headers = {
-        host = "tcp_logging_128_byte_body.com",
+        host = "udp_logging_default_body_size.com",
       },
       body = sent_payload
     })
