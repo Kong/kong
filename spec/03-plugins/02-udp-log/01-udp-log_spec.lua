@@ -126,7 +126,7 @@ describe("Plugin: udp-log (log)", function()
       headers = {
         host = "udp_logging.com",
       },
-      body = string.rep("a", 16*1024)
+      body = string.rep("a", 8*1024)
     })
     assert.response(res).has.status(200)
 
