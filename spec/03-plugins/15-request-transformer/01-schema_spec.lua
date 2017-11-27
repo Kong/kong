@@ -1,8 +1,8 @@
 local schemas = require "kong.dao.schemas_validation"
-local request_transformer_schema = require "kong.plugins.request-transformer.schema"
+local request_transformer_schema = require "kong.plugins.request-transformer-advanced.schema"
 local validate_entity = schemas.validate_entity
 
-describe("Plugin: request-transformer (schema)", function()
+describe("Plugin: request-transformer-advanced(schema)", function()
   it("validates http_method", function()
     local ok, err = validate_entity({http_method = "GET"}, request_transformer_schema)
     assert.is_nil(err)

@@ -13,7 +13,7 @@ local plugins = {
   "basic-auth",
   "ip-restriction",
   "galileo",
-  "request-transformer",
+  "request-transformer-advanced",
   "response-transformer",
   "request-size-limiting",
   "rate-limiting-advanced",

@@ -154,18 +154,18 @@ local function iter(config_array)
       -- this is a hard error because the renderer isn't safe
       -- throw a 500 for this one. This check and error can be removed once
       -- it's safe
-      return error("[request-transformer] failed to render the template " ..
+      return error("[request-transformer-advanced] failed to render the template " ..
               tostring(current_value) .. ", error: the renderer " ..
               "encountered a value that was not coercable to a " ..
               "string (usually a table)")
     end
 
     if err then
-      return error("[request-transformer] failed to render the template ",
+      return error("[request-transformer-advanced] failed to render the template ",
         current_value, ", error:", err)
     end
 
-    ngx_log(DEBUG, "[request-transformer] template `", current_value,
+    ngx_log(DEBUG, "[request-transformer-advanced] template `", current_value,
       "` rendered to `", res, "`")
 
     return i, current_name, res
@@ -492,17 +492,17 @@ local function transform_uri(conf)
       -- this is a hard error because the renderer isn't safe
       -- throw a 500 for this one. This check and error can be removed once
       -- it's safe
-      return error("[request-transformer] failed to render the template " ..
+      return error("[request-transformer-advanced] failed to render the template " ..
               tostring(conf.replace.uri) ..
               ", error: the renderer encountered a value that was not" ..
               " coercable to a string (usually a table)")
     end
     if err then
-      return error("[request-transformer] failed to render the template ",
+      return error("[request-transformer-advanced] failed to render the template ",
         conf.replace.uri, ", error:", err)
     end
 
-    ngx_log(DEBUG, "[request-transformer] template `", conf.replace.uri,
+    ngx_log(DEBUG, "[request-transformer-advanced] template `", conf.replace.uri,
       "` rendered to `", res, "`")
 
     if res then

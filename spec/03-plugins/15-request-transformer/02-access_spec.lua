@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
 
-describe("Plugin: request-transformer (access)", function()
+describe("Plugin: request-transformer-advanced(access)", function()
   local client
 
   setup(function()
@@ -29,7 +29,7 @@ describe("Plugin: request-transformer (access)", function()
 
     assert(helpers.dao.plugins:insert {
       api_id = api1.id,
-      name = "request-transformer",
+      name = "request-transformer-advanced",
       config = {
         add = {
           headers = {"h1:v1", "h2:value:2"}, -- payload containing a colon
@@ -40,7 +40,7 @@ describe("Plugin: request-transformer (access)", function()
     })
     assert(helpers.dao.plugins:insert {
       api_id = api2.id,
-      name = "request-transformer",
+      name = "request-transformer-advanced",
       config = {
         add = {
           headers = {"host:mark"}
@@ -49,7 +49,7 @@ describe("Plugin: request-transformer (access)", function()
     })
     assert(helpers.dao.plugins:insert {
       api_id = api3.id,
-      name = "request-transformer",
+      name = "request-transformer-advanced",
       config = {
         add = {
           headers = {"x-added:a1", "x-added2:b1", "x-added3:c2"},
@@ -72,7 +72,7 @@ describe("Plugin: request-transformer (access)", function()
     })
     assert(helpers.dao.plugins:insert {
       api_id = api4.id,
-      name = "request-transformer",
+      name = "request-transformer-advanced",
       config = {
         remove = {
           headers = {"x-to-remove"},
@@ -83,7 +83,7 @@ describe("Plugin: request-transformer (access)", function()
     })
     assert(helpers.dao.plugins:insert {
       api_id = api5.id,
-      name = "request-transformer",
+      name = "request-transformer-advanced",
       config = {
         replace = {
           headers = {"h1:v1"},
@@ -94,7 +94,7 @@ describe("Plugin: request-transformer (access)", function()
     })
     assert(helpers.dao.plugins:insert {
       api_id = api6.id,
-      name = "request-transformer",
+      name = "request-transformer-advanced",
       config = {
         append = {
           headers = {"h1:v1", "h1:v2", "h2:v1",},
@@ -105,14 +105,14 @@ describe("Plugin: request-transformer (access)", function()
     })
     assert(helpers.dao.plugins:insert {
       api_id = api7.id,
-      name = "request-transformer",
+      name = "request-transformer-advanced",
       config = {
         http_method = "POST"
       }
     })
     assert(helpers.dao.plugins:insert {
       api_id = api8.id,
-      name = "request-transformer",
+      name = "request-transformer-advanced",
       config = {
         http_method = "GET"
       }
@@ -120,7 +120,7 @@ describe("Plugin: request-transformer (access)", function()
 
     assert(helpers.dao.plugins:insert {
       api_id = api9.id,
-      name = "request-transformer",
+      name = "request-transformer-advanced",
       config = {
         rename = {
           headers = {"x-to-rename:x-is-renamed"},
@@ -132,7 +132,7 @@ describe("Plugin: request-transformer (access)", function()
 
     assert(helpers.dao.plugins:insert {
       api_id = api10.id,
-      name = "request-transformer",
+      name = "request-transformer-advanced",
       config = {
         add = {
           querystring = {"uri_param1:$(uri_captures.user1)", "uri_param2[some_index][1]:$(uri_captures.user2)"},
@@ -142,7 +142,7 @@ describe("Plugin: request-transformer (access)", function()
 
     assert(helpers.dao.plugins:insert {
       api_id = api11.id,
-      name = "request-transformer",
+      name = "request-transformer-advanced",
       config = {
         replace = {
           uri = "/requests/user2/$(uri_captures.user2)/user1/$(uri_captures.user1)",
@@ -152,7 +152,7 @@ describe("Plugin: request-transformer (access)", function()
 
     assert(helpers.dao.plugins:insert {
       api_id = api12.id,
-      name = "request-transformer",
+      name = "request-transformer-advanced",
       config = {
         add = {
           querystring = {"uri_param1:$(uri_captures.user1 or 'default1')", "uri_param2:$(uri_captures.user2 or 'default2')"},
@@ -162,7 +162,7 @@ describe("Plugin: request-transformer (access)", function()
 
     assert(helpers.dao.plugins:insert {
       api_id = api13.id,
-      name = "request-transformer",
+      name = "request-transformer-advanced",
       config = {
         replace = {
           uri = "/requests/user2/$(10 * uri_captures.user1)",
@@ -172,7 +172,7 @@ describe("Plugin: request-transformer (access)", function()
 
     assert(helpers.dao.plugins:insert {
       api_id = api14.id,
-      name = "request-transformer",
+      name = "request-transformer-advanced",
       config = {
         replace = {
           uri = "/requests$(uri_captures[0])",
@@ -182,7 +182,7 @@ describe("Plugin: request-transformer (access)", function()
 
     assert(helpers.dao.plugins:insert {
       api_id = api15.id,
-      name = "request-transformer",
+      name = "request-transformer-advanced",
       config = {
         add = {
           querystring = {"uri_param1:$(uri_captures.user1)", "uri_param2:$(headers.host)"},
@@ -196,7 +196,7 @@ describe("Plugin: request-transformer (access)", function()
 
     assert(helpers.dao.plugins:insert {
       api_id = api16.id,
-      name = "request-transformer",
+      name = "request-transformer-advanced",
       config = {
         replace = {
           querystring = {"q2:$(headers['x-remove-header'])"},
@@ -213,7 +213,7 @@ describe("Plugin: request-transformer (access)", function()
 
     assert(helpers.dao.plugins:insert {
       api_id = api17.id,
-      name = "request-transformer",
+      name = "request-transformer-advanced",
       config = {
         replace = {
           querystring = {"q2:$(headers['x-replace-header'])"},
@@ -228,7 +228,7 @@ describe("Plugin: request-transformer (access)", function()
 
     assert(helpers.dao.plugins:insert {
       api_id = api18.id,
-      name = "request-transformer",
+      name = "request-transformer-advanced",
       config = {
         add = {
           querystring = {[[q1:$('$(uri_captures.user1)')]]},
@@ -238,7 +238,7 @@ describe("Plugin: request-transformer (access)", function()
 
     assert(helpers.dao.plugins:insert {
       api_id = api19.id,
-      name = "request-transformer",
+      name = "request-transformer-advanced",
       config = {
         add = {
           -- not inserting a value, but the `uri_captures` table itself to provoke a rendering error

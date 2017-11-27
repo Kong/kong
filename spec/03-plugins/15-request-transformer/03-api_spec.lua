@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
-describe("Plugin: request-transformer (API)", function()
+describe("Plugin: request-transformer-advanced(API)", function()
   local admin_client
 
   teardown(function()
@@ -34,7 +34,7 @@ describe("Plugin: request-transformer (API)", function()
           method = "POST",
           path = "/apis/test/plugins/",
           body = {
-            name = "request-transformer",
+            name = "request-transformer-advanced",
             config = {
               remove = {
                 headers = "just_a_key",
@@ -58,7 +58,7 @@ describe("Plugin: request-transformer (API)", function()
           method = "POST",
           path = "/apis/test/plugins/",
           body = {
-            name = "request-transformer",
+            name = "request-transformer-advanced",
             config = {
               add = {
                 headers = "just_a_key",
@@ -78,7 +78,7 @@ describe("Plugin: request-transformer (API)", function()
           method = "POST",
           path = "/apis/test/plugins/",
           body = {
-            name = "request-transformer",
+            name = "request-transformer-advanced",
             config = {
               replace = {
                 headers = "just_a_key",
@@ -98,7 +98,7 @@ describe("Plugin: request-transformer (API)", function()
           method = "POST",
           path = "/apis/test/plugins/",
           body = {
-            name = "request-transformer",
+            name = "request-transformer-advanced",
             config = {
               append = {
                 headers = "just_a_key",

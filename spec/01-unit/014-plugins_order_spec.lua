@@ -58,7 +58,7 @@ describe("Plugins", function()
       "acl",
       "rate-limiting-advanced",
       "response-ratelimiting",
-      "request-transformer",
+      "request-transformer-advanced",
       "response-transformer",
       "aws-lambda",
       "http-log",
