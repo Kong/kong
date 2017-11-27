@@ -120,7 +120,7 @@ describe("Plugin: tcp-log (log)", function()
     local tcp_thread = helpers.tcp_server(TCP_PORT) -- Starting the mock TCP server
     
     -- Making the request
-    local res = assert(client:send {
+    local r = assert(client:send {
       method  = "POST",
       path    = "/request",
       headers = {
@@ -129,7 +129,7 @@ describe("Plugin: tcp-log (log)", function()
       body = string.rep("a", 32*1024)
     })
 
-    assert.response(res).has.status(200)
+    assert.response(r).has.status(200)
     -- Getting back the TCP server input
     local ok, res = tcp_thread:join()
 
@@ -150,7 +150,7 @@ describe("Plugin: tcp-log (log)", function()
     local max_expected_body_size = 64*1024;
     local sent_payload = "This is payload which should not be truncated"
     -- Making the request
-    local res = assert(client:send {
+    local r = assert(client:send {
       method  = "POST",
       path    = "/request",
       headers = {
@@ -158,7 +158,7 @@ describe("Plugin: tcp-log (log)", function()
       },
       body = sent_payload
     })
-    assert.response(res).has.status(200)
+    assert.response(r).has.status(200)
 
     -- Getting back the UDP server input
     local ok, res = tcp_thread:join()
@@ -176,15 +176,15 @@ describe("Plugin: tcp-log (log)", function()
     
     local max_expected_body_size = 128;
     -- Making the request
-    local res = assert(client:send {
+    local r = assert(client:send {
       method  = "POST",
       path    = "/request",
       headers = {
         host = "tcp_logging_128_byte_body.com",
       },
-      body = string.rep("a", 16*1024)
+      body = string.rep("a", 32*1024)
     })
-    assert.response(res).has.status(200)
+    assert.response(r).has.status(200)
 
     -- Getting back the TCP server input
     local ok, res = tcp_thread:join()
