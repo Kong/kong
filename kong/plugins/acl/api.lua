@@ -53,5 +53,49 @@ return {
     DELETE = function(self, dao_factory)
       crud.delete(self.acl, dao_factory.acls)
     end
+  },
+
+  ["/acls"] = {
+    GET = function(self, dao_factory)
+      crud.paginated_set(self, dao_factory.acls)
+    end,
+
+    PUT = function(self, dao_factory)
+      crud.put(self.params, dao_factory.acls)
+    end,
+
+    POST = function(self, dao_factory)
+      crud.post(self.params, dao_factory.acls)
+    end
+  },
+
+  ["/acls/:id"] = {
+    before = function(self, dao_factory, helpers)
+      local filter_keys = {
+        id = self.params.id,
+        consumer_id = self.params.consumer_id,
+      }
+
+      local acls, err = dao_factory.acls:find_all(filter_keys)
+      if err then
+        return helpers.yield_error(err)
+      elseif #acls == 0 then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      self.acl = acls[1]
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      return helpers.responses.send_HTTP_OK(self.acl)
+    end,
+
+    PATCH = function(self, dao_factory)
+      crud.patch(self.params, dao_factory.acls, self.acl)
+    end,
+
+    DELETE = function(self, dao_factory)
+      crud.delete(self.acl, dao_factory.acls)
+    end
   }
 }
