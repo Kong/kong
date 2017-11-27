@@ -3,8 +3,8 @@
 - [Planned](#planned)
     - [0.12.0](#0120---tbd)
 - [Scheduled](#scheduled)
-    - [0.11.2](#0112---estimated-20171129)
 - [Released](#released)
+    - [0.11.2](#0112---20171129)
     - [0.11.1](#0111---20171024)
     - [0.10.4](#0104---20171024)
     - [0.11.0](#0110---20170816)
@@ -35,7 +35,16 @@ This release will mainly focus around two new major features:
 This section describes upcoming releases that have a release date, along with
 a detailed changeset of their content.
 
-## [0.11.2] - Estimated 2017/11/29
+*No scheduled releases yet.*
+
+[Back to TOC](#table-of-contents)
+
+# Released
+
+This section describes publicly available releases and a detailed changeset of
+their content.
+
+## [0.11.2] - 2017/11/29
 
 ### Added
 
@@ -65,6 +74,12 @@ a detailed changeset of their content.
     - `/hmac-auths/` to paginate through all hmac-auth credentials.
     - `/hmac-auths/:hmac_username_or_id/consumer` to retrieve the Consumer
       associated with a credential.
+- acl: New endpoints to manipulate ACLs.
+  Thanks [@hbagdi](https://github.com/hbagdi) for the contribution.
+  [#3039](https://github.com/Kong/kong/pull/3039)
+    - `/acls/` to paginate through all ACLs.
+    - `/acls/:acl_id/consumer` to retrieve the Consumer
+      associated with an ACL.
 
 ### Fixed
 
@@ -104,13 +119,6 @@ a detailed changeset of their content.
   [#2956](https://github.com/Kong/kong/pull/2956)
 - Improve the performance of the response-transformer plugin.
   [#2977](https://github.com/Kong/kong/pull/2977)
-
-[Back to TOC](#table-of-contents)
-
-# Released
-
-This section describes publicly available releases and a detailed changeset of
-their content.
 
 ## [0.11.1] - 2017/10/24
 
@@ -1965,7 +1973,7 @@ First version running with Cassandra.
 [Back to TOC](#table-of-contents)
 
 [0.12.0]: https://github.com/Kong/kong/compare/0.11.1...next
-[0.11.2]: https://github.com/Kong/kong/compare/0.11.1...master
+[0.11.2]: https://github.com/Kong/kong/compare/0.11.1...0.11.2
 [0.11.1]: https://github.com/Kong/kong/compare/0.11.0...0.11.1
 [0.10.4]: https://github.com/Kong/kong/compare/0.10.3...0.10.4
 [0.11.0]: https://github.com/Kong/kong/compare/0.10.3...0.11.0
