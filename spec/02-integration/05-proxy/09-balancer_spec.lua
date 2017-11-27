@@ -40,11 +40,35 @@ local healthchecks_defaults = {
   },
 }
 
+
 local function healthchecks_config(config)
   return utils.deep_merge(healthchecks_defaults, config)
 end
 
+
 local TEST_LOG = false    -- extra verbose logging of test server
+
+
+local function direct_request(host, port, path)
+  local pok, client = pcall(helpers.http_client, host, port)
+  if not pok then
+    return nil, "pcall"
+  end
+  if not client then
+    return nil, "client"
+  end
+  local _, err = client:send {
+    method = "GET",
+    path = path,
+    headers = { ["Host"] = "whatever" }
+  }
+  client:close()
+  if err then
+    return nil, err
+  end
+  return true
+end
+
 
 -- Modified http-server. Accepts (sequentially) a number of incoming
 -- connections and then rejects a given number of connections.
@@ -83,6 +107,8 @@ local function http_server(timeout, ok_count, port, fail_count)
       assert(server:settimeout(0.5))
       test_log("test http server on port ", port, " started")
 
+      local healthy = true
+
       local ok_responses, fail_responses = 0, 0
       local total_reqs = ok_count + fail_count
       local n_reqs = 0
@@ -94,9 +120,11 @@ local function http_server(timeout, ok_count, port, fail_count)
             server:close()
             break
           end
+
         elseif not client then
           server:close()
           error(err)
+
         else
           local lines = {}
           local line, err
@@ -104,13 +132,14 @@ local function http_server(timeout, ok_count, port, fail_count)
             line, err = client:receive()
             if err then
               break
+
             elseif #line == 0 then
               break
+
             else
               table.insert(lines, line)
             end
           end
-
           if err and err ~= "closed" then
             client:close()
             server:close()
@@ -127,6 +156,24 @@ local function http_server(timeout, ok_count, port, fail_count)
             client:close()
             break
 
+          elseif lines[1]:match("/status") then
+            if healthy then
+              client:send("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
+            else
+              client:send("HTTP/1.1 500 Internal Server Error\r\nConnection: close\r\n\r\n")
+            end
+            client:close()
+
+          elseif lines[1]:match("/healthy") then
+            healthy = true
+            client:send("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
+            client:close()
+
+          elseif lines[1]:match("/unhealthy") then
+            healthy = false
+            client:send("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
+            client:close()
+
           elseif handshake_done and not got_handshake then
             n_reqs = n_reqs + 1
             local do_ok = ok_count > 0
@@ -134,6 +181,7 @@ local function http_server(timeout, ok_count, port, fail_count)
             if do_ok then
               ok_count = ok_count - 1
               response = "HTTP/1.1 200 OK"
+
             else
               response = "HTTP/1.1 500 Internal Server Error"
             end
@@ -142,10 +190,12 @@ local function http_server(timeout, ok_count, port, fail_count)
             if sent then
               if do_ok then
                 ok_responses = ok_responses + 1
+
               else
                 fail_responses = fail_responses + 1
               end
             end
+
           else
             error("got a request before the handshake was complete")
           end
@@ -163,40 +213,37 @@ local function http_server(timeout, ok_count, port, fail_count)
 
   local expire = ngx.now() + timeout
   repeat
-    local res, err
-    local pok = pcall(function()
-      local client = helpers.http_client("127.0.0.1", port, 10)
-      if client then
-        res, err = client:send {
-          method = "GET",
-          path = "/handshake",
-          headers = { ["Host"] = "whatever" }
-        }
-        client:close()
-      else
-        err = "waiting"
-      end
-      if err then
-        ngx.sleep(0.01) -- busy-wait
-      end
-    end)
-  until (ngx.now() > expire) or (pok and not err)
+    local _, err = direct_request("127.0.0.1", port, "/handshake")
+    if err then
+      ngx.sleep(0.01) -- poll-wait
+    end
+  until (ngx.now() > expire) or not err
 
   return server
 end
 
-local function request_immediate_shutdown(host, port)
-  local pok, client = pcall(helpers.http_client, host, port)
-  if not pok then
-    return
+
+local function client_requests(n, headers)
+  local oks, fails = 0, 0
+  for _ = 1, n do
+    local client = helpers.proxy_client()
+    local res = client:send {
+      method = "GET",
+      path = "/",
+      headers = headers or {
+        ["Host"] = "balancer.test"
+      }
+    }
+    if res.status == 200 then
+      oks = oks + 1
+    elseif res.status == 500 then
+      fails = fails + 1
+    end
+    client:close()
   end
-  client:send {
-    method = "GET",
-    path = "/shutdown",
-    headers = { ["Host"] = "whatever" }
-  }
-  client:close()
+  return oks, fails
 end
+
 
 dao_helpers.for_each_dao(function(kong_config)
 
@@ -241,11 +288,10 @@ dao_helpers.for_each_dao(function(kong_config)
           upstream_id = upstream.id,
         })
         assert(helpers.dao.targets:insert {
-          target = "127.0.0.1:" .. (PORT+1),
+          target = "127.0.0.1:" .. (PORT + 1),
           weight = 10,
           upstream_id = upstream.id,
         })
-
         helpers.start_kong()
       end)
 
@@ -264,7 +310,6 @@ dao_helpers.for_each_dao(function(kong_config)
             path = "/upstreams/" .. upstream.name,
             headers = {
               ["Content-Type"] = "application/json",
-              -- ["Kong-Debug"] = "1",
             },
             body = {
               healthchecks = healthchecks_config {
@@ -289,32 +334,15 @@ dao_helpers.for_each_dao(function(kong_config)
           local server2 = http_server(timeout, server2_oks, PORT+1, fails)
 
           -- Go hit them with our test requests
-          local client_oks, client_fails = 0, 0
-
-          for _ = 1, requests do
-            local client = helpers.proxy_client()
-            local res = client:send {
-              method = "GET",
-              path = "/",
-              headers = {
-                ["Host"] = "balancer.test"
-              }
-            }
-            if res.status == 200 then
-              client_oks = client_oks + 1
-            elseif res.status == 500 then
-              client_fails = client_fails + 1
-            end
-            client:close()
-          end
+          local client_oks, client_fails = client_requests(requests)
 
           -- collect server results; hitcount
           local _, ok1, fail1 = server1:join()
           local _, ok2, fail2 = server2:join()
 
           -- verify
-          assert.are.equal(requests * 0.75 - fails, ok1)
-          assert.are.equal(requests * 0.25, ok2)
+          assert.are.equal(requests - server2_oks - fails, ok1)
+          assert.are.equal(server2_oks, ok2)
           assert.are.equal(0, fail1)
           assert.are.equal(fails, fail2)
 
@@ -323,7 +351,161 @@ dao_helpers.for_each_dao(function(kong_config)
         end
       end)
 
-      pending("perform active health checks", function()
+      it("perform active health checks -- up then down", function()
+
+        local healthcheck_interval = 0.01
+
+        for fails = 1, 5 do
+
+          -- configure healthchecks
+          local api_client = helpers.admin_client()
+          assert(api_client:send {
+            method = "PATCH",
+            path = "/upstreams/" .. upstream.name,
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+            body = {
+              healthchecks = healthchecks_config {
+                active = {
+                  http_path = "/status",
+                  healthy = {
+                    interval = healthcheck_interval,
+                    successes = 1,
+                  },
+                  unhealthy = {
+                    interval = healthcheck_interval,
+                    http_failures = fails,
+                  },
+                }
+              }
+            },
+          })
+          api_client:close()
+
+          local timeout = 10
+          local requests = upstream.slots * 2 -- go round the balancer twice
+
+          -- setup target servers:
+          -- server2 will only respond for part of the test,
+          -- then server1 will take over.
+          local server2_oks = math.floor(requests / 4)
+          local server1 = http_server(timeout, requests - server2_oks, PORT)
+          local server2 = http_server(timeout, server2_oks, PORT+1)
+
+          -- Phase 1: server1 and server2 take requests
+          local client_oks, client_fails = client_requests(server2_oks * 2)
+
+          -- Phase 2: server2 goes unhealthy
+          direct_request("127.0.0.1", PORT + 1, "/unhealthy")
+
+          -- Give time for healthchecker to detect
+          ngx.sleep((2 + fails) * healthcheck_interval)
+
+          -- Phase 3: server1 takes all requests
+          do
+            local p3oks, p3fails = client_requests(requests - (server2_oks * 2))
+            client_oks = client_oks + p3oks
+            client_fails = client_fails + p3fails
+          end
+
+          -- collect server results; hitcount
+          local _, ok1, fail1 = server1:join()
+          local _, ok2, fail2 = server2:join()
+
+          -- verify
+          assert.are.equal(requests - server2_oks, ok1)
+          assert.are.equal(server2_oks, ok2)
+          assert.are.equal(0, fail1)
+          assert.are.equal(0, fail2)
+
+          assert.are.equal(requests, client_oks)
+          assert.are.equal(0, client_fails)
+        end
+      end)
+
+      it("perform active health checks -- automatic recovery", function()
+
+        local healthcheck_interval = 0.01
+
+        for nchecks = 1, 5 do
+
+          -- configure healthchecks
+          local api_client = helpers.admin_client()
+          assert(api_client:send {
+            method = "PATCH",
+            path = "/upstreams/" .. upstream.name,
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+            body = {
+              healthchecks = healthchecks_config {
+                active = {
+                  http_path = "/status",
+                  healthy = {
+                    interval = healthcheck_interval,
+                    successes = nchecks,
+                  },
+                  unhealthy = {
+                    interval = healthcheck_interval,
+                    http_failures = nchecks,
+                  },
+                }
+              }
+            },
+          })
+          api_client:close()
+
+          local timeout = 10
+
+          -- setup target servers:
+          -- server2 will only respond for part of the test,
+          -- then server1 will take over.
+          local server1_oks = upstream.slots * 2
+          local server2_oks = upstream.slots
+          local server1 = http_server(timeout, server1_oks, PORT)
+          local server2 = http_server(timeout, server2_oks, PORT+1)
+
+          -- 1) server1 and server2 take requests
+          local oks, fails = client_requests(upstream.slots)
+
+          -- server2 goes unhealthy
+          direct_request("127.0.0.1", PORT + 1, "/unhealthy")
+          -- Give time for healthchecker to detect
+          ngx.sleep((2 + nchecks) * healthcheck_interval)
+
+          -- 2) server1 takes all requests
+          do
+            local o, f = client_requests(upstream.slots)
+            oks = oks + o
+            fails = fails + f
+          end
+
+          -- server2 goes healthy again
+          direct_request("127.0.0.1", PORT + 1, "/healthy")
+          -- Give time for healthchecker to detect
+          ngx.sleep((2 + nchecks) * healthcheck_interval)
+
+          -- 3) server1 and server2 take requests again
+          do
+            local o, f = client_requests(upstream.slots)
+            oks = oks + o
+            fails = fails + f
+          end
+
+          -- collect server results; hitcount
+          local _, ok1, fail1 = server1:join()
+          local _, ok2, fail2 = server2:join()
+
+          -- verify
+          assert.are.equal(upstream.slots * 2, ok1)
+          assert.are.equal(upstream.slots, ok2)
+          assert.are.equal(0, fail1)
+          assert.are.equal(0, fail2)
+
+          assert.are.equal(upstream.slots * 3, oks)
+          assert.are.equal(0, fails)
+        end
       end)
 
     end)
@@ -349,7 +531,7 @@ dao_helpers.for_each_dao(function(kong_config)
           upstream_id = upstream1.id,
         })
         target2 = assert(helpers.dao.targets:insert {
-          target = "127.0.0.1:" .. (PORT+1),
+          target = "127.0.0.1:" .. (PORT + 1),
           weight = 10,
           upstream_id = upstream1.id,
         })
@@ -367,12 +549,12 @@ dao_helpers.for_each_dao(function(kong_config)
           hash_on_header = "hashme",
         })
         assert(helpers.dao.targets:insert {
-          target = "127.0.0.1:" .. PORT+2,
+          target = "127.0.0.1:" .. PORT + 2,
           weight = 10,
           upstream_id = upstream2.id,
         })
         assert(helpers.dao.targets:insert {
-          target = "127.0.0.1:" .. (PORT+3),
+          target = "127.0.0.1:" .. (PORT + 3),
           weight = 10,
           upstream_id = upstream2.id,
         })
@@ -410,24 +592,16 @@ dao_helpers.for_each_dao(function(kong_config)
         local server2 = http_server(timeout, requests/2, PORT+1)
 
         -- Go hit them with our test requests
-        for _ = 1, requests do
-          local res = assert(client:send {
-            method = "GET",
-            path = "/",
-            headers = {
-              ["Host"] = "balancer.test"
-            }
-          })
-          assert.response(res).has.status(200)
-        end
+        local oks = client_requests(requests)
+        assert.are.equal(requests, oks)
 
         -- collect server results; hitcount
         local _, count1 = server1:join()
         local _, count2 = server2:join()
 
         -- verify
-        assert.are.equal(requests/2, count1)
-        assert.are.equal(requests/2, count2)
+        assert.are.equal(requests / 2, count1)
+        assert.are.equal(requests / 2, count2)
       end)
       it("over multiple targets, with hashing", function()
         local timeout = 5
@@ -438,20 +612,14 @@ dao_helpers.for_each_dao(function(kong_config)
         local server2 = http_server(timeout, requests, PORT+3, 0, true)
 
         -- Go hit them with our test requests
-        for _ = 1, requests do
-          local res = assert(client:send {
-            method = "GET",
-            path = "/",
-            headers = {
-              ["Host"] = "hashing.test",
-              ["hashme"] = "just a value",
-            }
-          })
-          assert.response(res).has.status(200)
-        end
+        local oks = client_requests(requests, {
+          ["Host"] = "hashing.test",
+          ["hashme"] = "just a value",
+        })
+        assert.are.equal(requests, oks)
 
-        request_immediate_shutdown("127.0.0.1", PORT + 2)
-        request_immediate_shutdown("127.0.0.1", PORT + 3)
+        direct_request("127.0.0.1", PORT + 2, "/shutdown")
+        direct_request("127.0.0.1", PORT + 3, "/shutdown")
 
         -- collect server results; hitcount
         -- one should get all the hits, the other 0, and hence a timeout
@@ -472,24 +640,16 @@ dao_helpers.for_each_dao(function(kong_config)
         local server2 = http_server(timeout, requests/2, PORT+1)
 
         -- Go hit them with our test requests
-        for _ = 1, requests do
-          local res = assert(client:send {
-            method = "GET",
-            path = "/",
-            headers = {
-              ["Host"] = "balancer.test"
-            }
-          })
-          assert.response(res).has.status(200)
-        end
+        local oks = client_requests(requests)
+        assert.are.equal(requests, oks)
 
         -- collect server results; hitcount
         local _, count1 = server1:join()
         local _, count2 = server2:join()
 
         -- verify
-        assert.are.equal(requests/2, count1)
-        assert.are.equal(requests/2, count2)
+        assert.are.equal(requests / 2, count1)
+        assert.are.equal(requests / 2, count2)
 
         -- add a new target 3
         local res = assert(api_client:send {
@@ -499,8 +659,8 @@ dao_helpers.for_each_dao(function(kong_config)
             ["Content-Type"] = "application/json"
           },
           body = {
-            target = "127.0.0.1:" .. (PORT+2),
-            weight = target1.weight/2 ,  -- shift proportions from 50/50 to 40/40/20
+            target = "127.0.0.1:" .. (PORT + 2),
+            weight = target1.weight / 2 ,  -- shift proportions from 50/50 to 40/40/20
           },
         })
         assert.response(res).has.status(201)
@@ -514,16 +674,8 @@ dao_helpers.for_each_dao(function(kong_config)
         local server3 = http_server(timeout, requests * 0.2, PORT+2)
 
         -- Go hit them with our test requests
-        for _ = 1, requests do
-          local res = assert(client:send {
-            method = "GET",
-            path = "/",
-            headers = {
-              ["Host"] = "balancer.test"
-            }
-          })
-          assert.response(res).has.status(200)
-        end
+        local oks = client_requests(requests)
+        assert.are.equal(requests, oks)
 
         -- collect server results; hitcount
         _, count1 = server1:join()
@@ -544,24 +696,16 @@ dao_helpers.for_each_dao(function(kong_config)
         local server2 = http_server(timeout, requests/2, PORT+1)
 
         -- Go hit them with our test requests
-        for _ = 1, requests do
-          local res = assert(client:send {
-            method = "GET",
-            path = "/",
-            headers = {
-              ["Host"] = "balancer.test"
-            }
-          })
-          assert.response(res).has.status(200)
-        end
+        local oks = client_requests(requests)
+        assert.are.equal(requests, oks)
 
         -- collect server results; hitcount
         local _, count1 = server1:join()
         local _, count2 = server2:join()
 
         -- verify
-        assert.are.equal(requests/2, count1)
-        assert.are.equal(requests/2, count2)
+        assert.are.equal(requests / 2, count1)
+        assert.are.equal(requests / 2, count2)
 
         -- modify weight for target 2, set to 0
         local res = assert(api_client:send {
@@ -584,16 +728,8 @@ dao_helpers.for_each_dao(function(kong_config)
         server1 = http_server(timeout, requests, PORT)
 
         -- Go hit them with our test requests
-        for _ = 1, requests do
-          local res = assert(client:send {
-            method = "GET",
-            path = "/",
-            headers = {
-              ["Host"] = "balancer.test"
-            }
-          })
-          assert.response(res).has.status(200)
-        end
+        local oks = client_requests(requests)
+        assert.are.equal(requests, oks)
 
         -- collect server results; hitcount
         _, count1 = server1:join()
@@ -610,24 +746,16 @@ dao_helpers.for_each_dao(function(kong_config)
         local server2 = http_server(timeout, requests/2, PORT+1)
 
         -- Go hit them with our test requests
-        for _ = 1, requests do
-          local res = assert(client:send {
-            method = "GET",
-            path = "/",
-            headers = {
-              ["Host"] = "balancer.test"
-            }
-          })
-          assert.response(res).has.status(200)
-        end
+        local oks = client_requests(requests)
+        assert.are.equal(requests, oks)
 
         -- collect server results; hitcount
         local _, count1 = server1:join()
         local _, count2 = server2:join()
 
         -- verify
-        assert.are.equal(requests/2, count1)
-        assert.are.equal(requests/2, count2)
+        assert.are.equal(requests / 2, count1)
+        assert.are.equal(requests / 2, count2)
 
         -- modify weight for target 2
         local res = assert(api_client:send {
@@ -651,16 +779,8 @@ dao_helpers.for_each_dao(function(kong_config)
         server2 = http_server(timeout, requests * 0.6, PORT+1)
 
         -- Go hit them with our test requests
-        for _ = 1, requests do
-          local res = assert(client:send {
-            method = "GET",
-            path = "/",
-            headers = {
-              ["Host"] = "balancer.test"
-            }
-          })
-          assert.response(res).has.status(200)
-        end
+        local oks = client_requests(requests)
+        assert.are.equal(requests, oks)
 
         -- collect server results; hitcount
         _, count1 = server1:join()
@@ -679,24 +799,16 @@ dao_helpers.for_each_dao(function(kong_config)
         local server2 = http_server(timeout, requests/2, PORT+1)
 
         -- Go hit them with our test requests
-        for _ = 1, requests do
-          local res = assert(client:send {
-            method = "GET",
-            path = "/",
-            headers = {
-              ["Host"] = "balancer.test"
-            }
-          })
-          assert.response(res).has.status(200)
-        end
+        local oks = client_requests(requests)
+        assert.are.equal(requests, oks)
 
         -- collect server results; hitcount
         local _, count1 = server1:join()
         local _, count2 = server2:join()
 
         -- verify
-        assert.are.equal(requests/2, count1)
-        assert.are.equal(requests/2, count2)
+        assert.are.equal(requests / 2, count1)
+        assert.are.equal(requests / 2, count2)
 
         -- modify weight for both targets, set to 0
         local res = assert(api_client:send {
