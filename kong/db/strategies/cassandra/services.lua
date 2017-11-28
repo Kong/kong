@@ -1,7 +1,53 @@
 local cassandra = require "cassandra"
 
 
+local fmt = string.format
+
+
 local _Services = {}
+
+
+local function select_by_service_id(cluster, table_name, service_id, errors)
+  local select_q = fmt("SELECT * FROM %s WHERE service_id = ?",
+                       table_name)
+  local res   = {}
+  local count = 0
+
+  for rows, err in cluster:iterate(select_q, { cassandra.uuid(service_id) }) do
+    if err then
+      return nil,
+             errors:database_error(
+               fmt("could not fetch %s for Service: %s", table_name, err))
+    end
+
+    for i = 1, #rows do
+      count = count + 1
+      res[count] = rows[i]
+    end
+  end
+
+  return res
+end
+
+local function delete_cascade(connector, table_name, service_id, errors)
+  local entities = select_by_service_id(connector.cluster, table_name, service_id, errors)
+
+  for i = 1, #entities do
+    local delete_q = fmt("DELETE from %s WHERE id = ?", table_name)
+
+    local res, err = connector:query(delete_q, {
+      cassandra.uuid(entities[i].id)
+    }, nil, "write")
+
+    if not res then
+      return nil, errors:database_error(
+        fmt("could not delete instance of %s associated with Service: %s",
+            table_name, err))
+    end
+  end
+
+  return true
+end
 
 
 function _Services:delete(primary_key)
@@ -10,39 +56,16 @@ function _Services:delete(primary_key)
     return nil, err_t
   end
 
-  local plugins = {}
-  local connector = self.connector
-  local cluster = connector.cluster
+  local connector  = self.connector
+  local service_id = primary_key.id
+  local errors     = self.errors
 
-  -- retrieve plugins associated with this Service
+  local ok1, err1 = delete_cascade(connector, "plugins", service_id, errors)
+  local ok2, err2 = delete_cascade(connector, "oauth2_tokens", service_id, errors)
+  local ok3, err3 = delete_cascade(connector, "oauth2_authorization_codes", service_id, errors)
 
-  local query = "SELECT * FROM plugins WHERE service_id = ? ALLOW FILTERING"
-  local args = { cassandra.uuid(primary_key.id) }
-
-  for rows, err in cluster:iterate(query, args) do
-    if err then
-      return nil, self.errors:database_error("could not fetch plugins " ..
-                                             "for Service: " .. err)
-    end
-
-    for i = 1, #rows do
-      table.insert(plugins, rows[i])
-    end
-  end
-
-  -- CASCADE delete associated plugins
-
-  for i = 1, #plugins do
-    local res, err = connector:query("DELETE FROM plugins WHERE id = ?", {
-      cassandra.uuid(plugins[i].id)
-    }, nil, "write")
-    if not res then
-      return nil, self.errors:database_error("could not delete plugin " ..
-                                              "associated with Service: " .. err)
-    end
-  end
-
-  return true
+  return ok1 and ok2 and ok3,
+         err1 or err2 or err3
 end
 
 

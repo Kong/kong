@@ -65,7 +65,11 @@ local function load_plugin_configuration(route_id,
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
   if plugin ~= nil and plugin.enabled then
-    return plugin.config or {}
+    local cfg       = plugin.config or {}
+    cfg.route_id    = plugin.route_id
+    cfg.service_id  = plugin.service_id
+    cfg.consumer_id = plugin.consumer_id
+    return cfg
   end
 end
 

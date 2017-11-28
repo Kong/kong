@@ -3,21 +3,20 @@ local helpers = require "spec.helpers"
 
 
 for _, strategy in helpers.each_strategy() do
-  pending("Plugin: oauth (API) [#" .. strategy .. "]", function()
+  describe("Plugin: oauth (API) [#" .. strategy .. "]", function()
     local consumer
-    local route
+    local service
     local admin_client
     local db
     local dao
     local bp
 
     setup(function()
-      db, dao, bp = helpers.get_db_utils(strategy)
+      bp, db, dao = helpers.get_db_utils(strategy)
 
       assert(db:truncate())
       dao:truncate_tables()
-
-      helpers.run_migrations(dao)
+      assert(dao:run_migrations())
 
       helpers.prepare_prefix()
 
@@ -36,17 +35,9 @@ for _, strategy in helpers.each_strategy() do
 
     describe("/consumers/:consumer/oauth2/", function()
       setup(function()
-        route = bp.routes:insert({
-          hosts = { "oauth2_token.com" },
-        })
-
-        consumer = assert(dao.consumers:insert {
-          username = "bob"
-        })
-
-        assert(dao.consumers:insert {
-          username = "sally"
-        })
+        service = bp.services:insert({ host = "oauth2_token.com" })
+        consumer = bp.consumers:insert({ username = "bob" })
+        bp.consumers:insert({ username = "sally" })
       end)
 
       after_each(function()
@@ -260,6 +251,11 @@ for _, strategy in helpers.each_strategy() do
       local credential
       before_each(function()
         dao:truncate_table("oauth2_credentials")
+        dao:truncate_table("consumers")
+        db:truncate("services")
+
+        service = bp.services:insert({ host = "oauth2_token.com" })
+        consumer = bp.consumers:insert({ username = "bob" })
         credential = assert(dao.oauth2_credentials:insert {
           name         = "test app",
           redirect_uri = helpers.mock_upstream_ssl_url,
@@ -418,7 +414,7 @@ for _, strategy in helpers.each_strategy() do
             path    = "/oauth2_tokens",
             body    = {
               credential_id    = oauth2_credential.id,
-              route_id         = route.id,
+              service_id       = service.id,
               expires_in       = 10
             },
             headers = {
@@ -429,7 +425,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(oauth2_credential.id, body.credential_id)
           assert.equal(10, body.expires_in)
           assert.truthy(body.access_token)
-          assert.truthy(body.route_id)
+          assert.truthy(body.service_id)
           assert.falsy(body.refresh_token)
           assert.equal("bearer", body.token_type)
         end)
@@ -457,7 +453,7 @@ for _, strategy in helpers.each_strategy() do
             path    = "/oauth2_tokens",
             body    = {
               credential_id    = oauth2_credential.id,
-              route_id         = route.id,
+              service_id       = service.id,
               expires_in       = 10
             },
             headers = {
@@ -493,7 +489,7 @@ for _, strategy in helpers.each_strategy() do
           for _ = 1, 3 do
             assert(dao.oauth2_tokens:insert {
               credential_id = oauth2_credential.id,
-              route_id      = route.id,
+              service_id    = service.id,
               expires_in    = 10
             })
           end
@@ -520,7 +516,7 @@ for _, strategy in helpers.each_strategy() do
           dao:truncate_table("oauth2_tokens")
           token = assert(dao.oauth2_tokens:insert {
             credential_id = oauth2_credential.id,
-            route_id      = route.id,
+            service_id    = service.id,
             expires_in    = 10
           })
         end)

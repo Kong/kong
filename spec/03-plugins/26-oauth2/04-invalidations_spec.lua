@@ -3,7 +3,7 @@ local helpers = require "spec.helpers"
 
 
 for _, strategy in helpers.each_strategy() do
-  pending("Plugin: oauth2 (invalidations) [#" .. strategy .. "]", function()
+  describe("Plugin: oauth2 (invalidations) [#" .. strategy .. "]", function()
     local admin_client
     local proxy_ssl_client
     local db
@@ -11,12 +11,11 @@ for _, strategy in helpers.each_strategy() do
     local bp
 
     setup(function()
-      db, dao, bp = helpers.get_db_utils(strategy)
+      bp, db, dao = helpers.get_db_utils(strategy)
 
       assert(db:truncate())
       dao:truncate_tables()
-
-      helpers.run_migrations(dao)
+      assert(dao:run_migrations())
     end)
 
     before_each(function()

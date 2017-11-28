@@ -73,5 +73,46 @@ return {
         end
       end
     end
-  }
+  },
+  {
+    name = "2017-12-19-120000_add_route_and_service_id_to_response_ratelimiting",
+    up = [[
+      ALTER TABLE response_ratelimiting_metrics ADD COLUMN route_id uuid;
+      ALTER TABLE response_ratelimiting_metrics ADD COLUMN service_id uuid;
+
+      CREATE OR REPLACE FUNCTION increment_response_rate_limits(
+        r_id uuid, s_id uuid, i text, p text, p_date timestamp with time zone, v integer)
+      RETURNS VOID AS $$
+      BEGIN
+        LOOP
+          UPDATE response_ratelimiting_metrics
+          SET value = value + v
+          WHERE route_id = r_id
+            AND service_id = s_id
+            AND identifier = i
+            AND period = p
+            AND period_date = p_date;
+          IF found then RETURN;
+          END IF;
+
+          BEGIN
+            INSERT INTO response_ratelimiting_metrics(route_id, service_id, period,
+                                                      period_date, identifier, value)
+            VALUES(r_id, s_id, p, p_date, i, v);
+            RETURN;
+          EXCEPTION WHEN unique_violation THEN
+          END;
+        END LOOP;
+      END;
+      $$ LANGUAGE 'plpgsql';
+    ]],
+    down = nil,
+  },
+  {
+    name = "2017-12-19-130000_remove_api_id_from_response_ratelimiting",
+    up = [[
+      ALTER TABLE response_ratelimiting_metrics DROP COLUMN api_id;
+    ]],
+    down = nil,
+  },
 }

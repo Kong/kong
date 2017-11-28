@@ -3,6 +3,9 @@ local helpers = require "spec.helpers"
 local utils   = require "kong.tools.utils"
 
 
+local fmt = string.format
+
+
 local function provision_code(host, extra_headers, client_id)
   local request_client = helpers.proxy_ssl_client()
   local res = assert(request_client:send {
@@ -59,7 +62,7 @@ end
 
 
 for _, strategy in helpers.each_strategy() do
-  pending("Plugin: oauth2 (access) [#" .. strategy .. "]", function()
+  describe("Plugin: oauth2 (access) [#" .. strategy .. "]", function()
     local proxy_ssl_client
     local proxy_client
     local client1
@@ -68,12 +71,7 @@ for _, strategy in helpers.each_strategy() do
     local bp
 
     setup(function()
-      db, dao, bp = helpers.get_db_utils(strategy)
-
-      assert(db:truncate())
-      dao:truncate_tables()
-
-      helpers.run_migrations(dao)
+      bp, db, dao = helpers.get_db_utils(strategy)
 
       local consumer = assert(dao.consumers:insert {
         username = "bob"
@@ -115,6 +113,14 @@ for _, strategy in helpers.each_strategy() do
         consumer_id   = consumer.id
       })
 
+      assert(dao.oauth2_credentials:insert {
+        client_id     = "clientid1011",
+        client_secret = "secret1011",
+        redirect_uri  = { "http://google.com/kong", },
+        name          = "testapp31",
+        consumer_id   = consumer.id
+      })
+
       local service1    = bp.services:insert()
       local service2    = bp.services:insert()
       local service2bis = bp.services:insert()
@@ -126,6 +132,8 @@ for _, strategy in helpers.each_strategy() do
       local service8    = bp.services:insert()
       local service9    = bp.services:insert()
       local service10   = bp.services:insert()
+      local service11   = bp.services:insert()
+      local service12   = bp.services:insert()
 
       local route1 = assert(db.routes:insert({
         hosts     = { "oauth2.com" },
@@ -191,6 +199,18 @@ for _, strategy in helpers.each_strategy() do
         hosts       = { "oauth2_10.com" },
         protocols   = { "http", "https" },
         service     = service10,
+      }))
+
+      local route11 = assert(db.routes:insert({
+        hosts       = { "oauth2_11.com" },
+        protocols   = { "http", "https" },
+        service     = service11,
+      }))
+
+      local route12 = assert(db.routes:insert({
+        hosts       = { "oauth2_12.com" },
+        protocols   = { "http", "https" },
+        service     = service12,
       }))
 
       bp.oauth2_plugins:insert({
@@ -267,6 +287,26 @@ for _, strategy in helpers.each_strategy() do
           scopes             = { "email", "profile", "user.email" },
           global_credentials = true,
           anonymous          = utils.uuid(), -- a non existing consumer
+        },
+      })
+
+      bp.oauth2_plugins:insert({
+        route_id = route11.id,
+        config   = {
+          scopes             = { "email", "profile", "user.email" },
+          global_credentials = true,
+          token_expiration   = 7,
+          auth_header_name   = "custom_header_name",
+        },
+      })
+
+      bp.oauth2_plugins:insert({
+        route_id = route12.id,
+        config   = {
+          scopes             = { "email", "profile", "user.email" },
+          global_credentials = true,
+          auth_header_name   = "custom_header_name",
+          hide_credentials   = true,
         },
       })
 
@@ -747,7 +787,6 @@ for _, strategy in helpers.each_strategy() do
           local body = cjson.decode(assert.res_status(200, res))
           assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.com/kong\\#access_token=[\\w]{32,32}&expires_in=[\\d]+&state=wot&token_type=bearer$"))
         end)
-
         it("returns success and the token should have the right expiration", function()
           local res = assert(proxy_ssl_client:send {
             method  = "POST",
@@ -1842,6 +1881,35 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(500, res)
       end)
+      it("returns success and the token should have the right expiration when a custom header is passed", function()
+        local res = assert(proxy_ssl_client:send {
+          method = "POST",
+          path = "/oauth2/authorize",
+          body = {
+            provision_key = "provision123",
+            authenticated_userid = "id123",
+            client_id = "clientid1011",
+            scope = "email",
+            response_type = "token"
+          },
+          headers = {
+            ["Host"] = "oauth2_11.com",
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = cjson.decode(assert.res_status(200, res))
+        assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.com/kong\\#access_token=[\\w]{32,32}&expires_in=[\\d]+&token_type=bearer$"))
+
+        local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.com/kong\\#access_token=([\\w]{32,32})&expires_in=[\\d]+&token_type=bearer$")
+        assert.is_nil(err)
+        local m, err = iterator()
+        assert.is_nil(err)
+        local data = dao.oauth2_tokens:find_all {access_token = m[1]}
+        assert.are.equal(1, #data)
+        assert.are.equal(m[1], data[1].access_token)
+        assert.are.equal(7, data[1].expires_in)
+        assert.falsy(data[1].refresh_token)
+      end)
       describe("Global Credentials", function()
         it("does not access two different APIs that are not sharing global credentials", function()
           local token = provision_token("oauth2_8.com")
@@ -2234,7 +2302,7 @@ for _, strategy in helpers.each_strategy() do
   end)
 
 
-  pending("Plugin: oauth2 (access) [#" .. strategy .. "]", function()
+  describe("Plugin: oauth2 (access) [#" .. strategy .. "]", function()
     local proxy_client
     local user1
     local user2
@@ -2244,12 +2312,7 @@ for _, strategy in helpers.each_strategy() do
     local bp
 
     setup(function()
-      db, dao, bp = helpers.get_db_utils(strategy)
-
-      assert(db:truncate())
-      dao:truncate_tables()
-
-      helpers.run_migrations(dao)
+      bp, db, dao = helpers.get_db_utils(strategy)
 
       local service1 = bp.services:insert({
         path = "/request"
@@ -2466,22 +2529,14 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
   end)
-end
 
-
-for _, strategy in helpers.each_strategy() do
-  describe("Plugin: oauth2 (ttl) [#" .. strategy .. "]", function()
+  describe("Plugin: oauth2 (ttl) with #"..strategy, function()
     local db
     local dao
     local bp
 
     setup(function()
-      db, dao, bp = helpers.get_db_utils(strategy)
-
-      assert(db:truncate())
-      dao:truncate_tables()
-
-      helpers.run_migrations(dao)
+      bp, db, dao = helpers.get_db_utils(strategy)
 
       local route11 = assert(db.routes:insert({
         hosts     = { "oauth2_11.com" },
@@ -2489,10 +2544,13 @@ for _, strategy in helpers.each_strategy() do
         service   = bp.services:insert(),
       }))
 
-      bp.oauth2_plugins:insert({
+      assert(dao.plugins:insert {
+        name = "oauth2",
         route_id = route11.id,
         config = {
+          enable_authorization_code = true,
           mandatory_scope = false,
+          provision_key = "provision123",
           anonymous = "",
           global_credentials = false,
           refresh_token_ttl = 2
@@ -2505,10 +2563,13 @@ for _, strategy in helpers.each_strategy() do
         service   = bp.services:insert(),
       }))
 
-      bp.oauth2_plugins:insert({
+      assert(dao.plugins:insert {
+        name = "oauth2",
         route_id = route12.id,
         config = {
+          enable_authorization_code = true,
           mandatory_scope = false,
+          provision_key = "provision123",
           anonymous = "",
           global_credentials = false,
           refresh_token_ttl = 0
@@ -2518,7 +2579,6 @@ for _, strategy in helpers.each_strategy() do
       local consumer = assert(dao.consumers:insert {
         username = "bob"
       })
-
       assert(dao.oauth2_credentials:insert {
         client_id = "clientid123",
         client_secret = "secret123",
@@ -2526,8 +2586,11 @@ for _, strategy in helpers.each_strategy() do
         name = "testapp",
         consumer_id = consumer.id
       })
-
-      assert(helpers.start_kong())
+      assert(helpers.start_kong({
+        database    = strategy,
+        trusted_ips = "127.0.0.1",
+        nginx_conf  = "spec/fixtures/custom_nginx.template",
+      }))
     end)
 
     teardown(function()
@@ -2536,8 +2599,8 @@ for _, strategy in helpers.each_strategy() do
 
     local function assert_ttls_records_for_token(uuid, count)
       local DB = require "kong.dao.db.postgres"
-      local _db = DB.new(strategy)
-      local query = string.format("SELECT COUNT(*) FROM ttls where table_name='oauth2_tokens' AND primary_uuid_value = '%s'", tostring(uuid))
+      local _db = DB.new(helpers.test_conf, strategy)
+      local query = fmt("SELECT COUNT(*) FROM ttls where table_name='oauth2_tokens' AND primary_uuid_value = '%s'", tostring(uuid))
       local result, error = _db:query(query)
       assert.falsy(error)
       assert.truthy(result[1].count == count)
@@ -2546,7 +2609,7 @@ for _, strategy in helpers.each_strategy() do
     describe("refresh token", function()
       it("is deleted after defined TTL", function()
         local token = provision_token("oauth2_11.com")
-        local token_entity = helpers.dao.oauth2_tokens:find_all { access_token = token.access_token }
+        local token_entity = dao.oauth2_tokens:find_all { access_token = token.access_token }
         assert.equal(1, #token_entity)
 
         if strategy == "postgres" then
@@ -2555,13 +2618,13 @@ for _, strategy in helpers.each_strategy() do
 
         ngx.sleep(3)
 
-        token_entity = helpers.dao.oauth2_tokens:find_all { access_token = token.access_token }
+        token_entity = dao.oauth2_tokens:find_all { access_token = token.access_token }
         assert.equal(0, #token_entity)
       end)
 
       it("is not deleted when when TTL is 0 == never", function()
         local token = provision_token("oauth2_12.com")
-        local token_entity = helpers.dao.oauth2_tokens:find_all { access_token = token.access_token }
+        local token_entity = dao.oauth2_tokens:find_all { access_token = token.access_token }
         assert.equal(1, #token_entity)
 
         if strategy == "postgres" then
@@ -2570,11 +2633,9 @@ for _, strategy in helpers.each_strategy() do
 
         ngx.sleep(3)
 
-        token_entity = helpers.dao.oauth2_tokens:find_all { access_token = token.access_token }
+        token_entity = dao.oauth2_tokens:find_all { access_token = token.access_token }
         assert.equal(1, #token_entity)
       end)
     end)
-
   end)
-
 end

@@ -9,7 +9,7 @@ for _, strategy in helpers.each_strategy() do
     describe("cluster", function()
       local cluster_policy = policies.cluster
 
-      local route_id   = uuid()
+      local conf = { route_id = uuid(), service_id = uuid() }
       local identifier = uuid()
 
       local db
@@ -33,7 +33,7 @@ for _, strategy in helpers.each_strategy() do
         local periods = timestamp.get_timestamps(current_timestamp)
 
         for period in pairs(periods) do
-          local metric = assert(cluster_policy.usage(nil, route_id, identifier,
+          local metric = assert(cluster_policy.usage(conf, identifier,
                                                      current_timestamp, period, "video"))
           assert.equal(0, metric)
         end
@@ -44,21 +44,21 @@ for _, strategy in helpers.each_strategy() do
         local periods = timestamp.get_timestamps(current_timestamp)
 
         -- First increment
-        assert(cluster_policy.increment(nil, route_id, identifier, current_timestamp, 1, "video"))
+        assert(cluster_policy.increment(conf, identifier, current_timestamp, 1, "video"))
 
         -- First select
         for period in pairs(periods) do
-          local metric = assert(cluster_policy.usage(nil, route_id, identifier,
+          local metric = assert(cluster_policy.usage(conf, identifier,
                                                      current_timestamp, period, "video"))
           assert.equal(1, metric)
         end
 
         -- Second increment
-        assert(cluster_policy.increment(nil, route_id, identifier, current_timestamp, 1, "video"))
+        assert(cluster_policy.increment(conf, identifier, current_timestamp, 1, "video"))
 
         -- Second select
         for period in pairs(periods) do
-          local metric = assert(cluster_policy.usage(nil, route_id, identifier,
+          local metric = assert(cluster_policy.usage(conf, identifier,
                                                      current_timestamp, period, "video"))
           assert.equal(2, metric)
         end
@@ -68,7 +68,7 @@ for _, strategy in helpers.each_strategy() do
         periods = timestamp.get_timestamps(current_timestamp)
 
         -- Third increment
-        assert(cluster_policy.increment(nil, route_id, identifier, current_timestamp, 1, "video"))
+        assert(cluster_policy.increment(conf, identifier, current_timestamp, 1, "video"))
 
         -- Third select with 1 second delay
         for period in pairs(periods) do
@@ -79,7 +79,7 @@ for _, strategy in helpers.each_strategy() do
             expected_value = 1
           end
 
-          local metric = assert(cluster_policy.usage(nil, route_id, identifier,
+          local metric = assert(cluster_policy.usage(conf, identifier,
                                                      current_timestamp, period, "video"))
           assert.equal(expected_value, metric)
         end

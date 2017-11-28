@@ -5,16 +5,6 @@ local deep_merge = utils.deep_merge
 local fmt = string.format
 
 
-local function shuffle(tbl)
-  local size = #tbl
-  for i = size, 1, -1 do
-    local rand = math.random(size)
-    tbl[i], tbl[rand] = tbl[rand], tbl[i]
-  end
-  return tbl
-end
-
-
 local Blueprint   = {}
 Blueprint.__index = Blueprint
 
@@ -92,13 +82,10 @@ function _M.new(dao, db)
   local upstream_name_seq = new_sequence("upstream-%d")
   res.upstreams = new_blueprint(dao.upstreams, function(overrides)
     local slots = overrides.slots or 100
-    local orderlist = {}
-    for i = 1, slots do orderlist[i] = i end
 
     return {
       name      = upstream_name_seq:next(),
       slots     = slots,
-      orderlist = shuffle(orderlist),
     }
   end)
 
@@ -289,7 +276,7 @@ function _M.new(dao, db)
     }
   end)
 
-  res.response_rate_limiting_plugins = new_blueprint(dao.plugins, function()
+  res.response_ratelimiting_plugins = new_blueprint(dao.plugins, function()
     return {
       name   = "response-ratelimiting",
       config = {},
@@ -299,6 +286,13 @@ function _M.new(dao, db)
   res.datadog_plugins = new_blueprint(dao.plugins, function()
     return {
       name   = "datadog",
+      config = {},
+    }
+  end)
+
+  res.statsd_plugins = new_blueprint(dao.plugins, function()
+    return {
+      name   = "statsd",
       config = {},
     }
   end)

@@ -85,14 +85,17 @@ local function log(premature, conf, message)
     return
   end
 
-  local api_name   = string_gsub(message.api.name, "%.", "_")
+  local name = string_gsub(message.service.name ~= ngx.null and
+                           message.service.name or message.service.host,
+                           "%.", "_")
+
   local stat_name  = {
-    request_size     = api_name .. ".request.size",
-    response_size    = api_name .. ".response.size",
-    latency          = api_name .. ".latency",
-    upstream_latency = api_name .. ".upstream_latency",
-    kong_latency     = api_name .. ".kong_latency",
-    request_count    = api_name .. ".request.count",
+    request_size     = name .. ".request.size",
+    response_size    = name .. ".response.size",
+    latency          = name .. ".latency",
+    upstream_latency = name .. ".upstream_latency",
+    kong_latency     = name .. ".kong_latency",
+    request_count    = name .. ".request.count",
   }
   local stat_value = {
     request_size     = message.request.size,
@@ -113,7 +116,7 @@ local function log(premature, conf, message)
     local metric = metrics[metric_config.name]
 
     if metric then
-      metric(api_name, message, metric_config, logger)
+      metric(name, message, metric_config, logger)
 
     else
       local stat_name = stat_name[metric_config.name]

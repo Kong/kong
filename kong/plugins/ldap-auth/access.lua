@@ -90,7 +90,7 @@ local function authenticate(conf, given_credentials)
     return false
   end
 
-  local cache_key = "ldap_auth_cache:" .. ngx.ctx.api.id .. ":" .. given_username
+  local cache_key = "ldap_auth_cache:" .. ngx.ctx.route.id .. ":" .. given_username
   local credential, err = singletons.cache:get(cache_key, {
     ttl = conf.cache_ttl,
     neg_ttl = conf.cache_ttl,

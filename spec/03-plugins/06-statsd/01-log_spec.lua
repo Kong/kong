@@ -1,11 +1,14 @@
 local helpers  = require "spec.helpers"
 
 
+local fmt = string.format
+
+
 local UDP_PORT = 20000
 
 
 for _, strategy in helpers.each_strategy() do
-  pending("Plugin: statsd (log) [#" .. strategy .. "]", function()
+  describe("Plugin: statsd (log) [#" .. strategy .. "]", function()
     local proxy_client
 
     setup(function()
@@ -21,75 +24,32 @@ for _, strategy in helpers.each_strategy() do
         consumer_id = consumer.id,
       }
 
-      local route1 = bp.routes:insert {
-        hosts = { "logging1.com" },
-      }
+      local routes = {}
+      for i = 1, 13 do
+        local service = bp.services:insert {
+          protocol = helpers.mock_upstream_protocol,
+          host     = helpers.mock_upstream_host,
+          port     = helpers.mock_upstream_port,
+          name     = fmt("statsd%s", i)
+        }
+        routes[i] = bp.routes:insert {
+          hosts   = { fmt("logging%d.com", i) },
+          service = service
+        }
+      end
 
-      local route2 = bp.routes:insert {
-        hosts = { "logging2.com" },
-      }
+      bp.key_auth_plugins:insert { route_id = routes[1].id }
 
-      local route3 = bp.routes:insert {
-        hosts = { "logging3.com" },
-      }
-
-      local route4 = bp.routes:insert {
-        hosts = { "logging4.com" },
-      }
-
-      local route5 = bp.routes:insert {
-        hosts = { "logging5.com" },
-      }
-
-      local route6 = bp.routes:insert {
-        hosts = { "logging6.com" },
-      }
-
-      local route7 = bp.routes:insert {
-        hosts = { "logging7.com" },
-      }
-
-      local route8 = bp.routes:insert {
-        hosts = { "logging8.com" },
-      }
-
-      local route9 = bp.routes:insert {
-        hosts = { "logging9.com" },
-      }
-
-      local route10 = bp.routes:insert {
-        hosts = { "logging10.com" },
-      }
-
-      local route11 = bp.routes:insert {
-        hosts = { "logging11.com" },
-      }
-
-      local route12 = bp.routes:insert {
-        hosts = { "logging12.com" },
-      }
-
-      local route13 = bp.routes:insert {
-        hosts = { "logging13.com" },
-      }
-
-      bp.plugins:insert {
-        name       = "key-auth",
-        route_id   = route1.id,
-      }
-
-      bp.plugins:insert {
-        route_id   = route1.id,
-        name       = "statsd",
+      bp.statsd_plugins:insert {
+        route_id   = routes[1].id,
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
         },
       }
 
-      bp.plugins:insert {
-        route_id   = route2.id,
-        name       = "statsd",
+      bp.statsd_plugins:insert {
+        route_id   = routes[2].id,
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -102,9 +62,8 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      bp.plugins:insert {
-        route_id   = route3.id,
-        name       = "statsd",
+      bp.statsd_plugins:insert {
+        route_id   = routes[3].id,
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -118,9 +77,8 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      bp.plugins:insert {
-        route_id   = route4.id,
-        name       = "statsd",
+      bp.statsd_plugins:insert {
+        route_id   = routes[4].id,
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -133,9 +91,8 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      bp.plugins:insert {
-        route_id   = route5.id,
-        name       = "statsd",
+      bp.statsd_plugins:insert {
+        route_id   = routes[5].id,
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -149,9 +106,8 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
-      bp.plugins:insert {
-        route_id   = route6.id,
-        name       = "statsd",
+      bp.statsd_plugins:insert {
+        route_id   = routes[6].id,
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -164,9 +120,8 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      bp.plugins:insert {
-        route_id   = route7.id,
-        name       = "statsd",
+      bp.statsd_plugins:insert {
+        route_id   = routes[7].id,
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -179,9 +134,8 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      bp.plugins:insert {
-        route_id   = route8.id,
-        name       = "statsd",
+      bp.statsd_plugins:insert {
+        route_id   = routes[8].id,
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -194,14 +148,10 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
-      bp.plugins:insert {
-        name       = "key-auth",
-        route_id   = route9.id,
-      }
+      bp.key_auth_plugins:insert { route_id = routes[9].id }
 
-      bp.plugins:insert {
-        route_id   = route9.id,
-        name       = "statsd",
+      bp.statsd_plugins:insert {
+        route_id   = routes[9].id,
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -215,14 +165,10 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      bp.plugins:insert {
-        name       = "key-auth",
-        route_id   = route10.id,
-      }
+      bp.key_auth_plugins:insert { route_id = routes[10].id }
 
-      bp.plugins:insert {
-        route_id   = route10.id,
-        name       = "statsd",
+      bp.statsd_plugins:insert {
+        route_id   = routes[10].id,
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -237,14 +183,10 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      bp.plugins:insert {
-        name       = "key-auth",
-        route_id   = route11.id,
-      }
+      bp.key_auth_plugins:insert { route_id = routes[11].id }
 
-      bp.plugins:insert {
-        route_id   = route11.id,
-        name       = "statsd",
+      bp.statsd_plugins:insert {
+        route_id   = routes[11].id,
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -259,14 +201,10 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      bp.plugins:insert {
-        name       = "key-auth",
-        route_id   = route12.id,
-      }
+      bp.key_auth_plugins:insert { route_id = routes[12].id }
 
-      bp.plugins:insert {
-        route_id   = route12.id,
-        name       = "statsd",
+      bp.statsd_plugins:insert {
+        route_id   = routes[12].id,
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -280,14 +218,10 @@ for _, strategy in helpers.each_strategy() do
         },
       }
 
-      bp.plugins:insert {
-        name       = "key-auth",
-        route_id   = route13.id,
-      }
+      bp.key_auth_plugins:insert { route_id = routes[13].id }
 
-      bp.plugins:insert {
-        route_id   = route13.id,
-        name       = "statsd",
+      bp.statsd_plugins:insert {
+        route_id   = routes[13].id,
         config     = {
           host     = "127.0.0.1",
           port     = UDP_PORT,
@@ -343,19 +277,19 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, metrics = thread:join()
         assert.True(ok)
-        assert.contains("kong.stastd1.request.count:1|c", metrics)
-        assert.contains("kong.stastd1.latency:%d+|ms", metrics, true)
-        assert.contains("kong.stastd1.request.size:110|ms", metrics)
-        assert.contains("kong.stastd1.request.status.200:1|c", metrics)
-        assert.contains("kong.stastd1.request.status.total:1|c", metrics)
-        assert.contains("kong.stastd1.response.size:%d+|ms", metrics, true)
-        assert.contains("kong.stastd1.upstream_latency:%d*|ms", metrics, true)
-        assert.contains("kong.stastd1.kong_latency:%d*|ms", metrics, true)
-        assert.contains("kong.stastd1.user.uniques:robert|s", metrics)
-        assert.contains("kong.stastd1.user.robert.request.count:1|c", metrics)
-        assert.contains("kong.stastd1.user.robert.request.status.total:1|c",
+        assert.contains("kong.statsd1.request.count:1|c", metrics)
+        assert.contains("kong.statsd1.latency:%d+|ms", metrics, true)
+        assert.contains("kong.statsd1.request.size:110|ms", metrics)
+        assert.contains("kong.statsd1.request.status.200:1|c", metrics)
+        assert.contains("kong.statsd1.request.status.total:1|c", metrics)
+        assert.contains("kong.statsd1.response.size:%d+|ms", metrics, true)
+        assert.contains("kong.statsd1.upstream_latency:%d*|ms", metrics, true)
+        assert.contains("kong.statsd1.kong_latency:%d*|ms", metrics, true)
+        assert.contains("kong.statsd1.user.uniques:robert|s", metrics)
+        assert.contains("kong.statsd1.user.robert.request.count:1|c", metrics)
+        assert.contains("kong.statsd1.user.robert.request.status.total:1|c",
                         metrics)
-        assert.contains("kong.stastd1.user.robert.request.status.200:1|c",
+        assert.contains("kong.statsd1.user.robert.request.status.200:1|c",
                         metrics)
       end)
       it("logs over UDP with default metrics and new prefix", function()
@@ -388,19 +322,19 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, response)
         local ok, metrics = thread:join()
         assert.True(ok)
-        assert.contains("prefix.stastd13.request.count:1|c", metrics)
-        assert.contains("prefix.stastd13.latency:%d+|ms", metrics, true)
-        assert.contains("prefix.stastd13.request.size:%d*|ms", metrics, true)
-        assert.contains("prefix.stastd13.request.status.200:1|c", metrics)
-        assert.contains("prefix.stastd13.request.status.total:1|c", metrics)
-        assert.contains("prefix.stastd13.response.size:%d+|ms", metrics, true)
-        assert.contains("prefix.stastd13.upstream_latency:%d*|ms", metrics, true)
-        assert.contains("prefix.stastd13.kong_latency:%d*|ms", metrics, true)
-        assert.contains("prefix.stastd13.user.uniques:robert|s", metrics)
-        assert.contains("prefix.stastd13.user.robert.request.count:1|c", metrics)
-        assert.contains("prefix.stastd13.user.robert.request.status.total:1|c",
+        assert.contains("prefix.statsd13.request.count:1|c", metrics)
+        assert.contains("prefix.statsd13.latency:%d+|ms", metrics, true)
+        assert.contains("prefix.statsd13.request.size:%d*|ms", metrics, true)
+        assert.contains("prefix.statsd13.request.status.200:1|c", metrics)
+        assert.contains("prefix.statsd13.request.status.total:1|c", metrics)
+        assert.contains("prefix.statsd13.response.size:%d+|ms", metrics, true)
+        assert.contains("prefix.statsd13.upstream_latency:%d*|ms", metrics, true)
+        assert.contains("prefix.statsd13.kong_latency:%d*|ms", metrics, true)
+        assert.contains("prefix.statsd13.user.uniques:robert|s", metrics)
+        assert.contains("prefix.statsd13.user.robert.request.count:1|c", metrics)
+        assert.contains("prefix.statsd13.user.robert.request.status.total:1|c",
                         metrics)
-        assert.contains("prefix.stastd13.user.robert.request.status.200:1|c",
+        assert.contains("prefix.statsd13.user.robert.request.status.200:1|c",
                         metrics)
       end)
       it("request_count", function()
@@ -416,7 +350,7 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, res = thread:join()
         assert.True(ok)
-        assert.equal("kong.stastd5.request.count:1|c", res)
+        assert.equal("kong.statsd5.request.count:1|c", res)
       end)
       it("status_count", function()
         local threads = require "llthreads2.ex"
@@ -448,8 +382,8 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, res = thread:join()
         assert.True(ok)
-        assert.contains("kong.stastd3.request.status.200:1|c", res)
-        assert.contains("kong.stastd3.request.status.total:1|c", res)
+        assert.contains("kong.statsd3.request.status.200:1|c", res)
+        assert.contains("kong.statsd3.request.status.total:1|c", res)
       end)
       it("request_size", function()
         local thread = helpers.udp_server(UDP_PORT)
@@ -464,7 +398,7 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, res = thread:join()
         assert.True(ok)
-        assert.matches("kong.stastd4.request.size:%d+|ms", res)
+        assert.matches("kong.statsd4.request.size:%d+|ms", res)
       end)
       it("latency", function()
         local thread = helpers.udp_server(UDP_PORT)
@@ -479,7 +413,7 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, res = thread:join()
         assert.True(ok)
-        assert.matches("kong.stastd2.latency:.*|ms", res)
+        assert.matches("kong.statsd2.latency:.*|ms", res)
       end)
       it("response_size", function()
         local thread = helpers.udp_server(UDP_PORT)
@@ -494,7 +428,7 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, res = thread:join()
         assert.True(ok)
-        assert.matches("kong.stastd6.response.size:%d+|ms", res)
+        assert.matches("kong.statsd6.response.size:%d+|ms", res)
       end)
       it("upstream_latency", function()
         local thread = helpers.udp_server(UDP_PORT)
@@ -509,7 +443,7 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, res = thread:join()
         assert.True(ok)
-        assert.matches("kong.stastd7.upstream_latency:.*|ms", res)
+        assert.matches("kong.statsd7.upstream_latency:.*|ms", res)
       end)
       it("kong_latency", function()
         local thread = helpers.udp_server(UDP_PORT)
@@ -524,7 +458,7 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, res = thread:join()
         assert.True(ok)
-        assert.matches("kong.stastd8.kong_latency:.*|ms", res)
+        assert.matches("kong.statsd8.kong_latency:.*|ms", res)
       end)
       it("unique_users", function()
         local thread = helpers.udp_server(UDP_PORT)
@@ -539,7 +473,7 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, res = thread:join()
         assert.True(ok)
-        assert.matches("kong.stastd9.user.uniques:robert|s", res)
+        assert.matches("kong.statsd9.user.uniques:robert|s", res)
       end)
       it("status_count_per_user", function()
         local threads = require "llthreads2.ex"
@@ -571,8 +505,8 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, res = thread:join()
         assert.True(ok)
-        assert.contains("kong.stastd10.user.robert.request.status.200:1|c", res)
-        assert.contains("kong.stastd10.user.robert.request.status.total:1|c", res)
+        assert.contains("kong.statsd10.user.robert.request.status.200:1|c", res)
+        assert.contains("kong.statsd10.user.robert.request.status.total:1|c", res)
       end)
       it("request_per_user", function()
         local thread = helpers.udp_server(UDP_PORT)
@@ -587,7 +521,7 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, res = thread:join()
         assert.True(ok)
-        assert.matches("kong.stastd11.user.bob.request.count:1|c", res)
+        assert.matches("kong.statsd11.user.bob.request.count:1|c", res)
       end)
       it("latency as gauge", function()
         local thread = helpers.udp_server(UDP_PORT)
@@ -602,7 +536,7 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, res = thread:join()
         assert.True(ok)
-        assert.matches("kong%.stastd12%.latency:%d+|g", res)
+        assert.matches("kong%.statsd12%.latency:%d+|g", res)
       end)
     end)
   end)
