@@ -1,6 +1,7 @@
 local DAO = require "kong.dao.dao"
 local utils = require "kong.tools.utils"
 local ModelFactory = require "kong.dao.model_factory"
+local ee_dao_factory = require "kong.enterprise_edition.dao.factory"
 
 local CORE_MODELS = {
   "apis",
@@ -171,6 +172,12 @@ function _M:drop_schema()
     end
   end
 
+  if ee_dao_factory.additional_tables then
+    for _, v in ipairs(ee_dao_factory.additional_tables(self)) do
+      self.db:drop_table(v)
+    end
+  end
+
   self.db:drop_table("schema_migrations")
 end
 
@@ -191,6 +198,12 @@ function _M:truncate_tables()
 
   if self.additional_tables then
     for _, v in ipairs(self.additional_tables) do
+      self.db:truncate_table(v)
+    end
+  end
+
+  if ee_dao_factory.additional_tables then
+    for _, v in ipairs(ee_dao_factory.additional_tables(self)) do
       self.db:truncate_table(v)
     end
   end

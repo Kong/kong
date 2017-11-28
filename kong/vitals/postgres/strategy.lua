@@ -1,11 +1,13 @@
 local table_rotater_module = require "kong.vitals.postgres.table_rotater"
 local fmt                  = string.format
 local unpack               = unpack
-
+local log                  = ngx.log
+local WARN                 = ngx.WARN
 
 local _M = {}
 local mt = { __index = _M }
 
+local _log_prefix = "[vitals-strategy] "
 
 local INSERT_STATS = [[
   insert into %s (at, node_id, l2_hit, l2_miss, plat_min, plat_max)
@@ -19,11 +21,32 @@ local INSERT_STATS = [[
 
 local UPDATE_NODE_META = "update vitals_node_meta set last_report = now() where node_id = '%s'"
 
+function _M.dynamic_table_names(dao)
+  local table_names = {}
+
+  -- capture the dynamically-created tables
+  local query = [[select table_name from information_schema.tables
+      where table_schema = 'public' and table_name like 'vitals_stats_seconds_%']]
+
+  local result, err = dao.db:query(query)
+  if not result then
+    -- just return what we've got, don't halt processing
+    log(WARN, _log_prefix, err)
+    return table_names
+  end
+
+  for i, v in ipairs(result) do
+    table_names[i] = v.table_name
+  end
+
+  return table_names
+end
+
 function _M.new(dao_factory, opts)
   local table_rotater = table_rotater_module.new(
     {
       db = dao_factory.db,
-      rotation_interval = opts.postgres_rotation_interval,
+      rotation_interval = opts.postgres_rotation_interval or 3600,
     }
   )
 

@@ -1,6 +1,7 @@
 local utils      = require "kong.tools.utils"
 local json_null  = require("cjson").null
 local singletons = require "kong.singletons"
+local pg_strat   = require "kong.vitals.postgres.strategy"
 local ffi        = require "ffi"
 
 
@@ -42,6 +43,33 @@ local worker_count = ngx.worker.count()
 local _M = {}
 local mt = { __index = _M }
 
+--[[
+  Returns the names of tables created by the vitals module, mainly
+  for use in `kong migrations reset`.
+
+  Add to this list when you create a new vitals table.
+ ]]
+function _M.table_names(dao)
+
+  -- tables common across both dbs
+  local table_names = {
+    "vitals_consumers",
+    "vitals_node_meta",
+    "vitals_stats_hours",
+    "vitals_stats_minutes",
+    "vitals_stats_seconds",
+  }
+  local table_count = #table_names
+
+  if dao.db_type == "postgres" then
+    -- pick up the tables created at runtime
+    for i, v in ipairs(pg_strat.dynamic_table_names(dao)) do
+      table_names[table_count+i] = v
+    end
+  end
+
+  return table_names
+end
 
 ffi.cdef[[
   typedef uint32_t time_t;
@@ -133,7 +161,7 @@ function _M.new(opts)
     }
 
     if dao_factory.db_type == "postgres" then
-      db_strategy = require "kong.vitals.postgres.strategy"
+      db_strategy = pg_strat
     elseif dao_factory.db_type == "cassandra" then
       db_strategy = require "kong.vitals.cassandra.strategy"
     else

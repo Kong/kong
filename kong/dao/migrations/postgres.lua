@@ -794,13 +794,30 @@ return {
       DROP TABLE vitals_stats_hours;
     ]]
   },
-
 --  recreate vitals tables with new primary key to support node-level stats
   {
     name = "2017-10-31-145721_vitals_stats_add_node_id",
-    up = [[
-      DROP TABLE IF EXISTS vitals_stats_seconds;
-      CREATE TABLE vitals_stats_seconds(
+    up = function(_, _, dao)
+      local vitals = require("kong.vitals")
+
+      -- drop all vitals tables, including generated ones
+      local table_names   = vitals.table_names(dao)
+      local allowed_chars = "^vitals_[a-zA-Z0-9_]+$"
+      for _, v in ipairs(table_names) do
+        if not v:match(allowed_chars) then
+          return "illegal table name " .. v
+        end
+
+        local _, err = dao.db:query(string.format("drop table if exists %s", v))
+
+        -- bail on first error
+        if err then
+          return err
+        end
+      end
+
+      local _, err = dao.db:query([[
+        CREATE TABLE vitals_stats_seconds(
           node_id uuid,
           at integer,
           l2_hit integer default 0,
@@ -808,14 +825,22 @@ return {
           plat_min integer,
           plat_max integer,
           PRIMARY KEY (node_id, at)
-      );
+        );
+      ]])
 
-      DROP TABLE IF EXISTS vitals_stats_minutes;
-      CREATE TABLE vitals_stats_minutes
-      (LIKE vitals_stats_seconds INCLUDING defaults INCLUDING constraints INCLUDING indexes);
+      if err then
+        return err
+      end
 
-      DROP TABLE IF EXISTS vitals_stats_hours;
-    ]],
+      local _, err = dao.db:query([[
+        CREATE TABLE vitals_stats_minutes
+        (LIKE vitals_stats_seconds INCLUDING defaults INCLUDING constraints INCLUDING indexes);
+      ]])
+
+      if err then
+        return err
+      end
+    end,
     down = [[
       DROP TABLE vitals_stats_seconds;
       DROP TABLE vitals_stats_minutes;

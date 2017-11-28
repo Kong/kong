@@ -102,6 +102,44 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
     end)
 
+    describe(".table_names()", function()
+      before_each(function()
+        if dao.db_type == "postgres" then
+          -- this is ugly, but tests are creating dynamic tables and
+          -- not cleaning them up. will sort that in another PR
+          dao:drop_schema()
+          dao:run_migrations()
+
+          -- insert a fake stats table
+          assert(dao.db:query("create table if not exists vitals_stats_seconds_foo (like vitals_stats_seconds)"))
+        end
+      end)
+
+      after_each(function()
+        if dao.db_type == "postgres" then
+          assert(dao.db:query("drop table if exists vitals_stats_seconds_foo"))
+        end
+      end)
+
+      it("returns all vitals table names", function()
+        local results, _ = kong_vitals.table_names(dao)
+
+        local expected = {
+          "vitals_consumers",
+          "vitals_node_meta",
+          "vitals_stats_hours",
+          "vitals_stats_minutes",
+          "vitals_stats_seconds",
+        }
+
+        if (dao.db_type == "postgres") then
+          expected[6] = "vitals_stats_seconds_foo"
+        end
+
+        assert.same(expected, results)
+      end)
+    end)
+
     describe("current_bucket()", function()
       it("returns the current bucket", function()
         local vitals = kong_vitals.new { dao = dao }
