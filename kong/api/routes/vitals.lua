@@ -12,13 +12,6 @@ return {
       return helpers.responses.send_HTTP_OK({ stats = current_stats })
     end
   },
-  ["/vitals/minutes"] = {
-    GET = function(self, dao, helpers)
-      local current_minute_stats, _ = singletons.vitals:get_stats("minutes", "cluster", nil)
-
-      return helpers.responses.send_HTTP_OK({ stats = current_minute_stats })
-    end
-  },
   ["/vitals/cluster"] = {
     GET = function(self, dao, helpers)
       local cluster_stats, err = singletons.vitals:get_stats(self.params.interval, "cluster", nil)
