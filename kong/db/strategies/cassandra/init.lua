@@ -121,10 +121,10 @@ local function serialize_foreign_pk(db_columns, args, args_names, foreign_pk)
       to_serialize = ngx.null
 
     else
-      to_serialize = foreign_pk[db_column.name]
+      to_serialize = foreign_pk[db_column.foreign_field_name]
     end
 
-    insert(args, serialize_arg(db_column.field, to_serialize))
+    insert(args, serialize_arg(db_column.foreign_field, to_serialize))
 
     if args_names then
       insert(args_names, db_column.col_name)
@@ -164,12 +164,11 @@ end
 
 
 function _M.new(connector, schema, errors)
-  local n_fields                = #schema.fields
-  local n_pk                    = #schema.primary_key
-  local select_bind_args        = new_tab(n_pk, 0)
-  local insert_columns          = new_tab(n_fields, 0)
-  local insert_bind_args        = rep("?, ", n_fields):sub(1, -3)
-  local foreign_keys_db_columns = {}
+  local n_fields         = #schema.fields
+  local n_pk             = #schema.primary_key
+  local select_bind_args = new_tab(n_pk, 0)
+  local insert_columns   = new_tab(n_fields, 0)
+  local insert_bind_args = rep("?, ", n_fields):sub(1, -3)
 
   local each_pk_field
   local each_non_pk_field
@@ -214,6 +213,20 @@ function _M.new(connector, schema, errors)
     insert(select_bind_args, field_name .. " = ?")
   end
 
+  -- self instanciation
+
+  local self = {
+    connector               = connector, -- instance of kong.db.strategies.cassandra.init
+    schema                  = schema,
+    errors                  = errors,
+    each_pk_field           = each_pk_field,
+    each_non_pk_field       = each_non_pk_field,
+    foreign_keys_db_columns = {},
+    queries                 = nil,
+  }
+
+  -- foreign keys constraints and for_ selector methods
+
   for field_name, field in schema:each_field() do
     if field.type == "foreign" then
       local foreign_schema = field.schema
@@ -225,19 +238,27 @@ function _M.new(connector, schema, errors)
         for foreign_field_name, foreign_field in foreign_schema:each_field() do
           if foreign_field_name == foreign_pk[i] then
             insert(db_columns, {
-              col_name = field_name .. "_" .. foreign_pk[i],
-              name     = foreign_field_name,
-              field    = foreign_field,
+              col_name           = field_name .. "_" .. foreign_pk[i],
+              foreign_field      = foreign_field,
+              foreign_field_name = foreign_field_name,
             })
           end
         end
       end
 
-      foreign_keys_db_columns[field_name] = db_columns
+      local db_columns_args_names = new_tab(#db_columns, 0)
 
       for i = 1, #db_columns do
+        -- keep args_names for 'for_*' methods
+        db_columns_args_names[i] = db_columns[i].col_name .. " = ?"
+
+        -- keep insert column names for 'insert'
         insert(insert_columns, db_columns[i].col_name)
       end
+
+      db_columns.args_names = concat(db_columns_args_names, " AND ")
+
+      self.foreign_keys_db_columns[field_name] = db_columns
 
       -- store in constraints to subsequently retrieve the inverse relation
 
@@ -255,6 +276,25 @@ function _M.new(connector, schema, errors)
   select_bind_args = concat(select_bind_args, " AND ")
 
   -- build queries
+
+  for field_name, field in schema:each_field() do
+    if field.type == "foreign" then
+      -- generate for_ method for inverse selection
+      -- e.g. routes:for_service(service_pk)
+
+      local method_name = "for_" .. field_name
+      local db_columns = self.foreign_keys_db_columns[field_name]
+
+      local select_foreign_bind_args = {}
+      for _, foreign_key_column in ipairs(db_columns) do
+        insert(select_foreign_bind_args, foreign_key_column.col_name .. " = ?")
+      end
+
+      self[method_name] = function(self, foreign_key, size, offset)
+        return self:page(size, offset, foreign_key, db_columns)
+      end
+    end
+  end
 
   local insert_query = fmt([[
     INSERT INTO %s(partition, %s) VALUES('%s', %s) IF NOT EXISTS
@@ -280,22 +320,13 @@ function _M.new(connector, schema, errors)
     DELETE FROM %s WHERE partition = '%s' AND %s
   ]], schema.name, schema.name, select_bind_args)
 
-  local self = {
-    connector               = connector, -- instance of kong.db.strategies.cassandra.init
-    schema                  = schema,
-    errors                  = errors,
-    each_pk_field           = each_pk_field,
-    each_non_pk_field       = each_non_pk_field,
-    foreign_keys_db_columns = foreign_keys_db_columns,
-
-    queries = {
-      insert             = insert_query,
-      select             = select_query,
-      select_page        = select_page_query,
-      select_with_filter = select_with_filter,
-      update             = update_query,
-      delete             = delete_query,
-    }
+  self.queries = {
+    insert             = insert_query,
+    select             = select_query,
+    select_page        = select_page_query,
+    select_with_filter = select_with_filter,
+    update             = update_query,
+    delete             = delete_query,
   }
 
   return setmetatable(self, _mt)
@@ -393,7 +424,7 @@ local function deserialize_row(self, row)
         local col_name = db_columns[i].col_name
 
         if row[col_name] ~= nil then
-          row[field_name][db_columns[i].name] = row[col_name]
+          row[field_name][db_columns[i].foreign_field_name] = row[col_name]
           row[col_name] = nil
 
           has_fk = true
@@ -456,7 +487,7 @@ do
   local opts = new_tab(0, 2)
 
 
-  function _mt:page(size, offset)
+  function _mt:page(size, offset, foreign_key, foreign_key_db_columns)
     if offset then
       local offset_decoded = decode_base64(offset)
       if not offset_decoded then
@@ -466,12 +497,26 @@ do
       offset = offset_decoded
     end
 
-    local cql = self.queries.select_page
+    local cql
+    local args
+
+    if not foreign_key then
+      cql = self.queries.select_page
+
+    elseif foreign_key and foreign_key_db_columns then
+      args = new_tab(#foreign_key_db_columns, 0)
+      cql = fmt(self.queries.select_with_filter, foreign_key_db_columns.args_names)
+
+      serialize_foreign_pk(foreign_key_db_columns, args, nil, foreign_key)
+
+    else
+      error("should provide both of: foreign_key, foreign_key_db_columns", 2)
+    end
 
     opts.page_size = size
     opts.paging_state = offset
 
-    local rows, err = self.connector:query(cql, nil, opts, "read")
+    local rows, err = self.connector:query(cql, args, opts, "read")
     if not rows then
       return nil, self.errors:database_error("could not execute page query: "
                                              .. err)
@@ -626,6 +671,7 @@ function _mt:update(primary_key, entity)
 
   return row
 end
+
 
 do
   local function select_by_foreign_key(self, foreign_schema,

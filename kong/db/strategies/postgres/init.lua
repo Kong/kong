@@ -1,6 +1,7 @@
-local arrays        = require "pgmoon.arrays"
-local json          = require "pgmoon.json"
-local cjson         = require "cjson.safe"
+local arrays     = require "pgmoon.arrays"
+local json       = require "pgmoon.json"
+local cjson      = require "cjson"
+local cjson_safe = require "cjson.safe"
 
 
 local encode_base64 = ngx.encode_base64
@@ -265,11 +266,7 @@ local function escape_literal(connector, literal, field)
       elseif et == "map" or et == "record" then
         local jsons = {}
         for i, v in ipairs(literal) do
-          local json, err = cjson.encode(v)
-          if not json then
-            return error(err)
-          end
-          jsons[i] = json
+          jsons[i] = cjson.encode(v)
         end
         return encode_array(jsons)
       end
@@ -505,15 +502,14 @@ local function page(self, size, token, name, foreign_key)
       return nil, self.errors:invalid_offset(token, "bad base64 encoding")
     end
 
-    token_decoded = cjson.decode(token_decoded)
+    token_decoded = cjson_safe.decode(token_decoded)
     if not token_decoded then
-      return nil, self.errors:invalid_offset(token,  "bad json encoding")
+      return nil, self.errors:invalid_offset(token, "bad json encoding")
     end
 
     local filter = foreign_key or {}
 
-    local primary_key = self.schema.primary_key
-    for i, field_name in ipairs(primary_key) do
+    for i, field_name in ipairs(self.schema.primary_key) do
       filter[field_name] = token_decoded[i]
     end
 
@@ -525,6 +521,7 @@ local function page(self, size, token, name, foreign_key)
     else
       name = "page_next"
     end
+
     res, err = execute(self, name, filter)
   end
 
@@ -543,17 +540,12 @@ local function page(self, size, token, name, foreign_key)
     if i == size_plus_one then
       row = res[size]
       local offset = {}
-      local primary_key = self.schema.primary_key
-      for i, field_name in ipairs(primary_key) do
+      for i, field_name in ipairs(self.schema.primary_key) do
         offset[i] = row[field_name]
       end
 
-      -- TODO: do we care about errors here?
       offset = cjson.encode(offset)
-      if offset then
-        -- TODO: do we care about errors here?
-        offset = encode_base64(offset, true)
-      end
+      offset = encode_base64(offset, true)
 
       return rows, nil, offset
     end

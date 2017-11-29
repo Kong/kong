@@ -479,16 +479,32 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         -- I/O
-        it("returns empty array when there are no rows", function()
+        it("returns a table encoding to a JSON Array when empty", function()
           assert(db:truncate())
 
           local rows, err, err_t, offset = db.routes:page()
           assert.is_nil(err_t)
           assert.is_nil(err)
           assert.is_table(rows)
-          assert.equal(#rows, 0)
+          assert.equal(0, #rows)
           assert.is_nil(offset)
           assert.equals("[]", cjson.encode(rows))
+        end)
+
+        it("invokes schema post-processing", function()
+          assert(db:truncate())
+
+          bp.routes:insert {
+            methods = { "GET" },
+          }
+
+          local rows, err, err_t = db.routes:page()
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+
+          for i = 1, #rows do
+            assert.is_truthy(rows[i].methods.GET)
+          end
         end)
 
         describe("page size", function()
@@ -505,7 +521,7 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err_t)
             assert.is_nil(err)
             assert.is_table(rows)
-            assert.equal(#rows, 100)
+            assert.equal(100, #rows)
           end)
 
           it("max page_size = 1000", function()
@@ -513,7 +529,7 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err_t)
             assert.is_nil(err)
             assert.is_table(rows)
-            assert.equal(#rows, 1000)
+            assert.equal(1000, #rows)
           end)
         end)
 
@@ -529,20 +545,12 @@ for _, strategy in helpers.each_strategy() do
             end
           end)
 
-          it("preserves the set functionality", function()
-            local rows = db.routes:page()
-
-            for i=1, #rows do
-              assert.is_truthy(rows[i].methods.GET)
-            end
-          end)
-
           it("fetches all rows in one page", function()
             local rows, err, err_t, offset = db.routes:page()
             assert.is_nil(err_t)
             assert.is_nil(err)
             assert.is_table(rows)
-            assert.equal(#rows, 10)
+            assert.equal(10, #rows)
             assert.is_nil(offset)
           end)
 
@@ -574,7 +582,7 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err_t)
             assert.is_nil(err)
             assert.is_table(rows)
-            assert.equal(#rows, 5)
+            assert.equal(5, #rows)
             assert.is_string(offset)
           end)
 
@@ -583,7 +591,7 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err_t)
             assert.is_nil(err)
             assert.is_table(rows_1)
-            assert.equal(#rows_1, 5)
+            assert.equal(5, #rows_1)
             assert.is_string(offset)
 
             local page_size = 5
@@ -598,7 +606,7 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err_t)
             assert.is_nil(err)
             assert.is_table(rows_2)
-            assert.equal(#rows_2, 5)
+            assert.equal(5, #rows_2)
             assert.is_nil(offset) -- last page reached
 
             for i = 1, 5 do
@@ -620,13 +628,13 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err_t)
             assert.is_nil(err)
             assert.is_table(rows_a)
-            assert.equal(#rows_a, 3)
+            assert.equal(3, #rows_a)
 
             local rows_b, err, err_t = db.routes:page(3, offset)
             assert.is_nil(err_t)
             assert.is_nil(err)
             assert.is_table(rows_b)
-            assert.equal(#rows_b, 3)
+            assert.equal(3, #rows_b)
 
             for i = 1, #rows_a do
               assert.same(rows_a[i], rows_b[i])
@@ -644,11 +652,11 @@ for _, strategy in helpers.each_strategy() do
               assert.is_nil(err)
 
               if offset then
-                assert.equal(#rows, 3)
+                assert.equal(3, #rows)
               end
             until offset == nil
 
-            assert.equal(#rows, 1) -- last page
+            assert.equal(1, #rows) -- last page
           end)
 
           it("fetches first page with invalid offset", function()
@@ -1026,76 +1034,6 @@ for _, strategy in helpers.each_strategy() do
         assert.same(route, route_in_db)
       end)
 
-      local t = strategy == "postgres" and it or pending
-
-      t(":for_service() lists no Routes associated to an inexsistent Service", function()
-        -- TODO: implement :for_service() for Cassandra strategy
-        local rows, err, err_t = db.routes:for_service({
-          id = a_blank_uuid,
-        })
-
-        assert.same({}, rows)
-        assert.is_nil(err)
-        assert.is_nil(err_t)
-        assert.equals("[]", cjson.encode(rows))
-      end)
-
-      t(":for_service() returns table with cjson.empty_array_mt metatable", function()
-        -- TODO: implement :for_service() for Cassandra strategy
-        local rows, err, err_t = db.routes:for_service({
-          id = a_blank_uuid,
-        })
-        assert.is_nil(err_t)
-        assert.is_nil(err)
-
-        if #rows > 0 then
-          -- ignore this test, the previous one will fail already
-          return
-        end
-
-        assert.equals("[]", cjson.encode(rows))
-      end)
-
-      t(":for_service() lists Routes associated to a Service", function()
-        -- TODO: implement :for_service() for Cassandra strategy
-        local service = bp.services:insert()
-        local route1 = bp.routes:insert({
-          service = service,
-          methods = { "GET" }
-        })
-        bp.routes:insert({
-          hosts = { "example.com" },
-        }) -- route 2
-
-        local rows, err, err_t = db.routes:for_service({
-          id = service.id,
-        })
-        assert.is_nil(err_t)
-        assert.is_nil(err)
-        assert.same({ route1 }, rows)
-      end)
-
-      t(":for_service() invokes Schema post_processing", function()
-        -- TODO: implement :for_service() for Cassandra strategy
-        local service = bp.services:insert({
-          host = "example.com",
-        })
-        bp.routes:insert({ service = service, methods = { "GET" } })
-
-        local rows, err, err_t = db.routes:for_service({
-          id = service.id,
-        })
-        assert.is_nil(err_t)
-        assert.is_nil(err)
-
-        if #rows ~= 0 then
-          return
-        end
-
-        -- check that post_processing is invoked
-        assert.is_truthy(rows[1].methods.GET)
-      end)
-
       it(":update() attaches a Route to an existing Service", function()
         local service1 = bp.services:insert({ host = "service1.com" })
         local service2 = bp.services:insert({ host = "service2.com" })
@@ -1177,6 +1115,296 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(err)
         assert.same(service, service_in_db)
       end)
-    end)
-  end)
+
+      describe("routes:for_service()", function()
+        -- no I/O
+        it("errors out if invalid arguments", function()
+          assert.has_error(function()
+            db.routes:for_service(nil)
+          end, "foreign_key must be a table")
+
+          assert.has_error(function()
+            db.routes:for_service({ id = 123 }, "100")
+          end, "size must be a number")
+
+          assert.has_error(function()
+            db.routes:for_service({ id = 123 }, -100)
+          end, "size must be a positive number")
+
+          assert.has_error(function()
+            db.routes:for_service({ id = 123 }, 100, 12345)
+          end, "offset must be a string")
+        end)
+
+        -- I/O
+        it("lists no Routes associated to an inexsistent Service", function()
+          local rows, err, err_t = db.routes:for_service {
+            id = a_blank_uuid,
+          }
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+          assert.same({}, rows)
+        end)
+
+        it("returns a table encoding to a JSON Array when empty", function()
+          local rows, err, err_t = db.routes:for_service {
+            id = a_blank_uuid,
+          }
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+
+          if #rows > 0 then
+            error("should have returned exactly 0 rows")
+          end
+
+          assert.equals("[]", cjson.encode(rows))
+        end)
+
+        it("lists Routes associated to a Service", function()
+          local service = bp.services:insert()
+
+          local route1 = bp.routes:insert {
+            methods = { "GET" },
+            service = service,
+          }
+
+          bp.routes:insert {
+            hosts = { "example.com" },
+            -- different service
+          }
+
+          local rows, err, err_t = db.routes:for_service {
+            id = service.id,
+          }
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+          assert.same({ route1 }, rows)
+        end)
+
+        it("invokes schema post-processing", function()
+          local service = bp.services:insert {
+            host = "example.com",
+          }
+
+          bp.routes:insert {
+            service = service,
+            methods = { "GET" },
+          }
+
+          local rows, err, err_t = db.routes:for_service {
+            id = service.id,
+          }
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+
+          if #rows ~= 1 then
+            error("should have returned exactly 1 row")
+          end
+
+          -- check that post_processing is invoked
+          -- our post-processing function will use a "set" metatable to alias
+          -- the values for shorthand accesses.
+          assert.is_truthy(rows[1].methods.GET)
+        end)
+
+        describe("#o paginates", function()
+          local service
+
+          describe("page size", function()
+            setup(function()
+              assert(db:truncate())
+
+              service = bp.services:insert()
+
+              for i = 1, 1002 do
+                bp.routes:insert {
+                  hosts   = { "paginate-" .. i .. ".com" },
+                  service = service,
+                }
+              end
+            end)
+
+            it("defaults page_size = 100", function()
+              local rows, err, err_t = db.routes:for_service {
+                id = service.id,
+              }
+              assert.is_nil(err_t)
+              assert.is_nil(err)
+              assert.equal(100, #rows)
+            end)
+
+            it("max page_size = 1000", function()
+              local rows, err, err_t = db.routes:for_service({
+                id = service.id,
+              }, 2000)
+              assert.is_nil(err_t)
+              assert.is_nil(err)
+              assert.equal(1000, #rows)
+            end)
+          end)
+
+          describe("page offset", function()
+            setup(function()
+              assert(db:truncate())
+
+              service = bp.services:insert()
+
+              for i = 1, 10 do
+                bp.routes:insert {
+                  hosts   = { "paginate-" .. i .. ".com" },
+                  service = service,
+                }
+              end
+            end)
+
+            it("fetches all rows in one page", function()
+              local rows, err, err_t, offset = db.routes:for_service {
+                id = service.id,
+              }
+              assert.is_nil(err_t)
+              assert.is_nil(err)
+              assert.is_nil(offset)
+              assert.equal(10, #rows)
+            end)
+
+            it("fetched rows are returned in a table without hash part", function()
+              local rows, err, err_t = db.routes:for_service {
+                id = service.id,
+              }
+              assert.is_nil(err_t)
+              assert.is_nil(err)
+              assert.is_table(rows)
+
+              local keys = {}
+
+              for k in pairs(rows) do
+                table.insert(keys, k)
+              end
+
+              assert.equal(#rows, #keys) -- no hash part in rows
+            end)
+
+            it("fetches rows always in same order", function()
+              local rows1 = db.routes:for_service { id = service.id }
+              local rows2 = db.routes:for_service { id = service.id }
+              assert.is_table(rows1)
+              assert.is_table(rows2)
+              assert.same(rows1, rows2)
+            end)
+
+            it("returns offset when page_size < total", function()
+              local rows, err, err_t, offset = db.routes:for_service({
+                id = service.id,
+              }, 5)
+              assert.is_nil(err_t)
+              assert.is_nil(err)
+              assert.is_table(rows)
+              assert.equal(5, #rows)
+              assert.is_string(offset)
+            end)
+
+            it("#oo fetches subsequent pages with offset", function()
+              local rows_1, err, err_t, offset = db.routes:for_service({
+                id = service.id,
+              }, 5)
+              assert.is_nil(err_t)
+              assert.is_nil(err)
+              assert.is_table(rows_1)
+              assert.equal(5, #rows_1)
+              assert.is_string(offset)
+
+              local page_size = 5
+              if strategy == "cassandra" then
+                -- 5 + 1: cassandra only detects the end of a pagination when
+                -- we go past the number of rows in the iteration - it doesn't
+                -- seem to detect the pages ending at the limit
+                page_size = page_size + 1
+              end
+
+              local rows_2, err, err_t, offset = db.routes:for_service({
+                id = service.id,
+              }, page_size, offset)
+
+              assert.is_nil(err_t)
+              assert.is_nil(err)
+              assert.is_table(rows_2)
+              assert.equal(5, #rows_2)
+              assert.is_nil(offset) -- last page reached
+
+              for i = 1, 5 do
+                local row_1 = rows_1[i]
+                for j = 1, 5 do
+                  local row_2 = rows_2[j]
+                  assert.not_same(row_1, row_2)
+                end
+              end
+            end)
+
+            it("fetches same page with same offset", function()
+              local _, err, err_t, offset = db.routes:for_service({
+                id = service.id,
+              }, 3)
+              assert.is_nil(err_t)
+              assert.is_nil(err)
+              assert.is_string(offset)
+
+              local rows_a, err, err_t = db.routes:for_service({
+                id = service.id,
+              }, 3, offset)
+              assert.is_nil(err_t)
+              assert.is_nil(err)
+              assert.is_table(rows_a)
+              assert.equal(3, #rows_a)
+
+              local rows_b, err, err_t = db.routes:for_service({
+                id = service.id,
+              }, 3, offset)
+              assert.is_nil(err_t)
+              assert.is_nil(err)
+              assert.is_table(rows_b)
+              assert.equal(3, #rows_b)
+
+              for i = 1, #rows_a do
+                assert.same(rows_a[i], rows_b[i])
+              end
+            end)
+
+            it("fetches pages with last page having a single row", function()
+              local rows, offset
+
+              repeat
+                local err, err_t
+
+                rows, err, err_t, offset = db.routes:for_service({
+                  id = service.id,
+                }, 3, offset)
+                assert.is_nil(err_t)
+                assert.is_nil(err)
+
+                if offset then
+                  assert.equal(3, #rows)
+                end
+              until offset == nil
+
+              assert.equal(1, #rows) -- last page
+            end)
+
+            it("fetches first page with invalid offset", function()
+              local rows, err, err_t = db.routes:for_service({
+                id = service.id,
+              }, 3, "hello")
+              assert.is_nil(rows)
+              assert.equal("invalid offset", err)
+              assert.same({
+                code     = Errors.codes.INVALID_OFFSET,
+                message  = "'hello' is not a valid offset for this strategy: bad base64 encoding",
+                name     = "invalid offset",
+                strategy = strategy,
+              }, err_t)
+            end)
+          end)
+        end) -- paginates
+      end) -- routes:for_service()
+    end) -- Services and Routes association
+  end) -- kong.db [strategy]
 end

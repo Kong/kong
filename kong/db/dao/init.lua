@@ -34,17 +34,25 @@ local function generate_foreign_key_methods(self)
   for name, field in schema:each_field() do
     if field.type == "foreign" then
       local method_name = "for_" .. name
-      self[method_name] = function(self, foreign_key, size, offset)
-        size = tonumber(size == nil and 100 or size)
 
-        if not size then
-          error("size must be a number", 2)
+      self[method_name] = function(self, foreign_key, size, offset)
+        if type(foreign_key) ~= "table" then
+          error("foreign_key must be a table", 2)
         end
 
-        size = min(size, 1000)
+        if size ~= nil then
+          if type(size) ~= "number" then
+            error("size must be a number", 2)
+          end
 
-        if size < 0 then
-          error("size must be positive (> 0)", 2)
+          if size < 0 then
+            error("size must be a positive number", 2)
+          end
+
+          size = min(size, 1000)
+
+        else
+          size = 100
         end
 
         if offset ~= nil and type(offset) ~= "string" then
@@ -59,14 +67,16 @@ local function generate_foreign_key_methods(self)
 
         local strategy = self.strategy
 
-        local rows, err_t, new_offset = strategy[method_name](strategy, foreign_key, size, offset)
+        local rows, err_t, new_offset = strategy[method_name](strategy,
+                                                              foreign_key,
+                                                              size, offset)
         if not rows then
           return nil, err_t.name, err_t
         end
 
-        local entities, err, err_tbl = self:rows_to_entities(rows)
+        local entities, err, err_t = self:rows_to_entities(rows)
         if err then
-          return nil, err, err_tbl
+          return nil, err, err_t
         end
 
         return entities, nil, nil, new_offset
@@ -142,9 +152,9 @@ function DAO:page(size, offset)
     return nil, err_t.name, err_t
   end
 
-  local entities, err, err_tbl = self:rows_to_entities(rows)
+  local entities, err, err_t = self:rows_to_entities(rows)
   if not entities then
-    return nil, err, err_tbl
+    return nil, err, err_t
   end
 
   return entities, err, err_t, offset
