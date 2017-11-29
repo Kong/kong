@@ -1,5 +1,6 @@
 local cjson = require "cjson"
 local helpers = require "spec.helpers"
+local utils = require "kong.tools.utils"
 
 describe("Plugin: basic-auth (API)", function()
   local consumer, admin_client
@@ -298,6 +299,144 @@ describe("Plugin: basic-auth (API)", function()
           })
           assert.res_status(404, res)
         end)
+      end)
+    end)
+  end)
+  describe("/basic-auths", function()
+    local consumer2
+    describe("GET", function()
+      setup(function()
+        helpers.dao:truncate_table("basicauth_credentials")
+        assert(helpers.dao.basicauth_credentials:insert {
+          consumer_id = consumer.id,
+          username = "bob"
+        })
+        consumer2 = assert(helpers.dao.consumers:insert {
+          username = "bob-the-buidler"
+        })
+        assert(helpers.dao.basicauth_credentials:insert {
+          consumer_id = consumer2.id,
+          username = "bob-the-buidler"
+        })
+      end)
+      it("retrieves all the basic-auths with trailing slash", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/basic-auths/"
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.is_table(json.data)
+        assert.equal(2, #json.data)
+        assert.equal(2, json.total)
+      end)
+      it("retrieves all the basic-auths without trailing slash", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/basic-auths"
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.is_table(json.data)
+        assert.equal(2, #json.data)
+        assert.equal(2, json.total)
+      end)
+      it("paginates through the basic-auths", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/basic-auths?size=1",
+        })
+        local body = assert.res_status(200, res)
+        local json_1 = cjson.decode(body)
+        assert.is_table(json_1.data)
+        assert.equal(1, #json_1.data)
+        assert.equal(2, json_1.total)
+
+        res = assert(admin_client:send {
+          method = "GET",
+          path = "/basic-auths",
+          query = {
+            size = 1,
+            offset = json_1.offset,
+          }
+        })
+        body = assert.res_status(200, res)
+        local json_2 = cjson.decode(body)
+        assert.is_table(json_2.data)
+        assert.equal(1, #json_2.data)
+        assert.equal(2, json_2.total)
+
+        assert.not_same(json_1.data, json_2.data)
+        -- Disabled: on Cassandra, the last page still returns a
+        -- next_page token, and thus, an offset proprty in the
+        -- response of the Admin API.
+        --assert.is_nil(json_2.offset) -- last page
+      end)
+      it("retrieve basic-auths for a consumer_id", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/basic-auths?consumer_id=" .. consumer.id
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.is_table(json.data)
+        assert.equal(1, #json.data)
+        assert.equal(1, json.total)
+      end)
+      it("return empty for a non-existing consumer_id", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/basic-auths?consumer_id=" .. utils.uuid(),
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.is_table(json.data)
+        assert.equal(0, #json.data)
+        assert.equal(0, json.total)
+      end)
+    end)
+  end)
+  describe("/basic-auths/:credential_username_or_id/consumer", function()
+    describe("GET", function()
+      local credential
+      setup(function()
+        helpers.dao:truncate_table("basicauth_credentials")
+        credential = assert(helpers.dao.basicauth_credentials:insert {
+          consumer_id = consumer.id,
+          username = "bob"
+        })
+      end)
+      it("retrieve consumer from a basic-auth id", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/basic-auths/" .. credential.id .. "/consumer"
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.same(consumer,json)
+      end)
+      it("retrieve consumer from a basic-auth username", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/basic-auths/" .. credential.username .. "/consumer"
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.same(consumer,json)
+      end)
+      it("returns 404 for a random non-existing basic-auth id", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/basic-auths/" .. utils.uuid()  .. "/consumer"
+        })
+        assert.res_status(404, res)
+      end)
+      it("returns 404 for a random non-existing basic-auth username", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/basic-auths/" .. utils.random_string()  .. "/consumer"
+        })
+        assert.res_status(404, res)
       end)
     end)
   end)

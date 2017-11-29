@@ -1,4 +1,124 @@
-## [Unreleased][unreleased]
+# Table of Contents
+
+- [Planned](#planned)
+    - [0.12.0](#0120---tbd)
+- [Scheduled](#scheduled)
+- [Released](#released)
+    - [0.11.2](#0112---20171129)
+    - [0.11.1](#0111---20171024)
+    - [0.10.4](#0104---20171024)
+    - [0.11.0](#0110---20170816)
+    - [0.10.3](#0103---20170524)
+    - [0.10.2](#0102---20170501)
+    - [0.10.1](#0101---20170327)
+    - [0.10.0](#0100---20170307)
+    - [0.9.9 and prior](#099---20170202)
+
+# Planned
+
+This section describes planned releases of Kong and their general "themes".
+Those releases do not have a fixed release date yet.
+
+## [0.12.0] - TBD
+
+This release will mainly focus around two new major features:
+
+- The introduction of **health checks** in the load-balancer. See issue
+  [#112](https://github.com/Kong/kong/issues/112)
+- The decoupling of the API entity into **Routes** and **Services** for better
+  granularity when configuring plugins.
+
+[Back to TOC](#table-of-contents)
+
+# Scheduled
+
+This section describes upcoming releases that have a release date, along with
+a detailed changeset of their content.
+
+*No scheduled releases yet.*
+
+[Back to TOC](#table-of-contents)
+
+# Released
+
+This section describes publicly available releases and a detailed changeset of
+their content.
+
+## [0.11.2] - 2017/11/29
+
+### Added
+
+##### Plugins
+
+- key-auth: New endpoints to manipulate API keys.
+  Thanks [@hbagdi](https://github.com/hbagdi) for the contribution.
+  [#2955](https://github.com/Kong/kong/pull/2955)
+    - `/key-auths/` to paginate through all keys.
+    - `/key-auths/:credential_key_or_id/consumer` to retrieve the Consumer
+      associated with a key.
+- basic-auth: New endpoints to manipulate basic-auth credentials.
+  Thanks [@hbagdi](https://github.com/hbagdi) for the contribution.
+  [#2998](https://github.com/Kong/kong/pull/2998)
+    - `/basic-auths/` to paginate through all basic-auth credentials.
+    - `/basic-auths/:credential_username_or_id/consumer` to retrieve the
+      Consumer associated with a credential.
+- jwt: New endpoints to manipulate JWTs.
+  Thanks [@hbagdi](https://github.com/hbagdi) for the contribution.
+  [#3003](https://github.com/Kong/kong/pull/3003)
+    - `/jwts/` to paginate through all JWTs.
+    - `/jwts/:jwt_key_or_id/consumer` to retrieve the Consumer
+      associated with a JWT.
+- hmac-auth: New endpoints to manipulate hmac-auth credentials.
+  Thanks [@hbagdi](https://github.com/hbagdi) for the contribution.
+  [#3009](https://github.com/Kong/kong/pull/3009)
+    - `/hmac-auths/` to paginate through all hmac-auth credentials.
+    - `/hmac-auths/:hmac_username_or_id/consumer` to retrieve the Consumer
+      associated with a credential.
+- acl: New endpoints to manipulate ACLs.
+  Thanks [@hbagdi](https://github.com/hbagdi) for the contribution.
+  [#3039](https://github.com/Kong/kong/pull/3039)
+    - `/acls/` to paginate through all ACLs.
+    - `/acls/:acl_id/consumer` to retrieve the Consumer
+      associated with an ACL.
+
+### Fixed
+
+##### Core
+
+- Avoid logging some unharmful error messages related to clustering.
+  [#3002](https://github.com/Kong/kong/pull/3002)
+- Improve performance and memory footprint when parsing multipart request
+  bodies.
+  [Kong/lua-multipart#13](https://github.com/Kong/lua-multipart/pull/13)
+
+##### Configuration
+
+- Add a format check for the `admin_listen_ssl` property, ensuring it contains
+  a valid port.
+  [#3031](https://github.com/Kong/kong/pull/3031)
+
+##### Admin API
+
+- PUT requests with payloads containing non-existing primary keys for entities
+  now return HTTP 404 Not Found, instead of HTTP 200 OK without a response
+  body.
+  [#3007](https://github.com/Kong/kong/pull/3007)
+- On the `/` endpoint, ensure `enabled_in_cluster` shows up as an empty JSON
+  Array (`[]`), instead of an empty JSON Object (`{}`).
+  Thanks [@hbagdi](https://github.com/hbagdi) for the patch!
+  [#2982](https://github.com/Kong/kong/issues/2982)
+
+##### Plugins
+
+- hmac-auth: Better parsing of the `Authorization` header to avoid internal
+  errors resulting in HTTP 500.
+  Thanks [@mvanholsteijn](https://github.com/mvanholsteijn) for the patch!
+  [#2996](https://github.com/Kong/kong/pull/2996)
+- Improve the performance of the rate-limiting and response-rate-limiting
+  plugins when using the Redis policy.
+  [#2956](https://github.com/Kong/kong/pull/2956)
+- Improve the performance of the response-transformer plugin.
+  [#2977](https://github.com/Kong/kong/pull/2977)
 
 ## [0.11.1] - 2017/10/24
 
@@ -87,6 +207,8 @@
   [#2736](https://github.com/Kong/kong/pull/2736)
   [#2806](https://github.com/Kong/kong/pull/2806)
 
+[Back to TOC](#table-of-contents)
+
 ## [0.10.4] - 2017/10/24
 
 ### Fixed
@@ -134,6 +256,8 @@
   now supported and won't trigger an error when used in the `whitelist` or
   `blacklist` properties.
   [#2918](https://github.com/Mashape/kong/pull/2918)
+
+[Back to TOC](#table-of-contents)
 
 ## [0.11.0] - 2017/08/16
 
@@ -463,6 +587,8 @@ if you are planning to upgrade a Kong cluster.
   time. This latency is now included in `latencies.kong`.
   [#2494](https://github.com/Kong/kong/pull/2494)
 
+[Back to TOC](#table-of-contents)
+
 ## [0.10.3] - 2017/05/24
 
 ### Changed
@@ -544,6 +670,8 @@ if you are planning to upgrade a Kong cluster.
   - oauth2: properly check the client application ownership of a
     token before refreshing it.
     [#2461](https://github.com/Kong/kong/pull/2461)
+
+[Back to TOC](#table-of-contents)
 
 ## [0.10.2] - 2017/05/01
 
@@ -706,6 +834,8 @@ if you are planning to upgrade a Kong cluster.
   - Upstream Objects can now be deleted properly when using Cassandra.
     [#2404](https://github.com/Kong/kong/pull/2404)
 
+[Back to TOC](#table-of-contents)
+
 ## [0.10.1] - 2017/03/27
 
 ### Changed
@@ -788,6 +918,8 @@ if you are planning to upgrade a Kong cluster.
     [#2237](https://github.com/Kong/kong/pull/2237)
   - aws-lambda: Support for `us-west-2` region in schema.
     [#2257](https://github.com/Kong/kong/pull/2257)
+
+[Back to TOC](#table-of-contents)
 
 ## [0.10.0] - 2017/03/07
 
@@ -926,6 +1058,8 @@ perform significantly better than any previous version.
   - key-auth: enforce `key_names` to be proper header names according to Nginx.
     [#2142](https://github.com/Kong/kong/pull/2142)
 
+[Back to TOC](#table-of-contents)
+
 ## [0.9.9] - 2017/02/02
 
 ### Fixed
@@ -943,6 +1077,8 @@ perform significantly better than any previous version.
   [#1998](https://github.com/Kong/kong/pull/1998)
   [#2040](https://github.com/Kong/kong/pull/2040)
 
+[Back to TOC](#table-of-contents)
+
 ## [0.9.8] - 2017/01/19
 
 ### Fixed
@@ -959,6 +1095,8 @@ perform significantly better than any previous version.
 
 - Plugins:
   - Fix fault tolerance logic and error reporting in rate-limiting plugins.
+
+[Back to TOC](#table-of-contents)
 
 ## [0.9.7] - 2016/12/21
 
@@ -980,6 +1118,8 @@ perform significantly better than any previous version.
   - OAuth 2: safely parse the request body even when no data has been sent.
     [#1915](https://github.com/Kong/kong/pull/1915)
 
+[Back to TOC](#table-of-contents)
+
 ## [0.9.6] - 2016/11/29
 
 ### Fixed
@@ -993,6 +1133,8 @@ perform significantly better than any previous version.
   the current node's configuration.
   [#1650](https://github.com/Kong/kong/pull/1650)
 
+[Back to TOC](#table-of-contents)
+
 ## [0.9.5] - 2016/11/07
 
 ### Changed
@@ -1003,6 +1145,8 @@ perform significantly better than any previous version.
 ### Fixed
 
 - Fixed an error (introduced in 0.9.4) in the auto-clustering event
+
+[Back to TOC](#table-of-contents)
 
 ## [0.9.4] - 2016/11/02
 
@@ -1017,6 +1161,8 @@ perform significantly better than any previous version.
 - Fixed the reports lock implementation that was generating a periodic error
   message. [#1783](https://github.com/Kong/kong/pull/1783)
 
+[Back to TOC](#table-of-contents)
+
 ## [0.9.3] - 2016/10/07
 
 ### Added
@@ -1027,6 +1173,8 @@ perform significantly better than any previous version.
 
 - Properly invalidate global plugins.
   [#1723](https://github.com/Kong/kong/pull/1723)
+
+[Back to TOC](#table-of-contents)
 
 ## [0.9.2] - 2016/09/20
 
@@ -1062,6 +1210,8 @@ perform significantly better than any previous version.
   - galileo: provide a default `bodySize` value when `log_bodies=true` but the
     current request/response has no body.
     [#1657](https://github.com/Kong/kong/pull/1657)
+
+[Back to TOC](#table-of-contents)
 
 ## [0.9.1] - 2016/09/02
 
@@ -1109,6 +1259,8 @@ perform significantly better than any previous version.
 - Admin API:
   - Revert the `/plugins/enabled` endpoint's response to be a JSON array, and
     not an Object. [#1529](https://github.com/Kong/kong/pull/1529)
+
+[Back to TOC](#table-of-contents)
 
 ## [0.9.0] - 2016/08/18
 
@@ -1165,6 +1317,8 @@ The main focus of this release is Kong's new CLI. With a simpler configuration f
 > - increase atomicity of the testing environment.
 > - lighter testing instance, only running 1 worker and not using Dnsmasq by default.
 
+[Back to TOC](#table-of-contents)
+
 ## [0.8.3] - 2016/06/01
 
 This release includes some bugfixes:
@@ -1182,6 +1336,8 @@ This release includes some bugfixes:
   - Response Transformer: Slashes are now encoded properly, and fixed a bug that hang the execution of the plugin. [#1257](https://github.com/Kong/kong/pull/1257) and [#1263](https://github.com/Kong/kong/pull/1263)
   - JWT: If a value for `algorithm` is missing, it's now `HS256` by default. This problem occurred when migrating from older versions of Kong.
   - OAuth 2.0: Fixed a Postgres problem that was preventing an application from being created, and fixed a check on the `redirect_uri` field. [#1264](https://github.com/Kong/kong/pull/1264) and [#1267](https://github.com/Kong/kong/issues/1267)
+
+[Back to TOC](#table-of-contents)
 
 ## [0.8.2] - 2016/05/25
 
@@ -1211,6 +1367,8 @@ This release includes bugfixes and minor updates:
   - IP Restriction: Fixed that prevented the plugin for working properly when added on an API. [#1245](https://github.com/Kong/kong/pull/1245)
   - CORS: Fixed an issue when `config.preflight_continue` was enabled. [#1240](https://github.com/Kong/kong/pull/1240)
 
+[Back to TOC](#table-of-contents)
+
 ## [0.8.1] - 2016/04/27
 
 This release includes some fixes and minor updates:
@@ -1228,6 +1386,8 @@ This release includes some fixes and minor updates:
 - Updated the Cassandra driver to v0.5.2.
 - Properly enforcing required fields in PUT requests. [#1177](https://github.com/Kong/kong/pull/1177)
 - Fixed a bug that prevented to retrieve the hostname of the local machine on certain systems. [#1178](https://github.com/Kong/kong/pull/1178)
+
+[Back to TOC](#table-of-contents)
 
 ## [0.8.0] - 2016/04/18
 
@@ -1265,6 +1425,8 @@ This release includes support for PostgreSQL as Kong's primary datastore!
 > - replace globals with singleton pattern thanks to [@mars](https://github.com/mars).
 > - fixed resolution mismatches when using deep paths in the path resolver thanks to [siddharthkchatterjee](https://github.com/siddharthkchatterjee)
 
+[Back to TOC](#table-of-contents)
+
 ## [0.7.0] - 2016/02/24
 
 ### Breaking changes
@@ -1301,6 +1463,8 @@ However by upgrading the underlying OpenResty version, source installations do n
 - Allow plugins configured on a Consumer *without* being configured on an API to run. [#978](https://github.com/Kong/kong/issues/978) [#980](https://github.com/Kong/kong/pull/980)
 - Fixed an edge-case where Kong nodes would not be registered in the `nodes` table. [#1008](https://github.com/Kong/kong/pull/1008)
 
+[Back to TOC](#table-of-contents)
+
 ## [0.6.1] - 2016/02/03
 
 This release contains tiny bug fixes that were especially annoying for complex Cassandra setups and power users of the Admin API!
@@ -1319,6 +1483,8 @@ This release contains tiny bug fixes that were especially annoying for complex C
 - Plugins
   - HTTP logging: remove the additional `\r\n` at the end of the logging request body. [#926](https://github.com/Kong/kong/pull/926)
   - Galileo: catch occasional internal errors happening when a request was cancelled by the client and fix missing shm for the retry policy. [#931](https://github.com/Kong/kong/pull/931)
+
+[Back to TOC](#table-of-contents)
 
 ## [0.6.0] - 2016/01/22
 
@@ -1407,6 +1573,8 @@ Other additions include:
 > - Work has been done to restore the reliability of the CI platforms.
 > - Migrations can now execute DML queries (instead of DDL queries only). Handy for migrations implying plugin configuration changes, plugins renamings etc... [#770](https://github.com/Kong/kong/pull/770)
 
+[Back to TOC](#table-of-contents)
+
 ## [0.5.4] - 2015/12/03
 
 ### Fixed
@@ -1415,6 +1583,8 @@ Other additions include:
   - Improve stability under heavy load. [#757](https://github.com/Kong/kong/issues/757)
   - base64 encode ALF request/response bodies, enabling proper support for Galileo bodies inspection capabilities. [#747](https://github.com/Kong/kong/pull/747)
   - Do not include JSON bodies in ALF `postData.params` field. [#766](https://github.com/Kong/kong/pull/766)
+
+[Back to TOC](#table-of-contents)
 
 ## [0.5.3] - 2015/11/16
 
@@ -1427,6 +1597,8 @@ Other additions include:
 
 - The Galileo plugin now supports arbitrary host, port and path values. [#721](https://github.com/Kong/kong/pull/721)
 
+[Back to TOC](#table-of-contents)
+
 ## [0.5.2] - 2015/10/21
 
 A few fixes requested by the community!
@@ -1437,6 +1609,8 @@ A few fixes requested by the community!
 - Plugins:
   - OAuth2: can detect that the originating protocol for a request was HTTPS through the `X-Forwarded-Proto` header and work behind another reverse proxy (load balancer). [#650](https://github.com/Kong/kong/pull/650)
   - HMAC signature: support for `X-Date` header to sign the request for usage in browsers (since the `Date` header is protected). [#641](https://github.com/Kong/kong/issues/641)
+
+[Back to TOC](#table-of-contents)
 
 ## [0.5.1] - 2015/10/13
 
@@ -1462,6 +1636,8 @@ Fixing a few glitches we let out with 0.5.0!
   - JWT: `iss` not being found doesn't return HTTP 500 anymore, but 403. [#578](https://github.com/Kong/kong/pull/578)
   - OAuth2: client credentials flow does not include a refresh token anymore. [#562](https://github.com/Kong/kong/issues/562)
 - Fix an occasional error when updating a plugin without a config. [#571](https://github.com/Kong/kong/pull/571)
+
+[Back to TOC](#table-of-contents)
 
 ## [0.5.0] - 2015/09/25
 
@@ -1530,6 +1706,8 @@ The old routes are still maintained but will be removed in upcoming versions. Co
   - OAuth2: Properly returning `X-Authenticated-UserId` in the `client_credentials` and `password` flows. [#535](https://github.com/Kong/kong/issues/535)
   - Response-Transformer: Properly handling JSON responses that have a charset specified in their `Content-Type` header.
 
+[Back to TOC](#table-of-contents)
+
 ## [0.4.2] - 2015/08/10
 
 #### Added
@@ -1553,6 +1731,8 @@ The old routes are still maintained but will be removed in upcoming versions. Co
 - File Log Plugin bug that prevented the file creation in some environments. [#461](https://github.com/Kong/kong/issues/461)
 - Clean output of the Kong CLI. [#235](https://github.com/Kong/kong/issues/235)
 
+[Back to TOC](#table-of-contents)
+
 ## [0.4.1] - 2015/07/23
 
 #### Fixed
@@ -1562,6 +1742,8 @@ The old routes are still maintained but will be removed in upcoming versions. Co
 - Adding the Client Credentials OAuth 2.0 flow. [#430](https://github.com/Kong/kong/issues/430)
 - A bug that prevented "dnsmasq" from being started on some systems, including Debian. [f7da790](https://github.com/Kong/kong/commit/f7da79057ce29c7d1f6d90f4bc160cc3d9c8611f)
 - File Log plugin: optimizations by avoiding the buffered I/O layer. [20bb478](https://github.com/Kong/kong/commit/20bb478952846faefec6091905bd852db24a0289)
+
+[Back to TOC](#table-of-contents)
 
 ## [0.4.0] - 2015/07/15
 
@@ -1603,6 +1785,8 @@ The old routes are still maintained but will be removed in upcoming versions. Co
 > - Schemas:
 >   - New `self_check` test for schema definitions. [5bfa7ca](https://github.com/Kong/kong/commit/5bfa7ca13561173161781f872244d1340e4152c1)
 
+[Back to TOC](#table-of-contents)
+
 ## [0.3.2] - 2015/06/08
 
 #### Fixed
@@ -1610,11 +1794,15 @@ The old routes are still maintained but will be removed in upcoming versions. Co
 - Uppercase Cassandra keyspace bug that prevented Kong to work with [kongdb.org](http://kongdb.org/)
 - Multipart requests not properly parsed in the admin API. [#344](https://github.com/Kong/kong/issues/344)
 
+[Back to TOC](#table-of-contents)
+
 ## [0.3.1] - 2015/06/07
 
 #### Fixed
 
 - Schema migrations are now automatic, which was missing from previous releases. [#303](https://github.com/Kong/kong/issues/303)
+
+[Back to TOC](#table-of-contents)
 
 ## [0.3.0] - 2015/06/04
 
@@ -1657,6 +1845,8 @@ The old routes are still maintained but will be removed in upcoming versions. Co
 > - Fix [#196](https://github.com/Kong/kong/issues/196).
 > - Disabled ipv6 in resolver.
 
+[Back to TOC](#table-of-contents)
+
 ## [0.2.1] - 2015/05/12
 
 This is a maintenance release including several bug fixes and usability improvements.
@@ -1693,6 +1883,8 @@ Queries effectuated during the downtime will still be lost. [#11](https://github
 > - Introducing an `ngx` stub for unit tests and CLI.
 > - Switch many PCRE regexes to using patterns.
 
+[Back to TOC](#table-of-contents)
+
 ## [0.2.0-2] - 2015/04/27
 
 First public release of Kong. This version brings a lot of internal improvements as well as more usability and a few additional plugins.
@@ -1721,11 +1913,15 @@ First public release of Kong. This version brings a lot of internal improvements
 > - All system dependencies versions for package building and travis-ci are now listed in `versions.sh`
 > - DAO doesn't need to `:prepare()` prior to run queries. Queries can be prepared at runtime. [#146](https://github.com/Kong/kong/issues/146)
 
+[Back to TOC](#table-of-contents)
+
 ## [0.1.1beta-2] - 2015/03/30
 
 #### Fixed
 
 - Wrong behavior of auto-migration in `kong start`.
+
+[Back to TOC](#table-of-contents)
 
 ## [0.1.0beta-3] - 2015/03/25
 
@@ -1759,6 +1955,8 @@ First public beta. Includes caching and better usability.
 > - Switch integration testing from [httpbin.org] to [mockbin.com].
 > - `core` plugin was renamed to `resolver`.
 
+[Back to TOC](#table-of-contents)
+
 ## [0.0.1alpha-1] - 2015/02/25
 
 First version running with Cassandra.
@@ -1772,7 +1970,10 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/Kong/kong/compare/0.11.1...master
+[Back to TOC](#table-of-contents)
+
+[0.12.0]: https://github.com/Kong/kong/compare/0.11.1...next
+[0.11.2]: https://github.com/Kong/kong/compare/0.11.1...0.11.2
 [0.11.1]: https://github.com/Kong/kong/compare/0.11.0...0.11.1
 [0.10.4]: https://github.com/Kong/kong/compare/0.10.3...0.10.4
 [0.11.0]: https://github.com/Kong/kong/compare/0.10.3...0.11.0
