@@ -18,6 +18,7 @@ local next         = next
 local time         = ngx.time
 local null         = ngx.null
 local max          = math.max
+local sub          = string.sub
 
 
 local Schema       = {}
@@ -36,6 +37,7 @@ local validation_errors = {
   NUMBER                    = "expected a number",
   BOOLEAN                   = "expected a boolean",
   INTEGER                   = "expected an integer",
+  FUNCTION                  = "expected a function",
   -- validations
   BETWEEN                   = "value should be between %d and %d",
   LEN_EQ                    = "length must be %d",
@@ -213,6 +215,10 @@ Schema.validators = {
     end
     return re_find(value, uuid_regex, "ioj") and true or nil
   end,
+
+  custom_validator = function(value, fn)
+    return fn(value)
+  end
 
 }
 
@@ -572,6 +578,13 @@ validate_field = function(self, field, value)
       field.len_min = 1
     end
 
+  elseif field.type == "function" then
+    -- TODO: this type should only be used/visible from the
+    -- metachema to validate the 'custom_validator'
+    if type(value) ~= "function" then
+      return nil, validation_errors.FUNCTION
+    end
+
   elseif self.valid_types[field.type] then
     if type(value) ~= field.type then
       return nil, validation_errors[field.type:upper()]
@@ -877,8 +890,8 @@ end
 
 local Set_mt = {
   __index = function(set, key)
-    for i = 1, #set do
-      if set[i] == key then
+    for i, val in ipairs(set) do
+      if key == val then
         return i
       end
     end

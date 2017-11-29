@@ -25,6 +25,7 @@ local log           = ngx.log
 
 
 local NOTICE        = ngx.NOTICE
+local LIMIT         = {}
 
 
 local new_tab
@@ -476,27 +477,28 @@ local function execute(strategy, statement_name, attributes)
 end
 
 
-local function page(self, size, token, name, foreign_key)
+local function page(self, size, token, foreign_key, foreign_entity_name)
   size = min(size or 100, 1000)
 
-  local size_plus_one = size + 1
+  local limit = size + 1
 
-  local res, err
+  local statement_name
+  local attributes
 
-  if not token then
-    if name then
-      name = name .. "_page_first"
-
+  if token then
+    if foreign_entity_name then
+      statement_name = concat({ "for", foreign_entity_name, "page_next" }, "_")
+      attributes     = {
+        [foreign_entity_name] = foreign_key,
+        [LIMIT]               = limit,
+      }
     else
-      name = "page_first"
+      statement_name = "page_next"
+      attributes     = {
+        [LIMIT] = limit,
+      }
     end
 
-    local params = foreign_key or {}
-    params.limit = size_plus_one
-
-    res, err = execute(self, name, params)
-
-  else
     local token_decoded = decode_base64(token)
     if not token_decoded then
       return nil, self.errors:invalid_offset(token, "bad base64 encoding")
@@ -507,23 +509,27 @@ local function page(self, size, token, name, foreign_key)
       return nil, self.errors:invalid_offset(token, "bad json encoding")
     end
 
-    local filter = foreign_key or {}
-
     for i, field_name in ipairs(self.schema.primary_key) do
-      filter[field_name] = token_decoded[i]
+      attributes[field_name] = token_decoded[i]
     end
 
-    filter.limit = size_plus_one
-
-    if name then
-      name = name .. "_page_next"
+  else
+    if foreign_entity_name then
+      statement_name = concat({ "for", foreign_entity_name, "page_first" }, "_")
+      attributes     = {
+        [foreign_entity_name] = foreign_key,
+        [LIMIT]               = limit,
+      }
 
     else
-      name = "page_next"
+      statement_name = "page_first"
+      attributes     = {
+        [LIMIT] = limit,
+      }
     end
-
-    res, err = execute(self, name, filter)
   end
+
+  local res, err = execute(self, statement_name, self.collapse(attributes))
 
   if not res then
     return toerror(self, err)
@@ -531,13 +537,13 @@ local function page(self, size, token, name, foreign_key)
 
   local rows = new_tab(size, 0)
 
-  for i = 1, size_plus_one do
+  for i = 1, limit do
     local row = res[i]
     if not row then
       break
     end
 
-    if i == size_plus_one then
+    if i == limit then
       row = res[size]
       local offset = {}
       for i, field_name in ipairs(self.schema.primary_key) do
@@ -557,9 +563,9 @@ local function page(self, size, token, name, foreign_key)
 end
 
 
-local function make_select_for(name)
+local function make_select_for(foreign_entity_name)
   return function(self, foreign_key, size, token)
-    return page(self, size, token, name, foreign_key)
+    return page(self, size, token, foreign_key, foreign_entity_name)
   end
 end
 
@@ -788,6 +794,7 @@ function _M.new(connector, schema, errors)
     if field.type == "foreign" then
       local foreign_schema           = field.schema
       local foreign_key_names        = {}
+      local foreign_key_escaped      = {}
       local foreign_col_names        = {}
       local foreign_pk_count         = #foreign_schema.primary_key
       local is_part_of_composite_key = foreign_pk_count > 1
@@ -856,7 +863,8 @@ function _M.new(connector, schema, errors)
         fields_count           = fields_count + 1
         fields[fields_count]   = prepared_field
 
-        foreign_key_names[i]   = name_escaped
+        foreign_key_names[i]   = name
+        foreign_key_escaped[i] = name_escaped
         foreign_col_names[i]   = escape_identifier(connector, foreign_field_name)
         foreign_key_map[i]     = {
           from   = name,
@@ -866,9 +874,9 @@ function _M.new(connector, schema, errors)
       end
 
       foreign_keys[field_name] = {
-        primary_key = foreign_schema.primary_key,
-        names       = foreign_key_names,
-        count       = foreign_pk_count,
+        names   = foreign_key_names,
+        escaped = foreign_key_escaped,
+        count   = foreign_pk_count,
       }
 
       local foreign_key_index_name       = concat({ table_name, field_name }, "_fkey_")
@@ -1052,7 +1060,7 @@ function _M.new(connector, schema, errors)
     page_next_names[i]                = primary_key[i]
   end
 
-  page_next_names[page_next_count] = "limit"
+  page_next_names[page_next_count] = LIMIT
 
   local constraints_index = fields_count + 1
   local pk_escaped        = concat(primary_key_escaped, ", ")
@@ -1211,7 +1219,7 @@ function _M.new(connector, schema, errors)
           make         = compile(table_name .. "_select" , select_statement),
         },
         page_first     = {
-          argn         = { "limit" },
+          argn         = { LIMIT },
           argc         = 1,
           argv         = page_first_args,
           make         = compile(table_name .. "_page_first" , page_first_statement),
@@ -1229,14 +1237,15 @@ function _M.new(connector, schema, errors)
   if foreign_key_count > 0 then
     local statements = self[PRIVATE].statements
 
-    for name, foreign_key in pairs(foreign_keys) do
+    for foreign_entity_name, foreign_key in pairs(foreign_keys) do
+      local fk_names   = foreign_key.names
+      local fk_escaped = foreign_key.escaped
+      local fk_count   = foreign_key.count
 
-      local fk_names = foreign_key.names
-      local fk_count = foreign_key.count
       local fk_placeholders = {}
       local pk_placeholders = {}
 
-      local foreign_key_names = concat(fk_names, ", ")
+      local foreign_key_names = concat(fk_escaped, ", ")
 
       local argc_first = fk_count + 1
       local argv_first = new_tab(argc_first, 0)
@@ -1246,19 +1255,19 @@ function _M.new(connector, schema, errors)
       local argn_next  = new_tab(argc_next, 0)
 
       for i = 1, fk_count do
-        argn_first[i]      = foreign_key.primary_key[i]
-        argn_next[i]       = foreign_key.primary_key[i]
+        argn_first[i]      = fk_names[i]
+        argn_next[i]       = fk_names[i]
         fk_placeholders[i] = "$" .. i
       end
 
       for i = 1, primary_key_fields_count do
         local index = i + fk_count
-        argn_next[index]   = primary_key_escaped[i]
+        argn_next[index]   = primary_key_names[i]
         pk_placeholders[i] = "$" .. index
       end
 
-      argn_first[argc_first] = "limit"
-      argn_next[argc_next]   = "limit"
+      argn_first[argc_first] = LIMIT
+      argn_next[argc_next]   = LIMIT
 
       fk_placeholders = concat(fk_placeholders, ", ")
       pk_placeholders = concat(pk_placeholders, ", ")
@@ -1280,7 +1289,7 @@ function _M.new(connector, schema, errors)
         "   LIMIT $", argc_next, ";"
       }
 
-      local statement_name = "for_" .. name
+      local statement_name = "for_" .. foreign_entity_name
 
       statements[statement_name .. "_page_first"] = {
         argn = argn_first,
@@ -1296,7 +1305,7 @@ function _M.new(connector, schema, errors)
         make = compile(concat({ table_name, statement_name, "page_next" }, "_"), page_next_statement)
       }
 
-      self[statement_name] = make_select_for(statement_name)
+      self[statement_name] = make_select_for(foreign_entity_name)
     end
   end
 

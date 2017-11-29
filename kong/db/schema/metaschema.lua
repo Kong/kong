@@ -46,6 +46,7 @@ local validators = {
   { one_of = { type = "array", elements = { type = "string" } }, },
   { timestamp = { type = "boolean" }, },
   { uuid = { type = "boolean" }, },
+  { custom_validator = { type = "function" }, },
 }
 
 -- Other field attributes, that do not correspond to validators

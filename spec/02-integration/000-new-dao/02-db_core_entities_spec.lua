@@ -804,7 +804,7 @@ for _, strategy in helpers.each_strategy() do
 
         it("creates a Service with user-specified values", function()
           local service, err, err_t = db.services:insert({
-            name            = "example service",
+            name            = "example_service",
             protocol        = "http",
             host            = "example.com",
             port            = 443,
@@ -826,7 +826,7 @@ for _, strategy in helpers.each_strategy() do
             id              = service.id,
             created_at      = service.created_at,
             updated_at      = service.updated_at,
-            name            = "example service",
+            name            = "example_service",
             protocol        = "http",
             host            = "example.com",
             port            = 443,
@@ -840,7 +840,7 @@ for _, strategy in helpers.each_strategy() do
 
         it("created_at/updated_at cannot be overriden", function()
           local service, err, err_t = db.services:insert({
-            name       = "example service",
+            name       = "example_service",
             protocol   = "http",
             host       = "example.com",
             created_at = 0,
