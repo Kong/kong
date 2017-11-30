@@ -273,7 +273,7 @@ describe("rate-limiting", function()
       end)
     end)
 
-    describe("sliding_window()", function()
+    pending("sliding_window()", function()
       setup(function()
         ngx.shared.foo:set("default|" .. mock_start - 60 .. "|60|foo|sync", 10)
       end)
