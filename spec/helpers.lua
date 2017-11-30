@@ -115,6 +115,7 @@ local function run_migrations(given_dao)
     "jwt",
     "key-auth",
     "oauth2",
+    "vitals",
   } do
     rbac.register_resource(resource, d)
   end
