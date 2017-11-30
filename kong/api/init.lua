@@ -13,7 +13,6 @@ local Errors = require "kong.db.errors"
 local sub      = string.sub
 local find     = string.find
 local type     = type
-local pcall    = pcall
 local pairs    = pairs
 local ipairs   = ipairs
 local tostring = tostring
@@ -219,21 +218,41 @@ end
 
 
 do
+  local routes = {}
+
+  -- Auto Generated Routes
+  for _, dao in pairs(singletons.db.daos) do
+    routes = Endpoints.new(dao.schema, routes)
+  end
+
+  -- Custom Routes
   for _, dao in pairs(singletons.db.daos) do
     local schema = dao.schema
-
-    local endpoints, err = Endpoints.new(schema)
-    if not endpoints then
-      return nil, nil, err
-    end
-
-    -- TODO: custom endpoints go here
-    local ok, custom_endpoints = pcall(require, "kong.api.routes." .. schema.name)
+    local ok, custom_endpoints = utils.load_module_if_exists("kong.api.routes." .. schema.name)
     if ok then
-      endpoints = utils.table_merge(endpoints, custom_endpoints)
+      for route_pattern, verbs in pairs(custom_endpoints) do
+        if routes[route_pattern] ~= nil and type(verbs) == "table" then
+          for verb, handler in pairs(verbs) do
+            local parent = routes[route_pattern][verb]
+            if parent ~= nil and type(handler) == "function" then
+              routes[route_pattern][verb] = function(self, db, helpers)
+                return handler(self, db, helpers, function()
+                  return parent(self, db, helpers)
+                end)
+              end
+
+            else
+              routes[route_pattern][verb] = handler
+            end
+          end
+
+        else
+          routes[route_pattern] = verbs
+        end
+      end
     end
 
-    attach_new_db_routes(endpoints)
+    attach_new_db_routes(routes)
   end
 end
 

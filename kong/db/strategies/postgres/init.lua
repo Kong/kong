@@ -756,8 +756,8 @@ end
 
 local _M  = {
   CUSTOM_STRATEGIES = {
-    routes   = require "kong.db.strategies.postgres.routes",
     services = require "kong.db.strategies.postgres.services",
+    routes   = require "kong.db.strategies.postgres.routes",
   }
 }
 

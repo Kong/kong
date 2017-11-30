@@ -1,16 +1,17 @@
 local cjson   = require "cjson"
 local helpers = require "spec.helpers"
+local Errors  = require "kong.db.errors"
 
 
 local function it_content_types(title, fn)
-  --local test_form_encoded = fn("application/x-www-form-urlencoded")
+  local test_form_encoded = fn("application/x-www-form-urlencoded")
   local test_json = fn("application/json")
   it(title .. " with application/json", test_json)
-  --it(title .. " with application/www-form-urlencoded", test_form_encoded)
+  it(title .. " with application/www-form-urlencoded", test_form_encoded)
 end
 
 
-for _, strategy in helpers.each_strategy("postgres") do
+for _, strategy in helpers.each_strategy() do
   describe("Admin API #" .. strategy, function()
     local db
     local client
@@ -40,7 +41,7 @@ for _, strategy in helpers.each_strategy("postgres") do
 
     describe("/services", function()
       describe("POST", function()
-        it_content_types("creates a route", function(content_type)
+        it_content_types("creates a service", function(content_type)
           return function()
             local res = client:post("/services", {
               body = {
@@ -58,6 +59,31 @@ for _, strategy in helpers.each_strategy("postgres") do
             assert.equals(cjson.null, json.name)
             assert.equals("http", json.protocol)
             assert.equals("service.com", json.host)
+            assert.equals(80, json.port)
+            assert.equals(60000, json.connect_timeout)
+            assert.equals(60000, json.write_timeout)
+            assert.equals(60000, json.read_timeout)
+          end
+        end)
+
+        it_content_types("creates a service with url ", function(content_type)
+          return function()
+            local res = client:post("/services", {
+              body = {
+                url = "http://service.com/",
+              },
+              headers = { ["Content-Type"] = content_type },
+            })
+            local body = assert.res_status(201, res)
+            local json = cjson.decode(body)
+
+            assert.is_string(json.id)
+            assert.is_number(json.created_at)
+            assert.is_number(json.updated_at)
+            assert.equals(cjson.null, json.name)
+            assert.equals("http", json.protocol)
+            assert.equals("service.com", json.host)
+            assert.equals("/", json.path)
             assert.equals(80, json.port)
             assert.equals(60000, json.connect_timeout)
             assert.equals(60000, json.write_timeout)
@@ -131,6 +157,29 @@ for _, strategy in helpers.each_strategy("postgres") do
             body = assert.res_status(400, res)
             json = cjson.decode(body)
             assert.same({ protocol = "expected one of: http, https" }, json.fields)
+          end
+        end)
+
+        it_content_types("handles invalid url ", function(content_type)
+          return function()
+            local res = client:post("/services", {
+              body = {
+                url = "invalid url",
+              },
+              headers = { ["Content-Type"] = content_type },
+            })
+            local body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same(
+              {
+                name    = "schema violation",
+                code    = Errors.codes.SCHEMA_VIOLATION,
+                message = ngx.null,
+                fields = {
+                  host = "required field missing"
+                },
+              }, json
+            )
           end
         end)
       end)

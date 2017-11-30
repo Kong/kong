@@ -21,6 +21,15 @@ for _, strategy in helpers.each_strategy("postgres") do
     setup(function()
       bp, db = helpers.get_db_utils(strategy)
 
+    end)
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    before_each(function()
+      helpers.stop_kong()
+      assert(db:truncate())
       assert(helpers.start_kong({
         database = strategy,
       }))
@@ -28,16 +37,10 @@ for _, strategy in helpers.each_strategy("postgres") do
       client = assert(helpers.admin_client())
     end)
 
-    teardown(function()
+    after_each(function()
       if client then
         client:close()
       end
-
-      helpers.stop_kong()
-    end)
-
-    before_each(function()
-      assert(db:truncate())
     end)
 
     describe("/routes", function()
@@ -487,6 +490,144 @@ for _, strategy in helpers.each_strategy("postgres") do
             it("returns HTTP 204 even if not found", function()
               local res = client:delete("/routes/" .. utils.uuid())
               assert.res_status(204, res)
+            end)
+          end)
+        end)
+      end)
+
+      describe("/routes/{route}/service", function()
+        local service
+        local route
+
+        before_each(function()
+          service = bp.services:insert({ host = "example.com", path = "/" })
+          route   = bp.routes:insert({ paths = { "/my-route" }, service = service })
+        end)
+
+        describe("GET", function()
+          it("retrieves by id", function()
+            local res  = client:get("/routes/" .. route.id .. "/service")
+            local body = assert.res_status(200, res)
+
+            local json = cjson.decode(body)
+            assert.same(service, json)
+          end)
+
+          it("returns 404 if not found", function()
+            local res = client:get("/routes/" .. utils.uuid() .. "/service")
+            assert.res_status(404, res)
+          end)
+
+          it("ignores an invalid body", function()
+            local res = client:get("/routes/" .. route.id .. "/service", {
+              headers = {
+                ["Content-Type"] = "application/json"
+              },
+              body = "this fails if decoded as json",
+            })
+            assert.res_status(200, res)
+          end)
+        end)
+
+        describe("PATCH", function()
+          it_content_types("updates if found", function(content_type)
+            return function()
+              local res = client:patch("/routes/" .. route.id .. "/service", {
+                headers = {
+                  ["Content-Type"] = content_type
+                },
+                body = {
+                  name  = "edited",
+                  host  = "edited.com",
+                  path  = cjson.null,
+                },
+              })
+              local body = assert.res_status(200, res)
+              local json = cjson.decode(body)
+              assert.equal("edited",     json.name)
+              assert.equal("edited.com", json.host)
+              assert.same(cjson.null,    json.path)
+
+
+              local in_db = assert(db.services:select({ id = service.id }))
+              assert.same(json, in_db)
+            end
+          end)
+
+          it_content_types("updates with url", function(content_type)
+            return function()
+              local res = client:patch("/routes/" .. route.id .. "/service", {
+                headers = {
+                  ["Content-Type"] = content_type
+                },
+                body = {
+                  url = "http://edited2.com:1234/foo",
+                },
+              })
+              local body = assert.res_status(200, res)
+              local json = cjson.decode(body)
+              assert.equal("edited2.com", json.host)
+              assert.equal(1234,          json.port)
+              assert.equal("/foo",        json.path)
+
+
+              local in_db = assert(db.services:select({ id = service.id }))
+              assert.same(json, in_db)
+            end
+          end)
+
+          describe("errors", function()
+            it_content_types("returns 404 if not found", function(content_type)
+              return function()
+                local res = client:patch("/routes/" .. utils.uuid() .. "/service", {
+                  headers = {
+                    ["Content-Type"] = content_type
+                  },
+                  body = {
+                    name  = "edited",
+                    host  = "edited.com",
+                    path  = cjson.null,
+                  },
+                })
+                assert.res_status(404, res)
+              end
+            end)
+
+            it_content_types("handles invalid input", function(content_type)
+              return function()
+                local res = client:patch("/routes/" .. route.id .. "/service", {
+                  headers = {
+                    ["Content-Type"] = content_type
+                  },
+                  body = {
+                    connect_timeout = "foobar"
+                  },
+                })
+                local body = assert.res_status(400, res)
+                assert.same({
+                  code    = Errors.codes.SCHEMA_VIOLATION,
+                  name    = "schema violation",
+                  message = cjson.null,
+                  fields  = {
+                    connect_timeout = "expected an integer",
+                  },
+                }, cjson.decode(body))
+              end
+            end)
+          end)
+        end)
+
+        describe("DELETE", function()
+          describe("errors", function()
+            it("returns HTTP 405 when trying to delete a service that is referenced", function()
+              local res  = client:delete("/routes/" .. route.id .. "/service")
+              local body = assert.res_status(405, res)
+              assert.same({ message = 'Method not allowed' }, cjson.decode(body))
+            end)
+
+            it("returns HTTP 404 with non-existing route", function()
+              local res = client:delete("/routes/" .. utils.uuid() .. "/service")
+              assert.res_status(404, res)
             end)
           end)
         end)
