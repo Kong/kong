@@ -6,6 +6,8 @@ end
 
 return {
   ["/vitals/"] = {
+    resource = "vitals",
+
     GET = function(self, dao, helpers)
       local current_stats, _ = singletons.vitals:get_stats("seconds", "cluster", nil)
 
@@ -13,6 +15,8 @@ return {
     end
   },
   ["/vitals/cluster"] = {
+    resource = "vitals",
+
     GET = function(self, dao, helpers)
       local cluster_stats, err = singletons.vitals:get_stats(self.params.interval, "cluster", nil)
 
@@ -29,6 +33,8 @@ return {
     end
   },
   ["/vitals/nodes/"] = {
+    resource = "vitals",
+
     GET = function(self, dao, helpers)
       local all_node_stats, err = singletons.vitals:get_stats(self.params.interval, "node", nil)
 
@@ -45,6 +51,8 @@ return {
     end
   },
   ["/vitals/nodes/:node_id"] = {
+    resource = "vitals",
+    
     GET = function(self, dao, helpers)
       local requested_node_stats, err = singletons.vitals:get_stats(self.params.interval, "node", self.params.node_id)
 
