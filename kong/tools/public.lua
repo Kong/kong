@@ -53,6 +53,11 @@ do
 
     [MIME_TYPES.json] = function()
       local raw_body  = ngx_req_get_body_data()
+      if not raw_body then
+        ngx_log(ERR, "could not read request body")
+        return {}, raw_body
+      end
+
       local args, err = cjson.decode(raw_body)
       if err then
         ngx_log(ERR, "could not decode JSON body args: ", err)
