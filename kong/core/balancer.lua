@@ -714,6 +714,29 @@ end
 
 
 --------------------------------------------------------------------------------
+-- Update health status and broadcast to workers
+-- @param upstream a table with upstream data
+-- @param ip target IP
+-- @param port target port
+-- @param is_healthy boolean: true if healthy, false if unhealthy
+-- @return true if posting event was successful, nil+error otherwise
+local function post_health(upstream, ip, port, is_healthy)
+
+  local balancer = balancers[upstream.name]
+  if not balancer then
+    return nil, "Upstream " .. tostring(upstream.name) .. " has no balancer"
+  end
+
+  local healthchecker = healthcheckers[balancer]
+  if not healthchecker then
+    return nil, "no healthchecker found for " .. tostring(upstream.name)
+  end
+
+  return healthchecker:set_target_status(ip, port, is_healthy)
+end
+
+
+--------------------------------------------------------------------------------
 -- for unit-testing purposes only
 local function _get_healthchecker(balancer)
   return healthcheckers[balancer]
@@ -734,6 +757,7 @@ return {
   on_upstream_event = on_upstream_event,
   get_upstream_by_name = get_upstream_by_name,
   get_all_upstreams = get_all_upstreams,
+  post_health = post_health,
 
   -- ones below are exported for test purposes only
   _create_balancer = create_balancer,

@@ -1,7 +1,11 @@
 local crud = require "kong.api.crud_helpers"
 local app_helpers = require "lapis.application"
 local responses = require "kong.tools.responses"
+local balancer = require "kong.core.balancer"
+local singletons = require "kong.singletons"
+local utils = require "kong.tools.utils"
 local cjson = require "cjson"
+local cluster_events = singletons.cluster_events
 
 
 -- clean the target history for a given upstream
@@ -67,6 +71,25 @@ local function clean_history(upstream_id, dao_factory)
     end
   end
 end
+
+
+local function post_health(is_healthy)
+  return function(self, _)
+    local addr = utils.normalize_ip(self.target.target)
+    local ip, port = utils.format_host(addr.host), addr.port
+    local _, err = balancer.post_health(self.upstream, ip, port, is_healthy)
+    if err then
+      return app_helpers.yield_error(err)
+    end
+
+    local health = is_healthy and 1 or 0
+    local packet = ("%s|%d|%d|%s"):format(ip, port, health, self.upstream.name)
+    cluster_events:broadcast("balancer:post_health", packet)
+
+    return responses.send_HTTP_NO_CONTENT()
+  end
+end
+
 
 return {
   ["/upstreams/"] = {
@@ -195,5 +218,24 @@ return {
 
       return responses.send_HTTP_NO_CONTENT()
     end
+  },
+
+  ["/upstreams/:upstream_name_or_id/targets/:target_or_id/healthy"] = {
+    before = function(self, dao_factory, helpers)
+      crud.find_upstream_by_name_or_id(self, dao_factory, helpers)
+      crud.find_target_by_target_or_id(self, dao_factory, helpers)
+    end,
+
+    POST = post_health(true),
+  },
+
+  ["/upstreams/:upstream_name_or_id/targets/:target_or_id/unhealthy"] = {
+    before = function(self, dao_factory, helpers)
+      crud.find_upstream_by_name_or_id(self, dao_factory, helpers)
+      crud.find_target_by_target_or_id(self, dao_factory, helpers)
+    end,
+
+    POST = post_health(false),
   }
+
 }
