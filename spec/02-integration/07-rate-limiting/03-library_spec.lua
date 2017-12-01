@@ -11,6 +11,10 @@ describe("rate-limiting", function()
   local kong_conf = assert(conf_loader(spec_helpers.test_conf_path))
   local dao = assert(dao_factory.new(kong_conf))
 
+  setup(function()
+    assert(dao.db:query("TRUNCATE TABLE rl_counters"))
+  end)
+
   describe("new()", function()
     describe("returns true", function()
       after_each(function()
@@ -149,6 +153,15 @@ describe("rate-limiting", function()
         window_sizes = { 2 },
         dao_factory  = dao,
       }))
+
+      assert(ratelimit.new({
+        dict         = "foo",
+        sync_rate    = 10,
+        strategy     = "postgres",
+        namespace    = "mock",
+        window_sizes = { 60 },
+        dao_factory  = dao,
+      }))
     end)
 
     teardown(function()
@@ -247,58 +260,71 @@ describe("rate-limiting", function()
 [[
   INSERT INTO rl_counters (key, namespace, window_start, window_size, count)
     VALUES
-  ('foo', 'default', ]] .. mock_start .. [[, 60, 3),
-  ('baz', 'default', ]] .. mock_start .. [[, 60, 3)
+  ('foo', 'mock', ]] .. mock_start .. [[, 60, 3),
+  ('baz', 'mock', ]] .. mock_start .. [[, 60, 3)
 ]]
         ))
       end)
 
       it("updates the database with our diffs", function()
-        ratelimit.sync() -- sync the default namespace
+        ratelimit.increment("foo", 60, 3, "mock")
+        ratelimit.sync(nil, "mock") -- sync the mock namespace
 
-        local rows = assert(dao.db:query("SELECT * from rl_counters where key = 'foo'"))
+        local rows = assert(dao.db:query("SELECT * from rl_counters where key = 'foo' and namespace = 'mock'"))
         assert.same(6, rows[1].count)
         rows = assert(dao.db:query("SELECT * from rl_counters"))
-        assert.same(3, #rows)
+        assert.same(2, #rows)
       end)
 
       it("updates the local shm with new values", function()
-        assert.equals(0, ngx.shared.foo:get("default|" .. mock_start .. "|60|foo|diff"))
-        assert.equals(6, ngx.shared.foo:get("default|" .. mock_start .. "|60|foo|sync"))
+        assert.equals(0, ngx.shared.foo:get("mock|" .. mock_start .. "|60|foo|diff"))
+        assert.equals(6, ngx.shared.foo:get("mock|" .. mock_start .. "|60|foo|sync"))
       end)
 
       it("does not adjust values in a separate namespace", function()
         assert.equals(3, ngx.shared.foo:get("other|" .. mock_start .. "|60|bar|diff"))
         assert.equals(0, ngx.shared.foo:get("other|" .. mock_start .. "|60|bar|sync"))
       end)
+
+      it("does not adjust values in a separate namespace", function()
+        pcall(function() ratelimit.sync(nil, "other") end)
+        assert.equals(0, ngx.shared.foo:get("other|" .. mock_start .. "|60|bar|diff"))
+        assert.equals(3, ngx.shared.foo:get("other|" .. mock_start .. "|60|bar|sync"))
+      end)
     end)
 
-    pending("sliding_window()", function()
+    describe("sliding_window()", function()
       setup(function()
-        ngx.shared.foo:set("default|" .. mock_start - 60 .. "|60|foo|sync", 10)
+        ngx.shared.foo:set("mock|" .. mock_start - 60 .. "|60|foo|diff", 0)
+        ngx.shared.foo:set("mock|" .. mock_start - 60 .. "|60|foo|sync", 10)
+
+        ngx.shared.foo:set("mock|" .. mock_start .. "|60|foo|diff", 0)
+        ngx.shared.foo:set("mock|" .. mock_start .. "|60|foo|sync", 0)
+
+        assert(ratelimit.increment("foo", 60, 3, "mock"))
       end)
 
       it("returns a fraction of the previous window", function()
-        local rate = ratelimit.sliding_window("foo", 60)
-        -- 10 for what we set in setup(), 6 from previous increments
-        assert.is_true(rate < 16 and rate >= 6)
+        local rate = ratelimit.sliding_window("foo", 60, nil, "mock")
+        -- 10 for what we set in setup(), 3 from previous increments
+        assert.is_true(rate < 13 and rate >= 3)
       end)
 
       it("automagically creates shm keys if they don't exist", function()
         local dne_key = "yomama"
-        local dict_key = "default|" .. mock_start .. "|60|" .. dne_key
+        local dict_key = "mock|" .. mock_start .. "|60|" .. dne_key
         assert.is_nil(ngx.shared.foo:get(dict_key .. "|diff"))
         assert.is_nil(ngx.shared.foo:get(dict_key .. "|sync"))
 
-        assert.equals(0, ratelimit.sliding_window(dne_key, 60))
+        assert.equals(0, ratelimit.sliding_window(dne_key, 60, nil, "mock"))
 
         assert.equals(0, ngx.shared.foo:get(dict_key .. "|diff"))
         assert.equals(0, ngx.shared.foo:get(dict_key .. "|sync"))
       end)
 
       it("uses the appropriate namespace", function()
-        assert(ratelimit.increment("bat", 60, 1))
-        assert.equals(1, ratelimit.sliding_window("bat", 60))
+        assert(ratelimit.increment("bat", 60, 1, "mock"))
+        assert.equals(1, ratelimit.sliding_window("bat", 60, nil, "mock"))
         assert.equals(0, ratelimit.sliding_window("bat", 60, nil, "other"))
       end)
     end)
