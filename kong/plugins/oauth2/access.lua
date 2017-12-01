@@ -92,10 +92,16 @@ local function get_redirect_uri(client_id)
 end
 
 local function retrieve_parameters()
-  ngx.req.read_body()
-
   -- OAuth2 parameters could be in both the querystring or body
-  return utils.table_merge(ngx.req.get_uri_args(), public_utils.get_body_args())
+  local uri_args = ngx.req.get_uri_args()
+  local method   = ngx.req.get_method()
+  if method == "POST" or method == "PUT" or method == "PATCH" then
+    ngx.req.read_body()
+    local body_args = public_utils.get_body_args()
+    return utils.table_merge(uri_args, body_args)
+  end
+
+  return uri_args
 end
 
 local function retrieve_scopes(parameters, conf)
