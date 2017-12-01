@@ -861,6 +861,22 @@ return {
     ]]
   },
   {
+    name = "2017-11-13-145723_vitals_consumers",
+    up = [[
+      CREATE TABLE IF NOT EXISTS vitals_consumers(
+        consumer_id uuid,
+        node_id uuid,
+        start_at timestamp with time zone,
+        duration integer,
+        count integer,
+        PRIMARY KEY(consumer_id, node_id, start_at, duration)
+      );
+    ]],
+    down = [[
+      DROP TABLE vitals_consumers;
+    ]]
+  },
+  {
     name = "2017-11-29-167733_rbac_vitals_resources",
     up = function(_, _, dao)
       local rbac = require "kong.core.rbac"

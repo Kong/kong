@@ -421,9 +421,6 @@ return {
       ctx.KONG_ACCESS_ENDED_AT = now
       -- time spent in Kong before sending the reqeust to upstream
       ctx.KONG_PROXY_LATENCY = now - ngx.req.start_time() * 1000 -- ngx.req.start_time() is kept in seconds with millisecond resolution.
-
-      singletons.vitals:log_latency(ctx.KONG_PROXY_LATENCY)
-
       ctx.KONG_PROXIED = true
     end
   },

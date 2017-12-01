@@ -1,6 +1,7 @@
 local table_rotater_module = require "kong.vitals.postgres.table_rotater"
 local fmt                  = string.format
 local unpack               = unpack
+local tostring             = tostring
 local log                  = ngx.log
 local WARN                 = ngx.WARN
 
@@ -19,7 +20,20 @@ local INSERT_STATS = [[
     plat_max = greatest(%s.plat_max, excluded.plat_max)
 ]]
 
+local INSERT_CONSUMER_STATS = [[
+  insert into vitals_consumers(consumer_id, node_id, start_at, duration, count)
+  values('%s', '%s', to_timestamp(%d) at time zone 'UTC', %d, %d)
+  on conflict(consumer_id, node_id, start_at, duration) do
+  update set count = vitals_consumers.count + excluded.count
+]]
+
 local UPDATE_NODE_META = "update vitals_node_meta set last_report = now() where node_id = '%s'"
+
+local DELETE_CONSUMER_STATS = [[
+  delete from vitals_consumers where consumer_id = '{%s}'
+  and ((duration = %d and start_at < to_timestamp(%d) at time zone 'UTC')
+  or (duration = %d and start_at < to_timestamp(%d) at time zone 'UTC'))
+]]
 
 function _M.dynamic_table_names(dao)
   local table_names = {}
@@ -43,10 +57,14 @@ function _M.dynamic_table_names(dao)
 end
 
 function _M.new(dao_factory, opts)
+  if opts == nil then
+    opts = {}
+  end
+
   local table_rotater = table_rotater_module.new(
     {
       db = dao_factory.db,
-      rotation_interval = opts.postgres_rotation_interval or 3600,
+      rotation_interval = opts.ttl_seconds or 3600,
     }
   )
 
@@ -229,13 +247,190 @@ function _M:update_node_meta()
   return true
 end
 
-function _M:get_timestamp_str(ts) 
+
+--[[
+  data: a 2D-array of [
+    [consumer_id, timestamp, duration, count]
+  ]
+]]
+function _M:insert_consumer_stats(data)
+  local consumer_id, start_at, duration, count
+  local query, last_err
+  local row_count  = 0
+  local fail_count = 0
+
+  for _, row in ipairs(data) do
+    row_count = row_count + 2 -- one for seconds, one for minutes
+
+    consumer_id, start_at, duration, count = unpack(row)
+
+    query = fmt(INSERT_CONSUMER_STATS, consumer_id, self.node_id, start_at,
+                duration, count)
+
+    local res, err = self.db:query(query)
+    if not res then
+      fail_count = fail_count + 1
+      last_err   = tostring(err)
+    end
+
+    -- naive approach - update minutes in-line
+    local mstart_at = self:get_minute(start_at)
+    query = fmt(INSERT_CONSUMER_STATS, consumer_id, self.node_id, mstart_at,
+                60, count)
+
+    local res, err = self.db:query(query)
+    if not res then
+      fail_count = fail_count + 1
+      last_err   = tostring(err)
+    end
+  end
+
+  if fail_count > 0 then
+    return nil, "failed to insert " .. tostring(fail_count) .. " of " ..
+        tostring(row_count) .. " consumer stats. last err: " .. last_err
+  end
+
+  return true
+end
+
+
+function _M:get_minute(second)
+  return second - (second % 60)
+end
+
+
+--[[
+  takes an options table that contains the following:
+  - consumer_id that must be a valid uuid
+  - duration that must be one of (1, 60)
+  - start_at - in epoch format
+  - end_at - in epoch format
+  - level - "node" or "cluster"
+
+  start_at must be valid for the given duration
+
+  if node_id is provided, it must be a valid uuid
+
+  all arguments are validated in the vitals module
+
+  returns an array of
+  { node_id, start_at, count }
+  where node_id is either the UUID of the requested node,
+  or "cluster" when requesting cluster-level data
+]]
+function _M:select_consumer_stats(opts)
+  local level    = opts.level
+  local node_id  = opts.node_id
+  local cons_id  = opts.consumer_id
+  local duration = opts.duration
+
+  local query, res, err
+
+  -- for constructing dynamic SQL
+  local select, from, where
+  local group = ""
+
+  -- construct the SELECT clause
+  if level == "node" then
+    select = [[
+      SELECT node_id,
+             extract('epoch' from start_at) as start_at,
+             count
+      ]]
+  else
+    -- must be cluster
+    select = [[
+      SELECT 'cluster' as node_id,
+             extract('epoch' from start_at) as start_at,
+             sum(count) as count
+      ]]
+    group = " GROUP BY start_at "
+  end
+
+  -- construct the FROM clause
+  from = " FROM vitals_consumers "
+
+  -- construct the WHERE clause
+  local where_clause = " WHERE consumer_id = '{%s}' AND duration = %d "
+
+  where = fmt(where_clause, cons_id, duration)
+
+  if level == "node" and node_id then
+    where = where .. " AND node_id = '{" .. node_id .. "}' "
+  end
+
+  -- put it all together
+  query = select .. from .. where .. group .. " ORDER BY start_at"
+
+  res, err = self.db:query(query)
+  if not res then
+    return nil, "could not select stats. query: " .. query .. " error: " .. err
+  end
+
+  return res
+end
+
+
+--[[
+--deletes data for the given list of consumers
+  cutoff_times: a table of timeframes to delete; e.g.
+  {
+    minutes = 1510759610 <- delete minutes data before this ts
+    seconds = 1510846084 <- delete seconds data before this ts
+  }
+
+  entries for minutes and seconds are both required
+]]
+function _M:delete_consumer_stats(consumers, cutoff_times)
+  if not next(consumers) then
+    return 0
+  end
+
+  local query, last_err
+  local fail_count = 0
+  local cons_count = 0
+  local row_count  = 0
+
+  for consumer, _ in pairs(consumers) do
+    cons_count = cons_count + 1
+
+    query = fmt(DELETE_CONSUMER_STATS, consumer, 1, cutoff_times.seconds,
+        60, cutoff_times.minutes)
+
+    local res, err = self.db:query(query)
+
+    if res then
+      row_count = row_count + res.affected_rows
+    else
+      fail_count = fail_count + 1
+      last_err   = err
+    end
+  end
+
+  -- total failure
+  if fail_count == cons_count then
+    return nil, "failed to delete consumer stats. last err: " .. last_err
+  end
+
+  -- not a complete failure
+  if fail_count > 0 then
+    return cons_count - fail_count, "failed to delete " .. tostring(fail_count) ..
+        "stats for " .. tostring(row_count) .. " consumers. last err: " .. last_err
+  end
+
+  return row_count
+end
+
+
+function _M:get_timestamp_str(ts)
   return tostring(ts)
 end
+
 
 function _M:current_table_name()
   return self.table_rotater:current_table_name()
 end
+
 
 function _M:table_names_for_select()
   return self.table_rotater:table_names_for_select()

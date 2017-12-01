@@ -15,6 +15,7 @@ local DEBUG      = ngx.DEBUG
 local WARN       = ngx.WARN
 local ERR        = ngx.ERR
 
+local consumers_dict = ngx.shared.vitals_requests_consumers
 
 local new_tab
 do
@@ -144,10 +145,6 @@ function _M.new(opts)
     return error("opts.flush_interval must be an integer")
   end
 
-  if not opts.flush_interval then
-    opts.flush_interval = 60 -- hardcoded to make our lives easier
-  end
-
   local strategy
 
   do
@@ -155,9 +152,8 @@ function _M.new(opts)
     local dao_factory = opts.dao
 
     local strategy_opts = {
-      postgres_rotation_interval = opts.postgres_rotation_interval,
-      cassandra_seconds_ttl      = opts.cassandra_seconds_ttl,
-      cassandra_minutes_ttl      = opts.cassandra_minutes_ttl,
+      ttl_seconds = opts.ttl_seconds or 3600,
+      ttl_minutes = opts.ttl_minutes or 90000,
     }
 
     if dao_factory.db_type == "postgres" then
@@ -171,11 +167,17 @@ function _M.new(opts)
     strategy = db_strategy.new(dao_factory, strategy_opts)
   end
 
+  -- paradoxically, we set flush_interval to a very high default here,
+  -- so that tests won't attempt to flush counters as a side effect.
+  -- in a normal Kong scenario, opts.flush interval will be
+  -- initialized from configuration.
   local self = {
     shm            = ngx.shared.kong,
     strategy       = strategy,
     counters       = {},
-    flush_interval = opts.flush_interval,
+    flush_interval = opts.flush_interval or 90000,
+    ttl_seconds    = opts.ttl_seconds or 3600,
+    ttl_minutes    = opts.ttl_minutes or 90000,
     initialized    = false,
   }
 
@@ -279,6 +281,98 @@ function _M:get_stats(query_type, level, node_id)
 end
 
 
+local function convert_customer_stats(vitals, res)
+  local stats = {}
+
+  for _, row in ipairs(res) do
+    stats[row.node_id] = stats[row.node_id] or {}
+    stats[row.node_id][vitals.strategy:get_timestamp_str(row.start_at)] = row.count
+  end
+
+  return stats
+end
+
+
+--[[
+For use by the Vitals API to retrieve consumer stats
+(currently total request count per consumer).
+opts includes the following:
+  consumer_id = <consumer uuid>,
+  duration    = <"seconds" or "minutes">,
+  level       = <"node" or "cluster">,
+  node_id     = <node uuid (optional)>
+
+return value is a table:
+{
+  meta = {
+    consumer = {
+      id = <uuid>,
+    },
+    node = {
+      id       = <uuid>,
+    }, -- an empty table if node_id wasn't provided in opts
+    interval = "seconds",
+  },
+  stats = {
+    <node_id> = { <- node_id is a node uuid or "cluster"
+      ts = count,
+      ts = count,
+      ...
+    },
+  }
+}
+
+]]
+function _M:get_consumer_stats(opts)
+  if not opts.consumer_id or not opts.duration or not opts.level then
+    return nil, "Invalid query params: consumer_id, duration, and level are required"
+  end
+
+  if opts.duration ~= "seconds" and opts.duration ~= "minutes" then
+    return nil, "Invalid query params: duration must be 'minutes' or 'seconds'"
+  end
+
+  if opts.level ~= "node" and opts.level ~= "cluster" then
+    return nil, "Invalid query params: level must be 'node' or 'cluster'"
+  end
+
+  if opts.node_id and not utils.is_valid_uuid(opts.node_id) then
+    return nil, "Invalid query params: invalid node_id"
+  end
+
+  local query_opts = {
+    consumer_id = opts.consumer_id,
+    duration    = opts.duration == "seconds" and 1 or 60,
+    level       = opts.level,
+    node_id     = opts.node_id,
+  }
+
+  local res, _ = self.strategy:select_consumer_stats(query_opts)
+
+  if not res then
+    return nil, "Failed to retrieve stats for consumer " .. opts.consumer_id
+  end
+
+  local retval = {
+    meta = {
+      interval = opts.duration,
+      consumer = {
+        id = opts.consumer_id,
+      },
+    },
+    stats = convert_customer_stats(self, res)
+  }
+
+  if opts.node_id then
+    retval.meta.node = {
+      id = opts.node_id,
+    }
+  end
+
+  return retval
+end
+
+
 -- converts the db query result into a standardized format for the admin API
 function _M:convert_stats(res)
   local stats = {}
@@ -291,7 +385,7 @@ function _M:convert_stats(res)
   -- }
   for _, row in ipairs(res) do
     stats[row.node_id] = stats[row.node_id] or {}
-    
+
     stats[row.node_id][self.strategy:get_timestamp_str(row.at)] = {
       row.l2_hit,
       row.l2_miss,
@@ -425,6 +519,65 @@ function _M:merge_worker_data(flush_key)
 end
 
 
+local function parse_dictionary_key(key)
+  -- split on |
+  local p = key:find("|", 1, true)
+  local id = key:sub(1, p - 1)
+  p = p + 1
+  local timestamp = tonumber(key:sub(p))
+
+  return id, timestamp
+end
+
+
+function _M:flush_consumer_counters()
+  log(DEBUG, _log_prefix, "flushing consumer counters")
+  local keys = consumers_dict:get_keys()
+  local data = new_tab(#keys, 0)
+
+  -- keep track of consumers whose stale data we'll delete
+  local consumers = {}
+
+  for i, key in ipairs(keys) do
+    local count, err = consumers_dict:get(key)
+
+    if count then
+      consumers_dict:delete(key) -- trust that the insert will succeed
+
+      local id, timestamp = parse_dictionary_key(key)
+      data[i] = { id, timestamp, 1, count }
+
+      consumers[id] = true
+
+    elseif err then
+      log(WARN, _log_prefix, "failed to fetch ", key, ". err: ", err)
+
+    else
+      log(DEBUG, _log_prefix, key, " not found")
+    end
+  end
+
+  -- insert data if there is any
+  if data[1] then
+    local ok, err = self.strategy:insert_consumer_stats(data)
+    if not ok then
+      log(WARN, _log_prefix, "failed to save consumer stats: ", err)
+    end
+  end
+
+  -- clean up old data
+  local now = time()
+  local cutoff_times = {
+    seconds = now - self.ttl_seconds,
+    minutes = now - self.ttl_minutes,
+  }
+  local ok, err = self.strategy:delete_consumer_stats(consumers, cutoff_times)
+  if not ok then
+    log(WARN, _log_prefix, "failed to delete consumer stats: ", err)
+  end
+end
+
+
 function _M:flush_counters()
   -- acquire the lock at the beginning of our lock routine. we may not have the
   -- lock here, but we are still going to push up our data
@@ -472,6 +625,8 @@ function _M:flush_counters()
     if not ok then
       return nil, err
     end
+
+    self:flush_consumer_counters()
   end
 
   log(DEBUG, _log_prefix, "flush done")
@@ -550,6 +705,32 @@ function _M:log_latency(latency)
       math_max(self.counters.metrics[bucket].proxy_latency_max, latency)
   end
 
+  return "ok"
+end
+
+
+function _M:log_request(ctx)
+  if not self:enabled() then
+    return "vitals not enabled"
+  end
+
+  if ctx.authenticated_consumer then
+    local key = ctx.authenticated_consumer.id .. "|" .. time()
+    local ok, err, forced_eviction = consumers_dict:incr(key, 1, 0)
+
+    if forced_eviction then
+      log(WARN, _log_prefix, "vitals_requests_consumers cache is full")
+    elseif err then
+      log(WARN, _log_prefix, "log_request() failed: ", err)
+    end
+
+    if ok then
+      -- handy for testing
+      return key
+    end
+  end
+
+  -- didn't have to do anything, so didn't fail
   return "ok"
 end
 

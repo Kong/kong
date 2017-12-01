@@ -26,11 +26,9 @@ dao_helpers.for_each_dao(function(kong_conf)
         helpers.run_migrations(dao)
 
         singletons.configuration = { vitals = true }
-        
+
         vitals = kong_vitals.new({
           dao = dao,
-          flush_interval = 60,
-          postgres_rotation_interval = 3600,
         })
         vitals:init()
 
@@ -40,6 +38,11 @@ dao_helpers.for_each_dao(function(kong_conf)
         }))
 
         client = helpers.admin_client()
+      end)
+
+      before_each(function()
+        dao.db:truncate_table("consumers")
+        dao.db:truncate_table("vitals_consumers")
       end)
 
       teardown(function()
@@ -242,6 +245,171 @@ dao_helpers.for_each_dao(function(kong_conf)
             local json = cjson.decode(res)
 
             assert.same("Invalid query params: invalid node_id", json.message)
+          end)
+        end)
+      end)
+
+      describe("/vitals/cluster/consumers/{username_or_id}", function()
+        describe("GET", function()
+          it("retrieves the consumers seconds data for the entire cluster", function()
+            local consumer = assert(helpers.dao.consumers:insert {
+              username = "bob",
+              custom_id = "1234"
+            })
+
+            local now = time()
+
+            assert(vitals.strategy:insert_consumer_stats({
+              -- inserting minute and second data, but only expecting second data in response
+              { consumer.id, now, 60, 45 },
+              { consumer.id, now, 1, 17 }
+            }))
+
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/cluster/consumers/" .. consumer.id,
+              query = {
+                interval = "seconds"
+              }
+            })
+
+            res = assert.res_status(200, res)
+
+            local json = cjson.decode(res)
+
+            assert.same(consumer.id, json.meta.consumer.id)
+            assert.same("seconds", json.meta.interval)
+            assert.same({ [tostring(now)] = 17 }, json.stats.cluster)
+          end)
+
+          it("returns a 404 if called with invalid consumer_id path param", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/cluster/consumers/fake-uuid",
+              query = {
+                interval = "seconds"
+              }
+            })
+            res = assert.res_status(404, res)
+            local json = cjson.decode(res)
+
+            assert.same("Not found", json.message)
+          end)
+
+          it("returns a 400 if called with invalid query param", function()
+            local consumer = assert(helpers.dao.consumers:insert {
+              username = "bob",
+              custom_id = "1234"
+            })
+
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/cluster/consumers/" .. consumer.id,
+              query = {
+                wrong_query_key = "seconds"
+              }
+            })
+            res = assert.res_status(400, res)
+            local json = cjson.decode(res)
+
+            assert.same("Invalid query params: consumer_id, duration, and level are required", json.message)
+          end)
+        end)
+      end)
+
+      describe("/vitals/nodes/{node_id}/consumers/{username_or_id}", function()
+        describe("GET", function()
+          it("retrieves the consumers minutes data for a particular node", function()
+            local consumer = assert(helpers.dao.consumers:insert {
+              username = "bob",
+              custom_id = "1234"
+            })
+
+            -- make sure the data we enter is in the same minute, so we
+            -- can make a correct assertion
+            local start_at = time()
+            local minute_start_at = start_at - (start_at % 60)
+            start_at = minute_start_at + 5
+
+            -- a couple requests, a few seconds apart
+            assert(vitals.strategy:insert_consumer_stats({
+              { consumer.id, start_at, 1, 2 },
+              { consumer.id, start_at + 10, 1, 1 },
+            }))
+
+            local node_id = vitals.shm:get("vitals:node_id")
+
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/nodes/" .. node_id .. "/consumers/" .. consumer.id,
+              query = {
+                interval = "minutes"
+              }
+            })
+
+            res = assert.res_status(200, res)
+
+            local json = cjson.decode(res)
+
+            assert.same(consumer.id, json.meta.consumer.id)
+            assert.same("minutes", json.meta.interval)
+            assert.same({ [tostring(node_id)] = { [tostring(minute_start_at)] = 3 } }, json.stats)
+          end)
+
+          it("returns a 400 if called with invalid node_id path param", function()
+            local consumer = assert(helpers.dao.consumers:insert {
+              username = "bob",
+              custom_id = "1234"
+            })
+
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/nodes/fake-node-uuid/consumers/" .. consumer.id,
+              query = {
+                interval = "seconds"
+              }
+            })
+            res = assert.res_status(400, res)
+            local json = cjson.decode(res)
+
+            assert.same("Invalid query params: invalid node_id", json.message)
+          end)
+
+          it("returns a 404 if called with invalid consumer_id path param", function()
+            local node_id = vitals.shm:get("vitals:node_id")
+
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/nodes/" .. node_id .. "/consumers/fake-uuid",
+              query = {
+                interval = "seconds"
+              }
+            })
+            res = assert.res_status(404, res)
+            local json = cjson.decode(res)
+
+            assert.same("Not found", json.message)
+          end)
+
+          it("returns a 400 if called with invalid query param", function()
+            local consumer = assert(helpers.dao.consumers:insert {
+              username = "bob",
+              custom_id = "1234"
+            })
+
+            local node_id = vitals.shm:get("vitals:node_id")
+
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/nodes/" .. node_id .. "/consumers/" .. consumer.id,
+              query = {
+                wrong_query_key = "seconds"
+              }
+            })
+            res = assert.res_status(400, res)
+            local json = cjson.decode(res)
+
+            assert.same("Invalid query params: consumer_id, duration, and level are required", json.message)
           end)
         end)
       end)

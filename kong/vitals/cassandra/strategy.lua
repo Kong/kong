@@ -43,8 +43,22 @@ local SELECT_MINUTE_STATS = [[
     AND hour IN ?
 ]]
 
+local INSERT_CONSUMER_STATS = [[
+  UPDATE vitals_consumers
+     SET count       = count + ?
+   WHERE start_at    = ?
+     AND duration    = ?
+     AND consumer_id = ?
+     AND node_id     = ?
+]]
+
 local QUERY_OPTIONS = {
   prepared = true,
+}
+
+local COUNTER_QUERY_OPTIONS = {
+  prepared = true,
+  counter  = true,
 }
 
 
@@ -55,7 +69,7 @@ local function aggregate_stats(acc, current_hit, current_miss, current_plat_min,
   if type(current_plat_min) == "number" then
     if type(acc.plat_min) == "number" then
       acc.plat_min = math_min(acc.plat_min, current_plat_min)
-    else 
+    else
       acc.plat_min = current_plat_min
     end
   end
@@ -63,7 +77,7 @@ local function aggregate_stats(acc, current_hit, current_miss, current_plat_min,
   if type(current_plat_max) == "number" then
     if type(acc.plat_max) == "number" then
       acc.plat_max = math_max(acc.plat_max, current_plat_max)
-    else 
+    else
       acc.plat_max = current_plat_max
     end
   end
@@ -100,10 +114,14 @@ end
 
 
 function _M.new(dao_factory, opts)
+  if not opts then
+    opts = {}
+  end
+
   local self = {
     cluster     = dao_factory.db.cluster,
-    seconds_ttl = opts.cassandra_seconds_ttl,
-    minutes_ttl = opts.cassandra_minutes_ttl,
+    seconds_ttl = opts.ttl_seconds or 3600,
+    minutes_ttl = opts.ttl_minutes or 90000,
     node_id     = nil,
   }
 
@@ -119,7 +137,7 @@ function _M:init(node_id, hostname)
   self.node_id = cassandra.uuid(node_id)
 
   local now = cassandra.timestamp(time() * 1000)
-  
+
   local res, err = self.cluster:execute(RECORD_NODE, {
     self.node_id,
     now,
@@ -214,11 +232,11 @@ function _M:insert_stats(data)
     plat_min = cassandra.null,
     plat_max = cassandra.null,
   }
-  
+
   -- iterate over seconds data
   for _, row in ipairs(data) do
     at, hit, miss, plat_min, plat_max = unpack(row)
-    
+
     plat_min = plat_min or cassandra.null
     plat_max = plat_max or cassandra.null
 
@@ -279,7 +297,7 @@ function _M:current_table_name()
 end
 
 
-function _M:get_minute(time) 
+function _M:get_minute(time)
   return floor(time / 60) * 60000
 end
 
@@ -288,5 +306,54 @@ function _M:get_hour(time)
   return floor(time / 3600) * 3600000
 end
 
+
+--[[
+  data: a 2D-array of [
+    [consumer_id, timestamp, duration, count]
+  ]
+]]
+function _M:insert_consumer_stats(data)
+  local res, err, count, start_at, duration, consumer_id
+
+  for _, row in ipairs(data) do
+    consumer_id, start_at, duration, count = unpack(row)
+
+    local count_converted = cassandra.counter(count)
+    local now_converted = cassandra.timestamp(start_at * 1000)
+    local minute = cassandra.timestamp(self:get_minute(start_at))
+    local consumer_id_converted = cassandra.uuid(consumer_id)
+
+    res, err = self.cluster:execute(INSERT_CONSUMER_STATS, {
+      count_converted,
+      now_converted,
+      duration,
+      consumer_id_converted,
+      self.node_id,
+    }, COUNTER_QUERY_OPTIONS)
+
+
+    if not res then
+      return nil, "could not insert seconds data. error: " .. err
+    end
+
+    res, err = self.cluster:execute(INSERT_CONSUMER_STATS, {
+      count_converted,
+      minute,
+      60,
+      consumer_id_converted,
+      self.node_id,
+    }, COUNTER_QUERY_OPTIONS)
+
+    if not res then
+      return nil, "could not insert minutes data. error: " .. err
+    end
+  end
+
+  return true
+end
+
+
+function _M:delete_consumer_stats(consumers, cutoff_times)
+end
 
 return _M

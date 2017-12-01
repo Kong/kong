@@ -4,7 +4,10 @@ local dao_factory  = require "kong.dao.factory"
 local kong_vitals  = require "kong.vitals"
 local singletons   = require "kong.singletons"
 local dao_helpers  = require "spec.02-integration.03-dao.helpers"
+local utils        = require "kong.tools.utils"
+
 local ngx_time     = ngx.time
+local fmt          = string.format
 
 
 dao_helpers.for_each_dao(function(kong_conf)
@@ -25,12 +28,16 @@ dao_helpers.for_each_dao(function(kong_conf)
 
 
   describe("vitals with db: " .. kong_conf.database, function()
+    local vitals
     local dao
 
     setup(function()
       dao = assert(dao_factory.new(kong_conf))
-
       assert(dao:run_migrations())
+
+      vitals = kong_vitals.new({
+        dao = dao,
+      })
     end)
 
     describe("flush_lock()", function()
@@ -141,31 +148,33 @@ dao_helpers.for_each_dao(function(kong_conf)
     end)
 
     describe("current_bucket()", function()
-      it("returns the current bucket", function()
-        local vitals = kong_vitals.new { dao = dao }
+      before_each(function()
         vitals:reset_counters()
+      end)
 
+      it("returns the current bucket", function()
         local res, err = vitals:current_bucket()
 
         assert.is_nil(err)
         assert.same(0, res)
       end)
-      it("only returns good bucket indexes (lower-bound check)", function()
-        local vitals = kong_vitals.new { dao = dao }
-        vitals:reset_counters()
 
-        vitals.counters = { start_at = ngx_time() + 1 }
+      it("only returns good bucket indexes (lower-bound check)", function()
+        vitals.counters.start_at = ngx_time() + 1
 
         local res, err = vitals:current_bucket()
 
         assert.same("bucket -1 out of range for counters starting at " .. vitals.counters.start_at, err)
         assert.is_nil(res)
       end)
-      it("only returns good bucket indexes (upper-bound check)", function()
-        local vitals = kong_vitals.new { dao = dao }
-        vitals:reset_counters()
 
-        vitals.counters = { start_at = ngx.time() - 60 }
+      it("only returns good bucket indexes (upper-bound check)", function()
+        local vitals = kong_vitals.new({
+          dao            = dao,
+          flush_interval = 60,
+        })
+
+        vitals.counters.start_at = ngx.time() - 60
 
         local res, err = vitals:current_bucket()
 
@@ -173,6 +182,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert.is_nil(res)
       end)
     end)
+
     describe("cache_accessed()", function()
       it("doesn't increment the cache counter when vitals is off", function()
         singletons.configuration = { vitals = false }
@@ -182,6 +192,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         assert.same("vitals not enabled", vitals:cache_accessed(2))
       end)
+
       it("does increment the cache counter when vitals is on", function()
         singletons.configuration = { vitals = true }
 
@@ -197,6 +208,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert.same(initial_l2_counter + 1, vitals.counters.metrics[0].l2_hits)
       end)
     end)
+
     describe("log_latency()", function()
       it("doesn't log latency when vitals is off", function()
         singletons.configuration = { vitals = false }
@@ -206,6 +218,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         assert.same("vitals not enabled", vitals:log_latency(7))
       end)
+
       it("does log latency when vitals is on", function()
         singletons.configuration = { vitals = true }
 
@@ -221,6 +234,28 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert.same(91, vitals.counters.metrics[0].proxy_latency_max)
       end)
     end)
+
+    describe("log_request()", function()
+      it("doesn't log when vitals is off", function()
+        local vitals = kong_vitals.new { dao = dao }
+        stub(vitals, "enabled").returns(false)
+
+        assert.same("vitals not enabled", vitals:log_request(nil))
+      end)
+
+      it("does log when vitals is on", function()
+        local vitals = kong_vitals.new { dao = dao }
+        stub(vitals, "enabled").returns(true)
+
+        vitals:reset_counters()
+
+        local ctx = { authenticated_consumer =  { id = utils.uuid() }}
+        local ok, _ = vitals:log_request(ctx)
+
+        assert.not_nil(ok)
+      end)
+    end)
+
     describe("init()", function()
       it("doesn't initialize strategy  when vitals is off", function()
         singletons.configuration = { vitals = false }
@@ -239,8 +274,6 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         local vitals = kong_vitals.new({
           dao = dao,
-          flush_interval = 60,
-          postgres_rotation_interval = 3600,
         })
         vitals:reset_counters()
 
@@ -249,6 +282,149 @@ dao_helpers.for_each_dao(function(kong_conf)
         vitals:init()
 
         assert.spy(s_strategy).was_called(1)
+      end)
+    end)
+
+    describe("get_consumer_stats()", function()
+      local node_1  = "20426633-55dc-4050-89ef-2382c95a611e"
+      local node_2  = "8374682f-17fd-42cb-b1dc-7694d6f65ba0"
+      local cons_id = utils.uuid()
+
+      before_each(function()
+        local q, query
+
+        q = "insert into vitals_consumers(consumer_id, node_id, start_at, duration, count) " ..
+            "values('%s', '%s', to_timestamp(%d), %d, %d)"
+
+        local data_to_insert = {
+          {cons_id, node_1, 1510560000, 1, 1},
+          {cons_id, node_1, 1510560001, 1, 3},
+          {cons_id, node_1, 1510560002, 1, 4},
+          {cons_id, node_1, 1510560000, 60, 19},
+          {cons_id, node_2, 1510560001, 1, 5},
+          {cons_id, node_2, 1510560002, 1, 7},
+          {cons_id, node_2, 1510560000, 60, 20},
+          {cons_id, node_2, 1510560060, 60, 24},
+        }
+
+        for _, row in ipairs(data_to_insert) do
+          query = fmt(q, unpack(row))
+          assert(dao.db:query(query))
+        end
+      end)
+
+      after_each(function()
+        assert(dao.db:query("truncate table vitals_consumers"))
+      end)
+
+      it("returns seconds stats for a consumer across the cluster", function()
+        local res, _ = vitals:get_consumer_stats({
+          consumer_id = cons_id,
+          duration    = "seconds",
+          level       = "cluster",
+        })
+
+        local expected = {
+          meta = {
+            interval = 'seconds',
+            consumer = {
+              id = cons_id
+            },
+          },
+          stats = {
+            cluster = {
+              ["1510560000"] = 1,
+              ["1510560001"] = 8,
+              ["1510560002"] = 11,
+            }
+          }
+        }
+
+        assert.same(expected, res)
+      end)
+
+      it("returns seconds stats for a consumer and a node", function()
+        local res, _ = vitals:get_consumer_stats({
+          consumer_id = cons_id,
+          duration    = "seconds",
+          level       = "node",
+          node_id     = node_1,
+        })
+
+        local expected = {
+          meta = {
+            interval = 'seconds',
+            node     = {
+              id = node_1,
+            },
+            consumer = {
+              id = cons_id,
+            },
+          },
+          stats = {
+            [node_1] = {
+              ["1510560000"] = 1,
+              ["1510560001"] = 3,
+              ["1510560002"] = 4,
+            }
+          }
+        }
+
+        assert.same(expected, res)
+      end)
+
+      it("returns minutes stats for a consumer across the cluster", function()
+        local res, _ = vitals:get_consumer_stats({
+          consumer_id = cons_id,
+          duration    = "minutes",
+          level       = "cluster",
+        })
+
+        local expected = {
+          meta = {
+            interval = 'minutes',
+            consumer = {
+              id = cons_id
+            },
+          },
+          stats = {
+            cluster = {
+              ["1510560000"] = 39,
+              ["1510560060"] = 24,
+            }
+          }
+        }
+
+        assert.same(expected, res)
+      end)
+
+      it("returns minutes stats for a consumer and a node", function()
+        local res, _ = vitals:get_consumer_stats({
+          consumer_id = cons_id,
+          duration    = "minutes",
+          level       = "node",
+          node_id     = node_2,
+        })
+
+        local expected = {
+          meta = {
+            interval = 'minutes',
+            node     = {
+              id = node_2,
+            },
+            consumer = {
+              id = cons_id,
+            },
+          },
+          stats = {
+            [node_2] = {
+              ["1510560000"] = 20,
+              ["1510560060"] = 24,
+            }
+          }
+        }
+
+        assert.same(expected, res)
       end)
     end)
 

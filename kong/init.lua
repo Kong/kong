@@ -159,11 +159,10 @@ function Kong.init()
   singletons.configuration = config
   singletons.license = ee.read_license_info()
   singletons.vitals = vitals.new {
-      dao                        = dao,
-      flush_interval             = config.vitals_flush_interval,
-      postgres_rotation_interval = config.vitals_postgres_rotation_interval,
-      cassandra_seconds_ttl      = config.vitals_cassandra_seconds_ttl,
-      cassandra_minutes_ttl      = config.vitals_cassandra_minutes_ttl,
+      dao            = dao,
+      flush_interval = config.vitals_flush_interval,
+      ttl_seconds    = config.vitals_ttl_seconds,
+      ttl_minutes    = config.vitals_ttl_minutes,
   }
 
   rbac.load_resource_bitfields(dao)
@@ -372,6 +371,7 @@ function Kong.access()
   end
 
   core.access.after(ctx)
+  ee.handlers.access.after(ctx)
 end
 
 function Kong.header_filter()

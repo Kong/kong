@@ -2,7 +2,6 @@ local fmt        = string.format
 local match      = string.match
 local timer_at   = ngx.timer.at
 local log        = ngx.log
-local ERR        = ngx.ERR
 local WARN       = ngx.WARN
 local DEBUG      = ngx.DEBUG
 local time       = ngx.time
@@ -39,10 +38,13 @@ local NO_PREVIOUS_TABLE = "No previous table"
 
 
 function _M.new(opts)
+  if not opts.db then
+    error "opts.db is required"
+  end
 
   local self = {
     db = opts.db,
-    rotation_interval = opts.rotation_interval,
+    rotation_interval = opts.ttl_seconds or 3600,
     aggregator = aggregator.new(opts),
   }
 
@@ -56,9 +58,12 @@ rotation_handler = function(premature, self)
   end
 
 
-  local _, err = timer_at(self.rotation_interval / 60, rotation_handler, self)
+  -- we need a new table every `rotation_interval` seconds. Set timer
+  -- to run twice more frequently, giving us >1 chance to create
+  -- the table before we need it.
+  local _, err = timer_at(self.rotation_interval / 2, rotation_handler, self)
   if err then
-    log(ERR, _log_prefix, "failed to start rotater timer (2): ", err)
+    log(WARN, _log_prefix, "failed to start rotater timer (2): ", err)
     return
   end
 
@@ -88,7 +93,7 @@ function _M:init()
   end
 
   -- start a timer to make the next table
-  local ok, err = timer_at(self.rotation_interval / 60, rotation_handler, self)
+  local ok, err = timer_at(self.rotation_interval / 2, rotation_handler, self)
   if ok then
     ok, err = self:create_next_table()
 

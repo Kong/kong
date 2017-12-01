@@ -22,12 +22,8 @@ dao_helpers.for_each_dao(function(kong_conf)
     setup(function()
       helpers.run_migrations()
 
-      local opts = {
-        postgres_rotation_interval = 3600
-      }
-
       dao      = assert(dao_factory.new(kong_conf))
-      strategy = pg_strategy.new(dao, opts)
+      strategy = pg_strategy.new(dao)
 
       db  = dao.db
 
@@ -44,6 +40,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       assert(db:query("truncate table vitals_stats_seconds"))
       assert(db:query("truncate table vitals_stats_seconds_2"))
       assert(db:query("truncate table vitals_node_meta"))
+      assert(db:query("truncate table vitals_consumers"))
     end)
 
 
@@ -374,6 +371,393 @@ dao_helpers.for_each_dao(function(kong_conf)
         }
 
         assert.same(expected, res)
+      end)
+    end)
+
+
+    describe(":insert_consumer_stats()", function()
+      it("turns Lua tables into Postgres rows", function()
+        local node_id = utils.uuid()
+        local con1_id = utils.uuid()
+        local con2_id = utils.uuid()
+
+        strategy:init(node_id, "testhostname")
+
+        local data_to_insert = {
+          {con1_id, 1510560000, 1, 1},
+          {con1_id, 1510560001, 1, 3},
+          {con2_id, 1510560001, 1, 2},
+        }
+
+        assert(strategy:insert_consumer_stats(data_to_insert))
+
+        -- force a sort order to make assertion easier
+        local q = [[
+            select consumer_id, node_id, extract('epoch' from start_at) as start_at,
+                   duration, count from vitals_consumers
+            order by start_at, duration, count
+        ]]
+
+        local results = db:query(q)
+
+        local expected = {
+          {
+            consumer_id = con1_id,
+            node_id     = node_id,
+            start_at    = 1510560000,
+            duration    = 1,
+            count       = 1,
+          },
+          {
+            consumer_id = con2_id,
+            node_id     = node_id,
+            start_at    = 1510560000,
+            duration    = 60,
+            count       = 2,
+          },
+          {
+            consumer_id = con1_id,
+            node_id     = node_id,
+            start_at    = 1510560000,
+            duration    = 60,
+            count       = 4,
+          },
+          {
+            consumer_id = con2_id,
+            node_id     = node_id,
+            start_at    = 1510560001,
+            duration    = 1,
+            count       = 2,
+          },
+          {
+            consumer_id = con1_id,
+            node_id     = node_id,
+            start_at    = 1510560001,
+            duration    = 1,
+            count       = 3,
+          },
+        }
+
+        assert.same(expected, results)
+      end)
+
+
+      it("upserts when necessary", function()
+        local node_id = utils.uuid()
+        local con1_id = utils.uuid()
+
+        strategy:init(node_id, "testhostname")
+
+        -- insert a row to upsert on
+        assert(strategy:insert_consumer_stats({{ con1_id, 1510560001, 1, 1 }}))
+
+
+        local data_to_insert = {
+          {con1_id, 1510560003, 1, 19},
+        }
+
+        assert(strategy:insert_consumer_stats(data_to_insert))
+
+        local q = [[
+            select consumer_id, node_id, extract('epoch' from start_at) as start_at,
+                   duration, count from vitals_consumers where duration = 60
+        ]]
+
+        local results = db:query(q)
+
+        local expected = {
+          {
+            consumer_id = con1_id,
+            node_id     = node_id,
+            start_at    = 1510560000,
+            duration    = 60,
+            count       = 20,
+          },
+        }
+
+        assert.same(expected, results)
+      end)
+    end)
+
+
+    describe(":select_consumer_stats()", function()
+      local node_1  = "20426633-55dc-4050-89ef-2382c95a611e"
+      local node_2  = "8374682f-17fd-42cb-b1dc-7694d6f65ba0"
+      local cons_id = utils.uuid()
+
+      before_each(function()
+        local q, query
+
+        q = "insert into vitals_consumers(consumer_id, node_id, start_at, duration, count) " ..
+            "values('%s', '%s', to_timestamp(%d), %d, %d)"
+
+        local data_to_insert = {
+          {cons_id, node_1, 1510560000, 1, 1},
+          {cons_id, node_1, 1510560001, 1, 3},
+          {cons_id, node_1, 1510560002, 1, 4},
+          {cons_id, node_1, 1510560000, 60, 19},
+          {cons_id, node_2, 1510560001, 1, 5},
+          {cons_id, node_2, 1510560002, 1, 7},
+          {cons_id, node_2, 1510560000, 60, 20},
+          {cons_id, node_2, 1510560060, 60, 24},
+        }
+
+        for _, row in ipairs(data_to_insert) do
+          query = fmt(q, unpack(row))
+          assert(db:query(query))
+        end
+
+        strategy:init(node_1, "testhostname")
+      end)
+
+
+      it("returns seconds stats for a consumer across the cluster", function()
+        local opts = {
+          consumer_id = cons_id,
+          node_id     = nil,
+          duration    = 1,
+          level       = "cluster",
+        }
+
+        local results, _ = strategy:select_consumer_stats(opts)
+
+        local expected = {
+          {
+            node_id     = "cluster",
+            start_at    = 1510560000,
+            count       = 1,
+          },
+          {
+            node_id     = "cluster",
+            start_at    = 1510560001,
+            count       = 8,
+          },
+          {
+            node_id     = "cluster",
+            start_at    = 1510560002,
+            count       = 11,
+          },
+        }
+
+        assert.same(expected, results)
+      end)
+
+
+      it("returns seconds stats for a consumer and all nodes", function()
+        local opts = {
+          consumer_id = cons_id,
+          node_id     = nil,
+          duration    = 1,
+          level       = "node",
+        }
+
+        local results, _ = strategy:select_consumer_stats(opts)
+
+        assert.same(5, #results)
+
+        -- just to make it easier to assert
+        table.sort(results, function(a,b)
+          return a.count < b.count
+        end)
+
+        local expected = {
+          {
+            count = 1,
+            node_id = node_1,
+            start_at = 1510560000,
+          },
+          {
+            count = 3,
+            node_id = node_1,
+            start_at = 1510560001,
+          },
+          {
+            count = 4,
+            node_id = node_1,
+            start_at = 1510560002,
+          },
+          {
+            count = 5,
+            node_id = node_2,
+            start_at = 1510560001,
+          },
+          {
+            count = 7,
+            node_id = node_2,
+            start_at = 1510560002,
+          },
+        }
+
+        assert.same(expected, results)
+      end)
+
+
+      it("returns seconds stats for a consumer and a node", function()
+        local opts = {
+          consumer_id = cons_id,
+          node_id     = node_2,
+          duration    = 1,
+          level       = "node",
+        }
+
+        local results, _ = strategy:select_consumer_stats(opts)
+
+        local expected = {
+          {
+            count = 5,
+            node_id = node_2,
+            start_at = 1510560001,
+          },
+          {
+            count = 7,
+            node_id = node_2,
+            start_at = 1510560002,
+          },
+        }
+
+        assert.same(expected, results)
+      end)
+
+
+      it("returns minutes stats for a consumer across the cluster", function()
+        local opts = {
+          consumer_id = cons_id,
+          node_id     = nil,
+          duration    = 60,
+          level       = "cluster",
+        }
+
+        local results, _ = strategy:select_consumer_stats(opts)
+
+        local expected = {
+          {
+            node_id     = "cluster",
+            start_at    = 1510560000,
+            count       = 39,
+          },
+          {
+            node_id     = "cluster",
+            start_at    = 1510560060,
+            count       = 24,
+          },
+        }
+        assert.same(expected, results)
+      end)
+
+
+      it("returns minutes stats for a consumer and all nodes", function()
+        local opts = {
+          consumer_id = cons_id,
+          node_id     = nil,
+          duration    = 60,
+          level       = "node",
+        }
+
+        local results, _ = strategy:select_consumer_stats(opts)
+
+        assert.same(3, #results)
+
+        table.sort(results, function(a,b)
+          return a.count < b.count
+        end)
+
+
+        local expected = {
+          {
+            count = 19,
+            node_id = node_1,
+            start_at = 1510560000,
+          },
+          {
+            count = 20,
+            node_id = node_2,
+            start_at = 1510560000,
+          },
+          {
+            count = 24,
+            node_id = node_2,
+            start_at = 1510560060,
+          },
+        }
+
+        assert.same(expected, results)
+      end)
+
+
+      it("returns minutes stats for a consumer and a node", function()
+        local opts = {
+          consumer_id = cons_id,
+          node_id     = node_2,
+          duration    = 60,
+          level       = "node",
+        }
+
+        local results, _ = strategy:select_consumer_stats(opts)
+
+        local expected = {
+          {
+            count = 20,
+            node_id = node_2,
+            start_at = 1510560000,
+          },
+          {
+            count = 24,
+            node_id = node_2,
+            start_at = 1510560060,
+          },
+        }
+
+        assert.same(expected, results)
+      end)
+    end)
+
+
+    describe(":delete_consumer_stats()", function()
+      local cons_1 = "20426633-55dc-4050-89ef-2382c95a611e"
+      local cons_2 = "8374682f-17fd-42cb-b1dc-7694d6f65ba0"
+      local node_1 = utils.uuid()
+
+      before_each(function()
+        local q, query
+
+        q = "insert into vitals_consumers(consumer_id, node_id, start_at, duration, count) " ..
+            "values('%s', '%s', to_timestamp(%d), %d, %d)"
+
+        local test_data = {
+          {cons_1, node_1, 1510560000, 1, 1},
+          {cons_1, node_1, 1510560001, 1, 3},
+          {cons_1, node_1, 1510560002, 1, 4},
+          {cons_1, node_1, 1510560000, 60, 19},
+          {cons_2, node_1, 1510560001, 1, 5},
+          {cons_2, node_1, 1510560002, 1, 7},
+          {cons_2, node_1, 1510560000, 60, 20},
+          {cons_2, node_1, 1510560060, 60, 24},
+        }
+
+        for _, row in ipairs(test_data) do
+          query = fmt(q, unpack(row))
+          assert(db:query(query))
+        end
+
+        strategy:init(node_1, "testhostname")
+      end)
+
+
+      it("cleans up consumer stats", function()
+        local consumers = {
+          [cons_1] = true,
+          [cons_2] = true,
+        }
+
+        -- query is "<" so bump the cutoff by a second
+        local cutoff_times = {
+          minutes = 1510560001,
+          seconds = 1510560002,
+        }
+
+        local results, _ = strategy:delete_consumer_stats(consumers, cutoff_times)
+
+        assert.same(5, results)
       end)
     end)
   end)

@@ -1,12 +1,23 @@
-local cjson   = require "cjson.safe"
-local log     = require "kong.cmd.utils.log"
-local meta    = require "kong.enterprise_edition.meta"
-local pl_file = require "pl.file"
-local pl_path = require "pl.path"
+local cjson      = require "cjson.safe"
+local log        = require "kong.cmd.utils.log"
+local meta       = require "kong.enterprise_edition.meta"
+local pl_file    = require "pl.file"
+local pl_path    = require "pl.path"
+local singletons = require "kong.singletons"
 
 
 local _M = {}
 
+local handlers = {
+  access = {
+    after = function(ctx)
+      singletons.vitals:log_latency(ctx.KONG_PROXY_LATENCY)
+      singletons.vitals:log_request(ctx)
+    end
+  }
+}
+
+_M.handlers = handlers
 
 local DEFAULT_KONG_LICENSE_PATH = "/etc/kong/license.json"
 
