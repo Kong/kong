@@ -69,7 +69,7 @@ return {
       return helpers.responses.send_HTTP_OK({ stats = requested_node_stats })
     end
   },
-  ["/vitals/cluster/consumers/:username_or_id"] = {
+  ["/vitals/consumers/:username_or_id"] = {
     GET = function(self, dao, helpers)
       self.params.username_or_id = ngx.unescape_uri(self.params.username_or_id)
       crud.find_consumer_by_username_or_id(self, dao, helpers)
@@ -94,7 +94,7 @@ return {
       return helpers.responses.send_HTTP_OK(cluster_stats)
     end
   },
-  ["/vitals/nodes/:node_id/consumers/:username_or_id"] = {
+  ["/vitals/consumers/:username_or_id/nodes"] = {
     GET = function(self, dao, helpers)
       self.params.username_or_id = ngx.unescape_uri(self.params.username_or_id)
       crud.find_consumer_by_username_or_id(self, dao, helpers)
@@ -103,7 +103,6 @@ return {
         consumer_id = self.consumer.id,
         duration    = self.params.interval,
         level       = "node",
-        node_id     = self.params.node_id
       }
 
       local requested_node_stats, err = singletons.vitals:get_consumer_stats(opts)
