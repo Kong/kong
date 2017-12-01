@@ -73,15 +73,15 @@ end
 -- Modified http-server. Accepts (sequentially) a number of incoming
 -- connections and then rejects a given number of connections.
 -- @param timeout Server timeout.
--- @param ok_count Number of 200 OK responses to give.
 -- @param port Port number to use.
--- @param fail_count (optional, default 0) Number of 500 errors to respond.
+-- @param counts Array of response counts to give,
+-- odd entries are 200s, event entries are 500s
+-- @param test_log (optional, default fals) Produce detailed logs
 -- @return Returns the number of succesful and failure responses.
-local function http_server(timeout, ok_count, port, fail_count)
-  fail_count = fail_count or 0
+local function http_server(timeout, port, counts, test_log)
   local threads = require "llthreads2.ex"
   local thread = threads.new({
-    function(timeout, ok_count, port, fail_count)
+    function(timeout, port, counts, TEST_LOG)
 
       local function test_log(...)
         if not TEST_LOG then
@@ -110,8 +110,12 @@ local function http_server(timeout, ok_count, port, fail_count)
       local healthy = true
 
       local ok_responses, fail_responses = 0, 0
-      local total_reqs = ok_count + fail_count
+      local total_reqs = 0
+      for _, c in pairs(counts) do
+        total_reqs = total_reqs + c
+      end
       local n_reqs = 0
+      local reply_200 = true
       while n_reqs < total_reqs do
         local client, err
         client, err = server:accept()
@@ -176,21 +180,29 @@ local function http_server(timeout, ok_count, port, fail_count)
 
           elseif handshake_done and not got_handshake then
             n_reqs = n_reqs + 1
-            local do_ok = ok_count > 0
-            local response
-            if do_ok then
-              ok_count = ok_count - 1
-              response = "HTTP/1.1 200 OK"
 
+            while counts[1] == 0 do
+              table.remove(counts, 1)
+              reply_200 = not reply_200
+            end
+            if not counts[1] then
+              error("unexpected request")
+            end
+            if counts[1] > 0 then
+              counts[1] = counts[1] - 1
+            end
+
+            local response
+            if reply_200 then
+              response = "HTTP/1.1 200 OK"
             else
               response = "HTTP/1.1 500 Internal Server Error"
             end
             local sent = client:send(response .. "\r\nConnection: close\r\n\r\n")
             client:close()
             if sent then
-              if do_ok then
+              if reply_200 then
                 ok_responses = ok_responses + 1
-
               else
                 fail_responses = fail_responses + 1
               end
@@ -207,7 +219,7 @@ local function http_server(timeout, ok_count, port, fail_count)
       test_log("test http server on port ", port, " closed")
       return ok_responses, fail_responses
     end
-  }, timeout, ok_count, port, fail_count, TEST_LOG)
+  }, timeout, port, counts, test_log or TEST_LOG)
 
   local server = thread:start()
 
@@ -301,7 +313,7 @@ dao_helpers.for_each_dao(function(kong_config)
 
       it("perform passive health checks", function()
 
-        for fails = 1, slots do
+        for nfails = 1, slots do
 
           -- configure healthchecks
           local api_client = helpers.admin_client()
@@ -315,7 +327,7 @@ dao_helpers.for_each_dao(function(kong_config)
               healthchecks = healthchecks_config {
                 passive = {
                   unhealthy = {
-                    http_failures = fails,
+                    http_failures = nfails,
                   }
                 }
               }
@@ -330,8 +342,13 @@ dao_helpers.for_each_dao(function(kong_config)
           -- server2 will only respond for part of the test,
           -- then server1 will take over.
           local server2_oks = math.floor(requests / 4)
-          local server1 = http_server(timeout, requests - server2_oks - fails, PORT)
-          local server2 = http_server(timeout, server2_oks, PORT+1, fails)
+          local server1 = http_server(timeout, PORT, {
+            requests - server2_oks - nfails
+          })
+          local server2 = http_server(timeout, PORT + 1, {
+            server2_oks,
+            nfails
+          })
 
           -- Go hit them with our test requests
           local client_oks, client_fails = client_requests(requests)
@@ -341,13 +358,13 @@ dao_helpers.for_each_dao(function(kong_config)
           local _, ok2, fail2 = server2:join()
 
           -- verify
-          assert.are.equal(requests - server2_oks - fails, ok1)
+          assert.are.equal(requests - server2_oks - nfails, ok1)
           assert.are.equal(server2_oks, ok2)
           assert.are.equal(0, fail1)
-          assert.are.equal(fails, fail2)
+          assert.are.equal(nfails, fail2)
 
-          assert.are.equal(requests - fails, client_oks)
-          assert.are.equal(fails, client_fails)
+          assert.are.equal(requests - nfails, client_oks)
+          assert.are.equal(nfails, client_fails)
         end
       end)
 
@@ -355,7 +372,7 @@ dao_helpers.for_each_dao(function(kong_config)
 
         local healthcheck_interval = 0.01
 
-        for fails = 1, 5 do
+        for nfails = 1, 5 do
 
           -- configure healthchecks
           local api_client = helpers.admin_client()
@@ -375,7 +392,7 @@ dao_helpers.for_each_dao(function(kong_config)
                   },
                   unhealthy = {
                     interval = healthcheck_interval,
-                    http_failures = fails,
+                    http_failures = nfails,
                   },
                 }
               }
@@ -390,8 +407,8 @@ dao_helpers.for_each_dao(function(kong_config)
           -- server2 will only respond for part of the test,
           -- then server1 will take over.
           local server2_oks = math.floor(requests / 4)
-          local server1 = http_server(timeout, requests - server2_oks, PORT)
-          local server2 = http_server(timeout, server2_oks, PORT+1)
+          local server1 = http_server(timeout, PORT, { requests - server2_oks })
+          local server2 = http_server(timeout, PORT + 1, { server2_oks })
 
           -- Phase 1: server1 and server2 take requests
           local client_oks, client_fails = client_requests(server2_oks * 2)
@@ -400,7 +417,7 @@ dao_helpers.for_each_dao(function(kong_config)
           direct_request("127.0.0.1", PORT + 1, "/unhealthy")
 
           -- Give time for healthchecker to detect
-          ngx.sleep((2 + fails) * healthcheck_interval)
+          ngx.sleep((2 + nfails) * healthcheck_interval)
 
           -- Phase 3: server1 takes all requests
           do
@@ -463,8 +480,8 @@ dao_helpers.for_each_dao(function(kong_config)
           -- then server1 will take over.
           local server1_oks = upstream.slots * 2
           local server2_oks = upstream.slots
-          local server1 = http_server(timeout, server1_oks, PORT)
-          local server2 = http_server(timeout, server2_oks, PORT+1)
+          local server1 = http_server(timeout, PORT,     { server1_oks })
+          local server2 = http_server(timeout, PORT + 1, { server2_oks })
 
           -- 1) server1 and server2 take requests
           local oks, fails = client_requests(upstream.slots)
@@ -588,8 +605,8 @@ dao_helpers.for_each_dao(function(kong_config)
         local requests = upstream1.slots * 2 -- go round the balancer twice
 
         -- setup target servers
-        local server1 = http_server(timeout, requests/2, PORT)
-        local server2 = http_server(timeout, requests/2, PORT+1)
+        local server1 = http_server(timeout, PORT,     { requests / 2 })
+        local server2 = http_server(timeout, PORT + 1, { requests / 2 })
 
         -- Go hit them with our test requests
         local oks = client_requests(requests)
@@ -608,8 +625,8 @@ dao_helpers.for_each_dao(function(kong_config)
         local requests = upstream2.slots * 2 -- go round the balancer twice
 
         -- setup target servers
-        local server1 = http_server(timeout, requests, PORT+2, 0, true)
-        local server2 = http_server(timeout, requests, PORT+3, 0, true)
+        local server1 = http_server(timeout, PORT + 2, { requests }, true)
+        local server2 = http_server(timeout, PORT + 3, { requests }, true)
 
         -- Go hit them with our test requests
         local oks = client_requests(requests, {
@@ -636,8 +653,8 @@ dao_helpers.for_each_dao(function(kong_config)
         local requests = upstream1.slots * 2 -- go round the balancer twice
 
         -- setup target servers
-        local server1 = http_server(timeout, requests/2, PORT)
-        local server2 = http_server(timeout, requests/2, PORT+1)
+        local server1 = http_server(timeout, PORT,     { requests / 2 })
+        local server2 = http_server(timeout, PORT + 1, { requests / 2 })
 
         -- Go hit them with our test requests
         local oks = client_requests(requests)
@@ -669,9 +686,10 @@ dao_helpers.for_each_dao(function(kong_config)
         -----------------------------------------
 
         -- setup target servers
-        server1 = http_server(timeout, requests * 0.4, PORT)
-        server2 = http_server(timeout, requests * 0.4, PORT+1)
-        local server3 = http_server(timeout, requests * 0.2, PORT+2)
+        local server3
+        server1 = http_server(timeout, PORT,     { requests * 0.4 })
+        server2 = http_server(timeout, PORT + 1, { requests * 0.4 })
+        server3 = http_server(timeout, PORT + 2, { requests * 0.2 })
 
         -- Go hit them with our test requests
         local oks = client_requests(requests)
@@ -692,8 +710,8 @@ dao_helpers.for_each_dao(function(kong_config)
         local requests = upstream1.slots * 2 -- go round the balancer twice
 
         -- setup target servers
-        local server1 = http_server(timeout, requests/2, PORT)
-        local server2 = http_server(timeout, requests/2, PORT+1)
+        local server1 = http_server(timeout, PORT,     { requests / 2 })
+        local server2 = http_server(timeout, PORT + 1, { requests / 2 })
 
         -- Go hit them with our test requests
         local oks = client_requests(requests)
@@ -725,7 +743,7 @@ dao_helpers.for_each_dao(function(kong_config)
         -----------------------------------------
 
         -- setup target servers
-        server1 = http_server(timeout, requests, PORT)
+        server1 = http_server(timeout, PORT, { requests })
 
         -- Go hit them with our test requests
         local oks = client_requests(requests)
@@ -742,8 +760,8 @@ dao_helpers.for_each_dao(function(kong_config)
         local requests = upstream1.slots * 2 -- go round the balancer twice
 
         -- setup target servers
-        local server1 = http_server(timeout, requests/2, PORT)
-        local server2 = http_server(timeout, requests/2, PORT+1)
+        local server1 = http_server(timeout, PORT,     { requests / 2 })
+        local server2 = http_server(timeout, PORT + 1, { requests / 2 })
 
         -- Go hit them with our test requests
         local oks = client_requests(requests)
@@ -775,8 +793,8 @@ dao_helpers.for_each_dao(function(kong_config)
         -----------------------------------------
 
         -- setup target servers
-        server1 = http_server(timeout, requests * 0.4, PORT)
-        server2 = http_server(timeout, requests * 0.6, PORT+1)
+        server1 = http_server(timeout, PORT,     { requests * 0.4 })
+        server2 = http_server(timeout, PORT + 1, { requests * 0.6 })
 
         -- Go hit them with our test requests
         local oks = client_requests(requests)
@@ -795,8 +813,8 @@ dao_helpers.for_each_dao(function(kong_config)
         local requests = upstream1.slots * 2 -- go round the balancer twice
 
         -- setup target servers
-        local server1 = http_server(timeout, requests/2, PORT)
-        local server2 = http_server(timeout, requests/2, PORT+1)
+        local server1 = http_server(timeout, PORT,     { requests / 2 })
+        local server2 = http_server(timeout, PORT + 1, { requests / 2 })
 
         -- Go hit them with our test requests
         local oks = client_requests(requests)
