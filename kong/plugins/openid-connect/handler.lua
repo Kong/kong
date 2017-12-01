@@ -1418,5 +1418,6 @@ else
   OICHandler.PRIORITY = 1790
 end
 
+OICHandler.VERSION = "0.0.4"
 
 return OICHandler

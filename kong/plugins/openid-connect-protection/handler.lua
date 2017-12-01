@@ -320,5 +320,6 @@ else
   OICProtectionHandler.PRIORITY = 1770
 end
 
+OICProtectionHandler.VERSION = "0.0.4"
 
 return OICProtectionHandler

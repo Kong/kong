@@ -459,5 +459,6 @@ else
   OICVerificationHandler.PRIORITY = 1760
 end
 
+OICVerificationHandler.VERSION = "0.0.4"
 
 return OICVerificationHandler

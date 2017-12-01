@@ -264,5 +264,6 @@ else
   OICAuthenticationHandler.PRIORITY = 1780
 end
 
+OICAuthenticationHandler.VERSION = "0.0.4"
 
 return OICAuthenticationHandler
