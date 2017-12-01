@@ -70,6 +70,25 @@ local function direct_request(host, port, path)
 end
 
 
+local function post_target_endpoint(upstream_name, port, endpoint)
+  local url = "/upstreams/" .. upstream_name
+                            .. "/targets/127.0.0.1:" .. port
+                            .. "/" .. endpoint
+
+  local api_client = helpers.admin_client()
+  local res, err = assert(api_client:send {
+    method = "POST",
+    path = url,
+    headers = {
+      ["Content-Type"] = "application/json",
+    },
+    body = {},
+  })
+  api_client:close()
+  return res, err
+end
+
+
 -- Modified http-server. Accepts (sequentially) a number of incoming
 -- connections and then rejects a given number of connections.
 -- @param timeout Server timeout.
@@ -523,6 +542,153 @@ dao_helpers.for_each_dao(function(kong_config)
           assert.are.equal(upstream.slots * 3, oks)
           assert.are.equal(0, fails)
         end
+      end)
+
+      it("perform passive health checks -- manual recovery", function()
+
+        for nfails = 1, 5 do
+
+          -- configure healthchecks
+          local api_client = helpers.admin_client()
+          assert(api_client:send {
+            method = "PATCH",
+            path = "/upstreams/" .. upstream.name,
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+            body = {
+              healthchecks = healthchecks_config {
+                passive = {
+                  unhealthy = {
+                    http_failures = nfails,
+                  }
+                }
+              }
+            },
+          })
+          api_client:close()
+
+          local timeout = 10
+
+          -- setup target servers:
+          -- server2 will only respond for part of the test,
+          -- then server1 will take over.
+          local server1_oks = upstream.slots * 2
+          local server2_oks = upstream.slots
+          local server1 = http_server(timeout, PORT, {
+            server1_oks - nfails
+          })
+          local server2 = http_server(timeout, PORT + 1, {
+            server2_oks / 2,
+            nfails,
+            server2_oks / 2
+          })
+
+          -- 1) server1 and server2 take requests
+          local oks, fails = client_requests(upstream.slots)
+
+          -- 2) server1 takes all requests once server2 produces
+          -- `nfails` failures (even though server2 will be ready
+          -- to respond 200 again after `nfails`)
+          do
+            local o, f = client_requests(upstream.slots)
+            oks = oks + o
+            fails = fails + f
+          end
+
+          -- manually bring it back using the endpoint
+          post_target_endpoint(upstream.name, PORT + 1, "healthy")
+
+          -- 3) server1 and server2 take requests again
+          do
+            local o, f = client_requests(upstream.slots)
+            oks = oks + o
+            fails = fails + f
+          end
+
+          -- collect server results; hitcount
+          local _, ok1, fail1 = server1:join()
+          local _, ok2, fail2 = server2:join()
+
+          -- verify
+          assert.are.equal(server1_oks - nfails, ok1)
+          assert.are.equal(server2_oks, ok2)
+          assert.are.equal(0, fail1)
+          assert.are.equal(nfails, fail2)
+
+          assert.are.equal(upstream.slots * 3 - nfails, oks)
+          assert.are.equal(nfails, fails)
+        end
+      end)
+
+      it("perform passive health checks -- manual shutdown", function()
+
+        -- configure healthchecks
+        local api_client = helpers.admin_client()
+        assert(api_client:send {
+          method = "PATCH",
+          path = "/upstreams/" .. upstream.name,
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            healthchecks = healthchecks_config {
+              passive = {
+                unhealthy = {
+                  http_failures = 1,
+                }
+              }
+            }
+          },
+        })
+        api_client:close()
+
+        local timeout = 10
+
+        -- setup target servers:
+        -- server2 will only respond for part of the test,
+        -- then server1 will take over.
+        local server1_oks = upstream.slots * 2
+        local server2_oks = upstream.slots
+        local server1 = http_server(timeout, PORT,     { server1_oks })
+        local server2 = http_server(timeout, PORT + 1, { server2_oks })
+
+        -- 1) server1 and server2 take requests
+        local oks, fails = client_requests(upstream.slots)
+
+        -- manually bring it down using the endpoint
+        post_target_endpoint(upstream.name, PORT + 1, "unhealthy")
+
+        -- 2) server1 takes all requests
+        do
+          local o, f = client_requests(upstream.slots)
+          oks = oks + o
+          fails = fails + f
+        end
+
+        -- manually bring it back using the endpoint
+        post_target_endpoint(upstream.name, PORT + 1, "healthy")
+
+        -- 3) server1 and server2 take requests again
+        do
+          local o, f = client_requests(upstream.slots)
+          oks = oks + o
+          fails = fails + f
+        end
+
+        -- collect server results; hitcount
+        local _, ok1, fail1 = server1:join()
+        local _, ok2, fail2 = server2:join()
+
+        -- verify
+        assert.are.equal(upstream.slots * 2, ok1)
+        assert.are.equal(upstream.slots, ok2)
+        assert.are.equal(0, fail1)
+        assert.are.equal(0, fail2)
+
+        assert.are.equal(upstream.slots * 3, oks)
+        assert.are.equal(0, fails)
+
       end)
 
     end)
