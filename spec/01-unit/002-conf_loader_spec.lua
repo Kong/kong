@@ -85,6 +85,12 @@ describe("Configuration loader", function()
     assert.equal(8443, conf.proxy_ssl_port)
   end)
   it("attaches prefix paths", function()
+    -- patch os.getenv to not have existing environment variables interfere
+    local _getenv = os.getenv
+    os.getenv = function() end  -- luacheck: ignore
+    finally(function()
+        os.getenv = _getenv     -- luacheck: ignore
+      end)
     local conf = assert(conf_loader())
     assert.equal("/usr/local/kong/pids/nginx.pid", conf.nginx_pid)
     assert.equal("/usr/local/kong/logs/error.log", conf.nginx_err_logs)
@@ -144,6 +150,12 @@ describe("Configuration loader", function()
 
   describe("inferences", function()
     it("infer booleans (on/off/true/false strings)", function()
+      -- patch os.getenv to not have existing environment variables interfere
+      local _getenv = os.getenv
+      os.getenv = function() end  -- luacheck: ignore
+      finally(function()
+          os.getenv = _getenv     -- luacheck: ignore
+        end)
       local conf = assert(conf_loader())
       assert.equal("on", conf.nginx_daemon)
       assert.equal(30, conf.lua_socket_pool_size)

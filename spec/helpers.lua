@@ -15,7 +15,7 @@ local MOCK_UPSTREAM_HOSTNAME = "localhost"
 local MOCK_UPSTREAM_PORT = 15555
 local MOCK_UPSTREAM_SSL_PORT = 15556
 
-local conf_loader = require "kong.conf_loader"
+local _conf_loader = require "kong.conf_loader"
 local DAOFactory = require "kong.dao.factory"
 local pl_stringx = require "pl.stringx"
 local pl_utils = require "pl.utils"
@@ -80,9 +80,39 @@ local function unindent(str, concat_newlines)
   return (str:gsub("\n" .. prefix, repl):gsub("\n$", "")):gsub("\\r", "\r")
 end
 
+-- wrap conf_loader to disable existing environment variables that
+-- might otherwise interfere with the tests
+local function conf_loader(...)
+  local _getenv = os.getenv
+  os.getenv = function() end           -- luacheck: ignore
+  local conf, err = _conf_loader(...)
+  os.getenv = _getenv                  -- luacheck: ignore
+  return conf, err
+end
+
+-- generate shell command to 'unset' existing KONG_xxx variables
+local undo_environment = function()
+  local _, _, stdout, _ = pl_utils.executeex("export | grep KONG_")
+  if not stdout then
+    return ""
+  end
+
+  stdout = pl_utils.split(stdout, "\n")
+  local existing_vars = ""
+  for _, line in ipairs(stdout) do
+    local var = line:match("(KONG_.-)=")
+    if var then
+      existing_vars = ("%sunset %s; "):format(existing_vars, var)
+    end
+  end
+
+  return existing_vars
+end  
+
 ---------------
 -- Conf and DAO
 ---------------
+local undo_env = undo_environment()
 local conf = assert(conf_loader(TEST_CONF_PATH))
 local dao = assert(DAOFactory.new(conf))
 -- make sure migrations are up-to-date
@@ -842,7 +872,7 @@ local function kong_exec(cmd, env)
   end
 
   -- build Kong environment variables
-  local env_vars = ""
+  local env_vars = undo_env  -- first 'unset' existing ones
   for k, v in pairs(env) do
     env_vars = string.format("%s KONG_%s='%s'", env_vars, k:upper(), v)
   end
