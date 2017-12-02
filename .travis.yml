@@ -23,7 +23,7 @@ env:
     - OPENSSL=1.0.2l
     - CASSANDRA=2.2.8
     - OPENRESTY_BASE=1.11.2.4
-    - OPENRESTY_LATEST=1.11.2.4
+    - OPENRESTY_LATEST=1.13.6.1
     - OPENRESTY=$OPENRESTY_BASE
     - DOWNLOAD_CACHE=$HOME/download-cache
     - INSTALL_CACHE=$HOME/install-cache
