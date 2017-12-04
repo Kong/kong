@@ -20,6 +20,10 @@ describe("Admin API: #" .. kong_config.database, function()
   local client
   local dao
 
+  before_each(function()
+    client = assert(helpers.admin_client())
+  end)
+
   setup(function()
     dao = assert(DAOFactory.new(kong_config))
 
@@ -27,8 +31,6 @@ describe("Admin API: #" .. kong_config.database, function()
     assert(helpers.start_kong({
       database = kong_config.database
     }))
-
-    client = assert(helpers.admin_client())
   end)
 
   teardown(function()
@@ -507,7 +509,7 @@ describe("Admin API: #" .. kong_config.database, function()
       end)
 
       it("returns a conflict when a pre-existing sni present in " .. 
-        "the request is associated with another certificate", function()
+         "the request is associated with another certificate", function()
         local res = assert(client:send {
           method  = "PUT",
           path    = "/certificates",
@@ -522,7 +524,7 @@ describe("Admin API: #" .. kong_config.database, function()
         local json = cjson.decode(body)
 
         assert.equals("certificate with id " .. cert_foo.id .. 
-          " in use for entry with name foo.com", json.message)
+                      " in use for entry with name foo.com", json.message)
 
         -- make sure number of snis don't change
         res = assert(client:send {
@@ -633,13 +635,45 @@ describe("Admin API: #" .. kong_config.database, function()
     end)
 
     describe("PATCH", function()
+      local cert_foo, cert_bar
+      before_each(function()
+        dao:truncate_tables()
+
+        local res = assert(client:send {
+          method  = "POST",
+          path    = "/certificates",
+          body    = {
+            cert  = ssl_fixtures.cert,
+            key   = ssl_fixtures.key,
+            snis  = "foo.com",
+          },
+          headers = { ["Content-Type"] = "application/x-www-form-urlencoded" },
+        })
+        local body = assert.res_status(201, res)
+        cert_foo = cjson.decode(body)
+
+        local res = assert(client:send {
+          method  = "POST",
+          path    = "/certificates",
+          body    = {
+            cert  = ssl_fixtures.cert,
+            key   = ssl_fixtures.key,
+            snis  = "bar.com",
+          },
+          headers = { ["Content-Type"] = "application/x-www-form-urlencoded" },
+        })
+        local body = assert.res_status(201, res)
+        cert_bar = cjson.decode(body)
+      end)
+
       it_content_types("updates a certificate by SNI", function(content_type)
         return function()
           local res = assert(client:send {
             method = "PATCH",
             path = "/certificates/foo.com",
             body = {
-              cert = content_type
+              cert = "foo_cert",
+              key = "foo_key",
             },
             headers = { ["Content-Type"] = content_type }
           })
@@ -647,8 +681,330 @@ describe("Admin API: #" .. kong_config.database, function()
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
 
-          assert.equal(content_type, json.cert)
+          assert.equal("foo_cert", json.cert)
         end
+      end)
+
+      it("returns 404 for a random non-existing id", function()
+        local res = assert(client:send {
+          method  = "PATCH",
+          path    = "/certificates/" .. utils.uuid(),
+          body    = {
+            cert  = ssl_fixtures.cert,
+            key   = ssl_fixtures.key,
+            snis  = "baz.com",
+          },
+          headers = { ["Content-Type"] = "application/x-www-form-urlencoded" },
+        })
+
+        assert.res_status(404, res)
+
+        -- make sure we did not add any sni
+        res = assert(client:send {
+          method  = "GET",
+          path    = "/snis",
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal(2, #json.data)
+        assert.equal(2, json.total)
+
+        -- make sure we did not add any certificate
+        res = assert(client:send {
+          method = "GET",
+          path = "/certificates",
+        })
+
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+        assert.equal(2, json.total)
+        assert.equal(2, #json.data)
+      end)
+
+      it("returns Bad Request if only certificate is specified", function()
+        local res = assert(client:send {
+          method  = "PATCH",
+          path    = "/certificates/" .. cert_foo.id,
+          body    = {
+            cert  = "cert_foo",
+          },
+          headers = { ["Content-Type"] = "application/x-www-form-urlencoded" },
+        })
+
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.equals("key is required", json.key)
+        
+        -- make sure we did not add any sni
+        res = assert(client:send {
+          method  = "GET",
+          path    = "/snis",
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal(2, #json.data)
+        assert.equal(2, json.total)
+
+        -- make sure we did not add any certificate
+        res = assert(client:send {
+          method = "GET",
+          path = "/certificates",
+        })
+
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+        assert.equal(2, json.total)
+        assert.equal(2, #json.data)
+      end)
+
+      it("returns Bad Request if only key is specified", function()
+        local res = assert(client:send {
+          method  = "PATCH",
+          path    = "/certificates/" .. cert_foo.id,
+          body    = {
+            key  = "key_foo",
+          },
+          headers = { ["Content-Type"] = "application/x-www-form-urlencoded" },
+        })
+
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.equals("cert is required", json.cert)
+        
+        -- make sure we did not add any sni
+        res = assert(client:send {
+          method  = "GET",
+          path    = "/snis",
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal(2, #json.data)
+        assert.equal(2, json.total)
+
+        -- make sure we did not add any certificate
+        res = assert(client:send {
+          method = "GET",
+          path = "/certificates",
+        })
+
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+        assert.equal(2, json.total)
+        assert.equal(2, #json.data)
+      end)
+
+      it("updates snis associated with a certificate", function()
+        local res = assert(client:send {
+          method  = "PATCH",
+          path    = "/certificates/" .. cert_foo.id,
+          body    = {
+            snis  = "baz.com",
+          },
+          headers = { ["Content-Type"] = "application/x-www-form-urlencoded" },
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.same({ "baz.com" }, json.snis)
+
+        -- make sure number of snis don't change
+        -- since we delete foo.com and added baz.com
+        res = assert(client:send {
+          method  = "GET",
+          path    = "/snis",
+        })
+
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+        assert.equal(2, #json.data)
+        assert.equal(2, json.total)
+        local sni_names = {}
+        table.insert(sni_names, json.data[1].name)
+        table.insert(sni_names, json.data[2].name)
+        assert.are.same( { "baz.com", "bar.com" } , sni_names)
+
+        -- make sure we did not add any certificate
+        res = assert(client:send {
+          method = "GET",
+          path = "/certificates",
+        })
+
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+        assert.equal(2, json.total)
+        assert.equal(2, #json.data)
+      end)
+
+      it("updates only the certificate if no snis are specified", function()
+        local res = assert(client:send {
+          method  = "PATCH",
+          path    = "/certificates/" .. cert_bar.id,
+          body    = {
+            cert  = "bar_cert",
+            key   = "bar_key",
+          },
+          headers = { ["Content-Type"] = "application/x-www-form-urlencoded" },
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        -- make sure certificate got updated and sni remains the same
+        assert.same({ "bar.com" }, json.snis)
+        assert.same("bar_cert", json.cert)
+        assert.same("bar_key", json.key)
+
+        -- make sure the certificate got updated in DB
+        res = assert(client:send {
+          method = "GET",
+          path = "/certificates/" .. cert_bar.id,
+        })
+
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+        assert.equal("bar_cert", json.cert)
+        assert.equal("bar_key", json.key)
+
+        -- make sure number of snis don't change
+        res = assert(client:send {
+          method  = "GET",
+          path    = "/snis",
+        })
+
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+        assert.equal(2, #json.data)
+        assert.equal(2, json.total)
+
+        -- make sure we did not add any certificate
+        res = assert(client:send {
+          method = "GET",
+          path = "/certificates",
+        })
+
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+        assert.equal(2, json.total)
+        assert.equal(2, #json.data)
+      end)
+
+      it("returns a conflict when duplicates snis are present in the request", function()
+        local res = assert(client:send {
+          method  = "PATCH",
+          path    = "/certificates/" .. cert_bar.id,
+          body    = {
+            snis  = "baz.com,baz.com",
+          },
+          headers = { ["Content-Type"] = "application/x-www-form-urlencoded" },
+        })
+
+        local body = assert.res_status(409, res)
+        local json = cjson.decode(body)
+
+        assert.equals("duplicate requested sni name baz.com", json.message)
+
+        -- make sure number of snis don't change
+        res = assert(client:send {
+          method  = "GET",
+          path    = "/snis",
+        })
+
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+        assert.equal(2, #json.data)
+        assert.equal(2, json.total)
+
+        -- make sure we did not add any certificate
+        res = assert(client:send {
+          method = "GET",
+          path = "/certificates",
+        })
+
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+        assert.equal(2, json.total)
+        assert.equal(2, #json.data)
+      end)
+
+      it("returns a conflict when a pre-existing sni present in " .. 
+        "the request is associated with another certificate", function()
+        local res = assert(client:send {
+          method  = "PATCH",
+          path    = "/certificates/" .. cert_bar.id,
+          body    = {
+            snis  = "foo.com,baz.com",
+          },
+          headers = { ["Content-Type"] = "application/x-www-form-urlencoded" },
+        })
+
+        local body = assert.res_status(409, res)
+        local json = cjson.decode(body)
+
+        assert.equals("certificate with id " .. cert_foo.id .. 
+                      " in use for entry with name foo.com", json.message)
+
+        -- make sure number of snis don't change
+        res = assert(client:send {
+          method  = "GET",
+          path    = "/snis",
+        })
+
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+        assert.equal(2, #json.data)
+        assert.equal(2, json.total)
+
+        -- make sure we did not add any certificate
+        res = assert(client:send {
+          method = "GET",
+          path = "/certificates",
+        })
+
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+        assert.equal(2, json.total)
+        assert.equal(2, #json.data)
+      end)
+
+      it("deletes all snis from a certificate if snis field is blank", function()
+        local res = assert(client:send {
+          method  = "PATCH",
+          path    = "/certificates/" .. cert_bar.id .. "?snis=",
+          headers = { ["Content-Type"] = "application/x-www-form-urlencoded" },
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.equal(0, #json.snis)
+        assert.matches('"snis":[]', body, nil, true)
+
+        -- make sure the sni was deleted
+        res = assert(client:send {
+          method  = "GET",
+          path    = "/snis",
+        })
+
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+        assert.equal(1, #json.data)
+        assert.equal(1, json.total)
+        assert.equal("foo.com", json.data[1].name)
+
+        -- make sure we did not add any certificate
+        res = assert(client:send {
+          method = "GET",
+          path = "/certificates",
+        })
+
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+        assert.equal(2, json.total)
+        assert.equal(2, #json.data)
       end)
     end)
 
@@ -703,7 +1059,17 @@ describe("Admin API: #" .. kong_config.database, function()
 
   describe("/snis", function()
     local ssl_certificate
-
+    before_each(function()
+      dao:truncate_tables()
+      ssl_certificate = assert(dao.ssl_certificates:insert {
+        cert = ssl_fixtures.cert,
+        key = ssl_fixtures.key,
+      })
+      assert(dao.ssl_servers_names:insert {
+          name               = "foo.com",
+          ssl_certificate_id = ssl_certificate.id,
+      })
+    end)
     describe("POST", function()
       before_each(function()
         dao:truncate_tables()
@@ -789,71 +1155,79 @@ describe("Admin API: #" .. kong_config.database, function()
         assert.equal(ssl_certificate.id, json.data[1].ssl_certificate_id)
       end)
     end)
+  end)
 
-    describe("/snis/:name", function()
+  describe("/snis/:name", function()
+    local ssl_certificate
+    before_each(function()
+      dao:truncate_tables()
+      ssl_certificate = assert(dao.ssl_certificates:insert {
+        cert = ssl_fixtures.cert,
+        key = ssl_fixtures.key,
+      })
+      assert(dao.ssl_servers_names:insert {
+          name               = "foo.com",
+          ssl_certificate_id = ssl_certificate.id,
+      })
+    end)
+    
+    describe("GET", function()
+      it("retrieves a SNI", function()
+        local res = assert(client:send {
+          mathod  = "GET",
+          path    = "/snis/foo.com",
+        })
 
-      describe("GET", function()
-        it("retrieves a SNI", function()
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal("foo.com", json.name)
+        assert.equal(ssl_certificate.id, json.ssl_certificate_id)
+      end)
+    end)
+    
+    describe("PATCH", function()
+      do
+        local test = it
+        if kong_config.database == "cassandra" then
+          test = pending
+        end
+
+        test("updates a SNI", function()
+          -- SKIP: this test fails with Cassandra because the PRIMARY KEY
+          -- used by the C* table is a composite of (name,
+          -- ssl_certificate_id), and hence, we cannot update the
+          -- ssl_certificate_id field because it is in the `SET` part of the
+          -- query built by the DAO, but in C*, one cannot change a value
+          -- from the clustering key.
+          local ssl_certificate_2 = assert(dao.ssl_certificates:insert {
+            cert = "foo",
+            key = "bar",
+          })
+          
           local res = assert(client:send {
-            mathod  = "GET",
+            method  = "PATCH",
             path    = "/snis/foo.com",
+            body    = {
+              ssl_certificate_id = ssl_certificate_2.id,
+            },
+            headers = { ["Content-Type"] = "application/json" },
           })
 
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.equal("foo.com", json.name)
-          assert.equal(ssl_certificate.id, json.ssl_certificate_id)
+          assert.equal(ssl_certificate_2.id, json.ssl_certificate_id)
         end)
-      end)
+      end
+    end)
 
-      describe("PATCH", function()
-        local ssl_certificate_2
+    describe("DELETE", function()
+      it("deletes a SNI", function()
+        local res = assert(client:send {
+          method = "DELETE",
+          path = "/snis/foo.com",
+        })
 
-        setup(function()
-          ssl_certificate_2 = assert(dao.ssl_certificates:insert {
-            cert = "foo",
-            key = "bar",
-          })
-        end)
-
-        do
-          local test = it
-          if kong_config.database == "cassandra" then
-            test = pending
-          end
-
-          test("updates a SNI", function()
-            -- SKIP: this test fails with Cassandra because the PRIMARY KEY
-            -- used by the C* table is a composite of (name,
-            -- ssl_certificate_id), and hence, we cannot update the
-            -- ssl_certificate_id field because it is in the `SET` part of the
-            -- query built by the DAO, but in C*, one cannot change a value
-            -- from the clustering key.
-            local res = assert(client:send {
-              method  = "PATCH",
-              path    = "/snis/foo.com",
-              body    = {
-                ssl_certificate_id = ssl_certificate_2.id,
-              },
-              headers = { ["Content-Type"] = "application/json" },
-            })
-
-            local body = assert.res_status(200, res)
-            local json = cjson.decode(body)
-            assert.equal(ssl_certificate_2.id, json.ssl_certificate_id)
-          end)
-        end
-      end)
-
-      describe("DELETE", function()
-        it("deletes a SNI", function()
-          local res = assert(client:send {
-            method = "DELETE",
-            path = "/snis/foo.com",
-          })
-
-          assert.res_status(204, res)
-        end)
+        assert.res_status(204, res)
       end)
     end)
   end)
