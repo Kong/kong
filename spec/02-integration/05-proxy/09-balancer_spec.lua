@@ -7,6 +7,7 @@ local localhost = "127.0.0.1"
 local ipv = "ipv4"
 local PORT = 21000
 local utils = require "kong.tools.utils"
+local cjson = require "cjson"
 
 local healthchecks_defaults = {
   active = {
@@ -263,6 +264,7 @@ end
 
 local function client_requests(n, headers)
   local oks, fails = 0, 0
+  local last_status
   for _ = 1, n do
     local client = helpers.proxy_client()
     local res = client:send {
@@ -274,12 +276,13 @@ local function client_requests(n, headers)
     }
     if res.status == 200 then
       oks = oks + 1
-    elseif res.status == 500 then
+    elseif res.status > 399 then
       fails = fails + 1
     end
+    last_status = res.status
     client:close()
   end
-  return oks, fails
+  return oks, fails, last_status
 end
 
 
@@ -335,6 +338,89 @@ dao_helpers.for_each_dao(function(kong_config)
 
       after_each(function()
         helpers.stop_kong(nil, true)
+      end)
+
+      it("do not count Kong-generated errors as failures", function()
+
+        -- configure healthchecks with a 1-error threshold
+        local api_client = helpers.admin_client()
+        assert(api_client:send {
+          method = "PATCH",
+          path = "/upstreams/" .. upstream.name,
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            healthchecks = healthchecks_config {
+              passive = {
+                healthy = {
+                  successes = 1,
+                },
+                unhealthy = {
+                  http_statuses = { 401, 500 },
+                  http_failures = 1,
+                  tcp_failures = 1,
+                  timeouts = 1,
+                },
+              }
+            }
+          },
+        })
+        api_client:close()
+
+        -- add a plugin
+        api_client = helpers.admin_client()
+        local res = assert(api_client:send {
+          method = "POST",
+          path = "/apis/balancer.test/plugins/",
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            name = "key-auth",
+          },
+        })
+        local plugin_id = cjson.decode((res:read_body())).id
+        assert.string(plugin_id)
+        api_client:close()
+
+        -- run request: fails with 401, but doesn't hit the 1-error threshold
+        local oks, fails, last_status = client_requests(1)
+        assert.same(0, oks)
+        assert.same(1, fails)
+        assert.same(401, last_status)
+
+        -- delete the plugin
+        api_client = helpers.admin_client()
+        assert(api_client:send {
+          method = "DELETE",
+          path = "/apis/balancer.test/plugins/" .. plugin_id,
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+          body = {},
+        })
+        api_client:close()
+
+        -- start servers, they are unaffected by the failure above
+        local timeout = 10
+        local server1 = http_server(timeout, localhost, PORT,     { upstream.slots })
+        local server2 = http_server(timeout, localhost, PORT + 1, { upstream.slots })
+
+        oks, fails = client_requests(upstream.slots * 2)
+        assert.same(upstream.slots * 2, oks)
+        assert.same(0, fails)
+
+        -- collect server results
+        local _, ok1, fail1 = server1:join()
+        local _, ok2, fail2 = server2:join()
+
+        -- both servers were fully operational
+        assert.same(upstream.slots, ok1)
+        assert.same(upstream.slots, ok2)
+        assert.same(0, fail1)
+        assert.same(0, fail2)
+
       end)
 
       it("perform passive health checks", function()
@@ -579,10 +665,10 @@ dao_helpers.for_each_dao(function(kong_config)
           -- setup target servers:
           -- server2 will only respond for part of the test,
           -- then server1 will take over.
-          local server1_oks = upstream.slots * 2
+          local server1_oks = upstream.slots * 2 - nfails
           local server2_oks = upstream.slots
           local server1 = http_server(timeout, localhost, PORT, {
-            server1_oks - nfails
+            server1_oks
           })
           local server2 = http_server(timeout, localhost, PORT + 1, {
             server2_oks / 2,
@@ -617,7 +703,7 @@ dao_helpers.for_each_dao(function(kong_config)
           local _, ok2, fail2 = server2:join()
 
           -- verify
-          assert.are.equal(server1_oks - nfails, ok1)
+          assert.are.equal(server1_oks, ok1)
           assert.are.equal(server2_oks, ok2)
           assert.are.equal(0, fail1)
           assert.are.equal(nfails, fail2)
