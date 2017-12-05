@@ -9,6 +9,7 @@ local fmt = string.format
 local nginx_bin_name = "nginx"
 local nginx_search_paths = {
   "/usr/local/openresty/nginx/sbin",
+  "/opt/openresty/nginx/sbin",
   ""
 }
 local nginx_version_pattern = "^nginx.-openresty.-([%d%.]+)"
