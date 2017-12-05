@@ -47,6 +47,12 @@ local function calculate_payload_length(encStr, pos, socket)
   return pos, elen
 end
 
+local function receive_packet(socket)
+  local data = socket:receive(2)
+  local _, packet_len = calculate_payload_length(data, 2, socket)
+  return socket:receive(packet_len)
+end
+
 function _M.bind_request(socket, username, password)
   local encoder = asn1.ASN1Encoder:new()
   local decoder = asn1.ASN1Decoder:new()
@@ -55,16 +61,13 @@ function _M.bind_request(socket, username, password)
   local bindReq = encoder:encode(3) .. encoder:encode(username) .. ldapAuth
   local ldapMsg = encoder:encode(ldapMessageId) .. encodeLDAPOp(encoder, APPNO.BindRequest, true, bindReq)
   local packet
-  local pos, packet_len, tmp, _
+  local pos, tmp
   local response = {}
 
   packet = encoder:encodeSeq(ldapMsg)
   ldapMessageId = ldapMessageId +1
   socket:send(packet)
-  packet = socket:receive(2)
-  _, packet_len = calculate_payload_length(packet, 2, socket)
-
-  packet = socket:receive(packet_len)
+  packet = receive_packet(socket)
   pos, response.messageID = decoder:decode(packet, 1)
   pos, tmp = bunpack(packet, "C", pos)
   pos = decoder.decodeLength(packet, pos)
@@ -77,7 +80,7 @@ function _M.bind_request(socket, username, password)
   pos, response.resultCode = decoder:decode(packet, pos)
 
   if response.resultCode ~= 0 then
-    local error_msg
+    local error_msg, _
     pos, response.matchedDN = decoder:decode(packet, pos)
     _, response.errorMessage = decoder:decode(packet, pos)
     error_msg = ERROR_MSG[response.resultCode]
@@ -102,8 +105,7 @@ function _M.unbind_request(socket)
 end
 
 function _M.start_tls(socket)
-
-  local ldapMsg, pos, packet, packet_len, tmp, _
+  local ldapMsg, pos, packet, tmp
   local response = {}
   local encoder = asn1.ASN1Encoder:new()
   local decoder = asn1.ASN1Decoder:new()
@@ -113,10 +115,7 @@ function _M.start_tls(socket)
   ldapMsg = encoder:encode(ldapMessageId) .. encodeLDAPOp(encoder, APPNO.ExtendedRequest, true, method_name)
   packet = encoder:encodeSeq(ldapMsg)
   socket:send(packet)
-  packet = socket:receive(2)
-  _, packet_len = calculate_payload_length(packet, 2, socket)
-
-  packet = socket:receive(packet_len)
+  packet = receive_packet(socket)
   pos, response.messageID = decoder:decode(packet, 1)
   pos, tmp = bunpack(packet, "C", pos)
   pos = decoder.decodeLength(packet, pos)
@@ -129,7 +128,7 @@ function _M.start_tls(socket)
   pos, response.resultCode = decoder:decode(packet, pos)
 
   if response.resultCode ~= 0 then
-    local error_msg
+    local error_msg, _
     pos, response.matchedDN = decoder:decode(packet, pos)
     _, response.errorMessage = decoder:decode(packet, pos)
     error_msg = ERROR_MSG[response.resultCode]
