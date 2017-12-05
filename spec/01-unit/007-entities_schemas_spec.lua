@@ -748,6 +748,116 @@ describe("Entities Schemas", function()
       assert.is_nil(check)
     end)
 
+    it("should verify healthcheck configuration", function()
+
+      -- tests for failure
+      local tests = {
+        {{ active = { timeout = -1 }}, "greater than or equal to 0" },
+        {{ active = { concurrency = 0.5 }}, "must be an integer" },
+        {{ active = { concurrency = -10 }}, "must be an integer" },
+        {{ active = { http_path = "" }}, "is empty" },
+        {{ active = { http_path = "ovo" }}, "must be prefixed with slash" },
+        {{ active = { healthy = { interval = -1 }}}, "greater than or equal to 0" },
+        {{ active = { healthy = { http_statuses = 404 }}}, "not an array" },
+        {{ active = { healthy = { http_statuses = { "ovo" }}}}, "not a number" },
+        {{ active = { healthy = { http_statuses = { -1 }}}}, "status code" },
+        {{ active = { healthy = { http_statuses = { 99 }}}}, "status code" },
+        {{ active = { healthy = { http_statuses = { 1000 }}}}, "status code" },
+        {{ active = { healthy = { http_statuses = { 111.314 }}}}, "must be an integer" },
+        {{ active = { healthy = { successes = 0.5 }}}, "must be an integer" },
+        {{ active = { healthy = { successes = 0 }}}, "must be an integer" },
+        {{ active = { healthy = { successes = -1 }}}, "an integer between" },
+        {{ active = { unhealthy = { interval = -1 }}}, "greater than or equal to 0" },
+        {{ active = { unhealthy = { http_statuses = 404 }}}, "not an array" },
+        {{ active = { unhealthy = { http_statuses = { "ovo" }}}}, "not a number" },
+        {{ active = { unhealthy = { http_statuses = { -1 }}}}, "status code" },
+        {{ active = { unhealthy = { http_statuses = { 99 }}}}, "status code" },
+        {{ active = { unhealthy = { http_statuses = { 1000 }}}}, "status code" },
+        {{ active = { unhealthy = { tcp_failures = 0.5 }}}, "must be an integer" },
+        {{ active = { unhealthy = { tcp_failures = 0 }}}, "must be an integer" },
+        {{ active = { unhealthy = { tcp_failures = -1 }}}, "an integer between" },
+        {{ active = { unhealthy = { timeouts = 0.5 }}}, "must be an integer" },
+        {{ active = { unhealthy = { timeouts = 0 }}}, "must be an integer" },
+        {{ active = { unhealthy = { timeouts = -1 }}}, "an integer between" },
+        {{ active = { unhealthy = { http_failures = 0.5 }}}, "must be an integer" },
+        {{ active = { unhealthy = { http_failures = -1 }}}, "an integer between" },
+        {{ passive = { healthy = { http_statuses = 404 }}}, "not an array" },
+        {{ passive = { healthy = { http_statuses = { "ovo" }}}}, "not a number" },
+        {{ passive = { healthy = { http_statuses = { -1 }}}}, "status code" },
+        {{ passive = { healthy = { http_statuses = { 99 }}}}, "status code" },
+        {{ passive = { healthy = { http_statuses = { 1000 }}}}, "status code" },
+        {{ passive = { healthy = { successes = 0.5 }}}, "must be an integer" },
+        {{ passive = { healthy = { successes = 0 }}}, "must be an integer" },
+        {{ passive = { healthy = { successes = -1 }}}, "an integer between" },
+        {{ passive = { unhealthy = { http_statuses = 404 }}}, "not an array" },
+        {{ passive = { unhealthy = { http_statuses = { "ovo" }}}}, "not a number" },
+        {{ passive = { unhealthy = { http_statuses = { -1 }}}}, "status code" },
+        {{ passive = { unhealthy = { http_statuses = { 99 }}}}, "status code" },
+        {{ passive = { unhealthy = { http_statuses = { 1000 }}}}, "status code" },
+        {{ passive = { unhealthy = { tcp_failures = 0.5 }}}, "must be an integer" },
+        {{ passive = { unhealthy = { tcp_failures = 0 }}}, "must be an integer" },
+        {{ passive = { unhealthy = { tcp_failures = -1 }}}, "an integer between" },
+        {{ passive = { unhealthy = { timeouts = 0.5 }}}, "must be an integer" },
+        {{ passive = { unhealthy = { timeouts = 0 }}}, "must be an integer" },
+        {{ passive = { unhealthy = { timeouts = -1 }}}, "an integer between" },
+        {{ passive = { unhealthy = { http_failures = 0.5 }}}, "must be an integer" },
+        {{ passive = { unhealthy = { http_failures = 0 }}}, "must be an integer" },
+        {{ passive = { unhealthy = { http_failures = -1 }}}, "an integer between" },
+      }
+      for _, test in ipairs(tests) do
+        local entity = {
+          name = "x",
+          healthchecks = test[1],
+        }
+
+        -- convert nested table to field name
+        local path = { "healthchecks" }
+        local t = test[1]
+        while type(t) == "table" and type(next(t)) == "string" do
+          table.insert(path, (next(t)))
+          t = t[next(t)]
+        end
+        local field_name = table.concat(path, ".")
+
+        local valid, errors = validate_entity(entity, upstreams_schema)
+        assert.is_false(valid)
+        assert.match(test[2], errors[field_name])
+      end
+
+      -- tests for success
+      tests = {
+        { active = { timeout = 0.5 }},
+        { active = { timeout = 1 }},
+        { active = { concurrency = 2 }},
+        { active = { http_path = "/" }},
+        { active = { http_path = "/test" }},
+        { active = { healthy = { interval = 0 }}},
+        { active = { healthy = { http_statuses = { 200, 300 } }}},
+        { active = { healthy = { successes = 2 }}},
+        { active = { unhealthy = { interval = 0 }}},
+        { active = { unhealthy = { http_statuses = { 404 }}}},
+        { active = { unhealthy = { tcp_failures = 3 }}},
+        { active = { unhealthy = { timeouts = 9 }}},
+        { active = { unhealthy = { http_failures = 2 }}},
+        { passive = { healthy = { http_statuses = { 200, 201 } }}},
+        { passive = { healthy = { successes = 2 }}},
+        { passive = { unhealthy = { http_statuses = { 400, 500 } }}},
+        { passive = { unhealthy = { tcp_failures = 8 }}},
+        { passive = { unhealthy = { timeouts = 1 }}},
+        { passive = { unhealthy = { http_failures = 2 }}},
+      }
+      for _, test in ipairs(tests) do
+        local entity = {
+          name = "x",
+          healthchecks = test,
+        }
+
+        local valid = validate_entity(entity, upstreams_schema)
+        assert.is_true(valid)
+      end
+
+    end)
+
     it("should require (optional) slots in a valid range", function()
       local valid, errors, check, _
       local data = { name = "valid.host.name" }
