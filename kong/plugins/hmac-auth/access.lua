@@ -2,7 +2,7 @@ local utils = require "kong.tools.utils"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local singletons = require "kong.singletons"
-local crypto = require "crypto"
+local openssl_hmac = require "openssl.hmac"
 local resty_sha256 = require "resty.sha256"
 
 local math_abs = math.abs
@@ -45,13 +45,13 @@ local hmac = {
     return ngx_hmac_sha1(secret, data)
   end,
   ["hmac-sha256"] = function(secret, data)
-    return crypto.hmac.digest("sha256", data, secret, true)
+    return openssl_hmac.new(secret, "sha256"):final(data)
   end,
   ["hmac-sha384"] = function(secret, data)
-    return crypto.hmac.digest("sha384", data, secret, true)
+    return openssl_hmac.new(secret, "sha384"):final(data)
   end,
   ["hmac-sha512"] = function(secret, data)
-    return crypto.hmac.digest("sha512", data, secret, true)
+    return openssl_hmac.new(secret, "sha512"):final(data)
   end
 }
 

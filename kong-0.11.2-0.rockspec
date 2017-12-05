@@ -24,7 +24,7 @@ dependencies = {
   "luatz == 0.3",
   "lua_system_constants == 0.1.2",
   "lua-resty-iputils == 0.3.0",
-  "luacrypto == 0.3.2",
+  "luaossl == 20171028",
   "luasyslog == 1.0.0",
   "lua_pack == 1.0.5",
   "lua-resty-dns-client == 0.6.2",

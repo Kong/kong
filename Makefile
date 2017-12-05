@@ -6,7 +6,7 @@ OPENSSL_DIR ?= /usr/local/opt/openssl
 .PHONY: install dev lint test test-integration test-plugins test-all
 
 install:
-	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR)
+	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR)
 
 dev: install
 	@for rock in $(DEV_ROCKS) ; do \
