@@ -3,7 +3,7 @@
 
 local resty_sha256 = require "resty.sha256"
 local pl_string = require "pl.stringx"
-local crypto = require "crypto"
+local openssl_hmac = require "openssl.hmac"
 
 local ALGORITHM = "AWS4-HMAC-SHA256"
 
@@ -14,8 +14,8 @@ for i = 0, 255 do
   CHAR_TO_HEX[char] = hex
 end
 
-local function hmac(key, msg)
-  return crypto.hmac.digest("sha256", msg, key, true)
+local function hmac(secret, data)
+  return openssl_hmac.new(secret, "sha256"):final(data)
 end
 
 local function hash(str)
