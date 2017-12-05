@@ -1,5 +1,32 @@
 #!/usr/bin/env resty
 
+if not os.getenv("KONG_BUSTED_RESPAWNED") then
+  local script = {}
+  local tests = {}
+  for line in io.popen("set"):lines() do
+    local ktvar, val = line:match("^KONG_TEST_([^=]*)=(.*)")
+    if ktvar then
+      table.insert(tests, "export KONG_" .. ktvar .. "=" ..val)
+    end
+    local var = line:match("^(KONG_[^=]*)")
+    if var then
+      table.insert(script, "unset " .. var)
+    end
+  end
+  for _, a in ipairs(tests) do
+    table.insert(script, a)
+  end
+  local cmd = { "exec" }
+  for i = 0, #arg do
+    table.insert(cmd, "'"..arg[i].."'")
+  end
+  table.insert(script, "export KONG_BUSTED_RESPAWNED=1")
+  table.insert(script, "export KONG_ANONYMOUS_REPORTS=off")
+  table.insert(script, table.concat(cmd, " "))
+print(table.concat(script, "; "))
+  return os.execute(table.concat(script, "; "))
+end
+
 require "luarocks.loader"
 
 require("kong.core.globalpatches")({
