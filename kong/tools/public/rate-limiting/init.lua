@@ -389,6 +389,40 @@ function _M.increment(key, window_size, value, namespace, prev_window_weight)
 end
 
 
+local function run_maintenance_cycle(premature, period, namespace)
+  if premature then
+    return
+  end
+
+  local cfg = config[namespace]
+  if not cfg then
+    log(DEBUG, "namespace ", namespace, " no longer exists")
+    return
+  end
+
+  log(DEBUG, "starting timer for ", namespace, " cleanup at ", time() + period)
+  local _, err = timer_at(period, run_maintenance_cycle, period, namespace)
+  if err then
+    log(ERR, "error starting new maintenance timer: ", err)
+  end
+
+  local dict = ngx.shared[cfg.dict]
+  local ok, err = dict:safe_add("rl-maint-" .. namespace, true, period - 0.1)
+  if not ok then
+    if err ~= "exists" then
+      log(ERR, "failed to execute lock acquisition: ", err)
+    end
+
+    return
+  end
+
+  local ok = cfg.strategy:purge(namespace, cfg.window_sizes, time())
+  if not ok then
+    log(ERR, "rate-limiting strategy maintenance cycle failed")
+  end
+end
+
+
 function _M.new(opts)
   if type(opts) ~= "table" then
     error("opts must be a table")
@@ -429,6 +463,16 @@ function _M.new(opts)
     seen_map_ctr = 1,
     window_sizes = opts.window_sizes,
   }
+
+  -- start maintenance timer
+  do
+    local period = 3600
+    log(DEBUG, "starting timer for ", namespace, " cleanup at ", time() + period)
+    local _, err = timer_at(period, run_maintenance_cycle, period, namespace)
+    if err then
+      log(ERR, "error starting new maintenance timer: ", err)
+    end
+  end
 
   return true
 end
