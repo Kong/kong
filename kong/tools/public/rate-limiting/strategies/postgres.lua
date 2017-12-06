@@ -15,6 +15,14 @@ do
 end
 
 
+local DELETE_COUNTER_QUERY = [[
+DELETE
+   FROM rl_counters
+  WHERE namespace    = ?
+    AND window_start <= ?
+    AND window_size  = ?
+]]
+
 local INCR_COUNTER_QUERY = [[
 INSERT INTO rl_counters
   (key, namespace, window_start, window_size, count)
@@ -202,5 +210,34 @@ function _M:get_window(key, namespace, window_start, window_size)
 
   return rows[1].count
 end
+
+
+function _M:purge(namespace, window_sizes, window_start)
+  if not window_start then
+    window_start = ngx_time()
+  end
+
+  local query_tab = new_tab(#window_sizes, 0)
+  local query_tab_idx = 1
+
+  do
+    local param_tab = new_tab(3, 0)
+    param_tab[1] = namespace
+    for _, window_size in ipairs(window_sizes) do
+      param_tab[2] = window_start - window_size * 2
+      param_tab[3] = window_size
+
+      query_tab[query_tab_idx] = bind(DELETE_COUNTER_QUERY, param_tab)
+      query_tab_idx = query_tab_idx + 1
+    end
+  end
+
+  -- each of these are individual queries, but we can batch them together
+  local res, err = self.db:query(concat(query_tab, '; '))
+  if not res then
+    log(ERR, "failed to delete counters: ", err)
+  end
+end
+
 
 return _M
