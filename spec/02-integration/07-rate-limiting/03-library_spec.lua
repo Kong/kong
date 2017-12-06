@@ -117,7 +117,7 @@ describe("rate-limiting", function()
     end)
   end)
 
-  describe("library", function()
+  describe("library #flaky", function()
     local mock_start = window_floor(60, ngx.time())
 
     -- i have no fucking clue whats going on here, but something in the mock
