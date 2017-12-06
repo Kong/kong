@@ -125,6 +125,7 @@ function _M:push_diffs(diffs)
                    windows[j].namespace
 
       red:hincrby(rkey, key, windows[j].diff)
+      red:expire(rkey, 2 * windows[j].size)
     end
   end
 
@@ -225,6 +226,11 @@ function _M:get_window(key, namespace, window_start, window_size)
   red:set_keepalive()
 
   return tonumber(res)
+end
+
+
+function _M:purge()
+  -- noop: redis strategy uses `:expire` to purge old entries
 end
 
 return _M

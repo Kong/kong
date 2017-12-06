@@ -146,6 +146,31 @@ describe("rate-limiting: Redis strategy", function()
       hash = assert(redis_client:array_to_hash(redis_client:hgetall(mock_prev_red_key)))
       assert.same({ foo = "2", ["1.2.3.4"] = "1" }, hash)
     end)
+    it("expires old window data", function()
+      local mock_namespace_expire = mock_namespace .. "_expire_test"
+      local mock_window_size_short = 1
+      local diff = {
+        {
+          key     = "foo",
+          windows = {
+            {
+              namespace = mock_namespace_expire,
+              window    = mock_start,
+              size      = mock_window_size_short,
+              diff      = 5,
+            },
+          }
+        },
+      }
+      local mock_prev_red_key = mock_start .. ":" .. mock_window_size_short .. ":" ..
+                                mock_namespace_expire
+      strategy:push_diffs(diff)
+      assert.equal(1, redis_client:exists(mock_prev_red_key))
+
+      -- wait 2 * window size for key to expire
+      ngx.sleep(2)
+      assert.equal(0, redis_client:exists(mock_prev_red_key))
+    end)
   end)
 
   describe(":get_window()", function()
