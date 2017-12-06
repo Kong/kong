@@ -300,4 +300,9 @@ function _M:get_window(key, namespace, window_start, window_size)
 end
 
 
+function _M:purge()
+  -- TODO implement me
+end
+
+
 return _M
