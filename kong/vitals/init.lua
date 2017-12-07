@@ -44,6 +44,10 @@ local worker_count = ngx.worker.count()
 local _M = {}
 local mt = { __index = _M }
 
+--[[
+  use signed ints to support sentinel values on "max" stats e.g.,
+  proxy and upstream max latencies
+]]
 ffi.cdef[[
   typedef uint32_t time_t;
 
@@ -52,7 +56,9 @@ ffi.cdef[[
     uint32_t    l2_misses;
     uint32_t    proxy_latency_min;
     int32_t     proxy_latency_max;
-    /* signed int so we can math.max() off an initial -1 sentinel */
+    uint32_t    ulat_min;
+    int32_t     ulat_max;
+    uint32_t    requests;
     time_t      timestamp;
   } vitals_metrics_t;
 ]]
@@ -83,7 +89,7 @@ local function metrics_t_arr_init(sz)
   local timestamp = time()
 
   for i = 1, sz do
-    t[i] = { 0, 0, 0xFFFFFFFF, -1, timestamp + i - 1 }
+    t[i] = { 0, 0, 0xFFFFFFFF, -1, 0xFFFFFFFF, -1, 0, timestamp + i - 1 }
   end
 
   return t
@@ -236,6 +242,9 @@ local function convert_stats(vitals, res)
       row.l2_miss,
       row.plat_min or json_null,
       row.plat_max or json_null,
+      row.ulat_min or json_null,
+      row.ulat_max or json_null,
+      row.requests,
     }
   end
 
@@ -365,24 +374,41 @@ function _M:merge_worker_data(flush_key)
       -- definition and our value (since our value is a sentinel the resulting
       -- min is correct). otherwise, we check for the presence of our sentinel
       -- and assign accordingly (either a nil type, or the bucket value)
-      local min = f and f[4] and math_min(f[4], c.proxy_latency_min) or
+      local plat_min = f and f[4] and math_min(f[4], c.proxy_latency_min) or
                   c.proxy_latency_min
 
       -- the same logic applies for max as did for min
-      local max = f and f[5] and math_max(f[5], c.proxy_latency_max) or
+      local plat_max = f and f[5] and math_max(f[5], c.proxy_latency_max) or
                   c.proxy_latency_max
+
+      -- upstream latency: same logic as for proxy latency
+      local ulat_min = f and f[6] and math_min(f[6], c.ulat_min) or
+          c.ulat_min
+
+      local ulat_max = f and f[7] and math_max(f[7], c.ulat_max) or
+          c.ulat_max
+
+      local requests = f and f[8] + c.requests or c.requests
 
       flush_data[i] = {
         c.timestamp,
         l2_hits,
         l2_misses,
-        min,
-        max,
+        plat_min,
+        plat_max,
+        ulat_min,
+        ulat_max,
+        requests,
       }
 
       if flush_data[i][4] == 0xFFFFFFFF then
         flush_data[i][4] = nil
         flush_data[i][5] = nil
+      end
+
+      if flush_data[i][6] == 0xFFFFFFFF then
+        flush_data[i][6] = nil
+        flush_data[i][7] = nil
       end
     end
   end
@@ -715,9 +741,44 @@ function _M:log_latency(latency)
 end
 
 
+function _M:log_upstream_latency(latency)
+  if not self:enabled() then
+    return "vitals not enabled"
+  end
+
+  if not latency then
+    log(DEBUG, _log_prefix, "upstream latency is required")
+    return "ok"
+  end
+
+  local bucket = self:current_bucket()
+  if bucket then
+    self.counters.metrics[bucket].ulat_min =
+      math_min(self.counters.metrics[bucket].ulat_min, latency)
+
+    self.counters.metrics[bucket].ulat_max =
+      math_max(self.counters.metrics[bucket].ulat_max, latency)
+  end
+
+  return "ok"
+end
+
+
 function _M:log_request(ctx)
   if not self:enabled() then
     return "vitals not enabled"
+  end
+
+  if not ctx then
+    -- this won't happen in normal processing
+    ctx = {}
+  end
+
+  local retval = "ok"
+
+  local bucket = self:current_bucket()
+  if bucket then
+    self.counters.metrics[bucket].requests = self.counters.metrics[bucket].requests + 1
   end
 
   if ctx.authenticated_consumer then
@@ -732,12 +793,11 @@ function _M:log_request(ctx)
 
     if ok then
       -- handy for testing
-      return key
+      retval = key
     end
   end
 
-  -- didn't have to do anything, so didn't fail
-  return "ok"
+  return retval
 end
 
 

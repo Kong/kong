@@ -796,7 +796,7 @@ return {
   },
 --  recreate vitals tables with new primary key to support node-level stats
   {
-    name = "2017-10-31-145721_vitals_stats_add_node_id",
+    name = "2017-10-31-145721_vitals_stats_v0.30",
     up = function(_, _, dao)
       local vitals = require("kong.vitals")
 
@@ -824,6 +824,9 @@ return {
           l2_miss integer default 0,
           plat_min integer,
           plat_max integer,
+          ulat_min integer,
+          ulat_max integer,
+          requests integer default 0,
           PRIMARY KEY (node_id, at)
         );
       ]])

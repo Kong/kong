@@ -49,10 +49,10 @@ dao_helpers.for_each_dao(function(kong_conf)
         -- add some seconds
         local insert_seconds = [[
         insert into vitals_stats_seconds_1 values
-        ('{5b573229-565a-4264-b5f4-e0b42cff87b8}', 1505929137, 0, 0, null, null),
-        ('{5b573229-565a-4264-b5f4-e0b42cff87b8}', 1505929138, 0, 15, 0, 23),
-        ('{5b573229-565a-4264-b5f4-e0b42cff87b8}', 1505929139, 12, 2, 3, 8),
-        ('{5b573229-565a-4264-b5f4-e0b42cff87b8}', 1505929140, 1, 2, 3, 4)
+        ('{5b573229-565a-4264-b5f4-e0b42cff87b8}', 1505929137, 0, 0, null, null, null, null, 0),
+        ('{5b573229-565a-4264-b5f4-e0b42cff87b8}', 1505929138, 0, 15, 0, 23, 4, 13, 4),
+        ('{5b573229-565a-4264-b5f4-e0b42cff87b8}', 1505929139, 12, 2, 3, 8, 9, 86, 6),
+        ('{5b573229-565a-4264-b5f4-e0b42cff87b8}', 1505929140, 1, 2, 3, 4, 12, 37, 7)
       ]]
         assert(db:query(insert_seconds))
       end)
@@ -75,6 +75,9 @@ dao_helpers.for_each_dao(function(kong_conf)
             l2_miss  = 17,
             plat_min = 0,
             plat_max = 23,
+            ulat_min = 4,
+            ulat_max = 86,
+            requests = 10,
           },
           {
             node_id  = "5b573229-565a-4264-b5f4-e0b42cff87b8",
@@ -83,6 +86,9 @@ dao_helpers.for_each_dao(function(kong_conf)
             l2_miss  = 2,
             plat_min = 3,
             plat_max = 4,
+            ulat_min = 12,
+            ulat_max = 37,
+            requests = 7,
           },
         }
 
@@ -93,10 +99,10 @@ dao_helpers.for_each_dao(function(kong_conf)
       it("deletes old minutes", function()
         local old_minutes = [[
             insert into vitals_stats_minutes values
-            ('{5b573229-565a-4264-b5f4-e0b42cff87b8}', 1503283380, 0, 0, null, null),
-            ('{5b573229-565a-4264-b5f4-e0b42cff87b8}', 1503283440, 0, 15, 0, 23),
-            ('{5b573229-565a-4264-b5f4-e0b42cff87b8}', 1503283500, 12, 2, 3, 8),
-            ('{5b573229-565a-4264-b5f4-e0b42cff87b8}', 1503283560, 1, 2, 3, 4)
+            ('{5b573229-565a-4264-b5f4-e0b42cff87b8}', 1505929137, 0, 0, null, null, null, null, 0),
+            ('{5b573229-565a-4264-b5f4-e0b42cff87b8}', 1505929138, 0, 15, 0, 23, 4, 13, 4),
+            ('{5b573229-565a-4264-b5f4-e0b42cff87b8}', 1505929139, 12, 2, 3, 8, 9, 86, 6),
+            ('{5b573229-565a-4264-b5f4-e0b42cff87b8}', 1505929140, 1, 2, 3, 4, 12, 37, 7)
         ]]
 
         assert(db:query(old_minutes))

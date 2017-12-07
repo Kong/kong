@@ -14,7 +14,12 @@ local handlers = {
       singletons.vitals:log_latency(ctx.KONG_PROXY_LATENCY)
       singletons.vitals:log_request(ctx)
     end
-  }
+  },
+  header_filter = {
+    after = function(ctx)
+      singletons.vitals:log_upstream_latency(ctx.KONG_WAITING_TIME)
+    end
+  },
 }
 
 _M.handlers = handlers

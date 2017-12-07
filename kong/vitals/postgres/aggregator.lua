@@ -51,6 +51,9 @@ function _M:aggregate_minutes(seconds_table)
     miss     = 0,
     plat_min = "null",
     plat_max = "null",
+    ulat_min = "null",
+    ulat_max = "null",
+    requests = 0,
   }
 
   -- values we'll insert into the minutes table
@@ -72,6 +75,9 @@ function _M:aggregate_minutes(seconds_table)
         tostring(current_values.miss),
         tostring(current_values.plat_min),
         tostring(current_values.plat_max),
+        tostring(current_values.ulat_min),
+        tostring(current_values.ulat_max),
+        tostring(current_values.requests),
       }
 
       index = index + 1
@@ -82,6 +88,9 @@ function _M:aggregate_minutes(seconds_table)
         miss = row.l2_miss,
         plat_min = row.plat_min or "null",
         plat_max = row.plat_max or "null",
+        ulat_min = row.ulat_min or "null",
+        ulat_max = row.ulat_max or "null",
+        requests = row.requests,
       }
 
       -- TODO: Base this on current data, don't assume all minutes are populated
@@ -97,11 +106,14 @@ function _M:aggregate_minutes(seconds_table)
     tostring(current_values.miss),
     tostring(current_values.plat_min),
     tostring(current_values.plat_max),
+    tostring(current_values.ulat_min),
+    tostring(current_values.ulat_max),
+    tostring(current_values.requests),
   }
 
   -- insert new rows
   local q = "INSERT INTO vitals_stats_minutes " ..
-      "(node_id,at,l2_hit,l2_miss,plat_min,plat_max) VALUES "
+      "(node_id,at,l2_hit,l2_miss,plat_min,plat_max,ulat_min,ulat_max,requests) VALUES "
 
   for i = 1, #rows_to_insert do
     q = q .. "(" .. table.concat(rows_to_insert[i], ",") .. "),"
@@ -125,6 +137,7 @@ end
 function _M:calculate_aggregates(old, new)
   old.hit  = old.hit + new.l2_hit
   old.miss = old.miss + new.l2_miss
+  old.requests = old.requests + new.requests
 
   if type(old.plat_min) == "number" and type(new.plat_min) == "number" then
     old.plat_min = math_min(old.plat_min, new.plat_min)
@@ -136,6 +149,18 @@ function _M:calculate_aggregates(old, new)
     old.plat_max = math_max(old.plat_max, new.plat_max)
   else
     old.plat_max = new.plat_max or "null"
+  end
+
+  if type(old.ulat_min) == "number" and type(new.ulat_min) == "number" then
+    old.ulat_min = math_min(old.ulat_min, new.ulat_min)
+  else
+    old.ulat_min = new.ulat_min or "null"
+  end
+
+  if type(old.ulat_max) == "number" and type(new.ulat_max) == "number" then
+    old.ulat_max = math_max(old.ulat_max, new.ulat_max)
+  else
+    old.ulat_max = new.ulat_max or "null"
   end
 end
 

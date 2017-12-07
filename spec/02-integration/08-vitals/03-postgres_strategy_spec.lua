@@ -73,8 +73,8 @@ dao_helpers.for_each_dao(function(kong_conf)
 
 
         local data = {
-          { 1505964713, 0, 0, nil, nil },
-          { 1505964714, 19, 99, 0, 120 },
+          { 1505964713, 0, 0, nil, nil, nil, nil, 0 },
+          { 1505964714, 19, 99, 0, 120, 12, 47, 7 },
         }
 
         local node_id = utils.uuid()
@@ -91,6 +91,7 @@ dao_helpers.for_each_dao(function(kong_conf)
             node_id  = node_id,
             l2_hit   = 0,
             l2_miss  = 0,
+            requests = 0
           },
           {
             at       = 1505964714,
@@ -99,6 +100,9 @@ dao_helpers.for_each_dao(function(kong_conf)
             l2_miss  = 99,
             plat_min = 0,
             plat_max = 120,
+            ulat_min = 12,
+            ulat_max = 47,
+            requests = 7
           },
         }
         assert.same(expected, res)
@@ -109,8 +113,8 @@ dao_helpers.for_each_dao(function(kong_conf)
 
 
         local data = {
-          { 1505964713, 0, 0, nil, nil },
-          { 1505964714, 19, 99, 0, 120 },
+          { 1505964713, 0, 0, nil, nil, nil, nil, 0 },
+          { 1505964714, 19, 99, 0, 120, 12, 47, 15 },
         }
 
         local node_id = utils.uuid()
@@ -143,35 +147,35 @@ dao_helpers.for_each_dao(function(kong_conf)
         -- add some data we can query
         for i = 1, 2 do
           q = "insert into %s(at, node_id, l2_hit, l2_miss, " ..
-              "plat_min, plat_max) values(%d, '{%s}', %d, %d, %s, %s)"
+              "plat_min, plat_max, ulat_min, ulat_max, requests) values(%d, '{%s}', %d, %d, %s, %s, %s, %s, %d)"
 
-          query = fmt(q, "vitals_stats_seconds", at + i, node_1, i + 3, i, i, i * 10)
+          query = fmt(q, "vitals_stats_seconds", at + i, node_1, i + 3, i, i, i * 10, i + 2, i * 7, i + 1)
           assert(db:query(query))
 
-          query = fmt(q, "vitals_stats_seconds", at + i, node_2, i + 5, i + 1, i, i * 5)
+          query = fmt(q, "vitals_stats_seconds", at + i, node_2, i + 5, i + 1, i, i * 5, i + 3, i * 4, i + 3)
           assert(db:query(query))
 
-          query = fmt(q, "vitals_stats_minutes", at + i, node_1, i + 10, i + 20, 0, i * 20)
+          query = fmt(q, "vitals_stats_minutes", at + i, node_1, i + 10, i + 20, 0, i * 20, i, i * 9, i + 6)
           assert(db:query(query))
 
-          query = fmt(q, "vitals_stats_minutes", at + i, node_2, i + 2, i + 7, i, i * 6)
+          query = fmt(q, "vitals_stats_minutes", at + i, node_2, i + 2, i + 7, i, i * 6, i + 5, i * 8, i + 14)
           assert(db:query(query))
         end
 
         -- include some null data
-        query = fmt(q, "vitals_stats_seconds", at + 3, node_1, 19, 23, "null", "null")
+        query = fmt(q, "vitals_stats_seconds", at + 3, node_1, 19, 23, "null", "null", "null", "null", 14)
         assert(db:query(query))
 
-        query = fmt(q, "vitals_stats_minutes", at + 3, node_1, 19, 23, "null", "null")
+        query = fmt(q, "vitals_stats_minutes", at + 3, node_1, 19, 23, "null", "null", "null", "null", 14)
         assert(db:query(query))
 
         -- put some data in the previous seconds table
         at = at - 60
 
-        query = fmt(q, "vitals_stats_seconds_2", at, node_1, 3, 5, 7, 9)
+        query = fmt(q, "vitals_stats_seconds_2", at, node_1, 3, 5, 7, 9, 8, 12, 6)
         assert(db:query(query))
 
-        query = fmt(q, "vitals_stats_seconds_2", at, node_2, 2, 4, 6, 8)
+        query = fmt(q, "vitals_stats_seconds_2", at, node_2, 2, 4, 6, 8, 4, 16, 17)
         assert(db:query(query))
       end)
 
@@ -190,6 +194,9 @@ dao_helpers.for_each_dao(function(kong_conf)
             l2_miss = 5,
             plat_min = 7,
             plat_max = 9,
+            ulat_min = 8,
+            ulat_max = 12,
+            requests = 6,
           }, {
             node_id = node_1,
             at = 1509667485,
@@ -197,6 +204,9 @@ dao_helpers.for_each_dao(function(kong_conf)
             l2_miss = 1,
             plat_min = 1,
             plat_max = 10,
+            ulat_min = 3,
+            ulat_max = 7,
+            requests = 2,
           }, {
             node_id = node_1,
             at = 1509667486,
@@ -204,11 +214,15 @@ dao_helpers.for_each_dao(function(kong_conf)
             l2_miss = 2,
             plat_min = 2,
             plat_max = 20,
+            ulat_min = 4,
+            ulat_max = 14,
+            requests = 3,
           }, {
             node_id = node_1,
             at = 1509667487,
             l2_hit = 19,
             l2_miss = 23,
+            requests = 14,
           }
         }
 
@@ -228,6 +242,9 @@ dao_helpers.for_each_dao(function(kong_conf)
             l2_miss = 21,
             plat_max = 20,
             plat_min = 0,
+            ulat_min = 1,
+            ulat_max = 9,
+            requests = 7,
           }, {
             node_id = node_1,
             at = 1509667486,
@@ -235,11 +252,15 @@ dao_helpers.for_each_dao(function(kong_conf)
             l2_miss = 22,
             plat_max = 40,
             plat_min = 0,
+            ulat_min = 2,
+            ulat_max = 18,
+            requests = 8,
           }, {
             node_id = node_1,
             at = 1509667487,
             l2_hit = 19,
             l2_miss = 23,
+            requests = 14,
           }
         }
 
@@ -269,33 +290,46 @@ dao_helpers.for_each_dao(function(kong_conf)
             l2_miss = 21,
             node_id = node_1,
             plat_max = 20,
-            plat_min = 0
+            plat_min = 0,
+            ulat_min = 1,
+            ulat_max = 9,
+            requests = 7,
           }, {
             at = 1509667485,
             l2_hit = 3,
             l2_miss = 8,
             node_id = node_2,
             plat_max = 6,
-            plat_min = 1
+            plat_min = 1,
+            ulat_min = 6,
+            ulat_max = 8,
+            requests = 15,
           }, {
             at = 1509667486,
             l2_hit = 12,
             l2_miss = 22,
             node_id = node_1,
             plat_max = 40,
-            plat_min = 0
+            plat_min = 0,
+            ulat_min = 2,
+            ulat_max = 18,
+            requests = 8,
           },  {
             at = 1509667486,
             l2_hit = 4,
             l2_miss = 9,
             node_id = node_2,
             plat_max = 12,
-            plat_min = 2
+            plat_min = 2,
+            ulat_min = 7,
+            ulat_max = 16,
+            requests = 16,
           }, {
             at = 1509667487,
             l2_hit = 19,
             l2_miss = 23,
-            node_id = node_1
+            node_id = node_1,
+            requests = 14,
           }
         }
 
@@ -317,6 +351,9 @@ dao_helpers.for_each_dao(function(kong_conf)
             l2_miss = 9,
             plat_min = 6,
             plat_max = 9,
+            ulat_min = 4,
+            ulat_max = 16,
+            requests = 23,
           }, {
             at = 1509667485,
             node_id = 'cluster',
@@ -324,6 +361,9 @@ dao_helpers.for_each_dao(function(kong_conf)
             l2_miss = 3,
             plat_min = 1,
             plat_max = 10,
+            ulat_min = 3,
+            ulat_max = 7,
+            requests = 6,
           }, {
             at = 1509667486,
             node_id = 'cluster',
@@ -331,11 +371,15 @@ dao_helpers.for_each_dao(function(kong_conf)
             l2_miss = 5,
             plat_min = 2,
             plat_max = 20,
+            ulat_min = 4,
+            ulat_max = 14,
+            requests = 8,
           }, {
             at = 1509667487,
             node_id = 'cluster',
             l2_hit = 19,
             l2_miss = 23,
+            requests = 14,
           }
         }
 
@@ -354,19 +398,26 @@ dao_helpers.for_each_dao(function(kong_conf)
             l2_hit = 14,
             l2_miss = 29,
             plat_max = 20,
-            plat_min = 0
+            plat_min = 0,
+            ulat_min = 1,
+            ulat_max = 9,
+            requests = 22,
           }, {
             at = 1509667486,
             node_id = 'cluster',
             l2_hit = 16,
             l2_miss = 31,
             plat_max = 40,
-            plat_min = 0
+            plat_min = 0,
+            ulat_min = 2,
+            ulat_max = 18,
+            requests = 24,
           }, {
             at = 1509667487,
             node_id = 'cluster',
             l2_hit = 19,
-            l2_miss = 23
+            l2_miss = 23,
+            requests = 14,
           }
         }
 

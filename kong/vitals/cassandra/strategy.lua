@@ -219,11 +219,18 @@ function _M:select_stats(query_type, level, node_id)
 end
 
 
-function _M:insert_stats(data)
+function _M:insert_stats(data, node_id)
   local at, hit, miss, plat_min, plat_max, query, res, err
   local now = time()
   local minute = cassandra.timestamp(self:get_minute(now))
   local hour = cassandra.timestamp(self:get_hour(now))
+
+  -- passing node_id is for ease of testing
+  if node_id then
+    node_id = cassandra.uuid(node_id)
+  else
+    node_id = self.node_id
+  end
 
   -- accumulator for minutes data
   local minute_acc = {
@@ -247,7 +254,7 @@ function _M:insert_stats(data)
 
     -- insert seconds row
     res, err = self.cluster:execute(query, {
-      self.node_id,
+      node_id,
       minute,
       cassandra.timestamp(at * 1000),
       hit,
@@ -265,7 +272,7 @@ function _M:insert_stats(data)
 
   -- insert minute row
   res, err = self.cluster:execute(query, {
-    self.node_id,
+    node_id,
     hour,
     minute,
     minute_acc.l2_hit,
@@ -281,7 +288,7 @@ function _M:insert_stats(data)
   -- finally, update last_reported in vitals_node_meta
   res, err = self.cluster:execute(UPDATE_NODE, {
     cassandra.timestamp(now * 1000),
-    self.node_id,
+    node_id,
   }, QUERY_OPTIONS)
 
   if not res then
@@ -312,8 +319,14 @@ end
     [consumer_id, timestamp, duration, count]
   ]
 ]]
-function _M:insert_consumer_stats(data)
+function _M:insert_consumer_stats(data, node_id)
   local res, err, count, start_at, duration, consumer_id
+
+  if node_id then
+    node_id = cassandra.uuid(node_id)
+  else
+    node_id = self.node_id
+  end
 
   for _, row in ipairs(data) do
     consumer_id, start_at, duration, count = unpack(row)
@@ -328,7 +341,7 @@ function _M:insert_consumer_stats(data)
       now_converted,
       duration,
       consumer_id_converted,
-      self.node_id,
+      node_id,
     }, COUNTER_QUERY_OPTIONS)
 
 
@@ -341,7 +354,7 @@ function _M:insert_consumer_stats(data)
       minute,
       60,
       consumer_id_converted,
-      self.node_id,
+      node_id,
     }, COUNTER_QUERY_OPTIONS)
 
     if not res then

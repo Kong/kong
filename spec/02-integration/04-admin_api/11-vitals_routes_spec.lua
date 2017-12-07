@@ -1,10 +1,11 @@
 local helpers     = require "spec.helpers"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local dao_factory = require "kong.dao.factory"
-local kong_vitals = require "kong.vitals"
-local singletons  = require "kong.singletons"
+local cassandra   = require "kong.vitals.cassandra.strategy"
+local postgres    = require "kong.vitals.postgres.strategy"
 local cjson       = require "cjson"
 local time        = ngx.time
+local fmt         = string.format
 
 
 dao_helpers.for_each_dao(function(kong_conf)
@@ -15,22 +16,61 @@ dao_helpers.for_each_dao(function(kong_conf)
   end
 
   describe("Admin API Vitals with " .. kong_conf.database, function()
-    local client, dao, vitals
+    local client, dao, strategy
+
+    local minute_start_at = time() - ( time() % 60 )
+    local node_1 = "20426633-55dc-4050-89ef-2382c95a611e"
+    local node_2 = "8374682f-17fd-42cb-b1dc-7694d6f65ba0"
 
     describe("when vitals is enabled", function()
       setup(function()
         dao = assert(dao_factory.new(kong_conf))
 
-        dao:truncate_tables()
-
+        -- start with a clean db
+        dao:drop_schema()
         helpers.run_migrations(dao)
 
-        singletons.configuration = { vitals = true }
+        -- to insert test data
+        if dao.db_type == "postgres" then
+          strategy = postgres.new(dao)
+          local q = "create table if not exists " .. strategy:current_table_name() ..
+              "(LIKE vitals_stats_seconds INCLUDING defaults INCLUDING constraints INCLUDING indexes)"
+          assert(dao.db:query(q))
+        else
+          strategy = cassandra.new(dao)
+        end
 
-        vitals = kong_vitals.new({
-          dao = dao,
-        })
-        vitals:init()
+        local test_data_1 = {
+          { minute_start_at, 0, 0, "null", "null", "null", "null", 0 },
+          { minute_start_at + 1, 0, 3, 0, 11, 193, 212, 1 },
+          { minute_start_at + 2, 3, 4, 1, 8, 60, 9182, 4 },
+        }
+
+        local test_data_2 = {
+          { minute_start_at + 1, 1, 5, 0, 99, 25, 144, 9 },
+          { minute_start_at + 2, 1, 7, 0, 0, 13, 19, 8 },
+        }
+
+        assert(strategy:insert_stats(test_data_1, node_1))
+        assert(strategy:insert_stats(test_data_2, node_2))
+
+        -- should be temporary, as soon postgres will aggregate minutes
+        -- during `insert_stats()`
+        if dao.db_type == "postgres" then
+          local test_minutes = {
+            { minute_start_at - 60, node_1, 0, 0, "null", "null", "null", "null", 0 },
+            { minute_start_at, node_1, 3, 3, 7, 0, 11, 60, 9182, 5 },
+            { minute_start_at, node_2, 2, 12, 0, 99, 13, 144, 17 },
+          }
+
+          local q = "insert into vitals_stats_minutes(at, node_id, l2_hit, " ..
+              "l2_miss, plat_min, plat_max, ulat_min, ulat_max, requests) " ..
+              "values(%d, '%s', %d, %d, %s, %s, %s, %s, %d)"
+
+          for _, row in ipairs(test_minutes) do
+            assert(dao.db:query(fmt(q, unpack(row))))
+          end
+        end
 
         assert(helpers.start_kong({
           database = kong_conf.database,
@@ -40,75 +80,70 @@ dao_helpers.for_each_dao(function(kong_conf)
         client = helpers.admin_client()
       end)
 
-      before_each(function()
-        dao.db:truncate_table("consumers")
-        dao.db:truncate_table("vitals_consumers")
-      end)
-
       teardown(function()
         if client then
           client:close()
         end
 
         helpers.stop_kong()
+
+        dao:truncate_tables()
       end)
 
       describe("/vitals", function()
         describe("GET", function()
-          local now = time() + 1000
-
-          before_each(function()
-            assert(vitals.strategy:insert_stats({ { now, 0, 1 } }))
-          end)
-
-          it("retrieves the vitals data", function()
-            local res = assert(client:send {
-              methd = "GET",
-              path = "/vitals"
-            })
-            res = assert.res_status(200, res)
-            local json = cjson.decode(res)
-
-            assert.same({ 0, 1, cjson.null, cjson.null }, json.stats.cluster[tostring(now)])
+          pending("returns data about vitals configuration", function()
           end)
         end)
       end)
 
       describe("/vitals/cluster", function()
         describe("GET", function()
-          local now = time() + 2000
-          local minute = now - (now % 60)
-
-          before_each(function()
-            assert(vitals.strategy:insert_stats({ { now, 0, 1 } }))
-          end)
-
           it("retrieves the vitals seconds cluster data", function()
             local res = assert(client:send {
               methd = "GET",
               path = "/vitals/cluster",
               query = {
-                interval = 'seconds'
+                interval = "seconds"
               }
             })
             res = assert.res_status(200, res)
             local json = cjson.decode(res)
 
-            assert.same({ 0, 1, cjson.null, cjson.null }, json.stats.cluster[tostring(now)])
+            local expected = {
+              stats = {
+                cluster = {
+                  [tostring(minute_start_at)] = { 0, 0, cjson.null, cjson.null, cjson.null, cjson.null, 0 },
+                  [tostring(minute_start_at + 1)] = { 1, 8, 0, 99, 25, 212, 10 },
+                  [tostring(minute_start_at + 2)] = { 4, 11, 0, 8, 13, 9182, 12 }
+                }
+              }
+            }
+
+            assert.same(expected, json)
           end)
 
-          pending("retrieves the vitals minutes cluster data", function()
+          it("retrieves the vitals minutes cluster data", function()
             local res = assert(client:send {
               methd = "GET",
               path = "/vitals/cluster",
               query = {
-                interval = 'minutes'
+                interval = "minutes"
               }
             })
             res = assert.res_status(200, res)
             local json = cjson.decode(res)
 
-            assert.same({ 0, 1, cjson.null, cjson.null }, json.stats.cluster[tostring(minute)])
+            local expected = {
+              stats = {
+                cluster = {
+                  [tostring(minute_start_at - 60)] = { 0, 0, cjson.null, cjson.null, cjson.null, cjson.null, 0 },
+                  [tostring(minute_start_at)] = { 5, 15, 0, 99, 11, 144, 9199 }
+                }
+              }
+            }
+
+            assert.same(expected, json)
           end)
 
           it("returns a 400 if called with invalid query param", function()
@@ -116,7 +151,7 @@ dao_helpers.for_each_dao(function(kong_conf)
               methd = "GET",
               path = "/vitals/cluster",
               query = {
-                interval = 'so-wrong'
+                interval = "so-wrong"
               }
             })
             res = assert.res_status(400, res)
@@ -129,40 +164,58 @@ dao_helpers.for_each_dao(function(kong_conf)
 
       describe("/vitals/nodes", function()
         describe("GET", function()
-          local now = time() + 3000
-          local minute = now - (now % 60)
-          local node_id = vitals.shm:get("vitals:node_id")
-
-          before_each(function()
-            assert(vitals.strategy:insert_stats({ { now, 0, 1 } }))
-          end)
-
           it("retrieves the vitals seconds data for all nodes", function()
             local res = assert(client:send {
               methd = "GET",
               path = "/vitals/nodes",
               query = {
-                interval = 'seconds'
+                interval = "seconds"
               }
             })
             res = assert.res_status(200, res)
             local json = cjson.decode(res)
 
-            assert.same({ 0, 1, cjson.null, cjson.null }, json.stats[node_id][tostring(now)])
+            local expected = {
+              stats = {
+                ["20426633-55dc-4050-89ef-2382c95a611e"] = {
+                  [tostring(minute_start_at)] = { 0, 0, cjson.null, cjson.null, cjson.null, cjson.null, 0 },
+                  [tostring(minute_start_at + 1)] = { 0, 3, 0, 11, 193, 212, 1 },
+                  [tostring(minute_start_at + 2)] = { 3, 4, 1, 8, 60, 9182, 4 },
+                },
+                ["8374682f-17fd-42cb-b1dc-7694d6f65ba0"] = {
+                  [tostring(minute_start_at + 1)] = { 1, 5, 0, 99, 25, 144, 9 },
+                  [tostring(minute_start_at + 2)] = { 1, 7, 0, 0, 13, 19, 8 },
+                }
+              }
+            }
+
+            assert.same(expected, json)
           end)
 
-          pending("retrieves the vitals minutes data for all nodes", function()
+          it("retrieves the vitals minutes data for all nodes", function()
             local res = assert(client:send {
               methd = "GET",
               path = "/vitals/nodes",
               query = {
-                interval = 'minutes'
+                interval = "minutes"
               }
             })
             res = assert.res_status(200, res)
             local json = cjson.decode(res)
 
-            assert.same({ 0, 1, cjson.null, cjson.null }, json.stats[node_id][tostring(minute)])
+            local expected = {
+              stats = {
+                [node_1] = {
+                  [tostring(minute_start_at - 60)] = { 0, 0, cjson.null, cjson.null, cjson.null, cjson.null, 0 },
+                  [tostring(minute_start_at)] = { 3, 3, 7, 0, 11, 60, 9182 }
+                },
+                [node_2] = {
+                  [tostring(minute_start_at)] = { 2, 12, 0, 99, 13, 144, 17 }
+                }
+              }
+            }
+
+            assert.same(expected, json)
           end)
 
           it("returns a 400 if called with invalid query param", function()
@@ -170,7 +223,7 @@ dao_helpers.for_each_dao(function(kong_conf)
               methd = "GET",
               path = "/vitals/nodes",
               query = {
-                interval = 'so-wrong'
+                interval = "so-wrong"
               }
             })
             res = assert.res_status(400, res)
@@ -183,40 +236,51 @@ dao_helpers.for_each_dao(function(kong_conf)
 
       describe("/vitals/nodes/{node_id}", function()
         describe("GET", function()
-          local now = time() + 4000
-          local minute = now - (now % 60)
-          local node_id = vitals.shm:get("vitals:node_id")
-
-          before_each(function()
-            assert(vitals.strategy:insert_stats({ { now, 0, 1 } }))
-          end)
-
           it("retrieves the vitals seconds data for a requested node", function()
             local res = assert(client:send {
               methd = "GET",
-              path = "/vitals/nodes/" .. node_id,
+              path = "/vitals/nodes/" .. node_1,
               query = {
-                interval = 'seconds'
+                interval = "seconds"
               }
             })
             res = assert.res_status(200, res)
             local json = cjson.decode(res)
 
-            assert.same({ 0, 1, cjson.null, cjson.null }, json.stats[node_id][tostring(now)])
+            local expected = {
+              stats = {
+                ["20426633-55dc-4050-89ef-2382c95a611e"] = {
+                  [tostring(minute_start_at)] = { 0, 0, cjson.null, cjson.null, cjson.null, cjson.null, 0 },
+                  [tostring(minute_start_at + 1)] = { 0, 3, 0, 11, 193, 212, 1 },
+                  [tostring(minute_start_at + 2)] = { 3, 4, 1, 8, 60, 9182, 4 },
+                },
+              }
+            }
+
+            assert.same(expected, json)
           end)
 
-          pending("retrieves the vitals minutes data for a requested node", function()
+          it("retrieves the vitals minutes data for a requested node", function()
             local res = assert(client:send {
               methd = "GET",
-              path = "/vitals/nodes/" .. node_id,
+              path = "/vitals/nodes/" .. node_1,
               query = {
-                interval = 'minutes'
+                interval = "minutes"
               }
             })
             res = assert.res_status(200, res)
             local json = cjson.decode(res)
 
-            assert.same({ 0, 1, cjson.null, cjson.null }, json.stats[node_id][tostring(minute)])
+            local expected = {
+              stats = {
+                [node_1] = {
+                  [tostring(minute_start_at - 60)] = { 0, 0, cjson.null, cjson.null, cjson.null, cjson.null, 0 },
+                  [tostring(minute_start_at)] = { 3, 3, 7, 0, 11, 60, 9182 }
+                }
+              }
+            }
+
+            assert.same(expected, json)
           end)
 
           it("returns a 400 if called with invalid query param", function()
@@ -224,21 +288,7 @@ dao_helpers.for_each_dao(function(kong_conf)
               methd = "GET",
               path = "/vitals/nodes/totally-fake-uuid",
               query = {
-                interval = 'seconds'
-              }
-            })
-            res = assert.res_status(400, res)
-            local json = cjson.decode(res)
-
-            assert.same("Invalid query params: invalid node_id", json.message)
-          end)
-
-          it("returns a 400 if called with invalid query param", function()
-            local res = assert(client:send {
-              methd = "GET",
-              path = "/vitals/nodes/totally-fake-uuid",
-              query = {
-                interval = 'minutes'
+                interval = "seconds"
               }
             })
             res = assert.res_status(400, res)
@@ -250,6 +300,11 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
 
       describe("/vitals/consumers/{username_or_id}", function()
+        before_each(function()
+          dao.db:truncate_table("consumers")
+          dao.db:truncate_table("vitals_consumers")
+        end)
+
         describe("GET", function()
           it("retrieves the consumers seconds data for the entire cluster", function()
             local consumer = assert(helpers.dao.consumers:insert {
@@ -259,11 +314,11 @@ dao_helpers.for_each_dao(function(kong_conf)
 
             local now = time()
 
-            assert(vitals.strategy:insert_consumer_stats({
+            assert(strategy:insert_consumer_stats({
               -- inserting minute and second data, but only expecting second data in response
               { consumer.id, now, 60, 45 },
               { consumer.id, now, 1, 17 }
-            }))
+            }, node_1))
 
             local res = assert(client:send {
               methd = "GET",
@@ -274,12 +329,23 @@ dao_helpers.for_each_dao(function(kong_conf)
             })
 
             res = assert.res_status(200, res)
-
             local json = cjson.decode(res)
 
-            assert.same(consumer.id, json.meta.consumer.id)
-            assert.same("seconds", json.meta.interval)
-            assert.same({ [tostring(now)] = 17 }, json.stats.cluster)
+            local expected =  {
+              meta = {
+                consumer = {
+                  id = consumer.id
+                },
+                interval = "seconds"
+              },
+              stats = {
+                cluster = {
+                  [tostring(now)] = 17
+                }
+              }
+            }
+
+            assert.same(expected, json)
           end)
 
           it("returns a 404 if called with invalid consumer_id path param", function()
@@ -318,6 +384,11 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
 
       describe("/vitals/consumers/{username_or_id}/nodes", function()
+        before_each(function()
+          dao.db:truncate_table("consumers")
+          dao.db:truncate_table("vitals_consumers")
+        end)
+
         describe("GET", function()
           it("retrieves the consumers minutes data for all nodes", function()
             local consumer = assert(helpers.dao.consumers:insert {
@@ -327,17 +398,15 @@ dao_helpers.for_each_dao(function(kong_conf)
 
             -- make sure the data we enter is in the same minute, so we
             -- can make a correct assertion
-            local start_at = time()
+            local start_at = time() - 10
             local minute_start_at = start_at - (start_at % 60)
             start_at = minute_start_at + 5
 
             -- a couple requests, a few seconds apart
-            assert(vitals.strategy:insert_consumer_stats({
+            assert(strategy:insert_consumer_stats({
               { consumer.id, start_at, 1, 2 },
               { consumer.id, start_at + 10, 1, 1 },
-            }))
-
-            local node_id = vitals.shm:get("vitals:node_id")
+            }, node_1))
 
             local res = assert(client:send {
               methd = "GET",
@@ -348,12 +417,23 @@ dao_helpers.for_each_dao(function(kong_conf)
             })
 
             res = assert.res_status(200, res)
-
             local json = cjson.decode(res)
 
-            assert.same(consumer.id, json.meta.consumer.id)
-            assert.same("minutes", json.meta.interval)
-            assert.same({ [tostring(node_id)] = { [tostring(minute_start_at)] = 3 } }, json.stats)
+            local expected = {
+              meta = {
+                consumer = {
+                  id = consumer.id
+                },
+                interval = "minutes"
+              },
+              stats = {
+                [node_1] = {
+                  [tostring(minute_start_at)] = 3
+                }
+              }
+            }
+
+            assert.same(expected, json)
           end)
 
           it("returns a 404 if called with invalid consumer_id path param", function()
@@ -396,11 +476,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       setup(function()
         dao = assert(dao_factory.new(kong_conf))
 
-        dao:truncate_tables()
-
         helpers.run_migrations(dao)
-
-        vitals = kong_vitals.new({ dao = dao })
 
         assert(helpers.start_kong({
           database = kong_conf.database,

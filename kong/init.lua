@@ -383,6 +383,7 @@ function Kong.header_filter()
   end
 
   core.header_filter.after(ctx)
+  ee.handlers.header_filter.after(ctx)
 end
 
 function Kong.body_filter()

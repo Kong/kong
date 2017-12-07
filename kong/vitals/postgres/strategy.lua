@@ -11,13 +11,16 @@ local mt = { __index = _M }
 local _log_prefix = "[vitals-strategy] "
 
 local INSERT_STATS = [[
-  insert into %s (at, node_id, l2_hit, l2_miss, plat_min, plat_max)
-  values (%d, '%s', %d, %d, %s, %s)
+  insert into %s (at, node_id, l2_hit, l2_miss, plat_min, plat_max, ulat_min, ulat_max, requests)
+  values (%d, '%s', %d, %d, %s, %s, %s, %s, %d)
   on conflict (node_id, at) do update set
     l2_hit = %s.l2_hit + excluded.l2_hit,
     l2_miss = %s.l2_miss + excluded.l2_miss,
     plat_min = least(%s.plat_min, excluded.plat_min),
-    plat_max = greatest(%s.plat_max, excluded.plat_max)
+    plat_max = greatest(%s.plat_max, excluded.plat_max),
+    ulat_min = least(%s.ulat_min, excluded.ulat_min),
+    ulat_max = greatest(%s.ulat_max, excluded.ulat_max),
+    requests = %s.requests + excluded.requests
 ]]
 
 local INSERT_CONSUMER_STATS = [[
@@ -127,7 +130,10 @@ function _M:select_stats(query_type, level, node_id)
              sum(l2_hit) as l2_hit,
              sum(l2_miss) as l2_miss,
              min(plat_min) as plat_min,
-             max(plat_max) as plat_max
+             max(plat_max) as plat_max,
+             min(ulat_min) as ulat_min,
+             max(ulat_max) as ulat_max,
+             sum(requests) as requests
       ]]
     group = " GROUP BY at "
   end
@@ -184,25 +190,35 @@ end
   TODO: optimize inserts (use bulk insert instead of _n_ separate ones)
 
   data: a 2D-array of [
-    [timestamp, l2_hits, l2_misses, proxy_latency_min, proxy_latency_max],
-    [timestamp, l2_hits, l2_misses, proxy_latency_min, proxy_latency_max],
+    [
+      timestamp, l2_hits, l2_misses, proxy_latency_min, proxy_latency_max,
+      upstream_latency_min, upstream_latency_max, requests
+    ],
+    [
+      timestamp, l2_hits, l2_misses, proxy_latency_min, proxy_latency_max,
+      upstream_latency_min, upstream_latency_max, requests
+    ],
     ...
   ]
 ]]
-function _M:insert_stats(data)
-
-  local at, hit, miss, plat_min, plat_max, query, res, err
+function _M:insert_stats(data, node_id)
+  local at, hit, miss, plat_min, plat_max, query, res, err, ulat_min, ulat_max, requests
   local table_name = self:current_table_name()
 
+  -- node_id is an optional argument to simplify testing
+  node_id = node_id or self.node_id
+
   for _, row in ipairs(data) do
-    at, hit, miss, plat_min, plat_max = unpack(row)
+    at, hit, miss, plat_min, plat_max, ulat_min, ulat_max, requests = unpack(row)
 
     plat_min = plat_min or "null"
     plat_max = plat_max or "null"
+    ulat_min = ulat_min or "null"
+    ulat_max = ulat_max or "null"
 
-    query = fmt(INSERT_STATS, table_name, at, self.node_id, hit, miss, plat_min,
-                plat_max, table_name, table_name, table_name, table_name)
-
+    query = fmt(INSERT_STATS, table_name, at, node_id, hit, miss, plat_min,
+                plat_max, ulat_min, ulat_max, requests, table_name, table_name,
+                table_name, table_name, table_name, table_name, table_name)
     res, err = self.db:query(query)
 
     if not res then
@@ -210,7 +226,7 @@ function _M:insert_stats(data)
     end
   end
 
-  local ok, err = self:update_node_meta()
+  local ok, err = self:update_node_meta(node_id)
   if not ok then
     return nil, "could not update metadata. query: " .. query .. " error: " .. err
   end
@@ -236,8 +252,9 @@ function _M:insert_node_meta()
 end
 
 
-function _M:update_node_meta()
-  local query = fmt(UPDATE_NODE_META, self.node_id)
+function _M:update_node_meta(node_id)
+  node_id = node_id or self.node_id
+  local query = fmt(UPDATE_NODE_META, node_id)
 
   local ok, err = self.db:query(query)
   if not ok then
@@ -253,18 +270,20 @@ end
     [consumer_id, timestamp, duration, count]
   ]
 ]]
-function _M:insert_consumer_stats(data)
+function _M:insert_consumer_stats(data, node_id)
   local consumer_id, start_at, duration, count
   local query, last_err
   local row_count  = 0
   local fail_count = 0
+
+  node_id = node_id or self.node_id
 
   for _, row in ipairs(data) do
     row_count = row_count + 2 -- one for seconds, one for minutes
 
     consumer_id, start_at, duration, count = unpack(row)
 
-    query = fmt(INSERT_CONSUMER_STATS, consumer_id, self.node_id, start_at,
+    query = fmt(INSERT_CONSUMER_STATS, consumer_id, node_id, start_at,
                 duration, count)
 
     local res, err = self.db:query(query)
@@ -275,7 +294,7 @@ function _M:insert_consumer_stats(data)
 
     -- naive approach - update minutes in-line
     local mstart_at = self:get_minute(start_at)
-    query = fmt(INSERT_CONSUMER_STATS, consumer_id, self.node_id, mstart_at,
+    query = fmt(INSERT_CONSUMER_STATS, consumer_id, node_id, mstart_at,
                 60, count)
 
     local res, err = self.db:query(query)
