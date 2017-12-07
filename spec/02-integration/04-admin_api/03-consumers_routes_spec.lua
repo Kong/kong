@@ -15,10 +15,8 @@ describe("Admin API", function()
   setup(function()
     helpers.run_migrations()
     assert(helpers.start_kong())
-    client = helpers.admin_client()
   end)
   teardown(function()
-    if client then client:close() end
     helpers.stop_kong()
   end)
 
@@ -37,6 +35,11 @@ describe("Admin API", function()
       username = "83825bb5-38c7-4160-8c23-54dd2b007f31",  -- uuid format
       custom_id = "1a2b"
     })
+    client = helpers.admin_client()
+  end)
+
+  after_each(function()
+    if client then client:close() end
   end)
 
   describe("/consumers", function()
@@ -109,6 +112,71 @@ describe("Admin API", function()
             assert.same({ custom_id = "already exists with value '1234'" }, json)
           end
         end)
+        it("returns 415 on invalid content-type", function()
+          local res = assert(client:request {
+            method = "POST",
+            path = "/consumers",
+            body = '{"hello": "world"}',
+            headers = {["Content-Type"] = "invalid"}
+          })
+          assert.res_status(415, res)
+        end)
+        it("returns 415 on missing content-type with body ", function()
+          local res = assert(client:request {
+            method = "POST",
+            path = "/consumers",
+            body = "invalid"
+          })
+          assert.res_status(415, res)
+        end)
+        it("returns 400 on missing body with application/json", function()
+          local res = assert(client:request {
+            method = "POST",
+            path = "/consumers",
+            headers = {["Content-Type"] = "application/json"}
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same({ message = "Cannot parse JSON body" }, json)
+        end)
+        it("returns 400 on missing body with multipart/form-data", function()
+          local res = assert(client:request {
+            method = "POST",
+            path = "/consumers",
+            headers = {["Content-Type"] = "multipart/form-data"}
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same({
+            custom_id = "At least a 'custom_id' or a 'username' must be specified",
+            username  = "At least a 'custom_id' or a 'username' must be specified",
+          }, json)
+        end)
+        it("returns 400 on missing body with multipart/x-www-form-urlencoded", function()
+          local res = assert(client:request {
+            method = "POST",
+            path = "/consumers",
+            headers = {["Content-Type"] = "application/x-www-form-urlencoded"}
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same({
+            custom_id = "At least a 'custom_id' or a 'username' must be specified",
+            username  = "At least a 'custom_id' or a 'username' must be specified",
+          }, json)
+        end)
+        it("returns 400 on missing body with no content-type header", function()
+          local res = assert(client:request {
+            method = "POST",
+            path = "/consumers",
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same({
+            custom_id = "At least a 'custom_id' or a 'username' must be specified",
+            username  = "At least a 'custom_id' or a 'username' must be specified",
+          }, json)
+        end)
       end)
     end)
 
@@ -173,7 +241,7 @@ describe("Admin API", function()
         --
         -- Eventually, our Admin endpoint will follow a more appropriate
         -- behavior for PUT.
-        local res = assert(client:send {
+        local res = assert(helpers.admin_client():send {
           method = "PUT",
           path = "/consumers",
           body = {
@@ -232,6 +300,71 @@ describe("Admin API", function()
             local json = cjson.decode(body)
             assert.same({ username = "already exists with value 'alice'" }, json)
           end
+        end)
+        it("returns 415 on invalid content-type", function()
+          local res = assert(client:request {
+            method = "PUT",
+            path = "/consumers",
+            body = '{"hello": "world"}',
+            headers = {["Content-Type"] = "invalid"}
+          })
+          assert.res_status(415, res)
+        end)
+        it("returns 415 on missing content-type with body ", function()
+          local res = assert(client:request {
+            method = "PUT",
+            path = "/consumers",
+            body = "invalid"
+          })
+          assert.res_status(415, res)
+        end)
+        it("returns 400 on missing body with application/json", function()
+          local res = assert(client:request {
+            method = "PUT",
+            path = "/consumers",
+            headers = {["Content-Type"] = "application/json"}
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same({ message = "Cannot parse JSON body" }, json)
+        end)
+        it("returns 400 on missing body with multipart/form-data", function()
+          local res = assert(client:request {
+            method = "PUT",
+            path = "/consumers",
+            headers = {["Content-Type"] = "multipart/form-data"}
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same({
+            custom_id = "At least a 'custom_id' or a 'username' must be specified",
+            username  = "At least a 'custom_id' or a 'username' must be specified",
+          }, json)
+        end)
+        it("returns 400 on missing body with multipart/x-www-form-urlencoded", function()
+          local res = assert(client:request {
+            method = "PUT",
+            path = "/consumers",
+            headers = {["Content-Type"] = "application/x-www-form-urlencoded"}
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same({
+            custom_id = "At least a 'custom_id' or a 'username' must be specified",
+            username  = "At least a 'custom_id' or a 'username' must be specified",
+          }, json)
+        end)
+        it("returns 400 on missing body with no content-type header", function()
+          local res = assert(client:request {
+            method = "PUT",
+            path = "/consumers",
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same({
+            custom_id = "At least a 'custom_id' or a 'username' must be specified",
+            username  = "At least a 'custom_id' or a 'username' must be specified",
+          }, json)
         end)
       end)
     end)
@@ -427,6 +560,62 @@ describe("Admin API", function()
               local json = cjson.decode(body)
               assert.same({ message = "empty body" }, json)
             end
+          end)
+          it("returns 415 on invalid content-type", function()
+            local res = assert(client:request {
+              method = "PATCH",
+              path = "/consumers/" .. consumer.id,
+              body = '{"hello": "world"}',
+              headers = {["Content-Type"] = "invalid"}
+            })
+            assert.res_status(415, res)
+          end)
+          it("returns 415 on missing content-type with body ", function()
+            local res = assert(client:request {
+              method = "PATCH",
+              path = "/consumers/" .. consumer.id,
+              body = "invalid"
+            })
+            assert.res_status(415, res)
+          end)
+          it("returns 400 on missing body with application/json", function()
+            local res = assert(client:request {
+              method = "PATCH",
+              path = "/consumers/" .. consumer.id,
+              headers = {["Content-Type"] = "application/json"}
+            })
+            local body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "Cannot parse JSON body" }, json)
+          end)
+          it("returns 400 on missing body with multipart/form-data", function()
+            local res = assert(client:request {
+              method = "PATCH",
+              path = "/consumers/" .. consumer.id,
+              headers = {["Content-Type"] = "multipart/form-data"}
+            })
+            local body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "empty body" }, json)
+          end)
+          it("returns 400 on missing body with multipart/x-www-form-urlencoded", function()
+            local res = assert(client:request {
+              method = "PATCH",
+              path = "/consumers/" .. consumer.id,
+              headers = {["Content-Type"] = "application/x-www-form-urlencoded"}
+            })
+            local body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "empty body" }, json)
+          end)
+          it("returns 400 on missing body with no content-type header", function()
+            local res = assert(client:request {
+              method = "PATCH",
+              path = "/consumers/" .. consumer.id,
+            })
+            local body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "empty body" }, json)
           end)
         end)
       end)
