@@ -52,6 +52,7 @@ build = {
     ["kong.enterprise_edition"] = "kong/enterprise_edition/init.lua",
     ["kong.enterprise_edition.meta"] = "kong/enterprise_edition/meta.lua",
     ["kong.enterprise_edition.dao.factory"] = "kong/enterprise_edition/dao/factory.lua",
+    ["kong.enterprise_edition.redis"] = "kong/enterprise_edition/redis/init.lua",
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",

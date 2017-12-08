@@ -1,5 +1,6 @@
 local Errors = require "kong.dao.errors"
 local utils  = require "kong.tools.utils"
+local redis  = require "kong.enterprise_edition.redis"
 
 local function validate_rl(value)
   for i = 1, #value do
@@ -12,91 +13,6 @@ local function validate_rl(value)
 
   return true
 end
-
-local function is_redis_sentinel(redis)
-  local is_sentinel = redis.sentinel_master or
-                      redis.sentinel_role or
-                      redis.sentinel_addresses
-
-  return is_sentinel and true or false
-end
-
-local redis_schema = {
-  fields = {
-    host = {
-      type = "string",
-    },
-    port = {
-      type = "number",
-    },
-    timeout = {
-      type = "number",
-    },
-    password = {
-      type = "string",
-    },
-    database = {
-      type = "number",
-    },
-    sentinel_master = {
-      type = "string",
-    },
-    sentinel_role = {
-      type = "string",
-      enum = { "master", "slave", "any" },
-    },
-    sentinel_addresses = {
-      type = "array",
-    },
-  },
-  self_check = function(schema, plugin_t, dao, is_updating)
-    if is_redis_sentinel(plugin_t) then
-      if not plugin_t.sentinel_master then
-        return false,
-               Errors.schema("You need to specify a Redis Sentinel master")
-      end
-
-      if not plugin_t.sentinel_role then
-        return false,
-               Errors.schema("You need to specify a Redis Sentinel role")
-      end
-
-      if not plugin_t.sentinel_addresses then
-        return false,
-               Errors.schema("You need to specify one or more " ..
-               "Redis Sentinel addresses")
-
-      else
-        if plugin_t.host then
-          return false,
-                 Errors.schema("When Redis Sentinel is enabled you cannot " ..
-                 "set a 'redis.host'")
-        end
-
-        if plugin_t.port then
-          return false,
-                 Errors.schema("When Redis Sentinel is enabled you cannot " ..
-                 "set a 'redis.port'")
-        end
-
-        if #plugin_t.sentinel_addresses == 0 then
-          return false,
-                 Errors.schema("You need to specify one or more " ..
-                 "Redis Sentinel addresses")
-        end
-
-        for _, address in ipairs(plugin_t.sentinel_addresses) do
-          local parts = utils.split(address, ":")
-
-          if not (#parts == 2 and tonumber(parts[2])) then
-            return false,
-                   Errors.schema("Invalid Redis Sentinel address: " .. address)
-          end
-        end
-      end
-    end
-  end,
-}
 
 return {
   fields = {
@@ -137,7 +53,7 @@ return {
     },
     redis = {
       type = "table",
-      schema = redis_schema,
+      schema = redis.config_schema,
     },
     hide_client_headers = {
       type = "boolean",
@@ -149,26 +65,6 @@ return {
     if plugin_t.strategy == "redis" then
       if not plugin_t.redis then
         return false, Errors.schema("No redis config provided")
-      end
-
-      -- if sentinel is not used, we need to define host + port
-      -- if sentinel IS used, we cannot define host or port (checked above)
-      if not is_redis_sentinel(plugin_t.redis) then
-        if not plugin_t.redis.host then
-          return false, Errors.schema("Redis host must be provided")
-        end
-
-        if not plugin_t.redis.port then
-          return false, Errors.schema("Redis port must be provided")
-        end
-      end
-
-      if not plugin_t.redis.database then
-        plugin_t.redis.database = 0
-      end
-
-      if not plugin_t.redis.timeout then
-        plugin_t.redis.timeout = 2000
       end
     end
 

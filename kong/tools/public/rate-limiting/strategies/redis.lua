@@ -1,6 +1,5 @@
-local redis           = require "resty.redis"
-local redis_connector = require "resty.redis.connector"
-local utils           = require "kong.tools.utils"
+local utils = require "kong.tools.utils"
+local redis = require "kong.enterprise_edition.redis"
 
 local ngx_log  = ngx.log
 local ERR      = ngx.ERR
@@ -25,78 +24,8 @@ local function window_floor(size, time)
 end
 
 
-local function redis_connection(conf)
-  local red
-
-  if conf.sentinel_master then
-    local rc = redis_connector.new()
-    rc:set_connect_timeout(conf.timeout)
-
-    local err
-    red, err = rc:connect_via_sentinel({
-      master_name = conf.sentinel_master,
-      role        = conf.sentinel_role,
-      sentinels   = conf.parsed_sentinel_addresses,
-      password    = conf.password,
-      db          = conf.database,
-    })
-    if err then
-      log(ERR, "failed to connect to redis sentinel: ", err)
-      return nil
-    end
-
-  else
-    -- regular redis, no sentinel
-
-    red = redis:new()
-    red:set_timeout(conf.redis_timeout)
-
-    local ok, err = red:connect(conf.host, conf.port)
-    if not ok then
-      log(ERR, "failed to connect to Redis: ", err)
-      return nil
-    end
-
-    if conf.password and conf.password ~= "" then
-      local ok, err = red:auth(conf.password)
-      if not ok then
-        log(ERR, "failed to auth to Redis: ", err)
-        red:close() -- dont try to hold this connection open if we failed
-        return nil
-      end
-    end
-
-    if conf.database ~= 0 then
-      local ok, err = red:select(conf.database)
-      if not ok then
-        log(ERR, "failed to change Redis database: ", err)
-        red:close()
-        return nil
-      end
-    end
-  end
-
-  return red
-end
-
-
 function _M.new(_, opts)
   local conf = utils.deep_copy(opts)
-
-  if opts.sentinel_master then
-    -- parse sentinel addresses
-    local parsed_addresses = {}
-    for i = 1, #conf.sentinel_addresses do
-      local address = conf.sentinel_addresses[i]
-      local parts = utils.split(address, ":")
-
-      local parsed_address = { host = parts[1], port = tonumber(parts[2]) }
-
-      parsed_addresses[#parsed_addresses + 1] = parsed_address
-    end
-
-    conf.parsed_sentinel_addresses = parsed_addresses
-  end
 
   return setmetatable({
     config = conf,
@@ -109,7 +38,7 @@ function _M:push_diffs(diffs)
     error("diffs must be a table", 2)
   end
 
-  local red = redis_connection(self.config)
+  local red = redis.connection(self.config)
   if not red then
     return
   end
@@ -139,7 +68,7 @@ end
 
 
 function _M:get_counters(namespace, window_sizes, time)
-  local red = redis_connection(self.config)
+  local red = redis.connection(self.config)
   if not red then
     return
   end
@@ -211,7 +140,7 @@ end
 
 
 function _M:get_window(key, namespace, window_start, window_size)
-  local red = redis_connection(self.config)
+  local red = redis.connection(self.config)
   if not red then
     return
   end

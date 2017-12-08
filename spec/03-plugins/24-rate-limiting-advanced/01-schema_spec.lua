@@ -51,61 +51,7 @@ describe("rate-limiting-advanced schema", function()
     assert.is_true(ok)
   end)
 
-  it("accepts a hide_client_headers config", function ()
-    local ok, err = validate_entity({
-      window_size = {60},
-      limit = {10},
-      sync_rate = 10,
-      hide_client_headers = true,
-    }, rate_limiting_schema)
-
-    assert.is_nil(err)
-    assert.is_true(ok)
-  end)
-
-  it("errors with invalid redis data", function()
-    local ok, err  = validate_entity({
-      window_size = { 60 },
-      limit = { 10 },
-      sync_rate = 10,
-      strategy = "redis",
-      redis = {
-        host = "127.0.0.1",
-        port = "foo",
-      },
-    }, rate_limiting_schema)
-
-    assert.is_false(ok)
-    assert.same("port is not a number", err["redis.port"])
-
-    local ok, _, self_error = validate_entity({
-      window_size = { 60 },
-      limit = { 10 },
-      sync_rate = 10,
-      strategy = "redis",
-      redis = {
-        port = 6379,
-      },
-    }, rate_limiting_schema)
-
-    assert.is_false(ok)
-    assert.same({ message = "Redis host must be provided", schema = true },
-                self_error)
-
-    local ok, _, self_error = validate_entity({
-      window_size = { 60 },
-      limit = { 10 },
-      sync_rate = 10,
-      strategy = "redis",
-      redis = {
-        host = "127.0.0.1",
-      },
-    }, rate_limiting_schema)
-
-    assert.is_false(ok)
-    assert.same({ message = "Redis port must be provided", schema = true },
-                self_error)
-
+  it("errors with a missing redis config", function()
     local ok, _, self_error = validate_entity({
       window_size = { 60 },
       limit = { 10 },
@@ -118,130 +64,16 @@ describe("rate-limiting-advanced schema", function()
                 self_error)
   end)
 
-  it("accepts valid redis sentinel data", function()
+  it("accepts a hide_client_headers config", function ()
     local ok, err = validate_entity({
-      window_size = { 60 },
-      limit = { 10 },
+      window_size = {60},
+      limit = {10},
       sync_rate = 10,
-      strategy = "redis",
-      redis = {
-        sentinel_addresses = "127.0.0.1:26379",
-        sentinel_master = "mymaster",
-        sentinel_role = "master",
-      },
+      hide_client_headers = true,
     }, rate_limiting_schema)
 
-    assert.is_true(ok)
     assert.is_nil(err)
-  end)
-
-  it("errors with invalid redis sentinel data", function()
-    local ok, err = validate_entity({
-      window_size = { 60 },
-      limit = { 10 },
-      sync_rate = 10,
-      strategy = "redis",
-      redis = {
-        sentinel_addresses = "127.0.0.1:26379",
-        sentinel_role = "master",
-      },
-    }, rate_limiting_schema)
-
-    assert.is_false(ok)
-    assert.same("You need to specify a Redis Sentinel master", err.redis)
-
-    local ok, err = validate_entity({
-      window_size = { 60 },
-      limit = { 10 },
-      sync_rate = 10,
-      strategy = "redis",
-      redis = {
-        sentinel_master = "mymaster",
-        sentinel_role = "master",
-      },
-    }, rate_limiting_schema)
-
-    assert.is_false(ok)
-    assert.same("You need to specify one or more Redis Sentinel addresses",
-                err.redis)
-
-    local ok, err = validate_entity({
-      window_size = { 60 },
-      limit = { 10 },
-      sync_rate = 10,
-      strategy = "redis",
-      redis = {
-        sentinel_addresses = "127.0.0.1:26379",
-        sentinel_master = "mymaster",
-      },
-    }, rate_limiting_schema)
-
-    assert.is_false(ok)
-    assert.same("You need to specify a Redis Sentinel role",  err.redis)
-
-    local ok, err = validate_entity({
-      window_size = { 60 },
-      limit = { 10 },
-      sync_rate = 10,
-      strategy = "redis",
-      redis = {
-        sentinel_addresses = "127.0.0.1:26379",
-        sentinel_master = "mymaster",
-        sentinel_role = "master",
-        host = "127.0.0.1",
-      },
-    }, rate_limiting_schema)
-
-    assert.is_false(ok)
-    assert.same("When Redis Sentinel is enabled you cannot set a 'redis.host'",
-                err.redis)
-
-    local ok, err = validate_entity({
-      window_size = { 60 },
-      limit = { 10 },
-      sync_rate = 10,
-      strategy = "redis",
-      redis = {
-        sentinel_addresses = "127.0.0.1:26379",
-        sentinel_master = "mymaster",
-        sentinel_role = "master",
-        port = 6379,
-      },
-    }, rate_limiting_schema)
-
-    assert.is_false(ok)
-    assert.same("When Redis Sentinel is enabled you cannot set a 'redis.port'",
-                err.redis)
-
-    local ok, err = validate_entity({
-      window_size = { 60 },
-      limit = { 10 },
-      sync_rate = 10,
-      strategy = "redis",
-      redis = {
-        sentinel_addresses = "127.0.0.1",
-        sentinel_master = "mymaster",
-        sentinel_role = "master",
-      },
-    }, rate_limiting_schema)
-
-    assert.is_false(ok)
-    assert.same("Invalid Redis Sentinel address: 127.0.0.1", err.redis)
-
-    local ok, err = validate_entity({
-      window_size = { 60 },
-      limit = { 10 },
-      sync_rate = 10,
-      strategy = "redis",
-      redis = {
-        sentinel_addresses = "127.0.0.1:12345,127.0.0.2",
-        sentinel_master = "mymaster",
-        sentinel_role = "master",
-      },
-    }, rate_limiting_schema)
-
-    assert.is_false(ok)
-    assert.same("Invalid Redis Sentinel address: 127.0.0.2", err.redis)
+    assert.is_true(ok)
   end)
 
   it("transparently sorts the limit/window_size pairs", function()
