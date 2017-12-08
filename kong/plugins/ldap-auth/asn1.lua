@@ -195,6 +195,37 @@ _M.ASN1Encoder = {
     return bpack('XAA' , '30', self.encodeLength(#seqData), seqData)
   end,
 
+  encodeEnum = function(self, data)
+    local ival = self.encodeInt(data)
+    local len = self.encodeLength(#ival)
+    return bpack('cAA', 10, len, ival)
+  end,
+
+  encodeTag = function(self, class, constructed, tagn, data)
+    local o1
+    if class == "universal" then
+      o1 = 0
+    elseif class == "application" then
+      o1 = 0x40
+    elseif class == "context" then
+      o1 = 0x80
+    elseif class == "private" then
+      o1 = 0xC0
+    else
+      error("invalid")
+    end
+    if constructed then
+      o1 = o1 + 0x20
+    end
+    if tagn < 0x20 then
+      o1 = o1 + tagn
+    else
+      error("NYI")
+    end
+
+    return bpack('cAA', o1, self.encodeLength(#data), data)
+  end,
+
   encode = function(self, val)
     local vtype = type(val)
 
