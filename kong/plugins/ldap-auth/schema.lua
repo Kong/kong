@@ -12,7 +12,7 @@ return {
   no_consumer = true,
   fields = {
     ldap_host = {required = true, type = "string"},
-    ldap_port = {required = true, type = "number"},
+    ldap_port = {type = "number", default = 389},
     start_tls = {required = true, type = "boolean", default = false},
     verify_ldap_host = {required = true, type = "boolean", default = false},
     base_dn = {required = true, type = "string"},
