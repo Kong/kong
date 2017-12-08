@@ -463,7 +463,7 @@ local function load_consumer_into_memory(consumer_id, anonymous)
   end
   return result
 end
-  
+
 local function set_consumer(consumer, credential, token)
   ngx_set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
   ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
@@ -477,7 +477,7 @@ local function set_consumer(consumer, credential, token)
   else
     ngx_set_header(constants.HEADERS.ANONYMOUS, true)
   end
-  
+
 end
 
 local function do_authentication(conf)
@@ -530,7 +530,7 @@ end
 function _M.execute(conf)
 
   if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
-    -- we're already authenticated, and we're configured for using anonymous, 
+    -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
     return
   end

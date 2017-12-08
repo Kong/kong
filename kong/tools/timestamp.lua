@@ -22,14 +22,14 @@ local function get_utc_ms()
   return tz_time() * 1000
 end
 
--- setup a validation value, any value above this is assumed to be in MS 
+-- setup a validation value, any value above this is assumed to be in MS
 -- instead of S (a year value beyond the year 20000), it assumes current times
 -- as in 2016 and later.
 local ms_check = tt(20000 , 1 , 1 , 0 , 0 , 0):timestamp()
 
 -- Returns a time-table.
 -- @param now (optional) time to generate the time-table from. If omitted
--- current utc will be used. It can be specified either in seconds or 
+-- current utc will be used. It can be specified either in seconds or
 -- milliseconds, it will be converted automatically.
 local function get_timetable(now)
   local timestamp = now and now or get_utc()
@@ -45,13 +45,13 @@ end
 local function get_timestamps(now)
   local timetable = get_timetable(now)
   local stamps = {}
-  
+
   timetable.sec = math_floor(timetable.sec)   -- reduce to second precision
   stamps.second = timetable:timestamp() * 1000
 
   timetable.sec = 0
   stamps.minute = timetable:timestamp() * 1000
-  
+
   timetable.min = 0
   stamps.hour = timetable:timestamp() * 1000
 

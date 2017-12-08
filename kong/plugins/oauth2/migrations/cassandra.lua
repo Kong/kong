@@ -141,7 +141,7 @@ return {
       if err then
         return err
       end
-      
+
       for _, row in ipairs(rows) do
         row.config.global_credentials = true
 

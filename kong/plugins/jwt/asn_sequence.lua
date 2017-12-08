@@ -109,7 +109,7 @@ end
 
 -- @param input (string) 32 characters, format to be validated before calling
 function _M.resign_integer(input)
-  if type(input) ~= "string" then 
+  if type(input) ~= "string" then
     error("Argument #1 must be string", 2)
   end
   if string_byte(input) > 0x7F then

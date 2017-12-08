@@ -73,7 +73,7 @@ local function hash_to_array(t)
   return arr
 end
 
--- Calculate an approximation of header size (it doesn't calculate white 
+-- Calculate an approximation of header size (it doesn't calculate white
 -- space that may be sorrounding values, other than that it's accurate)
 local function calculate_headers_size(request_line, headers)
   local size = 0
@@ -197,7 +197,7 @@ function _M:add_entry(_ngx, req_body_str, resp_body_str)
       queryString = hash_to_array(req_get_uri_args()),
       headers = hash_to_array(request_headers),
       headersSize = calculate_headers_size(
-                      fmt("%s %s %s", method, var.request_uri, http_version), 
+                      fmt("%s %s %s", method, var.request_uri, http_version),
                       request_headers),
       postData = post_data,
       bodyCaptured = req_has_body,

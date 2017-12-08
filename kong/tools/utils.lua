@@ -541,13 +541,13 @@ _M.normalize_ipv4 = function(address)
      c > 255 or d < 0 or d > 255 then
     return nil, "invalid ipv4 address: " .. address
   end
-  if port then 
-    port = tonumber(port) 
+  if port then
+    port = tonumber(port)
     if port > 65535 then
       return nil, "invalid port number"
     end
   end
-  
+
   return fmt("%d.%d.%d.%d",a,b,c,d), port
 end
 
@@ -562,7 +562,7 @@ _M.normalize_ipv6 = function(address)
   if check then
     check = check:sub(2, -2)  -- drop the brackets
     -- we have ipv6 in brackets, now get port if we got something left
-    if port then 
+    if port then
       port = port:match("^:(%d-)$")
       if not port then
         return nil, "invalid ipv6 address"
@@ -672,7 +672,7 @@ end
 -- local addr, err = format_ip(check_hostname("//bad .. name\\"))    --> nil, "invalid hostname: ... "
 _M.format_host = function(p1, p2)
   local t = type(p1)
-  if t == "nil" then 
+  if t == "nil" then
     return p1, p2   -- just pass through any errors passed in
   end
   local host, port, typ

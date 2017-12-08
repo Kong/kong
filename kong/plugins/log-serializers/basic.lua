@@ -12,7 +12,7 @@ function _M.serialize(ngx)
       consumer_id = ngx.ctx.authenticated_credential.consumer_id
     }
   end
-  
+
   return {
     request = {
       uri = ngx.var.request_uri,
@@ -31,7 +31,7 @@ function _M.serialize(ngx)
     latencies = {
       kong = (ngx.ctx.KONG_ACCESS_TIME or 0) +
              (ngx.ctx.KONG_RECEIVE_TIME or 0) +
-             (ngx.ctx.KONG_REWRITE_TIME or 0) + 
+             (ngx.ctx.KONG_REWRITE_TIME or 0) +
              (ngx.ctx.KONG_BALANCER_TIME or 0),
       proxy = ngx.ctx.KONG_WAITING_TIME or -1,
       request = ngx.var.request_time * 1000

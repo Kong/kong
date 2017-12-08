@@ -164,12 +164,12 @@ index 3c038595..faa97ffe 100644
 @@ -19,25 +19,23 @@ error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
  >-- reset_timedout_connection on; # disabled until benchmarked
  > end
- 
+
 -client_max_body_size 0;
 +client_max_body_size ${{CLIENT_MAX_BODY_SIZE}};
  proxy_ssl_server_name on;
  underscores_in_headers on;
- 
+
 -real_ip_header X-Forwarded-For;
 -set_real_ip_from 0.0.0.0/0;
 -real_ip_recursive on;
@@ -197,7 +197,7 @@ index 3c038595..faa97ffe 100644
  lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE}}';
 @@ -45,8 +43,6 @@ lua_ssl_verify_depth ${{LUA_SSL_VERIFY_DEPTH}};
  > end
- 
+
  init_by_lua_block {
 -    require 'luarocks.loader'
 -    require 'resty.core'
@@ -207,7 +207,7 @@ index 3c038595..faa97ffe 100644
 @@ -65,28 +61,19 @@ upstream kong_upstream {
      keepalive ${{UPSTREAM_KEEPALIVE}};
  }
- 
+
 -map $http_upgrade $upstream_connection {
 -    default keep-alive;
 -    websocket upgrade;
@@ -225,12 +225,12 @@ index 3c038595..faa97ffe 100644
 +    listen ${{PROXY_LISTEN}}${{PROXY_PROTOCOL}};
 +    error_page 400 404 408 411 412 413 414 417 /kong_error_handler;
      error_page 500 502 503 504 /kong_error_handler;
- 
+
      access_log ${{PROXY_ACCESS_LOG}};
      error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
- 
+
 +    client_body_buffer_size ${{CLIENT_BODY_BUFFER_SIZE}};
- 
+
  > if ssl then
 -    listen ${{PROXY_LISTEN_SSL}} ssl;
 +    listen ${{PROXY_LISTEN_SSL}} ssl${{HTTP2}}${{PROXY_PROTOCOL}};
@@ -240,7 +240,7 @@ index 3c038595..faa97ffe 100644
 @@ -105,9 +92,22 @@ server {
      proxy_ssl_certificate_key ${{CLIENT_SSL_CERT_KEY}};
  > end
- 
+
 +    real_ip_header     ${{REAL_IP_HEADER}};
 +    real_ip_recursive  ${{REAL_IP_RECURSIVE}};
 +> for i = 1, #trusted_ips do
@@ -259,12 +259,12 @@ index 3c038595..faa97ffe 100644
 +        set $upstream_x_forwarded_proto  '';
 +        set $upstream_x_forwarded_host   '';
 +        set $upstream_x_forwarded_port   '';
- 
+
          rewrite_by_lua_block {
              kong.rewrite()
 @@ -118,17 +118,18 @@ server {
          }
- 
+
          proxy_http_version 1.1;
 -        proxy_set_header X-Real-IP $remote_addr;
 -        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -289,7 +289,7 @@ index 3c038595..faa97ffe 100644
 +        proxy_pass_header  Date;
 +        proxy_ssl_name     $upstream_host;
 +        proxy_pass         $upstream_scheme://kong_upstream$upstream_uri;
- 
+
          header_filter_by_lua_block {
              kong.header_filter()
 @@ -146,7 +147,7 @@ server {
@@ -303,7 +303,7 @@ index 3c038595..faa97ffe 100644
  }
 @@ -162,7 +163,7 @@ server {
      client_body_buffer_size 10m;
- 
+
  > if admin_ssl then
 -    listen ${{ADMIN_LISTEN_SSL}} ssl;
 +    listen ${{ADMIN_LISTEN_SSL}} ssl${{ADMIN_HTTP2}};
@@ -571,7 +571,7 @@ support for Cassandra 3.x, SRV records resolution, and much more.
 Here is how to ensure a smooth upgrade from a Kong `0.9.x` cluster to `0.10`:
 
 1. Make sure your 0.9 cluster is warm because your
-   datastore will be incompatible with your 0.9 Kong nodes once migrated. 
+   datastore will be incompatible with your 0.9 Kong nodes once migrated.
    Most of your entities should be cached
    by the running Kong nodes already (APIs, Consumers, Plugins).
 2. Provision a 0.10 node and configure it as you wish (environment variables/
