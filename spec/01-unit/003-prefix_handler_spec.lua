@@ -380,11 +380,23 @@ describe("NGINX conf compiler", function()
       assert.truthy(exists(tmp_config.nginx_admin_acc_logs))
     end)
     it("dumps Kong conf", function()
+      -- patch os.getenv to not have existing environment variables interfere
+      local _getenv = os.getenv
+      os.getenv = function() end  -- luacheck: ignore
+      finally(function()
+          os.getenv = _getenv     -- luacheck: ignore
+        end)
       assert(prefix_handler.prepare_prefix(tmp_config))
       local in_prefix_kong_conf = assert(conf_loader(tmp_config.kong_env))
       assert.same(tmp_config, in_prefix_kong_conf)
     end)
     it("dump Kong conf (custom conf)", function()
+      -- patch os.getenv to not have existing environment variables interfere
+      local _getenv = os.getenv
+      os.getenv = function() end  -- luacheck: ignore
+      finally(function()
+          os.getenv = _getenv     -- luacheck: ignore
+        end)
       local conf = assert(conf_loader(nil, {
         pg_database = "foobar",
         prefix = tmp_config.prefix
