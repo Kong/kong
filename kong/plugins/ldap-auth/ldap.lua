@@ -19,6 +19,9 @@ local ERROR_MSG = {
 local APPNO = {
   BindRequest = 0,
   BindResponse = 1,
+  SearchRequest = 3,
+  SearchResult = 4,
+  SearchResultDone = 5;
   UnbindRequest = 2,
   ExtendedRequest = 23,
   ExtendedResponse = 24
@@ -106,6 +109,119 @@ function _M.unbind_request(socket)
   packet = encoder:encodeSeq(ldapMsg)
   socket:send(packet)
   return true, ""
+end
+
+local scopes = {
+  -- alias in RFC 4511
+  baseObject = 0;
+  singleLevel = 1;
+  wholeSubtree = 2;
+  -- aliases used by ldapsearch command
+  base = 0;
+  one = 1;
+  sub = 2;
+}
+
+function _M.search_request(socket, query)
+  local base = assert(query.base, "missing base")
+  local scope = assert(query.scope, "missing scope")
+  if type(scope) == "string" then
+    scope = assert(scopes[scope], "unknown scope")
+  elseif type(scope) ~= "number" then
+    error "invalid scope field"
+  end
+  local filter = query.filter
+  if filter == nil then
+    filter = encoder:encodeTag("context", false, 7, "objectclass")
+  else
+    local field, value = filter:match("(%w+)=(%w+)")
+    if field then
+      filter = encoder:encodeTag("context", true, 3, encoder:encode(field)..encoder:encode(value))
+    else
+      error "NYI"
+    end
+  end
+  local attributes = query.attrs
+  if attributes == nil then
+    attributes = encoder:encodeSeq("")
+  elseif type(attributes) == "string" then
+    attributes = encoder:encodeSeq(encoder:encode(attributes))
+  elseif type(attributes) == "table" then
+    local a = {}
+    for i, v in ipairs(attributes) do
+      assert(type(v) == "string")
+      a[i] = encoder:encode(v)
+    end
+    attributes = encoder:encodeSeq(table.concat(a))
+  else
+    error "invalid attrs field"
+  end
+
+  local data = encoder:encode(base)
+    .. encoder:encodeEnum(scope) -- scope
+    .. encoder:encodeEnum(0) -- derefAliases
+    .. encoder:encode(0) -- sizeLimit
+    .. encoder:encode(0) -- timeLimit
+    .. encoder:encode(false) -- typesOnly
+    .. filter -- filter
+    .. attributes -- attributes
+  ldapMessageId = ldapMessageId +1
+  local ldapMsg = encoder:encode(ldapMessageId) .. encodeLDAPOp(encoder, 3, true, data)
+  local packet = encoder:encodeSeq(ldapMsg)
+  socket:send(packet)
+
+  local response = {}
+
+  local _, protocolOp, packet, pos = receive_ldap_message(socket)
+
+  while protocolOp.number == APPNO.SearchResult do
+    local key
+    pos, key = decoder:decode(packet, pos)
+    local _, seq = decoder:decode(packet, pos)
+    local val = {}
+    for i,v in ipairs(seq) do
+      if v[3] ~= nil then
+        local k = table.remove(v, 1)
+        val[k] = v
+      else
+        val[v[1]] = v[2]
+      end
+    end
+    response[key] = val
+
+    -- Read next packet
+    _, protocolOp, packet, pos = receive_ldap_message(socket)
+  end
+
+  if protocolOp.number ~= APPNO.SearchResultDone then
+    if protocolOp.number == APPNO.ExtendedResponse then
+      local resultCode
+      pos, resultCode = decoder:decode(packet, pos)
+      local error_msg, _
+      pos, response.matchedDN = decoder:decode(packet, pos)
+      _, response.errorMessage = decoder:decode(packet, pos)
+      error_msg = ERROR_MSG[resultCode]
+      return false, string_format("\n  Error: %s\n  Details: %s",
+        error_msg or "Unknown error occurred (code: " .. resultCode ..
+        ")", response.errorMessage or "")
+    end
+    return false, string_format("Received incorrect Op in packet: %d, expected %d", protocolOp.number, APPNO.SearchResultDone)
+  end
+
+  local resultCode
+  pos, resultCode = decoder:decode(packet, pos)
+
+  if resultCode ~= 0 then
+    local _, errorMessage
+    pos, _ = decoder:decode(packet, pos)
+    _, errorMessage = decoder:decode(packet, pos)
+    local error_msg = ERROR_MSG[resultCode]
+    return false, string_format("\n  Error: %s\n  Details: %s",
+      error_msg or "Unknown error occurred (code: " .. resultCode ..
+      ")", errorMessage or "")
+  else
+    return response
+  end
 end
 
 function _M.start_tls(socket)
