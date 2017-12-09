@@ -1,6 +1,5 @@
 local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
-local singletons = require "kong.singletons"
 local constants = require "kong.constants"
 
 
@@ -22,6 +21,7 @@ local BUFFERED_REQUESTS_COUNT_KEYS = "events:requests"
 
 
 local _buffer = {}
+local _ping_infos = {}
 local _enabled = false
 local _unique_str = utils.random_string()
 local _buffer_immutable_idx
@@ -158,11 +158,10 @@ local function ping_handler(premature)
     n_requests = 0
   end
 
-  send_report("ping", {
-    requests = n_requests,
-    unique_id = _unique_str,
-    database = singletons.configuration.database
-  })
+  _ping_infos.requests = n_requests
+  _ping_infos.unique_id = _unique_str
+
+  send_report("ping", _ping_infos)
 
   local ok, err = kong_dict:incr(BUFFERED_REQUESTS_COUNT_KEYS, -n_requests, n_requests)
   if not ok then
@@ -179,6 +178,9 @@ return {
     end
 
     create_timer(PING_INTERVAL, ping_handler)
+  end,
+  add_ping_value = function(k, v)
+    _ping_infos[k] = v
   end,
   log = function()
     if not _enabled then

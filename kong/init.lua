@@ -120,7 +120,13 @@ local function load_plugins(kong_conf, dao)
   -- add reports plugin if not disabled
   if kong_conf.anonymous_reports then
     local reports = require "kong.core.reports"
+
+    local db_infos = dao:infos()
+    reports.add_ping_value("database", kong_conf.database)
+    reports.add_ping_value("database_version", db_infos.version)
+
     reports.toggle(true)
+
     sorted_plugins[#sorted_plugins+1] = {
       name = "reports",
       handler = reports,

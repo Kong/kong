@@ -105,8 +105,13 @@ local function extract_major(release_version)
   return match(release_version, "^(%d+)%.%d")
 end
 
+local function extract_major_minor(release_version)
+  return match(release_version, "^(%d+%.%d+)")
+end
+
 local function cluster_release_version(peers)
-  local first_release_version
+  local major_minor_version
+  local major_version
   local mismatch
 
   for i = 1, #peers do
@@ -115,14 +120,17 @@ local function cluster_release_version(peers)
       return nil, 'no release_version for peer ' .. peers[i].host
     end
 
-    local major_version = extract_major(release_version)
-    if not major_version then
+    local peer_major_version = extract_major(release_version)
+    if not peer_major_version then
       return nil, 'failed to extract major version for peer ' .. peers[i].host ..
                   ' version: ' .. tostring(peers[i].release_version)
     end
+
     if i == 1 then
-      first_release_version = major_version
-    elseif major_version ~= first_release_version then
+      major_version = peer_major_version
+      major_minor_version = extract_major_minor(release_version)
+
+    elseif peer_major_version ~= major_version then
       mismatch = true
       break
     end
@@ -139,10 +147,14 @@ local function cluster_release_version(peers)
     return nil, concat(err_t, " ")
   end
 
-  return tonumber(first_release_version)
+  return {
+    major = major_version,
+    major_minor = major_minor_version,
+  }
 end
 
 _M.extract_major = extract_major
+_M.extract_major_minor = extract_major_minor
 _M.cluster_release_version = cluster_release_version
 
 function _M:init()
@@ -155,10 +167,13 @@ function _M:init()
   if err then return nil, err
   elseif not peers then return nil, 'no peers in shm' end
 
-  self.release_version, err = cluster_release_version(peers)
-  if not self.release_version then
+  local res, err = cluster_release_version(peers)
+  if not res then
     return nil, err
   end
+
+  self.major_version_n = tonumber(res.major)
+  self.major_minor_version = res.major_minor
 
   return true
 end
@@ -166,7 +181,8 @@ end
 function _M:infos()
   return {
     desc = "keyspace",
-    name = self.cluster_options.keyspace
+    name = self.cluster_options.keyspace,
+    version = self.major_minor_version or "unknown",
   }
 end
 
@@ -657,14 +673,14 @@ end
 function _M:current_migrations()
   local q_keyspace_exists, q_migrations_table_exists
 
-  if not self.release_version then
+  if not self.major_version_n then
     local ok, err = self:init()
     if not ok then
       return nil, err
     end
   end
 
-  if self.release_version == 3 then
+  if self.major_version_n == 3 then
     q_keyspace_exists = [[
       SELECT * FROM system_schema.keyspaces
       WHERE keyspace_name = ?
