@@ -1,35 +1,11 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
+local redis = require "kong.enterprise_edition.redis"
 
 local REDIS_HOST = "127.0.0.1"
 local REDIS_PORT = 6379
 local REDIS_PASSWORD = ""
 local REDIS_DATABASE = 1
-
-local function flush_redis()
-  local redis = require "resty.redis"
-  local red = redis:new()
-  red:set_timeout(2000)
-  local ok, err = red:connect(REDIS_HOST, REDIS_PORT)
-  if not ok then
-    error("failed to connect to Redis: " .. err)
-  end
-
-  if REDIS_PASSWORD and REDIS_PASSWORD ~= "" then
-    local ok, err = red:auth(REDIS_PASSWORD)
-    if not ok then
-      error("failed to connect to Redis: " .. err)
-    end
-  end
-
-  local ok, err = red:select(REDIS_DATABASE)
-  if not ok then
-    error("failed to change Redis database: " .. err)
-  end
-
-  red:flushall()
-  red:close()
-end
 
 for i, policy in ipairs({"cluster", "redis"}) do
   local MOCK_RATE = 3
@@ -39,7 +15,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
 
     setup(function()
       helpers.kill_all()
-      flush_redis()
+      redis.flush_redis(REDIS_HOST, REDIS_PORT, REDIS_DATABASE, REDIS_PASSWORD)
       helpers.dao:drop_schema()
       helpers.run_migrations()
 

@@ -210,4 +210,30 @@ function _M.connection(conf)
 end
 
 
+function _M.flush_redis(host, port, database, password)
+  local redis = require "resty.redis"
+  local red = redis:new()
+  red:set_timeout(2000)
+  local ok, err = red:connect(host, port)
+  if not ok then
+    error("failed to connect to Redis: " .. err)
+  end
+
+  if password and password ~= "" then
+    local ok, err = red:auth(password)
+    if not ok then
+      error("failed to connect to Redis: " .. err)
+    end
+  end
+
+  local ok, err = red:select(database)
+  if not ok then
+    error("failed to change Redis database: " .. err)
+  end
+
+  red:flushall()
+  red:close()
+end
+
+
 return _M
