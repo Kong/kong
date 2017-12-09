@@ -187,7 +187,7 @@ server {
     gzip_types text/plain text/css application/json application/javascript;
 
     location / {
-        root /usr/local/kong/gui;
+        root gui;
 
         try_files $uri /index.html;
 
