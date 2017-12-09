@@ -138,7 +138,7 @@ end
 
 function DatadogHandler:log(conf)
   DatadogHandler.super.log(self)
-  
+
   -- unmatched apis are nil
   if not ngx.ctx.api then
     return

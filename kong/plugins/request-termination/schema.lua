@@ -13,7 +13,7 @@ return {
         return false, Errors.schema("status_code must be between 100 .. 599")
       end
     end
-    
+
     if plugin_t.message then
       if plugin_t.content_type or plugin_t.body then
         return false, Errors.schema("message cannot be used with content_type or body")
@@ -23,7 +23,7 @@ return {
         return false, Errors.schema("content_type requires a body")
       end
     end
-    
+
     return true
   end
 }

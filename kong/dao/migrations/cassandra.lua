@@ -352,7 +352,7 @@ return {
         end
 
         for i = 1, #rows do
-          if rows[i].options and 
+          if rows[i].options and
              rows[i].options.target == "request_host" or
              rows[i].options.target == "request_path" then
 

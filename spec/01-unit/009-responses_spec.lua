@@ -61,7 +61,7 @@ describe("Response helpers", function()
   it("calls `ngx.log` if and only if a 500 status code was given", function()
     responses.send_HTTP_BAD_REQUEST()
     assert.stub(ngx.log).was_not_called()
-    
+
     responses.send_HTTP_BAD_REQUEST("error")
     assert.stub(ngx.log).was_not_called()
 

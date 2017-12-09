@@ -8,7 +8,7 @@ describe("Log Serializer", function()
       ctx = {
         balancer_address = {
           tries = {
-            { 
+            {
               ip = "127.0.0.1",
               port = 8000,
             },
@@ -97,7 +97,7 @@ describe("Log Serializer", function()
     end)
 
     it("serializes the Authenticated Entity object", function()
-      ngx.ctx.authenticated_credential = {id = "somecred", 
+      ngx.ctx.authenticated_credential = {id = "somecred",
                                           consumer_id = "user1"}
 
       local res = basic.serialize(ngx)

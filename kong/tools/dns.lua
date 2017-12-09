@@ -5,13 +5,13 @@ local dns_client
 -- @param conf (table) Kong configuration
 -- @return the initialized `resty.dns.client` module, or an error
 local setup_client = function(conf)
-  if not dns_client then 
+  if not dns_client then
     dns_client = require "resty.dns.client"
   end
 
   conf = conf or {}
   local servers = {}
-  
+
   -- servers must be reformatted as name/port sub-arrays
   if conf.dns_resolver then
     for i, server in ipairs(conf.dns_resolver) do
@@ -19,7 +19,7 @@ local setup_client = function(conf)
       servers[i] = { s.host, s.port or 53 }   -- inserting port if omitted
     end
   end
-    
+
   local opts = {
     hosts = conf.dns_hostsfile,
     resolvConf = nil,                -- defaults to system resolv.conf
@@ -33,7 +33,7 @@ local setup_client = function(conf)
     order = conf.dns_order,          -- order of trying record types
     noSynchronisation = conf.dns_no_sync,
   }
-  
+
   assert(dns_client.init(opts))
 
   return dns_client

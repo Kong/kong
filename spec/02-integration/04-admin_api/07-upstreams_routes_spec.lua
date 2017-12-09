@@ -229,7 +229,7 @@ if content_type == "application/x-www-form-urlencoded" then return end
               body = {
                 name = "my.upstream",
                 slots = 10,
-                orderlist = { 1,2,3,4,5,1,2,3,4,5 }, 
+                orderlist = { 1,2,3,4,5,1,2,3,4,5 },
               },
               headers = {["Content-Type"] = content_type}
             })

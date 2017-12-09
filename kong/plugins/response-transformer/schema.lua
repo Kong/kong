@@ -3,7 +3,7 @@ local find = string.find
 local function check_for_value(value)
   for i, entry in ipairs(value) do
     local ok = find(entry, ":")
-    if not ok then 
+    if not ok then
       return false, "key '" .. entry .. "' has no value"
     end
   end
@@ -13,7 +13,7 @@ end
 return {
   fields = {
     -- add: Add a value (to response headers or response JSON body) only if the key does not already exist.
-    remove = { 
+    remove = {
       type = "table",
       schema = {
         fields = {
@@ -40,8 +40,8 @@ return {
         }
       }
     },
-    append = { 
-      type = "table", 
+    append = {
+      type = "table",
       schema = {
         fields = {
           json = {type = "array", default = {}, func = check_for_value},
