@@ -11,6 +11,16 @@ describe("cassandra_db", function()
     end)
   end)
 
+  describe("extract_major_minor()", function()
+    it("extract major and minor version digits", function()
+      assert.equal("3.7", cassandra_db.extract_major_minor("3.7"))
+      assert.equal("3.7", cassandra_db.extract_major_minor("3.7.12"))
+      assert.equal("2.1", cassandra_db.extract_major_minor("2.1.14"))
+      assert.equal("2.10", cassandra_db.extract_major_minor("2.10"))
+      assert.equal("10.0", cassandra_db.extract_major_minor("10.0"))
+    end)
+  end)
+
   describe("cluster_release_version()", function()
     it("extracts major release_version from available peers", function()
       local release_version = assert(cassandra_db.cluster_release_version {
@@ -27,7 +37,10 @@ describe("cassandra_db", function()
           release_version = "3.1.2",
         }
       })
-      assert.equal(3, release_version)
+      assert.same({
+        major       = "3",
+        major_minor = "3.7",
+      }, release_version)
 
       local release_version = assert(cassandra_db.cluster_release_version {
         {
@@ -43,7 +56,10 @@ describe("cassandra_db", function()
           release_version = "2.2.4",
         }
       })
-      assert.equal(2, release_version)
+      assert.same({
+        major       = "2",
+        major_minor = "2.14",
+      }, release_version)
     end)
     it("errors with different major versions", function()
       local release_version, err = cassandra_db.cluster_release_version {
