@@ -2,6 +2,7 @@ local singletons = require "kong.singletons"
 local timestamp = require "kong.tools.timestamp"
 local redis = require "resty.redis"
 local policy_cluster = require "kong.plugins.response-ratelimiting.policies.cluster"
+local reports = require "kong.core.reports"
 local ngx_log = ngx.log
 local shm = ngx.shared.kong_cache
 
@@ -163,6 +164,8 @@ return {
           return nil, err
         end
       end
+
+      reports.retrieve_redis_version(red)
 
       local periods = timestamp.get_timestamps(current_timestamp)
       local cache_key = get_local_key(api_id, identifier, periods[period], name, period)
