@@ -2,6 +2,7 @@ local singletons = require "kong.singletons"
 local timestamp = require "kong.tools.timestamp"
 local redis = require "resty.redis"
 local policy_cluster = require "kong.plugins.rate-limiting.policies.cluster"
+local reports = require "kong.core.reports"
 local ngx_log = ngx.log
 local shm = ngx.shared.kong_cache
 
@@ -12,7 +13,6 @@ local get_local_key = function(api_id, identifier, period_date, name)
   return fmt("ratelimit:%s:%s:%s:%s", api_id, identifier, period_date, name)
 end
 
-local _retrieved_redis_version
 local EXPIRATIONS = {
   second = 1,
   minute = 60,
@@ -100,31 +100,6 @@ return {
         end
       end
 
-      if not _retrieved_redis_version then
-        _retrieved_redis_version = true
-
-        if singletons.configuration.anonymous_reports then
-          local reports = require "kong.core.reports"
-          local redis_version
-
-          -- we will run this branch for each worker's first hit, but never
-          -- again. Hopefully someday Redis will be made a first class citizen
-          -- in Kong and its integration can be tied deeper into the core,
-          -- avoiding such "hacks". This logic should work for Redis >= 2.4.
-          local res, err = red:info("server")
-          if type(res) ~= "string" then
-            -- could be nil or ngx.null
-            ngx_log(ngx.ERR, "failed to retrieve Redis version: ", err)
-
-          else
-            -- retrieved first 2 digits only
-            redis_version = res:match("redis_version:(%d+%.%d+).-\r\n")
-          end
-
-          reports.add_ping_value("redis_version", redis_version or "unknown")
-        end
-      end
-
       local keys = {}
       local expirations = {}
       local idx = 0
@@ -191,6 +166,8 @@ return {
           return nil, err
         end
       end
+
+      reports.retrieve_redis_version(red)
 
       local periods = timestamp.get_timestamps(current_timestamp)
       local cache_key = get_local_key(api_id, identifier, periods[name], name)

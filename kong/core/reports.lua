@@ -170,6 +170,47 @@ local function ping_handler(premature)
 end
 
 
+local function add_ping_value(k, v)
+  _ping_infos[k] = v
+end
+
+
+local retrieve_redis_version
+
+
+do
+  local _retrieved_redis_version = false
+
+
+  retrieve_redis_version = function(red)
+    if not _enabled or _retrieved_redis_version then
+      return
+    end
+
+    -- we will run this branch for each worker's first hit, but never
+    -- again. Hopefully someday Redis will be made a first class citizen
+    -- in Kong and its integration can be tied deeper into the core,
+    -- avoiding such "hacks".
+    _retrieved_redis_version = true
+
+    local redis_version
+
+    -- This logic should work for Redis >= 2.4.
+    local res, err = red:info("server")
+    if type(res) ~= "string" then
+      -- could be nil or ngx.null
+      ngx_log(ERR, "failed to retrieve Redis version: ", err)
+
+    else
+      -- retrieve first 2 digits only
+      redis_version = res:match("redis_version:(%d+%.%d+).-\r\n")
+    end
+
+    add_ping_value("redis_version", redis_version or "unknown")
+  end
+end
+
+
 return {
   -- plugin handler
   init_worker = function()
@@ -179,8 +220,9 @@ return {
 
     create_timer(PING_INTERVAL, ping_handler)
   end,
-  add_ping_value = function(k, v)
-    _ping_infos[k] = v
+  add_ping_value = add_ping_value,
+  get_ping_value = function(k)
+    return _ping_infos[k]
   end,
   log = function()
     if not _enabled then
@@ -199,4 +241,5 @@ return {
     _enabled = enable
   end,
   send = send_report,
+  retrieve_redis_version = retrieve_redis_version,
 }
