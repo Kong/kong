@@ -12,7 +12,7 @@ local function load_plugin_into_memory(api_id, consumer_id, plugin_name)
     name = plugin_name
   }
   if err then
-    return nil, err
+    error(err)
   end
 
   if #rows > 0 then
@@ -22,8 +22,8 @@ local function load_plugin_into_memory(api_id, consumer_id, plugin_name)
       end
     end
   end
-  -- insert a cached value to not trigger too many DB queries.
-  return {null = true}  -- works because: `.enabled == nil`
+
+  return nil
 end
 
 --- Load the configuration for a plugin entry in the DB.
