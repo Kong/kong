@@ -19,7 +19,6 @@ local cmds = {
   reload = true,
   health = true,
   check = true,
-  compile = true,
   prepare = true,
   migrations = true,
   version = true,

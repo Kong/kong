@@ -4,7 +4,7 @@
 #
 # The commented-out settings shown in this file represent the default values.
 #
-# This file is read when `kong start` or `kong compile` are used. Kong
+# This file is read when `kong start` or `kong prepare` are used. Kong
 # generates the Nginx configuration with the settings specified in this file.
 #
 # All environment variables prefixed with `KONG_` and capitalized will override
