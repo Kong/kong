@@ -3,6 +3,8 @@
 
 local helpers = require "spec.helpers"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
+local localhost = "127.0.0.1"
+local ipv = "ipv4"
 local PORT = 21000
 local utils = require "kong.tools.utils"
 
@@ -70,11 +72,11 @@ local function direct_request(host, port, path)
 end
 
 
-local function post_target_endpoint(upstream_name, port, endpoint)
+local function post_target_endpoint(upstream_name, host, port, endpoint)
   local url = "/upstreams/" .. upstream_name
-                            .. "/targets/127.0.0.1:" .. port
+                            .. "/targets/"
+                            .. utils.format_host(host, port)
                             .. "/" .. endpoint
-
   local api_client = helpers.admin_client()
   local res, err = assert(api_client:send {
     method = "POST",
@@ -92,16 +94,16 @@ end
 -- Modified http-server. Accepts (sequentially) a number of incoming
 -- connections and then rejects a given number of connections.
 -- @param timeout Server timeout.
+-- @param host Host name to use (IPv4 or IPv6 localhost).
 -- @param port Port number to use.
 -- @param counts Array of response counts to give,
 -- odd entries are 200s, event entries are 500s
 -- @param test_log (optional, default fals) Produce detailed logs
 -- @return Returns the number of succesful and failure responses.
-local function http_server(timeout, port, counts, test_log)
+local function http_server(timeout, host, port, counts, test_log)
   local threads = require "llthreads2.ex"
   local thread = threads.new({
-    function(timeout, port, counts, TEST_LOG)
-
+    function(timeout, host, port, counts, TEST_LOG)
       local function test_log(...)
         if not TEST_LOG then
           return
@@ -115,7 +117,12 @@ local function http_server(timeout, port, counts, test_log)
       end
 
       local socket = require "socket"
-      local server = assert(socket.tcp())
+      local server
+      if host:match(":") then
+        server = assert(socket.tcp6())
+      else
+        server = assert(socket.tcp())
+      end
       assert(server:setoption('reuseaddr', true))
       assert(server:bind("*", port))
       assert(server:listen())
@@ -238,13 +245,13 @@ local function http_server(timeout, port, counts, test_log)
       test_log("test http server on port ", port, " closed")
       return ok_responses, fail_responses
     end
-  }, timeout, port, counts, test_log or TEST_LOG)
+  }, timeout, host, port, counts, test_log or TEST_LOG)
 
   local server = thread:start()
 
   local expire = ngx.now() + timeout
   repeat
-    local _, err = direct_request("127.0.0.1", port, "/handshake")
+    local _, err = direct_request(host, port, "/handshake")
     if err then
       ngx.sleep(0.01) -- poll-wait
     end
@@ -278,7 +285,7 @@ end
 
 dao_helpers.for_each_dao(function(kong_config)
 
-  describe("Ring-balancer #" .. kong_config.database, function()
+  describe("Ring-balancer #" .. kong_config.database .. " #" .. ipv, function()
     local config_db
 
     setup(function()
@@ -304,22 +311,22 @@ dao_helpers.for_each_dao(function(kong_config)
 
       before_each(function()
         helpers.run_migrations()
-        assert(helpers.dao.apis:insert {
+        helpers.dao.apis:insert {
           name = "balancer.test",
           hosts = { "balancer.test" },
           upstream_url = "http://service.xyz.v1/path",
-        })
+        }
         upstream = assert(helpers.dao.upstreams:insert {
           name = "service.xyz.v1",
           slots = slots,
         })
         assert(helpers.dao.targets:insert {
-          target = "127.0.0.1:" .. PORT,
+          target = utils.format_host(localhost, PORT),
           weight = 10,
           upstream_id = upstream.id,
         })
         assert(helpers.dao.targets:insert {
-          target = "127.0.0.1:" .. (PORT + 1),
+          target = utils.format_host(localhost, PORT + 1),
           weight = 10,
           upstream_id = upstream.id,
         })
@@ -361,10 +368,10 @@ dao_helpers.for_each_dao(function(kong_config)
           -- server2 will only respond for part of the test,
           -- then server1 will take over.
           local server2_oks = math.floor(requests / 4)
-          local server1 = http_server(timeout, PORT, {
+          local server1 = http_server(timeout, localhost, PORT, {
             requests - server2_oks - nfails
           })
-          local server2 = http_server(timeout, PORT + 1, {
+          local server2 = http_server(timeout, localhost, PORT + 1, {
             server2_oks,
             nfails
           })
@@ -426,14 +433,14 @@ dao_helpers.for_each_dao(function(kong_config)
           -- server2 will only respond for part of the test,
           -- then server1 will take over.
           local server2_oks = math.floor(requests / 4)
-          local server1 = http_server(timeout, PORT, { requests - server2_oks })
-          local server2 = http_server(timeout, PORT + 1, { server2_oks })
+          local server1 = http_server(timeout, localhost, PORT, { requests - server2_oks })
+          local server2 = http_server(timeout, localhost, PORT + 1, { server2_oks })
 
           -- Phase 1: server1 and server2 take requests
           local client_oks, client_fails = client_requests(server2_oks * 2)
 
           -- Phase 2: server2 goes unhealthy
-          direct_request("127.0.0.1", PORT + 1, "/unhealthy")
+          direct_request(localhost, PORT + 1, "/unhealthy")
 
           -- Give time for healthchecker to detect
           ngx.sleep((2 + nfails) * healthcheck_interval)
@@ -499,14 +506,14 @@ dao_helpers.for_each_dao(function(kong_config)
           -- then server1 will take over.
           local server1_oks = upstream.slots * 2
           local server2_oks = upstream.slots
-          local server1 = http_server(timeout, PORT,     { server1_oks })
-          local server2 = http_server(timeout, PORT + 1, { server2_oks })
+          local server1 = http_server(timeout, localhost, PORT,     { server1_oks })
+          local server2 = http_server(timeout, localhost, PORT + 1, { server2_oks })
 
           -- 1) server1 and server2 take requests
           local oks, fails = client_requests(upstream.slots)
 
           -- server2 goes unhealthy
-          direct_request("127.0.0.1", PORT + 1, "/unhealthy")
+          direct_request(localhost, PORT + 1, "/unhealthy")
           -- Give time for healthchecker to detect
           ngx.sleep((2 + nchecks) * healthcheck_interval)
 
@@ -518,7 +525,7 @@ dao_helpers.for_each_dao(function(kong_config)
           end
 
           -- server2 goes healthy again
-          direct_request("127.0.0.1", PORT + 1, "/healthy")
+          direct_request(localhost, PORT + 1, "/healthy")
           -- Give time for healthchecker to detect
           ngx.sleep((2 + nchecks) * healthcheck_interval)
 
@@ -547,7 +554,6 @@ dao_helpers.for_each_dao(function(kong_config)
       it("perform passive health checks -- manual recovery", function()
 
         for nfails = 1, 5 do
-
           -- configure healthchecks
           local api_client = helpers.admin_client()
           assert(api_client:send {
@@ -575,10 +581,10 @@ dao_helpers.for_each_dao(function(kong_config)
           -- then server1 will take over.
           local server1_oks = upstream.slots * 2
           local server2_oks = upstream.slots
-          local server1 = http_server(timeout, PORT, {
+          local server1 = http_server(timeout, localhost, PORT, {
             server1_oks - nfails
           })
-          local server2 = http_server(timeout, PORT + 1, {
+          local server2 = http_server(timeout, localhost, PORT + 1, {
             server2_oks / 2,
             nfails,
             server2_oks / 2
@@ -597,7 +603,7 @@ dao_helpers.for_each_dao(function(kong_config)
           end
 
           -- manually bring it back using the endpoint
-          post_target_endpoint(upstream.name, PORT + 1, "healthy")
+          post_target_endpoint(upstream.name, localhost, PORT + 1, "healthy")
 
           -- 3) server1 and server2 take requests again
           do
@@ -650,14 +656,14 @@ dao_helpers.for_each_dao(function(kong_config)
         -- then server1 will take over.
         local server1_oks = upstream.slots * 2
         local server2_oks = upstream.slots
-        local server1 = http_server(timeout, PORT,     { server1_oks })
-        local server2 = http_server(timeout, PORT + 1, { server2_oks })
+        local server1 = http_server(timeout, localhost, PORT,     { server1_oks })
+        local server2 = http_server(timeout, localhost, PORT + 1, { server2_oks })
 
         -- 1) server1 and server2 take requests
         local oks, fails = client_requests(upstream.slots)
 
         -- manually bring it down using the endpoint
-        post_target_endpoint(upstream.name, PORT + 1, "unhealthy")
+        post_target_endpoint(upstream.name, localhost, PORT + 1, "unhealthy")
 
         -- 2) server1 takes all requests
         do
@@ -667,7 +673,7 @@ dao_helpers.for_each_dao(function(kong_config)
         end
 
         -- manually bring it back using the endpoint
-        post_target_endpoint(upstream.name, PORT + 1, "healthy")
+        post_target_endpoint(upstream.name, localhost, PORT + 1, "healthy")
 
         -- 3) server1 and server2 take requests again
         do
@@ -709,12 +715,12 @@ dao_helpers.for_each_dao(function(kong_config)
           slots = 10,
         })
         target1 = assert(helpers.dao.targets:insert {
-          target = "127.0.0.1:" .. PORT,
+          target = utils.format_host(localhost, PORT),
           weight = 10,
           upstream_id = upstream1.id,
         })
         target2 = assert(helpers.dao.targets:insert {
-          target = "127.0.0.1:" .. (PORT + 1),
+          target = utils.format_host(localhost, PORT + 1),
           weight = 10,
           upstream_id = upstream1.id,
         })
@@ -732,12 +738,12 @@ dao_helpers.for_each_dao(function(kong_config)
           hash_on_header = "hashme",
         })
         assert(helpers.dao.targets:insert {
-          target = "127.0.0.1:" .. PORT + 2,
+          target = utils.format_host(localhost, PORT + 2),
           weight = 10,
           upstream_id = upstream2.id,
         })
         assert(helpers.dao.targets:insert {
-          target = "127.0.0.1:" .. (PORT + 3),
+          target = utils.format_host(localhost, PORT + 3),
           weight = 10,
           upstream_id = upstream2.id,
         })
@@ -771,8 +777,8 @@ dao_helpers.for_each_dao(function(kong_config)
         local requests = upstream1.slots * 2 -- go round the balancer twice
 
         -- setup target servers
-        local server1 = http_server(timeout, PORT,     { requests / 2 })
-        local server2 = http_server(timeout, PORT + 1, { requests / 2 })
+        local server1 = http_server(timeout, localhost, PORT,     { requests / 2 })
+        local server2 = http_server(timeout, localhost, PORT + 1, { requests / 2 })
 
         -- Go hit them with our test requests
         local oks = client_requests(requests)
@@ -791,8 +797,8 @@ dao_helpers.for_each_dao(function(kong_config)
         local requests = upstream2.slots * 2 -- go round the balancer twice
 
         -- setup target servers
-        local server1 = http_server(timeout, PORT + 2, { requests }, true)
-        local server2 = http_server(timeout, PORT + 3, { requests }, true)
+        local server1 = http_server(timeout, localhost, PORT + 2, { requests }, true)
+        local server2 = http_server(timeout, localhost, PORT + 3, { requests }, true)
 
         -- Go hit them with our test requests
         local oks = client_requests(requests, {
@@ -801,8 +807,8 @@ dao_helpers.for_each_dao(function(kong_config)
         })
         assert.are.equal(requests, oks)
 
-        direct_request("127.0.0.1", PORT + 2, "/shutdown")
-        direct_request("127.0.0.1", PORT + 3, "/shutdown")
+        direct_request(localhost, PORT + 2, "/shutdown")
+        direct_request(localhost, PORT + 3, "/shutdown")
 
         -- collect server results; hitcount
         -- one should get all the hits, the other 0, and hence a timeout
@@ -819,8 +825,8 @@ dao_helpers.for_each_dao(function(kong_config)
         local requests = upstream1.slots * 2 -- go round the balancer twice
 
         -- setup target servers
-        local server1 = http_server(timeout, PORT,     { requests / 2 })
-        local server2 = http_server(timeout, PORT + 1, { requests / 2 })
+        local server1 = http_server(timeout, localhost, PORT,     { requests / 2 })
+        local server2 = http_server(timeout, localhost, PORT + 1, { requests / 2 })
 
         -- Go hit them with our test requests
         local oks = client_requests(requests)
@@ -842,7 +848,7 @@ dao_helpers.for_each_dao(function(kong_config)
             ["Content-Type"] = "application/json"
           },
           body = {
-            target = "127.0.0.1:" .. (PORT + 2),
+            target = utils.format_host(localhost, PORT + 2),
             weight = target1.weight / 2 ,  -- shift proportions from 50/50 to 40/40/20
           },
         })
@@ -853,9 +859,9 @@ dao_helpers.for_each_dao(function(kong_config)
 
         -- setup target servers
         local server3
-        server1 = http_server(timeout, PORT,     { requests * 0.4 })
-        server2 = http_server(timeout, PORT + 1, { requests * 0.4 })
-        server3 = http_server(timeout, PORT + 2, { requests * 0.2 })
+        server1 = http_server(timeout, localhost, PORT,     { requests * 0.4 })
+        server2 = http_server(timeout, localhost, PORT + 1, { requests * 0.4 })
+        server3 = http_server(timeout, localhost, PORT + 2, { requests * 0.2 })
 
         -- Go hit them with our test requests
         local oks = client_requests(requests)
@@ -876,8 +882,8 @@ dao_helpers.for_each_dao(function(kong_config)
         local requests = upstream1.slots * 2 -- go round the balancer twice
 
         -- setup target servers
-        local server1 = http_server(timeout, PORT,     { requests / 2 })
-        local server2 = http_server(timeout, PORT + 1, { requests / 2 })
+        local server1 = http_server(timeout, localhost, PORT,     { requests / 2 })
+        local server2 = http_server(timeout, localhost, PORT + 1, { requests / 2 })
 
         -- Go hit them with our test requests
         local oks = client_requests(requests)
@@ -909,7 +915,7 @@ dao_helpers.for_each_dao(function(kong_config)
         -----------------------------------------
 
         -- setup target servers
-        server1 = http_server(timeout, PORT, { requests })
+        server1 = http_server(timeout, localhost, PORT, { requests })
 
         -- Go hit them with our test requests
         local oks = client_requests(requests)
@@ -926,8 +932,8 @@ dao_helpers.for_each_dao(function(kong_config)
         local requests = upstream1.slots * 2 -- go round the balancer twice
 
         -- setup target servers
-        local server1 = http_server(timeout, PORT,     { requests / 2 })
-        local server2 = http_server(timeout, PORT + 1, { requests / 2 })
+        local server1 = http_server(timeout, localhost, PORT,     { requests / 2 })
+        local server2 = http_server(timeout, localhost, PORT + 1, { requests / 2 })
 
         -- Go hit them with our test requests
         local oks = client_requests(requests)
@@ -959,8 +965,8 @@ dao_helpers.for_each_dao(function(kong_config)
         -----------------------------------------
 
         -- setup target servers
-        server1 = http_server(timeout, PORT,     { requests * 0.4 })
-        server2 = http_server(timeout, PORT + 1, { requests * 0.6 })
+        server1 = http_server(timeout, localhost, PORT,     { requests * 0.4 })
+        server2 = http_server(timeout, localhost, PORT + 1, { requests * 0.6 })
 
         -- Go hit them with our test requests
         local oks = client_requests(requests)
@@ -979,8 +985,8 @@ dao_helpers.for_each_dao(function(kong_config)
         local requests = upstream1.slots * 2 -- go round the balancer twice
 
         -- setup target servers
-        local server1 = http_server(timeout, PORT,     { requests / 2 })
-        local server2 = http_server(timeout, PORT + 1, { requests / 2 })
+        local server1 = http_server(timeout, localhost, PORT,     { requests / 2 })
+        local server2 = http_server(timeout, localhost, PORT + 1, { requests / 2 })
 
         -- Go hit them with our test requests
         local oks = client_requests(requests)
