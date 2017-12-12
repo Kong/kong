@@ -1,3 +1,4 @@
+local utils = require "kong.tools.utils"
 local pl_tablex = require "pl.tablex"
 local responses = require "kong.tools.responses"
 local singletons = require "kong.singletons"
@@ -101,10 +102,20 @@ local function load_targets_into_memory(upstream_id)
 
   -- perform some raw data updates
   for _, target in ipairs(target_history) do
-    -- split `target` field into `name` and `port`
-    local port
-    target.name, port = string.match(target.target, "^(.-):(%d+)$")
-    target.port = tonumber(port)
+    -- split `target` field into `ip` and `port`
+    local normalized, err = utils.normalize_ip(target.target)
+    if not normalized then
+      return nil, err
+    end
+
+    target.name = normalized.host
+    target.port = normalized.port
+
+    if normalized.type == "ipv6" then
+      -- set_current_peer() expects IPv6 to be enclosed in square brackets,
+      -- or else ngx_parse_url() will interpret it as an IPv4.
+      target.name = "[" .. target.name .. "]"
+    end
 
     -- need exact order, so create sort-key by created-time and uuid
     target.order = target.created_at .. ":" .. target.id
