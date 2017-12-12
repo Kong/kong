@@ -94,4 +94,26 @@ describe("proxy-cache schema", function()
     assert.same("cache_ttl must be a positive number", err.cache_ttl)
     assert.is_false(ok)
   end)
+
+  it("accepts a redis config", function()
+    local ok, err = validate_entity({
+      strategy = "redis",
+      redis = {
+        host = "127.0.0.1",
+        port = 6379,
+      },
+    }, proxy_cache_schema)
+
+    assert.is_nil(err)
+    assert.is_true(ok)
+  end)
+
+  it("errors with a missing redis config", function()
+    local ok, _, err = validate_entity({
+      strategy = "redis",
+    }, proxy_cache_schema)
+
+    assert.is_false(ok)
+    assert.same("No redis config provided", err.message)
+  end)
 end)

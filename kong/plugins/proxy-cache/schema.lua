@@ -1,4 +1,5 @@
 local strategies = require "kong.plugins.proxy-cache.strategies"
+local redis      = require "kong.enterprise_edition.redis"
 local errors     = require "kong.dao.errors"
 
 
@@ -90,6 +91,10 @@ return {
       type = "table",
       schema = memory_schema,
     },
+    redis = {
+      type = "table",
+      schema = redis.config_schema,
+    }
   },
   self_check = function(schema, plugin_t, dao, is_updating)
     if plugin_t.strategy == "memory" then
@@ -97,6 +102,10 @@ return {
 
       if not ok then
         return false, errors.schema(err)
+      end
+    elseif plugin_t.strategy == "redis" then
+      if not plugin_t.redis then
+        return false, errors.schema("No redis config provided")
       end
     end
 
