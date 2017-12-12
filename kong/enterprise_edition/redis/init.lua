@@ -134,6 +134,15 @@ local function parse_sentinel_addresses(addresses)
 end
 
 
+-- Perform any needed Redis configuration; e.g., parse Sentinel addresses
+function _M.init_conf(conf)
+  if is_redis_sentinel(conf) then
+    conf.parse_sentinel_addresses =
+      parse_sentinel_addresses(conf.sentinel_addresses)
+  end
+end
+
+
 -- Create a connection with Redis; expects a table with
 -- required parameters. Examples:
 --
@@ -159,8 +168,6 @@ function _M.connection(conf)
   if conf.sentinel_master then
     local rc = redis_connector.new()
     rc:set_connect_timeout(conf.timeout)
-
-    conf.parsed_sentinel_addresses = parse_sentinel_addresses(conf.sentinel_addresses)
 
     local err
     red, err = rc:connect_via_sentinel({

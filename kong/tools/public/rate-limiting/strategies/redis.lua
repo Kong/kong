@@ -27,6 +27,10 @@ end
 function _M.new(_, opts)
   local conf = utils.deep_copy(opts)
 
+  -- initialize redis configuration - e.g., parse
+  -- Sentinel addresses
+  redis.init_conf(conf)
+
   return setmetatable({
     config = conf,
   }, mt)
