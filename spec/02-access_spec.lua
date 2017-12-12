@@ -12,7 +12,21 @@ local REDIS_DATABASE = 1
 for i, policy in ipairs({"memory", "redis"}) do
   describe("proxy-cache access with policy: " .. policy, function()
     local client, admin_client
+    local policy_config
     local cache_key
+
+    if policy == "memory" then
+      policy_config = {
+        dictionary_name = "kong",
+      }
+    elseif policy == "redis" then
+      policy_config = {
+        host = REDIS_HOST,
+        port = REDIS_PORT,
+        database = REDIS_DATABASE,
+        password = REDIS_PASSWORD,
+      }
+    end
 
     setup(function()
       helpers.dao:truncate_tables()
@@ -97,15 +111,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         config = {
           strategy = policy,
           content_type = { "text/plain", "application/json" },
-          memory = {
-            dictionary_name = "kong",
-          },
-          redis = {
-            host = REDIS_HOST,
-            port = REDIS_PORT,
-            database = REDIS_DATABASE,
-            password = REDIS_PASSWORD,
-          },
+          [policy] = policy_config,
         },
       })
 
@@ -115,15 +121,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         config = {
           strategy = policy,
           content_type = { "text/plain", "application/json" },
-          memory = {
-            dictionary_name = "kong",
-          },
-          redis = {
-            host = REDIS_HOST,
-            port = REDIS_PORT,
-            database = REDIS_DATABASE,
-            password = REDIS_PASSWORD,
-          },
+          [policy] = policy_config,
         },
       })
 
@@ -133,15 +131,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         config = {
           strategy = policy,
           content_type = { "text/plain", "application/json" },
-          memory = {
-            dictionary_name = "kong",
-          },
-          redis = {
-            host = REDIS_HOST,
-            port = REDIS_PORT,
-            database = REDIS_DATABASE,
-            password = REDIS_PASSWORD,
-          },
+          [policy] = policy_config,
         },
       })
 
@@ -151,15 +141,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         config = {
           strategy = policy,
           content_type = { "text/plain", "application/json" },
-          memory = {
-            dictionary_name = "kong",
-          },
-          redis = {
-            host = REDIS_HOST,
-            port = REDIS_PORT,
-            database = REDIS_DATABASE,
-            password = REDIS_PASSWORD,
-          },
+          [policy] = policy_config,
         },
       })
 
@@ -169,15 +151,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         config = {
           strategy = policy,
           content_type = { "text/plain", "application/json" },
-          memory = {
-            dictionary_name = "kong",
-          },
-          redis = {
-            host = REDIS_HOST,
-            port = REDIS_PORT,
-            database = REDIS_DATABASE,
-            password = REDIS_PASSWORD,
-          },
+          [policy] = policy_config,
           cache_ttl = 2,
         },
       })
@@ -188,15 +162,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         config = {
           strategy = policy,
           content_type = { "text/plain", "application/json" },
-          memory = {
-            dictionary_name = "kong",
-          },
-          redis = {
-            host = REDIS_HOST,
-            port = REDIS_PORT,
-            database = REDIS_DATABASE,
-            password = REDIS_PASSWORD,
-          },
+          [policy] = policy_config,
           cache_control = true,
         },
       })
@@ -207,15 +173,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         config = {
           strategy = policy,
           content_type = { "text/plain", "application/json" },
-          memory = {
-            dictionary_name = "kong",
-          },
-          redis = {
-            host = REDIS_HOST,
-            port = REDIS_PORT,
-            database = REDIS_DATABASE,
-            password = REDIS_PASSWORD,
-          },
+          [policy] = policy_config,
           cache_control = true,
           storage_ttl = 600,
         },
@@ -227,15 +185,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         config = {
           strategy = policy,
           content_type = { "text/plain", "application/json" },
-          memory = {
-            dictionary_name = "kong",
-          },
-          redis = {
-            host = REDIS_HOST,
-            port = REDIS_PORT,
-            database = REDIS_DATABASE,
-            password = REDIS_PASSWORD,
-          },
+          [policy] = policy_config,
           cache_ttl = 2,
           storage_ttl = 60,
         },
@@ -249,15 +199,7 @@ for i, policy in ipairs({"memory", "redis"}) do
           content_type = { "text/plain", "application/json" },
           response_code = { 200, 418 },
           request_method = { "GET", "HEAD", "POST" },
-          memory = {
-            dictionary_name = "kong",
-          },
-          redis = {
-            host = REDIS_HOST,
-            port = REDIS_PORT,
-            database = REDIS_DATABASE,
-            password = REDIS_PASSWORD,
-          },
+          [policy] = policy_config,
         },
       })
 
