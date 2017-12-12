@@ -471,6 +471,7 @@ function ProxyCacheHandler:body_filter(conf)
         ngx_log(ngx.ERR, "[proxy-cache] ", err)
       end
     end
+
   else
     ngx.ctx.proxy_cache = ctx
   end
