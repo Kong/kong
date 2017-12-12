@@ -439,12 +439,12 @@ function ProxyCacheHandler:body_filter(conf)
 
   ctx.res_body = (ctx.res_body or "") .. (chunk or "")
 
-  local strategy = require(STRATEGY_PATH)({
-    strategy_name = conf.strategy,
-    strategy_opts = conf[conf.strategy],
-  })
-
   if eof then
+    local strategy = require(STRATEGY_PATH)({
+      strategy_name = conf.strategy,
+      strategy_opts = conf[conf.strategy],
+    })
+
     local res = {
       status    = ngx.status,
       headers   = ctx.res_headers,
