@@ -1,4 +1,5 @@
 local Errors = require "kong.dao.errors"
+local redis = require "resty.redis"
 
 local REDIS = "redis"
 
@@ -59,6 +60,65 @@ return {
       end
     end
 
+    --Additional checks for redis-cluster configuration
+    if plugin_t.policy == "redis-cluster" then
+
+      if not (plugin_t.redis_database == 0) then
+        return false, Errors.schema "Redis-cluster cannot have a database value"
+      end
+
+      -- TODO add check for configuration via plugin.conf
+      -- if plugin configuration has hosts and ports then that takes precedence over env vars
+
+
+		  -- read env vars and then set host:port arrays up for verfications
+			local hosts_string = os.getenv("KONG_REDIS_CLUSTER_HOSTS")
+			local ports_string = os.getenv("KONG_REDIS_CLUSTER_HOSTS")
+			if not hosts_string or not ports_string then
+				return nil, Errors.schema("Enviornment variables for redis configuration are not set.") 
+			end
+			local i = 0
+			local hosts = {}
+			local ports = {}
+			for host in string.gmatch(hosts_string, '([^,]+)') do
+				i = i+1
+				hosts[i] = host
+			end
+			i = 0
+			for port in string.gmatch(ports_string, '([^,]+)') do
+				i = i+1
+				ports[i] = port
+			end
+			local redis_hosts = hosts
+			local redis_ports = ports
+      local number_of_ports = 0
+      local number_of_hosts = 0
+      for count, value in pairs(redis_ports) do
+        number_of_ports = number_of_ports + 1
+      end
+      for count, value in pairs(redis_hosts) do
+        number_of_hosts = number_of_hosts + 1
+      end
+      if not (number_of_ports == number_of_hosts) then
+        return false, Errors.schema(string.format("You need the same number of hosts(%s) and ports(%s) for your cluster",number_of_hosts,number_of_ports))
+      end
+
+      --TODO add a loop here to check every supplied host:port pair
+      -- check if the nodes are in cluster mode or not
+      -- TODO is DNS name supported here?
+      local redis1 = redis:new()
+      local _ , err = redis1:connect( redis_hosts[1], redis_ports[1])
+      if err then
+        return false, Errors.schema(string.format("Cannot connect to redis-node %s:%s is either not part of cluster or the cluster you gave is not working", plugin_t.redis_hosts[1], plugin_t.redis_ports[1] ))
+      end
+      -- Get the cluster configuration from the Cluster and verify it against the user's configuration.
+      -- If don't match up, throw err
+      local tableSlots = redis1:cluster("slots")
+      if type(tableSlots) == "boolean" then
+        return false, Errors.schema(string.format("Redis-node %s:%s has cluster mode disabled; this plugin connects to a redis cluster only", plugin_t.redis_hosts[1], plugin_t.redis_ports[1] ))
+      end
+    end
+    
     return true
   end
 }

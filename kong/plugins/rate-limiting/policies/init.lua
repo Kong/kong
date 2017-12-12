@@ -2,6 +2,7 @@ local singletons = require "kong.singletons"
 local timestamp = require "kong.tools.timestamp"
 local redis = require "resty.redis"
 local policy_cluster = require "kong.plugins.rate-limiting.policies.cluster"
+local policy_redis_cluster = require "kong.plugins.rate-limiting.policies.redis-cluster"
 local reports = require "kong.core.reports"
 local ngx_log = ngx.log
 local shm = ngx.shared.kong_cache
@@ -187,5 +188,9 @@ return {
 
       return current_metric or 0
     end
+  },
+  ["redis-cluster"] = {
+    increment = policy_redis_cluster.increment,
+    usage = policy_redis_cluster.usage
   }
 }

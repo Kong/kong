@@ -179,6 +179,7 @@ build = {
     ["kong.plugins.rate-limiting.daos"] = "kong/plugins/rate-limiting/daos.lua",
     ["kong.plugins.rate-limiting.policies"] = "kong/plugins/rate-limiting/policies/init.lua",
     ["kong.plugins.rate-limiting.policies.cluster"] = "kong/plugins/rate-limiting/policies/cluster.lua",
+    ["kong.plugins.rate-limiting.policies.redis-cluster"] = "kong/plugins/rate-limiting/policies/redis-cluster.lua",
 
     ["kong.plugins.response-ratelimiting.migrations.cassandra"] = "kong/plugins/response-ratelimiting/migrations/cassandra.lua",
     ["kong.plugins.response-ratelimiting.migrations.postgres"] = "kong/plugins/response-ratelimiting/migrations/postgres.lua",
