@@ -838,11 +838,13 @@ for i, policy in ipairs({"memory", "redis"}) do
       local cache_key
 
       setup(function()
-        -- busta rhyme? not today. just busta cache
-        assert(admin_client:send {
-          method = "DELETE",
-          path = "/proxy-cache",
+        local strategy = require("kong.plugins.proxy-cache.strategies")({
+          strategy_name = policy,
+          strategy_opts = policy_config,
         })
+
+        -- busta rhyme? not today. just busta cache
+        strategy:flush(true)
 
         -- prime the cache and mangle its versioning
         local res = assert(client:send {
@@ -857,15 +859,16 @@ for i, policy in ipairs({"memory", "redis"}) do
         assert.same("Miss", res.headers["X-Cache-Status"])
         cache_key = res.headers["X-Cache-Key"]
 
-        local dict = ngx.shared.kong_cache
-        local cache = dict:get(cache_key)
-
-        local cache_obj = json.decode(cache)
-        cache_obj.version = "yolo"
-        dict:set(cache_key, cjson.encode(cache_obj))
+        local cache = strategy:fetch(cache_key) or {}
+        cache.version = "yolo"
+        strategy:store(cache_key, cache, 10)
       end)
 
-      it("bypasses old cache version data", function()
+      local name = "bypasses old cache version data"
+      if policy == "memory" then
+        name = "#flaky" .. name
+      end
+      it(name, function()
         local res = assert(client:send {
           method = "GET",
           path = "/get",
