@@ -92,7 +92,148 @@ dao_helpers.for_each_dao(function(kong_conf)
 
       describe("/vitals", function()
         describe("GET", function()
-          pending("returns data about vitals configuration", function()
+          it("returns data about vitals configuration", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals"
+            })
+            res = assert.res_status(200, res)
+            local json = cjson.decode(res)
+
+            local expected = {
+              stats = {
+                cache_datastore_hits_total = {
+                  levels = {
+                    cluster = {
+                      intervals = {
+                        seconds = { retention_period_seconds = 3600 },
+                        minutes = { retention_period_seconds = 90000 },
+                      },
+                    },
+                    nodes = {
+                      intervals = {
+                        seconds = { retention_period_seconds = 3600 },
+                        minutes = { retention_period_seconds = 90000 },
+                      },
+                    },
+                  }
+                },
+                cache_datastore_misses_total = {
+                  levels = {
+                    cluster = {
+                      intervals = {
+                        seconds = { retention_period_seconds = 3600 },
+                        minutes = { retention_period_seconds = 90000 },
+                      },
+                    },
+                    nodes = {
+                      intervals = {
+                        seconds = { retention_period_seconds = 3600 },
+                        minutes = { retention_period_seconds = 90000 },
+                      },
+                    },
+                  }
+                },
+                latency_proxy_request_min_ms = {
+                  levels = {
+                    cluster = {
+                      intervals = {
+                        seconds = { retention_period_seconds = 3600 },
+                        minutes = { retention_period_seconds = 90000 },
+                      },
+                    },
+                    nodes = {
+                      intervals = {
+                        seconds = { retention_period_seconds = 3600 },
+                        minutes = { retention_period_seconds = 90000 },
+                      },
+                    },
+                  }
+                },
+                latency_proxy_request_max_ms = {
+                  levels = {
+                    cluster = {
+                      intervals = {
+                        seconds = { retention_period_seconds = 3600 },
+                        minutes = { retention_period_seconds = 90000 },
+                      },
+                    },
+                    nodes = {
+                      intervals = {
+                        seconds = { retention_period_seconds = 3600 },
+                        minutes = { retention_period_seconds = 90000 },
+                      },
+                    },
+                  }
+                },
+                latency_upstream_min_ms = {
+                  levels = {
+                    cluster = {
+                      intervals = {
+                        seconds = { retention_period_seconds = 3600 },
+                        minutes = { retention_period_seconds = 90000 },
+                      },
+                    },
+                    nodes = {
+                      intervals = {
+                        seconds = { retention_period_seconds = 3600 },
+                        minutes = { retention_period_seconds = 90000 },
+                      },
+                    },
+                  }
+                },
+                latency_upstream_max_ms = {
+                  levels = {
+                    cluster = {
+                      intervals = {
+                        seconds = { retention_period_seconds = 3600 },
+                        minutes = { retention_period_seconds = 90000 },
+                      },
+                    },
+                    nodes = {
+                      intervals = {
+                        seconds = { retention_period_seconds = 3600 },
+                        minutes = { retention_period_seconds = 90000 },
+                      },
+                    },
+                  }
+                },
+                requests_proxy_total = {
+                  levels = {
+                    cluster = {
+                      intervals = {
+                        seconds = { retention_period_seconds = 3600 },
+                        minutes = { retention_period_seconds = 90000 },
+                      },
+                    },
+                    nodes = {
+                      intervals = {
+                        seconds = { retention_period_seconds = 3600 },
+                        minutes = { retention_period_seconds = 90000 },
+                      },
+                    },
+                  }
+                },
+                requests_consumer_total = {
+                  levels = {
+                    cluster = {
+                      intervals = {
+                        seconds = { retention_period_seconds = 3600 },
+                        minutes = { retention_period_seconds = 90000 },
+                      },
+                    },
+                    nodes = {
+                      intervals = {
+                        seconds = { retention_period_seconds = 3600 },
+                        minutes = { retention_period_seconds = 90000 },
+                      },
+                    },
+                  }
+                },
+              }
+            }
+
+            assert.same(expected, json)
           end)
         end)
       end)

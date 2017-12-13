@@ -562,6 +562,51 @@ end
                          FOR THE VITALS API
   Functions in this section are called by the Vitals (Admin) API.
  ]]
+function _M:get_index()
+
+  local data = {}
+
+  local stat_labels = {
+    "cache_datastore_hits_total",
+    "cache_datastore_misses_total",
+    "latency_proxy_request_min_ms",
+    "latency_proxy_request_max_ms",
+    "latency_upstream_min_ms",
+    "latency_upstream_max_ms",
+    "requests_proxy_total",
+    "requests_consumer_total",
+  }
+
+  data.stats = {}
+
+  for i, stat in ipairs(stat_labels) do
+    local intervals_data = {
+      seconds = {
+        retention_period_seconds = self.ttl_seconds,
+      },
+      minutes = {
+        retention_period_seconds = self.ttl_minutes,
+      },
+    }
+
+    local levels_data = {
+      cluster = {
+        intervals = intervals_data,
+      },
+      nodes = {
+        intervals = intervals_data,
+      },
+    }
+
+    data.stats[stat] = {
+      levels = levels_data,
+    }
+  end
+
+  return data
+end
+
+
 function _M:get_stats(query_type, level, node_id)
   if query_type ~= "minutes" and query_type ~= "seconds" then
     return nil, "Invalid query params: interval must be 'minutes' or 'seconds'"

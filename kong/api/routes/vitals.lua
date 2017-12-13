@@ -10,9 +10,9 @@ return {
     resource = "vitals",
 
     GET = function(self, dao, helpers)
-      local current_stats, _ = singletons.vitals:get_stats("seconds", "cluster", nil)
+      local data = singletons.vitals:get_index()
 
-      return helpers.responses.send_HTTP_OK({ stats = current_stats })
+      return helpers.responses.send_HTTP_OK(data)
     end
   },
   ["/vitals/cluster"] = {
