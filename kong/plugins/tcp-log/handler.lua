@@ -27,6 +27,15 @@ local function log(premature, conf, message)
     return
   end
 
+  if conf.tls then
+    ok, err = sock:sslhandshake(true, conf.tls_sni, false)
+    if not ok then
+      ngx.log(ngx.ERR, "[tcp-log] failed to perform TLS handshake to ",
+                       host, ":", port, ": ", err)
+      return
+    end
+  end
+
   ok, err = sock:send(cjson.encode(message) .. "\r\n")
   if not ok then
     ngx.log(ngx.ERR, "[tcp-log] failed to send data to " .. host .. ":" .. tostring(port) .. ": ", err)
