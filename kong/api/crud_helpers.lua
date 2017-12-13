@@ -115,8 +115,19 @@ end
 -- this function will return the exact target if specified by `id`, or just
 -- 'any target entry' if specified by target (= 'hostname:port')
 function _M.find_target_by_target_or_id(self, dao_factory, helpers)
+
+  local target_or_id = self.params.target_or_id
+  -- if it looks like a host:port, try to normalize it.
+  -- if the normalization process succeeds, use the normalized one.
+  if target_or_id:match(":%d+$") then
+    local formatted = utils.format_host(utils.normalize_ip(target_or_id))
+    if formatted then
+      target_or_id = formatted
+    end
+  end
+
   local rows, err = _M.find_by_id_or_field(dao_factory.targets, {},
-                                           self.params.target_or_id, "target")
+                                           target_or_id, "target")
 
   if err then
     return helpers.yield_error(err)
