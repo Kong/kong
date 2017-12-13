@@ -352,9 +352,19 @@ function Kong.access()
   local ctx = ngx.ctx
   core.access.before(ctx)
 
+  ctx.delay_response = true
+
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
-    plugin.handler:access(plugin_conf)
+    if not ctx.delayed_response then
+      plugin.handler:access(plugin_conf)
+    end
   end
+
+  if ctx.delayed_response then
+    return responses.flush_delayed_response(ctx)
+  end
+
+  ctx.delay_response = false
 
   core.access.after(ctx)
 end

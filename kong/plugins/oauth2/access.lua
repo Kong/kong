@@ -543,17 +543,14 @@ function _M.execute(conf)
   if ngx.req.get_method() == "POST" then
     local uri = ngx.var.uri
 
-    local from, _ = string_find(uri, "/oauth2/token", nil, true)
-
+    local from = string_find(uri, "/oauth2/token", nil, true)
     if from then
-      issue_token(conf)
+      return issue_token(conf)
+    end
 
-    else
-      from, _ = string_find(uri, "/oauth2/authorize", nil, true)
-
-      if from then
-        authorize(conf)
-      end
+    from = string_find(uri, "/oauth2/authorize", nil, true)
+    if from then
+      return authorize(conf)
     end
   end
 

@@ -165,6 +165,132 @@ describe("Plugins triggering", function()
     assert.equal("5", res.headers["x-ratelimit-limit-hour"])
   end)
 
+  describe("short-circuited requests", function()
+    local FILE_LOG_PATH = os.tmpname()
+
+    setup(function()
+      if client then
+        client:close()
+      end
+
+      helpers.stop_kong()
+      helpers.dao:truncate_tables()
+
+      local api = assert(helpers.dao.apis:insert {
+        name         = "example",
+        hosts        = { "mock_upstream" },
+        upstream_url = helpers.mock_upstream_url,
+      })
+
+      -- plugin able to short-circuit a request
+      assert(helpers.dao.plugins:insert {
+        name   = "key-auth",
+        api_id = api.id,
+      })
+
+      -- response/body filter plugin
+      assert(helpers.dao.plugins:insert {
+        name   = "dummy",
+        api_id = api.id,
+        config = {
+          append_body = "appended from body filtering",
+        }
+      })
+
+      -- log phase plugin
+      assert(helpers.dao.plugins:insert {
+        name = "file-log",
+        api_id = api.id,
+        config = {
+          path = FILE_LOG_PATH,
+        },
+      })
+
+      assert(helpers.start_kong {
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      })
+
+      client = helpers.proxy_client()
+    end)
+
+    teardown(function()
+      if client then
+        client:close()
+      end
+
+      os.remove(FILE_LOG_PATH)
+
+      helpers.stop_kong()
+    end)
+
+    it("execute a log plugin", function()
+      local utils = require "kong.tools.utils"
+      local cjson = require "cjson"
+      local pl_path = require "pl.path"
+      local pl_file = require "pl.file"
+      local pl_stringx = require "pl.stringx"
+
+      local uuid = utils.uuid()
+
+      local res = assert(client:send {
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["Host"] = "mock_upstream",
+          ["X-UUID"] = uuid,
+          -- /!\ no key credential
+        }
+      })
+      assert.res_status(401, res)
+
+      -- TEST: ensure that our logging plugin was executed and wrote
+      -- something to disk.
+
+      helpers.wait_until(function()
+        return pl_path.exists(FILE_LOG_PATH) and pl_path.getsize(FILE_LOG_PATH) > 0
+      end, 3)
+
+      local log = pl_file.read(FILE_LOG_PATH)
+      local log_message = cjson.decode(pl_stringx.strip(log))
+      assert.equal("127.0.0.1", log_message.client_ip)
+      assert.equal(uuid, log_message.request.headers["x-uuid"])
+    end)
+
+    it("execute a header_filter plugin", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["Host"] = "mock_upstream",
+        }
+      })
+      assert.res_status(401, res)
+
+      -- TEST: ensure that the dummy plugin was executed by checking
+      -- that headers have been injected in the header_filter phase
+      -- Plugins such as CORS need to run on short-circuited requests
+      -- as well.
+
+      assert.not_nil(res.headers["dummy-plugin"])
+    end)
+
+    it("execute a body_filter plugin", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["Host"] = "mock_upstream",
+        }
+      })
+      local body = assert.res_status(401, res)
+
+      -- TEST: ensure that the dummy plugin was executed by checking
+      -- that the body filtering phase has run
+
+      assert.matches("appended from body filtering", body, nil, true)
+    end)
+  end)
+
   describe("anonymous reports execution", function()
     -- anonymous reports are implemented as a plugin which is being executed
     -- by the plugins runloop, but which doesn't have a schema
