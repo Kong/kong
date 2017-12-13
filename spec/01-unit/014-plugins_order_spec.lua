@@ -66,12 +66,12 @@ describe("Plugins", function()
       "datadog",
       "file-log",
       "udp-log",
-      "request-termination",
+      "tcp-log",
       "loggly",
       "runscope",
       "syslog",
       "galileo",
-      "tcp-log",
+      "request-termination",
       "correlation-id",
     }
 
