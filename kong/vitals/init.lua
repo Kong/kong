@@ -15,7 +15,7 @@ local DEBUG      = ngx.DEBUG
 local WARN       = ngx.WARN
 local ERR        = ngx.ERR
 
-local consumers_dict = ngx.shared.vitals_requests_consumers
+local consumers_dict = ngx.shared.kong_vitals_requests_consumers
 
 local new_tab
 do
@@ -786,7 +786,7 @@ function _M:log_request(ctx)
     local ok, err, forced_eviction = consumers_dict:incr(key, 1, 0)
 
     if forced_eviction then
-      log(WARN, _log_prefix, "vitals_requests_consumers cache is full")
+      log(WARN, _log_prefix, "kong_vitals_requests_consumers cache is full")
     elseif err then
       log(WARN, _log_prefix, "log_request() failed: ", err)
     end
