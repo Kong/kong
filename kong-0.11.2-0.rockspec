@@ -151,6 +151,8 @@ build = {
 
     ["kong.plugins.tcp-log.handler"] = "kong/plugins/tcp-log/handler.lua",
     ["kong.plugins.tcp-log.schema"] = "kong/plugins/tcp-log/schema.lua",
+    ["kong.plugins.tcp-log.migrations.cassandra"] = "kong/plugins/tcp-log/migrations/cassandra.lua",
+    ["kong.plugins.tcp-log.migrations.postgres"] = "kong/plugins/tcp-log/migrations/postgres.lua",
 
     ["kong.plugins.udp-log.handler"] = "kong/plugins/udp-log/handler.lua",
     ["kong.plugins.udp-log.schema"] = "kong/plugins/udp-log/schema.lua",
