@@ -41,7 +41,8 @@ local function load_plugin_configuration(api_id, consumer_id, plugin_name)
                                            load_plugin_into_memory,
                                            api_id, consumer_id, plugin_name)
   if err then
-    responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    ngx.ctx.delay_response = false
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
   if plugin ~= nil and plugin.enabled then
     return plugin.config or {}

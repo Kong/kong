@@ -70,7 +70,7 @@ function ACLHandler:access(conf)
   local acls, err = singletons.cache:get(cache_key, nil,
                                          load_acls_into_memory, consumer_id)
   if err then
-    responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
   if not acls then
     acls = EMPTY

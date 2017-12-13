@@ -21,6 +21,8 @@
 local cjson = require "cjson.safe"
 local meta = require "kong.meta"
 
+local type = type
+
 --local server_header = _KONG._NAME .. "/" .. _KONG._VERSION
 local server_header = meta._NAME .. "/" .. meta._VERSION
 
@@ -102,6 +104,18 @@ local function send_response(status_code)
   -- @param content (Optional) The content to send as a response.
   -- @return ngx.exit (Exit current context)
   return function(content, headers)
+    local ctx = ngx.ctx
+
+    if ctx.delay_response and not ctx.delayed_response then
+      ctx.delayed_response = {
+        status_code = status_code,
+        content = content,
+        headers = headers,
+      }
+
+      return
+    end
+
     if status_code == _M.status_codes.HTTP_INTERNAL_SERVER_ERROR then
       if content then
         ngx.log(ngx.ERR, tostring(content))
@@ -135,6 +149,19 @@ local function send_response(status_code)
 
     return ngx.exit(status_code)
   end
+end
+
+function _M.flush_delayed_response(ctx)
+  ctx.delay_response = false
+
+  if type(ctx.delayed_response_callback) == "function" then
+    ctx.delayed_response_callback(ctx)
+    return -- avoid tail call
+  end
+
+  _M.send(ctx.delayed_response.status_code,
+          ctx.delayed_response.content,
+          ctx.delayed_response.headers)
 end
 
 -- Generate sugar methods (closures) for the most used HTTP status codes.
