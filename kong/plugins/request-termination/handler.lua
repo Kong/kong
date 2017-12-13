@@ -6,7 +6,7 @@ local server_header = meta._NAME .. "/" .. meta._VERSION
 
 local RequestTerminationHandler = BasePlugin:extend()
 
-RequestTerminationHandler.PRIORITY = 7
+RequestTerminationHandler.PRIORITY = 2
 RequestTerminationHandler.VERSION = "0.1.0"
 
 function RequestTerminationHandler:new()
