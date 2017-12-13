@@ -11,13 +11,11 @@ was made available as an open-source platform in 2015. Under active
 development, Kong is used in production at thousands of organizations from
 startups, Global 5000 and Government organizations.
 
-[Website][kong-url] |
-[Docs](https://getkong.org/docs) |
 [Installation](https://getkong.org/install) |
-[Blog](http://konghq.com/blog) |
-[Mailing List][google-groups-url] |
-[Gitter Chat][gitter-url] |
-freenode: [#kong](http://webchat.freenode.net/?channels=kong)
+[Documentation](https://getkong.org/docs) |
+[Forum](https://discuss.konghq.com) |
+[Blog](https://konghq.com/blog) |
+IRC (freenode): [#kong](http://webchat.freenode.net/?channels=kong)
 
 ## Summary
 
@@ -252,8 +250,6 @@ limitations under the License.
 [kong-url]: https://konghq.com/
 [kong-logo]: https://cl.ly/030V1u02090Q/unnamed.png
 [kong-benefits]: https://cl.ly/002i2Z432A1s/Image%202017-10-16%20at%2012.30.08%20AM.png
-[gitter-url]: https://gitter.im/Mashape/kong
-[gitter-badge]: https://img.shields.io/badge/Gitter-Join%20Chat-blue.svg
 [google-groups-url]: https://groups.google.com/forum/#!forum/konglayer
 [badge-travis-url]: https://travis-ci.org/Kong/kong/branches
 [badge-travis-image]: https://travis-ci.org/Kong/kong.svg?branch=master
