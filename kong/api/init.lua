@@ -1,13 +1,14 @@
-local lapis = require "lapis"
-local utils = require "kong.tools.utils"
-local tablex = require "pl.tablex"
-local pl_pretty = require "pl.pretty"
-local responses = require "kong.tools.responses"
-local singletons = require "kong.singletons"
+local lapis       = require "lapis"
+local utils       = require "kong.tools.utils"
+local tablex      = require "pl.tablex"
+local pl_pretty   = require "pl.pretty"
+local responses   = require "kong.tools.responses"
+local singletons  = require "kong.singletons"
 local app_helpers = require "lapis.application"
 local api_helpers = require "kong.api.api_helpers"
-local Endpoints = require "kong.api.endpoints"
-local Errors = require "kong.db.errors"
+local Endpoints   = require "kong.api.endpoints"
+local arguments   = require "kong.api.arguments"
+local Errors      = require "kong.db.errors"
 
 
 local sub      = string.sub
@@ -195,6 +196,7 @@ local function attach_new_db_routes(routes)
 
     for method_name, method_handler in pairs(methods) do
       local wrapped_handler = function(self)
+        self.args = arguments.load()
         return method_handler(self, singletons.db, handler_helpers)
       end
 
@@ -252,8 +254,8 @@ do
       end
     end
 
-    attach_new_db_routes(routes)
   end
+  attach_new_db_routes(routes)
 end
 
 

@@ -294,9 +294,17 @@ do
             query[#query+1] = encode_args_value(key, sub_value, raw)
 
           else
-            query[#query+1] = encode_args_value(("%s[%s]")
-                                :format(key, tostring(sub_key)), sub_value,
-                                        raw)
+            if type(sub_key) == "number" then
+              query[#query+1] = encode_args_value(("%s[%s]")
+                                  :format(key, tostring(sub_key)), sub_value,
+                                          raw)
+
+            else
+              query[#query+1] = encode_args_value(("%s.%s")
+                                  :format(key, tostring(sub_key)), sub_value,
+                                          raw)
+
+            end
           end
         end
       elseif value == ngx.null then

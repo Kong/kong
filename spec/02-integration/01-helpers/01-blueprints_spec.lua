@@ -256,7 +256,7 @@ dao_helpers.for_each_dao(function(kong_config)
     end)
 
     it("inserts response rate limiting plugins", function()
-      local p = bp.response_rate_limiting_plugins:insert({ config = { limits = { video = { minute = 3 } } } })
+      local p = bp.response_ratelimiting_plugins:insert({ config = { limits = { video = { minute = 3 } } } })
       assert.equals("response-ratelimiting", p.name)
       assert.matches(UUID_PATTERN, p.id)
     end)

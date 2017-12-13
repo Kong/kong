@@ -652,7 +652,7 @@ end
 
 
 function _mt:update(primary_key, entity)
-  local res, err = execute(self, "update", self.collapse(entity, primary_key))
+  local res, err = execute(self, "update", self.collapse(primary_key, entity))
 
   if res then
     local row = res[1]

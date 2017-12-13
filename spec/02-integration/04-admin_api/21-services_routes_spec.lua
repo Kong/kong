@@ -176,7 +176,8 @@ for _, strategy in helpers.each_strategy() do
                 code    = Errors.codes.SCHEMA_VIOLATION,
                 message = ngx.null,
                 fields = {
-                  host = "required field missing"
+                  host = "required field missing",
+                  path = "should start with: /",
                 },
               }, json
             )

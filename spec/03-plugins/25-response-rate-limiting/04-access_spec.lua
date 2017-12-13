@@ -61,12 +61,11 @@ end
 for _, strategy in helpers.each_strategy() do
   for i, policy in ipairs({"local", "cluster", "redis"}) do
     describe(fmt("#flaky Plugin: response-ratelimiting (access) with policy: %s [#%s]", policy, strategy), function()
-      local db
       local dao
       local bp
 
       setup(function()
-        bp, db, dao = helpers.get_db_utils(strategy)
+        bp, _, dao = helpers.get_db_utils(strategy)
 
         flush_redis()
 

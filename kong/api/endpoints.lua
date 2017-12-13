@@ -1,112 +1,137 @@
 local escape_uri = ngx.escape_uri
 local concat     = table.concat
-local find       = string.find
 local null       = ngx.null
+local find       = string.find
+local fmt        = string.format
+local sub        = string.sub
 
 
-local get_collection_endpoint = {
-  function (schema_name)
+-- Generates admin api get collection endpoint functions
+--
+-- Examples:
+--
+-- /routes
+-- /services/<service_id>/routes
+--
+-- and
+--
+-- /services
+local function get_collection_endpoint(schema_name, entity_name, parent_schema_name)
+  if not parent_schema_name then
     return function(self, db, helpers)
       local data, _, err_t, offset = db[schema_name]:page(
-        self.params.size,
-        self.params.offset)
+        self.args.size,
+        self.args.offset)
 
       if err_t then
         return helpers.yield_error(err_t)
       end
 
-      local next_page = offset and concat {
-        "/" .. schema_name .. "?offset=" .. escape_uri(offset)
-      } or null
+      local next_page = offset and fmt("/%s?offset=%s", schema_name, escape_uri(offset)) or null
 
-      return helpers.responses.send_HTTP_OK{
+      return helpers.responses.send_HTTP_OK {
         data   = data,
         offset = offset,
         next   = next_page,
       }
     end
-  end,
-  function (schema_name, parent_schema_name, entity_name)
-    return function(self, db, helpers)
-      -- TODO: composite key support
-      local fk = { id = self.params[parent_schema_name] }
-      local entity = db[schema_name]
-
-      local rows, _, err_t, offset = entity["for_" .. entity_name](
-        entity,
-        fk,
-        self.params.size,
-        self.params.offset)
-
-      if err_t then
-        return helpers.yield_error(err_t)
-      end
-
-      local next_page = offset and concat {
-        "/", parent_schema_name, "/", escape_uri(self.params[schema_name]), "/", schema_name,
-        "?offset=", escape_uri(offset)
-      } or null
-
-      return helpers.responses.send_HTTP_OK{
-        data   = rows,
-        offset = offset,
-        next   = next_page,
-      }
-    end
   end
-}
 
+  return function(self, db, helpers)
+    -- TODO: composite key support
+    local fk = { id = self.params[parent_schema_name] }
 
-local post_collection_endpoint = {
-  function(schema_name)
-    return function(self, db, helpers)
-      -- TODO: composite key support
-      self.params[schema_name] = nil
-      local data, _, err_t = db[schema_name]:insert(self.params)
-      if err_t then
-        return helpers.yield_error(err_t)
-      end
-
-      return helpers.responses.send_HTTP_CREATED(data)
+    local parent_entity, _, err_t = db[parent_schema_name]:select(fk)
+    if err_t then
+      return helpers.yield_error(err_t)
     end
-  end,
-  function(schema_name, parent_schema_name, entity_name)
-    return function(self, db, helpers)
-      -- TODO: composite key support
-      self.params[schema_name] = nil
-      local data, _, err_t = db[schema_name]:insert(self.params)
-      if err_t then
-        return helpers.yield_error(err_t)
-      end
 
-      return helpers.responses.send_HTTP_CREATED(data)
-    end
-  end,
-}
-
-
-local get_entity_endpoint = {
-  function(schema_name)
-    return function(self, db, helpers)
-      -- TODO: composite key support
-      local pk = { id = self.params[schema_name] }
-      local entity, _, err_t = db[schema_name]:select(pk)
-      if err_t then
-        return helpers.yield_error(err_t)
-      end
-
-      if entity then
-        return helpers.responses.send_HTTP_OK(entity)
-      end
-
+    if not parent_entity then
       return helpers.responses.send_HTTP_NOT_FOUND()
     end
-  end,
-  function(schema_name, parent_schema_name, entity_name)
-    return function(self, db, helpers)
+
+    local entity = db[schema_name]
+
+    local rows, _, err_t, offset = entity["for_" .. entity_name](
+      entity,
+      fk,
+      self.args.size,
+      self.args.offset)
+
+    if err_t then
+      return helpers.yield_error(err_t)
+    end
+
+    local next_page = offset and fmt("/%s/%s/%s?offset=%s",
+      parent_schema_name, escape_uri(fk.id), schema_name, escape_uri(offset)) or null
+
+    return helpers.responses.send_HTTP_OK {
+      data   = rows,
+      offset = offset,
+      next   = next_page,
+    }
+  end
+end
+
+-- Generates admin api post collection endpoint functions
+--
+-- Examples:
+--
+-- /routes
+-- /services/<service_id>/routes
+--
+-- and
+--
+-- /services
+local function post_collection_endpoint(schema_name, entity_name, parent_schema_name)
+  return function(self, db, helpers)
+    if parent_schema_name then
       -- TODO: composite key support
-      local pk = { id = self.params[parent_schema_name] }
-      local parent_entity, _, err_t = db[parent_schema_name]:select(pk)
+      local fk = { id = self.params[parent_schema_name] }
+
+      local parent_entity, _, err_t = db[parent_schema_name]:select(fk)
+      if err_t then
+        return helpers.yield_error(err_t)
+      end
+
+      if not parent_entity then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      self.args.post[entity_name] = fk
+    end
+
+    local data, _, err_t = db[schema_name]:insert(self.args.post)
+    if err_t then
+      return helpers.yield_error(err_t)
+    end
+
+    return helpers.responses.send_HTTP_CREATED(data)
+  end
+end
+
+-- Generates admin api get entity endpoint functions
+--
+-- Examples:
+--
+-- /routes/<route-id>
+-- /routes/<route-id>/service
+--
+-- and
+--
+-- /services/<service_id>
+local function get_entity_endpoint(schema_name, entity_name, parent_schema_name)
+  return function(self, db, helpers)
+    local pk
+
+    if not parent_schema_name then
+      pk = { id = self.params[schema_name] }
+
+    else
+      -- TODO: composite key support
+      local fk = { id = self.params[parent_schema_name] }
+
+      local parent_entity, _, err_t = db[parent_schema_name]:select(fk)
       if err_t then
         return helpers.yield_error(err_t)
       end
@@ -115,37 +140,44 @@ local get_entity_endpoint = {
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
-      local entity, _, err_t = db[schema_name]:select(parent_entity[entity_name])
-      if err_t then
-        return helpers.yield_error(err_t)
-      end
-
-      return helpers.responses.send_HTTP_OK(entity)
+      pk = parent_entity[entity_name]
     end
-  end,
-}
 
-
-local patch_entity_endpoint = {
-  function(schema_name)
-    return function(self, db, helpers)
-      -- TODO: composite key support
-      local pk = { id = self.params[schema_name] }
-      self.params[schema_name] = nil
-      local entity, _, err_t = db[schema_name]:update(pk, self.params)
-      if err_t then
-        return helpers.yield_error(err_t)
-      end
-
-      return helpers.responses.send_HTTP_OK(entity)
+    local entity, _, err_t = db[schema_name]:select(pk)
+    if err_t then
+      return helpers.yield_error(err_t)
     end
-  end,
-  function(schema_name, parent_schema_name, entity_name)
-    return function(self, db, helpers)
+
+    if not entity then
+      return helpers.responses.send_HTTP_NOT_FOUND()
+    end
+
+    return helpers.responses.send_HTTP_OK(entity)
+  end
+end
+
+-- Generates admin api patch entity endpoint functions
+--
+-- Examples:
+--
+-- /routes/<route-id>
+-- /routes/<route-id>/service
+--
+-- and
+--
+-- /services/<service_id>
+local function patch_entity_endpoint(schema_name, entity_name, parent_schema_name)
+  return function(self, db, helpers)
+    local pk
+
+    if not parent_schema_name then
+      pk = { id = self.params[schema_name] }
+
+    else
       -- TODO: composite key support
-      local pk = { id = self.params[parent_schema_name] }
-      self.params[parent_schema_name] = nil
-      local parent_entity, _, err_t = db[parent_schema_name]:select(pk)
+      local fk = { id = self.params[parent_schema_name] }
+
+      local parent_entity, _, err_t = db[parent_schema_name]:select(fk)
       if err_t then
         return helpers.yield_error(err_t)
       end
@@ -154,35 +186,41 @@ local patch_entity_endpoint = {
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
-      local entity, _, err_t = db[schema_name]:update(parent_entity[entity_name], self.params)
-      if err_t then
-        return helpers.yield_error(err_t)
-      end
-
-      return helpers.responses.send_HTTP_OK(entity)
+      pk = parent_entity[entity_name]
     end
-  end,
-}
 
-
-local delete_entity_endpoint = {
-  function(schema_name)
-    return function(self, db, helpers)
-      -- TODO: composite key support
-      local pk = { id = self.params[schema_name] }
-      local _, _, err_t = db[schema_name]:delete(pk)
-      if err_t then
-        return helpers.yield_error(err_t)
-      end
-
-      return helpers.responses.send_HTTP_NO_CONTENT()
+    local entity, _, err_t = db[schema_name]:update(pk, self.args.post)
+    if err_t then
+      return helpers.yield_error(err_t)
     end
-  end,
-  function(schema_name, parent_schema_name, entity_name)
-    return function(self, db, helpers)
+
+    return helpers.responses.send_HTTP_OK(entity)
+  end
+end
+
+
+-- Generates admin api delete entity endpoint functions
+--
+-- Examples:
+--
+-- /routes/<route-id>
+-- /routes/<route-id>/service
+--
+-- and
+--
+-- /services/<service_id>
+local function delete_entity_endpoint(schema_name, entity_name, parent_schema_name)
+  return function(self, db, helpers)
+    local pk
+
+    if not parent_schema_name then
+      pk = { id = self.params[schema_name] }
+
+    else
       -- TODO: composite key support
-      local pk = { id = self.params[parent_schema_name] }
-      local parent_entity, _, err_t = db[parent_schema_name]:select(pk)
+      local fk = { id = self.params[parent_schema_name] }
+
+      local parent_entity, _, err_t = db[parent_schema_name]:select(fk)
       if err_t then
         return helpers.yield_error(err_t)
       end
@@ -192,176 +230,115 @@ local delete_entity_endpoint = {
       end
 
       return helpers.responses.send_HTTP_METHOD_NOT_ALLOWED()
-
---      local _, _, err_t = db[schema_name]:delete(parent_entity[entity_name])
---      if err_t then
---        return helpers.yield_error(err_t)
---      end
---
---      return helpers.responses.send_HTTP_NO_CONTENT()
     end
-  end,
-}
+
+    local _, _, err_t = db[schema_name]:delete(pk)
+    if err_t then
+      return helpers.yield_error(err_t)
+    end
+
+    return helpers.responses.send_HTTP_NO_CONTENT()
+  end
+end
 
 
-local collection_endpoints = {
-  function(endpoints, collection_path, schema_name)
-    endpoints[collection_path] = {
-      --OPTIONS =     method_not_allowed,
-      --HEAD    =     method_not_allowed,
-      GET     =    get_collection_endpoint[1](schema_name),
-      POST    =   post_collection_endpoint[1](schema_name),
-      --PUT     =     method_not_allowed,
-      --PATCH   =     method_not_allowed,
-      --DELETE  =     method_not_allowed,
-    }
-    return endpoints
-  end,
-  function(endpoints, collection_path, schema_name, parent_schema_name, entity_name)
-    endpoints[collection_path] = {
-      --OPTIONS =     method_not_allowed,
-      --HEAD    =     method_not_allowed,
-      GET     =    get_collection_endpoint[2](schema_name, parent_schema_name, entity_name),
-      POST    =   post_collection_endpoint[2](schema_name, parent_schema_name, entity_name),
-      --PUT     =     method_not_allowed,
-      --PATCH   =     method_not_allowed,
-      --DELETE  =     method_not_allowed,
-    }
-    return endpoints
-  end,
-}
-
-
-local entity_endpoints = {
-  function (endpoints, entity_path, schema_name)
-    endpoints[entity_path] = {
-      --OPTIONS =     method_not_allowed,
-      --HEAD    =     method_not_allowed,
-      GET     =    get_entity_endpoint[1](schema_name),
-      --POST    =     method_not_allowed,
-      --PUT     =     method_not_allowed,
-      PATCH   =  patch_entity_endpoint[1](schema_name),
-      DELETE  = delete_entity_endpoint[1](schema_name),
-    }
-    return endpoints
-  end,
-  function (endpoints, entity_path, schema_name, parent_schema_name, entity_name)
-    endpoints[entity_path] = {
-      --OPTIONS =     method_not_allowed,
-      --HEAD    =     method_not_allowed,
-      GET     =    get_entity_endpoint[2](schema_name, parent_schema_name, entity_name),
-      --POST    =     method_not_allowed,
-      --PUT     =     method_not_allowed,
-      PATCH   =  patch_entity_endpoint[2](schema_name, parent_schema_name, entity_name),
-      DELETE  = delete_entity_endpoint[2](schema_name, parent_schema_name, entity_name),
-    }
-    return endpoints
-  end,
-}
-
-local function generate_endpoints(schema, endpoints, prefix, parent_schema_name, entity_name)
-  local path_prefix = concat {
-    prefix or "",
-    "/"
+local function generate_collection_endpoints(endpoints, collection_path, ...)
+  endpoints[collection_path] = {
+    --OPTIONS =     method_not_allowed,
+    --HEAD    =     method_not_allowed,
+    GET     =    get_collection_endpoint(...),
+    POST    =   post_collection_endpoint(...),
+    --PUT     =     method_not_allowed,
+    --PATCH   =     method_not_allowed,
+    --DELETE  =     method_not_allowed,
   }
+end
 
-  local schema_name = schema.name
-  local entity_path
 
-  if prefix and entity_name then
-    local entity_key = concat {
-      "/",
-      entity_name,
-      "/"
-    }
+local function generate_entity_endpoints(endpoints, entity_path, ...)
+  endpoints[entity_path] = {
+    --OPTIONS =     method_not_allowed,
+    --HEAD    =     method_not_allowed,
+    GET     =    get_entity_endpoint(...),
+    --POST    =     method_not_allowed,
+    --PUT     =     method_not_allowed,
+    PATCH   =  patch_entity_endpoint(...),
+    DELETE  = delete_entity_endpoint(...),
+  }
+end
 
-    if find(path_prefix, entity_key, nil, true) then
-      return endpoints
-    end
 
-    entity_path = concat {
-      path_prefix,
-      entity_name,
-    }
+-- Generates admin api endpoint functions
+--
+-- Examples:
+--
+-- /routes
+-- /routes/<route-id>
+-- /routes/<route-id>/service
+-- /services/<service_id>/routes
+--
+-- and
+--
+-- /services
+-- /services/<service_id>
+local function generate_endpoints(schema, endpoints, prefix)
+  local path_prefix
+  if prefix then
+    if sub(prefix, -1) == "/" then
+      path_prefix = prefix
 
-    entity_endpoints[2](endpoints, entity_path, schema_name, parent_schema_name, entity_name)
-
-    for foreign_field_name, foreign_field in schema:each_field() do
-      if foreign_field.type == "foreign" then
-        generate_endpoints(foreign_field.schema, endpoints, entity_path, schema_name, foreign_field_name)
-      end
-    end
-
-  elseif parent_schema_name then
-    local collection_key = concat {
-      "/:",
-      parent_schema_name,
-      "/",
-    }
-
-    if find(path_prefix, collection_key, nil, true) then
-      return endpoints
-    end
-
-    local collection_path = concat {
-      path_prefix,
-      parent_schema_name,
-      collection_key,
-      schema_name,
-    }
-
-    collection_endpoints[2](endpoints, collection_path, schema_name, parent_schema_name, entity_name)
-
-    local entity_key = concat {
-      "/:",
-      schema_name,
-      "/"
-    }
-
-    if find(path_prefix, entity_key, nil, true) then
-      return endpoints
-    end
-
-    entity_path = concat {
-      collection_path,
-      "/:",
-      schema_name,
-    }
-
-    entity_endpoints[2](endpoints, entity_path, schema_name, parent_schema_name, entity_name)
-
-    for foreign_field_name, foreign_field in schema:each_field() do
-      if foreign_field.type == "foreign" then
-        generate_endpoints(foreign_field.schema, endpoints, entity_path, schema_name, foreign_field_name)
-      end
+    else
+      path_prefix = prefix .. "/"
     end
 
   else
-    local collection_path = concat {
-      path_prefix,
-      schema_name,
-    }
+    path_prefix = "/"
+  end
 
-    collection_endpoints[1](endpoints, collection_path, schema_name)
+  local schema_name = schema.name
 
-    entity_path = concat {
-      collection_path,
-      "/:",
-      schema_name,
-    }
+  local collection_key = fmt("/%s/", schema_name)
 
-    entity_endpoints[1](endpoints, entity_path, schema_name)
+  if find(path_prefix, collection_key, nil, true) then
+    return endpoints
+  end
 
-    for foreign_field_name, foreign_field in schema:each_field() do
-      if foreign_field.type == "foreign" then
-        generate_endpoints(foreign_field.schema, endpoints, entity_path, schema_name, foreign_field_name)
-        generate_endpoints(schema, endpoints, nil, foreign_field.schema.name, foreign_field_name)
-      end
+  local collection_path = concat {
+    path_prefix,
+    schema_name,
+  }
+
+  generate_collection_endpoints(endpoints, collection_path, schema_name)
+
+  local entity_path = fmt("%s/:%s", collection_path, schema_name)
+
+  generate_entity_endpoints(endpoints, entity_path, schema_name)
+
+  for foreign_field_name, foreign_field in schema:each_field() do
+    if foreign_field.type == "foreign" then
+      local foreign_schema_name = foreign_field.schema.name
+
+      local foreign_entity_path = fmt("%s/%s", entity_path, foreign_field_name)
+      generate_entity_endpoints(
+        endpoints,
+        foreign_entity_path,
+        foreign_schema_name,
+        foreign_field_name,
+        schema_name)
+
+      local foreign_collection_path = fmt("/%s/:%s/%s", foreign_schema_name, foreign_schema_name, schema_name)
+      generate_collection_endpoints(
+        endpoints,
+        foreign_collection_path,
+        schema_name,
+        foreign_field_name,
+        foreign_schema_name)
     end
   end
 
   return endpoints
 end
+
 
 local Endpoints = {}
 
