@@ -9,6 +9,7 @@ describe("Balancer", function()
   setup(function()
     balancer = require "kong.core.balancer"
     singletons = require "kong.singletons"
+    singletons.worker_events = require "resty.worker.events"
     singletons.dao = {}
     singletons.dao.upstreams = {
       find_all = function(self)
@@ -16,11 +17,22 @@ describe("Balancer", function()
       end
     }
 
+    singletons.worker_events.configure({
+      shm = "kong_process_events", -- defined by "lua_shared_dict"
+      timeout = 5,            -- life time of event data in shm
+      interval = 1,           -- poll interval (seconds)
+
+      wait_interval = 0.010,  -- wait before retry fetching event data
+      wait_max = 0.5,         -- max wait time before discarding event
+    })
+
     UPSTREAMS_FIXTURES = {
       {id = "a", name = "mashape", slots = 10, orderlist = {1,2,3,4,5,6,7,8,9,10} },
       {id = "b", name = "kong",    slots = 10, orderlist = {10,9,8,7,6,5,4,3,2,1} },
       {id = "c", name = "gelato",  slots = 20, orderlist = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20} },
       {id = "d", name = "galileo", slots = 20, orderlist = {20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1} },
+      {id = "e", name = "upstream_e", slots = 10, orderlist = {1,2,3,4,5,6,7,8,9,10} },
+      {id = "f", name = "upstream_f", slots = 10, orderlist = {1,2,3,4,5,6,7,8,9,10} },
     }
 
     singletons.dao.targets = {
@@ -77,7 +89,156 @@ describe("Balancer", function()
         target = "mashape.com:80",
         weight = 10,
       },
+      -- 3rd upstream: e (removed and re-added)
+      {
+        id = "e1",
+        created_at = "001",
+        upstream_id = "e",
+        target = "127.0.0.1:2112",
+        weight = 10,
+      },
+      {
+        id = "e2",
+        created_at = "002",
+        upstream_id = "e",
+        target = "127.0.0.1:2112",
+        weight = 0,
+      },
+      {
+        id = "e3",
+        created_at = "003",
+        upstream_id = "e",
+        target = "127.0.0.1:2112",
+        weight = 10,
+      },
+      -- 4th upstream: f (removed and not re-added)
+      {
+        id = "f1",
+        created_at = "001",
+        upstream_id = "f",
+        target = "127.0.0.1:5150",
+        weight = 10,
+      },
+      {
+        id = "f2",
+        created_at = "002",
+        upstream_id = "f",
+        target = "127.0.0.1:5150",
+        weight = 0,
+      },
+      {
+        id = "f3",
+        created_at = "003",
+        upstream_id = "f",
+        target = "127.0.0.1:2112",
+        weight = 10,
+      },
     }
+
+    local function find_all_in_fixture_fn(fixture)
+      return function(self, match_on)
+        local ret = {}
+        for _, rec in ipairs(fixture) do
+          for key, val in pairs(match_on or {}) do
+            if rec[key] ~= val then
+              rec = nil
+              break
+            end
+          end
+          if rec then table.insert(ret, rec) end
+        end
+        return ret
+      end
+    end
+
+    singletons.dao = {
+      targets = {
+        find_all = find_all_in_fixture_fn(TARGETS_FIXTURES)
+      },
+      upstreams = {
+        find_all = find_all_in_fixture_fn(UPSTREAMS_FIXTURES)
+      },
+    }
+
+    singletons.cache = {
+      _cache = {},
+      get = function(self, key, _, loader, arg)
+        local v = self._cache[key]
+        if v == nil then
+          v = loader(arg)
+          self._cache[key] = v
+        end
+        return v
+      end,
+      invalidate_local = function(self, key)
+        self._cache[key] = nil
+      end
+    }
+
+
+  end)
+
+  describe("create_balancer()", function()
+    local dns_client = require("resty.dns.client")
+    dns_client.init()
+
+    it("creates a balancer with a healthchecker", function()
+      local my_balancer = balancer._create_balancer(UPSTREAMS_FIXTURES[1])
+      assert.truthy(my_balancer)
+      local hc = balancer._get_healthchecker(my_balancer)
+      local target_history = {
+        { name = "mashape.com", port = 80, order = "001:a3", weight = 10 },
+        { name = "mashape.com", port = 80, order = "002:a2", weight = 10 },
+        { name = "mashape.com", port = 80, order = "002:a4", weight = 10 },
+        { name = "mashape.com", port = 80, order = "003:a1", weight = 10 },
+      }
+      assert.same(target_history, balancer._get_target_history(my_balancer))
+      assert.truthy(hc)
+      hc:stop()
+    end)
+  end)
+
+  describe("get_balancer()", function()
+    local dns_client = require("resty.dns.client")
+    dns_client.init()
+
+    setup(function()
+      -- In these tests, we pass `true` to get_balancer
+      -- to ensure that the upstream was created by `balancer.init()`
+      balancer.init()
+    end)
+
+    it("balancer and healthchecker match; remove and re-add", function()
+      local my_balancer = balancer._get_balancer({ host = "upstream_e" }, true)
+      assert.truthy(my_balancer)
+      local target_history = {
+        { name = "127.0.0.1", port = 2112, order = "001:e1", weight = 10 },
+        { name = "127.0.0.1", port = 2112, order = "002:e2", weight = 0  },
+        { name = "127.0.0.1", port = 2112, order = "003:e3", weight = 10 },
+      }
+      assert.same(target_history, balancer._get_target_history(my_balancer))
+      local hc = balancer._get_healthchecker(my_balancer)
+      assert.truthy(hc)
+      assert.same(1, #hc.targets)
+      assert.truthy(hc.targets["127.0.0.1"])
+      assert.truthy(hc.targets["127.0.0.1"][2112])
+    end)
+
+    it("balancer and healthchecker match; remove and not re-add", function()
+      local my_balancer = balancer._get_balancer({ host = "upstream_f" }, true)
+      assert.truthy(my_balancer)
+      local target_history = {
+        { name = "127.0.0.1", port = 5150, order = "001:f1", weight = 10 },
+        { name = "127.0.0.1", port = 5150, order = "002:f2", weight = 0  },
+        { name = "127.0.0.1", port = 2112, order = "003:f3", weight = 10 },
+      }
+      assert.same(target_history, balancer._get_target_history(my_balancer))
+      local hc = balancer._get_healthchecker(my_balancer)
+      assert.truthy(hc)
+      assert.same(1, #hc.targets)
+      assert.truthy(hc.targets["127.0.0.1"])
+      assert.truthy(hc.targets["127.0.0.1"][2112])
+    end)
   end)
 
   describe("load_upstreams_dict_into_memory()", function()
@@ -93,6 +254,28 @@ describe("Balancer", function()
         upstreams_dict[u.name] = nil -- remove each match
       end
       assert.is_nil(next(upstreams_dict)) -- should be empty now
+    end)
+  end)
+
+  describe("get_all_upstreams()", function()
+    it("gets a map of all upstream names to ids", function()
+      local upstreams_dict = balancer.get_all_upstreams()
+
+      local fixture_dict = {}
+      for _, upstream in ipairs(UPSTREAMS_FIXTURES) do
+        fixture_dict[upstream.name] = upstream.id
+      end
+
+      assert.same(fixture_dict, upstreams_dict)
+    end)
+  end)
+
+  describe("get_upstream_by_name()", function()
+    it("retrieves a complete upstream based on its name", function()
+      for _, fixture in ipairs(UPSTREAMS_FIXTURES) do
+        local upstream = balancer.get_upstream_by_name(fixture.name)
+        assert.same(fixture, upstream)
+      end
     end)
   end)
 
@@ -126,12 +309,12 @@ describe("Balancer", function()
           end,
       })
       backup = { ngx.req, ngx.var, ngx.ctx }
-      ngx.req = { get_headers = function() return headers end }
+      ngx.req = { get_headers = function() return headers end } -- luacheck: ignore
       ngx.var = {}
       ngx.ctx = {}
     end)
     after_each(function()
-      ngx.req = backup[1]
+      ngx.req = backup[1] -- luacheck: ignore
       ngx.var = backup[2]
       ngx.ctx = backup[3]
     end)
