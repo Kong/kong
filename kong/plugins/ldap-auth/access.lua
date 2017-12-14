@@ -1,3 +1,4 @@
+local openssl_digest = require "openssl.digest"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local singletons = require "kong.singletons"
@@ -37,7 +38,6 @@ end
 local function ldap_authenticate(given_username, given_password, conf)
   local is_authenticated
   local err, suppressed_err, ok
-  local who = conf.attribute .. "=" .. given_username .. "," .. conf.base_dn
 
   local sock = ngx_socket_tcp()
   sock:settimeout(conf.timeout)
@@ -58,7 +58,29 @@ local function ldap_authenticate(given_username, given_password, conf)
     end
   end
 
-  is_authenticated, err = ldap.bind_request(sock, who, given_password)
+  if conf.bind_dn then
+    is_authenticated = false
+    ok, err = ldap.bind_request(sock, conf.bind_dn, conf.ldap_password)
+    if ok then
+      local search_results = ldap.search_request(sock, {
+        base = conf.base_dn;
+        scope = "sub";
+        filter = conf.attribute .. "=" .. given_username;
+        attrs = "userPassword";
+      })
+      local user, value = next(search_results)
+      if user and type(value.userPassword) == "string" then
+        if value.userPassword:match("^%{[Ss][Hh][Aa]%}") then
+          local hash = decode_base64(value.userPassword:sub(6))
+          local digest = openssl_digest.new("sha1"):final(given_password)
+          is_authenticated = digest == hash
+        end
+      end
+    end
+  else
+    local who = conf.attribute .. "=" .. given_username .. "," .. conf.base_dn
+    is_authenticated, err = ldap.bind_request(sock, who, given_password)
+  end
 
   ok, suppressed_err = sock:setkeepalive(conf.keepalive)
   if not ok then
