@@ -86,6 +86,11 @@ local function ldap_authenticate(given_username, given_password, conf)
           local hash = decode_base64(value.userPassword:sub(6))
           local digest = openssl_digest.new("sha1"):final(given_password)
           is_authenticated = digest == hash
+        elseif value.userPassword:match("^%{[Ss][Ss][Hh][Aa]%}") then
+          local hash = decode_base64(value.userPassword:sub(7))
+          local salt = hash:sub(21)
+          local digest = openssl_digest.new("sha1"):update(given_password):final(salt) .. salt
+          is_authenticated = digest == hash
         end
       end
     end
