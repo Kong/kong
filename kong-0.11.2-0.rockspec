@@ -27,7 +27,7 @@ dependencies = {
   "luaossl == 20171028",
   "luasyslog == 1.0.0",
   "lua_pack == 1.0.5",
-  "lua-resty-dns-client == 0.6.3",
+  "lua-resty-dns-client == 1.0.0",
   "lua-resty-worker-events == 0.3.1",
   "lua-resty-mediador == 0.1.2",
   "lua-resty-healthcheck == 0.2.0",
