@@ -3,8 +3,6 @@
 
 local helpers = require "spec.helpers"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
-local localhost = "127.0.0.1"
-local ipv = "ipv4"
 local PORT = 21000
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
@@ -284,6 +282,15 @@ local function client_requests(n, headers)
   end
   return oks, fails, last_status
 end
+
+
+local localhosts = {
+  ipv4 = "127.0.0.1",
+  ipv6 = "0000:0000:0000:0000:0000:0000:0000:0001",
+}
+
+
+for ipv, localhost in pairs(localhosts) do
 
 
 dao_helpers.for_each_dao(function(kong_config)
@@ -1142,3 +1149,5 @@ dao_helpers.for_each_dao(function(kong_config)
   end)
 
 end) -- for 'database type'
+
+end
