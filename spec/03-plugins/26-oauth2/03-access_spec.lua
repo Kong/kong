@@ -1709,11 +1709,43 @@ describe("Plugin: oauth2 (access)", function()
       local json = cjson.decode(body)
       assert.same({ error_description = "The access token is invalid or has expired", error = "invalid_token" }, json)
     end)
-    it("works when a correct access_token is being sent in a form body", function()
+    it("works when a correct access_token is being sent in a form body (POST)", function()
       local token = provision_token()
 
       local res = assert(proxy_ssl_client:send {
         method = "POST",
+        path = "/request",
+        body = {
+          access_token = token.access_token
+        },
+        headers = {
+          ["Host"] = "oauth2.com",
+          ["Content-Type"] = "application/json"
+        }
+      })
+      assert.res_status(200, res)
+    end)
+    it("works when a correct access_token is being sent in a form body (PUT)", function()
+      local token = provision_token()
+
+      local res = assert(proxy_ssl_client:send {
+        method = "PUT",
+        path = "/request",
+        body = {
+          access_token = token.access_token
+        },
+        headers = {
+          ["Host"] = "oauth2.com",
+          ["Content-Type"] = "application/json"
+        }
+      })
+      assert.res_status(200, res)
+    end)
+    it("works when a correct access_token is being sent in a form body (PATCH)", function()
+      local token = provision_token()
+
+      local res = assert(proxy_ssl_client:send {
+        method = "PATCH",
         path = "/request",
         body = {
           access_token = token.access_token
