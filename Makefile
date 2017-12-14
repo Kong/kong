@@ -1,7 +1,14 @@
+OS := $(shell uname)
+
 DEV_ROCKS = "busted 2.0.rc12" "luacheck 0.20.0" "lua-llthreads2 0.1.4"
 BUSTED_ARGS ?= -v
 TEST_CMD ?= bin/busted $(BUSTED_ARGS)
+
+ifeq ($(OS), Darwin)
 OPENSSL_DIR ?= /usr/local/opt/openssl
+else
+OPENSSL_DIR ?= /usr
+endif
 
 .PHONY: install dev lint test test-integration test-plugins test-all
 
