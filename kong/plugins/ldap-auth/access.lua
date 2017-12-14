@@ -4,6 +4,15 @@ local constants = require "kong.constants"
 local singletons = require "kong.singletons"
 local ldap = require "kong.plugins.ldap-auth.ldap"
 
+local ffi = require "ffi"
+ffi.cdef[[
+char *crypt(const char *key, const char *salt);
+]]
+local libcrypt = ffi.load "crypt"
+local function crypt(key, salt)
+  return ffi.string(libcrypt.crypt(key, salt))
+end
+
 local match = string.match
 local lower = string.lower
 local find = string.find
@@ -70,7 +79,10 @@ local function ldap_authenticate(given_username, given_password, conf)
       })
       local user, value = next(search_results)
       if user and type(value.userPassword) == "string" then
-        if value.userPassword:match("^%{[Ss][Hh][Aa]%}") then
+        if value.userPassword:match("^%{[Cc][Rr][Yy][Pp][Tt]%}") then
+          local hash = value.userPassword:sub(8)
+          is_authenticated = crypt(given_password, hash) == hash
+        elseif value.userPassword:match("^%{[Ss][Hh][Aa]%}") then
           local hash = decode_base64(value.userPassword:sub(6))
           local digest = openssl_digest.new("sha1"):final(given_password)
           is_authenticated = digest == hash
