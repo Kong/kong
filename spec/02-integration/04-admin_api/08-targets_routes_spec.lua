@@ -171,102 +171,6 @@ describe("Admin API", function()
     end)
 
     describe("GET", function()
-      before_each(function()
-        for i = 1, 10 do
-          assert(helpers.dao.targets:insert {
-            target = "api-" .. i .. ":80",
-            weight = 100,
-            upstream_id = upstream.id,
-          })
-        end
-      end)
-
-      it("retrieves the first page", function()
-        local res = assert(client:send {
-          methd = "GET",
-          path = "/upstreams/" .. upstream_name .. "/targets/",
-        })
-        assert.response(res).has.status(200)
-        local json = assert.response(res).has.jsonbody()
-        assert.equal(10, #json.data)
-        assert.equal(10, json.total)
-      end)
-      it("paginates a set", function()
-        local pages = {}
-        local offset
-
-        for i = 1, 4 do
-          local res = assert(client:send {
-            method = "GET",
-            path = "/upstreams/" .. upstream_name .. "/targets/",
-            query = {size = 3, offset = offset}
-          })
-          assert.response(res).has.status(200)
-          local json = assert.response(res).has.jsonbody()
-          assert.equal(10, json.total)
-
-          if i < 4 then
-            assert.equal(3, #json.data)
-          else
-            assert.equal(1, #json.data)
-          end
-
-          if i > 1 then
-            -- check all pages are different
-            assert.not_same(pages[i-1], json)
-          end
-
-          offset = json.offset
-          pages[i] = json
-        end
-      end)
-      it("handles invalid filters", function()
-        local res = assert(client:send {
-          method = "GET",
-          path = "/upstreams/" .. upstream_name .. "/targets/",
-          query = {foo = "bar"},
-        })
-        local body = assert.response(res).has.status(400)
-        local json = cjson.decode(body)
-        assert.same({ foo = "unknown field" }, json)
-      end)
-      it("ignores an invalid body", function()
-        local res = assert(client:send {
-          methd = "GET",
-          path = "/upstreams/" .. upstream_name .. "/targets/",
-          body = "this fails if decoded as json",
-          headers = {
-            ["Content-Type"] = "application/json",
-          }
-        })
-        assert.response(res).has.status(200)
-      end)
-
-      describe("empty results", function()
-        local upstream_name2 = "getkong.org"
-
-        before_each(function()
-          assert(helpers.dao.upstreams:insert {
-            name = upstream_name2,
-            slots = 10,
-          })
-        end)
-
-        it("data property is an empty array", function()
-          local res = assert(client:send {
-            method = "GET",
-            path = "/upstreams/" .. upstream_name2 .. "/targets/",
-          })
-          local body = assert.response(res).has.status(200)
-          local json = cjson.decode(body)
-          assert.same({ data = {}, total = 0 }, json)
-        end)
-      end)
-    end)
-  end)
-
-  describe("/upstreams/{upstream}/targets/active/", function()
-    describe("GET", function()
       local upstream_name3 = "example.com"
       local apis = {}
 
@@ -303,7 +207,7 @@ describe("Admin API", function()
         for _, append in ipairs({ "", "/" }) do
           local res = assert(client:send {
             method = "GET",
-            path = "/upstreams/" .. upstream_name3 .. "/targets/active" .. append,
+            path = "/upstreams/" .. upstream_name3 .. "/targets" .. append,
           })
           assert.response(res).has.status(200)
           local json = assert.response(res).has.jsonbody()
@@ -320,6 +224,102 @@ describe("Admin API", function()
           assert.equal(apis[3].target, json.data[2].target)
           assert.equal(apis[2].target, json.data[3].target)
         end
+      end)
+    end)
+  end)
+
+  describe("/upstreams/{upstream}/targets/all/", function()
+    describe("GET", function()
+      before_each(function()
+        for i = 1, 10 do
+          assert(helpers.dao.targets:insert {
+            target = "api-" .. i .. ":80",
+            weight = 100,
+            upstream_id = upstream.id,
+          })
+        end
+      end)
+
+      it("retrieves the first page", function()
+        local res = assert(client:send {
+          methd = "GET",
+          path = "/upstreams/" .. upstream_name .. "/targets/all",
+        })
+        assert.response(res).has.status(200)
+        local json = assert.response(res).has.jsonbody()
+        assert.equal(10, #json.data)
+        assert.equal(10, json.total)
+      end)
+      it("paginates a set", function()
+        local pages = {}
+        local offset
+
+        for i = 1, 4 do
+          local res = assert(client:send {
+            method = "GET",
+            path = "/upstreams/" .. upstream_name .. "/targets/all",
+            query = {size = 3, offset = offset}
+          })
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          assert.equal(10, json.total)
+
+          if i < 4 then
+            assert.equal(3, #json.data)
+          else
+            assert.equal(1, #json.data)
+          end
+
+          if i > 1 then
+            -- check all pages are different
+            assert.not_same(pages[i-1], json)
+          end
+
+          offset = json.offset
+          pages[i] = json
+        end
+      end)
+      it("handles invalid filters", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/upstreams/" .. upstream_name .. "/targets/all",
+          query = {foo = "bar"},
+        })
+        local body = assert.response(res).has.status(400)
+        local json = cjson.decode(body)
+        assert.same({ foo = "unknown field" }, json)
+      end)
+      it("ignores an invalid body", function()
+        local res = assert(client:send {
+          methd = "GET",
+          path = "/upstreams/" .. upstream_name .. "/targets/all",
+          body = "this fails if decoded as json",
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.response(res).has.status(200)
+      end)
+
+      describe("empty results", function()
+        local upstream_name2 = "getkong.org"
+
+        before_each(function()
+          assert(helpers.dao.upstreams:insert {
+            name = upstream_name2,
+            slots = 10,
+          })
+        end)
+
+        it("data property is an empty array", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/upstreams/" .. upstream_name2 .. "/targets/all",
+          })
+          local body = assert.response(res).has.status(200)
+          local json = cjson.decode(body)
+          assert.same({ data = {}, total = 0 }, json)
+        end)
       end)
     end)
   end)
@@ -357,7 +357,7 @@ describe("Admin API", function()
 
         local targets = assert(client:send {
           method = "GET",
-          path = "/upstreams/" .. upstream_name4 .. "/targets/",
+          path = "/upstreams/" .. upstream_name4 .. "/targets/all",
         })
         assert.response(targets).has.status(200)
         local json = assert.response(targets).has.jsonbody()
@@ -366,7 +366,7 @@ describe("Admin API", function()
 
         local active = assert(client:send {
           method = "GET",
-          path = "/upstreams/" .. upstream_name4 .. "/targets/active",
+          path = "/upstreams/" .. upstream_name4 .. "/targets",
         })
         assert.response(active).has.status(200)
         json = assert.response(active).has.jsonbody()
@@ -384,7 +384,7 @@ describe("Admin API", function()
 
         local targets = assert(client:send {
           method = "GET",
-          path = "/upstreams/" .. upstream_name4 .. "/targets/",
+          path = "/upstreams/" .. upstream_name4 .. "/targets/all",
         })
         assert.response(targets).has.status(200)
         local json = assert.response(targets).has.jsonbody()
@@ -393,7 +393,7 @@ describe("Admin API", function()
 
         local active = assert(client:send {
           method = "GET",
-          path = "/upstreams/" .. upstream_name4 .. "/targets/active",
+          path = "/upstreams/" .. upstream_name4 .. "/targets",
         })
         assert.response(active).has.status(200)
         json = assert.response(active).has.jsonbody()
