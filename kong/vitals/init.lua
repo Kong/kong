@@ -634,6 +634,18 @@ function _M:get_stats(query_type, level, node_id)
 
   local res, err = self.strategy:select_stats(query_type, level, node_id)
 
+  if not res[1] then
+    local node_exists, node_err = self.strategy:node_exists(node_id)
+
+    if node_err then
+      return nil, node_err
+    end
+
+    if not node_exists then
+      return nil, "node does not exist"
+    end
+  end
+
   if err then
     log(WARN, _log_prefix, err)
     return {}
@@ -720,17 +732,6 @@ function _M:get_consumer_stats(opts)
   end
 
   return retval
-end
-
-
-function _M:find_node_by_id(node_id, helpers)
-  local res, _ = self.strategy:get_node_id(node_id)
-
-  if #res == 0 then
-    return helpers.responses.send_HTTP_NOT_FOUND()
-  end
-
-  return true
 end
 
 

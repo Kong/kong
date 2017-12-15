@@ -539,16 +539,20 @@ function _M:table_names_for_select()
 end
 
 
-function _M:get_node_id(node_id)
+function _M:node_exists(node_id)
   local query = fmt(SELECT_NODE, node_id)
 
   local res, err = self.db:query(query)
 
-  if not res then
-    return nil, "could not select node_id. query: " .. query .. " error: " .. err
+  if err then
+    return nil, err
   end
 
-  return res
+  if not res[1] then
+    return false, "could not select node_id. query: " .. query
+  end
+
+  return true
 end
 
 return _M
