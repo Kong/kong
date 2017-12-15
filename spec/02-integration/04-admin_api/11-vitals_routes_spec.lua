@@ -39,6 +39,10 @@ dao_helpers.for_each_dao(function(kong_conf)
           strategy = cassandra.new(dao)
         end
 
+        local q = "insert into vitals_node_meta(node_id) values('%s')"
+        assert(dao.db:query(fmt(q, node_1)))
+        assert(dao.db:query(fmt(q, node_2)))
+
         local test_data_1 = {
           { minute_start_at, 0, 0, nil, nil, nil, nil, 0 },
           { minute_start_at + 1, 0, 3, 0, 11, 193, 212, 1 },
@@ -405,15 +409,29 @@ dao_helpers.for_each_dao(function(kong_conf)
           it("returns a 400 if called with invalid query param", function()
             local res = assert(client:send {
               methd = "GET",
-              path = "/vitals/nodes/totally-fake-uuid",
+              path = "/vitals/nodes/" .. node_1,
               query = {
-                interval = "seconds"
+                wrong_query_key = "seconds"
               }
             })
             res = assert.res_status(400, res)
             local json = cjson.decode(res)
 
-            assert.same("Invalid query params: invalid node_id", json.message)
+            assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+          end)
+
+          it("returns a 404 if the node_id does not exist", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/nodes/totally-fake-uuid",
+              query = {
+                interval = "seconds"
+              }
+            })
+            res = assert.res_status(404, res)
+            local json = cjson.decode(res)
+
+            assert.same("Not found", json.message)
           end)
         end)
       end)
