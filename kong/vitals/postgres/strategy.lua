@@ -537,4 +537,20 @@ function _M:table_names_for_select()
 end
 
 
+function _M:check_node(node_id)
+  local SELECT_NODE = [[
+    select node_id from vitals_node_meta where node_id = '%s'
+  ]]
+
+  query = fmt(SELECT_NODE, node_id)
+
+  res, err = self.db:query(query)
+
+  if not res then
+    return nil, "could not select node_id. query: " .. query .. " error: " .. err
+  end
+
+  return res
+end
+
 return _M
