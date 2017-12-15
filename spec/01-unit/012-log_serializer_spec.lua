@@ -58,10 +58,10 @@ describe("Log Serializer", function()
       assert.same({"header1", "header2"}, res.request.headers)
       assert.equal("POST", res.request.method)
       assert.same({"arg1", "arg2"}, res.request.querystring)
-      assert.equal("http://test.com:80/request_uri", res.request.request_url)
-      assert.equal("/upstream_uri", res.request.upstream_uri)
+      assert.equal("http://test.com:80/request_uri", res.request.url)
+      assert.equal("/upstream_uri", res.upstream_uri)
       assert.equal(200, res.request.size)
-      assert.equal("/request_uri", res.request.request_uri)
+      assert.equal("/request_uri", res.request.uri)
 
       -- Response
       assert.is_table(res.response)
