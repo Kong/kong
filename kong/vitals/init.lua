@@ -857,18 +857,14 @@ function _M:log_request(ctx)
 end
 
 
-function _M:node_exists(node_id)
-  if not utils.is_valid_uuid(node_id) then
-    return nil, "node_id is not a valid UUID"
-  end
-
+function _M:find_node_by_id(node_id, helpers)
   local res, _ = self.strategy:check_node(node_id)
 
-  if not res[1] then
-    return nil, "node does not exist"
+  if utils.is_valid_uuid(node_id) and #res > 0 then
+    return true
   end
 
-  return true
+  return helpers.responses.send_HTTP_NOT_FOUND()
 end
 
 return _M
