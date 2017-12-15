@@ -53,7 +53,7 @@ return {
   },
   ["/vitals/nodes/:node_id"] = {
     resource = "vitals",
-
+    
     GET = function(self, dao, helpers)
       local requested_node_stats, err = singletons.vitals:get_stats(self.params.interval, "node", self.params.node_id)
 
@@ -90,7 +90,7 @@ return {
 
       if err then
         if err:find("Invalid query params", nil, true) then
-          return helpers.responses.send_HTTP_BAD_REQUEST(err)
+          return helpers.responses.send_HTTP_BAD_REQUEST("Invalid query params: interval must be 'minutes' or 'seconds'")
 
         else
           return helpers.yield_error(err)
@@ -115,7 +115,7 @@ return {
 
       if err then
         if err:find("Invalid query params", nil, true) then
-          return helpers.responses.send_HTTP_BAD_REQUEST(err)
+          return helpers.responses.send_HTTP_BAD_REQUEST("Invalid query params: interval must be 'minutes' or 'seconds'")
 
         else
           return helpers.yield_error(err)
