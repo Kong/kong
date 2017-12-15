@@ -724,13 +724,17 @@ end
 
 
 function _M:find_node_by_id(node_id, helpers)
-  local res, _ = self.strategy:check_node(node_id)
+  local res, _ = self.strategy:get_node_id(node_id)
 
-  if utils.is_valid_uuid(node_id) and #res > 0 then
-    return true
+  --[[
+    res is nil if node_id is not a valid UUID.
+    res is {} if node_id is a valid UUID, but does not exist in vitals_node_meta db table.
+  ]]
+  if res == nil or #res == 0 then
+    return helpers.responses.send_HTTP_NOT_FOUND()
   end
 
-  return helpers.responses.send_HTTP_NOT_FOUND()
+  return true
 end
 
 

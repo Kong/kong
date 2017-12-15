@@ -57,7 +57,9 @@ return {
     GET = function(self, dao, helpers)
       local requested_node_stats, err = singletons.vitals:get_stats(self.params.interval, "node", self.params.node_id)
 
-      singletons.vitals:find_node_by_id(self.params.node_id, helpers)
+      if requested_node_stats == nil or #requested_node_stats == 0 then
+        singletons.vitals:find_node_by_id(self.params.node_id, helpers)
+      end
 
       if err then
         if err:find("Invalid query params", nil, true) then

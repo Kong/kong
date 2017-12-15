@@ -539,7 +539,7 @@ function _M:table_names_for_select()
 end
 
 
-function _M:check_node(node_id)
+function _M:get_node_id(node_id)
   local query = fmt(SELECT_NODE, node_id)
 
   local res, err = self.db:query(query)
