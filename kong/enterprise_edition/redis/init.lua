@@ -5,6 +5,7 @@ local redis_connector = require "resty.redis.connector"
 local errors          = require "kong.dao.errors"
 local utils           = require "kong.tools.utils"
 local redis           = require "resty.redis"
+local reports         = require "kong.core.reports"
 
 
 local log = ngx.log
@@ -212,6 +213,8 @@ function _M.connection(conf)
       end
     end
   end
+
+  reports.retrieve_redis_version(red)
 
   return red
 end
