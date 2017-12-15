@@ -1,5 +1,50 @@
 #!/usr/bin/env resty
 
+do
+  local lines = getmetatable(io.output()).lines
+
+  getmetatable(io.output()).lines = function(self, ...)
+    local iter = lines(self, ...)
+
+    return function()
+      local ok, ret = pcall(iter)
+      if ok then
+        return ret
+      end
+    end
+  end
+end
+
+if not os.getenv("KONG_BUSTED_RESPAWNED") then
+  -- initial run, so go update the environment
+  local script = {}
+  for line in io.popen("set"):lines() do
+    local ktvar, val = line:match("^KONG_TEST_([^=]*)=(.*)")
+    if ktvar then
+      -- reinserted KONG_TEST_xxx as KONG_xxx; append
+      table.insert(script, "export KONG_" .. ktvar .. "=" ..val)
+    end
+
+    local var = line:match("^(KONG_[^=]*)")
+    if var then
+      -- remove existing KONG_xxx and KONG_TEST_xxx variables; prepend
+      table.insert(script, 1, "unset " .. var)
+    end
+  end
+  -- add cli recursion detection
+  table.insert(script, "export KONG_BUSTED_RESPAWNED=1")
+
+  -- rebuild the invoked commandline
+  local cmd = { "exec" }
+  for i = 0, #arg do
+    table.insert(cmd, "'"..arg[i].."'")
+  end
+  table.insert(script, table.concat(cmd, " "))
+
+  -- recurse cli command, with proper variables (un)set for clean testing
+  return os.execute(table.concat(script, "; "))
+end
+
 require "luarocks.loader"
 
 require("kong.core.globalpatches")({

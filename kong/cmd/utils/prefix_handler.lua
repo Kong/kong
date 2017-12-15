@@ -11,6 +11,7 @@ local socket = require "socket"
 local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
 local constants = require "kong.constants"
+local ffi = require "ffi"
 local fmt = string.format
 
 local function gen_default_ssl_cert(kong_config, admin)
@@ -118,6 +119,36 @@ local function compile_conf(kong_config, conf_template)
     local name = w:sub(4, -3)
     return compile_env[name:lower()] or ""
   end)
+end
+
+local function write_env_file(path, data)
+  local c = require "lua_system_constants"
+
+  local flags = bit.bor(c.O_CREAT(), c.O_WRONLY())
+  local mode  = bit.bor(c.S_IRUSR(), c.S_IWUSR(), c.S_IRGRP())
+
+  local fd = ffi.C.open(path, flags, mode)
+  if fd < 0 then
+    local errno = ffi.errno()
+    return nil, "unable to open env path " .. path .. " (" ..
+                ffi.string(ffi.C.strerror(errno)) .. ")"
+  end
+
+  local n  = #data
+  local sz = ffi.C.write(fd, data, n)
+  if sz ~= n then
+    ffi.C.close(fd)
+    return nil, "wrote " .. sz .. " bytes, expected to write " .. n
+  end
+
+  local ok = ffi.C.close(fd)
+  if ok ~= 0 then
+    local errno = ffi.errno()
+    return nil, "failed to close fd (" ..
+                ffi.string(ffi.C.strerror(errno)) .. ")"
+  end
+
+  return true
 end
 
 local function compile_kong_conf(kong_config)
@@ -242,12 +273,10 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
     end
   end
 
-  pl_file.write(kong_config.kong_env, table.concat(buf, "\n"))
-
-  -- ... yeah this sucks. thanks fwrite.
-  local ok, _, _, err = pl_utils.executeex("chmod 640 " .. kong_config.kong_env)
+  local ok, err = write_env_file(kong_config.kong_env,
+                                 table.concat(buf, "\n") .. "\n")
   if not ok then
-    log.warn("Unable to set kong env permissions: ", err)
+    return nil, err
   end
 
   return true

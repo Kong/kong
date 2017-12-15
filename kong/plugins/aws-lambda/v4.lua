@@ -33,7 +33,7 @@ local function percent_encode(char)
 end
 
 local function urldecode(str)
-  return (str:gsub("%%(%x%x)", function(c) 
+  return (str:gsub("%%(%x%x)", function(c)
     return string.char(tonumber(c, 16))
   end))
 end

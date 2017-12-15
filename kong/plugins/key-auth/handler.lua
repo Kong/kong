@@ -161,7 +161,7 @@ function KeyAuthHandler:access(conf)
   if not conf.run_on_preflight and get_method() == "OPTIONS" then
     return
   end
- 
+
   if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
     -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.

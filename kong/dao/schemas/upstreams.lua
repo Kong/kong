@@ -10,20 +10,20 @@ return {
   primary_key = {"id"},
   fields = {
     id = {
-      type = "id", 
-      dao_insert_value = true, 
+      type = "id",
+      dao_insert_value = true,
       required = true,
     },
     created_at = {
-      type = "timestamp", 
-      immutable = true, 
-      dao_insert_value = true, 
+      type = "timestamp",
+      immutable = true,
+      dao_insert_value = true,
       required = true,
     },
     name = {
       -- name is a hostname like name that can be referenced in an `upstream_url` field
-      type = "string", 
-      unique = true, 
+      type = "string",
+      unique = true,
       required = true,
     },
     hash_on = {
@@ -63,7 +63,7 @@ return {
     },
   },
   self_check = function(schema, config, dao, is_updating)
-    
+
     -- check the name
     local p = utils.normalize_ip(config.name)
     if not p then
@@ -125,7 +125,7 @@ return {
     if config.slots < SLOTS_MIN or config.slots > SLOTS_MAX then
       return false, Errors.schema(SLOTS_MSG)
     end
-    
+
     return true
   end,
 }

@@ -1827,6 +1827,43 @@ describe("Plugin: oauth2 (access)", function()
       })
       assert.res_status(200, res)
     end)
+    it("does not throw an error when request has no body", function()
+      -- Regression test for the following issue:
+      -- https://github.com/Kong/kong/issues/3055
+      --
+      -- We want to make sure we do not attempt to parse a
+      -- request body if the request isn't supposed to have
+      -- once in the first place.
+
+      -- setup: cleanup logs
+
+      local test_error_log_path = helpers.test_conf.nginx_err_logs
+      os.execute(":> " .. test_error_log_path)
+
+      -- TEST: access with a GET request
+
+      local token = provision_token()
+
+      local res = assert(proxy_ssl_client:send {
+        method = "GET",
+        path = "/request?access_token=" .. token.access_token,
+        headers = {
+          ["Host"] = "oauth2.com"
+        }
+      })
+      assert.res_status(200, res)
+
+      -- Assertion: there should be no [error], including no error
+      -- resulting from an invalid request body parsing that were
+      -- previously thrown.
+
+      local pl_file = require "pl.file"
+      local logs = pl_file.read(test_error_log_path)
+
+      for line in logs:gmatch("[^\r\n]+") do
+        assert.not_match("[error]", line, nil, true)
+      end
+    end)
     it("works when a correct access_token is being sent in an authorization header (bearer)", function()
       local token = provision_token()
 

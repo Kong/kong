@@ -5,7 +5,7 @@ describe("Balancer", function()
   local crc32 = ngx.crc32_short
   local uuid = require("kong.tools.utils").uuid
 
-  
+
   setup(function()
     balancer = require "kong.core.balancer"
     singletons = require "kong.singletons"
@@ -22,7 +22,7 @@ describe("Balancer", function()
       {id = "c", name = "gelato",  slots = 20, orderlist = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20} },
       {id = "d", name = "galileo", slots = 20, orderlist = {20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1} },
     }
-    
+
     singletons.dao.targets = {
       find_all = function(self, match_on)
         local ret = {}

@@ -1,8 +1,8 @@
 # Table of Contents
 
 - [Planned](#planned)
-    - [0.12.0](#0120---tbd)
 - [Scheduled](#scheduled)
+    - [0.12.0](#0120)
 - [Released](#released)
     - [0.11.2](#0112---20171129)
     - [0.11.1](#0111---20171024)
@@ -19,14 +19,7 @@
 This section describes planned releases of Kong and their general "themes".
 Those releases do not have a fixed release date yet.
 
-## [0.12.0] - TBD
-
-This release will mainly focus around two new major features:
-
-- The introduction of **health checks** in the load-balancer. See issue
-  [#112](https://github.com/Kong/kong/issues/112)
-- The decoupling of the API entity into **Routes** and **Services** for better
-  granularity when configuring plugins.
+*No planned releases yet.*
 
 [Back to TOC](#table-of-contents)
 
@@ -35,7 +28,14 @@ This release will mainly focus around two new major features:
 This section describes upcoming releases that have a release date, along with
 a detailed changeset of their content.
 
-*No scheduled releases yet.*
+## [0.12.0]
+
+* **Release Candidate**: 2017/12/20
+* **Stable**: January 2018
+
+This release will focus on the introduction of health checks
+[#112](https://github.com/Kong/kong/issues/112) and include a few major fixes.
+Changelog upcoming.
 
 [Back to TOC](#table-of-contents)
 
@@ -1972,7 +1972,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[0.12.0]: https://github.com/Kong/kong/compare/0.11.1...next
+[0.12.0]: https://github.com/Kong/kong/compare/0.11.2...next
 [0.11.2]: https://github.com/Kong/kong/compare/0.11.1...0.11.2
 [0.11.1]: https://github.com/Kong/kong/compare/0.11.0...0.11.1
 [0.10.4]: https://github.com/Kong/kong/compare/0.10.3...0.10.4
