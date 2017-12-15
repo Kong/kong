@@ -143,7 +143,6 @@ build = {
 
     ["kong.vitals"] = "kong/vitals/init.lua",
     ["kong.vitals.cassandra.strategy"] = "kong/vitals/cassandra/strategy.lua",
-    ["kong.vitals.postgres.aggregator"] = "kong/vitals/postgres/aggregator.lua",
     ["kong.vitals.postgres.strategy"] = "kong/vitals/postgres/strategy.lua",
     ["kong.vitals.postgres.table_rotater"] = "kong/vitals/postgres/table_rotater.lua",
 

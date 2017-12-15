@@ -11,7 +11,7 @@ dao_helpers.for_each_dao(function(kong_conf)
   end
 
 
-  describe("Cassandra aggregator", function()
+  describe("Cassandra strategy", function()
     local strategy
     local dao
     local cluster

@@ -5,7 +5,6 @@ local cassandra   = require "kong.vitals.cassandra.strategy"
 local postgres    = require "kong.vitals.postgres.strategy"
 local cjson       = require "cjson"
 local time        = ngx.time
-local fmt         = string.format
 
 
 dao_helpers.for_each_dao(function(kong_conf)
@@ -41,7 +40,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         end
 
         local test_data_1 = {
-          { minute_start_at, 0, 0, "null", "null", "null", "null", 0 },
+          { minute_start_at, 0, 0, nil, nil, nil, nil, 0 },
           { minute_start_at + 1, 0, 3, 0, 11, 193, 212, 1 },
           { minute_start_at + 2, 3, 4, 1, 8, 60, 9182, 4 },
         }
@@ -53,24 +52,6 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         assert(strategy:insert_stats(test_data_1, node_1))
         assert(strategy:insert_stats(test_data_2, node_2))
-
-        -- should be temporary, as soon postgres will aggregate minutes
-        -- during `insert_stats()`
-        if dao.db_type == "postgres" then
-          local test_minutes = {
-            { minute_start_at - 60, node_1, 0, 0, "null", "null", "null", "null", 0 },
-            { minute_start_at, node_1, 3, 3, 7, 0, 11, 60, 9182, 5 },
-            { minute_start_at, node_2, 2, 12, 0, 99, 13, 144, 17 },
-          }
-
-          local q = "insert into vitals_stats_minutes(at, node_id, l2_hit, " ..
-              "l2_miss, plat_min, plat_max, ulat_min, ulat_max, requests) " ..
-              "values(%d, '%s', %d, %d, %s, %s, %s, %s, %d)"
-
-          for _, row in ipairs(test_minutes) do
-            assert(dao.db:query(fmt(q, unpack(row))))
-          end
-        end
 
         assert(helpers.start_kong({
           database = kong_conf.database,
@@ -278,8 +259,7 @@ dao_helpers.for_each_dao(function(kong_conf)
             local expected = {
               stats = {
                 cluster = {
-                  [tostring(minute_start_at - 60)] = { 0, 0, cjson.null, cjson.null, cjson.null, cjson.null, 0 },
-                  [tostring(minute_start_at)] = { 5, 15, 0, 99, 11, 144, 9199 }
+                  [tostring(minute_start_at)] = { 5, 19, 0, 99, 13, 9182, 22 }
                 }
               }
             }
@@ -347,8 +327,7 @@ dao_helpers.for_each_dao(function(kong_conf)
             local expected = {
               stats = {
                 [node_1] = {
-                  [tostring(minute_start_at - 60)] = { 0, 0, cjson.null, cjson.null, cjson.null, cjson.null, 0 },
-                  [tostring(minute_start_at)] = { 3, 3, 7, 0, 11, 60, 9182 }
+                  [tostring(minute_start_at)] = { 3, 7, 0, 11, 60, 9182, 5 }
                 },
                 [node_2] = {
                   [tostring(minute_start_at)] = { 2, 12, 0, 99, 13, 144, 17 }
@@ -415,8 +394,7 @@ dao_helpers.for_each_dao(function(kong_conf)
             local expected = {
               stats = {
                 [node_1] = {
-                  [tostring(minute_start_at - 60)] = { 0, 0, cjson.null, cjson.null, cjson.null, cjson.null, 0 },
-                  [tostring(minute_start_at)] = { 3, 3, 7, 0, 11, 60, 9182 }
+                  [tostring(minute_start_at)] = { 3, 7, 0, 11, 60, 9182, 5 }
                 }
               }
             }

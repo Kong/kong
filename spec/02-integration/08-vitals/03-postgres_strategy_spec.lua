@@ -4,6 +4,7 @@ local helpers     = require "spec.helpers"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local utils       = require "kong.tools.utils"
 local fmt         = string.format
+local time        = ngx.time
 
 
 dao_helpers.for_each_dao(function(kong_conf)
@@ -105,6 +106,24 @@ dao_helpers.for_each_dao(function(kong_conf)
             requests = 7
           },
         }
+        assert.same(expected, res)
+
+        local res, _ = db:query("select * from vitals_stats_minutes")
+
+        local expected = {
+          {
+            at       = 1505964660,
+            node_id  = node_id,
+            l2_hit   = 19,
+            l2_miss  = 99,
+            plat_min = 0,
+            plat_max = 120,
+            ulat_min = 12,
+            ulat_max = 47,
+            requests = 7
+          }
+        }
+
         assert.same(expected, res)
       end)
 
@@ -422,6 +441,41 @@ dao_helpers.for_each_dao(function(kong_conf)
         }
 
         assert.same(expected, res)
+      end)
+    end)
+
+
+    describe(":delete_stats()", function()
+      it("validates arguments", function()
+        local res, err = strategy:delete_stats()
+        assert.is_nil(res)
+        assert.same(err, "cutoff_times is required")
+
+        res, err = strategy:delete_stats({})
+        assert.is_nil(res)
+        assert.same(err, "cutoff_times.minutes must be a number")
+
+        res, err = strategy:delete_stats({ cutoff_times = "foo" })
+        assert.is_nil(res)
+        assert.same(err, "cutoff_times.minutes must be a number")
+      end)
+
+      it("deletes stale data", function()
+        local node_id = utils.uuid()
+        local now = time()
+
+        local data_to_insert = {
+          {now - 4000, 1, 1, 1, 1, 1, 1, 1 },
+          {now, 2, 2, 2, 2, 2, 2, 2 },
+        }
+
+        strategy:insert_stats(data_to_insert, node_id)
+
+        -- remove everything older than one hour
+        local res, err = strategy:delete_stats({ minutes = 3600 })
+
+        assert.same(1, res)
+        assert.is_nil(err)
       end)
     end)
 

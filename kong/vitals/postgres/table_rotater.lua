@@ -5,7 +5,6 @@ local log        = ngx.log
 local WARN       = ngx.WARN
 local DEBUG      = ngx.DEBUG
 local time       = ngx.time
-local aggregator = require "kong.vitals.postgres.aggregator"
 
 
 local _log_prefix = "[vitals-table-rotater] "
@@ -21,20 +20,18 @@ local CREATE_VITALS_STATS_SECONDS = [[
   (LIKE vitals_stats_seconds INCLUDING defaults INCLUDING constraints INCLUDING indexes);
 ]]
 
--- all vitals_stats_seconds_* tables with names prior to the current one
+-- all vitals_stats_seconds_* tables with names prior to the given one
 -- (so that we don't drop current or next table)
 -- NOTE: Can't use string.format here because it interprets the
 -- LIKE matcher (%) as an invalid string interpolation symbol
--- TODO: Make this a prepared statement, if possible in pgmoon
 local SELECT_PREVIOUS_VITALS_STATS_SECONDS = [[
     select table_name from information_schema.tables
      where table_schema = 'public'
        and table_name like 'vitals_stats_seconds_%'
-       and table_name < ]]
+       and table_name < '?'
+       order by table_name desc]]
 
 local DROP_PREVIOUS_VITALS_STATS_SECONDS = "DROP TABLE IF EXISTS %s"
-
-local NO_PREVIOUS_TABLE = "No previous table"
 
 
 function _M.new(opts)
@@ -45,7 +42,6 @@ function _M.new(opts)
   local self = {
     db = opts.db,
     rotation_interval = opts.ttl_seconds or 3600,
-    aggregator = aggregator.new(opts),
   }
 
   return setmetatable(self, mt)
@@ -76,7 +72,7 @@ rotation_handler = function(premature, self)
 
 
   local _, err = self:drop_previous_table()
-  if err and err ~=  NO_PREVIOUS_TABLE then
+  if err then
     log(WARN, _log_prefix, err)
   end
 end
@@ -124,8 +120,7 @@ end
 function _M:table_names_for_select()
   local current_table_name = self:current_table_name()
 
-  local q = SELECT_PREVIOUS_VITALS_STATS_SECONDS .. "'" .. current_table_name ..
-            "'" .. " order by table_name desc limit 1"
+  local q = SELECT_PREVIOUS_VITALS_STATS_SECONDS:gsub('?', current_table_name)
 
   log(DEBUG, _log_prefix, q)
 
@@ -160,44 +155,23 @@ function _M:create_next_table()
 end
 
 
---[[
-  only drop tables before the previous table. If the previous table doesn't
-  exist, then return and don't drop tables.
-]]
+-- drop tables we aren't currently querying from
 function _M:drop_previous_table()
-  local previous_table
-
-  local ok, err = self:table_names_for_select()
-
-  if err then
-    return nil, "Failed to select tables. error: " .. err
-  elseif ok[2] then
-    previous_table = ok[2]
-  else
-    return nil, NO_PREVIOUS_TABLE
-  end
-
-  local q = SELECT_PREVIOUS_VITALS_STATS_SECONDS .. "'" .. previous_table .. "'"
+  -- the oldest table name we query from is two rotation intervals ago.
+  -- this could become dynamic if rotation interval and retention period diverge.
+  local timestamp = time() - (2 * self.rotation_interval)
+  local prior_to = "vitals_stats_seconds_" .. tostring(timestamp)
+  local q = SELECT_PREVIOUS_VITALS_STATS_SECONDS:gsub('?', prior_to)
 
   log(DEBUG, _log_prefix, q)
 
-  local select_res, select_err = self.db:query(q)
+  local table_names, err = self.db:query(q)
 
-  if select_err then
-    return nil, "Failed to select tables. query: " .. q .. ". error: " .. tostring(select_err)
+  if err then
+    return nil, "Failed to select tables. query: " .. q .. ". error: " .. tostring(err)
   end
 
-  for i = 1, #select_res do
-    local row = select_res[i]
-    local seconds_table = row.table_name
-
-    local _, err = self.aggregator:aggregate_minutes(seconds_table)
-
-    if err then
-      return nil, "Failed to aggregate minutes for " .. seconds_table ..
-          ". error: " .. err
-    end
-
+  for _, row in ipairs(table_names) do
     q = fmt(DROP_PREVIOUS_VITALS_STATS_SECONDS, row.table_name)
 
     log(DEBUG,_log_prefix,  q)

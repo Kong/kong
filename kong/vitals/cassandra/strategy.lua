@@ -299,6 +299,12 @@ function _M:insert_stats(data, node_id)
 end
 
 
+function _M:delete_stats(cutoff_times)
+  -- this is a no-op for Cassandra
+  return 0
+end
+
+
 function _M:current_table_name()
   return nil
 end

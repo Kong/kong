@@ -141,95 +141,50 @@ dao_helpers.for_each_dao(function(kong_conf)
 
 
     describe(":drop_previous_table()", function()
-      it("drops all tables prior to previous one", function()
-        assert(db:query("create table if not exists vitals_stats_seconds_1505865600 (like vitals_stats_seconds)"))
-        assert(db:query("create table if not exists vitals_stats_seconds_1505862000 (like vitals_stats_seconds)"))
-        assert(db:query("create table if not exists vitals_stats_seconds_1505858400 (like vitals_stats_seconds)"))
+      local table_names
 
-        stub(rotater.aggregator, "aggregate_minutes").returns("ok response for tests")
+      before_each(function()
+        -- test setup assumes rotation interval is 3600. fail if not
+        assert.same(3600, rotater.rotation_interval)
 
-        rotater:drop_previous_table()
+        local now = ngx_time()
+        local current_ts = now - (now % 3600)
 
+        -- one table we can drop,
+        -- two we are currently querying,
+        -- one for the upcoming inserts
+        table_names = {
+          "vitals_stats_seconds_" .. tostring(current_ts - 7200),
+          "vitals_stats_seconds_" .. tostring(current_ts - 3600),
+          "vitals_stats_seconds_" .. tostring(current_ts),
+          "vitals_stats_seconds_" .. tostring(current_ts + 3600),
+        }
 
-        local query = [[
-          select table_name from information_schema.tables
-          where table_schema = 'public' and table_name in (
-            'vitals_stats_seconds_1505865600',
-            'vitals_stats_seconds_1505862000',
-            'vitals_stats_seconds_1505858400')
-        ]]
-
-        local res, err = db:query(query)
-
-        assert.is_nil(err)
-        assert.equals(1, #res)
+        for _, v in ipairs(table_names) do
+          assert(db:query("create table if not exists " .. v ..
+              " (like vitals_stats_seconds including defaults including constraints including indexes)"))
+        end
       end)
 
-
-      it("does not drop tables at or after previous one", function()
-        -- initialize current and future tables
-        rotater:init()
-
-        -- create previous hour table
-        local now           = ngx_time()
-        local previous_hour = now - 3600 - (now % 3600)
-        assert(db:query("create table if not exists vitals_stats_seconds_" .. previous_hour .. "(like vitals_stats_seconds)"))
-
-        stub(rotater.aggregator, "aggregate_minutes").returns("ok response for tests")
-
+      it("drops only old tables (keeping the current 2 and future 1)", function()
         rotater:drop_previous_table()
 
+        local query = "select table_name from information_schema.tables " ..
+            "where table_schema = 'public' and table_name in ('" ..
+            table_names[1] .. "', '" ..
+            table_names[2] .. "', '" ..
+            table_names[3] .. "', '" ..
+            table_names[4] .. "') " ..
+            "order by table_name"
 
-        local query = [[
-        select table_name from information_schema.tables
-         where table_schema = 'public'
-           and table_name like 'vitals_stats_seconds_%'
-           and table_name >= 'vitals_stats_seconds_]] .. previous_hour .. "'"
+        local res, _ = db:query(query)
+        local expected = {
+          { table_name = table_names[2] },
+          { table_name = table_names[3] },
+          { table_name = table_names[4] },
+        }
 
-        local res, err = db:query(query)
-
-        assert.is_nil(err)
-        assert.equals(3, #res)
-      end)
-
-      it("does not drop tables if previous table does not exist", function()
-        -- initialize current and future tables
-        rotater:init()
-
-        stub(rotater.aggregator, "aggregate_minutes").returns("ok response for tests")
-
-        local now           = ngx_time()
-        local previous_hour = now - 3600 - (now % 3600)
-
-        local query = [[
-        select table_name from information_schema.tables
-         where table_schema = 'public'
-           and table_name like 'vitals_stats_seconds_%'
-           and table_name >= 'vitals_stats_seconds_]] .. previous_hour .. "'"
-
-        local select_res, err = db:query(query)
-        assert.is_nil(err)
-        assert.equals(2, #select_res)
-      end)
-
-      it("does not drop table if it couldn't aggregate minutes", function()
-        assert(db:query("create table if not exists vitals_stats_seconds_1505865600 (like vitals_stats_seconds)"))
-
-        stub(rotater.aggregator, "aggregate_minutes").returns(nil, "stubbed error for tests")
-
-        rotater:drop_previous_table()
-
-
-        local query = [[
-        select table_name from information_schema.tables
-         where table_schema = 'public'
-           and table_name = 'vitals_stats_seconds_1505865600'
-        ]]
-
-        local res, err = db:query(query)
-
-        assert.is_nil(err)
-        assert.equals(1, #res)
+        assert.same(expected, res)
       end)
     end)
   end)

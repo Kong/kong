@@ -504,7 +504,7 @@ function _M:flush_counters()
 
     log(DEBUG, _log_prefix, "merging worker data")
     local flush_data, err = self:merge_worker_data(flush_key)
-    if not ok then
+    if not flush_data then
       return nil, err
     end
 
@@ -515,6 +515,17 @@ function _M:flush_counters()
       return nil, err
     end
 
+    -- clean up expired stats data
+    log(DEBUG, _log_prefix, "delete expired stats")
+    local expiries = {
+      minutes = self.ttl_minutes,
+    }
+    local ok, err = self.strategy:delete_stats(expiries)
+    if not ok then
+      log(WARN, _log_prefix, "failed to delete stats: ", err)
+    end
+
+    -- now flush additional entity counters
     self:flush_consumer_counters()
   end
 

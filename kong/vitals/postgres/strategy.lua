@@ -2,8 +2,12 @@ local table_rotater_module = require "kong.vitals.postgres.table_rotater"
 local fmt                  = string.format
 local unpack               = unpack
 local tostring             = tostring
+local time                 = ngx.time
 local log                  = ngx.log
 local WARN                 = ngx.WARN
+local DEBUG                = ngx.DEBUG
+local math_min             = math.min
+local math_max             = math.max
 
 local _M = {}
 local mt = { __index = _M }
@@ -31,6 +35,8 @@ local INSERT_CONSUMER_STATS = [[
 ]]
 
 local UPDATE_NODE_META = "update vitals_node_meta set last_report = now() where node_id = '%s'"
+
+local DELETE_STATS = "delete from %s where at < %d"
 
 local DELETE_CONSUMER_STATS = [[
   delete from vitals_consumers where consumer_id = '{%s}'
@@ -186,14 +192,8 @@ end
 --[[
   constructs an insert statement for each row in data. If there's already a row
   with this timestamp, aggregates appropriately per stat type
-  TODO: this function exits on first error. Make this more robust
-  TODO: optimize inserts (use bulk insert instead of _n_ separate ones)
 
   data: a 2D-array of [
-    [
-      timestamp, l2_hits, l2_misses, proxy_latency_min, proxy_latency_max,
-      upstream_latency_min, upstream_latency_max, requests
-    ],
     [
       timestamp, l2_hits, l2_misses, proxy_latency_min, proxy_latency_max,
       upstream_latency_min, upstream_latency_max, requests
@@ -208,8 +208,38 @@ function _M:insert_stats(data, node_id)
   -- node_id is an optional argument to simplify testing
   node_id = node_id or self.node_id
 
+  -- as we loop over our seconds, we'll calculate the minutes data to insert
+  local mdata = {} -- array of data to insert
+  local midx  = {} -- table of timestamp to array index
+  local mnext = 1  -- next index in mdata
+
   for _, row in ipairs(data) do
     at, hit, miss, plat_min, plat_max, ulat_min, ulat_max, requests = unpack(row)
+
+    local mat = self:get_minute(at)
+    local i   = midx[mat]
+    if i then
+      mdata[i][2] = mdata[i][2] + hit
+      mdata[i][3] = mdata[i][3] + miss
+      mdata[i][4] = math_min(mdata[i][4], plat_min or 0xFFFFFFFF)
+      mdata[i][5] = math_max(mdata[i][5], plat_max or -1)
+      mdata[i][6] = math_min(mdata[i][6], ulat_min or 0xFFFFFFFF)
+      mdata[i][7] = math_max(mdata[i][7], ulat_max or -1)
+      mdata[i][8] = mdata[i][8] + requests
+    else
+      mdata[mnext] = {
+        mat,
+        hit,
+        miss,
+        plat_min or 0xFFFFFFFF,
+        plat_max or -1,
+        ulat_min or 0xFFFFFFFF,
+        ulat_max or -1,
+        requests,
+      }
+      midx[mat] = mnext
+      mnext  = mnext + 1
+    end
 
     plat_min = plat_min or "null"
     plat_max = plat_max or "null"
@@ -222,7 +252,34 @@ function _M:insert_stats(data, node_id)
     res, err = self.db:query(query)
 
     if not res then
-      return nil, "could not insert stats. query: " .. query .. " error: " .. err
+      log(WARN, _log_prefix, "failed to insert seconds: ", err)
+      log(DEBUG, _log_prefix, "failed query: ", query)
+    end
+  end
+
+  -- insert minutes data
+  local tname = "vitals_stats_minutes"
+  for _, row in ipairs(mdata) do
+    at, hit, miss, plat_min, plat_max, ulat_min, ulat_max, requests = unpack(row)
+
+    -- replace sentinels
+    if plat_min == 0xFFFFFFFF then
+      plat_min = "null"
+      plat_max = "null"
+    end
+    if ulat_min == 0xFFFFFFFF then
+      ulat_min = "null"
+      ulat_max = "null"
+    end
+
+    query = fmt(INSERT_STATS, tname, at, node_id,
+                hit, miss, plat_min, plat_max, ulat_min, ulat_max, requests,
+                tname, tname, tname, tname, tname, tname, tname)
+    res, err = self.db:query(query)
+
+    if not res then
+      log(WARN, _log_prefix, "failed to insert minutes: ", err)
+      log(DEBUG, _log_prefix, "failed query: ", query)
     end
   end
 
@@ -232,6 +289,30 @@ function _M:insert_stats(data, node_id)
   end
 
   return true
+end
+
+
+function _M:delete_stats(expiries)
+  if not expiries then
+    return nil, "cutoff_times is required"
+  end
+
+  -- eventually will also support 'hours' and larger
+  if type(expiries.minutes) ~= "number" then
+    return nil, "cutoff_times.minutes must be a number"
+  end
+
+  -- for now, only aggregation supported is minutes
+  local cutoff_time = time() - expiries.minutes
+  local q = fmt(DELETE_STATS, "vitals_stats_minutes", cutoff_time)
+
+  local res, err = self.db:query(q)
+
+  if err then
+    return nil, err
+  end
+
+  return res.affected_rows
 end
 
 
@@ -262,59 +343,6 @@ function _M:update_node_meta(node_id)
   end
 
   return true
-end
-
-
---[[
-  data: a 2D-array of [
-    [consumer_id, timestamp, duration, count]
-  ]
-]]
-function _M:insert_consumer_stats(data, node_id)
-  local consumer_id, start_at, duration, count
-  local query, last_err
-  local row_count  = 0
-  local fail_count = 0
-
-  node_id = node_id or self.node_id
-
-  for _, row in ipairs(data) do
-    row_count = row_count + 2 -- one for seconds, one for minutes
-
-    consumer_id, start_at, duration, count = unpack(row)
-
-    query = fmt(INSERT_CONSUMER_STATS, consumer_id, node_id, start_at,
-                duration, count)
-
-    local res, err = self.db:query(query)
-    if not res then
-      fail_count = fail_count + 1
-      last_err   = tostring(err)
-    end
-
-    -- naive approach - update minutes in-line
-    local mstart_at = self:get_minute(start_at)
-    query = fmt(INSERT_CONSUMER_STATS, consumer_id, node_id, mstart_at,
-                60, count)
-
-    local res, err = self.db:query(query)
-    if not res then
-      fail_count = fail_count + 1
-      last_err   = tostring(err)
-    end
-  end
-
-  if fail_count > 0 then
-    return nil, "failed to insert " .. tostring(fail_count) .. " of " ..
-        tostring(row_count) .. " consumer stats. last err: " .. last_err
-  end
-
-  return true
-end
-
-
-function _M:get_minute(second)
-  return second - (second % 60)
 end
 
 
@@ -391,6 +419,54 @@ end
 
 
 --[[
+  data: a 2D-array of [
+    [consumer_id, timestamp, duration, count]
+  ]
+]]
+function _M:insert_consumer_stats(data, node_id)
+  local consumer_id, start_at, duration, count
+  local query, last_err
+  local row_count  = 0
+  local fail_count = 0
+
+  node_id = node_id or self.node_id
+
+  for _, row in ipairs(data) do
+    row_count = row_count + 2 -- one for seconds, one for minutes
+
+    consumer_id, start_at, duration, count = unpack(row)
+
+    query = fmt(INSERT_CONSUMER_STATS, consumer_id, node_id, start_at,
+                duration, count)
+
+    local res, err = self.db:query(query)
+    if not res then
+      fail_count = fail_count + 1
+      last_err   = tostring(err)
+    end
+
+    -- naive approach - update minutes in-line
+    local mstart_at = self:get_minute(start_at)
+    query = fmt(INSERT_CONSUMER_STATS, consumer_id, node_id, mstart_at,
+                60, count)
+
+    local res, err = self.db:query(query)
+    if not res then
+      fail_count = fail_count + 1
+      last_err   = tostring(err)
+    end
+  end
+
+  if fail_count > 0 then
+    return nil, "failed to insert " .. tostring(fail_count) .. " of " ..
+        tostring(row_count) .. " consumer stats. last err: " .. last_err
+  end
+
+  return true
+end
+
+
+--[[
 --deletes data for the given list of consumers
   cutoff_times: a table of timeframes to delete; e.g.
   {
@@ -438,6 +514,11 @@ function _M:delete_consumer_stats(consumers, cutoff_times)
   end
 
   return row_count
+end
+
+
+function _M:get_minute(second)
+  return second - (second % 60)
 end
 
 
