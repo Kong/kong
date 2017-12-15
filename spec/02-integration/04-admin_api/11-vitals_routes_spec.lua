@@ -20,6 +20,7 @@ dao_helpers.for_each_dao(function(kong_conf)
     local minute_start_at = time() - ( time() % 60 )
     local node_1 = "20426633-55dc-4050-89ef-2382c95a611e"
     local node_2 = "8374682f-17fd-42cb-b1dc-7694d6f65ba0"
+    local node_3 = "20478633-55dc-4050-89ef-2382c95a611f"
 
     describe("when vitals is enabled", function()
       setup(function()
@@ -40,8 +41,11 @@ dao_helpers.for_each_dao(function(kong_conf)
         end
 
         local q = "insert into vitals_node_meta(node_id) values('%s')"
-        assert(dao.db:query(fmt(q, node_1)))
-        assert(dao.db:query(fmt(q, node_2)))
+        local nodes = { node_1, node_2, node_3 }
+
+        for i, node in ipairs(nodes) do
+          assert(dao.db:query(fmt(q, node)))
+        end
 
         local test_data_1 = {
           { minute_start_at, 0, 0, nil, nil, nil, nil, 0 },
@@ -401,6 +405,24 @@ dao_helpers.for_each_dao(function(kong_conf)
                   [tostring(minute_start_at)] = { 3, 7, 0, 11, 60, 9182, 5 }
                 }
               }
+            }
+
+            assert.same(expected, json)
+          end)
+
+          it("retrieves the empty vitals minutes data for a requested node", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/nodes/" .. node_3,
+              query = {
+                interval = "minutes"
+              }
+            })
+            res = assert.res_status(200, res)
+            local json = cjson.decode(res)
+
+            local expected = {
+              stats = {}
             }
 
             assert.same(expected, json)
