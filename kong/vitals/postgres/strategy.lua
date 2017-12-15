@@ -542,9 +542,9 @@ function _M:check_node(node_id)
     select node_id from vitals_node_meta where node_id = '%s'
   ]]
 
-  query = fmt(SELECT_NODE, node_id)
+  local query = fmt(SELECT_NODE, node_id)
 
-  res, err = self.db:query(query)
+  local res, err = self.db:query(query)
 
   if not res then
     return nil, "could not select node_id. query: " .. query .. " error: " .. err
