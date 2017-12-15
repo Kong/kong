@@ -55,11 +55,13 @@ return {
     resource = "vitals",
 
     GET = function(self, dao, helpers)
-      if not singletons.vitals:node_exists(self.params.node_id) then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-
       local requested_node_stats, err = singletons.vitals:get_stats(self.params.interval, "node", self.params.node_id)
+
+      if requested_node_stats == nil or #requested_node_stats == 0 then
+        if not singletons.vitals:node_exists(self.params.node_id) then
+          return helpers.responses.send_HTTP_NOT_FOUND()
+        end
+      end
 
       if err then
         if err:find("Invalid query params", nil, true) then
