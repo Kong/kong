@@ -108,23 +108,6 @@ return {
     end,
 
     GET = function(self, dao_factory)
-      crud.paginated_set(self, dao_factory.targets)
-    end,
-
-    POST = function(self, dao_factory, helpers)
-      clean_history(self.params.upstream_id, dao_factory)
-
-      crud.post(self.params, dao_factory.targets)
-    end,
-  },
-
-  ["/upstreams/:upstream_name_or_id/targets/active"] = {
-    before = function(self, dao_factory, helpers)
-      crud.find_upstream_by_name_or_id(self, dao_factory, helpers)
-      self.params.upstream_id = self.upstream.id
-    end,
-
-    GET = function(self, dao_factory)
       self.params.active = nil
 
       local target_history, err = dao_factory.targets:find_all({
@@ -171,6 +154,23 @@ return {
         total = active_n,
         data  = active,
       }
+    end,
+
+    POST = function(self, dao_factory, helpers)
+      clean_history(self.params.upstream_id, dao_factory)
+
+      crud.post(self.params, dao_factory.targets)
+    end,
+  },
+
+  ["/upstreams/:upstream_name_or_id/targets/all"] = {
+    before = function(self, dao_factory, helpers)
+      crud.find_upstream_by_name_or_id(self, dao_factory, helpers)
+      self.params.upstream_id = self.upstream.id
+    end,
+
+    GET = function(self, dao_factory)
+      crud.paginated_set(self, dao_factory.targets)
     end
   },
 
