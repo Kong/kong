@@ -2,8 +2,8 @@
 
 - [Planned](#planned)
 - [Scheduled](#scheduled)
-    - [0.12.0](#0120)
 - [Released](#released)
+    - [0.12.0rc1](#0120rc1)
     - [0.11.2](#0112---20171129)
     - [0.11.1](#0111---20171024)
     - [0.10.4](#0104---20171024)
@@ -28,14 +28,193 @@ Those releases do not have a fixed release date yet.
 This section describes upcoming releases that have a release date, along with
 a detailed changeset of their content.
 
-## [0.12.0]
+## [0.12.0rc1]
 
 * **Release Candidate**: 2017/12/20
 * **Stable**: January 2018
 
-This release will focus on the introduction of health checks
-[#112](https://github.com/Kong/kong/issues/112) and include a few major fixes.
-Changelog upcoming.
+Our third major release of 2017 focuses on two new features we are very
+excited about: **health checks** and **hash based load balancing**!
+
+We also took this as an opportunity to fix a few prominent issues, sometimes
+at the expense of breaking changes but overall improving the flexibility and
+usability of Kong! Do keep in mind that this is a major release, and as such,
+that we require of you to run the **migrations step**, via the
+`kong migrations up` command.
+
+Please take a few minutes to thoroughly read the [0.12 Upgrade
+Path](https://github.com/Kong/kong/blob/master/UPGRADE.md#upgrade-to-012x)
+for more details regarding breaking changes and migrations before planning to
+upgrade your Kong cluster.
+
+### Breaking changes
+
+##### Core
+
+- :warning: The required OpenResty version has been bumped to 1.11.2.5. If you
+  are installing Kong from one of our distribution packages, you are not
+  affected by this change.
+  [#3097](https://github.com/Kong/kong/pull/3097)
+- :warning: As Kong now executes subsequent plugins when a request is being
+  short-circuited (e.g. HTTP 401 responses from auth plugins), plugins that
+  run in the header or body filter phases will be run upon such responses
+  from the access phase. We consider this change a big improvement in the
+  Kong run-loop as it allows for more flexibility for plugins. However, it is
+  unlikely, but possible that some of these plugins (e.g. your custom plugins)
+  now run in scenarios where they were not previously expected to run.
+  [#3079](https://github.com/Kong/kong/pull/3079)
+
+##### Admin API
+
+- :warning: By default, the Admin API now only listens on the local interface.
+  We consider this change to be an improvement in the default security policy
+  of Kong. If you are already using Kong, and your Admin API still binds to all
+  interfaces, consider updating it as well. You can do so by updating the
+  `admin_listen` configuration value, like so: `admin_listen = 127.0.0.1:8001`.
+  Thanks [@pduldig-at-tw](https://github.com/pduldig-at-tw) for the suggestion
+  and the patch.
+  [#3016](https://github.com/Kong/kong/pull/3016)
+
+  :red_circle: **Note to Docker users**: Beware of this change as you may have
+  to ensure that your Admin API is reachable via the host's interface.
+  You can use the `-e KONG_ADMIN_LISTEN` argument when provisioning your
+  container(s) to update this value; for example,
+  `-e KONG_ADMIN_LISTEN=0.0.0.0:8001`.
+
+- :warning: To reduce confusion, the `/upstreams/:upstream_name_or_id/targets/`
+  has been updated to not show the full list of Targets anymore, but only
+  the ones that are currently active in the load balancer. To retrieve the full
+  history of Targets, you can now query
+  `/upstreams/:upstream_name_or_id/targets/all`. The
+  `/upstreams/:upstream_name_or_id/targets/active` endpoint has been removed.
+  Thanks [@hbagdi](https://github.com/hbagdi) for tackling this backlog item!
+  [#3049](https://github.com/Kong/kong/pull/3049)
+- :warning: The `orderlist` property of Upstreams has been removed, along with
+  any confusion it may have brought. The balancer is now able to fully function
+  without it, yet with the same level of entropy in its load distribution.
+  [#2748](https://github.com/Kong/kong/pull/2748)
+
+##### CLI
+
+- :warning: The `$ kong compile` command which was deprecated in 0.11.0 has
+  been removed.
+  [#3069](https://github.com/Kong/kong/pull/3069)
+
+##### Plugins
+
+- :warning: In logging plugins, the `request.request_uri` field has been
+  renamed to `request.url`.
+  [#2445](https://github.com/Kong/kong/pull/2445)
+  [#3098](https://github.com/Kong/kong/pull/3098)
+
+### Added
+
+##### Core
+
+- :fireworks: Support for **health checks**! Kong can now short-circuit some
+  of your upstream Targets (replicas) from its load balancer when it encounters
+  too many TCP or HTTP errors. You can configure the number of failures, or the
+  HTTP status codes that should be considered invalid, and Kong will monitor
+  the failures and successes of proxied requests to each upstream Target. We
+  call this feature **passive health checks**.
+  Additionally, you can configure **active health checks**, which will make
+  Kong perform periodic HTTP test requests to actively monitor the health of
+  your upstream services, and pre-emptively short-circuit them.
+  Upstream Targets can be manually taken up or down via two new Admin API
+  endpoints: `/healthy` and `/unhealthy`.
+  [#3096](https://github.com/Kong/kong/pull/3096)
+- :fireworks: Support for **hash based load balancing**! Kong now offers
+  consistent hashing/sticky sessions load balancing capabilities via the new
+  `hash_*` attributes of the Upstream entity. Hashes can be based off client
+  IPs, request headers, or Consumers!
+  [#2875](https://github.com/Kong/kong/pull/2875)
+- :fireworks: Logging plugins now log requests that were short-circuited by
+  Kong! (e.g. HTTP 401 responses from auth plugins or HTTP 429 responses from
+  rate limiting plugins, etc.) Kong now executes any subsequent plugins once a
+  request has been short-circuited. Your plugin must be using the
+  `kong.tools.responses` module for this behavior to be respected.
+  [#3079](https://github.com/Kong/kong/pull/3079)
+- Kong is now compatible with OpenResty up to version 1.13.6.1. Be aware that
+  the recommended (and default) version shipped with this release is still
+  1.11.2.5.
+  [#3070](https://github.com/Kong/kong/pull/3070)
+
+##### CLI
+
+- `$ kong start` now considers the commonly used `/opt/openresty` prefix when
+  searching for the `nginx` executable.
+  [#3074](https://github.com/Kong/kong/pull/3074)
+
+##### Admin API
+
+- Two new endpoints, `/healthy` and `/unhealthy` can be used to manually bring
+  upstream Targets up or down, as part of the new health checks feature of the
+  load balancer.
+  [#3096](https://github.com/Kong/kong/pull/3096)
+
+##### Plugins
+
+- logging plugins: A new field `upstream_uri` now logs the value of the
+  upstream request's path. This is useful to help debugging plugins or setups
+  that aim at rewriting a request's URL during proxying.
+  Thanks [@shiprabehera](https://github.com/shiprabehera) for the patch!
+  [#2445](https://github.com/Kong/kong/pull/2445)
+- tcp-log: Support for TLS handshake with the logs recipients for secure
+  transmissions of logging data.
+  [#3091](https://github.com/Kong/kong/pull/3091)
+- jwt: Support for JWTs passed in cookies. Use the new `config.cookie_names`
+  property to configure the behavior to your liking.
+  Thanks [@mvanholsteijn](https://github.com/mvanholsteijn) for the patch!
+  [#2974](https://github.com/Kong/kong/pull/2974)
+- oauth2
+    - New `config.auth_header_name` property to customize the authorization
+      header's name.
+      Thanks [@supraja93](https://github.com/supraja93)
+      [#2928](https://github.com/Kong/kong/pull/2928)
+    - New `config.refresh_ttl` property to customize the TTL of refresh tokens,
+      previously hard-coded to 14 days.
+      Thanks [@bob983](https://github.com/bob983) for the patch!
+      [#2942](https://github.com/Kong/kong/pull/2942)
+    - Avoid an error in the logs when trying to retrieve an access token from
+      a request without a body.
+      Thanks [@WALL-E](https://github.com/WALL-E) for the patch.
+      [#3063](https://github.com/Kong/kong/pull/3063)
+- ldap: New `config.header_type` property to customize the authorization method
+  in the `Authorization` header.
+  Thanks [@francois-maillard](https://github.com/francois-maillard) for the
+  patch!
+  [#2963](https://github.com/Kong/kong/pull/2963)
+
+### Fixed
+
+##### CLI
+
+- Fix a potential vulnerability in which an attacker could read the Kong
+  configuration file with insufficient permissions for a short window of time
+  while Kong is being started.
+  [#3057](https://github.com/Kong/kong/pull/3057)
+- Proper log message upon timeout in `$ kong quit`.
+  [#3061](https://github.com/Kong/kong/pull/3061)
+
+##### Admin API
+
+- The `/certificates` endpoint now properly supports the `snis` parameter
+  in PUT and PATCH requests.
+  Thanks [@hbagdi](https://github.com/hbagdi) for the contribution!
+  [#3040](https://github.com/Kong/kong/pull/3040)
+- Avoid sending the `HTTP/1.1 415 Unsupported Content Type` response when
+  receiving a request with a valid `Content-Type`, but with an empty payload.
+  [#3077](https://github.com/Kong/kong/pull/3077)
+
+##### Plugins
+
+- basic-auth:
+    - Accept passwords containing `:`.
+      Thanks [@nico-acidtango](https://github.com/nico-acidtango) for the patch!
+      [#3014](https://github.com/Kong/kong/pull/3014)
+    - Performance improvements, courtesy of
+      [@nico-acidtango](https://github.com/nico-acidtango)
+      [#3014](https://github.com/Kong/kong/pull/3014)
 
 [Back to TOC](#table-of-contents)
 
@@ -1972,7 +2151,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[0.12.0]: https://github.com/Kong/kong/compare/0.11.2...next
+[0.12.0rc1]: https://github.com/Kong/kong/compare/0.11.2...0.12.0rc1
 [0.11.2]: https://github.com/Kong/kong/compare/0.11.1...0.11.2
 [0.11.1]: https://github.com/Kong/kong/compare/0.11.0...0.11.1
 [0.10.4]: https://github.com/Kong/kong/compare/0.10.3...0.10.4
