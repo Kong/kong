@@ -5,7 +5,7 @@ local cassandra   = require "kong.vitals.cassandra.strategy"
 local postgres    = require "kong.vitals.postgres.strategy"
 local cjson       = require "cjson"
 local time        = ngx.time
-
+local fmt         = string.format
 
 dao_helpers.for_each_dao(function(kong_conf)
 
