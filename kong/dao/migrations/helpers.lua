@@ -36,7 +36,7 @@ function _M.plugin_config_iterator(dao, plugin_name)
         -- de-serialize in case of Cassandra
         local json, err = json_decode(row.config)
         if not json then
-          return nil, ("json decoding error '%s' while decoding '%s'"):format( 
+          return nil, ("json decoding error '%s' while decoding '%s'"):format(
                       tostring(err), tostring(row.config))
         end
         row.config = json
