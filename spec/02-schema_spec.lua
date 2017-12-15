@@ -1,0 +1,89 @@
+local validate_entity = require("kong.dao.schemas_validation").validate_entity
+local canary_schema = require "kong.plugins.canary.schema"
+
+
+describe("canary schema", function()
+  it("should work with all require fields provided", function()
+    local ok, err = validate_entity({ upstream_target = "balancer_a" }, canary_schema)
+
+    assert.True(ok)
+    assert.is_nil(err)
+  end)
+  it("start in past", function()
+    local time =  math.floor(ngx.time())
+    local ok, err = validate_entity({ start = time,  upstream_target = "balancer_a" },
+                                    canary_schema)
+
+    assert.True(ok)
+    assert.is_nil(err)
+  end)
+  it("start in past", function()
+    local time =  math.floor(ngx.time()) - 1000
+    local ok, err = validate_entity({ start = time,  upstream_target = "balancer_a" },
+                                    canary_schema)
+
+    assert.False(ok)
+    assert.is_same("'start' cannot be in the past", err.start)
+  end)
+  it("hash set as `ip`", function()
+    local ok, err = validate_entity({ hash = "ip",  upstream_target = "balancer_a" },
+      canary_schema)
+
+    assert.True(ok)
+    assert.is_nil(err)
+  end)
+  it("validate duration ", function()
+    local ok, err = validate_entity({ duration = 0,  upstream_target = "balancer_a" },
+      canary_schema)
+
+    assert.False(ok)
+    assert.is_same("'duration' must be greater than 0", err.duration)
+  end)
+  it("validate negative duration ", function()
+    local ok, err = validate_entity({ duration = 0,  upstream_target = "balancer_a" },
+      canary_schema)
+
+    assert.False(ok)
+    assert.is_same("'duration' must be greater than 0", err.duration)
+  end)
+  it("validate percentage below 0 ", function()
+    local ok, err = validate_entity({ percentage = -1,  upstream_target = "balancer_a" },
+      canary_schema)
+
+    assert.False(ok)
+    assert.is_same("'percentage' must be in between 0 and 100", err.percentage)
+  end)
+  it("validate percentage below 0 ", function()
+    local ok, err = validate_entity({ percentage = 101,  upstream_target = "balancer_a" },
+      canary_schema)
+
+    assert.False(ok)
+    assert.is_same("'percentage' must be in between 0 and 100", err.percentage)
+  end)
+  it("validate upstream_target", function()
+    local ok, err = validate_entity({ upstream_target = "htt://example.com" },
+      canary_schema)
+
+    assert.False(ok)
+    assert.is_same("'upstream_target' must be a valid hostname", err.upstream_target)
+  end)
+  it("validate upstream_uri", function()
+    local ok, err = validate_entity({ upstream_uri = "/"}, canary_schema)
+
+    assert.True(ok)
+    assert.is_nil(err)
+  end)
+  it("upstream_target or upstream_uri must be provided", function()
+    local ok, _, schema = validate_entity({}, canary_schema)
+
+    assert.False(ok)
+    assert.is_same("either 'upstream_uri' or 'upstream_target' must be provided",
+                   schema.message)
+  end)
+  it("validates what looks like a domain", function()
+    local ok, err = validate_entity({ upstream_target = "balancer_a" }, canary_schema)
+
+    assert.True(ok)
+    assert.is_nil(err)
+  end)
+end)
