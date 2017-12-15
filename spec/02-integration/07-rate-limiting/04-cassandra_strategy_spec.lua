@@ -2,6 +2,9 @@ local cassandra_strategy = require "kong.tools.public.rate-limiting.strategies.c
 local dao_helpers        = require "spec.02-integration.03-dao.helpers"
 local dao_factory        = require "kong.dao.factory"
 
+local function window_floor(size, time)
+  return math.floor(time / size) * size
+end
 
 do
   local say      = require "say"
@@ -226,6 +229,127 @@ describe("rate-limiting: Cassadra strategy", function()
       }, counters)
     end)
   end)
-end)
 
+  describe(":purge() helpers", function()
+    describe(".get_window_start_lists", function()
+      it("returns correct number of results", function()
+        local sizes = {8, 10, 20, 50, 100, 200, 400, 800}
+        local starts_per_size = strategy.get_window_start_lists(sizes, 1513788040)
+
+        local n = 0
+        for size, starts in pairs(starts_per_size) do
+          -- correct number of window starts for a given window size
+          assert.same(math.floor(3600/size), #starts)
+          n = n + 1
+        end
+
+        -- correct number of window start lists
+        assert.same(#sizes, n)
+      end)
+
+      it("returns correct window start values", function()
+        local sizes = {200, 400, 800}
+        local mock_time = 1513788040
+        local starts = strategy.get_window_start_lists(sizes, mock_time)
+
+        for size, start in pairs(starts) do
+          -- last obsolete window start
+          local last_window_start = window_floor(size, mock_time) - 2 * size
+          for _, start in ipairs(start) do
+            assert.same(last_window_start, start.val)
+            last_window_start = last_window_start - size
+          end
+        end
+      end)
+    end)
+  end)
+
+  describe(":purge()", function()
+    local mock_start_1 = ngx.time()
+    local mock_start_2 = window_floor(2, ngx.time())
+
+    local new_diffs = {
+      {
+        key     = "foo",
+        windows = {
+          {
+            namespace = "my_namespace",
+            window    = mock_start_1,
+            size      = 1,
+            diff      = 5,
+          },
+          {
+            namespace = "my_namespace",
+            window    = mock_start_1,
+            size      = 1,
+            diff      = 2,
+          },
+          {
+            namespace = "my_namespace",
+            window    = mock_start_2,
+            size      = 2,
+            diff      = 2,
+          },
+        }
+      }
+    }
+    local new_expected_rows = {
+      {
+        count        = 2,
+        key          = "foo",
+        namespace    = "my_namespace",
+        window_size  = 2,
+        window_start = mock_start_2,
+      },
+      {
+        count        = 7,
+        key          = "foo",
+        namespace    = "my_namespace",
+        window_size  = 1,
+        window_start = mock_start_1,
+      },
+      meta = {
+        has_more_pages = false
+      },
+      type = "ROWS",
+    }
+
+    cluster:execute("TRUNCATE rl_counters")
+    strategy:push_diffs(new_diffs)
+
+    it("should not purge valid counters", function()
+      strategy:purge("my_namespace", {1, 2}, ngx.time())
+      local rows = assert(cluster:execute("SELECT * FROM rl_counters"))
+      table.sort(rows, function(r1, r2) return r1.count < r2.count end)
+      assert.same(new_expected_rows, rows)
+    end)
+
+    it("should purge some expired counters", function()
+      local expected_rows = {
+        {
+          count        = 2,
+          key          = "foo",
+          namespace    = "my_namespace",
+          window_size  = 2,
+          window_start = mock_start_2,
+        },
+        meta = {
+          has_more_pages = false
+        },
+        type = "ROWS",
+      }
+
+      strategy:purge("my_namespace", {1}, ngx.time() + 20)
+      local rows = assert(cluster:execute("SELECT * FROM rl_counters"))
+      assert.equal(1, #rows)
+      assert.same(expected_rows, rows)
+    end)
+
+    it("should purge all counters", function()
+      strategy:purge("my_namespace", {2}, ngx.time() + 20)
+      local rows = assert(cluster:execute("SELECT * FROM rl_counters"))
+      assert.equal(0, #rows)
+    end)
+  end)
+end)
 end)

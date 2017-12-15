@@ -70,6 +70,12 @@ local SELECT_COUNTERS_IN_WINDOW_OPTIONS = {
   prepared = true,
 }
 
+local DELETE_COUNTER_QUERY = [[
+DELETE FROM rl_counters
+  WHERE namespace = ?
+    AND window_size = ?
+    AND window_start IN ?
+]]
 
 local select_counter_args            = new_tab(4, 0)
 local select_counters_in_window_args = new_tab(3, 0)
@@ -300,8 +306,64 @@ function _M:get_window(key, namespace, window_start, window_size)
 end
 
 
-function _M:purge()
-  -- TODO implement me
+-- get lists of window start values for the past hour for each
+-- window size
+function _M.get_window_start_lists(window_sizes, now)
+  local window_starts_per_size = new_tab(#window_sizes, 0)
+
+  for _, window_size in ipairs(window_sizes) do
+    local last_obsolete_window_start = window_floor(window_size, now) - 2 * window_size
+    -- clean up last hour of counters, which covers the maintenance cycle
+    -- time window
+    local number_windows_last_hour = floor(3600 / window_size)
+    local window_starts = new_tab(number_windows_last_hour, 0)
+
+    for i=1, number_windows_last_hour do
+      window_starts[i] = cassandra.timestamp(last_obsolete_window_start)
+      last_obsolete_window_start = last_obsolete_window_start - window_size
+    end
+
+    window_starts_per_size[window_size] = window_starts
+  end
+
+  return window_starts_per_size
+end
+
+local function delete_obsolete_rows(cluster, namespace, window_sizes, time)
+  local window_starts = _M.get_window_start_lists(window_sizes, time)
+  local success = true
+  local errs = {}
+
+  for _, window_size in ipairs(window_sizes) do
+    local _, err = cluster:execute(DELETE_COUNTER_QUERY, {
+      namespace,
+      window_size,
+      window_starts[window_size],
+    })
+
+    if err then
+      success = false
+      errs[#errs + 1] = err
+    end
+  end
+
+  return success and success or nil, errs
+end
+
+
+function _M:purge(namespace, window_sizes, time)
+  -- XXX ugly!
+  for i=1,#window_sizes do
+    window_sizes[i] = tonumber(window_sizes[i])
+  end
+
+  local ok, errs = delete_obsolete_rows(self.cluster, namespace, window_sizes, time)
+  if not ok then
+    log(ERR, "failed to purge obsolete counters: ", table.concat(errs, ", "))
+    return false
+  end
+
+  return true
 end
 
 
