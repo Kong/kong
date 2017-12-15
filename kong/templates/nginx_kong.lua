@@ -75,7 +75,7 @@ server {
     listen ${{PROXY_LISTEN_SSL}} ssl${{HTTP2}}${{PROXY_PROTOCOL}};
     ssl_certificate ${{SSL_CERT}};
     ssl_certificate_key ${{SSL_CERT_KEY}};
-    ssl_protocols TLSv1.1 TLSv1.2;
+    ssl_protocols ${{SSL_PROTOCOLS}};
     ssl_certificate_by_lua_block {
         kong.ssl_certificate()
     }
@@ -165,7 +165,7 @@ server {
     listen ${{ADMIN_LISTEN_SSL}} ssl${{ADMIN_HTTP2}};
     ssl_certificate ${{ADMIN_SSL_CERT}};
     ssl_certificate_key ${{ADMIN_SSL_CERT_KEY}};
-    ssl_protocols TLSv1.1 TLSv1.2;
+    ssl_protocols ${{SSL_PROTOCOLS}};
 
     ssl_session_cache shared:SSL:10m;
     ssl_session_timeout 10m;
