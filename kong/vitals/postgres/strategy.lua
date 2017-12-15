@@ -44,6 +44,8 @@ local DELETE_CONSUMER_STATS = [[
   or (duration = %d and at < to_timestamp(%d) at time zone 'UTC'))
 ]]
 
+local SELECT_NODE = "select node_id from vitals_node_meta where node_id = '%s'"
+
 function _M.dynamic_table_names(dao)
   local table_names = {}
 
@@ -538,10 +540,6 @@ end
 
 
 function _M:check_node(node_id)
-  local SELECT_NODE = [[
-    select node_id from vitals_node_meta where node_id = '%s'
-  ]]
-
   local query = fmt(SELECT_NODE, node_id)
 
   local res, err = self.db:query(query)

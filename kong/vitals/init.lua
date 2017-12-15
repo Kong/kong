@@ -723,6 +723,17 @@ function _M:get_consumer_stats(opts)
 end
 
 
+function _M:find_node_by_id(node_id, helpers)
+  local res, _ = self.strategy:check_node(node_id)
+
+  if utils.is_valid_uuid(node_id) and #res > 0 then
+    return true
+  end
+
+  return helpers.responses.send_HTTP_NOT_FOUND()
+end
+
+
 --[[
                          INTERFACES TO KONG CORE
   Functions in this section are called by Kong core when Vitals is enabled.
@@ -856,15 +867,5 @@ function _M:log_request(ctx)
   return retval
 end
 
-
-function _M:find_node_by_id(node_id, helpers)
-  local res, _ = self.strategy:check_node(node_id)
-
-  if utils.is_valid_uuid(node_id) and #res > 0 then
-    return true
-  end
-
-  return helpers.responses.send_HTTP_NOT_FOUND()
-end
 
 return _M
