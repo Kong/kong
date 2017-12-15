@@ -85,6 +85,12 @@ return {
       local cluster_events = singletons.cluster_events
 
 
+      -- initialize balancers
+
+
+      balancer.init()
+
+
       -- events dispatcher
 
 
@@ -184,56 +190,119 @@ return {
       end, "crud", "ssl_certificates")
 
 
-      -- targets invalidations
+      -- target updates
 
 
+      -- worker_events local handler: event received from DAO
       worker_events.register(function(data)
-        log(DEBUG, "[events] Target updated, invalidating target in balancer")
+        local operation = data.operation
         local target = data.entity
-
-        cache:invalidate("balancer:targets:" .. target.upstream_id)
+        -- => to worker_events node handler
+        local ok, err = worker_events.post("balancer", "targets", {
+          operation = data.operation,
+          entity = data.entity,
+        })
+        if not ok then
+          log(ERR, "failed broadcasting target ",
+              operation, " to workers: ", err)
+        end
+        -- => to cluster_events handler
+        local key = fmt("%s:%s", operation, target.upstream_id)
+        ok, err = cluster_events:broadcast("balancer:targets", key)
+        if not ok then
+          log(ERR, "failed broadcasting target ", operation, " to cluster: ", err)
+        end
       end, "crud", "targets")
 
 
-      -- balancer invalidations
-
-
+      -- worker_events node handler
       worker_events.register(function(data)
-        log(DEBUG, "[events] Upstream updated, invalidating balancer")
-        local upstream = data.entity
+        local operation = data.operation
+        local target = data.entity
 
-        local ok, err = worker_events.post("balancer", "invalidate", upstream)
+        -- => to balancer update
+        balancer.on_target_event(operation, target)
+      end, "balancer", "targets")
+
+
+      -- cluster_events handler
+      cluster_events:subscribe("balancer:targets", function(data)
+        local operation, key = unpack(utils.split(data, ":"))
+        -- => to worker_events node handler
+        local ok, err = worker_events.post("balancer", "targets", {
+          operation = operation,
+          entity = {
+            upstream_id = key,
+          }
+        })
         if not ok then
-          log(ERR, "failed broadcasting balancer invalidation to workers: ", err)
+          log(ERR, "failed broadcasting target ", operation, " to workers: ", err)
         end
+      end)
 
-        local data = fmt("%s:%s", upstream.id, upstream.name)
-        local ok, err = cluster_events:broadcast("balancer:invalidate", data)
+
+      -- manual health updates
+      cluster_events:subscribe("balancer:post_health", function(data)
+        local ip, port, health, name = data:match("([^|]+)|([^|]+)|([^|]+)|(.*)")
+        port = tonumber(port)
+        local upstream = { name = name }
+        local ok, err = balancer.post_health(upstream, ip, port, health == "1")
         if not ok then
-          log(ERR, "failed broadcasting balancer invalidation to cluster: ", err)
+          log(ERR, "failed posting health of ", name, " to workers: ", err)
+        end
+      end)
+
+
+      -- upstream updates
+
+
+      -- worker_events local handler: event received from DAO
+      worker_events.register(function(data)
+        local operation = data.operation
+        local upstream = data.entity
+        -- => to worker_events node handler
+        local ok, err = worker_events.post("balancer", "upstreams", {
+          operation = data.operation,
+          entity = data.entity,
+        })
+        if not ok then
+          log(ERR, "failed broadcasting upstream ",
+              operation, " to workers: ", err)
+        end
+        -- => to cluster_events handler
+        local key = fmt("%s:%s:%s", operation, upstream.id, upstream.name)
+        ok, err = cluster_events:broadcast("balancer:upstreams", key)
+        if not ok then
+          log(ERR, "failed broadcasting upstream ", operation, " to cluster: ", err)
         end
       end, "crud", "upstreams")
 
 
-      worker_events.register(function(upstream)
-        cache:invalidate_local("balancer:upstreams")
-        cache:invalidate_local("balancer:upstreams:" .. upstream.id)
-        cache:invalidate_local("balancer:targets:"   .. upstream.id)
-        balancer.invalidate_balancer(upstream.name)
-      end, "balancer", "invalidate")
+      -- worker_events node handler
+      worker_events.register(function(data)
+        local operation = data.operation
+        local upstream = data.entity
+
+        -- => to balancer update
+        balancer.on_upstream_event(operation, upstream)
+      end, "balancer", "upstreams")
 
 
-      cluster_events:subscribe("balancer:invalidate", function(data)
-        local upstream_id, upstream_name = unpack(utils.split(data, ":"))
-
-        local ok, err = worker_events.post("balancer", "invalidate", {
-          id   = upstream_id,
-          name = upstream_name,
+      cluster_events:subscribe("balancer:upstreams", function(data)
+        local operation, id, name = unpack(utils.split(data, ":"))
+        -- => to worker_events node handler
+        local ok, err = worker_events.post("balancer", "upstreams", {
+          operation = operation,
+          entity = {
+            id = id,
+            name = name,
+          }
         })
         if not ok then
-          log(ERR, "failed broadcasting balancer invalidation to workers: ", err)
+          log(ERR, "failed broadcasting upstream ", operation, " to workers: ", err)
         end
       end)
+
     end
   },
   certificate = {
@@ -389,12 +458,14 @@ return {
         end
       end
 
-      local ok, err = balancer.execute(ctx.balancer_address)
+      local ok, err, errcode = balancer.execute(ctx.balancer_address)
       if not ok then
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR(
-                          "failed the initial dns/balancer resolve for '" ..
-                          ctx.balancer_address.host .. "' with: "         ..
-                          tostring(err))
+        if errcode == 500 then
+          err = "failed the initial dns/balancer resolve for '" ..
+                ctx.balancer_address.host .. "' with: "         ..
+                tostring(err)
+        end
+        return responses.send(errcode, err)
       end
 
       do
@@ -489,6 +560,15 @@ return {
   log = {
     after = function(ctx)
       reports.log()
+      local addr = ctx.balancer_address
+
+      -- If response was produced by an upstream (ie, not by a Kong plugin)
+      if ctx.KONG_PROXIED == true then
+        -- Report HTTP status for health checks
+        if addr and addr.balancer and addr.ip then
+          addr.balancer.report_http_status(addr.ip, addr.port, ngx.status)
+        end
+      end
     end
   }
 }
