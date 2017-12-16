@@ -123,13 +123,13 @@ version.
   `hash_*` attributes of the Upstream entity. Hashes can be based off client
   IPs, request headers, or Consumers!
   [#2875](https://github.com/Kong/kong/pull/2875)
-- :fireworks: Logging plugins now logs requests that were short-circuited by
-  Kong! (i.e. HTTP 401 responses from auth plugins, or HTTP 429 responses from
-  rate limiting plugins, etc.). Kong now executes any subsequent plugins once a
-  request has been short-circuited by one. Your plugin must be using the
+- :fireworks: Logging plugins now log requests that were short-circuited by
+  Kong! (e.g., HTTP 401 responses from auth plugins, HTTP 429 responses from
+  rate limiting plugins, etc.) Kong now executes any subsequent plugins once a
+  request has been short-circuited. Your plugin must be using the
   `kong.tools.responses` module for this behavior to be respected.
   [#3079](https://github.com/Kong/kong/pull/3079)
-- Kong is now compatible with OpenResty up to version 1.13.6.1. Beware that the
+- Kong is now compatible with OpenResty up to version 1.13.6.1. Be aware that the
   recommended (and default) version shipped with this release is still
   1.11.2.5.
   [#3070](https://github.com/Kong/kong/pull/3070)
