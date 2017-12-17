@@ -1,6 +1,7 @@
 local helpers     = require "spec.helpers"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local dao_factory = require "kong.dao.factory"
+local utils       = require "kong.tools.utils"
 local cassandra   = require "kong.vitals.cassandra.strategy"
 local postgres    = require "kong.vitals.postgres.strategy"
 local cjson       = require "cjson"
@@ -442,10 +443,24 @@ dao_helpers.for_each_dao(function(kong_conf)
             assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
           end)
 
-          it("returns a 404 if the node_id does not exist", function()
+          it("returns a 404 if the node_id is not valid", function()
             local res = assert(client:send {
               methd = "GET",
               path = "/vitals/nodes/totally-fake-uuid",
+              query = {
+                interval = "seconds"
+              }
+            })
+            res = assert.res_status(404, res)
+            local json = cjson.decode(res)
+
+            assert.same("Not found", json.message)
+          end)
+
+          it("returns a 404 if the node_id does not exist", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/nodes/" .. utils.uuid(),
               query = {
                 interval = "seconds"
               }
