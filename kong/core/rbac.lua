@@ -319,4 +319,20 @@ function _M.validate(token, route, method, dao_factory)
 end
 
 
+do
+  local reports = require "kong.core.reports"
+  local rbac_users_count = function()
+    local c, err = singletons.dao.rbac_users:count()
+    if not c then
+      log(WARN, "failed to get count of RBAC users: ", err)
+      return nil
+    end
+
+    return c
+  end
+
+  reports.add_ping_value("rbac_users", rbac_users_count)
+end
+
+
 return _M
