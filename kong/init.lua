@@ -172,6 +172,8 @@ function Kong.init()
               nil
     reports.add_ping_value("license_key", l)
     reports.add_ping_value("enterprise", true)
+    reports.add_ping_value("vitals", singletons.configuration.vitals)
+    reports.add_ping_value("rbac_enforced", singletons.configuration.enforce_rbac)
   end
   singletons.vitals = vitals.new {
       dao            = dao,
