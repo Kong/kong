@@ -81,6 +81,9 @@ local function send_report(signal_type, t, host, port)
         end
 
         v = json
+
+      elseif type(v) == "function" then
+        v = v()
       end
 
       mutable_idx = mutable_idx + 1

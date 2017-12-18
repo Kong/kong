@@ -12,7 +12,8 @@ describe("reports", function()
 
       reports.send("stub", {
         hello = "world",
-        foo = "bar"
+        foo = "bar",
+        baz = function() return "bat" end,
       }, "127.0.0.1", 8189)
 
       local ok, res = thread:join()
@@ -26,6 +27,7 @@ describe("reports", function()
       assert.matches("foo=bar", res, nil, true)
       assert.matches("hello=world", res, nil, true)
       assert.matches("signal=stub", res, nil, true)
+      assert.matches("baz=bat", res, nil, true)
     end)
     it("doesn't send if not enabled", function()
       reports.toggle(false)
