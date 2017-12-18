@@ -46,6 +46,11 @@ describe("reports", function()
   end)
 
   describe("retrieve_redis_version()", function()
+    setup(function()
+      _G.ngx = ngx
+      _G.ngx.log = function() return end
+    end)
+
     before_each(function()
       package.loaded["kong.core.reports"] = nil
       reports = require "kong.core.reports"
