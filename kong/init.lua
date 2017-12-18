@@ -164,6 +164,15 @@ function Kong.init()
   singletons.dao = dao
   singletons.configuration = config
   singletons.license = ee.read_license_info()
+  if config.anonymous_reports then
+    local reports = require "kong.core.reports"
+
+    local l = singletons.license and
+              singletons.license.license.payload.license_key or
+              nil
+    reports.add_ping_value("license_key", l)
+    reports.add_ping_value("enterprise", true)
+  end
   singletons.vitals = vitals.new {
       dao            = dao,
       flush_interval = config.vitals_flush_interval,
