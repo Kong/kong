@@ -379,7 +379,7 @@ end
 
 
 function _M:node_exists(node_id)
-  res, err = self.cluster:execute(SELECT_NODE, {
+  local res, err = self.cluster:execute(SELECT_NODE, {
     cassandra.uuid(node_id),
   }, QUERY_OPTIONS)
 
