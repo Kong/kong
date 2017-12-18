@@ -1,3 +1,7 @@
+## 0.3.1
+
+* Improve error handling in HTTP connections to introspection server
+
 ## 0.3
 
 * Add support for anonymous users
