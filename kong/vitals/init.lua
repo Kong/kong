@@ -638,7 +638,8 @@ function _M:get_stats(query_type, level, node_id)
     local node_exists, node_err = self.strategy:node_exists(node_id)
 
     if node_err then
-      return nil, node_err
+      log(WARN, _log_prefix, node_err)
+      return {}
     end
 
     if not node_exists then

@@ -548,11 +548,7 @@ function _M:node_exists(node_id)
     return nil, err
   end
 
-  if not res[1] then
-    return false, "could not select node_id. query: " .. query
-  end
-
-  return true
+  return res[1] ~= nil
 end
 
 return _M
