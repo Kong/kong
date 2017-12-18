@@ -25,6 +25,7 @@ local table_insert = table.insert
 local fmt = string.format
 local ngx_log = ngx.log
 local ERR = ngx.ERR
+local WARN = ngx.WARN
 
 function OAuth2Introspection:new()
   OAuth2Introspection.super.new(self, "oauth2-introspection")
@@ -105,10 +106,16 @@ local function make_introspection_request(conf, access_token)
 
   -- Trigger request
   local client = http.new()
-  client:connect(host, port)
+
   client:set_timeout(conf.timeout)
+
+  local ok, err = client:connect(host, port)
+  if not ok then
+    return false, err
+  end
+
   if is_https then
-    local ok, err = client:ssl_handshake()
+    ok, err = client:ssl_handshake()
     if not ok then
       return false, err
     end
@@ -134,9 +141,9 @@ local function make_introspection_request(conf, access_token)
   local status = res.status
   local body = res:read_body()
 
-  local ok, err = client:set_keepalive(conf.keepalive)
+  ok, err = client:set_keepalive(conf.keepalive)
   if not ok then
-    return false, err
+    ngx_log(WARN, "failed moving conn to keepalive pool: ", err)
   end
 
   return status == 200, body
