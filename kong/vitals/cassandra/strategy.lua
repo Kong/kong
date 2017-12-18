@@ -31,6 +31,8 @@ local UPDATE_NODE = [[
 
 local SELECT_NODES = "SELECT node_id FROM vitals_node_meta"
 
+local SELECT_NODE = "SELECT node_id FROM vitals_node_meta WHERE node_id = ?"
+
 local SELECT_STATS = [[
   SELECT * FROM vitals_stats_seconds
     WHERE node_id IN ?
@@ -373,6 +375,19 @@ end
 
 
 function _M:delete_consumer_stats(consumers, cutoff_times)
+end
+
+
+function _M:node_exists(node_id)
+  res, err = self.cluster:execute(SELECT_NODE, {
+    cassandra.uuid(node_id),
+  }, QUERY_OPTIONS)
+
+  if err then
+    return nil, err
+  end
+
+  return res[1] ~= nil
 end
 
 return _M
