@@ -869,10 +869,10 @@ return {
       CREATE TABLE IF NOT EXISTS vitals_consumers(
         consumer_id uuid,
         node_id uuid,
-        start_at timestamp with time zone,
+        at timestamp with time zone,
         duration integer,
         count integer,
-        PRIMARY KEY(consumer_id, node_id, start_at, duration)
+        PRIMARY KEY(consumer_id, node_id, at, duration)
       );
     ]],
     down = [[

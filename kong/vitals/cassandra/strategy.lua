@@ -46,7 +46,7 @@ local SELECT_MINUTE_STATS = [[
 local INSERT_CONSUMER_STATS = [[
   UPDATE vitals_consumers
      SET count       = count + ?
-   WHERE start_at    = ?
+   WHERE at          = ?
      AND duration    = ?
      AND consumer_id = ?
      AND node_id     = ?
@@ -326,7 +326,7 @@ end
   ]
 ]]
 function _M:insert_consumer_stats(data, node_id)
-  local res, err, count, start_at, duration, consumer_id
+  local res, err, count, at, duration, consumer_id
 
   if node_id then
     node_id = cassandra.uuid(node_id)
@@ -335,11 +335,11 @@ function _M:insert_consumer_stats(data, node_id)
   end
 
   for _, row in ipairs(data) do
-    consumer_id, start_at, duration, count = unpack(row)
+    consumer_id, at, duration, count = unpack(row)
 
     local count_converted = cassandra.counter(count)
-    local now_converted = cassandra.timestamp(start_at * 1000)
-    local minute = cassandra.timestamp(self:get_minute(start_at))
+    local now_converted = cassandra.timestamp(at * 1000)
+    local minute = cassandra.timestamp(self:get_minute(at))
     local consumer_id_converted = cassandra.uuid(consumer_id)
 
     res, err = self.cluster:execute(INSERT_CONSUMER_STATS, {

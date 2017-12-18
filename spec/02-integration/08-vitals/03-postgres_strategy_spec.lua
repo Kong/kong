@@ -498,9 +498,9 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         -- force a sort order to make assertion easier
         local q = [[
-            select consumer_id, node_id, extract('epoch' from start_at) as start_at,
+            select consumer_id, node_id, extract('epoch' from at) as at,
                    duration, count from vitals_consumers
-            order by start_at, duration, count
+            order by at, duration, count
         ]]
 
         local results = db:query(q)
@@ -509,35 +509,35 @@ dao_helpers.for_each_dao(function(kong_conf)
           {
             consumer_id = con1_id,
             node_id     = node_id,
-            start_at    = 1510560000,
+            at          = 1510560000,
             duration    = 1,
             count       = 1,
           },
           {
             consumer_id = con2_id,
             node_id     = node_id,
-            start_at    = 1510560000,
+            at           = 1510560000,
             duration    = 60,
             count       = 2,
           },
           {
             consumer_id = con1_id,
             node_id     = node_id,
-            start_at    = 1510560000,
+            at          = 1510560000,
             duration    = 60,
             count       = 4,
           },
           {
             consumer_id = con2_id,
             node_id     = node_id,
-            start_at    = 1510560001,
+            at          = 1510560001,
             duration    = 1,
             count       = 2,
           },
           {
             consumer_id = con1_id,
             node_id     = node_id,
-            start_at    = 1510560001,
+            at           = 1510560001,
             duration    = 1,
             count       = 3,
           },
@@ -564,7 +564,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert(strategy:insert_consumer_stats(data_to_insert))
 
         local q = [[
-            select consumer_id, node_id, extract('epoch' from start_at) as start_at,
+            select consumer_id, node_id, extract('epoch' from at) as at,
                    duration, count from vitals_consumers where duration = 60
         ]]
 
@@ -574,7 +574,7 @@ dao_helpers.for_each_dao(function(kong_conf)
           {
             consumer_id = con1_id,
             node_id     = node_id,
-            start_at    = 1510560000,
+            at          = 1510560000,
             duration    = 60,
             count       = 20,
           },
@@ -593,7 +593,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       before_each(function()
         local q, query
 
-        q = "insert into vitals_consumers(consumer_id, node_id, start_at, duration, count) " ..
+        q = "insert into vitals_consumers(consumer_id, node_id, at, duration, count) " ..
             "values('%s', '%s', to_timestamp(%d), %d, %d)"
 
         local data_to_insert = {
@@ -629,17 +629,17 @@ dao_helpers.for_each_dao(function(kong_conf)
         local expected = {
           {
             node_id     = "cluster",
-            start_at    = 1510560000,
+            at          = 1510560000,
             count       = 1,
           },
           {
             node_id     = "cluster",
-            start_at    = 1510560001,
+            at          = 1510560001,
             count       = 8,
           },
           {
             node_id     = "cluster",
-            start_at    = 1510560002,
+            at          = 1510560002,
             count       = 11,
           },
         }
@@ -669,27 +669,27 @@ dao_helpers.for_each_dao(function(kong_conf)
           {
             count = 1,
             node_id = node_1,
-            start_at = 1510560000,
+            at = 1510560000,
           },
           {
             count = 3,
             node_id = node_1,
-            start_at = 1510560001,
+            at = 1510560001,
           },
           {
             count = 4,
             node_id = node_1,
-            start_at = 1510560002,
+            at = 1510560002,
           },
           {
             count = 5,
             node_id = node_2,
-            start_at = 1510560001,
+            at = 1510560001,
           },
           {
             count = 7,
             node_id = node_2,
-            start_at = 1510560002,
+            at = 1510560002,
           },
         }
 
@@ -711,12 +711,12 @@ dao_helpers.for_each_dao(function(kong_conf)
           {
             count = 5,
             node_id = node_2,
-            start_at = 1510560001,
+            at = 1510560001,
           },
           {
             count = 7,
             node_id = node_2,
-            start_at = 1510560002,
+            at = 1510560002,
           },
         }
 
@@ -737,12 +737,12 @@ dao_helpers.for_each_dao(function(kong_conf)
         local expected = {
           {
             node_id     = "cluster",
-            start_at    = 1510560000,
+            at          = 1510560000,
             count       = 39,
           },
           {
             node_id     = "cluster",
-            start_at    = 1510560060,
+            at          = 1510560060,
             count       = 24,
           },
         }
@@ -771,17 +771,17 @@ dao_helpers.for_each_dao(function(kong_conf)
           {
             count = 19,
             node_id = node_1,
-            start_at = 1510560000,
+            at = 1510560000,
           },
           {
             count = 20,
             node_id = node_2,
-            start_at = 1510560000,
+            at = 1510560000,
           },
           {
             count = 24,
             node_id = node_2,
-            start_at = 1510560060,
+            at = 1510560060,
           },
         }
 
@@ -803,12 +803,12 @@ dao_helpers.for_each_dao(function(kong_conf)
           {
             count = 20,
             node_id = node_2,
-            start_at = 1510560000,
+            at = 1510560000,
           },
           {
             count = 24,
             node_id = node_2,
-            start_at = 1510560060,
+            at = 1510560060,
           },
         }
 
@@ -825,7 +825,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       before_each(function()
         local q, query
 
-        q = "insert into vitals_consumers(consumer_id, node_id, start_at, duration, count) " ..
+        q = "insert into vitals_consumers(consumer_id, node_id, at, duration, count) " ..
             "values('%s', '%s', to_timestamp(%d), %d, %d)"
 
         local test_data = {

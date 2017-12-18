@@ -724,12 +724,12 @@ return {
     name = "2017-11-06-848722_vitals_consumers",
     up = [[
       CREATE TABLE IF NOT EXISTS vitals_consumers(
-        start_at    timestamp,
+        at          timestamp,
         duration    int,
         consumer_id uuid,
         node_id     uuid,
         count       counter,
-        PRIMARY KEY((consumer_id, duration), start_at, node_id)
+        PRIMARY KEY((consumer_id, duration), at, node_id)
       );
     ]],
     down = [[

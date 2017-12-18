@@ -28,9 +28,9 @@ local INSERT_STATS = [[
 ]]
 
 local INSERT_CONSUMER_STATS = [[
-  insert into vitals_consumers(consumer_id, node_id, start_at, duration, count)
+  insert into vitals_consumers(consumer_id, node_id, at, duration, count)
   values('%s', '%s', to_timestamp(%d) at time zone 'UTC', %d, %d)
-  on conflict(consumer_id, node_id, start_at, duration) do
+  on conflict(consumer_id, node_id, at, duration) do
   update set count = vitals_consumers.count + excluded.count
 ]]
 
@@ -40,8 +40,8 @@ local DELETE_STATS = "delete from %s where at < %d"
 
 local DELETE_CONSUMER_STATS = [[
   delete from vitals_consumers where consumer_id = '{%s}'
-  and ((duration = %d and start_at < to_timestamp(%d) at time zone 'UTC')
-  or (duration = %d and start_at < to_timestamp(%d) at time zone 'UTC'))
+  and ((duration = %d and at < to_timestamp(%d) at time zone 'UTC')
+  or (duration = %d and at < to_timestamp(%d) at time zone 'UTC'))
 ]]
 
 function _M.dynamic_table_names(dao)
@@ -350,18 +350,18 @@ end
   takes an options table that contains the following:
   - consumer_id that must be a valid uuid
   - duration that must be one of (1, 60)
-  - start_at - in epoch format
+  - at - in epoch format
   - end_at - in epoch format
   - level - "node" or "cluster"
 
-  start_at must be valid for the given duration
+  at must be valid for the given duration
 
   if node_id is provided, it must be a valid uuid
 
   all arguments are validated in the vitals module
 
   returns an array of
-  { node_id, start_at, count }
+  { node_id, at, count }
   where node_id is either the UUID of the requested node,
   or "cluster" when requesting cluster-level data
 ]]
@@ -381,17 +381,17 @@ function _M:select_consumer_stats(opts)
   if level == "node" then
     select = [[
       SELECT node_id,
-             extract('epoch' from start_at) as start_at,
+             extract('epoch' from at) as at,
              count
       ]]
   else
     -- must be cluster
     select = [[
       SELECT 'cluster' as node_id,
-             extract('epoch' from start_at) as start_at,
+             extract('epoch' from at) as at,
              sum(count) as count
       ]]
-    group = " GROUP BY start_at "
+    group = " GROUP BY at "
   end
 
   -- construct the FROM clause
@@ -407,7 +407,7 @@ function _M:select_consumer_stats(opts)
   end
 
   -- put it all together
-  query = select .. from .. where .. group .. " ORDER BY start_at"
+  query = select .. from .. where .. group .. " ORDER BY at"
 
   res, err = self.db:query(query)
   if not res then
@@ -424,7 +424,7 @@ end
   ]
 ]]
 function _M:insert_consumer_stats(data, node_id)
-  local consumer_id, start_at, duration, count
+  local consumer_id, at, duration, count
   local query, last_err
   local row_count  = 0
   local fail_count = 0
@@ -434,9 +434,9 @@ function _M:insert_consumer_stats(data, node_id)
   for _, row in ipairs(data) do
     row_count = row_count + 2 -- one for seconds, one for minutes
 
-    consumer_id, start_at, duration, count = unpack(row)
+    consumer_id, at, duration, count = unpack(row)
 
-    query = fmt(INSERT_CONSUMER_STATS, consumer_id, node_id, start_at,
+    query = fmt(INSERT_CONSUMER_STATS, consumer_id, node_id, at,
                 duration, count)
 
     local res, err = self.db:query(query)
@@ -446,8 +446,8 @@ function _M:insert_consumer_stats(data, node_id)
     end
 
     -- naive approach - update minutes in-line
-    local mstart_at = self:get_minute(start_at)
-    query = fmt(INSERT_CONSUMER_STATS, consumer_id, node_id, mstart_at,
+    local mat = self:get_minute(at)
+    query = fmt(INSERT_CONSUMER_STATS, consumer_id, node_id, mat,
                 60, count)
 
     local res, err = self.db:query(query)

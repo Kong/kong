@@ -517,14 +517,14 @@ dao_helpers.for_each_dao(function(kong_conf)
 
             -- make sure the data we enter is in the same minute, so we
             -- can make a correct assertion
-            local start_at = time() - 10
-            local minute_start_at = start_at - (start_at % 60)
-            start_at = minute_start_at + 5
+            local at = time() - 10
+            local minute_start_at = at - (at % 60)
+            at = minute_start_at + 5
 
             -- a couple requests, a few seconds apart
             assert(strategy:insert_consumer_stats({
-              { consumer.id, start_at, 1, 2 },
-              { consumer.id, start_at + 10, 1, 1 },
+              { consumer.id, at, 1, 2 },
+              { consumer.id, at + 10, 1, 1 },
             }, node_1))
 
             local res = assert(client:send {

@@ -443,28 +443,28 @@ dao_helpers.for_each_dao(function(kong_conf)
             count       = 1,
             duration    = 60,
             node_id     = uuid,
-            start_at    = minute
+            at          = minute
           },
           {
             consumer_id = consumer_uuid_2,
             count       = 1,
             duration    = 60,
             node_id     = uuid,
-            start_at    = minute
+            at          = minute
           },
           {
             consumer_id = consumer_uuid_1,
             count       = 1,
             duration    = 1,
             node_id     = uuid,
-            start_at    = now_converted
+            at           = now_converted
           },
           {
             consumer_id = consumer_uuid_2,
             count       = 1,
             duration    = 1,
             node_id     = uuid,
-            start_at    = now_converted
+            at          = now_converted
           },
           meta = {
             has_more_pages = false

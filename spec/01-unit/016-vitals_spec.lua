@@ -293,7 +293,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       before_each(function()
         local q, query
 
-        q = "insert into vitals_consumers(consumer_id, node_id, start_at, duration, count) " ..
+        q = "insert into vitals_consumers(consumer_id, node_id, at, duration, count) " ..
             "values('%s', '%s', to_timestamp(%d), %d, %d)"
 
         local data_to_insert = {

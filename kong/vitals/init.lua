@@ -258,7 +258,7 @@ local function convert_customer_stats(vitals, res)
 
   for _, row in ipairs(res) do
     stats[row.node_id] = stats[row.node_id] or {}
-    stats[row.node_id][vitals.strategy:get_timestamp_str(row.start_at)] = row.count
+    stats[row.node_id][vitals.strategy:get_timestamp_str(row.at)] = row.count
   end
 
   return stats
