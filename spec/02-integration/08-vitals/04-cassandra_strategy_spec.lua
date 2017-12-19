@@ -482,5 +482,28 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert.same(expected_consumers, consumers_res)
       end)
     end)
+
+    describe(":node_exists()", function()
+      it("should return false if the node does not exist", function()
+        local node_1 = utils.uuid()
+
+        assert.same(strategy:node_exists(node_1), false)
+      end)
+
+      it("should return true if the node exists", function()
+        local node_2 = utils.uuid()
+
+        local q = "insert into vitals_node_meta(node_id) values(" .. node_2 .. ")"
+        assert(cluster:execute(q))
+
+        assert.same(strategy:node_exists(node_2), true)
+      end)
+
+      it("should return nil if the node_id is invalid", function()
+        local node_3 = "123"
+
+        assert.same(strategy:node_exists(node_3), nil)
+      end)
+    end)
   end)
 end)
