@@ -63,30 +63,30 @@ local healthchecks_defaults = {
     concurrency = 10,
     http_path = "/",
     healthy = {
-      interval = 0, -- 0 = disabled by default
+      interval = 0,  -- 0 = probing disabled by default
       http_statuses = { 200, 302 },
-      successes = 2,
+      successes = 0, -- 0 = disabled by default
     },
     unhealthy = {
-      interval = 0, -- 0 = disabled by default
+      interval = 0, -- 0 = probing disabled by default
       http_statuses = { 429, 404,
                         500, 501, 502, 503, 504, 505 },
-      tcp_failures = 2,
-      timeouts = 3,
-      http_failures = 5,
+      tcp_failures = 0,  -- 0 = disabled by default
+      timeouts = 0,      -- 0 = disabled by default
+      http_failures = 0, -- 0 = disabled by default
     },
   },
   passive = {
     healthy = {
       http_statuses = { 200, 201, 202, 203, 204, 205, 206, 207, 208, 226,
                         300, 301, 302, 303, 304, 305, 306, 307, 308 },
-      successes = 5,
+      successes = 0,
     },
     unhealthy = {
       http_statuses = { 429, 500, 503 },
-      tcp_failures = 2,
-      timeouts = 7,
-      http_failures = 5,
+      tcp_failures = 0,  -- 0 = circuit-breaker disabled by default
+      timeouts = 0,      -- 0 = circuit-breaker disabled by default
+      http_failures = 0, -- 0 = circuit-breaker disabled by default
     },
   },
 }
