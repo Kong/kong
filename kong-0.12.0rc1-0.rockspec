@@ -30,7 +30,7 @@ dependencies = {
   "lua-resty-dns-client == 1.0.0",
   "lua-resty-worker-events == 0.3.1",
   "lua-resty-mediador == 0.1.2",
-  "lua-resty-healthcheck == 0.2.0",
+  "lua-resty-healthcheck == 0.3.0",
 }
 build = {
   type = "builtin",
