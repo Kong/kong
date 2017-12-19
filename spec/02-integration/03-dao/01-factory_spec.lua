@@ -52,5 +52,14 @@ helpers.for_each_dao(function(kong_conf)
       assert.is_string(info.version)
       assert.not_equal("unknown", info.version)
     end)
+
+    if kong_conf.database == "cassandra" then
+      it("[cassandra] sets the 'major_version_n' field on the DB", function()
+        local factory = assert(Factory.new(kong_conf))
+        assert(factory:init())
+
+        assert.is_number(factory.db.major_version_n)
+      end)
+    end
   end)
 end)
