@@ -319,7 +319,7 @@ return {
     up = function(db, kong_config)
       local keyspace_name = kong_config.cassandra_keyspace
 
-      if db.release_version < 3 then
+      if db.major_version_n < 3 then
         local rows, err = db:query([[
           SELECT *
           FROM system.schema_columns
