@@ -102,6 +102,7 @@ function Canary:access(conf)
 
     -- calculate current step, and hash position. Both 0-indexed.
     step = math_floor((time - start) / duration * steps)
+    print(step, " : ", time, " : ", start, " : ", duration, " : ", steps)
   end
 
   local hash = math_fmod(get_hash(conf.hash), steps)
