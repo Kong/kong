@@ -60,7 +60,13 @@ describe("Plugin: canary (access)", function()
 
 
   teardown(function()
-    helpers.stop_kong("servroot", true)
+    if proxy_client then
+      proxy_client:close()
+    end
+    if admin_client then
+      admin_client:close()
+    end
+    helpers.stop_kong()
   end)
 
   describe("Canary", function()
@@ -155,6 +161,9 @@ describe("Plugin: canary (access)", function()
           }
         }
       })
+
+      local hash1 = math.fmod(ngx.crc32_short("bc32e4ec-e4df-11e7-80c1-9a214cf093ae"), 4)
+
       ngx.sleep(1)
       assert.res_status(201, res)
       local count = {
@@ -162,7 +171,7 @@ describe("Plugin: canary (access)", function()
         ["/requests"] = 0
       }
 
-      for n = 1, 5 do
+      for n = 1, 4 do
         local res = assert(proxy_client:send {
           method = "GET",
           path = "/requests",
@@ -176,24 +185,17 @@ describe("Plugin: canary (access)", function()
         local json = cjson.decode(body)
         count[json.vars.request_uri] = count[json.vars.request_uri] + 1
 
-        local res = assert(proxy_client:send {
-          method = "GET",
-          path = "/requests",
-          headers = {
-            ["Host"] = "canary2.com",
-            ["apikey"] = "apikey124"
-          }
-        })
+        if n > hash1 then
+          assert.is_True(count["/requests/path2"] > 0)
+        else
+          assert.is_True(count["/requests/path2"] == 0)
+        end
 
-
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        count[json.vars.request_uri] = count[json.vars.request_uri] + 1
-
-        ngx.sleep(1)
-
+        ngx.sleep(.9)
       end
 
+      -- all request should now route to new uri
+      ngx.sleep(1)
       local res = assert(proxy_client:send {
         method = "GET",
         path = "/requests",

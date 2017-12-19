@@ -61,8 +61,8 @@ return {
   no_consumer = true,
   fields = {
     start = {       -- when to start the release (seconds since epoch)
-      type    = "number",
-      func    = check_start
+      type = "number",
+      func = check_start
     },
     hash = {        -- what element to use for hashing to the target
       type    = "string",
@@ -83,11 +83,11 @@ return {
       type = "number",
       func = check_percentage,
     },
-    upstream_target = {  -- target hostname (upstream_url == a, this is b)
+    upstream_target = {  -- target hostname
       type = "string",
       func = check_upstream_target
     },
-    upstream_uri = {   -- target uri (upstream_url == a, this is b)
+    upstream_uri = {   -- target uri
       type = "string",
       func = check_upstream_uri
     },
