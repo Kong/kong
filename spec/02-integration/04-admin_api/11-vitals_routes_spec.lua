@@ -37,15 +37,15 @@ dao_helpers.for_each_dao(function(kong_conf)
           local q = "create table if not exists " .. strategy:current_table_name() ..
               "(LIKE vitals_stats_seconds INCLUDING defaults INCLUDING constraints INCLUDING indexes)"
           assert(dao.db:query(q))
+
+          local node_q = "insert into vitals_node_meta(node_id) values('%s')"
+          local nodes = { node_1, node_2, node_3 }
+
+          for i, node in ipairs(nodes) do
+            assert(dao.db:query(fmt(node_q, node)))
+          end
         else
           strategy = cassandra.new(dao)
-        end
-
-        local q = "insert into vitals_node_meta(node_id) values('%s')"
-        local nodes = { node_1, node_2, node_3 }
-
-        for i, node in ipairs(nodes) do
-          assert(dao.db:query(fmt(q, node)))
         end
 
         local test_data_1 = {
