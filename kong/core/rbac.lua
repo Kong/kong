@@ -324,7 +324,7 @@ do
   local rbac_users_count = function()
     local c, err = singletons.dao.rbac_users:count()
     if not c then
-      log(WARN, "failed to get count of RBAC users: ", err)
+      log(ngx.WARN, "failed to get count of RBAC users: ", err)
       return nil
     end
 
