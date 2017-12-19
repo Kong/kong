@@ -34,7 +34,7 @@ describe("Plugins triggering", function()
       config = {},
     })
     assert(helpers.dao.plugins:insert {
-      name   = "rate-limiting-advanced",
+      name   = "rate-limiting",
       config = {
         window_size = { 3600 },
         limit       = { 1 },
@@ -49,7 +49,7 @@ describe("Plugins triggering", function()
       upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
-      name   = "rate-limiting-advanced",
+      name   = "rate-limiting",
       api_id = api1.id,
       config = {
         window_size = { 3600 },
@@ -60,7 +60,7 @@ describe("Plugins triggering", function()
 
     -- Consumer Specific Configuration
     assert(helpers.dao.plugins:insert {
-      name        = "rate-limiting-advanced",
+      name        = "rate-limiting",
       consumer_id = consumer2.id,
       config = {
         window_size = { 3600 },
@@ -76,7 +76,7 @@ describe("Plugins triggering", function()
       upstream_url = helpers.mock_upstream_url,
     })
     assert(helpers.dao.plugins:insert {
-      name        = "rate-limiting-advanced",
+      name        = "rate-limiting",
       api_id      = api2.id,
       consumer_id = consumer2.id,
       config = {
@@ -100,7 +100,7 @@ describe("Plugins triggering", function()
       api_id = api3.id,
     })
     assert(helpers.dao.plugins:insert {
-      name = "rate-limiting-advanced",
+      name = "rate-limiting",
       consumer_id = consumer3.id,
       api_id = api3.id,
       config = {

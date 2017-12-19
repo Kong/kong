@@ -134,7 +134,7 @@ describe("kong start/stop", function()
         helpers.dao:run_migrations()
         -- Delete a migration to simulate inconsistencies between version
         local _, err = helpers.dao.db:query([[
-          DELETE FROM schema_migrations WHERE id='rate-limiting-advanced'
+          DELETE FROM schema_migrations WHERE id='rate-limiting'
         ]])
         assert.is_nil(err)
 

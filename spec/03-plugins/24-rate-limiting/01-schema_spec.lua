@@ -1,7 +1,7 @@
 local validate_entity = require("kong.dao.schemas_validation").validate_entity
-local rate_limiting_schema = require "kong.plugins.rate-limiting-advanced.schema"
+local rate_limiting_schema = require "kong.plugins.rate-limiting.schema"
 
-describe("rate-limiting-advanced schema", function()
+describe("rate-limiting schema", function()
   it("accepts a minimal config", function()
     local ok, err = validate_entity({
       window_size = { 60 },
