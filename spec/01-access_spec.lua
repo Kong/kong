@@ -61,7 +61,7 @@ end
 
 describe("Plugin: canary (access)", function()
   local proxy_client, admin_client, api1, api2
-  
+
   setup(function()
     helpers.run_migrations()
 
@@ -127,7 +127,7 @@ describe("Plugin: canary (access)", function()
     local json = assert.response(res).has.jsonbody()
     test_plugin_id = json.id
   end
-  
+
   after_each(function()
     -- when a test plugin was added, we remove it again to clean up
     if test_plugin_id then
@@ -232,80 +232,106 @@ describe("Plugin: canary (access)", function()
       end
     end)
 
-    it("test start", function()
-      local res = assert(proxy_client:send {
-        method = "GET",
-        path = "/requests?apikey=apikey123",
-        headers = {
-          ["Host"] = "canary2.com"
-        }
+    it("test start with default hash", function()
+      add_canary(api1.id, {
+        upstream_uri = "/requests/path2",
+        percentage = nil,
+        steps = 3,
+        start = ngx.time() + 2,
+        duration = 6
       })
-      assert.res_status(200, res)
+      local ids = generate_consumers(admin_client, {0,1,2}, 3)
+      local count = {}
+      ngx.sleep(2.5)
+      for n = 1, 3 do
+        for _, apikey in pairs(ids) do
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/requests",
+            headers = {
+              ["Host"] = "canary1.com",
+              ["apikey"] = apikey
+            }
+          })
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          count[json.vars.request_uri] = (count[json.vars.request_uri] or  0) + 1
+        end
+        assert.are.equal(n, count["/requests/path2"])
+        assert.are.equal(3 - n, count["/requests"] or  0)
+        count = {}
+        ngx.sleep(2)
+      end
 
-      res = assert(admin_client:send {
-        method = "POST",
-        path = "/apis/" .. api2.name .."/plugins/",
-        headers = {
-          ["Host"] = "canary1.com",
-          ["Content-Type"] = "application/json"
-        },
-        body = {
-          name = "canary",
-          config = {
-            upstream_uri = "/requests/path2",
-            percentage = nil,
-            steps = 4,
-            start = ngx.time() + 1,
-            duration = 5
-          }
-        }
-      })
-
-      local hash1 = math.fmod(ngx.crc32_short(consumer2.id), 4)
-
-      ngx.sleep(1)
-      assert.res_status(201, res)
-      local count = {
-        ["/requests/path2"] = 0,
-        ["/requests"] = 0
-      }
-
-      for n = 1, 4 do
+      -- now all request should route to new target
+      for _, apikey in pairs(ids) do
         local res = assert(proxy_client:send {
           method = "GET",
           path = "/requests",
           headers = {
-            ["Host"] = "canary2.com",
-            ["apikey"] = "apikey123"
+            ["Host"] = "canary1.com",
+            ["apikey"] = apikey
           }
         })
+        assert.response(res).has.status(200)
+        local json = assert.response(res).has.jsonbody()
+        assert.is_equal("/requests/path2", json.vars.request_uri)
+      end
+    end)
 
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        count[json.vars.request_uri] = count[json.vars.request_uri] + 1
+    it("test start with hash as `ip`", function()
+      add_canary(api1.id, {
+        upstream_uri = "/requests/path2",
+        percentage = nil,
+        steps = 3,
+        start = ngx.time() + 2,
+        duration = 6,
+        hash = "ip",
+      })
+      local ids = generate_consumers(admin_client, {0,1,2}, 3)
+      local count = {}
+      ngx.sleep(2.5)
+      for n = 1, 3 do
+        for _, apikey in pairs(ids) do
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/requests",
+            headers = {
+              ["Host"] = "canary1.com",
+              ["apikey"] = apikey
+            }
+          })
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          count[json.vars.request_uri] = (count[json.vars.request_uri] or  0) + 1
 
-        if n > hash1 then
-          assert(count["/requests/path2"] > 0, "expected 0, got "..tostring(count["/requests/path2"]))
-        else
-          assert.are.equal(0, count["/requests/path2"] )
         end
-
-        ngx.sleep(.9)
+        -- we have 4 consumers, but they should, based on ip, be all in the same target
+        if count["/requests/path2"] then
+          assert.are.equal(3, count["/requests/path2"])
+          assert.is_nil(count["/requests"])
+        else
+          assert.are.equal(3, count["/requests"])
+          assert.is_nil(count["/requests/path2"])
+        end
+        count = {}
+        ngx.sleep(2)
       end
 
-      -- all request should now route to new uri
-      ngx.sleep(1)
-      local res = assert(proxy_client:send {
-        method = "GET",
-        path = "/requests",
-        headers = {
-          ["Host"] = "canary2.com",
-          ["apikey"] = "apikey124"
-        }
-      })
-      local body = assert.res_status(200, res)
-      local json = cjson.decode(body)
-      assert.is_equal("/requests/path2", json.vars.request_uri)
+      -- now all request should route to new target
+      for _, apikey in pairs(ids) do
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/requests",
+          headers = {
+            ["Host"] = "canary1.com",
+            ["apikey"] = apikey
+          }
+        })
+        assert.response(res).has.status(200)
+        local json = assert.response(res).has.jsonbody()
+        assert.is_equal("/requests/path2", json.vars.request_uri)
+      end
     end)
   end)
 end)
