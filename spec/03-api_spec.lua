@@ -62,6 +62,8 @@ describe("Plugin: proxy-cache", function()
   end)
 
   describe("(schema)", function()
+    local body
+
     it("accepts an array of numbers as strings", function()
       local res = assert(admin_client:send {
         method = "POST",
@@ -83,7 +85,13 @@ describe("Plugin: proxy-cache", function()
           ["Content-Type"] = "application/json",
         },
       })
-      assert.res_status(201, res)
+      body = assert.res_status(201, res)
+    end)
+    it("casts an array of response_code values to number types", function()
+      local json = cjson.decode(body)
+      for _, v in ipairs(json.config.response_code) do
+        assert.is_number(v)
+      end
     end)
     it("errors if response_code is an empty array", function()
       local res = assert(admin_client:send {

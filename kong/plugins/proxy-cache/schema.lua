@@ -109,6 +109,10 @@ return {
       end
     end
 
+    for i = 1, #plugin_t.response_code do
+      plugin_t.response_code[i] = tonumber(plugin_t.response_code[i])
+    end
+
     return true
   end,
 }
