@@ -1,8 +1,79 @@
 local helpers = require "spec.helpers"
-local cjson = require "cjson"
 local math_fmod = math.fmod
 local crc32 = ngx.crc32_short
 local uuid = require("kong.tools.utils").uuid
+
+-- mocked upstream host
+local function http_server(timeout, count, port, ...)
+  local threads = require "llthreads2.ex"
+  local thread = threads.new({
+    function(timeout, count, port)
+      local socket = require "socket"
+      local server = assert(socket.tcp())
+      assert(server:setoption('reuseaddr', true))
+      assert(server:bind("*", port))
+      assert(server:listen())
+
+      local expire = socket.gettime() + timeout
+      assert(server:settimeout(timeout))
+
+      local success = 0
+      while count > 0 do
+        local client, err
+        client, err = server:accept()
+        if err == "timeout" then
+          if socket.gettime() > expire then
+            server:close()
+            error("timeout")
+          end
+        elseif not client then
+          server:close()
+          error(err)
+        else
+          count = count - 1
+
+          local err
+          local line_count = 0
+          while line_count < 7 do
+            _, err = client:receive()
+            if err then
+              break
+            else
+              line_count = line_count + 1
+            end
+          end
+
+          if err then
+            client:close()
+            server:close()
+            error(err)
+          end
+          local response_json = '{"vars": {"request_uri": "/requests/path2"}}'
+          local s = client:send(
+            'HTTP/1.1 200 OK\r\n' ..
+                    'Connection: close\r\n' ..
+                    'Content-Length: '.. #response_json .. '\r\n' ..
+                    '\r\n' ..
+                    response_json
+          )
+
+          client:close()
+          if s then
+            success = success + 1
+          end
+        end
+      end
+
+      server:close()
+      return success
+    end
+  }, timeout, count, port)
+
+  local server = thread:start(...)
+  ngx.sleep(0.2)
+  return server
+end
+
 
 -- Generates consumers and key-auth keys.
 -- Calls the management api to create the consumers and key-auth credentials
@@ -32,7 +103,7 @@ local function generate_consumers(admin_client, list, modulo)
   end
   -- create consumers and their key-auth keys
   for _, id in pairs(result) do
-    res = assert(admin_client:send {
+    local res = assert(admin_client:send {
       method = "POST",
       path = "/consumers",
       headers = {
@@ -105,7 +176,7 @@ describe("Plugin: canary (access)", function()
     if admin_client then
       admin_client:close()
     end
-    helpers.stop_kong()
+    helpers.stop_kong(nil, true)
   end)
 
   local test_plugin_id -- retain id to remove again in after_each, max 1 per test
@@ -145,9 +216,9 @@ describe("Plugin: canary (access)", function()
 
     it("test percentage 50%", function()
       add_canary(api1.id, {
-          upstream_uri = "/requests/path2",
-          percentage = "50",
-          steps = "4",
+        upstream_uri = "/requests/path2",
+        percentage = "50",
+        steps = "4",
       })
       local ids = generate_consumers(admin_client, {0,1,2,3}, 4)
       local count = {}
@@ -166,15 +237,44 @@ describe("Plugin: canary (access)", function()
       end
 
       assert.is_equal(count["/requests/path2"],
-                      count["/requests"] )
+        count["/requests"] )
+    end)
+
+    it("test percentage 50% with upstream_host", function()
+      local server1 = http_server(10, 2, 20002)
+      add_canary(api1.id, {
+        upstream_host = "127.0.0.1:20002",
+        percentage = "50",
+        steps = "4",
+      })
+      local ids = generate_consumers(admin_client, {0,1,2,3}, 4)
+      local count = {}
+      for _, apikey in pairs(ids) do
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/requests",
+          headers = {
+            ["Host"] = "canary1.com",
+            ["apikey"] = apikey
+          }
+        })
+        assert.response(res).has.status(200)
+        local json = assert.response(res).has.jsonbody()
+        count[json.vars.request_uri] = (count[json.vars.request_uri] or  0) + 1
+      end
+
+      assert.is_equal(count["/requests/path2"], count["/requests"])
+
+      local _, success = server1:join()
+      assert.is_equal(2, success)
     end)
 
     it("test 'none' as hash", function()
       add_canary(api1.id, {
-          upstream_uri = "/requests/path2",
-          percentage = "50",
-          steps = "4",
-          hash = "none",
+        upstream_uri = "/requests/path2",
+        percentage = "50",
+        steps = "4",
+        hash = "none",
       })
       -- only use 1 consumer, which should still randomly end up in all targets
       local apikey = generate_consumers(admin_client, {0}, 4)[0]
@@ -184,7 +284,7 @@ describe("Plugin: canary (access)", function()
       }
       local timeout = ngx.now() + 30
       while count["/requests/path2"] == 0 or
-            count["/requests"] == 0 do
+              count["/requests"] == 0 do
         local res = assert(proxy_client:send {
           method = "GET",
           path = "/requests",
@@ -202,10 +302,10 @@ describe("Plugin: canary (access)", function()
 
     it("test 'ip' as hash", function()
       add_canary(api1.id, {
-          upstream_uri = "/requests/path2",
-          percentage = "50",
-          steps = "4",
-          hash = "ip",
+        upstream_uri = "/requests/path2",
+        percentage = "50",
+        steps = "4",
+        hash = "ip",
       })
       local ids = generate_consumers(admin_client, {0,1,2,3}, 4)
       local count = {}
@@ -277,6 +377,56 @@ describe("Plugin: canary (access)", function()
         local json = assert.response(res).has.jsonbody()
         assert.is_equal("/requests/path2", json.vars.request_uri)
       end
+    end)
+
+    it("test start with default hash and upstream_host", function()
+      local server1 = http_server(10, 9, 20002)
+      add_canary(api1.id, {
+        upstream_host = "127.0.0.1:20002",
+        percentage = nil,
+        steps = 3,
+        start = ngx.time() + 2,
+        duration = 6
+      })
+      local ids = generate_consumers(admin_client, {0,1,2}, 3)
+      local count = {}
+      ngx.sleep(2.5)
+      for n = 1, 3 do
+        for _, apikey in pairs(ids) do
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/requests",
+            headers = {
+              ["Host"] = "canary1.com",
+              ["apikey"] = apikey
+            }
+          })
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          count[json.vars.request_uri] = (count[json.vars.request_uri] or  0) + 1
+        end
+        assert.are.equal(n, count["/requests/path2"])
+        assert.are.equal(3 - n, count["/requests"] or  0)
+        count = {}
+        ngx.sleep(2)
+      end
+
+      -- now all request should route to new target
+      for _, apikey in pairs(ids) do
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/requests",
+          headers = {
+            ["Host"] = "canary1.com",
+            ["apikey"] = apikey
+          }
+        })
+        assert.response(res).has.status(200)
+        local json = assert.response(res).has.jsonbody()
+        assert.is_equal("/requests/path2", json.vars.request_uri)
+      end
+      local _, success = server1:join()
+      assert.is_equal(9, success)
     end)
 
     it("test start with hash as `ip`", function()
