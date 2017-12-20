@@ -92,9 +92,13 @@ return {
       func = check_upstream_uri
     },
   },
-  self_check = function(_, conf, dao, is_update)
+  self_check = function(_, conf, _, is_update)
     if not is_update and not conf.upstream_uri and not conf.upstream_host then
       return false, Errors.schema "either 'upstream_uri' or 'upstream_host' must be provided"
+    end
+
+    if not is_update and not conf.percentage and not conf.start then
+      return false, Errors.schema "either 'percentage' or 'start' must be provided"
     end
 
     return true

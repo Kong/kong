@@ -4,7 +4,7 @@ local canary_schema = require "kong.plugins.canary.schema"
 
 describe("canary schema", function()
   it("should work with all require fields provided", function()
-    local ok, err = validate_entity({ upstream_host = "balancer_a" }, canary_schema)
+    local ok, err = validate_entity({ percentage = "10", upstream_host = "balancer_a" }, canary_schema)
 
     assert.True(ok)
     assert.is_nil(err)
@@ -26,14 +26,14 @@ describe("canary schema", function()
     assert.is_same("'start' cannot be in the past", err.start)
   end)
   it("hash set as `ip`", function()
-    local ok, err = validate_entity({ hash = "ip",  upstream_host = "balancer_a" },
+    local ok, err = validate_entity({ hash = "ip", percentage = "10", upstream_host = "balancer_a" },
       canary_schema)
 
     assert.True(ok)
     assert.is_nil(err)
   end)
   it("hash set as `none`", function()
-    local ok, err = validate_entity({ hash = "none",  upstream_host = "balancer_a" },
+    local ok, err = validate_entity({ hash = "none", percentage = "10", upstream_host = "balancer_a" },
       canary_schema)
 
     assert.True(ok)
@@ -68,14 +68,14 @@ describe("canary schema", function()
     assert.is_same("'percentage' must be in between 0 and 100", err.percentage)
   end)
   it("validate upstream_host", function()
-    local ok, err = validate_entity({ upstream_host = "htt://example.com" },
+    local ok, err = validate_entity({ percentage = "10", upstream_host = "htt://example.com" },
       canary_schema)
 
     assert.False(ok)
     assert.is_same("'upstream_host' must be a valid hostname", err.upstream_host)
   end)
   it("validate upstream_uri", function()
-    local ok, err = validate_entity({ upstream_uri = "/"}, canary_schema)
+    local ok, err = validate_entity({ percentage = "10", upstream_uri = "/" }, canary_schema)
 
     assert.True(ok)
     assert.is_nil(err)
@@ -87,8 +87,15 @@ describe("canary schema", function()
     assert.is_same("either 'upstream_uri' or 'upstream_host' must be provided",
                    schema.message)
   end)
+  it("start or percentage must be provided", function()
+    local ok, _, schema = validate_entity({ upstream_uri = "/" }, canary_schema)
+
+    assert.False(ok)
+    assert.is_same("either 'percentage' or 'start' must be provided",
+      schema.message)
+  end)
   it("validates what looks like a domain", function()
-    local ok, err = validate_entity({ upstream_host = "balancer_a" }, canary_schema)
+    local ok, err = validate_entity({ percentage = "10", upstream_host = "balancer_a" }, canary_schema)
 
     assert.True(ok)
     assert.is_nil(err)
