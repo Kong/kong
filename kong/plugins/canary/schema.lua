@@ -13,8 +13,8 @@ end
 
 
 local function check_steps(steps)
-  if steps <= 0 then
-    return false, "'steps' must be greater than 0"
+  if steps <= 1 then
+    return false, "'steps' must be greater than 1"
   end
 
   return true
@@ -41,9 +41,9 @@ local function check_percentage(percentage)
 end
 
 
-local function check_upstream_target(upstream_target)
-  if upstream_target and not utils.check_hostname(upstream_target) then
-    return false, "'upstream_target' must be a valid hostname"
+local function check_upstream_host(upstream_host)
+  if upstream_host and not utils.check_hostname(upstream_host) then
+    return false, "'upstream_host' must be a valid hostname"
   end
 
   return true
@@ -67,7 +67,7 @@ return {
     hash = {        -- what element to use for hashing to the target
       type    = "string",
       default = "consumer",
-      enum    = { "consumer", "ip" },
+      enum    = { "consumer", "ip", "none" },
     },
     duration = {    -- how long should the transaction take (seconds)
       type    = "number",
@@ -83,9 +83,9 @@ return {
       type = "number",
       func = check_percentage,
     },
-    upstream_target = {  -- target hostname
+    upstream_host = {  -- target hostname
       type = "string",
-      func = check_upstream_target
+      func = check_upstream_host
     },
     upstream_uri = {   -- target uri
       type = "string",
@@ -93,8 +93,8 @@ return {
     },
   },
   self_check = function(_, conf, dao, is_update)
-    if not is_update and not conf.upstream_uri and not conf.upstream_target then
-      return false, Errors.schema "either 'upstream_uri' or 'upstream_target' must be provided"
+    if not is_update and not conf.upstream_uri and not conf.upstream_host then
+      return false, Errors.schema "either 'upstream_uri' or 'upstream_host' must be provided"
     end
 
     return true
