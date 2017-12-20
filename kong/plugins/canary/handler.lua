@@ -12,33 +12,6 @@ local time_now = ngx.now
 local log_prefix = "[canary] "
 local conf_cache = setmetatable({},{__mode = "k"})
 
---- Debug function for development purposes.
--- Will dump all passed in parameters in a pretty-printed way
--- as a `warning` log message. Includes color markers to make it stand out.
--- @param ... list of parameters to dump
-local dump = function(...)
-  local info = debug.getinfo(2) or {}
-  local input = { n = select("#", ...), ...}
-  local write = require("pl.pretty").write
-  local serialized
-  if input.n == 1 and type(input[1]) == "table" then
-    serialized = "(" .. type(input[1]) .. "): " .. write(input[1])
-  elseif input.n == 1 then
-    serialized = "(" .. type(input[1]) .. "): " .. tostring(input[1]) .. "\n"
-  else
-    local n
-    n, input.n = input.n, nil
-    serialized = "(list, #" .. n .. "): " .. write(input)
-  end
-
-  ngx.log(ngx.WARN,
-          "\027[31m\n",
-          "function '", tostring(info.name), ":" , tostring(info.currentline),
-          "' in '", tostring(info.short_src), "' wants you to know:\n",
-          serialized,
-          "\027[0m")
-end
-
 
 local Canary    = BasePlugin:extend()
 Canary.PRIORITY = 13
@@ -64,7 +37,6 @@ hashing = {
   ip = function(steps)
     -- remote IP
     local identifier = ngx.var.remote_addr
-dump({ip = tostring(identifier)})
     -- return hash, or fall back on random if no ip
     return identifier and crc32(identifier) or hashing.none(steps)
   end,
@@ -130,7 +102,6 @@ function Canary:access(conf)
   end
 
   local hash = math_fmod(hashing[conf.hash](steps), steps)
---dump({hash = hash, step=step})
 
   if step ~= run_conf.step then
     run_conf.step = step
