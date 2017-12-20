@@ -6,12 +6,38 @@ local math_fmod   = math.fmod
 local crc32       = ngx.crc32_short
 
 
-local tostring = tostring
 local time_now = ngx.now
 
 
 local log_prefix = "[canary] "
 local conf_cache = setmetatable({},{__mode = "k"})
+
+--- Debug function for development purposes.
+-- Will dump all passed in parameters in a pretty-printed way
+-- as a `warning` log message. Includes color markers to make it stand out.
+-- @param ... list of parameters to dump
+local dump = function(...)
+  local info = debug.getinfo(2) or {}
+  local input = { n = select("#", ...), ...}
+  local write = require("pl.pretty").write
+  local serialized
+  if input.n == 1 and type(input[1]) == "table" then
+    serialized = "(" .. type(input[1]) .. "): " .. write(input[1])
+  elseif input.n == 1 then
+    serialized = "(" .. type(input[1]) .. "): " .. tostring(input[1]) .. "\n"
+  else
+    local n
+    n, input.n = input.n, nil
+    serialized = "(list, #" .. n .. "): " .. write(input)
+  end
+
+  ngx.log(ngx.WARN,
+          "\027[31m\n",
+          "function '", tostring(info.name), ":" , tostring(info.currentline),
+          "' in '", tostring(info.short_src), "' wants you to know:\n",
+          serialized,
+          "\027[0m")
+end
 
 
 local Canary    = BasePlugin:extend()
@@ -22,37 +48,36 @@ function Canary:new()
   Canary.super.new(self, "canary")
 end
 
-
-local function get_hash(hash)
-  local ctx = ngx.ctx
-  local identifier
-
-  if hash == "consumer" then
+local hashing  -- need a forward declaration here
+hashing = {
+  consumer = function(steps)
     -- Consumer is identified id
-    identifier = ctx.authenticated_consumer and ctx.authenticated_consumer.id
+    local ctx = ngx.ctx
+    local identifier = ctx.authenticated_consumer and ctx.authenticated_consumer.id
     if not identifier and ctx.authenticated_credential then
       -- Fallback on credential
       identifier = ctx.authenticated_credential.id
     end
-  end
-
-  if not identifier then
+    -- return hash, or fall back on IP based hash if no credential
+    return identifier and crc32(identifier) or hashing.ip(steps)
+  end,
+  ip = function(steps)
     -- remote IP
-    identifier = ngx.var.remote_addr
-    if not identifier then
-      -- Fallback on a random number
-      identifier = tostring(math_random())
-    end
-  end
-
-  return crc32(identifier)
-end
+    local identifier = ngx.var.remote_addr
+dump({ip = tostring(identifier)})
+    -- return hash, or fall back on random if no ip
+    return identifier and crc32(identifier) or hashing.none(steps)
+  end,
+  none = function(steps)
+    return math_random(steps) - 1  -- 0 indexed
+  end,
+}
 
 
 local function switch_target(conf)
   -- switch upstream host to the new hostname
-  if conf.upstream_target then
-    ngx.ctx.balancer_address.host = conf.upstream_target
+  if conf.upstream_host then
+    ngx.ctx.balancer_address.host = conf.upstream_host
   end
   -- switch upstream uri to the new uri
   if conf.upstream_uri then
@@ -75,16 +100,16 @@ function Canary:access(conf)
     run_conf = {}
     conf_cache[conf] = run_conf
     run_conf.prefix = log_prefix  ..
-            ((conf.upstream_target ~=nil  and
+            ((conf.upstream_host ~= nil  and
                     ngx.ctx.balancer_address.host .. "->"
-                    .. conf.upstream_target) or "") ..
-            ((conf.upstream_uri ~=nil and "uri ->" .. conf.upstream_uri) or "")
+                    .. conf.upstream_host) or "") ..
+            ((conf.upstream_uri ~= nil and "uri ->" .. conf.upstream_uri) or "")
     run_conf.step = -1
   end
 
   if percentage then
     -- fixed percentage canary
-    step = percentage * steps / 100
+    step = percentage * steps / 100 - 1  -- minus 1 for 0-indexed
 
   else
     -- timer based canary
@@ -102,10 +127,10 @@ function Canary:access(conf)
 
     -- calculate current step, and hash position. Both 0-indexed.
     step = math_floor((time - start) / duration * steps)
-    print(step, " : ", time, " : ", start, " : ", duration, " : ", steps)
   end
 
-  local hash = math_fmod(get_hash(conf.hash), steps)
+  local hash = math_fmod(hashing[conf.hash](steps), steps)
+--dump({hash = hash, step=step})
 
   if step ~= run_conf.step then
     run_conf.step = step
