@@ -14,10 +14,23 @@ local function check_nonnegative(arg)
   end
 end
 
-
 local function check_positive_int(t)
   if t < 1 or t > 2^31 - 1 or math.floor(t) ~= t then
     return false, "must be an integer between 1 and " .. 2^31 - 1
+  end
+
+  return true
+end
+
+local function check_positive_int_or_zero(t)
+  if t == 0 then
+    return true
+  end
+
+  local ok = check_positive_int(t)
+  if not ok then
+    return false, "must be 0 (disabled), or an integer between 1 and "
+                  .. 2 ^31 - 1
   end
 
   return true
@@ -96,10 +109,10 @@ local funcs = {
   timeout = check_nonnegative,
   concurrency = check_positive_int,
   interval = check_nonnegative,
-  successes = check_positive_int,
-  tcp_failures = check_positive_int,
-  timeouts = check_positive_int,
-  http_failures = check_positive_int,
+  successes = check_positive_int_or_zero,
+  tcp_failures = check_positive_int_or_zero,
+  timeouts = check_positive_int_or_zero,
+  http_failures = check_positive_int_or_zero,
   http_path = check_http_path,
   http_statuses = check_http_statuses,
 }

@@ -754,6 +754,7 @@ describe("Entities Schemas", function()
       local tests = {
         {{ active = { timeout = -1 }}, "greater than or equal to 0" },
         {{ active = { concurrency = 0.5 }}, "must be an integer" },
+        {{ active = { concurrency = 0 }}, "must be an integer" },
         {{ active = { concurrency = -10 }}, "must be an integer" },
         {{ active = { http_path = "" }}, "is empty" },
         {{ active = { http_path = "ovo" }}, "must be prefixed with slash" },
@@ -764,8 +765,8 @@ describe("Entities Schemas", function()
         {{ active = { healthy = { http_statuses = { 99 }}}}, "status code" },
         {{ active = { healthy = { http_statuses = { 1000 }}}}, "status code" },
         {{ active = { healthy = { http_statuses = { 111.314 }}}}, "must be an integer" },
-        {{ active = { healthy = { successes = 0.5 }}}, "must be an integer" },
-        {{ active = { healthy = { successes = 0 }}}, "must be an integer" },
+        {{ active = { healthy = { successes = 0.5 }}}, "must be 0 (disabled), or an integer" },
+        --{{ active = { healthy = { successes = 0 }}}, "must be an integer" },
         {{ active = { healthy = { successes = -1 }}}, "an integer between" },
         {{ active = { unhealthy = { interval = -1 }}}, "greater than or equal to 0" },
         {{ active = { unhealthy = { http_statuses = 404 }}}, "not an array" },
@@ -773,36 +774,37 @@ describe("Entities Schemas", function()
         {{ active = { unhealthy = { http_statuses = { -1 }}}}, "status code" },
         {{ active = { unhealthy = { http_statuses = { 99 }}}}, "status code" },
         {{ active = { unhealthy = { http_statuses = { 1000 }}}}, "status code" },
-        {{ active = { unhealthy = { tcp_failures = 0.5 }}}, "must be an integer" },
-        {{ active = { unhealthy = { tcp_failures = 0 }}}, "must be an integer" },
+        {{ active = { unhealthy = { tcp_failures = 0.5 }}}, "must be 0 (disabled), or an integer" },
+        --{{ active = { unhealthy = { tcp_failures = 0 }}}, "must be an integer" },
         {{ active = { unhealthy = { tcp_failures = -1 }}}, "an integer between" },
-        {{ active = { unhealthy = { timeouts = 0.5 }}}, "must be an integer" },
-        {{ active = { unhealthy = { timeouts = 0 }}}, "must be an integer" },
+        {{ active = { unhealthy = { timeouts = 0.5 }}}, "must be 0 (disabled), or an integer" },
+        --{{ active = { unhealthy = { timeouts = 0 }}}, "must be an integer" },
         {{ active = { unhealthy = { timeouts = -1 }}}, "an integer between" },
-        {{ active = { unhealthy = { http_failures = 0.5 }}}, "must be an integer" },
+        {{ active = { unhealthy = { http_failures = 0.5 }}}, "must be 0 (disabled), or an integer" },
         {{ active = { unhealthy = { http_failures = -1 }}}, "an integer between" },
         {{ passive = { healthy = { http_statuses = 404 }}}, "not an array" },
         {{ passive = { healthy = { http_statuses = { "ovo" }}}}, "not a number" },
         {{ passive = { healthy = { http_statuses = { -1 }}}}, "status code" },
         {{ passive = { healthy = { http_statuses = { 99 }}}}, "status code" },
         {{ passive = { healthy = { http_statuses = { 1000 }}}}, "status code" },
-        {{ passive = { healthy = { successes = 0.5 }}}, "must be an integer" },
-        {{ passive = { healthy = { successes = 0 }}}, "must be an integer" },
+        {{ passive = { healthy = { successes = 0.5 }}}, "must be 0 (disabled), or an integer" },
+        --{{ passive = { healthy = { successes = 0 }}}, "must be an integer" },
         {{ passive = { healthy = { successes = -1 }}}, "an integer between" },
         {{ passive = { unhealthy = { http_statuses = 404 }}}, "not an array" },
         {{ passive = { unhealthy = { http_statuses = { "ovo" }}}}, "not a number" },
         {{ passive = { unhealthy = { http_statuses = { -1 }}}}, "status code" },
         {{ passive = { unhealthy = { http_statuses = { 99 }}}}, "status code" },
         {{ passive = { unhealthy = { http_statuses = { 1000 }}}}, "status code" },
-        {{ passive = { unhealthy = { tcp_failures = 0.5 }}}, "must be an integer" },
-        {{ passive = { unhealthy = { tcp_failures = 0 }}}, "must be an integer" },
+        {{ passive = { unhealthy = { tcp_failures = 0.5 }}}, "must be 0 (disabled), or an integer" },
+        --{{ passive = { unhealthy = { tcp_failures = 0 }}}, "must be an integer" },
         {{ passive = { unhealthy = { tcp_failures = -1 }}}, "an integer between" },
-        {{ passive = { unhealthy = { timeouts = 0.5 }}}, "must be an integer" },
-        {{ passive = { unhealthy = { timeouts = 0 }}}, "must be an integer" },
+        {{ passive = { unhealthy = { timeouts = 0.5 }}}, "must be 0 (disabled), or an integer" },
+        --{{ passive = { unhealthy = { timeouts = 0 }}}, "must be an integer" },
         {{ passive = { unhealthy = { timeouts = -1 }}}, "an integer between" },
-        {{ passive = { unhealthy = { http_failures = 0.5 }}}, "must be an integer" },
-        {{ passive = { unhealthy = { http_failures = 0 }}}, "must be an integer" },
+        {{ passive = { unhealthy = { http_failures = 0.5 }}}, "must be 0 (disabled), or an integer" },
+        --{{ passive = { unhealthy = { http_failures = 0 }}}, "must be an integer" },
         {{ passive = { unhealthy = { http_failures = -1 }}}, "an integer between" },
+        --]]
       }
       for _, test in ipairs(tests) do
         local entity = {
@@ -821,7 +823,7 @@ describe("Entities Schemas", function()
 
         local valid, errors = validate_entity(entity, upstreams_schema)
         assert.is_false(valid)
-        assert.match(test[2], errors[field_name])
+        assert.match(test[2], errors[field_name], nil, true)
       end
 
       -- tests for success
@@ -858,10 +860,23 @@ describe("Entities Schemas", function()
 
     end)
 
+    it("creates an upstream with the default values", function()
+      local default = upstreams_schema.fields.healthchecks.default
+      local entity = {
+        name = "x",
+        healthchecks = default,
+      }
+
+      local valid, errors = validate_entity(entity, upstreams_schema)
+      assert.is_nil(errors)
+      assert.is_true(valid)
+    end)
+
     it("should require (optional) slots in a valid range", function()
       local valid, errors, check, _
       local data = { name = "valid.host.name" }
-      valid, _, _ = validate_entity(data, upstreams_schema)
+      valid, errors, _ = validate_entity(data, upstreams_schema)
+      assert.is_nil(errors)
       assert.is_true(valid)
       assert.equal(slots_default, data.slots)
 
