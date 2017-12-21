@@ -24,6 +24,21 @@ local function check_positive_int(t)
 end
 
 
+local function check_positive_int_or_zero(t)
+  if t == 0 then
+    return true
+  end
+
+  local ok = check_positive_int(t)
+  if not ok then
+    return false, "must be 0 (disabled), or an integer between 1 and "
+                  .. 2 ^31 - 1
+  end
+
+  return true
+end
+
+
 local function check_http_path(arg)
   if match(arg, "^%s*$") then
     return false, "path is empty"
@@ -96,10 +111,10 @@ local funcs = {
   timeout = check_nonnegative,
   concurrency = check_positive_int,
   interval = check_nonnegative,
-  successes = check_positive_int,
-  tcp_failures = check_positive_int,
-  timeouts = check_positive_int,
-  http_failures = check_positive_int,
+  successes = check_positive_int_or_zero,
+  tcp_failures = check_positive_int_or_zero,
+  timeouts = check_positive_int_or_zero,
+  http_failures = check_positive_int_or_zero,
   http_path = check_http_path,
   http_statuses = check_http_statuses,
 }
