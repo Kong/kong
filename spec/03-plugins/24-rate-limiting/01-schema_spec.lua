@@ -25,6 +25,28 @@ describe("rate-limiting schema", function()
     assert.is_true(ok)
   end)
 
+  it("casts window_size and window_limit values to numbers", function()
+    local schema = {
+      window_size = { "10", "20" },
+      limit = {"50", "75" },
+      identifier = "consumer",
+      sync_rate = 10,
+    }
+
+    local ok, err = validate_entity(schema, rate_limiting_schema)
+
+    assert.is_nil(err)
+    assert.is_true(ok)
+
+    for _, window_size in ipairs(schema.window_size) do
+      assert.is_number(window_size)
+    end
+
+    for _, limit in ipairs(schema.limit) do
+      assert.is_number(limit)
+    end
+  end)
+
   it("errors with an invalid size/limit type", function()
     local ok, err = validate_entity({
       window_size = { 60 },

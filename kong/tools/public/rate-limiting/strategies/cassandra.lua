@@ -352,11 +352,6 @@ end
 
 
 function _M:purge(namespace, window_sizes, time)
-  -- XXX ugly!
-  for i=1,#window_sizes do
-    window_sizes[i] = tonumber(window_sizes[i])
-  end
-
   local ok, errs = delete_obsolete_rows(self.cluster, namespace, window_sizes, time)
   if not ok then
     log(ERR, "failed to purge obsolete counters: ", table.concat(errs, ", "))

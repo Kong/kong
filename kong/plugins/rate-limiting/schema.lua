@@ -107,8 +107,8 @@ return {
     table.sort(t, function(a, b) return tonumber(a[1]) < tonumber(b[1]) end)
 
     for i = 1, #t do
-      plugin_t.limit[i] = t[i][1]
-      plugin_t.window_size[i] = t[i][2]
+      plugin_t.limit[i] = tonumber(t[i][1])
+      plugin_t.window_size[i] = tonumber(t[i][2])
     end
 
     return true
