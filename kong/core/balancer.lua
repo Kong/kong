@@ -317,7 +317,7 @@ do
 
     -- only make the new balancer available for other requests after it
     -- is fully set up.
-    balancers[upstream.name] = balancer
+    balancers[upstream.id] = balancer
 
     return balancer
   end
@@ -464,7 +464,7 @@ local function get_balancer(target, no_create)
     return nil, err -- there was an error
   end
 
-  local balancer = balancers[upstream.name]
+  local balancer = balancers[upstream.id]
   if not balancer then
     if no_create then
       return nil, "balancer not found"
@@ -498,7 +498,7 @@ local function on_target_event(operation, target)
     return
   end
 
-  local balancer = balancers[upstream.name]
+  local balancer = balancers[upstream.id]
   if not balancer then
     log(ERR, "target ", operation, ": balancer not found for ", upstream.name)
     return
@@ -518,6 +518,9 @@ end
 local function on_upstream_event(operation, upstream)
 
   if operation == "create" then
+
+    singletons.cache:invalidate_local("balancer:upstreams")
+
     local _, err = create_balancer(upstream)
     if err then
       log(ERR, "failed creating balancer for ", upstream.name, ": ", err)
@@ -525,19 +528,17 @@ local function on_upstream_event(operation, upstream)
 
   elseif operation == "delete" or operation == "update" then
 
-    if operation == "delete" then
-      singletons.cache:invalidate_local("balancer:upstreams")
-    end
+    singletons.cache:invalidate_local("balancer:upstreams")
     singletons.cache:invalidate_local("balancer:upstreams:" .. upstream.id)
     singletons.cache:invalidate_local("balancer:targets:"   .. upstream.id)
 
-    local balancer = balancers[upstream.name]
+    local balancer = balancers[upstream.id]
     if balancer then
       stop_healthchecker(balancer)
     end
 
     if operation == "delete" then
-      balancers[upstream.name] = nil
+      balancers[upstream.id] = nil
     else
       local _, err = create_balancer(upstream)
       if err then
@@ -722,7 +723,7 @@ end
 -- @return true if posting event was successful, nil+error otherwise
 local function post_health(upstream, ip, port, is_healthy)
 
-  local balancer = balancers[upstream.name]
+  local balancer = balancers[upstream.id]
   if not balancer then
     return nil, "Upstream " .. tostring(upstream.name) .. " has no balancer"
   end
