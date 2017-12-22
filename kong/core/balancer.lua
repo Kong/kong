@@ -518,6 +518,9 @@ end
 local function on_upstream_event(operation, upstream)
 
   if operation == "create" then
+
+    singletons.cache:invalidate_local("balancer:upstreams")
+
     local _, err = create_balancer(upstream)
     if err then
       log(ERR, "failed creating balancer for ", upstream.name, ": ", err)

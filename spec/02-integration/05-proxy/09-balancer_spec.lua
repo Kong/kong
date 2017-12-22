@@ -284,6 +284,24 @@ local function client_requests(n, headers)
 end
 
 
+local function api_send(method, path, body)
+  local api_client = helpers.admin_client()
+  local res, err = api_client:send({
+    method = method,
+    path = path,
+    headers = {
+      ["Content-Type"] = "application/json"
+    },
+    body = body,
+  })
+  if not res then
+    return nil, err
+  end
+  api_client:close()
+  return res.status
+end
+
+
 local localhosts = {
   ipv4 = "127.0.0.1",
   ipv6 = "0000:0000:0000:0000:0000:0000:0000:0001",
@@ -312,6 +330,47 @@ dao_helpers.for_each_dao(function(kong_config)
     before_each(function()
       collectgarbage()
       collectgarbage()
+    end)
+
+    describe("Upstream entities", function()
+
+      before_each(function()
+        helpers.stop_kong()
+        helpers.run_migrations()
+        helpers.start_kong()
+      end)
+
+      after_each(function()
+        helpers.stop_kong(nil, true)
+      end)
+
+      -- Regression test for a missing invalidation in 0.12rc1
+      it("created via the API are functional", function()
+        assert.same(201, api_send("POST", "/upstreams", {
+          name = "test_upstream", slots = 10,
+        }))
+        assert.same(201, api_send("POST", "/upstreams/test_upstream/targets", {
+          target = utils.format_host(localhost, 2112),
+        }))
+        assert.same(201, api_send("POST", "/apis", {
+          name = "test_api",
+          hosts = "test_host.com",
+          upstream_url = "http://test_upstream",
+        }))
+
+        local server = http_server(10, localhost, 2112, { 1 })
+
+        local oks, fails, last_status = client_requests(1, {
+          ["Host"] = "test_host.com"
+        })
+        assert.same(200, last_status)
+        assert.same(1, oks)
+        assert.same(0, fails)
+
+        local _, server_oks, server_fails = server:join()
+        assert.same(1, server_oks)
+        assert.same(0, server_fails)
+      end)
     end)
 
     describe("#healthchecks", function()
