@@ -40,6 +40,7 @@ return {
   HEADERS = {
     HOST_OVERRIDE = "X-Host-Override",
     PROXY_LATENCY = "X-Kong-Proxy-Latency",
+    KONG_RESPONSE_LATENCY = "X-Kong-Latency",
     UPSTREAM_LATENCY = "X-Kong-Upstream-Latency",
     CONSUMER_ID = "X-Consumer-ID",
     CONSUMER_CUSTOM_ID = "X-Consumer-Custom-ID",

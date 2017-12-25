@@ -1,6 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
+local constants = require "kong.constants"
 local DAOFactory = require "kong.dao.factory"
 
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
@@ -41,6 +42,14 @@ describe("Admin API - Kong routes", function()
       assert.res_status(200, res)
       assert.equal(string.format("%s/%s", meta._NAME, meta._VERSION), res.headers.server)
       assert.is_nil(res.headers.via) -- Via is only set for proxied requests
+    end)
+    it("response has " .. constants.HEADERS.KONG_RESPONSE_LATENCY .. " header", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/"
+      })
+      assert.res_status(200, res)
+      assert(res.headers[constants.HEADERS.KONG_RESPONSE_LATENCY])
     end)
     it("returns 405 on invalid method", function()
       local methods = {"POST", "PUT", "DELETE", "PATCH", "GEEEET"}
