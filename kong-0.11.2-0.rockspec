@@ -83,6 +83,7 @@ build = {
     ["kong.api.routes.upstreams"] = "kong/api/routes/upstreams.lua",
     ["kong.api.routes.certificates"] = "kong/api/routes/certificates.lua",
     ["kong.api.routes.snis"] = "kong/api/routes/snis.lua",
+    ["kong.api.routes.labels"] = "kong/api/routes/labels.lua",
 
     ["kong.tools.ip"] = "kong/tools/ip.lua",
     ["kong.tools.ciphers"] = "kong/tools/ciphers.lua",
