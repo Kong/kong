@@ -15,7 +15,7 @@ end
 return {
   table = "plugins",
   primary_key = {"id", "name"},
-  cache_key = { "name", "api_id", "consumer_id" },
+  cache_key = { "name", "api_id", "consumer_id", "label_id" },
   fields = {
     id = {
       type = "id",
@@ -36,6 +36,10 @@ return {
     consumer_id = {
       type = "id",
       foreign = "consumers:id"
+    },
+    label_id = {
+      type = "id",
+      foreign = "labels:id"
     },
     name = {
       type = "string",

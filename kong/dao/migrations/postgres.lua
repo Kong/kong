@@ -526,4 +526,29 @@ return {
       DROP INDEX ttls_primary_uuid_value_idx;
     ]]
   },
+  {
+    name = "2017-12-26-283124_labels",
+    up = [[
+      CREATE TABLE IF NOT EXISTS labels(
+        id uuid PRIMARY KEY,
+        name text UNIQUE,
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
+      );
+
+      CREATE TABLE IF NOT EXISTS label_mappings(
+        id uuid PRIMARY KEY,
+        label_id uuid REFERENCES labels(id) ON DELETE CASCADE,
+        consumer_id uuid REFERENCES consumers(id) ON DELETE CASCADE,
+        api_id uuid REFERENCES apis(id) ON DELETE CASCADE,
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
+      );
+
+      ALTER TABLE plugins ADD COLUMN label_id uuid REFERENCES labels(id) ON DELETE CASCADE;
+    ]],
+    down = [[
+      DROP TABLE IF EXISTS labels;
+      DROP TABLE IF EXISTS label_mappings;
+      ALTER TABLE plugins DROP COLUMN IF EXISTS label_id;
+    ]]
+  },
 }
