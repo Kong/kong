@@ -102,6 +102,7 @@ build = {
     ["kong.core.error_handlers"] = "kong/core/error_handlers.lua",
     ["kong.core.globalpatches"] = "kong/core/globalpatches.lua",
     ["kong.core.balancer"] = "kong/core/balancer.lua",
+    ["kong.core.labels"] = "kong/core/labels.lua",
 
     ["kong.dao.errors"] = "kong/dao/errors.lua",
     ["kong.dao.schemas_validation"] = "kong/dao/schemas_validation.lua",
