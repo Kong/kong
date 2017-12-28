@@ -12,6 +12,7 @@ local math_min   = math.min
 local math_max   = math.max
 local log        = ngx.log
 local DEBUG      = ngx.DEBUG
+local INFO       = ngx.INFO
 local WARN       = ngx.WARN
 local ERR        = ngx.ERR
 
@@ -70,26 +71,26 @@ local const_vitals_metrics_t_ptr = ffi.typeof("const vitals_metrics_t*")
 
 
 --[[
-  generate the initializers for an array of vitals_metrics_t structs
-  of size `sz`. this table will be fed as the third param of the ffi.new()
-  call to generate our vitals_metrics_t[?]. the first two elements are
-  initialized to 0, as they are just incrementing counters. the third and
-  fourth initializers (for proxy_latency_min and proxy_latency_max,
-  respectively) serve as sentinel values. we call math.min/max on these values
-  so they must be initialized to some value that is handle in Lua land as a
-  number. when we prepare to push stats to our strategy, we check for the
-  presence of this sentinel value; if it exists, we never called the path to
-  which the values are associated, meaning that the vitals strategy expects
-  these to be nil. the final element is the timestamp associated with the
-  bucket
+  returns an initialized array of vitals_metrics_t structs of size `sz`.
+  when adding a new stat, include a reasonable default for it in the
+  penultimate slot (the one before the timestamp). "Reasonable defaults" are
+  * 0 - for counters
+  * -1 - for stat max values (e.g., max proxy latency)
+  * 0xFFFFFFFF - for stat min values
+
+  Since min and max can be null (in the case where that metric wasn't logged
+  in a particular interval), sentinel values are used. when we prepare to push
+  stats to our strategy, we check for this sentinel value; if it exists,
+  we never called the path to which the values are associated, meaning that
+  these should be stored as nil.
+
+  The final element is the timestamp associated with the bucket.
 ]]
-local function metrics_t_arr_init(sz)
+local function metrics_t_arr_init(sz, start_at)
   local t = new_tab(sz, 0)
 
-  local timestamp = time()
-
   for i = 1, sz do
-    t[i] = { 0, 0, 0xFFFFFFFF, -1, 0xFFFFFFFF, -1, 0, timestamp + i - 1 }
+    t[i] = { 0, 0, 0xFFFFFFFF, -1, 0xFFFFFFFF, -1, 0, start_at + i - 1 }
   end
 
   return t
@@ -178,7 +179,7 @@ function _M:init()
 
   local delay = self.flush_interval
   local when  = delay - (ngx.now() - (math.floor(ngx.now() / delay) * delay))
-  log(DEBUG, _log_prefix, "starting vitals timer (1) (", when, ") seconds")
+  log(INFO, _log_prefix, "starting vitals timer (1) in ", when, " seconds")
 
   local ok, err = timer_at(when, persistence_handler, self)
   if ok then
@@ -266,26 +267,7 @@ end
 
 
 local function build_flush_key(vitals)
-  local timestamp = time()
-
-  -- hack around minor timing differences among worker processes. its possible
-  -- that some workers start the recurring timer at slightly before the
-  -- floor timestamp of our flush interval. to account for this we check
-  -- manually to ensure that, if we did hit an off-by-one condition, we will
-  -- still associated this push with the correct timestamp.
-  --
-  -- TODO this whole situation can be avoided by synchronizing the flush key
-  -- amongst the node workers via worker events
-  if timestamp % vitals.flush_interval ~= 0 then
-    log(DEBUG, _log_prefix, "tried to build flush key at invalid timestamp")
-
-    if (timestamp + 1) % vitals.flush_interval == 0 then
-      log(DEBUG, _log_prefix, "cheat timestamp up 1 sec")
-      timestamp = timestamp + 1
-    end
-  end
-
-  return FLUSH_LIST_KEY .. timestamp
+  return FLUSH_LIST_KEY
 end
 
 
@@ -295,7 +277,7 @@ function _M:flush_lock()
     self.flush_interval - 0.01)
   if not ok then
     if err ~= "exists" then
-      log(ERR, "failed to acquire vitals flush lock: ", err)
+      log(ERR, _log_prefix, "failed to acquire lock: ", err)
     end
 
     return false
@@ -320,7 +302,7 @@ function _M:poll_worker_data(flush_key, expected)
       return nil, err
     end
 
-    log(DEBUG, _log_prefix, "found ", num_posted, " workers posted data")
+    log(DEBUG, _log_prefix, "found ", num_posted, " records (", expected, " workers)")
 
     if num_posted == expected then
       break
@@ -345,7 +327,7 @@ function _M:merge_worker_data(flush_key)
   --
   -- n.b. currently this is a nasty polynomial function. this could use
   -- improvement in the future
-  for i = 1, worker_count do
+  for i = 1, self.shm:llen(flush_key) do
     local v, err = self.shm:rpop(flush_key)
 
     if not v then
@@ -360,7 +342,8 @@ function _M:merge_worker_data(flush_key)
       -- this is an expected condition, particularly the first time a worker
       -- flushes data
       if time() - c.timestamp < 1 then
-        log(DEBUG, _log_prefix, "timestamp overrun at idx ", i)
+        log(DEBUG, _log_prefix, "unexpected timestamp ", c.timestamp, " at ",
+            time(), ". Did this node just start up? If so, this condition is harmless.")
         break
       end
 
@@ -412,8 +395,6 @@ function _M:merge_worker_data(flush_key)
       end
     end
   end
-
-  self.shm:delete(flush_key)
 
   return flush_data
 end
@@ -479,7 +460,9 @@ function _M:flush_counters()
                            vitals_metrics_t_size * self.flush_interval)
 
     flush_key = build_flush_key(self)
-    log(DEBUG, _log_prefix, flush_key)
+
+    log(DEBUG, _log_prefix, "pid ", ngx.worker.pid(), " caching metrics for ",
+        self.counters.start_at)
 
     local ok, err = self.shm:rpush(flush_key, buf)
     if not ok then
@@ -492,17 +475,17 @@ function _M:flush_counters()
   self:reset_counters()
 
   -- if we're in charge of pushing to the strategy, lets hang tight for a bit
-  -- and wait for each worker to push up their data. we will then coallese it
+  -- and wait for each worker to push up their data. we will then coalesce it
   -- into the data form that vitals strategies expect
   if lock then
-    log(DEBUG, "acquired flush lock on pid ", ngx.worker.pid())
+    log(DEBUG, _log_prefix, "pid ", ngx.worker.pid(), " acquired lock")
     local ok, err = self:poll_worker_data(flush_key)
     if not ok then
       -- timeout while polling data
       return nil, err
     end
 
-    log(DEBUG, _log_prefix, "merging worker data")
+    log(DEBUG, _log_prefix, "merge worker data")
     local flush_data, err = self:merge_worker_data(flush_key)
     if not flush_data then
       return nil, err
@@ -551,7 +534,7 @@ function _M:reset_counters(counters)
 
   counters.start_at = time()
   counters.metrics  = ffi.new(vitals_metrics_t_arr_type, self.flush_interval,
-                        metrics_t_arr_init(self.flush_interval))
+                        metrics_t_arr_init(self.flush_interval, counters.start_at))
 
   return counters
 end
