@@ -31,7 +31,7 @@ describe("Plugin: key-auth (API)", function()
     helpers.stop_kong()
   end)
 
-  describe("/consumers/:consumer/key-auth", function()
+  local function consumer_key_auth_test(endpiont)
     describe("POST", function()
       after_each(function()
         helpers.dao:truncate_table("keyauth_credentials")
@@ -39,7 +39,7 @@ describe("Plugin: key-auth (API)", function()
       it("creates a key-auth credential with key", function()
         local res = assert(admin_client:send {
           method = "POST",
-          path = "/consumers/bob/key-auth",
+          path = "/consumers/bob/" .. endpiont,
           body = {
             key = "1234"
           },
@@ -55,7 +55,7 @@ describe("Plugin: key-auth (API)", function()
       it("creates a key-auth auto-generating a unique key", function()
         local res = assert(admin_client:send {
           method = "POST",
-          path = "/consumers/bob/key-auth",
+          path = "/consumers/bob/" .. endpiont,
           body = {},
           headers = {
             ["Content-Type"] = "application/json"
@@ -71,7 +71,7 @@ describe("Plugin: key-auth (API)", function()
 
         local res = assert(admin_client:send {
           method = "POST",
-          path = "/consumers/bob/key-auth",
+          path = "/consumers/bob/" .. endpiont,
           body = {},
           headers = {
             ["Content-Type"] = "application/json"
@@ -93,7 +93,7 @@ describe("Plugin: key-auth (API)", function()
       it("creates a key-auth credential with key", function()
         local res = assert(admin_client:send {
           method = "PUT",
-          path = "/consumers/bob/key-auth",
+          path = "/consumers/bob/" .. endpiont,
           body = {
             key = "1234"
           },
@@ -109,7 +109,7 @@ describe("Plugin: key-auth (API)", function()
       it("creates a key-auth credential auto-generating the key", function()
         local res = assert(admin_client:send {
           method = "PUT",
-          path = "/consumers/bob/key-auth",
+          path = "/consumers/bob/" .. endpiont,
           body = {},
           headers = {
             ["Content-Type"] = "application/json"
@@ -136,7 +136,7 @@ describe("Plugin: key-auth (API)", function()
       it("retrieves the first page", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/bob/key-auth"
+          path = "/consumers/bob/" .. endpiont
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -145,130 +145,151 @@ describe("Plugin: key-auth (API)", function()
         assert.equal(3, json.total)
       end)
     end)
+  end
+
+  describe("/consumers/:consumer/key-auth", function()
+    consumer_key_auth_test("key-auth")
   end)
 
-  describe("/consumers/:consumer/key-auth/:id", function()
+  describe("/consumers/:consumer/key-auths", function()
+    consumer_key_auth_test("key-auths")
+  end)
+
+  local function consumer_key_auth_id_test(endpoint)
     local credential
-    before_each(function()
-      helpers.dao:truncate_table("keyauth_credentials")
-      credential = assert(helpers.dao.keyauth_credentials:insert {
-        consumer_id = consumer.id
-      })
-    end)
-    describe("GET", function()
-      it("retrieves key-auth credential by id", function()
-        local res = assert(admin_client:send {
-          method = "GET",
-          path = "/consumers/bob/key-auth/" .. credential.id
+      before_each(function()
+        helpers.dao:truncate_table("keyauth_credentials")
+        credential = assert(helpers.dao.keyauth_credentials:insert {
+          consumer_id = consumer.id
         })
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.equal(credential.id, json.id)
       end)
-      it("retrieves key-auth credential by key", function()
-        local res = assert(admin_client:send {
-          method = "GET",
-          path = "/consumers/bob/key-auth/" .. credential.key
-        })
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.equal(credential.id, json.id)
-      end)
-      it("retrieves credential by id only if the credential belongs to the specified consumer", function()
-        assert(helpers.dao.consumers:insert {
-          username = "alice"
-        })
+      describe("GET", function()
+        it("retrieves key-auth credential by id", function()
+          local res = assert(admin_client:send {
+            method = "GET",
+            path = "/consumers/bob/" .. endpoint .. "/" .. credential.id
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal(credential.id, json.id)
+        end)
+        it("retrieves key-auth credential by key", function()
+          local res = assert(admin_client:send {
+            method = "GET",
+            path = "/consumers/bob/" .. endpoint .. "/" .. credential.key
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal(credential.id, json.id)
+        end)
+        it("retrieves credential by id only if the credential belongs to the specified consumer", function()
+          local alice = assert(helpers.dao.consumers:insert {
+            username = "alice"
+          })
 
-        local res = assert(admin_client:send {
-          method = "GET",
-          path = "/consumers/bob/key-auth/" .. credential.id
-        })
-        assert.res_status(200, res)
+          local res = assert(admin_client:send {
+            method = "GET",
+            path = "/consumers/bob/" .. endpoint .. "/" .. credential.id
+          })
+          assert.res_status(200, res)
 
-        res = assert(admin_client:send {
-          method = "GET",
-          path = "/consumers/alice/key-auth/" .. credential.id
-        })
-        assert.res_status(404, res)
-      end)
-    end)
+          res = assert(admin_client:send {
+            method = "GET",
+            path = "/consumers/alice/" .. endpoint .. "/" .. credential.id
+          })
+          assert.res_status(404, res)
 
-    describe("PATCH", function()
-      it("updates a credential by id", function()
-        local res = assert(admin_client:send {
-          method = "PATCH",
-          path = "/consumers/bob/key-auth/" .. credential.id,
-          body = {
-            key = "4321"
-          },
-          headers = {
-            ["Content-Type"] = "application/json"
-          }
-        })
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.equal("4321", json.key)
+          assert(helpers.dao.consumers:delete {
+            id = alice.id
+          })
+        end)
       end)
-      it("updates a credential by key", function()
-        local res = assert(admin_client:send {
-          method = "PATCH",
-          path = "/consumers/bob/key-auth/" .. credential.key,
-          body = {
-            key = "4321UPD"
-          },
-          headers = {
-            ["Content-Type"] = "application/json"
-          }
-        })
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.equal("4321UPD", json.key)
-      end)
-      describe("errors", function()
-        it("handles invalid input", function()
+
+      describe("PATCH", function()
+        it("updates a credential by id", function()
           local res = assert(admin_client:send {
             method = "PATCH",
-            path = "/consumers/bob/key-auth/" .. credential.id,
+            path = "/consumers/bob/" .. endpoint .. "/" .. credential.id,
             body = {
-              key = 123
+              key = "4321"
             },
             headers = {
               ["Content-Type"] = "application/json"
             }
           })
-          local body = assert.res_status(400, res)
+          local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.same({ key = "key is not a string" }, json)
+          assert.equal("4321", json.key)
+        end)
+        it("updates a credential by key", function()
+          local res = assert(admin_client:send {
+            method = "PATCH",
+            path = "/consumers/bob/" .. endpoint .. "/" .. credential.key,
+            body = {
+              key = "4321UPD"
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal("4321UPD", json.key)
+        end)
+        describe("errors", function()
+          it("handles invalid input", function()
+            local res = assert(admin_client:send {
+              method = "PATCH",
+              path = "/consumers/bob/" .. endpoint .. "/" .. credential.id,
+              body = {
+                key = 123
+              },
+              headers = {
+                ["Content-Type"] = "application/json"
+              }
+            })
+            local body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ key = "key is not a string" }, json)
+          end)
         end)
       end)
-    end)
 
-    describe("DELETE", function()
-      it("deletes a credential", function()
-        local res = assert(admin_client:send {
-          method = "DELETE",
-          path = "/consumers/bob/key-auth/" .. credential.id,
-        })
-        assert.res_status(204, res)
-      end)
-      describe("errors", function()
-        it("returns 400 on invalid input", function()
+      describe("DELETE", function()
+        it("deletes a credential", function()
           local res = assert(admin_client:send {
             method = "DELETE",
-            path = "/consumers/bob/key-auth/blah"
+            path = "/consumers/bob/" .. endpoint .. "/" .. credential.id,
           })
-          assert.res_status(404, res)
+          assert.res_status(204, res)
         end)
-        it("returns 404 if not found", function()
-          local res = assert(admin_client:send {
-            method = "DELETE",
-            path = "/consumers/bob/key-auth/00000000-0000-0000-0000-000000000000"
-          })
-          assert.res_status(404, res)
+        describe("errors", function()
+          it("returns 400 on invalid input", function()
+            local res = assert(admin_client:send {
+              method = "DELETE",
+              path = "/consumers/bob/" .. endpoint .. "/blah"
+            })
+            assert.res_status(404, res)
+          end)
+          it("returns 404 if not found", function()
+            local res = assert(admin_client:send {
+              method = "DELETE",
+              path = "/consumers/bob/" .. endpoint .. "/00000000-0000-0000-0000-000000000000"
+            })
+            assert.res_status(404, res)
+          end)
         end)
       end)
-    end)
+  end
+
+  describe("/consumers/:consumer/key-auth/:id", function ()
+    consumer_key_auth_id_test("key-auth")
   end)
+
+  describe("/consumers/:consumer/key-auths/:id", function()
+    consumer_key_auth_id_test("key-auths")
+  end)
+
   describe("/apis/:api/plugins", function()
     it("fails with invalid key_names", function()
       local key_name = "hello\\world"
