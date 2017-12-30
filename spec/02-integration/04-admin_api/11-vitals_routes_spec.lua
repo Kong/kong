@@ -23,6 +23,16 @@ dao_helpers.for_each_dao(function(kong_conf)
     local node_2 = "8374682f-17fd-42cb-b1dc-7694d6f65ba0"
     local node_3 = "20478633-55dc-4050-89ef-2382c95a611f"
 
+    local stat_labels = {
+      "cache_datastore_hits_total",
+      "cache_datastore_misses_total",
+      "latency_proxy_request_min_ms",
+      "latency_proxy_request_max_ms",
+      "latency_upstream_min_ms",
+      "latency_upstream_max_ms",
+      "requests_proxy_total",
+    }
+
     describe("when vitals is enabled", function()
       setup(function()
         dao = assert(dao_factory.new(kong_conf))
@@ -38,11 +48,11 @@ dao_helpers.for_each_dao(function(kong_conf)
               "(LIKE vitals_stats_seconds INCLUDING defaults INCLUDING constraints INCLUDING indexes)"
           assert(dao.db:query(q))
 
-          local node_q = "insert into vitals_node_meta(node_id) values('%s')"
+          local node_q = "insert into vitals_node_meta(node_id, hostname) values('%s', '%s')"
           local nodes = { node_1, node_2, node_3 }
 
           for i, node in ipairs(nodes) do
-            assert(dao.db:query(fmt(node_q, node)))
+            assert(dao.db:query(fmt(node_q, node, "testhostname" .. i)))
           end
         else
           strategy = cassandra.new(dao)
@@ -242,6 +252,13 @@ dao_helpers.for_each_dao(function(kong_conf)
             local json = cjson.decode(res)
 
             local expected = {
+              meta = {
+                level = "cluster",
+                interval = "seconds",
+                earliest_ts = minute_start_at,
+                latest_ts = minute_start_at + 2,
+                stat_labels = stat_labels,
+              },
               stats = {
                 cluster = {
                   [tostring(minute_start_at)] = { 0, 0, cjson.null, cjson.null, cjson.null, cjson.null, 0 },
@@ -266,6 +283,13 @@ dao_helpers.for_each_dao(function(kong_conf)
             local json = cjson.decode(res)
 
             local expected = {
+              meta = {
+                level = "cluster",
+                interval = "minutes",
+                earliest_ts = minute_start_at,
+                latest_ts = minute_start_at,
+                stat_labels = stat_labels,
+              },
               stats = {
                 cluster = {
                   [tostring(minute_start_at)] = { 5, 19, 0, 99, 13, 9182, 22 }
@@ -306,6 +330,17 @@ dao_helpers.for_each_dao(function(kong_conf)
             local json = cjson.decode(res)
 
             local expected = {
+              meta = {
+                level = "node",
+                interval = "seconds",
+                earliest_ts = minute_start_at,
+                latest_ts = minute_start_at + 2,
+                stat_labels = stat_labels,
+                nodes = {
+                  [node_1] = { hostname = "testhostname1" },
+                  [node_2] = { hostname = "testhostname2" },
+                },
+              },
               stats = {
                 ["20426633-55dc-4050-89ef-2382c95a611e"] = {
                   [tostring(minute_start_at)] = { 0, 0, cjson.null, cjson.null, cjson.null, cjson.null, 0 },
@@ -334,6 +369,17 @@ dao_helpers.for_each_dao(function(kong_conf)
             local json = cjson.decode(res)
 
             local expected = {
+              meta = {
+                level = "node",
+                interval = "minutes",
+                earliest_ts = minute_start_at,
+                latest_ts = minute_start_at,
+                stat_labels = stat_labels,
+                nodes = {
+                  [node_1] = { hostname = "testhostname1" },
+                  [node_2] = { hostname = "testhostname2" },
+                },
+              },
               stats = {
                 [node_1] = {
                   [tostring(minute_start_at)] = { 3, 7, 0, 11, 60, 9182, 5 }
@@ -377,8 +423,18 @@ dao_helpers.for_each_dao(function(kong_conf)
             local json = cjson.decode(res)
 
             local expected = {
+              meta = {
+                level = "node",
+                interval = "seconds",
+                earliest_ts = minute_start_at,
+                latest_ts = minute_start_at + 2,
+                stat_labels = stat_labels,
+                nodes = {
+                  [node_1] = { hostname = "testhostname1"}
+                }
+              },
               stats = {
-                ["20426633-55dc-4050-89ef-2382c95a611e"] = {
+                [node_1] = {
                   [tostring(minute_start_at)] = { 0, 0, cjson.null, cjson.null, cjson.null, cjson.null, 0 },
                   [tostring(minute_start_at + 1)] = { 0, 3, 0, 11, 193, 212, 1 },
                   [tostring(minute_start_at + 2)] = { 3, 4, 1, 8, 60, 9182, 4 },
@@ -405,13 +461,23 @@ dao_helpers.for_each_dao(function(kong_conf)
                 [node_1] = {
                   [tostring(minute_start_at)] = { 3, 7, 0, 11, 60, 9182, 5 }
                 }
+              },
+              meta = {
+                level = "node",
+                interval = "minutes",
+                earliest_ts = minute_start_at,
+                latest_ts = minute_start_at,
+                stat_labels = stat_labels,
+                nodes = {
+                  [node_1] = { hostname = "testhostname1"}
+                }
               }
             }
 
             assert.same(expected, json)
           end)
 
-          it("retrieves the empty vitals minutes data for a requested node", function()
+          it("returns empty stats if the requested node hasn't reported data", function()
             local res = assert(client:send {
               methd = "GET",
               path = "/vitals/nodes/" .. node_3,
@@ -423,7 +489,11 @@ dao_helpers.for_each_dao(function(kong_conf)
             local json = cjson.decode(res)
 
             local expected = {
-              stats = {}
+              meta = {
+                level = "node",
+                interval = "minutes",
+              },
+              stats = {},
             }
 
             assert.same(expected, json)
@@ -507,10 +577,11 @@ dao_helpers.for_each_dao(function(kong_conf)
 
             local expected =  {
               meta = {
-                consumer = {
-                  id = consumer.id
-                },
-                interval = "seconds"
+                level = "cluster",
+                interval = "seconds",
+                earliest_ts = now,
+                latest_ts = now,
+                stat_labels = stat_labels,
               },
               stats = {
                 cluster = {
@@ -595,10 +666,14 @@ dao_helpers.for_each_dao(function(kong_conf)
 
             local expected = {
               meta = {
-                consumer = {
-                  id = consumer.id
-                },
-                interval = "minutes"
+                level = "node",
+                interval = "minutes",
+                earliest_ts = minute_start_at,
+                latest_ts = minute_start_at,
+                stat_labels = stat_labels,
+                nodes = {
+                  [node_1] = { hostname = "testhostname1"}
+                }
               },
               stats = {
                 [node_1] = {

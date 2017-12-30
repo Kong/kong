@@ -31,6 +31,16 @@ dao_helpers.for_each_dao(function(kong_conf)
     local vitals
     local dao
 
+    local stat_labels = {
+      "cache_datastore_hits_total",
+      "cache_datastore_misses_total",
+      "latency_proxy_request_min_ms",
+      "latency_proxy_request_max_ms",
+      "latency_upstream_min_ms",
+      "latency_upstream_max_ms",
+      "requests_proxy_total",
+    }
+
     setup(function()
       dao = assert(dao_factory.new(kong_conf))
       assert(dao:run_migrations())
@@ -291,30 +301,41 @@ dao_helpers.for_each_dao(function(kong_conf)
       local cons_id = utils.uuid()
 
       before_each(function()
-        local q, query
+        -- TODO: Deal with Cassandra
+        if dao.db_type == "postgres" then
+          local node_q = "insert into vitals_node_meta(node_id, hostname) values('%s', '%s')"
+          local nodes = { node_1, node_2 }
 
-        q = "insert into vitals_consumers(consumer_id, node_id, at, duration, count) " ..
-            "values('%s', '%s', to_timestamp(%d), %d, %d)"
+          for i, node in ipairs(nodes) do
+            assert(dao.db:query(fmt(node_q, node, "testhostname" .. i)))
+          end
 
-        local data_to_insert = {
-          {cons_id, node_1, 1510560000, 1, 1},
-          {cons_id, node_1, 1510560001, 1, 3},
-          {cons_id, node_1, 1510560002, 1, 4},
-          {cons_id, node_1, 1510560000, 60, 19},
-          {cons_id, node_2, 1510560001, 1, 5},
-          {cons_id, node_2, 1510560002, 1, 7},
-          {cons_id, node_2, 1510560000, 60, 20},
-          {cons_id, node_2, 1510560060, 60, 24},
-        }
+          local q, query
 
-        for _, row in ipairs(data_to_insert) do
-          query = fmt(q, unpack(row))
-          assert(dao.db:query(query))
+          q = "insert into vitals_consumers(consumer_id, node_id, at, duration, count) " ..
+              "values('%s', '%s', to_timestamp(%d), %d, %d)"
+
+          local data_to_insert = {
+            {cons_id, node_1, 1510560000, 1, 1},
+            {cons_id, node_1, 1510560001, 1, 3},
+            {cons_id, node_1, 1510560002, 1, 4},
+            {cons_id, node_1, 1510560000, 60, 19},
+            {cons_id, node_2, 1510560001, 1, 5},
+            {cons_id, node_2, 1510560002, 1, 7},
+            {cons_id, node_2, 1510560000, 60, 20},
+            {cons_id, node_2, 1510560060, 60, 24},
+          }
+
+          for _, row in ipairs(data_to_insert) do
+            query = fmt(q, unpack(row))
+            assert(dao.db:query(query))
+          end
         end
       end)
 
       after_each(function()
         assert(dao.db:query("truncate table vitals_consumers"))
+        assert(dao.db:query("truncate table vitals_node_meta"))
       end)
 
       it("returns seconds stats for a consumer across the cluster", function()
@@ -326,10 +347,11 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         local expected = {
           meta = {
-            interval = 'seconds',
-            consumer = {
-              id = cons_id
-            },
+            level = "cluster",
+            interval = "seconds",
+            earliest_ts = 1510560000,
+            latest_ts = 1510560002,
+            stat_labels = stat_labels,
           },
           stats = {
             cluster = {
@@ -353,13 +375,14 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         local expected = {
           meta = {
-            interval = 'seconds',
-            node     = {
-              id = node_1,
-            },
-            consumer = {
-              id = cons_id,
-            },
+            level = "node",
+            interval = "seconds",
+            earliest_ts = 1510560000,
+            latest_ts = 1510560002,
+            stat_labels = stat_labels,
+            nodes = {
+              [node_1] = { hostname = "testhostname1"}
+            }
           },
           stats = {
             [node_1] = {
@@ -382,10 +405,11 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         local expected = {
           meta = {
-            interval = 'minutes',
-            consumer = {
-              id = cons_id
-            },
+            level = "cluster",
+            interval = "minutes",
+            earliest_ts = 1510560000,
+            latest_ts = 1510560060,
+            stat_labels = stat_labels,
           },
           stats = {
             cluster = {
@@ -408,13 +432,14 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         local expected = {
           meta = {
-            interval = 'minutes',
-            node     = {
-              id = node_2,
-            },
-            consumer = {
-              id = cons_id,
-            },
+            level = "node",
+            interval = "minutes",
+            earliest_ts = 1510560000,
+            latest_ts = 1510560060,
+            stat_labels = stat_labels,
+            nodes = {
+              [node_2] = { hostname = "testhostname2"}
+            }
           },
           stats = {
             [node_2] = {
@@ -459,6 +484,46 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         assert.is_nil(res)
         assert.same(expected, err)
+      end)
+    end)
+
+    describe("get_node_meta()", function()
+      after_each(function()
+        assert(dao.db:query("truncate table vitals_node_meta"))
+      end)
+
+      it("returns metadata for the requested node ids", function()
+        local node_id  = utils.uuid()
+        local hostname = "testhostname"
+
+        local node_id_2  = utils.uuid()
+        local hostname_2 = "testhostname-2"
+
+        local data_to_insert = {
+          { node_id, hostname },
+          { node_id_2, hostname_2 },
+        }
+
+        local q = "insert into vitals_node_meta(node_id, hostname) values('%s', '%s')"
+
+        for _, row in ipairs(data_to_insert) do
+          assert(dao.db:query(fmt(q, unpack(row))))
+        end
+
+        local res, _ = vitals:get_node_meta({ node_id, node_id_2 })
+
+        local expected = {
+          [node_id] = { hostname = hostname},
+          [node_id_2] = { hostname = hostname_2},
+        }
+
+        assert.same(expected, res)
+      end)
+
+      it("returns an empty table when no nodes are passed in", function()
+        local res, _ = vitals:get_node_meta({})
+
+        assert.same({}, res)
       end)
     end)
   end)

@@ -30,7 +30,7 @@ return {
         end
       end
 
-      return helpers.responses.send_HTTP_OK({ stats = cluster_stats })
+      return helpers.responses.send_HTTP_OK(cluster_stats)
     end
   },
   ["/vitals/nodes/"] = {
@@ -48,7 +48,7 @@ return {
         end
       end
 
-      return helpers.responses.send_HTTP_OK({ stats = all_node_stats })
+      return helpers.responses.send_HTTP_OK(all_node_stats)
     end
   },
   ["/vitals/nodes/:node_id"] = {
@@ -67,7 +67,7 @@ return {
         end
       end
 
-      return helpers.responses.send_HTTP_OK({ stats = requested_node_stats })
+      return helpers.responses.send_HTTP_OK(requested_node_stats)
     end
   },
   ["/vitals/consumers/:username_or_id"] = {

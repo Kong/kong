@@ -46,6 +46,10 @@ local DELETE_CONSUMER_STATS = [[
 
 local SELECT_NODE = "select node_id from vitals_node_meta where node_id = '%s'"
 
+local SELECT_NODE_META = [[
+  select node_id, hostname from vitals_node_meta where node_id in ('%s')
+]]
+
 function _M.dynamic_table_names(dao)
   local table_names = {}
 
@@ -332,6 +336,26 @@ function _M:insert_node_meta()
   end
 
   return true
+end
+
+
+function _M:select_node_meta(node_ids)
+  if not node_ids or not node_ids[1] then
+    return {}
+  end
+
+  -- format the node ids for query interpolation
+  local node_ids_str = table.concat(node_ids, "', '")
+
+  local query = fmt(SELECT_NODE_META, node_ids_str)
+
+  local res, err = self.db:query(query)
+
+  if err then
+    return nil, "could not select nodes. query: " .. query .. " error " .. err
+  end
+
+  return res
 end
 
 

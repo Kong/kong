@@ -865,5 +865,56 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert.same(5, results)
       end)
     end)
+
+
+    describe(":select_node_meta()", function()
+      local node_id  = utils.uuid()
+      local hostname = "testhostname"
+
+      local node_id_2  = utils.uuid()
+      local hostname_2 = "testhostname-2"
+
+      after_each(function()
+        assert(dao.db:query("truncate table vitals_node_meta"))
+      end)
+
+      it("retrieves node_id and hostname for a list of nodes", function()
+        local data_to_insert = {
+          { node_id, hostname },
+          { node_id_2, hostname_2 },
+        }
+
+        local q = "insert into vitals_node_meta(node_id, hostname) " ..
+                  "values('%s', '%s')"
+
+        for _, row in ipairs(data_to_insert) do
+          local query = fmt(q, unpack(row))
+          assert(dao.db:query(query))
+        end
+
+        local node_ids = { node_id, node_id_2 }
+
+        local expected = {
+          {
+            hostname = hostname,
+            node_id = node_id
+          },
+          {
+            hostname = hostname_2,
+            node_id = node_id_2
+          }
+        }
+
+        local res, _ = strategy:select_node_meta(node_ids)
+
+        assert.same(expected, res)
+      end)
+
+      it("returns an empty table when no node ids are passed in", function()
+        local res, _ = strategy:select_node_meta({})
+
+        assert.same({}, res)
+      end)
+    end)
   end)
 end)

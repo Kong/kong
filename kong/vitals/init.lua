@@ -30,6 +30,17 @@ do
 end
 
 
+local STAT_LABELS = {
+  "cache_datastore_hits_total",
+  "cache_datastore_misses_total",
+  "latency_proxy_request_min_ms",
+  "latency_proxy_request_max_ms",
+  "latency_upstream_min_ms",
+  "latency_upstream_max_ms",
+  "requests_proxy_total",
+}
+
+
 local persistence_handler
 local _log_prefix = "[vitals] "
 local NODE_ID_KEY = "vitals:node_id"
@@ -232,10 +243,36 @@ end
 
 
 -- converts Kong stats to format expected by Vitals API
-local function convert_stats(vitals, res)
+local function convert_stats(vitals, res, level, interval)
   local stats = {}
+  local meta = {
+    level = level,
+    interval = interval,
+  }
 
+  -- no stats to process, return minimal metadata along with empty stats
+  if not res[1] then
+    return { stats = stats, meta = meta }
+  end
+
+  meta.earliest_ts = 0xFFFFFFFF
+  meta.latest_ts = -1
+  meta.stat_labels = STAT_LABELS
+
+  local nodes = {}
+  local nodes_idx = {}
+  local next_idx = 1
   for _, row in ipairs(res) do
+    -- keep track of the node ids in this time series
+    if not nodes_idx[row.node_id] then
+      nodes_idx[row.node_id] = next_idx
+      nodes[next_idx] = row.node_id
+      next_idx = next_idx + 1
+    end
+
+    meta.earliest_ts = math_min(meta.earliest_ts, tonumber(row.at))
+    meta.latest_ts = math_max(meta.latest_ts, tonumber(row.at))
+
     stats[row.node_id] = stats[row.node_id] or {}
 
     stats[row.node_id][vitals.strategy:get_timestamp_str(row.at)] = {
@@ -249,20 +286,56 @@ local function convert_stats(vitals, res)
     }
   end
 
-  return stats
+  -- only include nodes in metadata if it's a node-level request
+  if level == "node" then
+    meta.nodes = vitals:get_node_meta(nodes)
+  end
+
+  return { stats = stats, meta = meta }
 end
 
 
 -- converts customer stats to format expected by Vitals API
-local function convert_customer_stats(vitals, res)
+local function convert_customer_stats(vitals, res, level, interval)
   local stats = {}
+  local meta = {
+    level = level,
+    interval = interval,
+  }
 
+  -- no stats to process, return minimal metadata along with empty stats
+  if not res[1] then
+    return { stats = stats, meta = meta }
+  end
+
+  meta.earliest_ts = 0xFFFFFFFF
+  meta.latest_ts = -1
+  meta.stat_labels = STAT_LABELS
+
+  local nodes = {}
+  local nodes_idx = {}
+  local next_idx = 1
   for _, row in ipairs(res) do
+    -- keep track of the node ids in this time series
+    if not nodes_idx[row.node_id] then
+      nodes_idx[row.node_id] = next_idx
+      nodes[next_idx] = row.node_id
+      next_idx = next_idx + 1
+    end
+
+    meta.earliest_ts = math_min(meta.earliest_ts, tonumber(row.at))
+    meta.latest_ts = math_max(meta.latest_ts, tonumber(row.at))
+
     stats[row.node_id] = stats[row.node_id] or {}
     stats[row.node_id][vitals.strategy:get_timestamp_str(row.at)] = row.count
   end
 
-  return stats
+  -- only include nodes in metadata if it's a node-level request
+  if level == "node" then
+    meta.nodes = vitals:get_node_meta(nodes)
+  end
+
+  return { stats = stats, meta = meta }
 end
 
 
@@ -552,6 +625,25 @@ function _M:current_bucket()
 end
 
 
+
+-- converts node metadata into a table to be included in stats responses
+function _M:get_node_meta(node_ids)
+  local nodes, err = self.strategy:select_node_meta(node_ids)
+
+  if err then
+    return nil, "failed to select node metadata: " .. err
+  end
+
+  local node_meta = {}
+  for i, v in ipairs(nodes) do
+    node_meta[v.node_id] = { hostname = v.hostname }
+  end
+
+  return node_meta
+end
+
+
+
 --[[
                          FOR THE VITALS API
   Functions in this section are called by the Vitals (Admin) API.
@@ -635,7 +727,7 @@ function _M:get_stats(query_type, level, node_id)
     return {}
   end
 
-  return convert_stats(self, res)
+  return convert_stats(self, res, level, query_type)
 end
 
 
@@ -699,23 +791,7 @@ function _M:get_consumer_stats(opts)
     return nil, "Failed to retrieve stats for consumer " .. opts.consumer_id
   end
 
-  local retval = {
-    meta = {
-      interval = opts.duration,
-      consumer = {
-        id = opts.consumer_id,
-      },
-    },
-    stats = convert_customer_stats(self, res)
-  }
-
-  if opts.node_id then
-    retval.meta.node = {
-      id = opts.node_id,
-    }
-  end
-
-  return retval
+  return convert_customer_stats(self, res, opts.level, opts.duration)
 end
 
 

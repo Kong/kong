@@ -33,6 +33,11 @@ local SELECT_NODES = "SELECT node_id FROM vitals_node_meta"
 
 local SELECT_NODE = "SELECT node_id FROM vitals_node_meta WHERE node_id = ?"
 
+local SELECT_NODE_META = [[
+  SELECT node_id, hostname FROM vitals_node_meta
+  WHERE node_id IN ?
+]]
+
 local SELECT_STATS = [[
   SELECT * FROM vitals_stats_seconds
     WHERE node_id IN ?
@@ -389,5 +394,28 @@ function _M:node_exists(node_id)
 
   return res[1] ~= nil
 end
+
+
+function _M:select_node_meta(node_ids)
+  if not node_ids or not node_ids[1] then
+    return {}
+  end
+
+  -- convert to cassandra uuid
+  for i, v in ipairs(node_ids) do
+    node_ids[i] = cassandra.uuid(v)
+  end
+
+  local res, err = self.cluster:execute(SELECT_NODE_META, {
+    node_ids,
+  }, QUERY_OPTIONS)
+
+  if err then
+    return nil, err
+  end
+
+  return res
+end
+
 
 return _M
