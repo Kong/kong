@@ -132,6 +132,10 @@ return {
       required                         = false,
       type                             = "array",
     },
+    authorization_query_args_client    = {
+      required                         = false,
+      type                             = "array",
+    },
     token_post_args_names              = {
       required                         = false,
       type                             = "array",

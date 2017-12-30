@@ -1,12 +1,12 @@
-local BasePlugin   = require "kong.plugins.base_plugin"
-local cache        = require "kong.plugins.openid-connect.cache"
-local constants    = require "kong.constants"
-local responses    = require "kong.tools.responses"
-local oic          = require "kong.openid-connect"
-local uri          = require "kong.openid-connect.uri"
-local codec        = require "kong.openid-connect.codec"
-local session      = require "resty.session"
-local upload       = require "resty.upload"
+local BasePlugin    = require "kong.plugins.base_plugin"
+local cache         = require "kong.plugins.openid-connect.cache"
+local constants     = require "kong.constants"
+local responses     = require "kong.tools.responses"
+local oic           = require "kong.openid-connect"
+local uri           = require "kong.openid-connect.uri"
+local codec         = require "kong.openid-connect.codec"
+local session       = require "resty.session"
+local upload        = require "resty.upload"
 
 
 local ngx           = ngx
@@ -47,6 +47,7 @@ local function read_file(p)
   if not f then
     return nil, e
   end
+
   local c = f:read "*a"
   f:close()
   return c
@@ -73,8 +74,10 @@ local function redirect_uri()
 
   if port == 80 and scheme == "http" then
     url[4] = u
+
   elseif port == 443 and scheme == "https" then
     url[4] = u
+
   else
     url[4] = ":"
     url[5] = port
@@ -86,12 +89,16 @@ end
 
 
 local function multipart_value(r, s)
-  if s == "formdata" then return end
+  if s == "form-data" then
+    return
+  end
+
   local e = find(s, "=", 1, true)
   if e then
     r[sub(s, 2, e - 1)] = sub(s, e + 2, #s - 1)
+
   else
-    r[#r+1] = s
+    r[#r + 1] = s
   end
 end
 
@@ -100,6 +107,7 @@ local function multipart_parse(s)
   if not s then return nil end
   local r = {}
   local i = 1
+
   local b = find(s, ";", 1, true)
   while b do
     local p = sub(s, i, b - 1)
@@ -107,50 +115,71 @@ local function multipart_parse(s)
     i = b + 1
     b = find(s, ";", i, true)
   end
+
   local p = sub(s, i)
-  if p ~= "" then multipart_value(r, p) end
+  if p ~= "" then
+    multipart_value(r, p)
+  end
+
   return r
 end
 
 
 local function multipart(name, timeout)
   local form = upload:new()
-  if not form then return nil end
-  local h, p
+  if not form then
+    return nil
+  end
+
   form:set_timeout(timeout)
+
+  local h, p
+
   while true do
     local t, r = form:read()
-    if not t then return nil end
+    if not t then
+      return nil
+    end
+
     if t == "header" then
-      if not h then h = {} end
+      if not h then
+        h = {}
+      end
+
       if type(r) == "table" then
         local k, v = r[1], multipart_parse(r[2])
-        if v then h[k] = v end
+        if v then
+          h[k] = v
+        end
       end
+
     elseif t == "body" then
       if h then
         local d = h["Content-Disposition"]
         if d and d.name == name then
           p = { n = 1 }
         end
+
         h = nil
       end
+
       if p then
         local n = p.n
         p[n] = r
         p.n  = n + 1
       end
+
     elseif t == "part_end" then
       if p then
         p = concat(p)
         break
       end
+
     elseif t == "eof" then
       break
     end
   end
-  local t = form:read()
-  if not t then return nil end
+
   return p
 end
 
@@ -187,7 +216,9 @@ end
 local function client(param, clients, secrets, redirects)
   if param then
     local client_id, client_secret, client_redirect_uri
+
     local client_index = tonumber(param)
+
     if client_index then
       if clients[client_index] then
         client_id = clients[client_index]
@@ -197,6 +228,7 @@ local function client(param, clients, secrets, redirects)
           client_redirect_uri = redirects[client_index] or redirects[1]
         end
       end
+
     else
       for i, c in ipairs(clients) do
         if param == c then
@@ -207,6 +239,7 @@ local function client(param, clients, secrets, redirects)
         end
       end
     end
+
     return client_id, client_secret, client_redirect_uri
   end
 end
@@ -224,7 +257,9 @@ local function append_header(name, value)
     if header_value ~= nil then
       if type(header_value) == "table" then
         header_value[#header_value+1] = value
+
       else
+
         header_value = { header_value, value }
       end
 
@@ -244,6 +279,7 @@ local function headers(upstream_header, downstream_header, header_value)
                   upstream_header ~= ""       and
                   upstream_header ~= ngx.null and
                   upstream_header
+
     local dsm = downstream_header ~= nil      and
                 downstream_header ~= ""       and
                 downstream_header ~= ngx.null and
@@ -306,6 +342,7 @@ local function get_conf_args(args_names, args_values)
       args[name] = args_values[i]
     end
   end
+
   return args
 end
 
@@ -398,19 +435,21 @@ function OICHandler:access(conf)
   local secrets   = get_conf_arg(conf, "client_secret", {})
   local redirects = get_conf_arg(conf, "redirect_uri",  {})
 
-  local client_id, client_secret, client_redirect_uri
+  local client_id, client_secret, client_redirect_uri, uri_args, post_args
 
   -- try to find the right client
   if #clients > 1 then
     client_id, client_secret, client_redirect_uri = client(var.http_x_client_id, clients, secrets, redirects)
     if not client_id then
       client_id, client_secret, client_redirect_uri = client(var.http_client_id, clients, secrets, redirects)
+
       if not client_id then
-        local uri_args = get_uri_args()
+        uri_args = get_uri_args()
         client_id, client_secret, client_redirect_uri = client(uri_args.client_id, clients, secrets, redirects)
+
         if not client_id then
           read_body()
-          local post_args = get_post_args()
+          post_args = get_post_args()
           client_id, client_secret, client_redirect_uri = client(post_args.client_id, clients, secrets, redirects)
         end
       end
@@ -546,17 +585,21 @@ function OICHandler:access(conf)
           for _, t in ipairs(id_token_param_type) do
             if t == "header" then
               local name = gsub(lower(id_token_param_name), "-", "_")
+
               id_token = var["http_" .. name]
               if id_token then
                 break
               end
+
               id_token = var["http_x_" .. name]
               if id_token then
                 break
               end
 
             elseif t == "query" then
-              local uri_args = get_uri_args()
+              if not uri_args then
+                uri_args = get_uri_args()
+              end
               if uri_args then
                 id_token = uri_args[id_token_param_name]
                 if id_token then
@@ -566,8 +609,10 @@ function OICHandler:access(conf)
 
             elseif t == "body" then
               if sub(content_type, 1, 33) == "application/x-www-form-urlencoded" then
-                read_body()
-                local post_args = get_post_args()
+                if not post_args then
+                  read_body()
+                  post_args = get_post_args()
+                end
                 if post_args then
                   id_token = post_args[id_token_param_name]
                   if id_token then
@@ -698,7 +743,9 @@ function OICHandler:access(conf)
                 code_verifier = code_verifier,
               }
 
-              local uri_args = get_uri_args()
+              if not uri_args then
+                uri_args = get_uri_args()
+              end
 
               log(DEBUG, "[openid-connect] verifying authorization code flow")
 
@@ -710,8 +757,10 @@ function OICHandler:access(conf)
                   return unauthorized(iss, err, authorization)
 
                 else
-                  read_body()
-                  local post_args = get_post_args()
+                  if not post_args then
+                    read_body()
+                    post_args = get_post_args()
+                  end
                   if post_args.state == state then
                     return unauthorized(iss, err, authorization)
                   end
@@ -726,8 +775,7 @@ function OICHandler:access(conf)
 
                 log(DEBUG, "[openid-connect] creating authorization code flow request with previous parameters")
                 args, err = o.authorization:request {
-                  args          = get_conf_args(conf.authorization_query_args_names,
-                                                conf.authorization_query_args_values),
+                  args          = authorization_data.args,
                   state         = state,
                   nonce         = nonce,
                   code_verifier = code_verifier,
@@ -763,15 +811,54 @@ function OICHandler:access(conf)
           if not args then
             log(DEBUG, "[openid-connect] creating authorization code flow request")
             -- authorization code request
-            args, err = o.authorization:request()
+
+            local extra_args = get_conf_args(conf.authorization_query_args_names,
+                                             conf.authorization_query_args_values)
+
+            local client_args = get_conf_arg(conf, "authorization_query_args_client")
+
+            if client_args then
+              for _, arg_name in ipairs(client_args) do
+                ngx.log(ngx.ERR, "[openid-connect] " .. arg_name)
+                if not uri_args then
+                  uri_args = get_uri_args()
+                end
+
+                if uri_args[arg_name] then
+                  if not extra_args then
+                    extra_args = {}
+                  end
+
+                  extra_args[arg_name] = uri_args[arg_name]
+
+                else
+                  if not post_args then
+                    read_body()
+                    post_args = get_post_args()
+                  end
+
+                  if post_args[arg_name] then
+                    if not extra_args then
+                      extra_args = {}
+                    end
+
+                    extra_args[arg_name] = uri_args[arg_name]
+                  end
+                end
+              end
+            end
+
+            args, err = o.authorization:request {
+              args = extra_args,
+            }
+
             if not args then
               log(DEBUG, "[openid-connect] unable to start authorization code flow request")
               return unexpected(err)
             end
 
             authorization.data = {
-              args          = get_conf_args(conf.authorization_query_args_names,
-                                            conf.authorization_query_args_values),
+              args          = extra_args,
               state         = args.state,
               nonce         = args.nonce,
               code_verifier = args.code_verifier,
@@ -1205,6 +1292,7 @@ function OICHandler:access(conf)
 
     if credential then
       ngx.ctx.authenticated_credential = credential
+
     else
       ngx.ctx.authenticated_credential = {
         consumer_id = mapped_consumer.id
@@ -1332,6 +1420,7 @@ function OICHandler:access(conf)
   local login_action = get_conf_arg(conf, "login_action")
   if login_action == "response" or login_action == "redirect" then
     local has_login_method
+
     local login_methods = get_conf_arg(conf, "login_methods", { "authorization_code" })
     for _, login_method in ipairs(login_methods) do
       if grant_type == login_method then
@@ -1343,6 +1432,7 @@ function OICHandler:access(conf)
     if has_login_method then
       if login_action == "response" then
         local login_response = {}
+
         local login_tokens = get_conf_arg(conf, "login_tokens")
         if login_tokens then
           log(DEBUG, "[openid-connect] adding login tokens to response")
@@ -1360,6 +1450,7 @@ function OICHandler:access(conf)
         local login_redirect_uri = get_conf_arg(conf, "login_redirect_uri")
         if login_redirect_uri then
           local ruri, i = { login_redirect_uri }, 2
+
           local login_tokens = get_conf_arg(conf, "login_tokens")
           if login_tokens then
             log(DEBUG, "[openid-connect] adding login tokens to redirect uri")
@@ -1383,9 +1474,11 @@ function OICHandler:access(conf)
                 if not redirect_params_added then
                   if login_redirect_mode == "query" then
                     ruri[i] = "?"
+
                   else
                     ruri[i] = "#"
                   end
+
                   redirect_params_added = true
 
                 else
