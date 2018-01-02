@@ -211,14 +211,19 @@ end
 
 function _M:migrations_modules()
   local migrations = {
-    core = require("kong.dao.migrations." .. self.db_type)
+    core = utils.deep_copy(require("kong.dao.migrations." .. self.db_type))
   }
+
+  ee_dao_factory.merge_enterprise_migrations(migrations, self.db_type, "core")
 
   for plugin_name in pairs(self.plugin_names) do
     local ok, plugin_mig = utils.load_module_if_exists("kong.plugins." .. plugin_name .. ".migrations." .. self.db_type)
     if ok then
-      migrations[plugin_name] = plugin_mig
+      migrations[plugin_name] = utils.deep_copy(plugin_mig)
     end
+
+    ee_dao_factory.merge_enterprise_migrations(migrations, self.db_type,
+                                               plugin_name)
   end
 
   do
