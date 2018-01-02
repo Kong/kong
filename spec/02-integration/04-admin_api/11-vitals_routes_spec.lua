@@ -543,7 +543,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         end)
       end)
 
-      describe("/vitals/consumers/{username_or_id}", function()
+      describe("/vitals/consumers/{username_or_id}/cluster", function()
         before_each(function()
           dao.db:truncate_table("consumers")
           dao.db:truncate_table("vitals_consumers")
@@ -566,7 +566,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
             local res = assert(client:send {
               methd = "GET",
-              path = "/vitals/consumers/" .. consumer.id,
+              path = "/vitals/consumers/" .. consumer.id .. "/cluster",
               query = {
                 interval = "seconds"
               }
@@ -596,7 +596,7 @@ dao_helpers.for_each_dao(function(kong_conf)
           it("returns a 404 if called with invalid consumer_id path param", function()
             local res = assert(client:send {
               methd = "GET",
-              path = "/vitals/consumers/fake-uuid",
+              path = "/vitals/consumers/fake-uuid/cluster",
               query = {
                 interval = "seconds"
               }
@@ -615,7 +615,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
             local res = assert(client:send {
               methd = "GET",
-              path = "/vitals/consumers/" .. consumer.id,
+              path = "/vitals/consumers/" .. consumer.id .. "/cluster",
               query = {
                 wrong_query_key = "seconds"
               }
@@ -688,7 +688,7 @@ dao_helpers.for_each_dao(function(kong_conf)
           it("returns a 404 if called with invalid consumer_id path param", function()
             local res = assert(client:send {
               methd = "GET",
-              path = "/vitals/consumers/fake-uuid",
+              path = "/vitals/consumers/fake-uuid/nodes",
               query = {
                 interval = "seconds"
               }
@@ -707,7 +707,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
             local res = assert(client:send {
               methd = "GET",
-              path = "/vitals/consumers/" .. consumer.id,
+              path = "/vitals/consumers/" .. consumer.id .. "/nodes",
               query = {
                 wrong_query_key = "seconds"
               }

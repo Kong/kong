@@ -70,7 +70,7 @@ return {
       return helpers.responses.send_HTTP_OK(requested_node_stats)
     end
   },
-  ["/vitals/consumers/:username_or_id"] = {
+  ["/vitals/consumers/:username_or_id/cluster"] = {
     GET = function(self, dao, helpers)
       self.params.username_or_id = ngx.unescape_uri(self.params.username_or_id)
       crud.find_consumer_by_username_or_id(self, dao, helpers)
