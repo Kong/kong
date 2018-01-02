@@ -74,6 +74,10 @@ local function send_report(signal_type, t, host, port)
 
   for k, v in pairs(t) do
     if k == "unique_id" or (k ~= "created_at" and sub(k, -2) ~= "id") then
+      if type(v) == "function" then
+        v = v()
+      end
+		
       if type(v) == "table" then
         local json, err = cjson.encode(v)
         if err then
@@ -81,9 +85,6 @@ local function send_report(signal_type, t, host, port)
         end
 
         v = json
-
-      elseif type(v) == "function" then
-        v = v()
       end
 
       mutable_idx = mutable_idx + 1
