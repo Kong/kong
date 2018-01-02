@@ -23,6 +23,7 @@ local get_body_data = ngx.req.get_body_data
 local get_body_file = ngx.req.get_body_file
 local get_post_args = ngx.req.get_post_args
 local get_headers   = ngx.req.get_headers
+local escape_uri    = ngx.escape_uri
 local tonumber      = tonumber
 local tostring      = tostring
 local ipairs        = ipairs
@@ -59,9 +60,26 @@ local function redirect_uri()
   -- if none is configured.
 
   local scheme = var.scheme
-  local host   = var.host
-  local port   = tonumber(var.server_port)
-  local u      = var.request_uri
+  if type(scheme) == "table" then
+    scheme = scheme[1]
+  end
+
+  local host = var.host
+  if type(host) == "table" then
+    host = host[1]
+  end
+
+  local port = var.server_port
+  if type(port) == "table" then
+    port = port[1]
+  end
+
+  port = tonumber(port)
+
+  local u = var.request_uri
+  if type(u) == "table" then
+    u = u[1]
+  end
 
   do
     local s = find(u, "?", 2, true)
@@ -213,34 +231,31 @@ local function consumer(issuer, token, claim, anonymous, consumer_by)
 end
 
 
-local function client(param, clients, secrets, redirects)
-  if param then
-    local client_id, client_secret, client_redirect_uri
+local function client(param, clients)
+  if not param then
+    return nil
+  end
 
-    local client_index = tonumber(param)
+  if type(param) == "table" then
+    param = param[1]
+  end
 
-    if client_index then
-      if clients[client_index] then
-        client_id = clients[client_index]
-        if client_id then
-          client_id           =   clients[client_index]
-          client_secret       =   secrets[client_index]
-          client_redirect_uri = redirects[client_index] or redirects[1]
-        end
-      end
-
-    else
-      for i, c in ipairs(clients) do
-        if param == c then
-          client_id           =   clients[i]
-          client_secret       =   secrets[i]
-          client_redirect_uri = redirects[i] or redirects[1]
-          break
-        end
+  local client_index = tonumber(param)
+  if client_index then
+    if clients[client_index] then
+      local client_id = clients[client_index]
+      if client_id then
+        return client_id, client_index
       end
     end
 
-    return client_id, client_secret, client_redirect_uri
+    return
+  end
+
+  for i, c in ipairs(clients) do
+    if param == c then
+      return clients[i], i
+    end
   end
 end
 
@@ -435,41 +450,54 @@ function OICHandler:access(conf)
   local secrets   = get_conf_arg(conf, "client_secret", {})
   local redirects = get_conf_arg(conf, "redirect_uri",  {})
 
-  local client_id, client_secret, client_redirect_uri, uri_args, post_args
+  local  login_redirect_uris = get_conf_arg(conf,  "login_redirect_uri",  {})
+  local logout_redirect_uris = get_conf_arg(conf, "logout_redirect_uri",  {})
 
-  -- try to find the right client
+  local client_id, client_secret, client_redirect_uri, client_index
+  local login_redirect_uri, logout_redirect_uri
+  local uri_args, post_args
+
   if #clients > 1 then
-    client_id, client_secret, client_redirect_uri = client(var.http_x_client_id, clients, secrets, redirects)
+    local client_arg = get_conf_arg(conf,  "client_arg",  "client_id")
+
+    client_id, client_index = client(var["http_x_" .. client_arg], clients)
+
     if not client_id then
-      client_id, client_secret, client_redirect_uri = client(var.http_client_id, clients, secrets, redirects)
+      client_id, client_index = client(var["http_" .. client_arg], clients)
 
       if not client_id then
         uri_args = get_uri_args()
-        client_id, client_secret, client_redirect_uri = client(uri_args.client_id, clients, secrets, redirects)
+        client_id, client_index = client(uri_args[client_arg], clients)
 
         if not client_id then
           read_body()
           post_args = get_post_args()
-          client_id, client_secret, client_redirect_uri = client(post_args.client_id, clients, secrets, redirects)
+          client_id, client_index = client(post_args[client_arg], clients)
         end
       end
     end
   end
 
-  -- fallback to default client
-  if not client_secret then
-    client_id           =   clients[1]
-    client_secret       =   secrets[1]
-    client_redirect_uri = redirects[1]
+  if client_id then
+    client_secret       =              secrets[client_index] or              secrets[1]
+    client_redirect_uri =            redirects[client_index] or            redirects[1] or redirect_uri()
+    login_redirect_uri  =  login_redirect_uris[client_index] or  login_redirect_uris[1]
+    logout_redirect_uri = logout_redirect_uris[client_index] or logout_redirect_uris[1]
+
+  else
+    client_id           =              clients[1]
+    client_secret       =              secrets[1]
+    client_redirect_uri =            redirects[1] or redirect_uri()
+    login_redirect_uri  =  login_redirect_uris[1]
+    logout_redirect_uri = logout_redirect_uris[1]
+
+    client_index        = 1
   end
 
-  local o
-
-  log(DEBUG, "[openid-connect] initializing library")
-  o, err = oic.new({
+  local options = {
     client_id         = client_id,
     client_secret     = client_secret,
-    redirect_uri      = client_redirect_uri or redirect_uri(),
+    redirect_uri      = client_redirect_uri,
     scope             = get_conf_arg(conf, "scopes", { "openid" }),
     response_mode     = get_conf_arg(conf, "response_mode"),
     audience          = get_conf_arg(conf, "audience"),
@@ -483,8 +511,12 @@ function OICHandler:access(conf)
     verify_nonce      = get_conf_arg(conf, "verify_nonce"),
     verify_signature  = get_conf_arg(conf, "verify_signature"),
     verify_claims     = get_conf_arg(conf, "verify_claims"),
+  }
 
-  }, issuer.configuration, issuer.keys)
+  local o
+
+  log(DEBUG, "[openid-connect] initializing library")
+  o, err = oic.new(options, issuer.configuration, issuer.keys)
 
   if not o then
     return unexpected(err)
@@ -537,8 +569,6 @@ function OICHandler:access(conf)
     end
   end
 
-  local iss = o.configuration.issuer
-
   local args, bearer, state
 
   local s, session_present, session_data
@@ -549,10 +579,170 @@ function OICHandler:access(conf)
     log(DEBUG, "[openid-connect] trying to open session")
 
     s, session_present = session.open {
-      name = session_cookie_name,
+      name   = session_cookie_name,
       secret = issuer.secret
     }
+
     session_data = s.data
+  end
+
+  local iss = o.configuration.issuer
+
+  do
+    local logout = false
+    local logout_methods = get_conf_arg(conf, "logout_methods", { "POST", "DELETE" })
+
+    if logout_methods then
+      local request_method = var.request_method
+      if type(request_method) == "table" then
+        request_method = request_method[1]
+      end
+
+      for _, m in ipairs(logout_methods) do
+        if m == request_method then
+          logout = true
+          break
+        end
+      end
+
+      if logout then
+        logout = false
+
+        local logout_query_arg = get_conf_arg(conf, "logout_query_arg")
+
+        if logout_query_arg then
+          if not uri_args then
+            uri_args = get_uri_args()
+          end
+
+           logout = uri_args[logout_query_arg] ~= nil
+        end
+
+        if logout then
+          log(DEBUG, "[openid-connect] logout by query argument")
+
+        else
+          local logout_uri_suffix = get_conf_arg(conf, "logout_uri_suffix")
+          if logout_uri_suffix then
+            local ruri = var.request_uri
+            if type(ruri) == "table" then
+              ruri = ruri[1]
+            end
+
+            logout = sub(ruri, -#logout_uri_suffix) == logout_uri_suffix
+
+            if logout then
+              log(DEBUG, "[openid-connect] logout by uri suffix")
+
+            else
+              local logout_post_arg = get_conf_arg(conf, "logout_post_arg")
+
+              if logout_post_arg then
+                if not post_args then
+                  read_body()
+                  post_args = get_post_args()
+                end
+
+                if post_args then
+                  logout = post_args[logout_post_arg] ~= nil
+
+                  if logout then
+                    log(DEBUG, "[openid-connect] logout by post argument")
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+
+      if logout then
+        local id_token
+
+        if session_present and session_data then
+
+          local new_client_index = session_data.client or client_index
+          if new_client_index ~= client_index and #clients > 1 then
+            local new_client_id
+
+            new_client_id, new_client_index = client(new_client_index, clients)
+            if new_client_id then
+              client_id             = new_client_id
+
+              client_secret         =              secrets[new_client_index] or client_secret
+              client_redirect_uri   =            redirects[new_client_index] or client_redirect_uri
+              logout_redirect_uri   = logout_redirect_uris[new_client_index] or logout_redirect_uri
+
+              options.client_id     = client_id
+              options.client_secret = client_secret
+              options.redirect_uri  = client_redirect_uri
+
+              o.options:reset(options)
+            end
+          end
+
+          if session_data.tokens then
+            id_token = session_data.tokens.id_token
+
+            if session_data.tokens.access_token then
+              if get_conf_arg(conf, "logout_revoke", false) then
+                log(DEBUG, "[openid-connect] revoking access token")
+                local ok
+                ok, err = o.token:revoke(session_data.tokens.access_token, "access_token", {
+                  revocation_endpoint = get_conf_arg(conf, "revocation_endpoint")
+                })
+                if not ok and err then
+                  log(DEBUG, "[openid-connect] revoking access token failed: " .. err)
+                end
+              end
+            end
+          end
+
+          log(DEBUG, "[openid-connect] destroying session")
+          s:destroy()
+        end
+
+        header["Cache-Control"] = "no-cache, no-store"
+        header["Pragma"]        = "no-cache"
+
+        local end_session_endpoint = get_conf_arg(conf, "end_session_endpoint", o.configuration.end_session_endpoint)
+
+        if end_session_endpoint then
+          local redirect_params_added = false
+
+          if find(end_session_endpoint, "?", 1, true) then
+            redirect_params_added = true
+          end
+
+          local ruri = { end_session_endpoint }
+          local ridx = 1
+
+          if id_token then
+            ruri[ridx + 1] = redirect_params_added and "&id_token_hint=" or "?id_token_hint="
+            ruri[ridx + 2] = id_token
+            ridx = ridx + 2
+            redirect_params_added = true
+          end
+
+          if logout_redirect_uri then
+            ruri[ridx + 1] = redirect_params_added and "&post_logout_redirect_uri=" or "?post_logout_redirect_uri="
+            ruri[ridx + 2] = escape_uri(logout_redirect_uri)
+          end
+
+          log(DEBUG, "[openid-connect] redirecting to end session endpoint")
+          return redirect(concat(ruri))
+
+        else
+          if logout_redirect_uri then
+            log(DEBUG, "[openid-connect] redirecting to logout redirect uri")
+            return redirect(logout_redirect_uri)
+          end
+
+          log(DEBUG, "[openid-connect] logout response")
+          return responses.send_HTTP_OK()
+        end
+      end
+    end
   end
 
   if not session_present then
@@ -566,6 +756,7 @@ function OICHandler:access(conf)
         log(DEBUG, "[openid-connect] found bearer token")
 
         session_data = {
+          client = client_index,
           tokens = {
             access_token = bearer
           }
@@ -575,6 +766,10 @@ function OICHandler:access(conf)
         -- and pass it on, if it is passed on the request
         local id_token
         local content_type = var.content_type  or ""
+
+        if type(content_type) == "table" then
+          content_type = content_type[1] or ""
+        end
 
         local id_token_param_name = get_conf_arg(conf, "id_token_param_name")
         if id_token_param_name then
@@ -680,25 +875,36 @@ function OICHandler:access(conf)
       if auth_method_password or auth_method_client_credentials then
         log(DEBUG, "[openid-connect] trying to find basic authentication")
 
-        local identity, secret = o.authorization:basic()
+        local identity, secret, grant_type = o.authorization:basic()
         if identity and secret then
           log(DEBUG, "[openid-connect] found basic authentication")
 
           args = {}
-          if auth_method_password then
-            args[1] = {
-              username      = identity,
-              password      = secret,
-              grant_type    = "password",
-            }
+
+          local arg_c = 0
+
+          if grant_type ~= "client_credentials" then
+            if auth_method_password then
+              arg_c = arg_c + 1
+
+              args[arg_c] = {
+                username      = identity,
+                password      = secret,
+                grant_type    = "password",
+              }
+            end
           end
 
-          if auth_method_client_credentials then
-            args[auth_method_password and 2 or 1] = {
-              client_id     = identity,
-              client_secret = secret,
-              grant_type    = "client_credentials",
-            }
+          if grant_type ~= "password" then
+            if auth_method_client_credentials then
+              arg_c = arg_c + 1
+
+              args[arg_c] = {
+                client_id     = identity,
+                client_secret = secret,
+                grant_type    = "client_credentials",
+              }
+            end
           end
 
         else
@@ -736,6 +942,27 @@ function OICHandler:access(conf)
               local nonce         = authorization_data.nonce
               local code_verifier = authorization_data.code_verifier
 
+              local new_client_index = session_data.client or client_index
+              if new_client_index ~= client_index and #clients > 1 then
+                local new_client_id
+
+                new_client_id, new_client_index = client(new_client_index, clients)
+                if new_client_id then
+                  client_id             = new_client_id
+                  client_index          = new_client_index
+
+                  client_secret         =              secrets[new_client_index] or client_secret
+                  client_redirect_uri   =            redirects[new_client_index] or client_redirect_uri
+                   login_redirect_uri   =  login_redirect_uris[new_client_index] or  login_redirect_uri
+
+                  options.client_id     = client_id
+                  options.client_secret = client_secret
+                  options.redirect_uri  = client_redirect_uri
+
+                  o.options:reset(options)
+                end
+              end
+
               -- authorization code response
               args = {
                 state         = state,
@@ -752,6 +979,9 @@ function OICHandler:access(conf)
               args, err = o.authorization:verify(args)
               if not args then
                 log(DEBUG, "[openid-connect] invalid authorization code flow")
+
+                header["Cache-Control"] = "no-cache, no-store"
+                header["Pragma"]        = "no-cache"
 
                 if uri_args.state == state then
                   return unauthorized(iss, err, authorization)
@@ -776,6 +1006,7 @@ function OICHandler:access(conf)
                 log(DEBUG, "[openid-connect] creating authorization code flow request with previous parameters")
                 args, err = o.authorization:request {
                   args          = authorization_data.args,
+                  client        = client_index,
                   state         = state,
                   nonce         = nonce,
                   code_verifier = code_verifier,
@@ -812,6 +1043,9 @@ function OICHandler:access(conf)
             log(DEBUG, "[openid-connect] creating authorization code flow request")
             -- authorization code request
 
+            header["Cache-Control"] = "no-cache, no-store"
+            header["Pragma"]        = "no-cache"
+
             local extra_args = get_conf_args(conf.authorization_query_args_names,
                                              conf.authorization_query_args_values)
 
@@ -819,7 +1053,6 @@ function OICHandler:access(conf)
 
             if client_args then
               for _, arg_name in ipairs(client_args) do
-                ngx.log(ngx.ERR, "[openid-connect] " .. arg_name)
                 if not uri_args then
                   uri_args = get_uri_args()
                 end
@@ -859,6 +1092,7 @@ function OICHandler:access(conf)
 
             authorization.data = {
               args          = extra_args,
+              client        = client_index,
               state         = args.state,
               nonce         = args.nonce,
               code_verifier = args.code_verifier,
@@ -904,7 +1138,7 @@ function OICHandler:access(conf)
   if bearer then
     log(DEBUG, "[openid-connect] verifying bearer token")
 
-    -- TODO: cache token verification(?)
+    -- TODO: cache token verification
     tokens_decoded, err = o.token:verify(tokens_encoded)
     if not tokens_decoded then
       log(DEBUG, "[openid-connect] unable to verify bearer token")
@@ -934,11 +1168,6 @@ function OICHandler:access(conf)
         if auth_method_introspection then
           if get_conf_arg(conf, "cache_introspection") then
             log(DEBUG, "[openid-connect] trying to authenticate using oauth2 introspection with caching enabled")
-
-            -- TODO: we just cache this for default one hour, not sure if there should be another strategy
-            -- TODO: actually the alternative is already proposed, but needs changes in core where ttl
-            -- TODO: and neg_ttl can be set after the results are retrieved from identity provider
-            -- TODO: see: https://github.com/thibaultcha/lua-resty-mlcache/pull/23
             access_token_introspected = cache.introspection.load(
               o,access_token_decoded, get_conf_arg(conf, "introspection_endpoint"), exp
             )
@@ -1014,6 +1243,7 @@ function OICHandler:access(conf)
 
     if auth_method_session then
       s.data = {
+        client  = client_index,
         tokens  = tokens_encoded,
         expires = expires,
       }
@@ -1049,11 +1279,6 @@ function OICHandler:access(conf)
 
         if get_conf_arg(conf, "cache_tokens") then
           log(DEBUG, "[openid-connect] trying to exchange credentials using token endpoint with caching enabled")
-
-          -- TODO: we just cache this for default one hour, not sure if there should be another strategy
-          -- TODO: actually the alternative is already proposed, but needs changes in core where ttl
-          -- TODO: and neg_ttl can be set after the results are retrieved from identity provider
-          -- TODO: see: https://github.com/thibaultcha/lua-resty-mlcache/pull/23
           tokens_encoded, err, extra_headers = cache.tokens.load(o, arg, exp)
 
         else
@@ -1077,7 +1302,7 @@ function OICHandler:access(conf)
 
     log(DEBUG, "[openid-connect] verifying tokens")
 
-    -- TODO: cache token verification(?)
+    -- TODO: cache token verification
     tokens_decoded, err = o.token:verify(tokens_encoded, args)
     if not tokens_decoded then
       log(DEBUG, "[openid-connect] token verification failed")
@@ -1091,6 +1316,7 @@ function OICHandler:access(conf)
 
     if auth_method_session then
       s.data = {
+        client  = client_index,
         tokens  = tokens_encoded,
         expires = expires,
       }
@@ -1109,7 +1335,6 @@ function OICHandler:access(conf)
 
     grant_type = "session"
     expires = (session_data.expires or leeway)
-
   end
 
   log(DEBUG, "[openid-connect] checking for access token")
@@ -1191,6 +1416,7 @@ function OICHandler:access(conf)
 
       if auth_method_session then
         s.data = {
+          client  = client_index,
           tokens  = tokens_encoded,
           expires = expires,
         }
@@ -1405,7 +1631,7 @@ function OICHandler:access(conf)
     conf.downstream_id_token_jwk_header,
     function()
       if not tokens_decoded then
-        -- TODO: cache token decoded(?)
+        -- TODO: cache token decoded
         tokens_decoded = o.token:decode(tokens_encoded)
       end
       if tokens_decoded then
@@ -1447,7 +1673,6 @@ function OICHandler:access(conf)
         return success(login_response)
 
       elseif login_action == "redirect" then
-        local login_redirect_uri = get_conf_arg(conf, "login_redirect_uri")
         if login_redirect_uri then
           local ruri, i = { login_redirect_uri }, 2
 
@@ -1485,13 +1710,17 @@ function OICHandler:access(conf)
                   ruri[i] = "&"
                 end
 
-                ruri[i+1] = name
-                ruri[i+2] = "="
-                ruri[i+3] = tokens_encoded[name]
+                ruri[i + 1] = name
+                ruri[i + 2] = "="
+                ruri[i + 3] = tokens_encoded[name]
+
                 i = i + 4
               end
             end
           end
+
+          header["Cache-Control"] = "no-cache, no-store"
+          header["Pragma"]        = "no-cache"
 
           log(DEBUG, "[openid-connect] login with redirect login action")
           return redirect(concat(ruri))
@@ -1507,10 +1736,11 @@ end
 
 if cache.is_0_10 then
   OICHandler.PRIORITY = 1000
+
 else
   OICHandler.PRIORITY = 1790
 end
 
-OICHandler.VERSION = "0.0.4"
+OICHandler.VERSION = "0.0.5"
 
 return OICHandler

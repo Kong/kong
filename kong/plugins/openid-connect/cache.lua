@@ -15,6 +15,7 @@ local json          = codec.json
 local type          = type
 local pcall         = pcall
 local log           = ngx.log
+local time          = ngx.time
 local encode_base64 = ngx.encode_base64
 local sub           = string.sub
 local tonumber      = tonumber
@@ -34,9 +35,11 @@ do
       local ttl
       if type(opts) == "table" then
         ttl = tonumber(opts.ttl)
+
       else
         ttl = tonumber(opts)
       end
+
       return cache.get_or_set(key, ttl, func, ...)
     end
 
@@ -54,9 +57,11 @@ do
       local options
       if type(opts) == "number" then
         options = { ttl = opts }
+
       elseif type(opts) == "table" then
         options = opts
       end
+
       return singletons.cache:get(key, options, func, ...)
     end
 
@@ -284,15 +289,39 @@ local introspection = {}
 
 function introspection.init(o, access_token, endpoint)
   log(NOTICE, "introspecting access token with identity provider")
-  return o.token:introspect(access_token, "access_token", {
+  local introspected = o.token:introspect(access_token, "access_token", {
     introspection_endpoint = endpoint
   })
+
+  local expires_in
+
+  if type(introspected) == "table" then
+    if introspected.expires_in then
+      expires_in = tonumber(introspected.expires_in)
+    end
+
+    if not expires_in then
+      if introspected.exp then
+        local exp = tonumber(introspected.exp)
+        if exp then
+          expires_in = exp - time()
+        end
+      end
+    end
+  end
+
+  if expires_in and expires_in < 0 then
+    expires_in = nil
+  end
+
+  return introspected, nil, expires_in
 end
 
 
 function introspection.load(o, access_token, endpoint, ttl)
   local iss = o.configuration.issuer
   local key = cache_key(iss .. "#introspection=" .. access_token)
+
   return cache_get(key, ttl, introspection.init, o, access_token, endpoint)
 end
 
@@ -306,7 +335,29 @@ function tokens.init(o, args)
   if not toks then
     return nil, err
   end
-  return { toks, headers }
+
+  local expires_in
+
+  if type(toks) == "table" then
+    if toks.expires_in then
+      expires_in = tonumber(toks.expires_in)
+    end
+
+    if not expires_in then
+      if toks.exp then
+        local exp = tonumber(toks.exp)
+        if exp then
+          expires_in = exp - time()
+        end
+      end
+    end
+  end
+
+  if expires_in and expires_in < 0 then
+    expires_in = nil
+  end
+
+  return { toks, headers }, nil, expires_in
 end
 
 
@@ -316,8 +367,10 @@ function tokens.load(o, args, ttl)
 
   if args.grant_type == "password" then
     key = cache_key(concat{ iss, "#username=", args.username, "&password=", hash.S256(args.password) })
+
   elseif args.grant_type == "client_credentials" then
     key = cache_key(concat{ iss, "#client_id=", args.client_id, "&client_secret=", hash.S256(args.client_secret) })
+
   else
     -- we don't cache authorization code requests
     return o.token:request(args)

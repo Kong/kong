@@ -17,6 +17,11 @@ return {
       required                         = true,
       type                             = "url",
     },
+    client_arg                         = {
+      required                         = false,
+      type                             = "string",
+      default                          = "client_id"
+    },
     client_id                          = {
       required                         = true,
       type                             = "array",
@@ -26,6 +31,14 @@ return {
       type                             = "array",
     },
     redirect_uri                       = {
+      required                         = false,
+      type                             = "array",
+    },
+    login_redirect_uri                 = {
+      required                         = false,
+      type                             = "array",
+    },
+    logout_redirect_uri                = {
       required                         = false,
       type                             = "array",
     },
@@ -264,10 +277,6 @@ return {
         "id_token",
       },
     },
-    login_redirect_uri                 = {
-      required                         = false,
-      type                             = "url",
-    },
     login_redirect_mode                = {
       required                         = false,
       type                             = "string",
@@ -277,6 +286,43 @@ return {
         "fragment",
       },
       default                          = "fragment",
+    },
+    logout_query_arg                   = {
+      required                         = false,
+      type                             = "string",
+    },
+    logout_post_arg                    = {
+      required                         = false,
+      type                             = "string",
+    },
+    logout_uri_suffix                  = {
+      required                         = false,
+      type                             = "string",
+    },
+    logout_methods                     = {
+      type                             = "array",
+      enum                             = {
+        "POST",
+        "GET",
+        "DELETE",
+      },
+      default                          = {
+        "POST",
+        "DELETE",
+      },
+    },
+    logout_revoke                      = {
+      required                         = false,
+      type                             = "boolean",
+      default                          = false,
+    },
+    revocation_endpoint                = {
+      required                         = false,
+      type                             = "url",
+    },
+    end_session_endpoint               = {
+      required                         = false,
+      type                             = "url",
     },
     consumer_claim                     = {
       required                         = false,
