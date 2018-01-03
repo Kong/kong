@@ -91,31 +91,14 @@ end
 
 
 app:before_filter(function(self)
+  do
+    local rbac_handler = require "kong.rbac.handler"
+    rbac_handler.validate_filter(self)
+  end
+
   if NEEDS_BODY[ngx.req.get_method()]
     and not self.req.headers["content-type"] then
     return responses.send_HTTP_UNSUPPORTED_MEDIA_TYPE()
-  end
-
-  -- default route means either a silent redirect or a non-existent resource
-  if self.route_name == "default_route" then
-    return
-  end
-
-  if not singletons.configuration.enforce_rbac then
-    return
-  end
-
-  local rbac_auth_header = singletons.configuration.rbac_auth_header
-
-  local valid, err = rbac.validate(self.req.headers[rbac_auth_header],
-                                   self.route_name, ngx.req.get_method(),
-                                   singletons.dao)
-  if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
-  end
-
-  if not valid then
-    return responses.send_HTTP_UNAUTHORIZED()
   end
 end)
 

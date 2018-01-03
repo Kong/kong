@@ -155,6 +155,7 @@ build = {
     ["kong.dao.migrations.postgres"] = "kong/dao/migrations/postgres.lua",
 
     ["kong.rbac"] = "kong/rbac/init.lua",
+    ["kong.rbac.handler"] = "kong/rbac/handler.lua",
 
     ["kong.vitals"] = "kong/vitals/init.lua",
     ["kong.vitals.cassandra.strategy"] = "kong/vitals/cassandra/strategy.lua",
