@@ -133,6 +133,7 @@ local function http_server(timeout, host, port, counts, test_log)
       test_log("test http server on port ", port, " started")
 
       local healthy = true
+      local n_checks = 0
 
       local ok_responses, fail_responses = 0, 0
       local total_reqs = 0
@@ -192,6 +193,7 @@ local function http_server(timeout, host, port, counts, test_log)
               client:send("HTTP/1.1 500 Internal Server Error\r\nConnection: close\r\n\r\n")
             end
             client:close()
+            n_checks = n_checks + 1
 
           elseif lines[1]:match("/healthy") then
             healthy = true
@@ -242,7 +244,7 @@ local function http_server(timeout, host, port, counts, test_log)
       end
       server:close()
       test_log("test http server on port ", port, " closed")
-      return ok_responses, fail_responses
+      return ok_responses, fail_responses, n_checks
     end
   }, timeout, host, port, counts, test_log or TEST_LOG)
 
@@ -284,6 +286,24 @@ local function client_requests(n, headers)
 end
 
 
+local function api_send(method, path, body)
+  local api_client = helpers.admin_client()
+  local res, err = api_client:send({
+    method = method,
+    path = path,
+    headers = {
+      ["Content-Type"] = "application/json"
+    },
+    body = body,
+  })
+  if not res then
+    return nil, err
+  end
+  api_client:close()
+  return res.status
+end
+
+
 local localhosts = {
   ipv4 = "127.0.0.1",
   ipv6 = "0000:0000:0000:0000:0000:0000:0000:0001",
@@ -312,6 +332,172 @@ dao_helpers.for_each_dao(function(kong_config)
     before_each(function()
       collectgarbage()
       collectgarbage()
+    end)
+
+    describe("Upstream entities", function()
+
+      before_each(function()
+        helpers.stop_kong()
+        helpers.run_migrations()
+        helpers.start_kong()
+      end)
+
+      after_each(function()
+        helpers.stop_kong(nil, true)
+      end)
+
+      -- Regression test for a missing invalidation in 0.12rc1
+      it("created via the API are functional", function()
+        assert.same(201, api_send("POST", "/upstreams", {
+          name = "test_upstream", slots = 10,
+        }))
+        assert.same(201, api_send("POST", "/upstreams/test_upstream/targets", {
+          target = utils.format_host(localhost, 2112),
+        }))
+        assert.same(201, api_send("POST", "/apis", {
+          name = "test_api",
+          hosts = "test_host.com",
+          upstream_url = "http://test_upstream",
+        }))
+
+        local server = http_server(10, localhost, 2112, { 1 })
+
+        local oks, fails, last_status = client_requests(1, {
+          ["Host"] = "test_host.com"
+        })
+        assert.same(200, last_status)
+        assert.same(1, oks)
+        assert.same(0, fails)
+
+        local _, server_oks, server_fails = server:join()
+        assert.same(1, server_oks)
+        assert.same(0, server_fails)
+      end)
+
+      it("can be renamed without producing stale cache", function()
+        -- create two upstreams, each with a target pointing to a server
+        for i = 1, 2 do
+          local name = "test_upstr_" .. i
+          assert.same(201, api_send("POST", "/upstreams", {
+            name = name, slots = 10,
+            healthchecks = healthchecks_config {}
+          }))
+          assert.same(201, api_send("POST", "/upstreams/" .. name .. "/targets", {
+            target = utils.format_host(localhost, 2000 + i),
+          }))
+          assert.same(201, api_send("POST", "/apis", {
+            name = "test_api_" .. i,
+            hosts = name .. ".com",
+            upstream_url = "http://" .. name,
+          }))
+        end
+
+        -- start two servers
+        local server1 = http_server(10, localhost, 2001, { 1 })
+        local server2 = http_server(10, localhost, 2002, { 1 })
+
+        -- rename upstream 2
+        assert.same(200, api_send("PATCH", "/upstreams/test_upstr_2", {
+          name = "test_upstr_3",
+        }))
+
+        -- rename upstream 1 to upstream 2's original name
+        assert.same(200, api_send("PATCH", "/upstreams/test_upstr_1", {
+          name = "test_upstr_2",
+        }))
+
+        -- hit a request through upstream 1 using the new name
+        local oks, fails, last_status = client_requests(1, {
+          ["Host"] = "test_upstr_2.com"
+        })
+        assert.same(200, last_status)
+        assert.same(1, oks)
+        assert.same(0, fails)
+
+        -- rename upstream 2
+        assert.same(200, api_send("PATCH", "/upstreams/test_upstr_3", {
+          name = "test_upstr_1",
+        }))
+
+        -- a single request to upstream 2 just to make server 2 shutdown
+        client_requests(1, { ["Host"] = "test_upstr_1.com" })
+
+        -- collect results
+        local _, server1_oks, server1_fails = server1:join()
+        local _, server2_oks, server2_fails = server2:join()
+        assert.same({1, 0}, { server1_oks, server1_fails })
+        assert.same({1, 0}, { server2_oks, server2_fails })
+      end)
+
+      it("do not leave a stale healthchecker when renamed", function()
+        local healthcheck_interval = 0.1
+        -- create an upstream
+        assert.same(201, api_send("POST", "/upstreams", {
+          name = "test_upstr", slots = 10,
+          healthchecks = healthchecks_config {
+            active = {
+              http_path = "/status",
+              healthy = {
+                interval = healthcheck_interval,
+                successes = 1,
+              },
+              unhealthy = {
+                interval = healthcheck_interval,
+                http_failures = 1,
+              },
+            }
+          }
+        }))
+        assert.same(201, api_send("POST", "/upstreams/test_upstr/targets", {
+          target = utils.format_host(localhost, 2000),
+        }))
+        assert.same(201, api_send("POST", "/apis", {
+          name = "test_api",
+          hosts = "test_upstr.com",
+          upstream_url = "http://test_upstr",
+        }))
+
+        -- start server
+        local server1 = http_server(10, localhost, 2000, { 1 })
+
+        -- rename upstream
+        assert.same(200, api_send("PATCH", "/upstreams/test_upstr", {
+          name = "test_upstr_2",
+        }))
+
+        -- reconfigure healthchecks
+        assert.same(200, api_send("PATCH", "/upstreams/test_upstr_2", {
+          healthchecks = {
+            active = {
+              http_path = "/status",
+              healthy = {
+                interval = 0,
+                successes = 1,
+              },
+              unhealthy = {
+                interval = 0,
+                http_failures = 1,
+              },
+            }
+          }
+        }))
+
+        -- give time for healthchecker to (not!) run
+        ngx.sleep(healthcheck_interval * 5)
+
+        assert.same(200, api_send("PATCH", "/apis/test_api", {
+          upstream_url = "http://test_upstr_2",
+        }))
+
+        -- a single request to upstream just to make server shutdown
+        client_requests(1, { ["Host"] = "test_upstr.com" })
+
+        -- collect results
+        local _, server1_oks, server1_fails, hcs = server1:join()
+        assert.same({1, 0}, { server1_oks, server1_fails })
+        assert.truthy(hcs < 2)
+      end)
+
     end)
 
     describe("#healthchecks", function()
