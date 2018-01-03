@@ -2,8 +2,6 @@ local crud = require "kong.api.crud_helpers"
 
 return{
   ["/consumers/:username_or_id/hmac-auth/"] = {
-    resource = "hmac-auth",
-
     before = function(self, dao_factory, helpers)
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
       self.params.consumer_id = self.consumer.id
@@ -23,8 +21,6 @@ return{
   },
 
   ["/consumers/:username_or_id/hmac-auth/:credential_username_or_id"]  = {
-    resource = "hmac-auth",
-
     before = function(self, dao_factory, helpers)
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
       self.params.consumer_id = self.consumer.id

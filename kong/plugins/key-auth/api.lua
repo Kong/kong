@@ -2,8 +2,6 @@ local crud = require "kong.api.crud_helpers"
 
 return {
   ["/consumers/:username_or_id/key-auth/"] = {
-    resource = "key-auth",
-
     before = function(self, dao_factory, helpers)
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
       self.params.consumer_id = self.consumer.id
@@ -22,8 +20,6 @@ return {
     end
   },
   ["/consumers/:username_or_id/key-auth/:credential_key_or_id"] = {
-    resource = "key-auth",
-
     before = function(self, dao_factory, helpers)
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
       self.params.consumer_id = self.consumer.id

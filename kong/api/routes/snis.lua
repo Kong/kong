@@ -3,8 +3,6 @@ local crud = require "kong.api.crud_helpers"
 
 return {
   ["/snis/"] = {
-    resource = "snis",
-
     GET = function(self, dao_factory)
       crud.paginated_set(self, dao_factory.ssl_servers_names)
     end,
@@ -22,8 +20,6 @@ return {
 
 
   ["/snis/:name"] = {
-    resource = "snis",
-
     before = function(self, dao_factory, helpers)
       local row, err = dao_factory.ssl_servers_names:find {
         name = self.params.name

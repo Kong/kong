@@ -2,8 +2,6 @@ local crud = require "kong.api.crud_helpers"
 
 return {
   ["/consumers/"] = {
-    resource = "consumers",
-
     GET = function(self, dao_factory)
       crud.paginated_set(self, dao_factory.consumers)
     end,
@@ -18,8 +16,6 @@ return {
   },
 
   ["/consumers/:username_or_id"] = {
-    resource = "consumers",
-
     before = function(self, dao_factory, helpers)
       self.params.username_or_id = ngx.unescape_uri(self.params.username_or_id)
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
@@ -39,8 +35,6 @@ return {
   },
 
   ["/consumers/:username_or_id/plugins/"] = {
-    resource = "consumers",
-
     before = function(self, dao_factory, helpers)
       self.params.username_or_id = ngx.unescape_uri(self.params.username_or_id)
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
@@ -61,8 +55,6 @@ return {
   },
 
   ["/consumers/:username_or_id/plugins/:id"] = {
-    resource = "consumers",
-
     before = function(self, dao_factory, helpers)
       self.params.username_or_id = ngx.unescape_uri(self.params.username_or_id)
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)

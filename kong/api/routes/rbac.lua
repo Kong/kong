@@ -134,8 +134,6 @@ end
 
 return {
   ["/rbac/users/"] = {
-    resource = "rbac",
-
     GET = function(self, dao_factory)
       crud.paginated_set(self, dao_factory.rbac_users)
     end,
@@ -150,8 +148,6 @@ return {
   },
 
   ["/rbac/users/:name_or_id"] = {
-    resource = "rbac",
-
     before = function(self, dao_factory, helpers)
       crud.find_rbac_user_by_name_or_id(self, dao_factory, helpers)
     end,
@@ -185,8 +181,6 @@ return {
   },
 
   ["/rbac/users/:name_or_id/permissions"] = {
-    resource = "rbac",
-
     before = function(self, dao_factory, helpers)
       crud.find_rbac_user_by_name_or_id(self, dao_factory, helpers)
     end,
@@ -211,8 +205,6 @@ return {
   },
 
   ["/rbac/users/:name_or_id/roles"] = {
-    resource = "rbac",
-
     before = function(self, dao_factory, helpers)
       crud.find_rbac_user_by_name_or_id(self, dao_factory, helpers)
     end,
@@ -304,8 +296,6 @@ return {
   },
 
   ["/rbac/roles"] = {
-    resource = "rbac",
-
     GET = function(self, dao_factory)
       crud.paginated_set(self, dao_factory.rbac_roles)
     end,
@@ -370,8 +360,6 @@ return {
   },
 
   ["/rbac/roles/:name_or_id/permissions"] = {
-    resource = "rbac",
-
     before = function(self, dao_factory, helpers)
       crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
     end,
@@ -477,8 +465,6 @@ return {
   },
 
   ["/rbac/permissions"] = {
-    resource = "rbac",
-
     GET = function(self, dao_factory, helpers)
       local dao_collection = dao_factory.rbac_perms
 
@@ -553,8 +539,6 @@ return {
   },
 
   ["/rbac/permissions/:name_or_id"] = {
-    resource = "rbac",
-
     before = function(self, dao_factory, helpers)
       crud.find_rbac_perm_by_name_or_id(self, dao_factory, helpers)
     end,
@@ -614,8 +598,6 @@ return {
   },
 
   ["/rbac/resources"] = {
-    resource = "rbac",
-
     GET = function(self, dao_factory, helpers)
       local resources = {}
 
@@ -628,8 +610,6 @@ return {
   },
 
   ["/rbac/resources/routes"] = {
-    resource = "rbac",
-
     GET = function(self, dao_factory, helpers)
       return helpers.responses.send_HTTP_OK(rbac.route_resources)
     end,

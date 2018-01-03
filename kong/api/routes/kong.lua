@@ -14,8 +14,6 @@ local lua_version = jit and jit.version or _VERSION
 
 return {
   ["/"] = {
-    resource = "kong",
-
     GET = function(self, dao, helpers)
       local distinct_plugins = {}
       local prng_seeds = {}
@@ -79,8 +77,6 @@ return {
     end
   },
   ["/status"] = {
-    resource = "status",
-
     GET = function(self, dao, helpers)
       local r = ngx.location.capture "/nginx_status"
       if r.status ~= 200 then

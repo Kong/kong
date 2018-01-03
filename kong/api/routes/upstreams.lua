@@ -70,8 +70,6 @@ end
 
 return {
   ["/upstreams/"] = {
-    resource = "upstreams",
-
     GET = function(self, dao_factory)
       crud.paginated_set(self, dao_factory.upstreams)
     end,
@@ -86,8 +84,6 @@ return {
   },
 
   ["/upstreams/:upstream_name_or_id"] = {
-    resource = "upstreams",
-
     before = function(self, dao_factory, helpers)
       crud.find_upstream_by_name_or_id(self, dao_factory, helpers)
     end,
@@ -106,8 +102,6 @@ return {
   },
 
   ["/upstreams/:upstream_name_or_id/targets/"] = {
-    resource = "targets",
-
     before = function(self, dao_factory, helpers)
       crud.find_upstream_by_name_or_id(self, dao_factory, helpers)
       self.params.upstream_id = self.upstream.id
@@ -125,8 +119,6 @@ return {
   },
 
   ["/upstreams/:upstream_name_or_id/targets/active"] = {
-    resource = "targets",
-
     before = function(self, dao_factory, helpers)
       crud.find_upstream_by_name_or_id(self, dao_factory, helpers)
       self.params.upstream_id = self.upstream.id
@@ -191,8 +183,6 @@ return {
   },
 
   ["/upstreams/:upstream_name_or_id/targets/:target_or_id"] = {
-    resource = "targets",
-
     before = function(self, dao_factory, helpers)
       crud.find_upstream_by_name_or_id(self, dao_factory, helpers)
       crud.find_target_by_target_or_id(self, dao_factory, helpers)
