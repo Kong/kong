@@ -14,6 +14,8 @@ describe("reports", function()
         hello = "world",
         foo = "bar",
         baz = function() return "bat" end,
+        foobar = function() return { foo = "bar" } end,
+        bazbat = { baz = "bat" },
       }, "127.0.0.1", 8189)
 
       local ok, res = thread:join()
@@ -28,6 +30,8 @@ describe("reports", function()
       assert.matches("hello=world", res, nil, true)
       assert.matches("signal=stub", res, nil, true)
       assert.matches("baz=bat", res, nil, true)
+      assert.matches("foobar=" .. cjson.encode({ foo = "bar" }), res, nil, true)
+      assert.matches("bazbat=" .. cjson.encode({ baz = "bat" }), res, nil, true)
     end)
     it("doesn't send if not enabled", function()
       reports.toggle(false)
