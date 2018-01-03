@@ -371,6 +371,62 @@ dao_helpers.for_each_dao(function(kong_config)
         assert.same(1, server_oks)
         assert.same(0, server_fails)
       end)
+
+      it("can be renamed without producing stale cache", function()
+        -- create two upstreams, each with a target pointing to a server
+        for i = 1, 2 do
+          local name = "test_upstr_" .. i
+          assert.same(201, api_send("POST", "/upstreams", {
+            name = name, slots = 10,
+            healthchecks = healthchecks_config {}
+          }))
+          assert.same(201, api_send("POST", "/upstreams/" .. name .. "/targets", {
+            target = utils.format_host(localhost, 2000 + i),
+          }))
+          assert.same(201, api_send("POST", "/apis", {
+            name = "test_api_" .. i,
+            hosts = name .. ".com",
+            upstream_url = "http://" .. name,
+          }))
+        end
+
+        -- start two servers
+        local server1 = http_server(10, localhost, 2001, { 1 })
+        local server2 = http_server(10, localhost, 2002, { 1 })
+
+        -- rename upstream 2
+        assert.same(200, api_send("PATCH", "/upstreams/test_upstr_2", {
+          name = "test_upstr_3",
+        }))
+
+        -- rename upstream 1 to upstream 2's original name
+        assert.same(200, api_send("PATCH", "/upstreams/test_upstr_1", {
+          name = "test_upstr_2",
+        }))
+
+        -- hit a request through upstream 1 using the new name
+        local oks, fails, last_status = client_requests(1, {
+          ["Host"] = "test_upstr_2.com"
+        })
+        assert.same(200, last_status)
+        assert.same(1, oks)
+        assert.same(0, fails)
+
+        -- rename upstream 2
+        assert.same(200, api_send("PATCH", "/upstreams/test_upstr_3", {
+          name = "test_upstr_1",
+        }))
+
+        -- a single request to upstream 2 just to make server 2 shutdown
+        client_requests(1, { ["Host"] = "test_upstr_1.com" })
+
+        -- collect results
+        local _, server1_oks, server1_fails = server1:join()
+        local _, server2_oks, server2_fails = server2:join()
+        assert.same({1, 0}, { server1_oks, server1_fails })
+        assert.same({1, 0}, { server2_oks, server2_fails })
+      end)
+
     end)
 
     describe("#healthchecks", function()

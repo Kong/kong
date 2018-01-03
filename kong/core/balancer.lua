@@ -528,9 +528,7 @@ local function on_upstream_event(operation, upstream)
 
   elseif operation == "delete" or operation == "update" then
 
-    if operation == "delete" then
-      singletons.cache:invalidate_local("balancer:upstreams")
-    end
+    singletons.cache:invalidate_local("balancer:upstreams")
     singletons.cache:invalidate_local("balancer:upstreams:" .. upstream.id)
     singletons.cache:invalidate_local("balancer:targets:"   .. upstream.id)
 
