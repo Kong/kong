@@ -2,7 +2,7 @@ return {
   {
     name = "2017-07-23-100000_rbac_oauth2_resources",
     up = function(_, _, dao)
-      local rbac = require "kong.core.rbac"
+      local rbac = require "kong.rbac"
       local bxor = require("bit").bxor
 
       local resource, err = rbac.register_resource("oauth2", dao)

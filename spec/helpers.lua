@@ -94,7 +94,7 @@ local function run_migrations(given_dao)
 
   assert(d:run_migrations())
 
-  local rbac = require "kong.core.rbac"
+  local rbac = require "kong.rbac"
 
   for _, resource in ipairs {
     "default",

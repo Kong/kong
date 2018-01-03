@@ -129,7 +129,6 @@ build = {
     ["kong.core.error_handlers"] = "kong/core/error_handlers.lua",
     ["kong.core.globalpatches"] = "kong/core/globalpatches.lua",
     ["kong.core.balancer"] = "kong/core/balancer.lua",
-    ["kong.core.rbac"] = "kong/core/rbac.lua",
 
     ["kong.dao.errors"] = "kong/dao/errors.lua",
     ["kong.dao.schemas_validation"] = "kong/dao/schemas_validation.lua",
@@ -154,6 +153,8 @@ build = {
     ["kong.dao.model_factory"] = "kong/dao/model_factory.lua",
     ["kong.dao.migrations.cassandra"] = "kong/dao/migrations/cassandra.lua",
     ["kong.dao.migrations.postgres"] = "kong/dao/migrations/postgres.lua",
+
+    ["kong.rbac"] = "kong/rbac/init.lua",
 
     ["kong.vitals"] = "kong/vitals/init.lua",
     ["kong.vitals.cassandra.strategy"] = "kong/vitals/cassandra/strategy.lua",

@@ -1,6 +1,6 @@
 local crud      = require "kong.api.crud_helpers"
 local utils     = require "kong.tools.utils"
-local rbac      = require "kong.core.rbac"
+local rbac      = require "kong.rbac"
 local bit       = require "bit"
 local cjson     = require "cjson"
 local responses = require "kong.tools.responses"

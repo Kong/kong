@@ -6,7 +6,7 @@ local singletons = require "kong.singletons"
 local app_helpers = require "lapis.application"
 local api_helpers = require "kong.api.api_helpers"
 
-local rbac = require "kong.core.rbac"
+local rbac = require "kong.rbac"
 
 
 local find = string.find

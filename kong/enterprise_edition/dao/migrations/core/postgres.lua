@@ -97,7 +97,7 @@ return {
   {
     name = "2017-07-23-100000_rbac_core_resources",
     up = function(_, _, dao)
-      local rbac = require "kong.core.rbac"
+      local rbac = require "kong.rbac"
 
       for _, resource in ipairs {
         "default",
@@ -125,7 +125,7 @@ return {
     up = function(_, _, dao)
       local utils = require "kong.tools.utils"
       local bit   = require "bit"
-      local rbac  = require "kong.core.rbac"
+      local rbac  = require "kong.rbac"
       local bxor  = bit.bxor
 
       -- default permissions and roles
@@ -355,7 +355,7 @@ return {
   {
     name = "2017-11-29-167733_rbac_vitals_resources",
     up = function(_, _, dao)
-      local rbac = require "kong.core.rbac"
+      local rbac = require "kong.rbac"
       local bxor = require("bit").bxor
 
       local resource, err = rbac.register_resource("vitals", dao)

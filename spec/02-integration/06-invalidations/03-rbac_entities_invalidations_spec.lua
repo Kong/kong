@@ -83,7 +83,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
     setup(function()
       local utils = require "kong.tools.utils"
       local bit   = require "bit"
-      local rbac  = require "kong.core.rbac"
+      local rbac  = require "kong.rbac"
       local bxor  = bit.bxor
 
       -- default permissions and roles
