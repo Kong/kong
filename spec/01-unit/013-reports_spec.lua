@@ -1,6 +1,8 @@
 local meta = require "kong.meta"
 local helpers = require "spec.helpers"
 local reports = require "kong.core.reports"
+local cjson = require "cjson.safe"
+
 
 describe("reports", function()
   describe("send()", function()
