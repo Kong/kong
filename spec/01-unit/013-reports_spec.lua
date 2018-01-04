@@ -49,6 +49,21 @@ describe("reports", function()
       assert.is_nil(res)
       assert.equal("timeout", err)
     end)
+    it("truncates large messages", function()
+      local thread = helpers.udp_server(8189)
+
+      local t = {}
+      for i = 1, 100 do
+        t["item"..i] = "value"..i
+      end
+
+      reports.send("stub", t, "127.0.0.1", 8189)
+
+      local ok, res = thread:join()
+      assert.True(ok)
+      assert.matches("^<14>", res)
+      assert.equal(1024, #res)
+    end)
   end)
 
   describe("retrieve_redis_version()", function()

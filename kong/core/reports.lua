@@ -8,16 +8,17 @@ local udp_sock = ngx.socket.udp
 local timer_at = ngx.timer.at
 local ngx_log = ngx.log
 local concat = table.concat
+local sub = string.sub
 local tostring = tostring
 local pairs = pairs
 local type = type
 local ERR = ngx.ERR
-local sub = string.sub
 
 
 local PING_INTERVAL = 3600
 local PING_KEY = "events:reports"
 local BUFFERED_REQUESTS_COUNT_KEYS = "events:requests"
+local SYSLOG_UDP_MAXSIZE = 1024
 
 
 local _buffer = {}
@@ -92,6 +93,7 @@ local function send_report(signal_type, t, host, port)
     end
   end
 
+
   local sock = udp_sock()
   local ok, err = sock:setpeername(host, port)
   if not ok then
@@ -101,9 +103,9 @@ local function send_report(signal_type, t, host, port)
 
   sock:settimeout(1000)
 
-  -- concat and send buffer
-
-  ok, err = sock:send(concat(_buffer, ";", 1, mutable_idx))
+  -- concat, enforce size and send buffer
+  ok, err = sock:send(sub(concat(_buffer, ";", 1, mutable_idx), 
+                        1, SYSLOG_UDP_MAXSIZE))
   if not ok then
     log(ERR, "could not send data: ", err)
   end
