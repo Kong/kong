@@ -20,7 +20,7 @@ return {
     { id              = typedefs.uuid, },
     { created_at      = { type = "integer", timestamp = true, auto = true }, },
     { updated_at      = { type = "integer", timestamp = true, auto = true }, },
-    { name            = { type = "string",
+    { name            = { type = "string", unique = true,
                           custom_validator = validate_name }, },
     { retries         = { type = "integer", default = 5, between = { 0, 32767 } }, },
     -- { tags          = { type = "array", array = { type = "string" } }, },
