@@ -62,7 +62,7 @@ local function generate_foreign_key_methods(self)
         local ok, errors = self.schema:validate_primary_key(foreign_key)
         if not ok then
           local err_t = self.errors:invalid_primary_key(errors)
-          return nil, err_t.name, err_t
+          return nil, tostring(err_t), err_t
         end
 
         local strategy = self.strategy
@@ -71,7 +71,7 @@ local function generate_foreign_key_methods(self)
                                                               foreign_key,
                                                               size, offset)
         if not rows then
-          return nil, err_t.name, err_t
+          return nil, tostring(err_t), err_t
         end
 
         local entities, err, err_t = self:rows_to_entities(rows)
@@ -114,12 +114,12 @@ function DAO:select(primary_key)
   local ok, errors = self.schema:validate_primary_key(primary_key)
   if not ok then
     local err_t = self.errors:invalid_primary_key(errors)
-    return nil, err_t.name, err_t
+    return nil, tostring(err_t), err_t
   end
 
   local row, err_t = self.strategy:select(primary_key)
   if err_t then
-    return nil, err_t.name, err_t
+    return nil, tostring(err_t), err_t
   end
 
   if not row then
@@ -149,7 +149,7 @@ function DAO:page(size, offset)
 
   local rows, err_t, offset = self.strategy:page(size, offset)
   if err_t then
-    return nil, err_t.name, err_t
+    return nil, tostring(err_t), err_t
   end
 
   local entities, err, err_t = self:rows_to_entities(rows)
@@ -182,7 +182,7 @@ function DAO:each(size)
     if not row then
       if err then
         local err_t = self.errors:database_error(err)
-        return nil, err_t.name, err_t
+        return nil, tostring(err_t), err_t
       end
 
       return nil
@@ -206,18 +206,18 @@ function DAO:insert(entity)
   local entity_to_insert, err = self.schema:process_auto_fields(entity, "insert")
   if not entity_to_insert then
     local err_t = self.errors:schema_violation(err)
-    return nil, err_t.name, err_t
+    return nil, tostring(err_t), err_t
   end
 
   local ok, errors = self.schema:validate(entity_to_insert)
   if not ok then
     local err_t = self.errors:schema_violation(errors)
-    return nil, err_t.name, err_t
+    return nil, tostring(err_t), err_t
   end
 
   local row, err_t = self.strategy:insert(entity_to_insert)
   if not row then
-    return nil, err_t.name, err_t
+    return nil, tostring(err_t), err_t
   end
 
   row, err, err_t = self:row_to_entity(row)
@@ -243,24 +243,24 @@ function DAO:update(primary_key, entity)
   local ok, errors = self.schema:validate_primary_key(primary_key)
   if not ok then
     local err_t = self.errors:invalid_primary_key(errors)
-    return nil, err_t.name, err_t
+    return nil, tostring(err_t), err_t
   end
 
   local entity_to_update, err = self.schema:process_auto_fields(entity, "update")
   if not entity_to_update then
     local err_t = self.errors:schema_violation(err)
-    return nil, err_t.name, err_t
+    return nil, tostring(err_t), err_t
   end
 
   local ok, errors = self.schema:validate_update(entity_to_update)
   if not ok then
     local err_t = self.errors:schema_violation(errors)
-    return nil, err_t.name, err_t
+    return nil, tostring(err_t), err_t
   end
 
   local row, err_t = self.strategy:update(primary_key, entity_to_update)
   if not row then
-    return nil, err_t.name, err_t
+    return nil, tostring(err_t), err_t
   end
 
   row, err, err_t = self:row_to_entity(row)
@@ -282,12 +282,12 @@ function DAO:delete(primary_key)
   local ok, errors = self.schema:validate_primary_key(primary_key)
   if not ok then
     local err_t = self.errors:invalid_primary_key(errors)
-    return nil, err_t.name, err_t
+    return nil, tostring(err_t), err_t
   end
 
   local _, err_t = self.strategy:delete(primary_key)
   if err_t then
-    return nil, err_t.name, err_t
+    return nil, tostring(err_t), err_t
   end
 
   self:post_crud_event("delete")
@@ -321,7 +321,7 @@ function DAO:row_to_entity(row)
   local entity, errors = self.schema:process_auto_fields(row, "select")
   if not entity then
     local err_t = self.errors:schema_violation(errors)
-    return nil, err_t.name, err_t
+    return nil, tostring(err_t), err_t
   end
 
   return entity

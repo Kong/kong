@@ -753,36 +753,34 @@ describe("schema", function()
     end
 
     it("runs a custom check with string error", function()
-      local _, e_errs = run_custom_check_producing_error(
+      local errors = run_custom_check_producing_error(
         "passwords must match"
       )
-      assert.string(e_errs.check)
-      assert.same(e_errs[1], "passwords must match")
+      assert.same({ ["@entity"] = { "passwords must match" } }, errors)
     end)
 
     it("runs a custom check with table keyed error", function()
-      local errs, e_errs = run_custom_check_producing_error(
+      local errors = run_custom_check_producing_error(
         { password = "passwords must match" }
       )
-      assert.string(e_errs.check)
-      assert.same(errs.password, "passwords must match")
+      assert.same({ password = "passwords must match" }, errors)
     end)
 
     it("runs a custom check with table numbered error", function()
-      local _, e_errs = run_custom_check_producing_error(
+      local errors = run_custom_check_producing_error(
         { "passwords must match", "a second error" }
       )
-      assert.string(e_errs.check)
-      assert.same(e_errs[1], "passwords must match")
-      assert.same(e_errs[2], "a second error")
+      assert.same({
+        ["@entity"] = {"passwords must match", "a second error" }
+      }, errors)
     end)
 
     it("runs a custom check with no message", function()
-      local _, e_errs = run_custom_check_producing_error(
-        nil
-      )
+      local errors = run_custom_check_producing_error(nil)
       -- still produces a default message
-      assert.string(e_errs.check)
+      assert.same({
+        ["@entity"] = { "entity check failed" }
+      }, errors)
     end)
 
     it("merges field and custom checks", function()
@@ -985,10 +983,9 @@ describe("schema", function()
                             then_match = { required = true } } },
         }
       })
-      local ok, err, errs = Test:validate_update({ policy = "redis" })
+      local ok, err = Test:validate_update({ policy = "redis" })
       assert.falsy(ok)
       assert.truthy(err)
-      assert.truthy(errs)
       assert.falsy(Test:validate_update({
         policy = "redis",
         redis_host = ngx.null,

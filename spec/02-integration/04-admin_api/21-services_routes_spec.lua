@@ -3,6 +3,9 @@ local helpers = require "spec.helpers"
 local Errors  = require "kong.db.errors"
 
 
+local unindent = helpers.unindent
+
+
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
   local test_json = fn("application/json")
@@ -174,7 +177,11 @@ for _, strategy in helpers.each_strategy() do
               {
                 name    = "schema violation",
                 code    = Errors.codes.SCHEMA_VIOLATION,
-                message = ngx.null,
+                message = unindent([[
+                  2 schema violations
+                  (host: required field missing;
+                  path: should start with: /)
+                ]], true, true),
                 fields = {
                   host = "required field missing",
                   path = "should start with: /",

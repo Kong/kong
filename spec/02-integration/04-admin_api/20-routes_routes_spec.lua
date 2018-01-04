@@ -3,6 +3,8 @@ local utils   = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 local Errors  = require "kong.db.errors"
 
+local unindent = helpers.unindent
+
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
@@ -116,11 +118,15 @@ for _, strategy in helpers.each_strategy("postgres") do
               assert.same({
                 code    = Errors.codes.SCHEMA_VIOLATION,
                 name    = "schema violation",
-                message = cjson.null,
+                message = unindent([[
+                  2 schema violations
+                  (at least one of 'methods', 'hosts' or 'paths' must be non-empty;
+                  service: required field missing)
+                ]], true, true),
                 fields  = {
                   service   = "required field missing",
                   ["@entity"] = {
-                    at_least_one_of = "at least one of 'methods', 'hosts' or 'paths' must be non-empty"
+                    "at least one of 'methods', 'hosts' or 'paths' must be non-empty"
                   }
                 }
               }, cjson.decode(body))
@@ -137,7 +143,9 @@ for _, strategy in helpers.each_strategy("postgres") do
               assert.same({
                 code    = Errors.codes.SCHEMA_VIOLATION,
                 name    = "schema violation",
-                message = cjson.null,
+                message = "2 schema violations " ..
+                          "(protocols: expected one of: http, https; " ..
+                          "service: required field missing)",
                 fields  = {
                   protocols = "expected one of: http, https",
                   service   = "required field missing",
@@ -258,13 +266,12 @@ for _, strategy in helpers.each_strategy("postgres") do
           it("validates invalid primary keys", function()
             local res  = assert(client:get("/routes/foobar"))
             local body = assert.res_status(400, res)
+            local pk = { id = "expected a valid UUID" }
             assert.same({
               code    = Errors.codes.INVALID_PRIMARY_KEY,
               name    = "invalid primary key",
-              message = cjson.null,
-              fields  = {
-                id = "expected a valid UUID",
-              },
+              message = [[invalid primary key: '{id="expected a valid UUID"}']],
+              fields  = pk
             }, cjson.decode(body))
           end)
         end)
@@ -465,7 +472,7 @@ for _, strategy in helpers.each_strategy("postgres") do
                 assert.same({
                   code    = Errors.codes.SCHEMA_VIOLATION,
                   name    = "schema violation",
-                  message = cjson.null ,
+                  message = "schema violation (regex_priority: expected an integer)",
                   fields  = {
                     regex_priority = "expected an integer"
                   },
@@ -607,7 +614,7 @@ for _, strategy in helpers.each_strategy("postgres") do
                 assert.same({
                   code    = Errors.codes.SCHEMA_VIOLATION,
                   name    = "schema violation",
-                  message = cjson.null,
+                  message = "schema violation (connect_timeout: expected an integer)",
                   fields  = {
                     connect_timeout = "expected an integer",
                   },

@@ -3,6 +3,9 @@ local utils   = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
 
+local fmt      = string.format
+local unindent = helpers.unindent
+
 
 local a_blank_uuid = "00000000-0000-0000-0000-000000000000"
 
@@ -43,11 +46,15 @@ for _, strategy in helpers.each_strategy() do
             code     = Errors.codes.SCHEMA_VIOLATION,
             name     = "schema violation",
             strategy = strategy,
-            message  = ngx.null,
+            message  = unindent([[
+              2 schema violations
+              (at least one of 'methods', 'hosts' or 'paths' must be non-empty;
+              service: required field missing)
+            ]], true, true),
             fields   = {
               service     = "required field missing",
               ["@entity"] = {
-                at_least_one_of = "at least one of 'methods', 'hosts' or 'paths' must be non-empty",
+                "at least one of 'methods', 'hosts' or 'paths' must be non-empty",
               }
             },
 
@@ -64,13 +71,14 @@ for _, strategy in helpers.each_strategy() do
             hosts = { "example.com" },
             service = service,
           })
+          local message = "schema violation (service.id: missing primary key)"
           assert.is_nil(route)
-          assert.equal("schema violation", err)
+          assert.equal(fmt("[%s] %s", strategy, message), err)
           assert.same({
             code      = Errors.codes.SCHEMA_VIOLATION,
             name      = "schema violation",
             strategy  = strategy,
-            message   = ngx.null,
+            message   = message,
             fields    = {
               service = {
                 id    = "missing primary key",
@@ -94,12 +102,17 @@ for _, strategy in helpers.each_strategy() do
             service = service,
           })
           assert.is_nil(route)
-          assert.equal("foreign key violation", err)
+          local message  = fmt(unindent([[
+            the foreign key '{id="%s"}' does not reference
+            an existing 'services' entity.
+          ]], true, true), u)
+
+          assert.equal(fmt("[%s] %s", strategy, message), err)
           assert.same({
             code     = Errors.codes.FOREIGN_KEY_VIOLATION,
             name     = "foreign key violation",
             strategy = strategy,
-            message  = "the provided foreign key does not reference an existing 'services' entity",
+            message  = message,
             fields   = {
               service = {
                 id = u,
@@ -245,16 +258,17 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("errors on invalid values", function()
-          local u = utils.uuid()
-          local new_route, err, err_t = db.routes:update({ id = u }, {
+          local pk = { id = utils.uuid() }
+          local new_route, err, err_t = db.routes:update(pk, {
             protocols = { 123 },
           })
           assert.is_nil(new_route)
-          assert.equal("schema violation", err)
+          local message  = "schema violation (protocols: expected a string)"
+          assert.equal(fmt("[%s] %s", strategy, message), err)
           assert.same({
             code        = Errors.codes.SCHEMA_VIOLATION,
-            name = "schema violation",
-            message     = ngx.null,
+            name        = "schema violation",
+            message     = message,
             strategy    = strategy,
             fields      = {
               protocols  = "expected a string",
@@ -264,20 +278,22 @@ for _, strategy in helpers.each_strategy() do
 
         -- I/O
         it("returns not found error", function()
-          local u = utils.uuid()
-          local new_route, err, err_t = db.routes:update({ id = u }, {
+          local pk = { id = utils.uuid() }
+          local new_route, err, err_t = db.routes:update(pk, {
             protocols = { "https" }
           })
           assert.is_nil(new_route)
-          assert.equal("not found", err)
+          local message = fmt(
+            [[could not find the entity with primary key '{id="%s"}']],
+            pk.id
+          )
+          assert.equal(fmt("[%s] %s", strategy, message), err)
           assert.same({
             code        = Errors.codes.NOT_FOUND,
-            name = "not found",
+            name        = "not found",
             strategy    = strategy,
-            message     = ngx.null,
-            fields      = {
-              id        = u
-            }
+            message     = message,
+            fields      = pk,
           }, err_t)
           --TODO: enable when done
           --assert.equal("no such route: id=(" .. u .. ")", tostring(err_t))
@@ -341,16 +357,18 @@ for _, strategy in helpers.each_strategy() do
             methods = ngx.null
           })
           assert.is_nil(new_route)
-          assert.equal("schema violation", err)
+          local message = unindent([[
+            2 schema violations
+            (hosts: field required for entity check;
+            paths: field required for entity check)
+          ]], true, true)
+          assert.equal(fmt("[%s] %s", strategy, message), err)
           assert.same({
             code        = Errors.codes.SCHEMA_VIOLATION,
             name        = "schema violation",
             strategy    = strategy,
-            message     = ngx.null,
+            message     = message,
             fields = {
-              ["@entity"] = {
-                at_least_one_of = "fields missing for entity check",
-              },
               hosts = "field required for entity check",
               paths = "field required for entity check",
             }
@@ -392,11 +410,8 @@ for _, strategy in helpers.each_strategy() do
             code        = Errors.codes.SCHEMA_VIOLATION,
             name = "schema violation",
             strategy    = strategy,
-            message     = ngx.null,
+            message     = "schema violation (paths: field required for entity check)",
             fields      = {
-              ["@entity"] = {
-                at_least_one_of = "fields missing for entity check",
-              },
               paths = "field required for entity check",
             }
           }, err_t)
@@ -662,11 +677,12 @@ for _, strategy in helpers.each_strategy() do
           it("fetches first page with invalid offset", function()
             local rows, err, err_t = db.routes:page(3, "hello")
             assert.is_nil(rows)
-            assert.equal("invalid offset", err)
+            local message  = "'hello' is not a valid offset for this strategy: bad base64 encoding"
+            assert.equal(fmt("[%s] %s", strategy, message), err)
             assert.same({
               code     = Errors.codes.INVALID_OFFSET,
-              message  = "'hello' is not a valid offset for this strategy: bad base64 encoding",
               name     = "invalid offset",
+              message  = message,
               strategy = strategy,
             }, err_t)
           end)
@@ -764,7 +780,7 @@ for _, strategy in helpers.each_strategy() do
           assert.same({
             code        = Errors.codes.SCHEMA_VIOLATION,
             name        = "schema violation",
-            message     = ngx.null,
+            message     = "schema violation (host: required field missing)",
             strategy    = strategy,
             fields      = {
               host = "required field missing",
@@ -840,7 +856,7 @@ for _, strategy in helpers.each_strategy() do
 
         it("created_at/updated_at cannot be overriden", function()
           local service, err, err_t = db.services:insert({
-            name       = "example_service",
+            name       = "example_service_overriding_created_at",
             protocol   = "http",
             host       = "example.com",
             created_at = 0,
@@ -854,8 +870,29 @@ for _, strategy in helpers.each_strategy() do
           assert.not_equal(0, service.updated_at)
         end)
 
+
+        -- marked as pending until Cassandra can do UNIQUE constraints
         pending("cannot create a Service with an existing name", function()
-          -- TODO: need to implement a "UNIQUE" constraint for this behavior
+          assert(db.services:insert({
+            name       = "my_service",
+            host       = "example.com",
+          }))
+          local _, err, err_t = db.services:insert({
+            name       = "my_service",
+            host       = "example.com",
+          })
+          local message = [[UNIQUE violation detected on '{name="my_service"}']]
+
+          assert.equal(fmt("[%s] %s", strategy, message), err)
+          assert.same({
+            code     = Errors.codes.UNIQUE_VIOLATION,
+            name     = "unique constraint violation",
+            strategy = strategy,
+            message  = message,
+            fields   = {
+              name = "my_service",
+            }
+          }, err_t)
         end)
       end)
 
@@ -904,16 +941,15 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("errors on invalid values", function()
-          local u = utils.uuid()
-          local new_service, err, err_t = db.services:update({ id = u }, {
-            protocol = 123
-          })
+          local pk = { id = utils.uuid() }
+          local new_service, err, err_t = db.services:update(pk, { protocol = 123 })
           assert.is_nil(new_service)
-          assert.equal("schema violation", err)
+          local message = "schema violation (protocol: expected a string)"
+          assert.equal(fmt("[%s] %s", strategy, message), err)
           assert.same({
             code        = Errors.codes.SCHEMA_VIOLATION,
-            name = "schema violation",
-            message     = ngx.null,
+            name        = "schema violation",
+            message     = message,
             strategy    = strategy,
             fields      = {
               protocol  = "expected a string",
@@ -923,11 +959,14 @@ for _, strategy in helpers.each_strategy() do
 
         -- I/O
         it("returns not found error", function()
-          local service, err, err_t = db.services:update({ id = utils.uuid() }, {
-            protocol = "http"
-          })
+          local pk = { id = utils.uuid() }
+          local service, err, err_t = db.services:update(pk, { protocol = "http" })
           assert.is_nil(service)
-          assert.equal("not found", err)
+          local message = fmt(
+            [[[%s] could not find the entity with primary key '{id="%s"}']],
+            strategy,
+            pk.id)
+          assert.equal(message, err)
           assert.equal(Errors.codes.NOT_FOUND, err_t.code)
         end)
 
@@ -1061,12 +1100,17 @@ for _, strategy in helpers.each_strategy() do
           service = service
         })
         assert.is_nil(new_route)
-        assert.equal("foreign key violation", err)
+        local message = fmt(unindent([[
+          the foreign key '{id="%s"}' does not reference an existing
+          'services' entity.
+        ]], true, true), service.id)
+
+        assert.equal(fmt("[%s] %s", strategy, message), err)
         assert.same({
           code     = Errors.codes.FOREIGN_KEY_VIOLATION,
           name     = "foreign key violation",
           strategy = strategy,
-          message  = "the provided foreign key does not reference an existing 'services' entity",
+          message  = message,
           fields   = {
             service = {
               id = service.id,
@@ -1084,12 +1128,13 @@ for _, strategy in helpers.each_strategy() do
 
         local ok, err, err_t = db.services:delete({ id = service.id })
         assert.is_nil(ok)
-        assert.equal("foreign key violation", err)
+        local message  = "an existing 'routes' entity references this 'services' entity"
+        assert.equal(fmt("[%s] %s", strategy, message), err)
         assert.same({
           code     = Errors.codes.FOREIGN_KEY_VIOLATION,
           name     = "foreign key violation",
           strategy = strategy,
-          message  = "an existing 'routes' entity references this 'services' entity",
+          message  = message,
           fields   = {
             ["@referenced_by"] = "routes",
           },
@@ -1394,11 +1439,13 @@ for _, strategy in helpers.each_strategy() do
                 id = service.id,
               }, 3, "hello")
               assert.is_nil(rows)
-              assert.equal("invalid offset", err)
+              local message  = "'hello' is not a valid offset for this strategy: " ..
+                               "bad base64 encoding"
+              assert.equal(fmt("[%s] %s", strategy, message), err)
               assert.same({
                 code     = Errors.codes.INVALID_OFFSET,
-                message  = "'hello' is not a valid offset for this strategy: bad base64 encoding",
                 name     = "invalid offset",
+                message  = message,
                 strategy = strategy,
               }, err_t)
             end)

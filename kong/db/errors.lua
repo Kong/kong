@@ -1,11 +1,23 @@
+local pl_pretty = require("pl.pretty").write
+local pl_keys = require("pl.tablex").keys
+
+
 local type         = type
 local error        = error
 local upper        = string.upper
 local fmt          = string.format
 local pairs        = pairs
-local assert       = assert
 local tostring     = tostring
 local setmetatable = setmetatable
+local concat       = table.concat
+local sort         = table.sort
+
+
+local sorted_keys = function(tbl)
+  local keys = pl_keys(tbl)
+  sort(keys)
+  return keys
+end
 
 
 -- error codes
@@ -34,7 +46,7 @@ local ERRORS_NAMES               = {
   [ERRORS.UNIQUE_VIOLATION]      = "unique constraint violation",
   [ERRORS.NOT_FOUND]             = "not found",
   [ERRORS.INVALID_OFFSET]        = "invalid offset",
-  [ERRORS.DATABASE_ERROR]        = "unknown database error",
+  [ERRORS.DATABASE_ERROR]        = "database error",
 }
 
 
@@ -43,15 +55,12 @@ local ERRORS_NAMES               = {
 
 local _err_mt = {
   __tostring = function(err_t)
-    --[[
-    -- TODO add strategy to the error message
-      return fmt("[%s strategy] %s", err_t.strategy, message)
-    --]]
-    if err_t.message == nil or err_t.message == ngx.null then
-      return err_t.name
+    local message = err_t.message
+    if message == nil or message == ngx.null then
+      message = err_t.name
     end
 
-    return err_t.message
+    return fmt("[%s] %s", err_t.strategy, message)
   end,
 
   __concat = function(a, b)
@@ -69,7 +78,7 @@ local _M = {
 }
 
 
-local function new_err_t(self, code, err, errors)
+local function new_err_t(self, code, message, errors)
   if not code then
     error("missing code")
   end
@@ -78,18 +87,18 @@ local function new_err_t(self, code, err, errors)
     error("unknown error code: " .. tostring(code))
   end
 
-  if err and type(err) ~= "string" then
-    error("err must be a string")
+  if message and type(message) ~= "string" then
+    error("message must be a string or nil")
   end
 
   if errors and type(errors) ~= "table" then
-    error("errors must be a table")
+    error("errors must be a table or nil")
   end
 
   local err_t = {
     code      = code,
     name      = ERRORS_NAMES[code],
-    message   = err or ngx.null,
+    message   = message or ngx.null,
     strategy  = self.strategy,
   }
 
@@ -143,7 +152,9 @@ function _M:invalid_primary_key(primary_key)
     error("primary_key must be a table", 2)
   end
 
-  return new_err_t(self, ERRORS.INVALID_PRIMARY_KEY, nil, primary_key)
+  local message = fmt("invalid primary key: '%s'", pl_pretty(primary_key, ""))
+
+  return new_err_t(self, ERRORS.INVALID_PRIMARY_KEY, message, primary_key)
 end
 
 
@@ -152,18 +163,44 @@ function _M:schema_violation(errors)
     error("errors must be a table", 2)
   end
 
-  local err_t = new_err_t(self, ERRORS.SCHEMA_VIOLATION)
+  local buf = {}
+  local len = 0
 
-  if errors[1] then
-    -- we have a 'check' schema error
-    assert(type(errors[1]) == "string")
-    err_t.check = errors[1]
-    errors[1] = nil
+  if errors["@entity"] then
+    for _, err in pairs(errors["@entity"]) do
+      len = len + 1
+      buf[len] = err
+    end
   end
 
-  err_t.fields = errors
+  for _, field_name in ipairs(sorted_keys(errors)) do
+    if field_name ~= "@entity" then
+      local field_errors = errors[field_name]
+      if type(field_errors) == "table" then
+        for _, sub_field in ipairs(sorted_keys(field_errors)) do
+          len = len + 1
+          buf[len] = fmt("%s.%s: %s", field_name, sub_field,
+                         field_errors[sub_field])
+        end
 
-  return err_t
+      else
+        len = len + 1
+        buf[len] = fmt("%s: %s", field_name, field_errors)
+      end
+    end
+  end
+
+  local message
+
+  if len == 1 then
+    message = fmt("schema violation (%s)", buf[1])
+
+  else
+    message = fmt("%d schema violations (%s)",
+                  len, concat(buf, "; "))
+  end
+
+  return new_err_t(self, ERRORS.SCHEMA_VIOLATION, message, errors)
 end
 
 
@@ -172,7 +209,10 @@ function _M:primary_key_violation(primary_key)
     error("primary_key must be a table", 2)
   end
 
-  return new_err_t(self, ERRORS.PRIMARY_KEY_VIOLATION, nil, primary_key)
+  local message = fmt("primary key violation on key '%s'",
+                      pl_pretty(primary_key, ""))
+
+  return new_err_t(self, ERRORS.PRIMARY_KEY_VIOLATION, message, primary_key)
 end
 
 
@@ -191,8 +231,9 @@ function _M:foreign_key_violation_invalid_reference(foreign_key,
     error("parent_name must be a string", 2)
   end
 
-  local message = fmt("the provided foreign key does not reference an " ..
-                      "existing '%s' entity", parent_name)
+  local message = fmt(
+    "the foreign key '%s' does not reference an existing '%s' entity.",
+    pl_pretty(foreign_key, ""), parent_name)
 
   return new_err_t(self, ERRORS.FOREIGN_KEY_VIOLATION, message, {
     [foreign_key_field_name] = foreign_key
@@ -223,7 +264,10 @@ function _M:not_found(primary_key)
     error("primary_key must be a table", 2)
   end
 
-  return new_err_t(self, ERRORS.NOT_FOUND, nil, primary_key)
+  local message = fmt("could not find the entity with primary key '%s'",
+                       pl_pretty(primary_key, ""))
+
+  return new_err_t(self, ERRORS.NOT_FOUND, message, primary_key)
 end
 
 
@@ -232,7 +276,10 @@ function _M:unique_violation(unique_key)
     error("unique_key must be a table", 2)
   end
 
-  return new_err_t(self, ERRORS.UNIQUE_VIOLATION, nil, unique_key)
+  local message = fmt("UNIQUE violation detected on '%s'",
+                      pl_pretty(unique_key, ""))
+
+  return new_err_t(self, ERRORS.UNIQUE_VIOLATION, message, unique_key)
 end
 
 
@@ -253,6 +300,7 @@ end
 
 
 function _M:database_error(err)
+  err = err or ERRORS_NAMES[ERRORS.DATABASE_ERROR]
   return new_err_t(self, ERRORS.DATABASE_ERROR, err)
 end
 

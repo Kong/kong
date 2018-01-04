@@ -62,7 +62,6 @@ local validation_errors = {
   -- entity checks
   REQUIRED_FOR_ENTITY_CHECK = "field required for entity check",
   ENTITY_CHECK              = "failed entity check: %s(%s)",
-  ENTITY_CHECK_FIELDS       = "fields missing for entity check",
   ENTITY_CHECK_N_FIELDS     = "entity check requires %d fields",
   CHECK                     = "entity check failed",
   -- schema error
@@ -755,7 +754,7 @@ local function run_entity_check(self, name, input, arg)
   end
 
   if not ok then
-    return nil, validation_errors.ENTITY_CHECK_FIELDS, field_errors
+    return nil, nil, field_errors
   end
 
   local err
@@ -778,9 +777,10 @@ end
 -- TODO hopefully deprecate this function.
 -- @param self The schema table
 -- @param name The name of the entity check
--- @param check_errors The current table of accumulated entity check errors.
+-- @param entity_errors The current array of entity errors.
 -- @param field_errors The current table of accumulated field errors.
-local function run_self_check(self, input, check_errors, field_errors)
+-- the array with check errors if any
+local function run_self_check(self, input, entity_errors, field_errors)
   local ok = true
   for fname, field in self:each_field() do
     if input[fname] == nil and not field.nilable then
@@ -791,8 +791,7 @@ local function run_self_check(self, input, check_errors, field_errors)
   end
 
   if not ok then
-    check_errors["check"] = validation_errors.ENTITY_CHECK_FIELDS
-    return
+    return nil
   end
 
   local err
@@ -801,18 +800,20 @@ local function run_self_check(self, input, check_errors, field_errors)
     return
   end
 
-  check_errors["check"] = validation_errors.CHECK
-
   if type(err) == "string" then
-    insert(check_errors, err)
+    insert(entity_errors, err)
+
   elseif type(err) == "table" then
     for k, v in pairs(err) do
       if type(k) == "number" then
-        insert(check_errors, v)
+        insert(entity_errors, v)
       else
         field_errors[k] = v
       end
     end
+
+  else
+    insert(entity_errors, validation_errors.CHECK)
   end
 end
 
@@ -823,17 +824,18 @@ end
 -- @param self The schema
 -- @param input The input table.
 -- @return True on success; nil, the table of entity check errors
+-- (where keys are the entity check names with string values or
+-- "check" and an array of self-check error strings)
 -- and the table of field errors otherwise.
 local function run_entity_checks(self, input)
-  local check_errors = {}
+  local entity_errors = {}
   local field_errors = {}
 
   if self.entity_checks then
     for _, check in ipairs(self.entity_checks) do
-      local name = next(check)
-      local arg = check[name]
-      local _, err, f_errs = run_entity_check(self, name, input, arg)
-      check_errors[name] = err
+      local check_name = next(check)
+      local _, err, f_errs = run_entity_check(self, check_name, input, check[check_name])
+      insert(entity_errors, err)
       if f_errs then
         merge_into_table(field_errors, f_errs)
       end
@@ -841,11 +843,11 @@ local function run_entity_checks(self, input)
   end
 
   if self.check then
-    run_self_check(self, input, check_errors, field_errors)
+    run_self_check(self, input, entity_errors, field_errors)
   end
 
-  if next(check_errors) or next(field_errors) then
-    return nil, check_errors, field_errors
+  if next(entity_errors) or next(field_errors) then
+    return nil, entity_errors, field_errors
   end
   return true
 end
@@ -1004,7 +1006,21 @@ end
 -- needed for global checks.
 -- @return True on success.
 -- On failure, it returns nil and a table containing all errors,
--- indexed numerically for general errors, and by field name for field errors.
+-- indexed by field name for field errors, plus an "@entity" key
+-- containing entity-checker and self-check errors.
+-- This is an example of what an error table looks like:
+--  {
+--     ["name"] = "...error message...",
+--     ["service"] = {
+--        ["id"] = "...error message...",
+--     }
+--     ["@entity"] = {
+--       "error message from at_least_one_of",
+--       "error message from other entity validators",
+--       "first error message from self-check function",
+--       "second error message from self-check function",
+--     }
+--  }
 -- In all cases, the input table is untouched.
 function Schema:validate(input, full_check)
   if full_check == nil then
@@ -1024,12 +1040,14 @@ function Schema:validate(input, full_check)
   local ok, entity_errors, f_errs
   ok, entity_errors, f_errs = run_entity_checks(self, input)
   if not ok then
-    field_errors["@entity"] = entity_errors
+    if next(entity_errors) then
+      field_errors["@entity"] = entity_errors
+    end
     merge_into_table(field_errors, f_errs)
   end
 
   if next(field_errors) then
-    return nil, field_errors, entity_errors
+    return nil, field_errors
   end
   return true
 end
