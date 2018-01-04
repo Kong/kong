@@ -10,7 +10,12 @@ local REDIS_DATABASE = 1
 for i, policy in ipairs({"cluster", "redis"}) do
   local MOCK_RATE = 3
 
-  describe("rate-limiting (access) with policy: " .. policy, function()
+  local s = "rate-limiting (access) with policy: " .. policy
+  if policy == "redis" then
+    s = "#flaky " .. s
+  end
+
+  describe(s, function()
     local consumer1, consumer2
 
     setup(function()
