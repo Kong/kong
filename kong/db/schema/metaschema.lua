@@ -55,6 +55,7 @@ local field_schema = {
   { required = { type = "boolean" }, },
   { reference = { type = "string" }, },
   { auto = { type = "boolean" }, },
+  { unique = { type = "boolean" }, },
   { default = { type = "self" }, },
 }
 
@@ -157,6 +158,11 @@ local attribute_types = {
   },
   uuid = {
     ["string"] = true,
+  },
+  unique = {
+    ["string"] = true,
+    ["number"] = true,
+    ["integer"] = true,
   },
 }
 

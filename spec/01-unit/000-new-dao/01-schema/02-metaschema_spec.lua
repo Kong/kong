@@ -113,6 +113,39 @@ describe("metaschema", function()
     end
   end)
 
+  it("supports the unique attribute in base types", function()
+    local s = {
+      name = "test",
+      fields = {
+        { str = { type = "string", unique = true } },
+        { num = { type = "number", unique = true } },
+        { int = { type = "integer", unique = true } },
+      },
+      primary_key = { "str" },
+    }
+    assert.truthy(MetaSchema:validate(s))
+  end)
+
+  it("rejects the unique attribute in composite types", function()
+    local s = {
+      name = "test",
+      fields = {
+        { id  = { type = "string" } },
+        { arr = { type = "array", unique = true } },
+        { map = { type = "map", unique = true } },
+        { rec = { type = "record", unique = true } },
+        { set = { type = "set", unique = true } },
+      },
+      primary_key = { "id" },
+    }
+    local ok, err = MetaSchema:validate(s)
+    assert.falsy(ok)
+    assert.match("'array' cannot have attribute 'unique'", err.arr)
+    assert.match("'map' cannot have attribute 'unique'", err.map)
+    assert.match("'record' cannot have attribute 'unique'", err.rec)
+    assert.match("'set' cannot have attribute 'unique'", err.set)
+  end)
+
   it("validates the routes schema", function()
     local Routes = require("kong.db.schema.entities.routes")
     assert.truthy(MetaSchema:validate(Routes))
