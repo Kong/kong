@@ -87,8 +87,10 @@ local function send_report(signal_type, t, host, port)
         v = json
       end
 
-      mutable_idx = mutable_idx + 1
-      _buffer[mutable_idx] = k .. "=" .. tostring(v)
+      if v ~= nil then
+        mutable_idx = mutable_idx + 1
+        _buffer[mutable_idx] = k .. "=" .. tostring(v)
+      end
     end
   end
 
