@@ -3,6 +3,7 @@
 - [Planned](#planned)
 - [Scheduled](#scheduled)
 - [Released](#released)
+    - [0.12.0rc2](#0120rc2)
     - [0.12.0rc1](#0120rc1)
     - [0.11.2](#0112---20171129)
     - [0.11.1](#0111---20171024)
@@ -27,6 +28,21 @@ Those releases do not have a fixed release date yet.
 
 This section describes upcoming releases that have a release date, along with
 a detailed changeset of their content.
+
+# Released
+
+This section describes publicly available releases and a detailed changeset of
+their content.
+
+## [0.12.0rc2]
+
+* **Release Candidate**: 2017/12/20
+* **Stable**: January 2018
+
+This release candidate fixes an issue from 0.12.0rc1 regarding database cache
+invalidation upon Upstream creation and modification.
+
+[Back to TOC](#table-of-contents)
 
 ## [0.12.0rc1]
 
@@ -217,11 +233,6 @@ upgrade your Kong cluster.
       [#3014](https://github.com/Kong/kong/pull/3014)
 
 [Back to TOC](#table-of-contents)
-
-# Released
-
-This section describes publicly available releases and a detailed changeset of
-their content.
 
 ## [0.11.2] - 2017/11/29
 
