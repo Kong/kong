@@ -2,7 +2,7 @@ local utils = require "kong.tools.utils"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local singletons = require "kong.singletons"
-local crypto = require "crypto"
+local openssl_hmac = require "openssl.hmac"
 local resty_sha256 = require "resty.sha256"
 
 local math_abs = math.abs
@@ -45,13 +45,13 @@ local hmac = {
     return ngx_hmac_sha1(secret, data)
   end,
   ["hmac-sha256"] = function(secret, data)
-    return crypto.hmac.digest("sha256", data, secret, true)
+    return openssl_hmac.new(secret, "sha256"):final(data)
   end,
   ["hmac-sha384"] = function(secret, data)
-    return crypto.hmac.digest("sha384", data, secret, true)
+    return openssl_hmac.new(secret, "sha384"):final(data)
   end,
   ["hmac-sha512"] = function(secret, data)
-    return crypto.hmac.digest("sha512", data, secret, true)
+    return openssl_hmac.new(secret, "sha512"):final(data)
   end
 }
 
@@ -73,8 +73,10 @@ local function validate_params(params, conf)
   -- check enforced headers are present
   if conf.enforce_headers and #conf.enforce_headers >= 1 then
     local enforced_header_set = list_as_set(conf.enforce_headers)
-    for _, header in ipairs(params.hmac_headers) do
-      enforced_header_set[header] = nil
+    if params.hmac_headers then
+      for _, header in ipairs(params.hmac_headers) do
+        enforced_header_set[header] = nil
+      end
     end
     for _, header in ipairs(conf.enforce_headers) do
       if enforced_header_set[header] then

@@ -15,14 +15,14 @@ return {
   primary_key = {"id"},
   fields = {
     id = {
-      type = "id", 
-      dao_insert_value = true, 
+      type = "id",
+      dao_insert_value = true,
       required = true,
     },
     created_at = {
-      type = "timestamp", 
-      immutable = true, 
-      dao_insert_value = true, 
+      type = "timestamp",
+      immutable = true,
+      dao_insert_value = true,
       required = true,
     },
     upstream_id = {
@@ -42,7 +42,7 @@ return {
     },
   },
   self_check = function(schema, config, dao, is_updating)
-    
+
     -- check weight
     if config.weight < WEIGHT_MIN or config.weight > WEIGHT_MAX then
       return false, Errors.schema(WEIGHT_MSG)

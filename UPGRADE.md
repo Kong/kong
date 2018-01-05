@@ -36,6 +36,144 @@ starts new workers, which take over from old workers before those old workers
 are terminated. In this way, Kong will serve new requests via the new
 configuration, without dropping existing in-flight connections.
 
+## Upgrade to `0.12.x`
+
+As it is the case most of the time, this new major version of Kong comes with
+a few **database migrations**, some breaking changes, databases deprecation
+notices, and minor updates to the NGINX configuration template.
+
+This document will only highlight the breaking changes that you need to be
+aware of, and describe a recommended upgrade path. We recommend that you
+consult the full [0.12.0
+Changelog](https://github.com/Kong/kong/blob/master/CHANGELOG.md) for a
+complete list of changes and new features.
+
+See below the breaking changes section for a detailed list of steps recommended
+to **run migrations** and upgrade from a previous version of Kong.
+
+#### Breaking changes
+
+#### Configuration
+
+- Several updates were made to the NGINX configuration template. If you are
+  using a custom template, you **must** apply those modifications. See below
+  for a list of changes to apply.
+
+##### Core
+
+- The required OpenResty version has been bumped to 1.11.2.5. If you
+  are installing Kong from one of our distribution packages, you are not
+  affected by this change.
+- As Kong now executes subsequent plugins when a request is being
+  short-circuited (e.g. HTTP 401 responses from auth plugins), plugins that
+  run in the header or body filter phases will be run upon such responses
+  from the access phase. It is possible that some of these plugins (e.g. your
+  custom plugins) now run in scenarios where they were not previously expected
+  to run.
+
+##### Admin API
+
+- By default, the Admin API now only listens on the local interface.
+  We consider this change to be an improvement in the default security policy
+  of Kong. If you are already using Kong, and your Admin API still binds to all
+  interfaces, consider updating it as well. You can do so by updating the
+  `admin_listen` configuration value, like so: `admin_listen = 127.0.0.1:8001`.
+
+  :red_circle: **Note to Docker users**: Beware of this change as you may have
+  to ensure that your Admin API is reachable via the host's interface.
+  You can use the `-e KONG_ADMIN_LISTEN` argument when provisioning your
+  container(s) to update this value; for example,
+  `-e KONG_ADMIN_LISTEN=0.0.0.0:8001`.
+
+- The `/upstreams/:upstream_name_or_id/targets/` has been updated to not show
+  the full list of Targets anymore, but only the ones that are currently
+  active in the load balancer. To retrieve the full history of Targets, you can
+  now query `/upstreams/:upstream_name_or_id/targets/all`. The
+  `/upstreams/:upstream_name_or_id/targets/active` endpoint has been removed.
+- The `orderlist` property of Upstreams has been removed.
+
+##### CLI
+
+- The `$ kong compile` command which was deprecated in 0.11.0 has been removed.
+
+##### Plugins
+
+- In logging plugins, the `request.request_uri` field has been renamed to
+  `request.url`.
+
+#### Deprecations
+
+##### Databases
+
+- Starting with Kong 0.12.0, we have updated our databases support policy.
+    - Support for PostgreSQL 9.4 has been deprecated. We recommend using
+      PostgreSQL 9.5 or above.
+    - Support for Cassandra 2.0 has been deprecated. We recommend using
+      Cassandra 2.1 or above.
+    - Support for Redis versions 3.1 or below has been deprecated. We
+      recommend using Redis 3.2 or above.
+
+---
+
+If you use a custom NGINX configuration template from Kong 0.11, before
+attempting to run any 0.12 node, make sure to apply the following change to
+your template:
+
+```diff
+diff --git a/kong/templates/nginx_kong.lua b/kong/templates/nginx_kong.lua
+index 5ab65ca3..8a6abd64 100644
+--- a/kong/templates/nginx_kong.lua
++++ b/kong/templates/nginx_kong.lua
+@@ -32,6 +32,7 @@ lua_shared_dict kong                5m;
+ lua_shared_dict kong_cache          ${{MEM_CACHE_SIZE}};
+ lua_shared_dict kong_process_events 5m;
+ lua_shared_dict kong_cluster_events 5m;
++lua_shared_dict kong_healthchecks   5m;
+ > if database == "cassandra" then
+ lua_shared_dict kong_cassandra      5m;
+ > end
+```
+
+---
+
+You can now start migrating your cluster from `0.11.x` to `0.12`. If you are
+doing this upgrade "in-place", against the datastore of a running 0.11 cluster,
+then for a short period of time, your database schema won't be fully compatible
+with your 0.11 nodes anymore. This is why we suggest either performing this
+upgrade when your 0.11 cluster is warm and most entities are cached, or against
+a new database, if you can migrate your data. If you wish to temporarily make
+your APIs unavailable, you can leverage the
+[request-termination](https://getkong.org/plugins/request-termination/) plugin.
+
+The path to upgrade a 0.11 datastore is identical to the one of previous major
+releases:
+
+1. If you are planning on upgrading Kong while 0.11 nodes are running against
+   the same datastore, make sure those nodes are warm enough (they should have
+   most of your entities cached already), or temporarily disable your APIs.
+2. Provision a 0.12 node and configure it as you wish (environment variables/
+   configuration file). Make sure to point this new 0.12 node to your current
+   datastore.
+3. **Without starting the 0.12 node**, run the 0.12 migrations against your
+   current datastore:
+
+```
+$ kong migrations up [-c kong.conf]
+```
+
+As usual, this step should be executed from a **single node**.
+
+4. You can now provision a fresh 0.12 cluster pointing to your migrated
+   datastore and start your 0.12 nodes.
+5. Gradually switch your traffic from the 0.11 cluster to the new 0.12 cluster.
+   Remember, once your database is migrated, your 0.11 nodes will rely on
+   their cache and not on the underlying database. Your traffic should switch
+   to the new cluster as quickly as possible.
+6. Once your traffic is fully migrated to the 0.12 cluster, decommission
+   your 0.11 cluster.
+
+You have now successfully upgraded your cluster to run 0.12 nodes exclusively.
+
 ## Upgrade to `0.11.x`
 
 Along with the usual database migrations shipped with our major releases, this
@@ -164,12 +302,12 @@ index 3c038595..faa97ffe 100644
 @@ -19,25 +19,23 @@ error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
  >-- reset_timedout_connection on; # disabled until benchmarked
  > end
- 
+
 -client_max_body_size 0;
 +client_max_body_size ${{CLIENT_MAX_BODY_SIZE}};
  proxy_ssl_server_name on;
  underscores_in_headers on;
- 
+
 -real_ip_header X-Forwarded-For;
 -set_real_ip_from 0.0.0.0/0;
 -real_ip_recursive on;
@@ -197,7 +335,7 @@ index 3c038595..faa97ffe 100644
  lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE}}';
 @@ -45,8 +43,6 @@ lua_ssl_verify_depth ${{LUA_SSL_VERIFY_DEPTH}};
  > end
- 
+
  init_by_lua_block {
 -    require 'luarocks.loader'
 -    require 'resty.core'
@@ -207,7 +345,7 @@ index 3c038595..faa97ffe 100644
 @@ -65,28 +61,19 @@ upstream kong_upstream {
      keepalive ${{UPSTREAM_KEEPALIVE}};
  }
- 
+
 -map $http_upgrade $upstream_connection {
 -    default keep-alive;
 -    websocket upgrade;
@@ -225,12 +363,12 @@ index 3c038595..faa97ffe 100644
 +    listen ${{PROXY_LISTEN}}${{PROXY_PROTOCOL}};
 +    error_page 400 404 408 411 412 413 414 417 /kong_error_handler;
      error_page 500 502 503 504 /kong_error_handler;
- 
+
      access_log ${{PROXY_ACCESS_LOG}};
      error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
- 
+
 +    client_body_buffer_size ${{CLIENT_BODY_BUFFER_SIZE}};
- 
+
  > if ssl then
 -    listen ${{PROXY_LISTEN_SSL}} ssl;
 +    listen ${{PROXY_LISTEN_SSL}} ssl${{HTTP2}}${{PROXY_PROTOCOL}};
@@ -240,7 +378,7 @@ index 3c038595..faa97ffe 100644
 @@ -105,9 +92,22 @@ server {
      proxy_ssl_certificate_key ${{CLIENT_SSL_CERT_KEY}};
  > end
- 
+
 +    real_ip_header     ${{REAL_IP_HEADER}};
 +    real_ip_recursive  ${{REAL_IP_RECURSIVE}};
 +> for i = 1, #trusted_ips do
@@ -259,12 +397,12 @@ index 3c038595..faa97ffe 100644
 +        set $upstream_x_forwarded_proto  '';
 +        set $upstream_x_forwarded_host   '';
 +        set $upstream_x_forwarded_port   '';
- 
+
          rewrite_by_lua_block {
              kong.rewrite()
 @@ -118,17 +118,18 @@ server {
          }
- 
+
          proxy_http_version 1.1;
 -        proxy_set_header X-Real-IP $remote_addr;
 -        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -289,7 +427,7 @@ index 3c038595..faa97ffe 100644
 +        proxy_pass_header  Date;
 +        proxy_ssl_name     $upstream_host;
 +        proxy_pass         $upstream_scheme://kong_upstream$upstream_uri;
- 
+
          header_filter_by_lua_block {
              kong.header_filter()
 @@ -146,7 +147,7 @@ server {
@@ -303,7 +441,7 @@ index 3c038595..faa97ffe 100644
  }
 @@ -162,7 +163,7 @@ server {
      client_body_buffer_size 10m;
- 
+
  > if admin_ssl then
 -    listen ${{ADMIN_LISTEN_SSL}} ssl;
 +    listen ${{ADMIN_LISTEN_SSL}} ssl${{ADMIN_HTTP2}};
@@ -571,7 +709,7 @@ support for Cassandra 3.x, SRV records resolution, and much more.
 Here is how to ensure a smooth upgrade from a Kong `0.9.x` cluster to `0.10`:
 
 1. Make sure your 0.9 cluster is warm because your
-   datastore will be incompatible with your 0.9 Kong nodes once migrated. 
+   datastore will be incompatible with your 0.9 Kong nodes once migrated.
    Most of your entities should be cached
    by the running Kong nodes already (APIs, Consumers, Plugins).
 2. Provision a 0.10 node and configure it as you wish (environment variables/

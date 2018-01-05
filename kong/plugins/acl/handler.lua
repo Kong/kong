@@ -27,6 +27,7 @@ end
 local ACLHandler = BasePlugin:extend()
 
 ACLHandler.PRIORITY = 950
+ACLHandler.VERSION = "0.1.0"
 
 function ACLHandler:new()
   ACLHandler.super.new(self, "acl")
@@ -69,7 +70,7 @@ function ACLHandler:access(conf)
   local acls, err = singletons.cache:get(cache_key, nil,
                                          load_acls_into_memory, consumer_id)
   if err then
-    responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
   if not acls then
     acls = EMPTY

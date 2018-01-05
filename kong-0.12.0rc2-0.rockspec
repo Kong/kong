@@ -1,9 +1,9 @@
 package = "kong"
-version = "0.11.1-0"
+version = "0.12.0rc2-0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong-ee",
-  tag = "0.11.1"
+  tag = "0.12.0rc2"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -24,13 +24,14 @@ dependencies = {
   "luatz == 0.3",
   "lua_system_constants == 0.1.2",
   "lua-resty-iputils == 0.3.0",
-  "luacrypto == 0.3.2",
+  "luaossl == 20171028",
   "luasyslog == 1.0.0",
   "lua_pack == 1.0.5",
-  "lua-resty-dns-client == 0.6.2",
-  "lua-resty-worker-events == 0.3.0",
+  "lua-resty-dns-client == 1.0.0",
+  "lua-resty-worker-events == 0.3.1",
   "lua-resty-mediador == 0.1.2",
   "lua-resty-redis-connector == 0.03",
+  "lua-resty-healthcheck == 0.3.0",
 }
 build = {
   type = "builtin",
@@ -82,7 +83,6 @@ build = {
     ["kong.cmd.check"] = "kong/cmd/check.lua",
     ["kong.cmd.reload"] = "kong/cmd/reload.lua",
     ["kong.cmd.restart"] = "kong/cmd/restart.lua",
-    ["kong.cmd.compile"] = "kong/cmd/compile.lua",
     ["kong.cmd.prepare"] = "kong/cmd/prepare.lua",
     ["kong.cmd.migrations"] = "kong/cmd/migrations.lua",
     ["kong.cmd.health"] = "kong/cmd/health.lua",
@@ -151,6 +151,7 @@ build = {
     ["kong.dao.dao"] = "kong/dao/dao.lua",
     ["kong.dao.factory"] = "kong/dao/factory.lua",
     ["kong.dao.model_factory"] = "kong/dao/model_factory.lua",
+    ["kong.dao.migrations.helpers"] = "kong/dao/migrations/helpers.lua",
     ["kong.dao.migrations.cassandra"] = "kong/dao/migrations/cassandra.lua",
     ["kong.dao.migrations.postgres"] = "kong/dao/migrations/postgres.lua",
 
@@ -193,6 +194,8 @@ build = {
 
     ["kong.plugins.tcp-log.handler"] = "kong/plugins/tcp-log/handler.lua",
     ["kong.plugins.tcp-log.schema"] = "kong/plugins/tcp-log/schema.lua",
+    ["kong.plugins.tcp-log.migrations.cassandra"] = "kong/plugins/tcp-log/migrations/cassandra.lua",
+    ["kong.plugins.tcp-log.migrations.postgres"] = "kong/plugins/tcp-log/migrations/postgres.lua",
 
     ["kong.plugins.udp-log.handler"] = "kong/plugins/udp-log/handler.lua",
     ["kong.plugins.udp-log.schema"] = "kong/plugins/udp-log/schema.lua",
@@ -284,6 +287,8 @@ build = {
     ["kong.plugins.hmac-auth.api"] = "kong/plugins/hmac-auth/api.lua",
     ["kong.plugins.hmac-auth.daos"] = "kong/plugins/hmac-auth/daos.lua",
 
+    ["kong.plugins.ldap-auth.migrations.cassandra"] = "kong/plugins/ldap-auth/migrations/cassandra.lua",
+    ["kong.plugins.ldap-auth.migrations.postgres"] = "kong/plugins/ldap-auth/migrations/postgres.lua",
     ["kong.plugins.ldap-auth.handler"] = "kong/plugins/ldap-auth/handler.lua",
     ["kong.plugins.ldap-auth.access"] = "kong/plugins/ldap-auth/access.lua",
     ["kong.plugins.ldap-auth.schema"] = "kong/plugins/ldap-auth/schema.lua",

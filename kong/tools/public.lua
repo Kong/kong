@@ -46,13 +46,25 @@ do
   local MIME_DECODERS = {
     [MIME_TYPES.multipart] = function(content_type)
       local raw_body = ngx_req_get_body_data()
-      local args     = multipart(raw_body, content_type):get_all()
+      if not raw_body then
+        ngx_log(ERR, "could not read request body (ngx.req.get_body_data() ",
+                     "returned nil)")
+        return {}, raw_body
+      end
+
+      local args = multipart(raw_body, content_type):get_all()
 
       return args, raw_body
     end,
 
     [MIME_TYPES.json] = function()
-      local raw_body  = ngx_req_get_body_data()
+      local raw_body = ngx_req_get_body_data()
+      if not raw_body then
+        ngx_log(ERR, "could not read request body (ngx.req.get_body_data() ",
+                     "returned nil)")
+        return {}, raw_body
+      end
+
       local args, err = cjson.decode(raw_body)
       if err then
         ngx_log(ERR, "could not decode JSON body args: ", err)

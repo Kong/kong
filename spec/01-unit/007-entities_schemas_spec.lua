@@ -5,7 +5,6 @@ local targets_schema = require "kong.dao.schemas.targets"
 local upstreams_schema = require "kong.dao.schemas.upstreams"
 local validations = require "kong.dao.schemas_validation"
 local validate_entity = validations.validate_entity
-local utils = require "kong.tools.utils"
 
 describe("Entities Schemas", function()
 
@@ -749,10 +748,135 @@ describe("Entities Schemas", function()
       assert.is_nil(check)
     end)
 
+    it("should verify healthcheck configuration", function()
+
+      -- tests for failure
+      local tests = {
+        {{ active = { timeout = -1 }}, "greater than or equal to 0" },
+        {{ active = { concurrency = 0.5 }}, "must be an integer" },
+        {{ active = { concurrency = 0 }}, "must be an integer" },
+        {{ active = { concurrency = -10 }}, "must be an integer" },
+        {{ active = { http_path = "" }}, "is empty" },
+        {{ active = { http_path = "ovo" }}, "must be prefixed with slash" },
+        {{ active = { healthy = { interval = -1 }}}, "greater than or equal to 0" },
+        {{ active = { healthy = { http_statuses = 404 }}}, "not an array" },
+        {{ active = { healthy = { http_statuses = { "ovo" }}}}, "not a number" },
+        {{ active = { healthy = { http_statuses = { -1 }}}}, "status code" },
+        {{ active = { healthy = { http_statuses = { 99 }}}}, "status code" },
+        {{ active = { healthy = { http_statuses = { 1000 }}}}, "status code" },
+        {{ active = { healthy = { http_statuses = { 111.314 }}}}, "must be an integer" },
+        {{ active = { healthy = { successes = 0.5 }}}, "must be 0 (disabled), or an integer" },
+        --{{ active = { healthy = { successes = 0 }}}, "must be an integer" },
+        {{ active = { healthy = { successes = -1 }}}, "an integer between" },
+        {{ active = { unhealthy = { interval = -1 }}}, "greater than or equal to 0" },
+        {{ active = { unhealthy = { http_statuses = 404 }}}, "not an array" },
+        {{ active = { unhealthy = { http_statuses = { "ovo" }}}}, "not a number" },
+        {{ active = { unhealthy = { http_statuses = { -1 }}}}, "status code" },
+        {{ active = { unhealthy = { http_statuses = { 99 }}}}, "status code" },
+        {{ active = { unhealthy = { http_statuses = { 1000 }}}}, "status code" },
+        {{ active = { unhealthy = { tcp_failures = 0.5 }}}, "must be 0 (disabled), or an integer" },
+        --{{ active = { unhealthy = { tcp_failures = 0 }}}, "must be an integer" },
+        {{ active = { unhealthy = { tcp_failures = -1 }}}, "an integer between" },
+        {{ active = { unhealthy = { timeouts = 0.5 }}}, "must be 0 (disabled), or an integer" },
+        --{{ active = { unhealthy = { timeouts = 0 }}}, "must be an integer" },
+        {{ active = { unhealthy = { timeouts = -1 }}}, "an integer between" },
+        {{ active = { unhealthy = { http_failures = 0.5 }}}, "must be 0 (disabled), or an integer" },
+        {{ active = { unhealthy = { http_failures = -1 }}}, "an integer between" },
+        {{ passive = { healthy = { http_statuses = 404 }}}, "not an array" },
+        {{ passive = { healthy = { http_statuses = { "ovo" }}}}, "not a number" },
+        {{ passive = { healthy = { http_statuses = { -1 }}}}, "status code" },
+        {{ passive = { healthy = { http_statuses = { 99 }}}}, "status code" },
+        {{ passive = { healthy = { http_statuses = { 1000 }}}}, "status code" },
+        {{ passive = { healthy = { successes = 0.5 }}}, "must be 0 (disabled), or an integer" },
+        --{{ passive = { healthy = { successes = 0 }}}, "must be an integer" },
+        {{ passive = { healthy = { successes = -1 }}}, "an integer between" },
+        {{ passive = { unhealthy = { http_statuses = 404 }}}, "not an array" },
+        {{ passive = { unhealthy = { http_statuses = { "ovo" }}}}, "not a number" },
+        {{ passive = { unhealthy = { http_statuses = { -1 }}}}, "status code" },
+        {{ passive = { unhealthy = { http_statuses = { 99 }}}}, "status code" },
+        {{ passive = { unhealthy = { http_statuses = { 1000 }}}}, "status code" },
+        {{ passive = { unhealthy = { tcp_failures = 0.5 }}}, "must be 0 (disabled), or an integer" },
+        --{{ passive = { unhealthy = { tcp_failures = 0 }}}, "must be an integer" },
+        {{ passive = { unhealthy = { tcp_failures = -1 }}}, "an integer between" },
+        {{ passive = { unhealthy = { timeouts = 0.5 }}}, "must be 0 (disabled), or an integer" },
+        --{{ passive = { unhealthy = { timeouts = 0 }}}, "must be an integer" },
+        {{ passive = { unhealthy = { timeouts = -1 }}}, "an integer between" },
+        {{ passive = { unhealthy = { http_failures = 0.5 }}}, "must be 0 (disabled), or an integer" },
+        --{{ passive = { unhealthy = { http_failures = 0 }}}, "must be an integer" },
+        {{ passive = { unhealthy = { http_failures = -1 }}}, "an integer between" },
+        --]]
+      }
+      for _, test in ipairs(tests) do
+        local entity = {
+          name = "x",
+          healthchecks = test[1],
+        }
+
+        -- convert nested table to field name
+        local path = { "healthchecks" }
+        local t = test[1]
+        while type(t) == "table" and type(next(t)) == "string" do
+          table.insert(path, (next(t)))
+          t = t[next(t)]
+        end
+        local field_name = table.concat(path, ".")
+
+        local valid, errors = validate_entity(entity, upstreams_schema)
+        assert.is_false(valid)
+        assert.match(test[2], errors[field_name], nil, true)
+      end
+
+      -- tests for success
+      tests = {
+        { active = { timeout = 0.5 }},
+        { active = { timeout = 1 }},
+        { active = { concurrency = 2 }},
+        { active = { http_path = "/" }},
+        { active = { http_path = "/test" }},
+        { active = { healthy = { interval = 0 }}},
+        { active = { healthy = { http_statuses = { 200, 300 } }}},
+        { active = { healthy = { successes = 2 }}},
+        { active = { unhealthy = { interval = 0 }}},
+        { active = { unhealthy = { http_statuses = { 404 }}}},
+        { active = { unhealthy = { tcp_failures = 3 }}},
+        { active = { unhealthy = { timeouts = 9 }}},
+        { active = { unhealthy = { http_failures = 2 }}},
+        { passive = { healthy = { http_statuses = { 200, 201 } }}},
+        { passive = { healthy = { successes = 2 }}},
+        { passive = { unhealthy = { http_statuses = { 400, 500 } }}},
+        { passive = { unhealthy = { tcp_failures = 8 }}},
+        { passive = { unhealthy = { timeouts = 1 }}},
+        { passive = { unhealthy = { http_failures = 2 }}},
+      }
+      for _, test in ipairs(tests) do
+        local entity = {
+          name = "x",
+          healthchecks = test,
+        }
+
+        local valid = validate_entity(entity, upstreams_schema)
+        assert.is_true(valid)
+      end
+
+    end)
+
+    it("creates an upstream with the default values", function()
+      local default = upstreams_schema.fields.healthchecks.default
+      local entity = {
+        name = "x",
+        healthchecks = default,
+      }
+
+      local valid, errors = validate_entity(entity, upstreams_schema)
+      assert.is_nil(errors)
+      assert.is_true(valid)
+    end)
+
     it("should require (optional) slots in a valid range", function()
       local valid, errors, check, _
       local data = { name = "valid.host.name" }
-      valid, _, _ = validate_entity(data, upstreams_schema)
+      valid, errors, _ = validate_entity(data, upstreams_schema)
+      assert.is_nil(errors)
       assert.is_true(valid)
       assert.equal(slots_default, data.slots)
 
@@ -779,94 +903,6 @@ describe("Entities Schemas", function()
         assert.is_nil(errors)
         assert.is_nil(check)
       end
-    end)
-
-    it("should require (optional) orderlist to be a proper list", function()
-      local data, valid, errors, check
-      local function validate_order(list, size)
-        assert(type(list) == "table", "expected list table, got " .. type(list))
-        assert(next(list), "table is empty")
-        assert(type(size) == "number", "expected size number, got " .. type(size))
-        assert(size > 0, "expected size to be > 0")
-        local c = {}
-        local max = 0
-        for i,v in pairs(list) do  --> note: pairs, not ipairs!!
-          if i > max then max = i end
-          c[i] = v
-        end
-        assert(max == size, "highest key is not equal to the size")
-        table.sort(c)
-        max = 0
-        for i, v in ipairs(c) do
-          assert(i == v, "expected sorted table to have equal keys and values")
-          if i>max then max = i end
-        end
-        assert(max == size, "expected array, but got list with holes")
-      end
-
-      for _ = 1, 20 do  -- have Kong generate 20 random sized arrays and verify them
-        data = {
-          name = "valid.host.name",
-          slots = math.random(slots_min, slots_max)
-        }
-        valid, errors, check = validate_entity(data, upstreams_schema)
-        assert.is_true(valid)
-        assert.is_nil(errors)
-        assert.is_nil(check)
-        validate_order(data.orderlist, data.slots)
-      end
-
-      local lst = { 9,7,5,3,1,2,4,6,8,10 }   -- a valid list
-      data = {
-        name = "valid.host.name",
-        slots = 10,
-        orderlist = utils.shallow_copy(lst)
-      }
-      valid, errors, check = validate_entity(data, upstreams_schema)
-      assert.is_true(valid)
-      assert.is_nil(errors)
-      assert.is_nil(check)
-      assert.same(lst, data.orderlist)
-
-      data = {
-        name = "valid.host.name",
-        slots = 10,
-        orderlist = { 9,7,5,3,1,2,4,6,8 }   -- too short (9)
-      }
-      valid, errors, check = validate_entity(data, upstreams_schema)
-      assert.is_false(valid)
-      assert.is_nil(errors)
-      assert.are.equal("size mismatch between 'slots' and 'orderlist'",check.message)
-
-      data = {
-        name = "valid.host.name",
-        slots = 10,
-        orderlist = { 9,7,5,3,1,2,4,6,8,10,11 }   -- too long (11)
-      }
-      valid, errors, check = validate_entity(data, upstreams_schema)
-      assert.is_false(valid)
-      assert.is_nil(errors)
-      assert.are.equal("size mismatch between 'slots' and 'orderlist'",check.message)
-
-      data = {
-        name = "valid.host.name",
-        slots = 10,
-        orderlist = { 9,7,5,3,1,2,4,6,8,8 }   -- a double value (2x 8, no 10)
-      }
-      valid, errors, check = validate_entity(data, upstreams_schema)
-      assert.is_false(valid)
-      assert.is_nil(errors)
-      assert.are.equal("invalid orderlist",check.message)
-
-      data = {
-        name = "valid.host.name",
-        slots = 10,
-        orderlist = { 9,7,5,3,1,2,4,6,8,11 }   -- a hole (10 missing)
-      }
-      valid, errors, check = validate_entity(data, upstreams_schema)
-      assert.is_false(valid)
-      assert.is_nil(errors)
-      assert.are.equal("invalid orderlist",check.message)
     end)
 
   end)

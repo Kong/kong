@@ -73,5 +73,6 @@ return {
     "kong_process_events",
     "kong_cluster_events",
     "kong_vitals_requests_consumers",
+    "kong_healthchecks",
   },
 }

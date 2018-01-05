@@ -68,7 +68,7 @@ helpers.for_each_dao(function(kong_config)
             anonymous = "",
             key_in_body = false,
           }, plugin.config)
-      end)		
+      end)
       describe("unique per API/Consumer", function()
         it("API/Plugin", function()
           plugin_fixture.api_id = api_fixture.id

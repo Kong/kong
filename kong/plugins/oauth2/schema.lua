@@ -5,7 +5,7 @@ local function check_user(anonymous)
   if anonymous == "" or utils.is_valid_uuid(anonymous) then
     return true
   end
-  
+
   return false, "the anonymous user must be empty or a valid uuid"
 end
 
@@ -31,6 +31,8 @@ return {
     accept_http_if_already_terminated = { required = false, type = "boolean", default = false },
     anonymous = {type = "string", default = "", func = check_user},
     global_credentials = {type = "boolean", default = false},
+    auth_header_name = {required = false, type = "string", default = "authorization"},
+    refresh_token_ttl = {required = true, type = "number", default = 1209600} -- original hardcoded value - 14 days
   },
   self_check = function(schema, plugin_t, dao, is_update)
     if not plugin_t.enable_authorization_code and not plugin_t.enable_implicit_grant

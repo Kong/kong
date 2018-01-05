@@ -10,6 +10,7 @@ local MB = 2^20
 local RequestSizeLimitingHandler = BasePlugin:extend()
 
 RequestSizeLimitingHandler.PRIORITY = 951
+RequestSizeLimitingHandler.VERSION = "0.1.0"
 
 local function check_size(length, allowed_size, headers)
   local allowed_bytes_size = allowed_size * MB

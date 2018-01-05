@@ -12,27 +12,6 @@ local function it_content_types(title, fn)
   it(title .. " with application/json", test_json)
 end
 
-local function validate_order(list, size)
-  assert(type(list) == "table", "expected list table, got " .. type(list))
-  assert(next(list), "table is empty")
-  assert(type(size) == "number", "expected size number, got " .. type(size))
-  assert(size > 0, "expected size to be > 0")
-  local c = {}
-  local max = 0
-  for i,v in pairs(list) do  --> note: pairs, not ipairs!!
-    if i > max then max = i end
-    c[i] = v
-  end
-  assert(max == size, "highest key is not equal to the size")
-  table.sort(c)
-  max = 0
-  for i, v in ipairs(c) do
-    assert(i == v, "expected sorted table to have equal keys and values")
-    if i>max then max = i end
-  end
-  assert(max == size, "expected array, but got list with holes")
-end
-
 dao_helpers.for_each_dao(function(kong_config)
 
 describe("Admin API: #" .. kong_config.database, function()
@@ -41,6 +20,7 @@ describe("Admin API: #" .. kong_config.database, function()
 
   setup(function()
     dao = assert(DAOFactory.new(kong_config))
+    helpers.run_migrations(dao)
 
     helpers.run_migrations(dao)
     assert(helpers.start_kong{
@@ -75,67 +55,84 @@ describe("Admin API: #" .. kong_config.database, function()
           assert.is_number(json.created_at)
           assert.is_string(json.id)
           assert.are.equal(slots_default, json.slots)
-          validate_order(json.orderlist, json.slots)
+          assert.are.equal("none", json.hash_on)
+          assert.are.equal("none", json.hash_fallback)
+          assert.is_nil(json.hash_on_header)
+          assert.is_nil(json.hash_fallback_header)
         end
       end)
-      it("creates an upstream without defaults with application/json", function()
-        local res = assert(client:send {
-          method = "POST",
-          path = "/upstreams",
-          body = {
-            name = "my.upstream",
-            slots = 10,
-            orderlist = { 10,9,8,7,6,5,4,3,2,1 },
-          },
-          headers = {["Content-Type"] = "application/json"}
-        })
-        assert.response(res).has.status(201)
-        local json = assert.response(res).has.jsonbody()
-        assert.equal("my.upstream", json.name)
-        assert.is_number(json.created_at)
-        assert.is_string(json.id)
-        assert.are.equal(10, json.slots)
-        validate_order(json.orderlist, json.slots)
-        assert.are.same({ 10,9,8,7,6,5,4,3,2,1 }, json.orderlist)
+      it_content_types("creates an upstream without defaults", function(content_type)
+        return function()
+          local res = assert(client:send {
+            method = "POST",
+            path = "/upstreams",
+            body = {
+              name = "my.upstream",
+              slots = 10,
+              hash_on = "consumer",
+              hash_fallback = "ip",
+              hash_on_header = "HeaderName",
+              hash_fallback_header = "HeaderFallback",
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          assert.response(res).has.status(201)
+          local json = assert.response(res).has.jsonbody()
+          assert.equal("my.upstream", json.name)
+          assert.is_number(json.created_at)
+          assert.is_string(json.id)
+          assert.are.equal(10, json.slots)
+          assert.are.equal("consumer", json.hash_on)
+          assert.are.equal("ip", json.hash_fallback)
+          assert.are.equal("HeaderName", json.hash_on_header)
+          assert.are.equal("HeaderFallback", json.hash_fallback_header)
+        end
       end)
-      pending("creates an upstream without defaults with application/www-form-urlencoded", function()
--- pending due to inability to pass array
--- see also the todo's below
-        local res = assert(client:send {
-          method = "POST",
-          path = "/upstreams",
-          body = "name=my.upstream&slots=10&" ..
-                 "orderlist[]=10&orderlist[]=9&orderlist[]=8&orderlist[]=7&" ..
-                 "orderlist[]=6&orderlist[]=5&orderlist[]=4&orderlist[]=3&" ..
-                 "orderlist[]=2&orderlist[]=1",
-          headers = {["Content-Type"] = "application/www-form-urlencoded"}
-        })
-        assert.response(res).has.status(201)
-        local json = assert.response(res).has.jsonbody()
-        assert.equal("my.upstream", json.name)
-        assert.is_number(json.created_at)
-        assert.is_string(json.id)
-        assert.are.equal(10, json.slots)
-        validate_order(json.orderlist, json.slots)
-        assert.are.same({ 10,9,8,7,6,5,4,3,2,1 }, json.orderlist)
+      it_content_types("creates an upstream with 2 header hashes", function(content_type)
+        return function()
+          local res = assert(client:send {
+            method = "POST",
+            path = "/upstreams",
+            body = {
+              name = "my.upstream",
+              slots = 10,
+              hash_on = "header",
+              hash_fallback = "header",
+              hash_on_header = "HeaderName1",
+              hash_fallback_header = "HeaderName2",
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          assert.response(res).has.status(201)
+          local json = assert.response(res).has.jsonbody()
+          assert.equal("my.upstream", json.name)
+          assert.is_number(json.created_at)
+          assert.is_string(json.id)
+          assert.are.equal(10, json.slots)
+          assert.are.equal("header", json.hash_on)
+          assert.are.equal("header", json.hash_fallback)
+          assert.are.equal("HeaderName1", json.hash_on_header)
+          assert.are.equal("HeaderName2", json.hash_fallback_header)
+        end
       end)
-      it("creates an upstream with " .. slots_max .. " slots", function(content_type)
-        local res = assert(client:send {
-          method = "POST",
-          path = "/upstreams",
-          body = {
-            name = "my.upstream",
-            slots = slots_max,
-          },
-          headers = {["Content-Type"] = "application/json"}
-        })
-        assert.response(res).has.status(201)
-        local json = assert.response(res).has.jsonbody()
-        assert.equal("my.upstream", json.name)
-        assert.is_number(json.created_at)
-        assert.is_string(json.id)
-        assert.are.equal(slots_max, json.slots)
-        validate_order(json.orderlist, json.slots)
+      it_content_types("creates an upstream with " .. slots_max .. " slots", function(content_type)
+        return function()
+          local res = assert(client:send {
+            method = "POST",
+            path = "/upstreams",
+            body = {
+              name = "my.upstream",
+              slots = slots_max,
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          assert.response(res).has.status(201)
+          local json = assert.response(res).has.jsonbody()
+          assert.equal("my.upstream", json.name)
+          assert.is_number(json.created_at)
+          assert.is_string(json.id)
+          assert.are.equal(slots_max, json.slots)
+        end
       end)
       describe("errors", function()
         it("handles malformed JSON body", function()
@@ -175,6 +172,7 @@ describe("Admin API: #" .. kong_config.database, function()
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
             assert.same({ message = "Invalid name; must be a valid hostname" }, json)
+
             -- Invalid slots parameter
             res = assert(client:send {
               method = "POST",
@@ -188,54 +186,132 @@ describe("Admin API: #" .. kong_config.database, function()
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
             assert.same({ message = "number of slots must be between 10 and 65536" }, json)
-          end
-        end)
-        it_content_types("handles invalid input - orderlist", function(content_type)
-          return function()
---TODO: line below disables the test for urlencoded, because the orderlist array isn't passed/received properly
-if content_type == "application/x-www-form-urlencoded" then return end
-            -- non-integers
-            local res = assert(client:send {
-              method = "POST",
-              path = "/upstreams",
-              body = {
-                name = "my.upstream",
-                slots = 10,
-                orderlist = { "one","two","three","four","five","six","seven","eight","nine","ten" },
-              },
-              headers = {["Content-Type"] = content_type}
-            })
-            local body = assert.res_status(400, res)
-            local json = cjson.decode(body)
-            assert.same({ message = "invalid orderlist" }, json)
-            -- non-consecutive
+
+            -- Invalid hash_on entries
             res = assert(client:send {
               method = "POST",
               path = "/upstreams",
               body = {
                 name = "my.upstream",
-                slots = 10,
-                orderlist = { 1,2,3,4,5,6,7,8,9,11 }, -- 10 is missing
+                hash_on = "something that is invalid",
               },
               headers = {["Content-Type"] = content_type}
             })
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ message = "invalid orderlist" }, json)
-            -- doubles
+            assert.same({ hash_on = '"something that is invalid" is not allowed. Allowed values are: "none", "consumer", "ip", "header"' }, json)
+
+            -- Invalid hash_fallback entries
             res = assert(client:send {
               method = "POST",
               path = "/upstreams",
               body = {
                 name = "my.upstream",
-                slots = 10,
-                orderlist = { 1,2,3,4,5,1,2,3,4,5 }, 
+                hash_on = "consumer",
+                hash_fallback = "something that is invalid",
               },
               headers = {["Content-Type"] = content_type}
             })
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ message = "invalid orderlist" }, json)
+            assert.same({ hash_fallback = '"something that is invalid" is not allowed. Allowed values are: "none", "consumer", "ip", "header"' }, json)
+
+            -- same hash entries
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                hash_on = "consumer",
+                hash_fallback = "consumer",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "Cannot set fallback and primary hashes to the same value" }, json)
+
+            -- Invalid header
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                hash_on = "header",
+                hash_fallback = "consumer",
+                hash_on_header = "not a <> valid <> header name",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "Header: bad header name 'not a <> valid <> header name', allowed characters are A-Z, a-z, 0-9, '_', and '-'" }, json)
+
+            -- Invalid header
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                hash_on = "consumer",
+                hash_fallback = "header",
+                hash_fallback_header = "not a <> valid <> header name",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "Header: bad header name 'not a <> valid <> header name', allowed characters are A-Z, a-z, 0-9, '_', and '-'" }, json)
+
+            -- Same headers
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                hash_on = "header",
+                hash_fallback = "header",
+                hash_on_header = "headername",
+                hash_fallback_header = "HeaderName",  --> validate case insensitivity
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "Cannot set fallback and primary hashes to the same value" }, json)
+
+            -- No headername provided
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                hash_on = "header",
+                hash_fallback = "header",
+                hash_on_header = nil,  -- not given
+                hash_fallback_header = "HeaderName",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "Hashing on 'header', but no header name provided" }, json)
+
+            -- No fallback headername provided
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                hash_on = "consumer",
+                hash_fallback = "header",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "Hashing on 'header', but no header name provided" }, json)
+
           end
         end)
         it_content_types("returns 409 on conflict", function(content_type)
@@ -288,12 +364,9 @@ if content_type == "application/x-www-form-urlencoded" then return end
           assert.is_number(json.created_at)
           assert.is_string(json.id)
           assert.is_number(json.slots)
-          assert.is_table(json.orderlist)
         end
       end)
-      --it_content_types("replaces if exists", function(content_type)
-      pending("replaces if exists", function(content_type)
---TODO: no idea why this fails in an odd manner...
+      it_content_types("replaces if exists", function(content_type)
         return function()
           local res = assert(client:send {
             method = "POST",
@@ -323,7 +396,6 @@ if content_type == "application/x-www-form-urlencoded" then return end
           assert.equal("my-new-upstream", updated_json.name)
           assert.equal(123, updated_json.slots)
           assert.equal(json.id, updated_json.id)
-          assert.equal(json.created_at, updated_json.created_at)
         end
       end)
       describe("errors", function()

@@ -10,6 +10,7 @@ local rbac = require "kong.rbac"
 
 
 local find = string.find
+local sub  = string.sub
 
 
 local app = lapis.Application()
@@ -96,10 +97,31 @@ app:before_filter(function(self)
     rbac_handler.validate_filter(self)
   end
 
-  if NEEDS_BODY[ngx.req.get_method()]
-    and not self.req.headers["content-type"] then
-    return responses.send_HTTP_UNSUPPORTED_MEDIA_TYPE()
+  if not NEEDS_BODY[ngx.req.get_method()] then
+    return
   end
+
+  local content_type = self.req.headers["content-type"]
+  if not content_type then
+    local content_length = self.req.headers["content-length"]
+    if content_length == "0" then
+      return
+    end
+
+    if not content_length then
+      local _, err = ngx.req.socket()
+      if err == "no body" then
+        return
+      end
+    end
+
+  elseif sub(content_type, 1, 16) == "application/json"                  or
+         sub(content_type, 1, 19) == "multipart/form-data"               or
+         sub(content_type, 1, 33) == "application/x-www-form-urlencoded" then
+    return
+  end
+
+  return responses.send_HTTP_UNSUPPORTED_MEDIA_TYPE()
 end)
 
 

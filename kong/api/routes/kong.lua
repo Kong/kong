@@ -1,6 +1,7 @@
 local utils = require "kong.tools.utils"
 local singletons = require "kong.singletons"
 local conf_loader = require "kong.conf_loader"
+local cjson = require "cjson"
 
 local sub = string.sub
 local find = string.find
@@ -15,7 +16,7 @@ local lua_version = jit and jit.version or _VERSION
 return {
   ["/"] = {
     GET = function(self, dao, helpers)
-      local distinct_plugins = {}
+      local distinct_plugins = setmetatable({}, cjson.empty_array_mt)
       local prng_seeds = {}
 
       do

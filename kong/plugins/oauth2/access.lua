@@ -9,6 +9,8 @@ local public_utils = require "kong.tools.public"
 local string_find = string.find
 local req_get_headers = ngx.req.get_headers
 local ngx_set_header = ngx.req.set_header
+local ngx_req_get_method = ngx.req.get_method
+local ngx_req_get_uri_args = ngx.req.get_uri_args
 local check_https = utils.check_https
 
 
@@ -42,6 +44,11 @@ local function generate_token(conf, api, credential, authenticated_userid, scope
     refresh_token = utils.random_string()
   end
 
+  local refresh_token_ttl
+  if conf.refresh_token_ttl and conf.refresh_token_ttl > 0 then
+    refresh_token_ttl = conf.refresh_token_ttl
+  end
+
   local api_id
   if not conf.global_credentials then
     api_id = api.id
@@ -53,8 +60,8 @@ local function generate_token(conf, api, credential, authenticated_userid, scope
     expires_in = token_expiration,
     refresh_token = refresh_token,
     scope = scope
-  }, {ttl = token_expiration > 0 and 1209600 or nil}) -- Access tokens (and their associated refresh token) are being
-                                                      -- permanently deleted after 14 days (1209600 seconds)
+  }, {ttl = token_expiration > 0 and refresh_token_ttl or nil}) -- Access tokens (and their associated refresh token) are being
+                                                                -- permanently deleted after 'refresh_token_ttl' seconds
 
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
@@ -92,10 +99,18 @@ local function get_redirect_uri(client_id)
 end
 
 local function retrieve_parameters()
-  ngx.req.read_body()
-
   -- OAuth2 parameters could be in both the querystring or body
-  return utils.table_merge(ngx.req.get_uri_args(), public_utils.get_body_args())
+  local uri_args = ngx_req_get_uri_args()
+  local method   = ngx_req_get_method()
+
+  if method == "POST" or method == "PUT" or method == "PATCH" then
+    ngx.req.read_body()
+    local body_args = public_utils.get_body_args()
+
+    return utils.table_merge(uri_args, body_args)
+  end
+
+  return uri_args
 end
 
 local function retrieve_scopes(parameters, conf)
@@ -218,9 +233,9 @@ local function authorize(conf)
   })
 end
 
-local function retrieve_client_credentials(parameters)
+local function retrieve_client_credentials(parameters, conf)
   local client_id, client_secret, from_authorization_header
-  local authorization_header = ngx.req.get_headers()["authorization"]
+  local authorization_header = ngx.req.get_headers()[conf.auth_header_name]
   if parameters[CLIENT_ID] and parameters[CLIENT_SECRET] then
     client_id = parameters[CLIENT_ID]
     client_secret = parameters[CLIENT_SECRET]
@@ -271,7 +286,7 @@ local function issue_token(conf)
       response_params = {[ERROR] = "unsupported_grant_type", error_description = "Invalid " .. GRANT_TYPE}
     end
 
-    local client_id, client_secret, from_authorization_header = retrieve_client_credentials(parameters)
+    local client_id, client_secret, from_authorization_header = retrieve_client_credentials(parameters, conf)
 
     -- Check client_id and redirect_uri
     local allowed_redirect_uris, client = get_redirect_uri(client_id)
@@ -405,7 +420,7 @@ local function parse_access_token(conf)
   local found_in = {}
   local result = retrieve_parameters()["access_token"]
   if not result then
-    local authorization = ngx.req.get_headers()["authorization"]
+    local authorization = ngx.req.get_headers()[conf.auth_header_name]
     if authorization then
       local parts = {}
       for v in authorization:gmatch("%S+") do -- Split by space
@@ -420,7 +435,7 @@ local function parse_access_token(conf)
 
   if conf.hide_credentials then
     if found_in.authorization_header then
-      ngx.req.clear_header("authorization")
+      ngx.req.clear_header(conf.auth_header_name)
     else
       -- Remove from querystring
       local parameters = ngx.req.get_uri_args()
@@ -463,7 +478,7 @@ local function load_consumer_into_memory(consumer_id, anonymous)
   end
   return result
 end
-  
+
 local function set_consumer(consumer, credential, token)
   ngx_set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
   ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
@@ -477,7 +492,7 @@ local function set_consumer(consumer, credential, token)
   else
     ngx_set_header(constants.HEADERS.ANONYMOUS, true)
   end
-  
+
 end
 
 local function do_authentication(conf)
@@ -530,7 +545,7 @@ end
 function _M.execute(conf)
 
   if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
-    -- we're already authenticated, and we're configured for using anonymous, 
+    -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
     return
   end
@@ -538,17 +553,14 @@ function _M.execute(conf)
   if ngx.req.get_method() == "POST" then
     local uri = ngx.var.uri
 
-    local from, _ = string_find(uri, "/oauth2/token", nil, true)
-
+    local from = string_find(uri, "/oauth2/token", nil, true)
     if from then
-      issue_token(conf)
+      return issue_token(conf)
+    end
 
-    else
-      from, _ = string_find(uri, "/oauth2/authorize", nil, true)
-
-      if from then
-        authorize(conf)
-      end
+    from = string_find(uri, "/oauth2/authorize", nil, true)
+    if from then
+      return authorize(conf)
     end
   end
 

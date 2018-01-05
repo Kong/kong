@@ -32,6 +32,8 @@ local function execute(args)
   if running then
     log.verbose("nginx is still running at %s, forcing shutdown", conf.prefix)
     assert(nginx_signals.stop(conf))
+    log("Timeout, Kong stopped forcefully")
+    return
   end
 
   log("Kong stopped (gracefully)")

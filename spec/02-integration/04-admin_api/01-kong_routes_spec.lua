@@ -65,6 +65,14 @@ describe("Admin API - Kong routes", function()
       local json = cjson.decode(body)
       assert.is_table(json.configuration)
     end)
+    it("enabled_in_cluster property is an array", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/"
+      })
+      local body = assert.res_status(200, res)
+      assert.matches('"enabled_in_cluster":[]', body, nil, true)
+    end)
     it("obfuscates sensitive settings from the configuration", function()
       local res = assert(client:send {
         method = "GET",
