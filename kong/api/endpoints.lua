@@ -1,9 +1,37 @@
+local Errors = require "kong.db.errors"
+local responses = require "kong.tools.responses"
+local app_helpers = require "lapis.application"
+
+
 local escape_uri = ngx.escape_uri
 local concat     = table.concat
 local null       = ngx.null
 local find       = string.find
 local fmt        = string.format
 local sub        = string.sub
+
+
+-- error codes http status codes
+local ERRORS_HTTP_CODES = {
+  [Errors.codes.INVALID_PRIMARY_KEY]   = 400,
+  [Errors.codes.SCHEMA_VIOLATION]      = 400,
+  [Errors.codes.PRIMARY_KEY_VIOLATION] = 400,
+  [Errors.codes.FOREIGN_KEY_VIOLATION] = 400,
+  [Errors.codes.UNIQUE_VIOLATION]      = 409,
+  [Errors.codes.NOT_FOUND]             = 404,
+  [Errors.codes.INVALID_OFFSET]        = 400,
+  [Errors.codes.DATABASE_ERROR]        = 500,
+}
+
+
+local function handle_error(err_t)
+  local status = ERRORS_HTTP_CODES[err_t.code]
+  if not status or status == 500 then
+    return app_helpers.yield_error(err_t)
+  end
+
+  responses.send(status, err_t)
+end
 
 
 -- Generates admin api get collection endpoint functions
@@ -24,7 +52,7 @@ local function get_collection_endpoint(schema_name, entity_name, parent_schema_n
         self.args.offset)
 
       if err_t then
-        return helpers.yield_error(err_t)
+        return handle_error(err_t)
       end
 
       local next_page = offset and fmt("/%s?offset=%s", schema_name, escape_uri(offset)) or null
@@ -43,7 +71,7 @@ local function get_collection_endpoint(schema_name, entity_name, parent_schema_n
 
     local parent_entity, _, err_t = db[parent_schema_name]:select(fk)
     if err_t then
-      return helpers.yield_error(err_t)
+      return handle_error(err_t)
     end
 
     if not parent_entity then
@@ -59,7 +87,7 @@ local function get_collection_endpoint(schema_name, entity_name, parent_schema_n
       self.args.offset)
 
     if err_t then
-      return helpers.yield_error(err_t)
+      return handle_error(err_t)
     end
 
     local next_page = offset and fmt("/%s/%s/%s?offset=%s",
@@ -91,7 +119,7 @@ local function post_collection_endpoint(schema_name, entity_name, parent_schema_
 
       local parent_entity, _, err_t = db[parent_schema_name]:select(fk)
       if err_t then
-        return helpers.yield_error(err_t)
+        return handle_error(err_t)
       end
 
       if not parent_entity then
@@ -103,7 +131,7 @@ local function post_collection_endpoint(schema_name, entity_name, parent_schema_
 
     local data, _, err_t = db[schema_name]:insert(self.args.post)
     if err_t then
-      return helpers.yield_error(err_t)
+      return handle_error(err_t)
     end
 
     return helpers.responses.send_HTTP_CREATED(data)
@@ -133,7 +161,7 @@ local function get_entity_endpoint(schema_name, entity_name, parent_schema_name)
 
       local parent_entity, _, err_t = db[parent_schema_name]:select(fk)
       if err_t then
-        return helpers.yield_error(err_t)
+        return handle_error(err_t)
       end
 
       if not parent_entity or parent_entity[entity_name] == null then
@@ -145,7 +173,7 @@ local function get_entity_endpoint(schema_name, entity_name, parent_schema_name)
 
     local entity, _, err_t = db[schema_name]:select(pk)
     if err_t then
-      return helpers.yield_error(err_t)
+      return handle_error(err_t)
     end
 
     if not entity then
@@ -179,7 +207,7 @@ local function patch_entity_endpoint(schema_name, entity_name, parent_schema_nam
 
       local parent_entity, _, err_t = db[parent_schema_name]:select(fk)
       if err_t then
-        return helpers.yield_error(err_t)
+        return handle_error(err_t)
       end
 
       if not parent_entity or parent_entity[entity_name] == null then
@@ -191,7 +219,7 @@ local function patch_entity_endpoint(schema_name, entity_name, parent_schema_nam
 
     local entity, _, err_t = db[schema_name]:update(pk, self.args.post)
     if err_t then
-      return helpers.yield_error(err_t)
+      return handle_error(err_t)
     end
 
     return helpers.responses.send_HTTP_OK(entity)
@@ -222,7 +250,7 @@ local function delete_entity_endpoint(schema_name, entity_name, parent_schema_na
 
       local parent_entity, _, err_t = db[parent_schema_name]:select(fk)
       if err_t then
-        return helpers.yield_error(err_t)
+        return handle_error(err_t)
       end
 
       if not parent_entity or parent_entity[entity_name] == null then
@@ -234,7 +262,7 @@ local function delete_entity_endpoint(schema_name, entity_name, parent_schema_na
 
     local _, _, err_t = db[schema_name]:delete(pk)
     if err_t then
-      return helpers.yield_error(err_t)
+      return handle_error(err_t)
     end
 
     return helpers.responses.send_HTTP_NO_CONTENT()
