@@ -2,7 +2,7 @@ return {
  {
     name = "2017-08-22-150000_rbac_proxy-cache_resources",
     up = function(_, _, dao)
-      local rbac = require "kong.core.rbac"
+      local rbac = require "kong.rbac"
       local bxor = require("bit").bxor
 
       local resource, err = rbac.register_resource("proxy-cache", dao)
