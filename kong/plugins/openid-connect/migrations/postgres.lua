@@ -1,4 +1,4 @@
-local is_ee, rbac = pcall(require, "kong.core.rbac")
+local is_ee, rbac = pcall(require, "kong.rbac")
 local migrations = {
   {
     name = "2017-06-01-180000_init_oic",
