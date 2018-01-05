@@ -16,7 +16,7 @@ local ERRORS            = {
   SCHEMA_VIOLATION      = 2,
   PRIMARY_KEY_VIOLATION = 3, -- primary key already exists (HTTP 400)
   FOREIGN_KEY_VIOLATION = 4, -- foreign entity does not exist (HTTP 400)
-  --UNIQUE_VIOLATION    = 5, -- not currently supported by the schema (HTTP 409)
+  UNIQUE_VIOLATION      = 5, -- unique key already exists (HTTP 409)
   NOT_FOUND             = 6, -- WHERE clause leads nowhere (HTTP 404)
   INVALID_OFFSET        = 7, -- page(size, offset) is invalid
   DATABASE_ERROR        = 8, -- connection refused or DB error (HTTP 500)
@@ -31,7 +31,7 @@ local ERRORS_NAMES               = {
   [ERRORS.SCHEMA_VIOLATION]      = "schema violation",
   [ERRORS.PRIMARY_KEY_VIOLATION] = "primary key violation",
   [ERRORS.FOREIGN_KEY_VIOLATION] = "foreign key violation",
-  --[ERRORS.UNIQUE_VIOLATION]      = "unique constraint violation",
+  [ERRORS.UNIQUE_VIOLATION]      = "unique constraint violation",
   [ERRORS.NOT_FOUND]             = "not found",
   [ERRORS.INVALID_OFFSET]        = "invalid offset",
   [ERRORS.DATABASE_ERROR]        = "unknown database error",
@@ -224,6 +224,15 @@ function _M:not_found(primary_key)
   end
 
   return new_err_t(self, ERRORS.NOT_FOUND, nil, primary_key)
+end
+
+
+function _M:unique_violation(unique_key)
+  if type(unique_key) ~= "table" then
+    error("unique_key must be a table", 2)
+  end
+
+  return new_err_t(self, ERRORS.UNIQUE_VIOLATION, nil, unique_key)
 end
 
 

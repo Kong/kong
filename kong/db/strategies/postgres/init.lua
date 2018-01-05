@@ -386,9 +386,31 @@ local function toerror(strategy, err, primary_key, entity)
   local schema = strategy.schema
   local errors = strategy.errors
 
-  -- not-null constraint is currently only enforced on primary key
-  if find(err, "violates unique constraint",   1, true) or
-     find(err, "violates not-null constraint", 1, true) then
+  if find(err, "violates unique constraint",   1, true) then
+    log(NOTICE, err)
+
+    for field_name, field in schema:each_field() do
+      if field.unique then
+        if find(err, field_name, 1, true) then
+          return nil, errors:unique_violation({
+            [field_name] = entity[field_name]
+          })
+        end
+      end
+    end
+
+    if not primary_key then
+      primary_key = {}
+      if entity then
+        for _, key in ipairs(schema.primary_key) do
+          primary_key[key] = entity[key]
+        end
+      end
+    end
+    return nil, errors:primary_key_violation(primary_key)
+
+  elseif find(err, "violates not-null constraint", 1, true) then
+    -- not-null constraint is currently only enforced on primary key
     log(NOTICE, err)
     if not primary_key then
       primary_key = {}
@@ -569,6 +591,57 @@ local function make_select_for(foreign_entity_name)
   end
 end
 
+
+local function make_select_by(statement_name)
+  return function(self, unique_key)
+    local res, err = execute(self, statement_name, self.collapse(unique_key))
+
+    if res then
+      local row = res[1]
+      if row then
+        return self.expand(row), nil
+      end
+
+      return nil, nil
+    end
+
+    return toerror(self, err)
+  end
+end
+
+
+local function make_update_by(statement_name)
+  return function(self, unique_key, entity)
+    local res, err = execute(self, statement_name, self.collapse(unique_key, entity))
+
+    if res then
+      local row = res[1]
+      if row then
+        return self.expand(row), nil
+      end
+      return nil, self.errors:not_found(unique_key)
+    end
+
+    return toerror(self, err, nil, entity)
+  end
+end
+
+
+local function make_delete_by(statement_name)
+  return function(self, unique_key)
+    local res, err = execute(self, statement_name, self.collapse(unique_key))
+
+    if res then
+      if res.affected_rows == 0 then
+        return nil, nil
+      end
+
+      return true, nil
+    end
+
+    return toerror(self, err)
+  end
+end
 
 local _mt   = {}
 
@@ -790,6 +863,9 @@ function _M.new(connector, schema, errors)
   local foreign_key_map               = {}
   local foreign_keys                  = {}
 
+  local unique_fields_count           = 0
+  local unique_fields                 = {}
+
   for field_name, field in schema:each_field() do
     if field.type == "foreign" then
       local foreign_schema           = field.schema
@@ -839,6 +915,7 @@ function _M.new(connector, schema, errors)
         local name_expression        = escape_identifier(connector, name, foreign_field)
         local type_postgres          = field_type_to_postgres_type(foreign_field)
         local is_used_in_primary_key = primary_key_fields[name] ~= nil
+        local is_unique              = foreign_field.unique == true
 
         max_name_length              = max(max_name_length, #name_escaped)
         max_type_length              = max(max_type_length, #type_postgres)
@@ -854,6 +931,7 @@ function _M.new(connector, schema, errors)
           type_postgres              = type_postgres,
           is_used_in_primary_key     = is_used_in_primary_key,
           is_part_of_composite_key   = is_part_of_composite_key,
+          is_unique                  = is_unique,
         }
 
         if prepared_field.is_used_in_primary_key then
@@ -929,6 +1007,7 @@ function _M.new(connector, schema, errors)
       local type_postgres            = field_type_to_postgres_type(field)
       local is_used_in_primary_key   = primary_key_fields[field_name] ~= nil
       local is_part_of_composite_key = is_used_in_primary_key and primary_key_fields_count > 1 or false
+      local is_unique                = field.unique == true
 
       max_name_length = max(max_name_length, #name_escaped)
       max_type_length = max(max_type_length, #type_postgres)
@@ -940,6 +1019,7 @@ function _M.new(connector, schema, errors)
         type_postgres            = type_postgres,
         is_used_in_primary_key   = is_used_in_primary_key,
         is_part_of_composite_key = is_part_of_composite_key,
+        is_unique                = is_unique,
       }
 
       if prepared_field.is_used_in_primary_key then
@@ -973,6 +1053,7 @@ function _M.new(connector, schema, errors)
     local type_postgres            = fields[i].type_postgres
     local is_used_in_primary_key   = fields[i].is_used_in_primary_key
     local is_part_of_composite_key = fields[i].is_part_of_composite_key
+    local is_unique                = fields[i].is_unique
     local referenced_table         = fields[i].referenced_table
     local referenced_column        = fields[i].referenced_column
     local on_delete                = fields[i].on_delete
@@ -1013,9 +1094,11 @@ function _M.new(connector, schema, errors)
           create_expression[12] = on_delete
           create_expression[13] = " ON UPDATE "
           create_expression[14] = on_update
+
         elseif on_delete then
           create_expression[11] = " ON DELETE "
           create_expression[12] = on_delete
+
         elseif on_update then
           create_expression[11] = " ON UPDATE "
           create_expression[12] = on_update
@@ -1035,29 +1118,46 @@ function _M.new(connector, schema, errors)
         create_expression[11] = on_delete
         create_expression[12] = " ON UPDATE "
         create_expression[13] = on_update
+
       elseif on_delete then
         create_expression[10] = " ON DELETE "
         create_expression[11] = on_delete
+
       elseif on_update then
         create_expression[10] = " ON UPDATE "
         create_expression[11] = on_update
       end
+
+    elseif is_unique and not is_used_in_primary_key and not referenced_table then
+      -- TODO: unique attribute is considered only for non-composite fields that are not part of primary or foreign key
+      create_expression[4] = rep(" ", max_type_length - #type_postgres + (#type_postgres < max_name_length and 3 or 2))
+      create_expression[5] = "UNIQUE"
+
+      unique_fields_count = unique_fields_count + 1
+      unique_fields[unique_fields_count] = fields[i]
     end
 
     create_expressions[i] = concat(create_expression)
   end
 
+  local update_args_count = update_fields_count
+  local update_args_names = {}
+
+  for i = 1, update_fields_count do
+    update_args_names[i] = update_names[i]
+  end
+
   local primary_key_escaped = {}
 
   for i = 1, primary_key_fields_count do
-    local primary_key_field           = primary_key_fields[primary_key[i]]
-    primary_key_names[i]              = primary_key_field.name
-    primary_key_escaped[i]            = primary_key_field.name_escaped
-    update_fields_count               = update_fields_count + 1
-    update_placeholders[i]            = "$" .. update_fields_count
-    primary_key_placeholders[i]       = "$" .. i
-    update_names[update_fields_count] = primary_key_field.name
-    page_next_names[i]                = primary_key[i]
+    local primary_key_field              = primary_key_fields[primary_key[i]]
+    primary_key_names[i]                 = primary_key_field.name
+    primary_key_escaped[i]               = primary_key_field.name_escaped
+    update_args_count                    = update_args_count + 1
+    update_placeholders[i]               = "$" .. update_args_count
+    primary_key_placeholders[i]          = "$" .. i
+    update_args_names[update_args_count] = primary_key_field.name
+    page_next_names[i]                   = primary_key[i]
   end
 
   page_next_names[page_next_count] = LIMIT
@@ -1089,13 +1189,13 @@ function _M.new(connector, schema, errors)
   }
 
   local insert_statement = concat {
-    "INSERT INTO ", table_name_escaped, " (", insert_columns, ")\n",
+    "INSERT INTO ",  table_name_escaped, " (", insert_columns, ")\n",
     "     VALUES (", insert_expressions, ")\n",
     "  RETURNING ",  select_expressions, ";",
   }
 
   local upsert_statement = concat {
-    "INSERT INTO ", table_name_escaped, " (", insert_columns, ")\n",
+    "INSERT INTO ",  table_name_escaped, " (", insert_columns, ")\n",
     "     VALUES (", insert_expressions, ")\n",
     "ON CONFLICT (", pk_escaped, ") DO UPDATE\n",
     "        SET ",  concat(upsert_expressions, ", "), "\n",
@@ -1103,8 +1203,8 @@ function _M.new(connector, schema, errors)
   }
 
   local select_statement = concat {
-    "SELECT ", select_expressions, "\n",
-    "  FROM ", table_name_escaped, "\n",
+    "SELECT ",  select_expressions, "\n",
+    "  FROM ",  table_name_escaped, "\n",
     " WHERE (", pk_escaped, ") = (", primary_key_placeholders, ")\n",
     " LIMIT 1;"
   }
@@ -1128,7 +1228,7 @@ function _M.new(connector, schema, errors)
     "   UPDATE ",  table_name_escaped, "\n",
     "      SET ",  concat(update_expressions, ", "), "\n",
     "    WHERE (", pk_escaped, ") = (", update_placeholders, ")\n",
-    "RETURNING ",  select_expressions ,";"
+    "RETURNING ",  select_expressions , ";"
   }
 
   local delete_statement = concat {
@@ -1166,11 +1266,11 @@ function _M.new(connector, schema, errors)
     }
   end
 
-  local common_args     = new_tab(primary_key_fields_count, 0)
-  local insert_args     = new_tab(fields_count, 0)
-  local update_args     = new_tab(update_fields_count, 0)
-  local page_first_args = new_tab(1, 0)
-  local page_next_args  = new_tab(page_next_count, 0)
+  local common_args    = new_tab(primary_key_fields_count, 0)
+  local insert_args    = new_tab(fields_count, 0)
+  local update_args    = new_tab(update_args_count, 0)
+  local single_args    = new_tab(1, 0)
+  local page_next_args = new_tab(page_next_count, 0)
 
   local self = setmetatable({
     connector          = connector,
@@ -1195,8 +1295,8 @@ function _M.new(connector, schema, errors)
           make         = compile(table_name .. "_insert", insert_statement),
         },
         update         = {
-          argn         = update_names,
-          argc         = update_fields_count,
+          argn         = update_args_names,
+          argc         = update_args_count,
           argv         = update_args,
           make         = compile(table_name .. "_update", update_statement),
         },
@@ -1221,7 +1321,7 @@ function _M.new(connector, schema, errors)
         page_first     = {
           argn         = { LIMIT },
           argc         = 1,
-          argv         = page_first_args,
+          argv         = single_args,
           make         = compile(table_name .. "_page_first" , page_first_statement),
         },
         page_next      = {
@@ -1306,6 +1406,77 @@ function _M.new(connector, schema, errors)
       }
 
       self[statement_name] = make_select_for(foreign_entity_name)
+    end
+  end
+
+  if unique_fields_count > 0 then
+    local update_by_args_count = update_fields_count + 1
+    local update_by_args       = new_tab(update_by_args_count, 0)
+    local statements = self[PRIVATE].statements
+
+    for i = 1, unique_fields_count do
+      local unique_field   = unique_fields[i]
+      local unique_name    = unique_field.name
+      local unique_escaped = unique_field.name_escaped
+      local single_names   = { unique_name }
+
+      local select_by_statement_name = "select_by_" .. unique_name
+      local select_by_statement = concat {
+        "SELECT ", select_expressions, "\n",
+        "  FROM ", table_name_escaped, "\n",
+        " WHERE ", unique_escaped, " = $1\n",
+        " LIMIT 1;"
+      }
+
+      statements[select_by_statement_name] = {
+        argn = single_names,
+        argc = 1,
+        argv = single_args,
+        make = compile(concat({ table_name, select_by_statement_name }, "_"), select_by_statement)
+      }
+
+      self[select_by_statement_name] = make_select_by(select_by_statement_name)
+
+      local update_by_statement_name = "update_by_" .. unique_name
+      local update_by_statement = concat {
+        "   UPDATE ", table_name_escaped, "\n",
+        "      SET ", concat(update_expressions, ", "), "\n",
+        "    WHERE ", unique_escaped, " = $", update_by_args_count, "\n",
+        "RETURNING ", select_expressions , ";"
+      }
+
+      local update_by_args_names = {}
+
+      for i = 1, update_fields_count do
+        update_by_args_names[i] = update_names[i]
+      end
+
+      update_by_args_names[update_by_args_count] = unique_name
+
+      statements[update_by_statement_name] = {
+        argn = update_by_args_names,
+        argc = update_by_args_count,
+        argv = update_by_args,
+        make = compile(concat({ table_name, update_by_statement_name }, "_"), update_by_statement)
+      }
+
+      self[update_by_statement_name] = make_update_by(update_by_statement_name)
+
+      local delete_by_statement_name = "delete_by_" .. unique_name
+      local delete_by_statement = concat {
+        "DELETE\n",
+        "  FROM ", table_name_escaped, "\n",
+        " WHERE ", unique_escaped, " = $1;",
+      }
+
+      statements[delete_by_statement_name] = {
+        argn = single_names,
+        argc = 1,
+        argv = single_args,
+        make = compile(concat({ table_name, delete_by_statement_name }, "_"), delete_by_statement)
+      }
+
+      self[delete_by_statement_name] = make_delete_by(delete_by_statement_name)
     end
   end
 

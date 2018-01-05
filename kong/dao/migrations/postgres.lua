@@ -640,7 +640,7 @@ return {
         "id"               UUID                       PRIMARY KEY,
         "created_at"       TIMESTAMP WITH TIME ZONE,
         "updated_at"       TIMESTAMP WITH TIME ZONE,
-        "name"             TEXT,
+        "name"             TEXT                       UNIQUE,
         "retries"          BIGINT,
         "protocol"         TEXT,
         "host"             TEXT,
