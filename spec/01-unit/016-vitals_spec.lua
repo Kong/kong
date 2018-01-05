@@ -48,6 +48,40 @@ dao_helpers.for_each_dao(function(kong_conf)
       vitals = kong_vitals.new({
         dao = dao,
       })
+
+      singletons.configuration = { vitals = true }
+      vitals:init()
+    end)
+
+    describe("phone_home()", function()
+      before_each(function()
+        assert(dao.db:truncate_table("vitals_stats_minutes"))
+        assert(vitals.shm:delete("vitals:ph_stats"))
+      end)
+
+      it("returns phone home data", function()
+        -- data starts 10 minutes ago
+        local minute_start_at = ngx_time() - ( ngx_time() % 60 ) - 600
+        local data = {
+          { minute_start_at, 0, 0, nil, nil, nil, nil, 0 },
+          { minute_start_at + 1, 19, 99, 0, 120, 12, 47, 7 },
+        }
+        assert(vitals.strategy:insert_stats(data))
+
+        assert.same(19, vitals:phone_home("v.cdht"))
+        assert.same(99, vitals:phone_home("v.cdmt"))
+        assert.same(120, vitals:phone_home("v.lprx"))
+        assert.same(0, vitals:phone_home("v.lprn"))
+        assert.same(47, vitals:phone_home("v.lux"))
+        assert.same(12, vitals:phone_home("v.lun"))
+        assert.same(1, vitals:phone_home("v.nt"))
+      end)
+
+      it("returns nil when there's no data for a given value", function()
+        local res, err = vitals:phone_home("v.cdht")
+        assert.is_nil(err)
+        assert.is_nil(res)
+      end)
     end)
 
     describe("flush_lock()", function()

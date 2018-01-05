@@ -1,9 +1,10 @@
-local utils      = require "kong.tools.utils"
 local json_null  = require("cjson").null
-local singletons = require "kong.singletons"
-local pg_strat   = require "kong.vitals.postgres.strategy"
+local cjson      = require "cjson.safe"
 local ffi        = require "ffi"
-
+local reports    = require "kong.core.reports"
+local singletons = require "kong.singletons"
+local utils      = require "kong.tools.utils"
+local pg_strat   = require "kong.vitals.postgres.strategy"
 
 local timer_at   = ngx.timer.at
 local time       = ngx.time
@@ -49,6 +50,17 @@ local NODE_ID_KEY = "vitals:node_id"
 local FLUSH_LOCK_KEY = "vitals:flush_lock"
 local FLUSH_LIST_KEY = "vitals:flush_list:"
 
+local PH_STATS_KEY = "vitals:ph_stats"
+local PH_STATS = {
+  "v.cdht",
+  "v.cdmt",
+  "v.lprn",
+  "v.lprx",
+  "v.lun",
+  "v.lux",
+  "v.rpt",
+  "v.nt",
+}
 
 local worker_count = ngx.worker.count()
 
@@ -168,7 +180,7 @@ end
 
 function _M:init()
   if not singletons.configuration.vitals then
-    return "vitals not enabled"
+    return self:init_failed("vitals not enabled")
   end
 
   log(DEBUG, _log_prefix, "init")
@@ -176,16 +188,16 @@ function _M:init()
   -- set node id (uuid) on shm
   local ok, err = self.shm:safe_add(NODE_ID_KEY, utils.uuid())
   if not ok and err ~= "exists" then
-    return nil,  "failed to set 'node_id' in shm: " .. err
+    return self:init_failed(nil, "failed to set 'node_id' in shm: " .. err)
   end
 
   local node_id, err = self.shm:get(NODE_ID_KEY)
   if err then
-    return nil, "failed to get 'node_id' from shm: " .. err
+    return self:init_failed(nil, "failed to get 'node_id' from shm: " .. err)
   end
 
   if not node_id then
-    return nil, "no 'node_id' set in shm"
+    return self:init_failed(nil, "no 'node_id' set in shm")
   end
 
   local delay = self.flush_interval
@@ -196,18 +208,38 @@ function _M:init()
   if ok then
     self:reset_counters()
   else
-    return nil, "failed to start recurring vitals timer (1): " .. err
+    return self:init_failed(nil, "failed to start recurring vitals timer (1): " .. err)
   end
 
   -- init strategy, recording node id and hostname in db
   local ok, err = self.strategy:init(node_id, utils.get_hostname())
   if not ok then
-    return nil, "failed to init vitals strategy " .. err
+    return self:init_failed(nil, "failed to init vitals strategy " .. err)
   end
 
   self.initialized = true
 
+  -- we'ere configured, initialized, and ready to phone home
+  reports.add_ping_value("vitals", true)
+  for _, v in ipairs(PH_STATS) do
+    reports.add_ping_value(v, function()
+      local res, err = singletons.vitals:phone_home(v)
+      if err then
+        log(WARN, _log_prefix, "failed to retrieve stats: ", err)
+        return nil
+      end
+
+      return res
+    end)
+  end
+
   return "ok"
+end
+
+
+function _M:init_failed(msg, err)
+  reports.add_ping_value("vitals", false)
+  return msg, err
 end
 
 
@@ -642,6 +674,43 @@ function _M:get_node_meta(node_ids)
   return node_meta
 end
 
+
+
+function _M:phone_home(stat_label)
+  local res, err = self.shm:get(PH_STATS_KEY)
+
+  if err then
+    log(WARN, _log_prefix, "error retrieving phone home stats: ", err, ". Retrying...")
+  end
+
+  if res then
+    res, err = cjson.decode(res)
+    if not res then
+      log(WARN, _log_prefix, "failed to decode phone home stats: ", err)
+      res = {{}}
+    end
+
+  else
+    -- not in cache, look in db
+    res, err = self.strategy:select_phone_home()
+    if not res then
+      return nil, err
+    end
+
+    -- no stats is odd, but not an error
+    if not res[1] then
+      res[1] = {}
+    end
+
+    -- cache results briefly so that all stats for a report are fetched at once
+    local _, c_err = self.shm:add(PH_STATS_KEY, cjson.encode(res), 10)
+
+    if c_err then
+      log(WARN, _log_prefix, "failed to cache phone home: ", c_err)
+    end
+  end
+  return res[1][stat_label]
+end
 
 
 --[[

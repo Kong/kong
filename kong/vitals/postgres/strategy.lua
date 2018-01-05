@@ -27,6 +27,21 @@ local INSERT_STATS = [[
     requests = %s.requests + excluded.requests
 ]]
 
+local SELECT_STATS_FOR_PHONE_HOME = [[
+  select sum(l2_hit) as "v.cdht",
+  sum(l2_miss) as "v.cdmt",
+  min(plat_min) as "v.lprn",
+  max(plat_max) as "v.lprx",
+  min(ulat_min) as "v.lun",
+  max(ulat_max) as "v.lux"
+  from vitals_stats_minutes where at >= %d
+  and node_id = '%s'
+]]
+
+local SELECT_NODES_FOR_PHONE_HOME = [[
+  select count(distinct node_id) as "v.nt" from vitals_stats_minutes where at >= %d
+]]
+
 local INSERT_CONSUMER_STATS = [[
   insert into vitals_consumers(consumer_id, node_id, at, duration, count)
   values('%s', '%s', to_timestamp(%d) at time zone 'UTC', %d, %d)
@@ -123,8 +138,10 @@ end
   query_type: "seconds" or "minutes"
   level: "node" to get stats for all nodes or "cluster"
   node_id: if given, selects stats just for that node
+  start_at: first timestamp, inclusive
+  end_before: last timestamp, exclusive
  ]]
-function _M:select_stats(query_type, level, node_id)
+function _M:select_stats(query_type, level, node_id, start_at, end_before)
   local query, res, err
 
   -- for constructing dynamic SQL
@@ -176,6 +193,14 @@ function _M:select_stats(query_type, level, node_id)
     end
   end
 
+  if start_at then
+    where = where .. " AND at >= " .. start_at
+  end
+
+  if end_before then
+    where = where .. " AND at < " .. end_before
+  end
+
   -- put it all together
   query = select .. from_t1 .. where .. group
 
@@ -190,6 +215,23 @@ function _M:select_stats(query_type, level, node_id)
   if not res then
     return nil, "could not select stats. query: " .. query .. " error: " .. err
   end
+
+  return res
+end
+
+
+function _M:select_phone_home()
+  local res, err = self.db:query(fmt(SELECT_STATS_FOR_PHONE_HOME, time() - 3600, self.node_id))
+
+  if not res then
+    return nil, "could not select stats: " .. err
+  end
+
+  local nodes, err = self.db:query(fmt(SELECT_NODES_FOR_PHONE_HOME, time() - 3600))
+  if not res then
+    return nil, "could not count nodes: " .. err
+  end
+  res[1]["v.nt"] = nodes[1]["v.nt"]
 
   return res
 end

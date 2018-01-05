@@ -442,8 +442,84 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         assert.same(expected, res)
       end)
+
+      it("takes an optional timestamp range", function()
+        stub(strategy, "table_names_for_select").returns({ "vitals_stats_seconds", "vitals_stats_seconds_2"})
+
+        local res, err = strategy:select_stats("seconds", "cluster", nil, 1509667485, 1509667487)
+
+        assert.is_nil(err)
+
+        local expected = {
+          {
+            at = 1509667485,
+            node_id = 'cluster',
+            l2_hit = 10,
+            l2_miss = 3,
+            plat_min = 1,
+            plat_max = 10,
+            ulat_min = 3,
+            ulat_max = 7,
+            requests = 6,
+          }, {
+            at = 1509667486,
+            node_id = 'cluster',
+            l2_hit = 12,
+            l2_miss = 5,
+            plat_min = 2,
+            plat_max = 20,
+            ulat_min = 4,
+            ulat_max = 14,
+            requests = 8,
+          }
+        }
+
+        assert.same(expected, res)
+      end)
     end)
 
+    describe(":select_phone_home", function()
+      -- data starts 10 minutes ago
+      local minute_start_at = time() - ( time() % 60 ) - 600
+      local node_1 = strategy.node_id
+      local node_2 = "8374682f-17fd-42cb-b1dc-7694d6f65ba0"
+
+      before_each(function()
+        -- node_1 data spanning three minutes
+        local test_data_1 = {
+          { minute_start_at, 0, 0, nil, nil, nil, nil, 0 },
+          { minute_start_at + 61, 0, 3, 0, 11, 193, 212, 1 },
+          { minute_start_at + 122, 3, 4, 1, 8, 60, 9182, 4 },
+        }
+
+        -- node_2 data spanning two minutes
+        local test_data_2 = {
+          { minute_start_at + 61, 1, 5, 0, 99, 25, 144, 9 },
+          { minute_start_at + 180, 1, 7, 0, 0, 13, 19, 8 },
+        }
+
+        assert(strategy:insert_stats(test_data_1, node_1))
+        assert(strategy:insert_stats(test_data_2, node_2))
+
+      end)
+
+      it("returns stats for phone home", function()
+        local res, err = strategy:select_phone_home()
+
+        assert.is_nil(err)
+
+        local expected = {{}}
+        expected[1]["v.cdht"] = 3
+        expected[1]["v.cdmt"] = 7
+        expected[1]["v.lprn"] = 0
+        expected[1]["v.lprx"] = 11
+        expected[1]["v.lun"] = 60
+        expected[1]["v.lux"] = 9182
+        expected[1]["v.nt"] = 2
+
+        assert.same(expected, res)
+      end)
+    end)
 
     describe(":delete_stats()", function()
       it("validates arguments", function()
