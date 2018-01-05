@@ -2,6 +2,7 @@
 
 - [Planned](#planned)
 - [Scheduled](#scheduled)
+    - [0.12.0](#0120)
 - [Released](#released)
     - [0.12.0rc2](#0120rc2)
     - [0.12.0rc1](#0120rc1)
@@ -29,6 +30,13 @@ Those releases do not have a fixed release date yet.
 This section describes upcoming releases that have a release date, along with
 a detailed changeset of their content.
 
+## 0.12.0
+
+Stable release planned for January 2018. See [0.12.0rc1](#0120rc1)
+and [0.12.0rc2](#0120rc2).
+
+[Back to TOC](#table-of-contents)
+
 # Released
 
 This section describes publicly available releases and a detailed changeset of
@@ -36,7 +44,7 @@ their content.
 
 ## [0.12.0rc2]
 
-* **Release Candidate**: 2017/12/20
+* **Release Candidate**: 2018/01/05
 * **Stable**: January 2018
 
 This release candidate fixes an issue from 0.12.0rc1 regarding database cache
@@ -2162,6 +2170,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[0.12.0rc2]: https://github.com/Kong/kong/compare/0.12.0rc1...0.12.0rc2
 [0.12.0rc1]: https://github.com/Kong/kong/compare/0.11.2...0.12.0rc1
 [0.11.2]: https://github.com/Kong/kong/compare/0.11.1...0.11.2
 [0.11.1]: https://github.com/Kong/kong/compare/0.11.0...0.11.1
