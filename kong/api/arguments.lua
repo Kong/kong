@@ -173,23 +173,25 @@ end
 
 
 local function combine_arg(to, arg)
-  for k, v in pairs(arg) do
-    local t = to[k]
-    if not t then
-      to[k] = v
-      return to
-    end
+  if type(arg) ~= "table" or getmetatable(arg) == multipart_mt then
+    insert(to, #to + 1, arg)
 
-    if type(t) == "table" and getmetatable(t) ~= multipart_mt and
-       type(v) == "table" and getmetatable(v) ~= multipart_mt then
-      return combine_arg(t, v)
-    end
+  else
+    for k, v in pairs(arg) do
+      local t = to[k]
 
-    if type(k) == "number" then
-      insert(to, k, v)
+      if not t then
+        to[k] = v
 
-    else
-      insert(t, v)
+      else
+        if type(t) == "table" and getmetatable(t) ~= multipart_mt then
+          combine_arg(t, v)
+
+        else
+          to[k] = { t }
+          combine_arg(to[k], v)
+        end
+      end
     end
   end
 end
@@ -197,6 +199,10 @@ end
 
 local function combine(args)
   local to = {}
+
+  if type(args) ~= "table" then
+    return to
+  end
 
   for _, arg in ipairs(args) do
     combine_arg(to, arg)
@@ -248,7 +254,7 @@ local function decode_array_arg(name, value, container)
   local search  = name
 
   while true do
-    local captures, err = re_match(search, [[(.+)\[(\d*)\]$]], "ajosu")
+    local captures, err = re_match(search, [[(.+)\[(\d*)\]$]], "ajos")
     if captures then
       search = captures[1]
       count = count + 1
@@ -272,25 +278,41 @@ local function decode_array_arg(name, value, container)
   container = container[search]
 
   for i = count, 1, -1 do
-    local index = indexes[i] or 1
+    local index = indexes[i]
 
     if i == 1 then
-      container[index] = value
-      return container[index]
+      if index then
+        insert(container, index, value)
+        return container[index]
+      end
+
+      if type(value) == "table" and getmetatable(value) ~= multipart_mt then
+        for j, v in ipairs(value) do
+          insert(container, j, v)
+        end
+
+      else
+        container[#container + 1] = value
+      end
+
+      return container
+
     else
-      container[index] = {}
-      container = container[index]
+      if not container[index or 1] then
+        container[index or 1] = {}
+        container = container[index or 1]
+      end
     end
   end
 end
 
 
 local function decode_arg(name, value)
-  if type(name) ~= "string" or re_match(name, [[^\.+|\.$]], "josu") then
+  if type(name) ~= "string" or re_match(name, [[^\.+|\.$]], "jos") then
     return { name = value }
   end
 
-  local iterator, err = re_gmatch(name, [[[^.]+]], "josu")
+  local iterator, err = re_gmatch(name, [[[^.]+]], "jos")
   if not iterator then
     if err then
       log(NOTICE, err)
@@ -340,6 +362,10 @@ local function decode(args)
   local i = 0
   local r = {}
 
+  if type(args) ~= "table" then
+    return r
+  end
+
   for name, value in pairs(args) do
     i = i + 1
     r[i] = decode_arg(name, decode_value(value))
@@ -363,6 +389,10 @@ end
 
 
 local function encode_args(args, results, prefix)
+  if type(args) ~= "table" then
+    return results
+  end
+
   for k, v in pairs(args) do
     local name
 
@@ -535,7 +565,6 @@ end
 
 
 local function parse_multipart(options, content_type)
-
   local boundary
 
   if content_type then
