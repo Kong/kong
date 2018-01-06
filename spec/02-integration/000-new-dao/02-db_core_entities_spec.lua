@@ -337,7 +337,7 @@ for _, strategy in helpers.each_strategy() do
           }
 
           local new_route, err, err_t = db.routes:update({ id = route.id }, {
-            protocol = "https",
+            protocols = { "https" },
             created_at = 1,
             updated_at = 1,
           })
@@ -870,25 +870,27 @@ for _, strategy in helpers.each_strategy() do
           assert.not_equal(0, service.updated_at)
         end)
 
+        it("cannot create a Service with an existing name", function()
+          -- insert 1
+          local _, _, err_t = db.services:insert {
+            name = "my_service",
+            protocol = "http",
+            host = "example.com",
+          }
+          assert.is_nil(err_t)
 
-        -- marked as pending until Cassandra can do UNIQUE constraints
-        pending("cannot create a Service with an existing name", function()
-          assert(db.services:insert({
-            name       = "my_service",
-            host       = "example.com",
-          }))
-          local _, err, err_t = db.services:insert({
-            name       = "my_service",
-            host       = "example.com",
-          })
-          local message = [[UNIQUE violation detected on '{name="my_service"}']]
-
-          assert.equal(fmt("[%s] %s", strategy, message), err)
+          -- insert 2
+          local service, _, err_t = db.services:insert {
+            name = "my_service",
+            protocol = "http",
+            host = "other-example.com",
+          }
+          assert.is_nil(service)
           assert.same({
             code     = Errors.codes.UNIQUE_VIOLATION,
             name     = "unique constraint violation",
+            message  = "UNIQUE violation detected on '{name=\"my_service\"}'",
             strategy = strategy,
-            message  = message,
             fields   = {
               name = "my_service",
             }
@@ -988,6 +990,39 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err_t)
           assert.is_nil(err)
           assert.equal("https", service_in_db.protocol)
+        end)
+
+        it("cannot update a Service to bear an already existing name", function()
+          -- insert 1
+          local _, _, err_t = db.services:insert {
+            name = "service",
+            protocol = "http",
+            host = "example.com",
+          }
+          assert.is_nil(err_t)
+
+          -- insert 2
+          local service, _, err_t = db.services:insert {
+            name = "service_bis",
+            protocol = "http",
+            host = "other-example.com",
+          }
+          assert.is_nil(err_t)
+
+          -- update insert 2 with insert 1 name
+          local updated_service, _, err_t = db.services:update({
+            id = service.id,
+          }, { name = "service" })
+          assert.is_nil(updated_service)
+          assert.same({
+            code     = Errors.codes.UNIQUE_VIOLATION,
+            name     = "unique constraint violation",
+            message  = "UNIQUE violation detected on '{name=\"service\"}'",
+            strategy = strategy,
+            fields   = {
+              name = "service",
+            }
+          }, err_t)
         end)
       end)
 
@@ -1252,7 +1287,7 @@ for _, strategy in helpers.each_strategy() do
           assert.is_truthy(rows[1].methods.GET)
         end)
 
-        describe("#o paginates", function()
+        describe("paginates", function()
           local service
 
           describe("page size", function()
@@ -1348,7 +1383,7 @@ for _, strategy in helpers.each_strategy() do
               assert.is_string(offset)
             end)
 
-            it("#oo fetches subsequent pages with offset", function()
+            it("fetches subsequent pages with offset", function()
               local rows_1, err, err_t, offset = db.routes:for_service({
                 id = service.id,
               }, 5)

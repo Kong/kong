@@ -590,6 +590,8 @@ return {
 
           PRIMARY KEY (partition, id)
       );
+
+      CREATE INDEX IF NOT EXISTS services_name_idx ON services(name);
     ]],
     down = nil
   },

@@ -333,6 +333,79 @@ function _M.new(connector, schema, errors)
 end
 
 
+local function deserialize_row(self, row)
+  if not row then
+    error("row must be a table", 2)
+  end
+
+  -- deserialize rows
+  -- replace `nil` fields with `ngx.null`
+  -- replace `foreign_key` with `foreign = { key = "" }`
+  -- give seconds precisions to timestamps instead of ms
+
+  for field_name, field in self.schema:each_field() do
+    if field.type == "foreign" then
+      local db_columns = self.foreign_keys_db_columns[field_name]
+
+      local has_fk
+      row[field_name] = new_tab(0, #db_columns)
+
+      for i = 1, #db_columns do
+        local col_name = db_columns[i].col_name
+
+        if row[col_name] ~= nil then
+          row[field_name][db_columns[i].foreign_field_name] = row[col_name]
+          row[col_name] = nil
+
+          has_fk = true
+        end
+      end
+
+      if not has_fk then
+        row[field_name] = nil
+      end
+
+    elseif field.timestamp then
+      row[field_name] = row[field_name] / 1000
+    end
+
+    if row[field_name] == nil then
+      row[field_name] = ngx.null
+    end
+  end
+
+  return row
+end
+
+
+local function _select(self, cql, args)
+  local rows, err = self.connector:query(cql, args, nil, "read")
+  if not rows then
+    return nil, self.errors:database_error("could not execute selection query: "
+                                           .. err)
+  end
+
+  -- lua-cassandra returns `nil` values for Cassandra's `NULL`. We need to
+  -- populate `ngx.null` ourselves
+
+  local row = rows[1]
+  if not row then
+    return nil
+  end
+
+  return deserialize_row(self, row)
+end
+
+
+local function select_by_field(self, field_name, field_value)
+  local select_cql = fmt(self.queries.select_with_filter, field_name .. " = ?")
+  local bind_args = new_tab(1, 0)
+  bind_args[1] = field_value
+
+  return _select(self, select_cql, bind_args)
+end
+
+
 function _mt:insert(entity)
   local schema = self.schema
   local cql = self.queries.insert
@@ -356,6 +429,27 @@ function _mt:insert(entity)
       serialize_foreign_pk(db_columns, args, nil, foreign_pk)
 
     else
+      if field.unique
+        and entity[field_name] ~= ngx.null
+        and entity[field_name] ~= nil
+      then
+        -- a UNIQUE constaint is set on this field.
+        -- We unfortunately follow a read-before-write pattern in this case,
+        -- but this is made necessary for Kong to behave in a database-agnostic
+        -- fashion between its supported RDBMs and Cassandra.
+        local row, err_t = select_by_field(self, field_name, entity[field_name])
+        if err_t then
+          return nil, err_t
+        end
+
+        if row then
+          -- already exists
+          return nil, self.errors:unique_violation {
+            [field_name] = entity[field_name],
+          }
+        end
+      end
+
       insert(args, serialize_arg(field, entity[field_name]))
     end
   end
@@ -403,69 +497,6 @@ function _mt:insert(entity)
 end
 
 
-local function deserialize_row(self, row)
-  if not row then
-    error("row must be a table", 2)
-  end
-
-  -- deserialize rows
-  -- replace `nil` fields with `ngx.null`
-  -- replace `foreign_key` with `foreign = { key = "" }`
-  -- give seconds precisions to timestamps instead of ms
-
-  for field_name, field in self.schema:each_field() do
-    if field.type == "foreign" then
-      local db_columns = self.foreign_keys_db_columns[field_name]
-
-      local has_fk
-      row[field_name] = new_tab(0, #db_columns)
-
-      for i = 1, #db_columns do
-        local col_name = db_columns[i].col_name
-
-        if row[col_name] ~= nil then
-          row[field_name][db_columns[i].foreign_field_name] = row[col_name]
-          row[col_name] = nil
-
-          has_fk = true
-        end
-      end
-
-      if not has_fk then
-        row[field_name] = nil
-      end
-
-    elseif field.timestamp then
-      row[field_name] = row[field_name] / 1000
-    end
-
-    if row[field_name] == nil then
-      row[field_name] = ngx.null
-    end
-  end
-
-  return row
-end
-
-
-local function select(self, cql, args)
-  local rows, err = self.connector:query(cql, args, nil, "read")
-  if not rows then
-    return nil, self.errors:database_error("could not execute selection query: "
-                                           .. err)
-  end
-
-  -- lua-cassandra returns `nil` values for Cassandra's `NULL`. We need to
-  -- populate `ngx.null` ourselves
-
-  local row = rows[1]
-  if not row then
-    return nil
-  end
-
-  return deserialize_row(self, row)
-end
-
 function _mt:select(primary_key)
   local schema = self.schema
   local cql = self.queries.select
@@ -479,7 +510,7 @@ function _mt:select(primary_key)
 
   -- execute query
 
-  return select(self, cql, args)
+  return _select(self, cql, args)
 end
 
 
@@ -623,6 +654,25 @@ function _mt:update(primary_key, entity)
         serialize_foreign_pk(db_columns, args, args_names, foreign_pk)
 
       else
+        if field.unique and entity[field_name] ~= ngx.null then
+          -- a UNIQUE constaint is set on this field.
+          -- We unfortunately follow a read-before-write pattern in this case,
+          -- but this is made necessary for Kong to behave in a
+          -- database-agnostic fashion between its supported RDBMs and
+          -- Cassandra.
+          local row, err_t = select_by_field(self, field_name, entity[field_name])
+          if err_t then
+            return nil, err_t
+          end
+
+          if row then
+            -- already exists
+            return nil, self.errors:unique_violation {
+              [field_name] = entity[field_name],
+            }
+          end
+        end
+
         insert(args, serialize_arg(field, entity[field_name]))
         insert(args_names, field_name)
       end
@@ -693,7 +743,7 @@ do
 
     cql = fmt(cql, concat(where_clause_binds, " AND "))
 
-    return select(strategy, cql, args)
+    return _select(strategy, cql, args)
   end
 
 
