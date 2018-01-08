@@ -453,12 +453,9 @@ function OICVerificationHandler:access(conf)
   end
 end
 
-if cache.is_0_10 then
-  OICVerificationHandler.PRIORITY = 980
-else
-  OICVerificationHandler.PRIORITY = 1760
-end
 
-OICVerificationHandler.VERSION = "0.0.4"
+OICVerificationHandler.PRIORITY = 980
+OICVerificationHandler.VERSION  = cache.version
+
 
 return OICVerificationHandler

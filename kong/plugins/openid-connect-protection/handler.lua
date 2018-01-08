@@ -314,12 +314,8 @@ function OICProtectionHandler:access(conf)
 end
 
 
-if cache.is_0_10 then
-  OICProtectionHandler.PRIORITY = 990
-else
-  OICProtectionHandler.PRIORITY = 1770
-end
+OICProtectionHandler.PRIORITY = 990
+OICProtectionHandler.VERSION  = cache.version
 
-OICProtectionHandler.VERSION = "0.0.4"
 
 return OICProtectionHandler

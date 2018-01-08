@@ -1734,13 +1734,8 @@ function OICHandler:access(conf)
 end
 
 
-if cache.is_0_10 then
-  OICHandler.PRIORITY = 1000
+OICHandler.PRIORITY = 1000
+OICHandler.VERSION  = cache.version
 
-else
-  OICHandler.PRIORITY = 1790
-end
-
-OICHandler.VERSION = "0.0.5"
 
 return OICHandler

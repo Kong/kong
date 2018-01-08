@@ -1,3 +1,7 @@
+## v0.0.6
+
+- Updated .VERSION property of all the plugins (sorry, forgot that in 0.0.5)
+
 ## v0.0.5
 
 - Implement logout with optional revocation and rp initiated logout

@@ -24,13 +24,13 @@ local tonumber      = tonumber
 local NOTICE        = ngx.NOTICE
 local ERR           = ngx.ERR
 
-local cache_get, cache_key, is_0_10
+
+local cache_get, cache_key
 do
   -- TODO: this check sucks but it is good enough now, as this supports only 0.10.x and 0.11.x
   local ok, cache = pcall(require, "kong.tools.database_cache")
   if ok then
     -- 0.10.x
-    is_0_10 = true
     cache_get = function(key, opts, func, ...)
       local ttl
       if type(opts) == "table" then
@@ -74,6 +74,7 @@ do
     end
   end
 end
+
 
 local function normalize_issuer(issuer)
   if sub(issuer, -1) == "/" then
@@ -403,11 +404,11 @@ end
 
 
 return {
-  is_0_10       = is_0_10,
   issuers       = issuers,
   consumers     = consumers,
   oauth2        = oauth2,
   introspection = introspection,
   tokens        = tokens,
   userinfo      = userinfo,
+  version       = "0.0.6"
 }
