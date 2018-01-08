@@ -2,6 +2,8 @@
 
 [![Build Status][badge-travis-image]][badge-travis-url]
 
+:monkey: [Master Preview Environment](http://master.kong-ee.previewer.konghq.com:8002/dashboard)
+
 Kong is a cloud-native, fast, scalable, and distributed Microservice
 Abstraction Layer *(also known as an API Gateway, API Middleware or in some
 cases Service Mesh)*.

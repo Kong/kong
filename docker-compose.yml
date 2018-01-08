@@ -1,0 +1,33 @@
+version: '3.2'
+# Kong
+services:
+  kong:
+    build: .
+    depends_on:
+      - kong-database
+    environment:
+      - KONG_DATABASE=postgres
+      - KONG_VITALS=on
+      - KONG_PG_HOST=kong-database
+      - KONG_LICENSE_FAILSAFE=ignore_kong_license_validation
+      - VIRTUAL_HOST=${VIRTUAL_HOST:-kong.local}
+      - KONG_ANONYMOUS_REPORTS=off
+    healthcheck:
+      test: ["CMD-SHELL", "kong health"]
+      interval: 5s
+      retries: 10
+    command: kong start --run-migrations
+    restart: always
+
+  kong-database:
+    image: postgres:9.5
+    environment:
+      - POSTGRES_USER=kong
+      - POSTGRES_DB=kong
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+    restart: always
+
