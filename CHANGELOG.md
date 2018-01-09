@@ -1,3 +1,7 @@
+## v0.0.7
+
+- Fixed authorization code flow client selection
+
 ## v0.0.6
 
 - Updated .VERSION property of all the plugins (sorry, forgot that in 0.0.5)

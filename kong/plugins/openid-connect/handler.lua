@@ -942,7 +942,7 @@ function OICHandler:access(conf)
               local nonce         = authorization_data.nonce
               local code_verifier = authorization_data.code_verifier
 
-              local new_client_index = session_data.client or client_index
+              local new_client_index = authorization_data.client or client_index
               if new_client_index ~= client_index and #clients > 1 then
                 local new_client_id
 
@@ -951,9 +951,9 @@ function OICHandler:access(conf)
                   client_id             = new_client_id
                   client_index          = new_client_index
 
-                  client_secret         =              secrets[new_client_index] or client_secret
-                  client_redirect_uri   =            redirects[new_client_index] or client_redirect_uri
-                   login_redirect_uri   =  login_redirect_uris[new_client_index] or  login_redirect_uri
+                  client_secret         =             secrets[new_client_index] or client_secret
+                  client_redirect_uri   =           redirects[new_client_index] or client_redirect_uri
+                   login_redirect_uri   = login_redirect_uris[new_client_index] or  login_redirect_uri
 
                   options.client_id     = client_id
                   options.client_secret = client_secret
