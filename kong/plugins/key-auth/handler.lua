@@ -20,6 +20,7 @@ local _realm = 'Key realm="' .. _KONG._NAME .. '"'
 local KeyAuthHandler = BasePlugin:extend()
 
 KeyAuthHandler.PRIORITY = 1003
+KeyAuthHandler.VERSION = "0.1.0"
 
 function KeyAuthHandler:new()
   KeyAuthHandler.super.new(self, "key-auth")
@@ -157,14 +158,10 @@ function KeyAuthHandler:access(conf)
   KeyAuthHandler.super.access(self)
 
   -- check if preflight request and whether it should be authenticated
-  if conf.run_on_preflight == false and get_method() == "OPTIONS" then
-    -- FIXME: the above `== false` test is because existing entries in the db will
-    -- have `nil` and hence will by default start passing the preflight request
-    -- This should be fixed by a migration to update the actual entries
-    -- in the datastore
+  if not conf.run_on_preflight and get_method() == "OPTIONS" then
     return
   end
- 
+
   if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
     -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.

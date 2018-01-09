@@ -18,8 +18,8 @@ local function iter(config_array)
     if header_to_test_value == "" then
       header_to_test_value = nil
     end
-    
-    return i, header_to_test_name, header_to_test_value  
+
+    return i, header_to_test_name, header_to_test_value
   end, config_array, 0
 end
 
@@ -30,9 +30,9 @@ local function append_value(current_value, value)
     return {current_value, value}
   elseif current_value_type == "table" then
     insert(current_value, value)
-    return current_value  
+    return current_value
   else
-    return {value} 
+    return {value}
   end
 end
 
@@ -51,7 +51,7 @@ _M.is_body_transform_set = is_body_transform_set
 ---
 --   # Example:
 --   ngx.headers = header_filter.transform_headers(conf, ngx.headers)
--- We run transformations in following order: remove, replace, add, append. 
+-- We run transformations in following order: remove, replace, add, append.
 -- @param[type=table] conf Plugin configuration.
 -- @param[type=table] ngx_headers Table of headers, that should be `ngx.headers`
 -- @return table A table containing the new headers.
@@ -60,26 +60,26 @@ function _M.transform_headers(conf, ngx_headers)
   for _, header_name, header_value in iter(conf.remove.headers) do
       ngx_headers[header_name] = nil
   end
-  
+
   -- replace headers
   for _, header_name, header_value in iter(conf.replace.headers) do
     if ngx_headers[header_name] ~= nil then
       ngx_headers[header_name] = header_value
     end
   end
-  
+
   -- add headers
   for _, header_name, header_value in iter(conf.add.headers) do
     if ngx_headers[header_name] == nil then
       ngx_headers[header_name] = header_value
     end
   end
-  
+
   -- append headers
   for _, header_name, header_value in iter(conf.append.headers) do
     ngx_headers[header_name] = append_value(ngx_headers[header_name], header_value)
   end
-  
+
   -- Removing the content-length header because the body is going to change
   if is_body_transform_set(conf) and is_json_body(ngx_headers["content-type"]) then
     ngx_headers["content-length"] = nil

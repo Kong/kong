@@ -7,7 +7,9 @@
 
 local json = require "cjson"
 local utils = require "kong.tools.utils"
-local crypto = require "crypto"
+local openssl_digest = require "openssl.digest"
+local openssl_hmac = require "openssl.hmac"
+local openssl_pkey = require "openssl.pkey"
 local asn_sequence = require "kong.plugins.jwt.asn_sequence"
 
 local error = error
@@ -23,14 +25,14 @@ local decode_base64 = ngx.decode_base64
 
 --- Supported algorithms for signing tokens.
 local alg_sign = {
-  ["HS256"] = function(data, key) return crypto.hmac.digest("sha256", data, key, true) end,
-  --["HS384"] = function(data, key) return crypto.hmac.digest("sha384", data, key, true) end,
-  --["HS512"] = function(data, key) return crypto.hmac.digest("sha512", data, key, true) end
-  ["RS256"] = function(data, key) return crypto.sign('sha256', data, crypto.pkey.from_pem(key, true)) end,
-  ["RS512"] = function(data, key) return crypto.sign('sha512', data, crypto.pkey.from_pem(key, true)) end,
+  ["HS256"] = function(data, key) return openssl_hmac.new(key, "sha256"):final(data) end,
+  --["HS384"] = function(data, key) return openssl_hmac.new(key, "sha384"):final(data) end,
+  --["HS512"] = function(data, key) return openssl_hmac.new(key, "sha512"):final(data) end,
+  ["RS256"] = function(data, key) return openssl_pkey.new(key):sign(openssl_digest.new("sha256"):update(data)) end,
+  ["RS512"] = function(data, key) return openssl_pkey.new(key):sign(openssl_digest.new("sha512"):update(data)) end,
   ["ES256"] = function(data, key)
-    local pkeyPrivate = crypto.pkey.from_pem(key, true)
-    local signature = crypto.sign('sha256', data, pkeyPrivate)
+    local pkeyPrivate = openssl_pkey.new(key)
+    local signature = pkeyPrivate:sign(openssl_digest.new("sha256"):update(data))
 
     local derSequence = asn_sequence.parse_simple_sequence(signature)
     local r = asn_sequence.unsign_integer(derSequence[1], 32)
@@ -45,23 +47,29 @@ local alg_sign = {
 local alg_verify = {
   ["HS256"] = function(data, signature, key) return signature == alg_sign["HS256"](data, key) end,
   --["HS384"] = function(data, signature, key) return signature == alg_sign["HS384"](data, key) end,
-  --["HS512"] = function(data, signature, key) return signature == alg_sign["HS512"](data, key) end
+  --["HS512"] = function(data, signature, key) return signature == alg_sign["HS512"](data, key) end,
   ["RS256"] = function(data, signature, key)
-    local pkey = assert(crypto.pkey.from_pem(key), "Consumer Public Key is Invalid")
-    return crypto.verify('sha256', data, signature, pkey)
+    local pkey_ok, pkey = pcall(openssl_pkey.new, key)
+    assert(pkey_ok, "Consumer Public Key is Invalid")
+    local digest = openssl_digest.new('sha256'):update(data)
+    return pkey:verify(signature, digest)
   end,
   ["RS512"] = function(data, signature, key)
-    local pkey = assert(crypto.pkey.from_pem(key), "Consumer Public Key is Invalid")
-    return crypto.verify('sha512', data, signature, pkey)
+    local pkey_ok, pkey = pcall(openssl_pkey.new, key)
+    assert(pkey_ok, "Consumer Public Key is Invalid")
+    local digest = openssl_digest.new('sha512'):update(data)
+    return pkey:verify(signature, digest)
   end,
   ["ES256"] = function(data, signature, key)
-    local pkey = assert(crypto.pkey.from_pem(key), "Consumer Public Key is Invalid")
+    local pkey_ok, pkey = pcall(openssl_pkey.new, key)
+    assert(pkey_ok, "Consumer Public Key is Invalid")
     assert(#signature == 64, "Signature must be 64 bytes.")
     local asn = {}
     asn[1] = asn_sequence.resign_integer(string_sub(signature, 1, 32))
     asn[2] = asn_sequence.resign_integer(string_sub(signature, 33, 64))
     local signatureAsn = asn_sequence.create_simple_sequence(asn)
-    return crypto.verify('sha256', data, signatureAsn, pkey)
+    local digest = openssl_digest.new('sha256'):update(data)
+    return pkey:verify(signatureAsn, digest)
   end
 }
 

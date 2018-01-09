@@ -597,19 +597,6 @@ local max_len = 100
 local MAX_LEN = 100
 ```
 
-When assigning several variables on consecutive lines, **do** align their
-assignment operator:
-
-```lua
--- bad
-local str = "world"
-local my_value = "hello"
-
--- good
-local str      = "world"
-local my_value = "hello"
-```
-
 [Back to code style TOC](#table-of-contents---code-style)
 
 
@@ -639,23 +626,6 @@ local t = {foo="hello",bar="world"}
 
 -- good
 local t = { foo = "hello", bar = "world" }
-```
-
-When using the constructor syntax on multiple lines, **do** align the
-assignments:
-
-```lua
--- bad
-local t = {
-  some_key = "hello",
-  some_other_key = "world",
-}
-
--- good
-local t = {
-  some_key       = "hello",
-  some_other_key = "world",
-}
 ```
 
 [Back to code style TOC](#table-of-contents---code-style)

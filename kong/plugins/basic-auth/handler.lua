@@ -15,5 +15,6 @@ function BasicAuthHandler:access(conf)
 end
 
 BasicAuthHandler.PRIORITY = 1001
+BasicAuthHandler.VERSION = "0.1.0"
 
 return BasicAuthHandler

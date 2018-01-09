@@ -2,32 +2,32 @@ local helpers = require "spec.helpers"
 local cjson   = require "cjson"
 
 
-local S502_MESSAGE = "An invalid response was received from the upstream server"
-local RELOAD_DELAY = 1.0
+local RESPONSE_CODE    = 504
+local RESPONSE_MESSAGE = "The upstream server is timing out"
 
 
-describe("error_default_type", function()
+describe("Proxy errors Content-Type", function()
   local client
 
   setup(function()
     helpers.dao:truncate_tables()
 
     assert(helpers.dao.apis:insert {
-      name         = "api-1",
-      upstream_url = helpers.mock_upstream_url .. "/status/500",
-      hosts        = {
-        "example.com",
-      },
+      name                     = "api-1",
+      methods                  = "GET",
+      upstream_url             = "http://konghq.com:81",
+      upstream_connect_timeout = 1,
     })
 
     assert(helpers.start_kong {
-      prefix     = helpers.test_conf.prefix,
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      prefix             = helpers.test_conf.prefix,
+      nginx_conf         = "spec/fixtures/custom_nginx.template",
+      error_default_type = "text/html",
     })
   end)
 
   teardown(function()
-    helpers.stop_kong(helpers.test_conf.prefix, true)
+    helpers.stop_kong()
   end)
 
   before_each(function()
@@ -40,179 +40,90 @@ describe("error_default_type", function()
     end
   end)
 
-  describe("request `Accept` is missing", function()
-    describe("(default)", function()
-      setup(function()
-        assert(helpers.kong_exec("reload", {
-          prefix             = helpers.test_conf.prefix,
-          nginx_conf         = "spec/fixtures/custom_nginx.template",
-        }))
+  it("no Accept header uses error_default_type", function()
+    local res = assert(client:send {
+      method  = "GET",
+      path    = "/",
+      headers = {
+        accept = nil,
+      }
+    })
 
-        ngx.sleep(RELOAD_DELAY)
-      end)
-
-      it("returns error messages in plain text", function()
-        local res = assert(client:send {
-          method  = "GET",
-          path    = "/",
-          headers = {
-            accept = nil,
-            host   = "example.com",
-          }
-        })
-
-        local body = assert.res_status(502, res)
-        assert.equal(S502_MESSAGE, body)
-      end)
-    end)
-
-    describe("(text/plain)", function()
-      setup(function()
-        assert(helpers.kong_exec("reload", {
-          prefix             = helpers.test_conf.prefix,
-          nginx_conf         = "spec/fixtures/custom_nginx.template",
-          error_default_type = "text/plain",
-        }))
-
-        ngx.sleep(RELOAD_DELAY)
-      end)
-
-      it("returns error messages in plain text", function()
-        local res = assert(client:send {
-          method  = "GET",
-          path    = "/",
-          headers = {
-            accept = nil,
-            host   = "example.com",
-          }
-        })
-
-        local body = assert.res_status(502, res)
-        assert.equal(S502_MESSAGE, body)
-      end)
-    end)
-
-    describe("(application/json)", function()
-      setup(function()
-        assert(helpers.kong_exec("reload", {
-          prefix             = helpers.test_conf.prefix,
-          nginx_conf         = "spec/fixtures/custom_nginx.template",
-          error_default_type = "application/json",
-        }))
-
-        ngx.sleep(RELOAD_DELAY)
-      end)
-
-      it("returns error messages in JSON", function()
-        local res = assert(client:send {
-          method  = "GET",
-          path    = "/",
-          headers = {
-            accept = nil,
-            host   = "example.com",
-          }
-        })
-
-        local body = assert.res_status(502, res)
-        local json = cjson.decode(body)
-        assert.equal("An invalid response was received from the upstream server",
-                     json.message)
-      end)
-    end)
-
-    describe("(application/xml)", function()
-      setup(function()
-        assert(helpers.kong_exec("reload", {
-          prefix             = helpers.test_conf.prefix,
-          nginx_conf         = "spec/fixtures/custom_nginx.template",
-          error_default_type = "application/xml",
-        }))
-
-        ngx.sleep(RELOAD_DELAY)
-      end)
-
-      it("returns error messages in XML", function()
-        local res = assert(client:send {
-          method  = "GET",
-          path    = "/",
-          headers = {
-            accept = nil,
-            host   = "example.com",
-          }
-        })
-
-        local body = assert.res_status(502, res)
-
-        local xml_template = '<?xml version="1.0" encoding="UTF-8"?>\n' ..
-                             '<error><message>%s</message></error>'
-        local xml_message = string.format(xml_template, S502_MESSAGE)
-
-        assert.equal(xml_message, body)
-      end)
-    end)
-
-    describe("(text/html)", function()
-      setup(function()
-        assert(helpers.kong_exec("reload", {
-          prefix             = helpers.test_conf.prefix,
-          nginx_conf         = "spec/fixtures/custom_nginx.template",
-          error_default_type = "text/html",
-        }))
-
-        ngx.sleep(RELOAD_DELAY)
-      end)
-
-      it("returns error messages in HTML", function()
-        local res = assert(client:send {
-          method  = "GET",
-          path    = "/",
-          headers = {
-            accept = nil,
-            host   = "example.com",
-          }
-        })
-
-        local body = assert.res_status(502, res)
-
-        local html_template = "<html><head><title>Kong Error</title></head>" ..
-                              "<body><h1>Kong Error</h1><p>%s.</p>"          ..
-                              "</body></html>"
-        local html_message = string.format(html_template, S502_MESSAGE)
-
-        assert.equal(html_message, body)
-      end)
-    end)
+    local body = assert.res_status(RESPONSE_CODE, res)
+    local html_template = "<html><head><title>Kong Error</title></head>" ..
+                          "<body><h1>Kong Error</h1><p>%s.</p>"          ..
+                          "</body></html>"
+    local html_message = string.format(html_template, RESPONSE_MESSAGE)
+    assert.equal(html_message, body)
   end)
 
-  describe("request `Accept` is present", function()
+  describe("", function()
     setup(function()
-      assert(helpers.kong_exec("reload", {
-        prefix             = helpers.test_conf.prefix,
-        nginx_conf         = "spec/fixtures/custom_nginx.template",
-        error_default_type = "text/plain",
-      }))
-
-      ngx.sleep(RELOAD_DELAY)
+      assert(helpers.kong_exec(("restart --conf %s --nginx-conf %s"):format(
+                               helpers.test_conf_path,
+                               "spec/fixtures/custom_nginx.template")))
     end)
 
-    it("returns error messages according to `Accept`", function()
+    it("default error_default_type = text/plain", function()
+      local res = assert(client:send {
+        method  = "GET",
+        path    = "/",
+        headers = {
+          accept = nil,
+        }
+      })
+
+      local body = assert.res_status(RESPONSE_CODE, res)
+      assert.equal(RESPONSE_MESSAGE, body)
+    end)
+
+    describe("Accept header modified Content-Type", function()
+      it("text/html", function()
         local res = assert(client:send {
           method  = "GET",
           path    = "/",
           headers = {
             accept = "text/html",
-            host   = "example.com",
           }
         })
 
-        local body = assert.res_status(502, res)
-
+        local body = assert.res_status(RESPONSE_CODE, res)
         local html_template = "<html><head><title>Kong Error</title></head>" ..
                               "<body><h1>Kong Error</h1><p>%s.</p>"          ..
                               "</body></html>"
-        local html_message = string.format(html_template, S502_MESSAGE)
-
+        local html_message = string.format(html_template, RESPONSE_MESSAGE)
         assert.equal(html_message, body)
+      end)
+
+      it("application/json", function()
+        local res = assert(client:send {
+          method  = "GET",
+          path    = "/",
+          headers = {
+            accept = "application/json",
+          }
+        })
+
+        local body = assert.res_status(RESPONSE_CODE, res)
+        local json = cjson.decode(body)
+        assert.equal(RESPONSE_MESSAGE, json.message)
+      end)
+
+      it("application/xml", function()
+        local res = assert(client:send {
+          method  = "GET",
+          path    = "/",
+          headers = {
+            accept = "application/xml",
+          }
+        })
+
+        local body = assert.res_status(RESPONSE_CODE, res)
+        local xml_template = '<?xml version="1.0" encoding="UTF-8"?>\n' ..
+                             '<error><message>%s</message></error>'
+        local xml_message = string.format(xml_template, RESPONSE_MESSAGE)
+        assert.equal(xml_message, body)
+      end)
     end)
   end)
 end)

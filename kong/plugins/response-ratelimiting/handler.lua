@@ -29,5 +29,6 @@ function ResponseRateLimitingHandler:log(conf)
 end
 
 ResponseRateLimitingHandler.PRIORITY = 900
+ResponseRateLimitingHandler.VERSION = "0.1.0"
 
 return ResponseRateLimitingHandler

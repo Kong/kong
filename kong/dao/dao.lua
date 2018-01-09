@@ -146,12 +146,12 @@ function DAO:insert(tbl, options)
   local res, err = self.db:insert(self.table, self.schema, model, self.constraints, options)
   if not err and not options.quiet then
     if self.events then
-      local ok, err = self.events.post_local("dao:crud", "create", {
+      local _, err = self.events.post_local("dao:crud", "create", {
         schema    = self.schema,
         operation = "create",
         entity    = res,
       })
-      if not ok then
+      if err then
         ngx.log(ngx.ERR, "could not propagate CRUD operation: ", err)
       end
     end
@@ -325,13 +325,13 @@ function DAO:update(tbl, filter_keys, options)
   elseif res then
     if not options.quiet then
       if self.events then
-        local ok, err = self.events.post_local("dao:crud", "update", {
+        local _, err = self.events.post_local("dao:crud", "update", {
           schema     = self.schema,
           operation  = "update",
           entity     = res,
           old_entity = old,
         })
-        if not ok then
+        if err then
           ngx.log(ngx.ERR, "could not propagate CRUD operation: ", err)
         end
       end
@@ -382,12 +382,12 @@ function DAO:delete(tbl, options)
   local row, err = self.db:delete(self.table, self.schema, primary_keys, self.constraints)
   if not err and row ~= nil and not options.quiet then
     if self.events then
-      local ok, err = self.events.post_local("dao:crud", "delete", {
+      local _, err = self.events.post_local("dao:crud", "delete", {
         schema    = self.schema,
         operation = "delete",
         entity    = row,
       })
-      if not ok then
+      if err then
         ngx.log(ngx.ERR, "could not propagate CRUD operation: ", err)
       end
     end
@@ -396,12 +396,12 @@ function DAO:delete(tbl, options)
     for k, v in pairs(associated_entites) do
       for _, entity in ipairs(v.entities) do
         if self.events then
-          local ok, err = self.events.post_local("dao:crud", "delete", {
+          local _, err = self.events.post_local("dao:crud", "delete", {
             schema    = v.schema,
             operation = "delete",
             entity    = entity,
           })
-          if not ok then
+          if err then
             ngx.log(ngx.ERR, "could not propagate CRUD operation: ", err)
           end
         end

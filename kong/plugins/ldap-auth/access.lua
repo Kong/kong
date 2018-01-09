@@ -4,6 +4,9 @@ local singletons = require "kong.singletons"
 local ldap = require "kong.plugins.ldap-auth.ldap"
 
 local match = string.match
+local lower = string.lower
+local find = string.find
+local sub = string.sub
 local ngx_log = ngx.log
 local request = ngx.req
 local ngx_error = ngx.ERR
@@ -18,12 +21,12 @@ local PROXY_AUTHORIZATION = "proxy-authorization"
 
 local _M = {}
 
-local function retrieve_credentials(authorization_header_value)
+local function retrieve_credentials(authorization_header_value, conf)
   local username, password
   if authorization_header_value then
-    local cred = match(authorization_header_value, "%s*[ldap|LDAP]%s+(.*)")
-
-    if cred ~= nil then
+    local s, e = find(lower(authorization_header_value), "^%s*" .. lower(conf.header_type) .. "%s+")
+    if s == 1 then
+      local cred = sub(authorization_header_value, e + 1)
       local decoded_cred = decode_base64(cred)
       username, password = match(decoded_cred, "(.+):(.+)")
     end
@@ -82,7 +85,7 @@ local function load_credential(given_username, given_password, conf)
 end
 
 local function authenticate(conf, given_credentials)
-  local given_username, given_password = retrieve_credentials(given_credentials)
+  local given_username, given_password = retrieve_credentials(given_credentials, conf)
   if given_username == nil then
     return false
   end
@@ -111,7 +114,7 @@ local function load_consumer(consumer_id, anonymous)
 end
 
 local function set_consumer(consumer, credential)
-  
+
   if consumer then
     -- this can only be the Anonymous user in this case
     ngx_set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
@@ -121,11 +124,11 @@ local function set_consumer(consumer, credential)
     ngx.ctx.authenticated_consumer = consumer
     return
   end
-  
+
   -- here we have been authenticated by ldap
   ngx_set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
   ngx.ctx.authenticated_credential = credential
-  
+
   -- in case of auth plugins concatenation, remove remnants of anonymous
   ngx.ctx.authenticated_consumer = nil
   ngx_set_header(constants.HEADERS.ANONYMOUS, nil)
@@ -169,7 +172,7 @@ end
 function _M.execute(conf)
 
   if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
-    -- we're already authenticated, and we're configured for using anonymous, 
+    -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
     return
   end

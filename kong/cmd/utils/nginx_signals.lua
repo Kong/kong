@@ -9,6 +9,7 @@ local fmt = string.format
 local nginx_bin_name = "nginx"
 local nginx_search_paths = {
   "/usr/local/openresty/nginx/sbin",
+  "/opt/openresty/nginx/sbin",
   ""
 }
 local nginx_version_pattern = "^nginx.-openresty.-([%d%.]+)"
@@ -48,7 +49,7 @@ end
 
 local _M = {}
 
-local function find_nginx_bin()
+function _M.find_nginx_bin()
   log.debug("searching for OpenResty 'nginx' executable")
 
   local found
@@ -70,7 +71,7 @@ local function find_nginx_bin()
 end
 
 function _M.start(kong_conf)
-  local nginx_bin, err = find_nginx_bin()
+  local nginx_bin, err = _M.find_nginx_bin()
   if not nginx_bin then
     return nil, err
   end
@@ -106,7 +107,7 @@ function _M.reload(kong_conf)
     return nil, "nginx not running in prefix: " .. kong_conf.prefix
   end
 
-  local nginx_bin, err = find_nginx_bin()
+  local nginx_bin, err = _M.find_nginx_bin()
   if not nginx_bin then
     return nil, err
   end

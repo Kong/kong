@@ -7,7 +7,7 @@ describe("Timestamp", function()
     for _ in pairs(t) do s = s + 1 end
     return s
   end
-  
+
   it("should get UTC time", function()
     assert.truthy(timestamp.get_utc())
     assert.are.same(13, #tostring(timestamp.get_utc()))

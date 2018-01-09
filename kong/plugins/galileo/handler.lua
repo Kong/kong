@@ -16,6 +16,7 @@ local _server_addr
 local GalileoHandler = BasePlugin:extend()
 
 GalileoHandler.PRIORITY = 3
+GalileoHandler.VERSION = "0.1.0"
 
 function GalileoHandler:new()
   GalileoHandler.super.new(self, "galileo")

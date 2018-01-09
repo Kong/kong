@@ -13,6 +13,7 @@ local NGX_ERR       = ngx.ERR
 
 local DatadogHandler    = BasePlugin:extend()
 DatadogHandler.PRIORITY = 10
+DatadogHandler.VERSION = "0.1.0"
 
 
 local get_consumer_id = {
@@ -137,7 +138,7 @@ end
 
 function DatadogHandler:log(conf)
   DatadogHandler.super.log(self)
-  
+
   -- unmatched apis are nil
   if not ngx.ctx.api then
     return

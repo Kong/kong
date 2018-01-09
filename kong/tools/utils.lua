@@ -48,6 +48,7 @@ const char *ERR_reason_error_string(unsigned long e);
 
 int open(const char * filename, int flags, int mode);
 size_t read(int fd, void *buf, size_t count);
+int write(int fd, const void *ptr, int numbytes);
 int close(int fd);
 char *strerror(int errnum);
 ]]
@@ -424,6 +425,28 @@ function _M.shallow_copy(orig)
   return copy
 end
 
+--- Merges two tables recursively
+-- For each subtable in t1 and t2, an equivalent (but different) table will
+-- be created in the resulting merge. If t1 and t2 have a subtable with in the
+-- same key k, res[k] will be a deep merge of both subtables.
+-- Metatables are not taken into account.
+-- Keys are copied by reference (if tables are used as keys they will not be
+-- duplicated)
+-- @param t1 one of the tables to merge
+-- @param t2 one of the tables to merge
+-- @return Returns a table representing a deep merge of the new table
+function _M.deep_merge(t1, t2)
+  local res = _M.deep_copy(t1)
+  for k, v in pairs(t2) do
+    if type(v) == "table" and type(res[k]) == "table" then
+      res[k] = _M.deep_merge(res[k], v)
+    else
+      res[k] = _M.deep_copy(v) -- returns v when it is not a table
+    end
+  end
+  return res
+end
+
 local err_list_mt = {}
 
 --- Concatenates lists into a new table.
@@ -540,13 +563,13 @@ _M.normalize_ipv4 = function(address)
      c > 255 or d < 0 or d > 255 then
     return nil, "invalid ipv4 address: " .. address
   end
-  if port then 
-    port = tonumber(port) 
+  if port then
+    port = tonumber(port)
     if port > 65535 then
       return nil, "invalid port number"
     end
   end
-  
+
   return fmt("%d.%d.%d.%d",a,b,c,d), port
 end
 
@@ -561,7 +584,7 @@ _M.normalize_ipv6 = function(address)
   if check then
     check = check:sub(2, -2)  -- drop the brackets
     -- we have ipv6 in brackets, now get port if we got something left
-    if port then 
+    if port then
       port = port:match("^:(%d-)$")
       if not port then
         return nil, "invalid ipv6 address"
@@ -671,7 +694,7 @@ end
 -- local addr, err = format_ip(check_hostname("//bad .. name\\"))    --> nil, "invalid hostname: ... "
 _M.format_host = function(p1, p2)
   local t = type(p1)
-  if t == "nil" then 
+  if t == "nil" then
     return p1, p2   -- just pass through any errors passed in
   end
   local host, port, typ
