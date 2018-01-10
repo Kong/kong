@@ -3,16 +3,16 @@
 ### Changed
 
 - Vitals
-  - Minutes data is now aggregated at the same time as seconds
+  - Aggregate minutes data at the same time as seconds data
   - **Breaking Changes**
-    - Previous Vitals API (part of the Admin API) is replaced with a new, better one. Not backwards compatible
-    - Upgrading from Kong EE (0.29) will result in the loss of previous Vitals data.
+    - Replace previous Vitals API (part of the Admin API) with new version. Not backwards compatible.
+    - **Upgrading from Kong EE (0.29) will result in the loss of previous Vitals data**.
 
 ### Added
 
 - Vitals
-  - Addition of **"node-specific"** dimension for previously-released metrics: Proxy Latency (Request) and Datastore (L2) Cache
-  - New metrics and dimenions:
+  - Adds **"node-specific"** dimension for previously-released metrics: Proxy Latency (Request) and Datastore (L2) Cache
+  - Adds new metrics and dimenions:
     - **Request Count per Consumer**, by Node or Cluster
     - **Total Request Count**, by Node or Cluster
     - **Upstream Latency** (the time between a request being sent upstream by Kong, and the response being received by Kong), by Node or Cluster
