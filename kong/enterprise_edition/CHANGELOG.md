@@ -1,4 +1,27 @@
-## 0.29 (Unreleased) - 2017/11/14
+## 0.30 (Unreleased) - 2018/01/10
+
+### Changed
+
+- Vitals
+  - Minutes data is now aggregated at the same time as seconds
+  - **Breaking Changes**
+    - Previous Vitals API (part of the Admin API) is replaced with a new, better one. Not backwards compatible
+    - Upgrading from Kong EE (0.29) will result in the loss of previous Vitals data.
+
+### Added
+
+- Vitals
+  - Addition of **"node-specific"** dimension for previously-released metrics: Proxy Latency (Request) and Datastore (L2) Cache
+  - New metrics and dimenions:
+    - **Request Count per Consumer**, by Node or Cluster
+    - **Total Request Count**, by Node or Cluster
+    - **Upstream Latency** (the time between a request being sent upstream by Kong, and the response being received by Kong), by Node or Cluster
+    - All new metrics and dimensions accessible in Admin GUI and API
+  - **Important limitations and notifications:**  Postgres 9.5+ only - no Cassandra support yet
+
+### Fixed
+
+## 0.29 - 2017/11/14
 
 ### Changed
 
