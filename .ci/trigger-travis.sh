@@ -84,28 +84,37 @@
 USER=Kong
 REPO=kong-distributions
 TOKEN=$1
-ENV="\"BUILD_RELEASE \": \"false\"" # TODO change to true
 MESSAGE=",\"message\": \"Triggered by upstream build of Kong/kong-ee commit "`git rev-parse --short HEAD`"\""
 
 body="{
 \"request\": {
   \"branch\":\"master\",
   \"config\": {
+    \"merge_mode\": \"deep_merge\",
     \"env\": {
-      $ENV
+      \"matrix\": [
+        \"BUILD_RELEASE=true PLATFORM=centos:6 FLAVOUR=-e\",
+        \"BUILD_RELEASE=true PLATFORM=centos:7 FLAVOUR=-e\",
+        \"BUILD_RELEASE=true PLATFORM=debian:7 FLAVOUR=-e\",
+        \"BUILD_RELEASE=true PLATFORM=debian:8 FLAVOUR=-e\",
+        \"BUILD_RELEASE=true PLATFORM=debian:9 FLAVOUR=-e\",
+        \"BUILD_RELEASE=true PLATFORM=ubuntu:12.04.5 FLAVOUR=-e\",
+        \"BUILD_RELEASE=true PLATFORM=ubuntu:14.04.2 FLAVOUR=-e\",
+        \"BUILD_RELEASE=true PLATFORM=ubuntu:16.04 FLAVOUR=-e\",
+        \"BUILD_RELEASE=true PLATFORM=amazonlinux FLAVOUR=-e\",
+        \"BUILD_RELEASE=true PLATFORM=alpine FLAVOUR=-e\"
+      ]
     }
   }
   $MESSAGE
 }}"
 
 ## For debugging:
-# echo "USER=$USER"
-# echo "REPO=$REPO"
-# echo "TOKEN=$TOKEN"
-# echo "ENV=$ENV"
-# echo "MESSAGE=$MESSAGE"
-# echo "BODY=$body"
-
+echo "USER=$USER"
+echo "REPO=$REPO"
+echo "TOKEN=$TOKEN"
+echo "MESSAGE=$MESSAGE"
+echo "BODY=$body"
 # It does not work to put / in place of %2F in the URL below.  I'm not sure why.
 curl -s -X POST \
   -H "Content-Type: application/json" \

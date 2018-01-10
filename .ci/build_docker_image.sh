@@ -13,7 +13,7 @@ pushd kong-distributions
 sed -i -e "s/^\([[:blank:]]*\)version.*$/\1version: master/" kong-images/build.yml
 docker pull hutchic/docker-packer
 
-docker run -it --rm \
+travis_wait docker run -it --rm \
   -v $PWD:/src \
   -v /tmp:/tmp \
   -v /var/run/docker.sock:/var/run/docker.sock \
