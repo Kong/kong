@@ -1,4 +1,7 @@
 version: '3.2'
+
+x-previewer-url: ":8002"
+
 # Kong
 services:
   kong:
