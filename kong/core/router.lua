@@ -821,15 +821,9 @@ function _M.new(apis)
 
   function self.exec(ngx)
     local method      = ngx.req.get_method()
-    local request_uri = ngx.var.request_uri
-    local uri         = request_uri
+    local uri         = ngx.req.uri
 
-    do
-      local idx = find(uri, "?", 2, true)
-      if idx then
-        uri = sub(uri, 1, idx - 1)
-      end
-    end
+
 
     local req_host = ngx.var.http_host
 
