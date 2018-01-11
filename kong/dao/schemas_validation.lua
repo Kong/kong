@@ -147,6 +147,7 @@ function _M.validate_entity(tbl, schema, options)
           if not is_valid_type and POSSIBLE_TYPES[v.type] then
             errors = utils.add_error(errors, error_prefix .. column,
                     string.format("%s is not %s %s", column, v.type == "array" and "an" or "a", v.type))
+            goto continue
           end
         end
 
@@ -258,6 +259,8 @@ function _M.validate_entity(tbl, schema, options)
             end
           end
         end
+
+        ::continue::
       end
 
       -- Check for unexpected fields in the entity
