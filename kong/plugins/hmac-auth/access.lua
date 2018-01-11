@@ -182,7 +182,7 @@ local function load_credential(username)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
-  return credential
+  return true, credential
 end
 
 local function validate_clock_skew(headers, date_header_name, allowed_clock_skew)
@@ -276,7 +276,11 @@ local function do_authentication(conf)
   end
 
   -- validate signature
-  local credential = load_credential(hmac_params.username)
+  local ok, credential = load_credential(hmac_params.username)
+  if not ok then
+    return
+  end
+
   if not credential then
     ngx_log(ngx.DEBUG, "failed to retrieve credential for ", hmac_params.username)
     return false, {status = 403, message = SIGNATURE_NOT_VALID}
@@ -316,8 +320,8 @@ function _M.execute(conf)
     return
   end
 
-  local ok, err = do_authentication(conf)
-  if not ok then
+  local _, err = do_authentication(conf)
+  if err then
     if conf.anonymous ~= "" then
       -- get anonymous user
       local consumer_cache_key = singletons.dao.consumers:cache_key(conf.anonymous)

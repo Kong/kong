@@ -87,7 +87,7 @@ end
 local function authenticate(conf, given_credentials)
   local given_username, given_password = retrieve_credentials(given_credentials, conf)
   if given_username == nil then
-    return false
+    return true, false
   end
 
   local cache_key = "ldap_auth_cache:" .. ngx.ctx.api.id .. ":" .. given_username
@@ -99,7 +99,7 @@ local function authenticate(conf, given_credentials)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
-  return credential and credential.password == given_password, credential
+  return true, credential and credential.password == given_password, credential
 end
 
 local function load_consumer(consumer_id, anonymous)
@@ -149,9 +149,16 @@ local function do_authentication(conf)
     return false, {status = 401}
   end
 
-  local is_authorized, credential = authenticate(conf, proxy_authorization_value)
+  local ok, is_authorized, credential = authenticate(conf, proxy_authorization_value)
+  if not ok then
+    return
+  end
+
   if not is_authorized then
-    is_authorized, credential = authenticate(conf, authorization_value)
+    ok, is_authorized, credential = authenticate(conf, authorization_value)
+    if not ok then
+      return
+    end
   end
 
   if not is_authorized then
@@ -177,8 +184,8 @@ function _M.execute(conf)
     return
   end
 
-  local ok, err = do_authentication(conf)
-  if not ok then
+  local _, err = do_authentication(conf)
+  if err then
     if conf.anonymous ~= "" then
       -- get anonymous user
       local consumer_cache_key = singletons.dao.consumers:cache_key(conf.anonymous)
@@ -186,7 +193,7 @@ function _M.execute(conf)
                                                       load_consumer,
                                                       conf.anonymous, true)
       if err then
-        responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end
       set_consumer(consumer, nil)
     else
