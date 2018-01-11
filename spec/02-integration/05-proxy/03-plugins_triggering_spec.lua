@@ -182,6 +182,13 @@ describe("Plugins triggering", function()
         upstream_url = helpers.mock_upstream_url,
       })
 
+      -- API that will produce an error
+      local api_err = assert(helpers.dao.apis:insert {
+        name         = "example_err",
+        hosts        = { "mock_upstream_err" },
+        upstream_url = helpers.mock_upstream_url,
+      })
+
       -- plugin able to short-circuit a request
       assert(helpers.dao.plugins:insert {
         name   = "key-auth",
@@ -194,6 +201,15 @@ describe("Plugins triggering", function()
         api_id = api.id,
         config = {
           append_body = "appended from body filtering",
+        }
+      })
+
+      -- plugin that produces an error
+      assert(helpers.dao.plugins:insert {
+        name   = "dummy",
+        api_id = api_err.id,
+        config = {
+          append_body = "obtained even with error",
         }
       })
 
@@ -288,6 +304,29 @@ describe("Plugins triggering", function()
       -- that the body filtering phase has run
 
       assert.matches("appended from body filtering", body, nil, true)
+    end)
+
+    -- regression test for bug spotted in 0.12.0rc2
+    it("responses.send stops plugin but runloop continues", function()
+
+      local res = assert(client:send {
+        method = "GET",
+        path = "/status/200?send_error=1",
+        headers = {
+          ["Host"] = "mock_upstream_err",
+          ["X-UUID"] = uuid,
+        }
+      })
+      local body = assert.res_status(404, res)
+
+      -- TEST: ensure that the dummy plugin stopped running after
+      -- running responses.send
+
+      assert.not_equal("dummy", res.headers["dummy-plugin-access-header"])
+
+      -- ...but ensure that further phases are still executed
+
+      assert.matches("obtained even with error", body, nil, true)
     end)
   end)
 
