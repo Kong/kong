@@ -370,7 +370,7 @@ function Kong.access()
 
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
     if not ctx.delayed_response then
-      plugin.handler:access(plugin_conf)
+      coroutine.wrap(plugin.handler.access)(plugin.handler, plugin_conf)
     end
   end
 
