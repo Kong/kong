@@ -162,6 +162,9 @@ local function authorize(conf)
 
       -- Check client_id and redirect_uri
       allowed_redirect_uris, client = get_redirect_uri(parameters[CLIENT_ID])
+      if not allowed_redirect_uris and not client then
+        return
+      end
 
       if not allowed_redirect_uris then
         response_params = {[ERROR] = "invalid_client", error_description = "Invalid client authentication" }
@@ -201,6 +204,10 @@ local function authorize(conf)
         else
           -- Implicit grant, override expiration to zero
           response_params = generate_token(conf, ngx.ctx.api, client, parameters[AUTHENTICATED_USERID],  table.concat(scopes, " "), state, nil, true)
+          if not response_params then
+            return
+          end
+
           is_implicit_grant = true
         end
       end
@@ -291,6 +298,10 @@ local function issue_token(conf)
     -- Check client_id and redirect_uri
     local allowed_redirect_uris, client = get_redirect_uri(client_id)
     if not allowed_redirect_uris then
+      if not client then
+        return
+      end
+
       response_params = {[ERROR] = "invalid_client", error_description = "Invalid client authentication"}
       if from_authorization_header then
         invalid_client_properties = { status = 401, www_authenticate = "Basic realm=\"OAuth2.0\""}
@@ -323,6 +334,10 @@ local function issue_token(conf)
           response_params = {[ERROR] = "invalid_request", error_description = "Invalid " .. CODE}
         else
           response_params = generate_token(conf, ngx.ctx.api, client, authorization_code.authenticated_userid, authorization_code.scope, state)
+          if not response_params then
+            return
+          end
+
           singletons.dao.oauth2_authorization_codes:delete({id=authorization_code.id}) -- Delete authorization code so it cannot be reused
         end
       elseif grant_type == GRANT_CLIENT_CREDENTIALS then
@@ -336,6 +351,10 @@ local function issue_token(conf)
             response_params = scopes -- If it's not ok, then this is the error message
           else
             response_params = generate_token(conf, ngx.ctx.api, client, parameters.authenticated_userid, table.concat(scopes, " "), state, nil, true)
+            if not response_params then
+              return
+            end
+
           end
         end
       elseif grant_type == GRANT_PASSWORD then
@@ -351,6 +370,10 @@ local function issue_token(conf)
             response_params = scopes -- If it's not ok, then this is the error message
           else
             response_params = generate_token(conf, ngx.ctx.api, client, parameters.authenticated_userid, table.concat(scopes, " "), state)
+            if not response_params then
+              return
+            end
+
           end
         end
       elseif grant_type == GRANT_REFRESH_TOKEN then
@@ -368,6 +391,10 @@ local function issue_token(conf)
             response_params = {[ERROR] = "invalid_client", error_description = "Invalid client authentication"}
           else
             response_params = generate_token(conf, ngx.ctx.api, client, token.authenticated_userid, token.scope, state)
+            if not response_params then
+              return
+            end
+
             singletons.dao.oauth2_tokens:delete({id=token.id}) -- Delete old token
           end
         end
@@ -413,7 +440,7 @@ local function retrieve_token(conf, access_token)
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     end
   end
-  return token
+  return true, token
 end
 
 local function parse_access_token(conf)
@@ -501,7 +528,11 @@ local function do_authentication(conf)
     return false, {status = 401, message = {[ERROR] = "invalid_request", error_description = "The access token is missing"}, headers = {["WWW-Authenticate"] = 'Bearer realm="service"'}}
   end
 
-  local token = retrieve_token(conf, access_token)
+  local ok, token = retrieve_token(conf, access_token)
+  if not ok then
+    return
+  end
+
   if not token then
     return false, {status = 401, message = {[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, headers = {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'}}
   end
@@ -564,8 +595,8 @@ function _M.execute(conf)
     end
   end
 
-  local ok, err = do_authentication(conf)
-  if not ok then
+  local _, err = do_authentication(conf)
+  if err then
     if conf.anonymous ~= "" then
       -- get anonymous user
       local consumer_cache_key = singletons.dao.consumers:cache_key(conf.anonymous)

@@ -168,8 +168,8 @@ function KeyAuthHandler:access(conf)
     return
   end
 
-  local ok, err = do_authentication(conf)
-  if not ok then
+  local _, err = do_authentication(conf)
+  if err then
     if conf.anonymous ~= "" then
       -- get anonymous user
       local consumer_cache_key = singletons.dao.consumers:cache_key(conf.anonymous)
@@ -177,7 +177,7 @@ function KeyAuthHandler:access(conf)
                                                  load_consumer,
                                                  conf.anonymous, true)
       if err then
-        responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end
       set_consumer(consumer, nil)
     else

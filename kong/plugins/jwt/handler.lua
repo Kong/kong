@@ -197,8 +197,8 @@ function JwtHandler:access(conf)
     return
   end
 
-  local ok, err = do_authentication(conf)
-  if not ok then
+  local _, err = do_authentication(conf)
+  if err then
     if conf.anonymous ~= "" then
       -- get anonymous user
       local consumer_cache_key = singletons.dao.consumers:cache_key(conf.anonymous)

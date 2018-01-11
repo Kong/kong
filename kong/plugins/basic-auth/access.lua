@@ -137,12 +137,18 @@ local function do_authentication(conf)
   local given_username, given_password = retrieve_credentials(ngx.req, "proxy-authorization", conf)
   if given_username then
     credential = load_credential_from_db(given_username)
+    if not credential then
+      return
+    end
   end
 
   -- Try with the authorization header
   if not credential then
     given_username, given_password = retrieve_credentials(ngx.req, "authorization", conf)
     credential = load_credential_from_db(given_username)
+    if not credential then
+      return
+    end
   end
 
   if not credential or not validate_credentials(credential, given_password) then
@@ -172,8 +178,8 @@ function _M.execute(conf)
     return
   end
 
-  local ok, err = do_authentication(conf)
-  if not ok then
+  local _, err = do_authentication(conf)
+  if err then
     if conf.anonymous ~= "" then
       -- get anonymous user
       local consumer_cache_key = singletons.dao.consumers:cache_key(conf.anonymous)
