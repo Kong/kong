@@ -113,7 +113,7 @@ local function send_response(status_code)
         headers = headers,
       }
 
-      return
+      coroutine.yield()
     end
 
     if status_code == _M.status_codes.HTTP_INTERNAL_SERVER_ERROR then
