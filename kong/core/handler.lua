@@ -15,6 +15,7 @@ local constants = require "kong.constants"
 local responses = require "kong.tools.responses"
 local singletons = require "kong.singletons"
 local certificate = require "kong.core.certificate"
+local labels = require "kong.core.labels"
 
 
 local tostring = tostring
@@ -314,6 +315,8 @@ return {
         -- hostname          = nil,            -- the hostname belonging to the final target IP
       }
 
+      -- labels associated with this api
+      ctx.api_labels       = labels.get_labels_for_api(api)
       ctx.api              = api
       ctx.router_matches   = match_t.matches
       ctx.balancer_address = balancer_address

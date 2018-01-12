@@ -5,6 +5,8 @@ local ModelFactory = require "kong.dao.model_factory"
 local CORE_MODELS = {
   "apis",
   "consumers",
+  "labels",
+  "label_mappings",
   "plugins",
   "ssl_certificates",
   "ssl_servers_names",

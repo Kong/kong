@@ -1,14 +1,16 @@
 local responses = require "kong.tools.responses"
 local singletons = require "kong.singletons"
+local labels = require "kong.core.labels"
 
 local setmetatable = setmetatable
 
 -- Loads a plugin config from the datastore.
 -- @return plugin config table or an empty sentinel table in case of a db-miss
-local function load_plugin_into_memory(api_id, consumer_id, plugin_name)
+local function load_plugin_into_memory(api_id, consumer_id, plugin_name, label_id)
   local rows, err = singletons.dao.plugins:find_all {
     api_id = api_id,
     consumer_id = consumer_id,
+    label_id = label_id,
     name = plugin_name
   }
   if err then
@@ -33,7 +35,7 @@ end
 -- @param[type=string] consumer_id ID of the Consumer making the request (if any).
 -- @param[type=stirng] plugin_name Name of the plugin being tested for.
 -- @treturn table Plugin retrieved from the cache or database.
-local function load_plugin_configuration(api_id, consumer_id, plugin_name)
+local function load_plugin_configuration(api_id, consumer_id, plugin_name, label_id)
   local plugin_cache_key = singletons.dao.plugins:cache_key(plugin_name,
                                                             api_id,
                                                             consumer_id)
@@ -72,23 +74,49 @@ local function get_next(self)
       local schema      = plugin.schema
 
       if schema and not schema.no_consumer then
+        -- search by api and consumer
         if api then
           plugin_configuration = load_plugin_configuration(api.id, consumer_id, plugin.name)
         end
+        -- search by consumer
         if not plugin_configuration then
           plugin_configuration = load_plugin_configuration(nil, consumer_id, plugin.name)
         end
+
+        -- load labels if not already
+        if not ctx.consumer_labels then
+          ctx.consumer_labels = labels.get_labels_for_consumer(consumer)
+        end
+
+        -- search by consumer labels
+        if not plugin_configuration then
+          for i = 1, #ctx.consumer_labels do
+            plugin_configuration = load_plugin_configuration(nil, nil,
+                                        plugin.name, ctx.consumer_labels[i])
+            if plugin_configuration then break end
+          end
+        end
       end
     end
-
     if not plugin_configuration then
-      -- Search API specific, or global
+      -- search by api
       if api then
         plugin_configuration = load_plugin_configuration(api.id, nil, plugin.name)
+
+        -- search by api labels
+        if not plugin_configuration then
+          for i = 1, #ctx.api_labels do
+            plugin_configuration = load_plugin_configuration(nil, nil,
+                                        plugin.name, ctx.api_labels[i])
+            if plugin_configuration then break end
+          end
+        end
       end
-      if not plugin_configuration then
-        plugin_configuration = load_plugin_configuration(nil, nil, plugin.name)
-      end
+      -- TODO a labeled plugin is also a global plugin in the following logic
+      -- search for global
+      -- if not plugin_configuration then
+      --   plugin_configuration = load_plugin_configuration(nil, nil, plugin.name)
+      -- end
     end
 
     ctx.plugins_for_request[plugin.name] = plugin_configuration

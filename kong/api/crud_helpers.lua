@@ -67,6 +67,22 @@ function _M.find_api_by_name_or_id(self, dao_factory, helpers)
   end
 end
 
+function _M.find_label_by_name_or_id(self, dao_factory, helpers)
+  local rows, err = _M.find_by_id_or_field(dao_factory.labels, {},
+        self.params.label_name_or_id, "name")
+  if err then
+    return helpers.yield_error(err)
+  end
+
+  self.params.label_name_or_id = nil
+
+  -- name and id are unique for labels
+  self.label = rows[1]
+  if not self.label then
+    return helpers.responses.send_HTTP_NOT_FOUND()
+  end
+end
+
 function _M.find_plugin_by_filter(self, dao_factory, filter, helpers)
   local rows, err = dao_factory.plugins:find_all(filter)
   if err then

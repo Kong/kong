@@ -83,6 +83,7 @@ build = {
     ["kong.api.routes.upstreams"] = "kong/api/routes/upstreams.lua",
     ["kong.api.routes.certificates"] = "kong/api/routes/certificates.lua",
     ["kong.api.routes.snis"] = "kong/api/routes/snis.lua",
+    ["kong.api.routes.labels"] = "kong/api/routes/labels.lua",
 
     ["kong.tools.ip"] = "kong/tools/ip.lua",
     ["kong.tools.ciphers"] = "kong/tools/ciphers.lua",
@@ -101,12 +102,15 @@ build = {
     ["kong.core.error_handlers"] = "kong/core/error_handlers.lua",
     ["kong.core.globalpatches"] = "kong/core/globalpatches.lua",
     ["kong.core.balancer"] = "kong/core/balancer.lua",
+    ["kong.core.labels"] = "kong/core/labels.lua",
 
     ["kong.dao.errors"] = "kong/dao/errors.lua",
     ["kong.dao.schemas_validation"] = "kong/dao/schemas_validation.lua",
     ["kong.dao.schemas.apis"] = "kong/dao/schemas/apis.lua",
     ["kong.dao.schemas.consumers"] = "kong/dao/schemas/consumers.lua",
     ["kong.dao.schemas.plugins"] = "kong/dao/schemas/plugins.lua",
+    ["kong.dao.schemas.labels"] = "kong/dao/schemas/labels.lua",
+    ["kong.dao.schemas.labels"] = "kong/dao/schemas/label_mappings.lua",
     ["kong.dao.schemas.upstreams"] = "kong/dao/schemas/upstreams.lua",
     ["kong.dao.schemas.targets"] = "kong/dao/schemas/targets.lua",
     ["kong.dao.schemas.ssl_certificates"] = "kong/dao/schemas/ssl_certificates.lua",
