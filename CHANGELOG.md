@@ -53,6 +53,19 @@ Path](https://github.com/Kong/kong/blob/master/UPGRADE.md#upgrade-to-012x)
 for more details regarding breaking changes and migrations before planning to
 upgrade your Kong cluster.
 
+### Deprecation notices
+
+Starting with 0.12.0, we are announcing the deprecation of older versions
+of our supported databases:
+
+- Support for PostgreSQL 9.4 is deprecated. Users are advised to upgrade to
+  9.5+
+- Support for Cassandra 2.1 and below is deprecated. Users are advised to
+  upgrade to 2.2+
+
+Note that the above deprecated versions are still supported in this release,
+but will be dropped in subsequent ones.
+
 ### Breaking changes
 
 ##### Core
