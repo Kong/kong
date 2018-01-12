@@ -280,16 +280,46 @@ local function http_client(host, port, timeout)
   }, resty_http_proxy_mt)
 end
 
+--- Returns the proxy port.
+-- @param ssl (boolean) if `true` returns the ssl port
+local function get_proxy_port(ssl)
+  if ssl == nil then ssl = false end
+  for _, entry in ipairs(conf.proxy_listeners) do
+    if entry.ssl == ssl then
+      return entry.port
+    end
+  end
+  error("No proxy port found for ssl=" .. tostring(ssl), 2)
+end
+
+--- Returns the proxy ip.
+-- @param ssl (boolean) if `true` returns the ssl ip address
+local function get_proxy_ip(ssl)
+  if ssl == nil then ssl = false end
+  for _, entry in ipairs(conf.proxy_listeners) do
+    if entry.ssl == ssl then
+      return entry.ip
+    end
+  end
+  error("No proxy ip found for ssl=" .. tostring(ssl), 2)
+end
+
 --- returns a pre-configured `http_client` for the Kong proxy port.
 -- @name proxy_client
 local function proxy_client(timeout)
-  return http_client(conf.proxy_ip, conf.proxy_port, timeout)
+  local proxy_ip = get_proxy_ip(false)
+  local proxy_port = get_proxy_port(false)
+  assert(proxy_ip, "No http-proxy found in the configuration")
+  return http_client(proxy_ip, proxy_port, timeout)
 end
 
 --- returns a pre-configured `http_client` for the Kong SSL proxy port.
 -- @name proxy_ssl_client
 local function proxy_ssl_client(timeout)
-  local client = http_client(conf.proxy_ip, conf.proxy_ssl_port, timeout)
+  local proxy_ip = get_proxy_ip(true)
+  local proxy_port = get_proxy_port(true)
+  assert(proxy_ip, "No https-proxy found in the configuration")
+  local client = http_client(proxy_ip, proxy_port, timeout)
   assert(client:ssl_handshake())
   return client
 end
@@ -297,7 +327,31 @@ end
 --- returns a pre-configured `http_client` for the Kong admin port.
 -- @name admin_client
 local function admin_client(timeout)
-  return http_client(conf.admin_ip, conf.admin_port, timeout)
+  local admin_ip, admin_port
+  for _, entry in ipairs(conf.admin_listeners) do
+    if entry.ssl == false then
+      admin_ip = entry.ip
+      admin_port = entry.port
+    end
+  end
+  assert(admin_ip, "No http-admin found in the configuration")
+  return http_client(admin_ip, admin_port, timeout)
+end
+
+--- returns a pre-configured `http_client` for the Kong admin SSL port.
+-- @name admin_ssl_client
+local function admin_ssl_client(timeout)
+  local admin_ip, admin_port
+  for _, entry in ipairs(conf.proxy_listeners) do
+    if entry.ssl == true then
+      admin_ip = entry.ip
+      admin_port = entry.port
+    end
+  end
+  assert(admin_ip, "No https-admin found in the configuration")
+  local client = http_client(admin_ip, admin_port, timeout)
+  assert(client:ssl_handshake())
+  return client
 end
 
 ---
@@ -982,9 +1036,12 @@ return {
   tcp_server = tcp_server,
   udp_server = udp_server,
   http_server = http_server,
+  get_proxy_ip = get_proxy_ip,
+  get_proxy_port = get_proxy_port,
   proxy_client = proxy_client,
   admin_client = admin_client,
   proxy_ssl_client = proxy_ssl_client,
+  admin_ssl_client = admin_ssl_client,
   prepare_prefix = prepare_prefix,
   clean_prefix = clean_prefix,
   wait_for_invalidation = wait_for_invalidation,

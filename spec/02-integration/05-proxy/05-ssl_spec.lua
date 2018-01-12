@@ -6,7 +6,7 @@ local cjson = require "cjson"
 local function get_cert(server_name)
   local _, _, stdout = assert(helpers.execute(
     string.format("echo 'GET /' | openssl s_client -connect 0.0.0.0:%d -servername %s",
-                  helpers.test_conf.proxy_ssl_port, server_name)
+                  helpers.get_proxy_port(true), server_name)
   ))
 
   return stdout

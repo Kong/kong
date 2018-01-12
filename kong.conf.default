@@ -72,25 +72,31 @@
 # NGINX
 #------------------------------------------------------------------------------
 
-#proxy_listen = 0.0.0.0:8000     # Address and port on which Kong will accept
-                                 # HTTP requests.
-                                 # This is the public-facing entrypoint of
-                                 # Kong, to which your consumers will make
-                                 # requests.
+#proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 ssl
+                         # Comma-separated list of addresses and ports on
+                         # which the proxy server should listen to. The proxy
+                         # server is the public entrypoint of Kong, which
+                         # proxies traffic from your consumers. The `ssl`
+                         # suffix requires that all connections through this
+                         # port be made through SSL, and `http2` allows for
+                         # HTTP/2 connections. And finally the `proxy_protocol`
+                         # flag is allowed.
+                         # If set to `off` the proxy will be disabled.
 # Note: See http://nginx.org/en/docs/http/ngx_http_core_module.html#listen for
 # a description of the accepted formats for this and other *_listen values.
+#
+# See https://www.nginx.com/resources/admin-guide/proxy-protocol/ for more
+# details about the `proxy_protocol` parameter.
 
-#proxy_listen_ssl = 0.0.0.0:8443 # Address and port on which Kong will accept
-                                 # HTTPS requests if `ssl` is enabled.
-
-#admin_listen = 127.0.0.1:8001   # Address and port on which Kong will expose
-                                 # an entrypoint to the Admin API.
-                                 # This API lets you configure and manage Kong,
-                                 # and should be kept private and secured.
-
-#admin_listen_ssl = 127.0.0.1:8444  # Address and port on which Kong will
-                                    # accept HTTPS requests to the admin API,
-                                    # if `admin_ssl` is enabled.
+#admin_listen = 127.0.0.1:8000, 127.0.0.1:8443 ssl
+                         # Comma-separated list of addresses and ports on
+                         # which the admin interface is listening.
+                         # This API lets you configure and manage Kong,
+                         # and should be kept private and secured.
+                         # The `ssl` suffix requires that all connections
+                         # through this port be made through SSL, and `http2`
+                         # allows for HTTP/2 connections.
+                         # If set to `off` the Admin API will be disabled.
 
 #nginx_user = nobody nobody      # Defines user and group credentials used by
                                  # worker processes. If group is omitted, a
@@ -110,12 +116,6 @@
                                  # `m`, with a minimum recommended value of
                                  # a few MBs.
 
-#ssl = on                        # Determines if Nginx should be listening for
-                                 # HTTPS traffic on the `proxy_listen_ssl`
-                                 # address. If disabled, Nginx will only bind
-                                 # itself on `proxy_listen`, and all SSL
-                                 # settings will be ignored.
-
 #ssl_cipher_suite = modern       # Defines the TLS ciphers served by Nginx.
                                  # Accepted values are `modern`, `intermediate`,
                                  # `old`, or `custom`.
@@ -128,16 +128,13 @@
                                  # This value is ignored if `ssl_cipher_suite`
                                  # is not `custom`.
 
-#ssl_cert =                      # If `ssl` is enabled, the absolute path to
+#ssl_cert =                      # If ssl is enabled, the absolute path to
                                  # the SSL certificate for the
-                                 # `proxy_listen_ssl` address.
+                                 # `proxy_listen` ssl addresses.
 
-#ssl_cert_key =                  # If `ssl` is enabled, the absolute path to
-                                 # the SSL key for the `proxy_listen_ssl`
-                                 # address.
-
-#http2 = off                     # Enables HTTP2 support for HTTPS traffic on
-                                 # the `proxy_listen_ssl` address.
+#ssl_cert_key =                  # If ssl is enabled, the absolute path to
+                                 # the SSL key for the `proxy_listen` ssl
+                                 # addresses.
 
 #client_ssl = off                # Determines if Nginx should send client-side
                                  # SSL certificates when proxying requests.
@@ -156,22 +153,13 @@
                                  # and currently cannot be configured on a
                                  # per-API basis.
 
-#admin_ssl = on                  # Determines if Nginx should be listening for
-                                 # HTTPS traffic on the `admin_listen_ssl`
-                                 # address. If disabled, Nginx will only bind
-                                 # itself on `admin_listen`, and all SSL
-                                 # settings will be ignored.
+#admin_ssl_cert =                # If ssl is enabled on the admin interface,
+                                 # the absolute path to the SSL certificate
+                                 # for the `admin_listen` addresses.
 
-#admin_ssl_cert =                # If `admin_ssl` is enabled, the absolute path
-                                 # to the SSL certificate for the
-                                 # `admin_listen_ssl` address.
-
-#admin_ssl_cert_key =            # If `admin_ssl` is enabled, the absolute path
-                                 # to the SSL key for the `admin_listen_ssl`
-                                 # address.
-
-#admin_http2 = off               # Enables HTTP2 support for HTTPS traffic on
-                                 # the `admin_listen_ssl` address.
+#admin_ssl_cert_key =            # If ssl is enabled on the admin interface,
+                                 # the absolute path to the SSL key for the
+                                 # `admin_listen` addresses.
 
 #upstream_keepalive = 60         # Sets the maximum number of idle keepalive
                                  # connections to upstream servers that are
@@ -216,18 +204,13 @@
                                  # This value sets the ngx_http_realip_module
                                  # directive of the same name in the Nginx
                                  # configuration.
-                                 #
-                                 # If this value receives `proxy_protocol`, the
-                                 # `proxy_protocol` parameter will be appended
-                                 # to the `listen` directive of the Nginx
-                                 # template.
+                                 # If set to `proxy_protocol` then at least one
+                                 # of the `proxy_listen` entries should have
+                                 # the `proxy_protocol` flag enabled.
 # Note:
 #
 # See http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_header
 # for a description of this directive.
-#
-# See https://www.nginx.com/resources/admin-guide/proxy-protocol/ for more
-# details about the `proxy_protocol` parameter.
 
 #real_ip_recursive = off         # This value sets the ngx_http_realip_module
                                  # directive of the same name in the Nginx
@@ -492,3 +475,4 @@
 #lua_socket_pool_size = 30       # Specifies the size limit for every cosocket
                                  # connection pool associated with every remote
                                  # server
+

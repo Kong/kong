@@ -46,13 +46,13 @@ describe("Websockets", function()
     end)
 
     it("sends and gets text with Kong", function()
-      send_text_and_get_echo("ws://" .. helpers.test_conf.proxy_ip ..
-                             ":" .. helpers.test_conf.proxy_port .. "/up-ws")
+      send_text_and_get_echo("ws://" .. helpers.get_proxy_ip(false) ..
+                             ":" .. helpers.get_proxy_port(false) .. "/up-ws")
     end)
 
     it("sends and gets text with kong under HTTPS", function()
-      send_text_and_get_echo("wss://" .. helpers.test_conf.proxy_ssl_ip ..
-                             ":" .. helpers.test_conf.proxy_ssl_port .. "/up-ws")
+      send_text_and_get_echo("wss://" .. helpers.get_proxy_ip(true) ..
+                             ":" .. helpers.get_proxy_port(true) .. "/up-ws")
     end)
   end)
 
@@ -76,13 +76,13 @@ describe("Websockets", function()
     end)
 
     it("plays ping-pong with Kong", function()
-      send_ping_and_get_pong("ws://" .. helpers.test_conf.proxy_ip ..
-                             ":" .. helpers.test_conf.proxy_port .. "/up-ws")
+      send_ping_and_get_pong("ws://" .. helpers.get_proxy_ip(false) ..
+                             ":" .. helpers.get_proxy_port(false) .. "/up-ws")
     end)
 
     it("plays ping-pong with kong under HTTPS", function()
-      send_ping_and_get_pong("wss://" .. helpers.test_conf.proxy_ssl_ip ..
-                             ":" .. helpers.test_conf.proxy_ssl_port .. "/up-ws")
+      send_ping_and_get_pong("wss://" .. helpers.get_proxy_ip(true) ..
+                             ":" .. helpers.get_proxy_port(true) .. "/up-ws")
     end)
   end)
 end)
