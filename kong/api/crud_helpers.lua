@@ -51,6 +51,23 @@ function _M.find_by_id_or_field(dao, filter, value, alternate_field)
   return rows
 end
 
+function _M.find_workspace_by_name_or_id(self, dao_factory, helpers)
+  local rows, err = _M.find_by_id_or_field(dao_factory.workspaces, {},
+                                           self.params.workspace_name_or_id, "name")
+
+  if err then
+    return helpers.yeild_error(err)
+  end
+
+  self.workspace = rows[1]
+  if not self.workspace then
+    return helpers.responses.send_HTTP_NOT_FOUND("No workspaceby name or id " ..
+                                                 self.params.workspace_name_or_id)
+  end
+
+  self.params.workspace_name_or_id = nil
+end
+
 function _M.find_rbac_user_by_name_or_id(self, dao_factory, helpers)
   local rows, err = _M.find_by_id_or_field(dao_factory.rbac_users, {},
                                            self.params.name_or_id, "name")
