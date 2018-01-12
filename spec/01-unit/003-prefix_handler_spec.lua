@@ -9,10 +9,8 @@ describe("NGINX conf compiler", function()
   describe("gen_default_ssl_cert()", function()
     local conf = assert(conf_loader(helpers.test_conf_path, {
       prefix = "ssl_tmp",
-      ssl = true,
       ssl_cert = "spec/fixtures/kong_spec.crt",
       ssl_cert_key = "spec/fixtures/kong_spec.key",
-      admin_ssl = true,
       admin_ssl_cert = "spec/fixtures/kong_spec.crt",
       admin_ssl_cert_key = "spec/fixtures/kong_spec.key",
     }))
@@ -77,17 +75,18 @@ describe("NGINX conf compiler", function()
     end)
     it("enables HTTP/2", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
-        http2 = true,
-        admin_http2 = true
+        proxy_listen = "0.0.0.0:9000, 0.0.0.0:9443 http2 ssl",
+        admin_listen = "127.0.0.1:9001, 127.0.0.1:9444 http2 ssl",
       }))
       local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.matches("listen 0.0.0.0:9000;", kong_nginx_conf, nil, true)
       assert.matches("listen 0.0.0.0:9443 ssl http2;", kong_nginx_conf, nil, true)
       assert.matches("listen 127.0.0.1:9001;", kong_nginx_conf, nil, true)
-      assert.matches("listen 127.0.0.1:8444 ssl http2;", kong_nginx_conf, nil, true)
+      assert.matches("listen 127.0.0.1:9444 ssl http2;", kong_nginx_conf, nil, true)
 
       conf = assert(conf_loader(helpers.test_conf_path, {
-        http2 = true,
+        proxy_listen = "0.0.0.0:9000, 0.0.0.0:9443 http2 ssl",
+        admin_listen = "127.0.0.1:9001, 127.0.0.1:8444 ssl",
       }))
       kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.matches("listen 0.0.0.0:9000;", kong_nginx_conf, nil, true)
@@ -96,7 +95,8 @@ describe("NGINX conf compiler", function()
       assert.matches("listen 127.0.0.1:8444 ssl;", kong_nginx_conf, nil, true)
 
       conf = assert(conf_loader(helpers.test_conf_path, {
-        admin_http2 = true
+        proxy_listen = "0.0.0.0:9000, 0.0.0.0:9443 ssl",
+        admin_listen = "127.0.0.1:9001, 127.0.0.1:8444 http2 ssl",
       }))
       kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.matches("listen 0.0.0.0:9000;", kong_nginx_conf, nil, true)
@@ -106,16 +106,17 @@ describe("NGINX conf compiler", function()
     end)
     it("enables proxy_protocol", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
+        proxy_listen = "0.0.0.0:9000 proxy_protocol",
         real_ip_header = "proxy_protocol",
       }))
       local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.matches("listen 0.0.0.0:9000 proxy_protocol;", kong_nginx_conf, nil, true)
-      assert.matches("listen 0.0.0.0:9443 ssl proxy_protocol;", kong_nginx_conf, nil, true)
+      assert.matches("real_ip_header%s+proxy_protocol;", kong_nginx_conf)
     end)
     it("disables SSL", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
-        ssl = false,
-        admin_ssl = false
+        proxy_listen = "127.0.0.1:8000",
+        admin_listen = "127.0.0.1:8001",
       }))
       local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.not_matches("listen %d+%.%d+%.%d+%.%d+:%d+ ssl;", kong_nginx_conf)
@@ -279,12 +280,13 @@ describe("NGINX conf compiler", function()
       end)
       it("proxy_protocol", function()
         local conf = assert(conf_loader(nil, {
-          real_ip_header = "proxy_protocol"
+          proxy_listen = "0.0.0.0:8000 proxy_protocol, 0.0.0.0:8443 ssl",
+          real_ip_header = "proxy_protocol",
         }))
         local nginx_conf = prefix_handler.compile_kong_conf(conf)
         assert.matches("real_ip_header%s+proxy_protocol", nginx_conf)
         assert.matches("listen 0.0.0.0:8000 proxy_protocol;", nginx_conf)
-        assert.matches("listen 0.0.0.0:8443 ssl proxy_protocol;", nginx_conf)
+        assert.matches("listen 0.0.0.0:8443 ssl;", nginx_conf)
       end)
     end)
   end)
@@ -411,8 +413,8 @@ describe("NGINX conf compiler", function()
       it("does not create SSL dir if disabled", function()
         local conf = conf_loader(nil, {
           prefix = tmp_config.prefix,
-          ssl = false,
-          admin_ssl = false
+          proxy_listen = "127.0.0.1:8000",
+          admin_listen = "127.0.0.1:8001",
         })
 
         assert(prefix_handler.prepare_prefix(conf))
@@ -421,10 +423,10 @@ describe("NGINX conf compiler", function()
       it("does not create SSL dir if using custom cert", function()
         local conf = conf_loader(nil, {
           prefix = tmp_config.prefix,
-          ssl = true,
+          proxy_listen = "127.0.0.1:8000 ssl",
+          admin_listen = "127.0.0.1:8001 ssl",
           ssl_cert = "spec/fixtures/kong_spec.crt",
           ssl_cert_key = "spec/fixtures/kong_spec.key",
-          admin_ssl = true,
           admin_ssl_cert = "spec/fixtures/kong_spec.crt",
           admin_ssl_cert_key = "spec/fixtures/kong_spec.key",
         })
@@ -435,8 +437,8 @@ describe("NGINX conf compiler", function()
       it("generates default SSL cert", function()
         local conf = conf_loader(nil, {
           prefix = tmp_config.prefix,
-          ssl = true,
-          admin_ssl = true
+          proxy_listen = "127.0.0.1:8000 ssl",
+          admin_listen = "127.0.0.1:8001 ssl",
         })
 
         assert(prefix_handler.prepare_prefix(conf))
