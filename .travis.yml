@@ -21,7 +21,7 @@ env:
   global:
     - LUAROCKS=2.4.3
     - OPENSSL=1.0.2n
-    - CASSANDRA=2.2.8
+    - CASSANDRA=3.9
     - OPENRESTY_BASE=1.11.2.5
     - OPENRESTY_LATEST=1.13.6.1
     - OPENRESTY=$OPENRESTY_BASE
@@ -34,12 +34,6 @@ env:
       OPENRESTY=$OPENRESTY_BASE
     - TEST_SUITE=plugins
       OPENRESTY=$OPENRESTY_BASE
-    - TEST_SUITE=integration
-      OPENRESTY=$OPENRESTY_LATEST
-      CASSANDRA=3.9
-    - TEST_SUITE=plugins
-      OPENRESTY=$OPENRESTY_LATEST
-      CASSANDRA=3.9
 
 before_install:
   - source .ci/setup_env.sh
