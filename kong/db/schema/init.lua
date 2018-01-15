@@ -261,6 +261,34 @@ local function is_nonempty(value)
 end
 
 
+--- Returns true if a table is a sequence
+-- @param t a table to be checked
+-- @return `true` if `t` is a sequence, otherwise returns false.
+local function is_sequence(t)
+  if type(t) ~= "table" then
+    return false
+  end
+
+  local m, c = 0, 0
+
+  for k, _ in pairs(t) do
+    c = c + 1
+
+    if t[c] == nil then
+      return false
+    end
+
+    if type(k) ~= "number" or k < 0 or floor(k) ~= k then
+      return false
+    end
+
+    m = max(m, k)
+  end
+
+  return c == m
+end
+
+
 --- Produce a nicely quoted list:
 -- Given `{"foo", "bar", "baz"}` and `"or"`, produces
 -- `"'foo', 'bar' or 'baz'"`.
@@ -436,7 +464,7 @@ validate_field = function(self, field, value)
   end
 
   if field.type == "array" then
-    if type(value) ~= "table" then
+    if not is_sequence(value) then
       return nil, validation_errors.ARRAY
     end
     if not field.elements then
@@ -458,7 +486,7 @@ validate_field = function(self, field, value)
     end
 
   elseif field.type == "set" then
-    if type(value) ~= "table" then
+    if not is_sequence(value) then
       return nil, validation_errors.SET
     end
     if not field.elements then
@@ -858,24 +886,54 @@ local Set_mt = {
 }
 
 
---- Transforms an array into a set, removing duplicates and changing its metatable
--- @param array Input array (may be ngx.null).
--- @return A copy with duplicates removed if array was a table,
---         or array if its not a table (i.e. ngx.null or other value)
-local function make_set(array)
-  if type(array) ~= "table" then
-    return array
+--- Sets (or replaces) metatable of an array:
+-- 1. array is a proper sequence, but empty, `cjson.empty_array_mt`
+--    will be used as a metatable of the returned array.
+-- 2. otherwise no modifications are made to input parameter.
+-- @param array The table containing an array for which to apply the metatable.
+-- @return input table (with metatable, see above)
+local function make_array(array)
+  if is_sequence(array) and #array == 0 then
+    return setmetatable(array, cjson.empty_array_mt)
   end
 
-  local set = {}
-  local output = {}
-  for _, v in ipairs(array) do
-    if not set[v] then
-      set[v] = true
-      table.insert(output, v)
+  return array
+end
+
+
+--- Sets (or replaces) metatable of a set and removes duplicates:
+-- 1. set is a proper sequence, but empty, `cjson.empty_array_mt`
+--    will be used as a metatable of the returned set.
+-- 2. set a proper sequence, and has values, `Set_mt`
+--    will be used as a metatable of the returned set.
+-- 3. otherwise no modifications are made to input parameter.
+-- @param set The table containing a set for which to apply the metatable.
+-- @return input table (with metatable, see above)
+local function make_set(set)
+  if not is_sequence(set) then
+    return set
+  end
+
+  local count = #set
+
+  if count == 0 then
+    return setmetatable(set, cjson.empty_array_mt)
+  end
+
+  local o = {}
+  local s = {}
+  local j = 0
+
+  for i = 1, count do
+    local v = set[i]
+    if not s[v] then
+      j = j + 1
+      o[j] = v
+      s[v] = true
     end
   end
-  return setmetatable(output, Set_mt)
+
+  return setmetatable(o, Set_mt)
 end
 
 
@@ -894,30 +952,29 @@ function Schema:process_auto_fields(input, context)
   local now = time()
 
   for key, field in self:each_field() do
-
-    if context ~= "update" then
-
-      if output[key] == nil then
-        handle_missing_field(key, field, output)
-      end
-
-    end
-
-    if output[key] and field.type == "set" then
-      output[key] = make_set(output[key])
-    end
-
     if field.auto then
       if field.uuid and context == "insert" then
         output[key] = utils.uuid()
 
-      elseif key == "created_at" and context == "insert" then
-        output[key] = now
-
-      elseif key == "updated_at" then
+      elseif (key == "created_at" and (context == "insert")) or
+             (key == "updated_at" and (context == "update"   or
+                                       context == "insert")) then
         output[key] = now
       end
+    end
 
+    local field_value = output[key]
+
+    if field_value ~= nil then
+      local field_type  = field.type
+      if field_type == "array" then
+        output[key] = make_array(field_value)
+      elseif field_type == "set" then
+        output[key] = make_set(field_value)
+      end
+
+    elseif context ~= "update" then
+      handle_missing_field(key, field, output)
     end
   end
 

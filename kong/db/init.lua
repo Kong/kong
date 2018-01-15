@@ -1,12 +1,17 @@
-local DAO         = require "kong.db.dao"
-local Entity      = require "kong.db.schema.entity"
-local Errors      = require "kong.db.errors"
-local Strategies  = require "kong.db.strategies"
-local MetaSchema  = require "kong.db.schema.metaschema"
+local DAO          = require "kong.db.dao"
+local Entity       = require "kong.db.schema.entity"
+local Errors       = require "kong.db.errors"
+local Strategies   = require "kong.db.strategies"
+local MetaSchema   = require "kong.db.schema.metaschema"
 
 
-local fmt    = string.format
-local rawget = rawget
+local fmt          = string.format
+local type         = type
+local pairs        = pairs
+local error        = error
+local ipairs       = ipairs
+local rawget       = rawget
+local setmetatable = setmetatable
 
 
 -- maybe a temporary constant table -- could be move closer

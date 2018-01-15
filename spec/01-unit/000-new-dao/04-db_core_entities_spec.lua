@@ -1055,32 +1055,50 @@ for _, strategy in helpers.each_strategy() do
         local rows, err, err_t = db.routes:for_service({
           id = a_blank_uuid,
         })
+        assert.is_nil(err_t)
+        assert.is_nil(err)
 
         if #rows > 0 then
           -- ignore this test, the previous one will fail already
           return
         end
 
-        assert.is_nil(err)
-        assert.is_nil(err_t)
         assert.equals("[]", cjson.encode(rows))
       end)
 
       t(":for_service() lists Routes associated to a Service", function()
         -- TODO: implement :for_service() for Cassandra strategy
         local service = bp.services:insert()
-        local route1 = bp.routes:insert({ service = service, methods = { 'GET' } })
-        local route2 = bp.routes:insert()
+        local route1 = bp.routes:insert({
+          service = service,
+          methods = { "GET" }
+        })
+        bp.routes:insert() -- route 2
 
         local rows, err, err_t = db.routes:for_service({
           id = service.id,
         })
-
-        assert.same({ route1 }, rows)
-        assert.is_nil(err)
         assert.is_nil(err_t)
+        assert.is_nil(err)
+        assert.same({ route1 }, rows)
+      end)
 
-        -- check that sets work properly
+      t(":for_service() invokes Schema post_processing", function()
+        -- TODO: implement :for_service() for Cassandra strategy
+        local service = bp.services:insert()
+        bp.routes:insert({ service = service, methods = { "GET" } })
+
+        local rows, err, err_t = db.routes:for_service({
+          id = service.id,
+        })
+        assert.is_nil(err_t)
+        assert.is_nil(err)
+
+        if #rows ~= 0 then
+          return
+        end
+
+        -- check that post_processing is invoked
         assert.is_truthy(rows[1].methods.GET)
       end)
 

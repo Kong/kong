@@ -7,12 +7,18 @@ local error        = error
 local pairs        = pairs
 local type         = type
 local min          = math.min
+local log          = ngx.log
+
+
+local ERR          = ngx.ERR
+
+
 local new_tab
 do
   local ok
   ok, new_tab = pcall(require, "table.new")
   if not ok then
-    new_tab = function(narr, nrec) return {} end
+    new_tab = function() return {} end
   end
 end
 
@@ -29,16 +35,6 @@ local function generate_foreign_key_methods(self)
     if field.type == "foreign" then
       local method_name = "for_" .. name
       self[method_name] = function(self, foreign_key, size, offset)
-        if type(foreign_key) ~= "table" then
-          error("foreign_key must be a table", 2)
-        end
-
-        local ok, errors = field.schema:validate_primary_key(foreign_key)
-        if not ok then
-          local err_t = self.errors:invalid_primary_key(errors)
-          return nil, err_t.name, err_t
-        end
-
         size = tonumber(size == nil and 100 or size)
 
         if not size then
@@ -55,14 +51,22 @@ local function generate_foreign_key_methods(self)
           error("offset must be a string", 2)
         end
 
-        local rows, err_t, new_offset = self.strategy[method_name](self.strategy, foreign_key, size, offset)
-        if err_t then
+        local ok, errors = self.schema:validate_primary_key(foreign_key)
+        if not ok then
+          local err_t = self.errors:invalid_primary_key(errors)
           return nil, err_t.name, err_t
         end
 
-        local entities, err, err_t = self:rows_to_entities(rows, "select")
+        local strategy = self.strategy
+
+        local rows, err_t, new_offset = strategy[method_name](strategy, foreign_key, size, offset)
+        if not rows then
+          return nil, err_t.name, err_t
+        end
+
+        local entities, err, err_tbl = self:rows_to_entities(rows)
         if err then
-          return nil, err, err_t
+          return nil, err, err_tbl
         end
 
         return entities, nil, nil, new_offset
@@ -112,7 +116,7 @@ function DAO:select(primary_key)
     return nil
   end
 
-  return self:row_to_entity(row, "select")
+  return self:row_to_entity(row)
 end
 
 
@@ -133,17 +137,17 @@ function DAO:page(size, offset)
     error("offset must be a string", 2)
   end
 
-  local rows, err_t, new_offset = self.strategy:page(size, offset)
+  local rows, err_t, offset = self.strategy:page(size, offset)
   if err_t then
     return nil, err_t.name, err_t
   end
 
-  local entities, err, err_t = self:rows_to_entities(rows, "select")
+  local entities, err, err_tbl = self:rows_to_entities(rows)
   if not entities then
-    return nil, err, err_t
+    return nil, err, err_tbl
   end
 
-  return entities, err, err_t, new_offset
+  return entities, err, err_t, offset
 end
 
 
@@ -163,15 +167,23 @@ function DAO:each(size)
   local next_row = self.strategy:each(size)
 
   return function()
-    local row, db_err, page = next_row()
+    local err_t
+    local row, err, page = next_row()
     if not row then
-      if db_err then
-        local err_t = self.errors:database_error(db_err)
+      if err then
+        local err_t = self.errors:database_error(err)
         return nil, err_t.name, err_t
       end
+
       return nil
     end
-    return self:row_to_entity(row, "select"), db_err, page
+
+    row, err, err_t = self:row_to_entity(row)
+    if not row then
+      return nil, err, err_t
+    end
+
+    return row, nil, page
   end
 end
 
@@ -181,10 +193,9 @@ function DAO:insert(entity)
     error("entity must be a table", 2)
   end
 
-  local entity_to_insert, errors = self.schema:process_auto_fields(entity,
-                                                                   "insert")
+  local entity_to_insert, err = self.schema:process_auto_fields(entity, "insert")
   if not entity_to_insert then
-    local err_t = self.errors:schema_violation(errors)
+    local err_t = self.errors:schema_violation(err)
     return nil, err_t.name, err_t
   end
 
@@ -199,17 +210,12 @@ function DAO:insert(entity)
     return nil, err_t.name, err_t
   end
 
-  if self.events then
-    local ok, err = self.events.post_local("dao:crud", "create", {
-      operation = "create",
-      schema    = self.schema,
-      entity    = row,
-      new_db    = true,
-    })
-    if not ok then
-      ngx.log(ngx.ERR, "[db] failed to propagate CRUD operation: ", err)
-    end
+  row, err, err_t = self:row_to_entity(row)
+  if not row then
+    return nil, err, err_t
   end
+
+  self:post_crud_event("create", row)
 
   return row
 end
@@ -230,31 +236,29 @@ function DAO:update(primary_key, entity)
     return nil, err_t.name, err_t
   end
 
-  local entity_to_insert = self.schema:process_auto_fields(entity, "update")
+  local entity_to_update, err = self.schema:process_auto_fields(entity, "update")
+  if not entity_to_update then
+    local err_t = self.errors:schema_violation(err)
+    return nil, err_t.name, err_t
+  end
 
-  ok, errors = self.schema:validate_update(entity_to_insert)
+  local ok, errors = self.schema:validate_update(entity_to_update)
   if not ok then
     local err_t = self.errors:schema_violation(errors)
     return nil, err_t.name, err_t
   end
 
-  local row, err_t = self.strategy:update(primary_key, entity)
+  local row, err_t = self.strategy:update(primary_key, entity_to_update)
   if not row then
     return nil, err_t.name, err_t
   end
 
-  if self.events then
-    local ok, err = self.events.post_local("dao:crud", "update", {
-      operation = "update",
-      schema    = self.schema,
-      entity    = row,
-      new_db    = true,
-      --old_entity = nil, -- not in new DB module: we avoid read-before-write
-    })
-    if not ok then
-      ngx.log(ngx.ERR, "[db] failed to propagate CRUD operation: ", err)
-    end
+  row, err, err_t = self:row_to_entity(row)
+  if not row then
+    return nil, err, err_t
   end
+
+  self:post_crud_event("update", row)
 
   return row
 end
@@ -276,24 +280,35 @@ function DAO:delete(primary_key)
     return nil, err_t.name, err_t
   end
 
-  if self.events then
-    local ok, err = self.events.post_local("dao:crud", "delete", {
-      operation = "delete",
-      schema    = self.schema,
-      new_db    = true,
-      --entity    = nil, -- not in new DB module: we avoid read-before-write
-    })
-    if not ok then
-      ngx.log(ngx.ERR, "[db] failed to propagate CRUD operation: ", err)
-    end
-  end
+  self:post_crud_event("delete")
 
   return true
 end
 
 
-function DAO:row_to_entity(row, context)
-  local entity, errors = self.schema:process_auto_fields(row, context)
+function DAO:rows_to_entities(rows)
+  local count = #rows
+  if count == 0 then
+    return setmetatable(rows, cjson.empty_array_mt)
+  end
+
+  local entities = new_tab(count, 0)
+
+  for i = 1, count do
+    local entity, err, err_t = self:row_to_entity(rows[i])
+    if not entity then
+      return nil, err, err_t
+    end
+
+    entities[i] = entity
+  end
+
+  return entities
+end
+
+
+function DAO:row_to_entity(row)
+  local entity, errors = self.schema:process_auto_fields(row, "select")
   if not entity then
     local err_t = self.errors:schema_violation(errors)
     return nil, err_t.name, err_t
@@ -303,21 +318,19 @@ function DAO:row_to_entity(row, context)
 end
 
 
-function DAO:rows_to_entities(rows, context)
-  local rows_len = #rows
-  local entities = new_tab(rows_len, 0)
-
-  for i = 1, rows_len do
-    local entity, err, err_t = self:row_to_entity(rows[i], context)
-    if err then
-      return nil, err, err_t
+function DAO:post_crud_event(operation, entity)
+  if self.events then
+    local ok, err = self.events.post_local("dao:crud", operation, {
+      operation = operation,
+      schema    = self.schema,
+      new_db    = true,
+      entity    = entity,
+    })
+    if not ok then
+      log(ERR, "[db] failed to propagate CRUD operation: ", err)
     end
-    entities[i] = entity
   end
 
-  setmetatable(entities, cjson.empty_array_mt)
-
-  return entities
 end
 
 

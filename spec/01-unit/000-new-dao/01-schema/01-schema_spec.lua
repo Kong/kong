@@ -1,4 +1,5 @@
 local Schema = require "kong.db.schema"
+local cjson  = require "cjson"
 
 
 local luacov_ok = pcall(require, "luacov")
@@ -291,6 +292,37 @@ describe("schema", function()
       assert.truthy(Test:validate({ arr = { 1, 2, 3 }}))
       assert.falsy(Test:validate({ arr = { 1 }}))
       assert.falsy(Test:validate({ arr = { 1, 2, 3, 4 }}))
+    end)
+
+    it("validates an array and a set is sequentical", function()
+      local Test = Schema.new({
+        fields = {
+          { set = { type = "set",   elements = { type = "number" } } },
+          { arr = { type = "array", elements = { type = "number" } } },
+        }
+      })
+
+      local tests = {
+        [{}]                       = true,
+        [{ 1 }]                    = true,
+        [{ nil, 1 }]               = false,
+        [{ 1, 2, 3 }]              = true,
+        [{ 1, 2, 3, nil }]         = true,
+        [{ 1, 2, 3, nil, 4, nil }] = false
+      }
+
+      for t, result in pairs(tests) do
+        local fields = Test:process_auto_fields({
+          arr = t,
+          set = t,
+        })
+
+        if result then
+          assert.truthy(Test:validate(fields))
+        else
+          assert.falsy(Test:validate(fields))
+        end
+      end
     end)
 
     it("validates a set length with 'len_eq'", function()
@@ -1197,6 +1229,108 @@ describe("schema", function()
       assert.truthy(tbl.updated_at > ts)
     end)
 
-  end)
+    it("does not auto-update a timestamp with 'created_at' or 'updated_at' and 'auto' upon retrival", function()
+      local Test = Schema.new({
+        fields = {
+          { created_at = { type = "number", timestamp = true, auto = true } },
+          { updated_at = { type = "number", timestamp = true, auto = true } },
+        }
+      })
+      local tbl = {}
+      tbl = Test:process_auto_fields(tbl, "insert")
+      assert.number(tbl.created_at)
+      assert.number(tbl.updated_at)
+      -- force updated_at downwards...
+      local created_ts = tbl.created_at - 10
+      local updated_ts = tbl.updated_at - 10
+      tbl.created_at = created_ts
+      tbl.updated_at = updated_ts
+      -- ...and doesn't updates it again
+      tbl = Test:process_auto_fields(tbl, "select")
+      assert.number(tbl.created_at)
+      assert.same(updated_ts, tbl.created_at)
+      assert.number(tbl.updated_at)
+      assert.same(updated_ts, tbl.updated_at)
+    end)
 
+    it("adds cjson.empty_array_mt on empty array and set fields", function()
+      local Test = Schema.new({
+        fields = {
+          { arr = { type = "array", elements = { type = "string" } } },
+          { set = { type = "set",   elements = { type = "string" } } },
+        },
+      })
+
+      local tbl = Test:process_auto_fields({
+        arr = {},
+        set = {}
+      }, "insert")
+
+      assert.same(cjson.empty_array_mt, getmetatable(tbl.arr))
+      assert.same(cjson.empty_array_mt, getmetatable(tbl.set))
+    end)
+
+    it("adds cjson.empty_array_mt on empty array and set fields", function()
+      local Test = Schema.new({
+        fields = {
+          { arr = { type = "array", elements = { type = "string" } } },
+          { set = { type = "set",   elements = { type = "string" } } },
+        },
+      })
+
+      for _, operation in pairs{ "insert", "update", "select", "delete" } do
+        local tbl = Test:process_auto_fields({
+          arr = {},
+          set = {}
+        }, operation)
+
+        assert.same(cjson.empty_array_mt, getmetatable(tbl.arr))
+        assert.same(cjson.empty_array_mt, getmetatable(tbl.set))
+      end
+    end)
+
+    it("adds a helper metatable to sets", function()
+      local Test = Schema.new({
+        fields = {
+          { set = { type = "set", elements = { type = "string" } } },
+        },
+      })
+
+      for _, operation in pairs{ "insert", "update", "select", "delete" } do
+        local tbl = Test:process_auto_fields({
+          set = { "http", "https" },
+        }, operation)
+
+
+        assert.equal("table", type(getmetatable(tbl.set)))
+
+        assert.truthy(tbl.set.http)
+        assert.truthy(tbl.set.https)
+        assert.falsy(tbl.set.smtp)
+      end
+    end)
+
+    it("does not add a helper metatable to arrays or maps", function()
+      local Test = Schema.new({
+        fields = {
+          { arr = { type = "array", elements = { type = "string" } } },
+          { map = { type = "map", keys = { type = "string" }, values = { type = "boolean" } } },
+        },
+      })
+
+      for _, operation in pairs{ "insert", "update", "select", "delete" } do
+        local tbl = Test:process_auto_fields({
+          arr = { "http", "https" },
+          map = { http = true },
+        }, operation)
+
+        assert.is_nil(getmetatable(tbl.arr))
+        assert.is_nil(getmetatable(tbl.map))
+        assert.is_equal("http", tbl.arr[1])
+        assert.is_nil(tbl.arr.http)
+        assert.is_true(tbl.map.http)
+        assert.is_nil(tbl.map.https)
+      end
+    end)
+  end)
 end)

@@ -314,6 +314,7 @@ for _, strategy in helpers.each_strategy("postgres") do
           it("retrieves by id", function()
             local res  = client:get("/routes/" .. route.id)
             local body = assert.res_status(200, res)
+
             local json = cjson.decode(body)
             assert.same(route, json)
           end)
@@ -423,6 +424,28 @@ for _, strategy in helpers.each_strategy("postgres") do
 
             local in_db = assert(db.routes:select({id = route.id}))
             assert.same(json, in_db)
+          end)
+
+          it("allows updating sets and arrays with en empty array", function()
+            local res = client:patch("/routes/" .. route.id, {
+              headers = {
+                ["Content-Type"] = "application/json"
+              },
+              body = {
+                methods = {},
+                paths   = {},
+                hosts   = { "my-updated.tld" },
+              },
+            })
+
+            local body = assert.res_status(200, res)
+            assert.matches('"methods":%[%]', body)
+            assert.matches('"paths":%[%]', body)
+            local json = cjson.decode(body)
+            assert.same({}, json.paths)
+            assert.same({ "my-updated.tld" }, json.hosts)
+            assert.same({}, json.methods)
+            assert.equal(route.id, json.id)
           end)
 
           describe("errors", function()
