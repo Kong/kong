@@ -279,7 +279,9 @@ return {
         return helpers.yield_error(err)
       end
 
-      assert(row, "no SSL certificate for given SNI")
+      if not row then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
 
       -- add list of other SNIs for this certificate
 
