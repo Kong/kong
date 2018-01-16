@@ -381,6 +381,77 @@ function _M.validate(token, route, method, dao_factory)
 end
 
 
+local function arr_hash_add(t, e)
+  if not t[e] then
+    t[e] = true
+    t[#t + 1] = e
+  end
+end
+
+
+-- given a list of workspace IDs, return a list/hash
+-- of entities belonging to the workspaces, handling
+-- circular references
+function _M.resolve_workspace_entities(workspaces)
+  -- entities = {
+  --    [1] = "foo",
+  --    foo = 1,
+  --
+  --    [2] = "bar",
+  --    bar = 2
+  -- }
+  local entities = {}
+
+
+  local seen_workspaces = {}
+
+
+  local function resolve(workspace)
+    local workspace_entities, err =
+      retrieve_relationship_ids(workspace, "workspace", "workspace_entities")
+    if err then
+      error(err)
+    end
+
+    local iter_entities = {}
+
+    for _, ws_entity in ipairs(workspace_entities) do
+      local ws_id  = ws_entity.workspace_id
+      local e_id   = ws_entity.entity_id
+      local e_type = ws_entity.entity_type
+
+      if e_type == "workspace" then
+        assert(seen_workspaces[ws_id] == nil, "already seen workspace " ..
+                                              ws_id)
+        seen_workspaces[ws_id] = true
+
+        local recursed_entities = resolve(e_id)
+
+        for _, e in ipairs(recursed_entities) do
+          arr_hash_add(iter_entities, e)
+        end
+
+      else
+        arr_hash_add(iter_entities, e_id)
+      end
+    end
+
+    return iter_entities
+  end
+
+
+  for _, workspace in ipairs(workspaces) do
+    local es = resolve(workspace)
+    for _, e in ipairs(es) do
+      arr_hash_add(entities, e)
+    end
+  end
+
+
+  return entities
+end
+
+
 do
   local reports = require "kong.core.reports"
   local rbac_users_count = function()

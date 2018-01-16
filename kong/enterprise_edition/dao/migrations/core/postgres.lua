@@ -416,6 +416,13 @@ return {
           CREATE INDEX workspaces_name_idx on workspaces(name);
         END IF;
       END$$;
+
+      CREATE TABLE IF NOT EXISTS workspace_entities(
+        workspace_id uuid,
+        entity_id uuid,
+        entity_type text,
+        PRIMARY KEY(workspace_id, entity_id)
+      );
     ]],
     down = [[
       DROP TABLE IF EXISTS workspaces;

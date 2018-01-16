@@ -18,6 +18,7 @@ local CORE_MODELS = {
   "rbac_perms",
   "rbac_resources",
   "workspaces",
+  "workspace_entities",
 }
 
 -- returns db errors as strings, including the initial `nil`

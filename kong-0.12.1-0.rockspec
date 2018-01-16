@@ -105,6 +105,7 @@ build = {
     ["kong.api.routes.snis"] = "kong/api/routes/snis.lua",
     ["kong.api.routes.rbac" ] = "kong/api/routes/rbac.lua",
     ["kong.api.routes.vitals" ] = "kong/api/routes/vitals.lua",
+    ["kong.api.routes.workspaces"] = "kong/api/routes/workspaces.lua",
 
     ["kong.tools.ip"] = "kong/tools/ip.lua",
     ["kong.tools.ciphers"] = "kong/tools/ciphers.lua",
@@ -154,6 +155,8 @@ build = {
     ["kong.dao.migrations.helpers"] = "kong/dao/migrations/helpers.lua",
     ["kong.dao.migrations.cassandra"] = "kong/dao/migrations/cassandra.lua",
     ["kong.dao.migrations.postgres"] = "kong/dao/migrations/postgres.lua",
+    ["kong.dao.schemas.workspaces"] = "kong/dao/schemas/workspaces.lua",
+    ["kong.dao.schemas.workspace_entities"] = "kong/dao/schemas/workspace_entities.lua",
 
     ["kong.rbac"] = "kong/rbac/init.lua",
     ["kong.rbac.handler"] = "kong/rbac/handler.lua",
