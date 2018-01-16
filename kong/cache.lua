@@ -31,6 +31,18 @@ local function log(lvl, ...)
   return ngx_log(lvl, "[DB cache] ", ...)
 end
 
+-- Temporary fix to convert soft callback errors into hard ones.
+-- FIXME: use upstream mlcache lib instead of local copy
+local soft_to_hard = function(cb)
+  return function(...)
+     local result, err = cb(...)
+     if result == nil and err then
+       error(err)
+     end
+     return result
+   end
+end
+
 
 local _M = {}
 local mt = { __index = _M }
@@ -107,7 +119,7 @@ function _M:get(key, opts, cb, ...)
 
   --log(DEBUG, "get from key: ", key)
 
-  local v, err = self.mlcache:get(key, opts, cb, ...)
+  local v, err = self.mlcache:get(key, opts, soft_to_hard(cb), ...)
   if err then
     return nil, "failed to get from node cache: " .. err
   end
