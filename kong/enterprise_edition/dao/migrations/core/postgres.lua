@@ -418,6 +418,15 @@ return {
         unique_field_value text,
         PRIMARY KEY(workspace_id, entity_id, unique_field_name)
       );
+
+      CREATE TABLE IF NOT EXISTS role_entities(
+        role_id uuid,
+        entity_id uuid,
+        entity_type text NOT NULL,
+        permissions smallint NOT NULL,
+        negative boolean NOT NULL,
+        PRIMARY KEY(role_id, entity_id)
+      );
     ]],
     down = [[
       DROP TABLE IF EXISTS workspaces;

@@ -452,6 +452,64 @@ function _M.resolve_workspace_entities(workspaces)
 end
 
 
+function _M.resolve_role_entity_permissions(roles)
+  local pmap = {}
+
+
+  local function positive_mask(p, id)
+    pmap[id] = bor(p, pmap[id] or 0x0)
+  end
+  local function negative_mask(p, id)
+    pmap[id] = band(pmap[id] or 0x0, bxor(p, pmap[id] or 0x0))
+  end
+
+
+  local function iter(role_entities, mask)
+    for _, role_entity in ipairs(role_entities) do
+      if role_entity.entity_type == "workspace" then
+        -- list/hash
+        local es = _M.resolve_workspace_entities({ role_entity.entity_id })
+
+        for _, child_id in ipairs(es) do
+          mask(role_entity.permissions, child_id)
+        end
+      else
+        mask(role_entity.permissions, role_entity.entity_id)
+      end
+    end
+  end
+
+
+  -- assign all the positive bits first such that we dont have a case
+  -- of an explicit positive overriding an explicit negative based on
+  -- the order of iteration
+  for _, role in ipairs(roles) do
+    local role_entities, err = singletons.dao.role_entities:find_all({
+      role_id  = role.id,
+      negative = false,
+    })
+    if err then
+      error(err)
+    end
+    iter(role_entities, positive_mask)
+  end
+
+  for _, role in ipairs(roles) do
+    role_entities, err = singletons.dao.role_entities:find_all({
+      role_id  = role.id,
+      negative = true,
+    })
+    if err then
+      error(err)
+    end
+    iter(role_entities, negative_mask)
+  end
+
+
+  return pmap
+end
+
+
 do
   local reports = require "kong.core.reports"
   local rbac_users_count = function()
