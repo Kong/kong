@@ -34,6 +34,11 @@ env:
       OPENRESTY=$OPENRESTY_BASE
     - TEST_SUITE=plugins
       OPENRESTY=$OPENRESTY_BASE
+    - TEST_SUITE=old-unit
+    - TEST_SUITE=old-integration
+      OPENRESTY=$OPENRESTY_BASE
+    - TEST_SUITE=old-plugins
+      OPENRESTY=$OPENRESTY_BASE
 
 before_install:
   - source .ci/setup_env.sh
