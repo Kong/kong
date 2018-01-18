@@ -543,6 +543,21 @@ return {
     ]]
   },
   {
+    name = "2017-11-07-192000_upstream_healthchecks",
+    up = [[
+      DO $$
+      BEGIN
+          ALTER TABLE upstreams ADD COLUMN healthchecks json;
+      EXCEPTION WHEN duplicate_column THEN
+          -- Do nothing, accept existing state
+      END$$;
+
+    ]],
+    down = [[
+      ALTER TABLE upstreams DROP COLUMN IF EXISTS healthchecks;
+    ]]
+  },
+  {
     name = "2017-10-27-134100_consistent_hashing_1",
     up = [[
       ALTER TABLE upstreams ADD hash_on text;
@@ -556,6 +571,32 @@ return {
       ALTER TABLE upstreams DROP COLUMN IF EXISTS hash_on_header;
       ALTER TABLE upstreams DROP COLUMN IF EXISTS hash_fallback_header;
     ]]
+  },
+  {
+    name = "2017-11-07-192100_upstream_healthchecks_2",
+    up = function(_, _, dao)
+      local rows, err = dao.db:query([[
+        SELECT * FROM upstreams;
+      ]])
+      if err then
+        return err
+      end
+
+      local upstreams = require("kong.dao.schemas.upstreams")
+      local default = upstreams.fields.healthchecks.default
+
+      for _, row in ipairs(rows) do
+        if not row.healthchecks then
+          local _, err = dao.upstreams:update({
+            healthchecks = default,
+          }, { id = row.id })
+          if err then
+            return err
+          end
+        end
+      end
+    end,
+    down = function(_, _, dao) end
   },
   {
     name = "2017-10-27-134100_consistent_hashing_2",
@@ -580,47 +621,5 @@ return {
       end
     end,
     down = function(_, _, dao) end  -- n.a. since the columns will be dropped
-  },
-  {
-    name = "2017-11-07-192000_upstream_healthchecks",
-    up = [[
-      DO $$
-      BEGIN
-          ALTER TABLE upstreams ADD COLUMN healthchecks json;
-      EXCEPTION WHEN duplicate_column THEN
-          -- Do nothing, accept existing state
-      END$$;
-
-    ]],
-    down = [[
-      ALTER TABLE upstreams DROP COLUMN IF EXISTS healthchecks;
-    ]]
-  },
-  {
-    name = "2017-11-07-192100_upstream_healthchecks_2",
-    up = function(_, _, dao)
-      local rows, err = dao.db:query([[
-        SELECT * FROM upstreams;
-      ]])
-      if err then
-        return err
-      end
-
-      local upstreams = require("kong.dao.schemas.upstreams")
-      local default = upstreams.fields.healthchecks.default
-
-      for _, row in ipairs(rows) do
-        if not row.healthchecks then
-
-          local _, err = dao.upstreams:update({
-            healthchecks = default,
-          }, { id = row.id })
-          if err then
-            return err
-          end
-        end
-      end
-    end,
-    down = function(_, _, dao) end
   },
 }
