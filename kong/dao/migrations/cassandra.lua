@@ -482,6 +482,15 @@ return {
     down = function(_, _, dao) end  -- not implemented
   },
   {
+    name = "2017-11-07-192000_upstream_healthchecks",
+    up = [[
+      ALTER TABLE upstreams ADD healthchecks text;
+    ]],
+    down = [[
+      ALTER TABLE upstreams DROP healthchecks;
+    ]]
+  },
+  {
     name = "2017-10-27-134100_consistent_hashing_1",
     up = [[
       ALTER TABLE upstreams ADD hash_on text;
@@ -494,39 +503,6 @@ return {
       ALTER TABLE upstreams DROP hash_fallback;
       ALTER TABLE upstreams DROP hash_on_header;
       ALTER TABLE upstreams DROP hash_fallback_header;
-    ]]
-  },
-  {
-    name = "2017-10-27-134100_consistent_hashing_2",
-    up = function(_, _, dao)
-      local rows, err = dao.db:query([[
-        SELECT * FROM upstreams;
-      ]])
-      if err then
-        return err
-      end
-
-      for _, row in ipairs(rows) do
-        if not row.hash_on or not row.hash_fallback then
-          row.hash_on = "none"
-          row.hash_fallback = "none"
---          row.created_at = nil
-          local _, err = dao.upstreams:update(row, { id = row.id })
-          if err then
-            return err
-          end
-        end
-      end
-    end,
-    down = function(_, _, dao) end  -- n.a. since the columns will be dropped
-  },
-  {
-    name = "2017-11-07-192000_upstream_healthchecks",
-    up = [[
-      ALTER TABLE upstreams ADD healthchecks text;
-    ]],
-    down = [[
-      ALTER TABLE upstreams DROP healthchecks;
     ]]
   },
   {
@@ -555,5 +531,27 @@ return {
       end
     end,
     down = function(_, _, dao) end
+  },
+  {
+    name = "2017-10-27-134100_consistent_hashing_2",
+    up = function(_, _, dao)
+      local rows, err = dao.upstreams:find_all()
+      if err then
+        return err
+      end
+
+      for _, row in ipairs(rows) do
+        if not row.hash_on or not row.hash_fallback then
+          row.hash_on = "none"
+          row.hash_fallback = "none"
+--          row.created_at = nil
+          local _, err = dao.upstreams:update(row, { id = row.id })
+          if err then
+            return err
+          end
+        end
+      end
+    end,
+    down = function(_, _, dao) end  -- n.a. since the columns will be dropped
   },
 }
