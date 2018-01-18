@@ -42,7 +42,8 @@ if not os.getenv("KONG_BUSTED_RESPAWNED") then
   table.insert(script, table.concat(cmd, " "))
 
   -- recurse cli command, with proper variables (un)set for clean testing
-  return os.execute(table.concat(script, "; "))
+  local _, _, rc = os.execute(table.concat(script, "; "))
+  os.exit(rc)
 end
 
 require "luarocks.loader"
