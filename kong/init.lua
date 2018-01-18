@@ -371,7 +371,11 @@ function Kong.access()
 
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
     if not ctx.delayed_response then
-      coroutine.wrap(plugin.handler.access)(plugin.handler, plugin_conf)
+      local err = coroutine.wrap(plugin.handler.access)(plugin.handler, plugin_conf)
+      if err then
+        ctx.delay_response = false
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      end
     end
   end
 
