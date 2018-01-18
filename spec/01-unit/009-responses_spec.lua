@@ -121,10 +121,15 @@ describe("Response helpers", function()
   end)
 
   describe("delayed response", function()
-    it("does not call ngx.say/ngx.exit if `ctx.delayed_response = true`", function()
+    after_each(function()
+      ngx.ctx.delayed_response = nil
+    end)
+
+    it("yields and does not call ngx.say/ngx.exit if `ctx.delaye_response = true`", function()
       ngx.ctx.delay_response = true
 
-      responses.send(401, "Unauthorized", { ["X-Hello"] = "world" })
+      local co = coroutine.wrap(responses.send)
+      co(401, "Unauthorized", { ["X-Hello"] = "world" })
       assert.stub(ngx.say).was_not_called()
       assert.stub(ngx.exit).was_not_called()
       assert.not_equal("world", ngx.header["X-Hello"])
