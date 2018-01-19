@@ -689,8 +689,6 @@ return {
           CREATE INDEX plugins_service_id_idx ON plugins(service_id);
         END IF;
       END$$;
-
-      ALTER TABLE plugins DROP COLUMN IF EXISTS api_id;
     ]],
     down = nil
   },

@@ -16,7 +16,7 @@ end
 return {
   table = "plugins",
   primary_key = {"id", "name"},
-  cache_key = { "name", "route_id", "service_id", "consumer_id" },
+  cache_key = { "name", "route_id", "service_id", "consumer_id", "api_id" },
   fields = {
     id = {
       type = "id",
@@ -29,6 +29,10 @@ return {
       immutable = true,
       dao_insert_value = true,
       required = true
+    },
+    api_id = {
+      type = "id",
+      foreign = "apis:id",
     },
     route_id = {
       type = "id",
@@ -58,6 +62,11 @@ return {
     }
   },
   self_check = function(self, plugin_t, dao, is_update)
+    if plugin_t.api_id and (plugin_t.route_id or plugin_t.service_id) then
+      return false, Errors.schema("cannot configure plugin with api_id " ..
+                                  "and one of route_id or service_id")
+    end
+
     if plugin_t.service_id ~= nil then
       local service, err, err_t = dao.db.new_db.services:select({
         id = plugin_t.service_id
@@ -115,6 +124,7 @@ return {
     if not is_update then
       local rows, err = dao:find_all {
         name = plugin_t.name,
+        api_id = plugin_t.api_id,
         route_id = plugin_t.route_id,
         service_id = plugin_t.service_id,
         consumer_id = plugin_t.consumer_id
@@ -125,6 +135,7 @@ return {
       elseif #rows > 0 then
         for _, row in ipairs(rows) do
           if row.name == plugin_t.name and
+             row.api_id == plugin_t.api_id and
              row.route_id == plugin_t.route_id and
              row.service_id == plugin_t.service_id and
              row.consumer_id == plugin_t.consumer_id

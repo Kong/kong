@@ -709,8 +709,16 @@ describe("Entities Schemas", function()
           }
         }
 
-        plugins_schema.fields.config.schema = function()
-          return stub_config_schema
+        do
+          local old_schema_loader = plugins_schema.fields.config.schema
+
+          plugins_schema.fields.config.schema = function()
+            return stub_config_schema
+          end
+
+          finally(function()
+            plugins_schema.fields.config.schema = old_schema_loader
+          end)
         end
 
         local valid, _, err = validate_entity({name = "stub", service_id = "0000", consumer_id = "0000", config = {string = "foo"}}, plugins_schema, {dao = dao_stub})
@@ -720,6 +728,62 @@ describe("Entities Schemas", function()
         valid, err = validate_entity({name = "stub", service_id = "0000", config = {string = "foo"}}, plugins_schema, {dao = dao_stub})
         assert.is_true(valid)
         assert.falsy(err)
+      end)
+
+      it("rejects a plugin if configured for both api_id and route_id", function()
+        local valid, _, self_err = validate_entity({
+          name = "request-transformer",
+          api_id = "api_id",
+          route_id = "route_id",
+        }, plugins_schema)
+        assert.is_false(valid)
+        assert.same({
+          message = "cannot configure plugin with api_id and one of route_id or service_id",
+          schema = true,
+        }, self_err)
+      end)
+
+      it("rejects a plugin if configured for both api_id and service_id", function()
+        local valid, _, self_err = validate_entity({
+          name = "request-transformer",
+          api_id = "api_id",
+          service_id = "service_id",
+        }, plugins_schema)
+        assert.is_false(valid)
+        assert.same({
+          message = "cannot configure plugin with api_id and one of route_id or service_id",
+          schema = true,
+        }, self_err)
+      end)
+
+      it("accepts a plugin if configured with api_id", function()
+        local valid, errors, self_err = validate_entity({
+          name = "key-auth",
+          api_id = "api_id",
+        }, plugins_schema, { dao = dao_stub })
+        assert.is_nil(errors)
+        assert.is_nil(self_err)
+        assert.is_true(valid)
+      end)
+
+      it("accepts a plugin if configured with route_id", function()
+        local valid, errors, self_err = validate_entity({
+          name = "key-auth",
+          route_id = "route_id",
+        }, plugins_schema, { dao = dao_stub })
+        assert.is_nil(errors)
+        assert.is_nil(self_err)
+        assert.is_true(valid)
+      end)
+
+      it("accepts a plugin if configured with service_id", function()
+        local valid, errors, self_err = validate_entity({
+          name = "key-auth",
+          service_id = "service_id",
+        }, plugins_schema, { dao = dao_stub })
+        assert.is_nil(errors)
+        assert.is_nil(self_err)
+        assert.is_true(valid)
       end)
     end)
   end)

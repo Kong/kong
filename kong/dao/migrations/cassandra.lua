@@ -603,9 +603,6 @@ return {
 
       CREATE INDEX IF NOT EXISTS ON plugins(route_id);
       CREATE INDEX IF NOT EXISTS ON plugins(service_id);
-
-      DROP INDEX plugins_api_id_idx;
-      ALTER TABLE plugins DROP api_id;
     ]],
     down = nil
   },
