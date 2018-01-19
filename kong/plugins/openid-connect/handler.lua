@@ -202,7 +202,7 @@ local function multipart(name, timeout)
 end
 
 
-local function consumer(issuer, token, claim, anonymous, consumer_by)
+local function consumer(token, claim, anonymous, consumer_by)
   if not token then
     return nil, "token for consumer mapping was not found"
   end
@@ -227,7 +227,7 @@ local function consumer(issuer, token, claim, anonymous, consumer_by)
     return nil, "claim (" .. claim .. ") was not found for consumer mapping"
   end
 
-  return cache.consumers.load(issuer, subject, anonymous, consumer_by)
+  return cache.consumers.load(subject, anonymous, consumer_by)
 end
 
 
@@ -372,13 +372,55 @@ local function get_conf_arg(conf, name, default)
 end
 
 
-local function unauthorized(issuer, err, s)
+local function unexpected(err)
+  if err then
+    log(ERR, err)
+  end
+
+  return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+end
+
+
+local function anonymous_access(issuer, anonymous)
+  local consumer_token = {
+    payload = {
+      id = anonymous
+    }
+  }
+
+  local consumer, err = consumer(consumer_token, "id", true, "id")
+  if not consumer then
+    if err then
+      return unexpected("[openid-connect] anonymous consumer was not found (" .. err .. ")")
+
+    else
+      return unexpected("[openid-connect] anonymous consumer was not found")
+    end
+  end
+
+  local head = constants.HEADERS
+
+  ngx.ctx.authenticated_consumer   = consumer
+  ngx.ctx.authenticated_credential = nil
+
+  set_header(head.CONSUMER_ID,        consumer.id)
+  set_header(head.CONSUMER_CUSTOM_ID, consumer.custom_id)
+  set_header(head.CONSUMER_USERNAME,  consumer.username)
+  set_header(head.ANONYMOUS,          true)
+end
+
+
+local function unauthorized(issuer, err, s, anonymous)
   if err then
     log(NOTICE, err)
   end
 
   if s then
     s:destroy()
+  end
+
+  if anonymous then
+    return anonymous_access(issuer, anonymous)
   end
 
   local parts = uri.parse(issuer)
@@ -387,7 +429,7 @@ local function unauthorized(issuer, err, s)
 end
 
 
-local function forbidden(issuer, err, s)
+local function forbidden(issuer, err, s, anonymous)
   if err then
     log(NOTICE, err)
   end
@@ -396,18 +438,13 @@ local function forbidden(issuer, err, s)
     s:destroy()
   end
 
+  if anonymous then
+    return anonymous_access(issuer, anonymous)
+  end
+
   local parts = uri.parse(issuer)
   header["WWW-Authenticate"] = 'Bearer realm="' .. parts.host .. '"'
   return responses.send_HTTP_FORBIDDEN()
-end
-
-
-local function unexpected(err)
-  if err then
-    log(ERR, err)
-  end
-
-  return responses.send_HTTP_INTERNAL_SERVER_ERROR()
 end
 
 
@@ -426,13 +463,16 @@ end
 
 function OICHandler:init_worker()
   OICHandler.super.init_worker(self)
+  cache.init_worker()
 end
 
 
 function OICHandler:access(conf)
   OICHandler.super.access(self)
 
-  if ngx.ctx.authenticated_credential and conf.anonymous ~= ngx.null and conf.anonymous ~= "" then
+  local anonymous = get_conf_arg(conf, "anonymous")
+
+  if ngx.ctx.authenticated_credential and anonymous then
     -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
     log(DEBUG, "[openid-connect] skipping because user is already authenticated")
@@ -984,7 +1024,7 @@ function OICHandler:access(conf)
                 header["Pragma"]        = "no-cache"
 
                 if uri_args.state == state then
-                  return unauthorized(iss, err, authorization)
+                  return unauthorized(iss, err, authorization, anonymous)
 
                 else
                   if not post_args then
@@ -992,7 +1032,7 @@ function OICHandler:access(conf)
                     post_args = get_post_args()
                   end
                   if post_args.state == state then
-                    return unauthorized(iss, err, authorization)
+                    return unauthorized(iss, err, authorization, anonymous)
                   end
                 end
 
@@ -1108,7 +1148,7 @@ function OICHandler:access(conf)
           end
 
         else
-          return unauthorized(iss, "no suitable authorization credentials were provided")
+          return unauthorized(iss, "no suitable authorization credentials were provided", nil, anonymous)
         end
       end
 
@@ -1142,7 +1182,7 @@ function OICHandler:access(conf)
     tokens_decoded, err = o.token:verify(tokens_encoded)
     if not tokens_decoded then
       log(DEBUG, "[openid-connect] unable to verify bearer token")
-      return unauthorized(iss, err, s)
+      return unauthorized(iss, err, s, anonymous)
     end
 
     log(DEBUG, "[openid-connect] bearer token verified")
@@ -1194,7 +1234,7 @@ function OICHandler:access(conf)
 
         if not access_token_introspected or not access_token_introspected.active then
           log(DEBUG, "[openid-connect] authentication with opaque bearer token failed")
-          return unauthorized(iss, err, s)
+          return unauthorized(iss, err, s, anonymous)
         end
 
         grant_type = "introspection"
@@ -1214,7 +1254,7 @@ function OICHandler:access(conf)
         log(DEBUG, "[openid-connect] validating jwt claim against jwt session cookie")
         local jwt_session_cookie_value = var["cookie_" .. jwt_session_cookie]
         if not jwt_session_cookie_value or jwt_session_cookie_value == "" then
-          return unauthorized(iss, "jwt session cookie was not specified for session claim verification", s)
+          return unauthorized(iss, "jwt session cookie was not specified for session claim verification", s, anonymous)
         end
 
         local jwt_session_claim = get_conf_arg(conf, "jwt_session_claim", "sid")
@@ -1222,13 +1262,13 @@ function OICHandler:access(conf)
 
         if not jwt_session_claim_value then
           return unauthorized(
-            iss,"jwt session claim (" .. jwt_session_claim .. ") was not specified in jwt access token", s
+            iss, "jwt session claim (" .. jwt_session_claim .. ") was not specified in jwt access token", s, anonymous
           )
         end
 
         if jwt_session_claim_value ~= jwt_session_cookie_value then
           return unauthorized(
-            iss, "invalid jwt session claim (" .. jwt_session_claim .. ") was specified in jwt access token", s
+            iss, "invalid jwt session claim (" .. jwt_session_claim .. ") was specified in jwt access token", s, anonymous
           )
         end
 
@@ -1297,7 +1337,7 @@ function OICHandler:access(conf)
 
     if not tokens_encoded then
       log(DEBUG, "[openid-connect] unable to exchange credentials with tokens")
-      return unauthorized(iss, err, s)
+      return unauthorized(iss, err, s, anonymous)
     end
 
     log(DEBUG, "[openid-connect] verifying tokens")
@@ -1306,7 +1346,7 @@ function OICHandler:access(conf)
     tokens_decoded, err = o.token:verify(tokens_encoded, args)
     if not tokens_decoded then
       log(DEBUG, "[openid-connect] token verification failed")
-      return unauthorized(iss, err, s)
+      return unauthorized(iss, err, s, anonymous)
 
     else
       log(DEBUG, "[openid-connect] tokens verified")
@@ -1340,7 +1380,7 @@ function OICHandler:access(conf)
   log(DEBUG, "[openid-connect] checking for access token")
   if not tokens_encoded.access_token then
     log(DEBUG, "[openid-connect] access token was not found")
-    return unauthorized(iss, "access token was not found", s)
+    return unauthorized(iss, "access token was not found", s, anonymous)
 
   else
     log(DEBUG, "[openid-connect] found access token")
@@ -1358,7 +1398,7 @@ function OICHandler:access(conf)
       tokens_decoded, err = o.token:verify(tokens_encoded)
       if not tokens_decoded then
         log(DEBUG, "[openid-connect] reverifying tokens failed")
-        return forbidden(iss, err, s)
+        return forbidden(iss, err, s, anonymous)
 
       else
         log(DEBUG, "[openid-connect] reverified tokens")
@@ -1375,7 +1415,7 @@ function OICHandler:access(conf)
     if auth_method_refresh_token then
       -- access token has expired, try to refresh the access token before proxying
       if not tokens_encoded.refresh_token then
-        return forbidden(iss, "access token cannot be refreshed in absense of refresh token", s)
+        return forbidden(iss, "access token cannot be refreshed in absense of refresh token", s, anonymous)
       end
 
       log(DEBUG, "[openid-connect] trying to refresh access token using refresh token")
@@ -1386,7 +1426,7 @@ function OICHandler:access(conf)
 
       if not tokens_refreshed then
         log(DEBUG, "[openid-connect] unable to refresh access token using refresh token")
-        return forbidden(iss, err, s)
+        return forbidden(iss, err, s, anonymous)
 
       else
         log(DEBUG, "[openid-connect] refreshed access token using refresh token")
@@ -1404,7 +1444,7 @@ function OICHandler:access(conf)
       tokens_decoded, err = o.token:verify(tokens_refreshed)
       if not tokens_decoded then
         log(DEBUG, "[openid-connect] unable to verify refreshed tokens")
-        return forbidden(iss, err, s)
+        return forbidden(iss, err, s, anonymous)
 
       else
         log(DEBUG, "[openid-connect] verified refreshed tokens")
@@ -1425,7 +1465,7 @@ function OICHandler:access(conf)
       end
 
     else
-      return forbidden(iss, "access token has expired and could not be refreshed", s)
+      return forbidden(iss, "access token has expired and could not be refreshed", s, anonymous)
     end
   end
 
@@ -1449,32 +1489,31 @@ function OICHandler:access(conf)
         local id_token = tokens_decoded.id_token
         if id_token then
           log(DEBUG, "[openid-connect] trying to find consumer using id token")
-          mapped_consumer, err = consumer(iss, id_token, consumer_claim, false, consumer_by)
+          mapped_consumer, err = consumer(id_token, consumer_claim, false, consumer_by)
           if not mapped_consumer then
             log(DEBUG, "[openid-connect] trying to find consumer using access token")
-            mapped_consumer = consumer(iss, tokens_decoded.access_token, consumer_claim, false, consumer_by)
+            mapped_consumer = consumer(tokens_decoded.access_token, consumer_claim, false, consumer_by)
           end
 
         else
           log(DEBUG, "[openid-connect] trying to find consumer using access token")
-          mapped_consumer, err = consumer(iss, tokens_decoded.access_token, consumer_claim, false, consumer_by)
+          mapped_consumer, err = consumer(tokens_decoded.access_token, consumer_claim, false, consumer_by)
         end
       end
 
       if not mapped_consumer and access_token_introspected then
         log(DEBUG, "[openid-connect] trying to find consumer using introspection response")
-        mapped_consumer, err = consumer(iss, access_token_introspected, consumer_claim, false, consumer_by)
+        mapped_consumer, err = consumer(access_token_introspected, consumer_claim, false, consumer_by)
       end
 
       if not mapped_consumer then
         log(DEBUG, "[openid-connect] kong consumer was not found")
-        local anonymous = get_conf_arg(conf, "anonymous")
-        if anonymous then
+        if not anonymous then
           if err then
-            return forbidden(iss, "consumer was not found (" .. err .. ")", s)
+            return forbidden(iss, "consumer was not found (" .. err .. ")", s, anonymous)
 
           else
-            return forbidden(iss, "consumer was not found", s)
+            return forbidden(iss, "consumer was not found", s, anonymous)
           end
         end
 
@@ -1484,19 +1523,19 @@ function OICHandler:access(conf)
 
         local consumer_token = {
           payload = {
-            [consumer_claim] = anonymous
+            id = anonymous
           }
         }
 
-        mapped_consumer, err = consumer(iss, consumer_token, consumer_claim, true, consumer_by)
+        mapped_consumer, err = consumer(consumer_token, "id", true, "id")
         if not mapped_consumer then
           log(DEBUG, "[openid-connect] anonymous kong consumer was not found")
 
           if err then
-            return forbidden(iss, "anonymous consumer was not found (" .. err .. ")", s)
+            return unexpected("anonymous consumer was not found (" .. err .. ")")
 
           else
-            return forbidden(iss, "anonymous consumer was not found", s)
+            return unexpected("anonymous consumer was not found")
           end
 
         else
@@ -1505,6 +1544,34 @@ function OICHandler:access(conf)
 
       else
         log(DEBUG, "[openid-connect] found kong consumer")
+      end
+
+    else
+      if anonymous then
+        log(DEBUG, "[openid-connect] trying to set anonymous kong consumer")
+
+        is_anonymous = true
+
+        local consumer_token = {
+          payload = {
+            id = anonymous
+          }
+        }
+
+        mapped_consumer, err = consumer(consumer_token, "id", true, "id")
+        if not mapped_consumer then
+          log(DEBUG, "[openid-connect] anonymous kong consumer was not found")
+
+          if err then
+            return unexpected("anonymous consumer was not found (" .. err .. ")")
+
+          else
+            return unexpected("anonymous consumer was not found")
+          end
+
+        else
+          log(DEBUG, "[openid-connect] found anonymous kong consumer")
+        end
       end
     end
   end
@@ -1520,18 +1587,35 @@ function OICHandler:access(conf)
       ngx.ctx.authenticated_credential = credential
 
     else
-      ngx.ctx.authenticated_credential = {
-        consumer_id = mapped_consumer.id
-      }
+      if is_anonymous then
+        set_header(head.ANONYMOUS, true)
+
+      else
+        set_header(head.ANONYMOUS, nil)
+
+        ngx.ctx.authenticated_credential = {
+          consumer_id = mapped_consumer.id
+        }
+      end
     end
 
     set_header(head.CONSUMER_ID,        mapped_consumer.id)
     set_header(head.CONSUMER_CUSTOM_ID, mapped_consumer.custom_id)
     set_header(head.CONSUMER_USERNAME,  mapped_consumer.username)
 
-    if is_anonymous then
-      set_header(head.ANONYMOUS, is_anonymous)
-    end
+  else
+    log(DEBUG, "[openid-connect] removing possible remnants of anonymous")
+
+    ngx.ctx.authenticated_consumer   = nil
+    ngx.ctx.authenticated_credential = nil
+
+    local head = constants.HEADERS
+
+    set_header(head.CONSUMER_ID,        nil)
+    set_header(head.CONSUMER_CUSTOM_ID, nil)
+    set_header(head.CONSUMER_USERNAME,  nil)
+
+    set_header(head.ANONYMOUS,          nil)
   end
 
   -- remove session cookie from the upstream request?
@@ -1548,10 +1632,8 @@ function OICHandler:access(conf)
       local replay_prefix = get_conf_arg(conf, "token_headers_prefix")
       for _, v in ipairs(replay_for) do
         if v == grant_type then
-          local replay_headers = conf.token_headers_replay
-          if replay_headers ~= nil and
-             replay_headers ~= ""  and
-             replay_headers ~= ngx.null then
+          local replay_headers = get_conf_arg(conf, "token_headers_replay")
+          if replay_headers then
             for _, replay_header in ipairs(replay_headers) do
               local extra_header = extra_headers[replay_header]
               if extra_header then
@@ -1572,7 +1654,6 @@ function OICHandler:access(conf)
 
   log(DEBUG, "[openid-connect] setting upstream and downstream headers")
 
-  -- now let's setup the upstream and downstream headers
   headers(
     conf.upstream_access_token_header,
     conf.downstream_access_token_header,

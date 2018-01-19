@@ -1,5 +1,21 @@
 ## v0.0.8
 
+NOTE: the way `config.anonymous` has changed in this release is a **BREAKING**
+change **AND** can lead to **UNAUTHORIZED** access if old behavior was used.
+Please use `acl` or `request-termination` plugins to restrict `anonymous`
+access. The change was made so that that this plugin follows similar patterns
+as other Kong Authentication plugins regarding to `config.anonymous`.
+
+- In case of auth plugins concatenation, the OpenID Connect plugin now
+  removes remnants of anonymous
+- Fixed anonymous consumer mapping
+- Anonymous consumer uses now a simple cache key that is used in other plugins
+- `config.anonymous` now behaves similarly to other plugins and doesn't halt
+  execution or proxying (previously it was used just as a fallback for consumer
+  mapping) and the plugin always needed valid credentials to be allowed to proxy
+  if the client wasn't already authenticated by higher priority auth plugin.
+- Change if `anonymous` consumer is not found we return internal server error
+  instead of forbidden  
 - Change `config.client_id` from `required` to `optional`
 - Change `config.client_secret` from `required` to `optional`
 

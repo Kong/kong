@@ -1,5 +1,6 @@
 pcall(require, "kong.plugins.openid-connect.env")
 
+
 local configuration = require "kong.openid-connect.configuration"
 local keys          = require "kong.openid-connect.keys"
 local hash          = require "kong.openid-connect.hash"
@@ -15,6 +16,7 @@ local json          = codec.json
 local type          = type
 local pcall         = pcall
 local log           = ngx.log
+local null          = ngx.null
 local time          = ngx.time
 local encode_base64 = ngx.encode_base64
 local sub           = string.sub
@@ -22,12 +24,13 @@ local tonumber      = tonumber
 
 
 local NOTICE        = ngx.NOTICE
+local DEBUG         = ngx.DEBUG
 local ERR           = ngx.ERR
 
 
 local cache_get, cache_key
 do
-  -- TODO: this check sucks but it is good enough now, as this supports only 0.10.x and 0.11.x
+  -- TODO: this check sucks but it is good enough now, as this supports only 0.10.x and >= 0.11.x
   local ok, cache = pcall(require, "kong.tools.database_cache")
   if ok then
     -- 0.10.x
@@ -76,10 +79,41 @@ do
 end
 
 
+local function init_worker()
+  local cache = singletons.cache
+  singletons.worker_events.register(function(data)
+    log(DEBUG, "[openid-connect] consumer updated, invalidating cache")
+
+    local old_entity = data.old_entity
+    if old_entity then
+      if old_entity.custom_id and old_entity.custom_id ~= null and old_entity.custom_id ~= "" then
+        cache:invalidate(cache_key("custom_id:" .. old_entity.custom_id, "consumers"))
+      end
+
+      if old_entity.username and old_entity.username ~= null and old_entity.username ~= "" then
+        cache:invalidate(cache_key("username:" .. old_entity.username,  "consumers"))
+      end
+    end
+
+    local entity = data.entity
+    if entity then
+      if entity.custom_id and entity.custom_id ~= null and entity.custom_id ~= "" then
+        cache:invalidate(cache_key("custom_id:" .. entity.custom_id, "consumers"))
+      end
+
+      if entity.username and entity.username ~= null and entity.username ~= "" then
+        cache:invalidate(cache_key("username:" .. entity.username,  "consumers"))
+      end
+    end
+  end, "crud", "consumers")
+end
+
+
 local function normalize_issuer(issuer)
   if sub(issuer, -1) == "/" then
     return sub(issuer, 1, #issuer - 1)
   end
+
   return issuer
 end
 
@@ -90,7 +124,7 @@ local issuers = {}
 function issuers.init(conf)
   local issuer = normalize_issuer(conf.issuer)
 
-  log(NOTICE, "loading openid connect configuration for ", issuer, " from database")
+  log(NOTICE, "[openid-connect] loading openid connect configuration for ", issuer, " from database")
 
   local results = singletons.dao.oic_issuers:find_all { issuer = issuer }
   if results and results[1] then
@@ -102,7 +136,7 @@ function issuers.init(conf)
     }
   end
 
-  log(NOTICE, "loading openid connect configuration for ", issuer, " using discovery")
+  log(NOTICE, "[openid-connect] loading openid connect configuration for ", issuer, " using discovery")
 
   local opts = {
     http_version = conf.http_version               or 1.1,
@@ -112,7 +146,7 @@ function issuers.init(conf)
 
   local claims, err = configuration.load(issuer, opts)
   if not claims then
-    log(ERR, "loading openid connect configuration for ", issuer, " using discovery failed with ", err)
+    log(ERR, "[openid-connect] loading openid connect configuration for ", issuer, " using discovery failed with ", err)
     return nil
   end
 
@@ -126,18 +160,18 @@ function issuers.init(conf)
   local jwks_uri = cdec.jwks_uri
   local jwks
   if jwks_uri then
-    log(NOTICE, "loading openid connect jwks from ", jwks_uri)
+    log(NOTICE, "[openid-connect] loading openid connect jwks from ", jwks_uri)
 
     jwks, err = keys.load(jwks_uri, opts)
     if not jwks then
-      log(ERR, "loading openid connect jwks from ", jwks_uri, " failed with ", err)
+      log(ERR, "[openid-connect] loading openid connect jwks from ", jwks_uri, " failed with ", err)
       return nil
     end
 
   elseif cdec.jwks and cdec.jwks.keys then
     jwks, err = json.encode(cdec.jwks.keys)
     if not jwks then
-      log(ERR, "unable to encode jwks received as part of the ", issuer, " discovery document (", err , ")")
+      log(ERR, "[openid-connect] unable to encode jwks received as part of the ", issuer, " discovery document (", err , ")")
     end
   end
 
@@ -152,7 +186,7 @@ function issuers.init(conf)
 
   data, err = singletons.dao.oic_issuers:insert(data)
   if not data then
-    log(ERR, "unable to store issuer ", issuer, " discovery documents in database (", err , ")")
+    log(ERR, "[openid-connect] unable to store issuer ", issuer, " discovery documents in database (", err , ")")
     return nil
   end
 
@@ -170,37 +204,33 @@ end
 local consumers = {}
 
 
-function consumers.init(cons, subject)
+function consumers.init(subject, key)
   if not subject or subject == "" then
     return nil, "openid connect is unable to load consumer by a missing subject"
   end
 
   local result, err
-  for _, key in ipairs(cons) do
-    if key == "id" then
-      log(NOTICE, "openid connect is loading consumer by id using " .. subject)
-      result, err = singletons.dao.consumers:find { id = subject }
-      if type(result) == "table" then
-        return result
-      end
 
-    else
-      log(NOTICE, "openid connect is loading consumer by " .. key .. " using " .. subject)
-      result, err = singletons.dao.consumers:find_all { [key] = subject }
-      if type(result) == "table" then
-        if type(result[1]) == "table" then
-          return result[1]
-        end
-      end
+  if key == "id" then
+    log(NOTICE, "[openid-connect] openid connect is loading consumer by id using " .. subject)
+    result, err = singletons.dao.consumers:find { id = subject }
+    if type(result) == "table" then
+      return result
+    end
+
+  else
+    log(NOTICE, "[openid-connect] openid connect is loading consumer by " .. key .. " using " .. subject)
+    result, err = singletons.dao.consumers:find_all { [key] = subject }
+    if type(result) == "table" and type(result[1]) == "table" then
+      return result[1]
     end
   end
+
   return nil, err
 end
 
 
-function consumers.load(iss, subject, anon, consumer_by)
-  local issuer = normalize_issuer(iss)
-
+function consumers.load(subject, anon, consumer_by)
   local cons
   if anon then
     cons = { "id" }
@@ -212,8 +242,27 @@ function consumers.load(iss, subject, anon, consumer_by)
     cons = { "custom_id" }
   end
 
-  local key = cache_key(concat{ issuer, "#", subject })
-  return cache_get(key, nil, consumers.init, cons, subject)
+  for _, field_name in ipairs(cons) do
+    local key
+
+    if field_name == "id" then
+      key = cache_key(subject, "consumers")
+
+    else
+      key = cache_key(field_name .. ":" .. subject, "consumers")
+    end
+
+    local consumer, err = cache_get(key, nil, consumers.init, subject, field_name)
+    if consumer then
+      return consumer
+    end
+
+    if err then
+      log(NOTICE, "[openid-connect] failed to load consumer (" .. err .. ")")
+    end
+  end
+
+  return nil
 end
 
 
@@ -231,7 +280,7 @@ end
 
 
 function oauth2.init(access_token)
-  log(NOTICE, "loading kong oauth2 token from database")
+  log(NOTICE, "[openid-connect] loading kong oauth2 token from database")
   local credentials, err = singletons.dao.oauth2_tokens:find_all { access_token = access_token }
 
   if err then
@@ -264,7 +313,6 @@ function oauth2.load(access_token)
     end
   end
 
-
   local credential
   local credential_cache_key = cache_key(token.credential_id, "oauth2_credentials")
   credential, err = cache_get(credential_cache_key, nil, oauth2.credential, token.credential_id)
@@ -289,7 +337,7 @@ local introspection = {}
 
 
 function introspection.init(o, access_token, endpoint)
-  log(NOTICE, "introspecting access token with identity provider")
+  log(NOTICE, "[openid-connect] introspecting access token with identity provider")
   local introspected = o.token:introspect(access_token, "access_token", {
     introspection_endpoint = endpoint
   })
@@ -331,7 +379,7 @@ local tokens = {}
 
 
 function tokens.init(o, args)
-  log(NOTICE, "loading tokens from the identity provider")
+  log(NOTICE, "[openid-connect] loading tokens from the identity provider")
   local toks, err, headers = o.token:request(args)
   if not toks then
     return nil, err
@@ -391,7 +439,7 @@ local userinfo = {}
 
 
 function userinfo.init(o, access_token)
-  log(NOTICE, "loading user info using access token from identity provider")
+  log(NOTICE, "[openid-connect] loading user info using access token from identity provider")
   return o:userinfo(access_token, { userinfo_format = "base64" })
 end
 
@@ -399,16 +447,18 @@ end
 function userinfo.load(o, access_token, ttl)
   local iss = o.configuration.issuer
   local key = cache_key(iss .. "#userinfo=" .. access_token)
+
   return cache_get(key, ttl, userinfo.init, o, access_token)
 end
 
 
 return {
+  init_worker   = init_worker,
   issuers       = issuers,
   consumers     = consumers,
   oauth2        = oauth2,
   introspection = introspection,
   tokens        = tokens,
   userinfo      = userinfo,
-  version       = "0.0.8"
+  version       = "0.0.8",
 }
