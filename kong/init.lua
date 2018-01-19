@@ -69,6 +69,7 @@ local ngx_DEBUG        = ngx.DEBUG
 local ipairs           = ipairs
 local assert           = assert
 local tostring         = tostring
+local coroutine        = coroutine
 local get_last_failure = ngx_balancer.get_last_failure
 local set_current_peer = ngx_balancer.set_current_peer
 local set_timeouts     = ngx_balancer.set_timeouts
@@ -370,7 +371,11 @@ function Kong.access()
 
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
     if not ctx.delayed_response then
-      plugin.handler:access(plugin_conf)
+      local err = coroutine.wrap(plugin.handler.access)(plugin.handler, plugin_conf)
+      if err then
+        ctx.delay_response = false
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      end
     end
   end
 

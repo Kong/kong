@@ -1,7 +1,7 @@
 --- Kong helper methods to send HTTP responses to clients.
 -- Can be used in the proxy (core/resolver), plugins or Admin API.
 -- Most used HTTP status codes and responses are implemented as helper methods.
--- @copyright Copyright 2016-2017 Kong Inc. All rights reserved.
+-- @copyright Copyright 2016-2018 Kong Inc. All rights reserved.
 -- @license [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
 -- @module kong.tools.responses
 -- @usage
@@ -113,7 +113,7 @@ local function send_response(status_code)
         headers = headers,
       }
 
-      return
+      coroutine.yield()
     end
 
     if status_code == _M.status_codes.HTTP_INTERNAL_SERVER_ERROR then
