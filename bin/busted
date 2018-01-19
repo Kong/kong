@@ -1,5 +1,7 @@
 #!/usr/bin/env resty
 
+local DEFAULT_RESTY_FLAGS="-c 65000"
+
 do
   local lines = getmetatable(io.output()).lines
 
@@ -34,11 +36,22 @@ if not os.getenv("KONG_BUSTED_RESPAWNED") then
   -- add cli recursion detection
   table.insert(script, "export KONG_BUSTED_RESPAWNED=1")
 
-  -- rebuild the invoked commandline
+  -- rebuild the invoked commandline, while inserting extra resty-flags
+  local resty_flags = DEFAULT_RESTY_FLAGS
   local cmd = { "exec" }
-  for i = 0, #arg do
-    table.insert(cmd, "'"..arg[i].."'")
+  for i = -1, #arg do
+    if arg[i]:sub(1, 12) == "RESTY_FLAGS=" then
+      resty_flags = arg[i]:sub(13, -1)
+
+    else
+      table.insert(cmd, "'" .. arg[i] .. "'")
+    end
   end
+
+  if resty_flags then
+    table.insert(cmd, 3, resty_flags)
+  end
+
   table.insert(script, table.concat(cmd, " "))
 
   -- recurse cli command, with proper variables (un)set for clean testing
