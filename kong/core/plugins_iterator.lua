@@ -4,6 +4,7 @@ local singletons   = require "kong.singletons"
 
 local setmetatable = setmetatable
 local ipairs       = ipairs
+local error        = error
 
 
 -- Loads a plugin config from the datastore.
@@ -11,12 +12,14 @@ local ipairs       = ipairs
 local function load_plugin_into_memory(route_id,
                                        service_id,
                                        consumer_id,
-                                       plugin_name)
+                                       plugin_name,
+                                       api_id)
   local rows, err = singletons.dao.plugins:find_all {
              name = plugin_name,
          route_id = route_id,
        service_id = service_id,
       consumer_id = consumer_id,
+           api_id = api_id,
   }
   if err then
     error(err)
@@ -26,7 +29,8 @@ local function load_plugin_into_memory(route_id,
     for _, row in ipairs(rows) do
       if    route_id == row.route_id    and
           service_id == row.service_id  and
-         consumer_id == row.consumer_id then
+         consumer_id == row.consumer_id and
+              api_id == row.api_id      then
         return row
       end
     end
@@ -43,15 +47,18 @@ end
 -- @param[type=string] service_id ID of the service being proxied.
 -- @param[type=string] consumer_id ID of the Consumer making the request (if any).
 -- @param[type=stirng] plugin_name Name of the plugin being tested for.
+-- @param[type=string] api_id ID of the API being proxied.
 -- @treturn table Plugin retrieved from the cache or database.
 local function load_plugin_configuration(route_id,
                                          service_id,
                                          consumer_id,
-                                         plugin_name)
+                                         plugin_name,
+                                         api_id)
   local plugin_cache_key = singletons.dao.plugins:cache_key(plugin_name,
                                                             route_id,
                                                             service_id,
-                                                            consumer_id)
+                                                            consumer_id,
+                                                            api_id)
 
   local plugin, err = singletons.cache:get(plugin_cache_key,
                                            nil,
@@ -59,16 +66,20 @@ local function load_plugin_configuration(route_id,
                                            route_id,
                                            service_id,
                                            consumer_id,
-                                           plugin_name)
+                                           plugin_name,
+                                           api_id)
   if err then
     ngx.ctx.delay_response = false
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
+
   if plugin ~= nil and plugin.enabled then
     local cfg       = plugin.config or {}
+    cfg.api_id      = plugin.api_id
     cfg.route_id    = plugin.route_id
     cfg.service_id  = plugin.service_id
     cfg.consumer_id = plugin.consumer_id
+
     return cfg
   end
 end
@@ -89,6 +100,7 @@ local function get_next(self)
   -- load the plugin configuration in early phases
   if self.access_or_cert_ctx then
 
+    local api          = self.api
     local route        = self.route
     local service      = self.service
     local consumer     = ctx.authenticated_consumer
@@ -100,6 +112,7 @@ local function get_next(self)
       end
     end
 
+    local      api_id = api      and      api.id or nil
     local    route_id = route    and    route.id or nil
     local  service_id = service  and  service.id or nil
     local consumer_id = consumer and consumer.id or nil
@@ -111,55 +124,69 @@ local function get_next(self)
     repeat
 
       if route_id and service_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(route_id, service_id, consumer_id, plugin_name)
+        plugin_configuration = load_plugin_configuration(route_id, service_id, consumer_id, plugin_name, nil)
         if plugin_configuration then
           break
         end
       end
 
       if route_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(route_id, nil, consumer_id, plugin_name)
+        plugin_configuration = load_plugin_configuration(route_id, nil, consumer_id, plugin_name, nil)
         if plugin_configuration then
           break
         end
       end
 
       if service_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(nil, service_id, consumer_id, plugin_name)
+        plugin_configuration = load_plugin_configuration(nil, service_id, consumer_id, plugin_name, nil)
+        if plugin_configuration then
+          break
+        end
+      end
+
+      if api_id and consumer_id then
+        plugin_configuration = load_plugin_configuration(nil, nil, consumer_id, plugin_name, api_id)
         if plugin_configuration then
           break
         end
       end
 
       if route_id and service_id then
-        plugin_configuration = load_plugin_configuration(route_id, service_id, nil, plugin_name)
+        plugin_configuration = load_plugin_configuration(route_id, service_id, nil, plugin_name, nil)
         if plugin_configuration then
           break
         end
       end
 
       if consumer_id then
-        plugin_configuration = load_plugin_configuration(nil, nil, consumer_id, plugin_name)
+        plugin_configuration = load_plugin_configuration(nil, nil, consumer_id, plugin_name, nil)
         if plugin_configuration then
           break
         end
       end
 
       if route_id then
-        plugin_configuration = load_plugin_configuration(route_id, nil, nil, plugin_name)
+        plugin_configuration = load_plugin_configuration(route_id, nil, nil, plugin_name, nil)
         if plugin_configuration then
           break
         end
       end
 
       if service_id then
-        plugin_configuration = load_plugin_configuration(nil, service_id, nil, plugin_name)
+        plugin_configuration = load_plugin_configuration(nil, service_id, nil, plugin_name, nil)
         if plugin_configuration then
           break
         end
       end
 
-      plugin_configuration = load_plugin_configuration(nil, nil, nil, plugin_name)
+      if api_id then
+        plugin_configuration = load_plugin_configuration(nil, nil, nil, plugin_name, api_id)
+        if plugin_configuration then
+          break
+        end
+      end
+
+      plugin_configuration = load_plugin_configuration(nil, nil, nil, plugin_name, nil)
 
     until true
 
@@ -198,6 +225,7 @@ local function iter_plugins_for_req(loaded_plugins, access_or_cert_ctx)
   local plugin_iter_state = {
     i                     = 0,
     ctx                   = ctx,
+    api                   = ctx.api,
     route                 = ctx.route,
     service               = ctx.service,
     loaded_plugins        = loaded_plugins,
