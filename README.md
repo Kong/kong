@@ -43,6 +43,9 @@ through plugins.
   Kubernetes.
 - **Dynamic Load Balancing**: Load balance traffic across multiple backend
   services.
+- **Hash-based Load Balancing**: Load balance consisten hashing/sticky sessions.
+- **Circuit-Breaking**: Smarter trackling of unhealthy upstream instances.
+- **Health Checks:** Passive and Active monitoring of your services.
 - **Service Discovery**: Resolve SRV records in third-party DNS resolvers like
   Consul.
 - **Serverless**: Invoke and secure AWS Lambda or OpenWhisk functions directly
@@ -56,6 +59,7 @@ through plugins.
 - **SSL**: Setup a Specific SSL Certificate for an underlying service or API.
 - **Monitoring**: Live monitoring provides key load and performance server
   metrics.
+- **Forward Proxy**: Allows Kong to connect to intermadiary transparent HTTP proxies.
 - **Authentications**: HMAC, JWT, Basic, and more.
 - **Rate-limiting**: Block and throttle requests based on many variables.
 - **Transformations**: Add, remove, or manipulate HTTP requests and responses.
@@ -248,7 +252,7 @@ limitations under the License.
 ```
 
 [kong-url]: https://konghq.com/
-[kong-logo]: https://cl.ly/030V1u02090Q/unnamed.png
+[kong-logo]: https://d2ffutrenqvap3.cloudfront.net/items/1946191x3s1H0M2u3J18/slack-imgs.png
 [kong-benefits]: https://cl.ly/002i2Z432A1s/Image%202017-10-16%20at%2012.30.08%20AM.png
 [google-groups-url]: https://groups.google.com/forum/#!forum/konglayer
 [badge-travis-url]: https://travis-ci.org/Kong/kong/branches
