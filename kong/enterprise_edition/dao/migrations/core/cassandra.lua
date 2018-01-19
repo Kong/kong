@@ -301,14 +301,25 @@ return {
 
       CREATE INDEX IF NOT EXISTS ON workspaces(name);
 
-      CREATE TABLE IF NOT EXISTS workspace_entities(
-        workspace_id uuid,
-        entity_id text,
+      CREATE TABLE IF NOT EXISTS role_entities(
+        role_id uuid,
+        entity_id uuid,
         entity_type text,
-        unique_field_name text,
-        unique_field_value text,
-        PRIMARY KEY(workspace_id, entity_id, unique_field_name)
+        permissions int,
+        negative boolean,
+        PRIMARY KEY(role_id, entity_id)
       );
+
+      CREATE TABLE IF NOT EXISTS role_endpoints(
+        id uuid PRIMARY KEY,
+        role_id uuid,
+        workspace text,
+        endpoint text,
+        permissions int,
+        negative boolean
+      );
+
+      CREATE INDEX IF NOT EXISTS ON role_endpoints(role_id);
     ]],
   }
 }
