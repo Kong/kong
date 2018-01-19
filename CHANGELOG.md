@@ -3,6 +3,7 @@
 - [Planned](#planned)
 - [Scheduled](#scheduled)
 - [Released](#released)
+    - [0.12.1](#0121---20180118)
     - [0.12.0](#0120---20180116)
     - [0.11.2](#0112---20171129)
     - [0.11.1](#0111---20171024)
@@ -36,6 +37,23 @@ a detailed changeset of their content.
 
 This section describes publicly available releases and a detailed changeset of
 their content.
+
+## [0.12.1] - 2018/01/18
+
+This release addresses a few issues encountered with 0.12.0, including one
+which would prevent upgrading from a previous version. The [0.12 Upgrade
+Path](https://github.com/Kong/kong/blob/master/UPGRADE.md#upgrade-to-012x)
+is still relevant for upgrading existing clusters to 0.12.1.
+
+### Fixed
+
+- Fix a migration between previous Kong versions and 0.12.0.
+  [#3159](https://github.com/Kong/kong/pull/3159)
+- Ensure Lua errors are propagated when thrown in the `access` handler by
+  plugins.
+  [38580ff](https://github.com/Kong/kong/commit/38580ff547cbd4a557829e3ad135cd6a0f821f7c)
+
+[Back to TOC](#table-of-contents)
 
 ## [0.12.0] - 2018/01/16
 
