@@ -9,6 +9,7 @@
 -- a consumer. Then it is responsible for loading the plugins to execute on this request.
 local utils       = require "kong.tools.utils"
 local Router      = require "kong.core.router"
+local ApiRouter   = require "kong.core.api_router"
 local reports     = require "kong.core.reports"
 local balancer    = require "kong.core.balancer"
 local constants   = require "kong.constants"
@@ -33,12 +34,47 @@ local ERR         = ngx.ERR
 local DEBUG       = ngx.DEBUG
 
 
-local router, router_err, router_version
+local CACHE_ROUTER_OPTS = { ttl = 0 }
+local EMPTY_T = {}
+
+
+local router, router_version, router_err
+local api_router, api_router_version, api_router_err
 local server_header = _KONG._NAME .. "/" .. _KONG._VERSION
 
 
 local function get_now()
   return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
+end
+
+
+local function build_api_router(dao, version)
+  local apis, err = dao.apis:find_all()
+  if err then
+    return nil, "could not load APIs: " .. err
+  end
+
+  for i = 1, #apis do
+    -- alias since the router expects 'headers' as a map
+    if apis[i].hosts then
+      apis[i].headers = { host = apis[i].hosts }
+    end
+  end
+
+  sort(apis, function(api_a, api_b)
+    return api_a.created_at < api_b.created_at
+  end)
+
+  api_router, err = ApiRouter.new(apis)
+  if not api_router then
+    return nil, "could not create api router: " .. err
+  end
+
+  if version then
+    api_router_version = version
+  end
+
+  return true
 end
 
 
@@ -104,7 +140,8 @@ end
 -- in the table below the `before` and `after` is to indicate when they run:
 -- before or after the plugins
 return {
-  build_router = build_router,
+  build_router     = build_router,
+  build_api_router = build_api_router,
 
   init_worker = {
     before = function()
@@ -186,6 +223,11 @@ return {
 
 
       -- local events (same worker)
+
+      worker_events.register(function()
+        log(DEBUG, "[events] API updated, invalidating API router")
+        cache:invalidate("api_router:version")
+      end, "crud", "apis")
 
 
       worker_events.register(function()
@@ -371,11 +413,33 @@ return {
   },
   access = {
     before = function(ctx)
-      -- ensure router is up-to-date
+      -- ensure routers are up-to-date
+      local cache = singletons.cache
 
-      local version, err = singletons.cache:get("router:version", {
-        ttl = 0
-      }, function() return utils.uuid() end)
+      -- router for APIs (legacy)
+
+      local version, err = cache:get("api_router:version", CACHE_ROUTER_OPTS, utils.uuid)
+      if err then
+        log(ngx.CRIT, "could not ensure API router is up to date: ", err)
+
+      elseif api_router_version ~= version then
+        log(DEBUG, "rebuilding API router")
+
+        local ok, err = build_api_router(singletons.dao, version)
+        if not ok then
+          api_router_err = err
+          log(ngx.CRIT, "could not rebuild API router: ", err)
+        end
+      end
+
+      if not api_router then
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR("no API router to " ..
+                  "route request (reason: " .. tostring(api_router_err) .. ")")
+      end
+
+      -- router for Routes/Services
+
+      local version, err = cache:get("router:version", CACHE_ROUTER_OPTS, utils.uuid)
       if err then
         log(ngx.CRIT, "could not ensure router is up to date: ", err)
 
@@ -403,9 +467,13 @@ return {
 
       local match_t = router.exec(ngx)
       if not match_t then
-        return responses.send_HTTP_NOT_FOUND("no route found with those values")
+        match_t = api_router.exec(ngx)
+        if not match_t then
+          return responses.send_HTTP_NOT_FOUND("no route and no API found with those values")
+        end
       end
 
+      local api                = match_t.api or EMPTY_T
       local route              = match_t.route
       local service            = match_t.service
       local upstream_url_t     = match_t.upstream_url_t
@@ -437,7 +505,11 @@ return {
       end
 
       local protocols = route.protocols
-      if protocols.https and not protocols.http and forwarded_proto ~= "https" then
+      if (protocols and
+          protocols.https and not protocols.http and forwarded_proto ~= "https")
+      or (api.https_only and not utils.check_https(trusted_ip,
+                                                   api.http_if_terminated))
+      then
         ngx.header["connection"] = "Upgrade"
         ngx.header["upgrade"]    = "TLS/1.2, HTTP/1.1"
         return responses.send(426, "Please use HTTPS protocol")
@@ -456,7 +528,7 @@ return {
 
       -- TODO: this is probably not optimal
       do
-        local retries = service.retries
+        local retries = service.retries or api.retries
         if retries ~= null then
           balancer_address.retries = retries
 
@@ -464,7 +536,8 @@ return {
           balancer_address.retries = 5
         end
 
-        local connect_timeout = service.connect_timeout
+        local connect_timeout = service.connect_timeout or
+                                api.upstream_connect_timeout
         if connect_timeout ~= null then
           balancer_address.connect_timeout = connect_timeout
 
@@ -472,7 +545,8 @@ return {
           balancer_address.connect_timeout = 60000
         end
 
-        local send_timeout = service.write_timeout
+        local send_timeout = service.write_timeout or
+                             api.upstream_send_timeout
         if send_timeout ~= null then
           balancer_address.send_timeout = send_timeout
 
@@ -480,7 +554,8 @@ return {
           balancer_address.send_timeout = 60000
         end
 
-        local read_timeout = service.read_timeout
+        local read_timeout = service.read_timeout or
+                             api.upstream_read_timeout
         if read_timeout ~= null then
           balancer_address.read_timeout = read_timeout
 
@@ -490,8 +565,8 @@ return {
       end
 
       -- TODO: this needs to be removed when references to ctx.api are removed
-      ctx.api              = {
-        id                 = route.id,
+      ctx.api = {
+        id = api.id or route.id
       }
 
       ctx.service          = service

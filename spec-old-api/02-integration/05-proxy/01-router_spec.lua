@@ -30,7 +30,7 @@ describe("Router", function()
 
     setup(function()
       helpers.dao:truncate_tables()
-      helpers.run_migrations()
+      helpers.dao:run_migrations()
       assert(helpers.start_kong())
     end)
 
@@ -49,7 +49,7 @@ describe("Router", function()
       local body = assert.response(res).has_status(404)
       local json = cjson.decode(body)
       assert.matches("^kong/", res.headers.server)
-      assert.equal("no API found with those values", json.message)
+      assert.equal("no route and no API found with those values", json.message)
     end)
   end)
 
@@ -89,7 +89,7 @@ describe("Router", function()
         },
       }
 
-      helpers.run_migrations()
+      helpers.dao:run_migrations()
       assert(helpers.start_kong({
         nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
       }))
@@ -243,7 +243,7 @@ describe("Router", function()
         },
       }
 
-      helpers.run_migrations()
+      helpers.dao:run_migrations()
       assert(helpers.start_kong({
         nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
       }))
@@ -317,7 +317,7 @@ describe("Router", function()
         },
       }
 
-      helpers.run_migrations()
+      helpers.dao:run_migrations()
       assert(helpers.start_kong({
         nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
       }))
@@ -362,7 +362,7 @@ describe("Router", function()
         },
       }
 
-      helpers.run_migrations()
+      helpers.dao:run_migrations()
       assert(helpers.start_kong({
         nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
       }))
@@ -442,7 +442,7 @@ describe("Router", function()
         }
       }
 
-      helpers.run_migrations()
+      helpers.dao:run_migrations()
       assert(helpers.start_kong({
         nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
       }))
@@ -547,7 +547,7 @@ describe("Router", function()
         },
       }
 
-      helpers.run_migrations()
+      helpers.dao:run_migrations()
       assert(helpers.start_kong({
         nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
       }))
@@ -596,7 +596,7 @@ describe("Router", function()
         },
       }
 
-      helpers.run_migrations()
+      helpers.dao:run_migrations()
       assert(helpers.start_kong({
         nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
       }))
@@ -638,7 +638,7 @@ describe("Router", function()
         },
       }
 
-      helpers.run_migrations()
+      helpers.dao:run_migrations()
       assert(helpers.start_kong({
         nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
       }))
@@ -730,7 +730,7 @@ describe("Router", function()
         })
       end
 
-      helpers.run_migrations()
+      helpers.dao:run_migrations()
       assert(helpers.start_kong({
         nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
       }))

@@ -100,6 +100,7 @@ build = {
     ["kong.core.handler"] = "kong/core/handler.lua",
     ["kong.core.certificate"] = "kong/core/certificate.lua",
     ["kong.core.router"] = "kong/core/router.lua",
+    ["kong.core.api_router"] = "kong/core/api_router.lua",
     ["kong.core.plugins_iterator"] = "kong/core/plugins_iterator.lua",
     ["kong.core.reports"] = "kong/core/reports.lua",
     ["kong.core.error_handlers"] = "kong/core/error_handlers.lua",

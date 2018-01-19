@@ -176,6 +176,7 @@ function Kong.init()
   singletons.db = db
 
   assert(core.build_router(db, "init"))
+  assert(core.build_api_router(dao, "init"))
 end
 
 function Kong.init_worker()
@@ -258,6 +259,14 @@ function Kong.init_worker()
   end)
   if not ok then
     ngx_log(ngx_CRIT, "could not set router version in cache: ", err)
+    return
+  end
+
+  local ok, err = cache:get("api_router:version", { ttl = 0 }, function()
+    return "init"
+  end)
+  if not ok then
+    ngx_log(ngx_CRIT, "could not set API router version in cache: ", err)
     return
   end
 
