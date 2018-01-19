@@ -357,4 +357,75 @@ describe("RBAC", function()
       end)
     end)
   end)
+
+  describe(".resolve_role_endpoint_permissions", function()
+    local role_ids = {}
+
+    setup(function()
+      local u = utils.uuid
+
+      table.insert(role_ids, u())
+      assert(helpers.dao.role_endpoints:insert({
+        role_id = role_ids[#role_ids],
+        workspace = "foo",
+        endpoint = "bar",
+        permissions = 0x1,
+        negative = false,
+      }))
+
+      table.insert(role_ids, u())
+      assert(helpers.dao.role_endpoints:insert({
+        role_id = role_ids[#role_ids],
+        workspace = "foo",
+        endpoint = "bar",
+        permissions = 0x8,
+        negative = false,
+      }))
+      assert(helpers.dao.role_endpoints:insert({
+        role_id = role_ids[#role_ids],
+        workspace = "foo",
+        endpoint = "bar",
+        permissions = 0x1,
+        negative = true,
+      }))
+
+      assert(helpers.dao.role_endpoints:insert({
+        role_id = role_ids[#role_ids],
+        workspace = "baz",
+        endpoint = "bar",
+        permissions = 0x5,
+        negative = false,
+      }))
+    end)
+
+    teardown(function()
+      helpers.dao:truncate_tables()
+    end)
+
+    it("returns a permissions map for a given role", function()
+      local map = rbac.resolve_role_endpoint_permissions({
+        { id = role_ids[1] },
+      })
+
+      assert.equals(0x1, map.foo.bar)
+    end)
+
+    it("returns a permissions map for multiple roles", function()
+      local map = rbac.resolve_role_endpoint_permissions({
+        { id = role_ids[1] },
+        { id = role_ids[2] },
+      })
+
+      assert.equals(0x19, map.foo.bar)
+    end)
+
+    it("returns separate permissions under separate workspaces", function()
+      local map = rbac.resolve_role_endpoint_permissions({
+        { id = role_ids[2] },
+      })
+
+      assert.equals(0x18, map.foo.bar)
+      assert.equals(0x5, map.baz.bar)
+    end)
+  end)
 end)

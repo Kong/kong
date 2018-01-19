@@ -21,6 +21,7 @@ local CORE_MODELS = {
   "workspaces",
   "workspace_entities",
   "role_entities",
+  "role_endpoints",
 }
 
 -- returns db errors as strings, including the initial `nil`

@@ -5,10 +5,11 @@ local singletons = require "kong.singletons"
 local bit        = require "bit"
 local tab_clear  = require "table.clear"
 
-local band = bit.band
-local bxor = bit.bxor
-local bor  = bit.bor
-local fmt  = string.format
+local band   = bit.band
+local bxor   = bit.bxor
+local bor    = bit.bor
+local fmt    = string.format
+local lshift = bit.lshift
 
 
 local function log(lvl, ...)
@@ -495,7 +496,7 @@ function _M.resolve_role_entity_permissions(roles)
   end
 
   for _, role in ipairs(roles) do
-    role_entities, err = singletons.dao.role_entities:find_all({
+    local role_entities, err = singletons.dao.role_entities:find_all({
       role_id  = role.id,
       negative = true,
     })
@@ -503,6 +504,46 @@ function _M.resolve_role_entity_permissions(roles)
       error(err)
     end
     iter(role_entities, negative_mask)
+  end
+
+
+  return pmap
+end
+
+
+function _M.resolve_role_endpoint_permissions(roles)
+  local pmap = {}
+
+
+  for _, role in ipairs(roles) do
+    local roles_endpoints, err = singletons.dao.role_endpoints:find_all({
+      role_id = role.id,
+    })
+    if err then
+      error(err)
+    end
+
+    -- because we hold a two-dimensional mapping and prioritize explicit
+    -- mapping matches over endpoint globs, we need to hold both the negative
+    -- and positive bit sets independantly, instead of having a negative bit
+    -- unset a positive bit, because in doing so it would be impossible to
+    -- determine implicit vs. explicit authorization denial (the former leading
+    -- to a fall-through in the 2-d array, the latter leading to an immediate
+    -- denial)
+    for _, role_endpoint in ipairs(roles_endpoints) do
+      if not pmap[role_endpoint.workspace] then
+        pmap[role_endpoint.workspace] = {}
+      end
+
+      -- store explicit negative bits adjacent to the positive bits in the mask
+      local p = role_endpoint.permissions
+      if role_endpoint.negative then
+        p = lshift(p, 4)
+      end
+
+      pmap[role_endpoint.workspace][role_endpoint.endpoint] =
+        bor(p, pmap[role_endpoint.workspace][role_endpoint.endpoint] or 0x0)
+    end
   end
 
 

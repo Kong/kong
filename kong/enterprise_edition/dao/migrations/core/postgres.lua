@@ -427,6 +427,22 @@ return {
         negative boolean NOT NULL,
         PRIMARY KEY(role_id, entity_id)
       );
+
+      CREATE TABLE IF NOT EXISTS role_endpoints(
+        id uuid PRIMARY KEY,
+        role_id uuid,
+        workspace text NOT NULL,
+        endpoint text NOT NULL,
+        permissions smallint NOT NULL,
+        negative boolean NOT NULL
+      );
+
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('role_endpoints_role_id_idx')) IS NULL THEN
+          CREATE INDEX role_endpoints_role_id_idx on role_endpoints(role_id);
+        END IF;
+      END$$;
     ]],
     down = [[
       DROP TABLE IF EXISTS workspaces;
