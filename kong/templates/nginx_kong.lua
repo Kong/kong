@@ -51,8 +51,6 @@ init_worker_by_lua_block {
     kong.init_worker()
 }
 
-proxy_next_upstream_tries 999;
-
 upstream kong_upstream {
     server 0.0.0.1;
     balancer_by_lua_block {
