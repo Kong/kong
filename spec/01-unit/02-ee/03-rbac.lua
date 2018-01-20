@@ -243,16 +243,16 @@ describe("(#" .. kong_conf.database .. ")", function()
         }))
       end)
 
+      teardown(function()
+        dao:truncate_tables()
+      end)
+
       it("returns a map given a role", function()
         local map = rbac.resolve_role_entity_permissions({
           { id = role_id },
         })
 
         assert.equals(0x1, map[entity_id])
-      end)
-
-      teardown(function()
-        dao:truncate_tables()
       end)
 
       describe("prioritizes explicit negative permissions", function()
@@ -439,6 +439,172 @@ describe("(#" .. kong_conf.database .. ")", function()
 
         assert.equals(0x18, map.foo.bar)
         assert.equals(0x5, map.baz.bar)
+      end)
+    end)
+  end)
+
+  describe(".authorize_request_endpoint", function()
+    describe("authorizes a request", function()
+      describe("workspace/endpoint", function()
+        it("(positive)", function()
+          assert.equals(true, rbac.authorize_request_endpoint(
+            { foo = { bar = 0x1 } },
+            "foo",
+            "bar",
+            rbac.actions_bitfields.read
+          ))
+        end)
+
+        it("(negative override)", function()
+          assert.equals(false, rbac.authorize_request_endpoint(
+            { foo = { bar = 0x11 } },
+            "foo",
+            "bar",
+            rbac.actions_bitfields.read
+          ))
+        end)
+        it("(empty)", function()
+          assert.equals(false, rbac.authorize_request_endpoint(
+            { foo = { baz = 0x1 } },
+            "foo",
+            "bar",
+            rbac.actions_bitfields.read
+          ))
+        end)
+      end)
+      describe("workspace/*", function()
+        it("(positive)", function()
+          assert.equals(true, rbac.authorize_request_endpoint(
+            { foo = { ["*"] = 0x1 } },
+            "foo",
+            "bar",
+            rbac.actions_bitfields.read
+          ))
+        end)
+        it("(negative)", function()
+          assert.equals(false, rbac.authorize_request_endpoint(
+            { foo = { ["*"] = 0x11 } },
+            "foo",
+            "bar",
+            rbac.actions_bitfields.read
+          ))
+        end)
+        it("does not override specific endpoint", function()
+          assert.equals(true, rbac.authorize_request_endpoint(
+            { foo = { ["*"] = 0x11, bar = 0x1 } },
+            "foo",
+            "bar",
+            rbac.actions_bitfields.read
+          ))
+        end)
+      end)
+      describe("*/endpoint", function()
+        it("(positive)", function()
+          assert.equals(true, rbac.authorize_request_endpoint(
+            { ["*"] = { bar = 0x1 } },
+            "foo",
+            "bar",
+            rbac.actions_bitfields.read
+          ))
+        end)
+        it("(negative)", function()
+          assert.equals(false, rbac.authorize_request_endpoint(
+            { ["*"] = { bar = 0x11 } },
+            "foo",
+            "bar",
+            rbac.actions_bitfields.read
+          ))
+        end)
+        it("(empty(", function()
+          assert.equals(true, rbac.authorize_request_endpoint(
+            { ["*"] = { bar = 0x1 } },
+            "baz",
+            "bar",
+            rbac.actions_bitfields.read
+          ))
+        end)
+        it("does not override specific workspace", function()
+          assert.equals(true, rbac.authorize_request_endpoint(
+            { foo = { ["*"] = 0x11, bar = 0x1 }, ["*"] = { bar = 0x1 } },
+            "foo",
+            "bar",
+            rbac.actions_bitfields.read
+          ))
+          assert.equals(false, rbac.authorize_request_endpoint(
+            { foo = { ["*"] = 0x11, bar = 0x1 }, ["*"] = { bar = 0x1 } },
+            "foo",
+            "baz",
+            rbac.actions_bitfields.read
+          ))
+        end)
+      end)
+      describe("*/*", function()
+        it("(positive)", function()
+          assert.equals(true, rbac.authorize_request_endpoint(
+            { ["*"] = { ["*"] = 0x1 } },
+            "foo",
+            "bar",
+            rbac.actions_bitfields.read
+          ))
+        end)
+        it("(negative)", function()
+          assert.equals(false, rbac.authorize_request_endpoint(
+            { ["*"] = { ["*"] = 0x11 } },
+            "foo",
+            "bar",
+            rbac.actions_bitfields.read
+          ))
+        end)
+        it("does not override a specific workspace/endpoint", function()
+          assert.equals(false, rbac.authorize_request_endpoint(
+            { ["*"] = { ["*"] = 0x1 }, foo = { bar = 0x11 } },
+            "foo",
+            "bar",
+            rbac.actions_bitfields.read
+          ))
+          assert.equals(true, rbac.authorize_request_endpoint(
+            { ["*"] = { ["*"] = 0x1 }, foo = { bar = 0x11 } },
+            "baz",
+            "bar",
+            rbac.actions_bitfields.read
+          ))
+        end)
+      end)
+    end)
+    describe("treats bit vectors appropriately", function()
+      it("given multiple permissive bits", function()
+        assert.equals(true, rbac.authorize_request_endpoint(
+          { foo = { bar = 0x1 } },
+          "foo",
+          "bar",
+          rbac.actions_bitfields.read
+        ))
+        assert.equals(false, rbac.authorize_request_endpoint(
+          { foo = { bar = 0x1 } },
+          "foo",
+          "bar",
+          rbac.actions_bitfields.create
+        ))
+        assert.equals(true, rbac.authorize_request_endpoint(
+          { foo = { bar = 0x3 } },
+          "foo",
+          "bar",
+          rbac.actions_bitfields.create
+        ))
+      end)
+      it("given permissive and denial bits", function()
+        assert.equals(false, rbac.authorize_request_endpoint(
+          { foo = { bar = 0x12 } },
+          "foo",
+          "bar",
+          rbac.actions_bitfields.read
+        ))
+        assert.equals(true, rbac.authorize_request_endpoint(
+          { foo = { bar = 0x12 } },
+          "foo",
+          "bar",
+          rbac.actions_bitfields.create
+        ))
       end)
     end)
   end)

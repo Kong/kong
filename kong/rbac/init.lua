@@ -10,6 +10,7 @@ local bxor   = bit.bxor
 local bor    = bit.bor
 local fmt    = string.format
 local lshift = bit.lshift
+local rshift = bit.rshift
 
 
 local function log(lvl, ...)
@@ -86,6 +87,7 @@ local actions_bitfields = {
   delete = 0x08,
 }
 _M.actions_bitfields = actions_bitfields
+local actions_bitfield_size = 4
 
 
 local resource_bitfields = {}
@@ -548,6 +550,70 @@ function _M.resolve_role_endpoint_permissions(roles)
 
 
   return pmap
+end
+
+
+function _M.authorize_request_endpoint(map, workspace, endpoint, action)
+  -- look for
+  -- 1. explicit allow (and _no_ explicit) deny in the specific ws/endpoint
+  -- 2. "" in the ws/*
+  -- 3. "" in the */endpoint
+  -- 4. "" in the */*
+  --
+  -- explit allow means a match on the lower bit set
+  -- and no match on the upper bits. if theres no match on the lower set,
+  -- no need to check the upper bit set
+  if map[workspace] then
+    if map[workspace][endpoint] then
+      local p = map[workspace][endpoint] or 0x0
+
+      if band(p, action) == action then
+        if band(rshift(p, actions_bitfield_size), action) == action then
+          return false
+        else
+          return true
+        end
+      end
+
+    elseif map[workspace]["*"] then
+      local p = map[workspace]["*"] or 0x0
+
+      if band(p, action) == action then
+        if band(rshift(p, actions_bitfield_size), action) == action then
+          return false
+        else
+          return true
+        end
+      end
+    end
+  end
+
+  if map["*"] then
+    if map["*"][endpoint] then
+      local p = map["*"][endpoint] or 0x0
+
+      if band(p, action) == action then
+        if band(rshift(p, actions_bitfield_size), action) == action then
+          return false
+        else
+          return true
+        end
+      end
+
+    elseif map["*"]["*"] then
+      local p = map["*"]["*"] or 0x0
+
+      if band(p, action) == action then
+        if band(rshift(p, actions_bitfield_size), action) == action then
+          return false
+        else
+          return true
+        end
+      end
+    end
+  end
+
+  return false
 end
 
 
