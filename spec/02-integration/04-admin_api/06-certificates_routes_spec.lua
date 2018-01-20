@@ -675,6 +675,28 @@ describe("Admin API: #" .. kong_config.database, function()
       end)
     end)
 
+    describe("GET", function()
+      it("returns 404 for a random non-existing uuid", function()
+        local res  = assert(client:send {
+          method   = "GET",
+          path     = "/certificates/" .. utils.uuid(),
+        })
+
+        assert.res_status(404, res)
+      end)
+    end)
+
+    describe("GET", function()
+      it("returns 404 for a random non-existing SNI", function()
+        local res  = assert(client:send {
+          method   = "GET",
+          path     = "/certificates/doesntexist.com",
+        })
+
+        assert.res_status(404, res)
+      end)
+    end)
+
     describe("PATCH", function()
       local cert_foo
       local cert_bar
