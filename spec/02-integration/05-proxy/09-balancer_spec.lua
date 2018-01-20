@@ -4,6 +4,7 @@
 local helpers = require "spec.helpers"
 local PORT = 21000
 local utils = require "kong.tools.utils"
+local cjson = require "cjson.safe"
 
 local healthchecks_defaults = {
   active = {
@@ -297,8 +298,56 @@ local function api_send(method, path, body)
   if not res then
     return nil, err
   end
+  local res_body = res:read_body()
   api_client:close()
-  return res.status
+  return res.status, res_body
+end
+
+
+local function post_api(name, host, upstream_url, route_and_service)
+  local status, id, res_body
+  if route_and_service then
+    status, res_body = api_send("POST", "/services", {
+      name = name,
+      url = upstream_url,
+    })
+    if not status == 201 then
+      return status
+    end
+    id = cjson.decode(res_body).id
+    if type(id) ~= "string" then
+      return status
+    end
+    status = api_send("POST", "/routes", {
+      hosts = { host },
+      service = {
+        id = id
+      }
+    })
+  else
+    status, res_body = api_send("POST", "/apis", {
+      name = name,
+      hosts = host,
+      upstream_url = upstream_url,
+    })
+    id = cjson.decode(res_body).id
+  end
+  return status, id
+end
+
+
+local function patch_api(name, id, upstream_url, route_and_service)
+  if route_and_service then
+    return api_send("PATCH", "/services/" .. id, {
+      id = id,
+      url = upstream_url,
+    })
+  else
+    return api_send("PATCH", "/apis/" .. name, {
+      id = id,
+      upstream_url = upstream_url,
+    })
+  end
 end
 
 
@@ -316,6 +365,7 @@ for _, strategy in helpers.each_strategy() do
     local db
     local dao
     local bp
+    local db_update_propagation = strategy == "cassandra" and 3 or 0
 
     setup(function()
       bp, db, dao = helpers.get_db_utils(strategy)
@@ -330,8 +380,11 @@ for _, strategy in helpers.each_strategy() do
 
       before_each(function()
         helpers.stop_kong()
-        helpers.run_migrations()
-        helpers.start_kong()
+        assert(db:truncate())
+        dao:truncate_tables()
+        assert(helpers.start_kong({
+          database = strategy,
+        }))
       end)
 
       after_each(function()
@@ -346,11 +399,8 @@ for _, strategy in helpers.each_strategy() do
         assert.same(201, api_send("POST", "/upstreams/test_upstream/targets", {
           target = utils.format_host(localhost, 2112),
         }))
-        assert.same(201, api_send("POST", "/apis", {
-          name = "test_api",
-          hosts = "test_host.com",
-          upstream_url = "http://test_upstream",
-        }))
+        assert.same(201, post_api("test_api", "test_host.com",
+                                  "http://test_upstream", true))
 
         local server = http_server(10, localhost, 2112, { 1 })
 
@@ -377,11 +427,8 @@ for _, strategy in helpers.each_strategy() do
           assert.same(201, api_send("POST", "/upstreams/" .. name .. "/targets", {
             target = utils.format_host(localhost, 2000 + i),
           }))
-          assert.same(201, api_send("POST", "/apis", {
-            name = "test_api_" .. i,
-            hosts = name .. ".com",
-            upstream_url = "http://" .. name,
-          }))
+          assert.same(201, post_api("test_api_" .. i, name .. ".com",
+                                    "http://" .. name, true))
         end
 
         -- start two servers
@@ -421,7 +468,7 @@ for _, strategy in helpers.each_strategy() do
         assert.same({1, 0}, { server2_oks, server2_fails })
       end)
 
-      it("do not leave a stale healthchecker when renamed", function()
+      it("#only do not leave a stale healthchecker when renamed", function()
         local healthcheck_interval = 0.1
         -- create an upstream
         assert.same(201, api_send("POST", "/upstreams", {
@@ -443,11 +490,10 @@ for _, strategy in helpers.each_strategy() do
         assert.same(201, api_send("POST", "/upstreams/test_upstr/targets", {
           target = utils.format_host(localhost, 2000),
         }))
-        assert.same(201, api_send("POST", "/apis", {
-          name = "test_api",
-          hosts = "test_upstr.com",
-          upstream_url = "http://test_upstr",
-        }))
+        local status, id = post_api("test_api", "test_upstr.com",
+                                    "http://test_upstr", true)
+        assert.same(201, status)
+        assert.string(id)
 
         -- start server
         local server1 = http_server(10, localhost, 2000, { 1 })
@@ -476,10 +522,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- give time for healthchecker to (not!) run
         ngx.sleep(healthcheck_interval * 5)
-
-        assert.same(200, api_send("PATCH", "/apis/test_api", {
-          upstream_url = "http://test_upstr_2",
-        }))
+        assert.same(200, patch_api("test_api", id, "http://test_upstr_2", true))
 
         -- a single request to upstream just to make server shutdown
         client_requests(1, { ["Host"] = "test_upstr.com" })
@@ -501,7 +544,6 @@ for _, strategy in helpers.each_strategy() do
       before_each(function()
         assert(db:truncate())
         dao:truncate_tables()
-        helpers.run_migrations(dao)
 
         local service = assert(bp.services:insert {
           name     = "balancer.test",
@@ -535,7 +577,9 @@ for _, strategy in helpers.each_strategy() do
           upstream_id = upstream.id,
         })
 
-        helpers.start_kong()
+        assert(helpers.start_kong({
+          database = strategy,
+        }))
       end)
 
       after_each(function()
@@ -738,7 +782,7 @@ for _, strategy in helpers.each_strategy() do
           direct_request(localhost, PORT + 1, "/unhealthy")
 
           -- Give time for healthchecker to detect
-          ngx.sleep((2 + nfails) * healthcheck_interval)
+          ngx.sleep((2 + nfails) * healthcheck_interval + db_update_propagation)
 
           -- Phase 3: server1 takes all requests
           do
@@ -810,7 +854,7 @@ for _, strategy in helpers.each_strategy() do
           -- server2 goes unhealthy
           direct_request(localhost, PORT + 1, "/unhealthy")
           -- Give time for healthchecker to detect
-          ngx.sleep((2 + nchecks) * healthcheck_interval)
+          ngx.sleep((2 + nchecks) * healthcheck_interval + db_update_propagation)
 
           -- 2) server1 takes all requests
           do
@@ -822,7 +866,7 @@ for _, strategy in helpers.each_strategy() do
           -- server2 goes healthy again
           direct_request(localhost, PORT + 1, "/healthy")
           -- Give time for healthchecker to detect
-          ngx.sleep((2 + nchecks) * healthcheck_interval)
+          ngx.sleep((2 + nchecks) * healthcheck_interval + db_update_propagation)
 
           -- 3) server1 and server2 take requests again
           do
@@ -1005,7 +1049,6 @@ for _, strategy in helpers.each_strategy() do
       before_each(function()
         assert(db:truncate())
         dao:truncate_tables()
-        helpers.run_migrations(dao)
 
         local service = bp.services:insert {
           name     = "balancer.test",
