@@ -1,4 +1,4 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 local cjson = require "cjson"
 
 local openssl_hmac = require "openssl.hmac"
@@ -33,7 +33,7 @@ describe("Plugin: hmac-auth (invalidations)", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
     }))
     client_proxy = helpers.proxy_client()
     client_admin = helpers.admin_client()

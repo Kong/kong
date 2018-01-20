@@ -1,4 +1,4 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 local cjson = require "cjson"
 
 describe("Admin API /cache", function()
@@ -19,7 +19,7 @@ describe("Admin API /cache", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
     }))
     proxy_client = helpers.proxy_client()
     admin_client = helpers.admin_client()

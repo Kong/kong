@@ -1,4 +1,4 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 local cjson = require "cjson"
 local meta = require "kong.meta"
 local utils = require "kong.tools.utils"
@@ -82,7 +82,7 @@ describe("Plugin: basic-auth (access)", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
     }))
     client = helpers.proxy_client()
   end)
@@ -406,7 +406,7 @@ describe("Plugin: basic-auth (access)", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
     }))
     client = helpers.proxy_client()
   end)

@@ -1,4 +1,4 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 
 describe("Plugins triggering", function()
   local client
@@ -101,7 +101,7 @@ describe("Plugins triggering", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
     }))
     client = helpers.proxy_client()
   end)
@@ -239,7 +239,7 @@ describe("Plugins triggering", function()
 
 
       assert(helpers.start_kong {
-        nginx_conf = "spec/fixtures/custom_nginx.template",
+        nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
       })
 
       client = helpers.proxy_client()
@@ -412,7 +412,7 @@ describe("Plugins triggering", function()
       })
 
       assert(helpers.start_kong {
-        nginx_conf        = "spec/fixtures/custom_nginx.template",
+        nginx_conf        = "spec-old-api/fixtures/custom_nginx.template",
         anonymous_reports = true,
       })
       client = helpers.proxy_client()

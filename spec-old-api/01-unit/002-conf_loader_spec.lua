@@ -1,5 +1,5 @@
 local conf_loader = require "kong.conf_loader"
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 
 describe("Configuration loader", function()
   it("loads the defaults", function()
@@ -102,18 +102,18 @@ describe("Configuration loader", function()
     assert.equal("/usr/local/kong/ssl/admin-kong-default.csr", conf.admin_ssl_cert_csr_default)
   end)
   it("strips comments ending settings", function()
-    local conf = assert(conf_loader("spec/fixtures/to-strip.conf"))
+    local conf = assert(conf_loader("spec-old-api/fixtures/to-strip.conf"))
     assert.equal("cassandra", conf.database)
     assert.equal("debug", conf.log_level)
   end)
   it("overcomes penlight's list_delim option", function()
-    local conf = assert(conf_loader("spec/fixtures/to-strip.conf"))
+    local conf = assert(conf_loader("spec-old-api/fixtures/to-strip.conf"))
     assert.False(conf.pg_ssl)
     assert.True(conf.plugins.foobar)
     assert.True(conf.plugins["hello-world"])
   end)
   it("correctly parses values containing an octothorpe", function()
-    local conf = assert(conf_loader("spec/fixtures/to-strip.conf"))
+    local conf = assert(conf_loader("spec-old-api/fixtures/to-strip.conf"))
     assert.equal("test#123", conf.pg_password)
   end)
 
@@ -182,7 +182,7 @@ describe("Configuration loader", function()
       assert.is_nil(getmetatable(conf.cassandra_data_centers))
     end)
     it("trims array values", function()
-      local conf = assert(conf_loader("spec/fixtures/to-strip.conf"))
+      local conf = assert(conf_loader("spec-old-api/fixtures/to-strip.conf"))
       assert.same({"dc1:2", "dc2:3", "dc3:4"}, conf.cassandra_data_centers)
     end)
     it("infer ngx_boolean", function()
@@ -340,8 +340,8 @@ describe("Configuration loader", function()
           assert.is_nil(conf)
 
           conf, err = conf_loader(nil, {
-            ssl_cert = "spec/fixtures/kong_spec.crt",
-            ssl_cert_key = "spec/fixtures/kong_spec.key"
+            ssl_cert = "spec-old-api/fixtures/kong_spec.crt",
+            ssl_cert_key = "spec-old-api/fixtures/kong_spec.key"
           })
           assert.is_nil(err)
           assert.is_table(conf)
@@ -357,7 +357,7 @@ describe("Configuration loader", function()
           assert.is_nil(conf)
 
           conf, _, errors = conf_loader(nil, {
-            ssl_cert = "spec/fixtures/kong_spec.crt",
+            ssl_cert = "spec-old-api/fixtures/kong_spec.crt",
             ssl_cert_key = "/path/cert_key.pem"
           })
           assert.equal(1, #errors)
@@ -366,8 +366,8 @@ describe("Configuration loader", function()
         end)
         it("resolves SSL cert/key to absolute path", function()
           local conf, err = conf_loader(nil, {
-            ssl_cert = "spec/fixtures/kong_spec.crt",
-            ssl_cert_key = "spec/fixtures/kong_spec.key"
+            ssl_cert = "spec-old-api/fixtures/kong_spec.crt",
+            ssl_cert_key = "spec-old-api/fixtures/kong_spec.key"
           })
           assert.is_nil(err)
           assert.is_table(conf)
@@ -431,8 +431,8 @@ describe("Configuration loader", function()
 
           conf, err = conf_loader(nil, {
             client_ssl = true,
-            client_ssl_cert = "spec/fixtures/kong_spec.crt",
-            client_ssl_cert_key = "spec/fixtures/kong_spec.key"
+            client_ssl_cert = "spec-old-api/fixtures/kong_spec.crt",
+            client_ssl_cert_key = "spec-old-api/fixtures/kong_spec.key"
           })
           assert.is_nil(err)
           assert.is_table(conf)
@@ -450,7 +450,7 @@ describe("Configuration loader", function()
 
           conf, _, errors = conf_loader(nil, {
             client_ssl = true,
-            client_ssl_cert = "spec/fixtures/kong_spec.crt",
+            client_ssl_cert = "spec-old-api/fixtures/kong_spec.crt",
             client_ssl_cert_key = "/path/cert_key.pem"
           })
           assert.equal(1, #errors)
@@ -460,8 +460,8 @@ describe("Configuration loader", function()
         it("resolves SSL cert/key to absolute path", function()
           local conf, err = conf_loader(nil, {
             client_ssl = true,
-            client_ssl_cert = "spec/fixtures/kong_spec.crt",
-            client_ssl_cert_key = "spec/fixtures/kong_spec.key"
+            client_ssl_cert = "spec-old-api/fixtures/kong_spec.crt",
+            client_ssl_cert_key = "spec-old-api/fixtures/kong_spec.key"
           })
           assert.is_nil(err)
           assert.is_table(conf)
@@ -484,8 +484,8 @@ describe("Configuration loader", function()
           assert.is_nil(conf)
 
           conf, err = conf_loader(nil, {
-            admin_ssl_cert = "spec/fixtures/kong_spec.crt",
-            admin_ssl_cert_key = "spec/fixtures/kong_spec.key"
+            admin_ssl_cert = "spec-old-api/fixtures/kong_spec.crt",
+            admin_ssl_cert_key = "spec-old-api/fixtures/kong_spec.key"
           })
           assert.is_nil(err)
           assert.is_table(conf)
@@ -501,7 +501,7 @@ describe("Configuration loader", function()
           assert.is_nil(conf)
 
           conf, _, errors = conf_loader(nil, {
-            admin_ssl_cert = "spec/fixtures/kong_spec.crt",
+            admin_ssl_cert = "spec-old-api/fixtures/kong_spec.crt",
             admin_ssl_cert_key = "/path/cert_key.pem"
           })
           assert.equal(1, #errors)
@@ -510,8 +510,8 @@ describe("Configuration loader", function()
         end)
         it("resolves SSL cert/key to absolute path", function()
           local conf, err = conf_loader(nil, {
-            admin_ssl_cert = "spec/fixtures/kong_spec.crt",
-            admin_ssl_cert_key = "spec/fixtures/kong_spec.key"
+            admin_ssl_cert = "spec-old-api/fixtures/kong_spec.crt",
+            admin_ssl_cert_key = "spec-old-api/fixtures/kong_spec.key"
           })
           assert.is_nil(err)
           assert.is_table(conf)
@@ -521,7 +521,7 @@ describe("Configuration loader", function()
       end)
     end)
     it("honors path if provided even if a default file exists", function()
-      conf_loader.add_default_path("spec/fixtures/to-strip.conf")
+      conf_loader.add_default_path("spec-old-api/fixtures/to-strip.conf")
 
       finally(function()
         package.loaded["kong.conf_loader"] = nil
@@ -540,7 +540,7 @@ describe("Configuration loader", function()
       assert.equal("must specify 'cassandra_local_datacenter' when DCAwareRoundRobin policy is in use", err)
     end)
     it("honors path if provided even if a default file exists", function()
-      conf_loader.add_default_path("spec/fixtures/to-strip.conf")
+      conf_loader.add_default_path("spec-old-api/fixtures/to-strip.conf")
 
       finally(function()
         package.loaded["kong.conf_loader"] = nil
@@ -561,7 +561,7 @@ describe("Configuration loader", function()
     it("returns all errors in ret value #3", function()
       local conf, _, errors = conf_loader(nil, {
         cassandra_repl_strategy = "foo",
-        ssl_cert_key = "spec/fixtures/kong_spec.key"
+        ssl_cert_key = "spec-old-api/fixtures/kong_spec.key"
       })
       assert.equal(2, #errors)
       assert.is_nil(conf)

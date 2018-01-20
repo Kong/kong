@@ -1,4 +1,4 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local pl_stringx = require "pl.stringx"
@@ -60,7 +60,7 @@ describe("#flaky Plugin: syslog (log)", function()
     platform = pl_stringx.strip(stdout)
 
     assert(helpers.start_kong({
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
     }))
   end)
   teardown(function()

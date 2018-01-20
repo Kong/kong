@@ -1,4 +1,4 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 
 local BAD_REGEX = [[(https?:\/\/.*]]  -- illegal regex, errors out
 
@@ -20,7 +20,7 @@ describe("Plugin: bot-detection (API)", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
     }))
   end)
 

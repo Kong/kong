@@ -1,4 +1,4 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 local cjson   = require "cjson"
 
 
@@ -21,7 +21,7 @@ describe("Proxy errors Content-Type", function()
 
     assert(helpers.start_kong {
       prefix             = helpers.test_conf.prefix,
-      nginx_conf         = "spec/fixtures/custom_nginx.template",
+      nginx_conf         = "spec-old-api/fixtures/custom_nginx.template",
       error_default_type = "text/html",
     })
   end)
@@ -61,7 +61,7 @@ describe("Proxy errors Content-Type", function()
     setup(function()
       assert(helpers.kong_exec(("restart --conf %s --nginx-conf %s"):format(
                                helpers.test_conf_path,
-                               "spec/fixtures/custom_nginx.template")))
+                               "spec-old-api/fixtures/custom_nginx.template")))
     end)
 
     it("default error_default_type = text/plain", function()

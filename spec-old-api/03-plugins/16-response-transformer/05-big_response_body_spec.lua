@@ -1,4 +1,4 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 
 local function create_big_data(size)
   return {
@@ -31,7 +31,7 @@ describe("Plugin: response-transformer", function()
     })
 
     assert(helpers.start_kong({
-        nginx_conf = "spec/fixtures/custom_nginx.template",
+        nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
     }))
   end)
 

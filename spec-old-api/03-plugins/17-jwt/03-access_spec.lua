@@ -1,6 +1,6 @@
 local cjson = require "cjson"
-local helpers = require "spec.helpers"
-local fixtures = require "spec.03-plugins.17-jwt.fixtures"
+local helpers = require "spec-old-api.helpers"
+local fixtures = require "spec-old-api.03-plugins.17-jwt.fixtures"
 local jwt_encoder = require "kong.plugins.jwt.jwt_parser"
 local utils = require "kong.tools.utils"
 
@@ -96,7 +96,7 @@ describe("Plugin: jwt (access)", function()
       real_ip_header    = "X-Forwarded-For",
       real_ip_recursive = "on",
       trusted_ips       = "0.0.0.0/0, ::/0",
-      nginx_conf        = "spec/fixtures/custom_nginx.template",
+      nginx_conf        = "spec-old-api/fixtures/custom_nginx.template",
     })
     proxy_client = helpers.proxy_client()
     admin_client = helpers.admin_client()
@@ -599,7 +599,7 @@ describe("Plugin: jwt (access)", function()
     jwt_token   = "Bearer " .. jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
 
     assert(helpers.start_kong({
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
     }))
     client = helpers.proxy_client()
   end)

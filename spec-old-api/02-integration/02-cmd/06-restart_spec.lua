@@ -1,4 +1,4 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 
 describe("kong restart", function()
   setup(function()
@@ -50,7 +50,7 @@ describe("kong restart", function()
     ngx.sleep(2)
 
     assert(helpers.kong_exec("restart --prefix " .. helpers.test_conf.prefix
-           .. " --nginx-conf spec/fixtures/custom_nginx.template", env))
+           .. " --nginx-conf spec-old-api/fixtures/custom_nginx.template", env))
     ngx.sleep(2)
 
     -- new server

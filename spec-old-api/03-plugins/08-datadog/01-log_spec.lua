@@ -1,4 +1,4 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 local threads = require "llthreads2.ex"
 local pl_file = require "pl.file"
 
@@ -111,7 +111,7 @@ describe("Plugin: datadog (log)", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
     }))
     client = helpers.proxy_client()
   end)

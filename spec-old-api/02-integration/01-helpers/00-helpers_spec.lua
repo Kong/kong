@@ -1,4 +1,4 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 local cjson = require "cjson"
 
 describe("helpers: assertions and modifiers", function()
@@ -14,7 +14,7 @@ describe("helpers: assertions and modifiers", function()
 
     helpers.prepare_prefix()
     assert(helpers.start_kong({
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
     }))
   end)
   teardown(function()

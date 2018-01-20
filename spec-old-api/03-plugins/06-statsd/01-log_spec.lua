@@ -1,4 +1,4 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 local UDP_PORT = 20000
 
 describe("Plugin: statsd (log)", function()
@@ -269,7 +269,7 @@ describe("Plugin: statsd (log)", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
     }))
     client = helpers.proxy_client()
   end)

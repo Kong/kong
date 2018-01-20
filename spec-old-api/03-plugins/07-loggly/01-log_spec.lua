@@ -1,4 +1,4 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 local cjson = require "cjson"
 
 local UDP_PORT = 20000
@@ -76,7 +76,7 @@ describe("Plugin: loggly (log)", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
     }))
   end)
   teardown(function()

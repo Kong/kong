@@ -1,4 +1,4 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 
 local HELLOWORLD = "HelloWorld"             -- just a test value
 local FACEBOOK = "facebookexternalhit/1.1"  -- matches a known bot in `rules.lua`
@@ -48,7 +48,7 @@ describe("Plugin: bot-detection (access)", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
     }))
   end)
 
@@ -170,7 +170,7 @@ describe("Plugin: bot-detection configured global (access)", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
     }))
   end)
 

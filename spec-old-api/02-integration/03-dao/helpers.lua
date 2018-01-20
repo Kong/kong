@@ -1,4 +1,4 @@
-local spec_helpers = require "spec.helpers"
+local spec_helpers = require "spec-old-api.helpers"
 local conf_loader = require "kong.conf_loader"
 
 local DATABASES = {"postgres", "cassandra"}

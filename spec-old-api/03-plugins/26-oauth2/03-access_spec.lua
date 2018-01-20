@@ -1,8 +1,8 @@
 local cjson = require "cjson"
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 local utils = require "kong.tools.utils"
 local fmt = string.format
-local dao_helpers = require "spec.02-integration.03-dao.helpers"
+local dao_helpers = require "spec-old-api.02-integration.03-dao.helpers"
 
 local function provision_code(host, extra_headers, client_id)
   local request_client = helpers.proxy_ssl_client()
@@ -352,7 +352,7 @@ describe("Plugin: oauth2 (access)", function()
         })
     assert(helpers.start_kong({
       trusted_ips = "127.0.0.1",
-      nginx_conf  = "spec/fixtures/custom_nginx.template",
+      nginx_conf  = "spec-old-api/fixtures/custom_nginx.template",
     }))
     proxy_client    = helpers.proxy_client()
     proxy_ssl_client = helpers.proxy_ssl_client()
@@ -2418,7 +2418,7 @@ describe("Plugin: oauth2 (access)", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
     }))
     client = helpers.proxy_client()
   end)

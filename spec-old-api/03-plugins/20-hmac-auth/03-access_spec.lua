@@ -1,6 +1,6 @@
 local cjson = require "cjson"
 local openssl_hmac = require "openssl.hmac"
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 local utils = require "kong.tools.utils"
 local resty_sha256 = require "resty.sha256"
 
@@ -119,7 +119,7 @@ describe("Plugin: hmac-auth (access)", function()
       real_ip_header    = "X-Forwarded-For",
       real_ip_recursive = "on",
       trusted_ips       = "0.0.0.0/0, ::/0",
-      nginx_conf        = "spec/fixtures/custom_nginx.template",
+      nginx_conf        = "spec-old-api/fixtures/custom_nginx.template",
     })
     client = helpers.proxy_client()
   end)
@@ -1263,7 +1263,7 @@ describe("Plugin: hmac-auth (access)", function()
       .. [[headers="date",signature="]] .. encodedSignature .. [["]]
 
     assert(helpers.start_kong({
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
     }))
     client = helpers.proxy_client()
   end)

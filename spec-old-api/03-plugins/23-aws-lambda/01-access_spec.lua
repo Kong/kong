@@ -1,4 +1,4 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 
 describe("Plugin: AWS Lambda (access)", function()
   local client, api_client
@@ -200,7 +200,7 @@ describe("Plugin: AWS Lambda (access)", function()
     })
 
     assert(helpers.start_kong{
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
     })
   end)
 

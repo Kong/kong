@@ -1,4 +1,4 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 local conf_loader = require "kong.conf_loader"
 local prefix_handler = require "kong.cmd.utils.prefix_handler"
 
@@ -10,11 +10,11 @@ describe("NGINX conf compiler", function()
     local conf = assert(conf_loader(helpers.test_conf_path, {
       prefix = "ssl_tmp",
       ssl = true,
-      ssl_cert = "spec/fixtures/kong_spec.crt",
-      ssl_cert_key = "spec/fixtures/kong_spec.key",
+      ssl_cert = "spec-old-api/fixtures/kong_spec.crt",
+      ssl_cert_key = "spec-old-api/fixtures/kong_spec.key",
       admin_ssl = true,
-      admin_ssl_cert = "spec/fixtures/kong_spec.crt",
-      admin_ssl_cert_key = "spec/fixtures/kong_spec.key",
+      admin_ssl_cert = "spec-old-api/fixtures/kong_spec.crt",
+      admin_ssl_cert_key = "spec-old-api/fixtures/kong_spec.key",
     }))
     before_each(function()
       helpers.dir.makepath("ssl_tmp")
@@ -128,20 +128,20 @@ describe("NGINX conf compiler", function()
       it("on", function()
         local conf = assert(conf_loader(helpers.test_conf_path, {
           client_ssl = true,
-          client_ssl_cert = "spec/fixtures/kong_spec.crt",
-          client_ssl_cert_key = "spec/fixtures/kong_spec.key",
+          client_ssl_cert = "spec-old-api/fixtures/kong_spec.crt",
+          client_ssl_cert_key = "spec-old-api/fixtures/kong_spec.key",
         }))
         local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
-        assert.matches("proxy_ssl_certificate.*spec/fixtures/kong_spec.crt", kong_nginx_conf)
-        assert.matches("proxy_ssl_certificate_key.*spec/fixtures/kong_spec.key", kong_nginx_conf)
+        assert.matches("proxy_ssl_certificate.*spec-old-api/fixtures/kong_spec.crt", kong_nginx_conf)
+        assert.matches("proxy_ssl_certificate_key.*spec-old-api/fixtures/kong_spec.key", kong_nginx_conf)
       end)
       it("off", function()
         local conf = assert(conf_loader(helpers.test_conf_path, {
           client_ssl = false,
         }))
         local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
-        assert.not_matches("proxy_ssl_certificate.*spec/fixtures/kong_spec.crt", kong_nginx_conf)
-        assert.not_matches("proxy_ssl_certificate_key.*spec/fixtures/kong_spec.key", kong_nginx_conf)
+        assert.not_matches("proxy_ssl_certificate.*spec-old-api/fixtures/kong_spec.crt", kong_nginx_conf)
+        assert.not_matches("proxy_ssl_certificate_key.*spec-old-api/fixtures/kong_spec.key", kong_nginx_conf)
       end)
     end)
     it("does not include lua_ssl_trusted_certificate/lua_ssl_verify_depth by default", function()
@@ -422,11 +422,11 @@ describe("NGINX conf compiler", function()
         local conf = conf_loader(nil, {
           prefix = tmp_config.prefix,
           ssl = true,
-          ssl_cert = "spec/fixtures/kong_spec.crt",
-          ssl_cert_key = "spec/fixtures/kong_spec.key",
+          ssl_cert = "spec-old-api/fixtures/kong_spec.crt",
+          ssl_cert_key = "spec-old-api/fixtures/kong_spec.key",
           admin_ssl = true,
-          admin_ssl_cert = "spec/fixtures/kong_spec.crt",
-          admin_ssl_cert_key = "spec/fixtures/kong_spec.key",
+          admin_ssl_cert = "spec-old-api/fixtures/kong_spec.crt",
+          admin_ssl_cert_key = "spec-old-api/fixtures/kong_spec.key",
         })
 
         assert(prefix_handler.prepare_prefix(conf))
@@ -449,7 +449,7 @@ describe("NGINX conf compiler", function()
     end)
 
     describe("custom template", function()
-      local templ_fixture = "spec/fixtures/custom_nginx.template"
+      local templ_fixture = "spec-old-api/fixtures/custom_nginx.template"
 
       it("accepts a custom NGINX conf template", function()
         assert(prefix_handler.prepare_prefix(tmp_config, templ_fixture))
@@ -461,9 +461,9 @@ describe("NGINX conf compiler", function()
         assert.matches("listen 0.0.0.0:9000;", contents, nil, true)
       end)
       it("errors on non-existing file", function()
-        local ok, err = prefix_handler.prepare_prefix(tmp_config, "spec/fixtures/inexistent.template")
+        local ok, err = prefix_handler.prepare_prefix(tmp_config, "spec-old-api/fixtures/inexistent.template")
         assert.is_nil(ok)
-        assert.equal("no such file: spec/fixtures/inexistent.template", err)
+        assert.equal("no such file: spec-old-api/fixtures/inexistent.template", err)
       end)
     end)
   end)

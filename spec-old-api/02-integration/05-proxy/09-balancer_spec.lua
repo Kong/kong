@@ -1,8 +1,8 @@
 -- these tests only apply to the ring-balancer
 -- for dns-record balancing see the `dns_spec` files
 
-local helpers = require "spec.helpers"
-local dao_helpers = require "spec.02-integration.03-dao.helpers"
+local helpers = require "spec-old-api.helpers"
+local dao_helpers = require "spec-old-api.02-integration.03-dao.helpers"
 local PORT = 21000
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"

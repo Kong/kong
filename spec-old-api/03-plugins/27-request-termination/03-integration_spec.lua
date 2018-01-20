@@ -1,4 +1,4 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 
 describe("Plugin: request-termination (integration)", function()
   local client, admin_client
@@ -25,7 +25,7 @@ describe("Plugin: request-termination (integration)", function()
 
 
     assert(helpers.start_kong({
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
     }))
     client = helpers.proxy_client()
     admin_client = helpers.admin_client()

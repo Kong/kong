@@ -1,4 +1,4 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 
 describe("<dao>:cache_key()", function()
   describe("generates unique cache keys for core entities", function()

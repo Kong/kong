@@ -1,7 +1,7 @@
 local cjson        = require "cjson"
-local helpers      = require "spec.helpers"
-local dao_helpers  = require "spec.02-integration.03-dao.helpers"
-local ssl_fixtures = require "spec.fixtures.ssl"
+local helpers      = require "spec-old-api.helpers"
+local dao_helpers  = require "spec-old-api.02-integration.03-dao.helpers"
+local ssl_fixtures = require "spec-old-api.fixtures.ssl"
 
 
 local POLL_INTERVAL = 0.3
@@ -38,7 +38,7 @@ describe("core entities are invalidated with db: #" .. kong_conf.database, funct
       admin_ssl             = false,
       db_update_frequency   = POLL_INTERVAL,
       db_update_propagation = db_update_propagation,
-      nginx_conf            = "spec/fixtures/custom_nginx.template",
+      nginx_conf            = "spec-old-api/fixtures/custom_nginx.template",
     })
 
     assert(helpers.start_kong {

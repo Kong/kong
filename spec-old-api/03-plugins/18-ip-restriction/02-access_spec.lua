@@ -1,4 +1,4 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 local cjson = require "cjson"
 
 describe("Plugin: ip-restriction (access)", function()
@@ -115,7 +115,7 @@ describe("Plugin: ip-restriction (access)", function()
       real_ip_header    = "X-Forwarded-For",
       real_ip_recursive = "on",
       trusted_ips       = "0.0.0.0/0, ::/0",
-      nginx_conf        = "spec/fixtures/custom_nginx.template",
+      nginx_conf        = "spec-old-api/fixtures/custom_nginx.template",
     })
     client = helpers.proxy_client()
     admin_client = helpers.admin_client()

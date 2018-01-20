@@ -251,7 +251,7 @@ http {
 
         location = / {
             content_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
+                local mu = require "spec-old-api.fixtures.mock_upstream"
                 return mu.send_default_json_response({
                     valid_routes = {
                         ["/ws"]                         = "Websocket echo server",
@@ -271,52 +271,52 @@ http {
 
         location = /ws {
             content_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
+                local mu = require "spec-old-api.fixtures.mock_upstream"
                 return mu.serve_web_sockets()
             }
         }
 
         location /get {
             access_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
+                local mu = require "spec-old-api.fixtures.mock_upstream"
                 return mu.filter_access_by_method("GET")
             }
             content_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
+                local mu = require "spec-old-api.fixtures.mock_upstream"
                 return mu.send_default_json_response()
             }
         }
 
         location /post {
             access_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
+                local mu = require "spec-old-api.fixtures.mock_upstream"
                 return mu.filter_access_by_method("POST")
             }
             content_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
+                local mu = require "spec-old-api.fixtures.mock_upstream"
                 return mu.send_default_json_response()
             }
         }
 
         location = /response-headers {
             access_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
+                local mu = require "spec-old-api.fixtures.mock_upstream"
                 return mu.filter_access_by_method("GET")
             }
             content_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
+                local mu = require "spec-old-api.fixtures.mock_upstream"
                 return mu.send_default_json_response({}, ngx.req.get_uri_args())
             }
         }
 
         location ~ "^/basic-auth/(?<username>[a-zA-Z0-9_]+)/(?<password>.+)$" {
             access_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
+                local mu = require "spec-old-api.fixtures.mock_upstream"
                 return mu.filter_access_by_basic_auth(ngx.var.username,
                                                       ngx.var.password)
             }
             content_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
+                local mu = require "spec-old-api.fixtures.mock_upstream"
                 return mu.send_default_json_response({
                     authenticated = true,
                     user          = ngx.var.username,
@@ -326,14 +326,14 @@ http {
 
         location ~ "^/(request|anything)" {
             content_by_lua_block {
-                local mu = require "spec.fixtures.mock_upstream"
+                local mu = require "spec-old-api.fixtures.mock_upstream"
                 return mu.send_default_json_response()
             }
         }
 
         location ~ "^/delay/(?<delay_seconds>\d{1,3})$" {
             content_by_lua_block {
-                local mu            = require "spec.fixtures.mock_upstream"
+                local mu            = require "spec-old-api.fixtures.mock_upstream"
                 local delay_seconds = tonumber(ngx.var.delay_seconds)
                 if not delay_seconds then
                     return ngx.exit(ngx.HTTP_NOT_FOUND)
@@ -349,7 +349,7 @@ http {
 
         location ~ "^/status/(?<code>\d{3})$" {
             content_by_lua_block {
-                local mu   = require "spec.fixtures.mock_upstream"
+                local mu   = require "spec-old-api.fixtures.mock_upstream"
                 local code = tonumber(ngx.var.code)
                 if not code then
                     return ngx.exit(ngx.HTTP_NOT_FOUND)
@@ -363,7 +363,7 @@ http {
 
         location ~ "^/stream/(?<num>\d+)$" {
             content_by_lua_block {
-                local mu  = require "spec.fixtures.mock_upstream"
+                local mu  = require "spec-old-api.fixtures.mock_upstream"
                 local rep = tonumber(ngx.var.num)
                 local res = require("cjson").encode(mu.get_default_json_response())
 

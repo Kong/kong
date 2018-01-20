@@ -1,5 +1,5 @@
-local ssl_fixtures = require "spec.fixtures.ssl"
-local helpers = require "spec.helpers"
+local ssl_fixtures = require "spec-old-api.fixtures.ssl"
+local helpers = require "spec-old-api.helpers"
 local cjson = require "cjson"
 
 
@@ -66,7 +66,7 @@ describe("SSL", function()
     })
 
     assert(helpers.start_kong {
-      nginx_conf  = "spec/fixtures/custom_nginx.template",
+      nginx_conf  = "spec-old-api/fixtures/custom_nginx.template",
       trusted_ips = "127.0.0.1",
     })
 
@@ -217,7 +217,7 @@ describe("SSL", function()
 
     before_each(function()
       assert(helpers.kong_exec("restart --conf " .. helpers.test_conf_path ..
-                               " --nginx-conf spec/fixtures/custom_nginx.template"))
+                               " --nginx-conf spec-old-api/fixtures/custom_nginx.template"))
 
       https_client_sni = helpers.proxy_ssl_client()
     end)

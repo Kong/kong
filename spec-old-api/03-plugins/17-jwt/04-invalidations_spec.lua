@@ -1,4 +1,4 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 local cjson = require "cjson"
 local jwt_encoder = require "kong.plugins.jwt.jwt_parser"
 
@@ -30,7 +30,7 @@ describe("Plugin: jwt (invalidations)", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
     }))
     admin_client = helpers.admin_client()
     proxy_client = helpers.proxy_client()

@@ -1,4 +1,4 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 
 describe("OpenResty phases", function()
   describe("rewrite_by_lua", function()
@@ -20,7 +20,7 @@ describe("OpenResty phases", function()
         })
 
         assert(helpers.start_kong({
-          nginx_conf = "spec/fixtures/custom_nginx.template",
+          nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
         }))
 
         api_client   = helpers.admin_client()
@@ -65,7 +65,7 @@ describe("OpenResty phases", function()
         })
 
         assert(helpers.start_kong({
-          nginx_conf = "spec/fixtures/custom_nginx.template"
+          nginx_conf = "spec-old-api/fixtures/custom_nginx.template"
         }))
 
         api_client = helpers.admin_client()
@@ -120,7 +120,7 @@ describe("OpenResty phases", function()
         })
 
         assert(helpers.start_kong({
-          nginx_conf = "spec/fixtures/custom_nginx.template",
+          nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
         }))
 
         api_client = helpers.admin_client()

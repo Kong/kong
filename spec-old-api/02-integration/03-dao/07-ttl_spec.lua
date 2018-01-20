@@ -1,5 +1,5 @@
-local helpers = require "spec.02-integration.03-dao.helpers"
-local spec_helpers = require "spec.helpers"
+local helpers = require "spec-old-api.02-integration.03-dao.helpers"
+local spec_helpers = require "spec-old-api.helpers"
 local Factory = require "kong.dao.factory"
 
 helpers.for_each_dao(function(kong_config)

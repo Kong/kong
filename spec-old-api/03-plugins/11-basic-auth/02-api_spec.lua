@@ -1,5 +1,5 @@
 local cjson = require "cjson"
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 local utils = require "kong.tools.utils"
 
 describe("Plugin: basic-auth (API)", function()

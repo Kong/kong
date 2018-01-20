@@ -1,4 +1,4 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 
 describe("Plugin: ACL (invalidations)", function()
   local admin_client, proxy_client
@@ -71,7 +71,7 @@ describe("Plugin: ACL (invalidations)", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
     }))
     proxy_client = helpers.proxy_client()
     admin_client = helpers.admin_client()

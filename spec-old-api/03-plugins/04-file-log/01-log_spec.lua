@@ -1,6 +1,6 @@
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local pl_stringx = require "pl.stringx"
@@ -28,7 +28,7 @@ describe("Plugin: file-log (log)", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
     }))
   end)
   teardown(function()

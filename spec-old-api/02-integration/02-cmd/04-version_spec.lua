@@ -1,5 +1,5 @@
 local pl_stringx = require "pl.stringx"
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 local meta = require "kong.meta"
 
 describe("kong version", function()

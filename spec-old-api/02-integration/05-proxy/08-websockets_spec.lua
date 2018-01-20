@@ -1,5 +1,5 @@
 local client = require "resty.websocket.client"
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 local cjson = require "cjson"
 
 describe("Websockets", function()
@@ -12,7 +12,7 @@ describe("Websockets", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
     }))
   end)
 

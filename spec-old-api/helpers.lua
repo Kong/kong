@@ -6,8 +6,8 @@
 -- @module spec.helpers
 
 local BIN_PATH = "bin/kong"
-local TEST_CONF_PATH = "spec/kong_tests.conf"
-local CUSTOM_PLUGIN_PATH = "./spec/fixtures/custom_plugins/?.lua"
+local TEST_CONF_PATH = "spec-old-api/kong_tests.conf"
+local CUSTOM_PLUGIN_PATH = "./spec-old-api/fixtures/custom_plugins/?.lua"
 local MOCK_UPSTREAM_PROTOCOL = "http"
 local MOCK_UPSTREAM_SSL_PROTOCOL = "https"
 local MOCK_UPSTREAM_HOST = "127.0.0.1"
@@ -330,8 +330,8 @@ local function tcp_server(port, opts, ...)
         local params = {
           mode = "server",
           protocol = "any",
-          key = "spec/fixtures/kong_spec.key",
-          certificate = "spec/fixtures/kong_spec.crt",
+          key = "spec-old-api/fixtures/kong_spec.key",
+          certificate = "spec-old-api/fixtures/kong_spec.crt",
         }
 
         client = ssl.wrap(client, params)
@@ -1017,7 +1017,7 @@ return {
     end
     return ok, err
   end,
-  -- Only use in CLI tests from spec/02-integration/01-cmd
+  -- Only use in CLI tests from spec-old-api/02-integration/01-cmd
   kill_all = function(prefix, timeout)
     local kill = require "kong.cmd.utils.kill"
 

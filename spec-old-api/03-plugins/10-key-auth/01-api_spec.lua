@@ -1,5 +1,5 @@
 local cjson = require "cjson"
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 local utils = require "kong.tools.utils"
 
 describe("Plugin: key-auth (API)", function()
@@ -22,7 +22,7 @@ describe("Plugin: key-auth (API)", function()
       username = "bob"
     })
     assert(helpers.start_kong({
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
     }))
     admin_client = helpers.admin_client()
   end)

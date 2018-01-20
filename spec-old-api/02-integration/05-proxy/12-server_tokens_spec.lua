@@ -1,4 +1,4 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 local constants = require "kong.constants"
 
 
@@ -16,7 +16,7 @@ local function start(config)
     }
 
     config = config or {}
-    config.nginx_conf = "spec/fixtures/custom_nginx.template"
+    config.nginx_conf = "spec-old-api/fixtures/custom_nginx.template"
 
     assert(helpers.start_kong(config))
   end
@@ -39,7 +39,7 @@ describe("Server Tokens", function()
   describe("(with default configration values)", function()
 
     setup(start {
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
     })
 
     teardown(helpers.stop_kong)
@@ -77,7 +77,7 @@ describe("Server Tokens", function()
   describe("(with server_tokens = on)", function()
 
     setup(start {
-      nginx_conf    = "spec/fixtures/custom_nginx.template",
+      nginx_conf    = "spec-old-api/fixtures/custom_nginx.template",
       server_tokens = "on",
     })
 
@@ -116,7 +116,7 @@ describe("Server Tokens", function()
   describe("(with server_tokens = off)", function()
 
     setup(start {
-      nginx_conf    = "spec/fixtures/custom_nginx.template",
+      nginx_conf    = "spec-old-api/fixtures/custom_nginx.template",
       server_tokens = "off",
     })
 
@@ -171,7 +171,7 @@ describe("Latency Tokens", function()
   describe("(with default configration values)", function()
 
     setup(start {
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
     })
 
     teardown(helpers.stop_kong)
@@ -209,7 +209,7 @@ describe("Latency Tokens", function()
   describe("(with latency_tokens = on)", function()
 
     setup(start {
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
       latency_tokens = "on",
     })
 
@@ -248,7 +248,7 @@ describe("Latency Tokens", function()
   describe("(with latency_tokens = off)", function()
 
     setup(start {
-      nginx_conf     = "spec/fixtures/custom_nginx.template",
+      nginx_conf     = "spec-old-api/fixtures/custom_nginx.template",
       latency_tokens = "off",
     })
 

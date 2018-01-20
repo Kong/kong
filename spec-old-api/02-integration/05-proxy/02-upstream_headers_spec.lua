@@ -1,4 +1,4 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 local cjson = require "cjson"
 local client
 
@@ -68,8 +68,8 @@ describe("Upstream header(s)", function()
   describe("(using the default configuration values)", function()
 
     setup(start_kong {
-        nginx_conf       = "spec/fixtures/custom_nginx.template",
-        lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua",
+        nginx_conf       = "spec-old-api/fixtures/custom_nginx.template",
+        lua_package_path = "?/init.lua;./kong/?.lua;./spec-old-api/fixtures/?.lua",
     })
 
     teardown(stop_kong)
@@ -245,8 +245,8 @@ describe("Upstream header(s)", function()
 
     setup(start_kong {
         trusted_ips      = "127.0.0.1",
-        nginx_conf       = "spec/fixtures/custom_nginx.template",
-        lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua",
+        nginx_conf       = "spec-old-api/fixtures/custom_nginx.template",
+        lua_package_path = "?/init.lua;./kong/?.lua;./spec-old-api/fixtures/?.lua",
     })
 
     teardown(stop_kong)
@@ -355,8 +355,8 @@ describe("Upstream header(s)", function()
 
     setup(start_kong {
         trusted_ips      = "10.0.0.1",
-        nginx_conf       = "spec/fixtures/custom_nginx.template",
-        lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua",
+        nginx_conf       = "spec-old-api/fixtures/custom_nginx.template",
+        lua_package_path = "?/init.lua;./kong/?.lua;./spec-old-api/fixtures/?.lua",
     })
 
     teardown(stop_kong)
@@ -465,8 +465,8 @@ describe("Upstream header(s)", function()
         real_ip_header    = "X-Forwarded-For",
         real_ip_recursive = "on",
         trusted_ips       = "127.0.0.1,172.16.0.1,192.168.0.1",
-        nginx_conf        = "spec/fixtures/custom_nginx.template",
-        lua_package_path  = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua",
+        nginx_conf        = "spec-old-api/fixtures/custom_nginx.template",
+        lua_package_path  = "?/init.lua;./kong/?.lua;./spec-old-api/fixtures/?.lua",
     })
 
     teardown(stop_kong)
@@ -526,8 +526,8 @@ describe("Upstream header(s)", function()
         real_ip_header    = "X-Forwarded-For",
         real_ip_recursive = "on",
         trusted_ips       = "10.0.0.1,172.16.0.1,192.168.0.1",
-        nginx_conf        = "spec/fixtures/custom_nginx.template",
-        lua_package_path  = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua",
+        nginx_conf        = "spec-old-api/fixtures/custom_nginx.template",
+        lua_package_path  = "?/init.lua;./kong/?.lua;./spec-old-api/fixtures/?.lua",
     })
 
     teardown(stop_kong)
@@ -589,8 +589,8 @@ describe("Upstream header(s)", function()
       real_ip_header    = "proxy_protocol",
       real_ip_recursive = "on",
       trusted_ips       = "127.0.0.1,172.16.0.1,192.168.0.1",
-      nginx_conf        = "spec/fixtures/custom_nginx.template",
-      lua_package_path  = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua",
+      nginx_conf        = "spec-old-api/fixtures/custom_nginx.template",
+      lua_package_path  = "?/init.lua;./kong/?.lua;./spec-old-api/fixtures/?.lua",
     })
 
     teardown(stop_kong)
@@ -691,8 +691,8 @@ describe("Upstream header(s)", function()
       real_ip_header    = "proxy_protocol",
       real_ip_recursive = "on",
       trusted_ips       = "10.0.0.1,172.16.0.1,192.168.0.1",
-      nginx_conf        = "spec/fixtures/custom_nginx.template",
-      lua_package_path  = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua",
+      nginx_conf        = "spec-old-api/fixtures/custom_nginx.template",
+      lua_package_path  = "?/init.lua;./kong/?.lua;./spec-old-api/fixtures/?.lua",
     })
 
     teardown(stop_kong)

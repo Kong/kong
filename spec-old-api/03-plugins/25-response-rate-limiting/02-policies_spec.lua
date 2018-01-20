@@ -1,5 +1,5 @@
 local uuid = require("kong.tools.utils").uuid
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 local policies = require "kong.plugins.response-ratelimiting.policies"
 local timestamp = require "kong.tools.timestamp"
 

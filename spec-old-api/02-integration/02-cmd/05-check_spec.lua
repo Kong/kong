@@ -1,4 +1,4 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 
 describe("kong check", function()
   it("validates a conf", function()
@@ -6,7 +6,7 @@ describe("kong check", function()
     assert.matches("configuration at .- is valid", stdout)
   end)
   it("reports invalid conf", function()
-    local _, stderr = helpers.kong_exec("check spec/fixtures/invalid.conf")
+    local _, stderr = helpers.kong_exec("check spec-old-api/fixtures/invalid.conf")
     assert.matches("[error] cassandra_repl_strategy has", stderr, nil, true)
   end)
   it("doesn't like invalid files", function()

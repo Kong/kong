@@ -1,9 +1,9 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec-old-api.helpers"
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
 
 local jwt_secrets = helpers.dao.jwt_secrets
-local fixtures = require "spec.03-plugins.17-jwt.fixtures"
+local fixtures = require "spec-old-api.03-plugins.17-jwt.fixtures"
 
 describe("Plugin: jwt (API)", function()
   local admin_client, consumer, jwt_secret
