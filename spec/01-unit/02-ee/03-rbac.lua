@@ -608,6 +608,46 @@ describe("(#" .. kong_conf.database .. ")", function()
       end)
     end)
   end)
+  describe(".authorize_request_entity", function()
+    it("returns true on bit match", function()
+      assert.equals(true, rbac.authorize_request_entity(
+        { foo = 0x1 },
+        "foo",
+        0x1
+      ))
+    end)
+
+    it("returns true when multiple bits are assigned", function()
+      for i = 1, 4 do
+        assert.equals(true, rbac.authorize_request_entity(
+          { foo = 0xf },
+          "foo",
+          (2 ^ i) - 1
+        ))
+      end
+    end)
+
+    it("returns false when no bit is unset", function()
+      assert.equals(false, rbac.authorize_request_entity(
+        { foo = 0x1 },
+        "foo",
+        0x2
+      ))
+    end)
+
+    it("returns false when no key is present", function()
+      assert.equals(false, rbac.authorize_request_entity(
+        { foo = 0x1 },
+        "bar",
+        0x1
+      ))
+      assert.equals(false, rbac.authorize_request_entity(
+        {},
+        "bar",
+        0x1
+      ))
+    end)
+  end)
 
 end)
 end)

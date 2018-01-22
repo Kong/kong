@@ -353,8 +353,8 @@ end
 _M.build_permissions_map = build_permissions_map
 
 
-local function check(map, resource, action)
-  return map[resource] and band(map[resource], action) == action or false
+local function bitfield_check(map, key, bit)
+  return map[key] and band(map[key], bit) == bit or false
 end
 
 
@@ -380,7 +380,7 @@ function _M.validate(token, route, method, dao_factory)
   local action = figure_action(method)
   local resource = route_resources[route]
 
-  return check(map, resource, action)
+  return bitfield_check(map, resource, action)
 end
 
 
@@ -510,6 +510,11 @@ function _M.resolve_role_entity_permissions(roles)
 
 
   return pmap
+end
+
+
+function _M.authorize_request_entity(map, id, action)
+  return bitfield_check(map, id, action)
 end
 
 
