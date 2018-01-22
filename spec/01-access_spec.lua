@@ -19,7 +19,7 @@ local function http_server(timeout, count, port, ...)
 
       local success = 0
       while count > 0 do
-        local client, err
+        local client, err, _
         client, err = server:accept()
         if err == "timeout" then
           if socket.gettime() > expire then
@@ -131,7 +131,7 @@ local function generate_consumers(admin_client, list, modulo)
 end
 
 describe("Plugin: canary (access)", function()
-  local proxy_client, admin_client, api1, api2
+  local proxy_client, admin_client, api1, api2, api3
 
   setup(function()
     helpers.run_migrations()
@@ -152,11 +152,25 @@ describe("Plugin: canary (access)", function()
       name         = "api-2",
       hosts        = { "canary2.com" },
       upstream_url = helpers.mock_upstream_url,
+      preserve_host = false,
     })
 
     assert(helpers.dao.plugins:insert {
       name = "key-auth",
       api_id = api2.id,
+      config = {}
+    })
+
+    api3 = assert(helpers.dao.apis:insert {
+      name         = "api-3",
+      hosts        = { "canary3.com" },
+      upstream_url = helpers.mock_upstream_url,
+      preserve_host = true,
+    })
+
+    assert(helpers.dao.plugins:insert {
+      name = "key-auth",
+      api_id = api3.id,
       config = {}
     })
 
@@ -441,7 +455,7 @@ describe("Plugin: canary (access)", function()
       local ids = generate_consumers(admin_client, {0,1,2}, 3)
       local count = {}
       ngx.sleep(2.5)
-      for n = 1, 3 do
+      for _ = 1, 3 do
         for _, apikey in pairs(ids) do
           local res = assert(proxy_client:send {
             method = "GET",
@@ -483,5 +497,45 @@ describe("Plugin: canary (access)", function()
         assert.is_equal("/requests/path2", json.vars.request_uri)
       end
     end)
+
+    it("test 'preserve_host' setting on api", function()
+      add_canary(api2.id, {
+        upstream_uri = "/requests/path2",
+        percentage = 100,  -- move everything to new upstream
+        steps = 3,
+        hash = "consumer",
+      })
+      add_canary(api3.id, {
+        upstream_uri = "/requests/path2",
+        percentage = 100,  -- move everything to new upstream
+        steps = 3,
+        hash = "consumer",
+      })
+      local ids = generate_consumers(admin_client, {0,1,2}, 3)
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/requests",
+        headers = {
+          ["Host"] = "canary2.com",   --> preserve_host == false
+          ["apikey"] = ids[1] -- any of the 3 ids will do here
+        }
+      })
+      assert.response(res).has.status(200)
+      local json = assert.response(res).has.jsonbody()
+      assert.are.equal("127.0.0.1", json.vars.host)
+
+      res = assert(proxy_client:send {
+        method = "GET",
+        path = "/requests",
+        headers = {
+          ["Host"] = "canary3.com",   --> preserve_host == true
+          ["apikey"] = ids[1] -- any of the 3 ids will do here
+        }
+      })
+      assert.response(res).has.status(200)
+      json = assert.response(res).has.jsonbody()
+      assert.are.equal("canary3.com", json.vars.host)
+    end)
+
   end)
 end)
