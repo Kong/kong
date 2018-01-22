@@ -3,9 +3,10 @@ local timestamp = require "kong.tools.timestamp"
 local redis = require "resty.redis"
 local policy_cluster = require "kong.plugins.response-ratelimiting.policies.cluster"
 local reports = require "kong.core.reports"
+
+
 local ngx_log = ngx.log
 local shm = ngx.shared.kong_cache
-
 local pairs = pairs
 local fmt = string.format
 
@@ -15,22 +16,39 @@ local NULL_UUID = "00000000-0000-0000-0000-000000000000"
 
 local function get_ids(conf)
   conf = conf or {}
-  local route_id = conf.route_id
+
+  local api_id = conf.api_id
+
+  if api_id and api_id ~= ngx.null then
+    return nil, nil, api_id
+  end
+
+  api_id = NULL_UUID
+
+  local route_id   = conf.route_id
+  local service_id = conf.service_id
+
   if not route_id or route_id == ngx.null then
     route_id = NULL_UUID
   end
-  local service_id = conf.service_id
+
   if not service_id or service_id == ngx.null then
     service_id = NULL_UUID
   end
-  return route_id, service_id
+
+  return route_id, service_id, api_id
 end
 
 
 local get_local_key = function(conf, identifier, period_date, name, period)
-  local route_id, service_id = get_ids(conf)
-  return fmt("response-ratelimit:%s:%s:%s:%s:%s:%s",
-             route_id, service_id, identifier, period_date, name, period)
+  local route_id, service_id, api_id = get_ids(conf)
+
+  if api_id == NULL_UUID then
+    return fmt("response-ratelimit:%s:%s:%s:%s:%s:%s",
+               route_id, service_id, identifier, period_date, name, period)
+  end
+
+  return fmt("response-ratelimit:%s:%s:%s:%s:%s", api_id, identifier, period_date, name, period)
 end
 
 
@@ -73,9 +91,19 @@ return {
   ["cluster"] = {
     increment = function(conf, identifier, current_timestamp, value, name)
       local db = singletons.dao.db
-      local route_id, service_id = get_ids(conf)
-      local ok, err = policy_cluster[db.name].increment(db, route_id, service_id, identifier,
+      local route_id, service_id, api_id = get_ids(conf)
+
+      local ok, err
+
+      if api_id == NULL_UUID then
+        ok, err = policy_cluster[db.name].increment(db, route_id, service_id, identifier,
+                                                    current_timestamp, value, name)
+
+      else
+        ok, err = policy_cluster[db.name].increment_api(db, api_id, identifier,
                                                         current_timestamp, value, name)
+      end
+
       if not ok then
         ngx_log(ngx.ERR, "[response-ratelimiting] cluster policy: could not increment ",
                           db.name, " counter: ", err)
@@ -85,9 +113,19 @@ return {
     end,
     usage = function(conf, identifier, current_timestamp, period, name)
       local db = singletons.dao.db
-      local route_id, service_id = get_ids(conf)
-      local rows, err = policy_cluster[db.name].find(db, route_id, service_id, identifier,
+      local route_id, service_id, api_id = get_ids(conf)
+
+      local rows, err
+
+      if api_id == NULL_UUID then
+        rows, err = policy_cluster[db.name].find(db, route_id, service_id, identifier,
+                                                 current_timestamp, period, name)
+
+      else
+        rows, err = policy_cluster[db.name].find_api(db, api_id, identifier,
                                                      current_timestamp, period, name)
+      end
+
       if err then
         return nil, err
       end

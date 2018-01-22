@@ -474,8 +474,8 @@ return {
       end
 
       local api                = match_t.api or EMPTY_T
-      local route              = match_t.route
-      local service            = match_t.service
+      local route              = match_t.route or EMPTY_T
+      local service            = match_t.service or EMPTY_T
       local upstream_url_t     = match_t.upstream_url_t
 
       local realip_remote_addr = var.realip_remote_addr
@@ -565,10 +565,7 @@ return {
       end
 
       -- TODO: this needs to be removed when references to ctx.api are removed
-      ctx.api = {
-        id = api.id or route.id
-      }
-
+      ctx.api              = api
       ctx.service          = service
       ctx.route            = route
       ctx.router_matches   = match_t.matches

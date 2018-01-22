@@ -204,7 +204,7 @@ function resty_http_proxy_mt:send(opts)
   if string.find(content_type, "application/json") and t_body_table then
     opts.body = cjson.encode(opts.body)
   elseif string.find(content_type, "www-form-urlencoded", nil, true) and t_body_table then
-    opts.body = utils.encode_args(opts.body, true) -- true: not % encoded
+    opts.body = utils.encode_args(opts.body, true, true) -- true: not % encoded
   elseif string.find(content_type, "multipart/form-data", nil, true) and t_body_table then
     local form = opts.body
     local boundary = "8fd84e9444e3946c"
@@ -232,7 +232,7 @@ function resty_http_proxy_mt:send(opts)
 
   -- build querystring (assumes none is currently in 'opts.path')
   if type(opts.query) == "table" then
-    local qs = utils.encode_args(opts.query)
+    local qs = utils.encode_args(opts.query, nil, true)
     opts.path = opts.path .. "?" .. qs
     opts.query = nil
   end

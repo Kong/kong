@@ -10,7 +10,7 @@ local Buffer = require "kong.plugins.galileo.buffer"
 local read_body = ngx.req.read_body
 local get_body_data = ngx.req.get_body_data
 
-local _alf_buffers = {} -- buffers per-route
+local _alf_buffers = {} -- buffers per-route / -api
 local _server_addr
 
 local GalileoHandler = BasePlugin:extend()
@@ -50,8 +50,8 @@ end
 function GalileoHandler:log(conf)
   GalileoHandler.super.log(self)
 
-  local ctx = ngx.ctx
-  local route_id = ctx.route.id
+
+  local route_id = conf.route_id or conf.api_id
 
   local buf = _alf_buffers[route_id]
   if not buf then
@@ -66,6 +66,8 @@ function GalileoHandler:log(conf)
   end
 
   local req_body, res_body
+
+  local ctx = ngx.ctx
   if ctx.galileo then
     req_body = ctx.galileo.req_body
     res_body = ctx.galileo.res_body

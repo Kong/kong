@@ -794,8 +794,6 @@ function _M.new(apis)
 
             local match_t     = {
               api             = matched_api.api,
-              service         = {},
-              route           = {},
               headers         = matched_api.headers,
               upstream_url_t  = upstream_url_t,
               upstream_scheme = upstream_url_t.scheme,

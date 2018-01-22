@@ -62,11 +62,12 @@ return {
       CREATE TABLE ratelimiting_metrics(
         route_id uuid,
         service_id uuid,
+        api_id uuid,
         identifier text,
         period text,
         period_date timestamp,
         value counter,
-        PRIMARY KEY ((route_id, service_id, identifier, period_date, period))
+        PRIMARY KEY ((route_id, service_id, api_id, identifier, period_date, period))
       );
     ]],
     down = nil,

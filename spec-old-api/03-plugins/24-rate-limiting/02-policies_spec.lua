@@ -8,6 +8,7 @@ describe("Plugin: rate-limiting (policies)", function()
     local cluster_policy = policies.cluster
 
     local api_id = uuid()
+    local conf = { api_id = api_id }
     local identifier = uuid()
 
     setup(function()
@@ -27,7 +28,7 @@ describe("Plugin: rate-limiting (policies)", function()
       local periods = timestamp.get_timestamps(current_timestamp)
 
       for period, period_date in pairs(periods) do
-        local metric = assert(cluster_policy.usage(nil, api_id, identifier,
+        local metric = assert(cluster_policy.usage(conf, identifier,
                                                    current_timestamp, period))
         assert.equal(0, metric)
       end
@@ -47,21 +48,21 @@ describe("Plugin: rate-limiting (policies)", function()
       }
 
       -- First increment
-      assert(cluster_policy.increment(nil, limits, api_id, identifier, current_timestamp, 1))
+      assert(cluster_policy.increment(conf, limits, identifier, current_timestamp, 1))
 
       -- First select
       for period, period_date in pairs(periods) do
-        local metric = assert(cluster_policy.usage(nil, api_id, identifier,
+        local metric = assert(cluster_policy.usage(conf, identifier,
                                                    current_timestamp, period))
         assert.equal(1, metric)
       end
 
       -- Second increment
-      assert(cluster_policy.increment(nil, limits, api_id, identifier, current_timestamp, 1))
+      assert(cluster_policy.increment(conf, limits, identifier, current_timestamp, 1))
 
       -- Second select
       for period, period_date in pairs(periods) do
-        local metric = assert(cluster_policy.usage(nil, api_id, identifier,
+        local metric = assert(cluster_policy.usage(conf, identifier,
                                                    current_timestamp, period))
         assert.equal(2, metric)
       end
@@ -71,7 +72,7 @@ describe("Plugin: rate-limiting (policies)", function()
       periods = timestamp.get_timestamps(current_timestamp)
 
       -- Third increment
-      assert(cluster_policy.increment(nil, limits, api_id, identifier, current_timestamp, 1))
+      assert(cluster_policy.increment(conf, limits, identifier, current_timestamp, 1))
 
       -- Third select with 1 second delay
       for period, period_date in pairs(periods) do
@@ -80,7 +81,7 @@ describe("Plugin: rate-limiting (policies)", function()
           expected_value = 1
         end
 
-        local metric = assert(cluster_policy.usage(nil, api_id, identifier,
+        local metric = assert(cluster_policy.usage(conf, identifier,
                                                    current_timestamp, period))
         assert.equal(expected_value, metric)
       end
