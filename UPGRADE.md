@@ -51,9 +51,22 @@ complete list of changes and new features.
 See below the breaking changes section for a detailed list of steps recommended
 to **run migrations** and upgrade from a previous version of Kong.
 
+#### Deprecation notices
+
+Starting with 0.12.0, we are announcing the deprecation of older versions
+of our supported databases:
+
+- Support for PostgreSQL 9.4 is deprecated. Users are advised to upgrade to
+  9.5+
+- Support for Cassandra 2.1 and below is deprecated. Users are advised to
+  upgrade to 2.2+
+
+Note that the above deprecated versions are still supported in this release,
+but will be dropped in subsequent ones.
+
 #### Breaking changes
 
-#### Configuration
+##### Configuration
 
 - Several updates were made to the NGINX configuration template. If you are
   using a custom template, you **must** apply those modifications. See below
@@ -100,18 +113,6 @@ to **run migrations** and upgrade from a previous version of Kong.
 
 - In logging plugins, the `request.request_uri` field has been renamed to
   `request.url`.
-
-#### Deprecations
-
-##### Databases
-
-- Starting with Kong 0.12.0, we have updated our databases support policy.
-    - Support for PostgreSQL 9.4 has been deprecated. We recommend using
-      PostgreSQL 9.5 or above.
-    - Support for Cassandra 2.0 has been deprecated. We recommend using
-      Cassandra 2.1 or above.
-    - Support for Redis versions 3.1 or below has been deprecated. We
-      recommend using Redis 3.2 or above.
 
 ---
 
