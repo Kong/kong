@@ -5,10 +5,13 @@ local helpers = require "spec.helpers"
 local worker_events = require "resty.worker.events"
 local create_unique_key = require("kong.tools.utils").uuid
 
+
 local HARD_ERROR = { err = "hard:" .. create_unique_key() }
 local SOFT_ERROR = { err = "soft:" .. create_unique_key() }
 
+
 local cb_call_count
+
 
 local function load_into_memory(value_to_return)
   cb_call_count = cb_call_count + 1
@@ -28,16 +31,16 @@ describe("dao in-memory cache", function()
 
   setup(function()
     assert(worker_events.configure {
-        shm = "kong_process_events",
-      })
+      shm = "kong_process_events",
+    })
     local dao_factory = assert(Factory.new(helpers.test_conf))
     local cluster_events = assert(kong_cluster_events.new {
-        dao = dao_factory,
-      })
+      dao = dao_factory,
+    })
     cache = kong_cache.new {
-        cluster_events = cluster_events,
-        worker_events = worker_events,
-      }
+      cluster_events = cluster_events,
+      worker_events = worker_events,
+    }
   end)
 
   before_each(function()
@@ -45,25 +48,26 @@ describe("dao in-memory cache", function()
     key = create_unique_key()
   end)
 
+
   it("handles soft callback errors", function()
     for _ = 1, 2 do
       local value, err = cache:get(key, nil, load_into_memory, SOFT_ERROR)
       assert.is_nil(value)
-      assert(err:find(SOFT_ERROR.err, 1, true), "expected `" .. tostring(err) ..
-        "` to contain `" .. SOFT_ERROR.err .. "`")
+      assert.matches(SOFT_ERROR.err, err, nil, true)
     end
     assert.equals(2, cb_call_count)
   end)
+
 
   it("handles hard callback errors", function()
     for _ = 1, 2 do
       local value, err = cache:get(key, nil, load_into_memory, HARD_ERROR)
       assert.is_nil(value)
-      assert(err:find(HARD_ERROR.err, 1, true), "expected `" .. tostring(err) ..
-        "` to contain `" .. HARD_ERROR.err .. "`")
+      assert.matches(HARD_ERROR.err, err, nil, true)
     end
     assert.equals(2, cb_call_count)
   end)
+
 
   it("handles nil as return value", function()
     for _ = 1, 2 do

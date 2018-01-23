@@ -33,14 +33,24 @@ end
 
 -- Temporary fix to convert soft callback errors into hard ones.
 -- FIXME: use upstream mlcache lib instead of local copy
-local soft_to_hard = function(cb)
-  return function(...)
-     local result, err = cb(...)
-     if result == nil and err then
-       error(err)
-     end
-     return result
-   end
+local soft_to_hard
+do
+  local s2h_cache = setmetatable({}, { __mode = "k" })
+  
+  local function create_wrapper(cb)
+    s2h_cache[cb] = function(...)
+      local result, err = cb(...)
+      if result == nil and err then
+        error(err)
+      end
+      return result
+    end
+    return s2h_cache[cb]
+  end
+
+  soft_to_hard = function(cb)
+    return s2h_cache[cb] or create_wrapper(cb)
+  end
 end
 
 
