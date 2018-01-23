@@ -31,6 +31,7 @@ local function log(lvl, ...)
   return ngx_log(lvl, "[DB cache] ", ...)
 end
 
+
 -- Temporary fix to convert soft callback errors into hard ones.
 -- FIXME: use upstream mlcache lib instead of local copy
 local soft_to_hard
@@ -40,13 +41,14 @@ do
   local function create_wrapper(cb)
     s2h_cache[cb] = function(...)
       local result, err = cb(...)
-      if result == nil and err then
+      if err then
         error(err)
       end
       return result
     end
     return s2h_cache[cb]
   end
+
 
   soft_to_hard = function(cb)
     return s2h_cache[cb] or create_wrapper(cb)
