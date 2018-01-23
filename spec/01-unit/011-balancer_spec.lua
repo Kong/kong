@@ -6,7 +6,14 @@ describe("Balancer", function()
   local uuid = require("kong.tools.utils").uuid
 
 
+  teardown(function()
+    ngx.log:revert()
+  end)
+
+
   setup(function()
+    stub(ngx, "log")
+
     balancer = require "kong.core.balancer"
     singletons = require "kong.singletons"
     singletons.worker_events = require "resty.worker.events"

@@ -1076,8 +1076,8 @@ dao_helpers.for_each_dao(function(kong_config)
         local requests = upstream2.slots * 2 -- go round the balancer twice
 
         -- setup target servers
-        local server1 = http_server(timeout, localhost, PORT + 2, { requests }, true)
-        local server2 = http_server(timeout, localhost, PORT + 3, { requests }, true)
+        local server1 = http_server(timeout, localhost, PORT + 2, { requests })
+        local server2 = http_server(timeout, localhost, PORT + 3, { requests })
 
         -- Go hit them with our test requests
         local oks = client_requests(requests, {

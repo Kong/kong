@@ -55,8 +55,11 @@ describe("reports", function()
 
   describe("retrieve_redis_version()", function()
     setup(function()
-      _G.ngx = ngx
-      _G.ngx.log = function() return end
+      stub(ngx, "log")
+    end)
+
+    teardown(function()
+      ngx.log:revert()
     end)
 
     before_each(function()
