@@ -614,4 +614,107 @@ return {
       return helpers.responses.send_HTTP_OK(rbac.route_resources)
     end,
   }
+
+  ["/rbac/roles/:name_or_id/entities"] = {
+    before = function(self, dao_factory, helpers)
+      crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      -- respond with a body like
+      --
+      -- {
+      --    "total": 2,
+      --    "data": [
+      --      {
+      --        "role_id" = <uuid>,
+      --        "entity_id" = <uuid>
+      --        "entity_type" = "entity"|"workspace",
+      --        "permissions" = [
+      --          "read",
+      --          "create",
+      --          "update",
+      --          "delete"
+      --        ],
+      --        negative" = false
+      --      },
+      --      {
+      --        "role_id" = <uuid>,
+      --        "entity_id" = <uuid>,
+      --        "entity_type = "entity"|"workspace",
+      --        "permissions = [
+      --          "read"
+      --        ]
+      --        "negative" = false
+      --      }
+      --    ]
+      -- }
+
+    end,
+
+    POST = function(self, dao_factory, helpers)
+      -- accept an input with the follow params:
+      --
+      -- entity_id: a UUID referencing an existing entity (either a workspace or a distinct DB object)
+      -- permissions: comma-separated list of actions to apply; see example above
+      -- negative: boolean indicating if this is an explicitly negative association
+      --
+      --
+      -- respond with a representation of the created association
+    end,
+  },
+
+  ["/rbac/roles/:name_or_id/entities/:entity_id"] = {
+    before = function(self, dao_factory, helpers)
+      crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      -- respond with a body like
+      --
+      -- {
+      --    "role_id" = <uuid>,
+      --    "entity_id" = <uuid>,
+      --    "entity_type" = "entity"|"workspace",
+      --    "permissions" = [
+      --      "read",
+      --    ],
+      --    "negative" = false
+      -- }
+    end,
+
+    PATCH = function(self, dao_factory, helpers)
+      -- patch a given entity; see POST /rbac/roles/:name_or_id/entities
+    end,
+
+    DELETE = function(self, dao_factory, helpers)
+      -- delete a given entity
+    end,
+  },
+
+  ["/rbac/roles/:name_or_id/entities/permissions"] = {
+    before = function(self, dao_factory, helpers)
+      crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      -- return a human-readable map of the effective permissions for all
+      -- entities to which this role has permissions. each key is a UUID
+      -- that references a distinct DB object (workspace associations are
+      -- automatically resolved in this process)
+      --
+      -- {
+      --    <uuid> = [
+      --      "read",
+      --      "update",
+      --      "delete"
+      --    ],
+      --    <uuid> = [
+      --      "read",
+      --      "delete"
+      --    ],
+      --    ...
+      -- }
+    end,
+  }
 }
