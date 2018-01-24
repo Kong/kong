@@ -423,8 +423,10 @@ return {
         role_id uuid,
         entity_id uuid,
         entity_type text NOT NULL,
-        permissions smallint NOT NULL,
+        actions smallint NOT NULL,
         negative boolean NOT NULL,
+        comment text,
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc'),
         PRIMARY KEY(role_id, entity_id)
       );
 
@@ -433,7 +435,9 @@ return {
         role_id uuid,
         workspace text NOT NULL,
         endpoint text NOT NULL,
-        permissions smallint NOT NULL,
+        actions smallint NOT NULL,
+        comment text,
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc'),
         negative boolean NOT NULL
       );
 

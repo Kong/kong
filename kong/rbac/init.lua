@@ -474,10 +474,10 @@ function _M.resolve_role_entity_permissions(roles)
         local es = _M.resolve_workspace_entities({ role_entity.entity_id })
 
         for _, child_id in ipairs(es) do
-          mask(role_entity.permissions, child_id)
+          mask(role_entity.actions, child_id)
         end
       else
-        mask(role_entity.permissions, role_entity.entity_id)
+        mask(role_entity.actions, role_entity.entity_id)
       end
     end
   end
@@ -543,7 +543,7 @@ function _M.resolve_role_endpoint_permissions(roles)
       end
 
       -- store explicit negative bits adjacent to the positive bits in the mask
-      local p = role_endpoint.permissions
+      local p = role_endpoint.actions
       if role_endpoint.negative then
         p = lshift(p, 4)
       end

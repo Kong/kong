@@ -21,7 +21,7 @@ return {
       type = "string",
       required = true,
     },
-    permissions = {
+    actions = {
       type = "number",
       required = true,
     },
@@ -29,6 +29,14 @@ return {
       type = "boolean",
       required = true,
       default = false,
+    },
+    comment = {
+      type = "string",
+    },
+    created_at = {
+      type = "timestamp",
+      immutable = true,
+      dao_insert_value = true,
     },
   },
 }

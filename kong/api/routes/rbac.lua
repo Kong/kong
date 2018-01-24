@@ -132,6 +132,25 @@ local function readable_resources(permission)
   permission.resources = resource_t
 end
 
+
+local function post_process_actions(row)
+  local actions_t = setmetatable({}, cjson.empty_array_mt)
+  local actions_t_idx = 0
+
+
+  for k, n in pairs(rbac.actions_bitfields) do
+    if band(n, row.actions) == n then
+      actions_t_idx = actions_t_idx + 1
+      actions_t[actions_t_idx] = k
+    end
+  end
+
+
+  row.actions = actions_t
+  return row
+end
+
+
 return {
   ["/rbac/users/"] = {
     GET = function(self, dao_factory)
@@ -613,82 +632,71 @@ return {
     GET = function(self, dao_factory, helpers)
       return helpers.responses.send_HTTP_OK(rbac.route_resources)
     end,
-  }
+  },
 
   ["/rbac/roles/:name_or_id/entities"] = {
     before = function(self, dao_factory, helpers)
       crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
+      self.params.role_id = self.rbac_role.id
     end,
 
     GET = function(self, dao_factory, helpers)
-      -- respond with a body like
-      --
-      -- {
-      --    "total": 2,
-      --    "data": [
-      --      {
-      --        "role_id" = <uuid>,
-      --        "entity_id" = <uuid>
-      --        "entity_type" = "entity"|"workspace",
-      --        "permissions" = [
-      --          "read",
-      --          "create",
-      --          "update",
-      --          "delete"
-      --        ],
-      --        negative" = false
-      --      },
-      --      {
-      --        "role_id" = <uuid>,
-      --        "entity_id" = <uuid>,
-      --        "entity_type = "entity"|"workspace",
-      --        "permissions = [
-      --          "read"
-      --        ]
-      --        "negative" = false
-      --      }
-      --    ]
-      -- }
-
+      return crud.paginated_set(self, dao_factory.role_entities,
+                                post_process_actions)
     end,
 
     POST = function(self, dao_factory, helpers)
-      -- accept an input with the follow params:
-      --
-      -- entity_id: a UUID referencing an existing entity (either a workspace or a distinct DB object)
-      -- permissions: comma-separated list of actions to apply; see example above
-      -- negative: boolean indicating if this is an explicitly negative association
-      --
-      --
-      -- respond with a representation of the created association
+      action_bitfield(self)
+
+      local is_workspace, err = dao_factory.workspaces:find_all({
+        id = self.params.entity_id,
+      })
+      if err then
+        helpers.yield_error(err)
+      end
+      is_workspace = is_workspace[1] and true or false
+
+      if is_workspace then
+        self.params.entity_type = "workspace"
+      else
+        self.params.entity_type = "entity"
+      end
+
+      crud.post(self.params, dao_factory.role_entities,
+                post_process_actions)
     end,
   },
 
   ["/rbac/roles/:name_or_id/entities/:entity_id"] = {
     before = function(self, dao_factory, helpers)
       crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
+      self.params.role_id = self.rbac_role.id
     end,
 
     GET = function(self, dao_factory, helpers)
-      -- respond with a body like
-      --
-      -- {
-      --    "role_id" = <uuid>,
-      --    "entity_id" = <uuid>,
-      --    "entity_type" = "entity"|"workspace",
-      --    "permissions" = [
-      --      "read",
-      --    ],
-      --    "negative" = false
-      -- }
+      crud.get(self.params, dao_factory.role_entities,
+               post_process_actions)
     end,
 
     PATCH = function(self, dao_factory, helpers)
-      -- patch a given entity; see POST /rbac/roles/:name_or_id/entities
+      if self.params.actions then
+        action_bitfield(self)
+      end
+
+      local filter = {
+        role_id = self.params.role_id,
+        entity_id = self.params.entity_id,
+      }
+
+      self.params.role_id = nil
+      self.params.entity_id = nil
+
+      crud.patch(self.params, dao_factory.role_entities, filter,
+                 post_process_actions)
     end,
 
     DELETE = function(self, dao_factory, helpers)
-      -- delete a given entity
+      crud.delete(self.params, dao_factory.role_entities)
     end,
   },
 
@@ -698,23 +706,23 @@ return {
     end,
 
     GET = function(self, dao_factory, helpers)
-      -- return a human-readable map of the effective permissions for all
-      -- entities to which this role has permissions. each key is a UUID
-      -- that references a distinct DB object (workspace associations are
-      -- automatically resolved in this process)
-      --
-      -- {
-      --    <uuid> = [
-      --      "read",
-      --      "update",
-      --      "delete"
-      --    ],
-      --    <uuid> = [
-      --      "read",
-      --      "delete"
-      --    ],
-      --    ...
-      -- }
+      local map = rbac.resolve_role_entity_permissions({ self.rbac_role })
+
+      for k, v in pairs(map) do
+        local actions_t = setmetatable({}, cjson.empty_array_mt)
+        local actions_t_idx = 0
+
+        for action, n in pairs(rbac.actions_bitfields) do
+          if band(n, v) == n then
+            actions_t_idx = actions_t_idx + 1
+            actions_t[actions_t_idx] = action
+          end
+        end
+
+        map[k] = actions_t
+      end
+
+      return helpers.responses.send_HTTP_OK(map)
     end,
   }
 }

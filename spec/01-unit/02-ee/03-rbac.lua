@@ -238,7 +238,7 @@ describe("(#" .. kong_conf.database .. ")", function()
           role_id = role_id,
           entity_id = entity_id,
           entity_type = "entity",
-          permissions = 0x1,
+          actions = 0x1,
           negative = false,
         }))
       end)
@@ -263,7 +263,7 @@ describe("(#" .. kong_conf.database .. ")", function()
             role_id = role_id2,
             entity_id = entity_id,
             entity_type = "entity",
-            permissions = 0x1,
+            actions = 0x1,
             negative = true,
           }))
         end)
@@ -330,14 +330,14 @@ describe("(#" .. kong_conf.database .. ")", function()
             role_id = roles[1],
             entity_id = workspaces[1],
             entity_type = "workspace",
-            permissions = 0x1,
+            actions = 0x1,
             negative = false,
           }))
           assert(dao.role_entities:insert({
             role_id = roles[2],
             entity_id = workspaces[2],
             entity_type = "workspace",
-            permissions = 0x1,
+            actions = 0x1,
             negative = false,
           }))
         end)
@@ -382,7 +382,7 @@ describe("(#" .. kong_conf.database .. ")", function()
           role_id = role_ids[#role_ids],
           workspace = "foo",
           endpoint = "bar",
-          permissions = 0x1,
+          actions = 0x1,
           negative = false,
         }))
 
@@ -391,14 +391,14 @@ describe("(#" .. kong_conf.database .. ")", function()
           role_id = role_ids[#role_ids],
           workspace = "foo",
           endpoint = "bar",
-          permissions = 0x8,
+          actions = 0x8,
           negative = false,
         }))
         assert(dao.role_endpoints:insert({
           role_id = role_ids[#role_ids],
           workspace = "foo",
           endpoint = "bar",
-          permissions = 0x1,
+          actions = 0x1,
           negative = true,
         }))
 
@@ -406,7 +406,7 @@ describe("(#" .. kong_conf.database .. ")", function()
           role_id = role_ids[#role_ids],
           workspace = "baz",
           endpoint = "bar",
-          permissions = 0x5,
+          actions = 0x5,
           negative = false,
         }))
       end)

@@ -5,17 +5,20 @@ return {
     role_id = {
       type = "id",
       required = true,
+      immutable = true,
     },
     entity_id = {
       type = "id",
       required = true,
+      immutable = true,
     },
     entity_type = {
       type = "string",
       required = true,
       enum = { "workspace", "entity" },
+      immutable = true,
     },
-    permissions = {
+    actions = {
       type = "number",
       required = true,
     },
@@ -23,6 +26,14 @@ return {
       type = "boolean",
       required = true,
       default = false,
+    },
+    comment = {
+      type = "string",
+    },
+    created_at = {
+      type = "timestamp",
+      immutable = true,
+      dao_insert_value = true,
     },
   },
 }

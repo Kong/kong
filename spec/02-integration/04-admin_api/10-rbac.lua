@@ -1462,6 +1462,361 @@ describe("Admin API RBAC with " .. kong_config.database, function()
       assert.equals(18, n)
     end)
   end)
+
+  describe("/rbac/roles/:name_or_id/entities with " .. kong_config.database, function()
+    describe("POST", function()
+      local e_id, w_id
+
+      setup(function()
+        dao:truncate_tables()
+
+        assert(dao.rbac_roles:insert({
+          name = "mock-role",
+        }))
+
+        -- workspace to test auto entity_type detection
+        local w = assert(dao.workspaces:insert({
+          name = "mock-workspace",
+        }))
+        w_id = w.id
+
+        e_id = utils.uuid()
+      end)
+
+      it("associates an entity with a role", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/mock-role/entities",
+          body = {
+            entity_id = e_id,
+            actions = "read",
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          },
+        })
+
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+
+        assert.equals(json.entity_id, e_id)
+        assert.is_false(json.negative)
+        assert.equals("entity", json.entity_type)
+      end)
+
+      it("detects an entity as a workspace", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/mock-role/entities",
+          body = {
+            entity_id = w_id,
+            actions = "read",
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          },
+        })
+
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+
+        assert.equals("workspace", json.entity_type)
+      end)
+
+      describe("errors", function()
+        it("when the given role does not exist", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/dne-role/entities",
+          body = {
+            entity_id = w_id,
+            actions = "read",
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          },
+        })
+
+        assert.res_status(404, res)
+        end)
+      end)
+    end)
+
+    describe("GET", function()
+      it("retrieves a list of entities associated with the role", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/rbac/roles/mock-role/entities",
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.same(2, json.total)
+        assert.same(2, #json.data)
+        assert.same({ "read" }, json.data[1].actions)
+      end)
+
+      it("limits the size of returned entities", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/rbac/roles/mock-role/entities?size=1",
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.same(2, json.total)
+        assert.same(1, #json.data)
+        assert.not_nil(json.next)
+        assert.not_nil(json.offset)
+      end)
+
+      describe("errors", function()
+        it("when the given role does not exist", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/rbac/roles/dne-role/entities",
+          })
+
+          assert.res_status(404, res)
+        end)
+      end)
+    end)
+  end)
+
+  describe("/rbac/roles/:name_or_id/entities/:entity_id with " ..
+    kong_config.database, function()
+    local e_id
+
+    setup(function()
+      e_id = assert(dao.role_entities:find_all({
+        entity_type = "entity",
+      }))[1].entity_id
+    end)
+
+    describe("GET", function()
+      it("fetches a single relation definition", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/rbac/roles/mock-role/entities/" .. e_id,
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.same(e_id, json.entity_id)
+        assert.same({ "read" }, json.actions)
+      end)
+
+      describe("errors", function()
+        it("when the given role does not exist", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/rbac/roles/dne-role/entities",
+          })
+
+          assert.res_status(404, res)
+        end)
+        it("when the given entity does not exist", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/rbac/roles/mock-role/entities/" .. utils.uuid(),
+          })
+
+          assert.res_status(404, res)
+        end)
+        it("when the given entity is not a valid UUID", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/rbac/roles/mock-role/entities/foo",
+          })
+
+          assert.res_status(400, res)
+        end)
+      end)
+    end)
+
+    describe("PATCH", function()
+      it("updates a given entity", function()
+        local res = assert(client:send {
+          method = "PATCH",
+          path = "/rbac/roles/mock-role/entities/" .. e_id,
+          body = {
+            comment = "foo",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.is_true(utils.is_valid_uuid(json.role_id))
+        assert.is_true(utils.is_valid_uuid(json.entity_id))
+        assert.same("foo", json.comment)
+        assert.same({ "read" }, json.actions)
+      end)
+
+      it("update the relationship actions and displays them properly", function()
+        local res = assert(client:send {
+          method = "PATCH",
+          path = "/rbac/roles/mock-role/entities/" .. e_id,
+          body = {
+            actions = "read,update,delete",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.same("foo", json.comment)
+
+        table.sort(json.actions)
+        assert.same({ "delete", "read", "update" }, json.actions)
+      end)
+
+      describe("errors", function()
+        it("when the given role does not exist", function()
+          local res = assert(client:send {
+            method = "PATCH",
+            path = "/rbac/roles/dne-role/entities/" .. e_id,
+            body = {
+              comment = "foo",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+
+          assert.res_status(404, res)
+        end)
+        it("when the given entity does not exist", function()
+          local res = assert(client:send {
+            method = "PATCH",
+            path = "/rbac/roles/mock-role/entities/" .. utils.uuid(),
+            body = {
+              comment = "foo",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+
+          assert.res_status(404, res)
+        end)
+        it("when the given entity is not a valid UUID", function()
+          local res = assert(client:send {
+            method = "DELETE",
+            path = "/rbac/roles/mock-role/entities/foo",
+            body = {
+              comment = "foo",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+
+          assert.res_status(400, res)
+        end)
+        it("when the body is empty", function()
+          local res = assert(client:send {
+            method = "PATCH",
+            path = "/rbac/roles/mock-role/entities/" .. e_id,
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+
+          assert.res_status(400, res)
+        end)
+      end)
+    end)
+
+    describe("DELETE", function()
+      it("removes an entity", function()
+        local res = assert(client:send {
+          method = "DELETE",
+          path = "/rbac/roles/mock-role/entities/" .. e_id,
+        })
+
+        assert.res_status(204, res)
+
+        assert.same(1, dao.role_entities:count())
+      end)
+
+      describe("errors", function()
+        it("when the given role does not exist", function()
+          local res = assert(client:send {
+            method = "DELETE",
+            path = "/rbac/roles/dne-role/entities/" .. e_id,
+          })
+
+          assert.res_status(404, res)
+        end)
+        it("when the given entity does not exist", function()
+          local res = assert(client:send {
+            method = "DELETE",
+            path = "/rbac/roles/mock-role/entities/" .. utils.uuid(),
+          })
+
+          assert.res_status(404, res)
+        end)
+        it("when the given entity is not a valid UUID", function()
+          local res = assert(client:send {
+            method = "DELETE",
+            path = "/rbac/roles/mock-role/entities/foo",
+          })
+
+          assert.res_status(400, res)
+        end)
+      end)
+    end)
+  end)
+  describe("/rbac/roles/:name_or_id/entities/permissions with " ..
+    kong_config.database, function()
+    local e_id = utils.uuid()
+
+    setup(function()
+      local res = assert(client:send {
+        method = "POST",
+        path = "/rbac/roles/mock-role/entities",
+        body = {
+          entity_id = e_id,
+          actions = "read,update",
+        },
+        headers = {
+          ["Content-Type"] = "application/json"
+        },
+      })
+      assert.res_status(201, res)
+    end)
+
+    describe("GET", function()
+      it("displays the role-entities permissions map for the given role", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/rbac/roles/mock-role/entities/permissions",
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        table.sort(json[e_id])
+        assert.same({ "read", "update" }, json[e_id])
+
+        local n = 0
+        for k in pairs(json) do
+          n = n + 1
+        end
+        assert.same(1, n)
+      end)
+    end)
+  end)
 end)
 
 end)

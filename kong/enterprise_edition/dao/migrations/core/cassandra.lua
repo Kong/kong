@@ -305,8 +305,10 @@ return {
         role_id uuid,
         entity_id uuid,
         entity_type text,
-        permissions int,
+        actions int,
         negative boolean,
+        comment text,
+        created_at timestamp,
         PRIMARY KEY(role_id, entity_id)
       );
 
@@ -315,8 +317,10 @@ return {
         role_id uuid,
         workspace text,
         endpoint text,
-        permissions int,
-        negative boolean
+        actions int,
+        negative boolean,
+        comment text,
+        created_at timestamp
       );
 
       CREATE INDEX IF NOT EXISTS ON role_endpoints(role_id);
