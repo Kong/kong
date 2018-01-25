@@ -51,6 +51,22 @@ describe("reports", function()
       assert.is_nil(res)
       assert.equal("timeout", err)
     end)
+    it("accepts custom immutable items", function()
+      reports.toggle(true)
+
+      local thread = helpers.udp_server(8189)
+
+      reports.add_immutable_value("imm1", "fooval")
+      reports.add_immutable_value("imm2", "barval")
+
+      reports.send("stub", {k1 = "bazval"}, "127.0.0.1", 8189)
+
+      local ok, res = thread:join()
+      assert.True(ok)
+      assert.matches("imm1=fooval", res)
+      assert.matches("imm2=barval", res)
+      assert.matches("k1=bazval", res)
+    end)
   end)
 
   describe("retrieve_redis_version()", function()
