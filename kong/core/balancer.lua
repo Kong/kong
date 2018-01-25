@@ -696,10 +696,14 @@ local function execute(target)
 
   else
     -- have to do a regular DNS lookup
-    ip, port = toip(target.host, target.port, dns_cache_only)
+    local try_list
+    ip, port, try_list = toip(target.host, target.port, dns_cache_only)
     hostname = target.host
-    if not ip and port == "dns server error: 3 name error" then
-      return nil, "name resolution failed", 503
+    if not ip then
+      log(ERR, "[dns] ", port, ". Tried: ", tostring(try_list))
+      if port == "dns server error: 3 name error" then
+        return nil, "name resolution failed", 503
+      end
     end
   end
 
