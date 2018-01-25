@@ -98,7 +98,7 @@ return {
 
         -- duplication check
         for j = 1, #existing_entities do
-          if e == existing_entities[i].entity_id then
+          if e == existing_entities[j].entity_id then
             local err = "Entity '" .. entity_ids[j] .. "' already associated " ..
                         "with workspace '" .. self.workspace.id .. "'"
             return helpers.responses.send_HTTP_CONFLICT(err)
