@@ -1,25 +1,22 @@
 return {
   table = "role_endpoints",
-  primary_key = { "id" },
+  primary_key = { "role_id", "workspace", "endpoint" },
   fields = {
-    id = {
-      type = "id",
-      immutable = true,
-      dao_insert_value = true,
-      required = true,
-    },
     role_id = {
       type = "id",
       required = true,
+      immutable = true,
     },
     workspace = {
       type = "string",
       required = true,
       default = "default",
+      immutable = true,
     },
     endpoint = {
       type = "string",
       required = true,
+      immutable = true,
     },
     actions = {
       type = "number",

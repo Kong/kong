@@ -724,5 +724,100 @@ return {
 
       return helpers.responses.send_HTTP_OK(map)
     end,
-  }
+  },
+
+  ["/rbac/roles/:name_or_id/endpoints"] = {
+    before = function(self, dao_factory, helpers)
+      crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
+      self.params.role_id = self.rbac_role.id
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      return crud.paginated_set(self, dao_factory.role_endpoints,
+                                post_process_actions)
+    end,
+
+    POST = function(self, dao_factory, helpers)
+      action_bitfield(self)
+
+      local w, err = dao_factory.workspaces:find_all({
+        name = self.params.workspace
+      })
+      if err then
+        helpers.yield_error(err)
+      end
+
+      if #w == 0 then
+        helpers.responses.send_HTTP_NOT_FOUND("Workspace '" ..
+                                              self.params.workspace .. "' " ..
+                                              "does not exist")
+      end
+
+      crud.post(self.params, dao_factory.role_endpoints,
+                post_process_actions)
+    end,
+  },
+
+  ["/rbac/roles/:name_or_id/endpoints/:workspace/:endpoint"] = {
+    before = function(self, dao_factory, helpers)
+      crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
+      self.params.role_id = self.rbac_role.id
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      crud.get(self.params, dao_factory.role_endpoints,
+               post_process_actions)
+    end,
+
+    PATCH = function(self, dao_factory, helpers)
+      if self.params.actions then
+        action_bitfield(self)
+      end
+
+      local filter = {
+        role_id = self.params.role_id,
+        workspace = self.params.workspace,
+        endpoint = self.params.endpoint,
+      }
+
+      self.params.role_id = nil
+      self.params.workspace = nil
+      self.params.endpoint = nil
+
+      crud.patch(self.params, dao_factory.role_endpoints, filter,
+                 post_process_actions)
+    end,
+
+    DELETE = function(self, dao_factory, helpers)
+      crud.delete(self.params, dao_factory.role_endpoints)
+    end,
+  },
+
+  ["/rbac/roles/:name_or_id/endpoints/permissions"] = {
+    before = function(self, dao_factory, helpers)
+      crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      local map = rbac.resolve_role_endpoint_permissions({ self.rbac_role })
+
+      for workspace in pairs(map) do
+        for endpoint, actions in pairs(map[workspace]) do
+          local actions_t = setmetatable({}, cjson.empty_array_mt)
+          local actions_t_idx = 0
+
+          for action, n in pairs(rbac.actions_bitfields) do
+            if band(n, actions) == n then
+              actions_t_idx = actions_t_idx + 1
+              actions_t[actions_t_idx] = action
+            end
+          end
+
+          map[workspace][endpoint] = actions_t
+        end
+      end
+
+      return helpers.responses.send_HTTP_OK(map)
+    end,
+  },
 }

@@ -23,6 +23,19 @@ describe("Admin API RBAC with " .. kong_config.database, function()
     client = assert(helpers.admin_client())
   end)
 
+  -- theres a default limit of 100 requests that can be used per
+  -- client keepalive connection. since this is a fairly large
+  -- test suite and we have more than 100 client:send calls,
+  -- we need to refresh the connection. doing some before every
+  -- block isnt a major performance killer
+  before_each(function()
+    if client then
+      client:close()
+    end
+
+    client = assert(helpers.admin_client())
+  end)
+
   teardown(function()
     if client then
       client:close()
@@ -513,7 +526,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
 
         assert.equal("read-only", json.name)
         assert.same({ "read" }, json.actions)
-        assert.equal(18, #json.resources)
+        assert.equal(19, #json.resources)
         assert.is_true(utils.is_valid_uuid(json.id))
       end)
 
@@ -1315,7 +1328,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         assert.is_false(utils.table_contains(json[k], "update"))
         assert.is_false(utils.table_contains(json[k], "delete"))
       end
-      assert.equals(18, n)
+      assert.equals(19, n)
 
       -- this is jerry
       -- jerry can view, create, update, and delete most resources
@@ -1361,7 +1374,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         n = n + 1
         assert.not_equals("rbac", k)
       end
-      assert.equals(17, n)
+      assert.equals(18, n)
 
       -- this is alice
       -- alice can do whatever the hell she wants
@@ -1407,7 +1420,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         n = n + 1
         assert.equals(4, #json[k])
       end
-      assert.equals(18, n)
+      assert.equals(19, n)
     end)
 
     it("will give user permission regardless of their enabled status", function()
@@ -1459,7 +1472,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         assert.is_false(utils.table_contains(json[k], "update"))
         assert.is_false(utils.table_contains(json[k], "delete"))
       end
-      assert.equals(18, n)
+      assert.equals(19, n)
     end)
   end)
 
@@ -1777,6 +1790,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
       end)
     end)
   end)
+
   describe("/rbac/roles/:name_or_id/entities/permissions with " ..
     kong_config.database, function()
     local e_id = utils.uuid()
@@ -1817,6 +1831,108 @@ describe("Admin API RBAC with " .. kong_config.database, function()
       end)
     end)
   end)
+
+  describe("/rbac/roles/:name_or_id/endpoints with " .. kong_config.database, function()
+    setup(function()
+      dao:truncate_tables()
+
+      assert(dao.rbac_roles:insert({
+        name = "mock-role",
+      }))
+
+      assert(dao.workspaces:insert({
+        name = "mock-workspace",
+      }))
+    end)
+
+    describe("POST", function()
+      it("creates a new role_endpoint", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/mock-role/endpoints",
+          body = {
+            workspace = "mock-workspace",
+            endpoint = "foo",
+            actions = "all",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+
+        assert.same("mock-workspace", json.workspace)
+        assert.same("foo", json.endpoint)
+
+        table.sort(json.actions)
+        assert.same({ "create", "delete", "read", "update" }, json.actions)
+        assert.is_false(json.negative)
+        assert.is_nil(json.comment)
+      end)
+
+      describe("errors", function()
+        -- fuck you cassandra
+        local test = kong_config.database == "cassandra" and pending or it
+
+        test("on duplicate PK", function()
+          local res = assert(client:send {
+            method = "POST",
+            path = "/rbac/roles/mock-role/endpoints",
+            body = {
+              workspace = "mock-workspace",
+              endpoint = "foo",
+              actions = "all",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          })
+
+          assert.res_status(409, res)
+        end)
+
+        it("on invalid workspace", function()
+          local res = assert(client:send {
+            method = "POST",
+            path = "/rbac/roles/mock-role/endpoints",
+            body = {
+              workspace = "dne-workspace",
+              endpoint = "foo",
+              actions = "all",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          })
+
+          local body = assert.res_status(404, res)
+          local json = cjson.decode(body)
+
+          assert.matches("Workspace 'dne-workspace' does not exist",
+                         json.message, nil, true)
+        end)
+        it("on invalid role", function()
+          local res = assert(client:send {
+            method = "POST",
+            path = "/rbac/roles/dne-role/endpoints",
+            body = {
+              workspace = "mock-workspace",
+              endpoint = "foo",
+              actions = "all",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+          })
+
+          assert.res_status(404, res)
+        end)
+      end)
+    end)
+  end)
+
 end)
 
 end)

@@ -313,17 +313,15 @@ return {
       );
 
       CREATE TABLE IF NOT EXISTS role_endpoints(
-        id uuid PRIMARY KEY,
         role_id uuid,
         workspace text,
         endpoint text,
         actions int,
         negative boolean,
         comment text,
-        created_at timestamp
+        created_at timestamp,
+        PRIMARY KEY(role_id, workspace, endpoint)
       );
-
-      CREATE INDEX IF NOT EXISTS ON role_endpoints(role_id);
     ]],
   }
 }
