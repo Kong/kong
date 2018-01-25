@@ -50,6 +50,24 @@ local function log(lvl, ...)
 end
 
 
+local function serialize_report_value(v)
+  if type(v) == "function" then
+    v = v()
+  end
+
+  if type(v) == "table" then
+    local json, err = cjson.encode(v)
+    if err then
+      log(ERR, "could not JSON encode given table entity: ", err)
+    end
+
+    v = json
+  end
+
+  return v ~= nil and tostring(v) or nil
+end
+
+
 -- UDP logger
 
 
@@ -74,22 +92,10 @@ local function send_report(signal_type, t, host, port)
 
   for k, v in pairs(t) do
     if k == "unique_id" or (k ~= "created_at" and sub(k, -2) ~= "id") then
-      if type(v) == "function" then
-        v = v()
-      end
-		
-      if type(v) == "table" then
-        local json, err = cjson.encode(v)
-        if err then
-          log(ERR, "could not JSON encode given table entity: ", err)
-        end
-
-        v = json
-      end
-
+      v = serialize_report_value(v)
       if v ~= nil then
         mutable_idx = mutable_idx + 1
-        _buffer[mutable_idx] = k .. "=" .. tostring(v)
+        _buffer[mutable_idx] = k .. "=" .. v
       end
     end
   end
@@ -181,6 +187,15 @@ local function add_ping_value(k, v)
 end
 
 
+local function add_immutable_value(k, v)
+  v = serialize_report_value(v)
+  if v ~= nil then
+    _buffer_immutable_idx = _buffer_immutable_idx + 1
+    _buffer[_buffer_immutable_idx] = k .. "=" .. v
+  end
+end
+
+
 local retrieve_redis_version
 
 
@@ -226,6 +241,7 @@ return {
 
     create_timer(PING_INTERVAL, ping_handler)
   end,
+  add_immutable_value = add_immutable_value,
   add_ping_value = add_ping_value,
   get_ping_value = function(k)
     return _ping_infos[k]
