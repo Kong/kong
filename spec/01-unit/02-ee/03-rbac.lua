@@ -391,13 +391,6 @@ describe("(#" .. kong_conf.database .. ")", function()
           role_id = role_ids[#role_ids],
           workspace = "foo",
           endpoint = "bar",
-          actions = 0x8,
-          negative = false,
-        }))
-        assert(dao.role_endpoints:insert({
-          role_id = role_ids[#role_ids],
-          workspace = "foo",
-          endpoint = "bar",
           actions = 0x1,
           negative = true,
         }))
@@ -429,7 +422,7 @@ describe("(#" .. kong_conf.database .. ")", function()
           { id = role_ids[2] },
         })
 
-        assert.equals(0x19, map.foo.bar)
+        assert.equals(0x11, map.foo.bar)
       end)
 
       it("returns separate permissions under separate workspaces", function()
@@ -437,7 +430,7 @@ describe("(#" .. kong_conf.database .. ")", function()
           { id = role_ids[2] },
         })
 
-        assert.equals(0x18, map.foo.bar)
+        assert.equals(0x10, map.foo.bar)
         assert.equals(0x5, map.baz.bar)
       end)
     end)
