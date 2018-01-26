@@ -1476,7 +1476,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
     end)
   end)
 
-  describe("/rbac/roles/:name_or_id/entities with " .. kong_config.database, function()
+  describe("/rbac/roles/:name_or_id/entities", function()
     describe("POST", function()
       local e_id, w_id
 
@@ -1598,8 +1598,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
     end)
   end)
 
-  describe("/rbac/roles/:name_or_id/entities/:entity_id with " ..
-    kong_config.database, function()
+  describe("/rbac/roles/:name_or_id/entities/:entity_id with ", function()
     local e_id
 
     setup(function()
@@ -1832,7 +1831,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
     end)
   end)
 
-  describe("/rbac/roles/:name_or_id/endpoints with " .. kong_config.database, function()
+  describe("/rbac/roles/:name_or_id/endpoints with ", function()
     setup(function()
       dao:truncate_tables()
 
@@ -1868,6 +1867,31 @@ describe("Admin API RBAC with " .. kong_config.database, function()
 
         table.sort(json.actions)
         assert.same({ "create", "delete", "read", "update" }, json.actions)
+        assert.is_false(json.negative)
+        assert.is_nil(json.comment)
+      end)
+
+      it("creates a new endpoint with similar PK elements", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/mock-role/endpoints",
+          body = {
+            workspace = "mock-workspace",
+            endpoint = "*",
+            actions = "read",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+
+        assert.same("mock-workspace", json.workspace)
+        assert.same("*", json.endpoint)
+
+        assert.same({ "read" }, json.actions)
         assert.is_false(json.negative)
         assert.is_nil(json.comment)
       end)
@@ -1931,8 +1955,252 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         end)
       end)
     end)
+
+    describe("GET", function()
+      it("retrieves a list of entities associated with the role", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/rbac/roles/mock-role/endpoints",
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.same(2, json.total)
+        assert.same(2, #json.data)
+      end)
+
+      it("limits the size of returned entities", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/rbac/roles/mock-role/endpoints?size=1",
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.same(2, json.total)
+        assert.same(1, #json.data)
+        assert.not_nil(json.next)
+        assert.not_nil(json.offset)
+      end)
+
+      describe("errors", function()
+        it("when the given role does not exist", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/rbac/roles/dne-role/endpoints",
+          })
+
+          assert.res_status(404, res)
+        end)
+      end)
+    end)
   end)
 
+  describe("/rbac/roles/:name_or_id/endpoints/:workspace/:endpoint",
+    function()
+    describe("GET", function()
+      it("retrieves a single entity", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/rbac/roles/mock-role/endpoints/mock-workspace/foo",
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.equals("mock-workspace", json.workspace)
+        assert.equals("foo", json.endpoint)
+
+        table.sort(json.actions)
+        assert.same({ "create", "delete", "read", "update" }, json.actions)
+      end)
+
+      describe("errors", function()
+        it("when the given role does not exist", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/rbac/roles/dne-role/endpoints/mock-workspace/foo",
+          })
+
+          assert.res_status(404, res)
+        end)
+        it("when the given workspace does not exist", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/rbac/roles/mock-role/endpoints/dne-workspace/foo",
+          })
+
+          assert.res_status(404, res)
+        end)
+        it("when the given endpoint does not exist", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/rbac/roles/mock-role/endpoints/mock-workspace/bar",
+          })
+
+          assert.res_status(404, res)
+        end)
+      end)
+    end)
+
+    describe("PATCH", function()
+      it("updates a given endpoint", function()
+        local res = assert(client:send {
+          method = "PATCH",
+          path = "/rbac/roles/mock-role/endpoints/mock-workspace/foo",
+          body = {
+            comment = "foo",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.is_true(utils.is_valid_uuid(json.role_id))
+        assert.same("foo", json.comment)
+        table.sort(json.actions)
+        assert.same({ "create", "delete", "read", "update" }, json.actions)
+      end)
+
+      it("update the relationship actions and displays them properly", function()
+        local res = assert(client:send {
+          method = "PATCH",
+          path = "/rbac/roles/mock-role/endpoints/mock-workspace/foo",
+          body = {
+            actions = "read,update,delete",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.same("foo", json.comment)
+
+        table.sort(json.actions)
+        assert.same({ "delete", "read", "update" }, json.actions)
+      end)
+
+      describe("errors", function()
+        it("when the given role does not exist", function()
+          local res = assert(client:send {
+            method = "PATCH",
+            path = "/rbac/roles/dne-role/endpoints/mock-workspace/foo",
+            body = {
+              comment = "foo",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+
+          assert.res_status(404, res)
+        end)
+        it("when the given workspace does not exist", function()
+          local res = assert(client:send {
+            method = "PATCH",
+            path = "/rbac/roles/mock-role/endpoints/dne-workspace/foo",
+            body = {
+              comment = "foo",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+
+          assert.res_status(404, res)
+        end)
+        it("when the given endpoint does not exist", function()
+          local res = assert(client:send {
+            method = "PATCH",
+            path = "/rbac/roles/mock-role/endpoints/mock-workspace/bar",
+            body = {
+              comment = "foo",
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+
+          assert.res_status(404, res)
+        end)
+        it("when the body is empty", function()
+          local res = assert(client:send {
+            method = "PATCH",
+            path = "/rbac/roles/mock-role/endpoints/mock-workspace/foo",
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+
+          assert.res_status(400, res)
+        end)
+      end)
+    end)
+
+    describe("DELETE", function()
+      it("removes an endpoint association", function()
+        local res = assert(client:send {
+          method = "DELETE",
+          path = "/rbac/roles/mock-role/endpoints/mock-workspace/foo",
+        })
+
+        assert.res_status(204, res)
+
+        assert.same(0, dao.role_entities:count())
+      end)
+
+      describe("errors", function()
+        it("when the given role does not exist", function()
+          local res = assert(client:send {
+            method = "DELETE",
+            path = "/rbac/roles/dne-role/endpoints/mock-workspace/foo"
+          })
+
+          assert.res_status(404, res)
+        end)
+        it("when the given workspace does not exist", function()
+          local res = assert(client:send {
+            method = "DELETE",
+            path = "/rbac/roles/mock-role/endpoints/dne-workspace/foo"
+          })
+
+          assert.res_status(404, res)
+        end)
+        it("when the given endpoint does not exist", function()
+          local res = assert(client:send {
+            method = "DELETE",
+            path = "/rbac/roles/mock-role/endpoints/mock-workspace/bar"
+          })
+
+          assert.res_status(404, res)
+        end)
+      end)
+    end)
+  end)
+
+  describe("/rbac/roles/:name_or_id/endpoints/permissions", function()
+    describe("GET", function()
+      it("displays the role-endpoints permissions map for the given role", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/rbac/roles/mock-role/endpoints/permissions",
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.same({ "read" }, json["mock-workspace"]["*"])
+      end)
+    end)
+  end)
 end)
 
 end)
