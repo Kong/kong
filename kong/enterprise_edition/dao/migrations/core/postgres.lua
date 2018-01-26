@@ -410,13 +410,6 @@ return {
         created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
       );
 
-      DO $$
-      BEGIN
-        IF (SELECT to_regclass('workspaces_name_idx')) IS NULL THEN
-          CREATE INDEX workspaces_name_idx on workspaces(name);
-        END IF;
-      END$$;
-
       CREATE TABLE IF NOT EXISTS workspace_entities(
         workspace_id uuid,
         entity_id uuid,
