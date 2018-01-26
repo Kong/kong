@@ -13,7 +13,6 @@ local function it_content_types(title, fn)
 end
 
 dao_helpers.for_each_dao(function(kong_config)
-
 describe("Admin API #" .. kong_config.database, function()
   local client
   local dao
@@ -24,10 +23,8 @@ describe("Admin API #" .. kong_config.database, function()
     assert(helpers.start_kong{
       database = kong_config.database
     })
-    client = assert(helpers.admin_client())
   end)
   teardown(function()
-    if client then client:close() end
     helpers.stop_kong()
   end)
 
@@ -35,6 +32,10 @@ describe("Admin API #" .. kong_config.database, function()
     describe("POST", function()
       before_each(function()
         dao:truncate_tables()
+        client = assert(helpers.admin_client())
+      end)
+      after_each(function()
+        if client then client:close() end
       end)
       it_content_types("creates an API", function(content_type)
         return function()
@@ -143,6 +144,8 @@ describe("Admin API #" .. kong_config.database, function()
             })
             assert.res_status(201, res)
 
+            client = assert(helpers.admin_client())
+
             res = assert(client:send {
               method = "POST",
               path = "/apis",
@@ -160,11 +163,14 @@ describe("Admin API #" .. kong_config.database, function()
         end)
       end)
     end)
-  end)
 
     describe("PUT", function()
       before_each(function()
         dao:truncate_tables()
+        client = assert(helpers.admin_client())
+      end)
+      after_each(function()
+        if client then client:close() end
       end)
 
       it_content_types("creates if not exists", function(content_type)
@@ -206,7 +212,7 @@ describe("Admin API #" .. kong_config.database, function()
         --
         -- Eventually, our Admin endpoint will follow a more appropriate
         -- behavior for PUT.
-        local res = assert(client:send {
+        local res = assert(helpers.admin_client():send {
           method = "PUT",
           path = "/apis",
           body = {
@@ -234,6 +240,8 @@ describe("Admin API #" .. kong_config.database, function()
           })
           local body = assert.res_status(201, res)
           local json = cjson.decode(body)
+
+          client = assert(helpers.admin_client())
 
           res = assert(client:send {
             method = "PUT",
@@ -275,6 +283,8 @@ describe("Admin API #" .. kong_config.database, function()
               upstream_url = "upstream_url is required"
             }, json)
 
+            client = assert(helpers.admin_client())
+
             -- Invalid parameter
             res = assert(client:send {
               method = "PUT",
@@ -310,6 +320,8 @@ describe("Admin API #" .. kong_config.database, function()
               local body = assert.res_status(201, res)
               local json = cjson.decode(body)
 
+              client = assert(helpers.admin_client())
+
               res = assert(client:send {
                 method = "PUT",
                 path = "/apis",
@@ -344,6 +356,12 @@ describe("Admin API #" .. kong_config.database, function()
       teardown(function()
         dao:truncate_tables()
       end)
+      before_each(function()
+        client = assert(helpers.admin_client())
+      end)
+      after_each(function()
+        if client then client:close() end
+      end)
 
       it("retrieves the first page", function()
         local res = assert(client:send {
@@ -360,7 +378,7 @@ describe("Admin API #" .. kong_config.database, function()
         local offset
 
         for i = 1, 4 do
-          local res = assert(client:send {
+          local res = assert(helpers.admin_client():send {
             method = "GET",
             path = "/apis",
             query = {size = 3, offset = offset}
@@ -423,259 +441,291 @@ describe("Admin API #" .. kong_config.database, function()
       end)
     end)
 
-    it("returns 405 on invalid method", function()
-      local methods = {"DELETE"}
-      for i = 1, #methods do
-        local res = assert(client:send {
-          method = methods[i],
-          path = "/apis",
-          body = {}, -- tmp: body to allow POST/PUT to work
-          headers = {["Content-Type"] = "application/json"}
-        })
-        local body = assert.response(res).has.status(405)
-        local json = cjson.decode(body)
-        assert.same({ message = "Method not allowed" }, json)
-      end
-    end)
-
-    describe("/apis/{api}", function()
-      local api
-      setup(function()
-        dao:truncate_tables()
-      end)
+    describe("DELETE", function()
       before_each(function()
-        api = assert(dao.apis:insert {
-          name = "my-api",
-          uris = "/my-api",
-          upstream_url = "http://my-api.com"
-        })
+        dao:truncate_tables()
+        client = assert(helpers.admin_client())
       end)
       after_each(function()
-        dao:truncate_tables()
+        if client then client:close() end
       end)
 
-      describe("GET", function()
-        it("retrieves by id", function()
+      it("returns 405 on invalid method", function()
+        local methods = {"DELETE"}
+        for i = 1, #methods do
           local res = assert(client:send {
-            method = "GET",
-            path = "/apis/" .. api.id
+            method = methods[i],
+            path = "/apis",
+            body = {}, -- tmp: body to allow POST/PUT to work
+            headers = {["Content-Type"] = "application/json"}
+          })
+          local body = assert.response(res).has.status(405)
+          local json = cjson.decode(body)
+          assert.same({ message = "Method not allowed" }, json)
+        end
+      end)
+    end)
+  end)
+
+  describe("/apis/{api}", function()
+    local api
+    setup(function()
+      dao:truncate_tables()
+    end)
+    before_each(function()
+      api = assert(dao.apis:insert {
+        name = "my-api",
+        uris = "/my-api",
+        upstream_url = "http://my-api.com"
+      })
+    end)
+    after_each(function()
+      dao:truncate_tables()
+    end)
+
+    describe("GET", function()
+      before_each(function()
+        client = assert(helpers.admin_client())
+      end)
+      after_each(function()
+        if client then client:close() end
+      end)
+
+      it("retrieves by id", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/apis/" .. api.id
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.same(api, json)
+      end)
+      it("retrieves by name", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/apis/" .. api.name
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.same(api, json)
+      end)
+      it("returns 404 if not found", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/apis/_inexistent_"
+        })
+        assert.res_status(404, res)
+      end)
+      it("ignores an invalid body", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/apis/" .. api.id,
+          body = "this fails if decoded as json",
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(200, res)
+      end)
+    end)
+
+    describe("PATCH", function()
+      before_each(function()
+        client = assert(helpers.admin_client())
+      end)
+      after_each(function()
+        if client then client:close() end
+      end)
+
+      it_content_types("updates if found", function(content_type)
+        return function()
+          local res = assert(client:send {
+            method = "PATCH",
+            path = "/apis/" .. api.id,
+            body = {
+              name = "my-updated-api"
+            },
+            headers = {["Content-Type"] = content_type}
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.same(api, json)
-        end)
-        it("retrieves by name", function()
+          assert.equal("my-updated-api", json.name)
+          assert.equal(api.id, json.id)
+
+          local in_db = assert(dao.apis:find {id = api.id})
+          assert.same(json, in_db)
+        end
+      end)
+      it_content_types("updates a name from a name in path", function(content_type)
+        return function()
           local res = assert(client:send {
-            method = "GET",
-            path = "/apis/" .. api.name
+            method = "PATCH",
+            path = "/apis/" .. api.name,
+            body = {
+              name = "my-updated-api"
+            },
+            headers = {["Content-Type"] = content_type}
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
-          assert.same(api, json)
+          assert.equal("my-updated-api", json.name)
+          assert.equal(api.id, json.id)
+
+          local in_db = assert(dao.apis:find {id = api.id})
+          assert.same(json, in_db)
+        end
+      end)
+      it_content_types("updates uris", function(content_type)
+        return function()
+          local res = assert(client:send {
+            method = "PATCH",
+            path = "/apis/" .. api.id,
+            body = {
+              uris = "/my-updated-api,/my-new-uri"
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.same({ "/my-updated-api", "/my-new-uri" }, json.uris)
+          assert.equal(api.id, json.id)
+
+          local in_db = assert(dao.apis:find {id = api.id})
+          assert.same(json, in_db)
+        end
+      end)
+      it_content_types("updates strip_uri if not previously set", function(content_type)
+        return function()
+          local res = assert(client:send {
+            method = "PATCH",
+            path = "/apis/" .. api.id,
+            body = {
+              strip_uri = true
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.True(json.strip_uri)
+          assert.equal(api.id, json.id)
+
+          local in_db = assert(dao.apis:find {id = api.id})
+          assert.same(json, in_db)
+        end
+      end)
+      it_content_types("updates multiple fields at once", function(content_type)
+        return function()
+          local res = assert(client:send {
+            method = "PATCH",
+            path = "/apis/" .. api.id,
+            body = {
+              uris = "/my-updated-path",
+              hosts = "my-updated.tld"
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.same({ "/my-updated-path" }, json.uris)
+          assert.same({ "my-updated.tld" }, json.hosts)
+          assert.equal(api.id, json.id)
+
+          local in_db = assert(dao.apis:find {id = api.id})
+          assert.same(json, in_db)
+        end
+      end)
+      it_content_types("removes optional field with ngx.null", function(content_type)
+        return function()
+          -- TODO: how should ngx.null work with application/www-form-urlencoded?
+          if content_type == "application/json" then
+            local res = assert(client:send {
+              method = "PATCH",
+              path = "/apis/" .. api.id,
+              body = {
+                uris = ngx.null,
+                hosts = ngx.null,
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.is_nil(json.uris)
+            assert.is_nil(json.hosts)
+            assert.equal(api.id, json.id)
+
+            local in_db = assert(dao.apis:find {id = api.id})
+            assert.same(json, in_db)
+          end
+        end
+      end)
+
+      describe("errors", function()
+        it_content_types("returns 404 if not found", function(content_type)
+          return function()
+            local res = assert(client:send {
+              method = "PATCH",
+              path = "/apis/_inexistent_",
+              body = {
+               uris = "/my-updated-path"
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            assert.res_status(404, res)
+          end
         end)
+        it_content_types("handles invalid input", function(content_type)
+          return function()
+            local res = assert(client:send {
+              method = "PATCH",
+              path = "/apis/" .. api.id,
+              body = {
+                upstream_url = "api.com"
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            local body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ upstream_url = "upstream_url is not a url" }, json)
+          end
+        end)
+      end)
+    end)
+
+    describe("DELETE", function()
+      before_each(function()
+        client = assert(helpers.admin_client())
+      end)
+      after_each(function()
+        if client then client:close() end
+      end)
+
+      it("deletes an API by id", function()
+        local res = assert(client:send {
+          method = "DELETE",
+          path = "/apis/" .. api.id
+        })
+        local body = assert.res_status(204, res)
+        assert.equal("", body)
+      end)
+      it("deletes an API by name", function()
+        local res = assert(client:send {
+          method = "DELETE",
+          path = "/apis/" .. api.name
+        })
+        local body = assert.res_status(204, res)
+        assert.equal("", body)
+      end)
+      describe("errors", function()
         it("returns 404 if not found", function()
           local res = assert(client:send {
-            method = "GET",
+            method = "DELETE",
             path = "/apis/_inexistent_"
           })
           assert.res_status(404, res)
         end)
-        it("ignores an invalid body", function()
-          local res = assert(client:send {
-            method = "GET",
-            path = "/apis/" .. api.id,
-            body = "this fails if decoded as json",
-            headers = {
-              ["Content-Type"] = "application/json",
-            }
-          })
-          assert.res_status(200, res)
-        end)
-      end)
-
-      describe("PATCH", function()
-        it_content_types("updates if found", function(content_type)
-          return function()
-            local res = assert(client:send {
-              method = "PATCH",
-              path = "/apis/" .. api.id,
-              body = {
-                name = "my-updated-api"
-              },
-              headers = {["Content-Type"] = content_type}
-            })
-            local body = assert.res_status(200, res)
-            local json = cjson.decode(body)
-            assert.equal("my-updated-api", json.name)
-            assert.equal(api.id, json.id)
-
-            local in_db = assert(dao.apis:find {id = api.id})
-            assert.same(json, in_db)
-          end
-        end)
-        it_content_types("updates a name from a name in path", function(content_type)
-          return function()
-            local res = assert(client:send {
-              method = "PATCH",
-              path = "/apis/" .. api.name,
-              body = {
-                name = "my-updated-api"
-              },
-              headers = {["Content-Type"] = content_type}
-            })
-            local body = assert.res_status(200, res)
-            local json = cjson.decode(body)
-            assert.equal("my-updated-api", json.name)
-            assert.equal(api.id, json.id)
-
-            local in_db = assert(dao.apis:find {id = api.id})
-            assert.same(json, in_db)
-          end
-        end)
-        it_content_types("updates uris", function(content_type)
-          return function()
-            local res = assert(client:send {
-              method = "PATCH",
-              path = "/apis/" .. api.id,
-              body = {
-                uris = "/my-updated-api,/my-new-uri"
-              },
-              headers = {["Content-Type"] = content_type}
-            })
-            local body = assert.res_status(200, res)
-            local json = cjson.decode(body)
-            assert.same({ "/my-updated-api", "/my-new-uri" }, json.uris)
-            assert.equal(api.id, json.id)
-
-            local in_db = assert(dao.apis:find {id = api.id})
-            assert.same(json, in_db)
-          end
-        end)
-        it_content_types("updates strip_uri if not previously set", function(content_type)
-          return function()
-            local res = assert(client:send {
-              method = "PATCH",
-              path = "/apis/" .. api.id,
-              body = {
-                strip_uri = true
-              },
-              headers = {["Content-Type"] = content_type}
-            })
-            local body = assert.res_status(200, res)
-            local json = cjson.decode(body)
-            assert.True(json.strip_uri)
-            assert.equal(api.id, json.id)
-
-            local in_db = assert(dao.apis:find {id = api.id})
-            assert.same(json, in_db)
-          end
-        end)
-        it_content_types("updates multiple fields at once", function(content_type)
-          return function()
-            local res = assert(client:send {
-              method = "PATCH",
-              path = "/apis/" .. api.id,
-              body = {
-                uris = "/my-updated-path",
-                hosts = "my-updated.tld"
-              },
-              headers = {["Content-Type"] = content_type}
-            })
-            local body = assert.res_status(200, res)
-            local json = cjson.decode(body)
-            assert.same({ "/my-updated-path" }, json.uris)
-            assert.same({ "my-updated.tld" }, json.hosts)
-            assert.equal(api.id, json.id)
-
-            local in_db = assert(dao.apis:find {id = api.id})
-            assert.same(json, in_db)
-          end
-        end)
-        it_content_types("removes optional field with ngx.null", function(content_type)
-          return function()
-            -- TODO: how should ngx.null work with application/www-form-urlencoded?
-            if content_type == "application/json" then
-              local res = assert(client:send {
-                method = "PATCH",
-                path = "/apis/" .. api.id,
-                body = {
-                  uris = ngx.null,
-                  hosts = ngx.null,
-                },
-                headers = {["Content-Type"] = content_type}
-              })
-              local body = assert.res_status(200, res)
-              local json = cjson.decode(body)
-              assert.is_nil(json.uris)
-              assert.is_nil(json.hosts)
-              assert.equal(api.id, json.id)
-
-              local in_db = assert(dao.apis:find {id = api.id})
-              assert.same(json, in_db)
-            end
-          end
-        end)
-
-        describe("errors", function()
-          it_content_types("returns 404 if not found", function(content_type)
-            return function()
-              local res = assert(client:send {
-                method = "PATCH",
-                path = "/apis/_inexistent_",
-                body = {
-                 uris = "/my-updated-path"
-                },
-                headers = {["Content-Type"] = content_type}
-              })
-              assert.res_status(404, res)
-            end
-          end)
-          it_content_types("handles invalid input", function(content_type)
-            return function()
-              local res = assert(client:send {
-                method = "PATCH",
-                path = "/apis/" .. api.id,
-                body = {
-                  upstream_url = "api.com"
-                },
-                headers = {["Content-Type"] = content_type}
-              })
-              local body = assert.res_status(400, res)
-              local json = cjson.decode(body)
-              assert.same({ upstream_url = "upstream_url is not a url" }, json)
-            end
-          end)
-        end)
-      end)
-
-      describe("DELETE", function()
-        it("deletes an API by id", function()
-          local res = assert(client:send {
-            method = "DELETE",
-            path = "/apis/" .. api.id
-          })
-          local body = assert.res_status(204, res)
-          assert.equal("", body)
-        end)
-        it("deletes an API by name", function()
-          local res = assert(client:send {
-            method = "DELETE",
-            path = "/apis/" .. api.name
-          })
-          local body = assert.res_status(204, res)
-          assert.equal("", body)
-        end)
-        describe("error", function()
-          it("returns 404 if not found", function()
-            local res = assert(client:send {
-              method = "DELETE",
-              path = "/apis/_inexistent_"
-            })
-            assert.res_status(404, res)
-          end)
-        end)
       end)
     end)
+  end)
 
   describe("/apis/{api}/plugins", function()
     local api
@@ -693,6 +743,13 @@ describe("Admin API #" .. kong_config.database, function()
     end)
 
     describe("POST", function()
+      before_each(function()
+        client = assert(helpers.admin_client())
+      end)
+      after_each(function()
+        if client then client:close() end
+      end)
+
       it_content_types("creates a plugin config", function(content_type)
         return function()
           local res = assert(client:send {
@@ -728,9 +785,6 @@ describe("Admin API #" .. kong_config.database, function()
         end
       end)
       describe("errors", function()
-        -- TODO fix the weird nesting issues in this file that
-        -- require us to rescope client
-        local client
         before_each(function()
           client = assert(helpers.admin_client())
         end)
@@ -811,6 +865,13 @@ describe("Admin API #" .. kong_config.database, function()
     end)
 
     describe("PUT", function()
+      before_each(function()
+        client = assert(helpers.admin_client())
+      end)
+      after_each(function()
+        if client then client:close() end
+      end)
+
       it_content_types("creates if not exists", function(content_type)
         return function()
           local res = assert(client:send {
@@ -966,6 +1027,13 @@ describe("Admin API #" .. kong_config.database, function()
     end)
 
     describe("GET", function()
+      before_each(function()
+        client = assert(helpers.admin_client())
+      end)
+      after_each(function()
+        if client then client:close() end
+      end)
+
       it("retrieves the first page", function()
         assert(dao.plugins:insert {
           name = "key-auth",
@@ -1002,6 +1070,13 @@ describe("Admin API #" .. kong_config.database, function()
       end)
 
       describe("GET", function()
+        before_each(function()
+          client = assert(helpers.admin_client())
+        end)
+        after_each(function()
+          if client then client:close() end
+        end)
+
         it("retrieves by id", function()
           local res = assert(client:send {
             method = "GET",
@@ -1040,6 +1115,13 @@ describe("Admin API #" .. kong_config.database, function()
       end)
 
       describe("PATCH", function()
+        before_each(function()
+          client = assert(helpers.admin_client())
+        end)
+        after_each(function()
+          if client then client:close() end
+        end)
+
         it_content_types("updates if found", function(content_type)
           return function()
             local res = assert(client:send {
@@ -1145,6 +1227,13 @@ describe("Admin API #" .. kong_config.database, function()
       end)
 
       describe("DELETE", function()
+        before_each(function()
+          client = assert(helpers.admin_client())
+        end)
+        after_each(function()
+          if client then client:close() end
+        end)
+
         it("deletes a plugin configuration", function()
           local res = assert(client:send {
             method = "DELETE",
@@ -1164,8 +1253,6 @@ describe("Admin API #" .. kong_config.database, function()
       end)
     end)
   end)
-end)
-
 end)
 
 describe("Admin API request size", function()
@@ -1223,4 +1310,5 @@ describe("Admin API request size", function()
     })
     assert.res_status(413, res)
   end)
+end)
 end)

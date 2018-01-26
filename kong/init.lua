@@ -62,9 +62,14 @@ local kong_error_handlers = require "kong.core.error_handlers"
 
 local ngx              = ngx
 local header           = ngx.header
+local ngx_log          = ngx.log
+local ngx_ERR          = ngx.ERR
+local ngx_CRIT         = ngx.CRIT
+local ngx_DEBUG        = ngx.DEBUG
 local ipairs           = ipairs
 local assert           = assert
 local tostring         = tostring
+local coroutine        = coroutine
 local get_last_failure = ngx_balancer.get_last_failure
 local set_current_peer = ngx_balancer.set_current_peer
 local set_timeouts     = ngx_balancer.set_timeouts
@@ -73,7 +78,7 @@ local set_more_tries   = ngx_balancer.set_more_tries
 local function load_plugins(kong_conf, dao)
   local in_db_plugins, sorted_plugins = {}, {}
 
-  ngx.log(ngx.DEBUG, "Discovering used plugins")
+  ngx_log(ngx_DEBUG, "Discovering used plugins")
 
   local rows, err_t = dao.plugins:find_all()
   if not rows then
@@ -101,7 +106,7 @@ local function load_plugins(kong_conf, dao)
       return nil, "no configuration schema found for plugin: " .. plugin
     end
 
-    ngx.log(ngx.DEBUG, "Loading plugin: " .. plugin)
+    ngx_log(ngx_DEBUG, "Loading plugin: " .. plugin)
 
     sorted_plugins[#sorted_plugins+1] = {
       name = plugin,
@@ -177,7 +182,7 @@ function Kong.init_worker()
 
   local ok, err = singletons.dao:init_worker()
   if not ok then
-    ngx.log(ngx.CRIT, "could not init DB: ", err)
+    ngx_log(ngx_CRIT, "could not init DB: ", err)
     return
   end
 
@@ -197,7 +202,7 @@ function Kong.init_worker()
     wait_max = 0.5,         -- max wait time before discarding event
   }
   if not ok then
-    ngx.log(ngx.CRIT, "could not start inter-worker events: ", err)
+    ngx_log(ngx_CRIT, "could not start inter-worker events: ", err)
     return
   end
 
@@ -215,7 +220,7 @@ function Kong.init_worker()
     poll_offset             = configuration.db_update_propagation,
   }
   if not cluster_events then
-    ngx.log(ngx.CRIT, "could not create cluster_events: ", err)
+    ngx_log(ngx_CRIT, "could not create cluster_events: ", err)
     return
   end
 
@@ -235,7 +240,7 @@ function Kong.init_worker()
     },
   }
   if not cache then
-    ngx.log(ngx.CRIT, "could not create kong cache: ", err)
+    ngx_log(ngx_CRIT, "could not create kong cache: ", err)
     return
   end
 
@@ -243,7 +248,7 @@ function Kong.init_worker()
     return "init"
   end)
   if not ok then
-    ngx.log(ngx.CRIT, "could not set router version in cache: ", err)
+    ngx_log(ngx_CRIT, "could not set router version in cache: ", err)
     return
   end
 
@@ -295,12 +300,20 @@ function Kong.balancer()
     local previous_try = tries[addr.try_count - 1]
     previous_try.state, previous_try.code = get_last_failure()
 
-    local ok, err = balancer_execute(addr)
-    if not ok then
-      ngx.log(ngx.ERR, "failed to retry the dns/balancer resolver for ",
-              tostring(addr.host), "' with: ", tostring(err))
+    -- Report HTTP status for health checks
+    if addr.balancer then
+      if previous_try.state == "failed" then
+        addr.balancer.report_tcp_failure(addr.ip, addr.port)
+      else
+        addr.balancer.report_http_status(addr.ip, addr.port, previous_try.code)
+      end
+    end
 
-      return responses.send(500)
+    local ok, err, errcode = balancer_execute(addr)
+    if not ok then
+      ngx_log(ngx_ERR, "failed to retry the dns/balancer resolver for ",
+              tostring(addr.host), "' with: ", tostring(err))
+      return ngx.exit(errcode)
     end
 
   else
@@ -315,20 +328,21 @@ function Kong.balancer()
   current_try.port = addr.port
 
   -- set the targets as resolved
+  ngx_log(ngx_DEBUG, "setting address (try ", addr.try_count, "): ",
+                     addr.ip, ":", addr.port)
   local ok, err = set_current_peer(addr.ip, addr.port)
   if not ok then
-    ngx.log(ngx.ERR, "failed to set the current peer (address: ",
+    ngx_log(ngx_ERR, "failed to set the current peer (address: ",
             tostring(addr.ip), " port: ", tostring(addr.port),"): ",
             tostring(err))
-
-    return responses.send(500)
+    return ngx.exit(500)
   end
 
   ok, err = set_timeouts(addr.connect_timeout / 1000,
                          addr.send_timeout / 1000,
                          addr.read_timeout / 1000)
   if not ok then
-    ngx.log(ngx.ERR, "could not set upstream timeouts: ", err)
+    ngx_log(ngx_ERR, "could not set upstream timeouts: ", err)
   end
 
   core.balancer.after()
@@ -350,11 +364,26 @@ end
 
 function Kong.access()
   local ctx = ngx.ctx
+
   core.access.before(ctx)
 
+  ctx.delay_response = true
+
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
-    plugin.handler:access(plugin_conf)
+    if not ctx.delayed_response then
+      local err = coroutine.wrap(plugin.handler.access)(plugin.handler, plugin_conf)
+      if err then
+        ctx.delay_response = false
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      end
+    end
   end
+
+  if ctx.delayed_response then
+    return responses.flush_delayed_response(ctx)
+  end
+
+  ctx.delay_response = false
 
   core.access.after(ctx)
 end

@@ -4,7 +4,7 @@ local cjson = require "cjson"
 
 local TcpLogHandler = BasePlugin:extend()
 
-TcpLogHandler.PRIORITY = 2
+TcpLogHandler.PRIORITY = 7
 TcpLogHandler.VERSION = "0.1.0"
 
 local function log(premature, conf, message)
@@ -25,6 +25,15 @@ local function log(premature, conf, message)
   if not ok then
     ngx.log(ngx.ERR, "[tcp-log] failed to connect to " .. host .. ":" .. tostring(port) .. ": ", err)
     return
+  end
+
+  if conf.tls then
+    ok, err = sock:sslhandshake(true, conf.tls_sni, false)
+    if not ok then
+      ngx.log(ngx.ERR, "[tcp-log] failed to perform TLS handshake to ",
+                       host, ":", port, ": ", err)
+      return
+    end
   end
 
   ok, err = sock:send(cjson.encode(message) .. "\r\n")

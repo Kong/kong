@@ -10,8 +10,8 @@ anonymous_reports = on
 
 proxy_listen = 0.0.0.0:8000
 proxy_listen_ssl = 0.0.0.0:8443
-admin_listen = 0.0.0.0:8001
-admin_listen_ssl = 0.0.0.0:8444
+admin_listen = 127.0.0.1:8001
+admin_listen_ssl = 127.0.0.1:8444
 nginx_user = nobody nobody
 nginx_worker_processes = auto
 nginx_optimizations = on

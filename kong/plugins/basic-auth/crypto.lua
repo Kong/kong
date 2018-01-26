@@ -1,6 +1,7 @@
 -- Module to encrypt the basic-auth credentials password field
 
-local crypto = require "crypto"
+local resty_sha1 = require "resty.sha1"
+local to_hex = require "resty.string".to_hex
 local format = string.format
 
 --- Salt the password
@@ -16,6 +17,8 @@ return {
   -- @return hash of the salted credential's password
   encrypt = function(credential)
     local salted = salt_password(credential)
-    return crypto.digest("sha1", salted)
+    local digest = resty_sha1:new()
+    assert(digest:update(salted))
+    return to_hex(digest:final())
   end
 }

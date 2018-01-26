@@ -17,6 +17,7 @@ describe("Log Serializer", function()
       },
       var = {
         request_uri = "/request_uri",
+        upstream_uri = "/upstream_uri",
         scheme = "http",
         host = "test.com",
         server_port = 80,
@@ -57,7 +58,8 @@ describe("Log Serializer", function()
       assert.same({"header1", "header2"}, res.request.headers)
       assert.equal("POST", res.request.method)
       assert.same({"arg1", "arg2"}, res.request.querystring)
-      assert.equal("http://test.com:80/request_uri", res.request.request_uri)
+      assert.equal("http://test.com:80/request_uri", res.request.url)
+      assert.equal("/upstream_uri", res.upstream_uri)
       assert.equal(200, res.request.size)
       assert.equal("/request_uri", res.request.uri)
 

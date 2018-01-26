@@ -2,10 +2,9 @@
 
 - [Planned](#planned)
 - [Scheduled](#scheduled)
-    - [0.12.0](#0120)
 - [Released](#released)
-    - [0.12.0rc2](#0120rc2)
-    - [0.12.0rc1](#0120rc1)
+    - [0.12.1](#0121---20180118)
+    - [0.12.0](#0120---20180116)
     - [0.11.2](#0112---20171129)
     - [0.11.1](#0111---20171024)
     - [0.10.4](#0104---20171024)
@@ -30,10 +29,7 @@ Those releases do not have a fixed release date yet.
 This section describes upcoming releases that have a release date, along with
 a detailed changeset of their content.
 
-## 0.12.0
-
-Stable release planned for January 2018. See [0.12.0rc1](#0120rc1)
-and [0.12.0rc2](#0120rc2).
+*No scheduled releases yet.*
 
 [Back to TOC](#table-of-contents)
 
@@ -42,23 +38,27 @@ and [0.12.0rc2](#0120rc2).
 This section describes publicly available releases and a detailed changeset of
 their content.
 
-## [0.12.0rc2]
+## [0.12.1] - 2018/01/18
 
-* **Release Candidate**: 2018/01/05
-* **Stable**: January 2018
+This release addresses a few issues encountered with 0.12.0, including one
+which would prevent upgrading from a previous version. The [0.12 Upgrade
+Path](https://github.com/Kong/kong/blob/master/UPGRADE.md#upgrade-to-012x)
+is still relevant for upgrading existing clusters to 0.12.1.
 
-This release candidate fixes an issue from 0.12.0rc1 regarding database cache
-invalidation upon Upstream creation and modification.
+### Fixed
+
+- Fix a migration between previous Kong versions and 0.12.0.
+  [#3159](https://github.com/Kong/kong/pull/3159)
+- Ensure Lua errors are propagated when thrown in the `access` handler by
+  plugins.
+  [38580ff](https://github.com/Kong/kong/commit/38580ff547cbd4a557829e3ad135cd6a0f821f7c)
 
 [Back to TOC](#table-of-contents)
 
-## [0.12.0rc1]
+## [0.12.0] - 2018/01/16
 
-* **Release Candidate**: 2017/12/20
-* **Stable**: January 2018
-
-Our third major release of 2017 focuses on two new features we are very
-excited about: **health checks** and **hash based load balancing**!
+This major release focuses on two new features we are very excited about:
+**health checks** and **hash based load balancing**!
 
 We also took this as an opportunity to fix a few prominent issues, sometimes
 at the expense of breaking changes but overall improving the flexibility and
@@ -70,6 +70,19 @@ Please take a few minutes to thoroughly read the [0.12 Upgrade
 Path](https://github.com/Kong/kong/blob/master/UPGRADE.md#upgrade-to-012x)
 for more details regarding breaking changes and migrations before planning to
 upgrade your Kong cluster.
+
+### Deprecation notices
+
+Starting with 0.12.0, we are announcing the deprecation of older versions
+of our supported databases:
+
+- Support for PostgreSQL 9.4 is deprecated. Users are advised to upgrade to
+  9.5+
+- Support for Cassandra 2.1 and below is deprecated. Users are advised to
+  upgrade to 2.2+
+
+Note that the above deprecated versions are still supported in this release,
+but will be dropped in subsequent ones.
 
 ### Breaking changes
 
@@ -2170,8 +2183,8 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[0.12.0rc2]: https://github.com/Kong/kong/compare/0.12.0rc1...0.12.0rc2
-[0.12.0rc1]: https://github.com/Kong/kong/compare/0.11.2...0.12.0rc1
+[0.12.1]: https://github.com/Kong/kong/compare/0.12.0...0.12.1
+[0.12.0]: https://github.com/Kong/kong/compare/0.11.2...0.12.0
 [0.11.2]: https://github.com/Kong/kong/compare/0.11.1...0.11.2
 [0.11.1]: https://github.com/Kong/kong/compare/0.11.0...0.11.1
 [0.10.4]: https://github.com/Kong/kong/compare/0.10.3...0.10.4

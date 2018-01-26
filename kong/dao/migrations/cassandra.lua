@@ -319,7 +319,7 @@ return {
     up = function(db, kong_config)
       local keyspace_name = kong_config.cassandra_keyspace
 
-      if db.release_version < 3 then
+      if db.major_version_n < 3 then
         local rows, err = db:query([[
           SELECT *
           FROM system.schema_columns
@@ -473,5 +473,81 @@ return {
     up = [[
       DROP TABLE nodes;
     ]],
+  },
+  {
+    name = "2017-07-28-225000_balancer_orderlist_remove",
+    up = [[
+      ALTER TABLE upstreams DROP orderlist;
+    ]],
+    down = function(_, _, dao) end  -- not implemented
+  },
+  {
+    name = "2017-11-07-192000_upstream_healthchecks",
+    up = [[
+      ALTER TABLE upstreams ADD healthchecks text;
+    ]],
+    down = [[
+      ALTER TABLE upstreams DROP healthchecks;
+    ]]
+  },
+  {
+    name = "2017-10-27-134100_consistent_hashing_1",
+    up = [[
+      ALTER TABLE upstreams ADD hash_on text;
+      ALTER TABLE upstreams ADD hash_fallback text;
+      ALTER TABLE upstreams ADD hash_on_header text;
+      ALTER TABLE upstreams ADD hash_fallback_header text;
+    ]],
+    down = [[
+      ALTER TABLE upstreams DROP hash_on;
+      ALTER TABLE upstreams DROP hash_fallback;
+      ALTER TABLE upstreams DROP hash_on_header;
+      ALTER TABLE upstreams DROP hash_fallback_header;
+    ]]
+  },
+  {
+    name = "2017-11-07-192100_upstream_healthchecks_2",
+    up = function(_, _, dao)
+      local rows, err = dao.upstreams:find_all()
+      if err then
+        return err
+      end
+
+      local upstreams = require("kong.dao.schemas.upstreams")
+      local default = upstreams.fields.healthchecks.default
+
+      for _, row in ipairs(rows) do
+        if not row.healthchecks then
+          local _, err = dao.upstreams:update({
+            healthchecks = default,
+          }, { id = row.id })
+          if err then
+            return err
+          end
+        end
+      end
+    end,
+    down = function(_, _, dao) end
+  },
+  {
+    name = "2017-10-27-134100_consistent_hashing_2",
+    up = function(_, _, dao)
+      local rows, err = dao.upstreams:find_all()
+      if err then
+        return err
+      end
+
+      for _, row in ipairs(rows) do
+        if not row.hash_on or not row.hash_fallback then
+          row.hash_on = "none"
+          row.hash_fallback = "none"
+          local _, err = dao.upstreams:update(row, { id = row.id })
+          if err then
+            return err
+          end
+        end
+      end
+    end,
+    down = function(_, _, dao) end  -- n.a. since the columns will be dropped
   },
 }

@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
-local crypto = require "crypto"
+local openssl_hmac = require "openssl.hmac"
 
 describe("Plugin: hmac-auth (invalidations)", function()
   local client_proxy, client_admin, consumer, credential
@@ -48,7 +48,7 @@ describe("Plugin: hmac-auth (invalidations)", function()
   end)
 
   local function hmac_sha1_binary(secret, data)
-    return crypto.hmac.digest("sha1", data, secret, true)
+    return openssl_hmac.new(secret, "sha1"):final(data)
   end
 
   local function get_authorization(username)

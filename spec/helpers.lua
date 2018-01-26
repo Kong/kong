@@ -24,6 +24,7 @@ local pl_file = require "pl.file"
 local pl_dir = require "pl.dir"
 local cjson = require "cjson.safe"
 local http = require "resty.http"
+local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local log = require "kong.cmd.utils.log"
 
 log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
@@ -36,7 +37,8 @@ package.path = CUSTOM_PLUGIN_PATH .. ";" .. package.path
 -- a numerical representation of it.
 -- Ex: 1.11.2.2 -> 11122
 local function openresty_ver_num()
-  local ok, _, _, stderr = pl_utils.executeex("nginx -V")
+  local nginx_bin = assert(nginx_signals.find_nginx_bin())
+  local ok, _, _, stderr = pl_utils.executeex(string.format("%s -V", nginx_bin))
   if not ok then
     error("could not execute 'nginx -V': " .. stderr)
   end
@@ -308,11 +310,13 @@ end
 -- (single read).
 -- @name tcp_server
 -- @param `port`    The port where the server will be listening to
+-- @param `opts     A table of options defining the server's behavior
 -- @return `thread` A thread object
-local function tcp_server(port, ...)
+local function tcp_server(port, opts, ...)
   local threads = require "llthreads2.ex"
+  opts = opts or {}
   local thread = threads.new({
-    function(port)
+    function(port, opts)
       local socket = require "socket"
       local server = assert(socket.tcp())
       server:settimeout(10)
@@ -320,13 +324,27 @@ local function tcp_server(port, ...)
       assert(server:bind("*", port))
       assert(server:listen())
       local client = assert(server:accept())
+
+      if opts.tls then
+        local ssl = require "ssl"
+        local params = {
+          mode = "server",
+          protocol = "any",
+          key = "spec/fixtures/kong_spec.key",
+          certificate = "spec/fixtures/kong_spec.crt",
+        }
+
+        client = ssl.wrap(client, params)
+        client:dohandshake()
+      end
+
       local line = assert(client:receive())
       client:send(line .. "\n")
       client:close()
       server:close()
       return line
     end
-  }, port)
+  }, port, opts)
 
   return thread:start(...)
 end
