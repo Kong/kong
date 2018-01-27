@@ -4,7 +4,7 @@ local function check_unique(group, acl)
   -- If dao required to make this work in integration tests when adding fixtures
   if singletons.dao and acl.consumer_id and group then
     local res, err = singletons.dao.acls:find_all {consumer_id = acl.consumer_id, group = group}
-    if not err and #res > 0 then
+    if not err and #res > 0 and res[1].id ~= acl.id then
       return false, "ACL group already exist for this consumer"
     elseif not err then
       return true

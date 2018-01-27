@@ -77,16 +77,114 @@ describe("Plugin: acl (API)", function()
         assert.equal(consumer.id, json.consumer_id)
         assert.equal("pro", json.group)
       end)
-      describe("errors", function()
-        it("returns bad request", function()
-          local res = assert(admin_client:send {
+      it("is idempotent", function()
+        local res = assert(admin_client:send {
           method = "PUT",
           path = "/consumers/bob/acls",
-          body = {},
+          body = {
+            group = "pro"
+          },
           headers = {
             ["Content-Type"] = "application/json"
-          }
+          },
         })
+        local body_create = assert.res_status(201, res)
+        local json_create = cjson.decode(body_create)
+
+        res = assert(admin_client:send {
+          method = "PUT",
+          path = "/consumers/bob/acls",
+          body = json_create,
+          headers = {
+            ["Content-Type"] = "application/json"
+          },
+        })
+        local body_update = assert.res_status(200, res)
+        local json_update = cjson.decode(body_update)
+        assert.are.same(json_create, json_update)
+      end)
+      describe("errors", function()
+        it("returns conflict creating a new acl with group used by another acl", function()
+          local dupe_group = "dupe-group"
+
+          local res = assert(admin_client:send {
+            method = "PUT",
+            path = "/consumers/bob/acls",
+            body = {
+              group = dupe_group
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            },
+          })
+          assert.res_status(201, res)
+
+          res = assert(admin_client:send {
+            method = "PUT",
+            path = "/consumers/bob/acls",
+            body = {
+              group = dupe_group
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same({ group = "ACL group already exist for this consumer" }, json)
+        end)
+        it("returns conflict updating an existing acl with group used by another acl", function()
+          local dupe_group = "dupe-group"
+          local new_group = "new-group"
+
+          local res = assert(admin_client:send {
+            method = "PUT",
+            path = "/consumers/bob/acls",
+            body = {
+              group = dupe_group
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            },
+          })
+          assert.res_status(201, res)
+
+          res = assert(admin_client:send {
+            method = "PUT",
+            path = "/consumers/bob/acls",
+            body = {
+              group = new_group
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            },
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+
+          json.group = dupe_group
+
+          res = assert(admin_client:send {
+            method = "PUT",
+            path = "/consumers/bob/acls",
+            body = json,
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same({ group = "ACL group already exist for this consumer" }, json)
+        end)
+        it("returns bad request", function()
+          local res = assert(admin_client:send {
+            method = "PUT",
+            path = "/consumers/bob/acls",
+            body = {},
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
           local body = assert.res_status(400, res)
           local json = cjson.decode(body)
           assert.same({ group = "group is required" }, json)
@@ -219,12 +317,47 @@ describe("Plugin: acl (API)", function()
         local json = cjson.decode(body)
         assert.not_equal(previous_group, json.group)
       end)
+      it("allows setting own group name", function()
+        local previous_group = acl.group
+
+        local res = assert(admin_client:send {
+          method = "PATCH",
+          path = "/consumers/bob/acls/" .. acl.group,
+          body = {
+            group = previous_group
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal(previous_group, json.group)
+      end)
       describe("errors", function()
-        it("handles invalid input", function()
+        it("returns conflict updating an existing acl with group name used by another acl", function()
+          local previous_group = acl.group
+          local new_group = "new-group"
+
+          local res = assert(admin_client:send {
+            method = "PUT",
+            path = "/consumers/bob/acls",
+            body = {
+              group = new_group
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+
+          json.group = previous_group
+
           local res = assert(admin_client:send {
             method = "PATCH",
-            path = "/consumers/bob/acls/" .. acl.id,
-            body = {},
+            path = "/consumers/bob/acls/" .. json.id,
+            body = json,
             headers = {
               ["Content-Type"] = "application/json"
             }
