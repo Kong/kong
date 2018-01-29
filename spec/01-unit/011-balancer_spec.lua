@@ -182,6 +182,35 @@ describe("Balancer", function()
       assert.truthy(hc)
       hc:stop()
     end)
+
+    it("reuses a balancer by default", function()
+      local b1 = balancer._create_balancer(UPSTREAMS_FIXTURES[1])
+      assert.truthy(b1)
+      local hc1 = balancer._get_healthchecker(b1)
+      local b2 = balancer._create_balancer(UPSTREAMS_FIXTURES[1])
+      assert.equal(b1, b2)
+      assert(hc1:stop())
+    end)
+
+    it("re-creates a balancer if told to", function()
+      local b1 = balancer._create_balancer(UPSTREAMS_FIXTURES[1], true)
+      assert.truthy(b1)
+      local hc1 = balancer._get_healthchecker(b1)
+      assert(hc1:stop())
+      local b2 = balancer._create_balancer(UPSTREAMS_FIXTURES[1], true)
+      assert.truthy(b1)
+      local hc2 = balancer._get_healthchecker(b2)
+      assert(hc2:stop())
+      local target_history = {
+        { name = "mashape.com", port = 80, order = "001:a3", weight = 10 },
+        { name = "mashape.com", port = 80, order = "002:a2", weight = 10 },
+        { name = "mashape.com", port = 80, order = "002:a4", weight = 10 },
+        { name = "mashape.com", port = 80, order = "003:a1", weight = 10 },
+      }
+      assert.not_same(b1, b2)
+      assert.same(target_history, balancer._get_target_history(b1))
+      assert.same(target_history, balancer._get_target_history(b2))
+    end)
   end)
 
   describe("get_balancer()", function()
