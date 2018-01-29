@@ -164,7 +164,11 @@ function Kong.init()
   assert(db:init_connector())
 
   local dao = assert(DAOFactory.new(config, db)) -- instantiate long-lived DAO
-  assert(dao:init())
+  local ok, err_t = dao:init()
+  if not ok then
+    error(tostring(err_t))
+  end
+
   assert(dao:are_migrations_uptodate())
 
   -- populate singletons
