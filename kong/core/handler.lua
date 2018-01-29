@@ -85,12 +85,6 @@ return {
       local cluster_events = singletons.cluster_events
 
 
-      -- initialize balancers
-
-
-      balancer.init()
-
-
       -- events dispatcher
 
 
@@ -303,6 +297,12 @@ return {
         end
       end)
 
+
+      -- initialize balancers for active healthchecks
+      ngx.timer.at(0, function()
+        balancer.init()
+      end)
+
     end
   },
   certificate = {
@@ -320,6 +320,7 @@ return {
   },
   access = {
     before = function(ctx)
+
       -- ensure router is up-to-date
 
       local version, err = singletons.cache:get("router:version", {
