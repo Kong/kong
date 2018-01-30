@@ -11,13 +11,13 @@ git clone https://github.com/Kong/docker-kong.git
 git clone https://"$GITHUB_TOKEN"@github.com/Kong/kong-distributions.git
 pushd kong-distributions
 sed -i -e "s/^\([[:blank:]]*\)version.*$/\1version: master/" kong-images/build.yml
-docker pull hutchic/docker-packer
+docker pull mashape/docker-packer
 
 docker run -it --rm \
   -v $PWD:/src \
   -v /tmp:/tmp \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  hutchic/docker-packer /src/package.sh -p alpine -u "$BINTRAY_USER" -k "$BINTRAY_API_KEY" -e
+  mashape/docker-packer /src/package.sh -p alpine -u "$BINTRAY_USER" -k "$BINTRAY_API_KEY" -e
 
 popd
 sudo mv kong-distributions/output/kong-*.tar.gz docker-kong/alpine/kong.tar.gz
