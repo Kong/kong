@@ -871,11 +871,12 @@ function _M.new(routes)
     -- debug HTTP request header logic
 
     if ngx.var.http_kong_debug then
-      -- TODO: this needs to be removed
-      ngx.header["Kong-Api-Name"]     = match_t.route.name
+      ngx.header["Kong-Route-Id"]   = match_t.route.id
+      ngx.header["Kong-Service-Id"] = match_t.service.id
 
-      ngx.header["Kong-Route-Name"]   = match_t.route.name
-      ngx.header["Kong-Service-Name"] = match_t.service.name
+      if match_t.service.name then
+        ngx.header["Kong-Service-Name"] = match_t.service.name
+      end
     end
 
     return match_t

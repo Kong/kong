@@ -33,16 +33,21 @@ for _, strategy in helpers.each_strategy() do
           service.protocol = helpers.mock_upstream_protocol
         end
 
-        route.service = bp.services:insert(service)
+        service = bp.services:insert(service)
+        route.service = service
 
         if not route.protocol then
           route.protocols = { "http" }
         end
 
-        bp.routes:insert(route)
+        route = bp.routes:insert(route)
+        route.service = service
+
+
+        routes[i] = route
       end
 
-      return true
+      return routes
     end
 
     setup(function()
@@ -89,12 +94,13 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("use-cases", function()
+      local routes
 
       setup(function()
         assert(db:truncate())
         dao:truncate_tables()
 
-        insert_routes {
+        routes = insert_routes {
           { -- service-1
             methods    = { "GET" },
             protocols  = { "http" },
@@ -152,7 +158,9 @@ for _, strategy in helpers.each_strategy() do
         })
 
         assert.response(res).has_status(200)
-        assert.equal("service-2", res.headers["kong-service-name"])
+        assert.equal(routes[2].id,           res.headers["kong-route-id"])
+        assert.equal(routes[2].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[2].service.name, res.headers["kong-service-name"])
 
         -- < HTTP/1.1 DELETE /post
         -- > 404 NOT FOUND
@@ -163,7 +171,9 @@ for _, strategy in helpers.each_strategy() do
         })
 
         assert.response(res).has_status(404)
-        assert.is_nil(res.headers["kong-route-name"])
+        assert.is_nil(res.headers["kong-route-id"])
+        assert.is_nil(res.headers["kong-service-id"])
+        assert.is_nil(res.headers["kong-service-name"])
       end)
 
       it("routes by method-only if no other match is found", function()
@@ -174,7 +184,10 @@ for _, strategy in helpers.each_strategy() do
         })
 
         assert.response(res).has_status(200)
-        assert.equal("service-1", res.headers["kong-service-name"])
+
+        assert.equal(routes[1].id,           res.headers["kong-route-id"])
+        assert.equal(routes[1].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[1].service.name, res.headers["kong-service-name"])
       end)
 
       describe("route with a path component in its upstream_url", function()
@@ -186,19 +199,25 @@ for _, strategy in helpers.each_strategy() do
           })
 
           assert.res_status(201, res)
-          assert.equal("service-3", res.headers["kong-service-name"])
+
+          assert.equal(routes[3].id,           res.headers["kong-route-id"])
+          assert.equal(routes[3].service.id,   res.headers["kong-service-id"])
+          assert.equal(routes[3].service.name, res.headers["kong-service-name"])
         end)
       end)
 
       it("route with a path component in its upstream_url and strip_path = false", function()
-          local res = assert(proxy_client:send {
-            method  = "GET",
-            path    = "/private/passwd",
-            headers = { ["kong-debug"] = 1 },
-          })
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/private/passwd",
+          headers = { ["kong-debug"] = 1 },
+        })
 
-          assert.res_status(401, res)
-          assert.equal("service-4", res.headers["kong-service-name"])
+        assert.res_status(401, res)
+
+        assert.equal(routes[4].id,           res.headers["kong-route-id"])
+        assert.equal(routes[4].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[4].service.name, res.headers["kong-service-name"])
       end)
 
       it("route with a path component in its upstream_url and [uri] with a regex", function()
@@ -217,16 +236,21 @@ for _, strategy in helpers.each_strategy() do
         })
 
         assert.res_status(200, res)
-        assert.equal("service-5", res.headers["kong-service-name"])
+
+        assert.equal(routes[5].id,           res.headers["kong-route-id"])
+        assert.equal(routes[5].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[5].service.name, res.headers["kong-service-name"])
       end)
     end)
 
     describe("URI regexes order of evaluation", function()
+      local routes1, routes2
+
       setup(function()
         assert(db:truncate())
         dao:truncate_tables()
 
-        insert_routes {
+        routes1 = insert_routes {
           {
             strip_path = true,
             paths      = { "/status/(re)" },
@@ -239,7 +263,7 @@ for _, strategy in helpers.each_strategy() do
 
         ngx.sleep(1)
 
-        insert_routes {
+        routes2 = insert_routes {
           {
             strip_path = true,
             paths      = { "/status/(r)" },
@@ -280,7 +304,10 @@ for _, strategy in helpers.each_strategy() do
           headers = { ["kong-debug"] = 1 },
         })
         assert.res_status(200, res)
-        assert.equal("service-2", res.headers["kong-service-name"])
+
+        assert.equal(routes2[1].id,           res.headers["kong-route-id"])
+        assert.equal(routes2[1].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes2[1].service.name, res.headers["kong-service-name"])
 
         res = assert(proxy_client:send {
           method  = "GET",
@@ -288,7 +315,10 @@ for _, strategy in helpers.each_strategy() do
           headers = { ["kong-debug"] = 1 },
         })
         assert.res_status(200, res)
-        assert.equal("service-1", res.headers["kong-service-name"])
+
+        assert.equal(routes1[1].id,           res.headers["kong-route-id"])
+        assert.equal(routes1[1].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes1[1].service.name, res.headers["kong-service-name"])
       end)
     end)
 
@@ -365,12 +395,13 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("percent-encoded URIs", function()
+      local routes
 
       setup(function()
         assert(db:truncate())
         dao:truncate_tables()
 
-        insert_routes {
+        routes = insert_routes {
           {
             strip_path = true,
             paths      = { "/endel%C3%B8st" },
@@ -399,7 +430,10 @@ for _, strategy in helpers.each_strategy() do
         })
 
         assert.res_status(200, res)
-        assert.equal("service-1", res.headers["kong-service-name"])
+
+        assert.equal(routes[1].id,           res.headers["kong-route-id"])
+        assert.equal(routes[1].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[1].service.name, res.headers["kong-service-name"])
       end)
 
       it("matches against non-normalized URI", function()
@@ -410,7 +444,10 @@ for _, strategy in helpers.each_strategy() do
         })
 
         assert.res_status(200, res)
-        assert.equal("service-2", res.headers["kong-service-name"])
+
+        assert.equal(routes[2].id,           res.headers["kong-route-id"])
+        assert.equal(routes[2].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[2].service.name, res.headers["kong-service-name"])
       end)
     end)
 
@@ -600,12 +637,13 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("edge-cases", function()
+      local routes
 
       setup(function()
         assert(db:truncate())
         dao:truncate_tables()
 
-        insert_routes {
+        routes = insert_routes {
           {
             strip_path = true,
             paths      = { "/" },
@@ -634,7 +672,10 @@ for _, strategy in helpers.each_strategy() do
         })
 
         assert.response(res).has_status(200)
-        assert.equal("service-1", res.headers["kong-service-name"])
+
+        assert.equal(routes[1].id,           res.headers["kong-route-id"])
+        assert.equal(routes[1].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[1].service.name, res.headers["kong-service-name"])
 
         res = assert(proxy_client:send {
           method  = "GET",
@@ -643,17 +684,21 @@ for _, strategy in helpers.each_strategy() do
         })
 
         assert.response(res).has_status(200)
-        assert.equal("service-2", res.headers["kong-service-name"])
+
+        assert.equal(routes[2].id,           res.headers["kong-route-id"])
+        assert.equal(routes[2].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[2].service.name, res.headers["kong-service-name"])
       end)
     end)
 
     describe("[paths] + [methods]", function()
+      local routes
 
       setup(function()
         assert(db:truncate())
         dao:truncate_tables()
 
-        insert_routes {
+        routes = insert_routes {
           {
             strip_path = true,
             methods    = { "GET" },
@@ -686,17 +731,21 @@ for _, strategy in helpers.each_strategy() do
         })
 
         assert.res_status(200, res)
-        assert.equal("service-2", res.headers["kong-service-name"])
+
+        assert.equal(routes[2].id,           res.headers["kong-route-id"])
+        assert.equal(routes[2].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[2].service.name, res.headers["kong-service-name"])
       end)
     end)
 
     describe("[paths] + [hosts]", function()
+      local routes
 
       setup(function()
         assert(db:truncate())
         dao:truncate_tables()
 
-        insert_routes {
+        routes = insert_routes {
           {
             strip_path = true,
             hosts      = { "route.com" },
@@ -730,7 +779,10 @@ for _, strategy in helpers.each_strategy() do
         })
 
         assert.res_status(200, res)
-        assert.equal("service-2", res.headers["kong-service-name"])
+
+        assert.equal(routes[2].id,           res.headers["kong-route-id"])
+        assert.equal(routes[2].service.id,   res.headers["kong-service-id"])
+        assert.equal(routes[2].service.name, res.headers["kong-service-name"])
       end)
     end)
 
