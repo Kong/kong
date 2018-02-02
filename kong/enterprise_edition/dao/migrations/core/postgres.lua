@@ -219,23 +219,23 @@ return {
       })
       -- Setup and Admin user by default if ENV var is set
       if os.getenv("KONG_RBAC_INITIAL_ADMIN_PASS") ~= nil then
-         local user, err = dao.rbac_users:insert({
-           id = utils.uuid(),
-           name = "kong_admin",
-           user_token = os.getenv("KONG_RBAC_INITIAL_ADMIN_PASS"),
-           enabled = true,
-           comment = "Initial RBAC Secure User"
-         })
-         if err then
-           return err
-         end
+        local user, err = dao.rbac_users:insert({
+          id = utils.uuid(),
+          name = "kong_admin",
+          user_token = os.getenv("KONG_RBAC_INITIAL_ADMIN_PASS"),
+          enabled = true,
+          comment = "Initial RBAC Secure User"
+        })
+        if err then
+          return err
+        end
         local _, err = dao.rbac_user_roles:insert({
           user_id = user.id,
           role_id = roles.super_admin.id
         })
-         if err then
-           return err
-         end
+        if err then
+          return err
+        end
       end
     end,
   },
