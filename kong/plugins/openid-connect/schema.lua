@@ -23,11 +23,11 @@ return {
       default                          = "client_id"
     },
     client_id                          = {
-      required                         = true,
+      required                         = false,
       type                             = "array",
     },
     client_secret                      = {
-      required                         = true,
+      required                         = false,
       type                             = "array",
     },
     redirect_uri                       = {

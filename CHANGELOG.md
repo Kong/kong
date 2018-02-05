@@ -1,3 +1,8 @@
+## v0.0.8
+
+- Change `config.client_id` from `required` to `optional`
+- Change `config.client_secret` from `required` to `optional`
+
 ## v0.0.7
 
 - Fixed authorization code flow client selection
