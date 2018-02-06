@@ -1146,16 +1146,7 @@ for _, strategy in helpers.each_strategy("postgres") do
           assert.equal("https", service_in_db.protocol)
         end)
 
-        pending("cannot update a Service to bear an already existing name", function()
-          -- PENDING: not working, since update_by_name produces the following query:
-          --[[
-   UPDATE "services"
-      SET "created_at" = NULL, "updated_at" = TO_TIMESTAMP(1517876678) AT TIME ZONE 'UTC', "name" = 'existing-service', "retries" = NULL, "protocol" = NULL, "host" = NULL, "port" = NULL, "path" = NULL, "connect_timeout" = NULL, "write_timeout" = NULL, "read_timeout" = NULL
-    WHERE "name" = 'existing-service'
-RETURNING "id", EXTRACT(EPOCH FROM "created_at" AT TIME ZONE 'UTC') AS "created_at", EXTRACT(EPOCH FROM "updated_at" AT TIME ZONE 'UTC') AS "updated_at", "name", "retries", "protocol", "host", "port", "path", "connect_timeout", "write_timeout", "read_timeout";
-          --]]
-          -- thus updating an undesired row
-
+        it("cannot update a Service to bear an already existing name", function()
           local updated_service, _, err_t = db.services:update_by_name("test-service", {
             name = "existing-service"
           })

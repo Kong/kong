@@ -26,6 +26,7 @@ local log           = ngx.log
 
 local NOTICE        = ngx.NOTICE
 local LIMIT         = {}
+local UNIQUE        = {}
 
 
 local new_tab
@@ -184,7 +185,7 @@ local function collapse(name, map)
       end
       c[n+1] = '  r["'
       c[n+2] = entity
-      c[n+3] = '"] = nil\n'
+      c[n+3] = '"] = nil\n\n'
       c[n+4] = 'elseif r["'
       c[n+5] = entity
       c[n+6] = '"] == null then\n'
@@ -467,7 +468,7 @@ local function toerror(strategy, err, primary_key, entity)
 end
 
 
-local function execute(strategy, statement_name, attributes)
+local function execute(strategy, statement_name, attributes, is_update)
   local connector = strategy.connector
   local internal  = strategy[PRIVATE]
   local statement = internal.statements[statement_name]
@@ -485,9 +486,18 @@ local function execute(strategy, statement_name, attributes)
 
   for i = 1, argc do
     local name  = argn[i]
-    local value = attributes[name]
-    if value == nil and statement_name == "update" then
+    local value
+
+    if i == argc and is_update and attributes[UNIQUE] then
+      value = attributes[UNIQUE]
+
+    else
+      value = attributes[name]
+    end
+
+    if value == nil and is_update then
       argv[i] = escape_identifier(connector, name)
+
     else
       argv[i] = escape_literal(connector, value, fields[name])
     end
@@ -514,6 +524,7 @@ local function page(self, size, token, foreign_key, foreign_entity_name)
         [foreign_entity_name] = foreign_key,
         [LIMIT]               = limit,
       }
+
     else
       statement_name = "page_next"
       attributes     = {
@@ -695,7 +706,7 @@ end
 
 
 function _mt:update(primary_key, entity)
-  local res, err = execute(self, "update", self.collapse(primary_key, entity))
+  local res, err = execute(self, "update", self.collapse(primary_key, entity), true)
 
   if res then
     local row = res[1]
@@ -711,21 +722,19 @@ end
 
 function _mt:update_by_field(field_name, unique_value, entity)
   local statement_name = "update_by_" .. field_name
-  local filter = {
-    [field_name] = unique_value,
-  }
-
-  local res, err = execute(self, statement_name, self.collapse(filter, entity))
+  local res, err = execute(self, statement_name, self.collapse({ [UNIQUE] = unique_value }, entity), true)
 
   if res then
     local row = res[1]
     if row then
       return self.expand(row), nil
     end
-    return nil, self.errors:not_found_by_field(filter)
+    return nil, self.errors:not_found_by_field {
+      [field_name] = unique_value,
+    }
   end
 
-  return toerror(self, err, filter, entity)
+  return toerror(self, err, { [field_name] = unique_value }, entity)
 end
 
 
