@@ -54,7 +54,9 @@ function _M.new(kong_config)
     database = kong_config.pg_database,
     ssl = kong_config.pg_ssl,
     ssl_verify = kong_config.pg_ssl_verify,
-    cafile = kong_config.lua_ssl_trusted_certificate
+    cafile = kong_config.lua_ssl_trusted_certificate,
+    cert = kong_config.admin_ssl_cert_default,
+    key = kong_config.admin_ssl_cert_key
   }
 
   return self
