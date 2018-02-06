@@ -271,6 +271,18 @@ function _M:not_found(primary_key)
 end
 
 
+function _M:not_found_by_field(filter)
+  if type(filter) ~= "table" then
+    error("filter must be a table", 2)
+  end
+
+  local message = fmt("could not find the entity with '%s'",
+                       pl_pretty(filter, ""))
+
+  return new_err_t(self, ERRORS.NOT_FOUND, message, filter)
+end
+
+
 function _M:unique_violation(unique_key)
   if type(unique_key) ~= "table" then
     error("unique_key must be a table", 2)

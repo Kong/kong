@@ -10,7 +10,7 @@ local unindent = helpers.unindent
 local a_blank_uuid = "00000000-0000-0000-0000-000000000000"
 
 
-for _, strategy in helpers.each_strategy() do
+for _, strategy in helpers.each_strategy("postgres") do
   describe("kong.db [#" .. strategy .. "]", function()
     local db, bp
 
@@ -930,6 +930,39 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
+      describe(":select_by_name()", function()
+        setup(function()
+          assert(db:truncate())
+
+          for i = 1, 5 do
+            assert(db.services:insert({
+              name = "service_" .. i,
+              host = "service" .. i .. ".com",
+            }))
+          end
+        end)
+
+        -- no I/O
+        it("errors on invalid arg", function()
+          assert.has_error(function()
+            db.services:select_by_name(123)
+          end, "invalid argument 'name' (expected a string)")
+        end)
+
+        -- I/O
+        it("returns existing Service", function()
+          local service = assert(db.services:select_by_name("service_1"))
+          assert.equal("service1.com", service.host)
+        end)
+
+        it("returns nothing on non-existing Service", function()
+          local service, err, err_t = db.services:select_by_name("non-existing")
+          assert.is_nil(err)
+          assert.is_nil(err_t)
+          assert.is_nil(service)
+        end)
+      end)
+
       describe(":update()", function()
         -- no I/O
         it("errors on invalid arg", function()
@@ -1026,6 +1059,119 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
+      describe(":update_by_name()", function()
+        before_each(function()
+          assert(db:truncate())
+
+          assert(db.services:insert({
+            name = "test-service",
+            host = "test-service.com",
+          }))
+
+          assert(db.services:insert({
+            name = "existing-service",
+            host = "existing-service.com",
+          }))
+        end)
+
+        -- no I/O
+        it("errors on invalid arg", function()
+          assert.has_error(function()
+            db.services:update_by_name(123)
+          end, "invalid argument 'name' (expected a string)")
+        end)
+
+        it("errors on invalid values", function()
+          local new_service, err, err_t = db.services:update_by_name("test-service", {
+            protocol = 123
+          })
+          assert.is_nil(new_service)
+          local message = "schema violation (protocol: expected a string)"
+          assert.equal(fmt("[%s] %s", strategy, message), err)
+          assert.same({
+            code        = Errors.codes.SCHEMA_VIOLATION,
+            name        = "schema violation",
+            message     = message,
+            strategy    = strategy,
+            fields      = {
+              protocol  = "expected a string",
+            }
+          }, err_t)
+        end)
+
+        -- I/O
+        it("returns not found error", function()
+          local service, err, err_t = db.services:update_by_name("inexisting-service", { protocol = "http" })
+          assert.is_nil(service)
+          local message = fmt(
+            [[[%s] could not find the entity with '{name="inexisting-service"}']],
+            strategy)
+          assert.equal(message, err)
+          assert.equal(Errors.codes.NOT_FOUND, err_t.code)
+        end)
+
+        it("updates an existing Service", function()
+          local service = assert(db.services:insert({
+            host = "service.com"
+          }))
+
+          local updated_service, err, err_t = db.services:update({
+            id = service.id
+          }, { protocol = "https" })
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+          assert.equal("https", updated_service.protocol)
+
+          local service_in_db, err, err_t = db.services:select({
+            id = service.id
+          })
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+          assert.equal("https", service_in_db.protocol)
+        end)
+
+        it("updates an existing Service", function()
+          local updated_service, err, err_t = db.services:update_by_name("test-service", {
+            protocol = "https"
+          })
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+          assert.equal("https", updated_service.protocol)
+
+          local service_in_db, err, err_t = db.services:select({
+            id = updated_service.id
+          })
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+          assert.equal("https", service_in_db.protocol)
+        end)
+
+        pending("cannot update a Service to bear an already existing name", function()
+          -- PENDING: not working, since update_by_name produces the following query:
+          --[[
+   UPDATE "services"
+      SET "created_at" = NULL, "updated_at" = TO_TIMESTAMP(1517876678) AT TIME ZONE 'UTC', "name" = 'existing-service', "retries" = NULL, "protocol" = NULL, "host" = NULL, "port" = NULL, "path" = NULL, "connect_timeout" = NULL, "write_timeout" = NULL, "read_timeout" = NULL
+    WHERE "name" = 'existing-service'
+RETURNING "id", EXTRACT(EPOCH FROM "created_at" AT TIME ZONE 'UTC') AS "created_at", EXTRACT(EPOCH FROM "updated_at" AT TIME ZONE 'UTC') AS "updated_at", "name", "retries", "protocol", "host", "port", "path", "connect_timeout", "write_timeout", "read_timeout";
+          --]]
+          -- thus updating an undesired row
+
+          local updated_service, _, err_t = db.services:update_by_name("test-service", {
+            name = "existing-service"
+          })
+          assert.is_nil(updated_service)
+          assert.same({
+            code     = Errors.codes.UNIQUE_VIOLATION,
+            name     = "unique constraint violation",
+            message  = "UNIQUE violation detected on '{name=\"existing-service\"}'",
+            strategy = strategy,
+            fields   = {
+              name = "existing-service",
+            }
+          }, err_t)
+        end)
+      end)
+
       describe(":delete()", function()
         -- no I/O
         it("errors on invalid arg", function()
@@ -1053,6 +1199,48 @@ for _, strategy in helpers.each_strategy() do
           local ok, err, err_t = db.services:delete({
             id = service.id
           })
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+          assert.is_true(ok)
+
+          local service_in_db, err, err_t = db.services:select({
+            id = service.id
+          })
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+          assert.is_nil(service_in_db)
+        end)
+      end)
+
+      describe(":delete_by_name()", function()
+        local service
+
+        setup(function()
+          assert(db:truncate())
+
+          service = assert(db.services:insert({
+            name = "service_1",
+            host = "service1.com",
+          }))
+        end)
+
+        -- no I/O
+        it("errors on invalid arg", function()
+          assert.has_error(function()
+            db.services:delete_by_name(123)
+          end, "invalid argument 'name' (expected a string)")
+        end)
+
+        -- I/O
+        it("returns nothing if the Service does not exist", function()
+          local ok, err, err_t = db.services:delete_by_name("service_10")
+          assert.is_true(ok)
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+        end)
+
+        it("deletes an existing Service", function()
+          local ok, err, err_t = db.services:delete_by_name("service_1")
           assert.is_nil(err_t)
           assert.is_nil(err)
           assert.is_true(ok)

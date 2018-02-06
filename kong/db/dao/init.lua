@@ -81,6 +81,73 @@ local function generate_foreign_key_methods(self)
 
         return entities, nil, nil, new_offset
       end
+
+    elseif field.unique then
+      local function validate_unique_value(unique_value)
+        local ok, err = self.schema:validate_field(field, unique_value)
+        if not ok then
+          error("invalid argument '" .. name .. "' (" .. err .. ")", 3)
+        end
+      end
+
+      self["select_by_" .. name] = function(self, unique_value)
+        validate_unique_value(unique_value)
+
+        local row, err_t = self.strategy:select_by_field(name, unique_value)
+        if err_t then
+          return nil, tostring(err_t), err_t
+        end
+
+        if not row then
+          return nil
+        end
+
+        return self:row_to_entity(row)
+      end
+
+      self["update_by_" .. name] = function(self, unique_value, entity)
+        validate_unique_value(unique_value)
+
+        local entity_to_update, err = self.schema:process_auto_fields(entity, "update")
+        if not entity_to_update then
+          local err_t = self.errors:schema_violation(err)
+          return nil, tostring(err_t), err_t
+        end
+
+        local ok, errors = self.schema:validate_update(entity_to_update)
+        if not ok then
+          local err_t = self.errors:schema_violation(errors)
+          return nil, tostring(err_t), err_t
+        end
+
+        local row, err_t = self.strategy:update_by_field(name, unique_value,
+                                                         entity_to_update)
+        if not row then
+          return nil, tostring(err_t), err_t
+        end
+
+        row, err, err_t = self:row_to_entity(row)
+        if not row then
+          return nil, err, err_t
+        end
+
+        self:post_crud_event("update", row)
+
+        return row
+      end
+
+      self["delete_by_" .. name] = function(self, unique_value)
+        validate_unique_value(unique_value)
+
+        local _, err_t = self.strategy:delete_by_field(name, unique_value)
+        if err_t then
+          return nil, tostring(err_t), err_t
+        end
+
+        self:post_crud_event("delete")
+
+        return true
+      end
     end
   end
 end

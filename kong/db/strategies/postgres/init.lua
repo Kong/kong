@@ -592,57 +592,6 @@ local function make_select_for(foreign_entity_name)
 end
 
 
-local function make_select_by(statement_name)
-  return function(self, unique_key)
-    local res, err = execute(self, statement_name, self.collapse(unique_key))
-
-    if res then
-      local row = res[1]
-      if row then
-        return self.expand(row), nil
-      end
-
-      return nil, nil
-    end
-
-    return toerror(self, err)
-  end
-end
-
-
-local function make_update_by(statement_name)
-  return function(self, unique_key, entity)
-    local res, err = execute(self, statement_name, self.collapse(unique_key, entity))
-
-    if res then
-      local row = res[1]
-      if row then
-        return self.expand(row), nil
-      end
-      return nil, self.errors:not_found(unique_key)
-    end
-
-    return toerror(self, err, nil, entity)
-  end
-end
-
-
-local function make_delete_by(statement_name)
-  return function(self, unique_key)
-    local res, err = execute(self, statement_name, self.collapse(unique_key))
-
-    if res then
-      if res.affected_rows == 0 then
-        return nil, nil
-      end
-
-      return true, nil
-    end
-
-    return toerror(self, err)
-  end
-end
-
 local _mt   = {}
 
 
@@ -724,6 +673,27 @@ function _mt:select(primary_key)
 end
 
 
+function _mt:select_by_field(field_name, unique_value)
+  local statement_name = "select_by_" .. field_name
+  local filter = {
+    [field_name] = unique_value,
+  }
+
+  local res, err = execute(self, statement_name, self.collapse(filter))
+
+  if res then
+    local row = res[1]
+    if row then
+      return self.expand(row), nil
+    end
+
+    return nil, nil
+  end
+
+  return toerror(self, err, filter)
+end
+
+
 function _mt:update(primary_key, entity)
   local res, err = execute(self, "update", self.collapse(primary_key, entity))
 
@@ -739,6 +709,26 @@ function _mt:update(primary_key, entity)
 end
 
 
+function _mt:update_by_field(field_name, unique_value, entity)
+  local statement_name = "update_by_" .. field_name
+  local filter = {
+    [field_name] = unique_value,
+  }
+
+  local res, err = execute(self, statement_name, self.collapse(filter, entity))
+
+  if res then
+    local row = res[1]
+    if row then
+      return self.expand(row), nil
+    end
+    return nil, self.errors:not_found_by_field(filter)
+  end
+
+  return toerror(self, err, filter, entity)
+end
+
+
 function _mt:delete(primary_key)
   local res, err = execute(self, "delete", self.collapse(primary_key))
 
@@ -751,6 +741,26 @@ function _mt:delete(primary_key)
   end
 
   return toerror(self, err, primary_key)
+end
+
+
+function _mt:delete_by_field(field_name, unique_value)
+  local statement_name = "delete_by_" .. field_name
+  local filter = {
+    [field_name] = unique_value,
+  }
+
+  local res, err = execute(self,statement_name, self.collapse(filter))
+
+  if res then
+    if res.affected_rows == 0 then
+      return nil, nil
+    end
+
+    return true, nil
+  end
+
+  return toerror(self, err, filter)
 end
 
 
@@ -1435,8 +1445,6 @@ function _M.new(connector, schema, errors)
         make = compile(concat({ table_name, select_by_statement_name }, "_"), select_by_statement)
       }
 
-      self[select_by_statement_name] = make_select_by(select_by_statement_name)
-
       local update_by_statement_name = "update_by_" .. unique_name
       local update_by_statement = concat {
         "   UPDATE ", table_name_escaped, "\n",
@@ -1460,8 +1468,6 @@ function _M.new(connector, schema, errors)
         make = compile(concat({ table_name, update_by_statement_name }, "_"), update_by_statement)
       }
 
-      self[update_by_statement_name] = make_update_by(update_by_statement_name)
-
       local delete_by_statement_name = "delete_by_" .. unique_name
       local delete_by_statement = concat {
         "DELETE\n",
@@ -1475,8 +1481,6 @@ function _M.new(connector, schema, errors)
         argv = single_args,
         make = compile(concat({ table_name, delete_by_statement_name }, "_"), delete_by_statement)
       }
-
-      self[delete_by_statement_name] = make_delete_by(delete_by_statement_name)
     end
   end
 

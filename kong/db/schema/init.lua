@@ -329,10 +329,6 @@ local function merge_field(base, overrides)
 end
 
 
--- Forward declaration
-local validate_field
-
-
 --- Entity checkers are cross-field validation rules.
 -- An entity checker is implemented as an entry in this table,
 -- containing a mandatory field `fn`, the checker function,
@@ -421,7 +417,7 @@ Schema.entity_checkers = {
       local then_value = entity[arg.then_field]
 
       local if_merged = merge_field(schema.fields[arg.if_field], arg.if_match)
-      local ok, _ = validate_field(schema, if_merged, if_value)
+      local ok, _ = Schema.validate_field(schema, if_merged, if_value)
       if not ok then
         return true
       end
@@ -434,7 +430,7 @@ Schema.entity_checkers = {
 
       local then_merged = merge_field(schema.fields[arg.then_field], arg.then_match)
       local err
-      ok, err = validate_field(schema, then_merged, then_value)
+      ok, err = Schema.validate_field(schema, then_merged, then_value)
       if not ok then
         local field_errors = { [arg.then_field] = err }
         return nil, validation_errors.IF_THEN, field_errors
@@ -458,7 +454,7 @@ local validate_fields
 -- @param value The value to be checked (may be ngx.null).
 -- @return true if the field validates correctly;
 -- nil and an error message on failure.
-validate_field = function(self, field, value)
+function Schema:validate_field(field, value)
 
   if value == null then
     if field.nullable == false then
@@ -478,7 +474,7 @@ validate_field = function(self, field, value)
 
     field.elements.nullable = false
     for _, v in ipairs(value) do
-      local ok, err = validate_field(self, field.elements, v)
+      local ok, err = self:validate_field(field.elements, v)
       if not ok then
         return nil, err
       end
@@ -502,7 +498,7 @@ validate_field = function(self, field, value)
     local set = {}
     for _, v in ipairs(value) do
       if not set[v] then
-        local ok, err = validate_field(self, field.elements, v)
+        local ok, err = self:validate_field(field.elements, v)
         if not ok then
           return nil, err
         end
@@ -525,11 +521,11 @@ validate_field = function(self, field, value)
     field.values.nullable = false
     for k, v in pairs(value) do
       local ok, err
-      ok, err = validate_field(self, field.keys, k)
+      ok, err = self:validate_field(field.keys, k)
       if not ok then
         return nil, err
       end
-      ok, err = validate_field(self, field.values, v)
+      ok, err = self:validate_field(field.values, v)
       if not ok then
         return nil, err
       end
@@ -692,7 +688,7 @@ validate_fields = function(self, input)
     if field then
       field = (field.type == "self") and input or field
       local _
-      _, errors[k] = validate_field(self, field, v)
+      _, errors[k] = self:validate_field(field, v)
     else
       errors[k] = validation_errors.UNKNOWN
     end
@@ -871,7 +867,7 @@ function Schema:validate_primary_key(pk, ignore_others)
       errors[k] = validation_errors.MISSING_PK
     else
       local _
-      _, errors[k] = validate_field(self, field, v)
+      _, errors[k] = self:validate_field(field, v)
     end
   end
 
