@@ -1,14 +1,14 @@
-local Errors = require "kong.db.errors"
-local responses = require "kong.tools.responses"
+local Errors      = require "kong.db.errors"
+local responses   = require "kong.tools.responses"
+local utils       = require "kong.tools.utils"
 local app_helpers = require "lapis.application"
 
 
-local escape_uri = ngx.escape_uri
-local concat     = table.concat
-local null       = ngx.null
-local find       = string.find
-local fmt        = string.format
-local sub        = string.sub
+local escape_uri  = ngx.escape_uri
+local null        = ngx.null
+local find        = string.find
+local fmt         = string.format
+local sub         = string.sub
 
 
 -- error codes http status codes
@@ -39,23 +39,24 @@ end
 -- Examples:
 --
 -- /routes
--- /services/<service_id>/routes
+-- /services/:services/routes
 --
 -- and
 --
 -- /services
-local function get_collection_endpoint(schema_name, entity_name, parent_schema_name)
+local function get_collection_endpoint(schema_name, entity_name,
+                                       parent_schema_name,
+                                       parent_entity_has_unique_name)
   if not parent_schema_name then
     return function(self, db, helpers)
-      local data, _, err_t, offset = db[schema_name]:page(
-        self.args.size,
-        self.args.offset)
-
+      local data, _, err_t, offset = db[schema_name]:page(self.args.size,
+                                                          self.args.offset)
       if err_t then
         return handle_error(err_t)
       end
 
-      local next_page = offset and fmt("/%s?offset=%s", schema_name, escape_uri(offset)) or null
+      local next_page = offset and fmt("/%s?offset=%s", schema_name,
+                                       escape_uri(offset)) or null
 
       return helpers.responses.send_HTTP_OK {
         data   = data,
@@ -66,10 +67,17 @@ local function get_collection_endpoint(schema_name, entity_name, parent_schema_n
   end
 
   return function(self, db, helpers)
-    -- TODO: composite key support
-    local fk = { id = self.params[parent_schema_name] }
+    local id = self.params[parent_schema_name]
 
-    local parent_entity, _, err_t = db[parent_schema_name]:select(fk)
+    -- TODO: composite key support
+    local parent_entity, _, err_t
+    if parent_entity_has_unique_name and not utils.is_valid_uuid(id) then
+      parent_entity, _, err_t = db[parent_schema_name]:select_by_name(id)
+
+    else
+      parent_entity, _, err_t = db[parent_schema_name]:select({ id = id })
+    end
+
     if err_t then
       return handle_error(err_t)
     end
@@ -80,18 +88,17 @@ local function get_collection_endpoint(schema_name, entity_name, parent_schema_n
 
     local entity = db[schema_name]
 
-    local rows, _, err_t, offset = entity["for_" .. entity_name](
-      entity,
-      fk,
-      self.args.size,
-      self.args.offset)
-
+    -- TODO: composite key support
+    local rows, _, err_t, offset = entity["for_" .. entity_name](entity, {
+      id = parent_entity.id
+    }, self.args.size, self.args.offset)
     if err_t then
       return handle_error(err_t)
     end
 
-    local next_page = offset and fmt("/%s/%s/%s?offset=%s",
-      parent_schema_name, escape_uri(fk.id), schema_name, escape_uri(offset)) or null
+    local next_page = offset and fmt("/%s/%s/%s?offset=%s", parent_schema_name,
+                                     escape_uri(id), schema_name,
+                                     escape_uri(offset)) or null
 
     return helpers.responses.send_HTTP_OK {
       data   = rows,
@@ -101,23 +108,33 @@ local function get_collection_endpoint(schema_name, entity_name, parent_schema_n
   end
 end
 
+
 -- Generates admin api post collection endpoint functions
 --
 -- Examples:
 --
 -- /routes
--- /services/<service_id>/routes
+-- /services/:services/routes
 --
 -- and
 --
 -- /services
-local function post_collection_endpoint(schema_name, entity_name, parent_schema_name)
+local function post_collection_endpoint(schema_name, entity_name,
+                                        parent_schema_name,
+                                        parent_entity_has_unique_name)
   return function(self, db, helpers)
     if parent_schema_name then
-      -- TODO: composite key support
-      local fk = { id = self.params[parent_schema_name] }
+      local id = self.params[parent_schema_name]
 
-      local parent_entity, _, err_t = db[parent_schema_name]:select(fk)
+      -- TODO: composite key support
+      local parent_entity, _, err_t
+      if parent_entity_has_unique_name and not utils.is_valid_uuid(id) then
+        parent_entity, _, err_t = db[parent_schema_name]:select_by_name(id)
+
+      else
+        parent_entity, _, err_t = db[parent_schema_name]:select({ id = id })
+      end
+
       if err_t then
         return handle_error(err_t)
       end
@@ -126,7 +143,8 @@ local function post_collection_endpoint(schema_name, entity_name, parent_schema_
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
-      self.args.post[entity_name] = fk
+      -- TODO: composite key support
+      self.args.post[entity_name] = { id = parent_entity.id }
     end
 
     local data, _, err_t = db[schema_name]:insert(self.args.post)
@@ -138,28 +156,46 @@ local function post_collection_endpoint(schema_name, entity_name, parent_schema_
   end
 end
 
+
 -- Generates admin api get entity endpoint functions
 --
 -- Examples:
 --
--- /routes/<route-id>
--- /routes/<route-id>/service
+-- /routes/:routes
+-- /routes/:routes/service
 --
 -- and
 --
--- /services/<service_id>
-local function get_entity_endpoint(schema_name, entity_name, parent_schema_name)
+-- /services/:services
+local function get_entity_endpoint(schema_name, entity_has_unique_name,
+                                   entity_name, parent_schema_name,
+                                   parent_entity_has_unique_name)
   return function(self, db, helpers)
-    local pk
+    local entity, _, err_t
 
     if not parent_schema_name then
-      pk = { id = self.params[schema_name] }
+      local id = self.params[schema_name]
+
+      -- TODO: composite key support
+      if entity_has_unique_name and not utils.is_valid_uuid(id) then
+        entity, _, err_t = db[schema_name]:select_by_name(id)
+
+      else
+        entity, _, err_t = db[schema_name]:select({ id = id })
+      end
 
     else
-      -- TODO: composite key support
-      local fk = { id = self.params[parent_schema_name] }
+      local id = self.params[parent_schema_name]
 
-      local parent_entity, _, err_t = db[parent_schema_name]:select(fk)
+      -- TODO: composite key support
+      local parent_entity
+      if parent_entity_has_unique_name and not utils.is_valid_uuid(id) then
+        parent_entity, _, err_t = db[parent_schema_name]:select_by_name(id)
+
+      else
+        parent_entity, _, err_t = db[parent_schema_name]:select({ id = id })
+      end
+
       if err_t then
         return handle_error(err_t)
       end
@@ -168,10 +204,9 @@ local function get_entity_endpoint(schema_name, entity_name, parent_schema_name)
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
-      pk = parent_entity[entity_name]
+      entity, _, err_t = db[schema_name]:select(parent_entity[entity_name])
     end
 
-    local entity, _, err_t = db[schema_name]:select(pk)
     if err_t then
       return handle_error(err_t)
     end
@@ -184,28 +219,46 @@ local function get_entity_endpoint(schema_name, entity_name, parent_schema_name)
   end
 end
 
+
 -- Generates admin api patch entity endpoint functions
 --
 -- Examples:
 --
--- /routes/<route-id>
--- /routes/<route-id>/service
+-- /routes/:routes
+-- /routes/:routes/service
 --
 -- and
 --
--- /services/<service_id>
-local function patch_entity_endpoint(schema_name, entity_name, parent_schema_name)
+-- /services/:services
+local function patch_entity_endpoint(schema_name, entity_has_unique_name,
+                                     entity_name, parent_schema_name,
+                                     parent_entity_has_unique_name)
   return function(self, db, helpers)
-    local pk
+    local entity, _, err_t
 
     if not parent_schema_name then
-      pk = { id = self.params[schema_name] }
+      local id = self.params[schema_name]
+
+      -- TODO: composite key support
+      if entity_has_unique_name and not utils.is_valid_uuid(id) then
+        entity, _, err_t = db[schema_name]:update_by_name(id, self.args.post)
+
+      else
+        entity, _, err_t = db[schema_name]:update({ id = id }, self.args.post)
+      end
 
     else
-      -- TODO: composite key support
-      local fk = { id = self.params[parent_schema_name] }
+      local id = self.params[parent_schema_name]
 
-      local parent_entity, _, err_t = db[parent_schema_name]:select(fk)
+      -- TODO: composite key support
+      local parent_entity
+      if parent_entity_has_unique_name and not utils.is_valid_uuid(id) then
+        parent_entity, _, err_t = db[parent_schema_name]:select_by_name(id)
+
+      else
+        parent_entity, _, err_t = db[parent_schema_name]:select({ id = id })
+      end
+
       if err_t then
         return handle_error(err_t)
       end
@@ -214,10 +267,10 @@ local function patch_entity_endpoint(schema_name, entity_name, parent_schema_nam
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
-      pk = parent_entity[entity_name]
+      entity, _, err_t = db[schema_name]:update(parent_entity[entity_name],
+                                                self.args.post)
     end
 
-    local entity, _, err_t = db[schema_name]:update(pk, self.args.post)
     if err_t then
       return handle_error(err_t)
     end
@@ -231,24 +284,46 @@ end
 --
 -- Examples:
 --
--- /routes/<route-id>
--- /routes/<route-id>/service
+-- /routes/:routes
+-- /routes/:routes/service
 --
 -- and
 --
--- /services/<service_id>
-local function delete_entity_endpoint(schema_name, entity_name, parent_schema_name)
+-- /services/:services
+local function delete_entity_endpoint(schema_name, entity_has_unique_name,
+                                      entity_name, parent_schema_name,
+                                      parent_entity_has_unique_name)
   return function(self, db, helpers)
-    local pk
-
     if not parent_schema_name then
-      pk = { id = self.params[schema_name] }
+      local id = self.params[schema_name]
+
+      -- TODO: composite key support
+      local _, err_t
+      if entity_has_unique_name and not utils.is_valid_uuid(id) then
+        _, _, err_t = db[schema_name]:delete_by_name(id)
+
+      else
+        _, _, err_t = db[schema_name]:delete({ id = id })
+      end
+
+      if err_t then
+        return handle_error(err_t)
+      end
+
+      return helpers.responses.send_HTTP_NO_CONTENT()
 
     else
-      -- TODO: composite key support
-      local fk = { id = self.params[parent_schema_name] }
+      local id = self.params[parent_schema_name]
 
-      local parent_entity, _, err_t = db[parent_schema_name]:select(fk)
+      -- TODO: composite key support
+      local parent_entity, _, err_t
+      if parent_entity_has_unique_name and not utils.is_valid_uuid(id) then
+        parent_entity, _, err_t = db[parent_schema_name]:select_by_name(id)
+
+      else
+        parent_entity, _, err_t = db[parent_schema_name]:select({ id = id })
+      end
+
       if err_t then
         return handle_error(err_t)
       end
@@ -259,38 +334,31 @@ local function delete_entity_endpoint(schema_name, entity_name, parent_schema_na
 
       return helpers.responses.send_HTTP_METHOD_NOT_ALLOWED()
     end
-
-    local _, _, err_t = db[schema_name]:delete(pk)
-    if err_t then
-      return handle_error(err_t)
-    end
-
-    return helpers.responses.send_HTTP_NO_CONTENT()
   end
 end
 
 
 local function generate_collection_endpoints(endpoints, collection_path, ...)
   endpoints[collection_path] = {
-    --OPTIONS =     method_not_allowed,
-    --HEAD    =     method_not_allowed,
-    GET     =    get_collection_endpoint(...),
-    POST    =   post_collection_endpoint(...),
-    --PUT     =     method_not_allowed,
-    --PATCH   =     method_not_allowed,
-    --DELETE  =     method_not_allowed,
+    --OPTIONS = method_not_allowed,
+    --HEAD    = method_not_allowed,
+    GET     = get_collection_endpoint(...),
+    POST    = post_collection_endpoint(...),
+    --PUT     = method_not_allowed,
+    --PATCH   = method_not_allowed,
+    --DELETE  = method_not_allowed,
   }
 end
 
 
 local function generate_entity_endpoints(endpoints, entity_path, ...)
   endpoints[entity_path] = {
-    --OPTIONS =     method_not_allowed,
-    --HEAD    =     method_not_allowed,
-    GET     =    get_entity_endpoint(...),
-    --POST    =     method_not_allowed,
-    --PUT     =     method_not_allowed,
-    PATCH   =  patch_entity_endpoint(...),
+    --OPTIONS = method_not_allowed,
+    --HEAD    = method_not_allowed,
+    GET     = get_entity_endpoint(...),
+    --POST    = method_not_allowed,
+    --PUT     = method_not_allowed,
+    PATCH   = patch_entity_endpoint(...),
     DELETE  = delete_entity_endpoint(...),
   }
 end
@@ -301,14 +369,14 @@ end
 -- Examples:
 --
 -- /routes
--- /routes/<route-id>
--- /routes/<route-id>/service
--- /services/<service_id>/routes
+-- /routes/:routes
+-- /routes/:routes/service
+-- /services/:services/routes
 --
 -- and
 --
 -- /services
--- /services/<service_id>
+-- /services/:services
 local function generate_endpoints(schema, endpoints, prefix)
   local path_prefix
   if prefix then
@@ -331,36 +399,43 @@ local function generate_endpoints(schema, endpoints, prefix)
     return endpoints
   end
 
-  local collection_path = concat {
-    path_prefix,
-    schema_name,
-  }
+  local collection_path = path_prefix .. schema_name
 
+  -- e.g. /routes
   generate_collection_endpoints(endpoints, collection_path, schema_name)
 
   local entity_path = fmt("%s/:%s", collection_path, schema_name)
+  local entity_name_field = schema.fields.name
+  local entity_has_unique_name = entity_name_field and entity_name_field.unique
 
-  generate_entity_endpoints(endpoints, entity_path, schema_name)
+  -- e.g. /routes/:routes
+  generate_entity_endpoints(endpoints, entity_path, schema_name,
+                            entity_has_unique_name)
 
   for foreign_field_name, foreign_field in schema:each_field() do
     if foreign_field.type == "foreign" then
-      local foreign_schema_name = foreign_field.schema.name
+      local foreign_schema      = foreign_field.schema
+      local foreign_schema_name = foreign_schema.name
 
       local foreign_entity_path = fmt("%s/%s", entity_path, foreign_field_name)
-      generate_entity_endpoints(
-        endpoints,
-        foreign_entity_path,
-        foreign_schema_name,
-        foreign_field_name,
-        schema_name)
+      local foreign_entity_name_field = foreign_schema.fields.name
+      local foreign_entity_has_unique_name = foreign_entity_name_field and foreign_entity_name_field.unique
 
-      local foreign_collection_path = fmt("/%s/:%s/%s", foreign_schema_name, foreign_schema_name, schema_name)
-      generate_collection_endpoints(
-        endpoints,
-        foreign_collection_path,
-        schema_name,
-        foreign_field_name,
-        foreign_schema_name)
+      -- e.g. /routes/:routes/service
+      generate_entity_endpoints(endpoints, foreign_entity_path,
+                                foreign_schema_name,
+                                foreign_entity_has_unique_name,
+                                foreign_field_name, schema_name,
+                                entity_has_unique_name)
+
+      -- e.g. /services/:services/routes
+      local foreign_collection_path = fmt("/%s/:%s/%s", foreign_schema_name,
+                                          foreign_schema_name, schema_name)
+
+      generate_collection_endpoints(endpoints, foreign_collection_path,
+                                    schema_name, foreign_field_name,
+                                    foreign_schema_name,
+                                    foreign_entity_has_unique_name)
     end
   end
 

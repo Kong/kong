@@ -3,6 +3,7 @@ local utils   = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 local Errors  = require "kong.db.errors"
 
+
 local unindent = helpers.unindent
 
 
@@ -22,7 +23,6 @@ for _, strategy in helpers.each_strategy("postgres") do
 
     setup(function()
       bp, db = helpers.get_db_utils(strategy)
-
     end)
 
     teardown(function()
@@ -156,7 +156,6 @@ for _, strategy in helpers.each_strategy("postgres") do
         end)
       end)
 
-
       describe("GET", function()
         describe("with data", function()
           before_each(function()
@@ -276,7 +275,6 @@ for _, strategy in helpers.each_strategy("postgres") do
           end)
         end)
       end)
-
 
       it("returns HTTP 405 on invalid method", function()
         local methods = { "DELETE", "PUT", "PATCH" }
