@@ -95,6 +95,11 @@ app:before_filter(function(self)
   do
     local rbac_handler = require "kong.rbac.handler"
     rbac_handler.validate_filter(self)
+
+    -- save workspace name in the context; if not passed, default workspace is
+    -- 'default'
+    ngx.ctx.rbac_workspace = self.params.workspace_name or "default"
+    self.params.workspace_name = nil
   end
 
   if not NEEDS_BODY[ngx.req.get_method()] then
@@ -148,6 +153,8 @@ local function attach_routes(routes)
     end
 
     app:match(route_path, route_path, app_helpers.respond_to(methods))
+    app:match("workspace_" .. route_path, "/:workspace_name" .. route_path,
+              app_helpers.respond_to(methods))
   end
 end
 
