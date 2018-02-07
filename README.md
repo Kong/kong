@@ -6,10 +6,10 @@ Kong is a cloud-native, fast, scalable, and distributed Microservice
 Abstraction Layer *(also known as an API Gateway, API Middleware or in some
 cases Service Mesh)*.
 
-Backed by the battle-tested **NGINX** with a focus on high performance, Kong
+Backed by the battle-tested NGINX with a focus on high performance, Kong
 was made available as an open-source platform in 2015. Under active
-development, Kong is used in production at thousands of organizations from
-startups, Global 5000 and Government organizations.
+development, Kong is used in production at thousands of companies from
+startups, Global 5000 and government organizations.
 
 [Installation](https://getkong.org/install) |
 [Documentation](https://getkong.org/docs) |
@@ -32,7 +32,7 @@ IRC (freenode): [#kong](http://webchat.freenode.net/?channels=kong)
 If you are building for web, mobile or IoT (Internet of Things) you will likely
 end up needing common functionality to run your actual software. Kong can
 help by acting as a gateway (or a sidecar) for microservices requests while
-providing load balancing, logging, authentication, rate-limiting and more
+providing load balancing, logging, authentication, rate-limiting, transformations and more
 through plugins.
 
 [![][kong-benefits]][kong-url]
@@ -43,9 +43,9 @@ through plugins.
   Kubernetes.
 - **Dynamic Load Balancing**: Load balance traffic across multiple backend
   services.
-- **Hash-based Load Balancing**: Load balance consisten hashing/sticky sessions.
-- **Circuit-Breaking**: Smarter trackling of unhealthy upstream instances.
-- **Health Checks:** Passive and Active monitoring of your services.
+- **Hash-based Load Balancing**: Load balance consistent hashing/sticky sessions.
+- **Circuit-Breaker**: Smarter tracking of unhealthy upstream instances.
+- **Health Checks:** Passive and active monitoring of your services.
 - **Service Discovery**: Resolve SRV records in third-party DNS resolvers like
   Consul.
 - **Serverless**: Invoke and secure AWS Lambda or OpenWhisk functions directly
@@ -59,7 +59,7 @@ through plugins.
 - **SSL**: Setup a Specific SSL Certificate for an underlying service or API.
 - **Monitoring**: Live monitoring provides key load and performance server
   metrics.
-- **Forward Proxy**: Allows Kong to connect to intermadiary transparent HTTP proxies.
+- **Forward Proxy**: Allows Kong to connect to intermediary transparent HTTP proxies.
 - **Authentications**: HMAC, JWT, Basic, and more.
 - **Rate-limiting**: Block and throttle requests based on many variables.
 - **Transformations**: Add, remove, or manipulate HTTP requests and responses.
