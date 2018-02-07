@@ -1,3 +1,6 @@
+local log = require "kong.cmd.utils.log"
+
+
 return {
   {
     name = "2015-01-12-175310_skeleton",
@@ -26,20 +29,33 @@ return {
         return "invalid replication_strategy class"
       end
 
-      -- Format final keyspace creation query
-      local keyspace_str = string.format([[
-        CREATE KEYSPACE IF NOT EXISTS "%s"
-          WITH REPLICATION = {'class': '%s'%s};
-      ]], keyspace_name, strategy, strategy_properties)
-
-      local res, err = db:query(keyspace_str, nil, nil, nil, true)
-      if not res then
-        return err
-      end
-
+      -- Test keyspace existence by trying to switch to it. The keyspace
+      -- could have been created by a DBA or could not exist.
       local ok, err = db:coordinator_change_keyspace(keyspace_name)
       if not ok then
-        return err
+        -- The keyspace either does not exist or we do not have access
+        -- to it. Let's try to create it.
+        log("could not switch to %s keyspace (%s), attempting to create it",
+            keyspace_name, err)
+
+        local keyspace_str = string.format([[
+          CREATE KEYSPACE IF NOT EXISTS "%s"
+            WITH REPLICATION = {'class': '%s'%s};
+        ]], keyspace_name, strategy, strategy_properties)
+
+        local res, err = db:query(keyspace_str, nil, nil, nil, true)
+        if not res then
+          -- keyspace creation failed (no sufficients permissions or
+          -- any other reason)
+          return err
+        end
+
+        log("successfully created %s keyspace", keyspace_name)
+
+        local ok, err = db:coordinator_change_keyspace(keyspace_name)
+        if not ok then
+          return err
+        end
       end
 
       local res, err = db:query [[
