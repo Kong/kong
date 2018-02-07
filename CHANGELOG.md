@@ -1,7 +1,8 @@
 # Table of Contents
 
-- [Planned](#planned)
 - [Scheduled](#scheduled)
+    - [0.13.0](#0130)
+    - [0.12.2](#0122)
 - [Released](#released)
     - [0.12.1](#0121---20180118)
     - [0.12.0](#0120---20180116)
@@ -15,21 +16,63 @@
     - [0.10.0](#0100---20170307)
     - [0.9.9 and prior](#099---20170202)
 
-# Planned
-
-This section describes planned releases of Kong and their general "themes".
-Those releases do not have a fixed release date yet.
-
-*No planned releases yet.*
-
-[Back to TOC](#table-of-contents)
-
 # Scheduled
 
 This section describes upcoming releases that have a release date, along with
 a detailed changeset of their content.
 
-*No scheduled releases yet.*
+## [0.13.0]
+
+**RC release date (target)**: February 28th 2018
+**Stable release date (target)**: March 14th 2018
+
+The contents of this release are still fluctuating. New additions will
+certainly be made before the closing of the merging window.
+
+### Added
+
+- :fireworks: This release introduces two new entities: **Routes**
+  and **Services**.
+  Those entities will provide a better separation of concerns than the "API"
+  entity offers. Routes will define rules for matching a client's request (e.g.
+  method, host, path...), and Services will represent upstream services (or
+  backends) that Kong should proxy those requests to.
+  Plugins can also be added to both Routes and Services, enabling use-cases
+  to apply plugins more granularly (e.g. per endpoint).
+  Following this addition, the API entity and related Admin API endpoints are
+  now deprecated. This release is backwards-compatible with the previous model
+  and all of your currently defined APIs and matching rules are still
+  supported.
+
+Additionally, this release will also include all the changes listed under the
+[0.12.2](#0122) release.
+
+[Back to TOC](#table-of-contents)
+
+## [0.12.2]
+
+**Release date (target)**: February 28th 2018
+
+The contents of this release are still fluctuating. New additions will
+certainly be made before the closing of the merging window.
+
+### Added
+
+- The `kong migrations reset` command has a new `--yes` flag. This flag makes
+  the command run non-interactively, and ensures no confirmation prompt will
+  occur.
+  [#3189](https://github.com/Kong/kong/pull/3189)
+
+### Fixed
+
+- Fix the load balancer initialization when some Targets would contain
+  hostnames.
+- Fix several issues with multipart parsing in the Admin API as well as the
+  proxy. lua-resty-multipart has been bumped to 0.5.4.
+  [#3054](https://github.com/Kong/kong/pull/3054)
+- Ensure `GET /certificates/{uuid}` does not return HTTP 500 when the given
+  identifier does not exist.
+  [#3148](https://github.com/Kong/kong/pull/3148)
 
 [Back to TOC](#table-of-contents)
 
