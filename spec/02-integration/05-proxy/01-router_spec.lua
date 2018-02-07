@@ -243,7 +243,7 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("URI regexes order of evaluation", function()
+    describe("URI regexes order of evaluation with created_at", function()
       local routes1, routes2
 
       setup(function()
@@ -319,6 +319,96 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(routes1[1].id,           res.headers["kong-route-id"])
         assert.equal(routes1[1].service.id,   res.headers["kong-service-id"])
         assert.equal(routes1[1].service.name, res.headers["kong-service-name"])
+      end)
+    end)
+
+    describe("URI regexes order of evaluation with regex_priority", function()
+      setup(function()
+        assert(db:truncate())
+        dao:truncate_tables()
+
+        -- TEST 1 (regex_priority)
+
+        insert_routes {
+          {
+            strip_path = true,
+            paths      = { "/status/(?<foo>re)" },
+            service    = {
+              name     = "service-1",
+              path     = "/status/200",
+            },
+            regex_priority = 0,
+          }
+        }
+
+        insert_routes {
+          {
+            strip_path = true,
+            paths      = { "/status/(re)" },
+            service    = {
+              name     = "service-2",
+              path     = "/status/200",
+            },
+            regex_priority = 4, -- shadows service-4 (which is created before and is shorter)
+          },
+        }
+
+        -- TEST 2 (tie breaker by created_at)
+
+        insert_routes {
+          {
+            strip_path = true,
+            paths      = { "/status/(ab)" },
+            service    = {
+              name     = "service-3",
+              path     = "/status/200",
+            },
+            regex_priority = 0,
+          }
+        }
+
+        ngx.sleep(1)
+
+        insert_routes {
+          {
+            strip_path = true,
+            paths      = { "/status/(ab)c?" },
+            service    = {
+              name     = "service-4",
+              path     = "/status/200",
+            },
+            regex_priority = 0,
+          },
+        }
+
+        assert(helpers.start_kong({
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        }))
+      end)
+
+      teardown(function()
+        helpers.stop_kong()
+      end)
+
+      it("depends on the regex_priority field", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/re",
+          headers = { ["kong-debug"] = 1 },
+        })
+        assert.res_status(200, res)
+        assert.equal("service-2", res.headers["kong-service-name"])
+      end)
+
+      it("depends on created_at if regex_priority is tie", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/status/ab",
+          headers = { ["kong-debug"] = 1 },
+        })
+        assert.res_status(200, res)
+        assert.equal("service-3", res.headers["kong-service-name"])
       end)
     end)
 

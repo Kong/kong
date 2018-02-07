@@ -121,7 +121,11 @@ local function build_router(db, version)
   end
 
   sort(routes, function(r1, r2)
-    return r1.route.created_at < r2.route.created_at
+    r1, r2 = r1.route, r2.route
+    if r1.regex_priority == r2.regex_priority then
+      return r1.created_at < r2.created_at
+    end
+    return r1.regex_priority > r2.regex_priority
   end)
 
   router, err = Router.new(routes)
