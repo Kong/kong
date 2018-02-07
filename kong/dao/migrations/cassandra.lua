@@ -26,20 +26,32 @@ return {
         return "invalid replication_strategy class"
       end
 
-      -- Format final keyspace creation query
-      local keyspace_str = string.format([[
-        CREATE KEYSPACE IF NOT EXISTS "%s"
-          WITH REPLICATION = {'class': '%s'%s};
-      ]], keyspace_name, strategy, strategy_properties)
-
-      local res, err = db:query(keyspace_str, nil, nil, nil, true)
-      if not res then
-        return err
-      end
-
+      -- Try to change keyspace, assuming the keyspace is already created 
+      -- (keyspace creation right may not be granted to current user, and keyspace may
+      -- have been created outside of the Kong migration process, by a DB admin)
       local ok, err = db:coordinator_change_keyspace(keyspace_name)
+
       if not ok then
-        return err
+        -- In case of error, so let's try to create the keyspace (hoping the current
+        -- user is granted the keyspace creation right!)
+
+        -- Format final keyspace creation query
+        local keyspace_str = string.format([[
+          CREATE KEYSPACE IF NOT EXISTS "%s"
+            WITH REPLICATION = {'class': '%s'%s};
+        ]], keyspace_name, strategy, strategy_properties)
+
+        local res, err = db:query(keyspace_str, nil, nil, nil, true)
+        if not res then
+          -- If keyspace creation failed, then raise the error
+          return err
+        end
+
+        -- Otherwise change keyspace to the newly created one
+        local ok, err = db:coordinator_change_keyspace(keyspace_name)
+        if not ok then
+          return err
+        end
       end
 
       local res, err = db:query [[
