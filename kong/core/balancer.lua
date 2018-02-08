@@ -60,6 +60,8 @@ local function stop_healthchecker(balancer)
       log(ERR, "[healthchecks] error clearing healthcheck data: ", err)
     end
     healthchecker:stop()
+    local hc_callback = healthchecker_callbacks[balancer]
+    singletons.worker_events.unregister(hc_callback, healthchecker.EVENT_SOURCE)
   end
   healthcheckers[balancer] = nil
 end
