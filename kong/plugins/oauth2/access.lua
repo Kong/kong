@@ -116,6 +116,11 @@ end
 local function retrieve_scopes(parameters, conf)
   local scope = parameters[SCOPE]
   local scopes = {}
+
+  if scope and type(scope) ~= "string" then
+      return false, {[ERROR] = "invalid_scope", error_description = "scope must be a string"}
+  end
+
   if conf.scopes and scope then
     for v in scope:gmatch("%S+") do
       if not utils.table_contains(conf.scopes, v) then

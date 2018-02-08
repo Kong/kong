@@ -1317,6 +1317,27 @@ describe("Plugin: oauth2 (access)", function()
         local json = cjson.decode(body)
         assert.same({ error = "unsupported_grant_type", error_description = "Invalid grant_type" }, json)
       end)
+      it("returns an error when scope property is an array", function()
+        local res = assert(proxy_ssl_client:send {
+          method = "POST",
+          path = "/oauth2/token",
+          body = {
+            provision_key = "provision123",
+            authenticated_userid = "id123",
+            client_id = "clientid123",
+            client_secret="secret123",
+            scope = {"email"},
+            grant_type = "password"
+          },
+          headers = {
+            ["Host"] = "oauth2_5.com",
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same({ error = "invalid_scope", error_description = "scope must be a string" }, json)
+      end)
       it("fails when no provision key is being sent", function()
         local res = assert(proxy_ssl_client:send {
           method = "POST",
