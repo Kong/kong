@@ -274,12 +274,14 @@ local function client_requests(n, headers)
         ["Host"] = "balancer.test"
       }
     }
-    if res.status == 200 then
+    if not res then
+      fails = fails + 1
+    elseif res.status == 200 then
       oks = oks + 1
     elseif res.status > 399 then
       fails = fails + 1
     end
-    last_status = res.status
+    last_status = res and res.status
     client:close()
   end
   return oks, fails, last_status
@@ -828,6 +830,77 @@ dao_helpers.for_each_dao(function(kong_config)
           assert.are.equal(upstream.slots * 3, oks)
           assert.are.equal(0, fails)
         end
+      end)
+
+      it("perform active health checks -- can detect before any proxy traffic", function()
+
+        local healthcheck_interval = 0.2
+
+        local nfails = 2
+
+        -- configure healthchecks
+        local api_client = helpers.admin_client()
+        assert(api_client:send {
+          method = "PATCH",
+          path = "/upstreams/" .. upstream.name,
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            healthchecks = healthchecks_config {
+              active = {
+                http_path = "/status",
+                healthy = {
+                  interval = healthcheck_interval,
+                  successes = 1,
+                },
+                unhealthy = {
+                  interval = healthcheck_interval,
+                  http_failures = nfails,
+                  tcp_failures = nfails,
+                },
+              }
+            }
+          },
+        })
+        api_client:close()
+
+        local timeout = 2.5
+        local requests = upstream.slots * 2 -- go round the balancer twice
+
+        -- setup target servers:
+        -- server1 will respond all requests, server2 will timeout
+        local server1 = http_server(timeout, localhost, PORT, { requests })
+        local server2 = http_server(timeout, localhost, PORT + 1, { requests })
+
+        -- server2 goes unhealthy before the first request
+        direct_request(localhost, PORT + 1, "/unhealthy")
+
+        -- restart Kong
+        helpers.stop_kong(nil, true, true)
+        helpers.start_kong()
+
+        -- Give time for healthchecker to detect
+        ngx.sleep(0.5 + (2 + nfails) * healthcheck_interval)
+
+        -- Phase 1: server1 takes all requests
+        local client_oks, client_fails = client_requests(requests)
+
+        helpers.stop_kong(nil, true, true)
+
+        -- collect server results; hitcount
+        local _, ok1, fail1 = server1:join()
+        local _, ok2, fail2 = server2:join()
+
+        -- verify
+        assert.are.equal(requests, ok1)
+        assert.are.equal(0, ok2)
+        assert.are.equal(0, fail1)
+        assert.are.equal(0, fail2)
+
+        assert.are.equal(requests, client_oks)
+        assert.are.equal(0, client_fails)
+
       end)
 
       it("perform passive health checks -- manual recovery", function()
