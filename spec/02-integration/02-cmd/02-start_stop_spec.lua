@@ -173,7 +173,7 @@ describe("kong start/stop", function()
       assert.matches("Kong is already running in " .. helpers.test_conf.prefix, stderr, nil, true)
     end)
     it("stops other services when could not start", function()
-      local thread = helpers.tcp_server(helpers.test_conf.proxy_port)
+      local thread = helpers.tcp_server(helpers.test_conf.proxy_listeners[1].port)
       finally(function()
         -- make tcp server receive and close
         helpers.proxy_client():send {

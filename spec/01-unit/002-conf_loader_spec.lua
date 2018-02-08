@@ -7,10 +7,8 @@ describe("Configuration loader", function()
     assert.is_string(conf.lua_package_path)
     assert.is_nil(conf.nginx_user)
     assert.equal("auto", conf.nginx_worker_processes)
-    assert.equal("127.0.0.1:8001", conf.admin_listen)
-    assert.equal("0.0.0.0:8000", conf.proxy_listen)
-    assert.equal("0.0.0.0:8443", conf.proxy_listen_ssl)
-    assert.equal("127.0.0.1:8444", conf.admin_listen_ssl)
+    assert.same({"127.0.0.1:8001", "127.0.0.1:8444 ssl"}, conf.admin_listen)
+    assert.same({"0.0.0.0:8000", "0.0.0.0:8443 ssl"}, conf.proxy_listen)
     assert.is_nil(conf.ssl_cert) -- check placeholder value
     assert.is_nil(conf.ssl_cert_key)
     assert.is_nil(conf.admin_ssl_cert)
@@ -24,9 +22,8 @@ describe("Configuration loader", function()
     -- overrides
     assert.is_nil(conf.nginx_user)
     assert.equal("1",            conf.nginx_worker_processes)
-    assert.equal("127.0.0.1:9001", conf.admin_listen)
-    assert.equal("0.0.0.0:9000", conf.proxy_listen)
-    assert.equal("0.0.0.0:9443", conf.proxy_listen_ssl)
+    assert.same({"127.0.0.1:9001"}, conf.admin_listen)
+    assert.same({"0.0.0.0:9000", "0.0.0.0:9443 ssl"}, conf.proxy_listen)
     assert.is_nil(getmetatable(conf))
   end)
   it("preserves default properties if not in given file", function()
@@ -43,9 +40,8 @@ describe("Configuration loader", function()
     -- overrides
     assert.is_nil(conf.nginx_user)
     assert.equal("auto",           conf.nginx_worker_processes)
-    assert.equal("127.0.0.1:9001", conf.admin_listen)
-    assert.equal("0.0.0.0:9000",   conf.proxy_listen)
-    assert.equal("0.0.0.0:9443",   conf.proxy_listen_ssl)
+    assert.same({"127.0.0.1:9001"}, conf.admin_listen)
+    assert.same({"0.0.0.0:9000", "0.0.0.0:9443 ssl"}, conf.proxy_listen)
     assert.is_nil(getmetatable(conf))
   end)
   it("strips extraneous properties (not in defaults)", function()
@@ -73,16 +69,74 @@ describe("Configuration loader", function()
     assert.True(conf.plugins["hello-world"])
     assert.True(conf.plugins["another-one"])
   end)
-  it("extracts ports and listen ips from proxy_listen/admin_listen", function()
+  it("extracts flags, ports and listen ips from proxy_listen/admin_listen", function()
     local conf = assert(conf_loader())
-    assert.equal("127.0.0.1", conf.admin_ip)
-    assert.equal(8001, conf.admin_port)
-    assert.equal("127.0.0.1", conf.admin_ssl_ip)
-    assert.equal(8444, conf.admin_ssl_port)
-    assert.equal("0.0.0.0", conf.proxy_ip)
-    assert.equal(8000, conf.proxy_port)
-    assert.equal("0.0.0.0", conf.proxy_ssl_ip)
-    assert.equal(8443, conf.proxy_ssl_port)
+    assert.equal("127.0.0.1", conf.admin_listeners[1].ip)
+    assert.equal(8001, conf.admin_listeners[1].port)
+    assert.equal(false, conf.admin_listeners[1].ssl)
+    assert.equal(false, conf.admin_listeners[1].http2)
+    assert.equal("127.0.0.1:8001", conf.admin_listeners[1].listener)
+
+    assert.equal("127.0.0.1", conf.admin_listeners[2].ip)
+    assert.equal(8444, conf.admin_listeners[2].port)
+    assert.equal(true, conf.admin_listeners[2].ssl)
+    assert.equal(false, conf.admin_listeners[2].http2)
+    assert.equal("127.0.0.1:8444 ssl", conf.admin_listeners[2].listener)
+
+    assert.equal("0.0.0.0", conf.proxy_listeners[1].ip)
+    assert.equal(8000, conf.proxy_listeners[1].port)
+    assert.equal(false, conf.proxy_listeners[1].ssl)
+    assert.equal(false, conf.proxy_listeners[1].http2)
+    assert.equal("0.0.0.0:8000", conf.proxy_listeners[1].listener)
+
+    assert.equal("0.0.0.0", conf.proxy_listeners[2].ip)
+    assert.equal(8443, conf.proxy_listeners[2].port)
+    assert.equal(true, conf.proxy_listeners[2].ssl)
+    assert.equal(false, conf.proxy_listeners[2].http2)
+    assert.equal("0.0.0.0:8443 ssl", conf.proxy_listeners[2].listener)
+  end)
+  it("extracts ssl flags properly when hostnames contain them", function()
+    local conf
+    conf = assert(conf_loader(nil, {
+      proxy_listen = "ssl.myname.com:8000",
+      admin_listen = "ssl.myname.com:8001",
+    }))
+    assert.equal("ssl.myname.com", conf.proxy_listeners[1].ip)
+    assert.equal(false, conf.proxy_listeners[1].ssl)
+    assert.equal("ssl.myname.com", conf.admin_listeners[1].ip)
+    assert.equal(false, conf.admin_listeners[1].ssl)
+
+    conf = assert(conf_loader(nil, {
+      proxy_listen = "ssl_myname.com:8000 ssl",
+      admin_listen = "ssl_myname.com:8001 ssl",
+    }))
+    assert.equal("ssl_myname.com", conf.proxy_listeners[1].ip)
+    assert.equal(true, conf.proxy_listeners[1].ssl)
+    assert.equal("ssl_myname.com", conf.admin_listeners[1].ip)
+    assert.equal(true, conf.admin_listeners[1].ssl)
+  end)
+  it("extracts 'off' from proxy_listen/admin_listen", function()
+    local conf
+    conf = assert(conf_loader(nil, {
+      proxy_listen = "off",
+      admin_listen = "off",
+    }))
+    assert.same({}, conf.proxy_listeners)
+    assert.same({}, conf.admin_listeners)
+    -- off with multiple entries
+    conf = assert(conf_loader(nil, {
+      proxy_listen = "off, 0.0.0.0:9000",
+      admin_listen = "off, 127.0.0.1:9001",
+    }))
+    assert.same({}, conf.proxy_listeners)
+    assert.same({}, conf.admin_listeners)
+    -- not off with names containing 'off'
+    conf = assert(conf_loader(nil, {
+      proxy_listen = "offshore.com:9000",
+      admin_listen = "offshore.com:9001",
+    }))
+    assert.same("offshore.com", conf.proxy_listeners[1].ip)
+    assert.same("offshore.com", conf.admin_listeners[1].ip)
   end)
   it("attaches prefix paths", function()
     local conf = assert(conf_loader())
@@ -231,25 +285,13 @@ describe("Configuration loader", function()
         admin_listen = "127.0.0.1"
       })
       assert.is_nil(conf)
-      assert.equal("admin_listen must be of form 'address:port'", err)
-
-      conf, err = conf_loader(nil, {
-        admin_listen_ssl = "127.0.0.1"
-      })
-      assert.is_nil(conf)
-      assert.equal("admin_listen_ssl must be of form 'address:port'", err)
+      assert.equal("admin_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol], [... next entry ...]", err)
 
       conf, err = conf_loader(nil, {
         proxy_listen = "127.0.0.1"
       })
       assert.is_nil(conf)
-      assert.equal("proxy_listen must be of form 'address:port'", err)
-
-      conf, err = conf_loader(nil, {
-        proxy_listen_ssl = "127.0.0.1"
-      })
-      assert.is_nil(conf)
-      assert.equal("proxy_listen_ssl must be of form 'address:port'", err)
+      assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol], [... next entry ...]", err)
     end)
     it("errors when dns_resolver is not a list in ipv4/6[:port] format", function()
       local conf, err = conf_loader(nil, {
@@ -316,16 +358,23 @@ describe("Configuration loader", function()
       assert.equal("bad cassandra contact point 'addr1:9042': port must be specified in cassandra_port", err)
       assert.is_nil(conf)
     end)
-    it("does not check SSL cert and key if SSL is off", function()
-      local conf, err = conf_loader(nil, {
-        ssl = false,
-        ssl_cert = "/path/cert.pem"
-      })
-      assert.is_nil(err)
-      assert.is_table(conf)
-    end)
     describe("SSL", function()
       describe("proxy", function()
+        it("does not check SSL cert and key if SSL is off", function()
+          local conf, err = conf_loader(nil, {
+            proxy_listen = "127.0.0.1:123",
+            ssl_cert = "/path/cert.pem"
+          })
+          assert.is_nil(err)
+          assert.is_table(conf)
+          -- specific case with 'ssl' in the name
+          local conf, err = conf_loader(nil, {
+            proxy_listen = "ssl:23",
+            proxy_ssl_cert = "/path/cert.pem"
+          })
+          assert.is_nil(err)
+          assert.is_table(conf)
+        end)
         it("requires both proxy SSL cert and key", function()
           local conf, err = conf_loader(nil, {
             ssl_cert = "/path/cert.pem"
@@ -470,6 +519,21 @@ describe("Configuration loader", function()
         end)
       end)
       describe("admin", function()
+        it("does not check SSL cert and key if SSL is off", function()
+          local conf, err = conf_loader(nil, {
+            admin_listen = "127.0.0.1:123",
+            admin_ssl_cert = "/path/cert.pem"
+          })
+          assert.is_nil(err)
+          assert.is_table(conf)
+          -- specific case with 'ssl' in the name
+          local conf, err = conf_loader(nil, {
+            admin_listen = "ssl:23",
+            admin_ssl_cert = "/path/cert.pem"
+          })
+          assert.is_nil(err)
+          assert.is_table(conf)
+        end)
         it("requires both admin SSL cert and key", function()
           local conf, err = conf_loader(nil, {
             admin_ssl_cert = "/path/cert.pem"
