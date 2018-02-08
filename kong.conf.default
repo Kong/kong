@@ -30,16 +30,17 @@
                                  # working directory.
 
 #log_level = notice              # Log level of the Nginx server. Logs are
-                                 # found at <prefix>/logs/error.log
-# Note: See http://nginx.org/en/docs/ngx_core_module.html#error_log for a list
+                                 # found at <prefix>/logs/error.log.
+
+# Note: see http://nginx.org/en/docs/ngx_core_module.html#error_log for a list
 # of accepted values.
 
 #proxy_access_log = logs/access.log       # Path for proxy port request access
                                           # logs. Set this value to `off` to
                                           # disable logging proxy requests.
-                                          # If this value is a relative path, it
-                                          # will be placed under the `prefix`
-                                          # location.
+                                          # If this value is a relative path,
+                                          # it will be placed under the
+                                          # `prefix` location.
 
 #proxy_error_log = logs/error.log         # Path for proxy port request error
                                           # logs. Granularity of these logs is
@@ -49,9 +50,9 @@
 #admin_access_log = logs/admin_access.log # Path for Admin API request access
                                           # logs. Set this value to `off` to
                                           # disable logging Admin API requests.
-                                          # If this value is a relative path, it
-                                          # will be placed under the `prefix`
-                                          # location.
+                                          # If this value is a relative path,
+                                          # it will be placed under the
+                                          # `prefix` location.
 
 #admin_error_log = logs/error.log         # Path for Admin API request error
                                           # logs. Granularity of these logs is
@@ -74,29 +75,54 @@
 
 #proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 ssl
                          # Comma-separated list of addresses and ports on
-                         # which the proxy server should listen to. The proxy
-                         # server is the public entrypoint of Kong, which
-                         # proxies traffic from your consumers. The `ssl`
-                         # suffix requires that all connections through this
-                         # port be made through SSL, and `http2` allows for
-                         # HTTP/2 connections. And finally the `proxy_protocol`
-                         # flag is allowed.
-                         # If set to `off` the proxy will be disabled.
-# Note: See http://nginx.org/en/docs/http/ngx_http_core_module.html#listen for
+                         # which the proxy server should listen.
+                         # The proxy server is the public entrypoint of Kong,
+                         # which proxies traffic from your consumers to your
+                         # backend services. This value accepts IPv4, IPv6, and
+                         # hostnames.
+                         # Some suffixes can be specified for each pair:
+                         # - `ssl` will require that all connections made
+                         #   through a particular address/port be made with TLS
+                         #   enabled.
+                         # - `http2` will allow for clients to open HTTP/2
+                         #   connections to Kong's proxy server.
+                         # - Finally, `proxy_protocol` will enable usage of the
+                         #   PROXY protocol for a given address/port.
+                         #
+                         # This value can be set to `off`, thus disabling
+                         # the proxy port for this node, enabling a
+                         # 'control-plane' mode (without traffic proxying
+                         # capabilities) which can configure a cluster of
+                         # nodes connected to the same database.
+
+# Note: see http://nginx.org/en/docs/http/ngx_http_core_module.html#listen for
 # a description of the accepted formats for this and other *_listen values.
-#
-# See https://www.nginx.com/resources/admin-guide/proxy-protocol/ for more
-# details about the `proxy_protocol` parameter.
+
+# Note bis: see https://www.nginx.com/resources/admin-guide/proxy-protocol/
+# for more details about the `proxy_protocol` parameter.
 
 #admin_listen = 127.0.0.1:8000, 127.0.0.1:8443 ssl
                          # Comma-separated list of addresses and ports on
-                         # which the admin interface is listening.
-                         # This API lets you configure and manage Kong,
-                         # and should be kept private and secured.
-                         # The `ssl` suffix requires that all connections
-                         # through this port be made through SSL, and `http2`
-                         # allows for HTTP/2 connections.
-                         # If set to `off` the Admin API will be disabled.
+                         # which the Admin interface should listen.
+                         # The Admin interface is the API allowing you to
+                         # configure and manage Kong.
+                         # Access to this interface should be *restricted*
+                         # to Kong administrators *only*. This value accepts
+                         # IPv4, IPv6, and hostnames.
+                         # Some suffixes can be specified for each pair:
+                         # - `ssl` will require that all connections made
+                         #   through a particular address/port be made with TLS
+                         #   enabled.
+                         # - `http2` will allow for clients to open HTTP/2
+                         #   connections to Kong's proxy server.
+                         # - Finally, `proxy_protocol` will enable usage of the
+                         #   PROXY protocol for a given address/port.
+                         #
+                         # This value can be set to `off`, thus disabling
+                         # the Admin interface for this node, enabling a
+                         # 'data-plane' mode (without configuration
+                         # capabilities) pulling its configuration changes
+                         # from the database.
 
 #nginx_user = nobody nobody      # Defines user and group credentials used by
                                  # worker processes. If group is omitted, a
@@ -117,9 +143,10 @@
                                  # a few MBs.
 
 #ssl_cipher_suite = modern       # Defines the TLS ciphers served by Nginx.
-                                 # Accepted values are `modern`, `intermediate`,
-                                 # `old`, or `custom`.
-# Note: See https://wiki.mozilla.org/Security/Server_Side_TLS for detailed
+                                 # Accepted values are `modern`,
+                                 # `intermediate`, `old`, or `custom`.
+
+# Note: see https://wiki.mozilla.org/Security/Server_Side_TLS for detailed
 # descriptions of each cipher suite.
 
 #ssl_ciphers =                   # Defines a custom list of TLS ciphers to be
@@ -128,38 +155,34 @@
                                  # This value is ignored if `ssl_cipher_suite`
                                  # is not `custom`.
 
-#ssl_cert =                      # If ssl is enabled, the absolute path to
-                                 # the SSL certificate for the
-                                 # `proxy_listen` ssl addresses.
+#ssl_cert =                      # The absolute path to the SSL certificate for
+                                 # `proxy_listen` values with SSL enabled.
 
-#ssl_cert_key =                  # If ssl is enabled, the absolute path to
-                                 # the SSL key for the `proxy_listen` ssl
-                                 # addresses.
+#ssl_cert_key =                  # The absolute path to the SSL key for
+                                 # `proxy_listen` values with SSL enabled.
 
 #client_ssl = off                # Determines if Nginx should send client-side
                                  # SSL certificates when proxying requests.
 
-#client_ssl_cert =               # If `client_ssl` is enabled, the absolute path
-                                 # to the client SSL certificate for the
+#client_ssl_cert =               # If `client_ssl` is enabled, the absolute
+                                 # path to the client SSL certificate for the
                                  # `proxy_ssl_certificate` directive. Note that
-                                 # this value is statically defined on the node,
-                                 # and currently cannot be configured on a
-                                 # per-API basis.
+                                 # this value is statically defined on the
+                                 # node, and currently cannot be configured on
+                                 # a per-API basis.
 
-#client_ssl_cert_key =           # If `client_ssl` is enabled, the absolute path
-                                 # to the client SSL key for the
+#client_ssl_cert_key =           # If `client_ssl` is enabled, the absolute
+                                 # path to the client SSL key for the
                                  # `proxy_ssl_certificate_key` address. Note
-                                 # this value is statically defined on the node,
-                                 # and currently cannot be configured on a
-                                 # per-API basis.
+                                 # this value is statically defined on the
+                                 # node, and currently cannot be configured on
+                                 # a per-API basis.
 
-#admin_ssl_cert =                # If ssl is enabled on the admin interface,
-                                 # the absolute path to the SSL certificate
-                                 # for the `admin_listen` addresses.
+#admin_ssl_cert =                # The absolute path to the SSL certificate for
+                                 # `admin_listen` values with SSL enabled.
 
-#admin_ssl_cert_key =            # If ssl is enabled on the admin interface,
-                                 # the absolute path to the SSL key for the
-                                 # `admin_listen` addresses.
+#admin_ssl_cert_key =            # The absolute path to the SSL key for
+                                 # `admin_listen` values with SSL enabled.
 
 #upstream_keepalive = 60         # Sets the maximum number of idle keepalive
                                  # connections to upstream servers that are
@@ -184,19 +207,19 @@
                                  # Non-trusted requests make Kong insert its
                                  # own X-Forwarded-* headers.
                                  #
-                                 # This property also sets the `set_real_ip_from`
-                                 # directive(s) in the Nginx configuration. It
-                                 # accepts the same type of values (CIDR blocks)
-                                 # but as a comma-separated list.
+                                 # This property also sets the
+                                 # `set_real_ip_from` directive(s) in the Nginx
+                                 # configuration. It accepts the same type of
+                                 # values (CIDR blocks) but as a
+                                 # comma-separated list.
                                  #
                                  # To trust *all* /!\ IPs, set this value to
                                  # `0.0.0.0/0,::/0`.
                                  #
                                  # If the special value `unix:` is specified,
                                  # all UNIX-domain sockets will be trusted.
-# Note:
-#
-# See http://nginx.org/en/docs/http/ngx_http_realip_module.html for
+
+# Note: see http://nginx.org/en/docs/http/ngx_http_realip_module.html for
 # examples of accepted values.
 
 #real_ip_header = X-Real-IP      # Defines the request header field whose value
@@ -204,33 +227,31 @@
                                  # This value sets the ngx_http_realip_module
                                  # directive of the same name in the Nginx
                                  # configuration.
-                                 # If set to `proxy_protocol` then at least one
-                                 # of the `proxy_listen` entries should have
-                                 # the `proxy_protocol` flag enabled.
-# Note:
-#
-# See http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_header
+                                 # If set to `proxy_protocol`, then at least
+                                 # one of the `proxy_listen` entries must
+                                 # have the `proxy_protocol` flag enabled.
+
+# Note: see http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_header
 # for a description of this directive.
 
 #real_ip_recursive = off         # This value sets the ngx_http_realip_module
                                  # directive of the same name in the Nginx
                                  # configuration.
-# Note:
-#
-# See http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_recursive
+
+# Note: see http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_recursive
 # for a description of this directive.
 
 #client_max_body_size = 0        # Defines the maximum request body size allowed
-                                 # by requests proxied by Kong, specified in the
-                                 # Content-Length request header. If a request
-                                 # exceeds this limit, Kong will respond with a
-                                 # 413 (Request Entity Too Large). Setting this
-                                 # value to 0 disables checking the request body
-                                 # size.
-# Note: See
-# http://nginx.org/en/docs/http/ngx_http_core_module.html#client_max_body_size
-# for further description of this parameter. Numeric values may be suffixed with
-# 'k' or 'm' to denote limits in terms of kilobytes or megabytes.
+                                 # by requests proxied by Kong, specified in
+                                 # the Content-Length request header. If a
+                                 # request exceeds this limit, Kong will
+                                 # respond with a 413 (Request Entity Too
+                                 # Large). Setting this value to 0 disables
+                                 # checking the request body size.
+
+# Note: see http://nginx.org/en/docs/http/ngx_http_core_module.html#client_max_body_size
+# for further description of this parameter. Numeric values may be suffixed
+# with 'k' or 'm' to denote limits in terms of kilobytes or megabytes.
 
 #client_body_buffer_size = 8k    # Defines the buffer size for reading the
                                  # request body. If the client request body is
@@ -245,10 +266,10 @@
                                  # high-concurrency environments will require
                                  # significant memory allocations to process
                                  # many concurrent large request bodies.
-# Note: See
-# http://nginx.org/en/docs/http/ngx_http_core_module.html#client_body_buffer_size
-# for further description of this parameter. Numeric values may be suffixed with
-# 'k' or 'm' to denote limits in terms of kilobytes or megabytes.
+
+# Note: see http://nginx.org/en/docs/http/ngx_http_core_module.html#client_body_buffer_size
+# for further description of this parameter. Numeric values may be suffixed
+# with 'k' or 'm' to denote limits in terms of kilobytes or megabytes.
 
 #error_default_type = text/plain  # Default MIME type to use when the request
                                   # `Accept` header is missing and Nginx
@@ -474,5 +495,4 @@
 
 #lua_socket_pool_size = 30       # Specifies the size limit for every cosocket
                                  # connection pool associated with every remote
-                                 # server
-
+                                 # server.
