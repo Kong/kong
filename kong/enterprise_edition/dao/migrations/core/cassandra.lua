@@ -289,4 +289,24 @@ return {
       end
     end,
   },
+  {
+    name = "2018-01-12-110000_workspaces",
+    up = [[
+      CREATE TABLE IF NOT EXISTS workspaces(
+        id uuid PRIMARY KEY,
+        name text,
+        comment text,
+        created_at timestamp
+      );
+
+      CREATE INDEX IF NOT EXISTS ON workspaces(name);
+
+      CREATE TABLE IF NOT EXISTS workspace_entities(
+        workspace_id uuid,
+        entity_id uuid,
+        entity_type text,
+        PRIMARY KEY(workspace_id, entity_id)
+      );
+    ]],
+  }
 }
