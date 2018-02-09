@@ -100,6 +100,13 @@ describe("Router", function()
       assert.same(use_case[3], match_t.api)
     end)
 
+    it("[uri]", function()
+      -- uri + empty host
+      local match_t = router.select("GET", "/my-api", "")
+      assert.truthy(match_t)
+      assert.same(use_case[3], match_t.api)
+    end)
+
     it("[method]", function()
       -- method
       local match_t = router.select("TRACE", "/", "domain.org")
