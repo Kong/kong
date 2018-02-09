@@ -397,15 +397,6 @@ local function _select(self, cql, args)
 end
 
 
-local function select_by_field(self, field_name, field_value)
-  local select_cql = fmt(self.queries.select_with_filter, field_name .. " = ?")
-  local bind_args = new_tab(1, 0)
-  bind_args[1] = field_value
-
-  return _select(self, select_cql, bind_args)
-end
-
-
 function _mt:insert(entity)
   local schema = self.schema
   local cql = self.queries.insert
@@ -437,7 +428,7 @@ function _mt:insert(entity)
         -- We unfortunately follow a read-before-write pattern in this case,
         -- but this is made necessary for Kong to behave in a database-agnostic
         -- fashion between its supported RDBMs and Cassandra.
-        local row, err_t = select_by_field(self, field_name, entity[field_name])
+        local row, err_t = self:select_by_field(field_name, entity[field_name])
         if err_t then
           return nil, err_t
         end
@@ -511,6 +502,15 @@ function _mt:select(primary_key)
   -- execute query
 
   return _select(self, cql, args)
+end
+
+
+function _mt:select_by_field(field_name, field_value)
+  local select_cql = fmt(self.queries.select_with_filter, field_name .. " = ?")
+  local bind_args = new_tab(1, 0)
+  bind_args[1] = field_value
+
+  return _select(self, select_cql, bind_args)
 end
 
 
@@ -660,7 +660,7 @@ function _mt:update(primary_key, entity)
           -- but this is made necessary for Kong to behave in a
           -- database-agnostic fashion between its supported RDBMs and
           -- Cassandra.
-          local row, err_t = select_by_field(self, field_name, entity[field_name])
+          local row, err_t = self:select_by_field(field_name, entity[field_name])
           if err_t then
             return nil, err_t
           end
@@ -720,6 +720,24 @@ function _mt:update(primary_key, entity)
   end
 
   return row
+end
+
+
+function _mt:update_by_field(field_name, field_value, entity)
+  local row, err_t = self:select_by_field(field_name, field_value)
+  if err_t then
+    return nil, err_t
+  end
+
+  if not row then
+    return nil, self.errors:not_found_by_field({
+      [field_name] = field_value,
+    })
+  end
+
+  local pk = extract_pk_values(self.schema, row)
+
+  return self:update(pk, entity)
 end
 
 
@@ -796,6 +814,22 @@ do
 
     return true
   end
+end
+
+
+function _mt:delete_by_field(field_name, field_value)
+  local row, err_t = self:select_by_field(field_name, field_value)
+  if err_t then
+    return nil, err_t
+  end
+
+  if not row then
+    return true
+  end
+
+  local pk = extract_pk_values(self.schema, row)
+
+  return self:delete(pk)
 end
 
 

@@ -10,7 +10,7 @@ local unindent = helpers.unindent
 local a_blank_uuid = "00000000-0000-0000-0000-000000000000"
 
 
-for _, strategy in helpers.each_strategy("postgres") do
+for _, strategy in helpers.each_strategy() do
   describe("kong.db [#" .. strategy .. "]", function()
     local db, bp
 
