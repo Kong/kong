@@ -120,7 +120,7 @@ end)
 describe("#cassandra", function()
   describe("LB policy", function()
     it("accepts DCAwareRoundRobin", function()
-      local helpers = require "spec-old-api.helpers"
+      local helpers = require "spec.helpers"
 
       local kong_config                = helpers.test_conf
 

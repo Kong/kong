@@ -1,65 +1,65 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 describe("Plugin: cors (access)", function()
   local client
 
   setup(function()
-    helpers.run_migrations()
+    local dao = select(3, helpers.get_db_utils())
 
-    local api1 = assert(helpers.dao.apis:insert {
+    local api1 = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "cors1.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api2 = assert(helpers.dao.apis:insert {
+    local api2 = assert(dao.apis:insert {
       name         = "api-2",
       hosts        = { "cors2.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api3 = assert(helpers.dao.apis:insert {
+    local api3 = assert(dao.apis:insert {
       name         = "api-3",
       hosts        = { "cors3.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api4 = assert(helpers.dao.apis:insert {
+    local api4 = assert(dao.apis:insert {
       name         = "api-4",
       hosts        = { "cors4.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api5 = assert(helpers.dao.apis:insert {
+    local api5 = assert(dao.apis:insert {
       name         = "api-5",
       hosts        = { "cors5.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api6 = assert(helpers.dao.apis:insert {
+    local api6 = assert(dao.apis:insert {
       name         = "api-6",
       hosts        = { "cors6.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api7 = assert(helpers.dao.apis:insert {
+    local api7 = assert(dao.apis:insert {
       name         = "api-7",
       hosts        = { "cors7.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api8 = assert(helpers.dao.apis:insert {
+    local api8 = assert(dao.apis:insert {
       name         = "api-8",
       hosts        = { "cors-empty-origins.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api9 = assert(helpers.dao.apis:insert {
+    local api9 = assert(dao.apis:insert {
       name         = "api-9",
       hosts        = { "cors9.com" },
       upstream_url = helpers.mock_upstream_url,
     })
 
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "cors",
       api_id = api1.id
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "cors",
       api_id = api2.id,
       config = {
@@ -72,7 +72,7 @@ describe("Plugin: cors (access)", function()
       }
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "cors",
       api_id = api3.id,
       config = {
@@ -85,16 +85,16 @@ describe("Plugin: cors (access)", function()
       }
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "cors",
       api_id = api4.id
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "key-auth",
       api_id = api4.id
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "cors",
       api_id = api5.id,
       config = {
@@ -103,7 +103,7 @@ describe("Plugin: cors (access)", function()
       }
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "cors",
       api_id = api6.id,
       config = {
@@ -116,7 +116,7 @@ describe("Plugin: cors (access)", function()
       }
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "cors",
       api_id = api7.id,
       config = {
@@ -125,7 +125,7 @@ describe("Plugin: cors (access)", function()
       }
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "cors",
       api_id = api8.id,
       config = {
@@ -133,7 +133,7 @@ describe("Plugin: cors (access)", function()
       }
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "cors",
       api_id = api9.id,
       config = {
@@ -142,7 +142,7 @@ describe("Plugin: cors (access)", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
     client = helpers.proxy_client()
   end)

@@ -1,6 +1,6 @@
 local cjson = require "cjson"
 local openssl_hmac = require "openssl.hmac"
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 local resty_sha256 = require "resty.sha256"
 
@@ -14,14 +14,14 @@ describe("Plugin: hmac-auth (access)", function()
   local client, consumer, credential
 
   setup(function()
-    helpers.run_migrations()
+    local dao = select(3, helpers.get_db_utils())
 
-    local api1 = assert(helpers.dao.apis:insert {
+    local api1 = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "hmacauth.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "hmac-auth",
       api_id = api1.id,
       config = {
@@ -29,25 +29,25 @@ describe("Plugin: hmac-auth (access)", function()
       }
     })
 
-    consumer = assert(helpers.dao.consumers:insert {
+    consumer = assert(dao.consumers:insert {
       username = "bob",
       custom_id = "1234"
     })
-    credential = assert(helpers.dao["hmacauth_credentials"]:insert {
+    credential = assert(dao["hmacauth_credentials"]:insert {
       username = "bob",
       secret = "secret",
       consumer_id = consumer.id
     })
 
-    local anonymous_user = assert(helpers.dao.consumers:insert {
+    local anonymous_user = assert(dao.consumers:insert {
       username = "no-body"
     })
-    local api2 = assert(helpers.dao.apis:insert {
+    local api2 = assert(dao.apis:insert {
       name         = "api-2",
       hosts        = { "hmacauth2.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "hmac-auth",
       api_id = api2.id,
       config = {
@@ -56,12 +56,12 @@ describe("Plugin: hmac-auth (access)", function()
       }
     })
 
-    local api3 = assert(helpers.dao.apis:insert {
+    local api3 = assert(dao.apis:insert {
       name         = "api-3",
       hosts        = { "hmacauth3.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "hmac-auth",
       api_id = api3.id,
       config = {
@@ -70,12 +70,12 @@ describe("Plugin: hmac-auth (access)", function()
       }
     })
 
-    local api4 = assert(helpers.dao.apis:insert {
+    local api4 = assert(dao.apis:insert {
       name         = "api-4",
       hosts        = { "hmacauth4.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "hmac-auth",
       api_id = api4.id,
       config = {
@@ -84,12 +84,12 @@ describe("Plugin: hmac-auth (access)", function()
       }
     })
 
-    local api5 = assert(helpers.dao.apis:insert {
+    local api5 = assert(dao.apis:insert {
       name         = "api-5",
       hosts        = { "hmacauth5.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "hmac-auth",
       api_id = api5.id,
       config = {
@@ -99,12 +99,12 @@ describe("Plugin: hmac-auth (access)", function()
       }
     })
 
-    local api6 = assert(helpers.dao.apis:insert {
+    local api6 = assert(dao.apis:insert {
       name         = "api-6",
       hosts        = { "hmacauth6.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "hmac-auth",
       api_id = api6.id,
       config = {
@@ -119,7 +119,7 @@ describe("Plugin: hmac-auth (access)", function()
       real_ip_header    = "X-Forwarded-For",
       real_ip_recursive = "on",
       trusted_ips       = "0.0.0.0/0, ::/0",
-      nginx_conf        = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf        = "spec/fixtures/custom_nginx.template",
     })
     client = helpers.proxy_client()
   end)
@@ -1204,43 +1204,45 @@ describe("Plugin: hmac-auth (access)", function()
   local client, user1, user2, anonymous, hmacAuth, hmacDate
 
   setup(function()
-    local api1 = assert(helpers.dao.apis:insert {
+    local dao = select(3, helpers.get_db_utils())
+
+    local api1 = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "logical-and.com" },
       upstream_url = helpers.mock_upstream_url .. "/request",
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "hmac-auth",
       api_id = api1.id
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "key-auth",
       api_id = api1.id
     })
 
-    anonymous = assert(helpers.dao.consumers:insert {
+    anonymous = assert(dao.consumers:insert {
       username = "Anonymous"
     })
-    user1 = assert(helpers.dao.consumers:insert {
+    user1 = assert(dao.consumers:insert {
       username = "Mickey"
     })
-    user2 = assert(helpers.dao.consumers:insert {
+    user2 = assert(dao.consumers:insert {
       username = "Aladdin"
     })
 
-    local api2 = assert(helpers.dao.apis:insert {
+    local api2 = assert(dao.apis:insert {
       name         = "api-2",
       hosts        = { "logical-or.com" },
       upstream_url = helpers.mock_upstream_url .. "/request",
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "hmac-auth",
       api_id = api2.id,
       config = {
         anonymous = anonymous.id
       }
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "key-auth",
       api_id = api2.id,
       config = {
@@ -1248,11 +1250,11 @@ describe("Plugin: hmac-auth (access)", function()
       }
     })
 
-    assert(helpers.dao.keyauth_credentials:insert {
+    assert(dao.keyauth_credentials:insert {
       key = "Mouse",
       consumer_id = user1.id
     })
-    local credential = assert(helpers.dao.hmacauth_credentials:insert {
+    local credential = assert(dao.hmacauth_credentials:insert {
       username = "Aladdin",
       secret = "OpenSesame",
       consumer_id = user2.id
@@ -1263,7 +1265,7 @@ describe("Plugin: hmac-auth (access)", function()
       .. [[headers="date",signature="]] .. encodedSignature .. [["]]
 
     assert(helpers.start_kong({
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
     client = helpers.proxy_client()
   end)

@@ -1,20 +1,22 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
-describe("helpers: assertions and modifiers", function()
+for _, strategy in helpers.each_strategy() do
+describe("helpers [#" .. strategy .. "]: assertions and modifiers", function()
   local client
 
   setup(function()
-    helpers.run_migrations()
-    assert(helpers.dao.apis:insert {
+    local _, _, dao = helpers.get_db_utils(strategy)
+
+    assert(dao.apis:insert {
       name         = "mock_upstream",
       hosts        = { "mock_upstream" },
       upstream_url = helpers.mock_upstream_url
     })
 
-    helpers.prepare_prefix()
     assert(helpers.start_kong({
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      database   = strategy,
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
   end)
   teardown(function()
@@ -372,3 +374,4 @@ describe("helpers: assertions and modifiers", function()
     end)
   end)
 end)
+end

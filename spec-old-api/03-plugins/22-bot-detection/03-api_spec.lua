@@ -1,4 +1,4 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 
 local BAD_REGEX = [[(https?:\/\/.*]]  -- illegal regex, errors out
 
@@ -6,21 +6,21 @@ describe("Plugin: bot-detection (API)", function()
   local client
 
   setup(function()
-    helpers.run_migrations()
+    local dao = select(3, helpers.get_db_utils())
 
-    assert(helpers.dao.apis:insert {
+    assert(dao.apis:insert {
       name         = "bot1.com",
       hosts        = { "bot1.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.apis:insert {
+    assert(dao.apis:insert {
       name         = "bot2.com",
       hosts        = { "bot2.com" },
       upstream_url = helpers.mock_upstream_url,
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
   end)
 

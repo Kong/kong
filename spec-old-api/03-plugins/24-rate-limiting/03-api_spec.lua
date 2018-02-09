@@ -1,11 +1,12 @@
 local cjson = require "cjson"
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 
 describe("Plugin: rate-limiting (API)", function()
   local admin_client
+  local dao
 
   setup(function()
-    helpers.run_migrations()
+    dao = select(3, helpers.get_db_utils())
   end)
 
   teardown(function()
@@ -15,14 +16,15 @@ describe("Plugin: rate-limiting (API)", function()
 
   describe("POST", function()
     setup(function()
-      assert(helpers.dao.apis:insert {
+
+      assert(dao.apis:insert {
         name         = "test",
         hosts        = { "test1.com" },
         upstream_url = helpers.mock_upstream_url,
       })
 
       assert(helpers.start_kong({
-        nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
       admin_client = helpers.admin_client()
     end)

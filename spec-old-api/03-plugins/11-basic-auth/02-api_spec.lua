@@ -1,11 +1,13 @@
 local cjson = require "cjson"
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 
 describe("Plugin: basic-auth (API)", function()
   local consumer, admin_client
+  local dao
+
   setup(function()
-    helpers.run_migrations()
+    dao = select(3, helpers.get_db_utils())
 
     assert(helpers.start_kong())
     admin_client = helpers.admin_client()
@@ -17,12 +19,12 @@ describe("Plugin: basic-auth (API)", function()
 
   describe("/consumers/:consumer/basic-auth/", function()
     setup(function()
-      consumer = assert(helpers.dao.consumers:insert {
+      consumer = assert(dao.consumers:insert {
         username = "bob"
       })
     end)
     after_each(function()
-      helpers.dao:truncate_table("basicauth_credentials")
+      dao:truncate_table("basicauth_credentials")
     end)
 
     describe("POST", function()
@@ -150,7 +152,7 @@ describe("Plugin: basic-auth (API)", function()
     describe("GET", function()
       setup(function()
         for i = 1, 3 do
-          assert(helpers.dao.basicauth_credentials:insert {
+          assert(dao.basicauth_credentials:insert {
             username = "bob" .. i,
             password = "kong",
             consumer_id = consumer.id
@@ -158,7 +160,7 @@ describe("Plugin: basic-auth (API)", function()
         end
       end)
       teardown(function()
-        helpers.dao:truncate_table("basicauth_credentials")
+        dao:truncate_table("basicauth_credentials")
       end)
       it("retrieves the first page", function()
         local res = assert(admin_client:send {
@@ -177,8 +179,8 @@ describe("Plugin: basic-auth (API)", function()
   describe("/consumers/:consumer/basic-auth/:id", function()
     local credential
     before_each(function()
-      helpers.dao:truncate_table("basicauth_credentials")
-      credential = assert(helpers.dao.basicauth_credentials:insert {
+      dao:truncate_table("basicauth_credentials")
+      credential = assert(dao.basicauth_credentials:insert {
         username = "bob",
         password = "kong",
         consumer_id = consumer.id
@@ -204,7 +206,7 @@ describe("Plugin: basic-auth (API)", function()
         assert.equal(credential.id, json.id)
       end)
       it("retrieves credential by id only if the credential belongs to the specified consumer", function()
-        assert(helpers.dao.consumers:insert {
+        assert(dao.consumers:insert {
           username = "alice"
         })
 
@@ -306,15 +308,15 @@ describe("Plugin: basic-auth (API)", function()
     local consumer2
     describe("GET", function()
       setup(function()
-        helpers.dao:truncate_table("basicauth_credentials")
-        assert(helpers.dao.basicauth_credentials:insert {
+        dao:truncate_table("basicauth_credentials")
+        assert(dao.basicauth_credentials:insert {
           consumer_id = consumer.id,
           username = "bob"
         })
-        consumer2 = assert(helpers.dao.consumers:insert {
+        consumer2 = assert(dao.consumers:insert {
           username = "bob-the-buidler"
         })
-        assert(helpers.dao.basicauth_credentials:insert {
+        assert(dao.basicauth_credentials:insert {
           consumer_id = consumer2.id,
           username = "bob-the-buidler"
         })
@@ -400,8 +402,8 @@ describe("Plugin: basic-auth (API)", function()
     describe("GET", function()
       local credential
       setup(function()
-        helpers.dao:truncate_table("basicauth_credentials")
-        credential = assert(helpers.dao.basicauth_credentials:insert {
+        dao:truncate_table("basicauth_credentials")
+        credential = assert(dao.basicauth_credentials:insert {
           consumer_id = consumer.id,
           username = "bob"
         })

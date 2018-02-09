@@ -1,40 +1,40 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 describe("Plugin: request-termination (access)", function()
   local client, admin_client
 
   setup(function()
-    helpers.run_migrations()
+    local dao = select(3, helpers.get_db_utils())
 
-    local api1 = assert(helpers.dao.apis:insert {
+    local api1 = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "api1.request-termination.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "request-termination",
       api_id = api1.id,
       config = {},
     })
-    local api2 = assert(helpers.dao.apis:insert {
+    local api2 = assert(dao.apis:insert {
       name         = "api-2",
       hosts        = { "api2.request-termination.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "request-termination",
       api_id = api2.id,
       config = {
         status_code = 404,
       },
     })
-    local api3 = assert(helpers.dao.apis:insert {
+    local api3 = assert(dao.apis:insert {
       name         = "api-3",
       hosts        = { "api3.request-termination.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "request-termination",
       api_id = api3.id,
       config = {
@@ -42,24 +42,24 @@ describe("Plugin: request-termination (access)", function()
         message     = "Invalid",
       },
     })
-    local api4 = assert(helpers.dao.apis:insert {
+    local api4 = assert(dao.apis:insert {
       name         = "api-4",
       hosts        = { "api4.request-termination.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "request-termination",
       api_id = api4.id,
       config = {
         body = "<html><body><h1>Service is down for maintenance</h1></body></html>",
       },
     })
-    local api5 = assert(helpers.dao.apis:insert {
+    local api5 = assert(dao.apis:insert {
       name         = "api-5",
       hosts        = { "api5.request-termination.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "request-termination",
       api_id = api5.id,
       config = {
@@ -68,12 +68,12 @@ describe("Plugin: request-termination (access)", function()
         body         = "<html><body><h1>Service is down due to content infringement</h1></body></html>",
       },
     })
-    local api6 = assert(helpers.dao.apis:insert {
+    local api6 = assert(dao.apis:insert {
       name         = "api-6",
       hosts        = { "api6.request-termination.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "request-termination",
       api_id = api6.id,
       config = {
@@ -82,9 +82,8 @@ describe("Plugin: request-termination (access)", function()
       },
     })
 
-
     assert(helpers.start_kong({
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
     client = helpers.proxy_client()
     admin_client = helpers.admin_client()

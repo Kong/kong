@@ -1,4 +1,4 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 
 
 local TEST_PREFIX = "servroot_prepared_test"

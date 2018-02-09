@@ -1,32 +1,33 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 describe("Plugin: key-auth (invalidations)", function()
   local admin_client, proxy_client
+  local dao
 
   before_each(function()
-    helpers.dao:truncate_tables()
-    helpers.run_migrations()
-    local api = assert(helpers.dao.apis:insert {
+    dao = select(3, helpers.get_db_utils())
+
+    local api = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "key-auth.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "key-auth",
       api_id = api.id,
     })
 
-    local consumer = assert(helpers.dao.consumers:insert {
+    local consumer = assert(dao.consumers:insert {
       username = "bob",
     })
-    assert(helpers.dao.keyauth_credentials:insert {
+    assert(dao.keyauth_credentials:insert {
       key         = "kong",
       consumer_id = consumer.id,
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
     proxy_client = helpers.proxy_client()
     admin_client = helpers.admin_client()
@@ -53,7 +54,7 @@ describe("Plugin: key-auth (invalidations)", function()
     assert.res_status(200, res)
 
     -- ensure cache is populated
-    local cache_key = helpers.dao.keyauth_credentials:cache_key("kong")
+    local cache_key = dao.keyauth_credentials:cache_key("kong")
     res = assert(admin_client:send {
       method = "GET",
       path = "/cache/" .. cache_key
@@ -101,7 +102,7 @@ describe("Plugin: key-auth (invalidations)", function()
     assert.res_status(200, res)
 
     -- ensure cache is populated
-    local cache_key = helpers.dao.keyauth_credentials:cache_key("kong")
+    local cache_key = dao.keyauth_credentials:cache_key("kong")
     res = assert(admin_client:send {
       method = "GET",
       path = "/cache/" .. cache_key
@@ -150,7 +151,7 @@ describe("Plugin: key-auth (invalidations)", function()
     assert.res_status(200, res)
 
     -- ensure cache is populated
-    local cache_key = helpers.dao.keyauth_credentials:cache_key("kong")
+    local cache_key = dao.keyauth_credentials:cache_key("kong")
     res = assert(admin_client:send {
       method = "GET",
       path = "/cache/" .. cache_key

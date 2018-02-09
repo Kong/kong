@@ -1,4 +1,4 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local meta = require "kong.meta"
 local utils = require "kong.tools.utils"
@@ -6,28 +6,28 @@ local utils = require "kong.tools.utils"
 describe("Plugin: key-auth (access)", function()
   local client
   setup(function()
-    helpers.run_migrations()
+    local dao = select(3, helpers.get_db_utils())
 
-    local anonymous_user = assert(helpers.dao.consumers:insert {
+    local anonymous_user = assert(dao.consumers:insert {
       username = "no-body",
     })
 
-    local api1 = assert(helpers.dao.apis:insert {
+    local api1 = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "key-auth1.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "key-auth",
       api_id = api1.id,
     })
 
-    local api2 = assert(helpers.dao.apis:insert {
+    local api2 = assert(dao.apis:insert {
       name         = "api-2",
       hosts        = { "key-auth2.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "key-auth",
       api_id = api2.id,
       config = {
@@ -35,20 +35,20 @@ describe("Plugin: key-auth (access)", function()
       },
     })
 
-    local consumer1 = assert(helpers.dao.consumers:insert {
+    local consumer1 = assert(dao.consumers:insert {
       username = "bob"
     })
-    assert(helpers.dao.keyauth_credentials:insert {
+    assert(dao.keyauth_credentials:insert {
       key         = "kong",
       consumer_id = consumer1.id,
     })
 
-    local api3 = assert(helpers.dao.apis:insert {
+    local api3 = assert(dao.apis:insert {
       name         = "api-3",
       hosts        = { "key-auth3.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "key-auth",
       api_id = api3.id,
       config = {
@@ -56,12 +56,12 @@ describe("Plugin: key-auth (access)", function()
       },
     })
 
-    local api4 = assert(helpers.dao.apis:insert {
+    local api4 = assert(dao.apis:insert {
       name         = "api-4",
       hosts        = { "key-auth4.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "key-auth",
       api_id = api4.id,
       config = {
@@ -69,12 +69,12 @@ describe("Plugin: key-auth (access)", function()
       },
     })
 
-    local api5 = assert(helpers.dao.apis:insert {
+    local api5 = assert(dao.apis:insert {
       name         = "api-5",
       hosts        = { "key-auth5.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "key-auth",
       api_id = api5.id,
       config = {
@@ -82,12 +82,12 @@ describe("Plugin: key-auth (access)", function()
       },
     })
 
-    local api6 = assert(helpers.dao.apis:insert {
+    local api6 = assert(dao.apis:insert {
       name         = "api-6",
       hosts        = { "key-auth6.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "key-auth",
       api_id = api6.id,
       config = {
@@ -96,12 +96,12 @@ describe("Plugin: key-auth (access)", function()
       },
     })
 
-    local api7 = assert(helpers.dao.apis:insert {
+    local api7 = assert(dao.apis:insert {
       name = "api-7",
       hosts = { "key-auth7.com" },
       upstream_url = "http://mockbin.com",
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "key-auth",
       api_id = api7.id,
       config = {
@@ -110,7 +110,7 @@ describe("Plugin: key-auth (access)", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
     client = helpers.proxy_client()
   end)
@@ -249,6 +249,7 @@ describe("Plugin: key-auth (access)", function()
             body = {
               apikey = { "kong", "kong" },
             },
+            no_array_indexes = true,
           })
           local body = assert.res_status(401, res)
           local json = cjson.decode(body)
@@ -409,43 +410,45 @@ describe("Plugin: key-auth (access)", function()
   local client, user1, user2, anonymous
 
   setup(function()
-    local api1 = assert(helpers.dao.apis:insert {
+    local _, _, dao = helpers.get_db_utils()
+
+    local api1 = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "logical-and.com" },
       upstream_url = helpers.mock_upstream_url .. "/request",
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "basic-auth",
       api_id = api1.id,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "key-auth",
       api_id = api1.id,
     })
 
-    anonymous = assert(helpers.dao.consumers:insert {
+    anonymous = assert(dao.consumers:insert {
       username = "Anonymous",
     })
-    user1 = assert(helpers.dao.consumers:insert {
+    user1 = assert(dao.consumers:insert {
       username = "Mickey",
     })
-    user2 = assert(helpers.dao.consumers:insert {
+    user2 = assert(dao.consumers:insert {
       username = "Aladdin",
     })
 
-    local api2 = assert(helpers.dao.apis:insert {
+    local api2 = assert(dao.apis:insert {
       name         = "api-2",
       hosts        = { "logical-or.com" },
       upstream_url = helpers.mock_upstream_url .. "/request",
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "basic-auth",
       api_id = api2.id,
       config = {
         anonymous = anonymous.id,
       },
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "key-auth",
       api_id = api2.id,
       config = {
@@ -453,18 +456,18 @@ describe("Plugin: key-auth (access)", function()
       },
     })
 
-    assert(helpers.dao.keyauth_credentials:insert {
+    assert(dao.keyauth_credentials:insert {
       key         = "Mouse",
       consumer_id = user1.id,
     })
-    assert(helpers.dao.basicauth_credentials:insert {
+    assert(dao.basicauth_credentials:insert {
       username    = "Aladdin",
       password    = "OpenSesame",
       consumer_id = user2.id,
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
     client = helpers.proxy_client()
   end)

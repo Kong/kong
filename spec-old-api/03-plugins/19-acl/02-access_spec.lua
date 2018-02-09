@@ -1,79 +1,80 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 describe("Plugin: ACL (access)", function()
   local client, api_client
+  local dao
 
   setup(function()
-    helpers.run_migrations()
+    dao = select(3, helpers.get_db_utils())
 
-    local consumer1 = assert(helpers.dao.consumers:insert {
+    local consumer1 = assert(dao.consumers:insert {
       username = "consumer1"
     })
-    assert(helpers.dao.keyauth_credentials:insert {
+    assert(dao.keyauth_credentials:insert {
       key = "apikey123",
       consumer_id = consumer1.id
     })
 
-    local consumer2 = assert(helpers.dao.consumers:insert {
+    local consumer2 = assert(dao.consumers:insert {
       username = "consumer2"
     })
-    assert(helpers.dao.keyauth_credentials:insert {
+    assert(dao.keyauth_credentials:insert {
       key = "apikey124",
       consumer_id = consumer2.id
     })
-    assert(helpers.dao.acls:insert {
+    assert(dao.acls:insert {
       group = "admin",
       consumer_id = consumer2.id
     })
 
-    local consumer3 = assert(helpers.dao.consumers:insert {
+    local consumer3 = assert(dao.consumers:insert {
       username = "consumer3"
     })
-    assert(helpers.dao.keyauth_credentials:insert {
+    assert(dao.keyauth_credentials:insert {
       key = "apikey125",
       consumer_id = consumer3.id
     })
-    assert(helpers.dao.acls:insert {
+    assert(dao.acls:insert {
       group = "pro",
       consumer_id = consumer3.id
     })
-    assert(helpers.dao.acls:insert {
+    assert(dao.acls:insert {
       group = "hello",
       consumer_id = consumer3.id
     })
 
-    local consumer4 = assert(helpers.dao.consumers:insert {
+    local consumer4 = assert(dao.consumers:insert {
       username = "consumer4"
     })
-    assert(helpers.dao.keyauth_credentials:insert {
+    assert(dao.keyauth_credentials:insert {
       key = "apikey126",
       consumer_id = consumer4.id
     })
-    assert(helpers.dao.acls:insert {
+    assert(dao.acls:insert {
       group = "free",
       consumer_id = consumer4.id
     })
-    assert(helpers.dao.acls:insert {
+    assert(dao.acls:insert {
       group = "hello",
       consumer_id = consumer4.id
     })
 
-    local anonymous = assert(helpers.dao.consumers:insert {
+    local anonymous = assert(dao.consumers:insert {
       username = "anonymous"
     })
 
-    assert(helpers.dao.acls:insert {
+    assert(dao.acls:insert {
       group = "anonymous",
       consumer_id = anonymous.id
     })
 
-    local api1 = assert(helpers.dao.apis:insert {
+    local api1 = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "acl1.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "acl",
       api_id = api1.id,
       config = {
@@ -81,121 +82,121 @@ describe("Plugin: ACL (access)", function()
       }
     })
 
-    local api2 = assert(helpers.dao.apis:insert {
+    local api2 = assert(dao.apis:insert {
       name         = "api-2",
       hosts        = { "acl2.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "acl",
       api_id = api2.id,
       config = {
         whitelist = "admin"
       }
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "key-auth",
       api_id = api2.id,
       config = {}
     })
 
-    local api3 = assert(helpers.dao.apis:insert {
+    local api3 = assert(dao.apis:insert {
       name         = "api-3",
       hosts        = { "acl3.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "acl",
       api_id = api3.id,
       config = {
         blacklist = {"admin"}
       }
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "key-auth",
       api_id = api3.id,
       config = {}
     })
 
-    local api4 = assert(helpers.dao.apis:insert {
+    local api4 = assert(dao.apis:insert {
       name         = "api-4",
       hosts        = { "acl4.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "acl",
       api_id = api4.id,
       config = {
         whitelist = {"admin", "pro"}
       }
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "key-auth",
       api_id = api4.id,
       config = {}
     })
 
-    local api5 = assert(helpers.dao.apis:insert {
+    local api5 = assert(dao.apis:insert {
       name         = "api-5",
       hosts        = { "acl5.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "acl",
       api_id = api5.id,
       config = {
         blacklist = {"admin", "pro"}
       }
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "key-auth",
       api_id = api5.id,
       config = {}
     })
 
-    local api6 = assert(helpers.dao.apis:insert {
+    local api6 = assert(dao.apis:insert {
       name         = "api-6",
       hosts        = { "acl6.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "acl",
       api_id = api6.id,
       config = {
         blacklist = {"admin", "pro", "hello"}
       }
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "key-auth",
       api_id = api6.id,
       config = {}
     })
 
-    local api7 = assert(helpers.dao.apis:insert {
+    local api7 = assert(dao.apis:insert {
       name         = "api-7",
       hosts        = { "acl7.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "acl",
       api_id = api7.id,
       config = {
         whitelist = {"admin", "pro", "hello"}
       }
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "key-auth",
       api_id = api7.id,
       config = {}
     })
 
-    local api8 = assert(helpers.dao.apis:insert {
+    local api8 = assert(dao.apis:insert {
       name         = "api-8",
       hosts        = { "acl8.com" },
       upstream_url = helpers.mock_upstream_url,
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "acl",
       api_id = api8.id,
       config = {
@@ -203,7 +204,7 @@ describe("Plugin: ACL (access)", function()
       }
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "key-auth",
       api_id = api8.id,
       config = {
@@ -212,7 +213,7 @@ describe("Plugin: ACL (access)", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
   end)
 
@@ -498,7 +499,7 @@ describe("Plugin: ACL (access)", function()
         assert.res_status(201, res)
 
         -- Wait for cache to be invalidated
-        local cache_key = helpers.dao.acls:cache_key(consumer_id)
+        local cache_key = dao.acls:cache_key(consumer_id)
 
         helpers.wait_until(function()
           local res = assert(api_client:send {

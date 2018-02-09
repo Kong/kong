@@ -1517,7 +1517,7 @@ describe("Router", function()
 
   describe("has_capturing_groups()", function()
     -- load the `assert.fail` assertion
-    require "spec-old-api.helpers"
+    require "spec.helpers"
 
     it("detects if a string has capturing groups", function()
       local uris                         = {

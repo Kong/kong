@@ -1,4 +1,4 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 
 describe("OpenResty phases", function()
   describe("rewrite_by_lua", function()
@@ -6,13 +6,15 @@ describe("OpenResty phases", function()
       local api_client, proxy_client
 
       setup(function()
+        local dao = select(3, helpers.get_db_utils())
+
         -- insert plugin-less api and a global plugin
-        assert(helpers.dao.apis:insert {
+        assert(dao.apis:insert {
           name         = "mock_upstream",
           hosts        = { "mock_upstream" },
           upstream_url = helpers.mock_upstream_url,
         })
-        assert(helpers.dao.plugins:insert {
+        assert(dao.plugins:insert {
           name   = "rewriter",
           config = {
             value = "global plugin",
@@ -20,7 +22,7 @@ describe("OpenResty phases", function()
         })
 
         assert(helpers.start_kong({
-          nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+          nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
         api_client   = helpers.admin_client()
@@ -50,13 +52,15 @@ describe("OpenResty phases", function()
       local api_client, proxy_client
 
       setup(function()
+        local dao = select(3, helpers.get_db_utils())
+
         -- api specific plugin
-        local api2 = assert(helpers.dao.apis:insert {
+        local api2 = assert(dao.apis:insert {
           name         = "mock_upstream",
           hosts        = { "mock_upstream" },
           upstream_url = helpers.mock_upstream_url,
         })
-        assert(helpers.dao.plugins:insert {
+        assert(dao.plugins:insert {
           api_id = api2.id,
           name   = "rewriter",
           config = {
@@ -65,7 +69,7 @@ describe("OpenResty phases", function()
         })
 
         assert(helpers.start_kong({
-          nginx_conf = "spec-old-api/fixtures/custom_nginx.template"
+          nginx_conf = "spec/fixtures/custom_nginx.template"
         }))
 
         api_client = helpers.admin_client()
@@ -94,24 +98,26 @@ describe("OpenResty phases", function()
       local api_client, proxy_client
 
       setup(function()
+        local dao = select(3, helpers.get_db_utils())
+
         -- consumer specific plugin
-        local api3 = assert(helpers.dao.apis:insert {
+        local api3 = assert(dao.apis:insert {
           name         = "mock_upstream",
           hosts        = { "mock_upstream" },
           upstream_url = helpers.mock_upstream_url,
         })
-        assert(helpers.dao.plugins:insert {
+        assert(dao.plugins:insert {
           api_id = api3.id,
           name   = "key-auth",
         })
-        local consumer3 = assert(helpers.dao.consumers:insert {
+        local consumer3 = assert(dao.consumers:insert {
           username = "test-consumer",
         })
-        assert(helpers.dao.keyauth_credentials:insert {
+        assert(dao.keyauth_credentials:insert {
           key         = "kong",
           consumer_id = consumer3.id,
         })
-        assert(helpers.dao.plugins:insert {
+        assert(dao.plugins:insert {
           consumer_id = consumer3.id,
           name        = "rewriter",
           config      = {
@@ -120,7 +126,7 @@ describe("OpenResty phases", function()
         })
 
         assert(helpers.start_kong({
-          nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+          nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
         api_client = helpers.admin_client()

@@ -1,72 +1,72 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 
 describe("Plugin: AWS Lambda (access)", function()
   local client, api_client
 
   setup(function()
-    helpers.run_migrations()
+    local dao = select(3, helpers.get_db_utils())
 
-    local api1 = assert(helpers.dao.apis:insert {
+    local api1 = assert(dao.apis:insert {
       name         = "lambda.com",
       hosts        = { "lambda.com" },
       upstream_url = helpers.mock_upstream_url,
     })
 
-    local api2 = assert(helpers.dao.apis:insert {
+    local api2 = assert(dao.apis:insert {
       name         = "lambda2.com",
       hosts        = { "lambda2.com" },
       upstream_url = helpers.mock_upstream_url,
     })
 
-    local api3 = assert(helpers.dao.apis:insert {
+    local api3 = assert(dao.apis:insert {
       name         = "lambda3.com",
       hosts        = { "lambda3.com" },
       upstream_url = helpers.mock_upstream_url,
     })
 
-    local api4 = assert(helpers.dao.apis:insert {
+    local api4 = assert(dao.apis:insert {
       name         = "lambda4.com",
       hosts        = { "lambda4.com" },
       upstream_url = helpers.mock_upstream_url,
     })
 
-    local api5 = assert(helpers.dao.apis:insert {
+    local api5 = assert(dao.apis:insert {
       name         = "lambda5.com",
       hosts        = { "lambda5.com" },
       upstream_url = helpers.mock_upstream_url,
     })
 
-    local api6 = assert(helpers.dao.apis:insert {
+    local api6 = assert(dao.apis:insert {
       name         = "lambda6.com",
       hosts        = { "lambda6.com" },
       upstream_url = helpers.mock_upstream_url,
     })
 
-    local api7 = assert(helpers.dao.apis:insert {
+    local api7 = assert(dao.apis:insert {
       name         = "lambda7.com",
       hosts        = { "lambda7.com" },
       upstream_url = helpers.mock_upstream_url,
     })
 
-    local api8 = assert(helpers.dao.apis:insert {
+    local api8 = assert(dao.apis:insert {
       name         = "lambda8.com",
       hosts        = { "lambda8.com" },
       upstream_url = helpers.mock_upstream_url,
     })
 
-    local api9 = assert(helpers.dao.apis:insert {
+    local api9 = assert(dao.apis:insert {
       name = "lambda9.com",
       hosts = { "lambda9.com" },
       upstream_url = "http://httpbin.org"
     })
 
-    local api10 = assert(helpers.dao.apis:insert {
+    local api10 = assert(dao.apis:insert {
       name = "lambda10.com",
       hosts = { "lambda10.com" },
       upstream_url = "http://httpbin.org"
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "aws-lambda",
       api_id = api1.id,
       config = {
@@ -78,7 +78,7 @@ describe("Plugin: AWS Lambda (access)", function()
       },
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "aws-lambda",
       api_id = api2.id,
       config = {
@@ -91,7 +91,7 @@ describe("Plugin: AWS Lambda (access)", function()
       },
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "aws-lambda",
       api_id = api3.id,
       config = {
@@ -104,7 +104,7 @@ describe("Plugin: AWS Lambda (access)", function()
       },
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "aws-lambda",
       api_id = api4.id,
       config = {
@@ -117,7 +117,7 @@ describe("Plugin: AWS Lambda (access)", function()
       },
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "aws-lambda",
       api_id = api5.id,
       config = {
@@ -129,7 +129,7 @@ describe("Plugin: AWS Lambda (access)", function()
       },
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "aws-lambda",
       api_id = api6.id,
       config = {
@@ -142,7 +142,7 @@ describe("Plugin: AWS Lambda (access)", function()
       },
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "aws-lambda",
       api_id = api7.id,
       config = {
@@ -155,7 +155,7 @@ describe("Plugin: AWS Lambda (access)", function()
       },
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "aws-lambda",
       api_id = api8.id,
       config = {
@@ -167,7 +167,7 @@ describe("Plugin: AWS Lambda (access)", function()
         unhandled_status = 412,
       },
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "aws-lambda",
       api_id = api9.id,
       config = {
@@ -183,7 +183,7 @@ describe("Plugin: AWS Lambda (access)", function()
       }
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "aws-lambda",
       api_id = api10.id,
       config = {
@@ -200,7 +200,7 @@ describe("Plugin: AWS Lambda (access)", function()
     })
 
     assert(helpers.start_kong{
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     })
   end)
 

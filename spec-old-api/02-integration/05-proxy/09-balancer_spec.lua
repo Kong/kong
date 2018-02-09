@@ -1,8 +1,7 @@
 -- these tests only apply to the ring-balancer
 -- for dns-record balancing see the `dns_spec` files
 
-local helpers = require "spec-old-api.helpers"
-local dao_helpers = require "spec-old-api.02-integration.03-dao.helpers"
+local helpers = require "spec.helpers"
 local PORT = 21000
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
@@ -313,20 +312,14 @@ local localhosts = {
 for ipv, localhost in pairs(localhosts) do
 
 
-dao_helpers.for_each_dao(function(kong_config)
-
-  describe("Ring-balancer #" .. kong_config.database .. " #" .. ipv, function()
-    local config_db
+for _, strategy in helpers.each_strategy() do
+  describe("Ring-balancer [#" .. strategy .. "] #" .. ipv, function()
+    local db
+    local dao
+    local db_update_propagation = strategy == "cassandra" and 3 or 0
 
     setup(function()
-      helpers.run_migrations()
-      config_db = helpers.test_conf.database
-      helpers.test_conf.database = kong_config.database
-      helpers.run_migrations()
-    end)
-    teardown(function()
-      helpers.test_conf.database = config_db
-      config_db = nil
+      db, dao = select(2, helpers.get_db_utils(strategy))
     end)
 
     before_each(function()
@@ -338,8 +331,11 @@ dao_helpers.for_each_dao(function(kong_config)
 
       before_each(function()
         helpers.stop_kong()
-        helpers.run_migrations()
-        helpers.start_kong()
+        assert(db:truncate())
+        dao:truncate_tables()
+        assert(helpers.start_kong({
+          database = strategy,
+        }))
       end)
 
       after_each(function()
@@ -506,27 +502,31 @@ dao_helpers.for_each_dao(function(kong_config)
       local slots = 20
 
       before_each(function()
-        helpers.run_migrations()
-        helpers.dao.apis:insert {
+        assert(db:truncate())
+        dao:truncate_tables()
+
+        dao.apis:insert {
           name = "balancer.test",
           hosts = { "balancer.test" },
           upstream_url = "http://service.xyz.v1/path",
         }
-        upstream = assert(helpers.dao.upstreams:insert {
+        upstream = assert(dao.upstreams:insert {
           name = "service.xyz.v1",
           slots = slots,
         })
-        assert(helpers.dao.targets:insert {
+        assert(dao.targets:insert {
           target = utils.format_host(localhost, PORT),
           weight = 10,
           upstream_id = upstream.id,
         })
-        assert(helpers.dao.targets:insert {
+        assert(dao.targets:insert {
           target = utils.format_host(localhost, PORT + 1),
           weight = 10,
           upstream_id = upstream.id,
         })
-        helpers.start_kong()
+        assert(helpers.start_kong {
+          database = strategy,
+        })
       end)
 
       after_each(function()
@@ -722,7 +722,7 @@ dao_helpers.for_each_dao(function(kong_config)
           direct_request(localhost, PORT + 1, "/unhealthy")
 
           -- Give time for healthchecker to detect
-          ngx.sleep((2 + nfails) * healthcheck_interval)
+          ngx.sleep((2 + nfails) * healthcheck_interval + db_update_propagation)
 
           -- Phase 3: server1 takes all requests
           do
@@ -794,7 +794,7 @@ dao_helpers.for_each_dao(function(kong_config)
           -- server2 goes unhealthy
           direct_request(localhost, PORT + 1, "/unhealthy")
           -- Give time for healthchecker to detect
-          ngx.sleep((2 + nchecks) * healthcheck_interval)
+          ngx.sleep((2 + nchecks) * healthcheck_interval + db_update_propagation)
 
           -- 2) server1 takes all requests
           do
@@ -806,7 +806,7 @@ dao_helpers.for_each_dao(function(kong_config)
           -- server2 goes healthy again
           direct_request(localhost, PORT + 1, "/healthy")
           -- Give time for healthchecker to detect
-          ngx.sleep((2 + nchecks) * healthcheck_interval)
+          ngx.sleep((2 + nchecks) * healthcheck_interval + db_update_propagation)
 
           -- 3) server1 and server2 take requests again
           do
@@ -982,63 +982,67 @@ dao_helpers.for_each_dao(function(kong_config)
       local client, api_client, upstream1, upstream2, target1, target2
 
       before_each(function()
-        helpers.run_migrations()
+        assert(db:truncate())
+        dao:truncate_tables()
+
         -- insert an api with round-robin balancer
-        assert(helpers.dao.apis:insert {
+        assert(dao.apis:insert {
           name = "balancer.test",
           hosts = { "balancer.test" },
           upstream_url = "http://service.xyz.v1/path",
         })
-        upstream1 = assert(helpers.dao.upstreams:insert {
+        upstream1 = assert(dao.upstreams:insert {
           name = "service.xyz.v1",
           slots = 10,
         })
-        target1 = assert(helpers.dao.targets:insert {
+        target1 = assert(dao.targets:insert {
           target = utils.format_host(localhost, PORT),
           weight = 10,
           upstream_id = upstream1.id,
         })
-        target2 = assert(helpers.dao.targets:insert {
+        target2 = assert(dao.targets:insert {
           target = utils.format_host(localhost, PORT + 1),
           weight = 10,
           upstream_id = upstream1.id,
         })
 
         -- insert an api with consistent-hashing balancer
-        assert(helpers.dao.apis:insert {
+        assert(dao.apis:insert {
           name = "hashing.test",
           hosts = { "hashing.test" },
           upstream_url = "http://service.hashing.v1/path",
         })
-        upstream2 = assert(helpers.dao.upstreams:insert {
+        upstream2 = assert(dao.upstreams:insert {
           name = "service.hashing.v1",
           slots = 10,
           hash_on = "header",
           hash_on_header = "hashme",
         })
-        assert(helpers.dao.targets:insert {
+        assert(dao.targets:insert {
           target = utils.format_host(localhost, PORT + 2),
           weight = 10,
           upstream_id = upstream2.id,
         })
-        assert(helpers.dao.targets:insert {
+        assert(dao.targets:insert {
           target = utils.format_host(localhost, PORT + 3),
           weight = 10,
           upstream_id = upstream2.id,
         })
 
         -- insert additional api + upstream with no targets
-        assert(helpers.dao.apis:insert {
+        assert(dao.apis:insert {
           name = "balancer.test2",
           hosts = { "balancer.test2" },
           upstream_url = "http://service.xyz.v2/path",
         })
-        assert(helpers.dao.upstreams:insert {
+        assert(dao.upstreams:insert {
           name = "service.xyz.v2",
           slots = 10,
         })
 
-        helpers.start_kong()
+        assert(helpers.start_kong {
+          database = strategy,
+        })
         client = helpers.proxy_client()
         api_client = helpers.admin_client()
       end)
@@ -1334,6 +1338,6 @@ dao_helpers.for_each_dao(function(kong_config)
     end)
   end)
 
-end) -- for 'database type'
+end -- for 'database type'
 
 end

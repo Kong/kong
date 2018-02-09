@@ -1,14 +1,17 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
 
-local jwt_secrets = helpers.dao.jwt_secrets
 local fixtures = require "spec-old-api.03-plugins.17-jwt.fixtures"
 
 describe("Plugin: jwt (API)", function()
   local admin_client, consumer, jwt_secret
+  local dao
+  local jwt_secrets
+
   setup(function()
-    helpers.run_migrations()
+    dao = select(3, helpers.get_db_utils())
+    jwt_secrets = dao.jwt_secrets
 
     assert(helpers.start_kong())
     admin_client = helpers.admin_client()
@@ -20,10 +23,10 @@ describe("Plugin: jwt (API)", function()
 
   describe("/consumers/:consumer/jwt/", function()
     setup(function()
-      consumer = assert(helpers.dao.consumers:insert {
+      consumer = assert(dao.consumers:insert {
         username = "bob"
       })
-      assert(helpers.dao.consumers:insert {
+      assert(dao.consumers:insert {
         username = "alice"
       })
     end)
@@ -318,14 +321,14 @@ describe("Plugin: jwt (API)", function()
     local consumer2
     describe("GET", function()
       setup(function()
-        helpers.dao:truncate_table("jwt_secrets")
-        assert(helpers.dao.jwt_secrets:insert {
+        dao:truncate_table("jwt_secrets")
+        assert(dao.jwt_secrets:insert {
           consumer_id = consumer.id,
         })
-        consumer2 = assert(helpers.dao.consumers:insert {
+        consumer2 = assert(dao.consumers:insert {
           username = "bob-the-buidler"
         })
-        assert(helpers.dao.jwt_secrets:insert {
+        assert(dao.jwt_secrets:insert {
           consumer_id = consumer2.id,
         })
       end)
@@ -410,8 +413,8 @@ describe("Plugin: jwt (API)", function()
     describe("GET", function()
       local credential
       setup(function()
-        helpers.dao:truncate_table("jwt_secrets")
-        credential = assert(helpers.dao.jwt_secrets:insert {
+        dao:truncate_table("jwt_secrets")
+        credential = assert(dao.jwt_secrets:insert {
           consumer_id = consumer.id
         })
       end)

@@ -1,6 +1,6 @@
 local cjson = require "cjson"
 local socket = require "socket"
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 
 local mockbin_ip = socket.dns.toip("mockbin.org")
 

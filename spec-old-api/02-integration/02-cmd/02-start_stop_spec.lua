@@ -1,8 +1,8 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 
 describe("kong start/stop", function()
   setup(function()
-    helpers.run_migrations()
+    assert(helpers.dao:run_migrations())
     helpers.prepare_prefix()
   end)
   after_each(function()
@@ -88,7 +88,7 @@ describe("kong start/stop", function()
   end)
 
   describe("custom --nginx-conf", function()
-    local templ_fixture = "spec-old-api/fixtures/custom_nginx.template"
+    local templ_fixture = "spec/fixtures/custom_nginx.template"
 
     it("accept a custom Nginx configuration", function()
       assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path .. " --nginx-conf " .. templ_fixture))
@@ -173,7 +173,7 @@ describe("kong start/stop", function()
       assert.matches("Kong is already running in " .. helpers.test_conf.prefix, stderr, nil, true)
     end)
     it("stops other services when could not start", function()
-      local thread = helpers.tcp_server(helpers.test_conf.proxy_port)
+      local thread = helpers.tcp_server(helpers.get_proxy_port(false))
       finally(function()
         -- make tcp server receive and close
         helpers.proxy_client():send {
@@ -207,8 +207,8 @@ describe("kong start/stop", function()
       local pl_file   = require "pl.file"
       local fmt       = string.format
 
-      local templ_fixture     = "spec-old-api/fixtures/custom_nginx.template"
-      local new_templ_fixture = "spec-old-api/fixtures/custom_nginx.template.tmp"
+      local templ_fixture     = "spec/fixtures/custom_nginx.template"
+      local new_templ_fixture = "spec/fixtures/custom_nginx.template.tmp"
 
       finally(function()
         pl_file.delete(new_templ_fixture)

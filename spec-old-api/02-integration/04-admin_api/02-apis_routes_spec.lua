@@ -1,9 +1,10 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
 
 local dao_helpers = require "spec-old-api.02-integration.03-dao.helpers"
 local DAOFactory = require "kong.dao.factory"
+local DB         = require "kong.db"
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
@@ -16,9 +17,16 @@ dao_helpers.for_each_dao(function(kong_config)
 describe("Admin API #" .. kong_config.database, function()
   local client
   local dao
+  local db
+
   setup(function()
     dao = assert(DAOFactory.new(kong_config))
-    helpers.run_migrations(dao)
+    db = assert(DB.new(kong_config))
+    assert(db:init_connector())
+    assert(dao:run_migrations())
+
+    dao:truncate_tables()
+    db:truncate()
 
     assert(helpers.start_kong{
       database = kong_config.database
@@ -1258,13 +1266,14 @@ end)
 describe("Admin API request size", function()
   local client
   setup(function()
-    assert(helpers.dao.apis:insert {
+    local dao = select(3, helpers.get_db_utils())
+    assert(dao:run_migrations())
+
+    assert(dao.apis:insert {
       name = "my-cool-api",
       hosts = "my.api.com",
       upstream_url = "http://api.com"
     })
-
-    helpers.run_migrations()
 
     assert(helpers.start_kong())
     client = assert(helpers.admin_client())

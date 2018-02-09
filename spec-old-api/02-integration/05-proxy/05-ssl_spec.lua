@@ -1,12 +1,12 @@
 local ssl_fixtures = require "spec-old-api.fixtures.ssl"
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 
 local function get_cert(server_name)
   local _, _, stdout = assert(helpers.execute(
     string.format("echo 'GET /' | openssl s_client -connect 0.0.0.0:%d -servername %s",
-                  helpers.test_conf.proxy_ssl_port, server_name)
+                  helpers.get_proxy_port(true), server_name)
   ))
 
   return stdout
@@ -17,16 +17,15 @@ describe("SSL", function()
   local admin_client, client, https_client
 
   setup(function()
-    helpers.dao:truncate_tables()
-    helpers.run_migrations()
+    local _, _, dao = helpers.get_db_utils()
 
-    assert(helpers.dao.apis:insert {
+    assert(dao.apis:insert {
       name         = "global-cert",
       hosts        = { "global.com" },
       upstream_url = helpers.mock_upstream_url,
     })
 
-    assert(helpers.dao.apis:insert {
+    assert(dao.apis:insert {
       name               = "api-1",
       hosts              = { "example.com", "ssl1.com" },
       upstream_url       = helpers.mock_upstream_url,
@@ -34,7 +33,7 @@ describe("SSL", function()
       http_if_terminated = true,
     })
 
-    assert(helpers.dao.apis:insert {
+    assert(dao.apis:insert {
       name               = "api-2",
       hosts              = { "ssl2.com" },
       upstream_url       = helpers.mock_upstream_url,
@@ -42,14 +41,14 @@ describe("SSL", function()
       http_if_terminated = false,
     })
 
-    assert(helpers.dao.apis:insert {
+    assert(dao.apis:insert {
       name          = "api-3",
       hosts         = { "ssl3.com" },
       upstream_url  = helpers.mock_upstream_ssl_url,
       preserve_host = true,
     })
 
-    assert(helpers.dao.apis:insert {
+    assert(dao.apis:insert {
       name          = "api-4",
       hosts         = { "no-sni.com" },
       upstream_url  = helpers.mock_upstream_ssl_protocol .. "://" ..
@@ -58,7 +57,7 @@ describe("SSL", function()
       preserve_host = false,
     })
 
-    assert(helpers.dao.apis:insert {
+    assert(dao.apis:insert {
       name          = "api-5",
       hosts         = { "nil-sni.com" },
       upstream_url  = helpers.mock_upstream_ssl_url,
@@ -66,7 +65,7 @@ describe("SSL", function()
     })
 
     assert(helpers.start_kong {
-      nginx_conf  = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf  = "spec/fixtures/custom_nginx.template",
       trusted_ips = "127.0.0.1",
     })
 
@@ -217,7 +216,7 @@ describe("SSL", function()
 
     before_each(function()
       assert(helpers.kong_exec("restart --conf " .. helpers.test_conf_path ..
-                               " --nginx-conf spec-old-api/fixtures/custom_nginx.template"))
+                               " --nginx-conf spec/fixtures/custom_nginx.template"))
 
       https_client_sni = helpers.proxy_ssl_client()
     end)

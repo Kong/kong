@@ -1,5 +1,5 @@
 local constants = require "kong.constants"
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local dao_helpers = require "spec-old-api.02-integration.03-dao.helpers"
 

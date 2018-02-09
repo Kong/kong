@@ -30,7 +30,7 @@ end
 
 describe("Admin API listeners", function()
   before_each(function()
-    helpers.run_migrations()
+    helpers.get_db_utils()
   end)
 
   after_each(function()

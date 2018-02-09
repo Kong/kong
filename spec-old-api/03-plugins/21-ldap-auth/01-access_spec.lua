@@ -1,4 +1,4 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 
 local function acl_cache_key(api_id, username)
@@ -9,40 +9,41 @@ local ldap_host_aws = "ec2-54-172-82-117.compute-1.amazonaws.com"
 
 describe("Plugin: ldap-auth (access)", function()
   local client, client_admin, api2, plugin2
-  setup(function()
-    helpers.run_migrations()
 
-    local api1 = assert(helpers.dao.apis:insert {
+  setup(function()
+    local dao = select(3, helpers.get_db_utils())
+
+    local api1 = assert(dao.apis:insert {
       name         = "test-ldap",
       hosts        = { "ldap.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    api2 = assert(helpers.dao.apis:insert {
+    api2 = assert(dao.apis:insert {
       name         = "test-ldap2",
       hosts        = { "ldap2.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api3 = assert(helpers.dao.apis:insert {
+    local api3 = assert(dao.apis:insert {
       name         = "test-ldap3",
       hosts        = { "ldap3.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api4 = assert(helpers.dao.apis:insert {
+    local api4 = assert(dao.apis:insert {
       name         = "test-ldap4",
       hosts        = { "ldap4.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api5 = assert(helpers.dao.apis:insert {
+    local api5 = assert(dao.apis:insert {
       name         = "test-ldap5",
       hosts        = { "ldap5.com" },
       upstream_url = helpers.mock_upstream_url,
     })
 
-    local anonymous_user = assert(helpers.dao.consumers:insert {
+    local anonymous_user = assert(dao.consumers:insert {
       username = "no-body"
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api1.id,
       name = "ldap-auth",
       config = {
@@ -54,7 +55,7 @@ describe("Plugin: ldap-auth (access)", function()
       }
     })
 
-    plugin2 = assert(helpers.dao.plugins:insert {
+    plugin2 = assert(dao.plugins:insert {
       api_id = api2.id,
       name = "ldap-auth",
       config = {
@@ -67,7 +68,7 @@ describe("Plugin: ldap-auth (access)", function()
         cache_ttl = 2,
       }
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api3.id,
       name = "ldap-auth",
       config = {
@@ -79,7 +80,7 @@ describe("Plugin: ldap-auth (access)", function()
         anonymous = anonymous_user.id,
       }
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api4.id,
       name = "ldap-auth",
       config = {
@@ -92,7 +93,7 @@ describe("Plugin: ldap-auth (access)", function()
         anonymous = utils.uuid(), -- non existing consumer
       }
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api5.id,
       name = "ldap-auth",
       config = {
@@ -106,7 +107,7 @@ describe("Plugin: ldap-auth (access)", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
   end)
 
@@ -409,12 +410,14 @@ describe("Plugin: ldap-auth (access)", function()
   local client, user1, anonymous
 
   setup(function()
-    local api1 = assert(helpers.dao.apis:insert {
+    local dao = select(3, helpers.get_db_utils())
+
+    local api1 = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "logical-and.com" },
       upstream_url = helpers.mock_upstream_url .. "/request",
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api1.id,
       name   = "ldap-auth",
       config = {
@@ -425,24 +428,24 @@ describe("Plugin: ldap-auth (access)", function()
         attribute = "uid",
       },
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "key-auth",
       api_id = api1.id,
     })
 
-    anonymous = assert(helpers.dao.consumers:insert {
+    anonymous = assert(dao.consumers:insert {
       username = "Anonymous",
     })
-    user1 = assert(helpers.dao.consumers:insert {
+    user1 = assert(dao.consumers:insert {
       username = "Mickey",
     })
 
-    local api2 = assert(helpers.dao.apis:insert {
+    local api2 = assert(dao.apis:insert {
       name         = "api-2",
       hosts        = { "logical-or.com" },
       upstream_url = helpers.mock_upstream_url .. "/request",
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api2.id,
       name   = "ldap-auth",
       config = {
@@ -454,7 +457,7 @@ describe("Plugin: ldap-auth (access)", function()
         anonymous = anonymous.id,
       },
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "key-auth",
       api_id = api2.id,
       config = {
@@ -462,13 +465,13 @@ describe("Plugin: ldap-auth (access)", function()
       },
     })
 
-    assert(helpers.dao.keyauth_credentials:insert {
+    assert(dao.keyauth_credentials:insert {
       key         = "Mouse",
       consumer_id = user1.id,
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
     client = helpers.proxy_client()
   end)

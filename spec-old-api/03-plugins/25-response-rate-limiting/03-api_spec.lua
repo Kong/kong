@@ -1,4 +1,4 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 describe("Plugin: response-rate-limiting (API)", function()
@@ -20,7 +20,7 @@ describe("Plugin: response-rate-limiting (API)", function()
       })
 
       assert(helpers.start_kong({
-        nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
       admin_client = helpers.admin_client()
     end)

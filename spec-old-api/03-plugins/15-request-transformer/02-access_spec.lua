@@ -1,23 +1,23 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local cjson   = require "cjson"
 
 describe("Plugin: request-transformer (access)", function()
   local client
 
   setup(function()
-    helpers.run_migrations()
+    local dao = select(3, helpers.get_db_utils())
 
-    local api1 = assert(helpers.dao.apis:insert { name = "api-1", hosts = { "test1.com" }, upstream_url = helpers.mock_upstream_url})
-    local api2 = assert(helpers.dao.apis:insert { name = "api-2", hosts = { "test2.com" }, upstream_url = helpers.mock_upstream_url})
-    local api3 = assert(helpers.dao.apis:insert { name = "api-3", hosts = { "test3.com" }, upstream_url = helpers.mock_upstream_url})
-    local api4 = assert(helpers.dao.apis:insert { name = "api-4", hosts = { "test4.com" }, upstream_url = helpers.mock_upstream_url})
-    local api5 = assert(helpers.dao.apis:insert { name = "api-5", hosts = { "test5.com" }, upstream_url = helpers.mock_upstream_url})
-    local api6 = assert(helpers.dao.apis:insert { name = "api-6", hosts = { "test6.com" }, upstream_url = helpers.mock_upstream_url})
-    local api7 = assert(helpers.dao.apis:insert { name = "api-7", hosts = { "test7.com" }, upstream_url = helpers.mock_upstream_url})
-    local api8 = assert(helpers.dao.apis:insert { name = "api-8", hosts = { "test8.com" }, upstream_url = helpers.mock_upstream_url})
-    local api9 = assert(helpers.dao.apis:insert { name = "api-9", hosts = { "test9.com" }, upstream_url = helpers.mock_upstream_url})
+    local api1 = assert(dao.apis:insert { name = "api-1", hosts = { "test1.com" }, upstream_url = helpers.mock_upstream_url})
+    local api2 = assert(dao.apis:insert { name = "api-2", hosts = { "test2.com" }, upstream_url = helpers.mock_upstream_url})
+    local api3 = assert(dao.apis:insert { name = "api-3", hosts = { "test3.com" }, upstream_url = helpers.mock_upstream_url})
+    local api4 = assert(dao.apis:insert { name = "api-4", hosts = { "test4.com" }, upstream_url = helpers.mock_upstream_url})
+    local api5 = assert(dao.apis:insert { name = "api-5", hosts = { "test5.com" }, upstream_url = helpers.mock_upstream_url})
+    local api6 = assert(dao.apis:insert { name = "api-6", hosts = { "test6.com" }, upstream_url = helpers.mock_upstream_url})
+    local api7 = assert(dao.apis:insert { name = "api-7", hosts = { "test7.com" }, upstream_url = helpers.mock_upstream_url})
+    local api8 = assert(dao.apis:insert { name = "api-8", hosts = { "test8.com" }, upstream_url = helpers.mock_upstream_url})
+    local api9 = assert(dao.apis:insert { name = "api-9", hosts = { "test9.com" }, upstream_url = helpers.mock_upstream_url})
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api1.id,
       name = "request-transformer",
       config = {
@@ -28,7 +28,7 @@ describe("Plugin: request-transformer (access)", function()
         }
       }
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api2.id,
       name = "request-transformer",
       config = {
@@ -37,7 +37,7 @@ describe("Plugin: request-transformer (access)", function()
         }
       }
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api3.id,
       name = "request-transformer",
       config = {
@@ -60,7 +60,7 @@ describe("Plugin: request-transformer (access)", function()
         }
       }
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api4.id,
       name = "request-transformer",
       config = {
@@ -71,7 +71,7 @@ describe("Plugin: request-transformer (access)", function()
         }
       }
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api5.id,
       name = "request-transformer",
       config = {
@@ -82,7 +82,7 @@ describe("Plugin: request-transformer (access)", function()
         }
       }
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api6.id,
       name = "request-transformer",
       config = {
@@ -93,14 +93,14 @@ describe("Plugin: request-transformer (access)", function()
         }
       }
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api7.id,
       name = "request-transformer",
       config = {
         http_method = "POST"
       }
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api8.id,
       name = "request-transformer",
       config = {
@@ -108,7 +108,7 @@ describe("Plugin: request-transformer (access)", function()
       }
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api9.id,
       name = "request-transformer",
       config = {
@@ -121,7 +121,7 @@ describe("Plugin: request-transformer (access)", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
   end)
 

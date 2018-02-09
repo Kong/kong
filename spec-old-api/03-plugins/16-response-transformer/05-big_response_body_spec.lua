@@ -1,4 +1,4 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 
 local function create_big_data(size)
   return {
@@ -12,12 +12,14 @@ describe("Plugin: response-transformer", function()
   local client
 
   setup(function()
-    local api = assert(helpers.dao.apis:insert {
+    local dao = select(3, helpers.get_db_utils())
+
+    local api = assert(dao.apis:insert {
       name         = "tests-response-transformer",
       hosts        = { "response.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api.id,
       name   = "response-transformer",
       config = {
@@ -31,7 +33,7 @@ describe("Plugin: response-transformer", function()
     })
 
     assert(helpers.start_kong({
-        nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
   end)
 

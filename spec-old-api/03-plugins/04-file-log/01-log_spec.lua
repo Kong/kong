@@ -1,6 +1,6 @@
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local pl_stringx = require "pl.stringx"
@@ -10,15 +10,15 @@ local FILE_LOG_PATH = os.tmpname()
 describe("Plugin: file-log (log)", function()
   local client
   setup(function()
-    helpers.run_migrations()
+    local dao = select(3, helpers.get_db_utils())
 
-    local api1 = assert(helpers.dao.apis:insert {
+    local api1 = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "file_logging.com" },
       upstream_url = helpers.mock_upstream_url,
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api1.id,
       name   = "file-log",
       config = {
@@ -28,7 +28,7 @@ describe("Plugin: file-log (log)", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
   end)
   teardown(function()

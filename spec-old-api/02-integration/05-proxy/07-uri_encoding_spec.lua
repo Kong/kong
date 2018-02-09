@@ -1,11 +1,12 @@
 local cjson = require "cjson"
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 
 describe("URI encoding", function()
   local client
 
   setup(function()
-    helpers.run_migrations()
+    helpers.get_db_utils()
+
     assert(helpers.dao.apis:insert {
       name         = "api-1",
       hosts        = { "mock_upstream" },
@@ -33,7 +34,7 @@ describe("URI encoding", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
     client = helpers.proxy_client()
   end)

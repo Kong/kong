@@ -1,4 +1,4 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local cjson   = require "cjson"
 
 
@@ -14,7 +14,7 @@ describe("Admin API post-processing", function()
   local client
 
   setup(function()
-    helpers.run_migrations()
+    assert(helpers.dao:run_migrations())
     assert(helpers.start_kong {
       custom_plugins = "admin-api-post-process"
     })

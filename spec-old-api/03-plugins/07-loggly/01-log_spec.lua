@@ -1,4 +1,4 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 local UDP_PORT = 20000
@@ -6,30 +6,30 @@ local UDP_PORT = 20000
 describe("Plugin: loggly (log)", function()
   local client
   setup(function()
-    helpers.run_migrations()
+    local _, _, dao = helpers.get_db_utils()
 
-    local api1 = assert(helpers.dao.apis:insert {
+    local api1 = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "logging.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api2 = assert(helpers.dao.apis:insert {
+    local api2 = assert(dao.apis:insert {
       name         = "api-2",
       hosts        = { "logging1.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api3 = assert(helpers.dao.apis:insert {
+    local api3 = assert(dao.apis:insert {
       name         = "api-3",
       hosts        = { "logging2.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api4 = assert(helpers.dao.apis:insert {
+    local api4 = assert(dao.apis:insert {
       name         = "api-4",
       hosts        = { "logging3.com" },
       upstream_url = helpers.mock_upstream_url,
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api1.id,
       name   = "loggly",
       config = {
@@ -41,7 +41,7 @@ describe("Plugin: loggly (log)", function()
       }
     })
 
-  assert(helpers.dao.plugins:insert {
+  assert(dao.plugins:insert {
       api_id = api2.id,
       name   = "loggly",
       config = {
@@ -53,7 +53,7 @@ describe("Plugin: loggly (log)", function()
         successful_severity = "info",
       }
     })
-  assert(helpers.dao.plugins:insert {
+  assert(dao.plugins:insert {
       api_id = api3.id,
       name   = "loggly",
       config = {
@@ -65,7 +65,7 @@ describe("Plugin: loggly (log)", function()
         client_errors_severity = "warning",
       }
     })
-  assert(helpers.dao.plugins:insert {
+  assert(dao.plugins:insert {
       api_id = api4.id,
       name   = "loggly",
       config = {
@@ -76,7 +76,7 @@ describe("Plugin: loggly (log)", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
   end)
   teardown(function()

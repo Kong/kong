@@ -1,4 +1,4 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local escape = require("socket.url").escape
 local utils = require "kong.tools.utils"
@@ -13,7 +13,7 @@ end
 describe("Admin API", function()
   local client
   setup(function()
-    helpers.run_migrations()
+    helpers.get_db_utils()
     assert(helpers.start_kong())
   end)
   teardown(function()

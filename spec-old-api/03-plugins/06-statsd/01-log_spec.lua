@@ -1,116 +1,116 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local UDP_PORT = 20000
 
 describe("Plugin: statsd (log)", function()
   local client
   setup(function()
-    helpers.run_migrations()
+    local dao = select(3, helpers.get_db_utils())
 
-    local consumer1 = assert(helpers.dao.consumers:insert {
+    local consumer1 = assert(dao.consumers:insert {
       username  = "bob",
       custom_id = "robert",
     })
-    assert(helpers.dao.keyauth_credentials:insert {
+    assert(dao.keyauth_credentials:insert {
       key         = "kong",
       consumer_id = consumer1.id,
     })
 
-    local api1 = assert(helpers.dao.apis:insert {
+    local api1 = assert(dao.apis:insert {
       name         = "stastd1",
       hosts        = { "logging1.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "key-auth",
       api_id = api1.id,
     })
-    local api2 = assert(helpers.dao.apis:insert {
+    local api2 = assert(dao.apis:insert {
       name         = "stastd2",
       hosts        = { "logging2.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api3 = assert(helpers.dao.apis:insert {
+    local api3 = assert(dao.apis:insert {
       name         = "stastd3",
       hosts        = { "logging3.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api4 = assert(helpers.dao.apis:insert {
+    local api4 = assert(dao.apis:insert {
       name         = "stastd4",
       hosts        = { "logging4.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api5 = assert(helpers.dao.apis:insert {
+    local api5 = assert(dao.apis:insert {
       name         = "stastd5",
       hosts        = { "logging5.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api6 = assert(helpers.dao.apis:insert {
+    local api6 = assert(dao.apis:insert {
       name         = "stastd6",
       hosts        = { "logging6.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api7 = assert(helpers.dao.apis:insert {
+    local api7 = assert(dao.apis:insert {
       name         = "stastd7",
       hosts        = { "logging7.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api8 = assert(helpers.dao.apis:insert {
+    local api8 = assert(dao.apis:insert {
       name         = "stastd8",
       hosts        = { "logging8.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api9 = assert(helpers.dao.apis:insert {
+    local api9 = assert(dao.apis:insert {
       name         = "stastd9",
       hosts        = { "logging9.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "key-auth",
       api_id = api9.id,
     })
-    local api10 = assert(helpers.dao.apis:insert {
+    local api10 = assert(dao.apis:insert {
       name         = "stastd10",
       hosts        = { "logging10.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "key-auth",
       api_id = api10.id,
     })
-    local api11 = assert(helpers.dao.apis:insert {
+    local api11 = assert(dao.apis:insert {
       name         = "stastd11",
       hosts        = { "logging11.com" },
       upstream_url = helpers.mock_upstream_url,
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "key-auth",
       api_id = api11.id,
     })
 
-    local api12 = assert(helpers.dao.apis:insert {
+    local api12 = assert(dao.apis:insert {
       name         = "stastd12",
       hosts        = { "logging12.com" },
       upstream_url = helpers.mock_upstream_url,
     })
 
-    local api13 = assert(helpers.dao.apis:insert {
+    local api13 = assert(dao.apis:insert {
       name         = "stastd13",
       hosts        = { "logging13.com" },
       upstream_url = helpers.mock_upstream_url,
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "key-auth",
       api_id = api12.id,
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "key-auth",
       api_id = api13.id,
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api1.id,
       name   = "statsd",
       config = {
@@ -118,7 +118,7 @@ describe("Plugin: statsd (log)", function()
         port = UDP_PORT,
       },
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api2.id,
       name   = "statsd",
       config = {
@@ -130,7 +130,7 @@ describe("Plugin: statsd (log)", function()
         }},
       },
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api3.id,
       name   = "statsd",
       config    = {
@@ -143,7 +143,7 @@ describe("Plugin: statsd (log)", function()
         }},
       },
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api4.id,
       name   = "statsd",
       config = {
@@ -155,7 +155,7 @@ describe("Plugin: statsd (log)", function()
         }},
       },
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api5.id,
       name   = "statsd",
       config = {
@@ -168,7 +168,7 @@ describe("Plugin: statsd (log)", function()
         }}
       }
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api6.id,
       name   = "statsd",
       config    = {
@@ -180,7 +180,7 @@ describe("Plugin: statsd (log)", function()
         }},
       },
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api7.id,
       name   = "statsd",
       config = {
@@ -192,7 +192,7 @@ describe("Plugin: statsd (log)", function()
         }},
       },
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api8.id,
       name   = "statsd",
       config = {
@@ -204,7 +204,7 @@ describe("Plugin: statsd (log)", function()
         }},
       }
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api9.id,
       name   = "statsd",
       config = {
@@ -217,7 +217,7 @@ describe("Plugin: statsd (log)", function()
         }},
       },
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api10.id,
       name   = "statsd",
       config = {
@@ -231,7 +231,7 @@ describe("Plugin: statsd (log)", function()
         }},
       },
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api11.id,
       name   = "statsd",
       config = {
@@ -245,7 +245,7 @@ describe("Plugin: statsd (log)", function()
         }},
       },
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api12.id,
       name   = "statsd",
       config = {
@@ -258,7 +258,7 @@ describe("Plugin: statsd (log)", function()
         }},
       },
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api13.id,
       name   = "statsd",
       config = {
@@ -269,7 +269,7 @@ describe("Plugin: statsd (log)", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
     client = helpers.proxy_client()
   end)

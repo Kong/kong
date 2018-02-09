@@ -1,5 +1,5 @@
 local cjson = require "cjson"
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 
 describe("Plugin: oauth2 (invalidations)", function()
   local admin_client, proxy_ssl_client
@@ -37,7 +37,7 @@ describe("Plugin: oauth2 (invalidations)", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
     admin_client     = helpers.admin_client()
     proxy_ssl_client = helpers.proxy_ssl_client()

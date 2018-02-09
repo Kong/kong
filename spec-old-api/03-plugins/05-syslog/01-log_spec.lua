@@ -1,4 +1,4 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local pl_stringx = require "pl.stringx"
@@ -60,7 +60,7 @@ describe("#flaky Plugin: syslog (log)", function()
     platform = pl_stringx.strip(stdout)
 
     assert(helpers.start_kong({
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
   end)
   teardown(function()
@@ -68,7 +68,7 @@ describe("#flaky Plugin: syslog (log)", function()
   end)
 
   before_each(function()
-    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
+    client = assert(helpers.http_client("127.0.0.1", helpers.get_proxy_port(false)))
   end)
   after_each(function()
     if client then client:close() end

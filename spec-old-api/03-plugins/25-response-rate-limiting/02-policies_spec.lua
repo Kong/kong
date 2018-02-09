@@ -1,5 +1,5 @@
 local uuid = require("kong.tools.utils").uuid
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local policies = require "kong.plugins.response-ratelimiting.policies"
 local timestamp = require "kong.tools.timestamp"
 
@@ -10,16 +10,19 @@ describe("Plugin: response-ratelimiting (policies)", function()
     local api_id = uuid()
     local conf = { api_id = api_id }
     local identifier = uuid()
+    local dao
 
     setup(function()
-      local singletons = require "kong.singletons"
-      singletons.dao = helpers.dao
+      dao = select(3, helpers.get_db_utils())
 
-      helpers.dao:truncate_tables()
+      local singletons = require "kong.singletons"
+      singletons.dao = dao
+
+      dao:truncate_tables()
     end)
 
     after_each(function()
-      helpers.dao:truncate_tables()
+      dao:truncate_tables()
     end)
 
     it("should return nil when ratelimiting metrics are not existing", function()

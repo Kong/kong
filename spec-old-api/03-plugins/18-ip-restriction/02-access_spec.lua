@@ -1,19 +1,20 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 describe("Plugin: ip-restriction (access)", function()
   local plugin_config
   local client, admin_client
+  local dao
 
   setup(function()
-    helpers.run_migrations()
+    dao = select(3, helpers.get_db_utils())
 
-    local api1 = assert(helpers.dao.apis:insert {
+    local api1 = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "ip-restriction1.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "ip-restriction",
       api_id = api1.id,
       config = {
@@ -21,12 +22,12 @@ describe("Plugin: ip-restriction (access)", function()
       },
     })
 
-    local api2 = assert(helpers.dao.apis:insert {
+    local api2 = assert(dao.apis:insert {
       name         = "api-2",
       hosts        = { "ip-restriction2.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    plugin_config = assert(helpers.dao.plugins:insert {
+    plugin_config = assert(dao.plugins:insert {
       name   = "ip-restriction",
       api_id = api2.id,
       config = {
@@ -34,24 +35,24 @@ describe("Plugin: ip-restriction (access)", function()
       },
     })
 
-    local api3 = assert(helpers.dao.apis:insert {
+    local api3 = assert(dao.apis:insert {
       name         = "api-3",
       hosts        = { "ip-restriction3.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "ip-restriction",
       api_id = api3.id,
       config = {
         whitelist = {"127.0.0.2"},
       },
     })
-    local api4 = assert(helpers.dao.apis:insert {
+    local api4 = assert(dao.apis:insert {
       name         = "api-4",
       hosts        = { "ip-restriction4.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "ip-restriction",
       api_id = api4.id,
       config = {
@@ -59,12 +60,12 @@ describe("Plugin: ip-restriction (access)", function()
       },
     })
 
-    local api5 = assert(helpers.dao.apis:insert {
+    local api5 = assert(dao.apis:insert {
       name         = "api-5",
       hosts        = { "ip-restriction5.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "ip-restriction",
       api_id = api5.id,
       config = {
@@ -72,12 +73,12 @@ describe("Plugin: ip-restriction (access)", function()
       },
     })
 
-    local api6 = assert(helpers.dao.apis:insert {
+    local api6 = assert(dao.apis:insert {
       name         = "api-6",
       hosts        = { "ip-restriction6.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "ip-restriction",
       api_id = api6.id,
       config = {
@@ -85,12 +86,12 @@ describe("Plugin: ip-restriction (access)", function()
       },
     })
 
-    local api7 = assert(helpers.dao.apis:insert {
+    local api7 = assert(dao.apis:insert {
       name         = "api-7",
       hosts        = { "ip-restriction7.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "ip-restriction",
       api_id = api7.id,
       config = {
@@ -98,12 +99,12 @@ describe("Plugin: ip-restriction (access)", function()
       },
     })
 
-    local api8 = assert(helpers.dao.apis:insert {
+    local api8 = assert(dao.apis:insert {
       name         = "api-8",
       hosts        = { "ip-restriction8.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "ip-restriction",
       api_id = api8.id,
       config = {
@@ -115,7 +116,7 @@ describe("Plugin: ip-restriction (access)", function()
       real_ip_header    = "X-Forwarded-For",
       real_ip_recursive = "on",
       trusted_ips       = "0.0.0.0/0, ::/0",
-      nginx_conf        = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf        = "spec/fixtures/custom_nginx.template",
     })
     client = helpers.proxy_client()
     admin_client = helpers.admin_client()
@@ -306,9 +307,9 @@ describe("Plugin: ip-restriction (access)", function()
     })
     assert.res_status(200, res)
 
-    local cache_key = helpers.dao.plugins:cache_key(plugin_config.name,
-                                                    plugin_config.api_id,
-                                                    plugin_config.consumer_id)
+    local cache_key = dao.plugins:cache_key(plugin_config.name,
+                                            plugin_config.api_id,
+                                            plugin_config.consumer_id)
 
     helpers.wait_until(function()
       res = assert(admin_client:send {

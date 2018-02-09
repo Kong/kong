@@ -1,20 +1,21 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 local openssl_hmac = require "openssl.hmac"
 
 describe("Plugin: hmac-auth (invalidations)", function()
   local client_proxy, client_admin, consumer, credential
+  local dao
 
   setup(function()
-    helpers.run_migrations()
+    dao = select(3, helpers.get_db_utils())
 
-    local api = assert(helpers.dao.apis:insert {
+    local api = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "hmacauth.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "hmac-auth",
       api_id = api.id,
       config = {
@@ -22,18 +23,18 @@ describe("Plugin: hmac-auth (invalidations)", function()
       },
     })
 
-    consumer = assert(helpers.dao.consumers:insert {
+    consumer = assert(dao.consumers:insert {
       username  = "consumer1",
       custom_id = "1234",
     })
-    credential = assert(helpers.dao["hmacauth_credentials"]:insert {
+    credential = assert(dao["hmacauth_credentials"]:insert {
       username    = "bob",
       secret      = "secret",
       consumer_id = consumer.id,
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
     client_proxy = helpers.proxy_client()
     client_admin = helpers.admin_client()
@@ -76,7 +77,7 @@ describe("Plugin: hmac-auth (invalidations)", function()
       assert.res_status(200, res)
 
       -- Check that cache is populated
-      local cache_key = helpers.dao.hmacauth_credentials:cache_key("bob")
+      local cache_key = dao.hmacauth_credentials:cache_key("bob")
       res = assert(client_admin:send {
         method = "GET",
         path = "/cache/" .. cache_key,
@@ -183,7 +184,7 @@ describe("Plugin: hmac-auth (invalidations)", function()
       assert.res_status(200, res)
 
       -- ensure cache is invalidated
-      local cache_key = helpers.dao.hmacauth_credentials:cache_key("bob")
+      local cache_key = dao.hmacauth_credentials:cache_key("bob")
       helpers.wait_until(function()
         local res = assert(client_admin:send {
           method = "GET",
@@ -224,7 +225,7 @@ describe("Plugin: hmac-auth (invalidations)", function()
       assert.res_status(200, res)
 
       -- Check that cache is populated
-      local cache_key = helpers.dao.hmacauth_credentials:cache_key("hello123")
+      local cache_key = dao.hmacauth_credentials:cache_key("hello123")
       res = assert(client_admin:send {
         method = "GET",
         path = "/cache/" .. cache_key,

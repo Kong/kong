@@ -1,5 +1,5 @@
 local cjson = require "cjson"
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local timestamp = require "kong.tools.timestamp"
 
 local REDIS_HOST = "127.0.0.1"
@@ -227,7 +227,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       })
 
       assert(helpers.start_kong({
-        nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
     end)
 
@@ -563,7 +563,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           })
 
           assert(helpers.start_kong({
-            nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+            nginx_conf = "spec/fixtures/custom_nginx.template",
           }))
         end)
 
@@ -703,7 +703,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         helpers.dao:drop_schema()
         helpers.run_migrations()
         assert(helpers.start_kong({
-          nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+          nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
 
         api = assert(helpers.dao.apis:insert {

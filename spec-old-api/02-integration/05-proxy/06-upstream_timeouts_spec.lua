@@ -1,4 +1,4 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local Factory = require "kong.dao.factory"
 local dao_helpers = require "spec-old-api.02-integration.03-dao.helpers"
 
@@ -52,7 +52,7 @@ dao_helpers.for_each_dao(function(kong_config)
 
       assert(helpers.start_kong({
         database   = kong_config.database,
-        nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
     end)
 

@@ -1,51 +1,51 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 
 describe("Plugin: ACL (invalidations)", function()
   local admin_client, proxy_client
   local consumer1, acl1
+  local dao
 
   before_each(function()
-    helpers.dao:truncate_tables()
-    helpers.run_migrations()
+    dao = select(3, helpers.get_db_utils())
 
-    consumer1 = assert(helpers.dao.consumers:insert {
+    consumer1 = assert(dao.consumers:insert {
       username = "consumer1"
     })
-    assert(helpers.dao.keyauth_credentials:insert {
+    assert(dao.keyauth_credentials:insert {
       key = "apikey123",
       consumer_id = consumer1.id
     })
-    acl1 = assert(helpers.dao.acls:insert {
+    acl1 = assert(dao.acls:insert {
       group = "admin",
       consumer_id = consumer1.id
     })
-    assert(helpers.dao.acls:insert {
+    assert(dao.acls:insert {
       group = "pro",
       consumer_id = consumer1.id
     })
 
-    local consumer2 = assert(helpers.dao.consumers:insert {
+    local consumer2 = assert(dao.consumers:insert {
       username = "consumer2"
     })
-    assert(helpers.dao.keyauth_credentials:insert {
+    assert(dao.keyauth_credentials:insert {
       key = "apikey124",
       consumer_id = consumer2.id
     })
-    assert(helpers.dao.acls:insert {
+    assert(dao.acls:insert {
       group = "admin",
       consumer_id = consumer2.id
     })
 
-    local api1 = assert(helpers.dao.apis:insert {
+    local api1 = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "acl1.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "key-auth",
       api_id = api1.id
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "acl",
       api_id = api1.id,
       config = {
@@ -53,16 +53,16 @@ describe("Plugin: ACL (invalidations)", function()
       }
     })
 
-    local api2 = assert(helpers.dao.apis:insert {
+    local api2 = assert(dao.apis:insert {
       name         = "api-2",
       hosts        = { "acl2.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "key-auth",
       api_id = api2.id
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "acl",
       api_id = api2.id,
       config = {
@@ -71,7 +71,7 @@ describe("Plugin: ACL (invalidations)", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
     proxy_client = helpers.proxy_client()
     admin_client = helpers.admin_client()
@@ -87,10 +87,6 @@ describe("Plugin: ACL (invalidations)", function()
   end)
 
   describe("ACL entity invalidation", function()
-    before_each(function()
-      helpers.run_migrations()
-    end)
-
     it("should invalidate when ACL entity is deleted", function()
       -- It should work
       local res = assert(proxy_client:send {
@@ -104,7 +100,7 @@ describe("Plugin: ACL (invalidations)", function()
 
       -- Check that the cache is populated
 
-      local cache_key = helpers.dao.acls:cache_key(consumer1.id)
+      local cache_key = dao.acls:cache_key(consumer1.id)
       local res = assert(admin_client:send {
         method = "GET",
         path = "/cache/" .. cache_key,
@@ -163,7 +159,7 @@ describe("Plugin: ACL (invalidations)", function()
       assert.res_status(403, res)
 
       -- Check that the cache is populated
-      local cache_key = helpers.dao.acls:cache_key(consumer1.id)
+      local cache_key = dao.acls:cache_key(consumer1.id)
       local res = assert(admin_client:send {
         method = "GET",
         path = "/cache/" .. cache_key,
@@ -218,10 +214,6 @@ describe("Plugin: ACL (invalidations)", function()
   end)
 
   describe("Consumer entity invalidation", function()
-    before_each(function()
-      helpers.run_migrations()
-    end)
-
     it("should invalidate when Consumer entity is deleted", function()
       -- It should work
       local res = assert(proxy_client:send {
@@ -234,7 +226,7 @@ describe("Plugin: ACL (invalidations)", function()
       assert.res_status(200, res)
 
       -- Check that the cache is populated
-      local cache_key = helpers.dao.acls:cache_key(consumer1.id)
+      local cache_key = dao.acls:cache_key(consumer1.id)
       local res = assert(admin_client:send {
         method = "GET",
         path = "/cache/" .. cache_key,
@@ -262,7 +254,7 @@ describe("Plugin: ACL (invalidations)", function()
       end, 3)
 
       -- Wait for key to be invalidated
-      local keyauth_cache_key = helpers.dao.keyauth_credentials:cache_key("apikey123")
+      local keyauth_cache_key = dao.keyauth_credentials:cache_key("apikey123")
       helpers.wait_until(function()
         local res = assert(admin_client:send {
           method = "GET",

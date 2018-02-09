@@ -122,6 +122,8 @@ do
 end
 
 local function get_db_utils(strategy)
+  strategy = strategy or conf.database
+
   -- new DAO (DB module)
   local db = assert(DB.new(conf, strategy))
 

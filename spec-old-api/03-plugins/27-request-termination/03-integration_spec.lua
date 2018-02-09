@@ -1,31 +1,30 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 
 describe("Plugin: request-termination (integration)", function()
   local client, admin_client
   local consumer1
 
   setup(function()
-    helpers.run_migrations()
+    local dao = select(3, helpers.get_db_utils())
 
-    assert(helpers.dao.apis:insert {
+    assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "api1.request-termination.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name = "key-auth",
     })
-    consumer1 = assert(helpers.dao.consumers:insert {
+    consumer1 = assert(dao.consumers:insert {
       username = "bob",
     })
-    assert(helpers.dao.keyauth_credentials:insert {
+    assert(dao.keyauth_credentials:insert {
       key         = "kong",
       consumer_id = consumer1.id,
     })
 
-
     assert(helpers.start_kong({
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
     client = helpers.proxy_client()
     admin_client = helpers.admin_client()

@@ -1,7 +1,7 @@
 local ssl_fixtures = require "spec-old-api.fixtures.ssl"
 local dao_helpers = require "spec-old-api.02-integration.03-dao.helpers"
 local DAOFactory = require "kong.dao.factory"
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
 
@@ -26,7 +26,7 @@ describe("Admin API: #" .. kong_config.database, function()
 
   setup(function()
     dao = assert(DAOFactory.new(kong_config))
-    helpers.run_migrations(dao)
+    assert(dao:run_migrations())
 
     assert(helpers.start_kong({
       database = kong_config.database

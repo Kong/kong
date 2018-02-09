@@ -1,4 +1,4 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 
 local TCP_PORT = 16945
 
@@ -40,13 +40,18 @@ local function bad_tcp_server(port, duration, ...)
 end
 
 describe("DNS", function()
+  local dao
+
+  setup(function()
+    dao = select(3, helpers.get_db_utils())
+  end)
+
   describe("retries", function()
     local retries = 3
     local client
 
     setup(function()
-      helpers.run_migrations()
-      assert(helpers.dao.apis:insert {
+      assert(dao.apis:insert {
         name = "tests-retries",
         hosts = { "retries.com" },
         upstream_url = "http://127.0.0.1:" .. TCP_PORT,
@@ -86,10 +91,9 @@ describe("DNS", function()
     local client
 
     setup(function()
-      helpers.run_migrations()
-      assert(helpers.dao.apis:insert {
-        name = "tests-retries",
-        hosts = { "retries.com" },
+      assert(dao.apis:insert {
+        name = "tests-retries-bis",
+        hosts = { "retries-bis.com" },
         upstream_url = "http://now.this.does.not/exist",
       })
 
@@ -107,7 +111,7 @@ describe("DNS", function()
         method = "GET",
         path = "/",
         headers = {
-          host = "retries.com"
+          host = "retries-bis.com"
         }
       }
       assert.response(r).has.status(503)

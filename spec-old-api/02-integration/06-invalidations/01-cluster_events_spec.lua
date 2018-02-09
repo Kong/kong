@@ -1,7 +1,7 @@
 _G.ngx.config.debug = true
 
 
-local helpers             = require "spec-old-api.helpers"
+local helpers             = require "spec.helpers"
 local dao_helpers         = require "spec-old-api.02-integration.03-dao.helpers"
 local dao_factory         = require "kong.dao.factory"
 local kong_cluster_events = require "kong.cluster_events"

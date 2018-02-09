@@ -1,15 +1,13 @@
 local cjson        = require "cjson"
-local helpers      = require "spec-old-api.helpers"
-local dao_helpers  = require "spec-old-api.02-integration.03-dao.helpers"
+local helpers      = require "spec.helpers"
 local ssl_fixtures = require "spec-old-api.fixtures.ssl"
 
 
 local POLL_INTERVAL = 0.3
 
 
-dao_helpers.for_each_dao(function(kong_conf)
-
-describe("core entities are invalidated with db: #" .. kong_conf.database, function()
+for _, strategy in helpers.each_strategy() do
+describe("core entities are invalidated with db: #" .. strategy, function()
 
   local admin_client_1
   local admin_client_2
@@ -17,38 +15,30 @@ describe("core entities are invalidated with db: #" .. kong_conf.database, funct
   local proxy_client_1
   local proxy_client_2
 
-  local dao
   local wait_for_propagation
 
   setup(function()
-    local kong_dao_factory = require "kong.dao.factory"
-    dao = assert(kong_dao_factory.new(kong_conf))
-    dao:truncate_tables()
-    helpers.run_migrations(dao)
+    helpers.get_db_utils(strategy)
 
-    local db_update_propagation = kong_conf.database == "cassandra" and 3 or 0
+    local db_update_propagation = strategy == "cassandra" and 3 or 0
 
     assert(helpers.start_kong {
       log_level             = "debug",
       prefix                = "servroot1",
-      database              = kong_conf.database,
-      proxy_listen          = "0.0.0.0:8000",
-      proxy_listen_ssl      = "0.0.0.0:8443",
+      database              = strategy,
+      proxy_listen          = "0.0.0.0:8000, 0.0.0.0:8443 ssl",
       admin_listen          = "0.0.0.0:8001",
-      admin_ssl             = false,
       db_update_frequency   = POLL_INTERVAL,
       db_update_propagation = db_update_propagation,
-      nginx_conf            = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf            = "spec/fixtures/custom_nginx.template",
     })
 
     assert(helpers.start_kong {
       log_level             = "debug",
       prefix                = "servroot2",
-      database              = kong_conf.database,
-      proxy_listen          = "0.0.0.0:9000",
-      proxy_listen_ssl      = "0.0.0.0:9443",
+      database              = strategy,
+      proxy_listen          = "0.0.0.0:9000, 0.0.0.0:9443 ssl",
       admin_listen          = "0.0.0.0:9001",
-      admin_ssl             = false,
       db_update_frequency   = POLL_INTERVAL,
       db_update_propagation = db_update_propagation,
     })
@@ -66,8 +56,6 @@ describe("core entities are invalidated with db: #" .. kong_conf.database, funct
   teardown(function()
     helpers.stop_kong("servroot1")
     helpers.stop_kong("servroot2")
-
-    dao:truncate_tables()
   end)
 
   before_each(function()
@@ -695,5 +683,4 @@ describe("core entities are invalidated with db: #" .. kong_conf.database, funct
     end)
   end)
 end)
-
-end)
+end

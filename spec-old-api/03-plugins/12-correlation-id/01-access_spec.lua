@@ -1,4 +1,4 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
@@ -8,41 +8,41 @@ local TRACKER_PATTERN = "%d+%.%d+%.%d+%.%d+%-%d+%-%d+%-%d+%-%d+%-%d%d%d%d%d%d%d%
 describe("Plugin: correlation-id (access)", function()
   local client
   setup(function()
-    helpers.run_migrations()
+    local dao = select(3, helpers.get_db_utils())
 
-    local api1     = assert(helpers.dao.apis:insert {
+    local api1     = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "correlation1.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api2     = assert(helpers.dao.apis:insert {
+    local api2     = assert(dao.apis:insert {
       name         = "api-2",
       hosts        = { "correlation2.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api3     = assert(helpers.dao.apis:insert {
+    local api3     = assert(dao.apis:insert {
       name         = "api-3",
       hosts        = { "correlation3.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api4     = assert(helpers.dao.apis:insert {
+    local api4     = assert(dao.apis:insert {
       name         = "api-4",
       hosts        = { "correlation-tracker.com" },
       upstream_url = helpers.mock_upstream_url,
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "correlation-id",
       api_id = api1.id,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "correlation-id",
       api_id = api2.id,
       config = {
         header_name = "Foo-Bar-Id",
       },
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "correlation-id",
       api_id = api3.id,
       config = {
@@ -50,7 +50,7 @@ describe("Plugin: correlation-id (access)", function()
         echo_downstream = true,
       },
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "correlation-id",
       api_id = api4.id,
       config = {
@@ -59,7 +59,7 @@ describe("Plugin: correlation-id (access)", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
     client = helpers.proxy_client()
   end)

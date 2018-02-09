@@ -1,50 +1,50 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local threads = require "llthreads2.ex"
 local pl_file = require "pl.file"
 
 describe("Plugin: datadog (log)", function()
   local client
   setup(function()
-    helpers.run_migrations()
+    local _, _, dao = helpers.get_db_utils()
 
-    local consumer1 = assert(helpers.dao.consumers:insert {
+    local consumer1 = assert(dao.consumers:insert {
       username = "foo",
       custom_id = "bar"
     })
-    assert(helpers.dao.keyauth_credentials:insert {
+    assert(dao.keyauth_credentials:insert {
       key = "kong",
       consumer_id = consumer1.id
     })
 
-    local api1 = assert(helpers.dao.apis:insert {
+    local api1 = assert(dao.apis:insert {
       name         = "dd1",
       hosts        = { "datadog1.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "key-auth",
       api_id = api1.id
     })
-    local api2     = assert(helpers.dao.apis:insert {
+    local api2     = assert(dao.apis:insert {
       name         = "dd2",
       hosts        = { "datadog2.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api3     = assert(helpers.dao.apis:insert {
+    local api3     = assert(dao.apis:insert {
       name         = "dd3",
       hosts        = { "datadog3.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api4     = assert(helpers.dao.apis:insert {
+    local api4     = assert(dao.apis:insert {
       name         = "dd4",
       hosts        = { "datadog4.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "key-auth",
       api_id = api4.id
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "datadog",
       api_id = api1.id,
       config = {
@@ -52,7 +52,7 @@ describe("Plugin: datadog (log)", function()
         port = 9999,
       },
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "datadog",
       api_id = api2.id,
       config = {
@@ -72,7 +72,7 @@ describe("Plugin: datadog (log)", function()
         },
       },
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "datadog",
       api_id = api3.id,
       config = {
@@ -100,7 +100,7 @@ describe("Plugin: datadog (log)", function()
         },
       },
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "datadog",
       api_id = api4.id,
       config = {
@@ -111,7 +111,7 @@ describe("Plugin: datadog (log)", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
     client = helpers.proxy_client()
   end)

@@ -1,11 +1,12 @@
 local cjson = require "cjson"
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 
 describe("Plugin: acl (API)", function()
   local consumer, admin_client
+  local dao
   setup(function()
-    helpers.run_migrations()
+    dao = select(3, helpers.get_db_utils())
 
     assert(helpers.start_kong())
     admin_client = helpers.admin_client()
@@ -17,13 +18,13 @@ describe("Plugin: acl (API)", function()
 
   describe("/consumers/:consumer/acls/", function()
     setup(function()
-      helpers.dao:truncate_tables()
-      consumer = assert(helpers.dao.consumers:insert {
+      dao:truncate_tables()
+      consumer = assert(dao.consumers:insert {
         username = "bob"
       })
     end)
     after_each(function()
-      helpers.dao:truncate_table("acls")
+      dao:truncate_table("acls")
     end)
 
     describe("POST", function()
@@ -97,14 +98,14 @@ describe("Plugin: acl (API)", function()
     describe("GET", function()
       setup(function()
         for i = 1, 3 do
-          assert(helpers.dao.acls:insert {
+          assert(dao.acls:insert {
             group = "group" .. i,
             consumer_id = consumer.id
           })
         end
       end)
       teardown(function()
-        helpers.dao:truncate_table("acls")
+        dao:truncate_table("acls")
       end)
       it("retrieves the first page", function()
         local res = assert(admin_client:send {
@@ -123,12 +124,12 @@ describe("Plugin: acl (API)", function()
   describe("/consumers/:consumer/acls/:id", function()
     local acl, acl2
     before_each(function()
-      helpers.dao:truncate_table("acls")
-      acl = assert(helpers.dao.acls:insert {
+      dao:truncate_table("acls")
+      acl = assert(dao.acls:insert {
         group = "hello",
         consumer_id = consumer.id
       })
-      acl2 = assert(helpers.dao.acls:insert {
+      acl2 = assert(dao.acls:insert {
         group = "hello2",
         consumer_id = consumer.id
       })
@@ -153,7 +154,7 @@ describe("Plugin: acl (API)", function()
         assert.equal(acl.id, json.id)
       end)
       it("retrieves ACL by id only if the ACL belongs to the specified consumer", function()
-        assert(helpers.dao.consumers:insert {
+        assert(dao.consumers:insert {
           username = "alice"
         })
 
@@ -275,21 +276,21 @@ describe("Plugin: acl (API)", function()
 
     describe("GET", function()
       setup(function()
-        helpers.dao:truncate_table("acls")
+        dao:truncate_table("acls")
 
         for i = 1, 3 do
-          assert(helpers.dao.acls:insert {
+          assert(dao.acls:insert {
             group = "group" .. i,
             consumer_id = consumer.id
           })
         end
 
-        consumer2 = assert(helpers.dao.consumers:insert {
+        consumer2 = assert(dao.consumers:insert {
           username = "bob-the-buidler"
         })
 
         for i = 1, 3 do
-          assert(helpers.dao.acls:insert {
+          assert(dao.acls:insert {
             group = "group" .. i,
             consumer_id = consumer2.id
           })
@@ -401,8 +402,8 @@ describe("Plugin: acl (API)", function()
       local credential
 
       setup(function()
-        helpers.dao:truncate_table("acls")
-        credential = assert(helpers.dao.acls:insert {
+        dao:truncate_table("acls")
+        credential = assert(dao.acls:insert {
           group = "foo-group",
           consumer_id = consumer.id
         })

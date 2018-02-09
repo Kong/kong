@@ -1,23 +1,23 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 
 describe("Plugin: response-transformer (filter)", function()
   local client
 
   setup(function()
-    helpers.run_migrations()
+    local dao = select(3, helpers.get_db_utils())
 
-    local api1 = assert(helpers.dao.apis:insert {
+    local api1 = assert(dao.apis:insert {
       name         = "tests-response-transformer",
       hosts        = { "response.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api2 = assert(helpers.dao.apis:insert {
+    local api2 = assert(dao.apis:insert {
       name         = "tests-response-transformer-2",
       hosts        = { "response2.com" },
       upstream_url = helpers.mock_upstream_url,
     })
 
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api1.id,
       name = "response-transformer",
       config = {
@@ -27,7 +27,7 @@ describe("Plugin: response-transformer (filter)", function()
         }
       }
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api2.id,
       name = "response-transformer",
       config = {
@@ -38,7 +38,7 @@ describe("Plugin: response-transformer (filter)", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
   end)
 

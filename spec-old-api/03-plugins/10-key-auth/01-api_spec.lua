@@ -1,28 +1,31 @@
 local cjson = require "cjson"
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 
 describe("Plugin: key-auth (API)", function()
   local consumer
   local admin_client
-  setup(function()
-    helpers.run_migrations()
+  local dao
 
-    assert(helpers.dao.apis:insert {
+  setup(function()
+    local _
+    _, _, dao = helpers.get_db_utils()
+
+    assert(dao.apis:insert {
       name         = "keyauth1",
       upstream_url = helpers.mock_upstream_url,
       hosts        = { "keyauth1.test" },
     })
-    assert(helpers.dao.apis:insert {
+    assert(dao.apis:insert {
       name         = "keyauth2",
       upstream_url = helpers.mock_upstream_url,
       hosts        = { "keyauth2.test" },
     })
-    consumer = assert(helpers.dao.consumers:insert {
+    consumer = assert(dao.consumers:insert {
       username = "bob"
     })
     assert(helpers.start_kong({
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
     admin_client = helpers.admin_client()
   end)
@@ -34,7 +37,7 @@ describe("Plugin: key-auth (API)", function()
   describe("/consumers/:consumer/key-auth", function()
     describe("POST", function()
       after_each(function()
-        helpers.dao:truncate_table("keyauth_credentials")
+        dao:truncate_table("keyauth_credentials")
       end)
       it("creates a key-auth credential with key", function()
         local res = assert(admin_client:send {
@@ -67,7 +70,7 @@ describe("Plugin: key-auth (API)", function()
         assert.is_string(json.key)
 
         local first_key = json.key
-        helpers.dao:truncate_table("keyauth_credentials")
+        dao:truncate_table("keyauth_credentials")
 
         local res = assert(admin_client:send {
           method = "POST",
@@ -88,7 +91,7 @@ describe("Plugin: key-auth (API)", function()
 
     describe("PUT", function()
       after_each(function()
-        helpers.dao:truncate_table("keyauth_credentials")
+        dao:truncate_table("keyauth_credentials")
       end)
       it("creates a key-auth credential with key", function()
         local res = assert(admin_client:send {
@@ -125,13 +128,13 @@ describe("Plugin: key-auth (API)", function()
     describe("GET", function()
       setup(function()
         for i = 1, 3 do
-          assert(helpers.dao.keyauth_credentials:insert {
+          assert(dao.keyauth_credentials:insert {
             consumer_id = consumer.id
           })
         end
       end)
       teardown(function()
-        helpers.dao:truncate_table("keyauth_credentials")
+        dao:truncate_table("keyauth_credentials")
       end)
       it("retrieves the first page", function()
         local res = assert(admin_client:send {
@@ -150,8 +153,8 @@ describe("Plugin: key-auth (API)", function()
   describe("/consumers/:consumer/key-auth/:id", function()
     local credential
     before_each(function()
-      helpers.dao:truncate_table("keyauth_credentials")
-      credential = assert(helpers.dao.keyauth_credentials:insert {
+      dao:truncate_table("keyauth_credentials")
+      credential = assert(dao.keyauth_credentials:insert {
         consumer_id = consumer.id
       })
     end)
@@ -175,7 +178,7 @@ describe("Plugin: key-auth (API)", function()
         assert.equal(credential.id, json.id)
       end)
       it("retrieves credential by id only if the credential belongs to the specified consumer", function()
-        assert(helpers.dao.consumers:insert {
+        assert(dao.consumers:insert {
           username = "alice"
         })
 
@@ -317,20 +320,20 @@ describe("Plugin: key-auth (API)", function()
 
     describe("GET", function()
       setup(function()
-        helpers.dao:truncate_table("keyauth_credentials")
+        dao:truncate_table("keyauth_credentials")
 
         for i = 1, 3 do
-          assert(helpers.dao.keyauth_credentials:insert {
+          assert(dao.keyauth_credentials:insert {
             consumer_id = consumer.id
           })
         end
 
-        consumer2 = assert(helpers.dao.consumers:insert {
+        consumer2 = assert(dao.consumers:insert {
           username = "bob-the-buidler"
         })
 
         for i = 1, 3 do
-          assert(helpers.dao.keyauth_credentials:insert {
+          assert(dao.keyauth_credentials:insert {
             consumer_id = consumer2.id
           })
         end
@@ -419,8 +422,8 @@ describe("Plugin: key-auth (API)", function()
       local credential
 
       setup(function()
-        helpers.dao:truncate_table("keyauth_credentials")
-        credential = assert(helpers.dao.keyauth_credentials:insert {
+        dao:truncate_table("keyauth_credentials")
+        credential = assert(dao.keyauth_credentials:insert {
           consumer_id = consumer.id
         })
       end)

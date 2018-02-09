@@ -1,4 +1,4 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local timestamp = require "kong.tools.timestamp"
 local cjson = require "cjson"
 
@@ -196,7 +196,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       })
 
       assert(helpers.start_kong({
-        nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
     end)
 
@@ -434,7 +434,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           })
 
           assert(helpers.start_kong({
-            nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+            nginx_conf = "spec/fixtures/custom_nginx.template",
           }))
         end)
 
@@ -529,7 +529,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           })
 
           assert(helpers.start_kong({
-            nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+            nginx_conf = "spec/fixtures/custom_nginx.template",
           }))
         end)
 
@@ -589,7 +589,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         })
 
         assert(helpers.start_kong({
-          nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+          nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
       end)
 

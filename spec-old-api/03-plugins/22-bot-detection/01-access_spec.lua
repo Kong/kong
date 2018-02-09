@@ -1,4 +1,4 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 
 local HELLOWORLD = "HelloWorld"             -- just a test value
 local FACEBOOK = "facebookexternalhit/1.1"  -- matches a known bot in `rules.lua`
@@ -6,32 +6,32 @@ local FACEBOOK = "facebookexternalhit/1.1"  -- matches a known bot in `rules.lua
 describe("Plugin: bot-detection (access)", function()
   local client
   setup(function()
-    helpers.run_migrations()
+    local dao = select(3, helpers.get_db_utils())
 
-    local api1 = assert(helpers.dao.apis:insert {
+    local api1 = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "bot.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api2 = assert(helpers.dao.apis:insert {
+    local api2 = assert(dao.apis:insert {
       name         = "api-2",
       hosts        = { "bot2.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    local api3 = assert(helpers.dao.apis:insert {
+    local api3 = assert(dao.apis:insert {
       name         = "api-3",
       hosts        = { "bot3.com" },
       upstream_url = helpers.mock_upstream_url,
     })
 
     -- plugin 1
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api1.id,
       name   = "bot-detection",
       config = {},
     })
     -- plugin 2
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api2.id,
       name   = "bot-detection",
       config = {
@@ -39,7 +39,7 @@ describe("Plugin: bot-detection (access)", function()
       },
     })
     -- plugin 3
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = api3.id,
       name   = "bot-detection",
       config = {
@@ -48,7 +48,7 @@ describe("Plugin: bot-detection (access)", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
   end)
 
@@ -154,23 +154,23 @@ end)
 describe("Plugin: bot-detection configured global (access)", function()
   local client
   setup(function()
-    helpers.run_migrations()
+    local dao = select(3, helpers.get_db_utils())
 
-    assert(helpers.dao.apis:insert {
+    assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "bot.com" },
       upstream_url = helpers.mock_upstream_url,
     })
 
     -- plugin 1
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       api_id = nil,  -- apply globally
       name   = "bot-detection",
       config = {},
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
   end)
 

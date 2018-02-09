@@ -1,4 +1,4 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 describe("Plugin: response-transformer (API)", function()
@@ -13,16 +13,16 @@ describe("Plugin: response-transformer (API)", function()
 
   describe("POST", function()
     setup(function()
-      helpers.run_migrations()
+      local dao = select(3, helpers.get_db_utils())
 
-      assert(helpers.dao.apis:insert {
+      assert(dao.apis:insert {
         name         = "test",
         hosts        = { "test1.com" },
         upstream_url = helpers.mock_upstream_url,
       })
 
       assert(helpers.start_kong({
-        nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
       admin_client = helpers.admin_client()
     end)

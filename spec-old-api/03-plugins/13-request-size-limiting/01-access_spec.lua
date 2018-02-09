@@ -1,4 +1,4 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 local TEST_SIZE = 2
@@ -8,14 +8,14 @@ describe("Plugin: request-size-limiting (access)", function()
   local client
 
   setup(function()
-    helpers.run_migrations()
+    local dao = select(3, helpers.get_db_utils())
 
-    local api = assert(helpers.dao.apis:insert {
+    local api = assert(dao.apis:insert {
       name         = "limit.com",
       hosts        = { "limit.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "request-size-limiting",
       api_id = api.id,
       config = {
@@ -24,7 +24,7 @@ describe("Plugin: request-size-limiting (access)", function()
     })
 
     assert(helpers.start_kong({
-      nginx_conf = "spec-old-api/fixtures/custom_nginx.template",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
     client = helpers.proxy_client()
   end)

@@ -1,11 +1,13 @@
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
 
 describe("Plugin: hmac-auth (API)", function()
   local client, credential, consumer
+  local dao
+
   setup(function()
-    helpers.run_migrations()
+    dao = select(3, helpers.get_db_utils())
 
     helpers.prepare_prefix()
     assert(helpers.start_kong())
@@ -21,8 +23,8 @@ describe("Plugin: hmac-auth (API)", function()
   describe("/consumers/:consumer/hmac-auth/", function()
     describe("POST", function()
       before_each(function()
-        helpers.dao:truncate_tables()
-        consumer = assert(helpers.dao.consumers:insert {
+        dao:truncate_tables()
+        consumer = assert(dao.consumers:insert {
           username = "bob",
           custom_id = "1234"
         })
@@ -204,15 +206,15 @@ describe("Plugin: hmac-auth (API)", function()
     local consumer2
     describe("GET", function()
       setup(function()
-        helpers.dao:truncate_table("hmacauth_credentials")
-        assert(helpers.dao.hmacauth_credentials:insert {
+        dao:truncate_table("hmacauth_credentials")
+        assert(dao.hmacauth_credentials:insert {
           consumer_id = consumer.id,
           username = "bob"
         })
-        consumer2 = assert(helpers.dao.consumers:insert {
+        consumer2 = assert(dao.consumers:insert {
           username = "bob-the-buidler"
         })
-        assert(helpers.dao.hmacauth_credentials:insert {
+        assert(dao.hmacauth_credentials:insert {
           consumer_id = consumer2.id,
           username = "bob-the-buidler"
         })
@@ -298,8 +300,8 @@ describe("Plugin: hmac-auth (API)", function()
     describe("GET", function()
       local credential
       setup(function()
-        helpers.dao:truncate_table("hmacauth_credentials")
-        credential = assert(helpers.dao.hmacauth_credentials:insert {
+        dao:truncate_table("hmacauth_credentials")
+        credential = assert(dao.hmacauth_credentials:insert {
           consumer_id = consumer.id,
           username = "bob"
         })

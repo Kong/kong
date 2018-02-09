@@ -1,6 +1,6 @@
 local jwt_parser = require "kong.plugins.jwt.jwt_parser"
 local fixtures = require "spec-old-api.03-plugins.17-jwt.fixtures"
-local helpers = require "spec-old-api.helpers"
+local helpers = require "spec.helpers"
 local u = helpers.unindent
 
 describe("Plugin: jwt (parser)", function()
