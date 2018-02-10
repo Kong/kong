@@ -134,6 +134,26 @@ describe("Router", function()
       assert.equal("api-1", res.headers["kong-api-name"])
     end)
 
+    it("routes by method-only if no Host header present", function()
+      -- a very limited HTTP client for sending requests without Host
+      -- based on the source of https://github.com/pintsized/lua-resty-http
+      local sock = ngx.socket.tcp()
+      finally(function() sock:close() end)
+      local ok, err = sock:connect(helpers.test_conf.proxy_ip,
+        helpers.test_conf.proxy_port)
+      assert(ok, err)
+      local req = "GET /get HTTP/1.0\r\nKong-Debug: 1\r\n\r\n"
+      sock:send(req)
+      local line, err = sock:receive("*l")
+      assert(line, err)
+      local status = tonumber(string.sub(line, 10, 12))
+      assert.equal(status, 200)
+      local remainder, err = sock:receive("*a")
+      assert(remainder, err)
+      assert(string.find(string.lower(remainder),
+        "kong-api-name: api-1", 1, true))
+    end)
+
     describe("API with a path component in its upstream_url", function()
       it("with strip_uri = true", function()
         local res = assert(client:send {
