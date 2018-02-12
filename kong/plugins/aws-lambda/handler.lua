@@ -13,6 +13,9 @@ local ngx_req_read_body    = ngx.req.read_body
 local ngx_req_get_uri_args = ngx.req.get_uri_args
 local ngx_req_get_headers  = ngx.req.get_headers
 local ngx_encode_base64    = ngx.encode_base64
+local ngx_get_headers      = ngx.req.get_headers
+local get_uri_args         = ngx.req.get_uri_args
+
 
 local new_tab
 do
@@ -85,9 +88,37 @@ function AWSLambdaHandler:access(conf)
   end
 
   local host = string.format("lambda.%s.amazonaws.com", conf.aws_region)
-  local path = string.format("/2015-03-31/functions/%s/invocations",
-                            conf.function_name)
   local port = conf.port or AWS_PORT
+  local hdrs = ngx_get_headers()
+  local args = get_uri_args()
+
+  local function_name
+  if conf.dynamic_lambda_key then
+
+    local lambda_key = conf.dynamic_lambda_key
+
+    function_name = hdrs[lambda_key]
+    if not function_name then
+      function_name = args[lambda_key]
+    end
+
+    ngx.log(ngx.DEBUG, "[aws-lambda] using dynamic key: " ..
+      conf.dynamic_lambda_key ..
+      ", resolved name: " .. tostring(function_name))
+
+    if not function_name then
+      ngx.log(ngx.WARN, "[aws-lambda] no name resolved with dynamic key: " ..
+        conf.dynamic_lambda_key ..
+        ", will use default: " .. conf.function_name)
+    end
+  end
+
+  -- default
+  if not function_name then
+    function_name = conf.function_name
+  end
+
+  path = string.format("/2015-03-31/functions/%s/invocations", function_name)
 
   local opts = {
     region = conf.aws_region,

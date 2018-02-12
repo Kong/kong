@@ -96,5 +96,8 @@ return {
       type = "boolean",
       default = false,
     },
+    dynamic_lambda_key = {
+      type = "string"
+    }
   },
 }
