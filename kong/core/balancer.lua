@@ -764,7 +764,8 @@ local function execute(target)
     hostname = target.host
     if not ip then
       log(ERR, "[dns] ", port, ". Tried: ", tostring(try_list))
-      if port == "dns server error: 3 name error" then
+      if port == "dns server error: 3 name error" or
+         port == "dns client error: 101 empty record received" then
         return nil, "name resolution failed", 503
       end
     end
