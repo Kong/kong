@@ -18,11 +18,6 @@ describe("Balancer", function()
     singletons = require "kong.singletons"
     singletons.worker_events = require "resty.worker.events"
     singletons.dao = {}
-    singletons.dao.upstreams = {
-      find_all = function(self)
-        return UPSTREAMS_FIXTURES
-      end
-    }
 
     singletons.worker_events.configure({
       shm = "kong_process_events", -- defined by "lua_shared_dict"
@@ -40,22 +35,6 @@ describe("Balancer", function()
       {id = "d", name = "galileo", slots = 20, orderlist = {20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1} },
       {id = "e", name = "upstream_e", slots = 10, orderlist = {1,2,3,4,5,6,7,8,9,10} },
       {id = "f", name = "upstream_f", slots = 10, orderlist = {1,2,3,4,5,6,7,8,9,10} },
-    }
-
-    singletons.dao.targets = {
-      find_all = function(self, match_on)
-        local ret = {}
-        for _, rec in ipairs(TARGETS_FIXTURES) do
-          for key, val in pairs(match_on or {}) do
-            if rec[key] ~= val then
-              rec = nil
-              break
-            end
-          end
-          if rec then table.insert(ret, rec) end
-        end
-        return ret
-      end
     }
 
     TARGETS_FIXTURES = {
