@@ -39,6 +39,13 @@ local STAT_LABELS = {
   "latency_upstream_min_ms",
   "latency_upstream_max_ms",
   "requests_proxy_total",
+  "latency_proxy_request_avg_ms",
+  "latency_upstream_avg_ms",
+}
+
+
+local CONSUMER_STAT_LABELS = {
+  "requests_consumer_total",
 }
 
 
@@ -60,6 +67,8 @@ local PH_STATS = {
   "v.lux",
   "v.rpt",
   "v.nt",
+  "v.lpra",
+  "v.lua",
 }
 
 local worker_count = ngx.worker.count()
@@ -83,6 +92,10 @@ ffi.cdef[[
     uint32_t    ulat_min;
     int32_t     ulat_max;
     uint32_t    requests;
+    uint32_t    proxy_latency_count;
+    uint32_t    proxy_latency_total;
+    uint32_t    ulat_count;
+    uint32_t    ulat_total;
     time_t      timestamp;
   } vitals_metrics_t;
 ]]
@@ -113,7 +126,7 @@ local function metrics_t_arr_init(sz, start_at)
   local t = new_tab(sz, 0)
 
   for i = 1, sz do
-    t[i] = { 0, 0, 0xFFFFFFFF, -1, 0xFFFFFFFF, -1, 0, start_at + i - 1 }
+    t[i] = { 0, 0, 0xFFFFFFFF, -1, 0xFFFFFFFF, -1, 0, 0, 0, 0, 0, start_at + i - 1 }
   end
 
   return t
@@ -249,9 +262,18 @@ persistence_handler = function(premature, self)
     return
   end
 
-  log(DEBUG, _log_prefix, "starting vitals timer (2)")
+  -- if we've drifted, get back in sync
+  local delay = self.flush_interval
+  local when  = delay - (ngx.now() - (math.floor(ngx.now() / delay) * delay))
 
-  local ok, err = timer_at(self.flush_interval, persistence_handler, self)
+  -- only adjust if we're off by 1 second or more, otherwise we spawn
+  -- a gazillion timers and run out of memory.
+  when = when < 1 and delay or when
+
+  log(DEBUG, _log_prefix, "starting vitals timer (2) in " .. when .. " seconds")
+
+
+  local ok, err = timer_at(when, persistence_handler, self)
   if not ok then
     return nil, "failed to start recurring vitals timer (2): " .. err
   end
@@ -271,6 +293,12 @@ local function parse_dictionary_key(key)
   local timestamp = tonumber(key:sub(p))
 
   return id, timestamp
+end
+
+local function average_value(total, count)
+  if count > 0 then
+    return math.floor((total / count) + 0.5)
+  end
 end
 
 
@@ -307,7 +335,7 @@ local function convert_stats(vitals, res, level, interval)
 
     stats[row.node_id] = stats[row.node_id] or {}
 
-    stats[row.node_id][vitals.strategy:get_timestamp_str(row.at)] = {
+    stats[row.node_id][tostring(row.at)] = {
       row.l2_hit,
       row.l2_miss,
       row.plat_min or json_null,
@@ -315,6 +343,8 @@ local function convert_stats(vitals, res, level, interval)
       row.ulat_min or json_null,
       row.ulat_max or json_null,
       row.requests,
+      average_value(row.plat_total, row.plat_count) or json_null,
+      average_value(row.ulat_total, row.ulat_count) or json_null,
     }
   end
 
@@ -328,7 +358,7 @@ end
 
 
 -- converts customer stats to format expected by Vitals API
-local function convert_customer_stats(vitals, res, level, interval)
+local function convert_consumer_stats(vitals, res, level, interval)
   local stats = {}
   local meta = {
     level = level,
@@ -342,7 +372,7 @@ local function convert_customer_stats(vitals, res, level, interval)
 
   meta.earliest_ts = 0xFFFFFFFF
   meta.latest_ts = -1
-  meta.stat_labels = STAT_LABELS
+  meta.stat_labels = CONSUMER_STAT_LABELS
 
   local nodes = {}
   local nodes_idx = {}
@@ -359,7 +389,7 @@ local function convert_customer_stats(vitals, res, level, interval)
     meta.latest_ts = math_max(meta.latest_ts, tonumber(row.at))
 
     stats[row.node_id] = stats[row.node_id] or {}
-    stats[row.node_id][vitals.strategy:get_timestamp_str(row.at)] = row.count
+    stats[row.node_id][tostring(row.at)] = row.count
   end
 
   -- only include nodes in metadata if it's a node-level request
@@ -407,15 +437,15 @@ function _M:poll_worker_data(flush_key, expected)
       return nil, err
     end
 
-    log(DEBUG, _log_prefix, "found ", num_posted, " records (", expected, " workers)")
-
     if num_posted == expected then
       break
     end
 
+    -- wait for a bit for all workers to report, then write what we've got
     i = i + 1
     if i > 10 then
-      return nil, "timeout waiting for workers to post vitals data"
+      log(INFO, _log_prefix, num_posted, " of ", expected, " workers reported.")
+      break
     end
   end
 
@@ -462,21 +492,25 @@ function _M:merge_worker_data(flush_key)
       -- definition and our value (since our value is a sentinel the resulting
       -- min is correct). otherwise, we check for the presence of our sentinel
       -- and assign accordingly (either a nil type, or the bucket value)
-      local plat_min = f and f[4] and math_min(f[4], c.proxy_latency_min) or
-                  c.proxy_latency_min
+      local plat_min = f and f[4] and math_min(f[4], c.proxy_latency_min) or c.proxy_latency_min
 
       -- the same logic applies for max as did for min
-      local plat_max = f and f[5] and math_max(f[5], c.proxy_latency_max) or
-                  c.proxy_latency_max
+      local plat_max = f and f[5] and math_max(f[5], c.proxy_latency_max) or c.proxy_latency_max
 
       -- upstream latency: same logic as for proxy latency
-      local ulat_min = f and f[6] and math_min(f[6], c.ulat_min) or
-          c.ulat_min
+      local ulat_min = f and f[6] and math_min(f[6], c.ulat_min) or c.ulat_min
+      local ulat_max = f and f[7] and math_max(f[7], c.ulat_max) or c.ulat_max
 
-      local ulat_max = f and f[7] and math_max(f[7], c.ulat_max) or
-          c.ulat_max
-
+      -- total requests: cumulative sum
       local requests = f and f[8] + c.requests or c.requests
+
+      -- Collect proxy latency count and total (used for proxy latency average)
+      local plat_count = f and f[9] + c.proxy_latency_count or c.proxy_latency_count
+      local plat_total = f and f[10] + c.proxy_latency_total or c.proxy_latency_total
+
+      -- Collect upstream latency count and total (used for upstream latency average)
+      local ulat_count = f and f[11] + c.ulat_count or c.ulat_count
+      local ulat_total = f and f[12] + c.ulat_total or c.ulat_total
 
       flush_data[i] = {
         c.timestamp,
@@ -487,13 +521,19 @@ function _M:merge_worker_data(flush_key)
         ulat_min,
         ulat_max,
         requests,
+        plat_count,
+        plat_total,
+        ulat_count,
+        ulat_total,
       }
 
+      -- set proxy latency min and max to nil if min is still the default
       if flush_data[i][4] == 0xFFFFFFFF then
         flush_data[i][4] = nil
         flush_data[i][5] = nil
       end
 
+      -- set upstream latency min and max to nil if min is still the default
       if flush_data[i][6] == 0xFFFFFFFF then
         flush_data[i][6] = nil
         flush_data[i][7] = nil
@@ -504,40 +544,69 @@ function _M:merge_worker_data(flush_key)
   return flush_data
 end
 
-
-function _M:flush_consumer_counters()
+--[[
+  consumer request counters are stored in a 50m dictionary
+  which holds a max of ~400K keys, or enough for 40K
+  consumers to make requests every second for 10 seconds
+  (our default flush interval). Key is approx 128 bytes.
+ ]]
+function _M:flush_consumer_counters(batch_size, max)
   log(DEBUG, _log_prefix, "flushing consumer counters")
-  local keys = consumers_dict:get_keys()
-  local data = new_tab(#keys, 0)
+
+  if not batch_size or type(batch_size) ~= "number" then
+    batch_size = 1024
+  end
+
+  -- keys are continually added to cache, so we'll never be "done",
+  -- and we don't want to tie up this worker indefinitely. So,
+  -- process at most 10% of our cache capacity. When it's available,
+  -- we might use ngx.dict:free_space() to judge how full our cache
+  -- is and how much we should work off.
+  if not max or type(max) ~= "number" then
+    max = 40960
+  end
+
+  local keys = consumers_dict:get_keys(batch_size)
+  local num_fetched = #keys
+  local data = new_tab(num_fetched, 0)
+
+  -- how many keys have we processed?
+  local num_processed = 0
 
   -- keep track of consumers whose stale data we'll delete
   local consumers = {}
 
-  for i, key in ipairs(keys) do
-    local count, err = consumers_dict:get(key)
+  while num_fetched > 0 and num_processed < max do
+    for i, key in ipairs(keys) do
+      local count, err = consumers_dict:get(key)
 
-    if count then
-      consumers_dict:delete(key) -- trust that the insert will succeed
+      if count then
+        consumers_dict:delete(key) -- trust that the insert will succeed
 
-      local id, timestamp = parse_dictionary_key(key)
-      data[i] = { id, timestamp, 1, count }
+        local id, timestamp = parse_dictionary_key(key)
+        data[i] = { id, timestamp, 1, count }
 
-      consumers[id] = true
+        consumers[id] = true
 
-    elseif err then
-      log(WARN, _log_prefix, "failed to fetch ", key, ". err: ", err)
+      elseif err then
+        log(WARN, _log_prefix, "failed to fetch ", key, ". err: ", err)
 
-    else
-      log(DEBUG, _log_prefix, key, " not found")
+      else
+        log(DEBUG, _log_prefix, key, " not found")
+      end
     end
-  end
 
-  -- insert data if there is any
-  if data[1] then
     local ok, err = self.strategy:insert_consumer_stats(data)
     if not ok then
       log(WARN, _log_prefix, "failed to save consumer stats: ", err)
     end
+
+    num_processed = num_processed + num_fetched
+    log(DEBUG, _log_prefix, "keys processed: ", num_processed)
+
+    keys = consumers_dict:get_keys()
+    num_fetched = #keys
+    data = new_tab(num_fetched, 0)
   end
 
   -- clean up old data
@@ -550,6 +619,8 @@ function _M:flush_consumer_counters()
   if not ok then
     log(WARN, _log_prefix, "failed to delete consumer stats: ", err)
   end
+
+  return num_processed
 end
 
 
@@ -648,6 +719,13 @@ end
 function _M:current_bucket()
   local bucket = time() - self.counters.start_at
 
+  -- we may be collecting data points into the flush_interval+1 second.
+  -- Put it in our last bucket on the grounds that it's better to report
+  -- it in the wrong second than not at all.
+  if bucket > self.flush_interval - 1 then
+    bucket = self.flush_interval - 1
+  end
+
   if bucket < 0 or bucket > self.flush_interval - 1 then
     return nil, "bucket " .. bucket ..
         " out of range for counters starting at " .. self.counters.start_at
@@ -719,40 +797,35 @@ end
  ]]
 function _M:get_index()
 
-  local data = {}
-
-  local stat_labels = {
-    "cache_datastore_hits_total",
-    "cache_datastore_misses_total",
-    "latency_proxy_request_min_ms",
-    "latency_proxy_request_max_ms",
-    "latency_upstream_min_ms",
-    "latency_upstream_max_ms",
-    "requests_proxy_total",
-    "requests_consumer_total",
+  local data = {
+    stats = {}
   }
 
-  data.stats = {}
+  local intervals_data = {
+    seconds = {
+      retention_period_seconds = self.ttl_seconds,
+    },
+    minutes = {
+      retention_period_seconds = self.ttl_minutes,
+    },
+  }
 
-  for i, stat in ipairs(stat_labels) do
-    local intervals_data = {
-      seconds = {
-        retention_period_seconds = self.ttl_seconds,
-      },
-      minutes = {
-        retention_period_seconds = self.ttl_minutes,
-      },
+  local levels_data = {
+    cluster = {
+      intervals = intervals_data,
+    },
+    nodes = {
+      intervals = intervals_data,
+    },
+  }
+
+  for _, stat in ipairs(STAT_LABELS) do
+    data.stats[stat] = {
+      levels = levels_data,
     }
+  end
 
-    local levels_data = {
-      cluster = {
-        intervals = intervals_data,
-      },
-      nodes = {
-        intervals = intervals_data,
-      },
-    }
-
+  for _, stat in ipairs(CONSUMER_STAT_LABELS) do
     data.stats[stat] = {
       levels = levels_data,
     }
@@ -778,7 +851,7 @@ function _M:get_stats(query_type, level, node_id)
 
   local res, err = self.strategy:select_stats(query_type, level, node_id)
 
-  if not res[1] then
+  if res and not res[1] then
     local node_exists, node_err = self.strategy:node_exists(node_id)
 
     if node_err then
@@ -860,7 +933,7 @@ function _M:get_consumer_stats(opts)
     return nil, "Failed to retrieve stats for consumer " .. opts.consumer_id
   end
 
-  return convert_customer_stats(self, res, opts.level, opts.duration)
+  return convert_consumer_stats(self, res, opts.level, opts.duration)
 end
 
 
@@ -927,6 +1000,9 @@ function _M:log_latency(latency)
   local bucket = self:current_bucket()
 
   if bucket then
+    self.counters.metrics[bucket].proxy_latency_count = self.counters.metrics[bucket].proxy_latency_count + 1
+    self.counters.metrics[bucket].proxy_latency_total = self.counters.metrics[bucket].proxy_latency_total + latency
+
     self.counters.metrics[bucket].proxy_latency_min =
       math_min(self.counters.metrics[bucket].proxy_latency_min, latency)
 
@@ -950,6 +1026,9 @@ function _M:log_upstream_latency(latency)
 
   local bucket = self:current_bucket()
   if bucket then
+    self.counters.metrics[bucket].ulat_count = self.counters.metrics[bucket].ulat_count + 1
+    self.counters.metrics[bucket].ulat_total = self.counters.metrics[bucket].ulat_total + latency
+
     self.counters.metrics[bucket].ulat_min =
       math_min(self.counters.metrics[bucket].ulat_min, latency)
 

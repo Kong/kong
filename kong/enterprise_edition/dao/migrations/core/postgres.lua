@@ -400,4 +400,33 @@ return {
       end
     end,
   },
+  {
+    name = "2018-02-01-000000_vitals_stats_v0.31",
+    up = [[
+      ALTER TABLE vitals_stats_seconds
+      ADD COLUMN plat_count int default 0,
+      ADD COLUMN plat_total int default 0,
+      ADD COLUMN ulat_count int default 0,
+      ADD COLUMN ulat_total int default 0;
+
+      ALTER TABLE vitals_stats_minutes
+      ADD COLUMN plat_count int default 0,
+      ADD COLUMN plat_total int default 0,
+      ADD COLUMN ulat_count int default 0,
+      ADD COLUMN ulat_total int default 0;
+    ]],
+    down = [[
+      ALTER TABLE vitals_stats_seconds
+      DROP COLUMN plat_count,
+      DROP COLUMN plat_total,
+      DROP COLUMN ulat_count,
+      DROP COLUMN ulat_total;
+
+      ALTER TABLE vitals_stats_minutes
+      DROP COLUMN plat_count,
+      DROP COLUMN plat_total,
+      DROP COLUMN ulat_count,
+      DROP COLUMN ulat_total;
+    ]]
+  },
 }

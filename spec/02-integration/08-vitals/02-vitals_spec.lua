@@ -1,35 +1,20 @@
-local conf_loader  = require "kong.conf_loader"
-local helpers      = require "spec.helpers"
 local dao_factory  = require "kong.dao.factory"
 local kong_vitals  = require "kong.vitals"
 local singletons   = require "kong.singletons"
 local dao_helpers  = require "spec.02-integration.03-dao.helpers"
 local utils        = require "kong.tools.utils"
+local json_null  = require("cjson").null
+local cassandra = require "cassandra"
 
 local ngx_time     = ngx.time
 local fmt          = string.format
 
 
 dao_helpers.for_each_dao(function(kong_conf)
-  if kong_conf.database == "cassandra" then
-    it("errors if vitals=on and database=cassandra", function()
-      local _, result = conf_loader(helpers.test_conf_path, {
-        database = "cassandra",
-        vitals   = true,
-      })
-
-      local expected = "vitals: not available on cassandra. Restart with vitals=off."
-
-      assert.same(expected, result)
-    end)
-
-    return
-  end
-
-
   describe("vitals with db: " .. kong_conf.database, function()
     local vitals
     local dao
+    local snapshot
 
     local stat_labels = {
       "cache_datastore_hits_total",
@@ -39,6 +24,12 @@ dao_helpers.for_each_dao(function(kong_conf)
       "latency_upstream_min_ms",
       "latency_upstream_max_ms",
       "requests_proxy_total",
+      "latency_proxy_request_avg_ms",
+      "latency_upstream_avg_ms",
+    }
+
+    local consumer_stat_labels = {
+      "requests_consumer_total",
     }
 
     setup(function()
@@ -53,34 +44,70 @@ dao_helpers.for_each_dao(function(kong_conf)
       vitals:init()
     end)
 
+    before_each(function()
+      snapshot = assert:snapshot()
+    end)
+
+    after_each(function()
+      snapshot:revert()
+    end)
+
     describe("phone_home()", function()
       before_each(function()
         assert(dao.db:truncate_table("vitals_stats_minutes"))
+        assert(dao.db:truncate_table("vitals_node_meta"))
         assert(vitals.shm:delete("vitals:ph_stats"))
       end)
 
       it("returns phone home data", function()
+          -- data starts 10 minutes ago
+          local minute_start_at = ngx_time() - ( ngx_time() % 60 ) - 600
+          local data = {
+            { minute_start_at, 0, 0, nil, nil, nil, nil, 0, 10, 100, 19, 200 },
+            { minute_start_at + 1, 19, 99, 0, 120, 12, 47, 7, 6, 50, 13, 150 },
+          }
+          assert(vitals.strategy:insert_stats(data))
+
+          assert.same(19, vitals:phone_home("v.cdht"))
+          assert.same(99, vitals:phone_home("v.cdmt"))
+          assert.same(120, vitals:phone_home("v.lprx"))
+          assert.same(0, vitals:phone_home("v.lprn"))
+          assert.same(47, vitals:phone_home("v.lux"))
+          assert.same(12, vitals:phone_home("v.lun"))
+
+          -- test data is set up to test rounding down: 150 / 16 = 9.375
+          assert.same(9, vitals:phone_home("v.lpra"))
+
+          -- test data is set up to test rounding up: 350 / 32 = 10.9375
+          assert.same(11, vitals:phone_home("v.lua"))
+      end)
+
+      it("returns nil when there is no data", function()
+        assert.is_nil(vitals:phone_home("v.cdht"))
+        assert.is_nil(vitals:phone_home("v.cdmt"))
+        assert.is_nil(vitals:phone_home("v.lprx"))
+        assert.is_nil(vitals:phone_home("v.lprn"))
+        assert.is_nil(vitals:phone_home("v.lux"))
+        assert.is_nil(vitals:phone_home("v.lun"))
+        assert.is_nil(vitals:phone_home("v.lpra"))
+        assert.is_nil(vitals:phone_home("v.lua"))
+      end)
+
+      it("doesn't include sentinel values", function()
         -- data starts 10 minutes ago
         local minute_start_at = ngx_time() - ( ngx_time() % 60 ) - 600
         local data = {
-          { minute_start_at, 0, 0, nil, nil, nil, nil, 0 },
-          { minute_start_at + 1, 19, 99, 0, 120, 12, 47, 7 },
+          { minute_start_at, 0, 0, nil, nil, nil, nil, 0, 0, 0, 0, 0 },
+          { minute_start_at + 1, 19, 99, nil, nil, nil, nil, 7, 0, 0, 0, 0 },
         }
         assert(vitals.strategy:insert_stats(data))
 
         assert.same(19, vitals:phone_home("v.cdht"))
         assert.same(99, vitals:phone_home("v.cdmt"))
-        assert.same(120, vitals:phone_home("v.lprx"))
-        assert.same(0, vitals:phone_home("v.lprn"))
-        assert.same(47, vitals:phone_home("v.lux"))
-        assert.same(12, vitals:phone_home("v.lun"))
-        assert.same(1, vitals:phone_home("v.nt"))
-      end)
-
-      it("returns nil when there's no data for a given value", function()
-        local res, err = vitals:phone_home("v.cdht")
-        assert.is_nil(err)
-        assert.is_nil(res)
+        assert.is_nil(vitals:phone_home("v.lprx"))
+        assert.is_nil(vitals:phone_home("v.lprn"))
+        assert.is_nil(vitals:phone_home("v.lux"))
+        assert.is_nil(vitals:phone_home("v.lun"))
       end)
     end)
 
@@ -212,7 +239,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert.is_nil(res)
       end)
 
-      it("only returns good bucket indexes (upper-bound check)", function()
+      it("puts later data in the last bucket so we don't lose it", function()
         local vitals = kong_vitals.new({
           dao            = dao,
           flush_interval = 60,
@@ -222,8 +249,8 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         local res, err = vitals:current_bucket()
 
-        assert.same("bucket 60 out of range for counters starting at " .. vitals.counters.start_at, err)
-        assert.is_nil(res)
+        assert.is_nil(err)
+        assert.same(59, res)
       end)
     end)
 
@@ -276,6 +303,37 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         assert.same(7, vitals.counters.metrics[0].proxy_latency_min)
         assert.same(91, vitals.counters.metrics[0].proxy_latency_max)
+        assert.same(2, vitals.counters.metrics[0].proxy_latency_count)
+        assert.same(98, vitals.counters.metrics[0].proxy_latency_total)
+      end)
+    end)
+
+    describe("log_upstream_latency()", function()
+      it("doesn't log upstream latency when vitals is off", function()
+        singletons.configuration = { vitals = false }
+
+        local vitals = kong_vitals.new { dao = dao }
+        vitals:reset_counters()
+
+        assert.same("vitals not enabled", vitals:log_upstream_latency(7))
+      end)
+
+      it("does log upstream latency when vitals is on", function()
+        singletons.configuration = { vitals = true }
+
+        local vitals = kong_vitals.new { dao = dao }
+        stub(vitals, "enabled").returns(true)
+
+        vitals:reset_counters()
+
+        vitals:log_upstream_latency(20)
+        vitals:log_upstream_latency(80)
+        vitals:log_upstream_latency(11)
+
+        assert.same(11, vitals.counters.metrics[0].ulat_min)
+        assert.same(80, vitals.counters.metrics[0].ulat_max)
+        assert.same(3, vitals.counters.metrics[0].ulat_count)
+        assert.same(111, vitals.counters.metrics[0].ulat_total)
       end)
     end)
 
@@ -333,36 +391,75 @@ dao_helpers.for_each_dao(function(kong_conf)
       local node_1  = "20426633-55dc-4050-89ef-2382c95a611e"
       local node_2  = "8374682f-17fd-42cb-b1dc-7694d6f65ba0"
       local cons_id = utils.uuid()
+      local now
 
       before_each(function()
-        -- TODO: Deal with Cassandra
+        -- time series conveniently starts at the top of the minute
+        now = ngx_time() - (ngx_time() % 60)
+
+
+        local data_to_insert = {
+          {cons_id, node_1, now, 1, 1},
+          {cons_id, node_1, now + 1, 1, 3},
+          {cons_id, node_1, now + 2, 1, 4},
+          {cons_id, node_1, now, 60, 19},
+          {cons_id, node_2, now + 1, 1, 5},
+          {cons_id, node_2, now + 2, 1, 7},
+          {cons_id, node_2, now, 60, 20},
+          {cons_id, node_2, now + 60, 60, 24},
+        }
+
+        local nodes = { node_1, node_2 }
+
+        local q, node_q
+
         if dao.db_type == "postgres" then
-          local node_q = "insert into vitals_node_meta(node_id, hostname) values('%s', '%s')"
-          local nodes = { node_1, node_2 }
+          node_q = "insert into vitals_node_meta(node_id, hostname) values('%s', '%s')"
+          q = [[
+            insert into vitals_consumers(consumer_id, node_id, at, duration, count)
+            values('%s', '%s', to_timestamp(%d), %d, %d)
+          ]]
 
           for i, node in ipairs(nodes) do
             assert(dao.db:query(fmt(node_q, node, "testhostname" .. i)))
           end
 
-          local q, query
+          for _, row in ipairs(data_to_insert) do
+            assert(dao.db:query(fmt(q, unpack(row))))
+          end
+        else
+          node_q = "insert into vitals_node_meta(node_id, hostname) values (?, ?)"
+          q = [[
+            update vitals_consumers
+            set count = count + ?
+            where consumer_id = ?
+            and node_id = ?
+            and at = ?
+            and duration = ?
+          ]]
 
-          q = "insert into vitals_consumers(consumer_id, node_id, at, duration, count) " ..
-              "values('%s', '%s', to_timestamp(%d), %d, %d)"
+          for i, node in ipairs(nodes) do
+            local args = {
+              cassandra.uuid(node),
+              "testhostname" .. i,
+            }
+            assert(dao.db.cluster:execute(node_q, args, { prepared = true }))
+          end
 
-          local data_to_insert = {
-            {cons_id, node_1, 1510560000, 1, 1},
-            {cons_id, node_1, 1510560001, 1, 3},
-            {cons_id, node_1, 1510560002, 1, 4},
-            {cons_id, node_1, 1510560000, 60, 19},
-            {cons_id, node_2, 1510560001, 1, 5},
-            {cons_id, node_2, 1510560002, 1, 7},
-            {cons_id, node_2, 1510560000, 60, 20},
-            {cons_id, node_2, 1510560060, 60, 24},
+          local counter_options = {
+            prepared = true,
+            counter  = true,
           }
 
           for _, row in ipairs(data_to_insert) do
-            query = fmt(q, unpack(row))
-            assert(dao.db:query(query))
+            local cons_id, node_id, at, duration, count = unpack(row)
+            assert(dao.db.cluster:execute(q, {
+              cassandra.counter(count),
+              cassandra.uuid(cons_id),
+              cassandra.uuid(node_id),
+              cassandra.timestamp(at * 1000),
+              duration,
+            }, counter_options))
           end
         end
       end)
@@ -383,15 +480,15 @@ dao_helpers.for_each_dao(function(kong_conf)
           meta = {
             level = "cluster",
             interval = "seconds",
-            earliest_ts = 1510560000,
-            latest_ts = 1510560002,
-            stat_labels = stat_labels,
+            earliest_ts = now,
+            latest_ts = now + 2,
+            stat_labels = consumer_stat_labels,
           },
           stats = {
             cluster = {
-              ["1510560000"] = 1,
-              ["1510560001"] = 8,
-              ["1510560002"] = 11,
+              [tostring(now)] = 1,
+              [tostring(now + 1)] = 8,
+              [tostring(now + 2)] = 11,
             }
           }
         }
@@ -411,18 +508,18 @@ dao_helpers.for_each_dao(function(kong_conf)
           meta = {
             level = "node",
             interval = "seconds",
-            earliest_ts = 1510560000,
-            latest_ts = 1510560002,
-            stat_labels = stat_labels,
+            earliest_ts = now,
+            latest_ts = now + 2,
+            stat_labels = consumer_stat_labels,
             nodes = {
               [node_1] = { hostname = "testhostname1"}
             }
           },
           stats = {
             [node_1] = {
-              ["1510560000"] = 1,
-              ["1510560001"] = 3,
-              ["1510560002"] = 4,
+              [tostring(now)] = 1,
+              [tostring(now + 1)] = 3,
+              [tostring(now + 2)] = 4,
             }
           }
         }
@@ -441,14 +538,14 @@ dao_helpers.for_each_dao(function(kong_conf)
           meta = {
             level = "cluster",
             interval = "minutes",
-            earliest_ts = 1510560000,
-            latest_ts = 1510560060,
-            stat_labels = stat_labels,
+            earliest_ts = now,
+            latest_ts = now + 60,
+            stat_labels = consumer_stat_labels,
           },
           stats = {
             cluster = {
-              ["1510560000"] = 39,
-              ["1510560060"] = 24,
+              [tostring(now)] = 39,
+              [tostring(now + 60)] = 24,
             }
           }
         }
@@ -468,17 +565,17 @@ dao_helpers.for_each_dao(function(kong_conf)
           meta = {
             level = "node",
             interval = "minutes",
-            earliest_ts = 1510560000,
-            latest_ts = 1510560060,
-            stat_labels = stat_labels,
+            earliest_ts = now,
+            latest_ts = now + 60,
+            stat_labels = consumer_stat_labels,
             nodes = {
               [node_2] = { hostname = "testhostname2"}
             }
           },
           stats = {
             [node_2] = {
-              ["1510560000"] = 20,
-              ["1510560060"] = 24,
+              [tostring(now)] = 20,
+              [tostring(now + 60)] = 24,
             }
           }
         }
@@ -487,10 +584,46 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
     end)
 
-    describe("select_stats()", function()
+    describe("get_stats()", function()
       local vitals
+      local now = ngx.time()
+      local mockStats = {
+        {
+          node_id = "node_one",
+          at = now,
+          l2_hit = 100,
+          l2_miss = 50,
+          plat_min = 5,
+          plat_max = 20,
+          ulat_min =  nil,
+          ulat_max = nil,
+          requests = 500,
+          plat_total = 100,
+          plat_count = 10,
+          ulat_total = nil,
+          ulat_count = 0,
+        },
+        {
+          node_id = "node_one",
+          at = now + 1,
+          l2_hit = 75,
+          l2_miss = 41,
+          plat_min = nil,
+          plat_max = nil,
+          ulat_min = 0,
+          ulat_max = 15,
+          requests = 1000,
+          plat_total = nil,
+          plat_count = 0,
+          ulat_total = 200,
+          ulat_count = 20,
+        }
+      }
+
       setup(function()
         vitals = kong_vitals.new { dao = dao }
+        stub(vitals.strategy, "select_stats").returns(mockStats)
+        stub(vitals.strategy, "select_node_meta").returns({})
       end)
 
       it("rejects invalid query_type", function()
@@ -519,6 +652,27 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert.is_nil(res)
         assert.same(expected, err)
       end)
+
+      it("returns converted stats", function()
+        local expected = {
+          meta = {
+            earliest_ts = now,
+            interval = "seconds",
+            latest_ts = now + 1,
+            level = "node",
+            nodes = {},
+            stat_labels = stat_labels
+          },
+          stats = {
+            node_one = {
+              [tostring(now)] = { 100, 50, 5, 20, json_null, json_null, 500, 10, json_null },
+              [tostring(now + 1)] = { 75, 41, json_null, json_null, 0, 15, 1000, json_null, 10 }
+            }
+          }
+        }
+        local res, _ = vitals:get_stats("seconds", "node")
+        assert.same(res, expected)
+      end)
     end)
 
     describe("get_node_meta()", function()
@@ -541,7 +695,11 @@ dao_helpers.for_each_dao(function(kong_conf)
         local q = "insert into vitals_node_meta(node_id, hostname) values('%s', '%s')"
 
         for _, row in ipairs(data_to_insert) do
-          assert(dao.db:query(fmt(q, unpack(row))))
+          if kong_conf.database == "cassandra" then
+            assert(vitals.strategy:init(unpack(row)))
+          else
+            assert(dao.db:query(fmt(q, unpack(row))))
+          end
         end
 
         local res, _ = vitals:get_node_meta({ node_id, node_id_2 })

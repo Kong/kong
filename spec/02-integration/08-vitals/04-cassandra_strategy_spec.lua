@@ -4,6 +4,8 @@ local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local utils = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 local fmt = string.format
+local time = ngx.time
+local cassandra = require "cassandra"
 
 
 dao_helpers.for_each_dao(function(kong_conf)
@@ -18,6 +20,7 @@ dao_helpers.for_each_dao(function(kong_conf)
     local cluster
     local uuid
     local hostname
+    local snapshot
 
 
     setup(function()
@@ -37,11 +40,17 @@ dao_helpers.for_each_dao(function(kong_conf)
 
 
     before_each(function()
+      snapshot = assert:snapshot()
       cluster:execute("TRUNCATE vitals_stats_seconds")
       cluster:execute("TRUNCATE vitals_stats_minutes")
       cluster:execute("TRUNCATE vitals_node_meta")
       cluster:execute("TRUNCATE vitals_consumers")
     end)
+
+    after_each(function()
+      snapshot:revert()
+    end)
+
 
     teardown(function()
       cluster:execute("TRUNCATE vitals_stats_seconds")
@@ -63,55 +72,41 @@ dao_helpers.for_each_dao(function(kong_conf)
 
     describe(":insert_stats()", function()
       it("turns Lua tables into Cassandra rows", function()
-        local now = ngx.time()
-        local minute = math.floor(now / 60) * 60000
-        local hour   = math.floor(now/ 3600) * 3600000
-
-        stub(strategy, "get_minute").returns(minute)
-        stub(strategy, "get_hour").returns(hour)
-
         local data = {
-          { 1505964713, 0, 0, nil, nil },
-          { 1505964714, 19, 99, 0, 120 },
+          { 1505964713, 0, 0, nil, nil, nil, nil, 5000, 0, 0, 0, 0 },
+          { 1505964714, 19, 99, 0, 120, 5, 50, 10000, 12, 414, 40, 671 },
         }
 
-        assert(strategy:init(uuid, hostname))
-        assert(strategy:insert_stats(data))
+        assert(strategy:insert_stats(data, uuid))
 
         local seconds_res, _ = cluster:execute("select * from vitals_stats_seconds")
-        local minutes_res, _ = cluster:execute("select * from vitals_stats_minutes")
+
         local expected_seconds = {
           {
             node_id  = uuid,
             at       = 1505964714000,
-            minute   = minute,
             l2_hit   = 19,
             l2_miss  = 99,
             plat_min = 0,
             plat_max = 120,
+            ulat_min = 5,
+            ulat_max = 50,
+            requests = 10000,
+            plat_count = 12,
+            plat_total = 414,
+            ulat_count = 40,
+            ulat_total = 671,
           },
           {
             node_id  = uuid,
             at       = 1505964713000,
-            minute   = minute,
             l2_hit   = 0,
             l2_miss  = 0,
-          },
-          meta = {
-            has_more_pages = false
-          },
-          type = "ROWS",
-        }
-
-        local expected_minutes = {
-          {
-            node_id  = uuid,
-            at       = minute,
-            hour     = hour,
-            l2_hit   = 19,
-            l2_miss  = 99,
-            plat_min = 0,
-            plat_max = 120,
+            requests = 5000,
+            plat_count = 0,
+            plat_total = 0,
+            ulat_count = 0,
+            ulat_total = 0,
           },
           meta = {
             has_more_pages = false
@@ -120,7 +115,113 @@ dao_helpers.for_each_dao(function(kong_conf)
         }
 
         assert.same(expected_seconds, seconds_res)
-        assert.same(expected_minutes, minutes_res)
+
+        local expected_minutes = {
+          node_id = uuid,
+          at = 1505964660000,
+          l2_hit = 19,
+          l2_miss = 99,
+          plat_min = 0,
+          plat_max = 120,
+          ulat_min = 5,
+          ulat_max = 50,
+          requests = 15000,
+          plat_count = 12,
+          plat_total = 414,
+          ulat_count = 40,
+          ulat_total = 671,
+        }
+
+        local minutes_res, _ = cluster:execute("select * from vitals_stats_minutes")
+        assert.same(expected_minutes, minutes_res[1])
+      end)
+
+      it("should not overwrite an existing seconds row", function()
+        local firstInsert = {
+          { 1505965513, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110 },
+        }
+
+        local secondInsert = {
+          { 1505965513, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000 },
+        }
+
+        local expected_seconds = {
+          {
+            node_id  = uuid,
+            at       = 1505965513000,
+            l2_hit   = 10,
+            l2_miss  = 20,
+            plat_min = 30,
+            plat_max = 40,
+            ulat_min = 50,
+            ulat_max = 60,
+            requests = 70,
+            plat_count = 80,
+            plat_total = 90,
+            ulat_count = 100,
+            ulat_total = 110,
+          },
+          meta = {
+            has_more_pages = false
+          },
+          type = "ROWS",
+        }
+
+        assert(strategy:init(uuid, hostname))
+        local s_insert_minutes = spy.on(strategy, "insert_minutes")
+
+        assert(strategy:insert_stats(firstInsert))
+        assert(strategy:insert_stats(secondInsert))
+        assert.spy(s_insert_minutes).was_called(2)
+
+        local seconds_res, _ = cluster:execute("select * from vitals_stats_seconds")
+        assert.same(seconds_res, expected_seconds)
+      end)
+
+      it("should continue to insert minutes even if seconds insert returns an error", function()
+        local way_too_big = 0xFFFFFFFF + 1
+
+        local firstInsert = {
+          { 1505965513, way_too_big, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110 },
+        }
+
+        local secondInsert = {
+          { 1505965513, 1000, 1000, 1000, 1000, way_too_big, 1000, 1000, 1000, 1000, 1000, 1000 },
+        }
+
+        assert(strategy:init(uuid, hostname))
+        local s_insert_minutes = spy.on(strategy, "insert_minutes")
+
+        assert(strategy:insert_stats(firstInsert))
+        assert(strategy:insert_stats(secondInsert))
+        assert.spy(s_insert_minutes).was_called(2)
+      end)
+
+      it("should not insert sentinel values (minutes)", function()
+        local data = {
+          { 1505964713, 1, 2, nil, nil, nil, nil, 5000, 10, 100, 20, 200 },
+          { 1505964714, 3, 4, nil, nil, nil, nil, 10000, 5, 50, 15, 150 },
+        }
+
+        assert(strategy:insert_stats(data, uuid))
+
+        local expected = {
+          node_id = uuid,
+          at = 1505964660000,
+          l2_hit = 4,
+          l2_miss = 6,
+          plat_min = nil,
+          plat_max = nil,
+          ulat_min = nil,
+          ulat_max = nil,
+          requests = 15000,
+          plat_count = 15,
+          plat_total = 150,
+          ulat_count = 35,
+          ulat_total = 350,
+        }
+        local minutes_res, _ = cluster:execute("select * from vitals_stats_minutes")
+        assert.same(expected, minutes_res[1])
       end)
 
       it("should update the last_report in the node_meta", function()
@@ -133,7 +234,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert(cluster:execute("UPDATE vitals_node_meta SET last_report = " .. old_last_report .. " WHERE node_id = " .. uuid))
 
         local data = {
-          { 1505966000, 0, 0, nil, nil },
+          { 1505966000, 0, 0, nil, nil, nil, nil, 0, 0, 0, 0, 0 },
         }
 
         assert(strategy:insert_stats(data, uuid))
@@ -149,34 +250,31 @@ dao_helpers.for_each_dao(function(kong_conf)
     end)
 
     describe(":select_stats()", function()
-      -- uuid of first node is  defined in intial spec setup
+      local node_1_uuid = utils.uuid()
       local node_2_uuid = utils.uuid()
       local node_3_uuid = utils.uuid()
 
+      local now = ngx.time()
+
+      local minute = now - now % 60
+
       local node_1_data = {
-        { 1505964713, 0, 0, nil, nil },
-        { 1505964714, 30, 60, 1, 5 },
+        { now - 1, 30, 60, 1, 5, nil, nil,   500, 5, 50, 0, 0 },
+        { now,      0,  0, nil, nil, 5, 10, 1000, 0, 0, 20, 200 },
       }
 
       local node_2_data = {
-        { 1505964713, 1, 15, 5, 10 },
-        { 1505964714, 30, 75, nil, nil },
+        { now - 1, 30, 75, nil, nil, 30, 40, 5000, 0, 0, 4, 40 },
+        { now,      1, 15, 5,    10, 20, 30, 2000, 1, 10, 2, 20 },
       }
 
       local node_3_data = {
-        { 1505964713, 5, 60, 10, 25 },
-        { 1505964714, 10, 20, 10, 15 },
+        { now - 1, 10, 20, 10, 15, nil, nil,    5, 7, 70, 0, 0 },
+        { now,      5, 60, 10, 25, 1, 2,      100, 5, 50, 6, 60 },
       }
 
-      local now = ngx.time()
-      local minute = math.floor(now / 60) * 60000
-      local hour   = math.floor(now/ 3600) * 3600000
-
-      stub(strategy, "get_minute").returns(minute)
-      stub(strategy, "get_hour").returns(hour)
-      
       before_each(function()
-        assert(strategy:init(uuid, hostname))
+        assert(strategy:init(node_1_uuid, hostname))
         assert(strategy:insert_stats(node_1_data))
 
         assert(strategy:init(node_2_uuid, hostname))
@@ -190,25 +288,39 @@ dao_helpers.for_each_dao(function(kong_conf)
         local expected = {
           {
             node_id  = "cluster",
-            at       = 1505964713000,
+            at       = now,
             l2_hit   = 6,
             l2_miss  = 75,
-            plat_max = 25,
             plat_min = 5,
-          }, {
+            plat_max = 25,
+            ulat_min = 1,
+            ulat_max = 30,
+            requests = 3100,
+            plat_count = 6,
+            plat_total = 60,
+            ulat_count = 28,
+            ulat_total = 280,
+          },
+          {
             node_id  = "cluster",
-            at       = 1505964714000,
+            at       = (now - 1),
             l2_hit   = 70,
             l2_miss  = 155,
-            plat_max = 15,
             plat_min = 1,
-          }
+            plat_max = 15,
+            ulat_min = 30,
+            ulat_max = 40,
+            requests = 5505,
+            plat_count = 12,
+            plat_total = 120,
+            ulat_count = 4,
+            ulat_total = 40,
+          },
         }
 
         local res, _ = strategy:select_stats("seconds", "cluster", nil)
-        
-        table.sort(res, function(a,b) 
-          return a.at < b.at
+        table.sort(res, function(a,b)
+          return a.at > b.at
         end)
 
         assert.same(expected, res)
@@ -221,67 +333,106 @@ dao_helpers.for_each_dao(function(kong_conf)
             at       = minute,
             l2_hit   = 76,
             l2_miss  = 230,
-            plat_max = 25,
             plat_min = 1,
+            plat_max = 25,
+            ulat_min = 1,
+            ulat_max = 40,
+            requests = 8605,
+            plat_count = 18,
+            plat_total = 180,
+            ulat_count = 32,
+            ulat_total = 320,
           }
         }
 
         local res, _ = strategy:select_stats("minutes", "cluster", nil)
-
         assert.same(expected, res)
       end)
 
       it("should return node level seconds data for all nodes", function()
         local expected = {
           {
-            at = 1505964713000,
+            at = (now - 1),
+            l2_hit = 30,
+            l2_miss = 60,
+            node_id = node_1_uuid,
+            plat_min = 1,
+            plat_max = 5,
+            requests = 500,
+            plat_count = 5,
+            plat_total = 50,
+            ulat_count = 0,
+            ulat_total = 0,
+          },
+          {
+            at = now,
             l2_hit = 0,
             l2_miss = 0,
-            minute = minute,
-            node_id = uuid
-          }, {
-            at = 1505964714000,
-            l2_hit = 30,
-            l2_miss = 60,
-            minute = minute,
-            node_id = uuid,
-            plat_max = 5,
-            plat_min = 1,
-          }, {
-            at = 1505964713000,
-            l2_hit = 1,
-            l2_miss = 15,
-            minute = minute,
-            node_id = node_2_uuid,
-            plat_max = 10,
-            plat_min = 5,
-          }, {
-            at = 1505964714000,
-            l2_hit = 30,
-            l2_miss = 75,
-            minute = minute,
-            node_id = node_2_uuid,
-          }, {
-            at = 1505964713000,
-            l2_hit = 5,
-            l2_miss = 60,
-            minute = minute,
-            node_id = node_3_uuid,
-            plat_max = 25,
-            plat_min = 10,
-          }, {
-            at = 1505964714000,
+            node_id = node_1_uuid,
+            ulat_min = 5,
+            ulat_max = 10,
+            requests = 1000,
+            plat_count = 0,
+            plat_total = 0,
+            ulat_count = 20,
+            ulat_total = 200,
+          },
+          {
+            at = (now - 1),
             l2_hit = 10,
             l2_miss = 20,
-            minute = minute,
             node_id = node_3_uuid,
-            plat_max = 15,
             plat_min = 10,
+            plat_max = 15,
+            requests = 5,
+            plat_count = 7,
+            plat_total = 70,
+            ulat_count = 0,
+            ulat_total = 0,
           },
-          meta = {
-            has_more_pages = false ,
+          {
+            at = now,
+            l2_hit = 5,
+            l2_miss = 60,
+            node_id = node_3_uuid,
+            plat_min = 10,
+            plat_max = 25,
+            ulat_min = 1,
+            ulat_max = 2,
+            requests = 100,
+            plat_count = 5,
+            plat_total = 50,
+            ulat_count = 6,
+            ulat_total = 60,
           },
-          type = 'ROWS',
+          {
+            at = (now - 1),
+            l2_hit = 30,
+            l2_miss = 75,
+            node_id = node_2_uuid,
+            ulat_min = 30,
+            ulat_max = 40,
+            requests = 5000,
+            plat_count = 0,
+            plat_total = 0,
+            ulat_count = 4,
+            ulat_total = 40,
+          },
+          {
+            at = now,
+            l2_hit = 1,
+            l2_miss = 15,
+            node_id = node_2_uuid,
+            plat_min = 5,
+            plat_max = 10,
+            ulat_min = 20,
+            ulat_max = 30,
+            requests = 2000,
+            plat_count = 1,
+            plat_total = 10,
+            ulat_count = 2,
+            ulat_total = 20,
+          }
         }
 
         table.sort(expected, function(a,b)
@@ -308,40 +459,54 @@ dao_helpers.for_each_dao(function(kong_conf)
         local expected = {
           {
             at = minute,
-            hour = hour,
             l2_hit = 31,
             l2_miss = 90,
             node_id = node_2_uuid,
-            plat_max = 10,
             plat_min = 5,
+            plat_max = 10,
+            ulat_min = 20,
+            ulat_max = 40,
+            requests = 7000,
+            plat_count = 1,
+            plat_total = 10,
+            ulat_count = 6,
+            ulat_total = 60,
           }, {
             at = minute,
-            hour = hour,
             l2_hit = 30,
             l2_miss = 60,
-            node_id = uuid,
-            plat_max = 5,
+            node_id = node_1_uuid,
             plat_min = 1,
+            plat_max = 5,
+            ulat_min = 5,
+            ulat_max = 10,
+            requests = 1500,
+            plat_count = 5,
+            plat_total = 50,
+            ulat_count = 20,
+            ulat_total = 200,
           }, {
             at = minute,
-            hour = hour,
             l2_hit = 15,
             l2_miss = 80,
             node_id = node_3_uuid,
-            plat_max = 25,
             plat_min = 10,
+            plat_max = 25,
+            ulat_min = 1,
+            ulat_max = 2,
+            requests = 105,
+             plat_count = 12,
+            plat_total = 120,
+            ulat_count = 6,
+            ulat_total = 60,
           },
-          meta = {
-            has_more_pages = false
-          },
-          type = 'ROWS'
         }
 
         table.sort(expected, function(a,b)
           if a.node_id == b.node_id then
             return a.at < b.at
           end
-          return a.node_id < b.node_id
+          return a.l2_hit > b.l2_hit
         end)
 
         local res, _ = strategy:select_stats("minutes", "nodes", nil)
@@ -350,7 +515,7 @@ dao_helpers.for_each_dao(function(kong_conf)
           if a.node_id == b.node_id then
             return a.at < b.at
           end
-          return a.node_id < b.node_id
+          return a.l2_hit > b.l2_hit
         end)
 
         assert.same(expected, res)
@@ -359,27 +524,33 @@ dao_helpers.for_each_dao(function(kong_conf)
       it("should return node specific seconds data for a requested node", function()
         local expected = {
           {
-            at = 1505964713000,
-            l2_hit = 0,
-            l2_miss = 0,
-            minute = minute,
-            node_id = uuid
-          }, {
-            at = 1505964714000,
+            at = (now - 1),
             l2_hit = 30,
             l2_miss = 60,
-            minute = minute,
-            node_id = uuid,
-            plat_max = 5,
             plat_min = 1,
-          },
-          meta = {
-            has_more_pages = false
-          },
-          type = 'ROWS'
+            plat_max = 5,
+            requests = 500,
+            node_id = node_1_uuid,
+            plat_count = 5,
+            plat_total = 50,
+            ulat_count = 0,
+            ulat_total = 0,
+          }, {
+            at = now,
+            l2_hit = 0,
+            l2_miss = 0,
+            node_id = node_1_uuid,
+            ulat_min = 5,
+            ulat_max = 10,
+            requests = 1000,
+            plat_count = 0,
+            plat_total = 0,
+            ulat_count = 20,
+            ulat_total = 200,
+          }
         }
 
-        local res, _ = strategy:select_stats("seconds", "nodes", uuid)
+        local res, _ = strategy:select_stats("seconds", "nodes", node_1_uuid)
 
         table.sort(res, function(a,b)
           return a.at < b.at
@@ -392,20 +563,84 @@ dao_helpers.for_each_dao(function(kong_conf)
         local expected = {
           {
             at = minute,
-            hour = hour,
             l2_hit = 30,
             l2_miss = 60,
-            node_id = uuid,
-            plat_max = 5,
+            node_id = node_1_uuid,
             plat_min = 1,
+            plat_max = 5,
+            ulat_min = 5,
+            ulat_max = 10,
+            requests = 1500,
+            plat_count = 5,
+            plat_total = 50,
+            ulat_count = 20,
+            ulat_total = 200,
           },
-          meta = {
-            has_more_pages = false
-          },
-          type = 'ROWS'
         }
-        local res, _ = strategy:select_stats("minutes", "nodes", uuid)
+        local res, _ = strategy:select_stats("minutes", "nodes", node_1_uuid)
 
+        assert.same(expected, res)
+      end)
+    end)
+
+    describe(":select_phone_home()", function()
+      local node_1_uuid = utils.uuid()
+      local node_2_uuid = utils.uuid()
+      local node_3_uuid = utils.uuid()
+
+      local now = ngx.time()
+
+      local node_1_data = {
+        { now, 0, 0, nil, nil, 5, 10, 1000, 10, 100, 19, 200 },
+        { now - 1, 30, 60, 1, 5, nil, nil, 500, 6, 50, 13, 150 },
+      }
+
+      local node_2_data = {
+        { now, 1, 15, 5, 10, 20, 30, 2000, 1, 10, 2, 20 },
+        { now - 1, 30, 75, nil, nil, 30, 40, 5000, 3, 30, 4, 40 },
+      }
+
+      local node_3_data = {
+        { now, 5, 60, 10, 25, 1, 2, 100, 5, 50, 6, 60 },
+        { now - 1, 10, 20, 10, 15, nil, nil, 5, 7, 70, 8, 80 },
+      }
+
+      before_each(function()
+        -- init the db so we have access to version info
+        assert(dao.db:init())
+
+        assert(strategy:init(node_1_uuid, hostname))
+        assert(strategy:insert_stats(node_1_data))
+
+        assert(strategy:insert_stats(node_2_data, node_2_uuid))
+
+        assert(strategy:insert_stats(node_3_data, node_3_uuid))
+      end)
+
+      it("returns phone home stats", function()
+        local expected = {{}}
+        expected[1]["v.cdht"] = 30
+        expected[1]["v.cdmt"] = 60
+        expected[1]["v.lprn"] = 1
+        expected[1]["v.lprx"] = 5
+        expected[1]["v.lun"] = 5
+        expected[1]["v.lux"] = 10
+
+        if tonumber(dao.db:infos().version) >= 3 then
+          expected[1]["v.nt"] = 3
+        else
+          -- 2.x can't do the node count query. Per PO, leave it out
+          expected[1]["v.nt"] = nil
+        end
+
+        -- test data is set up to test rounding down: 150 / 16 = 9.375
+        expected[1]["v.lpra"] = 9
+
+        -- test data is set up to test rounding up: 350 / 32 = 10.9375
+        expected[1]["v.lua"] = 11
+
+        local res, err = strategy:select_phone_home()
+        assert.is_nil(err)
         assert.same(expected, res)
       end)
     end)
@@ -425,7 +660,6 @@ dao_helpers.for_each_dao(function(kong_conf)
           { consumer_uuid_1, now, 1, 1 },
           { consumer_uuid_2, now, 1, 1 },
         }
-        
 
         assert(strategy:insert_consumer_stats(data))
 
@@ -484,6 +718,363 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
     end)
 
+    describe(":select_consumer_stats()", function()
+      local node_1  = "20426633-55dc-4050-89ef-2382c95a611e"
+      local node_2  = "8374682f-17fd-42cb-b1dc-7694d6f65ba0"
+      local cons_id = utils.uuid()
+
+      -- data starts a couple minutes ago
+      local start_at = time() - 90
+      local start_minute = start_at - (start_at % 60)
+
+      before_each(function()
+        local node_1_data = {
+          {cons_id, start_at,      1, 1},
+          {cons_id, start_at + 1,  1, 3},
+          {cons_id, start_at + 2,  1, 4},
+          {cons_id, start_at + 60, 1, 7},
+          {cons_id, start_at + 61, 1, 11},
+          {cons_id, start_at + 62, 1, 18},
+        }
+
+        local node_2_data = {
+          {cons_id, start_at + 2,  1, 2},
+          {cons_id, start_at + 60, 1, 5},
+          {cons_id, start_at + 61, 1, 6},
+          {cons_id, start_at + 62, 1, 8},
+          {cons_id, start_at + 63, 1, 9},
+        }
+
+        assert(strategy:insert_consumer_stats(node_1_data, node_1))
+        assert(strategy:insert_consumer_stats(node_2_data, node_2))
+      end)
+
+      after_each(function()
+        cluster:execute("TRUNCATE vitals_consumers")
+      end)
+
+      it("returns seconds stats for a consumer across the cluster", function()
+        local opts = {
+          consumer_id = cons_id,
+          node_id     = nil,
+          duration    = 1,
+          level       = "cluster",
+        }
+
+        local results, _ = strategy:select_consumer_stats(opts)
+
+        local expected = {
+          {
+            node_id     = "cluster",
+            at          = start_at,
+            count       = 1,
+          },
+          {
+            node_id     = "cluster",
+            at          = start_at + 1,
+            count       = 3,
+          },
+          {
+            node_id     = "cluster",
+            at          = start_at + 2,
+            count       = 6,
+          },
+          {
+            node_id     = "cluster",
+            at          = start_at + 60,
+            count       = 12,
+          },
+          {
+            node_id     = "cluster",
+            at          = start_at + 61,
+            count       = 17,
+          },
+          {
+            node_id     = "cluster",
+            at          = start_at + 62,
+            count       = 26,
+          },
+          {
+            node_id     = "cluster",
+            at          = start_at + 63,
+            count       = 9,
+          },
+        }
+
+        assert.same(expected, results)
+      end)
+
+
+      it("returns seconds stats for a consumer and all nodes", function()
+        local opts = {
+          consumer_id = cons_id,
+          node_id     = nil,
+          duration    = 1,
+          level       = "node",
+        }
+
+        local results, _ = strategy:select_consumer_stats(opts)
+
+        -- just to make it easier to assert
+        table.sort(results, function(a,b)
+          return a.count < b.count
+        end)
+
+        local expected = {
+          {
+            node_id = node_1,
+            at = start_at,
+            count = 1,
+          },
+          {
+            node_id = node_2,
+            at = start_at + 2,
+            count = 2,
+          },
+          {
+            node_id = node_1,
+            at = start_at + 1,
+            count = 3,
+          },
+          {
+            node_id = node_1,
+            at = start_at + 2,
+            count = 4,
+          },
+          {
+            node_id = node_2,
+            at = start_at + 60,
+            count = 5,
+          },
+          {
+            node_id = node_2,
+            at = start_at + 61,
+            count = 6,
+          },
+          {
+            node_id = node_1,
+            at = start_at + 60,
+            count = 7,
+          },
+          {
+            node_id = node_2,
+            at = start_at + 62,
+            count = 8,
+          },
+          {
+            node_id = node_2,
+            at = start_at + 63,
+            count = 9,
+          },
+          {
+            node_id = node_1,
+            at = start_at + 61,
+            count = 11,
+          },
+          {
+            node_id = node_1,
+            at = start_at + 62,
+            count = 18,
+          },
+        }
+
+        assert.same(expected, results)
+      end)
+
+
+      it("returns seconds stats for a consumer and a node", function()
+        local opts = {
+          consumer_id = cons_id,
+          node_id     = node_2,
+          duration    = 1,
+          level       = "node",
+        }
+
+        local results, _ = strategy:select_consumer_stats(opts)
+
+        local expected = {
+          {
+            node_id = node_2,
+            at = start_at + 2,
+            count = 2,
+          },
+          {
+            node_id = node_2,
+            at = start_at + 60,
+            count = 5,
+          },
+          {
+            node_id = node_2,
+            at = start_at + 61,
+            count = 6,
+          },
+          {
+            node_id = node_2,
+            at = start_at + 62,
+            count = 8,
+          },
+          {
+            node_id = node_2,
+            at = start_at + 63,
+            count = 9,
+          },
+        }
+
+        assert.same(expected, results)
+      end)
+
+
+      it("returns minutes stats for a consumer across the cluster", function()
+        local opts = {
+          consumer_id = cons_id,
+          node_id     = nil,
+          duration    = 60,
+          level       = "cluster",
+        }
+
+        local results, _ = strategy:select_consumer_stats(opts)
+
+        local expected = {
+          {
+            node_id     = "cluster",
+            at          = start_minute,
+            count       = 10,
+          },
+          {
+            node_id     = "cluster",
+            at          = start_minute + 60,
+            count       = 64,
+          },
+        }
+        assert.same(expected, results)
+      end)
+
+
+      it("returns minutes stats for a consumer and all nodes", function()
+        local opts = {
+          consumer_id = cons_id,
+          node_id     = nil,
+          duration    = 60,
+          level       = "node",
+        }
+
+        local results, _ = strategy:select_consumer_stats(opts)
+
+        table.sort(results, function(a,b)
+          return a.count < b.count
+        end)
+
+
+        local expected = {
+          {
+            node_id = node_2,
+            at = start_minute,
+            count = 2,
+          },
+          {
+            node_id = node_1,
+            at = start_minute,
+            count = 8,
+          },
+          {
+            node_id = node_2,
+            at = start_minute + 60,
+            count = 28,
+          },
+          {
+            node_id = node_1,
+            at = start_minute + 60,
+            count = 36,
+          },
+        }
+
+        assert.same(expected, results)
+      end)
+
+
+      it("returns minutes stats for a consumer and a node", function()
+        local opts = {
+          consumer_id = cons_id,
+          node_id     = node_2,
+          duration    = 60,
+          level       = "node",
+        }
+
+        local results, _ = strategy:select_consumer_stats(opts)
+
+        local expected = {
+          {
+            count = 2,
+            node_id = node_2,
+            at = start_minute,
+          },
+          {
+            count = 28,
+            node_id = node_2,
+            at = start_minute + 60,
+          },
+        }
+
+        assert.is_nil(_)
+        assert.same(expected, results)
+      end)
+    end)
+
+    describe(":delete_consumer_stats()", function()
+      local cons_1 = "20426633-55dc-4050-89ef-2382c95a611e"
+      local cons_2 = "8374682f-17fd-42cb-b1dc-7694d6f65ba0"
+      local node_1 = utils.uuid()
+
+      before_each(function()
+        cluster:execute("TRUNCATE vitals_consumers")
+        local q = "UPDATE vitals_consumers SET count=count+? WHERE consumer_id=? AND node_id=? AND at=? AND duration=?"
+
+        local test_data = {
+          {cassandra.counter(1), cassandra.uuid(cons_1), cassandra.uuid(node_1), cassandra.timestamp(1510560000000), 1},
+          {cassandra.counter(3), cassandra.uuid(cons_1), cassandra.uuid(node_1), cassandra.timestamp(1510560001000), 1},
+          {cassandra.counter(4), cassandra.uuid(cons_1), cassandra.uuid(node_1), cassandra.timestamp(1510560002000), 1},
+          {cassandra.counter(19), cassandra.uuid(cons_1), cassandra.uuid(node_1), cassandra.timestamp(1510560000000), 60},
+          {cassandra.counter(5), cassandra.uuid(cons_2), cassandra.uuid(node_1), cassandra.timestamp(1510560001000), 1},
+          {cassandra.counter(7), cassandra.uuid(cons_2), cassandra.uuid(node_1), cassandra.timestamp(1510560002000), 1},
+          {cassandra.counter(20), cassandra.uuid(cons_2), cassandra.uuid(node_1), cassandra.timestamp(1510560000000), 60},
+          {cassandra.counter(24), cassandra.uuid(cons_2), cassandra.uuid(node_1), cassandra.timestamp(1510560060000), 60},
+        }
+
+        for _, row in ipairs(test_data) do
+          assert(cluster:execute(q, row, { prepared = true, counter  = true }))
+        end
+
+        local res, _ = cluster:execute("select * from vitals_consumers")
+        assert.same(8, #res)
+      end)
+
+      after_each(function()
+        cluster:execute("TRUNCATE vitals_consumers")
+      end)
+
+      pending("cleans up consumer stats", function()
+        local consumers = {
+          [cons_1] = true,
+          [cons_2] = true,
+        }
+
+        -- query is "<" so bump the cutoff by a second
+        local cutoff_times = {
+          minutes = 1510560001,
+          seconds = 1510560002,
+        }
+
+        local results, err = strategy:delete_consumer_stats(consumers, cutoff_times)
+        assert.is_nil(err)
+
+        local res, err = cluster:execute("select * from vitals_consumers")
+        assert.is_nil(err)
+        assert.is_true(results > 0)
+        assert.same(3, #res)
+      end)
+    end)
+
+
     describe(":node_exists()", function()
       it("should return false if the node does not exist", function()
         local node_1 = utils.uuid()
@@ -540,11 +1131,7 @@ dao_helpers.for_each_dao(function(kong_conf)
           {
             hostname = hostname_2,
             node_id = node_id_2
-          },
-          meta = {
-            has_more_pages = false
-          },
-          type = "ROWS"
+          }
         }
 
         local res, _ = strategy:select_node_meta({ node_id, node_id_2 })

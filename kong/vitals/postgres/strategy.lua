@@ -15,54 +15,62 @@ local mt = { __index = _M }
 local _log_prefix = "[vitals-strategy] "
 
 local INSERT_STATS = [[
-  insert into %s (at, node_id, l2_hit, l2_miss, plat_min, plat_max, ulat_min, ulat_max, requests)
-  values (%d, '%s', %d, %d, %s, %s, %s, %s, %d)
-  on conflict (node_id, at) do update set
+  INSERT INTO %s (at, node_id, l2_hit, l2_miss, plat_min, plat_max, ulat_min,
+    ulat_max, requests, plat_count, plat_total, ulat_count, ulat_total)
+  VALUES (%d, '%s', %d, %d, %s, %s, %s, %s, %d, %d, %d, %d, %d)
+  ON CONFLICT (node_id, at) DO UPDATE SET
     l2_hit = %s.l2_hit + excluded.l2_hit,
     l2_miss = %s.l2_miss + excluded.l2_miss,
     plat_min = least(%s.plat_min, excluded.plat_min),
     plat_max = greatest(%s.plat_max, excluded.plat_max),
     ulat_min = least(%s.ulat_min, excluded.ulat_min),
     ulat_max = greatest(%s.ulat_max, excluded.ulat_max),
-    requests = %s.requests + excluded.requests
+    requests = %s.requests + excluded.requests,
+    plat_count = %s.plat_count + excluded.plat_count,
+    plat_total = %s.plat_total + excluded.plat_total,
+    ulat_count = %s.ulat_count + excluded.ulat_count,
+    ulat_total = %s.ulat_total + excluded.ulat_total
 ]]
 
 local SELECT_STATS_FOR_PHONE_HOME = [[
-  select sum(l2_hit) as "v.cdht",
-  sum(l2_miss) as "v.cdmt",
-  min(plat_min) as "v.lprn",
-  max(plat_max) as "v.lprx",
-  min(ulat_min) as "v.lun",
-  max(ulat_max) as "v.lux"
-  from vitals_stats_minutes where at >= %d
-  and node_id = '%s'
+  SELECT SUM(l2_hit) AS "v.cdht",
+  SUM(l2_miss) AS "v.cdmt",
+  MIN(plat_min) AS "v.lprn",
+  MAX(plat_max) AS "v.lprx",
+  MIN(ulat_min) AS "v.lun",
+  MAX(ulat_max) AS "v.lux",
+  SUM(plat_count) AS plat_count,
+  SUM(plat_total) AS plat_total,
+  SUM(ulat_count) AS ulat_count,
+  SUM(ulat_total) AS ulat_total
+  FROM vitals_stats_minutes WHERE at >= %d AND node_id = '%s'
 ]]
 
 local SELECT_NODES_FOR_PHONE_HOME = [[
-  select count(distinct node_id) as "v.nt" from vitals_stats_minutes where at >= %d
+  SELECT COUNT(DISTINCT node_id) AS "v.nt" FROM vitals_stats_minutes WHERE at >= %d
 ]]
 
 local INSERT_CONSUMER_STATS = [[
-  insert into vitals_consumers(consumer_id, node_id, at, duration, count)
-  values('%s', '%s', to_timestamp(%d) at time zone 'UTC', %d, %d)
-  on conflict(consumer_id, node_id, at, duration) do
-  update set count = vitals_consumers.count + excluded.count
+  INSERT INTO vitals_consumers(consumer_id, node_id, at, duration, count)
+  VALUES('%s', '%s', to_timestamp(%d) at time zone 'UTC', %d, %d)
+  ON CONFLICT(consumer_id, node_id, at, duration) DO
+  UPDATE SET COUNT = vitals_consumers.count + excluded.count
 ]]
 
-local UPDATE_NODE_META = "update vitals_node_meta set last_report = now() where node_id = '%s'"
+local UPDATE_NODE_META = "UPDATE vitals_node_meta SET last_report = now() WHERE node_id = '%s'"
 
-local DELETE_STATS = "delete from %s where at < %d"
+local DELETE_STATS = "DELETE FROM %s WHERE at < %d"
 
 local DELETE_CONSUMER_STATS = [[
-  delete from vitals_consumers where consumer_id = '{%s}'
-  and ((duration = %d and at < to_timestamp(%d) at time zone 'UTC')
-  or (duration = %d and at < to_timestamp(%d) at time zone 'UTC'))
+  DELETE FROM vitals_consumers WHERE consumer_id = '{%s}'
+  AND ((duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC')
+  OR (duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC'))
 ]]
 
-local SELECT_NODE = "select node_id from vitals_node_meta where node_id = '%s'"
+local SELECT_NODE = "SELECT node_id FROM vitals_node_meta WHERE node_id = '%s'"
 
 local SELECT_NODE_META = [[
-  select node_id, hostname from vitals_node_meta where node_id in ('%s')
+  SELECT node_id, hostname FROM vitals_node_meta WHERE node_id IN ('%s')
 ]]
 
 function _M.dynamic_table_names(dao)
@@ -162,7 +170,11 @@ function _M:select_stats(query_type, level, node_id, start_at, end_before)
              max(plat_max) as plat_max,
              min(ulat_min) as ulat_min,
              max(ulat_max) as ulat_max,
-             sum(requests) as requests
+             sum(requests) as requests,
+             sum(plat_count) as plat_count,
+             sum(plat_total) as plat_total,
+             sum(ulat_count) as ulat_count,
+             sum(ulat_total) as ulat_total
       ]]
     group = " GROUP BY at "
   end
@@ -227,6 +239,20 @@ function _M:select_phone_home()
     return nil, "could not select stats: " .. err
   end
 
+  -- the only time res[1].plat_count would be nil is when phone_home is
+  -- invoked before any minutes data is written. Oh, and in unit tests.
+  if res[1].plat_count and res[1].plat_count > 0 then
+    res[1]["v.lpra"] = math.floor(res[1].plat_total / res[1].plat_count + 0.5)
+  end
+
+  if res[1].ulat_count and res[1].ulat_count > 0 then
+    res[1]["v.lua"] = math.floor(res[1].ulat_total / res[1].ulat_count + 0.5)
+  end
+
+  for _, v in ipairs({ "plat_count", "plat_total", "ulat_count", "ulat_total" }) do
+    res[1][v] = nil
+  end
+
   local nodes, err = self.db:query(fmt(SELECT_NODES_FOR_PHONE_HOME, time() - 3600))
   if not res then
     return nil, "could not count nodes: " .. err
@@ -250,8 +276,9 @@ end
   ]
 ]]
 function _M:insert_stats(data, node_id)
-  local at, hit, miss, plat_min, plat_max, query, res, err, ulat_min, ulat_max, requests
-  local table_name = self:current_table_name()
+  local at, hit, miss, plat_min, plat_max, query, res, err, ulat_min, ulat_max,
+        requests, plat_count, plat_total, ulat_count, ulat_total
+  local tname = self:current_table_name()
 
   -- node_id is an optional argument to simplify testing
   node_id = node_id or self.node_id
@@ -262,7 +289,8 @@ function _M:insert_stats(data, node_id)
   local mnext = 1  -- next index in mdata
 
   for _, row in ipairs(data) do
-    at, hit, miss, plat_min, plat_max, ulat_min, ulat_max, requests = unpack(row)
+    at, hit, miss, plat_min, plat_max, ulat_min, ulat_max, requests,
+      plat_count, plat_total, ulat_count, ulat_total = unpack(row)
 
     local mat = self:get_minute(at)
     local i   = midx[mat]
@@ -274,6 +302,10 @@ function _M:insert_stats(data, node_id)
       mdata[i][6] = math_min(mdata[i][6], ulat_min or 0xFFFFFFFF)
       mdata[i][7] = math_max(mdata[i][7], ulat_max or -1)
       mdata[i][8] = mdata[i][8] + requests
+      mdata[i][9] = mdata[i][9] + plat_count
+      mdata[i][10] = mdata[i][10] + plat_total
+      mdata[i][11] = mdata[i][11] + ulat_count
+      mdata[i][12] = mdata[i][12] + ulat_total
     else
       mdata[mnext] = {
         mat,
@@ -284,6 +316,10 @@ function _M:insert_stats(data, node_id)
         ulat_min or 0xFFFFFFFF,
         ulat_max or -1,
         requests,
+        plat_count,
+        plat_total,
+        ulat_count,
+        ulat_total
       }
       midx[mat] = mnext
       mnext  = mnext + 1
@@ -294,9 +330,11 @@ function _M:insert_stats(data, node_id)
     ulat_min = ulat_min or "null"
     ulat_max = ulat_max or "null"
 
-    query = fmt(INSERT_STATS, table_name, at, node_id, hit, miss, plat_min,
-                plat_max, ulat_min, ulat_max, requests, table_name, table_name,
-                table_name, table_name, table_name, table_name, table_name)
+    query = fmt(INSERT_STATS, tname, at, node_id, hit, miss, plat_min,
+                plat_max, ulat_min, ulat_max, requests, plat_count, plat_total,
+                ulat_count, ulat_total, tname, tname, tname, tname, tname, tname,
+                tname, tname, tname, tname, tname)
+
     res, err = self.db:query(query)
 
     if not res then
@@ -308,7 +346,8 @@ function _M:insert_stats(data, node_id)
   -- insert minutes data
   local tname = "vitals_stats_minutes"
   for _, row in ipairs(mdata) do
-    at, hit, miss, plat_min, plat_max, ulat_min, ulat_max, requests = unpack(row)
+    at, hit, miss, plat_min, plat_max, ulat_min, ulat_max, requests,
+    plat_count, plat_total, ulat_count, ulat_total = unpack(row)
 
     -- replace sentinels
     if plat_min == 0xFFFFFFFF then
@@ -320,9 +359,11 @@ function _M:insert_stats(data, node_id)
       ulat_max = "null"
     end
 
-    query = fmt(INSERT_STATS, tname, at, node_id,
-                hit, miss, plat_min, plat_max, ulat_min, ulat_max, requests,
-                tname, tname, tname, tname, tname, tname, tname)
+    query = fmt(INSERT_STATS, tname, at, node_id, hit, miss, plat_min,
+      plat_max, ulat_min, ulat_max, requests, plat_count, plat_total,
+      ulat_count, ulat_total, tname, tname, tname, tname, tname, tname,
+      tname, tname, tname, tname, tname)
+
     res, err = self.db:query(query)
 
     if not res then
@@ -333,7 +374,7 @@ function _M:insert_stats(data, node_id)
 
   local ok, err = self:update_node_meta(node_id)
   if not ok then
-    return nil, "could not update metadata. query: " .. query .. " error: " .. err
+    return nil, "could not update metadata. error: " .. err
   end
 
   return true
@@ -587,11 +628,6 @@ end
 
 function _M:get_minute(second)
   return second - (second % 60)
-end
-
-
-function _M:get_timestamp_str(ts)
-  return tostring(ts)
 end
 
 

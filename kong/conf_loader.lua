@@ -330,10 +330,6 @@ local function check_and_infer(conf)
     end
   end
 
-  if conf.vitals and conf.database == "cassandra" then
-    errors[#errors+1] = "vitals: not available on cassandra. Restart with vitals=off."
-  end
-
   if not conf.lua_package_cpath then
     conf.lua_package_cpath = ""
   end

@@ -289,4 +289,50 @@ return {
       end
     end,
   },
+  {
+    name = "2018-01-16-160000_vitals_stats_v0.31",
+    up = [[
+      DROP TABLE IF EXISTS vitals_stats_seconds;
+      DROP TABLE IF EXISTS vitals_stats_minutes;
+
+      CREATE TABLE vitals_stats_seconds(
+        node_id uuid,
+        at timestamp,
+        l2_hit int,
+        l2_miss int,
+        plat_min int,
+        plat_max int,
+        ulat_min int,
+        ulat_max int,
+        requests int,
+        plat_count int,
+        plat_total int,
+        ulat_count int,
+        ulat_total int,
+        PRIMARY KEY(node_id, at)
+      ) WITH CLUSTERING ORDER BY (at DESC);
+
+      CREATE TABLE vitals_stats_minutes(
+        node_id uuid,
+        at timestamp,
+        l2_hit int,
+        l2_miss int,
+        plat_min int,
+        plat_max int,
+        ulat_min int,
+        ulat_max int,
+        requests int,
+        plat_count int,
+        plat_total int,
+        ulat_count int,
+        ulat_total int,
+        PRIMARY KEY(node_id, at)
+      ) WITH CLUSTERING ORDER BY (at DESC);
+    ]],
+
+    down = [[
+      DROP TABLE vitals_stats_seconds;
+      DROP TABLE vitals_stats_minutes;
+    ]]
+  }
 }

@@ -10,11 +10,6 @@ local fmt         = string.format
 
 dao_helpers.for_each_dao(function(kong_conf)
 
-  if kong_conf.database == "cassandra" then
-    -- only test postgres currently
-    return
-  end
-
   describe("Admin API Vitals with " .. kong_conf.database, function()
     local client, dao, strategy
 
@@ -31,6 +26,12 @@ dao_helpers.for_each_dao(function(kong_conf)
       "latency_upstream_min_ms",
       "latency_upstream_max_ms",
       "requests_proxy_total",
+      "latency_proxy_request_avg_ms",
+      "latency_upstream_avg_ms",
+    }
+
+    local consumer_stat_labels = {
+      "requests_consumer_total",
     }
 
     describe("when vitals is enabled", function()
@@ -56,17 +57,24 @@ dao_helpers.for_each_dao(function(kong_conf)
           end
         else
           strategy = cassandra.new(dao)
+
+          local node_q = "insert into vitals_node_meta(node_id, hostname) values("
+          local nodes = { node_1, node_2, node_3 }
+
+          for i, node in ipairs(nodes) do
+            assert(dao.db.cluster:execute(node_q .. node .. ", '" .. "testhostname" .. i .. "')"))
+          end
         end
 
         local test_data_1 = {
-          { minute_start_at, 0, 0, nil, nil, nil, nil, 0 },
-          { minute_start_at + 1, 0, 3, 0, 11, 193, 212, 1 },
-          { minute_start_at + 2, 3, 4, 1, 8, 60, 9182, 4 },
+          { minute_start_at, 0, 0, nil, nil, nil, nil, 0, 1, 10, 1, 10 },
+          { minute_start_at + 1, 0, 3, 0, 11, 193, 212, 1, 1, 10, 1, 10 },
+          { minute_start_at + 2, 3, 4, 1, 8, 60, 9182, 4, 1, 10, 1, 10 },
         }
 
         local test_data_2 = {
-          { minute_start_at + 1, 1, 5, 0, 99, 25, 144, 9 },
-          { minute_start_at + 2, 1, 7, 0, 0, 13, 19, 8 },
+          { minute_start_at + 1, 1, 5, 0, 99, 25, 144, 9, 1, 10, 1, 10 },
+          { minute_start_at + 2, 1, 7, 0, 0, 13, 19, 8, 1, 10, 1, 10 },
         }
 
         assert(strategy:insert_stats(test_data_1, node_1))
@@ -230,6 +238,38 @@ dao_helpers.for_each_dao(function(kong_conf)
                     },
                   }
                 },
+                latency_proxy_request_avg_ms = {
+                  levels = {
+                    cluster = {
+                      intervals = {
+                        seconds = { retention_period_seconds = 3600 },
+                        minutes = { retention_period_seconds = 90000 },
+                      },
+                    },
+                    nodes = {
+                      intervals = {
+                        seconds = { retention_period_seconds = 3600 },
+                        minutes = { retention_period_seconds = 90000 },
+                      },
+                    },
+                  }
+                },
+                latency_upstream_avg_ms = {
+                  levels = {
+                    cluster = {
+                      intervals = {
+                        seconds = { retention_period_seconds = 3600 },
+                        minutes = { retention_period_seconds = 90000 },
+                      },
+                    },
+                    nodes = {
+                      intervals = {
+                        seconds = { retention_period_seconds = 3600 },
+                        minutes = { retention_period_seconds = 90000 },
+                      },
+                    },
+                  }
+                },
               }
             }
 
@@ -261,9 +301,9 @@ dao_helpers.for_each_dao(function(kong_conf)
               },
               stats = {
                 cluster = {
-                  [tostring(minute_start_at)] = { 0, 0, cjson.null, cjson.null, cjson.null, cjson.null, 0 },
-                  [tostring(minute_start_at + 1)] = { 1, 8, 0, 99, 25, 212, 10 },
-                  [tostring(minute_start_at + 2)] = { 4, 11, 0, 8, 13, 9182, 12 }
+                  [tostring(minute_start_at)] = { 0, 0, cjson.null, cjson.null, cjson.null, cjson.null, 0, 10, 10 },
+                  [tostring(minute_start_at + 1)] = { 1, 8, 0, 99, 25, 212, 10, 10, 10 },
+                  [tostring(minute_start_at + 2)] = { 4, 11, 0, 8, 13, 9182, 12, 10, 10 }
                 }
               }
             }
@@ -292,7 +332,7 @@ dao_helpers.for_each_dao(function(kong_conf)
               },
               stats = {
                 cluster = {
-                  [tostring(minute_start_at)] = { 5, 19, 0, 99, 13, 9182, 22 }
+                  [tostring(minute_start_at)] = { 5, 19, 0, 99, 13, 9182, 22, 10, 10 }
                 }
               }
             }
@@ -343,13 +383,13 @@ dao_helpers.for_each_dao(function(kong_conf)
               },
               stats = {
                 ["20426633-55dc-4050-89ef-2382c95a611e"] = {
-                  [tostring(minute_start_at)] = { 0, 0, cjson.null, cjson.null, cjson.null, cjson.null, 0 },
-                  [tostring(minute_start_at + 1)] = { 0, 3, 0, 11, 193, 212, 1 },
-                  [tostring(minute_start_at + 2)] = { 3, 4, 1, 8, 60, 9182, 4 },
+                  [tostring(minute_start_at)] = { 0, 0, cjson.null, cjson.null, cjson.null, cjson.null, 0, 10, 10 },
+                  [tostring(minute_start_at + 1)] = { 0, 3, 0, 11, 193, 212, 1, 10, 10 },
+                  [tostring(minute_start_at + 2)] = { 3, 4, 1, 8, 60, 9182, 4, 10, 10 },
                 },
                 ["8374682f-17fd-42cb-b1dc-7694d6f65ba0"] = {
-                  [tostring(minute_start_at + 1)] = { 1, 5, 0, 99, 25, 144, 9 },
-                  [tostring(minute_start_at + 2)] = { 1, 7, 0, 0, 13, 19, 8 },
+                  [tostring(minute_start_at + 1)] = { 1, 5, 0, 99, 25, 144, 9, 10, 10 },
+                  [tostring(minute_start_at + 2)] = { 1, 7, 0, 0, 13, 19, 8, 10, 10 },
                 }
               }
             }
@@ -382,10 +422,10 @@ dao_helpers.for_each_dao(function(kong_conf)
               },
               stats = {
                 [node_1] = {
-                  [tostring(minute_start_at)] = { 3, 7, 0, 11, 60, 9182, 5 }
+                  [tostring(minute_start_at)] = { 3, 7, 0, 11, 60, 9182, 5, 10, 10 }
                 },
                 [node_2] = {
-                  [tostring(minute_start_at)] = { 2, 12, 0, 99, 13, 144, 17 }
+                  [tostring(minute_start_at)] = { 2, 12, 0, 99, 13, 144, 17, 10, 10 }
                 }
               }
             }
@@ -435,9 +475,9 @@ dao_helpers.for_each_dao(function(kong_conf)
               },
               stats = {
                 [node_1] = {
-                  [tostring(minute_start_at)] = { 0, 0, cjson.null, cjson.null, cjson.null, cjson.null, 0 },
-                  [tostring(minute_start_at + 1)] = { 0, 3, 0, 11, 193, 212, 1 },
-                  [tostring(minute_start_at + 2)] = { 3, 4, 1, 8, 60, 9182, 4 },
+                  [tostring(minute_start_at)] = { 0, 0, cjson.null, cjson.null, cjson.null, cjson.null, 0, 10, 10 },
+                  [tostring(minute_start_at + 1)] = { 0, 3, 0, 11, 193, 212, 1, 10, 10 },
+                  [tostring(minute_start_at + 2)] = { 3, 4, 1, 8, 60, 9182, 4, 10, 10 },
                 },
               }
             }
@@ -459,7 +499,7 @@ dao_helpers.for_each_dao(function(kong_conf)
             local expected = {
               stats = {
                 [node_1] = {
-                  [tostring(minute_start_at)] = { 3, 7, 0, 11, 60, 9182, 5 }
+                  [tostring(minute_start_at)] = { 3, 7, 0, 11, 60, 9182, 5, 10, 10 }
                 }
               },
               meta = {
@@ -551,7 +591,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         describe("GET", function()
           it("retrieves the consumers seconds data for the entire cluster", function()
-            local consumer = assert(helpers.dao.consumers:insert {
+            local consumer = assert(dao.consumers:insert {
               username = "bob",
               custom_id = "1234"
             })
@@ -581,7 +621,7 @@ dao_helpers.for_each_dao(function(kong_conf)
                 interval = "seconds",
                 earliest_ts = now,
                 latest_ts = now,
-                stat_labels = stat_labels,
+                stat_labels = consumer_stat_labels,
               },
               stats = {
                 cluster = {
@@ -608,7 +648,7 @@ dao_helpers.for_each_dao(function(kong_conf)
           end)
 
           it("returns a 400 if called with invalid query param", function()
-            local consumer = assert(helpers.dao.consumers:insert {
+            local consumer = assert(dao.consumers:insert {
               username = "bob",
               custom_id = "1234"
             })
@@ -636,7 +676,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         describe("GET", function()
           it("retrieves the consumers minutes data for all nodes", function()
-            local consumer = assert(helpers.dao.consumers:insert {
+            local consumer = assert(dao.consumers:insert {
               username = "bob",
               custom_id = "1234"
             })
@@ -670,7 +710,7 @@ dao_helpers.for_each_dao(function(kong_conf)
                 interval = "minutes",
                 earliest_ts = minute_start_at,
                 latest_ts = minute_start_at,
-                stat_labels = stat_labels,
+                stat_labels = consumer_stat_labels,
                 nodes = {
                   [node_1] = { hostname = "testhostname1"}
                 }
@@ -700,7 +740,7 @@ dao_helpers.for_each_dao(function(kong_conf)
           end)
 
           it("returns a 400 if called with invalid query param", function()
-            local consumer = assert(helpers.dao.consumers:insert {
+            local consumer = assert(dao.consumers:insert {
               username = "bob",
               custom_id = "1234"
             })
