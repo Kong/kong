@@ -420,7 +420,7 @@ function _M.resolve_workspace_entities(workspaces)
       local e_id   = ws_entity.entity_id
       local e_type = ws_entity.entity_type
 
-      if e_type == "workspace" then
+      if e_type == "workspaces" then
         assert(seen_workspaces[ws_id] == nil, "already seen workspace " ..
                                               ws_id)
         seen_workspaces[ws_id] = true

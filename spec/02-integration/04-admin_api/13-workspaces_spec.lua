@@ -181,12 +181,12 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
       assert(dao.workspace_entities:insert({
         workspace_id = w,
         entity_id = uuid1,
-        entity_type = "entity",
+        entity_type = "foo",
       }))
       assert(dao.workspace_entities:insert({
         workspace_id = w,
         entity_id = uuid2,
-        entity_type = "entity",
+        entity_type = "foo",
       }))
     end)
 
@@ -227,42 +227,33 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
 
     describe("POST", function()
       describe("creates a new relationship", function()
-        it("as an entity", function()
-          local e = utils.uuid()
-
-          local res = assert(client:send {
-            method = "POST",
-            path = "/workspaces/foo/entities",
-            body = {
-              entities = e,
-            },
-            headers = {
-              ["Content-Type"] = "application/json",
-            }
+        local entities = {}
+        setup(function()
+          local api1 = assert(dao.apis:insert {
+            name = "api1",
+            uris = "/uri",
+            upstream_url = "http://upstream",
           })
+          entities.apis = api1
 
-          local body = assert.res_status(201, res)
-          local json = cjson.decode(body)
+          local plugin1 = assert(dao.plugins:insert {
+            name = "key-auth",
+            config = {}
+          })
+          entities.plugins = plugin1
 
-          assert.equals(e, json[1].entity_id)
-          assert.equals("entity", json[1].entity_type)
-        end)
-
-        describe("as a workspace", function()
-          local w
-
-          setup(function()
-            w = assert(dao.workspaces:insert({
+          local workspace = assert(dao.workspaces:insert {
               name = "bar",
-            }))
-          end)
-
-          it("", function()
+          })
+          entities.workspaces = workspace
+        end)
+        it("with many entity types", function()
+          for entity_type, entity in pairs(entities) do
             local res = assert(client:send {
               method = "POST",
               path = "/workspaces/foo/entities",
               body = {
-                entities = w.id,
+                entities = entity.id,
               },
               headers = {
                 ["Content-Type"] = "application/json",
@@ -272,9 +263,9 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
             local body = assert.res_status(201, res)
             local json = cjson.decode(body)
 
-            assert.equals(w.id, json[1].entity_id)
-            assert.equals("workspace", json[1].entity_type)
-          end)
+            assert.equals(entity.id, json[1].entity_id)
+            assert.equals(entity_type, json[1].entity_type)
+          end
         end)
       end)
 
@@ -429,7 +420,7 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
       assert(dao.workspace_entities:insert({
         workspace_id = w_id,
         entity_id = e_id,
-        entity_type = "entity",
+        entity_type = "foo",
       }))
     end)
 
@@ -445,7 +436,7 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
 
         assert.equals(json.workspace_id, w_id)
         assert.equals(json.entity_id, e_id)
-        assert.equals(json.entity_type, "entity")
+        assert.equals(json.entity_type, "foo")
       end)
 
       it("sends the appropriate status on an invalid entity", function()

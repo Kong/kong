@@ -12,8 +12,7 @@ return {
     },
     entity_type = {
       type = "string",
-      required = true,
-      enum = { "workspace", "entity" },
+      required = false,
     },
   },
 }

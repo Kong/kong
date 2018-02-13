@@ -2,6 +2,25 @@ local cjson = require "cjson"
 local crud  = require "kong.api.crud_helpers"
 local utils = require "kong.tools.utils"
 local rbac  = require "kong.rbac"
+local workspaces = require "kong.workspaces"
+
+
+-- given an entity ID, look up its entity collection name;
+-- it is only called if the user does not pass in an entity_type
+local function resolve_entity_type(dao_factory, entity_id)
+  local workspaceable = workspaces.get_workspaceable_relations()
+  for relation, pk in pairs(workspaceable) do
+    local row, err = dao_factory[relation]:find_all{[pk] = entity_id}
+    if err then
+      return nil, err
+    end
+    if row[1] then
+      return relation
+    end
+  end
+  return false, "entity does not belong to any relation"
+end
+
 
 return {
   ["/workspaces/"] = {
@@ -134,10 +153,20 @@ return {
       -- yayyyy, no fuckup! now do the thing
       local res = {}
       for i = 1, #entity_ids do
+        local entity_type, err = resolve_entity_type(dao_factory, entity_ids[i])
+        -- database error
+        if entity_type == nil then
+          return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+        end
+        -- entity doesn't exist
+        if entity_type == false then
+          return helpers.responses.send_HTTP_BAD_REQUEST(err)
+        end
+
         local row, err = dao_factory.workspace_entities:insert({
           workspace_id = self.workspace.id,
           entity_id = entity_ids[i],
-          entity_type = ws_ref[entity_ids[i]] and "workspace" or "entity",
+          entity_type = entity_type,
         })
         if err then
           helpers.yield_error(err)
