@@ -61,7 +61,7 @@ function _M.find_workspace_by_name_or_id(self, dao_factory, helpers)
 
   self.workspace = rows[1]
   if not self.workspace then
-    return helpers.responses.send_HTTP_NOT_FOUND("No workspaceby name or id " ..
+    return helpers.responses.send_HTTP_NOT_FOUND("No workspace by name or id " ..
                                                  self.params.workspace_name_or_id)
   end
 
