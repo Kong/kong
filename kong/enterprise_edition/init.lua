@@ -2,6 +2,7 @@ local cjson      = require "cjson.safe"
 local log        = require "kong.cmd.utils.log"
 local meta       = require "kong.enterprise_edition.meta"
 local pl_file    = require "pl.file"
+local pl_utils   = require "pl.utils"
 local pl_path    = require "pl.path"
 local singletons = require "kong.singletons"
 
@@ -83,13 +84,21 @@ _M.read_license_info = read_license_info
 local function prepare_interface(interface_dir, interface_env, kong_config)
   local INTERFACE_PATH = kong_config.prefix .. "/" .. interface_dir
 
-  -- if the gui directory does not exist, we needn't bother attempting
-  -- to update a non-existant template. this occurs in development
-  -- environments where the gui does not exist (it is bundled at build
-  -- time), so this effectively serves to quiet useless warnings in kong-ee
-  -- development
+  -- if the interface directory does not exist, try symlinking it to its default
+  -- prefix location; otherwise, we needn't bother attempting to update a
+  -- non-existant template. this occurs in development environments where the
+  -- gui does not exist (it is bundled at build time), so this effectively
+  -- serves to quiet useless warnings in kong-ee development
   if not pl_path.exists(INTERFACE_PATH) then
-    return
+
+    local def_interface_path = "/usr/local/kong/" .. interface_dir
+    if INTERFACE_PATH == def_interface_path or
+      not pl_path.exists(def_interface_path) then
+      return
+    end
+
+    local ln_cmd = "ln -s " .. def_interface_path .. " " .. INTERFACE_PATH
+    pl_utils.executeex(ln_cmd)
   end
 
   local compile_env = interface_env
