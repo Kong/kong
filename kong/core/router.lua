@@ -831,7 +831,7 @@ function _M.new(apis)
       end
     end
 
-    local req_host = ngx.var.http_host
+    local req_host = ngx.var.http_host or ""
 
     local match_t = find_api(method, uri, req_host, ngx)
     if not match_t then
