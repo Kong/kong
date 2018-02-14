@@ -16,6 +16,7 @@ return {
   table = "plugins",
   primary_key = {"id", "name"},
   cache_key = { "name", "api_id", "consumer_id" },
+  workspaceable = true,
   fields = {
     id = {
       type = "id",

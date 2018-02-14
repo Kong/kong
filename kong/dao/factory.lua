@@ -2,6 +2,7 @@ local DAO = require "kong.dao.dao"
 local utils = require "kong.tools.utils"
 local ModelFactory = require "kong.dao.model_factory"
 local ee_dao_factory = require "kong.enterprise_edition.dao.factory"
+local workspaces = require "kong.workspaces"
 
 local CORE_MODELS = {
   "apis",
@@ -91,6 +92,10 @@ local function load_daos(self, schemas, constraints)
   for m_name, schema in pairs(schemas) do
     self.daos[m_name] = DAO(self.db, ModelFactory(schema), schema,
                             constraints[m_name])
+
+    if schema.workspaceable then
+      workspaces.register_workspaceable_relation(m_name, schema.primary_key)
+    end
   end
 end
 

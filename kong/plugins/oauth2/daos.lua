@@ -23,6 +23,7 @@ local OAUTH2_CREDENTIALS_SCHEMA = {
   primary_key = {"id"},
   table = "oauth2_credentials",
   cache_key = { "client_id" },
+  workspaceable = true,
   fields = {
     id = { type = "id", dao_insert_value = true },
     consumer_id = { type = "id", required = true, foreign = "consumers:id" },
@@ -53,6 +54,7 @@ local OAUTH2_TOKENS_SCHEMA = {
   primary_key = {"id"},
   table = "oauth2_tokens",
   cache_key = { "access_token" },
+  workspaceable = true,
   fields = {
     id = { type = "id", dao_insert_value = true },
     api_id = { type = "id", required = false, foreign = "apis:id" },

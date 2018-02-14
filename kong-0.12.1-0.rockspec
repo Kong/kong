@@ -161,6 +161,8 @@ build = {
     ["kong.rbac"] = "kong/rbac/init.lua",
     ["kong.rbac.handler"] = "kong/rbac/handler.lua",
 
+    ["kong.workspaces"] = "kong/workspaces/init.lua",
+
     ["kong.vitals"] = "kong/vitals/init.lua",
     ["kong.vitals.cassandra.strategy"] = "kong/vitals/cassandra/strategy.lua",
     ["kong.vitals.postgres.strategy"] = "kong/vitals/postgres/strategy.lua",

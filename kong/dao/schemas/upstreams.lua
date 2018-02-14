@@ -141,6 +141,7 @@ end
 return {
   table = "upstreams",
   primary_key = {"id"},
+  workspaceable = true,
   fields = {
     id = {
       type = "id",

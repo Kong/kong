@@ -2,6 +2,7 @@ return {
   table = "workspaces",
   primary_key = { "id" },
   cache_key = { "id" },
+  workspaceable = true,
   fields = {
     id = {
       type = "id",
