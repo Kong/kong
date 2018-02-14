@@ -66,6 +66,12 @@ describe("Plugin: AWS Lambda (access)", function()
       upstream_url = "http://httpbin.org"
     })
 
+    local api11 = assert(helpers.dao.apis:insert {
+      name = "lambda11.com",
+      hosts = { "lambda11.com" },
+      upstream_url = helpers.mock_upstream_url,
+    })
+
     assert(helpers.dao.plugins:insert {
       name   = "aws-lambda",
       api_id = api1.id,
@@ -196,6 +202,23 @@ describe("Plugin: AWS Lambda (access)", function()
         forward_request_uri = false,
         forward_request_headers = true,
         forward_request_body = true,
+      }
+    })
+
+    assert(helpers.dao.plugins:insert {
+      name = "aws-lambda",
+      api_id = api11.id,
+      config = {
+        port = 10001,
+        aws_key = "mock-key",
+        aws_secret = "mock-secret",
+        aws_region = "us-east-1",
+        function_name = "kongLambdaTest",
+        forward_request_method = true,
+        forward_request_uri = false,
+        forward_request_headers = true,
+        forward_request_body = true,
+        dynamic_lambda_key = "lambda-key"
       }
     })
 
@@ -498,5 +521,39 @@ describe("Plugin: AWS Lambda (access)", function()
     })
     assert.res_status(412, res)
     assert.equal("Unhandled", res.headers["X-Amz-Function-Error"])
+  end)
+  it("invokes a Lambda function with a dynamic name in header", function()
+    local res = assert(client:send {
+      method = "GET",
+      path = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+      headers = {
+        ["Host"] = "lambda11.com",
+        ["lambda-key"] = "dynamicLambdaFunction"
+      }
+    })
+    assert.res_status(200, res)
+    assert.is_equal("dynamicLambdaFunction", res.headers["x-amzn-RequestId"])
+  end)
+  it("invokes a Lambda function with a dynamic name in args", function()
+    local res = assert(client:send {
+      method = "GET",
+      path = "/get?lambda-key=dynamicLambdaFunctionArgs",
+      headers = {
+        ["Host"] = "lambda11.com",
+      }
+    })
+    assert.res_status(200, res)
+    assert.is_equal("dynamicLambdaFunctionArgs", res.headers["x-amzn-RequestId"])
+  end)
+  it("invokes a Lambda function with a dynamic name fall to default", function()
+    local res = assert(client:send {
+      method = "GET",
+      path = "/get?key=value",
+      headers = {
+        ["Host"] = "lambda11.com",
+      }
+    })
+    assert.res_status(200, res)
+    assert.is_equal("kongLambdaTest", res.headers["x-amzn-RequestId"])
   end)
 end)
