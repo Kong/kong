@@ -80,6 +80,9 @@ return {
       type = "number",
       func = check_status,
     },
+    handled_status_pattern = {
+      type = "string",
+    },
     forward_request_method = {
       type = "boolean",
       default = false,

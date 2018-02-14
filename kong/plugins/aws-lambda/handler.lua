@@ -141,14 +141,23 @@ function AWSLambdaHandler:access(conf)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
+  local return_code = res.status
   if conf.unhandled_status
      and headers["X-Amz-Function-Error"] == "Unhandled"
   then
-    ngx.status = conf.unhandled_status
+    return_code = conf.unhandled_status
 
-  else
-    ngx.status = res.status
+  elseif conf.handled_status_pattern
+    and headers["X-Amz-Function-Error"] == "Handled"
+  then
+    local code = tonumber(string.match(body, conf.handled_status_pattern))
+    -- supply provided code
+    if code and code >= 100 and code <= 999 then
+      return_code = code
+    end
   end
+
+  ngx.status = return_code
 
   -- Send response to client
   for k, v in pairs(headers) do
