@@ -199,7 +199,7 @@ http {
             content_by_lua_block {
                 local function say(res, status)
 
-                  local functionName = string.match(ngx.var.uri, "/2015-03-31/functions/(?:[^/])*/invocations")
+                  local functionName = string.match(ngx.var.uri, "^.+/(.+)/invocations$")
                   ngx.header["x-amzn-RequestId"] = functionName
                   if functionName == "functionWithUnhandledError" then
                     ngx.header["X-Amz-Function-Error"] = "Unhandled"
