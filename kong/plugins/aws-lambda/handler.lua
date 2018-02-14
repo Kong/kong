@@ -118,7 +118,7 @@ function AWSLambdaHandler:access(conf)
     function_name = conf.function_name
   end
 
-  path = string.format("/2015-03-31/functions/%s/invocations", function_name)
+  local path = string.format("/2015-03-31/functions/%s/invocations", function_name)
 
   local opts = {
     region = conf.aws_region,
