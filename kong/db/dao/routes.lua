@@ -1,4 +1,0 @@
-local RoutesDAO = {}
-
-
-return RoutesDAO

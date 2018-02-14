@@ -84,6 +84,4 @@ return {
   entity_checks = {
     { at_least_one_of = {"methods", "hosts", "paths"} },
   },
-
-  dao = "kong.db.dao.routes",
 }

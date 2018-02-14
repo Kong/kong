@@ -129,8 +129,6 @@ build = {
     ["kong.db"] = "kong/db/init.lua",
     ["kong.db.errors"] = "kong/db/errors.lua",
     ["kong.db.dao"] = "kong/db/dao/init.lua",
-    ["kong.db.dao.routes"] = "kong/db/dao/routes.lua",
-    ["kong.db.dao.services"] = "kong/db/dao/services.lua",
     ["kong.db.schema"] = "kong/db/schema/init.lua",
     ["kong.db.schema.entities.routes"] = "kong/db/schema/entities/routes.lua",
     ["kong.db.schema.entities.services"] = "kong/db/schema/entities/services.lua",
@@ -145,8 +143,6 @@ build = {
     ["kong.db.strategies.cassandra.services"] = "kong/db/strategies/cassandra/services.lua",
     ["kong.db.strategies.postgres"] = "kong/db/strategies/postgres/init.lua",
     ["kong.db.strategies.postgres.connector"] = "kong/db/strategies/postgres/connector.lua",
-    ["kong.db.strategies.postgres.routes"] = "kong/db/strategies/postgres/routes.lua",
-    ["kong.db.strategies.postgres.services"] = "kong/db/strategies/postgres/services.lua",
 
     ["kong.plugins.base_plugin"] = "kong/plugins/base_plugin.lua",
 

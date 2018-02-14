@@ -1,4 +1,0 @@
-local ServicesDAO = {}
-
-
-return ServicesDAO
