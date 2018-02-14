@@ -147,10 +147,6 @@ build = {
     ["kong.db.strategies.postgres.connector"] = "kong/db/strategies/postgres/connector.lua",
     ["kong.db.strategies.postgres.routes"] = "kong/db/strategies/postgres/routes.lua",
     ["kong.db.strategies.postgres.services"] = "kong/db/strategies/postgres/services.lua",
-    ["kong.db.strategies.fake"] = "kong/db/strategies/fake/init.lua",
-    ["kong.db.strategies.fake.connector"] = "kong/db/strategies/fake/connector.lua",
-    ["kong.db.strategies.fake.routes"] = "kong/db/strategies/fake/routes.lua",
-    ["kong.db.strategies.fake.services"] = "kong/db/strategies/fake/services.lua",
 
     ["kong.plugins.base_plugin"] = "kong/plugins/base_plugin.lua",
 

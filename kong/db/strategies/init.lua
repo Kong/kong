@@ -5,7 +5,6 @@ local _M = {}
 
 
 _M.STRATEGIES   = {
-  ["fake"]      = true,
   ["postgres"]  = true,
   ["cassandra"] = true,
 }
