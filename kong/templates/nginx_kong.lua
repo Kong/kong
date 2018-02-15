@@ -196,8 +196,8 @@ server {
         add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
         etag off;
 
-        access_log logs/admin_gui_access.log;
-        error_log logs/admin_gui_error.log;
+        access_log ${{ADMIN_GUI_ACCESS_LOG}};
+        error_log ${{ADMIN_GUI_ERROR_LOG}};
     }
 
     location /robots.txt {

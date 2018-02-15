@@ -98,6 +98,18 @@
                                  # web interface and should be kept private
                                  # and secured.
 
+#admin_gui_access_log = logs/admin_gui_access.log  # Path for admin gui request
+                                                   # access logs. If this value
+                                                   # is a relative path it will
+                                                   # be placed under the `prefix`
+                                                   # location
+
+#admin_gui_error_log = logs/admin_gui_error.log    # Path for admin gui request
+                                                   # error logs. If this value
+                                                   # is a relative path it will
+                                                   # be placed under the `prefix`
+                                                   # location
+
 #admin_gui_listen_ssl = 0.0.0.0:8445 # Address and port on which Kong will
                                      # accept HTTPS requests to the admin GUI,
                                      # if `admin_ssl` is enabled.

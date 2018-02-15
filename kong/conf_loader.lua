@@ -72,6 +72,8 @@ local CONF_INFERENCES = {
   admin_listen_ssl = {typ = "string"},
   admin_gui_listen = {typ = "string"},
   admin_gui_listen_ssl = {typ = "string"},
+  admin_gui_error_log = {type = "string"},
+  admin_gui_access_log = {type = "string"},
   db_update_frequency = { typ = "number" },
   db_update_propagation = { typ = "number" },
   db_cache_ttl = { typ = "number" },
@@ -559,6 +561,7 @@ local function load(path, custom_conf)
     local admin_ip, admin_port = string.match(conf.admin_listen, ip_port_pat)
     local admin_ssl_ip, admin_ssl_port = string.match(conf.admin_listen_ssl, ip_port_pat)
     local admin_gui_ip, admin_gui_port = string.match(conf.admin_gui_listen, ip_port_pat)
+    local admin_gui_access_log, admin_gui_error_log = string.match(conf.admin_gui_access_log, conf.admin_gui_error_log)
     local admin_gui_ssl_ip, admin_gui_ssl_port = string.match(conf.admin_gui_listen_ssl, ip_port_pat)
 
     local proxy_ip, proxy_port = string.match(conf.proxy_listen, ip_port_pat)

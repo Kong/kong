@@ -38,6 +38,8 @@ admin_listen = 127.0.0.1:8001
 admin_listen_ssl = 127.0.0.1:8444
 admin_gui_listen = 0.0.0.0:8002
 admin_gui_listen_ssl = 0.0.0.0:8445
+admin_gui_access_log = logs/admin_gui_access.log
+admin_gui_error_log = logs/admin_gui_error.log
 
 nginx_user = nobody nobody
 nginx_worker_processes = auto
