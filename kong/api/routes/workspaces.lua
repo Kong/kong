@@ -102,10 +102,6 @@ return {
       end
 
 
-      -- which one of these are workspace references?
-      local ws_ref = {}
-
-
       local entity_ids = utils.split(self.params.entities, ",")
 
       for i = 1, #entity_ids do
@@ -138,14 +134,6 @@ return {
                       "'" .. e .. "' already references '" ..
                       self.workspace.id .. "')"
           return helpers.responses.send_HTTP_CONFLICT(err)
-        end
-
-        local ws_ref_row, err = dao_factory.workspaces:find({id = e})
-        if err then
-          return helpers.yield_error(err)
-        end
-        if ws_ref_row then
-          ws_ref[e] = true
         end
       end
 
