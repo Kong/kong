@@ -308,5 +308,20 @@ return {
         PRIMARY KEY(workspace_id, entity_id)
       );
     ]],
+  },
+  {
+    name = "2018-02-02-110000_default_workspaces",
+    up = function(_, _, dao)
+      local constants = require("kong.constants")
+      local utils     = require "kong.tools.utils"
+
+      local _, err = dao.workspaces:insert({
+        id   = utils.uuid(),
+        name = constants.DEFAULT_WORKSPACE,
+      })
+      if err then
+        return err
+      end
+    end,
   }
 }

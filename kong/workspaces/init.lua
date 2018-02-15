@@ -1,4 +1,10 @@
+local singletons = require "kong.singletons"
+local utils      = require "kong.tools.utils"
+
+
 local _M = {}
+
+_M.DEFAULT_WORKSPACE = "default"
 
 
 -- a map of workspaceable relations to its primary key name
@@ -73,6 +79,66 @@ function _M.get_default_workspace_migration()
       },
     }
   }
+end
+
+
+function _M.retrieve_workspace(workspace_name)
+  workspace_name = workspace_name and workspace_name or
+                   _M.DEFAULT_WORKSPACE
+
+  local rows, err = singletons.dao.workspaces:find_all({
+    name = workspace_name
+  })
+  if err then
+    return nil, err
+  end
+
+  if err then
+    log(ngx.ERR, "error in retrieving workspace: ", err)
+    return nil, err
+  end
+
+  if not rows or #rows == 0 then
+    return nil
+  end
+
+  return rows[1]
+end
+
+
+function _M.add_entity_releation(dao_collection, entity, workspace)
+  local rel, err
+
+  -- TODO primary key may not `id`
+  local primary_key = dao_collection.schema.primary_key[1]
+  local primary_key_type = dao_collection.schema.fields[primary_key].type
+  if primary_key_type  == "id" and entity[primary_key] then
+    rel, err = singletons.dao.workspace_entities:insert({
+      workspace_id = workspace.id,
+      entity_id = entity[primary_key],
+      entity_type = dao_collection.table == "workspaces" and "workspace"
+                    or dao_collection.table
+    })
+  end
+
+  return rel, err
+end
+
+
+function _M.delete_entity_releation(dao_collection, entity)
+  local rel, err
+
+  -- TODO primary key may not `id`
+  local primary_key = dao_collection.schema.primary_key[1]
+  local primary_key_type = dao_collection.schema.fields[primary_key].type
+  if primary_key_type == "id" and entity[primary_key] then
+    row, err = singletons.dao.workspace_entities:delete({
+      entity_id = entity[primary_key]
+    })
+
+  end
+
+  return rel, err
 end
 
 

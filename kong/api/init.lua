@@ -7,6 +7,7 @@ local app_helpers = require "lapis.application"
 local api_helpers = require "kong.api.api_helpers"
 
 local rbac = require "kong.rbac"
+local ws   = require "kong.workspaces"
 
 
 local find = string.find
@@ -98,7 +99,19 @@ app:before_filter(function(self)
 
     -- save workspace name in the context; if not passed, default workspace is
     -- 'default'
-    ngx.ctx.rbac_workspace = self.params.workspace_name or "default"
+    if self.params.workspace_name == "*" then
+      ngx.ctx.workspace = {
+        name = "*"
+      }
+    else
+      local workspace = ws.retrieve_workspace(self.params.workspace_name)
+      if not workspace then
+        responses.send_HTTP_NOT_FOUND()
+      end
+      ngx.ctx.workspace = ws.retrieve_workspace(self.params.workspace_name)
+    end
+
+    ngx.ctx.workspace_entities_schema = singletons.dao.workspace_entities.schema
     self.params.workspace_name = nil
   end
 

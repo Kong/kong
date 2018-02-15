@@ -1,9 +1,11 @@
 local printable_mt = require "kong.tools.printable"
+local utils = require "kong.tools.utils"
 local setmetatable = setmetatable
 local getmetatable = getmetatable
 local tostring = tostring
 local type = type
 local fmt = string.format
+
 
 local error_mt = {}
 
@@ -33,8 +35,14 @@ local ERRORS = {
 local serializers = {
   [ERRORS.unique] = function(tbl)
     local ret = {}
-    for k, v in pairs(tbl) do
+    for k , v in pairs(tbl) do
       ret[k] = "already exists with value '" .. v .. "'"
+
+      local ws_value = utils.split(v , ":")
+      if #ws_value > 1 then
+        ret[k] = fmt("already exists with value '%s' in workspace '%s'" ,
+          ws_value[2] , ws_value[1])
+      end
     end
     return ret
   end,

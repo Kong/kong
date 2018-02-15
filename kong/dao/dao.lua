@@ -16,7 +16,7 @@ local Object = require "kong.vendor.classic"
 local utils = require "kong.tools.utils"
 local Errors = require "kong.dao.errors"
 local schemas_validation = require "kong.dao.schemas_validation"
-
+local ws_util = require "kong.workspaces"
 
 local fmt    = string.format
 local new_tab
@@ -27,7 +27,6 @@ do
     new_tab = function(narr, nrec) return {} end
   end
 end
-
 
 local RANDOM_VALUE = utils.random_string()
 
@@ -67,6 +66,37 @@ local function ret_error(db_name, res, err, ...)
   end
 
   return res, err, ...
+end
+
+local function apply_unique_per_ws(dao_collection, params, workspace)
+  local unique_fields = {}
+
+  if not workspace or
+     dao_collection.table == "workspaces" and
+     workspace.name == ws_util.DEFAULT_WORKSPACE then
+    return
+  end
+
+  for field_name, schema in pairs(dao_collection.fields) do
+    if schema.type ~= "id" and schema.unique and params[field_name] then
+      params[field_name] = fmt("%s:%s", workspace.name, params[field_name])
+      unique_fields[field_name] = params[field_name]
+    end
+  end
+  return unique_fields
+end
+
+local function remove_ws_prefix(dao_collection, row)
+
+  for field_name, schema in pairs(dao_collection.fields) do
+    if schema.type ~= "id" and schema.unique and row[field_name] then
+      local names = utils.split(row[field_name], ":")
+      if #names > 1 then
+        row.workspace = names[1]
+        row[field_name] = names[2]
+      end
+    end
+  end
 end
 
 local DAO = Object:extend()
@@ -125,6 +155,7 @@ end
 -- @treturn table err If an error occured, a table describing the issue.
 function DAO:insert(tbl, options)
   options = options or {}
+  local ws = ngx.ctx.workspace
   check_arg(tbl, 1, "table")
   check_arg(options, 2, "table")
 
@@ -134,6 +165,7 @@ function DAO:insert(tbl, options)
     return ret_error(self.db.name, nil, err)
   end
 
+  apply_unique_per_ws(self.schema, model, ws)
   for col, field in pairs(model.__schema.fields) do
     if field.dao_insert_value and model[col] == nil then
       local f = self.db.dao_insert_values[field.type]
@@ -145,6 +177,9 @@ function DAO:insert(tbl, options)
 
   local res, err = self.db:insert(self.table, self.schema, model, self.constraints, options)
   if not err and not options.quiet then
+    if ws then
+      remove_ws_prefix(self.schema, res)
+    end
     if self.events then
       local _, err = self.events.post_local("dao:crud", "create", {
         schema    = self.schema,
@@ -167,6 +202,8 @@ end
 function DAO:find(tbl)
   check_arg(tbl, 1, "table")
   check_utf8(tbl, 1)
+  local ws = tbl.workspace_name
+  apply_unique_per_ws(self.schema, tbl, ws)
 
   local model = self.model_mt(tbl)
   if not model:has_primary_keys() then
@@ -178,7 +215,15 @@ function DAO:find(tbl)
     return ret_error(self.db.name, nil, Errors.schema(err))
   end
 
-  return ret_error(self.db.name, self.db:find(self.table, self.schema, primary_keys))
+
+  do
+    local row, err = self.db:find(self.table, self.schema, primary_keys)
+    remove_ws_prefix(self.schema, row)
+
+    return ret_error(self.db.name, rows, err)
+  end
+
+  return ret_error(self.db.name, self.db:find(self.table, self.schema, primary_keys), err)
 end
 
 --- Find all rows.
@@ -196,9 +241,19 @@ function DAO:find_all(tbl)
     if not ok then
       return ret_error(self.db.name, nil, Errors.schema(err))
     end
+
+    apply_unique_per_ws(self.schema, tbl, ngx.ctx.workspace)
   end
 
-  return ret_error(self.db.name, self.db:find_all(self.table, tbl, self.schema))
+  do
+    local rows, err = self.db:find_all(self.table, tbl, self.schema)
+    for _, row in ipairs(rows) do
+      remove_ws_prefix(self.schema, row)
+    end
+    return ret_error(self.db.name, rows, err)
+  end
+
+  return ret_error(self.db.name, self.db:find_all(self.table, tbl, self.schema), err)
 end
 
 --- Find a paginated set of rows.
@@ -209,13 +264,16 @@ end
 -- @treturn table rows An array of rows.
 -- @treturn table err If an error occured, a table describing the issue.
 function DAO:find_page(tbl, page_offset, page_size)
-   if tbl ~= nil then
+
+  if tbl ~= nil then
     check_arg(tbl, 1, "table")
     check_not_empty(tbl, 1)
     local ok, err = schemas_validation.is_schema_subset(tbl, self.schema)
     if not ok then
       return ret_error(self.db.name, nil, Errors.schema(err))
     end
+
+    apply_unique_per_ws(self.schema, tbl, ngx.ctx.workspace)
   end
 
   if page_size == nil then
@@ -224,7 +282,15 @@ function DAO:find_page(tbl, page_offset, page_size)
 
   check_arg(page_size, 3, "number")
 
-  return ret_error(self.db.name, self.db:find_page(self.table, tbl, page_offset, page_size, self.schema))
+  do
+    local rows, err = self.db:find_page(self.table, tbl, page_offset, page_size, self.schema)
+    for _, row in ipairs(rows) do
+      remove_ws_prefix(self.schema, row)
+    end
+    return ret_error(self.db.name, rows, err)
+  end
+
+  return ret_error(self.db.name, self.db:find_page(self.table, tbl, page_offset, page_size, self.schema), err)
 end
 
 --- Count the number of rows.
@@ -233,6 +299,7 @@ end
 -- @treturn number count The total count of rows matching the given filter, or total count of rows if no filter was given.
 -- @treturn table err If an error occured, a table describing the issue.
 function DAO:count(tbl)
+
   if tbl ~= nil then
     check_arg(tbl, 1, "table")
     check_not_empty(tbl, 1)
@@ -240,6 +307,8 @@ function DAO:count(tbl)
     if not ok then
       return ret_error(self.db.name, nil, Errors.schema(err))
     end
+
+    apply_unique_per_ws(self.schema, tbl, ngx.ctx.workspace)
   end
 
   if tbl ~= nil and next(tbl) == nil then
@@ -292,7 +361,7 @@ function DAO:update(tbl, filter_keys, options)
   check_arg(options, 3, "table")
 
   for k, v in pairs(filter_keys) do
-    if tbl[k] == nil then
+    if tbl[k] == nil and k ~= "workspace" then
       tbl[k] = v
     end
   end
@@ -302,11 +371,11 @@ function DAO:update(tbl, filter_keys, options)
   if not ok then
     return ret_error(self.db.name, nil, err)
   end
-
   local primary_keys, values, nils, err = model:extract_keys()
   if err then
     return ret_error(self.db.name, nil, Errors.schema(err))
   end
+
 
   local old, err = self.db:find(self.table, self.schema, primary_keys)
   if err then
@@ -319,10 +388,12 @@ function DAO:update(tbl, filter_keys, options)
     fix(old, values, self.schema)
   end
 
+  apply_unique_per_ws(self.schema, values, ngx.ctx.workspace)
   local res, err = self.db:update(self.table, self.schema, self.constraints, primary_keys, values, nils, options.full, model, options)
   if err then
     return ret_error(self.db.name, nil, err)
   elseif res then
+    remove_ws_prefix(self.schema, res)
     if not options.quiet then
       if self.events then
         local _, err = self.events.post_local("dao:crud", "update", {
@@ -352,6 +423,7 @@ function DAO:delete(tbl, options)
   options = options or {}
   check_arg(tbl, 1, "table")
   check_arg(options, 2, "table")
+  apply_unique_per_ws(self.schema, tbl, ngx.ctx.workspace)
 
   local model = self.model_mt(tbl)
   if not model:has_primary_keys() then
@@ -379,9 +451,20 @@ function DAO:delete(tbl, options)
     end
   end
 
+  local ws = ngx.ctx.workspace
   local row, err = self.db:delete(self.table, self.schema, primary_keys, self.constraints)
-  if not err and row ~= nil and not options.quiet then
-    if self.events then
+  if not err and row ~= nil then
+    if ws then
+      local rel, err = ws_util.delete_entity_releation(self, self, row)
+      if err_rel then
+        ngx.log(ngx.ERR,
+                "could not delete enitity releationship with workspace: ",
+                err_rel)
+      end
+    end
+
+
+    if not options.quiet and self.events then
       local _, err = self.events.post_local("dao:crud", "delete", {
         schema    = self.schema,
         operation = "delete",
@@ -393,9 +476,19 @@ function DAO:delete(tbl, options)
     end
 
     -- Also propagate the deletion for the associated entities
+
     for k, v in pairs(associated_entites) do
       for _, entity in ipairs(v.entities) do
-        if self.events then
+        if ws then
+          local rel, err = ws_util.delete_entity_releation(v, entity)
+          if err_rel then
+            ngx.log(ngx.ERR,
+              "could not delete enitity releationship with workspace: ",
+              err_rel)
+          end
+        end
+
+        if not options.quiet and self.events then
           local _, err = self.events.post_local("dao:crud", "delete", {
             schema    = v.schema,
             operation = "delete",

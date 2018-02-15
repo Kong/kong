@@ -24,6 +24,17 @@ local function log(lvl, ...)
   return ngx_log(lvl, "[postgres] ", ...)
 end
 
+local function get_workspace()
+  local r = getfenv(0).__ngx_req
+  if not r then
+    return  {
+      name = "*"
+    }
+  else
+    return ngx.ctx.workspace
+  end
+end
+
 local _M = require("kong.dao.db").new_db("postgres")
 
 -- force the use of luasocket for pgmoon connections where
@@ -257,11 +268,29 @@ local function get_where(tbl)
   local where = {}
 
   for col, value in pairs(tbl) do
-    where[#where+1] = fmt("%s = %s",
-                          escape_identifier(col),
-                          escape_literal(value))
+    if col ~= "workspace_name" then
+      where[#where+1] = fmt("%s = %s",
+        escape_identifier(col),
+        escape_literal(value))
+    end
   end
 
+  return concat(where, " AND ")
+end
+
+local function get_where_ws(tbl, table_name)
+  local where = {}
+  local count = 0
+  for col, value in pairs(tbl) do
+    where[#where+1] = fmt("%s.%s = %s",
+      table_name,
+      escape_identifier(col),
+      escape_literal(value))
+    count = count + 1
+  end
+  if count == 0 then
+    return nil
+  end
   return concat(where, " AND ")
 end
 
@@ -272,6 +301,18 @@ local function get_select_fields(schema)
       fields[#fields+1] = fmt("(extract(epoch from %s)*1000)::bigint as %s", k, k)
     else
       fields[#fields+1] = '"' .. k .. '"'
+    end
+  end
+  return concat(fields, ", ")
+end
+
+local function get_select_fields_ws(schema, table_name)
+  local fields = {}
+  for k, v in pairs(schema.fields) do
+    if v.type == "timestamp" then
+      fields[#fields+1] = fmt("(extract(epoch from %s.%s)*1000)::bigint as %s", table_name, k, k)
+    else
+      fields[#fields+1] = table_name .. "." .. '"' ..  k .. '"'
     end
   end
   return concat(fields, ", ")
@@ -309,6 +350,63 @@ local function select_query(self, select_clause, schema, table, where, offset, l
   end
   return query
 end
+
+
+local function select_query_ws(self, workspace, select_clause, schema, table, where, offset, limit)
+  local query, join_tbl, join_where
+  local default_ws = require("kong.workspaces").DEFAULT_WORKSPACE
+  local join_ws = (workspace ~= nil)
+  local join_ttl = schema.primary_key and #schema.primary_key == 1
+
+  if join_ws then
+    join_tbl = fmt([[
+      workspaces w INNER  JOIN workspace_entities e
+      ON ( e.workspace_id = w.id ) %s JOIN %s %s ON ( e.entity_id = %s.id )
+    ]], (workspace == default_ws or workspace == "*") and "RIGHT OUTER" or "INNER",
+      table, table, table, schema.primary_key[1])
+
+    if workspace ~= "*" then
+      join_where = fmt("( w.name = '%s' %s ", workspace,
+        workspace == default_ws and " or ( e.entity_id is null and e.workspace_id is null ))" or " )")
+    end
+  end
+
+  if join_ttl then
+    local primary_key_type, err = retrieve_primary_key_type(self, schema, table)
+    if not primary_key_type then
+      return nil, err
+    end
+
+    join_tbl = fmt("%s LEFT OUTER JOIN ttls ON (%s.%s = ttls.primary_%s_value)",
+      join_tbl and join_tbl or table, table, schema.primary_key[1],
+      primary_key_type == "uuid" and "uuid" or "key")
+
+    join_where = ( join_where and (join_where .. " AND ") or "") .. fmt([[
+      (ttls.primary_key_value IS NULL
+       OR (ttls.table_name = '%s' AND expire_at > CURRENT_TIMESTAMP(0) at time zone 'utc'))
+    ]], table)
+  end
+
+  if join_tbl then
+    query = fmt("SELECT %s FROM %s %s", select_clause,
+      join_tbl, (join_where and " WHERE " .. join_where) or "")
+  else
+    query = fmt("SELECT %s FROM %s", select_clause, table)
+  end
+
+  if where then
+    query = query .. (join_where and " AND " or " WHERE ") .. where
+  end
+  if limit then
+    query = query .. " LIMIT " .. limit
+  end
+  if offset and offset > 0 then
+    query = query .. " OFFSET " .. offset
+  end
+
+  return query
+end
+
 
 --- Querying
 -- @section querying
@@ -435,25 +533,44 @@ function _M:insert(table_name, schema, model, _, options)
 end
 
 function _M:find(table_name, schema, primary_keys)
-  local where = get_where(primary_keys)
-  local query = select_query(self, get_select_fields(schema), schema, table_name, where)
+  local ws = get_workspace()
+
+  local where = ws and get_where_ws(primary_keys, table_name) or get_where(primary_keys)
+
+  local query
+  if ws then
+    query = select_query_ws(self, ws.name, get_select_fields_ws(schema, table_name), schema, table_name, where)
+  else
+    query = select_query(self, get_select_fields(schema), schema, table_name, where)
+  end
+
   local rows, err = self:query(query, schema)
-  if not rows then       return nil, err
+  if not rows then return nil, err
   elseif #rows <= 1 then return rows[1]
   else                   return nil, "bad rows result" end
 end
 
 function _M:find_all(table_name, tbl, schema)
+  local ws = get_workspace()
+
   local where
   if tbl then
-    where = get_where(tbl)
+    where = ws and get_where_ws(tbl, table_name) or get_where(tbl)
   end
 
-  local query = select_query(self, get_select_fields(schema), schema, table_name, where)
+  local query
+  if ws then
+    query = select_query_ws(self, ws.name, get_select_fields_ws(schema, table_name), schema, table_name, where)
+  else
+    query = select_query(self, get_select_fields(schema), schema, table_name, where)
+  end
+
   return self:query(query, schema)
 end
 
 function _M:find_page(table_name, tbl, page, page_size, schema)
+  local ws = get_workspace()
+
   page = page or 1
 
   local total_count, err = self:count(table_name, tbl, schema)
@@ -466,10 +583,21 @@ function _M:find_page(table_name, tbl, page, page_size, schema)
 
   local where
   if tbl then
-    where = get_where(tbl)
+    if ws then
+      where = get_where_ws(tbl, table_name)
+    else
+      where = get_where(tbl)
+    end
   end
 
-  local query = select_query(self, get_select_fields(schema), schema, table_name, where, offset, page_size)
+  local query
+  if ws then
+    query = select_query_ws(self, ws.name, get_select_fields_ws(schema, table_name), schema, table_name, where, offset, page_size)
+  else
+    query = select_query(self, get_select_fields(schema), schema, table_name, where, offset, page_size)
+  end
+
+
   local rows, err = self:query(query, schema)
   if not rows then
     return nil, err
@@ -480,12 +608,23 @@ function _M:find_page(table_name, tbl, page, page_size, schema)
 end
 
 function _M:count(table_name, tbl, schema)
+  local ws = get_workspace()
+
   local where
   if tbl then
-    where = get_where(tbl)
+    if ws then
+      where = get_where_ws(tbl, table_name)
+    else
+      where = get_where(tbl)
+    end
   end
 
-  local query = select_query(self, "COUNT(*)", schema, table_name, where)
+  local query
+  if ws then
+    query = select_query_ws(self, ws.name, "COUNT(*)", schema, table_name, where)
+  else
+    query = select_query(self, "COUNT(*)", schema, table_name, where)
+  end
   local res, err = self:query(query)
   if not res then       return nil, err
   elseif #res <= 1 then return res[1].count
