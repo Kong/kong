@@ -29,6 +29,13 @@ local function get_identifier(conf)
     end
   elseif conf.limit_by == "credential" then
     identifier = ngx.ctx.authenticated_credential and ngx.ctx.authenticated_credential.id
+  elseif conf.limit_by == "http_header" then
+    local header_name = conf.http_header 
+    if header_name then
+      header_name = string.gsub(string.lower('http_'..header_name), "-", "_")
+      local header = ngx.var[header_name]
+      identifier = header 
+    end
   end
 
   if not identifier then
