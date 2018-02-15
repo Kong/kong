@@ -168,13 +168,6 @@ build = {
     ["kong.plugins.runscope.schema"] = "kong/plugins/runscope/schema.lua",
     ["kong.plugins.runscope.log"] = "kong/plugins/runscope/log.lua",
 
-    ["kong.plugins.galileo.migrations.cassandra"] = "kong/plugins/galileo/migrations/cassandra.lua",
-    ["kong.plugins.galileo.migrations.postgres"] = "kong/plugins/galileo/migrations/postgres.lua",
-    ["kong.plugins.galileo.handler"] = "kong/plugins/galileo/handler.lua",
-    ["kong.plugins.galileo.schema"] = "kong/plugins/galileo/schema.lua",
-    ["kong.plugins.galileo.buffer"] = "kong/plugins/galileo/buffer.lua",
-    ["kong.plugins.galileo.alf"] = "kong/plugins/galileo/alf.lua",
-
     ["kong.plugins.rate-limiting.migrations.cassandra"] = "kong/plugins/rate-limiting/migrations/cassandra.lua",
     ["kong.plugins.rate-limiting.migrations.postgres"] = "kong/plugins/rate-limiting/migrations/postgres.lua",
     ["kong.plugins.rate-limiting.handler"] = "kong/plugins/rate-limiting/handler.lua",
