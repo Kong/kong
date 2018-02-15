@@ -17,6 +17,7 @@ local CORE_MODELS = {
   "rbac_role_perms",
   "rbac_perms",
   "rbac_resources",
+  "portal_files"
 }
 
 -- returns db errors as strings, including the initial `nil`

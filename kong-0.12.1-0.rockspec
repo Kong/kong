@@ -105,6 +105,7 @@ build = {
     ["kong.api.routes.snis"] = "kong/api/routes/snis.lua",
     ["kong.api.routes.rbac" ] = "kong/api/routes/rbac.lua",
     ["kong.api.routes.vitals" ] = "kong/api/routes/vitals.lua",
+    ["kong.api.routes.portal"] = "kong/api/routes/portal.lua",
 
     ["kong.tools.ip"] = "kong/tools/ip.lua",
     ["kong.tools.ciphers"] = "kong/tools/ciphers.lua",
@@ -145,6 +146,7 @@ build = {
     ["kong.dao.schemas.rbac_role_perms"] = "kong/dao/schemas/rbac_role_perms.lua",
     ["kong.dao.schemas.rbac_perms"] = "kong/dao/schemas/rbac_perms.lua",
     ["kong.dao.schemas.rbac_resources"] = "kong/dao/schemas/rbac_resources.lua",
+    ["kong.dao.schemas.portal_files"] = "kong/dao/schemas/portal_files.lua",
     ["kong.dao.db"] = "kong/dao/db/init.lua",
     ["kong.dao.db.cassandra"] = "kong/dao/db/cassandra.lua",
     ["kong.dao.db.postgres"] = "kong/dao/db/postgres.lua",
@@ -157,6 +159,8 @@ build = {
 
     ["kong.rbac"] = "kong/rbac/init.lua",
     ["kong.rbac.handler"] = "kong/rbac/handler.lua",
+
+    ["kong.portal.api"] = "kong/portal/api.lua",
 
     ["kong.vitals"] = "kong/vitals/init.lua",
     ["kong.vitals.cassandra.strategy"] = "kong/vitals/cassandra/strategy.lua",

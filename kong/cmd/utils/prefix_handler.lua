@@ -33,6 +33,16 @@ local function gen_default_ssl_cert(kong_config, pair_type)
     ssl_cert_key = kong_config.admin_gui_ssl_cert_key_default
     ssl_cert_csr = kong_config.admin_gui_ssl_cert_csr_default
 
+  elseif pair_type == "portal_api" then
+    ssl_cert = kong_config.portal_api_ssl_cert_default
+    ssl_cert_key = kong_config.portal_api_ssl_cert_key_default
+    ssl_cert_csr = kong_config.portal_api_ssl_cert_csr_default
+
+  elseif pair_type == "portal_gui" then
+    ssl_cert = kong_config.portal_gui_ssl_cert_default
+    ssl_cert_key = kong_config.portal_gui_ssl_cert_key_default
+    ssl_cert_csr = kong_config.portal_gui_ssl_cert_csr_default
+
   elseif pair_type == "default" then
     ssl_cert = kong_config.ssl_cert_default
     ssl_cert_key = kong_config.ssl_cert_key_default
@@ -210,6 +220,20 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
     end
   end
 
+  -- Portal API Logs
+  local log_files = {
+    kong_config.nginx_portal_api_acc_logs,
+    kong_config.nginx_portal_api_err_logs,
+  }
+  for _, log_file in ipairs(log_files) do
+    if not pl_path.exists(log_file) then
+      local ok, err = pl_file.write(log_file, "")
+      if not ok then
+        return nil, err
+      end
+    end
+  end
+
   -- generate default SSL certs if needed
   if kong_config.ssl and not kong_config.ssl_cert and not kong_config.ssl_cert_key then
     log.verbose("SSL enabled, no custom certificate set: using default certificate")
@@ -232,7 +256,6 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
   if kong_config.admin_gui_ssl and not kong_config.admin_gui_ssl_cert and
     not kong_config.admin_gui_ssl_cert_key
   then
-
     log.verbose("Admin GUI SSL enabled, no custom certificate set: " ..
                 "using default certificate")
     local ok, err = gen_default_ssl_cert(kong_config, "admin_gui")
@@ -241,6 +264,33 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
     end
     kong_config.admin_gui_ssl_cert = kong_config.admin_gui_ssl_cert_default
     kong_config.admin_gui_ssl_cert_key = kong_config.admin_gui_ssl_cert_key_default
+  end
+
+  -- Developer Portal GUI & API SSL Certificate Handling
+  if kong_config.portal_gui_ssl and not kong_config.portal_gui_ssl_cert and
+    not kong_config.portal_gui_ssl_cert_key
+  then
+    log.verbose("Developer Portal GUI SSL enabled, no custom certificate set: " ..
+                "using default certificate")
+    local ok, err = gen_default_ssl_cert(kong_config, "portal_gui")
+    if not ok then
+      return nil, err
+    end
+    kong_config.portal_gui_ssl_cert = kong_config.portal_gui_ssl_cert_default
+    kong_config.portal_gui_ssl_cert_key = kong_config.portal_gui_ssl_cert_key_default
+  end
+
+  if kong_config.portal_api_ssl and not kong_config.portal_api_ssl_cert and
+    not kong_config.portal_api_ssl_cert_key
+  then
+    log.verbose("Developer Portal API SSL enabled, no custom certificate set: " ..
+                "using default certificate")
+    local ok, err = gen_default_ssl_cert(kong_config, "portal_api")
+    if not ok then
+      return nil, err
+    end
+    kong_config.portal_api_ssl_cert = kong_config.portal_api_ssl_cert_default
+    kong_config.portal_api_ssl_cert_key = kong_config.portal_api_ssl_cert_key_default
   end
 
 
@@ -302,8 +352,9 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
     return nil, err
   end
 
-  -- prep the admin gui html based on our config env
+  -- setup Kong Enterprise interfaces based on current configuration
   ee.prepare_admin(kong_config)
+  ee.prepare_portal(kong_config)
 
   return true
 end

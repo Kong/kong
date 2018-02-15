@@ -80,29 +80,22 @@ end
 _M.read_license_info = read_license_info
 
 
-local function prepare_admin(kong_config)
-  local ADMIN_GUI_PATH = kong_config.prefix .. "/gui"
+local function prepare_interface(interface_dir, interface_env, kong_config)
+  local INTERFACE_PATH = kong_config.prefix .. "/" .. interface_dir
 
   -- if the gui directory does not exist, we needn't bother attempting
   -- to update a non-existant template. this occurs in development
   -- environments where the gui does not exist (it is bundled at build
   -- time), so this effectively serves to quiet useless warnings in kong-ee
   -- development
-  if not pl_path.exists(ADMIN_GUI_PATH) then
+  if not pl_path.exists(INTERFACE_PATH) then
     return
   end
 
-  local compile_env = {
-    ADMIN_API_PORT = tostring(kong_config.admin_port),
-    ADMIN_API_SSL_PORT = tostring(kong_config.admin_ssl_port),
-    RBAC_ENFORCED = tostring(kong_config.enforce_rbac),
-    RBAC_HEADER = tostring(kong_config.rbac_auth_header),
-    KONG_VERSION = tostring(meta.versions.package),
-  }
-
-  local idx_filename = ADMIN_GUI_PATH .. "/index.html"
-  local tp_filename  = ADMIN_GUI_PATH .. "/index.html.tp-" ..
-                       tostring(meta.versions.package)
+  local compile_env = interface_env
+  local idx_filename = INTERFACE_PATH .. "/index.html"
+  local tp_filename  = INTERFACE_PATH .. "/index.html.tp-" ..
+                        tostring(meta.versions.package)
 
   -- make the template if it doesn't exit
   if not pl_path.isfile(tp_filename) then
@@ -110,15 +103,14 @@ local function prepare_admin(kong_config)
       log.warn("Could not copy index to template. Ensure that the Kong CLI " ..
                "user has permissions to read the file '" .. idx_filename ..
                "', and has permissions to write to the directory '" ..
-               ADMIN_GUI_PATH .. "'")
+               INTERFACE_PATH .. "'")
     end
   end
 
   -- load the template, do our substitutions, and write it out
   local index = pl_file.read(tp_filename)
-
   if not index then
-    log.warn("Could not read GUI index template. Ensure that the template " ..
+    log.warn("Could not read " .. interface_dir .. " index template. Ensure that the template " ..
              "file '" .. tp_filename .. "' exists and that the Kong CLI " ..
              "user has permissions to read this file, and that the Kong CLI " ..
              "user has permissions to write to the index file '" ..
@@ -128,14 +120,44 @@ local function prepare_admin(kong_config)
 
   local _, err
   index, _, err = ngx.re.gsub(index, "{{(.*?)}}", function(m)
-          return compile_env[m[1]] end)
+          return compile_env[m[1]] or "" end)
   if err then
     log.warn("Error replacing templated values: " .. err)
   end
 
   pl_file.write(idx_filename, index)
 end
+
+
+local function prepare_admin(kong_config)
+  return prepare_interface("gui", {
+    ADMIN_API_PORT = tostring(kong_config.admin_port),
+    ADMIN_API_SSL_PORT = tostring(kong_config.admin_ssl_port),
+    RBAC_ENFORCED = tostring(kong_config.enforce_rbac),
+    RBAC_HEADER = tostring(kong_config.rbac_auth_header),
+    KONG_VERSION = tostring(meta.versions.package),
+  }, kong_config)
+end
 _M.prepare_admin = prepare_admin
+
+
+local function prepare_portal(kong_config)
+  return prepare_interface("portal", {
+    PORTAL_GUI_URI = tostring(kong_config.portal_gui_uri),
+    PORTAL_GUI_SSL_URI = tostring(kong_config.portal_gui_uri_ssl),
+    PORTAL_API_URI = tostring(kong_config.portal_api_uri),
+    PORTAL_API_SSL_URI = tostring(kong_config.portal_api_uri_ssl),
+    PORTAL_API_URI_ENDPOINT = tostring(kong_config.portal_api_proxy_conf_uri),
+    PORTAL_GUI_PORT = tostring(kong_config.portal_gui_port),
+    PORTAL_GUI_SSL_PORT = tostring(kong_config.portal_gui_ssl_port),
+    PORTAL_API_PORT = tostring(kong_config.portal_api_port),
+    PORTAL_API_SSL_PORT = tostring(kong_config.portal_api_ssl_port),
+    RBAC_ENFORCED = tostring(kong_config.enforce_rbac),
+    RBAC_HEADER = tostring(kong_config.rbac_auth_header),
+    KONG_VERSION = tostring(meta.versions.package),
+  }, kong_config)
+end
+_M.prepare_portal = prepare_portal
 
 
 return _M

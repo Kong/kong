@@ -533,3 +533,118 @@
                                  # metrics about its performance. This feature
                                  # is experimental and currently available only
                                  # on Postgres. Do not enable with Cassandra.
+
+#------------------------------------------------------------------------------
+# DEVELOPER PORTAL
+#------------------------------------------------------------------------------
+
+#portal = off                           # When enabled, Kong will expose the
+                                        # Kong Developer Portal and its
+                                        # functionality. This flag also
+                                        # extends the Admin API with a new
+                                        # endpoint named `/files` for the
+                                        # administration of Developer Portal
+                                        # template files.
+
+#portal_gui_uri = 127.0.0.1:8003        # Heirarchical Part of a URI which is
+                                        # composed optionally of a host,
+                                        # port, and path at which your
+                                        # Developer Portal accepts HTTP
+                                        # traffic if `portal_gui_ssl` is
+                                        # disabled.
+
+#portal_gui_uri_ssl = 0.0.0.0:8446      # Heirarchical Part of a URI which is
+                                        # composed optionally of a host,
+                                        # port, and path at which your
+                                        # Developer Portal accepts HTTPS
+                                        # traffic if `portal_gui_ssl` is
+                                        # enabled.
+
+#portal_gui_listen = 0.0.0.0:8003       # Address and Port on which Kong will
+                                        # accept non-ssl traffic for your
+                                        # Developer Portal.
+
+#portal_gui_listen_ssl = 0.0.0.0:8446   # Address and Port on which Kong will
+                                        # accept HTTPS traffic for your
+                                        # Developer Portal if `portal_gui_ssl`
+                                        # is enabled.
+
+#portal_gui_ssl = on                    # Determines if Nginx should be
+                                        # listening for HTTPS traffic on the
+                                        # `portal_gui_listen_ssl` address. If
+                                        # disabled, Nginx will only bind itself
+                                        # itself on `portal_gui_listen`, and
+                                        # all SSL settings will be ignored.
+
+#portal_gui_ssl_cert =                  # If `portal_gui_ssl` is enabled, the
+                                        # absolute path to the SSL certificate
+                                        # for the `portal_gui_listen_ssl`
+                                        # address.
+
+#portal_gui_ssl_cert_key =              # If `portal_gui_ssl` is enabled,
+                                        # the absolute path to the SSL key
+                                        # for the `portal_gui_listen_ssl`
+                                        # address.
+
+#portal_api_listen = 0.0.0.0:8004       # Address and Port on which Kong
+                                        # will accept HTTP traffic for
+                                        # your Developer Portal API if
+                                        # `portal_api_ssl` is disabled.
+
+#portal_api_listen_ssl = 0.0.0.0:8447   # Address and Port on which Kong
+                                        # will accept HTTPs traffic for
+                                        # your Developer Portal API if
+                                        # `portal_api_ssl` is enabled.
+
+#portal_api_uri = 127.0.0.1:8004        # Heirarchical URI portion of the
+                                        # Developer Portal. The portion
+                                        # can contain the host, port, or
+                                        # path.
+                                        #
+                                        # If `portal_api_ssl` is not enabled
+                                        # the Developer Portal Loader
+                                        # uses this value to make API
+                                        # requests to the Developer Portal
+                                        # API.
+
+#portal_api_uri_ssl = 127.0.0.1:8447    # Heirarchical URI portion of the
+                                        # Developer Portal. The portion
+                                        # can contain the host, port, or
+                                        # path.
+                                        #
+                                        # If `portal_api_ssl` is not enabled
+                                        # the Developer Portal Loader
+                                        # uses this value to make API
+                                        # requests to the Developer Portal
+                                        # API.
+
+#portal_api_ssl = on                    # Determines if Nginx should be
+                                        # listening for HTTPS traffic on the
+                                        # `portal_api_listen_ssl` address. If
+                                        # disabled, Nginx will only bind itself
+                                        # itself on `portal_api_listen`, and
+                                        # all SSL settings will be ignored.
+
+#portal_api_ssl_cert =                  # If `portal_api_ssl` is enabled, the
+                                        # absolute path to the SSL certificate
+                                        # for the `portal_api_listen_ssl`
+                                        # address.
+
+#portal_api_ssl_cert_key =              # If `portal_api_ssl` is enabled,
+                                        # the absolute path to the SSL key
+                                        # for the `portal_api_listen_ssl`
+                                        # address.
+
+#portal_api_access_log = logs/portal_api_access.log # Path for Portal API
+                                                    # request access logs.
+                                                    # Set this value to `off`
+                                                    # to disable logging Portal
+                                                    # API requests.
+                                                    # If this value is a relative
+                                                    # path, it will be placed
+                                                    # under the `prefix` location.
+
+#portal_api_error_log = logs/error.log  # Path for Developer Portal API request
+                                        # error logs. Granularity of these logs
+                                        # is adjusted by the `log_level`
+                                        # directive.

@@ -117,6 +117,8 @@ describe("NGINX conf compiler", function()
         ssl = false,
         admin_ssl = false,
         admin_gui_ssl = false,
+        portal_gui_ssl = false,
+        portal_api_ssl = false,
       }))
       local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.not_matches("listen %d+%.%d+%.%d+%.%d+:%d+ ssl;", kong_nginx_conf)
@@ -415,6 +417,8 @@ describe("NGINX conf compiler", function()
           ssl = false,
           admin_ssl = false,
           admin_gui_ssl = false,
+          portal_gui_ssl = false,
+          portal_api_ssl = false,
         })
 
         assert(prefix_handler.prepare_prefix(conf))
@@ -432,6 +436,12 @@ describe("NGINX conf compiler", function()
           admin_gui_ssl = true,
           admin_gui_ssl_cert = "spec/fixtures/kong_spec.crt",
           admin_gui_ssl_cert_key = "spec/fixtures/kong_spec.key",
+          portal_gui_ssl = true,
+          portal_gui_ssl_cert = "spec/fixtures/kong_spec.crt",
+          portal_gui_ssl_cert_key = "spec/fixtures/kong_spec.key",
+          portal_api_ssl = true,
+          portal_api_ssl_cert = "spec/fixtures/kong_spec.crt",
+          portal_api_ssl_cert_key = "spec/fixtures/kong_spec.key",
         })
 
         assert(prefix_handler.prepare_prefix(conf))

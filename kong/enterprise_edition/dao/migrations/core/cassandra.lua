@@ -334,5 +334,25 @@ return {
       DROP TABLE vitals_stats_seconds;
       DROP TABLE vitals_stats_minutes;
     ]]
-  }
+  },
+  {
+    name = "2018-02-13-621974_portal_files_entity",
+    up = [[
+      CREATE TABLE IF NOT EXISTS portal_files(
+        id uuid,
+        auth boolean,
+        name text,
+        type text,
+        contents text,
+        created_at timestamp,
+        PRIMARY KEY (id, name)
+      );
+
+      CREATE INDEX IF NOT EXISTS ON portal_files(name);
+      CREATE INDEX IF NOT EXISTS ON portal_files(type);
+    ]],
+    down = [[
+      DROP TABLE portal_files;
+    ]]
+  },
 }

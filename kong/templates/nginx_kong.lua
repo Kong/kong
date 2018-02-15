@@ -153,6 +153,7 @@ server {
     }
 }
 
+
 server {
     server_name kong_gui;
     listen ${{ADMIN_GUI_LISTEN}};
@@ -203,6 +204,97 @@ server {
         return 200 'User-agent: *\nDisallow: /';
     }
 }
+
+
+> if portal then
+server {
+    server_name kong_portal_gui;
+    listen ${{PORTAL_GUI_LISTEN}};
+
+> if portal_gui_ssl then
+    listen ${{PORTAL_GUI_LISTEN_SSL}} ssl;
+    ssl_certificate ${{PORTAL_GUI_SSL_CERT}};
+    ssl_certificate_key ${{PORTAL_GUI_SSL_CERT_KEY}};
+    ssl_protocols TLSv1.1 TLSv1.2;
+> end
+
+    client_max_body_size 10m;
+    client_body_buffer_size 10m;
+
+    types {
+      text/html                             html htm shtml;
+      text/css                              css;
+      text/xml                              xml;
+      image/gif                             gif;
+      image/jpeg                            jpeg jpg;
+      application/javascript                js;
+      application/json                      json;
+      image/png                             png;
+      image/tiff                            tif tiff;
+      image/x-icon                          ico;
+      image/x-jng                           jng;
+      image/x-ms-bmp                        bmp;
+      image/svg+xml                         svg svgz;
+      image/webp                            webp;
+    }
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript;
+
+    location / {
+        root portal;
+
+        try_files $uri /index.html;
+
+        add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
+        etag off;
+
+        access_log logs/portal_gui_access.log;
+        error_log logs/portal_gui_error.log;
+    }
+
+    location /robots.txt {
+        return 200 'User-agent: *\nDisallow: /';
+    }
+}
+
+
+server {
+    server_name portal_api;
+    listen ${{PORTAL_API_LISTEN}};
+
+    access_log ${{PORTAL_API_ACCESS_LOG}};
+    error_log ${{PORTAL_API_ERROR_LOG}} ${{LOG_LEVEL}};
+
+    client_max_body_size 10m;
+    client_body_buffer_size 10m;
+
+> if portal_api_ssl then
+    listen ${{PORTAL_API_LISTEN_SSL}} ssl;
+    ssl_certificate ${{PORTAL_API_SSL_CERT}};
+    ssl_certificate_key ${{PORTAL_API_SSL_CERT_KEY}};
+    ssl_protocols TLSv1.1 TLSv1.2;
+
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+    ssl_prefer_server_ciphers on;
+    ssl_ciphers ${{SSL_CIPHERS}};
+> end
+
+    location / {
+        default_type application/json;
+        content_by_lua_block {
+            kong.serve_portal_api({
+                acah = "Content-Type",
+            })
+        }
+    }
+
+    location /robots.txt {
+        return 200 'User-agent: *\nDisallow: /';
+    }
+}
+> end
 
 
 server {

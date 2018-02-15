@@ -471,4 +471,18 @@ function Kong.serve_admin_api(options)
   return lapis.serve("kong.api")
 end
 
+function Kong.serve_portal_api(options)
+  options = options or {}
+
+  header["Access-Control-Allow-Origin"] = options.allow_origin or "*"
+
+  if ngx.req.get_method() == "OPTIONS" then
+    header["Access-Control-Allow-Methods"] = options.acam or "GET, HEAD, PUT, DELETE"
+    header["Access-Control-Allow-Headers"] = options.acah or "Content-Type"
+    return ngx.exit(204)
+  end
+
+  return lapis.serve("kong.portal.api")
+end
+
 return Kong

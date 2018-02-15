@@ -429,4 +429,27 @@ return {
       DROP COLUMN ulat_total;
     ]]
   },
+  {
+    name = "2018-02-13-621974_portal_files_entity",
+    up = [[
+      CREATE TABLE IF NOT EXISTS portal_files(
+        id uuid PRIMARY KEY,
+        auth boolean NOT NULL,
+        name text UNIQUE NOT NULL,
+        type text NOT NULL,
+        contents text,
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
+      );
+
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('portal_files_name_idx')) IS NULL THEN
+          CREATE INDEX portal_files_name_idx on portal_files(name);
+        END IF;
+      END$$;
+    ]],
+    down = [[
+      DROP TABLE portal_files;
+    ]]
+  },
 }

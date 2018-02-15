@@ -14,12 +14,31 @@ vitals_flush_interval = 10
 vitals_ttl_seconds = 3600
 vitals_ttl_minutes = 90000
 
+portal = off
+portal_gui_listen = 0.0.0.0:8003
+portal_gui_listen_ssl = 0.0.0.0:8446
+portal_gui_uri = 127.0.0.1:8003
+portal_gui_uri_ssl = 127.0.0.1:8446
+portal_gui_ssl = on
+portal_gui_ssl_cert = NONE
+portal_gui_ssl_cert_key = NONE
+portal_api_listen = 0.0.0.0:8004
+portal_api_listen_ssl = 0.0.0.0:8447
+portal_api_uri = 127.0.0.1:8004
+portal_api_uri_ssl = 127.0.0.1:8447
+portal_api_ssl = on
+portal_api_ssl_cert = NONE
+portal_api_ssl_cert_key = NONE
+portal_api_access_log = logs/portal_api_access.log
+portal_api_error_log = logs/error.log
+
 proxy_listen = 0.0.0.0:8000
 proxy_listen_ssl = 0.0.0.0:8443
 admin_listen = 127.0.0.1:8001
 admin_listen_ssl = 127.0.0.1:8444
 admin_gui_listen = 0.0.0.0:8002
 admin_gui_listen_ssl = 0.0.0.0:8445
+
 nginx_user = nobody nobody
 nginx_worker_processes = auto
 nginx_optimizations = on
