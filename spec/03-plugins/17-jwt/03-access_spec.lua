@@ -73,6 +73,10 @@ describe("Plugin: jwt (access)", function()
                          api_id = apis[9].id,
                          config = { cookie_names = { "silly", "crumble" } },
                        }))
+    assert(pdao:insert({ name   = "ctx-checker",
+                       api_id = apis[1].id,
+                       config = { ctx_field = "authenticated_jwt_token" },
+                     }))
 
     jwt_secret = assert(helpers.dao.jwt_secrets:insert {consumer_id = consumer1.id})
     base64_jwt_secret = assert(helpers.dao.jwt_secrets:insert {consumer_id = consumer2.id})
@@ -97,6 +101,7 @@ describe("Plugin: jwt (access)", function()
       real_ip_recursive = "on",
       trusted_ips       = "0.0.0.0/0, ::/0",
       nginx_conf        = "spec/fixtures/custom_nginx.template",
+      custom_plugins    = "ctx-checker"
     })
     proxy_client = helpers.proxy_client()
     admin_client = helpers.admin_client()
@@ -222,6 +227,7 @@ describe("Plugin: jwt (access)", function()
       assert.equal(authorization, body.headers.authorization)
       assert.equal("jwt_tests_consumer", body.headers["x-consumer-username"])
       assert.is_nil(body.headers["x-anonymous-consumer"])
+      assert.equal(body.headers["ctx-checker-plugin-field"], jwt)
     end)
     it("proxies the request if secret key is stored in a field other than iss", function()
       PAYLOAD.aud = jwt_secret.key
@@ -389,6 +395,7 @@ describe("Plugin: jwt (access)", function()
       local body = cjson.decode(assert.res_status(200, res))
       assert.equal(authorization, body.headers.authorization)
       assert.equal("jwt_tests_rsa_consumer_1", body.headers["x-consumer-username"])
+      assert.equal(body.headers["ctx-checker-plugin-field"], jwt)
     end)
     it("identifies Consumer", function()
       PAYLOAD.iss = rsa_jwt_secret_2.key
@@ -405,10 +412,11 @@ describe("Plugin: jwt (access)", function()
       local body = cjson.decode(assert.res_status(200, res))
       assert.equal(authorization, body.headers.authorization)
       assert.equal("jwt_tests_rsa_consumer_2", body.headers["x-consumer-username"])
+      assert.equal(body.headers["ctx-checker-plugin-field"], jwt)
     end)
   end)
 
-describe("RS512", function()
+  describe("RS512", function()
     it("verifies JWT", function()
       PAYLOAD.iss = rsa_jwt_secret_3.key
       local jwt = jwt_encoder.encode(PAYLOAD, fixtures.rs512_private_key, "RS512")
@@ -424,6 +432,7 @@ describe("RS512", function()
       local body = cjson.decode(assert.res_status(200, res))
       assert.equal(authorization, body.headers.authorization)
       assert.equal("jwt_tests_rsa_consumer_5", body.headers["x-consumer-username"])
+      assert.equal(body.headers["ctx-checker-plugin-field"], jwt)
     end)
     it("identifies Consumer", function()
       PAYLOAD.iss = rsa_jwt_secret_3.key
@@ -440,6 +449,7 @@ describe("RS512", function()
       local body = cjson.decode(assert.res_status(200, res))
       assert.equal(authorization, body.headers.authorization)
       assert.equal("jwt_tests_rsa_consumer_5", body.headers["x-consumer-username"])
+      assert.equal(body.headers["ctx-checker-plugin-field"], jwt)
     end)
   end)
 
