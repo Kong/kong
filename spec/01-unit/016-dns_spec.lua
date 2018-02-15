@@ -11,11 +11,10 @@ describe("DNS", function()
 
   setup(function()
     stub(ngx, "log")
-    _G._TEST = true
     singletons = require "kong.singletons"
 
     singletons.cache = {
-        get = function() return {} end
+      get = function() return {} end
     }
 
     singletons.dao = {}
@@ -31,7 +30,6 @@ describe("DNS", function()
   end)
 
   teardown(function()
-    _G._TEST = nil
     if type(ngx.log) == "table" then
       ngx.log:revert()
     end
@@ -51,7 +49,7 @@ describe("DNS", function()
       print("now looking for: ", name .. ":" .. options.qtype)
       return original_query_func(self, name, options)
     end
-  
+
     -- patch the resolver lib, such that any new resolver created will query
     -- using the `query_func` upvalue defined above
     old_new = resolver.new
