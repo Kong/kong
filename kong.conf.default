@@ -293,6 +293,12 @@
 #pg_port = 5432                  # The port to connect to.
 #pg_user = kong                  # The username to authenticate if required.
 #pg_password =                   # The password to authenticate if required.
+#pg_cred_file = off              # If on, both the PostgreSQL user and
+                                 # PostgreSQL password settings will be read
+                                 # from the files, otherwise the provided
+                                 # credentials will be used.
+#pg_user_file =                  # Filename to read the username from.
+#pg_password_file =              # Filename to read the password from.
 #pg_database = kong              # The database name to connect to.
 
 #pg_ssl = off                    # Toggles client-server TLS connections
@@ -328,6 +334,15 @@
 
 #cassandra_password =            # Password when using the
                                  # `PasswordAuthenticator` scheme.
+
+#cassandra_cred_file = off       # If on, both the cassandra user and
+                                 # cassandra password settings will be read
+                                 # from the files, otherwise the provided
+                                 # credentials will be used.
+
+#cassandra_username_file =       # Filename to read the username from.
+
+#cassandra_password_file =       # Filename to read the password from.
 
 #cassandra_consistency = ONE     # Consistency setting to use when reading/
                                  # writing to the Cassandra cluster.
