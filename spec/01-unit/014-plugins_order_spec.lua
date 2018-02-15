@@ -70,7 +70,6 @@ describe("Plugins", function()
       "loggly",
       "runscope",
       "syslog",
-      "galileo",
       "request-termination",
       "correlation-id",
     }

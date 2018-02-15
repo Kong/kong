@@ -550,4 +550,25 @@ return {
     end,
     down = function(_, _, dao) end  -- n.a. since the columns will be dropped
   },
+  {
+    name = "2018-02-14-164600_remove_galileo_plugins",
+    up = function(_, _, dao)
+      local log = require "kong.cmd.utils.log"
+
+      local rows, err = dao.plugins:find_all {
+        name = "galileo",
+      }
+      if err then
+        return err
+      end
+
+      for i = 1, #rows do
+        local _, err = dao.plugins:delete(rows[i])
+        if err then
+          log.error("failed to delete galileo plugin row (id=%s): %s",
+                    rows[i].id, err)
+        end
+      end
+    end
+  },
 }
