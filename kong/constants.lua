@@ -12,7 +12,6 @@ local plugins = {
   "hmac-auth",
   "basic-auth",
   "ip-restriction",
-  "galileo",
   "request-transformer",
   "response-transformer",
   "request-size-limiting",
