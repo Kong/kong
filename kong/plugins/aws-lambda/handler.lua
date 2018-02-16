@@ -7,6 +7,7 @@ local utils = require "kong.tools.utils"
 local http = require "resty.http"
 local cjson = require "cjson.safe"
 local public_utils = require "kong.tools.public"
+local lrucache = require "resty.lrucache"
 
 local tostring             = tostring
 local ngx_req_read_body    = ngx.req.read_body
@@ -15,7 +16,50 @@ local ngx_req_get_headers  = ngx.req.get_headers
 local ngx_encode_base64    = ngx.encode_base64
 local ngx_get_headers      = ngx.req.get_headers
 local get_uri_args         = ngx.req.get_uri_args
+local regex_find           = ngx.re.find
 
+local name_cache = setmetatable({}, { __mode = "k" })
+local CACHE_SIZE = 64
+
+local function get_dynamic_name(conf)
+  local hdrs = ngx_get_headers()
+  local args = get_uri_args()
+  local lambda_key = conf.dynamic_lambda_key
+
+  local function_name = hdrs[lambda_key]
+  if not function_name then
+    function_name = args[lambda_key]
+  end
+
+  if function_name then
+    local cache = name_cache[conf]
+    if not cache then
+      cache = lrucache.new(CACHE_SIZE)
+      name_cache[conf] = cache
+    end
+
+    local found = cache:get(function_name)
+    if found then
+      ngx.log(ngx.DEBUG, "[aws-lambda] cache hit for: " .. function_name)
+
+      return function_name, nil
+    end
+
+    for _, pattern in ipairs(conf.dynamic_lambda_whitelist) do
+      if regex_find(function_name, pattern, "jo") then
+        ngx.log(ngx.DEBUG, "[aws-lambda] regexp hit for: " .. function_name .. " pattern: " .. pattern)
+
+        cache:set(function_name, 1)
+
+        return function_name, nil
+      end
+    end
+
+    return function_name, function_name .. " function is not whitelisted."
+  end
+
+  return nil, nil
+end
 
 local new_tab
 do
@@ -89,22 +133,21 @@ function AWSLambdaHandler:access(conf)
 
   local host = string.format("lambda.%s.amazonaws.com", conf.aws_region)
   local port = conf.port or AWS_PORT
-  local hdrs = ngx_get_headers()
-  local args = get_uri_args()
 
   local function_name
   if conf.dynamic_lambda_key then
 
-    local lambda_key = conf.dynamic_lambda_key
-
-    function_name = hdrs[lambda_key]
-    if not function_name then
-      function_name = args[lambda_key]
-    end
+    local error
+    function_name, error = get_dynamic_name(conf)
 
     ngx.log(ngx.DEBUG, "[aws-lambda] using dynamic key: " ..
       conf.dynamic_lambda_key ..
       ", resolved name: " .. tostring(function_name))
+
+    if error then
+      -- indicate that function call is not allowed
+      return responses.send_HTTP_FORBIDDEN(error)
+    end
 
     if not function_name then
       ngx.log(ngx.WARN, "[aws-lambda] no name resolved with dynamic key: " ..

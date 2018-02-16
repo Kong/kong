@@ -218,7 +218,8 @@ describe("Plugin: AWS Lambda (access)", function()
         forward_request_uri = false,
         forward_request_headers = true,
         forward_request_body = true,
-        dynamic_lambda_key = "lambda-key"
+        dynamic_lambda_key = "lambda-key",
+        dynamic_lambda_whitelist = "dynamicLambdaFunction,dynamicLambdaFunctionArgs"
       }
     })
 
@@ -555,5 +556,26 @@ describe("Plugin: AWS Lambda (access)", function()
     })
     assert.res_status(200, res)
     assert.is_equal("kongLambdaTest", res.headers["x-amzn-RequestId"])
+  end)
+  it("invokes a Lambda function with a dynamic name in header, not white listed", function()
+    local res = assert(client:send {
+      method = "GET",
+      path = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+      headers = {
+        ["Host"] = "lambda11.com",
+        ["lambda-key"] = "forbiddenLambdaFunction"
+      }
+    })
+    assert.res_status(403, res)
+  end)
+  it("invokes a Lambda function with a dynamic name in args, not white listed", function()
+    local res = assert(client:send {
+      method = "GET",
+      path = "/get?lambda-key=forbiddenLambdaFunctionArgs",
+      headers = {
+        ["Host"] = "lambda11.com",
+      }
+    })
+    assert.res_status(403, res)
   end)
 end)

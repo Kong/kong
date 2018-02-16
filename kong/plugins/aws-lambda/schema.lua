@@ -1,8 +1,22 @@
+local regex_match = ngx.re.match
+
 local function check_status(status)
   if status and (status < 100 or status > 999) then
     return false, "unhandled_status must be within 100 - 999."
   end
 
+  return true
+end
+
+local check_regex = function(value)
+  if value then
+    for _, rule in ipairs(value) do
+      local _, err = regex_match("just a string to test", rule)
+      if err then
+        return false, "value '" .. rule .. "' is not a valid regex"
+      end
+    end
+  end
   return true
 end
 
@@ -98,6 +112,10 @@ return {
     },
     dynamic_lambda_key = {
       type = "string"
-    }
+    },
+    dynamic_lambda_whitelist = {
+      type = "array",
+      func = check_regex
+    },
   },
 }
