@@ -841,6 +841,58 @@ end
 
 
 --------------------------------------------------------------------------------
+-- Get healthcheck information for an upstream.
+-- @param upstream_id the id of the upstream.
+-- @return one of three possible returns:
+-- * if healthchecks are enabled, a table mapping keys ("ip:port") to booleans;
+-- * if healthchecks are disabled, nil;
+-- * in case of errors, nil and an error message.
+local function get_upstream_health(upstream_id)
+
+  local upstream = get_upstream_by_id(upstream_id)
+  if not upstream then
+    return nil, "upstream not found"
+  end
+
+  local using_hc = upstream.healthchecks.active.healthy.interval ~= 0
+                   or upstream.healthchecks.active.unhealthy.interval ~= 0
+                   or upstream.healthchecks.passive.unhealthy.tcp_failures ~= 0
+                   or upstream.healthchecks.passive.unhealthy.timeouts ~= 0
+                   or upstream.healthchecks.passive.unhealthy.http_failures ~= 0
+
+  local balancer = balancers[upstream_id]
+  if not balancer then
+    return nil, "balancer not found"
+  end
+
+  local healthchecker
+  if using_hc then
+    healthchecker = healthcheckers[balancer]
+    if not healthchecker then
+      return nil, "healthchecker not found"
+    end
+  end
+
+  local health_info = {}
+
+  for weight, addr, host in balancer:addressIter() do
+    if weight > 0 then
+      local health
+      if using_hc then
+        health = healthchecker:get_target_status(addr.ip, addr.port)
+                 and "HEALTHY" or "UNHEALTHY"
+      else
+        health = "HEALTHCHECKS_OFF"
+      end
+      health_info[host.hostname .. ":" .. addr.port] = health
+    end
+  end
+
+  return health_info
+end
+
+
+--------------------------------------------------------------------------------
 -- for unit-testing purposes only
 local function _get_healthchecker(balancer)
   return healthcheckers[balancer]
@@ -864,6 +916,7 @@ return {
   post_health = post_health,
   subscribe_to_healthcheck_events = subscribe_to_healthcheck_events,
   unsubscribe_from_healthcheck_events = unsubscribe_from_healthcheck_events,
+  get_upstream_health = get_upstream_health,
 
   -- ones below are exported for test purposes only
   _create_balancer = create_balancer,
