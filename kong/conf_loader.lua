@@ -315,6 +315,21 @@ local function check_and_infer(conf)
     end
   end
 
+  if conf.admin_gui_ssl then
+    if conf.admin_gui_ssl_cert and not conf.admin_gui_ssl_cert_key then
+      errors[#errors+1] = "admin_gui_ssl_cert_key must be specified"
+    elseif conf.admin_gui_ssl_cert_key and not conf.admin_gui_ssl_cert then
+      errors[#errors+1] = "admin_gui_ssl_cert must be specified"
+    end
+
+    if conf.admin_gui_ssl_cert and not pl_path.exists(conf.admin_gui_ssl_cert) then
+      errors[#errors+1] = "admin_gui_ssl_cert: no such file at " .. conf.admin_gui_ssl_cert
+    end
+    if conf.admin_gui_ssl_cert_key and not pl_path.exists(conf.admin_gui_ssl_cert_key) then
+      errors[#errors+1] = "admin_gui_ssl_cert_key: no such file at " .. conf.admin_gui_ssl_cert_key
+    end
+  end
+
   if conf.portal then
     if conf.portal_api_ssl then
       if conf.portal_api_ssl_cert and not conf.portal_api_ssl_cert_key then
@@ -569,8 +584,9 @@ local function load(path, custom_conf)
     if not admin_port then return nil, "admin_listen must be of form 'address:port'"
     elseif not admin_ssl_port then return nil, "admin_listen_ssl must be of form 'address:port'"
     elseif not proxy_port then return nil, "proxy_listen must be of form 'address:port'"
+    elseif not proxy_ssl_port then return nil, "proxy_listen_ssl must be of form 'address:port'"
     elseif not admin_gui_port then return nil, "admin_gui_listen must be of form 'address:port'"
-    elseif not proxy_ssl_port then return nil, "proxy_listen_ssl must be of form 'address:port'" end
+    elseif not admin_gui_ssl_port then return nil, "admin_gui_listen_ssl must be of form 'address:port'" end
 
     conf.admin_ip = admin_ip
     conf.admin_ssl_ip = admin_ssl_ip
@@ -627,6 +643,11 @@ local function load(path, custom_conf)
   if conf.admin_ssl_cert and conf.admin_ssl_cert_key then
     conf.admin_ssl_cert = pl_path.abspath(conf.admin_ssl_cert)
     conf.admin_ssl_cert_key = pl_path.abspath(conf.admin_ssl_cert_key)
+  end
+
+  if conf.admin_gui_ssl_cert and conf.admin_gui_ssl_cert_key then
+    conf.admin_gui_ssl_cert = pl_path.abspath(conf.admin_gui_ssl_cert)
+    conf.admin_gui_ssl_cert_key = pl_path.abspath(conf.admin_gui_ssl_cert_key)
   end
 
   if conf.portal then
