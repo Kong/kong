@@ -8,6 +8,14 @@ local function it_content_types(title, fn)
   it(title .. " with application/json", test_json)
 end
 
+local function client_send(req)
+  local client = helpers.admin_client()
+  local res = client:send(req)
+  local status, body = res.status, res:read_body()
+  client:close()
+  return status, body
+end
+
 local upstream_name = "my_upstream"
 
 describe("Admin API", function()
@@ -16,9 +24,25 @@ describe("Admin API", function()
   local weight_default, weight_min, weight_max = 100, 0, 1000
   local default_port = 8000
 
+  local dns_hostsfile
+  setup(function()
+    -- Adding a name-based resolution that won't fail
+    dns_hostsfile = os.tmpname()
+    local fd = assert(io.open(dns_hostsfile, "w"))
+    assert(fd:write("127.0.0.1 custom_localhost\n"))
+    fd:close()
+  end)
+
+  teardown(function()
+    os.remove(dns_hostsfile)
+  end)
+
   before_each(function()
     helpers.run_migrations()
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+      dns_hostsfile = dns_hostsfile,
+    }))
     client = assert(helpers.admin_client())
 
     upstream = assert(helpers.dao.upstreams:insert {
@@ -224,6 +248,195 @@ describe("Admin API", function()
           assert.equal(apis[3].target, json.data[2].target)
           assert.equal(apis[2].target, json.data[3].target)
         end
+      end)
+    end)
+  end)
+
+  describe("/upstreams/{upstream}/health/", function()
+
+    describe("GET", function()
+      local name = "health.test"
+      local node_id
+
+      local function add_targets(target_fmt)
+        local targets = {}
+        local weights = {
+          { 10, 0 },
+          { 10 },
+          { 10 },
+          { 10, 10 },
+        }
+
+        for i = 1, #weights do
+          for j = 1, #weights[i] do
+            local status, body = client_send({
+              method = "POST",
+              path = "/upstreams/" .. name .. "/targets",
+              headers = {
+                ["Content-Type"] = "application/json",
+              },
+              body = {
+                target = string.format(target_fmt, i),
+                weight = weights[i][j],
+              }
+            })
+            assert.same(201, status)
+            targets[i] = assert(cjson.decode(body))
+          end
+        end
+        return targets
+      end
+
+      -- Performs tests similar to /upstreams/:upstream_id/targets,
+      -- and checks for the "health" field of each target.
+      -- @param targets the array of target data produced by add_targets
+      -- @param n the expected number of targets in the response
+      -- It is different from #targets because add_targets adds
+      -- zero-weight targets as well.
+      -- @param health the expected "health" response for all targets
+      local function check_health_endpoint(targets, n, health)
+        for _, append in ipairs({ "", "/" }) do
+          local status, body = client_send({
+            method = "GET",
+            path = "/upstreams/" .. name .. "/health" .. append,
+          })
+          assert.same(200, status)
+          local res = assert(cjson.decode(body))
+
+          assert.same(node_id, res.node_id)
+          assert.equal(n, #res.data)
+          assert.equal(n, res.total)
+
+          -- when multiple active targets are present, we only see the last one
+          assert.equal(targets[4].id, res.data[1].id)
+
+          -- validate the remaining returned targets
+          -- note the backwards order, because we walked the targets backwards
+          assert.equal(targets[3].target, res.data[2].target)
+          assert.equal(targets[2].target, res.data[3].target)
+
+          for i = 1, n do
+            assert.equal(health, res.data[i].health)
+          end
+        end
+      end
+
+      before_each(function()
+        local status = client_send({
+          method = "POST",
+          path = "/upstreams",
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+          body = {
+            name = name,
+          }
+        })
+        assert.same(201, status)
+
+        local status, body = client_send({
+          method = "GET",
+          path = "/",
+        })
+        assert.same(200, status)
+        local res = assert(cjson.decode(body))
+        assert.string(res.node_id)
+        node_id = res.node_id
+      end)
+
+      describe("with healthchecks off", function()
+        it("returns HEALTHCHECKS_OFF for targets that resolve", function()
+
+          local targets = add_targets("custom_localhost:8%d")
+          add_targets("127.0.0.1:8%d")
+
+          check_health_endpoint(targets, 6, "HEALTHCHECKS_OFF")
+
+        end)
+
+        it("returns DNS_ERROR if DNS cannot be resolved", function()
+
+          local targets = add_targets("bad-target-%d:80")
+
+          check_health_endpoint(targets, 3, "DNS_ERROR")
+
+        end)
+      end)
+
+      describe("with healthchecks on", function()
+        before_each(function()
+          local status = client_send({
+            method = "PATCH",
+            path = "/upstreams/" .. name,
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+            body = {
+              healthchecks = {
+                passive = {
+                  healthy = {
+                    successes = 1,
+                  },
+                  unhealthy = {
+                    tcp_failures = 1,
+                    http_failures = 1,
+                    timeouts = 1,
+                  },
+                }
+              }
+            }
+          })
+          assert.same(200, status)
+        end)
+
+        it("returns DNS_ERROR if DNS cannot be resolved", function()
+
+          local targets = add_targets("bad-target-%d:80")
+
+          check_health_endpoint(targets, 3, "DNS_ERROR")
+
+        end)
+
+        it("returns HEALTHY if failure not detected", function()
+
+          local targets = add_targets("custom_localhost:222%d")
+
+          check_health_endpoint(targets, 3, "HEALTHY")
+
+        end)
+
+        it("returns UNHEALTHY if failure detected", function()
+
+          local targets = add_targets("custom_localhost:222%d")
+
+          local status = client_send({
+            method = "PATCH",
+            path = "/upstreams/" .. name,
+            headers = {
+              ["Content-Type"] = "application/json",
+            },
+            body = {
+              healthchecks = {
+                active = {
+                  healthy = {
+                    interval = 0.1,
+                  },
+                  unhealthy = {
+                    interval = 0.1,
+                    tcp_failures = 1,
+                  },
+                }
+              }
+            }
+          })
+          assert.same(200, status)
+
+          -- Give time for active healthchecks to kick in
+          ngx.sleep(0.3)
+
+          check_health_endpoint(targets, 3, "UNHEALTHY")
+
+        end)
       end)
     end)
   end)
