@@ -304,10 +304,24 @@ describe("Configuration loader", function()
 
       conf, err = conf_loader(nil, {
         portal = "on",
+        portal_gui_listen = "127.0.0.1"
+      })
+      assert.is_nil(conf)
+      assert.equal("portal_gui_listen must be of form 'address:port'", err)
+
+      conf, err = conf_loader(nil, {
+        portal = "on",
         portal_gui_listen_ssl = "127.0.0.1"
       })
       assert.is_nil(conf)
       assert.equal("portal_gui_listen_ssl must be of form 'address:port'", err)
+
+      conf, err = conf_loader(nil, {
+        portal = "on",
+        portal_api_listen = "127.0.0.1"
+      })
+      assert.is_nil(conf)
+      assert.equal("portal_api_listen must be of form 'address:port'", err)
 
       conf, err = conf_loader(nil, {
         portal = "on",
