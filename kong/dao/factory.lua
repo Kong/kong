@@ -439,6 +439,14 @@ function _M:run_migrations(on_migrate, on_success)
     end
   end
 
+  local def_workspace_migration = workspaces.get_default_workspace_migration()
+  local ok, err, n_ran = migrate(self, "default_workspace", def_workspace_migration,
+    cur_migrations, on_migrate, on_success)
+  if err then
+    return ret_error_string(self.db.name, nil, err)
+  end
+  migrations_ran = migrations_ran + n_ran
+
   if migrations_ran > 0 then
     log("%d migrations ran", migrations_ran)
 

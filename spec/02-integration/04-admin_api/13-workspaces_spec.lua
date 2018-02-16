@@ -94,8 +94,8 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.equals(2, json.total)
-        assert.equals(2, #json.data)
+        assert.equals(3, json.total)
+        assert.equals(3, #json.data)
       end)
     end)
   end)
@@ -122,6 +122,18 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
     end)
 
     describe("GET", function()
+      it("retrieves the default workspace", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/workspaces/default",
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.equals("default", json.name)
+      end)
+
       it("retrieves a single workspace", function()
         local res = assert(client:send {
           method = "GET",

@@ -37,4 +37,43 @@ function _M.get_workspaceable_relations()
 end
 
 
+-- return migration for adding default workspace and existing
+-- workspaceable entities to the default workspace
+function _M.get_default_workspace_migration()
+  return {
+    default_workspace = {
+      {
+        name = "2018-02-16-110000_default_workspace_entities",
+        up = function(_, _, dao)
+          local default, err = dao.workspaces:insert({
+            name = "default",
+          })
+          if err then
+            return err
+          end
+
+          for relation, pk_name in pairs(workspaceable_relations) do
+            local entities, err = dao[relation]:find_all()
+            if err then
+              return nil, err
+            end
+
+            for _, entity in ipairs(entities) do
+              local relationship, err = dao.workspace_entities:insert({
+                workspace_id = default.id,
+                entity_id = entity.id,
+                entity_type = relation,
+              })
+              if err then
+                return nil, err
+              end
+            end
+          end
+        end,
+      },
+    }
+  }
+end
+
+
 return _M
