@@ -13,6 +13,8 @@ describe("Configuration loader", function()
     assert.equal("0.0.0.0:8002", conf.admin_gui_listen)
     assert.equal("0.0.0.0:8445", conf.admin_gui_listen_ssl)
     assert.equal("127.0.0.1:8444", conf.admin_listen_ssl)
+    assert.equal("logs/admin_gui_access.log", conf.admin_gui_access_log)
+    assert.equal("logs/admin_gui_error.log", conf.admin_gui_error_log)
     assert.is_nil(conf.ssl_cert) -- check placeholder value
     assert.is_nil(conf.ssl_cert_key)
     assert.is_nil(conf.admin_ssl_cert)
