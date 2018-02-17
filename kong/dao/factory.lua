@@ -214,6 +214,11 @@ function _M:truncate_tables()
       self.db:truncate_table(v)
     end
   end
+
+  -- re-create the default workspace - that's so ugly
+  self.workspaces:insert({
+    name = "default",
+  })
 end
 
 function _M:migrations_modules()
@@ -439,6 +444,7 @@ function _M:run_migrations(on_migrate, on_success)
     end
   end
 
+  -- run workspace-related migrations
   local def_workspace_migration = workspaces.get_default_workspace_migration()
   local ok, err, n_ran = migrate(self, "default_workspace", def_workspace_migration,
     cur_migrations, on_migrate, on_success)
