@@ -354,42 +354,66 @@ end
 
 --- Returns the proxy port.
 -- @param ssl (boolean) if `true` returns the ssl port
-local function get_proxy_port(ssl)
-  if ssl == nil then ssl = false end
-  for _, entry in ipairs(conf.proxy_listeners) do
-    if entry.ssl == ssl then
-      return entry.port
+local function get_proxy_port(ssl, is_mock)
+  if ssl == nil then
+    ssl = false
+  end
+
+  if is_mock == nil then
+    is_mock = false
+  end
+
+  for _, server in ipairs(conf.proxy_servers) do
+    if server.mock == is_mock then
+      for _, entry in ipairs(server.listeners) do
+        if entry.ssl == ssl then
+          return entry.port
+        end
+      end
     end
   end
-  error("No proxy port found for ssl=" .. tostring(ssl), 2)
+
+  error("No proxy port found for ssl=" .. tostring(ssl) .. ", mock=" .. tostring(is_mock), 2)
 end
 
 --- Returns the proxy ip.
 -- @param ssl (boolean) if `true` returns the ssl ip address
-local function get_proxy_ip(ssl)
-  if ssl == nil then ssl = false end
-  for _, entry in ipairs(conf.proxy_listeners) do
-    if entry.ssl == ssl then
-      return entry.ip
+local function get_proxy_ip(ssl, is_mock)
+  if ssl == nil then
+    ssl = false
+  end
+
+  if is_mock == nil then
+    is_mock = false
+  end
+
+  for _, server in ipairs(conf.proxy_servers) do
+    if server.mock == is_mock then
+      for _, entry in ipairs(server.listeners) do
+        if entry.ssl == ssl then
+          return entry.ip
+        end
+      end
     end
   end
-  error("No proxy ip found for ssl=" .. tostring(ssl), 2)
+
+  error("No proxy ip found for ssl=" .. tostring(ssl) .. ", mock=" .. tostring(is_mock), 2)
 end
 
 --- returns a pre-configured `http_client` for the Kong proxy port.
 -- @name proxy_client
-local function proxy_client(timeout)
-  local proxy_ip = get_proxy_ip(false)
-  local proxy_port = get_proxy_port(false)
+local function proxy_client(timeout, is_mock)
+  local proxy_ip = get_proxy_ip(false, is_mock)
+  local proxy_port = get_proxy_port(false, is_mock)
   assert(proxy_ip, "No http-proxy found in the configuration")
   return http_client(proxy_ip, proxy_port, timeout)
 end
 
 --- returns a pre-configured `http_client` for the Kong SSL proxy port.
 -- @name proxy_ssl_client
-local function proxy_ssl_client(timeout)
-  local proxy_ip = get_proxy_ip(true)
-  local proxy_port = get_proxy_port(true)
+local function proxy_ssl_client(timeout, is_mock)
+  local proxy_ip = get_proxy_ip(true, is_mock)
+  local proxy_port = get_proxy_port(true, is_mock)
   assert(proxy_ip, "No https-proxy found in the configuration")
   local client = http_client(proxy_ip, proxy_port, timeout)
   assert(client:ssl_handshake())
@@ -1155,8 +1179,8 @@ return {
   get_proxy_ip = get_proxy_ip,
   get_proxy_port = get_proxy_port,
   proxy_client = proxy_client,
-  admin_client = admin_client,
   proxy_ssl_client = proxy_ssl_client,
+  admin_client = admin_client,
   admin_ssl_client = admin_ssl_client,
   prepare_prefix = prepare_prefix,
   clean_prefix = clean_prefix,

@@ -60,34 +60,34 @@ init_worker_by_lua_block {
 }
 
 
-> if #proxy_listeners > 0 then
-upstream kong_upstream {
+> for i = 1, #proxy_servers do
+upstream $(proxy_servers[i].upstream_name) {
     server 0.0.0.1;
     balancer_by_lua_block {
-        Kong.balancer()
+        Kong.balancer($(proxy_servers[i].handler_args))
     }
     keepalive ${{UPSTREAM_KEEPALIVE}};
 }
 
 server {
-    server_name kong;
-> for i = 1, #proxy_listeners do
-    listen $(proxy_listeners[i].listener);
+    server_name $(proxy_servers[i].server_name);
+> for j = 1, #proxy_servers[i].listeners do
+    listen $(proxy_servers[i].listeners[j].listener);
 > end
     error_page 400 404 408 411 412 413 414 417 494 /kong_error_handler;
     error_page 500 502 503 504 /kong_error_handler;
 
-    access_log ${{PROXY_ACCESS_LOG}};
-    error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
+    access_log $(proxy_servers[i].access_log);
+    error_log $(proxy_servers[i].error_log) ${{LOG_LEVEL}};
 
     client_body_buffer_size ${{CLIENT_BODY_BUFFER_SIZE}};
 
-> if proxy_ssl_enabled then
+> if proxy_servers[i].ssl_enabled then
     ssl_certificate ${{SSL_CERT}};
     ssl_certificate_key ${{SSL_CERT_KEY}};
     ssl_protocols TLSv1.1 TLSv1.2;
     ssl_certificate_by_lua_block {
-        Kong.ssl_certificate()
+        Kong.ssl_certificate($(proxy_servers[i].handler_args))
     }
 
     ssl_session_cache shared:SSL:10m;
@@ -103,8 +103,8 @@ server {
 
     real_ip_header     ${{REAL_IP_HEADER}};
     real_ip_recursive  ${{REAL_IP_RECURSIVE}};
-> for i = 1, #trusted_ips do
-    set_real_ip_from   $(trusted_ips[i]);
+> for j = 1, #trusted_ips do
+    set_real_ip_from   $(trusted_ips[j]);
 > end
 
     # injected nginx_proxy_* directives
@@ -113,7 +113,7 @@ server {
 > end
 
     location / {
-        default_type                     '';
+        default_type '';
 
         set $ctx_ref                     '';
         set $upstream_host               '';
@@ -127,11 +127,11 @@ server {
         set $upstream_x_forwarded_port   '';
 
         rewrite_by_lua_block {
-            Kong.rewrite()
+            Kong.rewrite($(proxy_servers[i].handler_args))
         }
 
         access_by_lua_block {
-            Kong.access()
+            Kong.access($(proxy_servers[i].handler_args))
         }
 
         proxy_http_version 1.1;
@@ -146,39 +146,45 @@ server {
         proxy_pass_header  Server;
         proxy_pass_header  Date;
         proxy_ssl_name     $upstream_host;
-        proxy_pass         $upstream_scheme://kong_upstream$upstream_uri;
+        proxy_pass         $upstream_scheme://$(proxy_servers[i].upstream_name)$upstream_uri;
 
         header_filter_by_lua_block {
-            Kong.header_filter()
+            Kong.header_filter($(proxy_servers[i].handler_args))
         }
 
         body_filter_by_lua_block {
-            Kong.body_filter()
+            Kong.body_filter($(proxy_servers[i].handler_args))
         }
 
         log_by_lua_block {
-            Kong.log()
+            Kong.log($(proxy_servers[i].handler_args))
         }
     }
+
+> if proxy_servers[i].mock then
+    location = /kong_mock_handler {
+        return 200;
+    }
+> end
 
     location = /kong_error_handler {
         internal;
         uninitialized_variable_warn off;
 
         content_by_lua_block {
-            Kong.handle_error()
+            Kong.handle_error($(proxy_servers[i].handler_args))
         }
 
         header_filter_by_lua_block {
-            Kong.header_filter()
+            Kong.header_filter($(proxy_servers[i].handler_args))
         }
 
         body_filter_by_lua_block {
-            Kong.body_filter()
+            Kong.body_filter($(proxy_servers[i].handler_args))
         }
 
         log_by_lua_block {
-            Kong.log()
+            Kong.log($(proxy_servers[i].handler_args))
         }
     }
 }

@@ -47,6 +47,20 @@
                                           # adjusted by the `log_level`
                                           # directive.
 
+#mock_proxy_access_log = logs/mock_access.log
+                                          # Path for mock proxy port request
+                                          # access logs. Set this value to
+                                          # `off` to disable logging proxy
+                                          # requests.
+                                          # If this value is a relative path,
+                                          # it will be placed under the
+                                          # `prefix` location.
+
+#mock_proxy_error_log = logs/error.log    # Path for mock proxy port request
+                                          # error logs. Granularity of these
+                                          # logs is adjusted by the
+                                          # `log_level` directive.
+
 #admin_access_log = logs/admin_access.log # Path for Admin API request access
                                           # logs. Set this value to `off` to
                                           # disable logging Admin API requests.
@@ -97,7 +111,7 @@
 # NGINX
 #------------------------------------------------------------------------------
 
-#proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 ssl
+#proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 ssl, 127.0.0.1:9000 mock, 127.0.0.1:9443 ssl mock
                          # Comma-separated list of addresses and ports on
                          # which the proxy server should listen.
                          # The proxy server is the public entrypoint of Kong,
@@ -110,8 +124,11 @@
                          #   enabled.
                          # - `http2` will allow for clients to open HTTP/2
                          #   connections to Kong's proxy server.
-                         # - Finally, `proxy_protocol` will enable usage of the
+                         # - `proxy_protocol` will enable usage of the
                          #   PROXY protocol for a given address/port.
+                         # - Finally, `mock` will enable additional mock
+                         #   proxy server that can be used to introspect
+                         #   or dry-run requests
                          #
                          # This value can be set to `off`, thus disabling
                          # the proxy port for this node, enabling a

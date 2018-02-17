@@ -3,13 +3,15 @@ prefix = /usr/local/kong/
 log_level = notice
 proxy_access_log = logs/access.log
 proxy_error_log = logs/error.log
+mock_proxy_access_log = logs/mock_access.log
+mock_proxy_error_log = logs/error.log
 admin_access_log = logs/admin_access.log
 admin_error_log = logs/error.log
 plugins = bundled
 custom_plugins = NONE
 anonymous_reports = on
 
-proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 ssl
+proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 ssl, 127.0.0.1:9000 mock, 127.0.0.1:9443 ssl mock
 admin_listen = 127.0.0.1:8001, 127.0.0.1:8444 ssl
 nginx_user = nobody nobody
 nginx_worker_processes = auto

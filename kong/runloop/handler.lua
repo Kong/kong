@@ -412,20 +412,20 @@ return {
     end
   },
   certificate = {
-    before = function(_)
+    before = function(ctx, is_mock)
       certificate.execute()
     end
   },
   rewrite = {
-    before = function(ctx)
+    before = function(ctx, is_mock)
       ctx.KONG_REWRITE_START = get_now()
     end,
-    after = function (ctx)
+    after = function(ctx, is_mock)
       ctx.KONG_REWRITE_TIME = get_now() - ctx.KONG_REWRITE_START -- time spent in Kong's rewrite_by_lua
     end
   },
   access = {
-    before = function(ctx)
+    before = function(ctx, is_mock)
       -- ensure routers are up-to-date
       local cache = singletons.cache
 
@@ -618,7 +618,7 @@ return {
       var.upstream_x_forwarded_port  = forwarded_port
     end,
     -- Only executed if the `router` module found a route and allows nginx to proxy it.
-    after = function(ctx)
+    after = function(ctx, is_mock)
       local var = ngx.var
 
       do
@@ -675,13 +675,12 @@ return {
     end
   },
   balancer = {
-    before = function()
-      local balancer_data = ngx.ctx.balancer_data
+    before = function(ctx, is_mock)
+      local balancer_data = ctx.balancer_data
       local current_try = balancer_data.tries[balancer_data.try_count]
       current_try.balancer_start = get_now()
     end,
-    after = function ()
-      local ctx = ngx.ctx
+    after = function(ctx, is_mock)
       local balancer_data = ctx.balancer_data
       local current_try = balancer_data.tries[balancer_data.try_count]
 
@@ -694,7 +693,7 @@ return {
     end
   },
   header_filter = {
-    before = function(ctx)
+    before = function(ctx, is_mock)
       local var = ngx.var
       local header = ngx.header
 
@@ -728,7 +727,7 @@ return {
         end
       end
     end,
-    after = function(ctx)
+    after = function(ctx, is_mock)
       local header = ngx.header
 
       if ctx.KONG_PROXIED then
@@ -755,7 +754,7 @@ return {
     end
   },
   body_filter = {
-    after = function(ctx)
+    after = function(ctx, is_mock)
       if ngx.arg[2] then
         local now = get_now()
         ctx.KONG_BODY_FILTER_ENDED_AT = now
@@ -770,7 +769,11 @@ return {
     end
   },
   log = {
-    after = function(ctx)
+    after = function(ctx, is_mock)
+      if is_mock then
+        return
+      end
+
       reports.log()
       local balancer_data = ctx.balancer_data
 
