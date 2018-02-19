@@ -96,6 +96,10 @@ local function load_plugins(kong_conf, dao)
 
   -- load installed plugins
   for plugin in pairs(kong_conf.plugins) do
+    if plugin == "galileo" then
+      ngx_log(ngx.WARN, "the 'galileo' plugin has been deprecated")
+    end
+
     local ok, handler = utils.load_module_if_exists("kong.plugins." .. plugin .. ".handler")
     if not ok then
       return nil, plugin .. " plugin is enabled but not installed;\n" .. handler
