@@ -745,6 +745,100 @@ describe("Configuration loader", function()
     end)
   end)
 
+  describe("origins config option", function()
+    it("rejects an invalid origins config option", function()
+      local conf, err = conf_loader(nil, {
+        origins = "invalid_origin",
+      })
+      assert.is_nil(conf)
+      assert.equal("an origin must be of the form " ..
+                   "'from_scheme://from_host:from_port=" ..
+                   "to_scheme://to_host:to_port', got 'invalid_origin'",
+                   err)
+    end)
+    it("rejects an invalid origins config option", function()
+      local conf, err = conf_loader(nil, {
+        origins = "http://foo:42=http://",
+      })
+      assert.is_nil(conf)
+      assert.equal("an origin must be of the form " ..
+                   "'from_scheme://from_host:from_port=" ..
+                   "to_scheme://to_host:to_port', got " ..
+                   "'http://foo:42=http://'", err)
+    end)
+    it("rejects an unknown scheme", function()
+      local conf, err = conf_loader(nil, {
+        origins = "http://foo:42=ftp://example.com",
+      })
+      assert.is_nil(conf)
+      assert.equal("an origin must be of the form " ..
+                   "'from_scheme://from_host:from_port=" ..
+                   "to_scheme://to_host:to_port', got " ..
+                   "'http://foo:42=ftp://example.com'", err)
+    end)
+    it("rejects a duplicate", function()
+      local conf, err = conf_loader(nil, {
+        origins = table.concat({
+          "http://src:42=https://foo",
+          "http://src:42=https://bar",
+        }, ",")
+      })
+      assert.is_nil(conf)
+      assert.equal("duplicate origin (http://src:42)", err)
+    end)
+    it("rejects several duplicate", function()
+      local conf, err, errors = conf_loader(nil, {
+        origins = table.concat({
+          "http://src:42=https://foo",
+          "http://src:42=https://bar",
+          "http://src2:42=https://baz",
+          "http://src2:42=https://boo",
+        }, ",")
+      })
+      assert.is_nil(conf)
+      assert.equal("duplicate origin (http://src:42)", err)
+      assert.contains("duplicate origin (http://src:42)", errors)
+      assert.contains("duplicate origin (http://src2:42)", errors)
+    end)
+    it("rejects an invalid 'to' section of an origin", function()
+      local conf, err = conf_loader(nil, {
+        origins = table.concat({
+          "http://src:42=https://foo~",
+        }, ",")
+      })
+      assert.is_nil(conf)
+      assert.equal("failed to parse authority (invalid hostname: foo~)", err)
+    end)
+    it("accepts an authority with no port as destination", function()
+      local value = {
+        "http://foo:42=https://example.com"
+      }
+      local conf, err = conf_loader(nil, {
+        origins = table.concat(value, ","),
+      })
+      assert.is_nil(err)
+      assert.same(value, conf.origins)
+    end)
+    it("accepts both ips and hosts", function()
+      local value = {
+        "http://src1:42=https://dst:55",
+        "http://src2:42=https://127.0.0.1:55",
+        "http://src3:42=https://[::1]:55",
+        "http://127.0.0.1:42=https://dst:55",
+        "http://127.0.0.2:42=https://127.0.0.1:55",
+        "http://127.0.0.3:42=https://[::1]:55",
+        "http://[::1]:42=https://dst:55",
+        "http://[::2]:42=https://127.0.0.1:55",
+        "http://[::3]:42=https://[::1]:55",
+      }
+      local conf, err = conf_loader(nil, {
+        origins = table.concat(value, ","),
+      })
+      assert.is_nil(err)
+      assert.same(value, conf.origins)
+    end)
+  end)
+
   describe("errors", function()
     it("returns inexistent file", function()
       local conf, err = conf_loader "inexistent"

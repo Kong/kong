@@ -222,6 +222,38 @@ function Kong.init()
   singletons.db = db
   -- /LEGACY
 
+  do
+    local origins = {}
+
+    for i, v in ipairs(config.origins) do
+      -- Validated in conf_loader
+      local from_scheme, from_authority, to_scheme, to_authority =
+        v:match("^(https?)://([^=]+:[%d]+)=(https?)://(.+)$")
+
+      local from = assert(utils.normalize_ip(from_authority))
+      local to = assert(utils.normalize_ip(to_authority))
+      local from_origin = from_scheme .. "://" .. utils.format_host(from)
+
+      to.scheme = to_scheme
+
+      if to.port == nil then
+        if to_scheme == "http" then
+          to.port = 80
+
+        elseif to_scheme == "https" then
+          to.port = 443
+
+        else
+          error("unreachable")
+        end
+      end
+
+      origins[from_origin] = to
+    end
+
+    singletons.origins = origins
+  end
+
   kong.dao = dao
   kong.db = db
   kong.dns = singletons.dns

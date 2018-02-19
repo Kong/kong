@@ -737,7 +737,6 @@ end
 -- it is created.
 -- @return true on success, nil+error message+status code otherwise
 local function execute(target, ctx)
-
   if target.type ~= "name" then
     -- it's an ip address (v4 or v6), so nothing we can do...
     target.ip = target.host
