@@ -145,27 +145,23 @@ local function http_server(timeout, host, port, counts, test_log)
       while n_reqs < total_reqs do
         local client, err
         client, err = server:accept()
-        if err == "timeout" then
-          if socket.gettime() > expire then
-            server:close()
-            break
-          end
+        if socket.gettime() > expire then
+          server:close()
+          break
 
         elseif not client then
-          server:close()
-          error(err)
+          if err ~= "timeout" then
+            server:close()
+            error(err)
+          end
 
         else
           local lines = {}
           local line, err
           while #lines < 7 do
             line, err = client:receive()
-            if err then
+            if err or #line == 0 then
               break
-
-            elseif #line == 0 then
-              break
-
             else
               table.insert(lines, line)
             end
