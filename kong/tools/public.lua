@@ -9,6 +9,7 @@ local _M = {}
 do
   local multipart = require "multipart"
   local cjson     = require "cjson.safe"
+  local utils     = require "kong.tools.utils"
 
 
   local str_find              = string.find
@@ -164,6 +165,41 @@ do
 
     return args, err_code, raw_body, req_mime
   end
+
+
+  -- Obtain the unique node id for this node.
+  do
+    local node_id
+    function _M.get_node_id()
+      if node_id then
+        return node_id
+      end
+
+      if ngx.get_phase() == "init" then
+        error("API disabled in the context of init_by_lua", 2)
+      end
+
+      local shm = ngx.shared.kong
+      local NODE_ID_KEY = "kong:node_id"
+
+      local ok, err = shm:safe_add(NODE_ID_KEY, utils.uuid())
+      if not ok and err ~= "exists" then
+        return nil, "failed to set 'node_id' in shm: " .. err
+      end
+
+      node_id, err = shm:get(NODE_ID_KEY)
+      if err then
+        return nil, "failed to get 'node_id' in shm: " .. err
+      end
+
+      if not node_id then
+        return nil, "no 'node_id' set in shm"
+      end
+
+      return node_id
+    end
+  end
+
 end
 
 

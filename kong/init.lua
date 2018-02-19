@@ -142,6 +142,7 @@ local function load_plugins(kong_conf, dao)
   return sorted_plugins
 end
 
+
 -- Kong public context handlers.
 -- @section kong_handlers
 
