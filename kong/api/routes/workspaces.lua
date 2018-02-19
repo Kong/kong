@@ -51,7 +51,10 @@ return {
       crud.patch(self.params, dao_factory.workspaces, self.workspace)
     end,
 
-    DELETE = function(self, dao_factory)
+    DELETE = function(self, dao_factory, helpers)
+      if self.workspace.name == "default" then
+        return helpers.responses.send_HTTP_METHOD_NOT_ALLOWED()
+      end
       crud.delete(self.workspace, dao_factory.workspaces)
     end,
   },

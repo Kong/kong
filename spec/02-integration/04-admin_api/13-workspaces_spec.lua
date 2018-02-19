@@ -157,6 +157,15 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
     end)
 
     describe("DELETE", function()
+      it("refuses to delete default workspace", function()
+        local res = assert(client:send {
+          method = "DELETE",
+          path = "/workspaces/default",
+        })
+
+        assert.res_status(405, res)
+      end)
+
       it("removes a workspace", function()
         local res = assert(client:send {
           method = "DELETE",
