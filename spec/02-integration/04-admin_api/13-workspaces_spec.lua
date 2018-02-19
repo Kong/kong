@@ -203,7 +203,20 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
     end)
 
     describe("GET", function()
-      it("returns a list of entites associated with the workspace", function()
+      it("returns a list of entities associated with the default workspace", function()
+        local res = assert(client:send{
+          method = "GET",
+          path = "/workspaces/default/entities",
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        --XXX no entities are returned, since there's a truncate_tables being
+        -- run
+        assert.equals(0, #json.data)
+      end)
+      it("returns a list of entities associated with the workspace", function()
         local res = assert(client:send {
           method = "GET",
           path = "/workspaces/foo/entities",
