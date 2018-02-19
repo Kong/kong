@@ -630,11 +630,24 @@ return {
         end
       end
 
-      local ok, err, errcode = balancer.execute(ctx.balancer_data, ctx)
+      local balancer_data = ctx.balancer_data
+
+      do -- Check for KONG_ORIGINS override
+        local origin_key = var.upstream_scheme .. "://" .. utils.format_host(balancer_data)
+        local origin = singletons.origins[origin_key]
+        if origin then
+          var.upstream_scheme = origin.scheme
+          balancer_data.type = origin.type
+          balancer_data.host = origin.host
+          balancer_data.port = origin.port
+        end
+      end
+
+      local ok, err, errcode = balancer.execute(balancer_data, ctx)
       if not ok then
         if errcode == 500 then
           err = "failed the initial dns/balancer resolve for '" ..
-                ctx.balancer_data.host .. "' with: "         ..
+                balancer_data.host .. "' with: "         ..
                 tostring(err)
         end
         return responses.send(errcode, err)
@@ -645,7 +658,6 @@ return {
         local upstream_host = var.upstream_host
 
         if not upstream_host or upstream_host == "" then
-          local balancer_data = ctx.balancer_data
           upstream_host = balancer_data.hostname
 
           local upstream_scheme = var.upstream_scheme
