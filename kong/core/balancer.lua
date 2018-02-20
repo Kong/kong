@@ -340,7 +340,6 @@ do
 
     local balancer, err = ring_balancer.new({
         wheelSize = upstream.slots,
-        order = upstream.orderlist,
         dns = dns_client,
       })
     if not balancer then
