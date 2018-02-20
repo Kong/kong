@@ -253,17 +253,17 @@ do
       healthcheckers[balancer] = healthchecker
 
       balancer.report_http_status = function(ip, port, status)
-        local ok, err = healthchecker:report_http_status(ip, port, status,
+        local _, err = healthchecker:report_http_status(ip, port, status,
                                                          "passive")
-        if not ok then
+        if err then
           log(ERR, "[healthchecks] failed reporting status: ", err)
         end
       end
 
       balancer.report_tcp_failure = function(ip, port)
-        local ok, err = healthchecker:report_tcp_failure(ip, port, nil,
+        local _, err = healthchecker:report_tcp_failure(ip, port, nil,
                                                          "passive")
-        if not ok then
+        if err then
           log(ERR, "[healthchecks] failed reporting status: ", err)
         end
       end
