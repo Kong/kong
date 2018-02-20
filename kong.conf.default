@@ -542,9 +542,7 @@
                                       # attempt to identify the RBAC user.
 
 #vitals = off                    # When enabled, Kong will store and report
-                                 # metrics about its performance. This feature
-                                 # is experimental and currently available only
-                                 # on Postgres. Do not enable with Cassandra.
+                                 # metrics about its performance.
 
 #------------------------------------------------------------------------------
 # DEVELOPER PORTAL
