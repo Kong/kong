@@ -39,6 +39,10 @@ local healthchecker_callbacks = setmetatable({}, { __mode = "k" })
 local target_histories = setmetatable({}, { __mode = "k" })
 
 
+-- health check API callbacks to be called on healthcheck events
+local healthcheck_subscribers = {}
+
+
 -- Caching logic
 --
 -- We retain 3 entities in singletons.cache:
@@ -229,16 +233,28 @@ do
       end
     end
 
-    -- @param healthchecker The healthchecker object
+    -- @param hc The healthchecker object
     -- @param balancer The balancer object
-    local function attach_healthchecker_to_balancer(healthchecker, balancer)
+    -- @param upstream_id The upstream id
+    local function attach_healthchecker_to_balancer(hc, balancer, upstream_id)
       local hc_callback = function(tgt, event)
-        local ok, err = true, nil
-        if event == healthchecker.events.healthy then
-          ok, err = balancer:setPeerStatus(true, tgt.ip, tgt.port, tgt.hostname)
-        elseif event == healthchecker.events.unhealthy then
-          ok, err = balancer:setPeerStatus(false, tgt.ip, tgt.port, tgt.hostname)
+        local status
+        if event == hc.events.healthy then
+          status = true
+        elseif event == hc.events.unhealthy then
+          status = false
+        else
+          return
         end
+
+        local ok, err
+        ok, err = balancer:setPeerStatus(status, tgt.ip, tgt.port, tgt.hostname)
+
+        local health = status and "healthy" or "unhealthy"
+        for _, subscriber in ipairs(healthcheck_subscribers) do
+          subscriber(upstream_id, tgt.ip, tgt.port, tgt.hostname, health)
+        end
+
         if not ok then
           log(ERR, "[healthchecks] failed setting peer status: ", err)
         end
@@ -246,23 +262,21 @@ do
 
       -- Register event using a weak-reference in worker-events,
       -- and attach lifetime of callback to that of the balancer.
-      singletons.worker_events.register_weak(hc_callback, healthchecker.EVENT_SOURCE)
+      singletons.worker_events.register_weak(hc_callback, hc.EVENT_SOURCE)
       healthchecker_callbacks[balancer] = hc_callback
 
       -- The lifetime of the healthchecker is based on that of the balancer.
-      healthcheckers[balancer] = healthchecker
+      healthcheckers[balancer] = hc
 
       balancer.report_http_status = function(ip, port, status)
-        local _, err = healthchecker:report_http_status(ip, port, status,
-                                                         "passive")
+        local _, err = hc:report_http_status(ip, port, status, "passive")
         if err then
           log(ERR, "[healthchecks] failed reporting status: ", err)
         end
       end
 
       balancer.report_tcp_failure = function(ip, port)
-        local _, err = healthchecker:report_tcp_failure(ip, port, nil,
-                                                         "passive")
+        local _, err = hc:report_tcp_failure(ip, port, nil, "passive")
         if err then
           log(ERR, "[healthchecks] failed reporting status: ", err)
         end
@@ -288,7 +302,7 @@ do
 
       populate_healthchecker(healthchecker, balancer)
 
-      attach_healthchecker_to_balancer(healthchecker, balancer)
+      attach_healthchecker_to_balancer(healthchecker, balancer, upstream.id)
 
       -- only enable the callback after the target history has been replayed.
       balancer:setCallback(ring_balancer_callback)
@@ -790,6 +804,42 @@ local function post_health(upstream, ip, port, is_healthy)
 end
 
 
+--==============================================================================
+-- Health check API
+--==============================================================================
+
+
+--------------------------------------------------------------------------------
+-- Subscribe to events produced by health checkers.
+-- There is no guarantee that the event reported is different from the
+-- previous report (in other words, you may get two "healthy" events in
+-- a row for the same target).
+-- @param callback Function to be called whenever a target has its
+-- status updated. The function should have the following signature:
+-- `function(upstream_id, target_ip, target_port, target_hostname, health)`
+-- where `upstream_id` is the entity id of the upstream,
+-- `target_ip`, `target_port` and `target_hostname` identify the target,
+-- and `health` is a string: "healthy", "unhealthy"
+-- The return value of the callback function is ignored.
+local function subscribe_to_healthcheck_events(callback)
+  healthcheck_subscribers[#healthcheck_subscribers + 1] = callback
+end
+
+
+--------------------------------------------------------------------------------
+-- Unsubscribe from events produced by health checkers.
+-- @param callback Function that was added as the callback.
+-- Note that this must be the same closure used for subscribing.
+local function unsubscribe_from_healthcheck_events(callback)
+  for i, c in ipairs(healthcheck_subscribers) do
+    if c == callback then
+      table.remove(healthcheck_subscribers, i)
+      return
+    end
+  end
+end
+
+
 --------------------------------------------------------------------------------
 -- for unit-testing purposes only
 local function _get_healthchecker(balancer)
@@ -812,6 +862,8 @@ return {
   get_upstream_by_name = get_upstream_by_name,
   get_all_upstreams = get_all_upstreams,
   post_health = post_health,
+  subscribe_to_healthcheck_events = subscribe_to_healthcheck_events,
+  unsubscribe_from_healthcheck_events = unsubscribe_from_healthcheck_events,
 
   -- ones below are exported for test purposes only
   _create_balancer = create_balancer,
