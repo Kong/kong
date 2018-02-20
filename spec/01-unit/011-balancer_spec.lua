@@ -29,12 +29,12 @@ describe("Balancer", function()
     })
 
     UPSTREAMS_FIXTURES = {
-      {id = "a", name = "mashape", slots = 10, orderlist = {1,2,3,4,5,6,7,8,9,10} },
-      {id = "b", name = "kong",    slots = 10, orderlist = {10,9,8,7,6,5,4,3,2,1} },
-      {id = "c", name = "gelato",  slots = 20, orderlist = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20} },
-      {id = "d", name = "galileo", slots = 20, orderlist = {20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1} },
-      {id = "e", name = "upstream_e", slots = 10, orderlist = {1,2,3,4,5,6,7,8,9,10} },
-      {id = "f", name = "upstream_f", slots = 10, orderlist = {1,2,3,4,5,6,7,8,9,10} },
+      { id = "a", name = "mashape", slots = 10 },
+      { id = "b", name = "kong",    slots = 10 },
+      { id = "c", name = "gelato",  slots = 20 },
+      { id = "d", name = "galileo", slots = 20 },
+      { id = "e", name = "upstream_e", slots = 10 },
+      { id = "f", name = "upstream_f", slots = 10 },
     }
 
     TARGETS_FIXTURES = {
