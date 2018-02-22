@@ -45,7 +45,7 @@ through plugins.
   services.
 - **Service Discovery**: Resolve SRV records in third-party DNS resolvers like
   Consul.
-- **Serverless**: Invoke and secure AWS Lambda or OpenWhisk fuctions directly
+- **Serverless**: Invoke and secure AWS Lambda or OpenWhisk functions directly
   from Kong.
 - **WebSockets**: Communicate to your upstream services via WebSockets.
 - **OAuth2.0**: Easily add OAuth2.0 authentication to your APIs.

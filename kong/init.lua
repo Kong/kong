@@ -146,6 +146,7 @@ local function load_plugins(kong_conf, dao)
   return sorted_plugins
 end
 
+
 -- Kong public context handlers.
 -- @section kong_handlers
 
@@ -160,7 +161,11 @@ function Kong.init()
   local config = assert(conf_loader(conf_path))
 
   local dao = assert(DAOFactory.new(config)) -- instantiate long-lived DAO
-  assert(dao:init())
+  local ok, err_t = dao:init()
+  if not ok then
+    error(tostring(err_t))
+  end
+
   assert(dao:are_migrations_uptodate())
 
   -- populate singletons

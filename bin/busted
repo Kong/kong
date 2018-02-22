@@ -1,6 +1,6 @@
 #!/usr/bin/env resty
 
-local DEFAULT_RESTY_FLAGS="-c 65000"
+local DEFAULT_RESTY_FLAGS="-c 4096"
 
 do
   local lines = getmetatable(io.output()).lines

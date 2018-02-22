@@ -5,6 +5,8 @@ local DAOFactory = require "kong.dao.factory"
 
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 
+local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
+
 describe("Admin API - Kong routes", function()
   describe("/", function()
     local meta = require "kong.meta"
@@ -32,6 +34,15 @@ describe("Admin API - Kong routes", function()
       local json = cjson.decode(body)
       assert.equal(meta._VERSION, json.version)
       assert.equal("Welcome to kong", json.tagline)
+    end)
+    it("returns a UUID as the node_id", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/"
+      })
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.matches(UUID_PATTERN, json.node_id)
     end)
     it("response has the correct Server header", function()
       local res = assert(client:send {

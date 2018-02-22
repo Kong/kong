@@ -8,7 +8,11 @@ local table_concat = table.concat
 local crc32 = ngx.crc32_short
 local toip = dns_client.toip
 local log = ngx.log
+local sleep = ngx.sleep
+local min = math.min
+local max = math.max
 
+local CRIT  = ngx.CRIT
 local ERR   = ngx.ERR
 local WARN  = ngx.WARN
 local DEBUG = ngx.DEBUG
@@ -33,6 +37,10 @@ local balancers = {}
 local healthcheckers = setmetatable({}, { __mode = "k" })
 local healthchecker_callbacks = setmetatable({}, { __mode = "k" })
 local target_histories = setmetatable({}, { __mode = "k" })
+
+
+-- health check API callbacks to be called on healthcheck events
+local healthcheck_subscribers = {}
 
 
 -- Caching logic
@@ -60,6 +68,8 @@ local function stop_healthchecker(balancer)
       log(ERR, "[healthchecks] error clearing healthcheck data: ", err)
     end
     healthchecker:stop()
+    local hc_callback = healthchecker_callbacks[balancer]
+    singletons.worker_events.unregister(hc_callback, healthchecker.EVENT_SOURCE)
   end
   healthcheckers[balancer] = nil
 end
@@ -223,16 +233,28 @@ do
       end
     end
 
-    -- @param healthchecker The healthchecker object
+    -- @param hc The healthchecker object
     -- @param balancer The balancer object
-    local function attach_healthchecker_to_balancer(healthchecker, balancer)
+    -- @param upstream_id The upstream id
+    local function attach_healthchecker_to_balancer(hc, balancer, upstream_id)
       local hc_callback = function(tgt, event)
-        local ok, err = true, nil
-        if event == healthchecker.events.healthy then
-          ok, err = balancer:setPeerStatus(true, tgt.ip, tgt.port, tgt.hostname)
-        elseif event == healthchecker.events.unhealthy then
-          ok, err = balancer:setPeerStatus(false, tgt.ip, tgt.port, tgt.hostname)
+        local status
+        if event == hc.events.healthy then
+          status = true
+        elseif event == hc.events.unhealthy then
+          status = false
+        else
+          return
         end
+
+        local ok, err
+        ok, err = balancer:setPeerStatus(status, tgt.ip, tgt.port, tgt.hostname)
+
+        local health = status and "healthy" or "unhealthy"
+        for _, subscriber in ipairs(healthcheck_subscribers) do
+          subscriber(upstream_id, tgt.ip, tgt.port, tgt.hostname, health)
+        end
+
         if not ok then
           log(ERR, "[healthchecks] failed setting peer status: ", err)
         end
@@ -240,24 +262,22 @@ do
 
       -- Register event using a weak-reference in worker-events,
       -- and attach lifetime of callback to that of the balancer.
-      singletons.worker_events.register_weak(hc_callback, healthchecker.EVENT_SOURCE)
+      singletons.worker_events.register_weak(hc_callback, hc.EVENT_SOURCE)
       healthchecker_callbacks[balancer] = hc_callback
 
       -- The lifetime of the healthchecker is based on that of the balancer.
-      healthcheckers[balancer] = healthchecker
+      healthcheckers[balancer] = hc
 
       balancer.report_http_status = function(ip, port, status)
-        local ok, err = healthchecker:report_http_status(ip, port, status,
-                                                         "passive")
-        if not ok then
+        local _, err = hc:report_http_status(ip, port, status, "passive")
+        if err then
           log(ERR, "[healthchecks] failed reporting status: ", err)
         end
       end
 
       balancer.report_tcp_failure = function(ip, port)
-        local ok, err = healthchecker:report_tcp_failure(ip, port, nil,
-                                                         "passive")
-        if not ok then
+        local _, err = hc:report_tcp_failure(ip, port, nil, "passive")
+        if err then
           log(ERR, "[healthchecks] failed reporting status: ", err)
         end
       end
@@ -282,19 +302,58 @@ do
 
       populate_healthchecker(healthchecker, balancer)
 
-      attach_healthchecker_to_balancer(healthchecker, balancer)
+      attach_healthchecker_to_balancer(healthchecker, balancer, upstream.id)
 
       -- only enable the callback after the target history has been replayed.
       balancer:setCallback(ring_balancer_callback)
     end
   end
 
+  local creating = {}
+
+  local function wait(id)
+    local timeout = 30
+    local step = 0.001
+    local ratio = 2
+    local max_step = 0.5
+    while timeout > 0 do
+      sleep(step)
+      timeout = timeout - step
+      if not creating[id] then
+        return true
+      end
+      if timeout <= 0 then
+        break
+      end
+      step = min(max(0.001, step * ratio), timeout, max_step)
+    end
+    return nil, "timeout"
+  end
+
   ------------------------------------------------------------------------------
+  -- @param upstream (table) The upstream data
+  -- @param recreate (boolean, optional) create new balancer even if one exists
+  -- @param history (table, optional) history of target updates
+  -- @param start (integer, optional) from where to start reading the history
   -- @return The new balancer object, or nil+error
-  create_balancer = function(upstream, history, start)
+  create_balancer = function(upstream, recreate, history, start)
+
+    if balancers[upstream.id] and not recreate then
+      return balancers[upstream.id]
+    end
+
+    if creating[upstream.id] then
+      local ok = wait(upstream.id)
+      if not ok then
+        return nil, "timeout waiting for balancer for " .. upstream.id
+      end
+      return balancers[upstream.id]
+    end
+
+    creating[upstream.id] = true
+
     local balancer, err = ring_balancer.new({
         wheelSize = upstream.slots,
-        order = upstream.orderlist,
         dns = dns_client,
       })
     if not balancer then
@@ -318,6 +377,8 @@ do
     -- only make the new balancer available for other requests after it
     -- is fully set up.
     balancers[upstream.id] = balancer
+
+    creating[upstream.id] = nil
 
     return balancer
   end
@@ -374,7 +435,7 @@ local function check_target_history(upstream, balancer)
 
   stop_healthchecker(balancer)
 
-  local new_balancer, err = create_balancer(upstream, new_history, 1)
+  local new_balancer, err = create_balancer(upstream, true, new_history, 1)
   if not new_balancer then
     return nil, err
   end
@@ -470,7 +531,7 @@ local function get_balancer(target, no_create)
       return nil, "balancer not found"
     else
       log(ERR, "balancer not found for ", upstream.name, ", will create it")
-      return create_balancer(upstream)
+      return create_balancer(upstream), upstream
     end
   end
 
@@ -523,7 +584,7 @@ local function on_upstream_event(operation, upstream)
 
     local _, err = create_balancer(upstream)
     if err then
-      log(ERR, "failed creating balancer for ", upstream.name, ": ", err)
+      log(CRIT, "failed creating balancer for ", upstream.name, ": ", err)
     end
 
   elseif operation == "delete" or operation == "update" then
@@ -540,7 +601,7 @@ local function on_upstream_event(operation, upstream)
     if operation == "delete" then
       balancers[upstream.id] = nil
     else
-      local _, err = create_balancer(upstream)
+      local _, err = create_balancer(upstream, true)
       if err then
         log(ERR, "failed recreating balancer for ", upstream.name, ": ", err)
       end
@@ -603,9 +664,10 @@ end
 
 
 local function init()
+
   local upstreams, err = get_all_upstreams()
   if not upstreams then
-    log(ngx.STDERR, "failed loading initial list of upstreams: ", err)
+    log(CRIT, "failed loading initial list of upstreams: " .. err)
     return
   end
 
@@ -616,11 +678,12 @@ local function init()
     if ok ~= nil then
       oks = oks + 1
     else
-      log(ngx.STDERR, "failed creating balancer for ", name, ": ", err)
+      log(CRIT, "failed creating balancer for ", name, ": ", err)
       errs = errs + 1
     end
   end
   log(DEBUG, "initialized ", oks, " balancer(s), ", errs, " error(s)")
+
 end
 
 
@@ -696,10 +759,14 @@ local function execute(target)
 
   else
     -- have to do a regular DNS lookup
-    ip, port = toip(target.host, target.port, dns_cache_only)
+    local try_list
+    ip, port, try_list = toip(target.host, target.port, dns_cache_only)
     hostname = target.host
-    if not ip and port == "dns server error: 3 name error" then
-      return nil, "name resolution failed", 503
+    if not ip then
+      log(ERR, "[dns] ", port, ". Tried: ", tostring(try_list))
+      if port == "dns server error: 3 name error" then
+        return nil, "name resolution failed", 503
+      end
     end
   end
 
@@ -737,6 +804,94 @@ local function post_health(upstream, ip, port, is_healthy)
 end
 
 
+--==============================================================================
+-- Health check API
+--==============================================================================
+
+
+--------------------------------------------------------------------------------
+-- Subscribe to events produced by health checkers.
+-- There is no guarantee that the event reported is different from the
+-- previous report (in other words, you may get two "healthy" events in
+-- a row for the same target).
+-- @param callback Function to be called whenever a target has its
+-- status updated. The function should have the following signature:
+-- `function(upstream_id, target_ip, target_port, target_hostname, health)`
+-- where `upstream_id` is the entity id of the upstream,
+-- `target_ip`, `target_port` and `target_hostname` identify the target,
+-- and `health` is a string: "healthy", "unhealthy"
+-- The return value of the callback function is ignored.
+local function subscribe_to_healthcheck_events(callback)
+  healthcheck_subscribers[#healthcheck_subscribers + 1] = callback
+end
+
+
+--------------------------------------------------------------------------------
+-- Unsubscribe from events produced by health checkers.
+-- @param callback Function that was added as the callback.
+-- Note that this must be the same closure used for subscribing.
+local function unsubscribe_from_healthcheck_events(callback)
+  for i, c in ipairs(healthcheck_subscribers) do
+    if c == callback then
+      table.remove(healthcheck_subscribers, i)
+      return
+    end
+  end
+end
+
+
+--------------------------------------------------------------------------------
+-- Get healthcheck information for an upstream.
+-- @param upstream_id the id of the upstream.
+-- @return one of three possible returns:
+-- * if healthchecks are enabled, a table mapping keys ("ip:port") to booleans;
+-- * if healthchecks are disabled, nil;
+-- * in case of errors, nil and an error message.
+local function get_upstream_health(upstream_id)
+
+  local upstream = get_upstream_by_id(upstream_id)
+  if not upstream then
+    return nil, "upstream not found"
+  end
+
+  local using_hc = upstream.healthchecks.active.healthy.interval ~= 0
+                   or upstream.healthchecks.active.unhealthy.interval ~= 0
+                   or upstream.healthchecks.passive.unhealthy.tcp_failures ~= 0
+                   or upstream.healthchecks.passive.unhealthy.timeouts ~= 0
+                   or upstream.healthchecks.passive.unhealthy.http_failures ~= 0
+
+  local balancer = balancers[upstream_id]
+  if not balancer then
+    return nil, "balancer not found"
+  end
+
+  local healthchecker
+  if using_hc then
+    healthchecker = healthcheckers[balancer]
+    if not healthchecker then
+      return nil, "healthchecker not found"
+    end
+  end
+
+  local health_info = {}
+
+  for weight, addr, host in balancer:addressIter() do
+    if weight > 0 then
+      local health
+      if using_hc then
+        health = healthchecker:get_target_status(addr.ip, addr.port)
+                 and "HEALTHY" or "UNHEALTHY"
+      else
+        health = "HEALTHCHECKS_OFF"
+      end
+      health_info[host.hostname .. ":" .. addr.port] = health
+    end
+  end
+
+  return health_info
+end
+
+
 --------------------------------------------------------------------------------
 -- for unit-testing purposes only
 local function _get_healthchecker(balancer)
@@ -759,6 +914,9 @@ return {
   get_upstream_by_name = get_upstream_by_name,
   get_all_upstreams = get_all_upstreams,
   post_health = post_health,
+  subscribe_to_healthcheck_events = subscribe_to_healthcheck_events,
+  unsubscribe_from_healthcheck_events = unsubscribe_from_healthcheck_events,
+  get_upstream_health = get_upstream_health,
 
   -- ones below are exported for test purposes only
   _create_balancer = create_balancer,

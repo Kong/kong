@@ -51,7 +51,6 @@ init_worker_by_lua_block {
     kong.init_worker()
 }
 
-proxy_next_upstream_tries 999;
 
 > if #proxy_listeners > 0 then
 upstream kong_upstream {
