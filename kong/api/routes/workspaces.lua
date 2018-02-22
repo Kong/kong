@@ -52,7 +52,7 @@ return {
     end,
 
     DELETE = function(self, dao_factory, helpers)
-      if self.workspace.name == "default" then
+      if self.workspace.name == workspaces.DEFAULT_WORKSPACE then
         return helpers.responses.send_HTTP_METHOD_NOT_ALLOWED()
       end
       crud.delete(self.workspace, dao_factory.workspaces)

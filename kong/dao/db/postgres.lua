@@ -268,11 +268,9 @@ local function get_where(tbl)
   local where = {}
 
   for col, value in pairs(tbl) do
-    if col ~= "workspace_name" then
-      where[#where+1] = fmt("%s = %s",
-        escape_identifier(col),
-        escape_literal(value))
-    end
+    where[#where+1] = fmt("%s = %s",
+                          escape_identifier(col),
+                          escape_literal(value))
   end
 
   return concat(where, " AND ")
@@ -559,7 +557,8 @@ function _M:find_all(table_name, tbl, schema)
   end
 
   local query
-  if ws then
+  -- XXX check if table_name is workspaeable and if is not workspaces itself
+  if ws and require"kong.workspaces".get_workspaceable_relations()[table_name] and table_name ~= "workspaces" then
     query = select_query_ws(self, ws.name, get_select_fields_ws(schema, table_name), schema, table_name, where)
   else
     query = select_query(self, get_select_fields(schema), schema, table_name, where)

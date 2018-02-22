@@ -3,6 +3,7 @@ local DAOFactory  = require "kong.dao.factory"
 local helpers     = require "spec.helpers"
 local cjson       = require "cjson"
 local utils       = require "kong.tools.utils"
+local workspaces  = require "kong.workspaces"
 
 dao_helpers.for_each_dao(function(kong_config)
 
@@ -125,13 +126,13 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
       it("retrieves the default workspace", function()
         local res = assert(client:send {
           method = "GET",
-          path = "/workspaces/default",
+          path = "/workspaces/" .. workspaces.DEFAULT_WORKSPACE,
         })
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.equals("default", json.name)
+        assert.equals(workspaces.DEFAULT_WORKSPACE, json.name)
       end)
 
       it("retrieves a single workspace", function()
@@ -221,9 +222,7 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        --XXX no entities are returned, since there's a truncate_tables being
-        -- run
-        assert.equals(0, #json.data)
+        assert.equals(2, #json.data)
       end)
       it("returns a list of entities associated with the workspace", function()
         local res = assert(client:send {

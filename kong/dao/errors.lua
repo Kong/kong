@@ -6,7 +6,6 @@ local tostring = tostring
 local type = type
 local fmt = string.format
 
-
 local error_mt = {}
 
 function error_mt.__tostring(t)
@@ -35,7 +34,7 @@ local ERRORS = {
 local serializers = {
   [ERRORS.unique] = function(tbl)
     local ret = {}
-    for k , v in pairs(tbl) do
+    for k, v in pairs(tbl) do
       ret[k] = "already exists with value '" .. v .. "'"
 
       local ws_value = utils.split(v , ":")

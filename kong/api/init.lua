@@ -5,9 +5,8 @@ local responses = require "kong.tools.responses"
 local singletons = require "kong.singletons"
 local app_helpers = require "lapis.application"
 local api_helpers = require "kong.api.api_helpers"
-
 local rbac = require "kong.rbac"
-local ws   = require "kong.workspaces"
+local workspaces = require "kong.workspaces"
 
 
 local find = string.find
@@ -104,14 +103,13 @@ app:before_filter(function(self)
         name = "*"
       }
     else
-      local workspace = ws.retrieve_workspace(self.params.workspace_name)
+      local workspace = workspaces.retrieve_workspace(self.params.workspace_name)
       if not workspace then
         responses.send_HTTP_NOT_FOUND()
       end
-      ngx.ctx.workspace = ws.retrieve_workspace(self.params.workspace_name)
+      ngx.ctx.workspace = workspace
     end
 
-    ngx.ctx.workspace_entities_schema = singletons.dao.workspace_entities.schema
     self.params.workspace_name = nil
   end
 

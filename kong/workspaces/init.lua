@@ -4,7 +4,8 @@ local utils      = require "kong.tools.utils"
 
 local _M = {}
 
-_M.DEFAULT_WORKSPACE = "default"
+local default_workspace = "default"
+_M.DEFAULT_WORKSPACE = default_workspace
 
 
 -- a map of workspaceable relations to its primary key name
@@ -52,7 +53,7 @@ function _M.get_default_workspace_migration()
         name = "2018-02-16-110000_default_workspace_entities",
         up = function(_, _, dao)
           local default, err = dao.workspaces:insert({
-            name = "default",
+            name = default_workspace,
           })
           if err then
             return err
@@ -106,7 +107,7 @@ function _M.retrieve_workspace(workspace_name)
 end
 
 
-function _M.add_entity_releation(dao_collection, entity, workspace)
+function _M.add_entity_relation(dao_collection, entity, workspace)
   local rel, err
 
   -- TODO primary key may not `id`
@@ -125,7 +126,7 @@ function _M.add_entity_releation(dao_collection, entity, workspace)
 end
 
 
-function _M.delete_entity_releation(dao_collection, entity)
+function _M.delete_entity_relation(dao_collection, entity)
   local rel, err
 
   -- TODO primary key may not `id`

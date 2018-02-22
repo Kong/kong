@@ -217,7 +217,7 @@ function _M:truncate_tables()
 
   -- re-create the default workspace - that's so ugly
   self.workspaces:insert({
-    name = "default",
+    name = workspaces.DEFAULT_WORKSPACE,
   })
 end
 

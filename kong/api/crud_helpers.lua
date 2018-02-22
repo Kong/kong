@@ -3,7 +3,7 @@ local utils         = require "kong.tools.utils"
 local responses     = require "kong.tools.responses"
 local app_helpers   = require "lapis.application"
 local singletons    = require "kong.singletons"
-local ws            = require "kong.workspaces"
+local workspaces    = require "kong.workspaces"
 
 
 local decode_base64 = ngx.decode_base64
@@ -34,9 +34,9 @@ local _M = {}
 -- @param alternate_field the field to use if it is not a uuid, or not found in `id`
 function _M.find_by_id_or_field(dao, filter, value, alternate_field)
   filter = filter or {}
-
   local is_uuid = utils.is_valid_uuid(value)
   filter[is_uuid and "id" or alternate_field] = value
+
   local rows, err = dao:find_all(filter)
   if err then
     return nil, err
@@ -263,36 +263,14 @@ function _M.get(primary_keys, dao_collection, post_process)
   end
 end
 
-
-local function check_workspace(dao, params)
-  local ws_name = ngx.ctx.workspace and ngx.ctx.workspace.name
-
-  local rows, err = _M.find_by_id_or_field(dao.workspaces,
-                                     { workspace_name = "*" }, ws_name, "name")
-
-  if err then
-    return app_helpers.yield_error(err)
-  end
-
-  if not rows or #rows == 0 then
-    return responses.send_HTTP_NOT_FOUND()
-  end
-
-  ngx.ctx.workspace = rows[1]
-  ngx.ctx.workspaces_schema = dao.workspaces.schema
-  ngx.ctx.workspace_entities_schema = dao.workspace_entities.schema
-  return rows[1]
-end
-
 --- Insertion of an entity.
 function _M.post(params, dao_collection, post_process)
-
   local data, err = dao_collection:insert(params)
   if err then
     return app_helpers.yield_error(err)
   else
-    local rel, err_rel = ws.add_entity_releation(dao_collection, data,
-                           ngx.ctx.workspace and ngx.ctx.workspace.name)
+    local rel, err_rel = workspaces.add_entity_relation(dao_collection, data,
+                           ngx.ctx.workspace)
     if err then
       local data, err = dao_collection:delete(data)
       if err then
@@ -307,7 +285,6 @@ end
 --- Partial update of an entity.
 -- Filter keys must be given to get the row to update.
 function _M.patch(params, dao_collection, filter_keys, post_process)
-
   if not next(params) then
     return responses.send_HTTP_BAD_REQUEST("empty body")
   end
@@ -325,7 +302,6 @@ end
 -- First, we check if the entity body has primary keys or not,
 -- if it does, we are performing an update, if not, an insert.
 function _M.put(params, dao_collection, post_process)
-
   local new_entity, err
   local primary_key = dao_collection.schema.primary_key[1]
 
@@ -333,10 +309,9 @@ function _M.put(params, dao_collection, post_process)
   if not model:has_primary_keys() then
     -- If entity body has no primary key, deal with an insert
     new_entity, err = dao_collection:insert(params)
-
     if not err then
-      local rel, err_rel = ws.add_entity_releation(dao_collection, new_entity,
-                             ngx.ctx.workspace.name)
+      local rel, err_rel = workspaces.add_entity_relation(dao_collection, new_entity,
+                             ngx.ctx.workspace)
       if err then
         local data, err = dao_collection:delete(data)
         if err then
@@ -353,11 +328,9 @@ function _M.put(params, dao_collection, post_process)
       workspace_id = ngx.ctx.workspace.id,
       entity_id = params[primary_key],
     })
-
     if err then
       return helpers.yield_error(err)
     end
-
     if not e then
       return responses.send_HTTP_NOT_FOUND()
     end
@@ -380,7 +353,6 @@ end
 --- Delete an entity.
 -- The DAO requires to be given a table containing the full primary key of the entity
 function _M.delete(primary_keys, dao_collection)
-
   local ok, err = dao_collection:delete(primary_keys)
   if not ok then
     if err then
