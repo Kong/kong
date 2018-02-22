@@ -144,8 +144,8 @@ describe("Router", function()
           sock:close()
         end)
 
-        assert(sock:connect(helpers.test_conf.proxy_ip,
-                            helpers.test_conf.proxy_port))
+        assert(sock:connect(helpers.get_proxy_ip(),
+                            helpers.get_proxy_port()))
 
         local req = "GET /get HTTP/1.0\r\nKong-Debug: 1\r\n\r\n"
         assert(sock:send(req))
@@ -168,8 +168,8 @@ describe("Router", function()
           sock:close()
         end)
 
-        assert(sock:connect(helpers.test_conf.proxy_ip,
-                            helpers.test_conf.proxy_port))
+        assert(sock:connect(helpers.get_proxy_ip(),
+                            helpers.get_proxy_port()))
 
         local req = "GET /get HTTP/1.1\r\nKong-Debug: 1\r\n\r\n"
         assert(sock:send(req))

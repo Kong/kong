@@ -68,7 +68,7 @@ describe("#flaky Plugin: syslog (log)", function()
   end)
 
   before_each(function()
-    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
+    client = assert(helpers.proxy_client())
   end)
   after_each(function()
     if client then client:close() end
@@ -93,9 +93,9 @@ describe("#flaky Plugin: syslog (log)", function()
       local json = cjson.decode(msg)
 
       if expecting_same then
-        assert.equal(uuid, json.request.headers["sys-log-uuid"])
+        assert.equal(uuid, json.request.headers["sys_log_uuid"])
       else
-        assert.not_equal(uuid, json.request.headers["sys-log-uuid"])
+        assert.not_equal(uuid, json.request.headers["sys_log_uuid"])
       end
     elseif expecting_same then
       local _, _, stdout = assert(helpers.execute("find /var/log -type f -mmin -5 2>/dev/null | xargs grep -l " .. uuid))
