@@ -443,7 +443,7 @@ local function generate_endpoints(schema, endpoints, prefix)
 end
 
 
-local Endpoints = {}
+local Endpoints = { handle_error = handle_error }
 
 
 function Endpoints.new(schema, endpoints, prefix)

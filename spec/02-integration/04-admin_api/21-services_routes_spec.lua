@@ -19,10 +19,11 @@ for _, strategy in helpers.each_strategy() do
   describe("Admin API #" .. strategy, function()
     local bp
     local db
+    local dao
     local client
 
     setup(function()
-      bp, db = helpers.get_db_utils(strategy)
+      bp, db, dao = helpers.get_db_utils(strategy)
     end)
 
     teardown(function()
@@ -340,6 +341,319 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
+      describe("/services/{service}/plugins", function()
+        local service
+
+        before_each(function()
+          service = bp.services:insert {
+            name     = "my-service",
+            protocol = "http",
+            host     = "my-service.com",
+          }
+        end)
+
+        describe("POST", function()
+          it_content_types("creates a plugin config for a Service", function(content_type)
+            return function()
+              local res = assert(client:send {
+                method = "POST",
+                path = "/services/" .. service.id .. "/plugins",
+                body = {
+                  name = "key-auth",
+                  ["config.key_names"] = "apikey,key"
+                },
+                headers = { ["Content-Type"] = content_type }
+              })
+              local body = assert.res_status(201, res)
+              local json = cjson.decode(body)
+              assert.equal("key-auth", json.name)
+              assert.same({ "apikey", "key" }, json.config.key_names)
+            end
+          end)
+
+          it_content_types("references a Service by name", function(content_type)
+            return function()
+              local res = assert(client:send {
+                method = "POST",
+                path = "/services/" .. service.name .. "/plugins",
+                body = {
+                  name = "key-auth",
+                  ["config.key_names"] = "apikey,key"
+                },
+                headers = { ["Content-Type"] = content_type }
+              })
+              local body = assert.res_status(201, res)
+              local json = cjson.decode(body)
+              assert.equal("key-auth", json.name)
+              assert.same({ "apikey", "key" }, json.config.key_names)
+            end
+          end)
+
+          describe("errors", function()
+            it_content_types("handles invalid input", function(content_type)
+              return function()
+                local res = assert(client:send {
+                  method = "POST",
+                  path = "/services/" .. service.id .. "/plugins",
+                  body = {},
+                  headers = { ["Content-Type"] = content_type }
+                })
+                local body = assert.res_status(400, res)
+                local json = cjson.decode(body)
+                assert.same({ name = "name is required" }, json)
+              end
+            end)
+
+            it_content_types("returns 409 on conflict (same plugin name)", function(content_type)
+              return function()
+                -- insert initial plugin
+                local res = assert(client:send {
+                  method = "POST",
+                  path = "/services/" .. service.id .. "/plugins",
+                  body = {
+                    name = "basic-auth",
+                  },
+                  headers = { ["Content-Type"] = content_type }
+                })
+                assert.response(res).has.status(201)
+                assert.response(res).has.jsonbody()
+
+                -- do it again, to provoke the error
+                local res = assert(client:send {
+                  method = "POST",
+                  path = "/services/" .. service.id .. "/plugins",
+                  body = {
+                    name = "basic-auth",
+                  },
+                  headers = { ["Content-Type"] = content_type }
+                })
+                assert.response(res).has.status(409)
+                local json = assert.response(res).has.jsonbody()
+                assert.same({ name = "already exists with value 'basic-auth'"}, json)
+              end
+            end)
+
+            it_content_types("returns 409 on id conflict (same plugin id)", function(content_type)
+              return function()
+                -- insert initial plugin
+                local res = assert(client:send {
+                  method = "POST",
+                  path = "/services/" .. service.id .. "/plugins",
+                  body = {
+                    name = "basic-auth",
+                  },
+                  headers = { ["Content-Type"] = content_type }
+                })
+                local body = assert.res_status(201, res)
+                local plugin = cjson.decode(body)
+
+                -- do it again, to provoke the error
+                local conflict_res = assert(client:send {
+                  method = "POST",
+                  path = "/services/" .. service.id .. "/plugins",
+                  body = {
+                    name = "key-auth",
+                    id = plugin.id,
+                  },
+                  headers = { ["Content-Type"] = content_type }
+                })
+                local conflict_body = assert.res_status(409, conflict_res)
+                local json = cjson.decode(conflict_body)
+                assert.same({ id = "already exists with value '" .. plugin.id .. "'"}, json)
+              end
+            end)
+          end)
+        end)
+
+        describe("PUT", function()
+          it_content_types("creates if not exists", function(content_type)
+            return function()
+              local res = assert(client:send {
+                method = "PUT",
+                path = "/services/" .. service.id .. "/plugins",
+                body = {
+                  name = "key-auth",
+                  ["config.key_names"] = "apikey,key",
+                  created_at = 1461276890000
+                },
+                headers = { ["Content-Type"] = content_type }
+              })
+              local body = assert.res_status(201, res)
+              local json = cjson.decode(body)
+              assert.equal("key-auth", json.name)
+              assert.same({ "apikey", "key" }, json.config.key_names)
+            end
+          end)
+
+          it_content_types("replaces if exists", function(content_type)
+            return function()
+              local res = assert(client:send {
+                method = "PUT",
+                path = "/services/" .. service.id .. "/plugins",
+                body = {
+                  name = "key-auth",
+                  ["config.key_names"] = "apikey,key",
+                  created_at = 1461276890000
+                },
+                headers = { ["Content-Type"] = content_type }
+              })
+              local body = assert.res_status(201, res)
+              local json = cjson.decode(body)
+
+              res = assert(client:send {
+                method = "PUT",
+                path = "/services/" .. service.id .. "/plugins",
+                body = {
+                  id = json.id,
+                  name = "key-auth",
+                  ["config.key_names"] = "key",
+                  created_at = 1461276890000
+                },
+                headers = { ["Content-Type"] = content_type }
+              })
+              body = assert.res_status(200, res)
+              json = cjson.decode(body)
+              assert.equal("key-auth", json.name)
+              assert.same({ "key" }, json.config.key_names)
+            end
+          end)
+
+          it_content_types("perfers default values when replacing", function(content_type)
+            return function()
+              local plugin = assert(dao.plugins:insert {
+                name = "key-auth",
+                service_id = service.id,
+                config = { hide_credentials = true }
+              })
+              assert.True(plugin.config.hide_credentials)
+              assert.same({ "apikey" }, plugin.config.key_names)
+
+              local res = assert(client:send {
+                method = "PUT",
+                path = "/services/" .. service.id .. "/plugins",
+                body = {
+                  id = plugin.id,
+                  name = "key-auth",
+                  ["config.key_names"] = "apikey,key",
+                  created_at = 1461276890000
+                },
+                headers = { ["Content-Type"] = content_type }
+              })
+              local body = assert.res_status(200, res)
+              local json = cjson.decode(body)
+              assert.False(json.config.hide_credentials) -- not true anymore
+
+              plugin = assert(dao.plugins:find {
+                id = plugin.id,
+                name = plugin.name
+              })
+              assert.False(plugin.config.hide_credentials)
+              assert.same({ "apikey", "key" }, plugin.config.key_names)
+            end
+          end)
+
+          it_content_types("overrides a plugin previous config if partial", function(content_type)
+            return function()
+              local plugin = assert(dao.plugins:insert {
+                name = "key-auth",
+                service_id = service.id
+              })
+              assert.same({ "apikey" }, plugin.config.key_names)
+
+              local res = assert(client:send {
+                method = "PUT",
+                path = "/services/" .. service.id .. "/plugins",
+                body = {
+                  id = plugin.id,
+                  name = "key-auth",
+                  ["config.key_names"] = "apikey,key",
+                  created_at = 1461276890000
+                },
+                headers = { ["Content-Type"] = content_type }
+              })
+              local body = assert.res_status(200, res)
+              local json = cjson.decode(body)
+              assert.same({ "apikey", "key" }, json.config.key_names)
+            end
+          end)
+
+          it_content_types("updates the enabled property", function(content_type)
+            return function()
+              local plugin = assert(dao.plugins:insert {
+                name = "key-auth",
+                service_id = service.id
+              })
+              assert.True(plugin.enabled)
+
+              local res = assert(client:send {
+                method = "PUT",
+                path = "/services/" .. service.id .. "/plugins",
+                body = {
+                  id = plugin.id,
+                  name = "key-auth",
+                  enabled = false,
+                  created_at = 1461276890000
+                },
+                headers = { ["Content-Type"] = content_type }
+              })
+              local body = assert.res_status(200, res)
+              local json = cjson.decode(body)
+              assert.False(json.enabled)
+
+              plugin = assert(dao.plugins:find {
+                id = plugin.id,
+                name = plugin.name
+              })
+              assert.False(plugin.enabled)
+            end
+          end)
+
+          describe("errors", function()
+            it_content_types("handles invalid input", function(content_type)
+              return function()
+                local res = assert(client:send {
+                  method = "PUT",
+                  path = "/services/" .. service.id .. "/plugins",
+                  body = {},
+                  headers = { ["Content-Type"] = content_type }
+                })
+                local body = assert.res_status(400, res)
+                local json = cjson.decode(body)
+                assert.same({ name = "name is required" }, json)
+              end
+            end)
+          end)
+        end)
+
+        describe("GET", function()
+          it("retrieves the first page", function()
+            assert(dao.plugins:insert {
+              name = "key-auth",
+              service_id = service.id
+            })
+            local res = assert(client:send {
+              method = "GET",
+              path = "/services/" .. service.id .. "/plugins"
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.equal(1, #json.data)
+          end)
+
+          it("ignores an invalid body", function()
+            local res = assert(client:send {
+              method = "GET",
+              path = "/services/" .. service.id .. "/plugins",
+              body = "this fails if decoded as json",
+              headers = {
+                ["Content-Type"] = "application/json",
+              }
+            })
+            assert.res_status(200, res)
+          end)
+        end)
+      end)
+
       describe("errors", function()
         it("handles malformed JSON body", function()
           local res = client:post("/services", {
@@ -406,7 +720,6 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
     end)
-
   end)
 end
 
