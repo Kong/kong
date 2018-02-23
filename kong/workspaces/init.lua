@@ -109,11 +109,8 @@ end
 
 function _M.add_entity_relation(dao_collection, entity, workspace)
   local rel, err
-
-  -- TODO primary key may not `id`
-  local primary_key = dao_collection.schema.primary_key[1]
-  local primary_key_type = dao_collection.schema.fields[primary_key].type
-  if primary_key_type  == "id" and entity[primary_key] then
+  local primary_key = workspaceable_relations[dao_collection.table]
+  if primary_key then
     rel, err = singletons.dao.workspace_entities:insert({
       workspace_id = workspace.id,
       entity_id = entity[primary_key],
@@ -129,14 +126,11 @@ end
 function _M.delete_entity_relation(dao_collection, entity)
   local rel, err
 
-  -- TODO primary key may not `id`
-  local primary_key = dao_collection.schema.primary_key[1]
-  local primary_key_type = dao_collection.schema.fields[primary_key].type
-  if primary_key_type == "id" and entity[primary_key] then
-    row, err = singletons.dao.workspace_entities:delete({
+  local primary_key = workspaceable_relations[dao_collection.table]
+  if primary_key then
+    _, err = singletons.dao.workspace_entities:delete({
       entity_id = entity[primary_key]
     })
-
   end
 
   return rel, err

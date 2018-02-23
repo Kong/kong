@@ -7,7 +7,7 @@ return {
       required = true,
     },
     entity_id = {
-      type = "id",
+      type = "string",
       required = true,
     },
     entity_type = {

@@ -358,12 +358,18 @@ local function select_query_ws(self, workspace, select_clause, schema, table, wh
   local join_ws = (workspace ~= nil)
   local join_ttl = schema.primary_key and #schema.primary_key == 1
 
+  local primary_key_type, err = retrieve_primary_key_type(self, schema, table)
+  if not primary_key_type then
+    return nil, err
+  end
+
   if join_ws then
     join_tbl = fmt([[
       workspaces w INNER  JOIN workspace_entities e
-      ON ( e.workspace_id = w.id ) %s JOIN %s %s ON ( e.entity_id = %s.id )
-    ]], (workspace == default_ws or workspace == "*") and "RIGHT OUTER" or "INNER",
-      table, table, table, schema.primary_key[1])
+      ON ( e.workspace_id = w.id ) %s JOIN %s %s ON ( e.entity_id = %s.%s%s )
+    ]], (workspace == default_ws or workspace == "*") and "RIGHT OUTER" or
+      "INNER", table, table, table, schema.primary_key[1],
+      primary_key_type == "uuid" and "::varchar" or "")
 
     if workspace ~= "*" then
       join_where = fmt("( w.name = '%s' %s ", workspace,
@@ -372,11 +378,6 @@ local function select_query_ws(self, workspace, select_clause, schema, table, wh
   end
 
   if join_ttl then
-    local primary_key_type, err = retrieve_primary_key_type(self, schema, table)
-    if not primary_key_type then
-      return nil, err
-    end
-
     join_tbl = fmt("%s LEFT OUTER JOIN ttls ON (%s.%s = ttls.primary_%s_value)",
       join_tbl and join_tbl or table, table, schema.primary_key[1],
       primary_key_type == "uuid" and "uuid" or "key")

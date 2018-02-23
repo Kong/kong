@@ -303,7 +303,7 @@ return {
 
       CREATE TABLE IF NOT EXISTS workspace_entities(
         workspace_id uuid,
-        entity_id uuid,
+        entity_id text,
         entity_type text,
         PRIMARY KEY(workspace_id, entity_id)
       );
