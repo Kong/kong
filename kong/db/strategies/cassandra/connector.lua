@@ -65,11 +65,51 @@ function CassandraConnector.new(kong_config)
 end
 
 
+local function extract_major(release_version)
+  return string.match(release_version, "^(%d+)%.%d")
+end
+
+
 function CassandraConnector:init()
   local ok, err = self.cluster:refresh()
   if not ok then
     return nil, err
   end
+
+  -- get cluster release version
+
+  local peers, err = self.cluster:get_peers()
+  if err then
+    return nil, err
+  end
+
+  if not peers then
+    return nil, "no peers in shm"
+  end
+
+  local major_version
+
+  for i = 1, #peers do
+    local release_version = peers[i].release_version
+    if not release_version then
+      return nil, "no release_version for peer " .. peers[i].host
+    end
+
+    local peer_major_version = tonumber(extract_major(release_version))
+    if not peer_major_version then
+      return nil, "failed to extract major version for peer " .. peers[i].host
+                  .. " with version: " .. tostring(peers[i].release_version)
+    end
+
+    if i == 1 then
+      major_version = peer_major_version
+
+    elseif peer_major_version ~= major_version then
+      return nil, "different major versions detected"
+    end
+  end
+
+  self.major_version = major_version
 
   return true
 end
@@ -150,25 +190,44 @@ function CassandraConnector:query(query, args, opts, operation)
 end
 
 
+local function select_tables(self)
+  if not self.major_version then
+    return nil, "missing self.major_version"
+  end
+
+  local cql
+
+  if self.major_version == 3 then
+    cql = [[SELECT * FROM system_schema.tables WHERE keyspace_name = ?]]
+
+  else
+    cql = [[SELECT * FROM system.schema_columnfamilies
+            WHERE keyspace_name = ?]]
+  end
+
+  return self:query(cql, { self.keyspace })
+end
+
+
 function CassandraConnector:reset()
   local ok, err = self:connect()
   if not ok then
     return nil, err
   end
 
-  local rows, err = self:query([[
-    SELECT * FROM system_schema.tables WHERE keyspace_name = ?]],
-    { self.keyspace }
-  )
+  local rows, err = select_tables(self)
   if not rows then
     return nil, err
   end
 
   for i = 1, #rows do
+    local table_name = self.major_version == 3
+                       and rows[i].table_name
+                       or rows[i].columnfamily_name
+
     -- deletes table and indexes
     local cql = string.format("DROP TABLE %s.%s",
-                              self.keyspace,
-                              rows[i].table_name)
+                              self.keyspace, table_name)
 
     local ok, err = self:query(cql)
     if not ok then
@@ -197,16 +256,15 @@ function CassandraConnector:truncate()
     return nil, err
   end
 
-  local rows, err = self:query([[
-    SELECT * FROM system_schema.tables WHERE keyspace_name = ?]],
-    { self.keyspace }
-  )
+  local rows, err = select_tables(self)
   if not rows then
     return nil, err
   end
 
   for i = 1, #rows do
-    local table_name = rows[i].table_name
+    local table_name = self.major_version == 3
+                       and rows[i].table_name
+                       or rows[i].columnfamily_name
 
     if table_name ~= "schema_migrations" then
       local cql = string.format("TRUNCATE TABLE %s.%s",
