@@ -354,7 +354,7 @@ end
 
 local function select_query_ws(self, workspace, select_clause, schema, table, where, offset, limit)
   local query, join_tbl, join_where
-  local default_ws = require("kong.workspaces").DEFAULT_WORKSPACE
+  local default_ws = workspaces.DEFAULT_WORKSPACE
   local join_ws = (workspace ~= nil)
   local join_ttl = schema.primary_key and #schema.primary_key == 1
 
