@@ -606,4 +606,11 @@ return {
     ]],
     down = nil
   },
+  {
+    name = "2018-02-23-142400_targets_add_index",
+    up = [[
+      CREATE INDEX IF NOT EXISTS ON targets(target);
+    ]],
+    down = nil
+  }
 }
