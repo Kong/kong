@@ -4,6 +4,9 @@ local utils = require "kong.tools.utils"
 
 describe("Plugin: basic-auth (API)", function()
   local consumer, admin_client
+  -- Contains all reserved characters from RFC 3986
+  local plugin_username = "spongebob squarepants :/?#[]@!$&'()*+,;="
+  local url_username = "spongebob%20squarepants%20%3a%2f%3f%23%5b%5d%40%21%24%26%27%28%29%2a%2b%2c%3b%3d"
   setup(function()
     helpers.run_migrations()
 
@@ -31,7 +34,7 @@ describe("Plugin: basic-auth (API)", function()
           method = "POST",
           path = "/consumers/bob/basic-auth",
           body = {
-            username = "bob",
+            username = plugin_username,
             password = "kong"
           },
           headers = {
@@ -41,14 +44,14 @@ describe("Plugin: basic-auth (API)", function()
         local body = assert.res_status(201, res)
         local json = cjson.decode(body)
         assert.equal(consumer.id, json.consumer_id)
-        assert.equal("bob", json.username)
+        assert.equal(plugin_username, json.username)
       end)
       it("encrypts the password", function()
         local res = assert(admin_client:send {
           method = "POST",
           path = "/consumers/bob/basic-auth",
           body = {
-            username = "bob",
+            username = plugin_username,
             password = "kong"
           },
           headers = {
@@ -86,7 +89,7 @@ describe("Plugin: basic-auth (API)", function()
             method = "POST",
             path = "/consumers/bob/basic-auth",
             body = {
-              username = "bob",
+              username = plugin_username,
               password = "kong"
             },
             headers = {
@@ -100,7 +103,7 @@ describe("Plugin: basic-auth (API)", function()
             method = "POST",
             path = "/consumers/bob/basic-auth",
             body = {
-              username = "bob",
+              username = plugin_username,
               password = "kong"
             },
             headers = {
@@ -118,7 +121,7 @@ describe("Plugin: basic-auth (API)", function()
           method = "PUT",
           path = "/consumers/bob/basic-auth",
           body = {
-            username = "bob",
+            username = plugin_username,
             password = "kong"
           },
           headers = {
@@ -128,7 +131,7 @@ describe("Plugin: basic-auth (API)", function()
         local body = assert.res_status(201, res)
         local json = cjson.decode(body)
         assert.equal(consumer.id, json.consumer_id)
-        assert.equal("bob", json.username)
+        assert.equal(plugin_username, json.username)
       end)
       describe("errors", function()
         it("returns bad request", function()
@@ -179,7 +182,7 @@ describe("Plugin: basic-auth (API)", function()
     before_each(function()
       helpers.dao:truncate_table("basicauth_credentials")
       credential = assert(helpers.dao.basicauth_credentials:insert {
-        username = "bob",
+        username = plugin_username,
         password = "kong",
         consumer_id = consumer.id
       })
@@ -197,7 +200,7 @@ describe("Plugin: basic-auth (API)", function()
       it("retrieves basic-auth credential by username", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/bob/basic-auth/" .. credential.username
+          path = "/consumers/bob/basic-auth/" .. url_username
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -245,7 +248,7 @@ describe("Plugin: basic-auth (API)", function()
 
         local res = assert(admin_client:send {
           method = "PATCH",
-          path = "/consumers/bob/basic-auth/" .. credential.username,
+          path = "/consumers/bob/basic-auth/" .. url_username,
           body = {
             password = "upd4321"
           },
@@ -309,7 +312,7 @@ describe("Plugin: basic-auth (API)", function()
         helpers.dao:truncate_table("basicauth_credentials")
         assert(helpers.dao.basicauth_credentials:insert {
           consumer_id = consumer.id,
-          username = "bob"
+          username = plugin_username
         })
         consumer2 = assert(helpers.dao.consumers:insert {
           username = "bob-the-buidler"
@@ -403,7 +406,7 @@ describe("Plugin: basic-auth (API)", function()
         helpers.dao:truncate_table("basicauth_credentials")
         credential = assert(helpers.dao.basicauth_credentials:insert {
           consumer_id = consumer.id,
-          username = "bob"
+          username = plugin_username,
         })
       end)
       it("retrieve consumer from a basic-auth id", function()
@@ -418,7 +421,7 @@ describe("Plugin: basic-auth (API)", function()
       it("retrieve consumer from a basic-auth username", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/basic-auths/" .. credential.username .. "/consumer"
+          path = "/basic-auths/" .. url_username .. "/consumer"
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)

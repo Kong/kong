@@ -80,7 +80,7 @@ return {
       local credentials, err = crud.find_by_id_or_field(
         dao_factory.oauth2_credentials,
         { consumer_id = self.params.consumer_id },
-        self.params.clientid_or_id,
+        ngx.unescape_uri(self.params.clientid_or_id),
         "client_id"
       )
 

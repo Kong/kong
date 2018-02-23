@@ -149,10 +149,15 @@ describe("Plugin: key-auth (API)", function()
 
   describe("/consumers/:consumer/key-auth/:id", function()
     local credential
+    -- Contains all reserved characters from RFC 3986
+    local key = "Some Key :/?#[]@!$&'()*+,;="
+    local url_key = "Some%20Key%20%3a%2f%3f%23%5b%5d%40%21%24%26%27%28%29%2a%2b%2c%3b%3d"
+
     before_each(function()
       helpers.dao:truncate_table("keyauth_credentials")
       credential = assert(helpers.dao.keyauth_credentials:insert {
-        consumer_id = consumer.id
+        consumer_id = consumer.id,
+        key = key,
       })
     end)
     describe("GET", function()
@@ -164,11 +169,12 @@ describe("Plugin: key-auth (API)", function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.equal(credential.id, json.id)
+        assert.equal(key, json.key)
       end)
       it("retrieves key-auth credential by key", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/bob/key-auth/" .. credential.key
+          path = "/consumers/bob/key-auth/" .. url_key
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -212,7 +218,7 @@ describe("Plugin: key-auth (API)", function()
       it("updates a credential by key", function()
         local res = assert(admin_client:send {
           method = "PATCH",
-          path = "/consumers/bob/key-auth/" .. credential.key,
+          path = "/consumers/bob/key-auth/" .. url_key,
           body = {
             key = "4321UPD"
           },
@@ -417,11 +423,15 @@ describe("Plugin: key-auth (API)", function()
   describe("/key-auths/:credential_key_or_id/consumer", function()
     describe("GET", function()
       local credential
+      -- Contains all reserved characters from RFC 3986
+      local my_plugin_key = "Some Key :/?#[]@!$&'()*+,;="
+      local my_url_key = "Some%20Key%20%3a%2f%3f%23%5b%5d%40%21%24%26%27%28%29%2a%2b%2c%3b%3d"
 
       setup(function()
         helpers.dao:truncate_table("keyauth_credentials")
         credential = assert(helpers.dao.keyauth_credentials:insert {
-          consumer_id = consumer.id
+          consumer_id = consumer.id,
+          key = my_plugin_key,
         })
       end)
 
@@ -437,7 +447,7 @@ describe("Plugin: key-auth (API)", function()
       it("retrieve a Consumer from a credential's key", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/key-auths/" .. credential.key .. "/consumer"
+          path = "/key-auths/" .. my_url_key .. "/consumer"
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
