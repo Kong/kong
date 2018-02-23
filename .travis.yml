@@ -31,9 +31,15 @@ env:
     - TEST_SUITE=lint
     - TEST_SUITE=unit
     - TEST_SUITE=integration
+      OPENRESTY=$OPENRESTY_LATEST
+    - TEST_SUITE=plugins
+      OPENRESTY=$OPENRESTY_LATEST
+    - TEST_SUITE=integration
       OPENRESTY=$OPENRESTY_BASE
+      CASSANDRA=2.2
     - TEST_SUITE=plugins
       OPENRESTY=$OPENRESTY_BASE
+      CASSANDRA=2.2
     - TEST_SUITE=old-unit
     - TEST_SUITE=old-integration
       OPENRESTY=$OPENRESTY_BASE
