@@ -2,6 +2,7 @@ local pgmoon = require "pgmoon"
 local Errors = require "kong.dao.errors"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
+local workspaces = require "kong.workspaces"
 
 local get_phase = ngx.get_phase
 local timer_at = ngx.timer.at
@@ -18,6 +19,7 @@ local ceil = math.ceil
 local fmt = string.format
 local ERR = ngx.ERR
 
+local workspaceable = workspaces.get_workspaceable_relations()
 local TTL_CLEANUP_INTERVAL = 60 -- 1 minute
 
 local function log(lvl, ...)
@@ -536,7 +538,7 @@ function _M:find(table_name, schema, primary_keys)
   local where = ws and get_where_ws(primary_keys, table_name) or get_where(primary_keys)
 
   local query
-  if ws then
+  if ws and workspaceable[table_name]  then
     query = select_query_ws(self, ws.name, get_select_fields_ws(schema, table_name), schema, table_name, where)
   else
     query = select_query(self, get_select_fields(schema), schema, table_name, where)
@@ -557,8 +559,7 @@ function _M:find_all(table_name, tbl, schema)
   end
 
   local query
-  -- XXX check if table_name is workspaeable and if is not workspaces itself
-  if ws and require"kong.workspaces".get_workspaceable_relations()[table_name] and table_name ~= "workspaces" then
+  if ws and workspaceable[table_name]  then
     query = select_query_ws(self, ws.name, get_select_fields_ws(schema, table_name), schema, table_name, where)
   else
     query = select_query(self, get_select_fields(schema), schema, table_name, where)
@@ -590,7 +591,7 @@ function _M:find_page(table_name, tbl, page, page_size, schema)
   end
 
   local query
-  if ws then
+  if ws and workspaceable[table_name]  then
     query = select_query_ws(self, ws.name, get_select_fields_ws(schema, table_name), schema, table_name, where, offset, page_size)
   else
     query = select_query(self, get_select_fields(schema), schema, table_name, where, offset, page_size)
@@ -611,7 +612,7 @@ function _M:count(table_name, tbl, schema)
 
   local where
   if tbl then
-    if ws then
+    if ws and workspaceable[table_name]  then
       where = get_where_ws(tbl, table_name)
     else
       where = get_where(tbl)
@@ -619,7 +620,7 @@ function _M:count(table_name, tbl, schema)
   end
 
   local query
-  if ws then
+  if ws and workspaceable[table_name]  then
     query = select_query_ws(self, ws.name, "COUNT(*)", schema, table_name, where)
   else
     query = select_query(self, "COUNT(*)", schema, table_name, where)
