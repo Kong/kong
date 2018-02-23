@@ -18,6 +18,7 @@ local Errors = require "kong.dao.errors"
 local schemas_validation = require "kong.dao.schemas_validation"
 local workspaces = require "kong.workspaces"
 
+local workspaceable = workspaces.get_workspaceable_relations()
 
 local fmt    = string.format
 local new_tab
@@ -73,6 +74,10 @@ end
 local function apply_unique_per_ws(dao_collection, params, workspace)
   local unique_fields = {}
 
+  if not workspaceable[dao_collection.table] then
+    return
+  end
+
   if not workspace or
      dao_collection.table == "workspaces" and
      workspace.name == workspaces.DEFAULT_WORKSPACE then
@@ -90,6 +95,10 @@ local function apply_unique_per_ws(dao_collection, params, workspace)
 end
 
 local function remove_ws_prefix(dao_collection, row)
+  if not workspaceable[dao_collection.table] then
+    return
+  end
+
   -- XXX use self.constraints
   for field_name, schema in pairs(dao_collection.fields) do
     if schema.type ~= "id" and schema.unique and row[field_name] then
