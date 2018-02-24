@@ -62,17 +62,44 @@ certainly be made before the closing of the merging window.
   the command run non-interactively, and ensures no confirmation prompt will
   occur.
   [#3189](https://github.com/Kong/kong/pull/3189)
+- Load balancers now log DNS errors to facilitate debugging
+  [#3177](https://github.com/Kong/kong/pull/3177)
+- Reports now can include custom immutable values
+  [#3180](https://github.com/Kong/kong/pull/3180)
+- New endpoint `/upstreams/:upstream_id/health` will return the health of the specified
+  upstream [#3232](https://github.com/Kong/kong/pull/3232)
+- The `/` endpoint in the Admin API now exports the new `node_id` field
+  [#3234](https://github.com/Kong/kong/pull/3234)
+- There's two new Lua functions for subscribing/unsubscribing to health check events
+  [#3239](https://github.com/Kong/kong/pull/3239)
 
 ### Fixed
 
-- Fix the load balancer initialization when some Targets would contain
-  hostnames.
 - Fix several issues with multipart parsing in the Admin API as well as the
   proxy. lua-resty-multipart has been bumped to 0.5.4.
   [#3054](https://github.com/Kong/kong/pull/3054)
 - Ensure `GET /certificates/{uuid}` does not return HTTP 500 when the given
   identifier does not exist.
-  [#3148](https://github.com/Kong/kong/pull/3148)
+  [#3148](https://github.com/Kong/kong/pull/3148). Thanks to
+  [@vdesjardins](https://github.com/vdesjardins) for the patch!
+- Fix soft errors not being handled correctly inside the Kong cache
+  [#3150](https://github.com/Kong/kong/pull/3150)
+- Fix error on Cassandra migration when trying to re-create existing keyspaces
+  [#3203](https://github.com/Kong/kong/pull/3203). Thanks to
+  [@pamiel](https://github.com/pamiel) for the patch!
+- Remove bogus errors in the logs provoked by healthcheckers between the time they are
+  unregistered and the time they are garbage-collected
+  ([#3207](https://github.com/Kong/kong/pull/3207)) and when receiving an http status
+  not tracked by healthy or unhealthy lists
+  ([c8eb5ae](https://github.com/Kong/kong/commit/c8eb5ae28147fc02473c05a7b1dbf502fbb64242))
+- HTTP/1.0 requests without a Host header are routed instead of being rejected (HTTP/1.1
+  requests without a Host are considered invalid and will still be rejected)
+  [#3216](https://github.com/Kong/kong/pull/3216). Thanks
+  [@rainiest](https://github.com/rainest) for the patch!
+- Fix the load balancer initialization when some Targets would contain hostnames.
+  [#3187](https://github.com/Kong/kong/pull/3187)
+- Fix incomplete handling of errors when initializing DAO objects
+  [637532e](https://github.com/Kong/kong/commit/637532e05d8ed9a921b5de861cc7f463e96c6e04)
 
 [Back to TOC](#table-of-contents)
 
