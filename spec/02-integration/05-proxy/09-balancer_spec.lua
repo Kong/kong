@@ -377,7 +377,7 @@ for _, strategy in helpers.each_strategy() do
     describe("Upstream entities", function()
 
       before_each(function()
-        helpers.stop_kong()
+        helpers.stop_kong(nil, nil, true)
         assert(db:truncate())
         dao:truncate_tables()
         assert(helpers.start_kong({
@@ -386,7 +386,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       after_each(function()
-        helpers.stop_kong(nil, true)
+        helpers.stop_kong(nil, true, true)
       end)
 
       -- Regression test for a missing invalidation in 0.12rc1
@@ -582,7 +582,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       after_each(function()
-        helpers.stop_kong(nil, true)
+        helpers.stop_kong(nil, true, true)
       end)
 
       it("do not count Kong-generated errors as failures", function()
@@ -895,7 +895,7 @@ for _, strategy in helpers.each_strategy() do
 
         local nfails = 2
 
-        local timeout = 2.5
+        local timeout = 10
         local requests = upstream.slots * 2 -- go round the balancer twice
 
         -- setup target servers:
@@ -935,7 +935,9 @@ for _, strategy in helpers.each_strategy() do
 
         -- restart Kong
         helpers.stop_kong(nil, true, true)
-        helpers.start_kong()
+        helpers.start_kong({
+          database = strategy,
+        })
 
         -- Give time for healthchecker to detect
         ngx.sleep(0.5 + (2 + nfails) * healthcheck_interval)
@@ -1219,7 +1221,7 @@ for _, strategy in helpers.each_strategy() do
           proxy_client:close()
           admin_client:close()
         end
-        helpers.stop_kong(nil, true)
+        helpers.stop_kong(nil, true, true)
       end)
 
       it("distributes over multiple targets", function()

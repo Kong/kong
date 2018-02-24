@@ -156,7 +156,7 @@ for _, strategy in helpers.each_strategy() do
 
       describe("from not trusted_ip", function()
         setup(function()
-          helpers.stop_kong()
+          helpers.stop_kong(nil, nil, true)
 
           assert(helpers.start_kong {
             database    = strategy,
@@ -182,7 +182,7 @@ for _, strategy in helpers.each_strategy() do
 
       describe("from trusted_ip", function()
         setup(function()
-          helpers.stop_kong()
+          helpers.stop_kong(nil, nil, true)
 
           assert(helpers.start_kong {
             database    = strategy,
@@ -225,6 +225,7 @@ for _, strategy in helpers.each_strategy() do
         -- untrusted ip
         setup(function()
           assert(helpers.kong_exec("restart -c " .. helpers.test_conf_path, {
+            database = strategy,
             trusted_ips = "1.2.3.4", -- explicitly trust an IP that is not us
           }))
 
@@ -251,7 +252,9 @@ for _, strategy in helpers.each_strategy() do
 
       before_each(function()
         assert(helpers.kong_exec("restart --conf " .. helpers.test_conf_path ..
-                                 " --nginx-conf spec/fixtures/custom_nginx.template"))
+                                 " --nginx-conf spec/fixtures/custom_nginx.template", {
+          database = strategy,
+        }))
 
         https_client_sni = helpers.proxy_ssl_client()
       end)

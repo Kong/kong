@@ -68,7 +68,9 @@ for _, strategy in helpers.each_strategy() do
       setup(function()
         assert(helpers.kong_exec(("restart --conf %s --nginx-conf %s"):format(
                                  helpers.test_conf_path,
-                                 "spec/fixtures/custom_nginx.template")))
+                                 "spec/fixtures/custom_nginx.template"), {
+          database = strategy,
+        }))
       end)
 
       it("default error_default_type = text/plain", function()

@@ -70,7 +70,8 @@ for _, strategy in helpers.each_strategy() do
         dao:truncate_tables()
 
         assert(helpers.start_kong({
-          database = strategy
+          database = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
         }))
       end)
 
@@ -90,59 +91,6 @@ for _, strategy in helpers.each_strategy() do
         local json = cjson.decode(body)
         assert.matches("^kong/", res.headers.server)
         assert.equal("no route and no API found with those values", json.message)
-      end)
-    end)
-
-    describe("requests without Host header", function()
-      it("HTTP/1.0 routes normally", function()
-        -- a very limited HTTP client for sending requests without Host
-        -- header
-        local sock = ngx.socket.tcp()
-
-        finally(function()
-          sock:close()
-        end)
-
-        assert(sock:connect(helpers.get_proxy_ip(),
-                            helpers.get_proxy_port()))
-
-        local req = "GET /get HTTP/1.0\r\nKong-Debug: 1\r\n\r\n"
-        assert(sock:send(req))
-
-        local line = assert(sock:receive("*l"))
-
-        local status = tonumber(string.sub(line, 10, 12))
-        assert.equal(200, status)
-
-        -- TEST: we matched an API that had no Host header defined
-        local remainder = assert(sock:receive("*a"))
-        assert.matches("kong-api-name: api-1", string.lower(remainder),
-                       nil, true)
-      end)
-
-      it("HTTP/1.1 is rejected by NGINX", function()
-        local sock = ngx.socket.tcp()
-
-        finally(function()
-          sock:close()
-        end)
-
-        assert(sock:connect(helpers.get_proxy_ip(),
-                            helpers.get_proxy_port()))
-
-        local req = "GET /get HTTP/1.1\r\nKong-Debug: 1\r\n\r\n"
-        assert(sock:send(req))
-
-        -- TEST: NGINX rejected this request
-        local line = assert(sock:receive("*l"))
-        local status = tonumber(string.sub(line, 10, 12))
-        assert.equal(400, status)
-
-        -- TEST: we ensure that Kong catches this error and
-        -- produces the response from its own error handler
-        local remainder = assert(sock:receive("*a"))
-        assert.matches("Bad request", remainder, nil, true)
-        assert.matches("Server: kong/", remainder, nil, true)
       end)
     end)
 
@@ -241,6 +189,59 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(routes[1].id,           res.headers["kong-route-id"])
         assert.equal(routes[1].service.id,   res.headers["kong-service-id"])
         assert.equal(routes[1].service.name, res.headers["kong-service-name"])
+      end)
+
+      describe("requests without Host header", function()
+        it("HTTP/1.0 routes normally", function()
+          -- a very limited HTTP client for sending requests without Host
+          -- header
+          local sock = ngx.socket.tcp()
+
+          finally(function()
+            sock:close()
+          end)
+
+          assert(sock:connect(helpers.get_proxy_ip(),
+                              helpers.get_proxy_port()))
+
+          local req = "GET /get HTTP/1.0\r\nKong-Debug: 1\r\n\r\n"
+          assert(sock:send(req))
+
+          local line = assert(sock:receive("*l"))
+
+          local status = tonumber(string.sub(line, 10, 12))
+          assert.equal(200, status)
+
+          -- TEST: we matched an API that had no Host header defined
+          local remainder = assert(sock:receive("*a"))
+          assert.matches("kong-service-name: service-1",
+                         string.lower(remainder), nil, true)
+        end)
+
+        it("HTTP/1.1 is rejected by NGINX", function()
+          local sock = ngx.socket.tcp()
+
+          finally(function()
+            sock:close()
+          end)
+
+          assert(sock:connect(helpers.get_proxy_ip(),
+                              helpers.get_proxy_port()))
+
+          local req = "GET /get HTTP/1.1\r\nKong-Debug: 1\r\n\r\n"
+          assert(sock:send(req))
+
+          -- TEST: NGINX rejected this request
+          local line = assert(sock:receive("*l"))
+          local status = tonumber(string.sub(line, 10, 12))
+          assert.equal(400, status)
+
+          -- TEST: we ensure that Kong catches this error and
+          -- produces the response from its own error handler
+          local remainder = assert(sock:receive("*a"))
+          assert.matches("Bad request", remainder, nil, true)
+          assert.matches("Server: kong/", remainder, nil, true)
+        end)
       end)
 
       describe("route with a path component in its upstream_url", function()
