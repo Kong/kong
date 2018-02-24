@@ -2,8 +2,8 @@
 
 - [Scheduled](#scheduled)
     - [0.13.0](#0130)
-    - [0.12.2](#0122)
 - [Released](#released)
+    - [0.12.2](#0122---20180228)
     - [0.12.1](#0121---20180118)
     - [0.12.0](#0120---20180116)
     - [0.11.2](#0112---20171129)
@@ -49,37 +49,73 @@ Additionally, this release will also include all the changes listed under the
 
 [Back to TOC](#table-of-contents)
 
+# Released
+
+This section describes publicly available releases and a detailed changeset of
+their content.
+
 ## [0.12.2]
 
-**Release date (target)**: February 28th 2018
-
-The contents of this release are still fluctuating. New additions will
-certainly be made before the closing of the merging window.
-
 ### Added
+
+##### Core
+
+- Load balancers now log DNS errors to facilitate debugging.
+  [#3177](https://github.com/Kong/kong/pull/3177).
+- Reports now can include custom immutable values
+  [#3180](https://github.com/Kong/kong/pull/3180)
+
+##### CLI
 
 - The `kong migrations reset` command has a new `--yes` flag. This flag makes
   the command run non-interactively, and ensures no confirmation prompt will
   occur.
   [#3189](https://github.com/Kong/kong/pull/3189)
 
+##### Admin API
+
+- A new endpoint `/upstreams/:upstream_id/health` will return the health of the
+  specified upstream.
+  [#3232](https://github.com/Kong/kong/pull/3232)
+- The `/` endpoint in the Admin API now exposes the `node_id` field.
+  [#3234](https://github.com/Kong/kong/pull/3234)
+
 ### Fixed
 
+##### Core
+
+- HTTP/1.0 requests without a Host header are routed instead of being rejected.
+  HTTP/1.1 requests without a Host are considered invalid and will still be
+  rejected.
+  Thanks to [@rainiest](https://github.com/rainest) for the patch!
+  [#3216](https://github.com/Kong/kong/pull/3216)
 - Fix the load balancer initialization when some Targets would contain
   hostnames.
-- Fix several issues with multipart parsing in the Admin API as well as the
-  proxy. lua-resty-multipart has been bumped to 0.5.4.
-  [#3054](https://github.com/Kong/kong/pull/3054)
+  [#3187](https://github.com/Kong/kong/pull/3187)
+- Fix incomplete handling of errors when initializing DAO objects.
+  [637532e](https://github.com/Kong/kong/commit/637532e05d8ed9a921b5de861cc7f463e96c6e04)
+- Remove bogus errors in the logs provoked by healthcheckers between the time
+  they are unregistered and the time they are garbage-collected
+  ([#3207](https://github.com/Kong/kong/pull/3207)) and when receiving an HTTP
+  status not tracked by healthy or unhealthy lists
+  ([c8eb5ae](https://github.com/Kong/kong/commit/c8eb5ae28147fc02473c05a7b1dbf502fbb64242)).
+- Fix soft errors not being handled correctly inside the Kong cache.
+  [#3150](https://github.com/Kong/kong/pull/3150)
+
+##### Migrations
+
+- Better handling of already existing Cassandra keyspaces in migrations.
+  [#3203](https://github.com/Kong/kong/pull/3203).
+  Thanks to [@pamiel](https://github.com/pamiel) for the patch!
+
+##### Admin API
+
 - Ensure `GET /certificates/{uuid}` does not return HTTP 500 when the given
   identifier does not exist.
-  [#3148](https://github.com/Kong/kong/pull/3148)
+  Thanks to [@vdesjardins](https://github.com/vdesjardins) for the patch!
+  [#3148](https://github.com/Kong/kong/pull/3148).
 
 [Back to TOC](#table-of-contents)
-
-# Released
-
-This section describes publicly available releases and a detailed changeset of
-their content.
 
 ## [0.12.1] - 2018/01/18
 
@@ -2226,6 +2262,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[0.12.2]: https://github.com/Kong/kong/compare/0.12.1...0.12.2
 [0.12.1]: https://github.com/Kong/kong/compare/0.12.0...0.12.1
 [0.12.0]: https://github.com/Kong/kong/compare/0.11.2...0.12.0
 [0.11.2]: https://github.com/Kong/kong/compare/0.11.1...0.11.2
