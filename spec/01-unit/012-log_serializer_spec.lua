@@ -76,13 +76,15 @@ describe("Log Serializer", function()
       assert.is_table(res.tries)
     end)
 
-    it("serializes the API object", function()
-      ngx.ctx.api = {id = "someapi"}
+    it("serializes the matching Route and Services", function()
+      ngx.ctx.route = { id = "my_route" }
+      ngx.ctx.service = { id = "my_service" }
 
       local res = basic.serialize(ngx)
       assert.is_table(res)
 
-      assert.equal("someapi", res.api.id)
+      assert.equal("my_route", res.route.id)
+      assert.equal("my_service", res.service.id)
       assert.is_nil(res.consumer)
       assert.is_nil(res.authenticated_entity)
     end)

@@ -30,7 +30,7 @@ end
 
 describe("Proxy interface listeners", function()
   before_each(function()
-    helpers.run_migrations()
+    helpers.get_db_utils()
   end)
 
   after_each(function()

@@ -41,3 +41,15 @@ test-plugins:
 
 test-all:
 	@$(TEST_CMD) spec/
+
+old-test:
+	@$(TEST_CMD) spec-old-api/01-unit
+
+old-test-integration:
+	@$(TEST_CMD) spec-old-api/02-integration
+
+old-test-plugins:
+	@$(TEST_CMD) spec-old-api/03-plugins
+
+old-test-all:
+	@$(TEST_CMD) spec-old-api/

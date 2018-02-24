@@ -202,5 +202,18 @@ return {
       end
     end,
     down = function(_, _, dao) end  -- not implemented
-  }
+  },
+  {
+    name = "2018-01-09-oauth2_pg_add_service_id",
+    up = [[
+      ALTER TABLE oauth2_authorization_codes ADD COLUMN service_id uuid
+        REFERENCES services (id) ON DELETE CASCADE;
+      ALTER TABLE oauth2_tokens ADD COLUMN service_id uuid
+        REFERENCES services ON DELETE CASCADE;
+    ]],
+    down = [[
+      ALTER TABLE oauth2_tokens DROP COLUMN service_id;
+      ALTER TABLE oauth2_authorization_codes DROP COLUMN service_id;
+    ]],
+  },
 }

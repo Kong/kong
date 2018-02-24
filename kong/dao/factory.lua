@@ -85,7 +85,7 @@ local function load_daos(self, schemas, constraints)
   end
 end
 
-function _M.new(kong_config)
+function _M.new(kong_config, new_db)
   local self = {
     db_type = kong_config.database,
     daos = {},
@@ -100,6 +100,7 @@ function _M.new(kong_config)
     return ret_error_string(self.db_type, nil, err)
   end
 
+  db.new_db = new_db
   self.db = db
 
   local schemas = {}

@@ -2,7 +2,7 @@ local helpers = require "spec.helpers"
 
 describe("kong start/stop", function()
   setup(function()
-    helpers.run_migrations()
+    assert(helpers.dao:run_migrations())
     helpers.prepare_prefix()
   end)
   after_each(function()

@@ -5,53 +5,106 @@ local function reload_router()
   Router = require "kong.core.router"
 end
 
+local service = {
+  name = "service-invalid",
+}
+
 local use_case = {
-  -- host
+
+-- host
   {
-    name = "api-1",
+    service = service,
+    route   = {
+    },
     headers = {
-      ["host"] = {"domain-1.org", "domain-2.org"},
+      host  = {
+        "domain-1.org",
+        "domain-2.org"
+      },
     },
   },
   -- method
   {
-    name = "api-2",
-    methods = {"TRACE"},
+    service = service,
+    route   = {
+      methods = {
+        "TRACE"
+      },
+    }
   },
   -- uri
   {
-    name = "api-3",
-    uris = {"/my-api"},
+    service = service,
+    route   = {
+      paths = {
+        "/my-route"
+      },
+    }
   },
   -- host + uri
   {
-    name = "api-4",
-    uris = {"/api-4"},
+    service = service,
+    route   = {
+      paths = {
+        "/route-4"
+      },
+    },
     headers = {
-      ["host"] = {"domain-1.org", "domain-2.org"},
+      host  = {
+        "domain-1.org",
+        "domain-2.org"
+      },
     },
   },
   -- host + method
   {
-    name = "api-5",
-    methods = {"POST", "PUT", "PATCH"},
+    service = service,
+    route   = {
+      methods = {
+        "POST",
+        "PUT",
+        "PATCH"
+      },
+    },
     headers = {
-      ["host"] = {"domain-1.org", "domain-2.org"},
+      host  = {
+        "domain-1.org",
+        "domain-2.org"
+      },
     },
   },
   -- uri + method
   {
-    name = "api-6",
-    methods = {"POST", "PUT", "PATCH"},
-    uris = {"/api-6"},
+    service = service,
+    route   = {
+      methods = {
+        "POST",
+        "PUT",
+        "PATCH",
+      },
+      paths   = {
+        "/route-6"
+      },
+    }
   },
   -- host + uri + method
   {
-    name = "api-7",
-    methods = {"POST", "PUT", "PATCH"},
-    uris = {"/my-api-uri"},
+    service = service,
+    route   = {
+      methods = {
+        "POST",
+        "PUT",
+        "PATCH",
+      },
+      paths   = {
+        "/my-route-uri"
+      },
+    },
     headers = {
-      ["host"] = {"domain-with-uri-1.org", "domain-with-uri-2.org"},
+      host = {
+        "domain-with-uri-1.org",
+        "domain-with-uri-2.org"
+      },
     },
   },
 }
@@ -62,16 +115,22 @@ describe("Router", function()
       it("enforces args types", function()
         assert.error_matches(function()
           Router.new()
-        end, "expected arg #1 apis to be a table", nil, true)
+        end, "expected arg #1 routes to be a table", nil, true)
       end)
 
-      it("enforces apis fields types", function()
+      it("enforces routes fields types", function()
         local router, err = Router.new {
-          { name = "api-invalid" }
+          {
+            route   = {
+            },
+            service = {
+              name  = "service-invalid"
+            },
+          },
         }
 
         assert.is_nil(router)
-        assert.equal("could not categorize API", err)
+        assert.equal("could not categorize route", err)
       end)
     end)
   end)
@@ -83,21 +142,21 @@ describe("Router", function()
       -- host
       local match_t = router.select("GET", "/", "domain-1.org")
       assert.truthy(match_t)
-      assert.same(use_case[1], match_t.api)
+      assert.same(use_case[1].route,   match_t.route)
     end)
 
     it("[host] ignores port", function()
       -- host
       local match_t = router.select("GET", "/", "domain-1.org:123")
       assert.truthy(match_t)
-      assert.same(use_case[1], match_t.api)
+      assert.same(use_case[1].route, match_t.route)
     end)
 
     it("[uri]", function()
       -- uri
-      local match_t = router.select("GET", "/my-api", "domain.org")
+      local match_t = router.select("GET", "/my-route", "domain.org")
       assert.truthy(match_t)
-      assert.same(use_case[3], match_t.api)
+      assert.same(use_case[3].route, match_t.route)
     end)
 
     it("[uri + empty host]", function()
@@ -112,168 +171,184 @@ describe("Router", function()
       -- method
       local match_t = router.select("TRACE", "/", "domain.org")
       assert.truthy(match_t)
-      assert.same(use_case[2], match_t.api)
+      assert.same(use_case[2].route, match_t.route)
     end)
 
     it("[host + uri]", function()
       -- host + uri
-      local match_t = router.select("GET", "/api-4", "domain-1.org")
+      local match_t = router.select("GET", "/route-4", "domain-1.org")
       assert.truthy(match_t)
-      assert.same(use_case[4], match_t.api)
+      assert.same(use_case[4].route, match_t.route)
     end)
 
     it("[host + method]", function()
       -- host + method
       local match_t = router.select("POST", "/", "domain-1.org")
       assert.truthy(match_t)
-      assert.same(use_case[5], match_t.api)
+      assert.same(use_case[5].route, match_t.route)
     end)
 
     it("[uri + method]", function()
       -- uri + method
-      local match_t = router.select("PUT", "/api-6", "domain.org")
+      local match_t = router.select("PUT", "/route-6", "domain.org")
       assert.truthy(match_t)
-      assert.same(use_case[6], match_t.api)
+      assert.same(use_case[6].route, match_t.route)
     end)
 
     it("[host + uri + method]", function()
       -- uri + method
-      local match_t = router.select("PUT", "/my-api-uri",
+      local match_t = router.select("PUT", "/my-route-uri",
                                     "domain-with-uri-2.org")
       assert.truthy(match_t)
-      assert.same(use_case[7], match_t.api)
+      assert.same(use_case[7].route, match_t.route)
     end)
 
     describe("[uri prefix]", function()
       it("matches when given [uri] is in request URI prefix", function()
         -- uri prefix
-        local match_t = router.select("GET", "/my-api/some/path", "domain.org")
+        local match_t = router.select("GET", "/my-route/some/path", "domain.org")
         assert.truthy(match_t)
-        assert.same(use_case[3], match_t.api)
+        assert.same(use_case[3].route, match_t.route)
       end)
 
-      it("does not supersede another API with a longer [uri]", function()
+      it("does not supersede another route with a longer [uri]", function()
         local use_case = {
           {
-            name = "api-1",
-            uris = { "/my-api/hello" },
-          },
-          {
-            name = "api-2",
-            uris = { "/my-api" },
-          }
-        }
-
-        local router = assert(Router.new(use_case))
-
-        local match_t = router.select("GET", "/my-api/hello", "domain.org")
-        assert.truthy(match_t)
-        assert.same(use_case[1], match_t.api)
-
-        match_t = router.select("GET", "/my-api/hello/world", "domain.org")
-        assert.truthy(match_t)
-        assert.same(use_case[1], match_t.api)
-
-        match_t = router.select("GET", "/my-api", "domain.org")
-        assert.truthy(match_t)
-        assert.same(use_case[2], match_t.api)
-
-        match_t = router.select("GET", "/my-api/world", "domain.org")
-        assert.truthy(match_t)
-        assert.same(use_case[2], match_t.api)
-      end)
-
-      it("does not superseds another API with a longer [uri] while [methods] are also defined", function()
-        local use_case = {
-          {
-            name = "api-1",
-            methods = { "POST", "PUT", "GET" },
-            uris = { "/my-api" },
-          },
-          {
-            name = "api-2",
-            methods = { "POST", "PUT", "GET" },
-            uris = { "/my-api/hello" },
-          }
-        }
-
-        local router = assert(Router.new(use_case))
-
-        local match_t = router.select("GET", "/my-api/hello", "domain.org")
-        assert.truthy(match_t)
-        assert.same(use_case[2], match_t.api)
-
-        match_t = router.select("GET", "/my-api/hello/world", "domain.org")
-        assert.truthy(match_t)
-        assert.same(use_case[2], match_t.api)
-
-        match_t = router.select("GET", "/my-api", "domain.org")
-        assert.truthy(match_t)
-        assert.same(use_case[1], match_t.api)
-
-        match_t = router.select("GET", "/my-api/world", "domain.org")
-        assert.truthy(match_t)
-        assert.same(use_case[1], match_t.api)
-      end)
-
-      it("does not superseds another API with a longer [uri] while [hosts] are also defined", function()
-        local use_case = {
-          {
-            name = "api-1",
-            uris = { "/my-api" },
-            headers = {
-              ["host"] = { "domain.org" },
+            service = service,
+            route   = {
+              paths = { "/my-route/hello" },
             },
           },
           {
-            name = "api-2",
-            uris = { "/my-api/hello" },
-            headers = {
-              ["host"] = { "domain.org" },
+            service = service,
+            route   = {
+              paths = { "/my-route" },
             },
-          }
+          },
         }
 
         local router = assert(Router.new(use_case))
 
-        local match_t = router.select("GET", "/my-api/hello", "domain.org")
+        local match_t = router.select("GET", "/my-route/hello", "domain.org")
         assert.truthy(match_t)
-        assert.same(use_case[2], match_t.api)
+        assert.same(use_case[1].route, match_t.route)
 
-        match_t = router.select("GET", "/my-api/hello/world", "domain.org")
+        match_t = router.select("GET", "/my-route/hello/world", "domain.org")
         assert.truthy(match_t)
-        assert.same(use_case[2], match_t.api)
+        assert.same(use_case[1].route, match_t.route)
 
-        match_t = router.select("GET", "/my-api", "domain.org")
+        match_t = router.select("GET", "/my-route", "domain.org")
         assert.truthy(match_t)
-        assert.same(use_case[1], match_t.api)
+        assert.same(use_case[2].route, match_t.route)
 
-        match_t = router.select("GET", "/my-api/world", "domain.org")
+        match_t = router.select("GET", "/my-route/world", "domain.org")
         assert.truthy(match_t)
-        assert.same(use_case[1], match_t.api)
+        assert.same(use_case[2].route, match_t.route)
+      end)
+
+      it("does not superseds another route with a longer [uri] while [methods] are also defined", function()
+        local use_case = {
+          {
+            service   = service,
+            route     = {
+              methods = { "POST", "PUT", "GET" },
+              paths   = { "/my-route" },
+            },
+          },
+          {
+            service   = service,
+            route     = {
+              methods = { "POST", "PUT", "GET" },
+              paths   = { "/my-route/hello" },
+            },
+          },
+        }
+
+        local router = assert(Router.new(use_case))
+
+        local match_t = router.select("GET", "/my-route/hello", "domain.org")
+        assert.truthy(match_t)
+        assert.same(use_case[2].route, match_t.route)
+
+        match_t = router.select("GET", "/my-route/hello/world", "domain.org")
+        assert.truthy(match_t)
+        assert.same(use_case[2].route, match_t.route)
+
+        match_t = router.select("GET", "/my-route", "domain.org")
+        assert.truthy(match_t)
+        assert.same(use_case[1].route, match_t.route)
+
+        match_t = router.select("GET", "/my-route/world", "domain.org")
+        assert.truthy(match_t)
+        assert.same(use_case[1].route, match_t.route)
+      end)
+
+      it("does not superseds another route with a longer [uri] while [hosts] are also defined", function()
+        local use_case = {
+          {
+            service = service,
+            route   = {
+              paths = { "/my-route" },
+            },
+            headers = {
+              host  = { "domain.org" },
+            },
+          },
+          {
+            service = service,
+            route   = {
+              paths = { "/my-route/hello" },
+            },
+            headers = {
+              host  = { "domain.org" },
+            },
+          },
+        }
+
+        local router = assert(Router.new(use_case))
+
+        local match_t = router.select("GET", "/my-route/hello", "domain.org")
+        assert.truthy(match_t)
+        assert.same(use_case[2].route, match_t.route)
+
+        match_t = router.select("GET", "/my-route/hello/world", "domain.org")
+        assert.truthy(match_t)
+        assert.same(use_case[2].route, match_t.route)
+
+        match_t = router.select("GET", "/my-route", "domain.org")
+        assert.truthy(match_t)
+        assert.same(use_case[1].route, match_t.route)
+
+        match_t = router.select("GET", "/my-route/world", "domain.org")
+        assert.truthy(match_t)
+        assert.same(use_case[1].route, match_t.route)
       end)
 
       it("only matches [uri prefix] as a prefix (anchored mode)", function()
         local use_case = {
           {
-            name = "api-1",
-            uris = { "/something/my-api" },
+            service = service,
+            route   = {
+              paths = { "/something/my-route" },
+            },
           },
           {
-            name = "api-2",
-            uris = { "/my-api" },
-            headers = {
-              ["host"] = { "example.com" },
+            service = service,
+            route   = {
+              paths = { "/my-route" },
             },
-          }
+            headers = {
+              host  = { "example.com" },
+            },
+          },
         }
 
         local router = assert(Router.new(use_case))
 
-        local match_t = router.select("GET", "/something/my-api", "example.com")
+        local match_t = router.select("GET", "/something/my-route", "example.com")
         assert.truthy(match_t)
-        -- would be api-2 if URI matching was not prefix-only (anchored mode)
-        assert.same(use_case[1], match_t.api)
+        -- would be route-2 if URI matching was not prefix-only (anchored mode)
+        assert.same(use_case[1].route, match_t.route)
       end)
     end)
 
@@ -281,8 +356,10 @@ describe("Router", function()
       it("matches with [uri regex]", function()
         local use_case = {
           {
-            name = "api-1",
-            uris = { [[/users/\d+/profile]] },
+            service = service,
+            route   = {
+              paths = { [[/users/\d+/profile]] },
+            },
           },
         }
 
@@ -290,92 +367,114 @@ describe("Router", function()
 
         local match_t = router.select("GET", "/users/123/profile", "domain.org")
         assert.truthy(match_t)
-        assert.same(use_case[1], match_t.api)
+        assert.same(use_case[1].route, match_t.route)
       end)
 
-      it("matches the right API when several ones have a [uri regex]", function()
+      it("matches the right route when several ones have a [uri regex]", function()
         local use_case = {
           {
-            name = "api-1",
-            uris = { [[/api/persons/\d{3}]] },
+            service = service,
+            route   = {
+              paths = { [[/route/persons/\d{3}]] },
+            },
           },
           {
-            name = "api-2",
-            uris = { [[/api/persons/\d{3}/following]] },
+            service = service,
+            route   = {
+              paths = { [[/route/persons/\d{3}/following]] },
+            },
           },
           {
-            name = "api-3",
-            uris = { [[/api/persons/\d{3}/[a-z]+]] },
+            service = service,
+            route   = {
+              paths = { [[/route/persons/\d{3}/[a-z]+]] },
+            },
           },
         }
 
         local router = assert(Router.new(use_case))
 
-        local match_t = router.select("GET", "/api/persons/456", "domain.org")
+        local match_t = router.select("GET", "/route/persons/456", "domain.org")
         assert.truthy(match_t)
-        assert.same(use_case[1], match_t.api)
+        assert.same(use_case[1].route, match_t.route)
       end)
 
       it("matches a [uri regex] even if a [prefix uri] got a match", function()
         local use_case = {
           {
-            name = "api-1",
-            uris = { [[/api/persons]] },
+            service = service,
+            route   = {
+              paths = { [[/route/persons]] },
+            },
           },
           {
-            name = "api-2",
-            uris = { [[/api/persons/\d+/profile]] },
+            service = service,
+            route   = {
+              paths = { [[/route/persons/\d+/profile]] },
+            },
           },
         }
 
         local router = assert(Router.new(use_case))
 
-        local match_t = router.select("GET", "/api/persons/123/profile",
+        local match_t = router.select("GET", "/route/persons/123/profile",
                                       "domain.org")
         assert.truthy(match_t)
-        assert.same(use_case[2], match_t.api)
+        assert.same(use_case[2].route, match_t.route)
       end)
     end)
 
     describe("[wildcard host]", function()
       local use_case = {
         {
-          name = "api-1",
+          service = service,
+          route   = {
+          },
           headers = {
-            ["host"] = { "*.api.com" },
-          }
+            host  = { "*.route.com" },
+          },
         },
         {
-          name = "api-2",
+          service = service,
+          route   = {
+          },
           headers = {
-            ["host"] = { "api.*" },
-          }
-        }
+            host  = { "route.*" },
+          },
+        },
       }
 
       local router = assert(Router.new(use_case))
 
       it("matches leftmost wildcards", function()
-        local match_t = router.select("GET", "/", "foo.api.com", "domain.org")
+        local match_t = router.select("GET", "/", "foo.route.com", "domain.org")
         assert.truthy(match_t)
-        assert.same(use_case[1], match_t.api)
+        assert.same(use_case[1].route, match_t.route)
       end)
 
       it("matches rightmost wildcards", function()
-        local match_t = router.select("GET", "/", "api.org")
+        local match_t = router.select("GET", "/", "route.org")
         assert.truthy(match_t)
-        assert.same(use_case[2], match_t.api)
+        assert.same(use_case[2].route, match_t.route)
       end)
 
       it("does not take precedence over a plain host", function()
         table.insert(use_case, 1, {
-          name = "api-3",
-          headers = { ["host"] = { "plain.api.com" } },
+          service = service,
+          route   = {
+          },
+          headers = {
+            host  = { "plain.route.com" },
+          },
         })
 
         table.insert(use_case, {
-          name = "api-4",
-          headers = { ["host"] = { "api.com" } },
+          service = service,
+          route   = {
+          },
+          headers = {
+            host  = { "route.com" },
+          },
         })
 
         finally(function()
@@ -386,21 +485,21 @@ describe("Router", function()
 
         router = assert(Router.new(use_case))
 
-        local match_t = router.select("GET", "/", "api.com")
+        local match_t = router.select("GET", "/", "route.com")
         assert.truthy(match_t)
-        assert.same(use_case[4], match_t.api)
+        assert.same(use_case[4].route, match_t.route)
 
-        match_t = router.select("GET", "/", "api.org")
+        match_t = router.select("GET", "/", "route.org")
         assert.truthy(match_t)
-        assert.same(use_case[3], match_t.api)
+        assert.same(use_case[3].route, match_t.route)
 
-        match_t = router.select("GET", "/", "plain.api.com")
+        match_t = router.select("GET", "/", "plain.route.com")
         assert.truthy(match_t)
-        assert.same(use_case[1], match_t.api)
+        assert.same(use_case[1].route, match_t.route)
 
-        match_t = router.select("GET", "/", "foo.api.com")
+        match_t = router.select("GET", "/", "foo.route.com")
         assert.truthy(match_t)
-        assert.same(use_case[2], match_t.api)
+        assert.same(use_case[2].route, match_t.route)
       end)
 
       it("matches [wildcard/plain + uri + method]", function()
@@ -410,10 +509,14 @@ describe("Router", function()
         end)
 
         table.insert(use_case, {
-          name = "api-5",
-          headers = { ["host"] = { "*.domain.com", "example.com" } },
-          uris = { "/path" },
-          methods = { "GET", "TRACE" },
+          service   = service,
+          route     = {
+            paths   = { "/path" },
+            methods = { "GET", "TRACE" },
+          },
+          headers   = {
+            host    = { "*.domain.com", "example.com" },
+          },
         })
 
         router = assert(Router.new(use_case))
@@ -423,11 +526,11 @@ describe("Router", function()
 
         match_t = router.select("GET", "/path", "foo.domain.com")
         assert.truthy(match_t)
-        assert.same(use_case[#use_case], match_t.api)
+        assert.same(use_case[#use_case].route, match_t.route)
 
         match_t = router.select("TRACE", "/path", "example.com")
         assert.truthy(match_t)
-        assert.same(use_case[#use_case], match_t.api)
+        assert.same(use_case[#use_case].route, match_t.route)
 
         match_t = router.select("POST", "/path", "foo.domain.com")
         assert.is_nil(match_t)
@@ -438,17 +541,21 @@ describe("Router", function()
       it("matches", function()
         local use_case = {
           {
-            name       = "api-1",
-            uris       = { [[/users/\d+/profile]] },
-            headers    = {
-              ["host"] = { "*.example.com" },
+            service = service,
+            route   = {
+              paths = { [[/users/\d+/profile]] },
+            },
+            headers = {
+              host  = { "*.example.com" },
             },
           },
           {
-            name       = "api-2",
-            uris       = { [[/users]] },
-            headers    = {
-              ["host"] = { "*.example.com" },
+            service = service,
+            route   = {
+              paths = { [[/users]] },
+            },
+            headers = {
+              host  = { "*.example.com" },
             },
           },
         }
@@ -458,11 +565,11 @@ describe("Router", function()
         local match_t = router.select("GET", "/users/123/profile",
                                       "test.example.com")
         assert.truthy(match_t)
-        assert.same(use_case[1], match_t.api)
+        assert.same(use_case[1].route, match_t.route)
 
         match_t = router.select("GET", "/users", "test.example.com")
         assert.truthy(match_t)
-        assert.same(use_case[2], match_t.api)
+        assert.same(use_case[2].route, match_t.route)
       end)
     end)
 
@@ -471,149 +578,173 @@ describe("Router", function()
         -- host
         local match_t = router.select("TRACE", "/", "domain-2.org")
         assert.truthy(match_t)
-        assert.same(use_case[1], match_t.api)
+        assert.same(use_case[1].route, match_t.route)
 
         -- uri
-        local match_t = router.select("TRACE", "/my-api", "domain.org")
+        local match_t = router.select("TRACE", "/my-route", "domain.org")
         assert.truthy(match_t)
-        assert.same(use_case[3], match_t.api)
+        assert.same(use_case[3].route, match_t.route)
       end)
 
-      it("half [uri] and [host] match does not supersede another API", function()
+      it("half [uri] and [host] match does not supersede another route", function()
         local use_case = {
           {
-            name       = "api-1",
-            uris       = { "/v1/path"  },
-            headers    = {
-              ["host"] = { "host1.com" },
-            }
+            service = service,
+            route   = {
+              paths = { "/v1/path" },
+            },
+            headers = {
+              host  = { "host1.com" },
+            },
           },
           {
-            name       = "api-2",
-            uris       = { "/" },
-            headers    = {
-              ["host"] = { "host2.com" },
-            }
-          }
+            service = service,
+            route   = {
+              paths = { "/" },
+            },
+            headers = {
+              host  = { "host2.com" },
+            },
+          },
         }
 
         local router = assert(Router.new(use_case))
         local match_t = router.select("GET", "/v1/path", "host1.com")
         assert.truthy(match_t)
-        assert.same(use_case[1], match_t.api)
+        assert.same(use_case[1].route, match_t.route)
 
         match_t = router.select("GET", "/v1/path", "host2.com")
         assert.truthy(match_t)
-        assert.same(use_case[2], match_t.api)
+        assert.same(use_case[2].route, match_t.route)
       end)
 
-      it("half [wildcard host] and [method] match does not supersede another API", function()
+      it("half [wildcard host] and [method] match does not supersede another route", function()
         local use_case = {
           {
-            name       = "api-1",
-            methods    = { "GET" },
-            headers    = {
-              ["host"] = { "host.*" },
-            }
+            service   = service,
+            route     = {
+              methods = { "GET" },
+            },
+            headers   = {
+              host    = { "host.*" },
+            },
           },
           {
-            name       = "api-2",
-            methods    = { "POST" },
-            headers    = {
-              ["host"] = { "host.*" },
-            }
-          }
+            service   = service,
+            route     = {
+              methods = { "POST" },
+            },
+            headers   = {
+              host    = { "host.*" },
+            },
+          },
         }
 
         local router = assert(Router.new(use_case))
         local match_t = router.select("GET", "/", "host.com")
         assert.truthy(match_t)
-        assert.same(use_case[1], match_t.api)
+        assert.same(use_case[1].route, match_t.route)
 
         match_t = router.select("POST", "/", "host.com")
         assert.truthy(match_t)
-        assert.same(use_case[2], match_t.api)
+        assert.same(use_case[2].route, match_t.route)
       end)
 
-      it("half [uri regex] and [method] match does not supersede another API", function()
+      it("half [uri regex] and [method] match does not supersede another route", function()
         local use_case = {
           {
-            name = "api-1",
-            methods = { "GET" },
-            uris = { [[/users/\d+/profile]] },
+            service   = service,
+            route     = {
+              methods = { "GET" },
+              paths   = { [[/users/\d+/profile]] },
+            },
           },
           {
-            name = "api-2",
-            methods = { "POST" },
-            uris = { [[/users/\d*/profile]] },
-          }
+            service   = service,
+            route     = {
+              methods = { "POST" },
+              paths   = { [[/users/\d*/profile]] },
+            },
+          },
         }
 
         local router = assert(Router.new(use_case))
         local match_t = router.select("GET", "/users/123/profile", "domain.org")
         assert.truthy(match_t)
-        assert.same(use_case[1], match_t.api)
+        assert.same(use_case[1].route, match_t.route)
 
         match_t = router.select("POST", "/users/123/profile", "domain.org")
         assert.truthy(match_t)
-        assert.same(use_case[2], match_t.api)
+        assert.same(use_case[2].route, match_t.route)
       end)
 
       it("[method] does not supersede [uri prefix]", function()
         local use_case = {
           {
-            name = "api-1",
-            methods = { "GET" },
+            service   = service,
+            route     = {
+              methods = { "GET" },
+            },
           },
           {
-            name = "api-2",
-            uris = { "/example" },
-          }
+            service   = service,
+            route     = {
+              paths   = { "/example" },
+            },
+          },
         }
 
         local router = assert(Router.new(use_case))
         local match_t = router.select("GET", "/example", "domain.org")
         assert.truthy(match_t)
-        assert.same(use_case[2], match_t.api)
+        assert.same(use_case[2].route, match_t.route)
 
         match_t = router.select("GET", "/example/status/200", "domain.org")
         assert.truthy(match_t)
-        assert.same(use_case[2], match_t.api)
+        assert.same(use_case[2].route, match_t.route)
       end)
 
       it("[method] does not supersede [wildcard host]", function()
         local use_case = {
           {
-            name    = "api-1",
-            methods = { "GET" },
+            service    = service,
+            route      = {
+              methods  = { "GET" },
+            },
           },
           {
-            name       = "api-2",
+            service    = service,
+            route      = {
+            },
             headers    = {
-              ["Host"] = { "domain.*" }
-            }
-          }
+              ["Host"] = { "domain.*" },
+            },
+          },
         }
 
         local router = assert(Router.new(use_case))
         local match_t = router.select("GET", "/", "nothing.com")
         assert.truthy(match_t)
-        assert.same(use_case[1], match_t.api)
+        assert.same(use_case[1].route, match_t.route)
 
         match_t = router.select("GET", "/", "domain.com")
         assert.truthy(match_t)
-        assert.same(use_case[2], match_t.api)
+        assert.same(use_case[2].route, match_t.route)
       end)
 
-      it("does not supersede another API with a longer [uri prefix]", function()
+      it("does not supersede another route with a longer [uri prefix]", function()
         local use_case = {
           {
-            name = "api-1",
-            uris = { "/a", "/bbbbbbb" }
+            service = service,
+            route   = {
+              paths = { "/a", "/bbbbbbb" },
+            },
           },
           {
-            name = "api-2",
-            uris = { "/a/bb" }
+            service = service,
+            route   = {
+              paths = { "/a/bb" },
+            },
           },
         }
 
@@ -621,14 +752,16 @@ describe("Router", function()
 
         local match_t = router.select("GET", "/a/bb/foobar", "domain.org")
         assert.truthy(match_t)
-        assert.same(use_case[2], match_t.api)
+        assert.same(use_case[2].route, match_t.route)
       end)
 
       describe("root / [uri]", function()
         setup(function()
           table.insert(use_case, 1, {
-            name = "api-root-uri",
-            uris = {"/"},
+            service = service,
+            route   = {
+              paths = { "/" },
+            }
           })
         end)
 
@@ -640,52 +773,56 @@ describe("Router", function()
           local router = assert(Router.new(use_case))
           local match_t = router.select("GET", "/", "domain.org")
           assert.truthy(match_t)
-          assert.same(use_case[1], match_t.api)
+          assert.same(use_case[1].route, match_t.route)
         end)
 
-        it("does not supersede another API", function()
+        it("does not supersede another route", function()
           local router = assert(Router.new(use_case))
-          local match_t = router.select("GET", "/my-api", "domain.org")
+          local match_t = router.select("GET", "/my-route", "domain.org")
           assert.truthy(match_t)
-          assert.same(use_case[4], match_t.api)
+          assert.same(use_case[4].route, match_t.route)
 
-          match_t = router.select("GET", "/my-api/hello/world", "domain.org")
+          match_t = router.select("GET", "/my-route/hello/world", "domain.org")
           assert.truthy(match_t)
-          assert.same(use_case[4], match_t.api)
+          assert.same(use_case[4].route, match_t.route)
         end)
 
-        it("acts as a catch-all API", function()
+        it("acts as a catch-all route", function()
           local router = assert(Router.new(use_case))
           local match_t = router.select("GET", "/foobar/baz", "domain.org")
           assert.truthy(match_t)
-          assert.same(use_case[1], match_t.api)
+          assert.same(use_case[1].route, match_t.route)
         end)
       end)
 
-      describe("multiple APIs of same category with conflicting values", function()
+      describe("multiple routes of same category with conflicting values", function()
         -- reload router to reset combined cached matchers
         reload_router()
 
         local n = 6
 
         setup(function()
-          -- all those APIs are of the same category:
+          -- all those routes are of the same category:
           -- [host + uri]
           for _ = 1, n - 1 do
             table.insert(use_case, {
-              name = "api [host + uri]",
-              uris = { "/my-uri" },
+              service = service,
+              route   = {
+                paths = { "/my-uri" },
+              },
               headers = {
-                ["host"] = { "domain.org" },
+                host  = { "domain.org" },
               },
             })
           end
 
           table.insert(use_case, {
-            name = "target api",
-            uris = { "/my-target-uri" },
+            service = service,
+            route   = {
+              paths = { "/my-target-uri" },
+            },
             headers = {
-              ["host"] = { "domain.org" },
+              host  = { "domain.org" },
             },
           })
         end)
@@ -696,31 +833,35 @@ describe("Router", function()
           end
         end)
 
-        it("matches correct API", function()
+        it("matches correct route", function()
           local router = assert(Router.new(use_case))
           local match_t = router.select("GET", "/my-target-uri", "domain.org")
           assert.truthy(match_t)
-          assert.same(use_case[#use_case], match_t.api)
+          assert.same(use_case[#use_case].route, match_t.route)
         end)
       end)
 
-      it("does not incorrectly match another API which has a longer [uri]", function()
+      it("does not incorrectly match another route which has a longer [uri]", function()
         local use_case = {
           {
-            name = "api-1",
-            uris = { "/a", "/bbbbbbb" }
+            service = service,
+            route   = {
+              paths = { "/a", "/bbbbbbb" },
+            },
           },
           {
-            name = "api-2",
-            uris = { "/a/bb" }
+            service = service,
+            route   = {
+              paths = { "/a/bb" },
+            },
           },
         }
 
         local router = assert(Router.new(use_case))
 
-        local api_t = router.select("GET", "/a/bb/foobar", "domain.org")
-        assert.truthy(api_t)
-        assert.same(use_case[2], api_t.api)
+        local route_t = router.select("GET", "/a/bb/foobar", "domain.org")
+        assert.truthy(route_t)
+        assert.same(use_case[2].route, route_t.route)
       end)
     end)
 
@@ -730,7 +871,7 @@ describe("Router", function()
       end)
 
       it("invalid host in [host + uri]", function()
-        assert.is_nil(router.select("GET", "/api-4", "domain-3.org"))
+        assert.is_nil(router.select("GET", "/route-4", "domain-3.org"))
       end)
 
       it("invalid host in [host + method]", function()
@@ -747,7 +888,7 @@ describe("Router", function()
       end)
 
       it("does not match when given [uri] is in URI but not in prefix", function()
-        local match_t = router.select("GET", "/some-other-prefix/my-api",
+        local match_t = router.select("GET", "/some-other-prefix/my-route",
                                       "domain.org")
         assert.is_nil(match_t)
       end)
@@ -758,8 +899,8 @@ describe("Router", function()
         Run:
             $ busted --tags=benchmarks <router_spec.lua>
 
-        To estimate how much time matching an API in a worst-case scenario
-        with a set of ~1000 registered APIs would take.
+        To estimate how much time matching an route in a worst-case scenario
+        with a set of ~1000 registered routes would take.
 
         We are aiming at sub-ms latency.
       ]]
@@ -772,9 +913,11 @@ describe("Router", function()
         setup(function()
           for i = 1, 10^5 do
             benchmark_use_cases[i] = {
-              name = "api-" .. i,
+              service = service,
+              route   = {
+              },
               headers = {
-                ["host"] = { "domain-" .. i .. ".org" },
+                host  = { "domain-" .. i .. ".org" },
               },
             }
           end
@@ -786,7 +929,7 @@ describe("Router", function()
         it("takes < 1ms", function()
           local match_t = router.select("GET", "/", target_domain)
           assert.truthy(match_t)
-          assert.same(benchmark_use_cases[#benchmark_use_cases], match_t.api)
+          assert.same(benchmark_use_cases[#benchmark_use_cases].route, match_t.route)
         end)
       end)
 
@@ -800,30 +943,33 @@ describe("Router", function()
           local n = 10^5
 
           for i = 1, n - 1 do
-            -- insert a lot of APIs that don't match (missing methods)
-            -- but have conflicting uris and hosts (domain-<n>.org)
+            -- insert a lot of routes that don't match (missing methods)
+            -- but have conflicting paths and hosts (domain-<n>.org)
 
             benchmark_use_cases[i] = {
-              name = "api-" .. i,
-              --methods = { "POST" },
-              uris = { "/my-api-" .. n },
+              service = service,
+              route   = {
+                paths = { "/my-route-" .. n },
+              },
               headers = {
-                ["host"] = { "domain-" .. n .. ".org" },
+                host  = { "domain-" .. n .. ".org" },
               },
             }
           end
 
-          -- insert our target API, which has the proper method as well
+          -- insert our target route, which has the proper method as well
           benchmark_use_cases[n] = {
-            name = "api-" .. n,
-            methods = { "POST" },
-            uris = { "/my-api-" .. n },
-            headers = {
-              ["host"] = { "domain-" .. n .. ".org" },
+            service   = service,
+            route     = {
+              methods = { "POST" },
+              paths   = { "/my-route-" .. n },
+            },
+            headers   = {
+              host    = { "domain-" .. n .. ".org" },
             },
           }
 
-          target_uri = "/my-api-" .. n
+          target_uri = "/my-route-" .. n
           target_domain = "domain-" .. n .. ".org"
           router = assert(Router.new(benchmark_use_cases))
         end)
@@ -831,11 +977,11 @@ describe("Router", function()
         it("takes < 1ms", function()
           local match_t = router.select("POST", target_uri, target_domain)
           assert.truthy(match_t)
-          assert.same(benchmark_use_cases[#benchmark_use_cases], match_t.api)
+          assert.same(benchmark_use_cases[#benchmark_use_cases].route, match_t.route)
         end)
       end)
 
-      describe("multiple APIs of same category with identical values", function()
+      describe("multiple routes of same category with identical values", function()
         local router
         local target_uri
         local target_domain
@@ -845,13 +991,15 @@ describe("Router", function()
           local n = 10^5
 
           for i = 1, n - 1 do
-            -- all our APIs here use domain.org as the domain
+            -- all our routes here use domain.org as the domain
             -- they all are [host + uri] category
             benchmark_use_cases[i] = {
-              name = "api-" .. i,
-              uris = { "/my-api-" .. n },
+              service = service,
+              route   = {
+                paths = { "/my-route-" .. n },
+              },
               headers = {
-                ["host"] = { "domain.org" },
+                host  = { "domain.org" },
               },
             }
           end
@@ -859,14 +1007,16 @@ describe("Router", function()
           -- this one too, but our target will be a
           -- different URI
           benchmark_use_cases[n] = {
-            name = "api-" .. n,
-            uris = { "/my-real-api" },
+            service = service,
+            route   = {
+              paths = { "/my-real-route" },
+            },
             headers = {
-              ["host"] = { "domain.org" },
+              host  = { "domain.org" },
             },
           }
 
-          target_uri = "/my-real-api"
+          target_uri = "/my-real-route"
           target_domain = "domain.org"
           router = assert(Router.new(benchmark_use_cases))
         end)
@@ -874,7 +1024,7 @@ describe("Router", function()
         it("takes < 1ms", function()
           local match_t = router.select("GET", target_uri, target_domain)
           assert.truthy(match_t)
-          assert.same(benchmark_use_cases[#benchmark_use_cases], match_t.api)
+          assert.same(benchmark_use_cases[#benchmark_use_cases].route, match_t.route)
         end)
       end)
     end)
@@ -930,24 +1080,34 @@ describe("Router", function()
     end
 
     it("returns parsed upstream_url + upstream_uri", function()
-      local use_case_apis = {
+      local use_case_routes = {
         {
-          name = "api-1",
-          uris = { "/my-api" },
-          upstream_url = "http://example.org",
+          service    = {
+            name     = "service-invalid",
+            host     = "example.org",
+            protocol = "http"
+          },
+          route      = {
+            paths    = { "/my-route" },
+          },
         },
         {
-          name = "api-2",
-          uris = { "/my-api-2" },
-          upstream_url = "https://example.org",
-        }
+          service    = {
+            name     = "service-invalid",
+            host     = "example.org",
+            protocol = "https"
+          },
+          route      = {
+            paths    = { "/my-route-2" },
+          },
+        },
       }
 
-      local router = assert(Router.new(use_case_apis))
+      local router = assert(Router.new(use_case_routes))
 
-      local _ngx = mock_ngx("GET", "/my-api", { ["host"] = "domain.org" })
+      local _ngx = mock_ngx("GET", "/my-route", { host = "domain.org" })
       local match_t = router.exec(_ngx)
-      assert.same(use_case_apis[1], match_t.api)
+      assert.same(use_case_routes[1].route, match_t.route)
 
       -- upstream_url_t
       assert.equal("http", match_t.upstream_url_t.scheme)
@@ -956,11 +1116,11 @@ describe("Router", function()
 
       -- upstream_uri
       assert.is_nil(match_t.upstream_host) -- only when `preserve_host = true`
-      assert.equal("/my-api", match_t.upstream_uri)
+      assert.equal("/my-route", match_t.upstream_uri)
 
-      _ngx = mock_ngx("GET", "/my-api-2", { ["host"] = "domain.org" })
+      _ngx = mock_ngx("GET", "/my-route-2", { host = "domain.org" })
       match_t = router.exec(_ngx)
-      assert.same(use_case_apis[2], match_t.api)
+      assert.same(use_case_routes[2].route, match_t.route)
 
       -- upstream_url_t
       assert.equal("https", match_t.upstream_url_t.scheme)
@@ -969,71 +1129,79 @@ describe("Router", function()
 
       -- upstream_uri
       assert.is_nil(match_t.upstream_host) -- only when `preserve_host = true`
-      assert.equal("/my-api-2", match_t.upstream_uri)
+      assert.equal("/my-route-2", match_t.upstream_uri)
     end)
 
     it("returns matched_host + matched_uri + matched_method", function()
-      local use_case_apis = {
+      local use_case_routes = {
         {
-          name       = "api-1",
-          methods    = { "GET" },
-          uris       = { "/my-api" },
-          headers    = {
-            ["host"] = { "host.com" },
+          service   = service,
+          route     = {
+            methods = { "GET" },
+            paths   = { "/my-route" },
+          },
+          headers   = {
+            host    = { "host.com" },
           },
         },
         {
-          name       = "api-2",
-          uris       = { "/my-api" },
-          headers    = {
-            ["host"] = { "host.com" },
+          service   = service,
+          route     = {
+            paths   = { "/my-route" },
+          },
+          headers   = {
+            host    = { "host.com" },
           },
         },
         {
-          name       = "api-3",
-          headers    = {
-            ["host"] = { "*.host.com" },
+          service   = service,
+          route     = {
+          },
+          headers   = {
+            host    = { "*.host.com" },
           },
         },
         {
-          name = "api-4",
-          uris = { [[/users/\d+/profile]] },
+          service   = service,
+          route     = {
+            paths   = { [[/users/\d+/profile]] },
+          },
         },
       }
 
-      local router = assert(Router.new(use_case_apis))
+      local router = assert(Router.new(use_case_routes))
 
-      local _ngx = mock_ngx("GET", "/my-api", { ["host"] = "host.com" })
+      local _ngx = mock_ngx("GET", "/my-route", { host = "host.com" })
       local match_t = router.exec(_ngx)
-      assert.same(use_case_apis[1], match_t.api)
+      assert.same(use_case_routes[1].route, match_t.route)
       assert.equal("host.com", match_t.matches.host)
-      assert.equal("/my-api", match_t.matches.uri)
+      assert.equal("/my-route", match_t.matches.uri)
       assert.equal("GET", match_t.matches.method)
 
-      _ngx = mock_ngx("GET", "/my-api/prefix/match", { ["host"] = "host.com" })
+      _ngx = mock_ngx("GET", "/my-route/prefix/match", { host = "host.com" })
       match_t = router.exec(_ngx)
-      assert.same(use_case_apis[1], match_t.api)
+      assert.same(use_case_routes[1].route, match_t.route)
       assert.equal("host.com", match_t.matches.host)
-      assert.equal("/my-api", match_t.matches.uri)
+      assert.equal("/my-route", match_t.matches.uri)
       assert.equal("GET", match_t.matches.method)
 
-      _ngx = mock_ngx("POST", "/my-api", { ["host"] = "host.com" })
+      _ngx = mock_ngx("POST", "/my-route", { host = "host.com" })
       match_t = router.exec(_ngx)
-      assert.same(use_case_apis[2], match_t.api)
+      assert.same(use_case_routes[2].route, match_t.route)
       assert.equal("host.com", match_t.matches.host)
-      assert.equal("/my-api", match_t.matches.uri)
+      assert.equal("/my-route", match_t.matches.uri)
       assert.is_nil(match_t.matches.method)
 
-      _ngx = mock_ngx("GET", "/", { ["host"] = "test.host.com" })
+      _ngx = mock_ngx("GET", "/", { host = "test.host.com" })
       match_t = router.exec(_ngx)
-      assert.same(use_case_apis[3], match_t.api)
+      assert.same(use_case_routes[3].route, match_t.route)
       assert.equal("*.host.com", match_t.matches.host)
       assert.is_nil(match_t.matches.uri)
       assert.is_nil(match_t.matches.method)
 
-      _ngx = mock_ngx("GET", "/users/123/profile", { ["host"] = "domain.org" })
+      _ngx = mock_ngx("GET", "/users/123/profile", { host = "domain.org" })
       match_t = router.exec(_ngx)
-      assert.same(use_case_apis[4], match_t.api)
+      assert.same(use_case_routes[4].route, match_t.route)
       assert.is_nil(match_t.matches.host)
       assert.equal([[/users/\d+/profile]], match_t.matches.uri)
       assert.is_nil(match_t.matches.method)
@@ -1042,15 +1210,17 @@ describe("Router", function()
     it("returns uri_captures from a [uri regex]", function()
       local use_case = {
         {
-          name = "api-1",
-          uris = { [[/users/(?P<user_id>\d+)/profile/?(?P<scope>[a-z]*)]] },
+          service = service,
+          route   = {
+            paths = { [[/users/(?P<user_id>\d+)/profile/?(?P<scope>[a-z]*)]] },
+          },
         },
       }
 
       local router = assert(Router.new(use_case))
 
       local _ngx = mock_ngx("GET", "/users/1984/profile",
-                            { ["host"] = "domain.org" })
+                            { host = "domain.org" })
       local match_t = router.exec(_ngx)
       assert.equal("1984", match_t.matches.uri_captures[1])
       assert.equal("1984", match_t.matches.uri_captures.user_id)
@@ -1075,7 +1245,7 @@ describe("Router", function()
       assert.equal(2, #match_t.matches.uri_captures)
 
       _ngx = mock_ngx("GET", "/users/1984/profile/email",
-                      { ["host"] = "domain.org" })
+                      { host = "domain.org" })
       match_t = router.exec(_ngx)
       assert.equal("1984",  match_t.matches.uri_captures[1])
       assert.equal("1984",  match_t.matches.uri_captures.user_id)
@@ -1091,15 +1261,17 @@ describe("Router", function()
     it("returns no uri_captures from a [uri prefix] match", function()
       local use_case = {
         {
-          name      = "api-1",
-          uris      = { "/hello" },
-          strip_uri = true,
+          service      = service,
+          route        = {
+            paths      = { "/hello" },
+            strip_path = true,
+          },
         },
       }
 
       local router = assert(Router.new(use_case))
 
-      local _ngx = mock_ngx("GET", "/hello/world", { ["host"] = "domain.org" })
+      local _ngx = mock_ngx("GET", "/hello/world", { host = "domain.org" })
       local match_t = router.exec(_ngx)
       assert.equal("/world", match_t.upstream_uri)
       assert.is_nil(match_t.matches.uri_captures)
@@ -1108,207 +1280,239 @@ describe("Router", function()
     it("returns no uri_captures from a [uri regex] match without groups", function()
       local use_case = {
         {
-          name = "api-1",
-          uris = { [[/users/\d+/profile]] },
+          service = service,
+          route   = {
+            paths = { [[/users/\d+/profile]] },
+          },
         },
       }
 
       local router = assert(Router.new(use_case))
 
       local _ngx = mock_ngx("GET", "/users/1984/profile",
-                            { ["host"] = "domain.org" })
+                            { host = "domain.org" })
       local match_t = router.exec(_ngx)
       assert.is_nil(match_t.matches.uri_captures)
     end)
 
     it("parses path component from upstream_url property", function()
-      local use_case_apis = {
+      local use_case_routes = {
         {
-          name = "api-1",
-          uris = { "/my-api" },
-          upstream_url = "http://example.org/get",
-        }
+          service    = {
+            name     = "service-invalid",
+            host     = "example.org",
+            path     = "/get",
+            protocol = "http"
+          },
+          route      = {
+            paths    = { "/my-route" },
+          },
+        },
       }
 
-      local router = assert(Router.new(use_case_apis))
+      local router = assert(Router.new(use_case_routes))
 
-      local _ngx = mock_ngx("GET", "/my-api", { ["host"] = "domain.org" })
+      local _ngx = mock_ngx("GET", "/my-route", { host = "domain.org" })
       local match_t = router.exec(_ngx)
-      assert.same(use_case_apis[1], match_t.api)
+      assert.same(use_case_routes[1].route, match_t.route)
       assert.equal("/get", match_t.upstream_url_t.path)
     end)
 
     it("parses upstream_url port", function()
-      local use_case_apis = {
+      local use_case_routes = {
         {
-          name = "api-1",
-          uris = { "/my-api" },
-          upstream_url = "http://example.org:8080",
+          service    = {
+            name     = "service-invalid",
+            host     = "example.org",
+            port     = 8080,
+            protocol = "http"
+          },
+          route      = {
+            paths    = { "/my-route" },
+          },
         },
         {
-          name = "api-2",
-          uris = { "/my-api-2" },
-          upstream_url = "https://example.org:8443",
-        }
+          service = {
+            name     = "service-invalid",
+            host     = "example.org",
+            port     = 8443,
+            protocol = "https"
+          },
+          route      = {
+            paths    = { "/my-route-2" },
+          },
+        },
       }
 
-      local router = assert(Router.new(use_case_apis))
+      local router = assert(Router.new(use_case_routes))
 
-      local _ngx = mock_ngx("GET", "/my-api", { ["host"] = "domain.org" })
+      local _ngx = mock_ngx("GET", "/my-route", { host = "domain.org" })
       local match_t = router.exec(_ngx)
       assert.equal(8080, match_t.upstream_url_t.port)
 
-      _ngx = mock_ngx("GET", "/my-api-2", { ["host"] = "domain.org" })
+      _ngx = mock_ngx("GET", "/my-route-2", { host = "domain.org" })
       match_t = router.exec(_ngx)
       assert.equal(8443, match_t.upstream_url_t.port)
     end)
 
-    it("allows url encoded uris", function()
-      local use_case_apis = {
+    it("allows url encoded paths", function()
+      local use_case_routes = {
         {
-          name = "api-1",
-          uris = { "/endel%C3%B8st" },
+          service = service,
+          route   = {
+            paths = { "/endel%C3%B8st" },
+          },
         },
       }
 
-      local router = assert(Router.new(use_case_apis))
+      local router = assert(Router.new(use_case_routes))
 
-      local _ngx = mock_ngx("GET", "/endel%C3%B8st", { ["host"] = "domain.org" })
+      local _ngx = mock_ngx("GET", "/endel%C3%B8st", { host = "domain.org" })
       local match_t = router.exec(_ngx)
-      assert.same(use_case_apis[1], match_t.api)
+      assert.same(use_case_routes[1].route, match_t.route)
       assert.equal("/endel%C3%B8st", match_t.upstream_uri)
     end)
 
-    describe("stripped uris", function()
+    describe("stripped paths", function()
       local router
-      local use_case_apis = {
+      local use_case_routes = {
         {
-          name = "api-1",
-          uris = { "/my-api", "/this-api" },
-          strip_uri = true
+          service      = service,
+          route        = {
+            paths      = { "/my-route", "/this-route" },
+            strip_path = true
+          }
         },
-        -- don't strip this API's matching URI
+        -- don't strip this route's matching URI
         {
-          name = "api-2",
-          methods = { "POST" },
-          uris = { "/my-api", "/this-api" },
+          service      = service,
+          route        = {
+            methods    = { "POST" },
+            paths      = { "/my-route", "/this-route" },
+          },
         },
       }
 
       setup(function()
-        router = assert(Router.new(use_case_apis))
+        router = assert(Router.new(use_case_routes))
       end)
 
-      it("strips the specified uris from the given uri if matching", function()
-        local _ngx = mock_ngx("GET", "/my-api/hello/world",
-                              { ["host"] = "domain.org" })
+      it("strips the specified paths from the given uri if matching", function()
+        local _ngx = mock_ngx("GET", "/my-route/hello/world",
+                              { host = "domain.org" })
 
         local match_t = router.exec(_ngx)
-        assert.same(use_case_apis[1], match_t.api)
+        assert.same(use_case_routes[1].route, match_t.route)
         assert.equal("/hello/world", match_t.upstream_uri)
       end)
 
       it("strips if matched URI is plain (not a prefix)", function()
-        local _ngx = mock_ngx("GET", "/my-api", { ["host"] = "domain.org" })
+        local _ngx = mock_ngx("GET", "/my-route", { host = "domain.org" })
 
         local match_t = router.exec(_ngx)
-        assert.same(use_case_apis[1], match_t.api)
+        assert.same(use_case_routes[1].route, match_t.route)
         assert.equal("/", match_t.upstream_uri)
       end)
 
       it("doesn't strip if 'strip_uri' is not enabled", function()
-        local _ngx = mock_ngx("POST", "/my-api/hello/world",
-                              { ["host"] = "domain.org" })
+        local _ngx = mock_ngx("POST", "/my-route/hello/world",
+                              { host = "domain.org" })
 
         local match_t = router.exec(_ngx)
-        assert.same(use_case_apis[2], match_t.api)
-        assert.equal("/my-api/hello/world", match_t.upstream_uri)
+        assert.same(use_case_routes[2].route, match_t.route)
+        assert.equal("/my-route/hello/world", match_t.upstream_uri)
       end)
 
       it("does not strips root / URI", function()
-        local use_case_apis = {
+        local use_case_routes = {
           {
-            name = "root-uri",
-            uris = { "/" },
-            strip_uri = true,
-          }
-        }
-
-        local router = assert(Router.new(use_case_apis))
-
-        local _ngx = mock_ngx("POST", "/my-api/hello/world",
-                              { ["host"] = "domain.org" })
-
-        local match_t = router.exec(_ngx)
-        assert.same(use_case_apis[1], match_t.api)
-        assert.equal("/my-api/hello/world", match_t.upstream_uri)
-      end)
-
-      it("can find an API with stripped URI several times in a row", function()
-        local _ngx = mock_ngx("GET", "/my-api", { ["host"] = "domain.org" })
-        local match_t = router.exec(_ngx)
-        assert.same(use_case_apis[1], match_t.api)
-        assert.equal("/", match_t.upstream_uri)
-
-        _ngx = mock_ngx("GET", "/my-api", { ["host"] = "domain.org" })
-        match_t = router.exec(_ngx)
-        assert.same(use_case_apis[1], match_t.api)
-        assert.equal("/", match_t.upstream_uri)
-      end)
-
-      it("can proxy an API with stripped URI with different URIs in a row", function()
-        local _ngx = mock_ngx("GET", "/my-api", { ["host"] = "domain.org" })
-
-        local match_t = router.exec(_ngx)
-        assert.same(use_case_apis[1], match_t.api)
-        assert.equal("/", match_t.upstream_uri)
-
-        _ngx = mock_ngx("GET", "/this-api", { ["host"] = "domain.org" })
-        match_t = router.exec(_ngx)
-        assert.same(use_case_apis[1], match_t.api)
-        assert.equal("/", match_t.upstream_uri)
-
-        _ngx = mock_ngx("GET", "/my-api", { ["host"] = "domain.org" })
-        match_t = router.exec(_ngx)
-        assert.same(use_case_apis[1], match_t.api)
-        assert.equal("/", match_t.upstream_uri)
-
-        _ngx = mock_ngx("GET", "/this-api", { ["host"] = "domain.org" })
-        match_t = router.exec(_ngx)
-        assert.same(use_case_apis[1], match_t.api)
-        assert.equal("/", match_t.upstream_uri)
-      end)
-
-      it("strips url encoded uris", function()
-        local use_case_apis = {
-          {
-            name      = "api-1",
-            uris      = { "/endel%C3%B8st" },
-            strip_uri = true,
+            service      = service,
+            route        = {
+              paths      = { "/" },
+              strip_path = true,
+            },
           },
         }
 
-        local router = assert(Router.new(use_case_apis))
+        local router = assert(Router.new(use_case_routes))
 
-        local _ngx = mock_ngx("GET", "/endel%C3%B8st", { ["host"] = "domain.org" })
+        local _ngx = mock_ngx("POST", "/my-route/hello/world",
+                              { host = "domain.org" })
+
         local match_t = router.exec(_ngx)
-        assert.same(use_case_apis[1], match_t.api)
+        assert.same(use_case_routes[1].route, match_t.route)
+        assert.equal("/my-route/hello/world", match_t.upstream_uri)
+      end)
+
+      it("can find an route with stripped URI several times in a row", function()
+        local _ngx = mock_ngx("GET", "/my-route", { host = "domain.org" })
+        local match_t = router.exec(_ngx)
+        assert.same(use_case_routes[1].route, match_t.route)
+        assert.equal("/", match_t.upstream_uri)
+
+        _ngx = mock_ngx("GET", "/my-route", { host = "domain.org" })
+        match_t = router.exec(_ngx)
+        assert.same(use_case_routes[1].route, match_t.route)
+        assert.equal("/", match_t.upstream_uri)
+      end)
+
+      it("can proxy an route with stripped URI with different URIs in a row", function()
+        local _ngx = mock_ngx("GET", "/my-route", { host = "domain.org" })
+
+        local match_t = router.exec(_ngx)
+        assert.same(use_case_routes[1].route, match_t.route)
+        assert.equal("/", match_t.upstream_uri)
+
+        _ngx = mock_ngx("GET", "/this-route", { host = "domain.org" })
+        match_t = router.exec(_ngx)
+        assert.same(use_case_routes[1].route, match_t.route)
+        assert.equal("/", match_t.upstream_uri)
+
+        _ngx = mock_ngx("GET", "/my-route", { host = "domain.org" })
+        match_t = router.exec(_ngx)
+        assert.same(use_case_routes[1].route, match_t.route)
+        assert.equal("/", match_t.upstream_uri)
+
+        _ngx = mock_ngx("GET", "/this-route", { host = "domain.org" })
+        match_t = router.exec(_ngx)
+        assert.same(use_case_routes[1].route, match_t.route)
+        assert.equal("/", match_t.upstream_uri)
+      end)
+
+      it("strips url encoded paths", function()
+        local use_case_routes = {
+          {
+            service      = service,
+            route        = {
+              paths      = { "/endel%C3%B8st" },
+              strip_path = true,
+            },
+          },
+        }
+
+        local router = assert(Router.new(use_case_routes))
+
+        local _ngx = mock_ngx("GET", "/endel%C3%B8st", { host = "domain.org" })
+        local match_t = router.exec(_ngx)
+        assert.same(use_case_routes[1].route, match_t.route)
         assert.equal("/", match_t.upstream_uri)
       end)
 
       it("strips a [uri regex]", function()
         local use_case = {
           {
-            name      = "api-1",
-            strip_uri = true,
-            uris      = { [[/users/\d+/profile]] },
+            service      = service,
+            route        = {
+              paths      = { [[/users/\d+/profile]] },
+              strip_path = true,
+            },
           },
         }
 
         local router = assert(Router.new(use_case))
 
         local _ngx = mock_ngx("GET", "/users/123/profile/hello/world",
-                              { ["host"] = "domain.org" })
+                              { host = "domain.org" })
         local match_t = router.exec(_ngx)
         assert.equal("/hello/world", match_t.upstream_uri)
       end)
@@ -1316,16 +1520,18 @@ describe("Router", function()
       it("strips a [uri regex] with a capture group", function()
         local use_case = {
           {
-            name      = "api-1",
-            strip_uri = true,
-            uris      = { [[/users/(\d+)/profile]] },
+            service      = service,
+            route        = {
+              paths      = { [[/users/(\d+)/profile]] },
+              strip_path = true,
+            },
           },
         }
 
         local router = assert(Router.new(use_case))
 
         local _ngx = mock_ngx("GET", "/users/123/profile/hello/world",
-                              { ["host"] = "domain.org" })
+                              { host = "domain.org" })
         local match_t = router.exec(_ngx)
         assert.equal("/hello/world", match_t.upstream_uri)
       end)
@@ -1333,104 +1539,120 @@ describe("Router", function()
 
     describe("preserve Host header", function()
       local router
-      local use_case_apis = {
+      local use_case_routes = {
         -- use the request's Host header
         {
-          name = "api-1",
-          upstream_url = "http://example.org",
-          preserve_host = true,
-          headers = {
-            ["host"] = { "preserve.com" },
-          }
+          service         = {
+            name          = "service-invalid",
+            host          = "example.org",
+            protocol      = "http"
+          },
+          route           = {
+            preserve_host = true,
+          },
+          headers         = {
+            host          = { "preserve.com" },
+          },
         },
-        -- use the API's upstream_url's Host
+        -- use the route's upstream_url's Host
         {
-          name = "api-2",
-          upstream_url = "http://example.org",
-          preserve_host = false,
-          headers = {
-            ["host"] = { "discard.com" },
-          }
+          service         = {
+            name          = "service-invalid",
+            host          = "example.org",
+            protocol      = "http"
+          },
+          route           = {
+            preserve_host = false,
+          },
+          headers         = {
+            host          = { "discard.com" },
+          },
         },
       }
 
       setup(function()
-        router = assert(Router.new(use_case_apis))
+        router = assert(Router.new(use_case_routes))
       end)
 
       describe("when preserve_host is true", function()
         local host = "preserve.com"
 
         it("uses the request's Host header", function()
-          local _ngx = mock_ngx("GET", "/", { ["host"] = host })
+          local _ngx = mock_ngx("GET", "/", { host = host })
 
           local match_t = router.exec(_ngx)
-          assert.same(use_case_apis[1], match_t.api)
+          assert.same(use_case_routes[1].route, match_t.route)
           assert.equal(host, match_t.upstream_host)
         end)
 
         it("uses the request's Host header incl. port", function()
-          local _ngx = mock_ngx("GET", "/", { ["host"] = host .. ":123" })
+          local _ngx = mock_ngx("GET", "/", { host = host .. ":123" })
 
           local match_t = router.exec(_ngx)
-          assert.same(use_case_apis[1], match_t.api)
+          assert.same(use_case_routes[1].route, match_t.route)
           assert.equal(host .. ":123", match_t.upstream_host)
         end)
 
         it("does not change the target upstream", function()
-          local _ngx = mock_ngx("GET", "/", { ["host"] = host })
+          local _ngx = mock_ngx("GET", "/", { host = host })
 
           local match_t = router.exec(_ngx)
-          assert.same(use_case_apis[1], match_t.api)
+          assert.same(use_case_routes[1].route, match_t.route)
           assert.equal("example.org", match_t.upstream_url_t.host)
         end)
 
         it("uses the request's Host header when `grab_header` is disabled", function()
-          local use_case_apis = {
+          local use_case_routes = {
             {
-              name          = "api-1",
-              upstream_url  = "http://example.org",
-              preserve_host = true,
-              uris          = { "/foo" },
-            }
+              service         = service,
+              route           = {
+                name          = "route-1",
+                preserve_host = true,
+                paths         = { "/foo" },
+              },
+              upstream_url    = "http://example.org",
+            },
           }
 
-          local router = assert(Router.new(use_case_apis))
+          local router = assert(Router.new(use_case_routes))
 
-          local _ngx = mock_ngx("GET", "/foo", { ["host"] = "preserve.com" })
+          local _ngx = mock_ngx("GET", "/foo", { host = "preserve.com" })
 
           local match_t = router.exec(_ngx)
-          assert.same(use_case_apis[1], match_t.api)
+          assert.same(use_case_routes[1].route, match_t.route)
           assert.equal("preserve.com", match_t.upstream_host)
         end)
 
-        it("uses the request's Host header if an API with no host was cached", function()
+        it("uses the request's Host header if an route with no host was cached", function()
           -- This is a regression test for:
           -- https://github.com/Kong/kong/issues/2825
-          -- Ensure cached APIs (in the LRU cache) still get proxied with the
+          -- Ensure cached routes (in the LRU cache) still get proxied with the
           -- correct Host header when preserve_host = true and no registered
-          -- API has a `hosts` property.
+          -- route has a `hosts` property.
 
-          local use_case_apis = {
+          local use_case_routes = {
             {
-              name          = "no-host",
-              uris          = { "/nohost" },
-              preserve_host = true,
-            }
+              service         = service,
+              route           = {
+                name          = "no-host",
+                paths         = { "/nohost" },
+                preserve_host = true,
+              },
+            },
           }
 
-          local router = assert(Router.new(use_case_apis))
+          local router = assert(Router.new(use_case_routes))
 
-          local _ngx = mock_ngx("GET", "/nohost", { ["host"] = "domain1.com" })
+          local _ngx = mock_ngx("GET", "/nohost", { host = "domain1.com" })
 
           local match_t = router.exec(_ngx)
-          assert.same(use_case_apis[1], match_t.api)
+          assert.same(use_case_routes[1].route, match_t.route)
           assert.equal("domain1.com", match_t.upstream_host)
 
-          _ngx = mock_ngx("GET", "/nohost", { ["host"] = "domain2.com" })
+          _ngx = mock_ngx("GET", "/nohost", { host = "domain2.com" })
 
           match_t = router.exec(_ngx)
-          assert.same(use_case_apis[1], match_t.api)
+          assert.same(use_case_routes[1].route, match_t.route)
           assert.equal("domain2.com", match_t.upstream_host)
         end)
       end)
@@ -1439,18 +1661,18 @@ describe("Router", function()
         local host = "discard.com"
 
         it("does not change the target upstream", function()
-          local _ngx = mock_ngx("GET", "/", { ["host"] = host })
+          local _ngx = mock_ngx("GET", "/", { host = host })
 
           local match_t = router.exec(_ngx)
-          assert.same(use_case_apis[2], match_t.api)
+          assert.same(use_case_routes[2].route, match_t.route)
           assert.equal("example.org", match_t.upstream_url_t.host)
         end)
 
         it("does not set the host_header", function()
-          local _ngx = mock_ngx("GET", "/", { ["host"] = host })
+          local _ngx = mock_ngx("GET", "/", { host = host })
 
           local match_t = router.exec(_ngx)
-          assert.same(use_case_apis[2], match_t.api)
+          assert.same(use_case_routes[2].route, match_t.route)
           assert.is_nil(match_t.upstream_host)
         end)
       end)
@@ -1458,7 +1680,7 @@ describe("Router", function()
 
     describe("trailing slash", function()
       local checks = {
-        -- upstream url    uris            request path    expected path           strip uri
+        -- upstream url    paths            request path    expected path           strip uri
         {  "/",            "/",            "/",            "/",                    true      },
         {  "/",            "/",            "/foo/bar",     "/foo/bar",             true      },
         {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            true      },
@@ -1500,22 +1722,24 @@ describe("Router", function()
                      " when requesting "                 .. args[3], function()
 
 
-          local use_case_apis = {
+          local use_case_routes = {
             {
-              name         = "api-1",
-              strip_uri    = args[5],
-              upstream_url = "http://example.org" .. args[1],
-              uris         = {
-                args[2],
+              service      = {
+                name       = "service-invalid",
+                path       = args[1],
+              },
+              route        = {
+                strip_path = args[5],
+                paths      = { args[2] },
               },
             }
           }
 
-          local router = assert(Router.new(use_case_apis) )
+          local router = assert(Router.new(use_case_routes) )
 
-          local _ngx = mock_ngx("GET", args[3], { ["host"] = "domain.org" })
+          local _ngx = mock_ngx("GET", args[3], { host = "domain.org" })
           local match_t = router.exec(_ngx)
-          assert.same(use_case_apis[1], match_t.api)
+          assert.same(use_case_routes[1].route, match_t.route)
           assert.equal(args[1], match_t.upstream_url_t.path)
           assert.equal(args[4], match_t.upstream_uri)
         end)
@@ -1528,7 +1752,7 @@ describe("Router", function()
     require "spec.helpers"
 
     it("detects if a string has capturing groups", function()
-      local uris                         = {
+      local paths                         = {
         ["/users/(foo)"]                 = true,
         ["/users/()"]                    = true,
         ["/users/()/foo"]                = true,
@@ -1540,16 +1764,16 @@ describe("Router", function()
         ["()/world"]                     = true,
         ["(/hello)/world"]               = true,
 
-        ["/users/\\(foo\\)"] = false,
-        ["/users/\\(\\)"]    = false,
+        ["/users/\\(foo\\)"]             = false,
+        ["/users/\\(\\)"]                = false,
         -- unbalanced capture groups
-        ["(/hello\\)/world"] = false,
-        ["/users/(foo"]      = false,
-        ["/users/\\(foo)"]   = false,
-        ["/users/(foo\\)"]   = false,
+        ["(/hello\\)/world"]             = false,
+        ["/users/(foo"]                  = false,
+        ["/users/\\(foo)"]               = false,
+        ["/users/(foo\\)"]               = false,
       }
 
-      for uri, expected_to_match in pairs(uris) do
+      for uri, expected_to_match in pairs(paths) do
         local has_captures = Router.has_capturing_groups(uri)
         if expected_to_match and not has_captures then
           assert.fail(uri, "has capturing groups that were not detected")

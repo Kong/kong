@@ -5,32 +5,42 @@
 -- It mainly carries information related to a request from one context to the next one,
 -- through the `ngx.ctx` table.
 --
--- In the `access_by_lua` phase, it is responsible for retrieving the API being proxied by
--- a Consumer. Then it is responsible for loading the plugins to execute on this request.
-local utils = require "kong.tools.utils"
-local Router = require "kong.core.router"
-local reports = require "kong.core.reports"
-local balancer = require "kong.core.balancer"
-local constants = require "kong.constants"
-local responses = require "kong.tools.responses"
-local singletons = require "kong.singletons"
+-- In the `access_by_lua` phase, it is responsible for retrieving the route being proxied by
+-- a consumer. Then it is responsible for loading the plugins to execute on this request.
+local utils       = require "kong.tools.utils"
+local Router      = require "kong.core.router"
+local ApiRouter   = require "kong.core.api_router"
+local reports     = require "kong.core.reports"
+local balancer    = require "kong.core.balancer"
+local constants   = require "kong.constants"
+local responses   = require "kong.tools.responses"
+local singletons  = require "kong.singletons"
 local certificate = require "kong.core.certificate"
 
 
-local tostring = tostring
-local sub      = string.sub
-local lower    = string.lower
-local fmt      = string.format
-local ngx      = ngx
-local ERR      = ngx.ERR
-local DEBUG    = ngx.DEBUG
-local log      = ngx.log
-local ngx_now  = ngx.now
-local unpack   = unpack
+local tostring    = tostring
+local sub         = string.sub
+local lower       = string.lower
+local fmt         = string.format
+local sort        = table.sort
+local ngx         = ngx
+local log         = ngx.log
+local null        = ngx.null
+local ngx_now     = ngx.now
+local unpack      = unpack
 
 
-local router, router_err, router_version
-local server_header = _KONG._NAME.."/".._KONG._VERSION
+local ERR         = ngx.ERR
+local DEBUG       = ngx.DEBUG
+
+
+local CACHE_ROUTER_OPTS = { ttl = 0 }
+local EMPTY_T = {}
+
+
+local router, router_version, router_err
+local api_router, api_router_version, api_router_err
+local server_header = _KONG._NAME .. "/" .. _KONG._VERSION
 
 
 local function get_now()
@@ -38,7 +48,7 @@ local function get_now()
 end
 
 
-local function build_router(dao, version)
+local function build_api_router(dao, version)
   local apis, err = dao.apis:find_all()
   if err then
     return nil, "could not load APIs: " .. err
@@ -51,11 +61,74 @@ local function build_router(dao, version)
     end
   end
 
-  table.sort(apis, function(api_a, api_b)
+  sort(apis, function(api_a, api_b)
     return api_a.created_at < api_b.created_at
   end)
 
-  router, err = Router.new(apis)
+  api_router, err = ApiRouter.new(apis)
+  if not api_router then
+    return nil, "could not create api router: " .. err
+  end
+
+  if version then
+    api_router_version = version
+  end
+
+  return true
+end
+
+
+local function build_router(db, version)
+  local routes, i = {}, 0
+  local routes_iterator = db.routes:each()
+
+  local route, err = routes_iterator()
+  while route do
+    local service_pk = route.service
+
+    if not service_pk then
+      return nil, "route (" .. route.id .. ") is not associated with service"
+    end
+
+    local service
+
+    -- TODO: db requests in loop, problem or not
+    service, err = db.services:select(service_pk)
+    if not service then
+      return nil, "could not find service for route (" .. route.id .. "): " .. err
+    end
+
+    local r = {
+      route   = route,
+      service = service,
+    }
+
+    if route.hosts ~= null then
+      -- TODO: headers should probably be moved to route
+      r.headers = {
+        host = route.hosts,
+      }
+    end
+
+    i = i + 1
+    routes[i] = r
+
+    route, err = routes_iterator()
+  end
+
+  if err then
+    return nil, "could not load routes: " .. err
+  end
+
+  sort(routes, function(r1, r2)
+    r1, r2 = r1.route, r2.route
+    if r1.regex_priority == r2.regex_priority then
+      return r1.created_at < r2.created_at
+    end
+    return r1.regex_priority > r2.regex_priority
+  end)
+
+  router, err = Router.new(routes)
   if not router then
     return nil, "could not create router: " .. err
   end
@@ -71,7 +144,8 @@ end
 -- in the table below the `before` and `after` is to indicate when they run:
 -- before or after the plugins
 return {
-  build_router = build_router,
+  build_router     = build_router,
+  build_api_router = build_api_router,
 
   init_worker = {
     before = function()
@@ -89,53 +163,57 @@ return {
 
 
       worker_events.register(function(data)
-        if not data.schema then
-          log(ngx.ERR, "[events] missing schema in crud subscriber")
-          return
-        end
+        if not data.new_db then
+          if not data.schema then
+            log(ngx.ERR, "[events] missing schema in crud subscriber")
+            return
+          end
 
-        if not data.entity then
-          log(ngx.ERR, "[events] missing entity in crud subscriber")
-          return
-        end
+          if not data.entity then
+            log(ngx.ERR, "[events] missing entity in crud subscriber")
+            return
+          end
 
-        -- invalidate this entity anywhere it is cached if it has a
-        -- caching key
+          -- invalidate this entity anywhere it is cached if it has a
+          -- caching key
 
-        local cache_key = dao[data.schema.table]:entity_cache_key(data.entity)
-        if cache_key then
-          cache:invalidate(cache_key)
-        end
-
-        -- if we had an update, but the cache key was part of what was updated,
-        -- we need to invalidate the previous entity as well
-
-        if data.old_entity then
-          cache_key = dao[data.schema.table]:entity_cache_key(data.old_entity)
+          local cache_key = dao[data.schema.table]:entity_cache_key(data.entity)
           if cache_key then
             cache:invalidate(cache_key)
           end
+
+          -- if we had an update, but the cache key was part of what was updated,
+          -- we need to invalidate the previous entity as well
+
+          if data.old_entity then
+            cache_key = dao[data.schema.table]:entity_cache_key(data.old_entity)
+            if cache_key then
+              cache:invalidate(cache_key)
+            end
+          end
+
+          if not data.operation then
+            log(ngx.ERR, "[events] missing operation in crud subscriber")
+            return
+          end
         end
 
-        if not data.operation then
-          log(ngx.ERR, "[events] missing operation in crud subscriber")
-          return
-        end
+        -- new DB module and old DAO: public worker events propagation
 
-        local entity_channel           = data.schema.table
+        local entity_channel           = data.schema.table or data.schema.name
         local entity_operation_channel = fmt("%s:%s", data.schema.table,
                                              data.operation)
 
-        -- crud:apis
-        local _, err = worker_events.post_local("crud", entity_channel, data)
-        if err then
+        -- crud:routes
+        local ok, err = worker_events.post_local("crud", entity_channel, data)
+        if not ok then
           log(ngx.ERR, "[events] could not broadcast crud event: ", err)
           return
         end
 
-        -- crud:apis:create
-        _, err = worker_events.post_local("crud", entity_operation_channel, data)
-        if err then
+        -- crud:routes:create
+        ok, err = worker_events.post_local("crud", entity_operation_channel, data)
+        if not ok then
           log(ngx.ERR, "[events] could not broadcast crud event: ", err)
           return
         end
@@ -144,11 +222,30 @@ return {
 
       -- local events (same worker)
 
+      worker_events.register(function()
+        log(DEBUG, "[events] API updated, invalidating API router")
+        cache:invalidate("api_router:version")
+      end, "crud", "apis")
+
 
       worker_events.register(function()
-        log(DEBUG, "[events] API updated, invalidating router")
+        log(DEBUG, "[events] Route updated, invalidating router")
         cache:invalidate("router:version")
-      end, "crud", "apis")
+      end, "crud", "routes")
+
+
+      worker_events.register(function(data)
+        if data.operation ~= "create" and
+           data.operation ~= "delete"
+        then
+          -- no need to rebuild the router if we just added a Service
+          -- since no Route is pointing to that Service yet.
+          -- ditto for deletion: if a Service if being deleted, it is
+          -- only allowed because no Route is pointing to it anymore.
+          log(DEBUG, "[events] Service updated, invalidating router")
+          cache:invalidate("router:version")
+        end
+      end, "crud", "services")
 
 
       -- SSL certs / SNIs invalidations
@@ -306,7 +403,7 @@ return {
     end
   },
   certificate = {
-    before = function(ctx)
+    before = function(_)
       certificate.execute()
     end
   },
@@ -320,12 +417,33 @@ return {
   },
   access = {
     before = function(ctx)
+      -- ensure routers are up-to-date
+      local cache = singletons.cache
 
-      -- ensure router is up-to-date
+      -- router for APIs (legacy)
 
-      local version, err = singletons.cache:get("router:version", {
-        ttl = 0
-      }, function() return utils.uuid() end)
+      local version, err = cache:get("api_router:version", CACHE_ROUTER_OPTS, utils.uuid)
+      if err then
+        log(ngx.CRIT, "could not ensure API router is up to date: ", err)
+
+      elseif api_router_version ~= version then
+        log(DEBUG, "rebuilding API router")
+
+        local ok, err = build_api_router(singletons.dao, version)
+        if not ok then
+          api_router_err = err
+          log(ngx.CRIT, "could not rebuild API router: ", err)
+        end
+      end
+
+      if not api_router then
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR("no API router to " ..
+                  "route request (reason: " .. tostring(api_router_err) .. ")")
+      end
+
+      -- router for Routes/Services
+
+      local version, err = cache:get("router:version", CACHE_ROUTER_OPTS, utils.uuid)
       if err then
         log(ngx.CRIT, "could not ensure router is up to date: ", err)
 
@@ -333,7 +451,7 @@ return {
         -- router needs to be rebuilt in this worker
         log(DEBUG, "rebuilding router")
 
-        local ok, err = build_router(singletons.dao, version)
+        local ok, err = build_router(singletons.db, version)
         if not ok then
           router_err = err
           log(ngx.CRIT, "could not rebuild router: ", err)
@@ -353,16 +471,48 @@ return {
 
       local match_t = router.exec(ngx)
       if not match_t then
-        return responses.send_HTTP_NOT_FOUND("no API found with those values")
+        match_t = api_router.exec(ngx)
+        if not match_t then
+          return responses.send_HTTP_NOT_FOUND("no route and no API found with those values")
+        end
       end
 
-      local api = match_t.api
-      local upstream_url_t = match_t.upstream_url_t
+      local api                = match_t.api or EMPTY_T
+      local route              = match_t.route or EMPTY_T
+      local service            = match_t.service or EMPTY_T
+      local upstream_url_t     = match_t.upstream_url_t
 
       local realip_remote_addr = var.realip_remote_addr
+      local forwarded_proto
+      local forwarded_host
+      local forwarded_port
+
+      -- X-Forwarded-* Headers Parsing
+      --
+      -- We could use $proxy_add_x_forwarded_for, but it does not work properly
+      -- with the realip module. The realip module overrides $remote_addr and it
+      -- is okay for us to use it in case no X-Forwarded-For header was present.
+      -- But in case it was given, we will append the $realip_remote_addr that
+      -- contains the IP that was originally in $remote_addr before realip
+      -- module overrode that (aka the client that connected us).
+
       local trusted_ip = singletons.ip.trusted(realip_remote_addr)
-      if api.https_only and not utils.check_https(trusted_ip,
-                                                  api.http_if_terminated)
+      if trusted_ip then
+        forwarded_proto = var.http_x_forwarded_proto or var.scheme
+        forwarded_host  = var.http_x_forwarded_host  or var.host
+        forwarded_port  = var.http_x_forwarded_port  or var.server_port
+
+      else
+        forwarded_proto = var.scheme
+        forwarded_host  = var.host
+        forwarded_port  = var.server_port
+      end
+
+      local protocols = route.protocols
+      if (protocols and
+          protocols.https and not protocols.http and forwarded_proto ~= "https")
+      or (api.https_only and not utils.check_https(trusted_ip,
+                                                   api.http_if_terminated))
       then
         ngx.header["connection"] = "Upgrade"
         ngx.header["upgrade"]    = "TLS/1.2, HTTP/1.1"
@@ -370,30 +520,66 @@ return {
       end
 
       local balancer_address = {
-        type                 = utils.hostname_type(upstream_url_t.host),  -- the type of `host`; ipv4, ipv6 or name
+        type                 = upstream_url_t.type,  -- the type of `host`; ipv4, ipv6 or name
         host                 = upstream_url_t.host,  -- target host per `upstream_url`
         port                 = upstream_url_t.port,  -- final target port
-        try_count            = 0,              -- retry counter
-        tries                = {},             -- stores info per try
-        retries              = api.retries,    -- number of retries for the balancer
-        connect_timeout      = api.upstream_connect_timeout or 60000,
-        send_timeout         = api.upstream_send_timeout or 60000,
-        read_timeout         = api.upstream_read_timeout or 60000,
-        -- ip                = nil,            -- final target IP address
-        -- balancer          = nil,            -- the balancer object, in case of a balancer
-        -- hostname          = nil,            -- the hostname belonging to the final target IP
-        -- hash_value        = nil,            -- balancer hash (integer)
+        try_count            = 0,                    -- retry counter
+        tries                = {},                   -- stores info per try
+        -- ip                = nil,                  -- final target IP address
+        -- balancer          = nil,                  -- the balancer object, in case of a balancer
+        -- hostname          = nil,                  -- the hostname belonging to the final target IP
       }
 
+      -- TODO: this is probably not optimal
+      do
+        local retries = service.retries or api.retries
+        if retries ~= null then
+          balancer_address.retries = retries
+
+        else
+          balancer_address.retries = 5
+        end
+
+        local connect_timeout = service.connect_timeout or
+                                api.upstream_connect_timeout
+        if connect_timeout ~= null then
+          balancer_address.connect_timeout = connect_timeout
+
+        else
+          balancer_address.connect_timeout = 60000
+        end
+
+        local send_timeout = service.write_timeout or
+                             api.upstream_send_timeout
+        if send_timeout ~= null then
+          balancer_address.send_timeout = send_timeout
+
+        else
+          balancer_address.send_timeout = 60000
+        end
+
+        local read_timeout = service.read_timeout or
+                             api.upstream_read_timeout
+        if read_timeout ~= null then
+          balancer_address.read_timeout = read_timeout
+
+        else
+          balancer_address.read_timeout = 60000
+        end
+      end
+
+      -- TODO: this needs to be removed when references to ctx.api are removed
       ctx.api              = api
+      ctx.service          = service
+      ctx.route            = route
       ctx.router_matches   = match_t.matches
       ctx.balancer_address = balancer_address
 
       -- `scheme` is the scheme to use for the upstream call
       -- `uri` is the URI with which to call upstream, as returned by the
       --       router, which might have truncated it (`strip_uri`).
-      -- `host_header` is the original header to be preserved if set.
-      var.upstream_scheme = upstream_url_t.scheme
+      -- `host` is the original header to be preserved if set.
+      var.upstream_scheme = match_t.upstream_scheme
       var.upstream_uri    = match_t.upstream_uri
       var.upstream_host   = match_t.upstream_host
 
@@ -407,17 +593,7 @@ return {
       end
 
       -- X-Forwarded-* Headers
-      --
-      -- We could use $proxy_add_x_forwarded_for, but it does not work properly
-      -- with the realip module. The realip module overrides $remote_addr and
-      -- it is okay for us to use it in case no X-Forwarded-For header was
-      -- present. But in case it was given, we will append the
-      -- $realip_remote_addr that contains the IP that was originally in
-      -- $remote_addr before realip module overrode that (aka the client that
-      -- connected us).
-
       local http_x_forwarded_for = var.http_x_forwarded_for
-
       if http_x_forwarded_for then
         var.upstream_x_forwarded_for = http_x_forwarded_for .. ", " ..
                                        realip_remote_addr
@@ -426,23 +602,11 @@ return {
         var.upstream_x_forwarded_for = var.remote_addr
       end
 
-      if trusted_ip then
-        var.upstream_x_forwarded_proto = var.http_x_forwarded_proto or
-                                         var.scheme
-
-        var.upstream_x_forwarded_host  = var.http_x_forwarded_host  or
-                                         var.host
-
-        var.upstream_x_forwarded_port  = var.http_x_forwarded_port  or
-                                         var.server_port
-
-      else
-        var.upstream_x_forwarded_proto = var.scheme
-        var.upstream_x_forwarded_host  = var.host
-        var.upstream_x_forwarded_port  = var.server_port
-      end
+      var.upstream_x_forwarded_proto = forwarded_proto
+      var.upstream_x_forwarded_host  = forwarded_host
+      var.upstream_x_forwarded_port  = forwarded_port
     end,
-    -- Only executed if the `router` module found an API and allows nginx to proxy it.
+    -- Only executed if the `router` module found a route and allows nginx to proxy it.
     after = function(ctx)
       local var = ngx.var
 
@@ -490,11 +654,13 @@ return {
 
       local now = get_now()
 
-      ctx.KONG_ACCESS_TIME = now - ctx.KONG_ACCESS_START -- time spent in Kong's access_by_lua
+      -- time spent in Kong's access_by_lua
+      ctx.KONG_ACCESS_TIME     = now - ctx.KONG_ACCESS_START
       ctx.KONG_ACCESS_ENDED_AT = now
-      -- time spent in Kong before sending the reqeust to upstream
-      ctx.KONG_PROXY_LATENCY = now - ngx.req.start_time() * 1000 -- ngx.req.start_time() is kept in seconds with millisecond resolution.
-      ctx.KONG_PROXIED = true
+      -- time spent in Kong before sending the request to upstream
+      -- ngx.req.start_time() is kept in seconds with millisecond resolution.
+      ctx.KONG_PROXY_LATENCY   = now - ngx.req.start_time() * 1000
+      ctx.KONG_PROXIED         = true
     end
   },
   balancer = {
@@ -521,7 +687,8 @@ return {
     before = function(ctx)
       if ctx.KONG_PROXIED then
         local now = get_now()
-        ctx.KONG_WAITING_TIME = now - ctx.KONG_ACCESS_ENDED_AT -- time spent waiting for a response from upstream
+        -- time spent waiting for a response from upstream
+        ctx.KONG_WAITING_TIME             = now - ctx.KONG_ACCESS_ENDED_AT
         ctx.KONG_HEADER_FILTER_STARTED_AT = now
       end
     end,
@@ -552,7 +719,7 @@ return {
     after = function(ctx)
       if ngx.arg[2] and ctx.KONG_PROXIED then
         -- time spent receiving the response (header_filter + body_filter)
-        -- we could uyse $upstream_response_time but we need to distinguish the waiting time
+        -- we could use $upstream_response_time but we need to distinguish the waiting time
         -- from the receiving time in our logging plugins (especially ALF serializer).
         ctx.KONG_RECEIVE_TIME = get_now() - ctx.KONG_HEADER_FILTER_STARTED_AT
       end

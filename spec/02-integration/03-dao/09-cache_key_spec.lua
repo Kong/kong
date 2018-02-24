@@ -11,21 +11,29 @@ describe("<dao>:cache_key()", function()
 
     it("(Plugins)", function()
       local name        = "my-plugin"
-      local api_id      = "7c46b5f8-3430-11e7-afec-784f437104fa"
+      local route_id    = "db81fe58-bf43-11e7-8e5c-784f437104fa"
+      local service_id  = "7c46b5f8-3430-11e7-afec-784f437104fa"
       local consumer_id = "59c7fb5e-3430-11e7-b51f-784f437104fa"
 
       local cache_key = helpers.dao.plugins:cache_key(name)
       assert.equal("plugins:" .. name .. "::::", cache_key)
 
-      cache_key = helpers.dao.plugins:cache_key(name, api_id)
-      assert.equal("plugins:" .. name .. ":" .. api_id .. ":::", cache_key)
+      cache_key = helpers.dao.plugins:cache_key(name, route_id)
+      assert.equal("plugins:" .. name .. ":" .. route_id .. ":::", cache_key)
 
-      cache_key = helpers.dao.plugins:cache_key(name, api_id, consumer_id)
-      assert.equal("plugins:" .. name .. ":" .. api_id .. ":" .. consumer_id .. "::",
-                   cache_key)
+      cache_key = helpers.dao.plugins:cache_key(name, route_id, service_id)
+      assert.equal("plugins:" .. name .. ":" .. route_id .. ":" ..
+                   service_id .. "::", cache_key)
 
-      cache_key = helpers.dao.plugins:cache_key(name, nil, consumer_id)
-      assert.equal("plugins:" .. name .. "::" .. consumer_id .. "::", cache_key)
+      cache_key = helpers.dao.plugins:cache_key(name, route_id, service_id, consumer_id)
+      assert.equal("plugins:" .. name .. ":" .. route_id .. ":" ..
+                   service_id .. ":" .. consumer_id .. ":", cache_key)
+
+      cache_key = helpers.dao.plugins:cache_key(name, nil, service_id)
+      assert.equal("plugins:" .. name .. "::" .. service_id .. "::", cache_key)
+
+      cache_key = helpers.dao.plugins:cache_key(name, nil, nil, consumer_id)
+      assert.equal("plugins:" .. name .. ":::" .. consumer_id .. ":", cache_key)
     end)
   end)
 end)

@@ -17,15 +17,20 @@ local MOCK_UPSTREAM_SSL_PORT = 15556
 
 local conf_loader = require "kong.conf_loader"
 local DAOFactory = require "kong.dao.factory"
+local Blueprints = require "spec.fixtures.blueprints"
 local pl_stringx = require "pl.stringx"
 local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local pl_dir = require "pl.dir"
 local cjson = require "cjson.safe"
+local utils = require "kong.tools.utils"
 local http = require "resty.http"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local log = require "kong.cmd.utils.log"
+local DB = require "kong.db"
+
+local table_merge = utils.table_merge
 
 log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
 
@@ -58,7 +63,7 @@ end
 --   ]]
 --
 -- will return: "hello world\nfoo bar"
-local function unindent(str, concat_newlines)
+local function unindent(str, concat_newlines, spaced_newlines)
   str = string.match(str, "^%s*(%S.-%S*)%s*$")
   if not str then
     return ""
@@ -78,6 +83,7 @@ local function unindent(str, concat_newlines)
   end
 
   local repl = concat_newlines and "" or "\n"
+  repl = spaced_newlines and " " or repl
 
   return (str:gsub("\n" .. prefix, repl):gsub("\n$", "")):gsub("\\r", "\r")
 end
@@ -86,15 +92,62 @@ end
 -- Conf and DAO
 ---------------
 local conf = assert(conf_loader(TEST_CONF_PATH))
-local dao = assert(DAOFactory.new(conf))
+local db = assert(DB.new(conf))
+local dao = assert(DAOFactory.new(conf, db))
+local blueprints = assert(Blueprints.new(dao, db))
 -- make sure migrations are up-to-date
 
-local function run_migrations(given_dao)
-  -- either use the dao provided to this call, or use
-  -- the helper dao
-  local d = given_dao or dao
+local each_strategy
 
-  assert(d:run_migrations())
+do
+    local default_strategies = { "postgres", "cassandra" }
+
+    local function iter(strategies, i)
+      i = i + 1
+      local strategy = strategies[i]
+      if strategy then
+        return i, strategy
+      end
+    end
+
+    each_strategy = function(...)
+      local args = { ... }
+      local strategies = default_strategies
+      if #args > 0 then
+        strategies = args
+      end
+
+      return iter, strategies, 0
+    end
+end
+
+local function get_db_utils(strategy)
+  strategy = strategy or conf.database
+
+  -- new DAO (DB module)
+  local db = assert(DB.new(conf, strategy))
+
+  -- legacy DAO
+  local dao
+
+  do
+    local database = conf.database
+    conf.database = strategy
+    dao = assert(DAOFactory.new(conf, db))
+    conf.database = database
+
+    assert(dao:run_migrations())
+    dao:truncate_tables()
+  end
+
+  -- cleanup new DB tables
+  assert(db:init_connector())
+  assert(db:truncate())
+
+  -- blueprints
+  local bp = assert(Blueprints.new(dao, db))
+
+  return bp, db, dao
 end
 
 -----------------
@@ -204,7 +257,7 @@ function resty_http_proxy_mt:send(opts)
   if string.find(content_type, "application/json") and t_body_table then
     opts.body = cjson.encode(opts.body)
   elseif string.find(content_type, "www-form-urlencoded", nil, true) and t_body_table then
-    opts.body = utils.encode_args(opts.body, true) -- true: not % encoded
+    opts.body = utils.encode_args(opts.body, true, opts.no_array_indexes)
   elseif string.find(content_type, "multipart/form-data", nil, true) and t_body_table then
     local form = opts.body
     local boundary = "8fd84e9444e3946c"
@@ -251,6 +304,16 @@ function resty_http_proxy_mt:send(opts)
   end
 
   return res, err
+end
+
+-- Implements http_client:get("path", [options]), as well as post, put, etc.
+-- These methods are equivalent to calling http_client:send, but are shorter
+-- They also come with a built-in assert
+for method_name in ("get post put patch delete"):gmatch("%w+") do
+  resty_http_proxy_mt[method_name] = function(self, path, options)
+    local full_options = table_merge({ method = method_name:upper(), path = path}, options or {})
+    return assert(self:send(full_options))
+  end
 end
 
 function resty_http_proxy_mt:__index(k)
@@ -1011,6 +1074,9 @@ return {
 
   -- Kong testing properties
   dao = dao,
+  db = db,
+  blueprints = blueprints,
+  get_db_utils = get_db_utils,
   bin_path = BIN_PATH,
   test_conf = conf,
   test_conf_path = TEST_CONF_PATH,
@@ -1045,7 +1111,7 @@ return {
   prepare_prefix = prepare_prefix,
   clean_prefix = clean_prefix,
   wait_for_invalidation = wait_for_invalidation,
-  run_migrations = run_migrations,
+  each_strategy = each_strategy,
 
   -- miscellaneous
   intercept = intercept,
@@ -1092,5 +1158,5 @@ return {
       kill.kill(pid_path, "-TERM")
       wait_pid(pid_path, timeout)
     end
-  end
+end
 }

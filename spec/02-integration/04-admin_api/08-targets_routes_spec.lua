@@ -38,12 +38,14 @@ describe("Admin API", function()
   end)
 
   before_each(function()
-    helpers.run_migrations()
+    assert(helpers.dao:run_migrations())
     assert(helpers.start_kong({
       nginx_conf = "spec/fixtures/custom_nginx.template",
       dns_hostsfile = dns_hostsfile,
     }))
     client = assert(helpers.admin_client())
+
+    helpers.dao:truncate_tables()
 
     upstream = assert(helpers.dao.upstreams:insert {
       name = upstream_name,
