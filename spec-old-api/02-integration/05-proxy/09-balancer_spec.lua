@@ -426,6 +426,9 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("do not leave a stale healthchecker when renamed", function()
+        -- start server
+        local server1 = http_server(10, localhost, 2000, { 1 })
+
         local healthcheck_interval = 0.1
         -- create an upstream
         assert.same(201, api_send("POST", "/upstreams", {
@@ -452,9 +455,6 @@ for _, strategy in helpers.each_strategy() do
           hosts = "test_upstr.com",
           upstream_url = "http://test_upstr",
         }))
-
-        -- start server
-        local server1 = http_server(10, localhost, 2000, { 1 })
 
         -- rename upstream
         assert.same(200, api_send("PATCH", "/upstreams/test_upstr", {
@@ -679,6 +679,16 @@ for _, strategy in helpers.each_strategy() do
 
         for nfails = 1, 5 do
 
+          local timeout = 10
+          local requests = upstream.slots * 2 -- go round the balancer twice
+
+          -- setup target servers:
+          -- server2 will only respond for part of the test,
+          -- then server1 will take over.
+          local server2_oks = math.floor(requests / 4)
+          local server1 = http_server(timeout, localhost, PORT, { requests - server2_oks })
+          local server2 = http_server(timeout, localhost, PORT + 1, { server2_oks })
+
           -- configure healthchecks
           local api_client = helpers.admin_client()
           assert(api_client:send {
@@ -704,16 +714,6 @@ for _, strategy in helpers.each_strategy() do
             },
           })
           api_client:close()
-
-          local timeout = 10
-          local requests = upstream.slots * 2 -- go round the balancer twice
-
-          -- setup target servers:
-          -- server2 will only respond for part of the test,
-          -- then server1 will take over.
-          local server2_oks = math.floor(requests / 4)
-          local server1 = http_server(timeout, localhost, PORT, { requests - server2_oks })
-          local server2 = http_server(timeout, localhost, PORT + 1, { server2_oks })
 
           -- Phase 1: server1 and server2 take requests
           local client_oks, client_fails = client_requests(server2_oks * 2)
@@ -752,6 +752,16 @@ for _, strategy in helpers.each_strategy() do
 
         for nchecks = 1, 5 do
 
+          local timeout = 10
+
+          -- setup target servers:
+          -- server2 will only respond for part of the test,
+          -- then server1 will take over.
+          local server1_oks = upstream.slots * 2
+          local server2_oks = upstream.slots
+          local server1 = http_server(timeout, localhost, PORT,     { server1_oks })
+          local server2 = http_server(timeout, localhost, PORT + 1, { server2_oks })
+
           -- configure healthchecks
           local api_client = helpers.admin_client()
           assert(api_client:send {
@@ -777,16 +787,6 @@ for _, strategy in helpers.each_strategy() do
             },
           })
           api_client:close()
-
-          local timeout = 10
-
-          -- setup target servers:
-          -- server2 will only respond for part of the test,
-          -- then server1 will take over.
-          local server1_oks = upstream.slots * 2
-          local server2_oks = upstream.slots
-          local server1 = http_server(timeout, localhost, PORT,     { server1_oks })
-          local server2 = http_server(timeout, localhost, PORT + 1, { server2_oks })
 
           -- 1) server1 and server2 take requests
           local oks, fails = client_requests(upstream.slots)
