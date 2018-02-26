@@ -784,15 +784,26 @@ end
 --------------------------------------------------------------------------------
 -- Update health status and broadcast to workers
 -- @param upstream a table with upstream data
--- @param ip target IP
+-- @param hostname target hostname
 -- @param port target port
 -- @param is_healthy boolean: true if healthy, false if unhealthy
 -- @return true if posting event was successful, nil+error otherwise
-local function post_health(upstream, ip, port, is_healthy)
+local function post_health(upstream, hostname, port, is_healthy)
 
   local balancer = balancers[upstream.id]
   if not balancer then
     return nil, "Upstream " .. tostring(upstream.name) .. " has no balancer"
+  end
+
+  local ip
+  for weight, addr, host in balancer:addressIter() do
+    if weight > 0 and hostname == host.hostname and port == addr.port then
+      ip = addr.ip
+      break
+    end
+  end
+  if not ip then
+    return nil, "target not found for " .. hostname .. ":" .. port
   end
 
   local healthchecker = healthcheckers[balancer]

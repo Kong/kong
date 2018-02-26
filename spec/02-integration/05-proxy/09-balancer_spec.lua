@@ -304,16 +304,17 @@ end
 
 local localhosts = {
   ipv4 = "127.0.0.1",
-  ipv6 = "0000:0000:0000:0000:0000:0000:0000:0001",
+  ipv6 = "[0000:0000:0000:0000:0000:0000:0000:0001]",
+  hostname = "localhost",
 }
 
 
-for ipv, localhost in pairs(localhosts) do
+for mode, localhost in pairs(localhosts) do
 
 
 dao_helpers.for_each_dao(function(kong_config)
 
-  describe("Ring-balancer #" .. kong_config.database .. " #" .. ipv, function()
+  describe("Ring-balancer #" .. kong_config.database .. " #" .. mode, function()
     local config_db
 
     setup(function()

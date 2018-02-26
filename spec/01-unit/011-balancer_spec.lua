@@ -7,6 +7,7 @@ describe("Balancer", function()
   local crc32 = ngx.crc32_short
   local uuid = require("kong.tools.utils").uuid
   local upstream_hc
+  local upstream_ph
 
   teardown(function()
     ngx.log:revert()
@@ -76,8 +77,10 @@ describe("Balancer", function()
       [5] = { id = "e", name = "upstream_e", slots = 10, healthchecks = hc_defaults },
       [6] = { id = "f", name = "upstream_f", slots = 10, healthchecks = hc_defaults },
       [7] = { id = "hc", name = "upstream_hc", slots = 10, healthchecks = passive_hc },
+      [8] = { id = "ph", name = "upstream_ph", slots = 10, healthchecks = passive_hc },
     }
     upstream_hc = UPSTREAMS_FIXTURES[7]
+    upstream_ph = UPSTREAMS_FIXTURES[8]
 
     TARGETS_FIXTURES = {
       -- 1st upstream; a
@@ -167,6 +170,21 @@ describe("Balancer", function()
         created_at = "001",
         upstream_id = "hc",
         target = "localhost:1111",
+        weight = 10,
+      },
+      -- upstream_ph
+      {
+        id = "ph1",
+        created_at = "001",
+        upstream_id = "ph",
+        target = "localhost:1111",
+        weight = 10,
+      },
+      {
+        id = "ph2",
+        created_at = "001",
+        upstream_id = "ph",
+        target = "127.0.0.1:2222",
         weight = 10,
       },
     }
@@ -353,6 +371,49 @@ describe("Balancer", function()
       assert(targets[2].id == "a2")
       assert(targets[3].id == "a4")
       assert(targets[4].id == "a1")
+    end)
+  end)
+
+  describe("post_health()", function()
+    local hc, my_balancer
+
+    setup(function()
+      my_balancer = assert(balancer._create_balancer(upstream_ph))
+      hc = assert(balancer._get_healthchecker(my_balancer))
+    end)
+
+    teardown(function()
+      if hc then
+        hc:stop()
+      end
+    end)
+
+    it("posts healthy/unhealthy using IP and hostname", function()
+      local tests = {
+        { host = "127.0.0.1", port = 2222, health = true },
+        { host = "127.0.0.1", port = 2222, health = false },
+        { host = "localhost", port = 1111, health = true },
+        { host = "localhost", port = 1111, health = false },
+      }
+      for _, t in ipairs(tests) do
+        assert(balancer.post_health(upstream_ph, t.host, t.port, t.health))
+        local health_info = assert(balancer.get_upstream_health("ph"))
+        local response = t.health and "HEALTHY" or "UNHEALTHY"
+        assert.same(response, health_info[t.host .. ":" .. t.port])
+      end
+    end)
+
+    it("requires hostname if that was used in the Target", function()
+      local ok, err = balancer.post_health(upstream_ph, "127.0.0.1", 1111, true)
+      assert.falsy(ok)
+      assert.match(err, "target not found for 127.0.0.1:1111")
+    end)
+
+    it("fails if upstream/balancer doesn't exist", function()
+      local bad = { name = "invalid", id = "bad" }
+      local ok, err = balancer.post_health(bad, "127.0.0.1", 1111, true)
+      assert.falsy(ok)
+      assert.match(err, "Upstream invalid has no balancer")
     end)
   end)
 
