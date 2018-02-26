@@ -1,8 +1,8 @@
 # Table of Contents
 
 - [Scheduled](#scheduled)
-    - [0.13.0](#0130)
 - [Released](#released)
+    - [0.13.0rc1](#0130rc1)
     - [0.12.2](#0122---20180228)
     - [0.12.1](#0121---20180118)
     - [0.12.0](#0120---20180116)
@@ -21,48 +21,150 @@
 This section describes upcoming releases that have a release date, along with
 a detailed changeset of their content.
 
-## [0.13.0]
-
-**RC release date (target)**: February 28th 2018
-**Stable release date (target)**: March 14th 2018
-
-The contents of this release are still fluctuating. New additions will
-certainly be made before the closing of the merging window.
-
-### Added
-
-- :fireworks: This release introduces two new entities: **Routes**
-  and **Services**.
-  Those entities will provide a better separation of concerns than the "API"
-  entity offers. Routes will define rules for matching a client's request (e.g.
-  method, host, path...), and Services will represent upstream services (or
-  backends) that Kong should proxy those requests to.
-  Plugins can also be added to both Routes and Services, enabling use-cases
-  to apply plugins more granularly (e.g. per endpoint).
-  Following this addition, the API entity and related Admin API endpoints are
-  now deprecated. This release is backwards-compatible with the previous model
-  and all of your currently defined APIs and matching rules are still
-  supported.
-
-Additionally, this release will also include all the changes listed under the
-[0.12.2](#0122) release.
-
-[Back to TOC](#table-of-contents)
+*No scheduled releases yet.*
 
 # Released
 
 This section describes publicly available releases and a detailed changeset of
 their content.
 
-## [0.12.2]
+## [0.13.0rc1]
+
+- **rc1 release date**: February 28th 2018
+- **Stable release date (target)**: March 14th 2018
+
+This release introduces two new core entities that will improve the way you
+configure Kong: **Routes** & **Services**. Those entities replace the "API"
+entity and simplify the setup of non-naive use-cases by providing better
+separation of concerns and allowing for plugins to be applied to specific
+**endpoints**.
+
+As usual, major version upgrades require database migrations and changes to
+the NGINX configuration file (if you customized the default template).
+Please take a few minutes to read the [Upgrade
+Path](https://github.com/Kong/kong/blob/master/UPGRADE.md) for
+more details regarding breaking changes and migrations before planning to
+upgrade your Kong cluster.
+
+### Breaking Changes
+
+##### Dependencies
+
+- Support for Cassandra 2.1 was deprecated in 0.12.0, and has been dropped
+  starting with 0.13.0.
+
+##### Configuration
+
+- :warning: The `proxy_listen` and `admin_listen` configuration values have a
+  new syntax.  This syntax is more aligned with that of NGINX and is more
+  powerful while also simpler.  As a result, the following configuration values
+  have been removed because superfluous: `ssl`, `admin_ssl`, `http2`,
+  `admin_http2`, `proxy_listen_ssl`, and `admin_listen_ssl`.
+  [#3147](https://github.com/Kong/kong/pull/3147)
+
+##### Plugins
+
+- :warning: galileo: As part of the Galileo deprecation path, the galileo
+  plugin is not enabled by default anymore, although still bundled with 0.13.
+  Users are advised to stop using the plugin, but for the time being can keep
+  enabling it by adding it to the `custom_plugin` configuration value.
+  [#3233](https://github.com/Kong/kong/pull/3233)
+- :warning: rate-limiting (Cassandra): The default migration for including
+  Routes and Services in plugins will remove and re-create the Cassandra
+  rate-limiting counters table. This means that users that were rate-limited
+  because of excessive API consumption will be able to consume the API until
+  they reach their limit again. There is no such data deletion in PosgreSQL.
+  [def201f](https://github.com/Kong/kong/commit/def201f566ccf2dd9b670e2f38e401a0450b1cb5)
+
+### Changed
+
+##### Dependencies
+
+- The Openresty version shipped with our default packages has been bumped to
+  `1.13.6.1`. The 0.13.0 release should still be compatible with the OpenResty
+  `1.11.2.x` series for the time being.
+- Bumped [lua-resty-dns-client](https://github.com/Kong/lua-resty-dns-client)
+  to `2.0.0`.
+  [#3220](https://github.com/Kong/kong/pull/3220)
+- Bumped [lua-resty-http](https://github.com/pintsized/lua-resty-http) to
+  `0.12`.
+  [#3196](https://github.com/Kong/kong/pull/3196)
+- Bumped [lua-multipart](https://github.com/Kong/lua-multipart) to `0.5.4`.
+  [#3154](https://github.com/Kong/kong/pull/3054)
+
+### Added
+
+##### Configuration
+
+- :fireworks: Support for **control-plane** and **data-plane** modes. The new
+  new syntax of `proxy_listen` and `admin_listen` supports `off`, which
+  disables either one of those interfaces. It is now simpler than ever to
+  make a Kong node "Proxy only" (data-plane) or "Admin only" (control-plane).
+  [#3147](https://github.com/Kong/kong/pull/3147)
+
+##### Core
+
+- :fireworks: This release introduces two new entities: **Routes** and
+  **Services**. Those entities will provide a better separation of concerns
+  than the "API" entity offers. Routes will define rules for matching a
+  client's request (e.g., method, host, path...), and Services will represent
+  upstream services (or backends) that Kong should proxy those requests to.
+  Plugins can also be added to both Routes and Services, enabling use-cases to
+  apply plugins more granularly (e.g., per endpoint).
+  Following this addition, the API entity and related Admin API endpoints are
+  now deprecated. This release is backwards-compatible with the previous model
+  and all of your currently defined APIs and matching rules are still
+  supported, although we advise users to migrate to Routes and Services as soon
+  as possible.
+  [#3224](https://github.com/Kong/kong/pull/3224)
+
+##### Admin API
+
+- :fireworks: New endpoints: `/routes` and `/services` to interact with the new
+  core entities. More specific endpoints are also available such as
+  `/services/{service id or name}/routes`,
+  `/services/{service id or name}/plugins`, and `/routes/{route id}/plugins`.
+  [#3224](https://github.com/Kong/kong/pull/3224)
+- :fireworks: Our new endpoints (listed above) provide much better responses
+  with regards to producing responses for incomplete entities, errors, etc...
+  In the future, existing endpoints will gradually be moved to using this new
+  Admin API content producer.
+  [#3224](https://github.com/Kong/kong/pull/3224)
+- :fireworks: Improved argument parsing in form-urlencoded requests to the new
+  endpoints as well.
+  Kong now expects the following syntaxes for representing
+  arrays: `hosts[]=a.com&hosts[]=b.com`, `hosts[1]=a.com&hosts[2]=b.com`, which
+  avoid comma-separated arrays and related issues that can arise.
+  In the future, existing endpoints will gradually be moved to using this new
+  Admin API content parser.
+  [#3224](https://github.com/Kong/kong/pull/3224)
+
+##### Plugins
+
+- jwt: `ngx.ctx.authenticated_jwt_token` is available for other plugins to use.
+  [#2988](https://github.com/Kong/kong/pull/2988)
+- statsd: The fields `host`, `port` and `metrics` are no longer marked as
+  "required", since they have a default value.
+  [#3209](https://github.com/Kong/kong/pull/3209)
+
+### Fixed
+
+##### Admin API
+
+- Fix several issues with application/multipart MIME type parsing of payloads.
+  [#3054](https://github.com/Kong/kong/pull/3054)
+
+[Back to TOC](#table-of-contents)
+
+## [0.12.2] - 2018/02/28
 
 ### Added
 
 ##### Core
 
 - Load balancers now log DNS errors to facilitate debugging.
-  [#3177](https://github.com/Kong/kong/pull/3177).
-- Reports now can include custom immutable values
+  [#3177](https://github.com/Kong/kong/pull/3177)
+- Reports now can include custom immutable values.
   [#3180](https://github.com/Kong/kong/pull/3180)
 
 ##### CLI
@@ -113,7 +215,7 @@ their content.
 - Ensure `GET /certificates/{uuid}` does not return HTTP 500 when the given
   identifier does not exist.
   Thanks to [@vdesjardins](https://github.com/vdesjardins) for the patch!
-  [#3148](https://github.com/Kong/kong/pull/3148).
+  [#3148](https://github.com/Kong/kong/pull/3148)
 
 [Back to TOC](#table-of-contents)
 
@@ -121,7 +223,7 @@ their content.
 
 This release addresses a few issues encountered with 0.12.0, including one
 which would prevent upgrading from a previous version. The [0.12 Upgrade
-Path](https://github.com/Kong/kong/blob/master/UPGRADE.md#upgrade-to-012x)
+Path](https://github.com/Kong/kong/blob/master/UPGRADE.md)
 is still relevant for upgrading existing clusters to 0.12.1.
 
 ### Fixed
@@ -2262,6 +2364,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[0.13.0rc1]: https://github.com/Kong/kong/compare/0.12.2...0.13.0rc1
 [0.12.2]: https://github.com/Kong/kong/compare/0.12.1...0.12.2
 [0.12.1]: https://github.com/Kong/kong/compare/0.12.0...0.12.1
 [0.12.0]: https://github.com/Kong/kong/compare/0.11.2...0.12.0
