@@ -44,8 +44,8 @@ end
 
 return {
   PLUGINS_AVAILABLE = plugin_map,
-  -- non-standard headers, specific to Kong
   DEPRECATED_PLUGINS = deprecated_plugin_map,
+  -- non-standard headers, specific to Kong
   HEADERS = {
     HOST_OVERRIDE = "X-Host-Override",
     PROXY_LATENCY = "X-Kong-Proxy-Latency",
