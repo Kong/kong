@@ -26,12 +26,11 @@
 
 require "luarocks.loader"
 require "resty.core"
+local constants = require "kong.constants"
 
 do
   -- let's ensure the required shared dictionaries are
   -- declared via lua_shared_dict in the Nginx conf
-
-  local constants = require "kong.constants"
 
   for _, dict in ipairs(constants.DICTS) do
     if not ngx.shared[dict] then
@@ -97,8 +96,8 @@ local function load_plugins(kong_conf, dao)
 
   -- load installed plugins
   for plugin in pairs(kong_conf.plugins) do
-    if plugin == "galileo" then
-      ngx_log(ngx.WARN, "the 'galileo' plugin has been deprecated")
+    if constants.DEPRECATED_PLUGINS[plugin] then
+      ngx.log(ngx.WARN, "plugin '", plugin, "' has been deprecated")
     end
 
     local ok, handler = utils.load_module_if_exists("kong.plugins." .. plugin .. ".handler")
