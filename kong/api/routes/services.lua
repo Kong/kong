@@ -81,6 +81,7 @@ return {
         function(data)
           local r_data = utils.deep_copy(data)
           r_data.config = nil
+          r_data.e = "s"
           reports.send("api", r_data)
         end
       )
