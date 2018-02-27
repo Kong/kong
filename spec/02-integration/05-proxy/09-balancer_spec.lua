@@ -836,7 +836,7 @@ dao_helpers.for_each_dao(function(kong_config)
 
         local nfails = 2
 
-        local timeout = 2.5
+        local timeout = 10
         local requests = upstream.slots * 2 -- go round the balancer twice
 
         -- setup target servers:
@@ -885,6 +885,8 @@ dao_helpers.for_each_dao(function(kong_config)
         local client_oks, client_fails = client_requests(requests)
 
         helpers.stop_kong(nil, true, true)
+        direct_request(localhost, PORT, "/shutdown")
+        direct_request(localhost, PORT + 1, "/shutdown")
 
         -- collect server results; hitcount
         local _, ok1, fail1 = server1:join()

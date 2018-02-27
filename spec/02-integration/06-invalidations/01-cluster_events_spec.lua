@@ -183,13 +183,13 @@ describe("cluster_events with db: #" .. kong_conf.database, function()
       assert.equal(0, called)
       helpers.wait_until(function()
         return called == 1
-      end, 4)
+      end, 10)
 
       assert(cluster_events_2:broadcast("my_channel", "hello world"))
       assert.equal(1, called)
       helpers.wait_until(function()
         return called == 2
-      end, 4)
+      end, 10)
     end)
 
     it("applies a poll_offset to lookback potentially missed events", function()
