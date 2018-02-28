@@ -1,4 +1,3 @@
-local kong_cache = require "kong.cache"
 local kong_cluster_events = require "kong.cluster_events"
 local Factory = require "kong.dao.factory"
 local helpers = require "spec.helpers"
@@ -37,10 +36,25 @@ describe("dao in-memory cache", function()
     local cluster_events = assert(kong_cluster_events.new {
       dao = dao_factory,
     })
+
+    package.loaded["kong.singletons"] = {
+      vitals = {
+        cache_accessed = function()
+          -- TODO: test that I am being called with hit_lvl
+        end,
+      }
+    }
+
+    local kong_cache = require "kong.cache"
+
     cache = kong_cache.new {
       cluster_events = cluster_events,
       worker_events = worker_events,
     }
+  end)
+
+  teardown(function()
+    package.loaded["kong.singletons"] = nil
   end)
 
   before_each(function()
