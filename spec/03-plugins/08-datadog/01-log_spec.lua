@@ -2,7 +2,6 @@ local helpers = require "spec.helpers"
 local threads = require "llthreads2.ex"
 local pl_file = require "pl.file"
 
-
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: datadog (log) [#" .. strategy .. "]", function()
     local proxy_client
@@ -38,6 +37,11 @@ for _, strategy in helpers.each_strategy() do
       local route4 = bp.routes:insert {
         hosts   = { "datadog4.com" },
         service = bp.services:insert { name = "dd4" }
+      }
+
+      local route5 = bp.routes:insert {
+        hosts   = { "datadog5.com" },
+        service = bp.services:insert { name = "dd5" }
       }
 
       bp.plugins:insert {
@@ -113,9 +117,33 @@ for _, strategy in helpers.each_strategy() do
         name     = "datadog",
         route_id = route4.id,
         config   = {
-          host   = "127.0.0.1",
-          port   = 9999,
-          prefix = "prefix",
+          host          = "127.0.0.1",
+          port          = 9999,
+          prefix        = "prefix",
+          tag_api_name  = false,
+        },
+      }
+
+      bp.plugins:insert {
+        name   = "datadog",
+        route_id = route5.id,
+        config = {
+          host          = "127.0.0.1",
+          port          = 9999,
+          tag_api_name  = true,
+          metrics = {
+            {
+              name        = "status_count",
+              stat_type   = "counter",
+              sample_rate = 1,
+            },
+            {
+              name        = "latency",
+              stat_type   = "gauge",
+              sample_rate = 1,
+              tags        = {"T2:V2:V3,T4"},
+            },
+          },
         },
       }
 
@@ -123,15 +151,19 @@ for _, strategy in helpers.each_strategy() do
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
-
-      proxy_client = helpers.proxy_client()
     end)
     teardown(function()
+      helpers.stop_kong()
+    end)
+
+    before_each(function()
+      proxy_client = helpers.proxy_client()
+    end)
+
+    after_each(function()
       if proxy_client then
         proxy_client:close()
       end
-
-      helpers.stop_kong()
     end)
 
     it("logs metrics over UDP", function()
@@ -299,6 +331,88 @@ for _, strategy in helpers.each_strategy() do
       assert.contains("kong.dd3.request.status.200:1|c|#T1:V1", gauges)
       assert.contains("kong.dd3.request.status.total:1|c|#T1:V1", gauges)
       assert.contains("kong.dd3.latency:%d+|g|#T2:V2:V3,T4", gauges, true)
+    end)
+
+    it("logs metrics with tags with api name in tag", function()
+      local thread = threads.new({
+        function()
+          local socket = require "socket"
+          local server = assert(socket.udp())
+          server:settimeout(1)
+          server:setoption("reuseaddr", true)
+          server:setsockname("127.0.0.1", 9999)
+          local gauges = {}
+          for _ = 1, 3 do
+            gauges[#gauges+1] = server:receive()
+          end
+          server:close()
+          return gauges
+        end
+      })
+      thread:start()
+      ngx.sleep(0.1)
+
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["Host"] = "datadog5.com"
+        }
+      })
+      assert.res_status(200, res)
+
+      local ok, gauges = thread:join()
+      assert.True(ok)
+      assert.equal(3, #gauges)
+      assert.contains("kong.request.status.200:1|c|#api_name:dd5", gauges)
+      assert.contains("kong.request.status.total:1|c|#api_name:dd5", gauges)
+      assert.contains("kong.latency:%d+|g|#T2:V2:V3,T4,api_name:dd5", gauges, true)
+    end)
+
+    it("can safely be called twice", function()
+      local thread = threads.new({
+        function()
+          local socket = require "socket"
+          local server = assert(socket.udp())
+          server:settimeout(1)
+          server:setoption("reuseaddr", true)
+          server:setsockname("127.0.0.1", 9999)
+          local gauges = {}
+          for _ = 1, 6 do
+            gauges[#gauges+1] = server:receive()
+          end
+          server:close()
+          return gauges
+        end
+      })
+      thread:start()
+      ngx.sleep(0.1)
+
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["Host"] = "datadog5.com"
+        }
+      })
+      assert.res_status(200, res)
+      local res_2 = assert(proxy_client:send {
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["Host"] = "datadog5.com"
+        }
+      })
+      assert.res_status(200, res_2)
+
+      local ok, gauges = thread:join()
+      assert.True(ok)
+      print(gauges)
+      assert.equal(6, #gauges)
+      assert.contains("kong.request.status.200:1|c|#api_name:dd5", gauges)
+      assert.contains("kong.request.status.total:1|c|#api_name:dd5", gauges)
+      -- tags should only appear once
+      assert.not_contains("api_name:dd5,api_name:dd5,api_name:dd5", gauges, true)
     end)
 
     it("should not return a runtime error (regression)", function()

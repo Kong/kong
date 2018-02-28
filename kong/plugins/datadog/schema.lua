@@ -198,5 +198,9 @@ return {
       type     = "string",
       default  = "kong",
     },
+    tag_api_name = {
+      type     = "boolean",
+      default  = false,
+    },
   }
 }
