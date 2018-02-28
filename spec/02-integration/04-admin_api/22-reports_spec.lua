@@ -123,7 +123,7 @@ for _, strategy in helpers.each_strategy() do
       helpers.stop_kong()
     end)
 
-    it("reports plugins added to services", function()
+    it("reports plugins added to services via /plugins", function()
 
       local status, service
       status, service = assert(admin_send({
@@ -156,10 +156,49 @@ for _, strategy in helpers.each_strategy() do
       local _, reports_data = assert(reports_server:stop())
 
       assert.same(1, #reports_data)
+      assert.match("signal=api", reports_data[1])
+      assert.match("e=s", reports_data[1])
       assert.match("name=tcp%-log", reports_data[1])
     end)
 
-    it("reports plugins added to routes", function()
+    it("reports plugins added to services via /service/:id/plugins", function()
+
+      local status, service
+      status, service = assert(admin_send({
+        method = "POST",
+        path = "/services",
+        body = {
+          protocol = "http",
+          host = "example.com",
+        },
+      }))
+      assert.same(201, status)
+      assert.string(service.id)
+
+      local plugin
+      status, plugin = assert(admin_send({
+        method = "POST",
+        path = "/services/" .. service.id .. "/plugins",
+        body = {
+          name = "tcp-log",
+          config = {
+            host = "dummy",
+            port = 666,
+          },
+        },
+      }))
+      assert.same(201, status)
+      assert.string(plugin.id)
+
+      local _, reports_data = assert(reports_server:stop())
+
+      assert.same(1, #reports_data)
+      assert.match("signal=api", reports_data[1])
+      assert.match("e=s", reports_data[1])
+      assert.match("name=tcp%-log", reports_data[1])
+    end)
+
+    it("reports plugins added to routes via /plugins", function()
 
       local status, service
       status, service = assert(admin_send({
@@ -205,6 +244,58 @@ for _, strategy in helpers.each_strategy() do
       local _, reports_data = assert(reports_server:stop())
 
       assert.same(1, #reports_data)
+      assert.match("signal=api", reports_data[1])
+      assert.match("e=r", reports_data[1])
+      assert.match("name=tcp%-log", reports_data[1])
+    end)
+
+    it("reports plugins added to routes via /routes/:id/plugins", function()
+
+      local status, service
+      status, service = assert(admin_send({
+        method = "POST",
+        path = "/services",
+        body = {
+          protocol = "http",
+          host = "example.com",
+        },
+      }))
+      assert.same(201, status)
+      assert.string(service.id)
+
+      local route
+      status, route = assert(admin_send({
+        method = "POST",
+        path = "/routes",
+        body = {
+          protocols = { "http" },
+          hosts = { "dummy" },
+          service = { id = service.id },
+        },
+      }))
+      assert.same(201, status)
+      assert.string(route.id)
+
+      local plugin
+      status, plugin = assert(admin_send({
+        method = "POST",
+        path = "/routes/" .. route.id .. "/plugins" ,
+        body = {
+          name = "tcp-log",
+          config = {
+            host = "dummy",
+            port = 666,
+          },
+        },
+      }))
+      assert.same(201, status)
+      assert.string(plugin.id)
+
+      local _, reports_data = assert(reports_server:stop())
+
+      assert.same(1, #reports_data)
+      assert.match("signal=api", reports_data[1])
+      assert.match("e=r", reports_data[1])
       assert.match("name=tcp%-log", reports_data[1])
     end)
 
