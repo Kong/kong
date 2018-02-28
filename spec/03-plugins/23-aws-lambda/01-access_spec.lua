@@ -518,7 +518,7 @@ describe("Plugin: AWS Lambda (access)", function()
     assert.res_status(412, res)
     assert.equal("Unhandled", res.headers["X-Amz-Function-Error"])
   end)
-  it("invokes a Lambda function with an handled function error", function()
+  it("invokes a Lambda function with an handled function error, status override response", function()
     local res = assert(client:send {
       method = "POST",
       path = "/post",
@@ -533,7 +533,7 @@ describe("Plugin: AWS Lambda (access)", function()
     assert.res_status(400, res)
     assert.equal("Handled", res.headers["X-Amz-Function-Error"])
   end)
-  it("invokes a Lambda function with an handled function error", function()
+  it("invokes a Lambda function with an handled function error, default response", function()
     local res = assert(client:send {
       method = "POST",
       path = "/post",
