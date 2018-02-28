@@ -3,6 +3,7 @@ local strategies  = require "kong.plugins.proxy-cache.strategies"
 local responses   = require "kong.tools.responses"
 local singletons  = require "kong.singletons"
 local utils       = require "kong.tools.utils"
+local ee          = require "kong.enterprise_edition"
 
 
 local max              = math.max
@@ -223,11 +224,12 @@ local function send_response(res)
 
   local proxy_latency = now - ngx.req.start_time() * 1000
 
-
   ngx.ctx.KONG_PROXY_LATENCY = proxy_latency
-  singletons.vitals:log_latency(proxy_latency)
 
   ngx.ctx.KONG_PROXIED = true
+
+  ee.handlers.access.after(ngx.ctx)
+
   --===========================================================
 
   ngx.status = res.status
