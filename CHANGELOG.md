@@ -12,6 +12,8 @@
 - Add `config.session_redis_auth`
 - Add `config.scopes_required`
 - Add `config.audience_required`
+- Add `config.discovery_headers_names`
+- Add `config.discovery_headers_values`
 - Add `config.introspection_hint`
 - Add `config.token_exchange_endpoint`
 - Add `config.cache_token_exchange`

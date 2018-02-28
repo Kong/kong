@@ -197,6 +197,14 @@ return {
         "body",
       },
     },
+    discovery_headers_names     = {
+      required                         = false,
+      type                             = "array",
+    },
+    discovery_headers_values    = {
+      required                         = false,
+      type                             = "array",
+    },
     authorization_query_args_names     = {
       required                         = false,
       type                             = "array",

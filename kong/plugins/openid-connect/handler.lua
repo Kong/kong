@@ -349,9 +349,26 @@ local function headers(upstream_header, downstream_header, header_value)
 end
 
 
-local function get_conf_args(args_names, args_values)
-  if not args_names  or args_names  == "" or
-     not args_values or args_values == "" then
+local function get_conf_arg(conf, name, default)
+  local value = conf[name]
+  if value ~= nil and value ~= ngx.null and value ~= "" then
+    if type(value) ~= "table" or next(value) then
+      return value
+    end
+  end
+
+  return default
+end
+
+
+local function get_conf_args(conf, args_names, args_values)
+  args_names = get_conf_arg(conf, args_names)
+  if not args_names then
+    return nil
+  end
+
+  args_values = get_conf_arg(conf, args_values)
+  if not args_values then
     return nil
   end
 
@@ -370,18 +387,6 @@ local function get_conf_args(args_names, args_values)
 end
 
 
-local function get_conf_arg(conf, name, default)
-  local value = conf[name]
-  if value ~= nil and value ~= ngx.null and value ~= "" then
-    if type(value) ~= "table" or next(value) then
-      return value
-    end
-  end
-
-  return default
-end
-
-
 local function unexpected(err)
   if err then
     log(ERR, err)
@@ -391,15 +396,15 @@ local function unexpected(err)
 end
 
 
-local function anonymous_access(issuer, anonymous)
+local function anonymous_access(anonymous)
   local consumer_token = {
     payload = {
       id = anonymous
     }
   }
 
-  local consumer, err = consumer(consumer_token, "id", true, "id")
-  if not consumer then
+  local cons, err = consumer(consumer_token, "id", true, "id")
+  if not cons then
     if err then
       return unexpected("[openid-connect] anonymous consumer was not found (" .. err .. ")")
 
@@ -410,12 +415,12 @@ local function anonymous_access(issuer, anonymous)
 
   local head = constants.HEADERS
 
-  ngx.ctx.authenticated_consumer   = consumer
+  ngx.ctx.authenticated_consumer   = cons
   ngx.ctx.authenticated_credential = nil
 
-  set_header(head.CONSUMER_ID,        consumer.id)
-  set_header(head.CONSUMER_CUSTOM_ID, consumer.custom_id)
-  set_header(head.CONSUMER_USERNAME,  consumer.username)
+  set_header(head.CONSUMER_ID,        cons.id)
+  set_header(head.CONSUMER_CUSTOM_ID, cons.custom_id)
+  set_header(head.CONSUMER_USERNAME,  cons.username)
   set_header(head.ANONYMOUS,          true)
 end
 
@@ -430,7 +435,7 @@ local function unauthorized(issuer, err, s, anonymous)
   end
 
   if anonymous then
-    return anonymous_access(issuer, anonymous)
+    return anonymous_access(anonymous)
   end
 
   local parts = uri.parse(issuer)
@@ -491,9 +496,24 @@ function OICHandler:access(conf)
 
   -- load issuer configuration
   log(DEBUG, "[openid-connect] loading discovery information")
-  local issuer, err = cache.issuers.load(conf)
-  if not issuer then
-    return unexpected(err)
+  local issuer, err
+  do
+    issuer = get_conf_arg(conf, "issuer")
+    if not issuer then
+      return unexpected("issuer was not specified")
+    end
+
+    local opts = {
+      http_version =  get_conf_arg(conf, "http_version", 1.1),
+      ssl_verify   =  get_conf_arg(conf, "ssl_verify",   true),
+      timeout      =  get_conf_arg(conf, "timeout",      10000),
+      headers      = get_conf_args(conf, "discovery_headers_names", "discovery_headers_values"),
+    }
+
+    issuer, err = cache.issuers.load(issuer, opts)
+    if not issuer then
+      return unexpected(err)
+    end
   end
 
   local clients   = get_conf_arg(conf, "client_id",     {})
@@ -1123,10 +1143,8 @@ function OICHandler:access(conf)
             header["Cache-Control"] = "no-cache, no-store"
             header["Pragma"]        = "no-cache"
 
-            local extra_args = get_conf_args(conf.authorization_query_args_names,
-                                             conf.authorization_query_args_values)
-
-            local client_args = get_conf_arg(conf, "authorization_query_args_client")
+            local extra_args  = get_conf_args(conf, "authorization_query_args_names", "authorization_query_args_values")
+            local client_args =  get_conf_arg(conf, "authorization_query_args_client")
             if client_args then
               for _, arg_name in ipairs(client_args) do
                 if not uri_args then
@@ -1304,9 +1322,7 @@ function OICHandler:access(conf)
     -- password credentials or client credentials
     if args then
       for _, arg in ipairs(args) do
-        arg.args = get_conf_args(
-          conf.token_post_args_names,
-          conf.token_post_args_values)
+        arg.args = get_conf_args(conf, "token_post_args_names", "token_post_args_values")
 
         local token_headers_client = get_conf_arg(conf, "token_headers_client")
         if token_headers_client then
@@ -1493,7 +1509,11 @@ function OICHandler:access(conf)
           log(DEBUG, "[openid-connect] validating jwt claim against jwt session cookie")
           local jwt_session_cookie_value = var["cookie_" .. jwt_session_cookie]
           if not jwt_session_cookie_value or jwt_session_cookie_value == "" then
-            return unauthorized(iss, "jwt session cookie was not specified for session claim verification", s, anonymous)
+            return unauthorized(
+              iss,
+              "jwt session cookie was not specified for session claim verification",
+              s,
+              anonymous)
           end
 
           local jwt_session_claim = get_conf_arg(conf, "jwt_session_claim", "sid")
@@ -1503,13 +1523,19 @@ function OICHandler:access(conf)
 
           if not jwt_session_claim_value then
             return unauthorized(
-              iss, "jwt session claim (" .. jwt_session_claim .. ") was not specified in jwt access token", s, anonymous
+              iss,
+              "jwt session claim (" .. jwt_session_claim .. ") was not specified in jwt access token",
+              s,
+              anonymous
             )
           end
 
           if jwt_session_claim_value ~= jwt_session_cookie_value then
             return unauthorized(
-              iss, "invalid jwt session claim (" .. jwt_session_claim .. ") was specified in jwt access token", s, anonymous
+              iss,
+              "invalid jwt session claim (" .. jwt_session_claim .. ") was specified in jwt access token",
+              s,
+              anonymous
             )
           end
 
@@ -1596,7 +1622,11 @@ function OICHandler:access(conf)
         log(DEBUG, "[openid-connect] required scopes were found")
 
       else
-        return forbidden(iss, "[openid-connect] required scopes were not found [ " .. concat(access_token_scopes, ", ") .. " ]", s, anonymous)
+        return forbidden(
+          iss,
+          "[openid-connect] required scopes were not found [ " .. concat(access_token_scopes, ", ") .. " ]",
+          s,
+          anonymous)
       end
     end
 
@@ -1678,7 +1708,11 @@ function OICHandler:access(conf)
         log(DEBUG, "[openid-connect] required audience was found")
 
       else
-        return forbidden(iss, "[openid-connect] required audience was not found [ " .. concat(access_token_audience, ", ") .. " ]", s, anonymous)
+        return forbidden(
+          iss,
+          "[openid-connect] required audience was not found [ " .. concat(access_token_audience, ", ") .. " ]",
+          s,
+          anonymous)
       end
     end
   end
@@ -1890,11 +1924,13 @@ function OICHandler:access(conf)
 
       if get_conf_arg(conf, "cache_token_exchange") then
         log(DEBUG, "[openid-connect] trying to exchange access token with caching enabled")
-        exchanged_access_token, err, error_status = cache.token_exchange.load(o, exchange_token_endpoint, tokens_encoded.access_token, opts, expires - now)
+        exchanged_access_token, err, error_status = cache.token_exchange.load(
+          o, exchange_token_endpoint, tokens_encoded.access_token, opts, expires - now)
 
       else
         log(DEBUG, "[openid-connect] trying to exchange access token")
-        exchanged_access_token, err, error_status = cache.token_exchange.load(o, exchange_token_endpoint, tokens_encoded.access_token, opts)
+        exchanged_access_token, err, error_status = cache.token_exchange.load(
+          o, exchange_token_endpoint, tokens_encoded.access_token, opts)
       end
 
       if not exchanged_access_token or error_status ~= 200 then

@@ -122,8 +122,8 @@ end
 local issuers = {}
 
 
-function issuers.init(conf)
-  local issuer = normalize_issuer(conf.issuer)
+function issuers.init(issuer, opts)
+  issuer = normalize_issuer(issuer)
 
   log(NOTICE, "[openid-connect] loading openid connect configuration for ", issuer, " from database")
 
@@ -138,13 +138,6 @@ function issuers.init(conf)
   end
 
   log(NOTICE, "[openid-connect] loading openid connect configuration for ", issuer, " using discovery")
-
-  local opts = {
-    http_version = conf.http_version               or 1.1,
-    ssl_verify   = conf.ssl_verify == nil and true or conf.ssl_verify,
-    timeout      = conf.timeout                    or 10000,
-  }
-
   local claims, err = configuration.load(issuer, opts)
   if not claims then
     log(ERR, "[openid-connect] loading openid connect configuration for ", issuer, " using discovery failed with ", err)
@@ -172,7 +165,8 @@ function issuers.init(conf)
   elseif cdec.jwks and cdec.jwks.keys then
     jwks, err = json.encode(cdec.jwks.keys)
     if not jwks then
-      log(ERR, "[openid-connect] unable to encode jwks received as part of the ", issuer, " discovery document (", err , ")")
+      log(ERR, "[openid-connect] unable to encode jwks received as part of the ", issuer,
+               "discovery document (", err , ")")
     end
   end
 
@@ -195,10 +189,11 @@ function issuers.init(conf)
 end
 
 
-function issuers.load(conf)
-  local issuer = normalize_issuer(conf.issuer)
-  local key    = cache_key(issuer, "oic_issuers")
-  return cache_get(key, nil, issuers.init, conf)
+function issuers.load(issuer, opts)
+  issuer = normalize_issuer(issuer)
+
+  local key = cache_key(issuer, "oic_issuers")
+  return cache_get(key, nil, issuers.init, issuer, opts)
 end
 
 
