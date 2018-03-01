@@ -113,6 +113,58 @@ return {
       type                             = "string",
       default                          = "session",
     },
+    session_storage                    = {
+      required                         = false,
+      type                             = "string",
+      enum                             = {
+        "cookie",
+        "memcache",
+        "redis",
+      },
+      default                          = "cookie",
+    },
+    session_memcache_prefix            = {
+      required                         = false,
+      type                             = "string",
+      default                          = "sessions"
+    },
+    session_memcache_socket            = {
+      required                         = false,
+      type                             = "string",
+    },
+    session_memcache_host              = {
+      required                         = false,
+      type                             = "string",
+      default                          = "127.0.0.1",
+    },
+    session_memcache_port              = {
+      required                         = false,
+      type                             = "number",
+      default                          = 11211,
+    },
+    session_redis_prefix               = {
+      required                         = false,
+      type                             = "string",
+      default                          = "sessions"
+    },
+    session_redis_socket               = {
+      required                         = false,
+      type                             = "string",
+    },
+    session_redis_host                 = {
+      required                         = false,
+      type                             = "string",
+      default                          = "127.0.0.1",
+    },
+    session_redis_port                 = {
+      required                         = false,
+      type                             = "number",
+      default                          = 6379,
+    },
+    session_redis_auth                 = {
+      required                         = false,
+      type                             = "string",
+    },
     jwt_session_cookie                 = {
       required                         = false,
       type                             = "string",

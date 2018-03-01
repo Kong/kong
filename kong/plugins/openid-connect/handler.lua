@@ -615,16 +615,42 @@ function OICHandler:access(conf)
 
   local args, bearer, state
 
-  local s, session_present, session_data
+  local s, session_present, session_data, session_storage, session_memcache, session_redis
 
   if auth_method_session then
     local session_cookie_name = get_conf_arg(conf, "session_cookie_name",  "session")
 
+    session_storage = get_conf_arg(conf, "session_storage",      "cookie")
+    if session_storage == "memcache" then
+      log(DEBUG, "[openid-connect] loading configuration for memcache session storage")
+
+      session_memcache = {
+        prefix = get_conf_arg(conf, "session_memcache_prefix", "sessions"),
+        socket = get_conf_arg(conf, "session_memcache_socket"),
+        host   = get_conf_arg(conf, "session_memcache_host", "127.0.0.1"),
+        port   = get_conf_arg(conf, "session_memcache_port", 11211),
+      }
+
+    elseif session_storage == "redis" then
+      log(DEBUG, "[openid-connect] loading configuration for redis session storage")
+
+      session_redis = {
+        prefix = get_conf_arg(conf, "session_redis_prefix", "sessions"),
+        socket = get_conf_arg(conf, "session_redis_socket"),
+        host   = get_conf_arg(conf, "session_redis_host", "127.0.0.1"),
+        port   = get_conf_arg(conf, "session_redis_port", 6379),
+        auth   = get_conf_arg(conf, "session_redis_auth"),
+      }
+    end
+
     log(DEBUG, "[openid-connect] trying to open session")
 
     s, session_present = session.open {
-      name   = session_cookie_name,
-      secret = issuer.secret
+      name     = session_cookie_name,
+      secret   = issuer.secret,
+      storage  = session_storage,
+      memcache = session_memcache,
+      redis    = session_redis,
     }
 
     session_data = s.data
@@ -962,9 +988,12 @@ function OICHandler:access(conf)
           local authorization_cookie_name = get_conf_arg(conf, "authorization_cookie_name", "authorization")
 
           local authorization, authorization_present = session.open {
-            name   = authorization_cookie_name,
-            secret = issuer.secret,
-            cookie = {
+            name     = authorization_cookie_name,
+            secret   = issuer.secret,
+            storage  = session_storage,
+            memcache = session_memcache,
+            redis    = session_redis,
+            cookie   = {
               samesite = "off",
             }
           }
@@ -1380,6 +1409,7 @@ function OICHandler:access(conf)
 
     if auth_method_session then
       s:start()
+
     end
 
   else
@@ -1800,6 +1830,10 @@ function OICHandler:access(conf)
   if auth_method_session then
     log(DEBUG, "[openid-connect] hiding session cookie from upstream")
     s:hide()
+
+    if s.close then
+      s:close()
+    end
   end
 
   -- here we replay token endpoint request response headers, if any

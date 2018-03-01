@@ -1,5 +1,15 @@
 ## v0.0.9
 
+- Add `config.session_storage`
+- Add `config.session_memcache_prefix`
+- Add `config.session_memcache_socket`
+- Add `config.session_memcache_host`
+- Add `config.session_memcache_port`
+- Add `config.session_redis_prefix`
+- Add `config.session_redis_socket`
+- Add `config.session_redis_host`
+- Add `config.session_redis_port`
+- Add `config.session_redis_auth`
 - Add `config.scopes_required`
 - Add `config.audience_required`
 - Add `config.introspection_hint`
