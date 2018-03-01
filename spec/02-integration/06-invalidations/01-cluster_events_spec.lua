@@ -158,7 +158,9 @@ describe("cluster_events with db: #" .. kong_conf.database, function()
       assert.spy(spy_func).was_not_called()
     end)
 
-    it("starts interval polling when subscribing", function()
+    -- XXX pending in EE
+    -- failing on travis in both postgres and cassandra
+    it("#flaky starts interval polling when subscribing", function()
       local cluster_events_1 = assert(kong_cluster_events.new {
         dao           = dao,
         poll_interval = 0.3,
@@ -183,13 +185,13 @@ describe("cluster_events with db: #" .. kong_conf.database, function()
       assert.equal(0, called)
       helpers.wait_until(function()
         return called == 1
-      end, 4)
+      end, 10)
 
       assert(cluster_events_2:broadcast("my_channel", "hello world"))
       assert.equal(1, called)
       helpers.wait_until(function()
         return called == 2
-      end, 4)
+      end, 10)
     end)
 
     it("applies a poll_offset to lookback potentially missed events", function()

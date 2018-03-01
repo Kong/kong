@@ -100,6 +100,14 @@ describe("Router", function()
       assert.same(use_case[3], match_t.api)
     end)
 
+    it("[uri + empty host]", function()
+      -- uri only (no Host)
+      -- Supported for HTTP/1.0 requests without a Host header
+      local match_t = router.select("GET", "/my-api", "")
+      assert.truthy(match_t)
+      assert.same(use_case[3], match_t.api)
+    end)
+
     it("[method]", function()
       -- method
       local match_t = router.select("TRACE", "/", "domain.org")

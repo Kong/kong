@@ -99,6 +99,10 @@ local function load_plugins(kong_conf, dao)
 
   -- load installed plugins
   for plugin in pairs(kong_conf.plugins) do
+    if plugin == "galileo" then
+      ngx_log(ngx.WARN, "the 'galileo' plugin has been deprecated")
+    end
+
     local ok, handler = utils.load_module_if_exists("kong.plugins." .. plugin .. ".handler")
     if not ok then
       return nil, plugin .. " plugin is enabled but not installed;\n" .. handler
@@ -145,6 +149,7 @@ local function load_plugins(kong_conf, dao)
   return sorted_plugins
 end
 
+
 -- Kong public context handlers.
 -- @section kong_handlers
 
@@ -159,7 +164,11 @@ function Kong.init()
   local config = assert(conf_loader(conf_path))
 
   local dao = assert(DAOFactory.new(config)) -- instantiate long-lived DAO
-  assert(dao:init())
+  local ok, err_t = dao:init()
+  if not ok then
+    error(tostring(err_t))
+  end
+
   assert(dao:are_migrations_uptodate())
 
   -- populate singletons

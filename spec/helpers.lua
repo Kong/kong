@@ -1,7 +1,7 @@
 ------------------------------------------------------------------
 -- Collection of utilities to help testing Kong features and plugins.
 --
--- @copyright Copyright 2016-2017 Kong Inc. All rights reserved.
+-- @copyright Copyright 2016-2018 Kong Inc. All rights reserved.
 -- @license [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
 -- @module spec.helpers
 
@@ -1033,11 +1033,13 @@ return {
 
     return kong_exec("start --conf " .. TEST_CONF_PATH .. nginx_conf, env)
   end,
-  stop_kong = function(prefix, preserve_prefix)
+  stop_kong = function(prefix, preserve_prefix, preserve_tables)
     prefix = prefix or conf.prefix
     local ok, err = kong_exec("stop --prefix " .. prefix)
     wait_pid(conf.nginx_pid, nil)
-    dao:truncate_tables()
+    if not preserve_tables then
+      dao:truncate_tables()
+    end
     if not preserve_prefix then
       clean_prefix(prefix)
     end

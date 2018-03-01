@@ -157,6 +157,17 @@ describe("Schemas", function()
       assert.falsy(err)
     end)
 
+    it("should not crash when an array has invalid contents (regression for #3144)", function()
+      local values = { enum_array = 5 }
+
+      assert.has_no_errors(function()
+        local valid, err = validate_entity(values, schema)
+        assert.falsy(valid)
+        assert.truthy(err)
+        assert.are.same("enum_array is not an array", err.enum_array)
+      end)
+    end)
+
     it("should return error when an invalid boolean value is passed", function()
       local values = {string = "test", boolean_val = "ciao"}
 
