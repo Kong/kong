@@ -1,5 +1,7 @@
 ## v0.0.9
 
+- Add `config.scopes_required`
+- Add `config.audience_required`
 - Add `config.introspection_hint`
 
 ## v0.0.8

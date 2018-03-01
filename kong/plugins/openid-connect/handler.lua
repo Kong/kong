@@ -4,6 +4,7 @@ local constants     = require "kong.constants"
 local responses     = require "kong.tools.responses"
 local oic           = require "kong.openid-connect"
 local uri           = require "kong.openid-connect.uri"
+local set           = require "kong.openid-connect.set"
 local codec         = require "kong.openid-connect.codec"
 local session       = require "resty.session"
 local upload        = require "resty.upload"
@@ -30,6 +31,7 @@ local ipairs        = ipairs
 local concat        = table.concat
 local find          = string.find
 local type          = type
+local next          = next
 local sub           = string.sub
 local gsub          = string.gsub
 local lower         = string.lower
@@ -365,7 +367,9 @@ end
 local function get_conf_arg(conf, name, default)
   local value = conf[name]
   if value ~= nil and value ~= ngx.null and value ~= "" then
-    return value
+    if type(value) ~= "table" or next(value) then
+      return value
+    end
   end
 
   return default
@@ -649,7 +653,6 @@ function OICHandler:access(conf)
         logout = false
 
         local logout_query_arg = get_conf_arg(conf, "logout_query_arg")
-
         if logout_query_arg then
           if not uri_args then
             uri_args = get_uri_args()
@@ -816,7 +819,6 @@ function OICHandler:access(conf)
           log(DEBUG, "[openid-connect] trying to find id token")
 
           local id_token_param_type = get_conf_arg(conf, "id_token_param_type", { "query", "header", "body" })
-
           for _, t in ipairs(id_token_param_type) do
             if t == "header" then
               local name = gsub(lower(id_token_param_name), "-", "_")
@@ -1090,7 +1092,6 @@ function OICHandler:access(conf)
                                              conf.authorization_query_args_values)
 
             local client_args = get_conf_arg(conf, "authorization_query_args_client")
-
             if client_args then
               for _, arg_name in ipairs(client_args) do
                 if not uri_args then
@@ -1178,7 +1179,6 @@ function OICHandler:access(conf)
   if bearer then
     log(DEBUG, "[openid-connect] verifying bearer token")
 
-    -- TODO: cache token verification
     tokens_decoded, err = o.token:verify(tokens_encoded)
     if not tokens_decoded then
       log(DEBUG, "[openid-connect] unable to verify bearer token")
@@ -1213,11 +1213,10 @@ function OICHandler:access(conf)
           if get_conf_arg(conf, "cache_introspection") then
             log(DEBUG, "[openid-connect] trying to authenticate using oauth2 introspection with caching enabled")
             access_token_introspected = cache.introspection.load(
-              o, access_token_decoded, introspection_endpoint, introspection_hint, exp
+              o, access_token_decoded, introspection_endpoint, introspection_hint, default_expires_in
             )
           else
             log(DEBUG, "[openid-connect] trying to authenticate using oauth2 introspection")
-
             access_token_introspected = o.token:introspect(access_token_decoded, introspection_hint, {
               introspection_endpoint = introspection_endpoint
             })
@@ -1250,35 +1249,6 @@ function OICHandler:access(conf)
       expires = access_token_introspected.exp or exp
 
     else
-      log(DEBUG, "[openid-connect] jwt bearer token was provided")
-
-      -- additional non-standard verification of the claim against a jwt session cookie
-      local jwt_session_cookie = get_conf_arg(conf, "jwt_session_cookie")
-      if jwt_session_cookie then
-        log(DEBUG, "[openid-connect] validating jwt claim against jwt session cookie")
-        local jwt_session_cookie_value = var["cookie_" .. jwt_session_cookie]
-        if not jwt_session_cookie_value or jwt_session_cookie_value == "" then
-          return unauthorized(iss, "jwt session cookie was not specified for session claim verification", s, anonymous)
-        end
-
-        local jwt_session_claim = get_conf_arg(conf, "jwt_session_claim", "sid")
-        local jwt_session_claim_value = access_token_decoded.payload[jwt_session_claim]
-
-        if not jwt_session_claim_value then
-          return unauthorized(
-            iss, "jwt session claim (" .. jwt_session_claim .. ") was not specified in jwt access token", s, anonymous
-          )
-        end
-
-        if jwt_session_claim_value ~= jwt_session_cookie_value then
-          return unauthorized(
-            iss, "invalid jwt session claim (" .. jwt_session_claim .. ") was specified in jwt access token", s, anonymous
-          )
-        end
-
-        log(DEBUG, "[openid-connect] jwt claim matches jwt session cookie")
-      end
-
       log(DEBUG, "[openid-connect] authenticated using jwt bearer token")
 
       grant_type = "bearer"
@@ -1323,7 +1293,7 @@ function OICHandler:access(conf)
 
         if get_conf_arg(conf, "cache_tokens") then
           log(DEBUG, "[openid-connect] trying to exchange credentials using token endpoint with caching enabled")
-          tokens_encoded, err, extra_headers = cache.tokens.load(o, arg, exp)
+          tokens_encoded, err, extra_headers = cache.tokens.load(o, arg, default_expires_in)
 
         else
           log(DEBUG, "[openid-connect] trying to exchange credentials using token endpoint")
@@ -1346,7 +1316,6 @@ function OICHandler:access(conf)
 
     log(DEBUG, "[openid-connect] verifying tokens")
 
-    -- TODO: cache token verification
     tokens_decoded, err = o.token:verify(tokens_encoded, args)
     if not tokens_decoded then
       log(DEBUG, "[openid-connect] token verification failed")
@@ -1470,6 +1439,211 @@ function OICHandler:access(conf)
 
     else
       return forbidden(iss, "access token has expired and could not be refreshed", s, anonymous)
+    end
+  end
+
+  -- additional claims verification
+  do
+    -- additional non-standard verification of the claim against a jwt session cookie
+    local jwt_session_cookie = get_conf_arg(conf, "jwt_session_cookie")
+    if jwt_session_cookie then
+      if not tokens_decoded then
+        tokens_decoded = o.token:decode(tokens_encoded)
+      end
+
+      if tokens_decoded then
+        local access_token_decoded = tokens_decoded.access_token
+        if type(access_token_decoded) == "table" then
+          log(DEBUG, "[openid-connect] validating jwt claim against jwt session cookie")
+          local jwt_session_cookie_value = var["cookie_" .. jwt_session_cookie]
+          if not jwt_session_cookie_value or jwt_session_cookie_value == "" then
+            return unauthorized(iss, "jwt session cookie was not specified for session claim verification", s, anonymous)
+          end
+
+          local jwt_session_claim = get_conf_arg(conf, "jwt_session_claim", "sid")
+          local jwt_session_claim_value
+
+          jwt_session_claim_value = access_token_decoded[jwt_session_claim]
+
+          if not jwt_session_claim_value then
+            return unauthorized(
+              iss, "jwt session claim (" .. jwt_session_claim .. ") was not specified in jwt access token", s, anonymous
+            )
+          end
+
+          if jwt_session_claim_value ~= jwt_session_cookie_value then
+            return unauthorized(
+              iss, "invalid jwt session claim (" .. jwt_session_claim .. ") was specified in jwt access token", s, anonymous
+            )
+          end
+
+          log(DEBUG, "[openid-connect] jwt claim matches jwt session cookie")
+        end
+      end
+    end
+
+    -- scope verification
+    local scopes_required = get_conf_arg(conf, "scopes_required")
+    if scopes_required then
+      log(DEBUG, "[openid-connect] verifying required scopes")
+
+      local access_token_scopes
+      if access_token_introspected then
+        if access_token_introspected.scope then
+          log(DEBUG, "[openid-connect] scope claim found in introspection results")
+          access_token_scopes = access_token_introspected.scope
+
+        else
+          log(DEBUG, "[openid-connect] scope claim not found in introspection results")
+        end
+
+      else
+        if not tokens_decoded then
+          tokens_decoded = o.token:decode(tokens_encoded)
+        end
+
+        if tokens_decoded then
+          local access_token_decoded = tokens_decoded.access_token
+          if type(access_token_decoded) == "table" then
+            if access_token_decoded.payload.scope then
+              log(DEBUG, "[openid-connect] scope claim found in jwt token")
+              access_token_scopes = access_token_decoded.payload.scope
+
+            else
+              log(DEBUG, "[openid-connect] scope claim not found in jwt token")
+            end
+
+          else
+            local introspection_endpoint = get_conf_arg(conf, "introspection_endpoint")
+            local introspection_hint     = get_conf_arg(conf, "introspection_hint", "access_token")
+
+            if get_conf_arg(conf, "cache_introspection") then
+              log(DEBUG, "[openid-connect] trying to get scopes using introspection with caching enabled")
+              access_token_introspected = cache.introspection.load(
+                o, access_token_decoded, introspection_endpoint, introspection_hint, default_expires_in
+              )
+            else
+              log(DEBUG, "[openid-connect] trying to get scopes using introspection")
+              access_token_introspected = o.token:introspect(access_token_decoded, introspection_hint, {
+                introspection_endpoint = introspection_endpoint
+              })
+            end
+
+            if access_token_introspected then
+              if access_token_introspected.scope then
+                log(DEBUG, "[openid-connect] scope claim found in introspection results")
+                access_token_scopes = access_token_introspected.scope
+
+              else
+                log(DEBUG, "[openid-connect] scope claim not found in introspection results")
+              end
+            end
+          end
+        end
+      end
+
+      if not access_token_scopes then
+        return forbidden(iss, "[openid-connect] scopes required but no scopes found", s, anonymous)
+      end
+
+      access_token_scopes = set.new(access_token_scopes)
+
+      local scopes_valid
+      for _, scope_required in ipairs(scopes_required) do
+        if set.has(scope_required, access_token_scopes) then
+          scopes_valid = true
+          break
+        end
+      end
+
+      if scopes_valid then
+        log(DEBUG, "[openid-connect] required scopes were found")
+
+      else
+        return forbidden(iss, "[openid-connect] required scopes were not found [ " .. concat(access_token_scopes, ", ") .. " ]", s, anonymous)
+      end
+    end
+
+    -- audience verification
+    local audience_required = get_conf_arg(conf, "audience_required")
+    if audience_required then
+      log(DEBUG, "[openid-connect] verifying required audience")
+
+      local access_token_audience
+      if access_token_introspected then
+        if access_token_introspected.aud then
+          log(DEBUG, "[openid-connect] aud claim found in introspection results")
+          access_token_audience = access_token_introspected.aud
+
+        else
+          log(DEBUG, "[openid-connect] aud claim not found in introspection results")
+        end
+
+      else
+        if not tokens_decoded then
+          tokens_decoded = o.token:decode(tokens_encoded)
+        end
+
+        if tokens_decoded then
+          local access_token_decoded = tokens_decoded.access_token
+          if type(access_token_decoded) == "table" then
+            if access_token_decoded.payload.aud then
+              log(DEBUG, "[openid-connect] aud claim found in jwt token")
+              access_token_audience = access_token_decoded.payload.aud
+
+            else
+              log(DEBUG, "[openid-connect] aud claim not found in jwt token")
+            end
+
+          else
+            local introspection_endpoint = get_conf_arg(conf, "introspection_endpoint")
+            local introspection_hint     = get_conf_arg(conf, "introspection_hint", "access_token")
+
+            if get_conf_arg(conf, "cache_introspection") then
+              log(DEBUG, "[openid-connect] trying to get audience using introspection with caching enabled")
+              access_token_introspected = cache.introspection.load(
+                o, access_token_decoded, introspection_endpoint, introspection_hint, default_expires_in
+              )
+            else
+              log(DEBUG, "[openid-connect] trying to get audience using introspection")
+              access_token_introspected = o.token:introspect(access_token_decoded, introspection_hint, {
+                introspection_endpoint = introspection_endpoint
+              })
+            end
+
+            if access_token_introspected then
+              if access_token_introspected.aud then
+                log(DEBUG, "[openid-connect] aud claim found in introspection results")
+                access_token_audience = access_token_introspected.aud
+
+              else
+                log(DEBUG, "[openid-connect] aud claim not found in introspection results")
+              end
+            end
+          end
+        end
+      end
+
+      if not access_token_audience then
+        return forbidden(iss, "[openid-connect] audience required but no audience found", s, anonymous)
+      end
+
+      access_token_audience = set.new(access_token_audience)
+
+      local audience_valid
+      for _, aud_required in ipairs(audience_required) do
+        if set.has(aud_required, access_token_audience) then
+          audience_valid = true
+          break
+        end
+      end
+
+      if audience_valid then
+        log(DEBUG, "[openid-connect] required audience was found")
+
+      else
+        return forbidden(iss, "[openid-connect] required audience was not found [ " .. concat(access_token_audience, ", ") .. " ]", s, anonymous)
+      end
     end
   end
 
@@ -1679,7 +1853,20 @@ function OICHandler:access(conf)
   headers(
     conf.upstream_introspection_header,
     conf.downstream_introspection_header,
-    access_token_introspected
+    access_token_introspected or function()
+      local introspection_endpoint = get_conf_arg(conf, "introspection_endpoint")
+      local introspection_hint     = get_conf_arg(conf, "introspection_hint", "access_token")
+
+      if get_conf_arg(conf, "cache_introspection") then
+        return cache.introspection.load(
+          o, tokens_encoded.access_token, introspection_endpoint, introspection_hint, default_expires_in
+        )
+      else
+        return o.token:introspect(tokens_encoded.access_token, introspection_hint, {
+          introspection_endpoint = introspection_endpoint
+        })
+      end
+    end
   )
 
   headers(
@@ -1699,7 +1886,6 @@ function OICHandler:access(conf)
     conf.downstream_access_token_jwk_header,
     function()
       if not tokens_decoded then
-        -- TODO: cache token decoded(?)
         tokens_decoded = o.token:decode(tokens_encoded)
       end
       if tokens_decoded then
@@ -1716,7 +1902,6 @@ function OICHandler:access(conf)
     conf.downstream_id_token_jwk_header,
     function()
       if not tokens_decoded then
-        -- TODO: cache token decoded
         tokens_decoded = o.token:decode(tokens_encoded)
       end
       if tokens_decoded then

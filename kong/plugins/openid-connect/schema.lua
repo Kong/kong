@@ -49,6 +49,10 @@ return {
         "openid"
       },
     },
+    scopes_required                    = {
+      required                         = false,
+      type                             = "array",
+    },
     response_mode                      = {
       required                         = false,
       type                             = "string",
@@ -84,6 +88,10 @@ return {
       },
     },
     audience                           = {
+      required                         = false,
+      type                             = "array",
+    },
+    audience_required                  = {
       required                         = false,
       type                             = "array",
     },
