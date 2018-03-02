@@ -29,6 +29,9 @@
                                  # Each Kong process must have a separate
                                  # working directory.
 
+#log_format = combined           # Default nginx log format.
+                                 # KONG_LOG_FORMAT env variable
+
 #log_level = notice              # Log level of the Nginx server. Logs are
                                  # found at <prefix>/logs/error.log
 # Note: See http://nginx.org/en/docs/ngx_core_module.html#error_log for a list
