@@ -8,6 +8,7 @@ local codec         = require "kong.openid-connect.codec"
 local timestamp     = require "kong.tools.timestamp"
 local utils         = require "kong.tools.utils"
 local singletons    = require "kong.singletons"
+local http          = require "resty.http"
 
 
 local concat        = table.concat
@@ -445,6 +446,67 @@ function tokens.load(o, args, ttl)
 end
 
 
+local token_exchange = {}
+
+
+function token_exchange.init(exchange_token_endpoint, opts)
+  log(NOTICE, "[openid-connect] exchanging access token")
+  local httpc = http.new()
+
+  if httpc.set_timeouts then
+    httpc:set_timeouts(opts.timeout, opts.timeout, opts.timeout)
+
+  else
+    httpc:set_timeout(opts.timeout)
+  end
+
+  local res = httpc:request_uri(exchange_token_endpoint, opts)
+  if not res then
+    local err
+    res, err = httpc:request_uri(exchange_token_endpoint, opts)
+    if not res then
+      httpc:set_keepalive()
+      return nil, err
+    end
+  end
+
+  httpc:set_keepalive()
+
+  local body = res.body
+  if sub(body, -1) == "\n" then
+    body = sub(body, 1, -2)
+  end
+
+  return { body, res.status }
+end
+
+
+function token_exchange.load(o, exchange_token_endpoint, access_token, opts, ttl)
+  local res, err
+
+  if ttl then
+    local iss = o.configuration.issuer
+    local key = cache_key(iss .. "#exchange=" .. access_token)
+
+    res, err = cache_get(key, ttl, token_exchange.init, exchange_token_endpoint, opts)
+
+  else
+    res, err = token_exchange.init(exchange_token_endpoint, access_token, opts)
+  end
+
+  if not res then
+    if err then
+      return nil, err, 500
+
+    else
+      return nil, "unexpected error on token exchange", 500
+    end
+  end
+
+  return res[1], nil, res[2]
+end
+
+
 local userinfo = {}
 
 
@@ -463,12 +525,13 @@ end
 
 
 return {
-  init_worker   = init_worker,
-  issuers       = issuers,
-  consumers     = consumers,
-  oauth2        = oauth2,
-  introspection = introspection,
-  tokens        = tokens,
-  userinfo      = userinfo,
-  version       = "0.0.9",
+  init_worker    = init_worker,
+  issuers        = issuers,
+  consumers      = consumers,
+  oauth2         = oauth2,
+  introspection  = introspection,
+  tokens         = tokens,
+  token_exchange = token_exchange,
+  userinfo       = userinfo,
+  version        = "0.0.9",
 }

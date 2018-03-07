@@ -389,6 +389,10 @@ return {
       required                         = false,
       type                             = "url",
     },
+    token_exchange_endpoint            = {
+      required                         = false,
+      type                             = "url",
+    },
     consumer_claim                     = {
       required                         = false,
       type                             = "string",
@@ -437,6 +441,11 @@ return {
       default                          = true,
     },
     cache_introspection                = {
+      required                         = false,
+      type                             = "boolean",
+      default                          = true,
+    },
+    cache_token_exchange               = {
       required                         = false,
       type                             = "boolean",
       default                          = true,

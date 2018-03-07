@@ -13,6 +13,8 @@
 - Add `config.scopes_required`
 - Add `config.audience_required`
 - Add `config.introspection_hint`
+- Add `config.token_exchange_endpoint`
+- Add `config.cache_token_exchange`
 
 ## v0.0.8
 

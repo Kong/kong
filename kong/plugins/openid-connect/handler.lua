@@ -326,6 +326,9 @@ local function headers(upstream_header, downstream_header, header_value)
       if usm == "authorization:bearer" then
         set_header("Authorization", "Bearer " .. val)
 
+      elseif usm == "authorization:basic" then
+        set_header("Authorization", "Basic " .. val)
+
       else
         set_header(usm, val)
       end
@@ -334,6 +337,9 @@ local function headers(upstream_header, downstream_header, header_value)
     if dsm then
       if dsm == "authorization:bearer" then
         append_header("Authorization", "Bearer " .. val)
+
+      elseif usm == "authorization:basic" then
+        append_header("Authorization", "Basic " .. val)
 
       else
         append_header(dsm, val)
@@ -1866,10 +1872,52 @@ function OICHandler:access(conf)
 
   log(DEBUG, "[openid-connect] setting upstream and downstream headers")
 
+  local exchanged_access_token
+  do
+    local exchange_token_endpoint = get_conf_arg(conf, "token_exchange_endpoint")
+    if exchange_token_endpoint then
+      local error_status
+
+      local opts = {
+        version    = get_conf_arg(conf, "http_version", 1.1),
+        method     = "POST",
+        ssl_verify = get_conf_arg(conf, "ssl_verify",   true),
+        timeout    = get_conf_arg(conf, "timeout",      10000),
+        headers    = {
+          Authorization = "Bearer " .. tokens_encoded.access_token
+        },
+      }
+
+      if get_conf_arg(conf, "cache_token_exchange") then
+        log(DEBUG, "[openid-connect] trying to exchange access token with caching enabled")
+        exchanged_access_token, err, error_status = cache.token_exchange.load(o, exchange_token_endpoint, tokens_encoded.access_token, opts, expires - now)
+
+      else
+        log(DEBUG, "[openid-connect] trying to exchange access token")
+        exchanged_access_token, err, error_status = cache.token_exchange.load(o, exchange_token_endpoint, tokens_encoded.access_token, opts)
+      end
+
+      if not exchanged_access_token or error_status ~= 200 then
+        if error_status == 401 then
+          return unauthorized(iss, err or "exchange token endpoint returned unauthorized", s, anonymous)
+
+        elseif error_status == 403 then
+          return forbidden(iss, err or "exchange token endpoint returned forbidden", s, anonymous)
+
+        else
+          return unexpected(err or ("exchange token endpoint returned " .. (error_status or "unknown")))
+        end
+
+      else
+        log(DEBUG, "[openid-connect] exchanged access token successfully")
+      end
+    end
+  end
+
   headers(
     conf.upstream_access_token_header,
     conf.downstream_access_token_header,
-    tokens_encoded.access_token
+    exchanged_access_token or tokens_encoded.access_token
   )
 
   headers(
@@ -1909,6 +1957,7 @@ function OICHandler:access(conf)
     function()
       if get_conf_arg(conf, "cache_user_info") then
         return cache.userinfo.load(o, tokens_encoded.access_token, expires - now)
+
       else
         return o:userinfo(tokens_encoded.access_token, { userinfo_format = "base64" })
       end
