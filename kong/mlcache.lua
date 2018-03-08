@@ -407,12 +407,19 @@ function _M:get(key, opts, cb, ...)
 
     -- still not in shm, we are responsible for running the callback
 
-    local ok, err = pcall(cb, ...)
-    if not ok then
-        return unlock_and_ret(lock, nil, "callback threw an error: " .. err)
+    local pok, perr, err = pcall(cb, ...)
+    if not pok then
+        return unlock_and_ret(lock, nil, "callback threw an error: " .. perr)
     end
 
-    local value, err = shmlru_set(self, key, err, ttl, neg_ttl)
+    data = perr
+
+    if err then
+        -- callback returned data + err
+        return unlock_and_ret(lock, data, err)
+    end
+
+    local value, err = shmlru_set(self, key, data, ttl, neg_ttl)
     if err then
         return unlock_and_ret(lock, nil, err)
     end

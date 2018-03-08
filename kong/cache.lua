@@ -32,30 +32,6 @@ local function log(lvl, ...)
 end
 
 
--- Temporary fix to convert soft callback errors into hard ones.
--- FIXME: use upstream mlcache lib instead of local copy
-local soft_to_hard
-do
-  local s2h_cache = setmetatable({}, { __mode = "k" })
-
-  local function create_wrapper(key, cb)
-    s2h_cache[key] = function(...)
-      local result, err = cb(...)
-      if err then
-        error(err)
-      end
-      return result
-    end
-    return s2h_cache[key]
-  end
-
-
-  soft_to_hard = function(key, cb)
-    return s2h_cache[key] or create_wrapper(key, cb)
-  end
-end
-
-
 local _M = {}
 local mt = { __index = _M }
 
@@ -131,7 +107,7 @@ function _M:get(key, opts, cb, ...)
 
   --log(DEBUG, "get from key: ", key)
 
-  local v, err = self.mlcache:get(key, opts, soft_to_hard(key, cb), ...)
+  local v, err = self.mlcache:get(key, opts, cb, ...)
   if err then
     return nil, "failed to get from node cache: " .. err
   end
