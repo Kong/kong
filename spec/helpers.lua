@@ -319,7 +319,7 @@ local function tcp_server(port, opts, ...)
     function(port, opts)
       local socket = require "socket"
       local server = assert(socket.tcp())
-      server:settimeout(10)
+      server:settimeout(360)
       assert(server:setoption('reuseaddr', true))
       assert(server:bind("*", port))
       assert(server:listen())
@@ -402,26 +402,57 @@ end
 -- Accepts a single connection, reading once and then closes
 -- @name udp_server
 -- @param `port`    The port where the server will be listening to
+-- @param `n`       The number of packets that will be received
+-- @param `timeout` Timeout per read
 -- @return `thread` A thread object
-local function udp_server(port)
+local function udp_server(port, n, timeout)
   local threads = require "llthreads2.ex"
 
   local thread = threads.new({
-    function(port)
+    function(port, n, timeout)
       local socket = require "socket"
       local server = assert(socket.udp())
-      server:settimeout(5)
+      server:settimeout(timeout or 360)
       server:setoption("reuseaddr", true)
       server:setsockname("127.0.0.1", port)
-      local data, err = server:receive()
+      local err
+      local data = {}
+      local handshake_done = false
+      local i = 0
+      while i < n do
+        local pkt, rport
+        pkt, err, rport = server:receivefrom()
+        if not pkt then
+          break
+        end
+        if pkt == "KONG_UDP_HELLO" then
+          if not handshake_done then
+            handshake_done = true
+            server:sendto("KONG_UDP_READY", "127.0.0.1", rport)
+          end
+        else
+          i = i + 1
+          data[i] = pkt
+        end
+      end
       server:close()
-      return data, err
+      return (n > 1 and data or data[1]), err
     end
-  }, port or MOCK_UPSTREAM_PORT)
-
+  }, port or MOCK_UPSTREAM_PORT, n or 1, timeout)
   thread:start()
 
-  ngx.sleep(0.1)
+  local socket = require "socket"
+  local handshake = socket.udp()
+  handshake:settimeout(0.01)
+  handshake:setsockname("127.0.0.1", 0)
+  while true do
+    handshake:sendto("KONG_UDP_HELLO", "127.0.0.1", port)
+    local data = handshake:receive()
+    if data == "KONG_UDP_READY" then
+      break
+    end
+  end
+  handshake:close()
 
   return thread
 end
