@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local threads = require "llthreads2.ex"
 local pl_file = require "pl.file"
 
 describe("Plugin: datadog (log)", function()
@@ -121,23 +120,7 @@ describe("Plugin: datadog (log)", function()
   end)
 
   it("logs metrics over UDP", function()
-    local thread = threads.new({
-      function()
-        local socket = require "socket"
-        local server = assert(socket.udp())
-        server:settimeout(1)
-        server:setoption("reuseaddr", true)
-        server:setsockname("127.0.0.1", 9999)
-        local gauges = {}
-        for _ = 1, 12 do
-          gauges[#gauges+1] = server:receive()
-        end
-        server:close()
-        return gauges
-      end
-    })
-    thread:start()
-    ngx.sleep(0.1)
+    local thread = helpers.udp_server(9999, 12)
 
     local res = assert(client:send {
       method = "GET",
@@ -168,23 +151,7 @@ describe("Plugin: datadog (log)", function()
   end)
 
   it("logs metrics over UDP with custome prefix", function()
-    local thread = threads.new({
-      function()
-        local socket = require "socket"
-        local server = assert(socket.udp())
-        server:settimeout(1)
-        server:setoption("reuseaddr", true)
-        server:setsockname("127.0.0.1", 9999)
-        local gauges = {}
-        for _ = 1, 12 do
-          gauges[#gauges+1] = server:receive()
-        end
-        server:close()
-        return gauges
-      end
-    })
-    thread:start()
-    ngx.sleep(0.1)
+    local thread = helpers.udp_server(9999, 12)
 
     local res = assert(client:send {
       method = "GET",
@@ -216,23 +183,7 @@ describe("Plugin: datadog (log)", function()
   end)
 
   it("logs only given metrics", function()
-    local thread = threads.new({
-      function()
-        local socket = require "socket"
-        local server = assert(socket.udp())
-        server:settimeout(1)
-        server:setoption("reuseaddr", true)
-        server:setsockname("127.0.0.1", 9999)
-        local gauges = {}
-        for _ = 1, 3 do
-          gauges[#gauges+1] = server:receive()
-        end
-        server:close()
-        return gauges
-      end
-    })
-    thread:start()
-    ngx.sleep(0.1)
+    local thread = helpers.udp_server(9999, 3)
 
     local res = assert(client:send {
       method = "GET",
@@ -252,23 +203,7 @@ describe("Plugin: datadog (log)", function()
   end)
 
   it("logs metrics with tags", function()
-    local thread = threads.new({
-      function()
-        local socket = require "socket"
-        local server = assert(socket.udp())
-        server:settimeout(1)
-        server:setoption("reuseaddr", true)
-        server:setsockname("127.0.0.1", 9999)
-        local gauges = {}
-        for _ = 1, 4 do
-          gauges[#gauges+1] = server:receive()
-        end
-        server:close()
-        return gauges
-      end
-    })
-    thread:start()
-    ngx.sleep(0.1)
+    local thread = helpers.udp_server(9999, 4)
 
     local res = assert(client:send {
       method = "GET",
@@ -288,20 +223,7 @@ describe("Plugin: datadog (log)", function()
   end)
 
   it("should not return a runtime error (regression)", function()
-    local thread = threads.new({
-      function()
-        local socket = require "socket"
-        local server = assert(socket.udp())
-        server:settimeout(1)
-        server:setoption("reuseaddr", true)
-        server:setsockname("127.0.0.1", 9999)
-        local gauge = server:receive()
-        server:close()
-        return gauge
-      end
-    })
-    thread:start()
-    ngx.sleep(0.1)
+    helpers.udp_server(9999, 1, 1)
 
     local res = assert(client:send {
       method = "GET",
