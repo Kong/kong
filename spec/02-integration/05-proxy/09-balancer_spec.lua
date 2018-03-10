@@ -351,15 +351,16 @@ end
 
 local localhosts = {
   ipv4 = "127.0.0.1",
-  ipv6 = "0000:0000:0000:0000:0000:0000:0000:0001",
+  ipv6 = "[0000:0000:0000:0000:0000:0000:0000:0001]",
+  hostname = "localhost",
 }
 
 
-for ipv, localhost in pairs(localhosts) do
+for mode, localhost in pairs(localhosts) do
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("Ring-balancer [#" .. strategy .. "] #" .. ipv, function()
+  describe("Ring-balancer [#" .. strategy .. "] #" .. mode, function()
     local db
     local dao
     local bp
@@ -946,6 +947,8 @@ for _, strategy in helpers.each_strategy() do
         local client_oks, client_fails = client_requests(requests)
 
         helpers.stop_kong(nil, true, true)
+        direct_request(localhost, PORT, "/shutdown")
+        direct_request(localhost, PORT + 1, "/shutdown")
 
         -- collect server results; hitcount
         local _, ok1, fail1 = server1:join()
