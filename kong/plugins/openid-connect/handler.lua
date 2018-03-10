@@ -1207,16 +1207,19 @@ function OICHandler:access(conf)
 
       if not access_token_introspected then
         if auth_method_introspection then
+          local introspection_endpoint = get_conf_arg(conf, "introspection_endpoint")
+          local introspection_hint     = get_conf_arg(conf, "introspection_hint", "access_token")
+
           if get_conf_arg(conf, "cache_introspection") then
             log(DEBUG, "[openid-connect] trying to authenticate using oauth2 introspection with caching enabled")
             access_token_introspected = cache.introspection.load(
-              o,access_token_decoded, get_conf_arg(conf, "introspection_endpoint"), exp
+              o, access_token_decoded, introspection_endpoint, introspection_hint, exp
             )
           else
             log(DEBUG, "[openid-connect] trying to authenticate using oauth2 introspection")
 
-            access_token_introspected = o.token:introspect(access_token_decoded, "access_token", {
-              introspection_endpoint = get_conf_arg(conf, "introspection_endpoint")
+            access_token_introspected = o.token:introspect(access_token_decoded, introspection_hint, {
+              introspection_endpoint = introspection_endpoint
             })
           end
 

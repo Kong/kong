@@ -1,3 +1,7 @@
+## v0.0.9
+
+- Add `config.introspection_hint`
+
 ## v0.0.8
 
 NOTE: the way `config.anonymous` has changed in this release is a **BREAKING**

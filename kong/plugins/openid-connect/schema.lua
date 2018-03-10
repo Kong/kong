@@ -239,6 +239,11 @@ return {
       required                         = false,
       type                             = "url",
     },
+    introspection_hint                 = {
+      required                         = false,
+      type                             = "string",
+      default                          = "access_token",
+    },
     login_methods                      = {
       required                         = false,
       type                             = "array",
