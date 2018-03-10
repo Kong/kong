@@ -1211,7 +1211,7 @@ pending("Admin API #" .. kong_config.database, function()
               })
               local body = assert.res_status(400, res)
               local json = cjson.decode(body)
-              assert.same({ config = "Plugin \"foo\" not found" }, json)
+              assert.same({ config = "plugin 'foo' not enabled; add it to the 'custom_plugins' configuration property" }, json)
             end
           end)
         end)

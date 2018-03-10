@@ -69,6 +69,26 @@ describe("dao in-memory cache", function()
   end)
 
 
+  it("ensure callbacks do not increase memory (regression test for #3277)", function()
+    local counts = {}
+    for i, n in ipairs({ 2000, 2000, 2000 }) do
+      for _ = 1, n do
+        local wrapped = function(...) return load_into_memory(...) end
+        local value, err = cache:get(key, nil, wrapped, SOFT_ERROR)
+        assert.is_nil(value)
+        assert.matches(SOFT_ERROR.err, err, nil, true)
+      end
+      collectgarbage()
+      collectgarbage()
+      counts[i] = collectgarbage("count")
+    end
+    -- No significant difference between runs
+    assert.truthy(math.abs(counts[1] - counts[2]) < 10)
+    assert.truthy(math.abs(counts[2] - counts[3]) < 10)
+    assert.truthy(math.abs(counts[1] - counts[3]) < 10)
+  end)
+
+
   it("handles nil as return value", function()
     for _ = 1, 2 do
       local value, err = cache:get(key, nil, load_into_memory, nil)

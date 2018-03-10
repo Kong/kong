@@ -1,14 +1,31 @@
 local utils = require "kong.tools.utils"
 local Errors = require "kong.dao.errors"
 local db_errors = require "kong.db.errors"
+local singletons = require "kong.singletons"
+local constants = require "kong.constants"
 
 local function load_config_schema(plugin_t)
-  if plugin_t.name then
-    local loaded, plugin_schema = utils.load_module_if_exists("kong.plugins." .. plugin_t.name .. ".schema")
+  local plugin_name = plugin_t.name
+
+  if plugin_name then
+
+    if constants.DEPRECATED_PLUGINS[plugin_name] then
+      ngx.log(ngx.WARN, "plugin '", plugin_name, "' has been deprecated")
+    end
+
+    -- singletons.configuration would be nil when plugin operations are
+    -- done through DAOs like in migrations or tests
+    if singletons.configuration and not singletons.configuration.plugins[plugin_name] then
+      return nil, "plugin '" .. plugin_name .. "' not enabled; " ..
+                  "add it to the 'custom_plugins' configuration property"
+    end
+
+    local loaded, plugin_schema = utils.load_module_if_exists("kong.plugins."
+                                    .. plugin_name .. ".schema")
     if loaded then
       return plugin_schema
     else
-      return nil, 'Plugin "' .. tostring(plugin_t.name) .. '" not found'
+      return nil, 'Plugin "' .. tostring(plugin_name) .. '" not found'
     end
   end
 end

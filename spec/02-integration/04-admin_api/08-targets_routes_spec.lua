@@ -29,7 +29,7 @@ describe("Admin API", function()
     -- Adding a name-based resolution that won't fail
     dns_hostsfile = os.tmpname()
     local fd = assert(io.open(dns_hostsfile, "w"))
-    assert(fd:write("127.0.0.1 custom_localhost\n"))
+    assert(fd:write("127.0.0.1 localhost custom_localhost\n"))
     fd:close()
   end)
 
@@ -537,6 +537,121 @@ describe("Admin API", function()
         end)
       end)
     end)
+  end)
+
+  describe("/upstreams/{upstream}/targets/{target}/(un)healthy", function()
+
+    local localhosts = {
+      ipv4 = "127.0.0.1",
+      ipv6 = "[0000:0000:0000:0000:0000:0000:0000:0001]",
+      hostname = "localhost",
+    }
+    for mode, localhost in pairs(localhosts) do
+
+      describe("POST #" .. mode, function()
+        local my_upstream_name = "healthy.xyz"
+        local my_target_name = localhost .. ":8192"
+        local target_path = "/upstreams/" .. my_upstream_name
+                            .. "/targets/" .. my_target_name
+
+        before_each(function()
+          local status, body = assert(client_send({
+            method = "POST",
+            path = "/upstreams/",
+            headers = {["Content-Type"] = "application/json"},
+            body = {
+              name = my_upstream_name,
+              healthchecks = {
+                passive = {
+                  healthy = {
+                    successes = 1,
+                  },
+                  unhealthy = {
+                    tcp_failures = 1,
+                    http_failures = 1,
+                    timeouts = 1,
+                  },
+                }
+              }
+            }
+          }))
+          assert.same(201, status)
+          local json = assert(cjson.decode(body))
+
+          status = assert(client_send({
+            method = "POST",
+            path = "/upstreams/" .. my_upstream_name .. "/targets",
+            headers = {["Content-Type"] = "application/json"},
+            body = {
+              target = my_target_name,
+              weight = 10,
+              upstream_id = json.id,
+            }
+          }))
+          assert.same(201, status)
+        end)
+
+        it("flips the target status from UNHEALTHY to HEALTHY", function()
+          local status, body, json
+          status = assert(client_send {
+            method = "POST",
+            path = target_path .. "/unhealthy"
+          })
+          assert.same(204, status)
+          status, body = assert(client_send {
+            method = "GET",
+            path = "/upstreams/" .. my_upstream_name .. "/health"
+          })
+          assert.same(200, status)
+          json = assert(cjson.decode(body))
+          assert.same(my_target_name, json.data[1].target)
+          assert.same("UNHEALTHY", json.data[1].health)
+          status = assert(client_send {
+            method = "POST",
+            path = target_path .. "/healthy"
+          })
+          assert.same(204, status)
+          status, body = assert(client_send {
+            method = "GET",
+            path = "/upstreams/" .. my_upstream_name .. "/health"
+          })
+          assert.same(200, status)
+          json = assert(cjson.decode(body))
+          assert.same(my_target_name, json.data[1].target)
+          assert.same("HEALTHY", json.data[1].health)
+        end)
+
+        it("flips the target status from HEALTHY to UNHEALTHY", function()
+          local status, body, json
+          status = assert(client_send {
+            method = "POST",
+            path = target_path .. "/healthy"
+          })
+          assert.same(204, status)
+          status, body = assert(client_send {
+            method = "GET",
+            path = "/upstreams/" .. my_upstream_name .. "/health"
+          })
+          assert.same(200, status)
+          json = assert(cjson.decode(body))
+          assert.same(my_target_name, json.data[1].target)
+          assert.same("HEALTHY", json.data[1].health)
+          status = assert(client_send {
+            method = "POST",
+            path = target_path .. "/unhealthy"
+          })
+          assert.same(204, status)
+          status, body = assert(client_send {
+            method = "GET",
+            path = "/upstreams/" .. my_upstream_name .. "/health"
+          })
+          assert.same(200, status)
+          json = assert(cjson.decode(body))
+          assert.same(my_target_name, json.data[1].target)
+          assert.same("UNHEALTHY", json.data[1].health)
+        end)
+      end)
+    end
   end)
 
   describe("/upstreams/{upstream}/targets/{target}", function()

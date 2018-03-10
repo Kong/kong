@@ -89,8 +89,12 @@ dao_helpers.for_each_dao(function(kong_config)
   describe("#flaky anonymous reports in Admin API #" .. strategy, function()
     local dns_hostsfile
     local reports_server
+    local db
+    local dao
 
     setup(function()
+      local _
+      _, db, dao = helpers.get_db_utils(strategy)
       dns_hostsfile = assert(os.tmpname())
       local fd = assert(io.open(dns_hostsfile, "w"))
       assert(fd:write("127.0.0.1 " .. constants.REPORTS.ADDRESS))
@@ -104,7 +108,9 @@ dao_helpers.for_each_dao(function(kong_config)
     before_each(function()
       reports_server = mock_reports_server()
 
-      helpers.run_migrations()
+      assert(db:truncate())
+      dao:truncate_tables()
+      assert(dao:run_migrations())
 
       assert(helpers.start_kong({
         database = strategy,
@@ -151,6 +157,8 @@ dao_helpers.for_each_dao(function(kong_config)
       local _, reports_data = assert(reports_server:stop())
 
       assert.same(1, #reports_data)
+      assert.match("signal=api", reports_data[1])
+      assert.match("e=a", reports_data[1])
       assert.match("name=tcp%-log", reports_data[1])
     end)
 
@@ -188,6 +196,8 @@ dao_helpers.for_each_dao(function(kong_config)
       local _, reports_data = assert(reports_server:stop())
 
       assert.same(1, #reports_data)
+      assert.match("signal=api", reports_data[1])
+      assert.match("e=a", reports_data[1])
       assert.match("name=tcp%-log", reports_data[1])
     end)
 

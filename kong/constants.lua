@@ -33,9 +33,19 @@ for i = 1, #plugins do
   plugin_map[plugins[i]] = true
 end
 
+local deprecated_plugins = {
+  "galileo",
+}
+
+local deprecated_plugin_map = {}
+for _, plugin in ipairs(deprecated_plugins) do
+  deprecated_plugin_map[plugin] = true
+end
+
 return {
   PLUGINS_AVAILABLE = plugin_map,
   -- non-standard headers, specific to Kong
+  DEPRECATED_PLUGINS = deprecated_plugin_map,
   HEADERS = {
     HOST_OVERRIDE = "X-Host-Override",
     PROXY_LATENCY = "X-Kong-Proxy-Latency",
