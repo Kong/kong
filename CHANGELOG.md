@@ -2,6 +2,8 @@
 
 - [Scheduled](#scheduled)
 - [Released](#released)
+    - [0.13.0rc2](#0130rc2)
+    - [0.12.3](#0123---20180312)
     - [0.13.0rc1](#0130rc1)
     - [0.12.2](#0122---20180228)
     - [0.12.1](#0121---20180118)
@@ -27,6 +29,30 @@ a detailed changeset of their content.
 
 This section describes publicly available releases and a detailed changeset of
 their content.
+
+## [0.13.0rc2]
+
+- **rc2 release date**: March 12th 2018
+- **Stable release date (target)**: March 14th 2018
+
+### Fixed
+
+- Suppress a memory leak in the core introduced in 0.12.2 and included in
+  0.13.0rc2.
+  Thanks [@mengskysama](https://github.com/mengskysama) for the report.
+  [#3278](https://github.com/Kong/kong/pull/3278)
+
+[Back to TOC](#table-of-contents)
+
+## [0.12.3] - 2018/03/12
+
+### Fixed
+
+- Suppress a memory leak in the core introduced in 0.12.2.
+  Thanks [@mengskysama](https://github.com/mengskysama) for the report.
+  [#3278](https://github.com/Kong/kong/pull/3278)
+
+[Back to TOC](#table-of-contents)
 
 ## [0.13.0rc1]
 
@@ -2364,7 +2390,9 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[0.13.0rc2]: https://github.com/Kong/kong/compare/0.13.0rc1...0.13.0rc2
 [0.13.0rc1]: https://github.com/Kong/kong/compare/0.12.2...0.13.0rc1
+[0.12.3]: https://github.com/Kong/kong/compare/0.12.2...0.12.3
 [0.12.2]: https://github.com/Kong/kong/compare/0.12.1...0.12.2
 [0.12.1]: https://github.com/Kong/kong/compare/0.12.0...0.12.1
 [0.12.0]: https://github.com/Kong/kong/compare/0.11.2...0.12.0
