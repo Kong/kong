@@ -342,10 +342,11 @@ end
 local introspection = {}
 
 
-function introspection.init(o, access_token, endpoint, hint)
+function introspection.init(o, access_token, endpoint, hint, headers)
   log(NOTICE, "[openid-connect] introspecting access token with identity provider")
   local introspected = o.token:introspect(access_token, hint or "access_token", {
-    introspection_endpoint = endpoint
+    introspection_endpoint = endpoint,
+    headers                = headers,
   })
 
   local expires_in
@@ -373,11 +374,11 @@ function introspection.init(o, access_token, endpoint, hint)
 end
 
 
-function introspection.load(o, access_token, endpoint, hint, ttl)
+function introspection.load(o, access_token, endpoint, hint, headers, ttl)
   local iss = o.configuration.issuer
   local key = cache_key(iss .. "#introspection=" .. access_token)
 
-  return cache_get(key, ttl, introspection.init, o, access_token, endpoint, hint)
+  return cache_get(key, ttl, introspection.init, o, access_token, endpoint, hint, headers)
 end
 
 

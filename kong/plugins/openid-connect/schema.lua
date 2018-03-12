@@ -312,6 +312,14 @@ return {
       type                             = "string",
       default                          = "access_token",
     },
+    introspection_headers_names     = {
+      required                         = false,
+      type                             = "array",
+    },
+    introspection_headers_values    = {
+      required                         = false,
+      type                             = "array",
+    },
     login_methods                      = {
       required                         = false,
       type                             = "array",

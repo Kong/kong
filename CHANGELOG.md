@@ -15,6 +15,8 @@
 - Add `config.discovery_headers_names`
 - Add `config.discovery_headers_values`
 - Add `config.introspection_hint`
+- Add `config.introspection_headers_names`
+- Add `config.introspection_headers_values`
 - Add `config.token_exchange_endpoint`
 - Add `config.cache_token_exchange`
 
