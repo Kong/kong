@@ -1198,6 +1198,7 @@ function OICHandler:access(conf)
 
         if access_token_introspected then
           log(DEBUG, "[openid-connect] found matching kong oauth2 token")
+          access_token_introspected.exp = (tonumber(tokens_encoded.expires_in) or default_expires_in) + now
 
         else
           log(DEBUG, "[openid-connect] matching kong oauth2 token was not found")

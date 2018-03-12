@@ -306,10 +306,20 @@ function oauth2.load(access_token)
     return nil, "kong oauth access token was not found"
   end
 
+  do
+    local ctx = ngx.ctx
+    if (token.service_id and ctx.service.id ~= token.service_id) then
+      return nil, "kong access token is for different service"
+
+    elseif (token.api_id and ctx.api.id ~= token.api_id) then
+      return nil, "kong access token is for different api"
+    end
+  end
+
   if token.expires_in > 0 then
     local now = timestamp.get_utc()
     if now - token.created_at > (token.expires_in * 1000) then
-      return nil, "kong access token is invalid or has expired"
+      return nil, "kong access token has expired"
     end
   end
 
@@ -460,5 +470,5 @@ return {
   introspection = introspection,
   tokens        = tokens,
   userinfo      = userinfo,
-  version       = "0.0.8",
+  version       = "0.0.9",
 }
