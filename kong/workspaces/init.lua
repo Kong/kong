@@ -83,9 +83,8 @@ function _M.get_default_workspace_migration()
 end
 
 
-function _M.retrieve_workspace(workspace_name)
-  workspace_name = workspace_name and workspace_name or
-                   _M.DEFAULT_WORKSPACE
+local function retrieve_workspace(workspace_name)
+  workspace_name = workspace_name or _M.DEFAULT_WORKSPACE
 
   local rows, err = singletons.dao.workspaces:find_all({
     name = workspace_name
@@ -104,6 +103,15 @@ function _M.retrieve_workspace(workspace_name)
   end
 
   return rows[1]
+end
+
+
+function _M.get_workspace(params)
+  if params.workspace_name == "*" then
+    return { name = "*" }
+  else
+    return retrieve_workspace(params.workspace_name)
+  end
 end
 
 
