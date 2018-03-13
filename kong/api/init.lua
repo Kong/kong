@@ -54,6 +54,7 @@ local function on_error(self)
       return responses.send_HTTP_BAD_REQUEST(err.tbl or err.message)
     end
   end
+  return responses.send_HTTP_BAD_REQUEST(err)
 end
 
 
