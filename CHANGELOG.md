@@ -2,6 +2,7 @@
 
 - [Scheduled](#scheduled)
 - [Released](#released)
+    - [0.13.0rc3](#0130rc3)
     - [0.13.0rc2](#0130rc2)
     - [0.12.3](#0123---20180312)
     - [0.13.0rc1](#0130rc1)
@@ -29,6 +30,15 @@ a detailed changeset of their content.
 
 This section describes publicly available releases and a detailed changeset of
 their content.
+
+## [0.13.0rc3]
+
+### Changed
+
+##### Dependencies
+
+- Bumped [lua-multipart](https://github.com/Kong/lua-multipart) to `0.5.5`.
+  [#3290](https://github.com/Kong/kong/pull/3290)
 
 ## [0.13.0rc2]
 

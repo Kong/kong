@@ -16,7 +16,7 @@ dependencies = {
   "penlight == 1.5.4",
   "lua-resty-http == 0.12",
   "lua-resty-jit-uuid == 0.0.7",
-  "multipart == 0.5.4",
+  "multipart == 0.5.5",
   "version == 0.2",
   "kong-lapis == 1.6.0.1",
   "lua-cassandra == 1.2.3",
