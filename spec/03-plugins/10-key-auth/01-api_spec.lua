@@ -153,11 +153,19 @@ describe("Plugin: key-auth (API)", function()
     local key = "Some Key :/?#[]@!$&'()*+,;="
     local url_key = "Some%20Key%20%3a%2f%3f%23%5b%5d%40%21%24%26%27%28%29%2a%2b%2c%3b%3d"
 
+    -- Test for a simpler key that doesn't trigger URL encodings
+    local simple_credential
+    local simple_key = "foo"
+
     before_each(function()
       helpers.dao:truncate_table("keyauth_credentials")
       credential = assert(helpers.dao.keyauth_credentials:insert {
         consumer_id = consumer.id,
         key = key,
+      })
+      simple_credential = assert(helpers.dao.keyauth_credentials:insert {
+        consumer_id = consumer.id,
+        key = simple_key,
       })
     end)
     describe("GET", function()
@@ -179,6 +187,15 @@ describe("Plugin: key-auth (API)", function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.equal(credential.id, json.id)
+      end)
+      it("retrieves key-auth credential by key (simple)", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/consumers/bob/key-auth/" .. simple_key
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal(simple_credential.id, json.id)
       end)
       it("retrieves credential by id only if the credential belongs to the specified consumer", function()
         assert(helpers.dao.consumers:insert {

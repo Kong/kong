@@ -3,10 +3,14 @@ local cjson = require "cjson"
 local utils = require "kong.tools.utils"
 
 describe("Plugin: hmac-auth (API)", function()
-  local client, credential, consumer
+  local client
   -- Contains all reserved characters from RFC 3986
   local plugin_username = "spongebob squarepants :/?#[]@!$&'()*+,;="
   local url_username = "spongebob%20squarepants%20%3a%2f%3f%23%5b%5d%40%21%24%26%27%28%29%2a%2b%2c%3b%3d"
+
+  -- Test for a simpler username that doesn't trigger encodings as well
+  local simple_username = "foo"
+
   setup(function()
     helpers.run_migrations()
 
@@ -18,13 +22,14 @@ describe("Plugin: hmac-auth (API)", function()
   teardown(function()
     if client then client:close() end
     assert(helpers.stop_kong())
-    helpers.clean_prefix()
   end)
 
   describe("/consumers/:consumer/hmac-auth/", function()
     describe("POST", function()
-      before_each(function()
-        helpers.dao:truncate_tables()
+      local consumer
+      setup(function()
+        helpers.dao:truncate_table("consumers")
+        helpers.dao:truncate_table("hmacauth_credentials")
         consumer = assert(helpers.dao.consumers:insert {
           username = "bob",
           custom_id = "1234"
@@ -42,7 +47,22 @@ describe("Plugin: hmac-auth (API)", function()
         })
 
         local body = assert.res_status(201, res)
-        credential = cjson.decode(body)
+        local credential = cjson.decode(body)
+        assert.equal(consumer.id, credential.consumer_id)
+      end)
+      it("[SUCCESS] should create a hmac-auth credential (simple)", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/consumers/bob/hmac-auth/",
+          body = {
+            username = simple_username,
+            secret = "simple"
+          },
+          headers = {["Content-Type"] = "application/json"}
+        })
+
+        local body = assert.res_status(201, res)
+        local credential = cjson.decode(body)
         assert.equal(consumer.id, credential.consumer_id)
       end)
       it("[SUCCESS] should create a hmac-auth credential with a random secret", function()
@@ -50,13 +70,13 @@ describe("Plugin: hmac-auth (API)", function()
           method = "POST",
           path = "/consumers/bob/hmac-auth/",
           body = {
-            username = plugin_username,
+            username = plugin_username .. "2",
           },
           headers = {["Content-Type"] = "application/json"}
         })
 
         local body = assert.res_status(201, res)
-        credential = cjson.decode(body)
+        local credential = cjson.decode(body)
         assert.is.not_nil(credential.secret)
       end)
       it("[FAILURE] should return proper errors", function()
@@ -72,6 +92,15 @@ describe("Plugin: hmac-auth (API)", function()
     end)
 
     describe("PUT", function()
+      local consumer
+      setup(function()
+        helpers.dao:truncate_table("consumers")
+        helpers.dao:truncate_table("hmacauth_credentials")
+        consumer = assert(helpers.dao.consumers:insert {
+          username = "bob",
+          custom_id = "1234"
+        })
+      end)
       it("[SUCCESS] should create and update", function()
         local res = assert(client:send {
           method = "PUT",
@@ -83,7 +112,7 @@ describe("Plugin: hmac-auth (API)", function()
           headers = {["Content-Type"] = "application/json"}
         })
         local body = assert.res_status(201, res)
-        credential = cjson.decode(body)
+        local credential = cjson.decode(body)
         assert.equal(consumer.id, credential.consumer_id)
       end)
       it("[FAILURE] should return proper errors", function()
@@ -114,6 +143,26 @@ describe("Plugin: hmac-auth (API)", function()
   end)
 
   describe("/consumers/:consumer/hmac-auth/:id", function()
+    local consumer
+    local credential, simple_credential
+    setup(function()
+      helpers.dao:truncate_table("consumers")
+      helpers.dao:truncate_table("hmacauth_credentials")
+      consumer = assert(helpers.dao.consumers:insert {
+        username = "bob",
+        custom_id = "1234"
+      })
+      credential = assert(helpers.dao.hmacauth_credentials:insert {
+        consumer_id = consumer.id,
+        username = plugin_username,
+        secret = "secret1",
+      })
+      simple_credential = assert(helpers.dao.hmacauth_credentials:insert {
+        consumer_id = consumer.id,
+        username = "foo",
+        secret = "secret2",
+      })
+    end)
     describe("GET", function()
       it("should retrieve by id", function()
         local res = assert(client:send {
@@ -136,6 +185,17 @@ describe("Plugin: hmac-auth (API)", function()
         local body_json = assert.res_status(200, res)
         local body = cjson.decode(body_json)
         assert.equals(credential.id, body.id)
+      end)
+      it("should retrieve by username (simple)", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/consumers/bob/hmac-auth/" .. simple_username,
+          body = {},
+          headers = {["Content-Type"] = "application/json"}
+        })
+        local body_json = assert.res_status(200, res)
+        local body = cjson.decode(body_json)
+        assert.equals(simple_credential.id, body.id)
       end)
     end)
 
@@ -208,10 +268,15 @@ describe("Plugin: hmac-auth (API)", function()
     end)
   end)
   describe("/hmac-auths", function()
-    local consumer2
+    local consumer, consumer2
     describe("GET", function()
       setup(function()
+        helpers.dao:truncate_table("consumers")
         helpers.dao:truncate_table("hmacauth_credentials")
+        consumer = assert(helpers.dao.consumers:insert {
+          username = "bob",
+          custom_id = "1234"
+        })
         assert(helpers.dao.hmacauth_credentials:insert {
           consumer_id = consumer.id,
           username = plugin_username
@@ -256,6 +321,7 @@ describe("Plugin: hmac-auth (API)", function()
         assert.is_table(json_1.data)
         assert.equal(1, #json_1.data)
         assert.equal(2, json_1.total)
+        assert.is.not_nil(json_1.offset)
 
         res = assert(client:send {
           method = "GET",
@@ -304,8 +370,14 @@ describe("Plugin: hmac-auth (API)", function()
   describe("/hmac-auths/:hmac_username_or_id/consumer", function()
     describe("GET", function()
       local credential
+      local consumer
       setup(function()
+        helpers.dao:truncate_table("consumers")
         helpers.dao:truncate_table("hmacauth_credentials")
+        consumer = assert(helpers.dao.consumers:insert {
+          username = "bob",
+          custom_id = "1234"
+        })
         credential = assert(helpers.dao.hmacauth_credentials:insert {
           consumer_id = consumer.id,
           username = plugin_username,

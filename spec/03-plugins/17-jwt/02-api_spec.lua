@@ -234,10 +234,18 @@ describe("Plugin: jwt (API)", function()
     local my_plugin_key = "Some Key :/?#[]@!$&'()*+,;="
     local my_url_key = "Some%20Key%20%3a%2f%3f%23%5b%5d%40%21%24%26%27%28%29%2a%2b%2c%3b%3d"
 
+    -- Test for a simpler key that doesn't trigger encodings as well
+    local my_simple_jwt
+    local simple_key = "foo"
+
     setup(function()
       my_jwt = assert(jwt_secrets:insert {
         consumer_id = consumer.id,
         key = my_plugin_key,
+      })
+      my_simple_jwt = assert(jwt_secrets:insert {
+        consumer_id = consumer.id,
+        key = simple_key,
       })
     end)
     teardown(function()
@@ -259,6 +267,15 @@ describe("Plugin: jwt (API)", function()
         local body = assert.res_status(200, res)
         jwt_secret = cjson.decode(body)
         assert.equal(my_plugin_key, jwt_secret.key)
+      end)
+      it("retrieves by key (simple)", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/consumers/bob/jwt/" .. simple_key,
+        })
+        local body = assert.res_status(200, res)
+        jwt_secret = cjson.decode(body)
+        assert.equal(my_simple_jwt.key, jwt_secret.key)
       end)
     end)
 
