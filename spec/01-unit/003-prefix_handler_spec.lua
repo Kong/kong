@@ -465,6 +465,25 @@ describe("NGINX conf compiler", function()
         assert.is_nil(ok)
         assert.equal("no such file: spec/fixtures/inexistent.template", err)
       end)
+      it("reports Penlight templating errors", function()
+        local u = helpers.unindent
+        local tmp = os.tmpname()
+
+        helpers.file.write(tmp, u[[
+          > if t.hello then
+
+          > end
+        ]])
+
+        finally(function()
+          helpers.file.delete(tmp)
+        end)
+
+        local ok, err = prefix_handler.prepare_prefix(helpers.test_conf, tmp)
+        assert.is_nil(ok)
+        assert.matches("failed to compile nginx config template: .* " ..
+                       "attempt to index global 't' %(a nil value%)", err)
+      end)
     end)
   end)
 end)
