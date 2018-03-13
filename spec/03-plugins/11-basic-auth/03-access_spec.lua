@@ -44,7 +44,7 @@ describe("Plugin: basic-auth (access)", function()
       password    = "kong",
       consumer_id = consumer.id,
     })
-     assert(helpers.dao.basicauth_credentials:insert {
+    assert(helpers.dao.basicauth_credentials:insert {
       username    = "user123",
       password    = "password123",
       consumer_id = consumer.id,
@@ -52,6 +52,11 @@ describe("Plugin: basic-auth (access)", function()
     assert(helpers.dao.basicauth_credentials:insert {
       username    = "user321",
       password    = "password:123",
+      consumer_id = consumer.id,
+    })
+    assert(helpers.dao.basicauth_credentials:insert {
+      username    = "user-with-empty-password",
+      password    = "",
       consumer_id = consumer.id,
     })
 
@@ -213,6 +218,19 @@ describe("Plugin: basic-auth (access)", function()
         path = "/request",
         headers = {
           ["Authorization"] = "Basic dXNlcjMyMTpwYXNzd29yZDoxMjM=",
+          ["Host"] = "basic-auth1.com"
+        }
+      })
+      local body = cjson.decode(assert.res_status(200, res))
+      assert.equal("bob", body.headers["x-consumer-username"])
+    end)
+
+    it("authenticates with empty password", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Authorization"] = "Basic dXNlci13aXRoLWVtcHR5LXBhc3N3b3JkOgo=",
           ["Host"] = "basic-auth1.com"
         }
       })
