@@ -40,6 +40,7 @@ admin_gui_listen = 0.0.0.0:8002
 admin_gui_listen_ssl = 0.0.0.0:8445
 admin_gui_access_log = logs/admin_gui_access.log
 admin_gui_error_log = logs/admin_gui_error.log
+admin_gui_flags = {}
 
 nginx_user = nobody nobody
 nginx_worker_processes = auto

@@ -209,6 +209,8 @@
                                  # path to the SSL key for the
                                  # `admin_gui_listen_ssl` address.
 
+#admin_gui_flags = {}            # Alters the layout Admin GUI (JSON)
+
 #upstream_keepalive = 60         # Sets the maximum number of idle keepalive
                                  # connections to upstream servers that are
                                  # preserved in the cache of each worker

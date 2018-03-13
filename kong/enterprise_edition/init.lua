@@ -145,6 +145,7 @@ local function prepare_admin(kong_config)
     RBAC_ENFORCED = tostring(kong_config.enforce_rbac),
     RBAC_HEADER = tostring(kong_config.rbac_auth_header),
     KONG_VERSION = tostring(meta.versions.package),
+    FEATURE_FLAGS = tostring(kong_config.admin_gui_flags),
   }, kong_config)
 end
 _M.prepare_admin = prepare_admin

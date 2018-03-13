@@ -74,6 +74,7 @@ local CONF_INFERENCES = {
   admin_gui_listen_ssl = {typ = "string"},
   admin_gui_error_log = {type = "string"},
   admin_gui_access_log = {type = "string"},
+  admin_gui_flags = {typ = "string"},
   db_update_frequency = { typ = "number" },
   db_update_propagation = { typ = "number" },
   db_cache_ttl = { typ = "number" },
