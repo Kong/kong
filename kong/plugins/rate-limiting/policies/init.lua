@@ -84,16 +84,30 @@ return {
         return nil, err
       end
 
-      if conf.redis_password and conf.redis_password ~= "" then
+      local times, err = red:get_reused_times()
+      if err then
+        ngx_log(ngx.ERR, "failed to get connect reused times: ", err)
+        return nil, err
+      end
+
+      if times == 0 and conf.redis_password and conf.redis_password ~= "" then
         local ok, err = red:auth(conf.redis_password)
         if not ok then
-          ngx_log(ngx.ERR, "failed to connect to Redis: ", err)
+          ngx_log(ngx.ERR, "failed to auth Redis: ", err)
           return nil, err
         end
       end
 
-      if conf.redis_database ~= nil and conf.redis_database > 0 then
-        local ok, err = red:select(conf.redis_database)
+      if times ~= 0 or conf.redis_database then
+        -- The connection pool is shared between multiple instances of this
+        -- plugin, and instances of the response-ratelimiting plugin.
+        -- Because there isn't a way for us to know which Redis database a given
+        -- socket is connected to without a roundtrip, we force the retrieved
+        -- socket to select the desired database.
+        -- When the connection is fresh and the database is the default one, we
+        -- can skip this roundtrip.
+
+        local ok, err = red:select(conf.redis_database or 0)
         if not ok then
           ngx_log(ngx.ERR, "failed to change Redis database: ", err)
           return nil, err
@@ -151,7 +165,13 @@ return {
         return nil, err
       end
 
-      if conf.redis_password and conf.redis_password ~= "" then
+      local times, err = red:get_reused_times()
+      if err then
+        ngx_log(ngx.ERR, "failed to get connect reused times: ", err)
+        return nil, err
+      end
+
+      if times == 0 and conf.redis_password and conf.redis_password ~= "" then
         local ok, err = red:auth(conf.redis_password)
         if not ok then
           ngx_log(ngx.ERR, "failed to connect to Redis: ", err)
@@ -159,8 +179,16 @@ return {
         end
       end
 
-      if conf.redis_database ~= nil and conf.redis_database > 0 then
-        local ok, err = red:select(conf.redis_database)
+      if times ~= 0 or conf.redis_database then
+        -- The connection pool is shared between multiple instances of this
+        -- plugin, and instances of the response-ratelimiting plugin.
+        -- Because there isn't a way for us to know which Redis database a given
+        -- socket is connected to without a roundtrip, we force the retrieved
+        -- socket to select the desired database.
+        -- When the connection is fresh and the database is the default one, we
+        -- can skip this roundtrip.
+
+        local ok, err = red:select(conf.redis_database or 0)
         if not ok then
           ngx_log(ngx.ERR, "failed to change Redis database: ", err)
           return nil, err
