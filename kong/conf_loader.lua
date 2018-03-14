@@ -53,7 +53,7 @@ local PREFIX_PATHS = {
 -- `array`: a comma-separated list
 local CONF_INFERENCES = {
   -- forced string inferences (or else are retrieved as numbers)
-  proxy_listen = {typ = "array"},
+  listen = {typ = "array"},
   admin_listen = {typ = "array"},
   db_update_frequency = { typ = "number" },
   db_update_propagation = { typ = "number" },
@@ -224,7 +224,7 @@ local function check_and_infer(conf)
     end
   end
 
-  if (table.concat(conf.proxy_listen, ",") .. " "):find("%sssl[%s,]") then
+  if (table.concat(conf.listen, ",") .. " "):find("%sssl[%s,]") then
     if conf.ssl_cert and not conf.ssl_cert_key then
       errors[#errors+1] = "ssl_cert_key must be specified"
     elseif conf.ssl_cert_key and not conf.ssl_cert then
@@ -556,15 +556,15 @@ local function load(path, custom_conf)
     -- intermediate Kong config file in the prefix directory
     local mt = { __tostring = function() return "" end }
 
-    conf.proxy_listeners, err = parse_listeners(conf.proxy_listen)
+    conf.listeners, err = parse_listeners(conf.listen)
     if err then
-      return nil, "proxy_listen " .. err
+      return nil, "listen " .. err
     end
 
-    setmetatable(conf.proxy_listeners, mt)  -- do not pass on, parse again
+    setmetatable(conf.listeners, mt)  -- do not pass on, parse again
     conf.proxy_ssl_enabled = false
 
-    for _, listener in ipairs(conf.proxy_listeners) do
+    for _, listener in ipairs(conf.listeners) do
       if listener.ssl == true then
         conf.proxy_ssl_enabled = true
         break

@@ -8,7 +8,7 @@ admin_error_log = logs/error.log
 custom_plugins = NONE
 anonymous_reports = on
 
-proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 ssl
+listen = 0.0.0.0:8000, 0.0.0.0:8443 ssl
 admin_listen = 127.0.0.1:8001, 127.0.0.1:8444 ssl
 nginx_user = nobody nobody
 nginx_worker_processes = auto

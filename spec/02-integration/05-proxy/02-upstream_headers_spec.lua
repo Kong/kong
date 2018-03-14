@@ -589,7 +589,7 @@ for _, strategy in helpers.each_strategy("postgres") do
       local proxy_port = helpers.get_proxy_port(false)
 
       setup(start_kong {
-        proxy_listen      = proxy_ip .. ":" .. proxy_port .. " proxy_protocol",
+        listen            = proxy_ip .. ":" .. proxy_port .. " proxy_protocol",
         real_ip_header    = "proxy_protocol",
         real_ip_recursive = "on",
         trusted_ips       = "127.0.0.1,172.16.0.1,192.168.0.1",
@@ -694,7 +694,7 @@ for _, strategy in helpers.each_strategy("postgres") do
       local proxy_port = helpers.get_proxy_port(false)
 
       setup(start_kong {
-        proxy_listen      = "0.0.0.0:" .. proxy_port .. " proxy_protocol",
+        listen            = "0.0.0.0:" .. proxy_port .. " proxy_protocol",
         real_ip_header    = "proxy_protocol",
         real_ip_recursive = "on",
         trusted_ips       = "10.0.0.1,172.16.0.1,192.168.0.1",

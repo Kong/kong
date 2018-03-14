@@ -73,7 +73,7 @@
 # NGINX
 #------------------------------------------------------------------------------
 
-#proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 ssl
+#listen = 0.0.0.0:8000, 0.0.0.0:8443 ssl
                          # Comma-separated list of addresses and ports on
                          # which the proxy server should listen.
                          # The proxy server is the public entrypoint of Kong,
@@ -156,10 +156,10 @@
                                  # is not `custom`.
 
 #ssl_cert =                      # The absolute path to the SSL certificate for
-                                 # `proxy_listen` values with SSL enabled.
+                                 # `listen` values with SSL enabled.
 
 #ssl_cert_key =                  # The absolute path to the SSL key for
-                                 # `proxy_listen` values with SSL enabled.
+                                 # `listen` values with SSL enabled.
 
 #client_ssl = off                # Determines if Nginx should send client-side
                                  # SSL certificates when proxying requests.
@@ -228,8 +228,8 @@
                                  # directive of the same name in the Nginx
                                  # configuration.
                                  # If set to `proxy_protocol`, then at least
-                                 # one of the `proxy_listen` entries must
-                                 # have the `proxy_protocol` flag enabled.
+                                 # one of the `listen` entries must have the
+                                 # `proxy_protocol` flag enabled.
 
 # Note: see http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_header
 # for a description of this directive.

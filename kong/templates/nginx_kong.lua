@@ -52,7 +52,7 @@ init_worker_by_lua_block {
 }
 
 
-> if #proxy_listeners > 0 then
+> if #listeners > 0 then
 upstream kong_upstream {
     server 0.0.0.1;
     balancer_by_lua_block {
@@ -63,8 +63,8 @@ upstream kong_upstream {
 
 server {
     server_name kong;
-> for i = 1, #proxy_listeners do
-    listen $(proxy_listeners[i].listener);
+> for i = 1, #listeners do
+    listen $(listeners[i].listener);
 > end
     error_page 400 404 408 411 412 413 414 417 /kong_error_handler;
     error_page 500 502 503 504 /kong_error_handler;

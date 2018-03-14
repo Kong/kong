@@ -347,7 +347,7 @@ end
 -- @param ssl (boolean) if `true` returns the ssl port
 local function get_proxy_port(ssl)
   if ssl == nil then ssl = false end
-  for _, entry in ipairs(conf.proxy_listeners) do
+  for _, entry in ipairs(conf.listeners) do
     if entry.ssl == ssl then
       return entry.port
     end
@@ -359,7 +359,7 @@ end
 -- @param ssl (boolean) if `true` returns the ssl ip address
 local function get_proxy_ip(ssl)
   if ssl == nil then ssl = false end
-  for _, entry in ipairs(conf.proxy_listeners) do
+  for _, entry in ipairs(conf.listeners) do
     if entry.ssl == ssl then
       return entry.ip
     end
@@ -405,7 +405,7 @@ end
 -- @name admin_ssl_client
 local function admin_ssl_client(timeout)
   local admin_ip, admin_port
-  for _, entry in ipairs(conf.proxy_listeners) do
+  for _, entry in ipairs(conf.listeners) do
     if entry.ssl == true then
       admin_ip = entry.ip
       admin_port = entry.port
