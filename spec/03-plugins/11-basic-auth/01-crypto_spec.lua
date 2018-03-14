@@ -13,7 +13,7 @@ describe("Plugin: basic-auth (crypto)", function()
     assert.equals(crypto.encrypt(credential), crypto.encrypt(credential))
   end)
 
-  it("substitutes empty string for nil password in salt", function()
+  it("substitutes empty string for password equal to nil", function()
     local credential = {
       consumer_id = "id123"
     }
@@ -21,6 +21,18 @@ describe("Plugin: basic-auth (crypto)", function()
     local credential2 = {
       consumer_id = "id123",
       password = ""
+    }
+    assert.equals(crypto.encrypt(credential), crypto.encrypt(credential2))
+  end)
+
+  it("substitutes empty string for password equal to ngx.null", function()
+    local credential = {
+      consumer_id = "id123"
+    }
+
+    local credential2 = {
+      consumer_id = "id123",
+      password = ngx.null
     }
     assert.equals(crypto.encrypt(credential), crypto.encrypt(credential2))
   end)
