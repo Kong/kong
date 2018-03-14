@@ -325,7 +325,7 @@ return {
 
       local version, err = singletons.cache:get("router:version", {
         ttl = 0
-      }, function() return utils.uuid() end)
+      }, utils.uuid)
       if err then
         log(ngx.CRIT, "could not ensure router is up to date: ", err)
 

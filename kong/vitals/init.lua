@@ -4,6 +4,7 @@ local ffi        = require "ffi"
 local reports    = require "kong.core.reports"
 local singletons = require "kong.singletons"
 local utils      = require "kong.tools.utils"
+local public     = require "kong.tools.public"
 local pg_strat   = require "kong.vitals.postgres.strategy"
 
 local timer_at   = ngx.timer.at
@@ -51,7 +52,6 @@ local CONSUMER_STAT_LABELS = {
 
 local persistence_handler
 local _log_prefix = "[vitals] "
-local NODE_ID_KEY = "vitals:node_id"
 
 
 local FLUSH_LOCK_KEY = "vitals:flush_lock"
@@ -198,19 +198,11 @@ function _M:init()
 
   log(DEBUG, _log_prefix, "init")
 
-  -- set node id (uuid) on shm
-  local ok, err = self.shm:safe_add(NODE_ID_KEY, utils.uuid())
-  if not ok and err ~= "exists" then
-    return self:init_failed(nil, "failed to set 'node_id' in shm: " .. err)
-  end
+  -- get node id (uuid)
+  local node_id, err = public.get_node_id()
 
-  local node_id, err = self.shm:get(NODE_ID_KEY)
   if err then
-    return self:init_failed(nil, "failed to get 'node_id' from shm: " .. err)
-  end
-
-  if not node_id then
-    return self:init_failed(nil, "no 'node_id' set in shm")
+    return self:init_failed(nil, err)
   end
 
   local delay = self.flush_interval
@@ -232,7 +224,7 @@ function _M:init()
 
   self.initialized = true
 
-  -- we'ere configured, initialized, and ready to phone home
+  -- we're configured, initialized, and ready to phone home
   reports.add_ping_value("vitals", true)
   for _, v in ipairs(PH_STATS) do
     reports.add_ping_value(v, function()
