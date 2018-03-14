@@ -1,11 +1,11 @@
 pcall(require, "kong.plugins.openid-connect.env")
 
 
+local log           = require "kong.plugins.openid-connect.log"
 local configuration = require "kong.openid-connect.configuration"
 local keys          = require "kong.openid-connect.keys"
 local hash          = require "kong.openid-connect.hash"
 local codec         = require "kong.openid-connect.codec"
-local timestamp     = require "kong.tools.timestamp"
 local utils         = require "kong.tools.utils"
 local singletons    = require "kong.singletons"
 local http          = require "resty.http"
@@ -14,24 +14,19 @@ local http          = require "resty.http"
 local concat        = table.concat
 local ipairs        = ipairs
 local json          = codec.json
+local base64        = codec.base64
 local type          = type
 local pcall         = pcall
-local log           = ngx.log
+local ngx           = ngx
 local null          = ngx.null
 local time          = ngx.time
-local encode_base64 = ngx.encode_base64
 local sub           = string.sub
 local tonumber      = tonumber
 
 
-local NOTICE        = ngx.NOTICE
-local DEBUG         = ngx.DEBUG
-local ERR           = ngx.ERR
-
-
 local cache_get, cache_key
 do
-  -- TODO: this check sucks but it is good enough now, as this supports only 0.10.x and >= 0.11.x
+  -- TODO: remove this and 0.10.x support
   local ok, cache = pcall(require, "kong.tools.database_cache")
   if ok then
     -- 0.10.x
@@ -83,7 +78,7 @@ end
 local function init_worker()
   local cache = singletons.cache
   singletons.worker_events.register(function(data)
-    log(DEBUG, "[openid-connect] consumer updated, invalidating cache")
+    log("consumer updated, invalidating cache")
 
     local old_entity = data.old_entity
     if old_entity then
@@ -125,7 +120,7 @@ local issuers = {}
 function issuers.init(issuer, opts)
   issuer = normalize_issuer(issuer)
 
-  log(NOTICE, "[openid-connect] loading openid connect configuration for ", issuer, " from database")
+  log.notice("loading configuration for ", issuer, " from database")
 
   local results = singletons.dao.oic_issuers:find_all { issuer = issuer }
   if results and results[1] then
@@ -137,40 +132,39 @@ function issuers.init(issuer, opts)
     }
   end
 
-  log(NOTICE, "[openid-connect] loading openid connect configuration for ", issuer, " using discovery")
+  log.notice("loading configuration for ", issuer, " using discovery")
   local claims, err = configuration.load(issuer, opts)
   if not claims then
-    log(ERR, "[openid-connect] loading openid connect configuration for ", issuer, " using discovery failed with ", err)
+    log.err("loading configuration for ", issuer, " using discovery failed with ", err)
     return nil
   end
 
   local cdec
   cdec, err = json.decode(claims)
   if not cdec then
-    log(ERR, err)
+    log.err(err)
     return nil
   end
 
   local jwks_uri = cdec.jwks_uri
   local jwks
   if jwks_uri then
-    log(NOTICE, "[openid-connect] loading openid connect jwks from ", jwks_uri)
+    log.notice("loading jwks from ", jwks_uri)
 
     jwks, err = keys.load(jwks_uri, opts)
     if not jwks then
-      log(ERR, "[openid-connect] loading openid connect jwks from ", jwks_uri, " failed with ", err)
+      log.err("loading jwks from ", jwks_uri, " failed with ", err)
       return nil
     end
 
   elseif cdec.jwks and cdec.jwks.keys then
     jwks, err = json.encode(cdec.jwks.keys)
     if not jwks then
-      log(ERR, "[openid-connect] unable to encode jwks received as part of the ", issuer,
-               "discovery document (", err , ")")
+      log.err("unable to encode jwks received as part of the ", issuer, "discovery document (", err , ")")
     end
   end
 
-  local secret = sub(encode_base64(utils.get_rand_bytes(32)), 1, 32)
+  local secret = sub(base64.encode(utils.get_rand_bytes(32)), 1, 32)
 
   local data = {
     issuer        = issuer,
@@ -181,7 +175,7 @@ function issuers.init(issuer, opts)
 
   data, err = singletons.dao.oic_issuers:insert(data)
   if not data then
-    log(ERR, "[openid-connect] unable to store issuer ", issuer, " discovery documents in database (", err , ")")
+    log.err("unable to store issuer ", issuer, " discovery documents in database (", err , ")")
     return nil
   end
 
@@ -202,20 +196,20 @@ local consumers = {}
 
 function consumers.init(subject, key)
   if not subject or subject == "" then
-    return nil, "openid connect is unable to load consumer by a missing subject"
+    return nil, "unable to load consumer by a missing subject"
   end
 
   local result, err
 
   if key == "id" then
-    log(NOTICE, "[openid-connect] openid connect is loading consumer by id using " .. subject)
+    log.notice("loading consumer by id using ", subject)
     result, err = singletons.dao.consumers:find { id = subject }
     if type(result) == "table" then
       return result
     end
 
   else
-    log(NOTICE, "[openid-connect] openid connect is loading consumer by " .. key .. " using " .. subject)
+    log.notice("loading consumer by " .. key .. " using " .. subject)
     result, err = singletons.dao.consumers:find_all { [key] = subject }
     if type(result) == "table" and type(result[1]) == "table" then
       return result[1]
@@ -254,7 +248,7 @@ function consumers.load(subject, anon, consumer_by)
     end
 
     if err then
-      log(NOTICE, "[openid-connect] failed to load consumer (" .. err .. ")")
+      log.notice("failed to load consumer (", err, ")")
     end
   end
 
@@ -262,21 +256,21 @@ function consumers.load(subject, anon, consumer_by)
 end
 
 
-local oauth2 = {}
+local kong_oauth2 = {}
 
 
-function oauth2.credential(credential_id)
+function kong_oauth2.credential(credential_id)
   return singletons.dao.oauth2_credentials:find { id = credential_id }
 end
 
 
-function oauth2.consumer(consumer_id)
+function kong_oauth2.consumer(consumer_id)
   return singletons.dao.consumers:find { id = consumer_id }
 end
 
 
-function oauth2.init(access_token)
-  log(NOTICE, "[openid-connect] loading kong oauth2 token from database")
+function kong_oauth2.init(access_token)
+  log.notice("loading kong oauth2 token from database")
   local credentials, err = singletons.dao.oauth2_tokens:find_all { access_token = access_token }
 
   if err then
@@ -291,9 +285,9 @@ function oauth2.init(access_token)
 end
 
 
-function oauth2.load(access_token)
+function kong_oauth2.load(access_token)
   local key = cache_key(access_token, "oauth2_tokens")
-  local token, err = cache_get(key, nil, oauth2.init, access_token)
+  local token, err = cache_get(key, nil, kong_oauth2.init, access_token)
   if not token then
     return nil, err
   end
@@ -313,15 +307,16 @@ function oauth2.load(access_token)
   end
 
   if token.expires_in > 0 then
-    local now = timestamp.get_utc()
-    if now - token.created_at > (token.expires_in * 1000) then
+    local iat = token.created_at / 1000
+    local now = time()
+    if now - iat > token.expires_in then
       return nil, "kong access token has expired"
     end
   end
 
   local credential
   local credential_cache_key = cache_key(token.credential_id, "oauth2_credentials")
-  credential, err = cache_get(credential_cache_key, nil, oauth2.credential, token.credential_id)
+  credential, err = cache_get(credential_cache_key, nil, kong_oauth2.credential, token.credential_id)
 
   if not credential then
     return nil, err
@@ -329,7 +324,7 @@ function oauth2.load(access_token)
 
   local consumer
   local consumer_cache_key = cache_key(credential.consumer_id, "consumers")
-  consumer, err = cache_get(consumer_cache_key, nil, oauth2.consumer, credential.consumer_id)
+  consumer, err = cache_get(consumer_cache_key, nil, kong_oauth2.consumer, credential.consumer_id)
 
   if not consumer then
     return nil, err
@@ -343,22 +338,22 @@ local introspection = {}
 
 
 function introspection.init(o, access_token, endpoint, hint, headers)
-  log(NOTICE, "[openid-connect] introspecting access token with identity provider")
-  local introspected = o.token:introspect(access_token, hint or "access_token", {
+  log.notice("introspecting access token with identity provider")
+  local token_introspected = o.token:introspect(access_token, hint or "access_token", {
     introspection_endpoint = endpoint,
     headers                = headers,
   })
 
   local expires_in
 
-  if type(introspected) == "table" then
-    if introspected.expires_in then
-      expires_in = tonumber(introspected.expires_in)
+  if type(token_introspected) == "table" then
+    if token_introspected.expires_in then
+      expires_in = tonumber(token_introspected.expires_in)
     end
 
     if not expires_in then
-      if introspected.exp then
-        local exp = tonumber(introspected.exp)
+      if token_introspected.exp then
+        local exp = tonumber(token_introspected.exp)
         if exp then
           expires_in = exp - time()
         end
@@ -370,7 +365,7 @@ function introspection.init(o, access_token, endpoint, hint, headers)
     expires_in = nil
   end
 
-  return introspected, nil, expires_in
+  return token_introspected, nil, expires_in
 end
 
 
@@ -386,7 +381,7 @@ local tokens = {}
 
 
 function tokens.init(o, args)
-  log(NOTICE, "[openid-connect] loading tokens from the identity provider")
+  log.notice("loading tokens from the identity provider")
   local toks, err, headers = o.token:request(args)
   if not toks then
     return nil, err
@@ -446,7 +441,7 @@ local token_exchange = {}
 
 
 function token_exchange.init(exchange_token_endpoint, opts)
-  log(NOTICE, "[openid-connect] exchanging access token")
+  log.notice("exchanging access token")
   local httpc = http.new()
 
   if httpc.set_timeouts then
@@ -507,7 +502,7 @@ local userinfo = {}
 
 
 function userinfo.init(o, access_token)
-  log(NOTICE, "[openid-connect] loading user info using access token from identity provider")
+  log.notice("loading user info using access token from identity provider")
   return o:userinfo(access_token, { userinfo_format = "base64" })
 end
 
@@ -524,7 +519,7 @@ return {
   init_worker    = init_worker,
   issuers        = issuers,
   consumers      = consumers,
-  oauth2         = oauth2,
+  kong_oauth2    = kong_oauth2,
   introspection  = introspection,
   tokens         = tokens,
   token_exchange = token_exchange,

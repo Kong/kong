@@ -179,6 +179,48 @@ return {
       type                             = "boolean",
       default                          = false,
     },
+    bearer_token_param_type            = {
+      required                         = false,
+      type                             = "array",
+      enum                             = {
+        "header",
+        "query",
+        "body",
+      },
+      default                          = {
+        "header",
+        "query",
+        "body",
+      },
+    },
+    client_credentials_param_type      = {
+      required                         = false,
+      type                             = "array",
+      enum                             = {
+        "header",
+        "query",
+        "body",
+      },
+      default                          = {
+        "header",
+        "query",
+        "body",
+      },
+    },
+    password_param_type                = {
+      required                         = false,
+      type                             = "array",
+      enum                             = {
+        "header",
+        "query",
+        "body",
+      },
+      default                          = {
+        "header",
+        "query",
+        "body",
+      },
+    },
     id_token_param_name                = {
       required                         = false,
       type                             = "string",
@@ -187,13 +229,13 @@ return {
       required                         = false,
       type                             = "array",
       enum                             = {
-        "query",
         "header",
+        "query",
         "body",
       },
       default                          = {
-        "query",
         "header",
+        "query",
         "body",
       },
     },
@@ -475,6 +517,16 @@ return {
       required                         = false,
       type                             = "boolean",
       default                          = true,
+    },
+    cache_ttl                          = {
+      required                         = false,
+      type                             = "number",
+      default                          = 3600,
+    },
+    hide_credentials                   = {
+      required                         = false,
+      type                             = "boolean",
+      default                          = false
     },
     http_version                       = {
       required                         = false,

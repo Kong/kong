@@ -19,6 +19,13 @@
 - Add `config.introspection_headers_values`
 - Add `config.token_exchange_endpoint`
 - Add `config.cache_token_exchange`
+- Add `config.bearer_token_param_type`
+- Add `config.client_credentials_param_type`
+- Add `config.password_param_type`
+- Add `config.hide_credentials`
+- Add `config.cache_ttl`
+
+- Remove multipart parsing of id tokens (it was never proxy safe)
 
 ## v0.0.8
 

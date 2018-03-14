@@ -1,59 +1,114 @@
-local BasePlugin    = require "kong.plugins.base_plugin"
-local cache         = require "kong.plugins.openid-connect.cache"
-local constants     = require "kong.constants"
-local responses     = require "kong.tools.responses"
-local oic           = require "kong.openid-connect"
-local uri           = require "kong.openid-connect.uri"
-local set           = require "kong.openid-connect.set"
-local codec         = require "kong.openid-connect.codec"
-local session       = require "resty.session"
-local upload        = require "resty.upload"
+local BasePlugin      = require "kong.plugins.base_plugin"
+local cache           = require "kong.plugins.openid-connect.cache"
+local arguments       = require "kong.plugins.openid-connect.arguments"
+local log             = require "kong.plugins.openid-connect.log"
+local constants       = require "kong.constants"
+local responses       = require "kong.tools.responses"
+local openid          = require "kong.openid-connect"
+local uri             = require "kong.openid-connect.uri"
+local set             = require "kong.openid-connect.set"
+local codec           = require "kong.openid-connect.codec"
+local session_factory = require "resty.session"
 
 
-local ngx           = ngx
-local redirect      = ngx.redirect
-local var           = ngx.var
-local log           = ngx.log
-local time          = ngx.time
-local header        = ngx.header
-local set_header    = ngx.req.set_header
-local read_body     = ngx.req.read_body
-local get_uri_args  = ngx.req.get_uri_args
-local set_uri_args  = ngx.req.set_uri_args
-local get_body_data = ngx.req.get_body_data
-local get_body_file = ngx.req.get_body_file
-local get_post_args = ngx.req.get_post_args
-local get_headers   = ngx.req.get_headers
-local escape_uri    = ngx.escape_uri
-local tonumber      = tonumber
-local tostring      = tostring
-local ipairs        = ipairs
-local concat        = table.concat
-local find          = string.find
-local type          = type
-local next          = next
-local sub           = string.sub
-local gsub          = string.gsub
-local lower         = string.lower
-local json          = codec.json
-local base64        = codec.base64
-local open          = io.open
+local ngx             = ngx
+local redirect        = ngx.redirect
+local var             = ngx.var
+local time            = ngx.time
+local header          = ngx.header
+local set_header      = ngx.req.set_header
+local set_uri_args    = ngx.req.set_uri_args
+local escape_uri      = ngx.escape_uri
+local tonumber        = tonumber
+local tostring        = tostring
+local ipairs          = ipairs
+local concat          = table.concat
+local find            = string.find
+local type            = type
+local sub             = string.sub
+local max             = math.max
+local json            = codec.json
+local base64          = codec.base64
 
 
-local DEBUG         = ngx.DEBUG
-local NOTICE        = ngx.NOTICE
-local ERR           = ngx.ERR
+local PARAM_TYPES_ALL = {
+  "header",
+  "query",
+  "body",
+}
 
 
-local function read_file(p)
-  local f, e = open(p, "rb")
-  if not f then
-    return nil, e
+local function unexpected(...)
+  log.err(...)
+  return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+end
+
+
+local function create_session_open(args, secret)
+  local storage = args.get_conf_arg("session_storage", "cookie")
+  local redis, memcache
+
+  if storage == "memcache" then
+    log("loading configuration for memcache session storage")
+    memcache = {
+      uselocking = false,
+      prefix     = args.get_conf_arg("session_memcache_prefix", "sessions"),
+      socket     = args.get_conf_arg("session_memcache_socket"),
+      host       = args.get_conf_arg("session_memcache_host", "127.0.0.1"),
+      port       = args.get_conf_arg("session_memcache_port", 11211),
+    }
+
+  elseif storage == "redis" then
+    log("loading configuration for redis session storage")
+    redis = {
+      uselocking = false,
+      prefix     = args.get_conf_arg("session_redis_prefix", "sessions"),
+      socket     = args.get_conf_arg("session_redis_socket"),
+      host       = args.get_conf_arg("session_redis_host", "127.0.0.1"),
+      port       = args.get_conf_arg("session_redis_port", 6379),
+      auth       = args.get_conf_arg("session_redis_auth"),
+    }
   end
 
-  local c = f:read "*a"
-  f:close()
-  return c
+  return function(options)
+    options.storage  = storage
+    options.memcache = memcache
+    options.redis    = redis
+    options.secret   = secret
+
+    log("trying to open session using cookie named '", options.name, "'")
+    return session_factory.open(options)
+  end
+end
+
+
+local function create_get_http_opts(args)
+  return function(options)
+    options = options or {}
+    options.http_version = args.get_conf_arg("http_version", 1.1)
+    options.ssl_verify   = args.get_conf_arg("ssl_verify",   true)
+    options.timeout      = args.get_conf_arg("timeout",      10000)
+    return options
+  end
+end
+
+
+local function create_introspect_token(args, oic)
+  local endpoint  = args.get_conf_arg("introspection_endpoint")
+  local hint      = args.get_conf_arg("introspection_hint", "access_token")
+  local headers   = args.get_conf_args("introspection_headers_names", "introspection_headers_values")
+
+  if args.get_conf_arg("cache_introspection") then
+    return function(access_token, ttl)
+        log("introspecting token with caching enabled")
+        return cache.introspection.load(oic, access_token, endpoint, hint, headers, ttl)
+    end
+  end
+
+  return function(access_token)
+    log("introspecting token")
+    return cache.introspection.init(oic, access_token, endpoint, hint, headers)
+  end
 end
 
 
@@ -108,103 +163,7 @@ local function redirect_uri()
 end
 
 
-local function multipart_value(r, s)
-  if s == "form-data" then
-    return
-  end
-
-  local e = find(s, "=", 1, true)
-  if e then
-    r[sub(s, 2, e - 1)] = sub(s, e + 2, #s - 1)
-
-  else
-    r[#r + 1] = s
-  end
-end
-
-
-local function multipart_parse(s)
-  if not s then return nil end
-  local r = {}
-  local i = 1
-
-  local b = find(s, ";", 1, true)
-  while b do
-    local p = sub(s, i, b - 1)
-    multipart_value(r, p)
-    i = b + 1
-    b = find(s, ";", i, true)
-  end
-
-  local p = sub(s, i)
-  if p ~= "" then
-    multipart_value(r, p)
-  end
-
-  return r
-end
-
-
-local function multipart(name, timeout)
-  local form = upload:new()
-  if not form then
-    return nil
-  end
-
-  form:set_timeout(timeout)
-
-  local h, p
-
-  while true do
-    local t, r = form:read()
-    if not t then
-      return nil
-    end
-
-    if t == "header" then
-      if not h then
-        h = {}
-      end
-
-      if type(r) == "table" then
-        local k, v = r[1], multipart_parse(r[2])
-        if v then
-          h[k] = v
-        end
-      end
-
-    elseif t == "body" then
-      if h then
-        local d = h["Content-Disposition"]
-        if d and d.name == name then
-          p = { n = 1 }
-        end
-
-        h = nil
-      end
-
-      if p then
-        local n = p.n
-        p[n] = r
-        p.n  = n + 1
-      end
-
-    elseif t == "part_end" then
-      if p then
-        p = concat(p)
-        break
-      end
-
-    elseif t == "eof" then
-      break
-    end
-  end
-
-  return p
-end
-
-
-local function consumer(token, claim, anonymous, consumer_by)
+local function find_consumer(token, claim, anonymous, consumer_by)
   if not token then
     return nil, "token for consumer mapping was not found"
   end
@@ -233,16 +192,57 @@ local function consumer(token, claim, anonymous, consumer_by)
 end
 
 
-local function client(param, clients)
-  if not param then
+local function set_consumer(consumer, credential, is_anonymous)
+  if consumer then
+    log("setting kong consumer context and headers")
+
+    local head = constants.HEADERS
+
+    ngx.ctx.authenticated_consumer = consumer
+
+    if credential then
+      ngx.ctx.authenticated_credential = credential
+
+    else
+      if is_anonymous then
+        set_header(head.ANONYMOUS, true)
+
+      else
+        set_header(head.ANONYMOUS, nil)
+
+        ngx.ctx.authenticated_credential = {
+          consumer_id = consumer.id
+        }
+      end
+    end
+
+    set_header(head.CONSUMER_ID,        consumer.id)
+    set_header(head.CONSUMER_CUSTOM_ID, consumer.custom_id)
+    set_header(head.CONSUMER_USERNAME,  consumer.username)
+
+  else
+    log("removing possible remnants of anonymous")
+
+    ngx.ctx.authenticated_consumer   = nil
+    ngx.ctx.authenticated_credential = nil
+
+    local head = constants.HEADERS
+
+    set_header(head.CONSUMER_ID,        nil)
+    set_header(head.CONSUMER_CUSTOM_ID, nil)
+    set_header(head.CONSUMER_USERNAME,  nil)
+
+    set_header(head.ANONYMOUS,          nil)
+  end
+end
+
+
+local function find_trusted_client_by_arg(arg, clients)
+  if not arg then
     return nil
   end
 
-  if type(param) == "table" then
-    param = param[1]
-  end
-
-  local client_index = tonumber(param)
+  local client_index = tonumber(arg)
   if client_index then
     if clients[client_index] then
       local client_id = clients[client_index]
@@ -255,10 +255,94 @@ local function client(param, clients)
   end
 
   for i, c in ipairs(clients) do
-    if param == c then
+    if arg == c then
       return clients[i], i
     end
   end
+end
+
+
+local function find_trusted_client(args)
+  -- load client configuration
+  local clients   = args.get_conf_arg("client_id",     {})
+  local secrets   = args.get_conf_arg("client_secret", {})
+  local redirects = args.get_conf_arg("redirect_uri",  {})
+
+  local  login_redirect_uris = args.get_conf_arg("login_redirect_uri",  {})
+  local logout_redirect_uris = args.get_conf_arg("logout_redirect_uri", {})
+
+  clients.n = #clients
+
+  local client_id
+  local client_index
+
+  if clients.n > 1 then
+    local client_arg_name = args.get_conf_arg("client_arg", "client_id")
+
+    client_id, client_index = find_trusted_client_by_arg(args.get_header(client_arg_name, "X"), clients)
+    if not client_id then
+      client_id, client_index = find_trusted_client_by_arg(args.get_uri_arg(client_arg_name), clients)
+      if not client_id then
+        client_id, client_index = find_trusted_client_by_arg(args.get_body_arg(client_arg_name), clients)
+      end
+    end
+  end
+
+  local client = {
+    clients              = clients,
+    secrets              = secrets,
+    redirects            = redirects,
+    login_redirect_uris  = login_redirect_uris,
+    logout_redirect_uris = logout_redirect_uris,
+  }
+
+  if client_id then
+    client.id                  = client_id
+    client.index               = client_index
+    client.secret              = secrets[client_index]              or secrets[1]
+    client.redirect_uri        = redirects[client_index]            or redirects[1] or redirect_uri()
+    client.login_redirect_uri  = login_redirect_uris[client_index]  or login_redirect_uris[1]
+    client.logout_redirect_uri = logout_redirect_uris[client_index] or logout_redirect_uris[1]
+
+  else
+    client.id                  = clients[1]
+    client.index               = 1
+    client.secret              = secrets[1]
+    client.redirect_uri        = redirects[1] or redirect_uri()
+    client.login_redirect_uri  = login_redirect_uris[1]
+    client.logout_redirect_uri = logout_redirect_uris[1]
+  end
+
+  return client
+end
+
+
+local function reset_trusted_client(new_client_index, trusted_client, oic, options)
+  if not new_client_index or new_client_index == trusted_client.index or trusted_client.clients.n < 2 then
+    return
+  end
+
+  local new_id, new_index = find_trusted_client_by_arg(new_client_index, trusted_client.clients)
+  if not new_id then
+    return
+  end
+
+  trusted_client.index               = new_index
+  trusted_client.id                  = new_id
+  trusted_client.secret              = trusted_client.secrets[new_client_index] or
+                                       trusted_client.secret
+  trusted_client.redirect_uri        = trusted_client.redirects[new_client_index] or
+                                       trusted_client.redirect_uri
+  trusted_client.login_redirect_uri  = trusted_client.login_redirect_uris[new_client_index] or
+                                       trusted_client.login_redirect_uri
+  trusted_client.logout_redirect_uri = trusted_client.logout_redirect_uris[new_client_index] or
+                                       trusted_client.logout_redirect_uri
+
+  options.client_id     = trusted_client.id
+  options.client_secret = trusted_client.secret
+  options.redirect_uri  = trusted_client.redirect_uri
+
+  oic.options:reset(options)
 end
 
 
@@ -289,110 +373,85 @@ local function append_header(name, value)
 end
 
 
-local function headers(upstream_header, downstream_header, header_value)
-  local val = header_value ~= nil and header_value ~= "" and header_value ~= ngx.null and header_value
-  if val then
-    local usm =   upstream_header ~= nil      and
-                  upstream_header ~= ""       and
-                  upstream_header ~= ngx.null and
-                  upstream_header
+local function set_upstream_header(header_key, header_value)
+  if not header_key or not header_value then
+    return
+  end
 
-    local dsm = downstream_header ~= nil      and
-                downstream_header ~= ""       and
-                downstream_header ~= ngx.null and
-                downstream_header
+  if header_key == "authorization:bearer" then
+    set_header("Authorization", "Bearer " .. header_value)
 
-    if usm or dsm then
-      local val_type = type(val)
-      if val_type == "table" then
-        val = json.encode(val)
-        if val then
-          val = base64.encode(val)
-        end
+  elseif header_key == "authorization:basic" then
+    set_header("Authorization", "Basic " .. header_value)
 
-      elseif val_type == "function" then
-        return headers(usm, dsm, val())
+  else
+    set_header(header_key, header_value)
+  end
+end
 
-      elseif val_type ~= "string" then
-        val = tostring(val)
-      end
 
-      if not val then
-        return
-      end
+local function set_downstream_header(header_key, header_value)
+  if header_key == "authorization:bearer" then
+    append_header("Authorization", "Bearer " .. header_value)
+
+  elseif header_key == "authorization:basic" then
+    append_header("Authorization", "Basic " .. header_value)
+
+  else
+    append_header(header_key, header_value)
+  end
+end
+
+
+local function get_header_value(header_value)
+  if not header_value then
+    return
+  end
+
+  local val_type = type(header_value)
+  if val_type == "function" then
+    return get_header_value(header_value())
+
+  elseif val_type == "table" then
+    header_value = json.encode(header_value)
+    if header_value then
+      header_value = base64.encode(header_value)
     end
 
+  elseif val_type ~= "string" then
+    return tostring(header_value)
+  end
+
+  return header_value
+end
+
+
+local function set_headers(args, header_key, header_value)
+  local us = "upstream_"   .. header_key
+  local ds = "downstream_" .. header_key
+
+  do
+    local value
+
+    local usm = args.get_conf_arg(us .. "_header")
     if usm then
-      if usm == "authorization:bearer" then
-        set_header("Authorization", "Bearer " .. val)
-
-      elseif usm == "authorization:basic" then
-        set_header("Authorization", "Basic " .. val)
-
-      else
-        set_header(usm, val)
+      value = get_header_value(header_value)
+      if value then
+        set_upstream_header(usm, value)
       end
     end
 
+    local dsm = args.get_conf_arg(ds .. "_header")
     if dsm then
-      if dsm == "authorization:bearer" then
-        append_header("Authorization", "Bearer " .. val)
+      if not usm then
+        value = get_header_value(header_value)
+      end
 
-      elseif usm == "authorization:basic" then
-        append_header("Authorization", "Basic " .. val)
-
-      else
-        append_header(dsm, val)
+      if value then
+        set_downstream_header(dsm, value)
       end
     end
   end
-end
-
-
-local function get_conf_arg(conf, name, default)
-  local value = conf[name]
-  if value ~= nil and value ~= ngx.null and value ~= "" then
-    if type(value) ~= "table" or next(value) then
-      return value
-    end
-  end
-
-  return default
-end
-
-
-local function get_conf_args(conf, args_names, args_values)
-  args_names = get_conf_arg(conf, args_names)
-  if not args_names then
-    return nil
-  end
-
-  args_values = get_conf_arg(conf, args_values)
-  if not args_values then
-    return nil
-  end
-
-  local args
-  for i, name in ipairs(args_names) do
-    if name and name ~= "" then
-      if not args then
-        args = {}
-      end
-
-      args[name] = args_values[i]
-    end
-  end
-
-  return args
-end
-
-
-local function unexpected(err)
-  if err then
-    log(ERR, err)
-  end
-
-  return responses.send_HTTP_INTERNAL_SERVER_ERROR()
 end
 
 
@@ -403,35 +462,35 @@ local function anonymous_access(anonymous)
     }
   }
 
-  local cons, err = consumer(consumer_token, "id", true, "id")
-  if not cons then
+  local consumer, err = find_consumer(consumer_token, "id", true, "id")
+  if not consumer then
     if err then
-      return unexpected("[openid-connect] anonymous consumer was not found (" .. err .. ")")
+      return unexpected("anonymous consumer was not found (", err, ")")
 
     else
-      return unexpected("[openid-connect] anonymous consumer was not found")
+      return unexpected("anonymous consumer was not found")
     end
   end
 
   local head = constants.HEADERS
 
-  ngx.ctx.authenticated_consumer   = cons
+  ngx.ctx.authenticated_consumer   = consumer
   ngx.ctx.authenticated_credential = nil
 
-  set_header(head.CONSUMER_ID,        cons.id)
-  set_header(head.CONSUMER_CUSTOM_ID, cons.custom_id)
-  set_header(head.CONSUMER_USERNAME,  cons.username)
+  set_header(head.CONSUMER_ID,        consumer.id)
+  set_header(head.CONSUMER_CUSTOM_ID, consumer.custom_id)
+  set_header(head.CONSUMER_USERNAME,  consumer.username)
   set_header(head.ANONYMOUS,          true)
 end
 
 
-local function unauthorized(issuer, err, s, anonymous)
+local function unauthorized(issuer, err, session, anonymous)
   if err then
-    log(NOTICE, err)
+    log.notice(err)
   end
 
-  if s then
-    s:destroy()
+  if session then
+    session:destroy()
   end
 
   if anonymous then
@@ -444,13 +503,13 @@ local function unauthorized(issuer, err, s, anonymous)
 end
 
 
-local function forbidden(issuer, err, s, anonymous)
+local function forbidden(issuer, err, session, anonymous)
   if err then
-    log(NOTICE, err)
+    log.notice(err)
   end
 
-  if s then
-    s:destroy()
+  if session then
+    session:destroy()
   end
 
   if anonymous then
@@ -465,6 +524,136 @@ end
 
 local function success(response)
   return responses.send_HTTP_OK(response)
+end
+
+
+local function get_auth_methods(get_conf_arg)
+  local auth_methods = get_conf_arg("auth_methods", {
+    "password",
+    "client_credentials",
+    "authorization_code",
+    "bearer",
+    "introspection",
+    "kong_oauth2",
+    "refresh_token",
+    "session",
+  })
+
+  local ret = {}
+  for _, auth_method in ipairs(auth_methods) do
+    ret[auth_method] = true
+  end
+  return ret
+end
+
+
+local function decode_basic_auth(basic_auth)
+  if not basic_auth then
+    return nil
+  end
+
+  local s = find(basic_auth, ":", 2, true)
+  if s then
+    local username = sub(basic_auth, 1, s - 1)
+    local password = sub(basic_auth, s + 1)
+    return username, password
+  end
+end
+
+
+local function get_credentials(args, auth_methods, credential_type, usr_arg, pwd_arg)
+  if not auth_methods[credential_type] then
+    return
+  end
+
+  local password_param_type = args.get_conf_arg(credential_type .. "_param_type", PARAM_TYPES_ALL)
+
+  for _, location in ipairs(password_param_type) do
+    if location == "header" then
+      local grant_type = args.get_header("Grant-Type", "X")
+      if not grant_type or grant_type == credential_type then
+        local username, password = decode_basic_auth(args.get_header("authorization:basic"))
+        if username and password then
+          return username, password, "header"
+        end
+      end
+
+    elseif location == "query" then
+      local grant_type = args.get_uri_arg("grant_type")
+      if not grant_type or grant_type == credential_type then
+        local username = args.get_uri_arg(usr_arg)
+        local password = args.get_uri_arg(pwd_arg)
+        if username and password then
+          return username, password, "uri"
+        end
+      end
+
+    elseif location == "body" then
+      local grant_type = args.get_body_arg("grant_type")
+      if not grant_type or grant_type == credential_type then
+        local username, loc = args.get_body_arg(usr_arg)
+        local password = args.get_body_arg(pwd_arg)
+        if username and password then
+          return username, password, loc
+        end
+      end
+    end
+  end
+end
+
+
+local function replay_downstream_headers(args, headers, auth_method)
+  if headers and auth_method then
+    local replay_for = args.get_conf_arg("token_headers_grants")
+    if not replay_for then
+      return
+    end
+    log("replaying token endpoint request headers")
+    local replay_prefix = args.get_conf_arg("token_headers_prefix")
+    for _, v in ipairs(replay_for) do
+      if v == auth_method then
+        local replay_headers = args.get_conf_arg("token_headers_replay")
+        if replay_headers then
+          for _, replay_header in ipairs(replay_headers) do
+            local extra_header = headers[replay_header]
+            if extra_header then
+              if replay_prefix then
+                append_header(replay_prefix .. replay_header, extra_header)
+
+              else
+                append_header(replay_header, extra_header)
+              end
+            end
+          end
+        end
+        return
+      end
+    end
+  end
+end
+
+
+local function get_exp(access_token, tokens_encoded, now, exp_default)
+  if access_token and type(access_token) == "table" then
+    local exp = tonumber(access_token.exp)
+    if exp then
+      return exp
+    end
+
+  elseif tokens_encoded and type(tokens_encoded) == "table" then
+    local expires_in = tonumber(tokens_encoded.expires_in)
+    if expires_in then
+      return now + expires_in
+    end
+  end
+
+  return exp_default
+end
+
+
+local function no_cache_headers()
+  header["Cache-Control"] = "no-cache, no-store"
+  header["Pragma"]        = "no-cache"
 end
 
 
@@ -485,217 +674,93 @@ end
 function OICHandler:access(conf)
   OICHandler.super.access(self)
 
-  local anonymous = get_conf_arg(conf, "anonymous")
+  local args = arguments(conf)
+  args.get_http_opts = create_get_http_opts(args)
 
-  if ngx.ctx.authenticated_credential and anonymous then
+  local anonymous = args.get_conf_arg("anonymous")
+  if anonymous and ngx.ctx.authenticated_credential then
     -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
-    log(DEBUG, "[openid-connect] skipping because user is already authenticated")
+    log("skipping because user is already authenticated")
     return
   end
 
-  -- load issuer configuration
-  log(DEBUG, "[openid-connect] loading discovery information")
-  local issuer, err
+  -- common variables
+  local ok, err
+
+  -- load discovery information
+  log("loading discovery information")
+  local oic, iss, secret, trusted_client, options
   do
-    issuer = get_conf_arg(conf, "issuer")
-    if not issuer then
+    local issuer_uri = args.get_conf_arg("issuer")
+    if not issuer_uri then
       return unexpected("issuer was not specified")
     end
 
-    local opts = {
-      http_version =  get_conf_arg(conf, "http_version", 1.1),
-      ssl_verify   =  get_conf_arg(conf, "ssl_verify",   true),
-      timeout      =  get_conf_arg(conf, "timeout",      10000),
-      headers      = get_conf_args(conf, "discovery_headers_names", "discovery_headers_values"),
-    }
+    local issuer
+    issuer, err = cache.issuers.load(issuer_uri, args.get_http_opts {
+      headers = args.get_conf_args("discovery_headers_names", "discovery_headers_values"),
+    })
 
-    issuer, err = cache.issuers.load(issuer, opts)
     if not issuer then
-      return unexpected(err)
-    end
-  end
-
-  local clients   = get_conf_arg(conf, "client_id",     {})
-  local secrets   = get_conf_arg(conf, "client_secret", {})
-  local redirects = get_conf_arg(conf, "redirect_uri",  {})
-
-  local  login_redirect_uris = get_conf_arg(conf,  "login_redirect_uri",  {})
-  local logout_redirect_uris = get_conf_arg(conf, "logout_redirect_uri",  {})
-
-  local client_id, client_secret, client_redirect_uri, client_index
-  local login_redirect_uri, logout_redirect_uri
-  local uri_args, post_args
-
-  if #clients > 1 then
-    local client_arg = get_conf_arg(conf,  "client_arg",  "client_id")
-
-    client_id, client_index = client(var["http_x_" .. client_arg], clients)
-
-    if not client_id then
-      client_id, client_index = client(var["http_" .. client_arg], clients)
-
-      if not client_id then
-        uri_args = get_uri_args()
-        client_id, client_index = client(uri_args[client_arg], clients)
-
-        if not client_id then
-          read_body()
-          post_args = get_post_args()
-          client_id, client_index = client(post_args[client_arg], clients)
-        end
-      end
-    end
-  end
-
-  if client_id then
-    client_secret       =              secrets[client_index] or              secrets[1]
-    client_redirect_uri =            redirects[client_index] or            redirects[1] or redirect_uri()
-    login_redirect_uri  =  login_redirect_uris[client_index] or  login_redirect_uris[1]
-    logout_redirect_uri = logout_redirect_uris[client_index] or logout_redirect_uris[1]
-
-  else
-    client_id           =              clients[1]
-    client_secret       =              secrets[1]
-    client_redirect_uri =            redirects[1] or redirect_uri()
-    login_redirect_uri  =  login_redirect_uris[1]
-    logout_redirect_uri = logout_redirect_uris[1]
-
-    client_index        = 1
-  end
-
-  local options = {
-    client_id         = client_id,
-    client_secret     = client_secret,
-    redirect_uri      = client_redirect_uri,
-    scope             = get_conf_arg(conf, "scopes", { "openid" }),
-    response_mode     = get_conf_arg(conf, "response_mode"),
-    audience          = get_conf_arg(conf, "audience"),
-    domains           = get_conf_arg(conf, "domains"),
-    max_age           = get_conf_arg(conf, "max_age"),
-    timeout           = get_conf_arg(conf, "timeout", 10000),
-    leeway            = get_conf_arg(conf, "leeway", 0),
-    http_version      = get_conf_arg(conf, "http_version", 1.1),
-    ssl_verify        = get_conf_arg(conf, "ssl_verify", true),
-    verify_parameters = get_conf_arg(conf, "verify_parameters"),
-    verify_nonce      = get_conf_arg(conf, "verify_nonce"),
-    verify_signature  = get_conf_arg(conf, "verify_signature"),
-    verify_claims     = get_conf_arg(conf, "verify_claims"),
-  }
-
-  local o
-
-  log(DEBUG, "[openid-connect] initializing library")
-  o, err = oic.new(options, issuer.configuration, issuer.keys)
-
-  if not o then
-    return unexpected(err)
-  end
-
-  -- determine the supported authentication methods
-  local auth_method_password
-  local auth_method_client_credentials
-  local auth_method_authorization_code
-  local auth_method_bearer
-  local auth_method_introspection
-  local auth_method_kong_oauth2
-  local auth_method_refresh_token
-  local auth_method_session
-
-  local auth_methods = get_conf_arg(conf, "auth_methods", {
-    "password",
-    "client_credentials",
-    "authorization_code",
-    "bearer",
-    "introspection",
-    "refresh_token",
-    "session",
-  })
-
-  for _, auth_method in ipairs(auth_methods) do
-    if auth_method == "password" then
-      auth_method_password = true
-
-    elseif auth_method == "client_credentials" then
-      auth_method_client_credentials = true
-
-    elseif auth_method == "authorization_code" then
-      auth_method_authorization_code = true
-
-    elseif auth_method == "bearer" then
-      auth_method_bearer = true
-
-    elseif auth_method == "introspection" then
-      auth_method_introspection = true
-
-    elseif auth_method == "kong_oauth2" then
-      auth_method_kong_oauth2 = true
-
-    elseif auth_method == "refresh_token" then
-      auth_method_refresh_token = true
-
-    elseif auth_method == "session" then
-      auth_method_session = true
-    end
-  end
-
-  local args, bearer, state
-
-  local s, session_present, session_data, session_storage, session_memcache, session_redis
-
-  if auth_method_session then
-    local session_cookie_name = get_conf_arg(conf, "session_cookie_name",  "session")
-
-    session_storage = get_conf_arg(conf, "session_storage",      "cookie")
-    if session_storage == "memcache" then
-      log(DEBUG, "[openid-connect] loading configuration for memcache session storage")
-
-      session_memcache = {
-        prefix = get_conf_arg(conf, "session_memcache_prefix", "sessions"),
-        socket = get_conf_arg(conf, "session_memcache_socket"),
-        host   = get_conf_arg(conf, "session_memcache_host", "127.0.0.1"),
-        port   = get_conf_arg(conf, "session_memcache_port", 11211),
-      }
-
-    elseif session_storage == "redis" then
-      log(DEBUG, "[openid-connect] loading configuration for redis session storage")
-
-      session_redis = {
-        prefix = get_conf_arg(conf, "session_redis_prefix", "sessions"),
-        socket = get_conf_arg(conf, "session_redis_socket"),
-        host   = get_conf_arg(conf, "session_redis_host", "127.0.0.1"),
-        port   = get_conf_arg(conf, "session_redis_port", 6379),
-        auth   = get_conf_arg(conf, "session_redis_auth"),
-      }
+      return unexpected(err or "discovery information could not be loaded")
     end
 
-    log(DEBUG, "[openid-connect] trying to open session")
-
-    s, session_present = session.open {
-      name     = session_cookie_name,
-      secret   = issuer.secret,
-      storage  = session_storage,
-      memcache = session_memcache,
-      redis    = session_redis,
+    trusted_client = find_trusted_client(args)
+    options = {
+      client_id         = trusted_client.id,
+      client_secret     = trusted_client.secret,
+      redirect_uri      = trusted_client.redirect_uri,
+      scope             = args.get_conf_arg("scopes", { "openid" }),
+      response_mode     = args.get_conf_arg("response_mode"),
+      audience          = args.get_conf_arg("audience"),
+      domains           = args.get_conf_arg("domains"),
+      max_age           = args.get_conf_arg("max_age"),
+      timeout           = args.get_conf_arg("timeout", 10000),
+      leeway            = args.get_conf_arg("leeway", 0),
+      http_version      = args.get_conf_arg("http_version", 1.1),
+      ssl_verify        = args.get_conf_arg("ssl_verify", true),
+      verify_parameters = args.get_conf_arg("verify_parameters"),
+      verify_nonce      = args.get_conf_arg("verify_nonce"),
+      verify_signature  = args.get_conf_arg("verify_signature"),
+      verify_claims     = args.get_conf_arg("verify_claims"),
     }
 
-    session_data = s.data
+    log("initializing library")
+    oic, err = openid.new(options, issuer.configuration, issuer.keys)
+    if not oic then
+      return unexpected(err or "unable to initialize library")
+    end
+
+    iss    = oic.configuration.issuer
+    secret = issuer.secret
   end
 
-  local iss = o.configuration.issuer
+  -- initialize functions
+  local introspect_token = create_introspect_token(args, oic)
+  local session_open     = create_session_open(args, secret)
 
+  -- load enabled authentication methods
+  local auth_methods = get_auth_methods(args.get_conf_arg)
+
+  -- try to open session
+  local session, session_present, session_data
+  if auth_methods.session then
+    session, session_present = session_open {
+      name = args.get_conf_arg("session_cookie_name", "session"),
+    }
+
+    session_data = session.data
+  end
+
+  -- logout
   do
     local logout = false
-    local logout_methods = get_conf_arg(conf, "logout_methods", { "POST", "DELETE" })
-
+    local logout_methods = args.get_conf_arg("logout_methods", { "POST", "DELETE" })
     if logout_methods then
       local request_method = var.request_method
-      if type(request_method) == "table" then
-        request_method = request_method[1]
-      end
-
-      for _, m in ipairs(logout_methods) do
-        if m == request_method then
+      for _, logout_method in ipairs(logout_methods) do
+        if logout_method == request_method then
           logout = true
           break
         end
@@ -704,46 +769,27 @@ function OICHandler:access(conf)
       if logout then
         logout = false
 
-        local logout_query_arg = get_conf_arg(conf, "logout_query_arg")
+        local logout_query_arg = args.get_conf_arg("logout_query_arg")
         if logout_query_arg then
-          if not uri_args then
-            uri_args = get_uri_args()
-          end
-
-           logout = uri_args[logout_query_arg] ~= nil
+           logout = args.get_uri_arg(logout_query_arg) ~= nil
         end
 
         if logout then
-          log(DEBUG, "[openid-connect] logout by query argument")
+          log("logout by query argument")
 
         else
-          local logout_uri_suffix = get_conf_arg(conf, "logout_uri_suffix")
+          local logout_uri_suffix = args.get_conf_arg("logout_uri_suffix")
           if logout_uri_suffix then
-            local ruri = var.request_uri
-            if type(ruri) == "table" then
-              ruri = ruri[1]
-            end
-
-            logout = sub(ruri, -#logout_uri_suffix) == logout_uri_suffix
-
+            logout = sub(var.request_uri, -#logout_uri_suffix) == logout_uri_suffix
             if logout then
-              log(DEBUG, "[openid-connect] logout by uri suffix")
+              log("logout by uri suffix")
 
             else
-              local logout_post_arg = get_conf_arg(conf, "logout_post_arg")
-
+              local logout_post_arg = args.get_conf_arg("logout_post_arg")
               if logout_post_arg then
-                if not post_args then
-                  read_body()
-                  post_args = get_post_args()
-                end
-
-                if post_args then
-                  logout = post_args[logout_post_arg] ~= nil
-
-                  if logout then
-                    log(DEBUG, "[openid-connect] logout by post argument")
-                  end
+                logout = args.get_post_arg(logout_post_arg) ~= nil
+                if logout then
+                  log("logout by post argument")
                 end
               end
             end
@@ -753,452 +799,398 @@ function OICHandler:access(conf)
 
       if logout then
         local id_token
-
         if session_present and session_data then
-
-          local new_client_index = session_data.client or client_index
-          if new_client_index ~= client_index and #clients > 1 then
-            local new_client_id
-
-            new_client_id, new_client_index = client(new_client_index, clients)
-            if new_client_id then
-              client_id             = new_client_id
-
-              client_secret         =              secrets[new_client_index] or client_secret
-              client_redirect_uri   =            redirects[new_client_index] or client_redirect_uri
-              logout_redirect_uri   = logout_redirect_uris[new_client_index] or logout_redirect_uri
-
-              options.client_id     = client_id
-              options.client_secret = client_secret
-              options.redirect_uri  = client_redirect_uri
-
-              o.options:reset(options)
-            end
-          end
+          reset_trusted_client(session_data.client, trusted_client, oic, options)
 
           if session_data.tokens then
             id_token = session_data.tokens.id_token
 
             if session_data.tokens.access_token then
-              if get_conf_arg(conf, "logout_revoke", false) then
-                log(DEBUG, "[openid-connect] revoking access token")
-                local ok
-                ok, err = o.token:revoke(session_data.tokens.access_token, "access_token", {
-                  revocation_endpoint = get_conf_arg(conf, "revocation_endpoint")
+              if args.get_conf_arg("logout_revoke", false) then
+                log("revoking access token")
+                ok, err = oic.token:revoke(session_data.tokens.access_token, "access_token", {
+                  revocation_endpoint = args.get_conf_arg("revocation_endpoint")
                 })
                 if not ok and err then
-                  log(DEBUG, "[openid-connect] revoking access token failed: " .. err)
+                  log("revoking access token failed: ", err)
                 end
               end
             end
           end
 
-          log(DEBUG, "[openid-connect] destroying session")
-          s:destroy()
+          log("destroying session")
+          session:destroy()
         end
 
-        header["Cache-Control"] = "no-cache, no-store"
-        header["Pragma"]        = "no-cache"
+        no_cache_headers()
 
-        local end_session_endpoint = get_conf_arg(conf, "end_session_endpoint", o.configuration.end_session_endpoint)
-
+        local end_session_endpoint = args.get_conf_arg("end_session_endpoint", oic.configuration.end_session_endpoint)
         if end_session_endpoint then
           local redirect_params_added = false
-
           if find(end_session_endpoint, "?", 1, true) then
             redirect_params_added = true
           end
 
-          local ruri = { end_session_endpoint }
-          local ridx = 1
+          local u = { end_session_endpoint }
+          local i = 1
 
           if id_token then
-            ruri[ridx + 1] = redirect_params_added and "&id_token_hint=" or "?id_token_hint="
-            ruri[ridx + 2] = id_token
-            ridx = ridx + 2
+            u[i+1] = redirect_params_added and "&id_token_hint=" or "?id_token_hint="
+            u[i+2] = id_token
+            i=i+2
             redirect_params_added = true
           end
 
-          if logout_redirect_uri then
-            ruri[ridx + 1] = redirect_params_added and "&post_logout_redirect_uri=" or "?post_logout_redirect_uri="
-            ruri[ridx + 2] = escape_uri(logout_redirect_uri)
+          if trusted_client.logout_redirect_uri then
+            u[i+1] = redirect_params_added and "&post_logout_redirect_uri=" or "?post_logout_redirect_uri="
+            u[i+2] = escape_uri(trusted_client.logout_redirect_uri)
           end
 
-          log(DEBUG, "[openid-connect] redirecting to end session endpoint")
-          return redirect(concat(ruri))
+          log("redirecting to end session endpoint")
+          return redirect(concat(u))
 
         else
-          if logout_redirect_uri then
-            log(DEBUG, "[openid-connect] redirecting to logout redirect uri")
-            return redirect(logout_redirect_uri)
+          if trusted_client.logout_redirect_uri then
+            log("redirecting to logout redirect uri")
+            return redirect(trusted_client.logout_redirect_uri)
           end
 
-          log(DEBUG, "[openid-connect] logout response")
+          log("logout response")
           return responses.send_HTTP_OK()
         end
       end
     end
   end
 
+  -- find credentials
+  local token_endpoint_args, bearer_token
   if not session_present then
-    log(DEBUG, "[openid-connect] session was not found")
+    local hide_credentials = args.get_conf_arg("hide_credentials", false)
 
+    log("session was not found")
     -- bearer token authentication
-    if auth_method_bearer or auth_method_introspection then
-      log(DEBUG, "[openid-connect] trying to find bearer token")
-      bearer = o.authorization:bearer()
-      if bearer then
-        log(DEBUG, "[openid-connect] found bearer token")
+    if auth_methods.bearer or auth_methods.introspection then
+      log("trying to find bearer token")
+      local bearer_token_param_type = args.get_conf_arg("bearer_token_param_type", PARAM_TYPES_ALL)
+      for _, location in ipairs(bearer_token_param_type) do
+        if location == "header" then
+          bearer_token = args.get_header("authorization:bearer")
+          if bearer_token then
+            if hide_credentials then
+              args.clear_header("Authorization")
+            end
+            break
+          end
 
+        elseif location == "query" then
+          bearer_token = args.get_uri_arg("access_token")
+          if bearer_token then
+            if hide_credentials then
+              args.clear_uri_arg("access_token")
+            end
+            break
+          end
+
+        elseif location == "body" then
+          bearer_token = args.get_post_arg("access_token")
+          if bearer_token then
+            if hide_credentials then
+              args.clear_post_arg("access_token")
+            end
+            break
+          end
+
+          bearer_token = args.get_json_arg("access_token")
+          if bearer_token then
+            if hide_credentials then
+              args.clear_json_arg("access_token")
+            end
+            break
+          end
+        end
+      end
+
+      if bearer_token then
+        log("found bearer token")
         session_data = {
-          client = client_index,
+          client = trusted_client.index,
           tokens = {
-            access_token = bearer
-          }
+            access_token = bearer_token,
+          },
         }
 
         -- additionally we can validate the id token as well
         -- and pass it on, if it is passed on the request
-        local id_token
-        local content_type = var.content_type  or ""
-
-        if type(content_type) == "table" then
-          content_type = content_type[1] or ""
-        end
-
-        local id_token_param_name = get_conf_arg(conf, "id_token_param_name")
+        local id_token_param_name = args.get_conf_arg("id_token_param_name")
         if id_token_param_name then
-          log(DEBUG, "[openid-connect] trying to find id token")
+          log("trying to find id token")
 
-          local id_token_param_type = get_conf_arg(conf, "id_token_param_type", { "query", "header", "body" })
-          for _, t in ipairs(id_token_param_type) do
-            if t == "header" then
-              local name = gsub(lower(id_token_param_name), "-", "_")
-
-              id_token = var["http_" .. name]
-              if id_token then
-                break
-              end
-
-              id_token = var["http_x_" .. name]
-              if id_token then
-                break
-              end
-
-            elseif t == "query" then
-              if not uri_args then
-                uri_args = get_uri_args()
-              end
-              if uri_args then
-                id_token = uri_args[id_token_param_name]
-                if id_token then
-                  break
-                end
-              end
-
-            elseif t == "body" then
-              if sub(content_type, 1, 33) == "application/x-www-form-urlencoded" then
-                if not post_args then
-                  read_body()
-                  post_args = get_post_args()
-                end
-                if post_args then
-                  id_token = post_args[id_token_param_name]
-                  if id_token then
-                    break
-                  end
-                end
-
-              elseif sub(content_type, 1, 19) == "multipart/form-data" then
-                id_token = multipart(id_token_param_name, get_conf_arg(conf, "timeout"))
-                if id_token then
-                  break
-                end
-
-              elseif sub(content_type, 1, 16) == "application/json" then
-                read_body()
-                local data = get_body_data()
-                if data == nil then
-                  local file = get_body_file()
-                  if file ~= nil then
-                    data = read_file(file)
-                  end
-                end
-                if data then
-                  local json_body = json.decode(data)
-                  if json_body then
-                    id_token = json_body[id_token_param_name]
-                    if id_token then
-                      break
-                    end
-                  end
-                end
-
-              else
-                read_body()
-                local data = get_body_data()
-                if data == nil then
-                  local file = get_body_file()
-                  if file ~= nil then
-                    id_token = read_file(file)
-                    if id_token then
-                      break
-                    end
-                  end
-                end
-              end
-            end
-          end
+          local id_token, loc = args.get_req_arg(
+            id_token_param_name,
+            args.get_conf_arg("id_token_param_type", PARAM_TYPES_ALL)
+          )
 
           if id_token then
-            log(DEBUG, "[openid-connect] found id token")
+            log("found id token")
+            if hide_credentials then
+              if loc == "header" then
+                args.clear_header(id_token_param_name, "X")
+
+              elseif loc == "uri" then
+                args.clear_uri_arg(id_token_param_name)
+
+              elseif loc == "post" then
+                args.clear_post_arg(id_token_param_name)
+
+              elseif loc == "json" then
+                args.clear_json_arg(id_token_param_name)
+              end
+            end
+
             session_data.tokens.id_token = id_token
 
           else
-            log(DEBUG, "[openid-connect] id token was not found")
+            log("id token was not found")
           end
         end
 
       else
-        log(DEBUG, "[openid-connect] bearer token was not found")
+        log("bearer token was not found")
       end
     end
 
-    if not bearer then
-      -- resource owner password and client credentials grants
-      if auth_method_password or auth_method_client_credentials then
-        log(DEBUG, "[openid-connect] trying to find basic authentication")
+    if not bearer_token then
+      do
+        log("trying to find credentials for client credentials or password grants")
 
-        local identity, secret, grant_type = o.authorization:basic()
-        if identity and secret then
-          log(DEBUG, "[openid-connect] found basic authentication")
+        local usr, pwd, loc1 = get_credentials(args, auth_methods, "password",           "username",  "password")
+        local cid, sec, loc2 = get_credentials(args, auth_methods, "client_credentials", "client_id", "client_secret")
 
-          args = {}
+        if usr and pwd and cid and sec then
+          log("found credentials and will try both password and client credentials grants")
 
-          local arg_c = 0
+          token_endpoint_args = {
+            {
+              username      = usr,
+              password      = pwd,
+              grant_type    = "password",
+            },
+            {
+              client_id     = cid,
+              client_secret = sec,
+              grant_type    = "client_credentials",
+            },
+          }
 
-          if grant_type ~= "client_credentials" then
-            if auth_method_password then
-              arg_c = arg_c + 1
+        elseif usr and pwd then
+          log("found credentials for password grant")
 
-              args[arg_c] = {
-                username      = identity,
-                password      = secret,
-                grant_type    = "password",
-              }
-            end
-          end
+          token_endpoint_args = {
+            {
+              username      = usr,
+              password      = pwd,
+              grant_type    = "password",
+            },
+          }
 
-          if grant_type ~= "password" then
-            if auth_method_client_credentials then
-              arg_c = arg_c + 1
+        elseif cid and sec then
+          log("found credentials for client credentials grant")
 
-              args[arg_c] = {
-                client_id     = identity,
-                client_secret = secret,
-                grant_type    = "client_credentials",
-              }
-            end
-          end
+          token_endpoint_args = {
+            {
+              client_id     = cid,
+              client_secret = sec,
+              grant_type    = "client_credentials",
+            },
+          }
 
         else
-          log(DEBUG, "[openid-connect] basic authentication was not found")
+          log("credentials for client credentials or password grants were not found")
+        end
+
+        if token_endpoint_args and hide_credentials then
+          if loc1 == "header" or loc2 == "header" then
+            args.clear_header("Authorization", "X")
+            args.clear_header("Grant-Type",    "X")
+          end
+
+          if loc1 then
+            if loc1 == "uri" then
+              args.clear_uri_arg("username", "password", "grant_type")
+
+            elseif loc1 == "post" then
+              args.clear_post_arg("username", "password", "grant_type")
+
+            elseif loc1 == "json" then
+              args.clear_json_arg("username", "password", "grant_type")
+            end
+          end
+
+          if loc2 then
+            if loc2 == "uri" then
+              args.clear_uri_arg("client_id", "client_secret", "grant_type")
+
+            elseif loc2 == "post" then
+              args.clear_post_arg("client_id", "client_secret", "grant_type")
+
+            elseif loc2 == "json" then
+              args.clear_json_arg("client_id", "client_secret", "grant_type")
+            end
+          end
         end
       end
 
-      if not args then
-        -- authorization code grant
-        if auth_method_authorization_code then
-          log(DEBUG, "[openid-connect] trying to open authorization code flow session")
-
-          local authorization_cookie_name = get_conf_arg(conf, "authorization_cookie_name", "authorization")
-
-          local authorization, authorization_present = session.open {
-            name     = authorization_cookie_name,
-            secret   = issuer.secret,
-            storage  = session_storage,
-            memcache = session_memcache,
-            redis    = session_redis,
-            cookie   = {
+      if not token_endpoint_args then
+        -- authorization code flow
+        if auth_methods.authorization_code then
+          log("trying to open authorization code flow session")
+          local authorization, authorization_present = session_open {
+            name = args.get_conf_arg("authorization_cookie_name", "authorization"),
+            cookie = {
               samesite = "off",
-            }
+            },
           }
 
           if authorization_present then
-            log(DEBUG, "[openid-connect] found authorization code flow session")
+            log("found authorization code flow session")
 
             local authorization_data = authorization.data or {}
 
-            log(DEBUG, "[openid-connect] checking authorization code flow state")
+            log("checking authorization code flow state")
 
-            state = authorization_data.state
-
+            local state = authorization_data.state
             if state then
-              log(DEBUG, "[openid-connect] found authorization code flow state")
+              log("found authorization code flow state")
 
               local nonce         = authorization_data.nonce
               local code_verifier = authorization_data.code_verifier
 
-              local new_client_index = authorization_data.client or client_index
-              if new_client_index ~= client_index and #clients > 1 then
-                local new_client_id
-
-                new_client_id, new_client_index = client(new_client_index, clients)
-                if new_client_id then
-                  client_id             = new_client_id
-                  client_index          = new_client_index
-
-                  client_secret         =             secrets[new_client_index] or client_secret
-                  client_redirect_uri   =           redirects[new_client_index] or client_redirect_uri
-                   login_redirect_uri   = login_redirect_uris[new_client_index] or  login_redirect_uri
-
-                  options.client_id     = client_id
-                  options.client_secret = client_secret
-                  options.redirect_uri  = client_redirect_uri
-
-                  o.options:reset(options)
-                end
-              end
+              reset_trusted_client(authorization_data.client, trusted_client, oic, options)
 
               -- authorization code response
-              args = {
+              token_endpoint_args = {
                 state         = state,
                 nonce         = nonce,
                 code_verifier = code_verifier,
               }
 
-              if not uri_args then
-                uri_args = get_uri_args()
-              end
+              log("verifying authorization code flow")
 
-              log(DEBUG, "[openid-connect] verifying authorization code flow")
-
-              args, err = o.authorization:verify(args)
-              if not args then
-                log(DEBUG, "[openid-connect] invalid authorization code flow")
+              token_endpoint_args, err = oic.authorization:verify(token_endpoint_args)
+              if not token_endpoint_args then
+                log("invalid authorization code flow")
 
                 header["Cache-Control"] = "no-cache, no-store"
                 header["Pragma"]        = "no-cache"
 
-                if uri_args.state == state then
+                if args.get_uri_arg("state") == state then
                   return unauthorized(iss, err, authorization, anonymous)
 
-                else
-                  if not post_args then
-                    read_body()
-                    post_args = get_post_args()
-                  end
-                  if post_args.state == state then
-                    return unauthorized(iss, err, authorization, anonymous)
-                  end
+                elseif args.get_post_arg("state") == state then
+                  return unauthorized(iss, err, authorization, anonymous)
                 end
 
-                log(DEBUG, "[openid-connect] starting a new authorization code flow with previous parameters")
+                log("starting a new authorization code flow with previous parameters")
                 -- it seems that user may have opened a second tab
                 -- lets redirect that to idp as well in case user
                 -- had closed the previous, but with same parameters
                 -- as before.
                 authorization:start()
 
-                log(DEBUG, "[openid-connect] creating authorization code flow request with previous parameters")
-                args, err = o.authorization:request {
+                log("creating authorization code flow request with previous parameters")
+                token_endpoint_args, err = oic.authorization:request {
                   args          = authorization_data.args,
-                  client        = client_index,
+                  client        = trusted_client.index,
                   state         = state,
                   nonce         = nonce,
                   code_verifier = code_verifier,
                 }
 
-                if not args then
-                  log(DEBUG,
-                    "[openid-connect] unable to start authorization code flow request with previous parameters")
+                if not token_endpoint_args then
+                  log("unable to start authorization code flow request with previous parameters")
                   return unexpected(err)
                 end
 
-                log(DEBUG, "[openid-connect] redirecting client to openid connect provider with previous parameters")
-                return redirect(args.url)
+                log("redirecting client to openid connect provider with previous parameters")
+                return redirect(token_endpoint_args.url)
               end
 
-              log(DEBUG, "[openid-connect] authorization code flow verified")
+              log("authorization code flow verified")
 
               authorization:hide()
               authorization:destroy()
 
-              uri_args.code  = nil
-              uri_args.state = nil
+              if var.request_method == "POST" then
+                args.clear_post_arg("code", "state", "session_state")
 
-              set_uri_args(uri_args)
+              else
+                args.clear_uri_arg("code", "state", "session_state")
+              end
 
-              args = { args }
+              token_endpoint_args = { token_endpoint_args }
+
+            else
+              log("authorization code flow state was not found")
             end
 
           else
-            log(DEBUG, "[openid-connect] authorization code flow session was not found")
+            log("authorization code flow session was not found")
           end
 
-          if not args then
-            log(DEBUG, "[openid-connect] creating authorization code flow request")
-            -- authorization code request
+          if not token_endpoint_args then
+            log("creating authorization code flow request")
 
-            header["Cache-Control"] = "no-cache, no-store"
-            header["Pragma"]        = "no-cache"
+            no_cache_headers()
 
-            local extra_args  = get_conf_args(conf, "authorization_query_args_names", "authorization_query_args_values")
-            local client_args =  get_conf_arg(conf, "authorization_query_args_client")
+            local extra_args  = args.get_conf_args("authorization_query_args_names", "authorization_query_args_values")
+            local client_args = args.get_conf_arg("authorization_query_args_client")
             if client_args then
-              for _, arg_name in ipairs(client_args) do
-                if not uri_args then
-                  uri_args = get_uri_args()
-                end
-
-                if uri_args[arg_name] then
+              for _, client_arg_name in ipairs(client_args) do
+                local extra_arg = args.get_uri_arg(client_arg_name)
+                if extra_arg then
                   if not extra_args then
                     extra_args = {}
                   end
 
-                  extra_args[arg_name] = uri_args[arg_name]
+                  extra_args[client_arg_name] = extra_arg
 
                 else
-                  if not post_args then
-                    read_body()
-                    post_args = get_post_args()
-                  end
-
-                  if post_args[arg_name] then
+                  extra_arg = args.get_post_arg(client_arg_name)
+                  if extra_arg then
                     if not extra_args then
                       extra_args = {}
                     end
 
-                    extra_args[arg_name] = uri_args[arg_name]
+                    extra_args[client_arg_name] = extra_arg
                   end
                 end
               end
             end
 
-            args, err = o.authorization:request {
+            token_endpoint_args, err = oic.authorization:request {
               args = extra_args,
             }
 
-            if not args then
-              log(DEBUG, "[openid-connect] unable to start authorization code flow request")
+            if not token_endpoint_args then
+              log("unable to start authorization code flow request")
               return unexpected(err)
             end
 
             authorization.data = {
               args          = extra_args,
-              client        = client_index,
-              state         = args.state,
-              nonce         = args.nonce,
-              code_verifier = args.code_verifier,
+              client        = trusted_client.index,
+              state         = token_endpoint_args.state,
+              nonce         = token_endpoint_args.nonce,
+              code_verifier = token_endpoint_args.code_verifier,
             }
 
             authorization:save()
 
-            log(DEBUG, "[openid-connect] redirecting client to openid connect provider")
-            return redirect(args.url)
+            log("redirecting client to openid connect provider")
+            return redirect(token_endpoint_args.url)
 
           else
-            log(DEBUG, "[openid-connect] authenticating using authorization code flow")
+            log("authenticating using authorization code flow")
           end
 
         else
@@ -1207,257 +1199,243 @@ function OICHandler:access(conf)
       end
 
     else
-      log(DEBUG, "[openid-connect] authenticating using bearer token")
+      log("authenticating using bearer token")
     end
 
   else
-    log(DEBUG, "[openid-connect] authenticating using session")
+    log("authenticating using session")
   end
 
   if not session_data then
     session_data = {}
   end
 
-  local credential, mapped_consumer
-  local default_expires_in = 3600
+  local credential, consumer
+
   local now = time()
-  local exp = now + default_expires_in
-  local expires
-  local tokens_encoded, tokens_decoded, access_token_introspected = session_data.tokens, nil, nil
-  local grant_type
-  local extra_headers
-  local leeway = get_conf_arg(conf, "leeway", 0)
+  local lwy = args.get_conf_arg("leeway", 0)
+  local exp
+  local ttl
 
-  -- bearer token was present in a request, let's verify it
-  if bearer then
-    log(DEBUG, "[openid-connect] verifying bearer token")
+  local ttl_default = args.get_conf_arg("cache_ttl", 3600)
+  local exp_default = now + ttl_default
 
-    tokens_decoded, err = o.token:verify(tokens_encoded)
+  local tokens_encoded = session_data.tokens
+  local tokens_decoded
+
+  local token_introspected
+  local auth_method
+  local extra_downstream_headers
+
+  -- retrieve or verify tokens
+  if bearer_token then
+    log("verifying bearer token")
+
+    tokens_decoded, err = oic.token:verify(tokens_encoded)
     if not tokens_decoded then
-      log(DEBUG, "[openid-connect] unable to verify bearer token")
-      return unauthorized(iss, err, s, anonymous)
+      log("unable to verify bearer token")
+      return unauthorized(iss, err, session, anonymous)
     end
 
-    log(DEBUG, "[openid-connect] bearer token verified")
-    local access_token_decoded = tokens_decoded.access_token
+    log("bearer token verified")
 
     -- introspection of opaque access token
-    if type(access_token_decoded) ~= "table" then
-      log(DEBUG, "[openid-connect] opaque bearer token was provided")
+    if type(tokens_decoded.access_token) ~= "table" then
+      log("opaque bearer token was provided")
 
-      if auth_method_kong_oauth2 then
-        log(DEBUG, "[openid-connect] trying to find matching kong oauth2 token")
-        access_token_introspected, credential, mapped_consumer = cache.oauth2.load(access_token_decoded)
-
-        if access_token_introspected then
-          log(DEBUG, "[openid-connect] found matching kong oauth2 token")
-          access_token_introspected.exp = (tonumber(tokens_encoded.expires_in) or default_expires_in) + now
+      if auth_methods.kong_oauth2 then
+        log("trying to find matching kong oauth2 token")
+        token_introspected, credential, consumer = cache.kong_oauth2.load(tokens_decoded.access_token)
+        if token_introspected then
+          log("found matching kong oauth2 token")
+          token_introspected.active = true
 
         else
-          log(DEBUG, "[openid-connect] matching kong oauth2 token was not found")
+          log("matching kong oauth2 token was not found")
         end
       end
 
-      if not access_token_introspected then
-        if auth_method_introspection then
-          local introspection_endpoint =  get_conf_arg(conf, "introspection_endpoint")
-          local introspection_hint     =  get_conf_arg(conf, "introspection_hint", "access_token")
-          local introspection_headers  = get_conf_args(conf, "introspection_headers_names",
-                                                             "introspection_headers_values")
-
-          if get_conf_arg(conf, "cache_introspection") then
-            log(DEBUG, "[openid-connect] trying to authenticate using oauth2 introspection with caching enabled")
-            access_token_introspected = cache.introspection.load(
-              o, access_token_decoded, introspection_endpoint, introspection_hint, introspection_headers,
-              default_expires_in
-            )
-          else
-            log(DEBUG, "[openid-connect] trying to authenticate using oauth2 introspection")
-            access_token_introspected = cache.introspection.init(
-              o, access_token_decoded, introspection_endpoint, introspection_hint, introspection_headers
-            )
-          end
-
-          if access_token_introspected then
-            if access_token_introspected.active then
-              log(DEBUG, "[openid-connect] authenticated using oauth2 introspection")
+      if not token_introspected then
+        if auth_methods.introspection then
+          token_introspected = introspect_token(tokens_decoded.access_token, ttl_default)
+          if token_introspected then
+            if token_introspected.active then
+              log("authenticated using oauth2 introspection")
 
             else
-              log(DEBUG, "[openid-connect] opaque token is not active anymore")
+              log("opaque token is not active anymore")
             end
 
           else
-            log(DEBUG, "[openid-connect] unable to authenticate using oauth2 introspection")
+            log("unable to authenticate using oauth2 introspection")
           end
         end
 
-        if not access_token_introspected or not access_token_introspected.active then
-          log(DEBUG, "[openid-connect] authentication with opaque bearer token failed")
-          return unauthorized(iss, err, s, anonymous)
+        if not token_introspected or not token_introspected.active then
+          log("authentication with opaque bearer token failed")
+          return unauthorized(iss, err, session, anonymous)
         end
 
-        grant_type = "introspection"
+        auth_method = "introspection"
 
       else
-        grant_type = "kong_oauth2"
+        auth_method = "kong_oauth2"
       end
 
-      expires = access_token_introspected.exp or exp
+      exp = get_exp(token_introspected, tokens_encoded, now, exp_default)
 
     else
-      log(DEBUG, "[openid-connect] authenticated using jwt bearer token")
-
-      grant_type = "bearer"
-      expires = access_token_decoded.exp or exp
+      log("authenticated using jwt bearer token")
+      auth_method = "bearer"
+      exp = get_exp(tokens_decoded.access_token, tokens_encoded, now, exp_default)
     end
 
-    if auth_method_session then
-      s.data = {
-        client  = client_index,
+    if auth_methods.session then
+      session.data = {
+        client  = trusted_client.index,
         tokens  = tokens_encoded,
-        expires = expires,
+        expires = exp,
       }
-      s:save()
+      session:save()
     end
 
   elseif not tokens_encoded then
     -- let's try to retrieve tokens when using authorization code flow,
     -- password credentials or client credentials
-    if args then
-      for _, arg in ipairs(args) do
-        arg.args = get_conf_args(conf, "token_post_args_names", "token_post_args_values")
+    if token_endpoint_args then
+      for _, arg in ipairs(token_endpoint_args) do
+        arg.args = args.get_conf_args("token_post_args_names", "token_post_args_values")
 
-        local token_headers_client = get_conf_arg(conf, "token_headers_client")
+        local token_headers_client = args.get_conf_arg("token_headers_client")
         if token_headers_client then
-          local req_headers = get_headers()
+          log("parsing client header for token request")
           local token_headers = {}
           local has_headers
-          for _, name in ipairs(token_headers_client) do
-            local req_header = req_headers[name]
-            if req_header then
-              token_headers[name] = req_header
+          for _, token_header_name in ipairs(token_headers_client) do
+            local token_header_value = args.get_header(token_header_name)
+            if token_header_value then
+              token_headers[token_header_name] = token_header_value
               has_headers = true
             end
           end
           if has_headers then
-            log(DEBUG, "[openid-connect] injecting client headers to token request")
+            log("injecting client headers to token request")
             arg.headers = token_headers
           end
         end
 
-        if get_conf_arg(conf, "cache_tokens") then
-          log(DEBUG, "[openid-connect] trying to exchange credentials using token endpoint with caching enabled")
-          tokens_encoded, err, extra_headers = cache.tokens.load(o, arg, default_expires_in)
+        if args.get_conf_arg("cache_tokens") then
+          log("trying to exchange credentials using token endpoint with caching enabled")
+          tokens_encoded, err, extra_downstream_headers = cache.tokens.load(oic, arg, ttl_default)
 
         else
-          log(DEBUG, "[openid-connect] trying to exchange credentials using token endpoint")
-          tokens_encoded, err, extra_headers = o.token:request(arg)
+          log("trying to exchange credentials using token endpoint")
+          tokens_encoded, err, extra_downstream_headers = oic.token:request(arg)
         end
 
         if tokens_encoded then
-          log(DEBUG, "[openid-connect] exchanged credentials with tokens")
-          grant_type = arg.grant_type or "authorization_code"
-          args = arg
+          log("exchanged credentials with tokens")
+          auth_method = arg.grant_type or "authorization_code"
+          token_endpoint_args = arg
           break
         end
       end
     end
 
     if not tokens_encoded then
-      log(DEBUG, "[openid-connect] unable to exchange credentials with tokens")
-      return unauthorized(iss, err, s, anonymous)
+      log("unable to exchange credentials with tokens")
+      return unauthorized(iss, err, session, anonymous)
     end
 
-    log(DEBUG, "[openid-connect] verifying tokens")
-
-    tokens_decoded, err = o.token:verify(tokens_encoded, args)
+    log("verifying tokens")
+    tokens_decoded, err = oic.token:verify(tokens_encoded, token_endpoint_args)
     if not tokens_decoded then
-      log(DEBUG, "[openid-connect] token verification failed")
-      return unauthorized(iss, err, s, anonymous)
+      log("token verification failed")
+      return unauthorized(iss, err, session, anonymous)
 
     else
-      log(DEBUG, "[openid-connect] tokens verified")
+      log("tokens verified")
     end
 
-    expires = (tonumber(tokens_encoded.expires_in) or default_expires_in) + now
+    exp = get_exp(tokens_decoded.access_token, tokens_encoded, now, exp_default)
 
-    if auth_method_session then
-      s.data = {
-        client  = client_index,
+    if auth_methods.session then
+      session.data = {
+        client  = trusted_client.index,
         tokens  = tokens_encoded,
-        expires = expires,
+        expires = exp,
       }
 
       if session_present then
-        s:regenerate()
+        session:regenerate()
 
       else
-        s:save()
+        session:save()
       end
     end
 
   else
     -- it looks like we are using session authentication
-    log(DEBUG, "[openid-connect] authenticated using session")
+    log("authenticated using session")
 
-    grant_type = "session"
-    expires = (session_data.expires or leeway)
+    auth_method = "session"
+    exp = (session_data.expires or lwy)
   end
 
-  log(DEBUG, "[openid-connect] checking for access token")
+  log("checking for access token")
   if not tokens_encoded.access_token then
-    log(DEBUG, "[openid-connect] access token was not found")
-    return unauthorized(iss, "access token was not found", s, anonymous)
+    log("access token was not found")
+    return unauthorized(iss, "access token was not found", session, anonymous)
 
   else
-    log(DEBUG, "[openid-connect] found access token")
+    log("found access token")
   end
 
-  expires = (expires or leeway) - leeway
+  exp = (exp or lwy) - lwy
+  ttl = max(exp - now, 0)
 
-  log(DEBUG, "[openid-connect] checking for access token expiration")
+  log("checking for access token expiration")
 
-  if expires > now then
-    log(DEBUG, "[openid-connect] access token is valid and has not expired")
+  if exp > now then
+    log("access token is valid and has not expired")
 
-    if get_conf_arg(conf, "reverify") then
-      log(DEBUG, "[openid-connect] reverifying tokens")
-      tokens_decoded, err = o.token:verify(tokens_encoded)
+    if args.get_conf_arg("reverify") then
+      log("reverifying tokens")
+      tokens_decoded, err = oic.token:verify(tokens_encoded)
       if not tokens_decoded then
-        log(DEBUG, "[openid-connect] reverifying tokens failed")
-        return forbidden(iss, err, s, anonymous)
+        log("reverifying tokens failed")
+        return forbidden(iss, err, session, anonymous)
 
       else
-        log(DEBUG, "[openid-connect] reverified tokens")
+        log("reverified tokens")
       end
     end
 
-    if auth_method_session then
-      s:start()
-
+    if auth_methods.session then
+      session:start()
     end
 
   else
-    log(DEBUG, "[openid-connect] access token has expired")
+    log("access token has expired")
 
-    if auth_method_refresh_token then
+    if auth_methods.refresh_token then
       -- access token has expired, try to refresh the access token before proxying
       if not tokens_encoded.refresh_token then
-        return forbidden(iss, "access token cannot be refreshed in absense of refresh token", s, anonymous)
+        return forbidden(iss, "access token cannot be refreshed in absense of refresh token", session, anonymous)
       end
 
-      log(DEBUG, "[openid-connect] trying to refresh access token using refresh token")
+      log("trying to refresh access token using refresh token")
 
       local tokens_refreshed
       local refresh_token = tokens_encoded.refresh_token
-      tokens_refreshed, err = o.token:refresh(refresh_token)
+      tokens_refreshed, err = oic.token:refresh(refresh_token)
 
       if not tokens_refreshed then
-        log(DEBUG, "[openid-connect] unable to refresh access token using refresh token")
-        return forbidden(iss, err, s, anonymous)
+        log("unable to refresh access token using refresh token")
+        return forbidden(iss, err, session, anonymous)
 
       else
-        log(DEBUG, "[openid-connect] refreshed access token using refresh token")
+        log("refreshed access token using refresh token")
       end
 
       if not tokens_refreshed.id_token then
@@ -1468,58 +1446,58 @@ function OICHandler:access(conf)
         tokens_refreshed.refresh_token = refresh_token
       end
 
-      log(DEBUG, "[openid-connect] verifying refreshed tokens")
-      tokens_decoded, err = o.token:verify(tokens_refreshed)
+      log("verifying refreshed tokens")
+      tokens_decoded, err = oic.token:verify(tokens_refreshed)
       if not tokens_decoded then
-        log(DEBUG, "[openid-connect] unable to verify refreshed tokens")
-        return forbidden(iss, err, s, anonymous)
+        log("unable to verify refreshed tokens")
+        return forbidden(iss, err, session, anonymous)
 
       else
-        log(DEBUG, "[openid-connect] verified refreshed tokens")
+        log("verified refreshed tokens")
       end
 
       tokens_encoded = tokens_refreshed
 
-      expires = (tonumber(tokens_encoded.expires_in) or default_expires_in) + now
+      exp = get_exp(tokens_decoded.access_token, tokens_encoded, now, exp_default)
 
-      if auth_method_session then
-        s.data = {
-          client  = client_index,
+      if auth_methods.session then
+        session.data = {
+          client  = trusted_client.index,
           tokens  = tokens_encoded,
-          expires = expires,
+          expires = exp,
         }
 
-        s:regenerate()
+        session:regenerate()
       end
 
     else
-      return forbidden(iss, "access token has expired and could not be refreshed", s, anonymous)
+      return forbidden(iss, "access token has expired and could not be refreshed", session, anonymous)
     end
   end
 
   -- additional claims verification
   do
     -- additional non-standard verification of the claim against a jwt session cookie
-    local jwt_session_cookie = get_conf_arg(conf, "jwt_session_cookie")
+    local jwt_session_cookie = args.get_conf_arg("jwt_session_cookie")
     if jwt_session_cookie then
       if not tokens_decoded then
-        tokens_decoded = o.token:decode(tokens_encoded)
+        tokens_decoded = oic.token:decode(tokens_encoded)
       end
 
       if tokens_decoded then
         local access_token_decoded = tokens_decoded.access_token
         if type(access_token_decoded) == "table" then
-          log(DEBUG, "[openid-connect] validating jwt claim against jwt session cookie")
+          log("validating jwt claim against jwt session cookie")
           local jwt_session_cookie_value = var["cookie_" .. jwt_session_cookie]
           if not jwt_session_cookie_value or jwt_session_cookie_value == "" then
             return unauthorized(
               iss,
               "jwt session cookie was not specified for session claim verification",
-              s,
+              session,
               anonymous)
           end
 
-          local jwt_session_claim = get_conf_arg(conf, "jwt_session_claim", "sid")
+          local jwt_session_claim = args.get_conf_arg("jwt_session_claim", "sid")
           local jwt_session_claim_value
 
           jwt_session_claim_value = access_token_decoded[jwt_session_claim]
@@ -1528,7 +1506,7 @@ function OICHandler:access(conf)
             return unauthorized(
               iss,
               "jwt session claim (" .. jwt_session_claim .. ") was not specified in jwt access token",
-              s,
+              session,
               anonymous
             )
           end
@@ -1537,73 +1515,55 @@ function OICHandler:access(conf)
             return unauthorized(
               iss,
               "invalid jwt session claim (" .. jwt_session_claim .. ") was specified in jwt access token",
-              s,
+              session,
               anonymous
             )
           end
 
-          log(DEBUG, "[openid-connect] jwt claim matches jwt session cookie")
+          log("jwt claim matches jwt session cookie")
         end
       end
     end
 
     -- scope verification
-    local scopes_required = get_conf_arg(conf, "scopes_required")
+    local scopes_required = args.get_conf_arg("scopes_required")
     if scopes_required then
-      log(DEBUG, "[openid-connect] verifying required scopes")
+      log("verifying required scopes")
 
       local access_token_scopes
-      if access_token_introspected then
-        if access_token_introspected.scope then
-          log(DEBUG, "[openid-connect] scope claim found in introspection results")
-          access_token_scopes = access_token_introspected.scope
+      if token_introspected then
+        if token_introspected.scope then
+          log("scope claim found in introspection results")
+          access_token_scopes = token_introspected.scope
 
         else
-          log(DEBUG, "[openid-connect] scope claim not found in introspection results")
+          log("scope claim not found in introspection results")
         end
 
       else
         if not tokens_decoded then
-          tokens_decoded = o.token:decode(tokens_encoded)
+          tokens_decoded = oic.token:decode(tokens_encoded)
         end
 
         if tokens_decoded then
-          local access_token_decoded = tokens_decoded.access_token
-          if type(access_token_decoded) == "table" then
-            if access_token_decoded.payload.scope then
-              log(DEBUG, "[openid-connect] scope claim found in jwt token")
-              access_token_scopes = access_token_decoded.payload.scope
+          if type(tokens_decoded.access_token) == "table" then
+            if tokens_decoded.access_token.payload.scope then
+              log("scope claim found in jwt token")
+              access_token_scopes = tokens_decoded.access_token.payload.scope
 
             else
-              log(DEBUG, "[openid-connect] scope claim not found in jwt token")
+              log("scope claim not found in jwt token")
             end
 
           else
-            local introspection_endpoint =  get_conf_arg(conf, "introspection_endpoint")
-            local introspection_hint     =  get_conf_arg(conf, "introspection_hint", "access_token")
-            local introspection_headers  = get_conf_args(conf, "introspection_headers_names",
-                                                               "introspection_headers_values")
-
-            if get_conf_arg(conf, "cache_introspection") then
-              log(DEBUG, "[openid-connect] trying to get scopes using introspection with caching enabled")
-              access_token_introspected = cache.introspection.load(
-                o, access_token_decoded, introspection_endpoint, introspection_hint, introspection_headers,
-                default_expires_in
-              )
-            else
-              log(DEBUG, "[openid-connect] trying to get scopes using introspection")
-              access_token_introspected = cache.introspection.init(
-                o, access_token_decoded, introspection_endpoint, introspection_hint, introspection_headers
-              )
-            end
-
-            if access_token_introspected then
-              if access_token_introspected.scope then
-                log(DEBUG, "[openid-connect] scope claim found in introspection results")
-                access_token_scopes = access_token_introspected.scope
+            token_introspected = introspect_token(tokens_encoded.access_token, ttl)
+            if token_introspected then
+              if token_introspected.scope then
+                log("scope claim found in introspection results")
+                access_token_scopes = token_introspected.scope
 
               else
-                log(DEBUG, "[openid-connect] scope claim not found in introspection results")
+                log("scope claim not found in introspection results")
               end
             end
           end
@@ -1611,7 +1571,7 @@ function OICHandler:access(conf)
       end
 
       if not access_token_scopes then
-        return forbidden(iss, "[openid-connect] scopes required but no scopes found", s, anonymous)
+        return forbidden(iss, "[openid-connect] scopes required but no scopes found", session, anonymous)
       end
 
       access_token_scopes = set.new(access_token_scopes)
@@ -1625,74 +1585,56 @@ function OICHandler:access(conf)
       end
 
       if scopes_valid then
-        log(DEBUG, "[openid-connect] required scopes were found")
+        log("required scopes were found")
 
       else
         return forbidden(
           iss,
           "[openid-connect] required scopes were not found [ " .. concat(access_token_scopes, ", ") .. " ]",
-          s,
+          session,
           anonymous)
       end
     end
 
     -- audience verification
-    local audience_required = get_conf_arg(conf, "audience_required")
+    local audience_required = args.get_conf_arg("audience_required")
     if audience_required then
-      log(DEBUG, "[openid-connect] verifying required audience")
+      log("verifying required audience")
 
       local access_token_audience
-      if access_token_introspected then
-        if access_token_introspected.aud then
-          log(DEBUG, "[openid-connect] aud claim found in introspection results")
-          access_token_audience = access_token_introspected.aud
+      if token_introspected then
+        if token_introspected.aud then
+          log("aud claim found in introspection results")
+          access_token_audience = token_introspected.aud
 
         else
-          log(DEBUG, "[openid-connect] aud claim not found in introspection results")
+          log("aud claim not found in introspection results")
         end
 
       else
         if not tokens_decoded then
-          tokens_decoded = o.token:decode(tokens_encoded)
+          tokens_decoded, err = oic.token:decode(tokens_encoded)
         end
 
         if tokens_decoded then
-          local access_token_decoded = tokens_decoded.access_token
-          if type(access_token_decoded) == "table" then
-            if access_token_decoded.payload.aud then
-              log(DEBUG, "[openid-connect] aud claim found in jwt token")
-              access_token_audience = access_token_decoded.payload.aud
+          if type(tokens_decoded.access_token) == "table" then
+            if tokens_decoded.access_token.payload.aud then
+              log("aud claim found in jwt token")
+              access_token_audience = tokens_decoded.access_token.payload.aud
 
             else
-              log(DEBUG, "[openid-connect] aud claim not found in jwt token")
+              log("aud claim not found in jwt token")
             end
 
           else
-            local introspection_endpoint =  get_conf_arg(conf, "introspection_endpoint")
-            local introspection_hint     =  get_conf_arg(conf, "introspection_hint", "access_token")
-            local introspection_headers  = get_conf_args(conf, "introspection_headers_names",
-                                                               "introspection_headers_values")
-
-            if get_conf_arg(conf, "cache_introspection") then
-              log(DEBUG, "[openid-connect] trying to get audience using introspection with caching enabled")
-              access_token_introspected = cache.introspection.load(
-                o, access_token_decoded, introspection_endpoint, introspection_hint, introspection_headers,
-                default_expires_in
-              )
-            else
-              log(DEBUG, "[openid-connect] trying to get audience using introspection")
-              access_token_introspected = cache.introspection.init(
-                o, access_token_decoded, introspection_endpoint, introspection_hint, introspection_headers
-              )
-            end
-
-            if access_token_introspected then
-              if access_token_introspected.aud then
-                log(DEBUG, "[openid-connect] aud claim found in introspection results")
-                access_token_audience = access_token_introspected.aud
+            token_introspected = introspect_token(tokens_encoded.access_token, ttl)
+            if token_introspected then
+              if token_introspected.aud then
+                log("aud claim found in introspection results")
+                access_token_audience = token_introspected.aud
 
               else
-                log(DEBUG, "[openid-connect] aud claim not found in introspection results")
+                log("aud claim not found in introspection results")
               end
             end
           end
@@ -1700,7 +1642,7 @@ function OICHandler:access(conf)
       end
 
       if not access_token_audience then
-        return forbidden(iss, "[openid-connect] audience required but no audience found", s, anonymous)
+        return forbidden(iss, "[openid-connect] audience required but no audience found", session, anonymous)
       end
 
       access_token_audience = set.new(access_token_audience)
@@ -1714,67 +1656,67 @@ function OICHandler:access(conf)
       end
 
       if audience_valid then
-        log(DEBUG, "[openid-connect] required audience was found")
+        log("required audience was found")
 
       else
         return forbidden(
           iss,
           "[openid-connect] required audience was not found [ " .. concat(access_token_audience, ", ") .. " ]",
-          s,
+          session,
           anonymous)
       end
     end
   end
 
+  -- consumer mapping
   local is_anonymous
-
-  if not mapped_consumer then
-    local consumer_claim = get_conf_arg(conf, "consumer_claim")
+  if not consumer then
+    local consumer_claim = args.get_conf_arg("consumer_claim")
     if consumer_claim then
-      log(DEBUG, "[openid-connect] trying to find kong consumer")
+      log("trying to find kong consumer")
 
-      local consumer_by = get_conf_arg(conf, "consumer_by")
+      local consumer_by = args.get_conf_arg("consumer_by")
 
       if not tokens_decoded then
-        log(DEBUG, "[openid-connect] decoding tokens")
-        tokens_decoded, err = o.token:decode(tokens_encoded)
+        log("decoding tokens")
+        tokens_decoded, err = oic.token:decode(tokens_encoded)
       end
 
       if tokens_decoded then
-        log(DEBUG, "[openid-connect] decoded tokens")
+        log("decoded tokens")
 
         local id_token = tokens_decoded.id_token
         if id_token then
-          log(DEBUG, "[openid-connect] trying to find consumer using id token")
-          mapped_consumer, err = consumer(id_token, consumer_claim, false, consumer_by)
-          if not mapped_consumer then
-            log(DEBUG, "[openid-connect] trying to find consumer using access token")
-            mapped_consumer = consumer(tokens_decoded.access_token, consumer_claim, false, consumer_by)
+          log("trying to find consumer using id token")
+          consumer, err = find_consumer(id_token, consumer_claim, false, consumer_by)
+          if not consumer then
+            log("trying to find consumer using access token")
+            consumer = find_consumer(tokens_decoded.access_token, consumer_claim, false, consumer_by)
           end
 
         else
-          log(DEBUG, "[openid-connect] trying to find consumer using access token")
-          mapped_consumer, err = consumer(tokens_decoded.access_token, consumer_claim, false, consumer_by)
+          log("trying to find consumer using access token")
+          consumer, err = find_consumer(tokens_decoded.access_token, consumer_claim, false, consumer_by)
         end
       end
 
-      if not mapped_consumer and access_token_introspected then
-        log(DEBUG, "[openid-connect] trying to find consumer using introspection response")
-        mapped_consumer, err = consumer(access_token_introspected, consumer_claim, false, consumer_by)
+      if not consumer and token_introspected then
+        log("trying to find consumer using introspection response")
+        consumer, err = find_consumer(token_introspected, consumer_claim, false, consumer_by)
       end
 
-      if not mapped_consumer then
-        log(DEBUG, "[openid-connect] kong consumer was not found")
+      if not consumer then
+        log("kong consumer was not found")
         if not anonymous then
           if err then
-            return forbidden(iss, "consumer was not found (" .. err .. ")", s, anonymous)
+            return forbidden(iss, "consumer was not found (" .. err .. ")", session, anonymous)
 
           else
-            return forbidden(iss, "consumer was not found", s, anonymous)
+            return forbidden(iss, "consumer was not found", session, anonymous)
           end
         end
 
-        log(DEBUG, "[openid-connect] trying with anonymous kong consumer")
+        log("trying with anonymous kong consumer")
 
         is_anonymous = true
 
@@ -1784,28 +1726,28 @@ function OICHandler:access(conf)
           }
         }
 
-        mapped_consumer, err = consumer(consumer_token, "id", true, "id")
-        if not mapped_consumer then
-          log(DEBUG, "[openid-connect] anonymous kong consumer was not found")
+        consumer, err = find_consumer(consumer_token, "id", true, "id")
+        if not consumer then
+          log("anonymous kong consumer was not found")
 
           if err then
-            return unexpected("anonymous consumer was not found (" .. err .. ")")
+            return unexpected("anonymous consumer was not found (", err, ")")
 
           else
             return unexpected("anonymous consumer was not found")
           end
 
         else
-          log(DEBUG, "[openid-connect] found anonymous kong consumer")
+          log("found anonymous kong consumer")
         end
 
       else
-        log(DEBUG, "[openid-connect] found kong consumer")
+        log("found kong consumer")
       end
 
     else
       if anonymous then
-        log(DEBUG, "[openid-connect] trying to set anonymous kong consumer")
+        log("trying to find anonymous kong consumer")
 
         is_anonymous = true
 
@@ -1815,323 +1757,220 @@ function OICHandler:access(conf)
           }
         }
 
-        mapped_consumer, err = consumer(consumer_token, "id", true, "id")
-        if not mapped_consumer then
-          log(DEBUG, "[openid-connect] anonymous kong consumer was not found")
+        consumer, err = find_consumer(consumer_token, "id", true, "id")
+        if not consumer then
+          log("anonymous kong consumer was not found")
 
           if err then
-            return unexpected("anonymous consumer was not found (" .. err .. ")")
+            return unexpected("anonymous consumer was not found (", err, ")")
 
           else
             return unexpected("anonymous consumer was not found")
           end
 
         else
-          log(DEBUG, "[openid-connect] found anonymous kong consumer")
+          log("found anonymous kong consumer")
         end
       end
     end
   end
 
-  if mapped_consumer then
-    log(DEBUG, "[openid-connect] setting kong consumer context and headers")
-
-    local head = constants.HEADERS
-
-    ngx.ctx.authenticated_consumer = mapped_consumer
-
-    if credential then
-      ngx.ctx.authenticated_credential = credential
-
-    else
-      if is_anonymous then
-        set_header(head.ANONYMOUS, true)
-
-      else
-        set_header(head.ANONYMOUS, nil)
-
-        ngx.ctx.authenticated_credential = {
-          consumer_id = mapped_consumer.id
-        }
-      end
-    end
-
-    set_header(head.CONSUMER_ID,        mapped_consumer.id)
-    set_header(head.CONSUMER_CUSTOM_ID, mapped_consumer.custom_id)
-    set_header(head.CONSUMER_USERNAME,  mapped_consumer.username)
-
-  else
-    log(DEBUG, "[openid-connect] removing possible remnants of anonymous")
-
-    ngx.ctx.authenticated_consumer   = nil
-    ngx.ctx.authenticated_credential = nil
-
-    local head = constants.HEADERS
-
-    set_header(head.CONSUMER_ID,        nil)
-    set_header(head.CONSUMER_CUSTOM_ID, nil)
-    set_header(head.CONSUMER_USERNAME,  nil)
-
-    set_header(head.ANONYMOUS,          nil)
-  end
+  -- setting consumer context and headers
+  set_consumer(consumer, credential, is_anonymous)
 
   -- remove session cookie from the upstream request?
-  if auth_method_session then
-    log(DEBUG, "[openid-connect] hiding session cookie from upstream")
-    s:hide()
+  if auth_methods.session then
+    log("hiding session cookie from upstream")
+    session:hide()
 
-    if s.close then
-      s:close()
+    if session.close then
+      session:close()
     end
   end
 
   -- here we replay token endpoint request response headers, if any
-  if extra_headers and grant_type then
-    local replay_for = get_conf_arg(conf, "token_headers_grants")
-    if replay_for then
-      log(DEBUG, "[openid-connect] replaying token endpoint request headers")
-      local replay_prefix = get_conf_arg(conf, "token_headers_prefix")
-      for _, v in ipairs(replay_for) do
-        if v == grant_type then
-          local replay_headers = get_conf_arg(conf, "token_headers_replay")
-          if replay_headers then
-            for _, replay_header in ipairs(replay_headers) do
-              local extra_header = extra_headers[replay_header]
-              if extra_header then
-                if replay_prefix then
-                  append_header(replay_prefix .. replay_header, extra_header)
+  replay_downstream_headers(args, extra_downstream_headers, auth_method)
 
-                else
-                  append_header(replay_header, extra_header)
-                end
-              end
-            end
-          end
-          break
-        end
-      end
-    end
-  end
-
-  log(DEBUG, "[openid-connect] setting upstream and downstream headers")
-
+  -- proprietary token exchange
   local exchanged_access_token
   do
-    local exchange_token_endpoint = get_conf_arg(conf, "token_exchange_endpoint")
+    local exchange_token_endpoint = args.get_conf_arg("token_exchange_endpoint")
     if exchange_token_endpoint then
       local error_status
-
-      local opts = {
-        version    = get_conf_arg(conf, "http_version", 1.1),
-        method     = "POST",
-        ssl_verify = get_conf_arg(conf, "ssl_verify",   true),
-        timeout    = get_conf_arg(conf, "timeout",      10000),
-        headers    = {
-          Authorization = "Bearer " .. tokens_encoded.access_token
+      local opts = args.get_http_opts {
+        method  = "POST",
+        headers = {
+          Authorization = "Bearer " .. tokens_encoded.access_token,
         },
       }
 
-      if get_conf_arg(conf, "cache_token_exchange") then
-        log(DEBUG, "[openid-connect] trying to exchange access token with caching enabled")
+      if args.get_conf_arg("cache_token_exchange") then
+        log("trying to exchange access token with caching enabled")
         exchanged_access_token, err, error_status = cache.token_exchange.load(
-          o, exchange_token_endpoint, tokens_encoded.access_token, opts, expires - now)
+          oic, exchange_token_endpoint, tokens_encoded.access_token, opts, ttl)
 
       else
-        log(DEBUG, "[openid-connect] trying to exchange access token")
+        log("trying to exchange access token")
         exchanged_access_token, err, error_status = cache.token_exchange.load(
-          o, exchange_token_endpoint, tokens_encoded.access_token, opts)
+          oic, exchange_token_endpoint, tokens_encoded.access_token, opts)
       end
 
       if not exchanged_access_token or error_status ~= 200 then
         if error_status == 401 then
-          return unauthorized(iss, err or "exchange token endpoint returned unauthorized", s, anonymous)
+          return unauthorized(iss, err or "exchange token endpoint returned unauthorized", session, anonymous)
 
         elseif error_status == 403 then
-          return forbidden(iss, err or "exchange token endpoint returned forbidden", s, anonymous)
+          return forbidden(iss, err or "exchange token endpoint returned forbidden", session, anonymous)
 
         else
-          return unexpected(err or ("exchange token endpoint returned " .. (error_status or "unknown")))
+          if err then
+            return unexpected(err)
+
+          else
+            return unexpected("exchange token endpoint returned ", error_status or "unknown")
+          end
         end
 
       else
-        log(DEBUG, "[openid-connect] exchanged access token successfully")
+        log("exchanged access token successfully")
       end
     end
   end
 
-  headers(
-    conf.upstream_access_token_header,
-    conf.downstream_access_token_header,
-    exchanged_access_token or tokens_encoded.access_token
-  )
+  -- upstream and downstream headers
+  do
+    log("setting upstream and downstream headers")
 
-  headers(
-    conf.upstream_id_token_header,
-    conf.downstream_id_token_header,
-    tokens_encoded.id_token
-  )
+    set_headers(args, "access_token",  exchanged_access_token or tokens_encoded.access_token)
+    set_headers(args, "id_token",      tokens_encoded.id_token)
+    set_headers(args, "refresh_token", tokens_encoded.refresh_token)
+    set_headers(args, "introspection", token_introspected or function()
+      return introspect_token(tokens_encoded.access_token, ttl)
+    end)
 
-  headers(
-    conf.upstream_refresh_token_header,
-    conf.downstream_refresh_token_header,
-    tokens_encoded.refresh_token
-  )
-
-  headers(
-    conf.upstream_introspection_header,
-    conf.downstream_introspection_header,
-    access_token_introspected or function()
-      local introspection_endpoint =  get_conf_arg(conf, "introspection_endpoint")
-      local introspection_hint     =  get_conf_arg(conf, "introspection_hint", "access_token")
-      local introspection_headers  = get_conf_args(conf, "introspection_headers_names",
-                                                         "introspection_headers_values")
-
-      if get_conf_arg(conf, "cache_introspection") then
-        return cache.introspection.load(
-          o, tokens_encoded.access_token, introspection_endpoint, introspection_hint, introspection_headers,
-          default_expires_in
-        )
-      else
-        access_token_introspected = cache.introspection.init(
-          o, tokens_encoded.access_token, introspection_endpoint, introspection_hint, introspection_headers
-        )
-      end
-    end
-  )
-
-  headers(
-    conf.upstream_user_info_header,
-    conf.downstream_user_info_header,
-    function()
-      if get_conf_arg(conf, "cache_user_info") then
-        return cache.userinfo.load(o, tokens_encoded.access_token, expires - now)
+    set_headers(args, "user_info", function()
+      if args.get_conf_arg("cache_user_info") then
+        return cache.userinfo.load(oic, tokens_encoded.access_token, ttl)
 
       else
-        return o:userinfo(tokens_encoded.access_token, { userinfo_format = "base64" })
+        return cache.userinfo.init(tokens_encoded.access_token)
       end
-    end
-  )
+    end)
 
-  headers(
-    conf.upstream_access_token_jwk_header,
-    conf.downstream_access_token_jwk_header,
-    function()
+    set_headers(args, "access_token_jwk", function()
       if not tokens_decoded then
-        tokens_decoded = o.token:decode(tokens_encoded)
+        tokens_decoded = oic.token:decode(tokens_encoded)
       end
       if tokens_decoded then
         local access_token = tokens_decoded.access_token
-        if access_token and access_token.jwk then
+        if type(access_token) == "table" and access_token.jwk then
           return access_token.jwk
         end
       end
-    end
-  )
+    end)
 
-  headers(
-    conf.upstream_id_token_jwk_header,
-    conf.downstream_id_token_jwk_header,
-    function()
+    set_headers(args, "id_token_jwk", function()
       if not tokens_decoded then
-        tokens_decoded = o.token:decode(tokens_encoded)
+        tokens_decoded = oic.token:decode(tokens_encoded)
       end
       if tokens_decoded then
         local id_token = tokens_decoded.id_token
-        if id_token and id_token.jwk then
+        if type(id_token) == "table" and id_token.jwk then
           return id_token.jwk
         end
       end
-    end
-  )
+    end)
+  end
 
-  local login_action = get_conf_arg(conf, "login_action")
-  if login_action == "response" or login_action == "redirect" then
-    local has_login_method
+  -- login actions
+  do
+    local login_action = args.get_conf_arg("login_action")
+    if login_action == "response" or login_action == "redirect" then
+      local has_login_method
 
-    local login_methods = get_conf_arg(conf, "login_methods", { "authorization_code" })
-    for _, login_method in ipairs(login_methods) do
-      if grant_type == login_method then
-        has_login_method = true
-        break
-      end
-    end
-
-    if has_login_method then
-      if login_action == "response" then
-        local login_response = {}
-
-        local login_tokens = get_conf_arg(conf, "login_tokens")
-        if login_tokens then
-          log(DEBUG, "[openid-connect] adding login tokens to response")
-          for _, name in ipairs(login_tokens) do
-            if tokens_encoded[name] then
-              login_response[name] = tokens_encoded[name]
-            end
-          end
+      local login_methods = args.get_conf_arg("login_methods", { "authorization_code" })
+      for _, login_method in ipairs(login_methods) do
+        if auth_method == login_method then
+          has_login_method = true
+          break
         end
+      end
 
-        log(DEBUG, "[openid-connect] login with response login action")
-        return success(login_response)
+      if has_login_method then
+        if login_action == "response" then
+          local login_response = {}
 
-      elseif login_action == "redirect" then
-        if login_redirect_uri then
-          local ruri, i = { login_redirect_uri }, 2
-
-          local login_tokens = get_conf_arg(conf, "login_tokens")
+          local login_tokens = args.get_conf_arg("login_tokens")
           if login_tokens then
-            log(DEBUG, "[openid-connect] adding login tokens to redirect uri")
-
-            local login_redirect_mode   = get_conf_arg(conf, "login_redirect_mode", "fragment")
-            local redirect_params_added = false
-
-            if login_redirect_mode == "query" then
-              if find(login_redirect_uri, "?", 1, true) then
-                redirect_params_added = true
-              end
-
-            else
-              if find(login_redirect_uri, "#", 1, true) then
-                redirect_params_added = true
-              end
-            end
-
+            log("adding login tokens to response")
             for _, name in ipairs(login_tokens) do
               if tokens_encoded[name] then
-                if not redirect_params_added then
-                  if login_redirect_mode == "query" then
-                    ruri[i] = "?"
-
-                  else
-                    ruri[i] = "#"
-                  end
-
-                  redirect_params_added = true
-
-                else
-                  ruri[i] = "&"
-                end
-
-                ruri[i + 1] = name
-                ruri[i + 2] = "="
-                ruri[i + 3] = tokens_encoded[name]
-
-                i = i + 4
+                login_response[name] = tokens_encoded[name]
               end
             end
           end
 
-          header["Cache-Control"] = "no-cache, no-store"
-          header["Pragma"]        = "no-cache"
+          log("login with response login action")
+          return success(login_response)
 
-          log(DEBUG, "[openid-connect] login with redirect login action")
-          return redirect(concat(ruri))
+        elseif login_action == "redirect" then
+          if trusted_client.login_redirect_uri then
+            local u = { trusted_client.login_redirect_uri }
+            local i = 2
+
+            local login_tokens = args.get_conf_arg("login_tokens")
+            if login_tokens then
+              log("adding login tokens to redirect uri")
+
+              local login_redirect_mode   = args.get_conf_arg("login_redirect_mode", "fragment")
+              local redirect_params_added = false
+
+              if login_redirect_mode == "query" then
+                if find(u[1], "?", 1, true) then
+                  redirect_params_added = true
+                end
+
+              else
+                if find(u[1], "#", 1, true) then
+                  redirect_params_added = true
+                end
+              end
+
+              for _, name in ipairs(login_tokens) do
+                if tokens_encoded[name] then
+                  if not redirect_params_added then
+                    if login_redirect_mode == "query" then
+                      u[i] = "?"
+
+                    else
+                      u[i] = "#"
+                    end
+
+                    redirect_params_added = true
+
+                  else
+                    u[i] = "&"
+                  end
+
+                  u[i+1] = name
+                  u[i+2] = "="
+                  u[i+3] = tokens_encoded[name]
+                  i=i+4
+                end
+              end
+            end
+
+            no_cache_headers()
+
+            log("login with redirect login action")
+            return redirect(concat(u))
+          end
         end
       end
     end
   end
 
-  log(DEBUG, "[openid-connect] proxying to upstream")
-  -- proxies to upstream
+  log("proxying to upstream")
 end
 
 
