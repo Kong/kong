@@ -463,12 +463,12 @@ function DAO:delete(tbl, options)
   end
 
   local row, err = self.db:delete(self.table, self.schema, primary_keys, self.constraints)
-  if not err and row ~= nil and ws then
-    local rel, err = workspaces.delete_entity_relation(self, self, row)
-    if err_rel then
+  if (not err) and (row ~= nil) and ws then
+    local _, err = workspaces.delete_entity_relation(ws, self, row)
+    if err then
       ngx.log(ngx.ERR,
               "could not delete enitity relationship with workspace: ",
-              err_rel)
+              err)
     end
   end
   if not err and row ~= nil and not options.quiet then
@@ -487,11 +487,11 @@ function DAO:delete(tbl, options)
     for k, v in pairs(associated_entites) do
       for _, entity in ipairs(v.entities) do
         if ws then
-          local rel, err = workspaces.delete_entity_relation(v, entity)
-          if err_rel then
+          local _, err = workspaces.delete_entity_relation(ws, v, entity)
+          if req_err then
             ngx.log(ngx.ERR,
               "could not delete enitity relationship with workspace: ",
-              err_rel)
+              err)
           end
         end
 

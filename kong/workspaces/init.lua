@@ -131,17 +131,17 @@ function _M.add_entity_relation(dao_collection, entity, workspace)
 end
 
 
-function _M.delete_entity_relation(dao_collection, entity)
-  local rel, err
-
+function _M.delete_entity_relation(ws, dao_collection, entity)
+  local res, err
   local primary_key = workspaceable_relations[dao_collection.table]
   if primary_key then
-    _, err = singletons.dao.workspace_entities:delete({
-      entity_id = entity[primary_key]
+    res, err = singletons.dao.workspace_entities:delete({
+      entity_id = entity[primary_key],
+      workspace_id = ws.id
     })
   end
 
-  return rel, err
+  return res, err
 end
 
 
