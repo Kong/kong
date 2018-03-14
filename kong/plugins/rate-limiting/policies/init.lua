@@ -89,7 +89,7 @@ return {
         ngx_log(ngx.ERR, "failed to get connect reused times: ", err)
         return nil, err
       end
-      if conf.redis_password and conf.redis_password ~= "" and times == 0 then
+      if times == 0 and conf.redis_password and conf.redis_password ~= "" then
         local ok, err = red:auth(conf.redis_password)
         if not ok then
           ngx_log(ngx.ERR, "failed to auth Redis: ", err)
@@ -97,11 +97,7 @@ return {
         end
       end
 
-      local db = 0
-      if conf.redis_database ~= nil then
-        db = conf.redis_database
-      end
-      local ok, err = red:select(db)
+      local ok, err = red:select(conf.redis_database or 0)
       if not ok then
         ngx_log(ngx.ERR, "failed to change Redis database: ", err)
         return nil, err
@@ -163,7 +159,7 @@ return {
         ngx_log(ngx.ERR, "failed to get connect reused times: ", err)
         return nil, err
       end
-      if conf.redis_password and conf.redis_password ~= "" and times == 0 then
+      if times == 0 and conf.redis_password and conf.redis_password ~= "" then
         local ok, err = red:auth(conf.redis_password)
         if not ok then
           ngx_log(ngx.ERR, "failed to connect to Redis: ", err)
@@ -171,11 +167,7 @@ return {
         end
       end
 
-      local db = 0
-      if conf.redis_database ~= nil then
-        db = conf.redis_database
-      end
-      local ok, err = red:select(db)
+      local ok, err = red:select(conf.redis_database or 0)
       if not ok then
         ngx_log(ngx.ERR, "failed to change Redis database: ", err)
         return nil, err
