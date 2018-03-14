@@ -719,7 +719,7 @@ describe("Entities Schemas", function()
   --
 
   describe("Upstreams", function()
-    local slots_default, slots_min, slots_max = 100, 10, 2^16
+    local slots_default, slots_min, slots_max = 10000, 10, 2^16
 
     it("should require a valid `name` and no port", function()
       local valid, errors, check
