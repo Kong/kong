@@ -84,12 +84,23 @@ function _M.start(kong_conf)
 
   log.debug("starting nginx: %s", cmd)
 
-  local ok, _, _, stderr = pl_utils.executeex(cmd)
-  if not ok then
-    return nil, stderr
-  end
+  if kong_conf.nginx_daemon == "on" then
+    -- running as daemon, so we capture command output to temp files using
+    -- the "executeex" method
+    local ok, _, _, stderr = pl_utils.executeex(cmd)
+    if not ok then
+      return nil, stderr
+    end
+    log.debug("nginx started")
 
-  log.debug("nginx started")
+  else
+    -- not as a dameon, so we cannot redirect because in long running processes
+    -- the output will fill the disk. Use "execute" without redirection instead.
+    local ok, retcode = pl_utils.execute(cmd)
+    if not ok then
+      return nil, ("failed to start nginx (exit code: %s)"):format(tostring(retcode))
+    end
+  end
 
   return true
 end
