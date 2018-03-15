@@ -1,6 +1,7 @@
 local json = require "cjson.safe"
 local crud = require "kong.api.crud_helpers"
 
+
 local function issuer(row)
   local configuration = row.configuration
   if configuration then
@@ -26,6 +27,7 @@ local function issuer(row)
 
   return row
 end
+
 
 return {
   ["/openid-connect/issuers/"] = {

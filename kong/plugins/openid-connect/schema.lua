@@ -108,10 +108,20 @@ return {
       type                             = "string",
       default                          = "authorization",
     },
+    authorization_cookie_lifetime      = {
+      required                         = false,
+      type                             = "number",
+      default                          = 600,
+    },
     session_cookie_name                = {
       required                         = false,
       type                             = "string",
       default                          = "session",
+    },
+    session_cookie_lifetime            = {
+      required                         = false,
+      type                             = "number",
+      default                          = 3600,
     },
     session_storage                    = {
       required                         = false,

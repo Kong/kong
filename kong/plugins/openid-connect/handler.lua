@@ -17,7 +17,6 @@ local var             = ngx.var
 local time            = ngx.time
 local header          = ngx.header
 local set_header      = ngx.req.set_header
-local set_uri_args    = ngx.req.set_uri_args
 local escape_uri      = ngx.escape_uri
 local tonumber        = tonumber
 local tostring        = tostring
@@ -94,9 +93,9 @@ end
 
 
 local function create_introspect_token(args, oic)
-  local endpoint  = args.get_conf_arg("introspection_endpoint")
-  local hint      = args.get_conf_arg("introspection_hint", "access_token")
-  local headers   = args.get_conf_args("introspection_headers_names", "introspection_headers_values")
+  local endpoint = args.get_conf_arg("introspection_endpoint")
+  local hint     = args.get_conf_arg("introspection_hint", "access_token")
+  local headers  = args.get_conf_args("introspection_headers_names", "introspection_headers_values")
 
   if args.get_conf_arg("cache_introspection") then
     return function(access_token, ttl)
@@ -748,6 +747,9 @@ function OICHandler:access(conf)
   if auth_methods.session then
     session, session_present = session_open {
       name = args.get_conf_arg("session_cookie_name", "session"),
+      cookie = {
+        lifetime =  args.get_conf_arg("session_cookie_lifetime", 3600),
+      },
     }
 
     session_data = session.data
@@ -1047,6 +1049,7 @@ function OICHandler:access(conf)
           local authorization, authorization_present = session_open {
             name = args.get_conf_arg("authorization_cookie_name", "authorization"),
             cookie = {
+              lifetime =  args.get_conf_arg("authorization_cookie_lifetime", 600),
               samesite = "off",
             },
           }
@@ -1080,8 +1083,7 @@ function OICHandler:access(conf)
               if not token_endpoint_args then
                 log("invalid authorization code flow")
 
-                header["Cache-Control"] = "no-cache, no-store"
-                header["Pragma"]        = "no-cache"
+                no_cache_headers()
 
                 if args.get_uri_arg("state") == state then
                   return unauthorized(iss, err, authorization, anonymous)
@@ -1223,9 +1225,9 @@ function OICHandler:access(conf)
   local tokens_encoded = session_data.tokens
   local tokens_decoded
 
-  local token_introspected
   local auth_method
-  local extra_downstream_headers
+  local token_introspected
+  local downstream_headers
 
   -- retrieve or verify tokens
   if bearer_token then
@@ -1326,11 +1328,11 @@ function OICHandler:access(conf)
 
         if args.get_conf_arg("cache_tokens") then
           log("trying to exchange credentials using token endpoint with caching enabled")
-          tokens_encoded, err, extra_downstream_headers = cache.tokens.load(oic, arg, ttl_default)
+          tokens_encoded, err, downstream_headers = cache.tokens.load(oic, arg, ttl_default)
 
         else
           log("trying to exchange credentials using token endpoint")
-          tokens_encoded, err, extra_downstream_headers = oic.token:request(arg)
+          tokens_encoded, err, downstream_headers = oic.token:request(arg)
         end
 
         if tokens_encoded then
@@ -1488,8 +1490,8 @@ function OICHandler:access(conf)
         local access_token_decoded = tokens_decoded.access_token
         if type(access_token_decoded) == "table" then
           log("validating jwt claim against jwt session cookie")
-          local jwt_session_cookie_value = var["cookie_" .. jwt_session_cookie]
-          if not jwt_session_cookie_value or jwt_session_cookie_value == "" then
+          local jwt_session_cookie_value = args.get_value(var["cookie_" .. jwt_session_cookie])
+          if not jwt_session_cookie_value then
             return unauthorized(
               iss,
               "jwt session cookie was not specified for session claim verification",
@@ -1789,7 +1791,7 @@ function OICHandler:access(conf)
   end
 
   -- here we replay token endpoint request response headers, if any
-  replay_downstream_headers(args, extra_downstream_headers, auth_method)
+  replay_downstream_headers(args, downstream_headers, auth_method)
 
   -- proprietary token exchange
   local exchanged_access_token

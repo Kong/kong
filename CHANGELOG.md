@@ -10,6 +10,8 @@
 - Add `config.session_redis_host`
 - Add `config.session_redis_port`
 - Add `config.session_redis_auth`
+- Add `config.session_cookie_lifetime`
+- Add `config.authorization_cookie_lifetime`
 - Add `config.scopes_required`
 - Add `config.audience_required`
 - Add `config.discovery_headers_names`

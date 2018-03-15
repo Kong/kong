@@ -1,10 +1,10 @@
-local setmetatable    = setmetatable
-local log             = ngx.log
+local setmetatable = setmetatable
+local log          = ngx.log
 
 
-local DEBUG           = ngx.DEBUG
-local NOTICE          = ngx.NOTICE
-local ERR             = ngx.ERR
+local DEBUG        = ngx.DEBUG
+local NOTICE       = ngx.NOTICE
+local ERR          = ngx.ERR
 
 
 local function write_log(level, ...)

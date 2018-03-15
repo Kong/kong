@@ -1,28 +1,28 @@
-local codec         = require "kong.openid-connect.codec"
+local codec          = require "kong.openid-connect.codec"
 
 
-local sub           = string.sub
-local ngx           = ngx
-local var           = ngx.var
-local get_headers   = ngx.req.get_headers
-local clear_header  = ngx.req.clear_header
-local set_header    = ngx.req.set_header
-local get_uri_args  = ngx.req.get_uri_args
-local set_uri_args  = ngx.req.set_uri_args
-local read_body     = ngx.req.read_body
-local set_body_data = ngx.req.set_body_data
-local get_post_args = ngx.req.get_post_args
-local get_body_data = ngx.req.get_body_data
-local encode_args   = ngx.encode_args
-local select        = select
-local ipairs        = ipairs
-local lower         = string.lower
-local type          = type
-local null          = ngx.null
-local next          = next
-local json          = codec.json
-local base64        = codec.base64
-local nothing       = function() end
+local sub            = string.sub
+local ngx            = ngx
+local var            = ngx.var
+local get_headers    = ngx.req.get_headers
+local clear_header   = ngx.req.clear_header
+local set_header     = ngx.req.set_header
+local get_uri_args   = ngx.req.get_uri_args
+local set_uri_args   = ngx.req.set_uri_args
+local read_body      = ngx.req.read_body
+local set_body_data  = ngx.req.set_body_data
+local get_post_args  = ngx.req.get_post_args
+local get_body_data  = ngx.req.get_body_data
+local encode_args    = ngx.encode_args
+local select         = select
+local ipairs         = ipairs
+local lower          = string.lower
+local type           = type
+local null           = ngx.null
+local next           = next
+local json           = codec.json
+local base64         = codec.base64
+local nothing        = function() return nil end
 
 
 local CONTENT_LENGTH = "Content-Length"
@@ -409,11 +409,12 @@ return function(conf)
   local clear_post_arg = create_clear_post_arg(post_args)
   local json_args      = create_get_json_args(content_type)
   local json_arg       = create_get_arg(json_args)
-  local clear_json_arg = create_clear_json_arg(post_args)
+  local clear_json_arg = create_clear_json_arg(json_args)
   local body_arg       = create_get_body_arg(post_arg, json_arg)
   local req_arg        = create_get_req_arg(header, uri_arg, body_arg)
 
   return {
+    get_value      = get_value,
     get_conf_args  = conf_args,
     get_conf_arg   = conf_arg,
     get_headers    = headers,

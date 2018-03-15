@@ -10,7 +10,7 @@ return {
     fields               = {
       id                 = {
         type             = "id",
-        dao_insert_value = true
+        dao_insert_value = true,
       },
       issuer             = {
         type             = "url",
@@ -29,7 +29,7 @@ return {
       created_at         = {
         type             = "timestamp",
         immutable        = true,
-        dao_insert_value = true
+        dao_insert_value = true,
       },
     },
   },
