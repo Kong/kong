@@ -24,7 +24,7 @@ local sub           = string.sub
 local tonumber      = tonumber
 
 
-local cache_get, cache_key
+local cache_get, cache_key, cache_invalidate
 do
   -- TODO: remove this and 0.10.x support
   local ok, cache = pcall(require, "kong.tools.database_cache")
@@ -43,11 +43,19 @@ do
     end
 
     cache_key = function(key, entity)
+      if not key then
+        return nil
+      end
+
       if entity then
         return entity .. ":" .. key
       end
 
       return key
+    end
+
+    cache_invalidate = function(key)
+      return cache.delete(key)
     end
 
   else
@@ -65,40 +73,51 @@ do
     end
 
     cache_key = function(key, entity)
+      if not key then
+        return nil
+      end
+
       if entity then
         return singletons.dao[entity]:cache_key(key)
       end
 
       return key
     end
+
+    cache_invalidate = function(key)
+      return singletons.cache:invalidate(key)
+    end
   end
 end
 
 
 local function init_worker()
-  local cache = singletons.cache
+  if not singletons.worker_events or not singletons.worker_events.register then
+    return
+  end
+
   singletons.worker_events.register(function(data)
     log("consumer updated, invalidating cache")
 
     local old_entity = data.old_entity
     if old_entity then
       if old_entity.custom_id and old_entity.custom_id ~= null and old_entity.custom_id ~= "" then
-        cache:invalidate(cache_key("custom_id:" .. old_entity.custom_id, "consumers"))
+        cache_invalidate(cache_key("custom_id:" .. old_entity.custom_id, "consumers"))
       end
 
       if old_entity.username and old_entity.username ~= null and old_entity.username ~= "" then
-        cache:invalidate(cache_key("username:" .. old_entity.username,  "consumers"))
+        cache_invalidate(cache_key("username:" .. old_entity.username,  "consumers"))
       end
     end
 
     local entity = data.entity
     if entity then
       if entity.custom_id and entity.custom_id ~= null and entity.custom_id ~= "" then
-        cache:invalidate(cache_key("custom_id:" .. entity.custom_id, "consumers"))
+        cache_invalidate(cache_key("custom_id:" .. entity.custom_id, "consumers"))
       end
 
       if entity.username and entity.username ~= null and entity.username ~= "" then
-        cache:invalidate(cache_key("username:" .. entity.username,  "consumers"))
+        cache_invalidate(cache_key("username:" .. entity.username,  "consumers"))
       end
     end
   end, "crud", "consumers")
@@ -117,7 +136,7 @@ end
 local issuers = {}
 
 
-function issuers.init(issuer, opts)
+local function issuers_init(issuer, opts)
   issuer = normalize_issuer(issuer)
 
   log.notice("loading configuration for ", issuer, " from database")
@@ -187,14 +206,14 @@ function issuers.load(issuer, opts)
   issuer = normalize_issuer(issuer)
 
   local key = cache_key(issuer, "oic_issuers")
-  return cache_get(key, nil, issuers.init, issuer, opts)
+  return cache_get(key, nil, issuers_init, issuer, opts)
 end
 
 
 local consumers = {}
 
 
-function consumers.init(subject, key)
+local function consumers_load(subject, key)
   if not subject or subject == "" then
     return nil, "unable to load consumer by a missing subject"
   end
@@ -216,13 +235,20 @@ function consumers.init(subject, key)
     end
   end
 
+  if err then
+    log.notice("failed to load consumer (", err, ")")
+
+  else
+    log.notice("failed to load consumer")
+  end
+
   return nil, err
 end
 
 
-function consumers.load(subject, anon, consumer_by)
+function consumers.load(subject, anonymous, consumer_by, ttl)
   local cons
-  if anon then
+  if anonymous then
     cons = { "id" }
 
   elseif consumer_by then
@@ -232,6 +258,7 @@ function consumers.load(subject, anon, consumer_by)
     cons = { "custom_id" }
   end
 
+  local err
   for _, field_name in ipairs(cons) do
     local key
 
@@ -242,56 +269,77 @@ function consumers.load(subject, anon, consumer_by)
       key = cache_key(field_name .. ":" .. subject, "consumers")
     end
 
-    local consumer, err = cache_get(key, nil, consumers.init, subject, field_name)
+    local consumer
+    consumer, err = cache_get(key, ttl, consumers_load, subject, field_name)
     if consumer then
       return consumer
     end
-
-    if err then
-      log.notice("failed to load consumer (", err, ")")
-    end
   end
 
-  return nil
+  return nil, err
 end
 
 
 local kong_oauth2 = {}
 
 
-function kong_oauth2.credential(credential_id)
+local function kong_oauth2_credential(credential_id)
   return singletons.dao.oauth2_credentials:find { id = credential_id }
 end
 
 
-function kong_oauth2.consumer(consumer_id)
+local function kong_oauth2_consumer(consumer_id)
   return singletons.dao.consumers:find { id = consumer_id }
 end
 
 
-function kong_oauth2.init(access_token)
+local function kong_oauth2_load(access_token, now)
   log.notice("loading kong oauth2 token from database")
-  local credentials, err = singletons.dao.oauth2_tokens:find_all { access_token = access_token }
-
-  if err then
-    return nil, err
+  local token, err = singletons.dao.oauth2_tokens:find_all { access_token = access_token }
+  if not token then
+    return nil, err or "unable to load kong oauth2 token from database"
   end
 
-  if #credentials > 0 then
-    return credentials[1]
+  if #token > 0 then
+    token = token[1]
   end
 
-  return credentials
+  local expires_in
+  if type(token) == "table" then
+    expires_in = tonumber(token.expires_in) or 0
+  end
+
+  return { now + expires_in, token }, nil, expires_in ~= 0 and expires_in or nil
 end
 
 
-function kong_oauth2.load(access_token)
+function kong_oauth2.load(access_token, ttl, use_cache)
+  local now = time()
   local key = cache_key(access_token, "oauth2_tokens")
-  local token, err = cache_get(key, nil, kong_oauth2.init, access_token)
-  if not token then
-    return nil, err
+  local res
+  local err
+
+  if use_cache then
+    res, err = cache_get(key, ttl, kong_oauth2_load, access_token, now)
+    if not res then
+      return nil, err
+    end
+
+    local exp = res[1]
+    if now > exp then
+      cache_invalidate(key)
+      res, err = kong_oauth2_load(access_token, now)
+    end
+
+  else
+    res, err = kong_oauth2_load(access_token, now)
   end
 
+  if not res then
+    return nil, err or "kong oauth was not found"
+  end
+
+  local token = res[2]
   if not token.access_token or token.access_token ~= access_token then
     return nil, "kong oauth access token was not found"
   end
@@ -306,26 +354,24 @@ function kong_oauth2.load(access_token)
     end
   end
 
-  if token.expires_in > 0 then
+  local expires_in = tonumber(token.expires_in)
+  if expires_in and expires_in > 0 then
     local iat = token.created_at / 1000
-    local now = time()
-    if now - iat > token.expires_in then
+    if now - iat > expires_in then
       return nil, "kong access token has expired"
     end
   end
 
-  local credential
   local credential_cache_key = cache_key(token.credential_id, "oauth2_credentials")
-  credential, err = cache_get(credential_cache_key, nil, kong_oauth2.credential, token.credential_id)
-
+  local credential
+  credential, err = cache_get(credential_cache_key, ttl, kong_oauth2_credential, token.credential_id)
   if not credential then
     return nil, err
   end
 
-  local consumer
   local consumer_cache_key = cache_key(credential.consumer_id, "consumers")
-  consumer, err = cache_get(consumer_cache_key, nil, kong_oauth2.consumer, credential.consumer_id)
-
+  local consumer
+  consumer, err = cache_get(consumer_cache_key, ttl, kong_oauth2_consumer, credential.consumer_id)
   if not consumer then
     return nil, err
   end
@@ -337,110 +383,179 @@ end
 local introspection = {}
 
 
-function introspection.init(o, access_token, endpoint, hint, headers)
+local function introspection_load(oic, access_token, endpoint, hint, headers, now)
   log.notice("introspecting access token with identity provider")
-  local token_introspected = o.token:introspect(access_token, hint or "access_token", {
+  local token, err = oic.token:introspect(access_token, hint or "access_token", {
     introspection_endpoint = endpoint,
     headers                = headers,
   })
+  if not token then
+    return nil, err or "unable to introspect token"
+  end
 
   local expires_in
-
-  if type(token_introspected) == "table" then
-    if token_introspected.expires_in then
-      expires_in = tonumber(token_introspected.expires_in)
-    end
-
+  if type(token) == "table" then
+    expires_in = tonumber(token.expires_in)
     if not expires_in then
-      if token_introspected.exp then
-        local exp = tonumber(token_introspected.exp)
-        if exp then
-          expires_in = exp - time()
-        end
+      local exp = tonumber(token.exp)
+      if exp then
+        expires_in = exp - now
       end
     end
   end
 
-  if expires_in and expires_in < 0 then
-    expires_in = nil
+  if not expires_in then
+    expires_in = 0
   end
 
-  return token_introspected, nil, expires_in
+  return { now + expires_in, token }, nil, expires_in ~= 0 and expires_in or 0
 end
 
 
-function introspection.load(o, access_token, endpoint, hint, headers, ttl)
-  local iss = o.configuration.issuer
-  local key = cache_key(iss .. "#introspection=" .. access_token)
+function introspection.load(oic, access_token, endpoint, hint, headers, ttl, use_cache)
+  if not access_token then
+    return nil, "no access token given for token introspection"
+  end
 
-  return cache_get(key, ttl, introspection.init, o, access_token, endpoint, hint, headers)
+  local key = cache_key(base64.encode(hash.S256(concat({
+    endpoint or oic.configuration.issuer,
+    access_token
+  }, "#introspection="))))
+
+  local now = time()
+  local res
+  local err
+
+  if use_cache and key then
+    res, err = cache_get("oic:" .. key, ttl, introspection_load, oic, access_token, endpoint, hint, headers, now)
+    if not res then
+      return nil, err or "unable to introspect token"
+    end
+
+    local exp = res[1]
+    if now > exp then
+      cache_invalidate("oic:" .. key)
+      res, err = introspection_load(oic, access_token, endpoint, hint, headers, now)
+    end
+
+  else
+    res, err = introspection_load(oic, access_token, endpoint, hint, headers, now)
+  end
+
+  if not res then
+    return nil, err or "unable to introspect token"
+  end
+
+  local token = res[2]
+  return token
 end
 
 
 local tokens = {}
 
 
-function tokens.init(o, args)
+local function tokens_load(oic, args, now)
   log.notice("loading tokens from the identity provider")
-  local toks, err, headers = o.token:request(args)
-  if not toks then
+  local tokens_encoded, err, headers = oic.token:request(args)
+  if not tokens_encoded then
     return nil, err
   end
 
   local expires_in
-
-  if type(toks) == "table" then
-    if toks.expires_in then
-      expires_in = tonumber(toks.expires_in)
-    end
-
+  if type(tokens_encoded) == "table" then
+    expires_in = tonumber(tokens_encoded.expires_in)
     if not expires_in then
-      if toks.exp then
-        local exp = tonumber(toks.exp)
-        if exp then
-          expires_in = exp - time()
-        end
+      local exp = tonumber(tokens_encoded.exp)
+      if exp then
+        expires_in = exp - now
       end
     end
   end
 
-  if expires_in and expires_in < 0 then
-    expires_in = nil
+  if not expires_in then
+    expires_in = 0
   end
 
-  return { toks, headers }, nil, expires_in
+  return { now + expires_in, tokens_encoded, headers }, nil, expires_in ~= 0 and expires_in or 0
 end
 
 
-function tokens.load(o, args, ttl)
-  local iss = o.configuration.issuer
+function tokens.load(oic, args, ttl, use_cache)
+  local now = time()
+  local iss = oic.configuration.issuer
   local key
+  local res
+  local err
 
   if args.grant_type == "password" then
-    key = cache_key(concat{ iss, "#username=", args.username, "&password=", hash.S256(args.password) })
+    if not args.username or not args.password then
+      return nil, "no credentials given for password grant"
+    end
+
+    key = cache_key(base64.encode(hash.S256(concat {
+      iss,
+      "#grant_type=password&",
+      args.username,
+      "&",
+      args.password
+    })))
 
   elseif args.grant_type == "client_credentials" then
-    key = cache_key(concat{ iss, "#client_id=", args.client_id, "&client_secret=", hash.S256(args.client_secret) })
+    if not args.client_id or not args.client_secret then
+      return nil, "no credentials given for client credentials grant"
+    end
+
+    key = cache_key(base64.encode(hash.S256(concat {
+      iss,
+      "#grant_type=client_credentials&",
+      args.client_id,
+      "&",
+      args.client_secret
+    })))
 
   else
     -- we don't cache authorization code requests
-    return o.token:request(args)
+    res, err = tokens_load(oic, args, now)
+    if not res then
+      return nil, err or "unable to exchange authorization code"
+    end
+
+    local tokens_encoded = res[2]
+    local headers        = res[3]
+    return tokens_encoded, nil, headers
   end
 
-  local res, err = cache_get(key, ttl, tokens.init, o, args)
+  if use_cache and key then
+    res, err = cache_get("oic:" .. key, ttl, tokens_load, oic, args, now)
+    if not res then
+      return nil, err or "unable to exchange credentials"
+    end
+
+    local exp = res[1]
+    if now > exp then
+      cache_invalidate("oic:" .. key)
+      res, err = tokens_load(oic, args, now)
+    end
+
+  else
+    res, err = tokens_load(oic, args, now)
+  end
 
   if not res then
-    return nil, err
+    return nil, err or "unable to exchange credentials"
   end
 
-  return res[1], nil, res[2]
+  local tokens_encoded = res[2]
+  local headers        = res[3]
+
+  return tokens_encoded, nil, headers
 end
 
 
 local token_exchange = {}
 
 
-function token_exchange.init(exchange_token_endpoint, opts)
+local function token_exchange_load(endpoint, opts)
   log.notice("exchanging access token")
   local httpc = http.new()
 
@@ -451,10 +566,10 @@ function token_exchange.init(exchange_token_endpoint, opts)
     httpc:set_timeout(opts.timeout)
   end
 
-  local res = httpc:request_uri(exchange_token_endpoint, opts)
+  local res = httpc:request_uri(endpoint, opts)
   if not res then
     local err
-    res, err = httpc:request_uri(exchange_token_endpoint, opts)
+    res, err = httpc:request_uri(endpoint, opts)
     if not res then
       httpc:set_keepalive()
       return nil, err
@@ -472,17 +587,31 @@ function token_exchange.init(exchange_token_endpoint, opts)
 end
 
 
-function token_exchange.load(o, exchange_token_endpoint, access_token, opts, ttl)
-  local res, err
+function token_exchange.load(access_token, endpoint, opts, ttl, use_cache)
+  if not access_token then
+    return nil, "no access token given for token exchange"
+  end
 
-  if ttl then
-    local iss = o.configuration.issuer
-    local key = cache_key(iss .. "#exchange=" .. access_token)
+  if not endpoint then
+    return nil, "no token exchange endpoint given for token exchange"
+  end
 
-    res, err = cache_get(key, ttl, token_exchange.init, exchange_token_endpoint, opts)
+  local key = cache_key(base64.encode(hash.S256(concat({
+    endpoint,
+    access_token
+  }, "#exchange="))))
+
+  local res
+  local err
+
+  if use_cache and key then
+    res, err = cache_get("oic:" .. key, ttl, token_exchange_load, endpoint, opts)
+    if not res then
+      return nil, err or "unable to exchange access token"
+    end
 
   else
-    res, err = token_exchange.init(exchange_token_endpoint, access_token, opts)
+    res, err = token_exchange_load(endpoint, opts)
   end
 
   if not res then
@@ -494,24 +623,38 @@ function token_exchange.load(o, exchange_token_endpoint, access_token, opts, ttl
     end
   end
 
-  return res[1], nil, res[2]
+  local token  = res[1]
+  local status = res[2]
+
+  return token, nil, status
 end
 
 
 local userinfo = {}
 
 
-function userinfo.init(o, access_token)
+local function userinfo_load(oic, access_token)
   log.notice("loading user info using access token from identity provider")
-  return o:userinfo(access_token, { userinfo_format = "base64" })
+  return oic:userinfo(access_token, { userinfo_format = "base64" })
 end
 
 
-function userinfo.load(o, access_token, ttl)
-  local iss = o.configuration.issuer
-  local key = cache_key(iss .. "#userinfo=" .. access_token)
+function userinfo.load(oic, access_token, ttl, use_cache)
+  if not access_token then
+    return nil, "no access token given for user info"
+  end
 
-  return cache_get(key, ttl, userinfo.init, o, access_token)
+  local key = cache_key(base64.encode(hash.S256(concat({
+    oic.configuration.issuer,
+    access_token
+  }, "#userinfo="))))
+
+  if use_cache and key then
+    return cache_get("oic:" .. key, ttl, userinfo_load, oic, access_token)
+
+  else
+    return userinfo_load(oic, access_token)
+  end
 end
 
 
