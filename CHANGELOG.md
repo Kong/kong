@@ -33,7 +33,7 @@ their content.
 ## [0.13.0rc2]
 
 - **rc2 release date**: March 12th 2018
-- **Stable release date (target)**: March 14th 2018
+- **Stable release date (target)**: March 21st 2018
 
 ### Fixed
 
@@ -57,7 +57,7 @@ their content.
 ## [0.13.0rc1]
 
 - **rc1 release date**: February 28th 2018
-- **Stable release date (target)**: March 14th 2018
+- **Stable release date (target)**: March 21st 2018
 
 This release introduces two new core entities that will improve the way you
 configure Kong: **Routes** & **Services**. Those entities replace the "API"
