@@ -38,13 +38,10 @@ describe("Plugin: rate-limiting (integration)", function()
   local client
 
   setup(function()
-    helpers.dao:drop_schema()
     helpers.run_migrations()
   end)
 
   teardown(function()
-    flush_redis(REDIS_DATABASE)
-    flush_redis(REDIS_DATABASE_SECOND)
     if client then client:close() end
     helpers.stop_kong()
   end)
@@ -102,22 +99,16 @@ describe("Plugin: rate-limiting (integration)", function()
     it("redis conn select databases", function()
       local red = redis:new()
       red:set_timeout(2000)
-      local ok, err = red:connect(REDIS_HOST, REDIS_PORT)
-      if not ok then
-        error("failed to connect to Redis: " .. err)
-      end
+      assert(red:connect(REDIS_HOST, REDIS_PORT))
       if REDIS_PASSWORD and REDIS_PASSWORD ~= "" then
-        local ok, err = red:auth(REDIS_PASSWORD)
-        if not ok then
-          error("failed to connect to Redis: " .. err)
-        end
+        assert(red:auth(REDIS_PASSWORD))
       end
-      red:select(REDIS_DATABASE)
+      assert(red:select(REDIS_DATABASE))
       local val1, err = red:dbsize()
       if err then
         error("failed to call dbsize: " .. err)
       end
-      red:select(REDIS_DATABASE_SECOND)
+      assert(red:select(REDIS_DATABASE_SECOND))
       local val2, err = red:dbsize()
       if err then
         error("failed to call dbsize: " .. err)
@@ -135,12 +126,12 @@ describe("Plugin: rate-limiting (integration)", function()
       assert.res_status(200, res)
       ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
 
-      red:select(REDIS_DATABASE)
+      assert(red:select(REDIS_DATABASE))
       local val1, err = red:dbsize()
       if err then
         error("failed to call dbsize: " .. err)
       end
-      red:select(REDIS_DATABASE_SECOND)
+      assert(red:select(REDIS_DATABASE_SECOND))
       local val2, err = red:dbsize()
       if err then
         error("failed to call dbsize: " .. err)
@@ -159,12 +150,12 @@ describe("Plugin: rate-limiting (integration)", function()
       assert.res_status(200, res)
       ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
 
-      red:select(REDIS_DATABASE)
+      assert(red:select(REDIS_DATABASE))
       local val1, err = red:dbsize()
       if err then
         error("failed to call dbsize: " .. err)
       end
-      red:select(REDIS_DATABASE_SECOND)
+      assert(red:select(REDIS_DATABASE_SECOND))
       local val2, err = red:dbsize()
       if err then
         error("failed to call dbsize: " .. err)
