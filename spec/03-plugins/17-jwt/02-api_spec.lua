@@ -7,6 +7,8 @@ local fixtures = require "spec.03-plugins.17-jwt.fixtures"
 
 describe("Plugin: jwt (API)", function()
   local admin_client, consumer, jwt_secret
+  local plugin_key = "spongebob squarepants"
+  local url_key = "spongebob%20squarepants"
   setup(function()
     helpers.run_migrations()
 
@@ -54,7 +56,7 @@ describe("Plugin: jwt (API)", function()
           method = "POST",
           path = "/consumers/bob/jwt/",
           body = {
-            key = "bob2",
+            key = plugin_key,
             secret = "tooshort"
           },
           headers = {
@@ -62,7 +64,7 @@ describe("Plugin: jwt (API)", function()
           }
         })
         local body = cjson.decode(assert.res_status(201, res))
-        assert.equal("bob2", body.key)
+        assert.equal(plugin_key, body.key)
         assert.equal("tooshort", body.secret)
         jwt2 = body
       end)
@@ -112,7 +114,7 @@ describe("Plugin: jwt (API)", function()
           method = "POST",
           path = "/consumers/bob/jwt/",
           body = {
-            key = "bob3",
+            key = plugin_key .." 3",
             algorithm = "RS256",
             rsa_public_key = rsa_public_key
           },
@@ -122,7 +124,7 @@ describe("Plugin: jwt (API)", function()
         })
         assert.response(res).has.status(201)
         local json = assert.response(res).has.jsonbody()
-        assert.equal("bob3", json.key)
+        assert.equal(plugin_key .. " 3", json.key)
       end)
       it("accepts a valid public key for RS256 when posted as json", function()
         local rsa_public_key = fixtures.rs256_public_key
@@ -131,7 +133,7 @@ describe("Plugin: jwt (API)", function()
           method = "POST",
           path = "/consumers/bob/jwt/",
           body = {
-            key = "bob4",
+            key = plugin_key .. " 4",
             algorithm = "RS256",
             rsa_public_key = rsa_public_key
           },
@@ -141,14 +143,14 @@ describe("Plugin: jwt (API)", function()
         })
         assert.response(res).has.status(201)
         local json = assert.response(res).has.jsonbody()
-        assert.equal("bob4", json.key)
+        assert.equal(plugin_key .. " 4", json.key)
       end)
       it("fails with missing `rsa_public_key` parameter for RS256 algorithms", function ()
         local res = assert(admin_client:send {
           method = "POST",
           path = "/consumers/bob/jwt/",
           body = {
-            key = "bob5",
+            key = plugin_key .. " 5",
             algorithm = "RS256"
           },
           headers = {
@@ -164,7 +166,7 @@ describe("Plugin: jwt (API)", function()
           method = "POST",
           path = "/consumers/bob/jwt/",
           body = {
-            key = "bob5",
+            key = plugin_key .. " 6",
             algorithm = "RS256",
             rsa_public_key = "test",
           },
@@ -181,7 +183,7 @@ describe("Plugin: jwt (API)", function()
           method = "POST",
           path = "/consumers/bob/jwt/",
           body = {
-            key = "bob5",
+            key = plugin_key .. " 7",
             algorithm = "HS256",
           },
           headers = {
@@ -227,20 +229,53 @@ describe("Plugin: jwt (API)", function()
   end)
 
   describe("/consumers/:consumer/jwt/:id", function()
+    local my_jwt
+    -- Contains all reserved characters from RFC 3986
+    local my_plugin_key = "Some Key :/?#[]@!$&'()*+,;="
+    local my_url_key = "Some%20Key%20%3a%2f%3f%23%5b%5d%40%21%24%26%27%28%29%2a%2b%2c%3b%3d"
+
+    -- Test for a simpler key that doesn't trigger encodings as well
+    local my_simple_jwt
+    local simple_key = "foo"
+
+    setup(function()
+      my_jwt = assert(jwt_secrets:insert {
+        consumer_id = consumer.id,
+        key = my_plugin_key,
+      })
+      my_simple_jwt = assert(jwt_secrets:insert {
+        consumer_id = consumer.id,
+        key = simple_key,
+      })
+    end)
+    teardown(function()
+      jwt_secrets:delete(my_jwt)
+    end)
     describe("GET", function()
       it("retrieves by id", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/bob/jwt/" .. jwt_secret.id,
+          path = "/consumers/bob/jwt/" .. my_jwt.id,
         })
         assert.res_status(200, res)
       end)
       it("retrieves by key", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/bob/jwt/" .. jwt_secret.key,
+          path = "/consumers/bob/jwt/" .. my_url_key,
         })
-        assert.res_status(200, res)
+        local body = assert.res_status(200, res)
+        jwt_secret = cjson.decode(body)
+        assert.equal(my_plugin_key, jwt_secret.key)
+      end)
+      it("retrieves by key (simple)", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/consumers/bob/jwt/" .. simple_key,
+        })
+        local body = assert.res_status(200, res)
+        jwt_secret = cjson.decode(body)
+        assert.equal(my_simple_jwt.key, jwt_secret.key)
       end)
     end)
 
@@ -248,10 +283,10 @@ describe("Plugin: jwt (API)", function()
       it("updates a credential by id", function()
         local res = assert(admin_client:send {
           method = "PATCH",
-          path = "/consumers/bob/jwt/" .. jwt_secret.id,
+          path = "/consumers/bob/jwt/" .. my_jwt.id,
           body = {
-            key = "alice",
-            secret = "newsecret"
+            key = "new key",
+            secret = "new secret"
           },
           headers = {
             ["Content-Type"] = "application/json"
@@ -259,15 +294,18 @@ describe("Plugin: jwt (API)", function()
         })
         local body = assert.res_status(200, res)
         jwt_secret = cjson.decode(body)
-        assert.equal("newsecret", jwt_secret.secret)
+        assert.equal("new key", jwt_secret.key)
+        assert.equal("new secret", jwt_secret.secret)
+        my_plugin_key = "new key"
+        my_url_key = "new%20key"
       end)
       it("updates a credential by key", function()
         local res = assert(admin_client:send {
           method = "PATCH",
-          path = "/consumers/bob/jwt/" .. jwt_secret.key,
+          path = "/consumers/bob/jwt/" .. my_url_key,
           body = {
             key = "alice",
-            secret = "newsecret2"
+            secret = "new secret 2"
           },
           headers = {
             ["Content-Type"] = "application/json"
@@ -275,7 +313,8 @@ describe("Plugin: jwt (API)", function()
         })
         local body = assert.res_status(200, res)
         jwt_secret = cjson.decode(body)
-        assert.equal("newsecret2", jwt_secret.secret)
+        assert.equal("new secret 2", jwt_secret.secret)
+        my_url_key = "new%20secret%202"
       end)
     end)
 
@@ -284,6 +323,17 @@ describe("Plugin: jwt (API)", function()
         local res = assert(admin_client:send {
           method = "DELETE",
           path = "/consumers/bob/jwt/" .. jwt_secret.id,
+          body = {},
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        assert.res_status(204, res)
+      end)
+      it("deletes a credential by key", function()
+        local res = assert(admin_client:send {
+          method = "DELETE",
+          path = "/consumers/bob/jwt/" .. url_key,
           body = {},
           headers = {
             ["Content-Type"] = "application/json"
@@ -409,10 +459,14 @@ describe("Plugin: jwt (API)", function()
   describe("/jwts/:jwt_key_or_id/consumer", function()
     describe("GET", function()
       local credential
+      -- Contains all reserved characters from RFC 3986
+      local key = "Some Key :/?#[]@!$&'()*+,;="
+      local url_key = "Some%20Key%20%3a%2f%3f%23%5b%5d%40%21%24%26%27%28%29%2a%2b%2c%3b%3d"
       setup(function()
         helpers.dao:truncate_table("jwt_secrets")
         credential = assert(helpers.dao.jwt_secrets:insert {
-          consumer_id = consumer.id
+          consumer_id = consumer.id,
+          key = key,
         })
       end)
       it("retrieve consumer from a JWT id", function()
@@ -427,7 +481,7 @@ describe("Plugin: jwt (API)", function()
       it("retrieve consumer from a JWT key", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/jwts/" .. credential.key .. "/consumer"
+          path = "/jwts/" .. url_key .. "/consumer"
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)

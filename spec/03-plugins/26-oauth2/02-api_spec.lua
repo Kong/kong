@@ -242,12 +242,28 @@ describe("Plugin: oauth (API)", function()
 
   describe("/consumers/:consumer/oauth2/:id", function()
     local credential
+    local simple_credential
+    local simple_client_id = "foo"
+
+    -- Contains all reserved characters from RFC 3986
+    local plugin_client_id = "Some Key :/?#[]@!$&'()*+,;="
+    local url_client_id = "Some%20Key%20%3a%2f%3f%23%5b%5d%40%21%24%26%27%28%29%2a%2b%2c%3b%3d"
+
     before_each(function()
       helpers.dao:truncate_table("oauth2_credentials")
+
+      simple_credential = assert(helpers.dao.oauth2_credentials:insert {
+        name         = "test app",
+        redirect_uri = helpers.mock_upstream_ssl_url,
+        consumer_id  = consumer.id,
+        client_id    = simple_client_id,
+      })
+
       credential = assert(helpers.dao.oauth2_credentials:insert {
         name         = "test app",
         redirect_uri = helpers.mock_upstream_ssl_url,
         consumer_id  = consumer.id,
+        client_id    = plugin_client_id,
       })
     end)
     describe("GET", function()
@@ -260,10 +276,19 @@ describe("Plugin: oauth (API)", function()
         local json = cjson.decode(body)
         assert.equal(credential.id, json.id)
       end)
+      it("retrieves oauth2 credential by client id (simple)", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/consumers/bob/oauth2/" .. simple_client_id
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal(simple_credential.id, json.id)
+      end)
       it("retrieves oauth2 credential by client id", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/bob/oauth2/" .. credential.client_id
+          path = "/consumers/bob/oauth2/" .. url_client_id
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -289,13 +314,13 @@ describe("Plugin: oauth (API)", function()
       it("retrieves credential by clientid only if the credential belongs to the specified consumer", function()
         local res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/bob/oauth2/" .. credential.client_id
+          path = "/consumers/bob/oauth2/" .. url_client_id
         })
         assert.res_status(200, res)
 
         res = assert(admin_client:send {
           method = "GET",
-          path = "/consumers/alice/oauth2/" .. credential.client_id
+          path = "/consumers/alice/oauth2/" .. url_client_id
         })
         assert.res_status(404, res)
       end)
@@ -324,7 +349,7 @@ describe("Plugin: oauth (API)", function()
 
         local res = assert(admin_client:send {
           method = "PATCH",
-          path = "/consumers/bob/oauth2/" .. credential.client_id,
+          path = "/consumers/bob/oauth2/" .. url_client_id,
           body = {
             name = "4321UDP"
           },
