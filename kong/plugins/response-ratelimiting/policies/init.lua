@@ -97,6 +97,7 @@ return {
         end
       end
 
+      -- redis connection pool conflicts with other plugin instance which used same reids
       local ok, err = red:select(conf.redis_database or 0)
       if not ok then
         ngx_log(ngx.ERR, "failed to change Redis database: ", err)
@@ -165,6 +166,7 @@ return {
         end
       end
 
+      -- redis connection pool conflicts with other plugin instance which used same reids
       local ok, err = red:select(conf.redis_database or 0)
       if not ok then
         ngx_log(ngx.ERR, "failed to change Redis database: ", err)
