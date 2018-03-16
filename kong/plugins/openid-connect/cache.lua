@@ -1,4 +1,4 @@
-pcall(require, "kong.plugins.openid-connect.env")
+require "kong.plugins.openid-connect.env"
 
 
 local log           = require "kong.plugins.openid-connect.log"

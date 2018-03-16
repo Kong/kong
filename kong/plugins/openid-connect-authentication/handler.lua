@@ -99,7 +99,7 @@ end
 function OICAuthenticationHandler:access(conf)
   OICAuthenticationHandler.super.access(self)
 
-  local issuer, err = cache.issuers.load(conf)
+  local issuer, err = cache.issuers.load(conf.issuer)
   if not issuer then
     log(ERR, err)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()

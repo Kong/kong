@@ -370,6 +370,28 @@ local function reset_trusted_client(new_client_index, trusted_client, oic, optio
 end
 
 
+local function find_claim(token, search)
+  if type(token) ~= "table" or type(search) ~= "table" then
+    return nil
+  end
+
+  local t = token
+  for _, claim in ipairs(search) do
+    if not t[claim] then
+      return nil
+    end
+
+    t = t[claim]
+  end
+
+  if type(t) == "table" then
+    return concat(t, " ")
+  end
+
+  return tostring(t)
+end
+
+
 local function append_header(name, value)
   if type(value) == "table" then
     for _, val in ipairs(value) do
@@ -433,10 +455,7 @@ local function get_header_value(header_value)
   end
 
   local val_type = type(header_value)
-  if val_type == "function" then
-    return get_header_value(header_value())
-
-  elseif val_type == "table" then
+  if val_type == "table" then
     header_value = json.encode(header_value)
     if header_value then
       header_value = base64.encode(header_value)
@@ -459,7 +478,7 @@ local function set_headers(args, header_key, header_value)
 
     local usm = args.get_conf_arg(us .. "_header")
     if usm then
-      value = get_header_value(header_value)
+      value = get_header_value(type(header_value) == "function" and header_value() or header_value)
       if value then
         set_upstream_header(usm, value)
       end
@@ -468,7 +487,7 @@ local function set_headers(args, header_key, header_value)
     local dsm = args.get_conf_arg(ds .. "_header")
     if dsm then
       if not usm then
-        value = get_header_value(header_value)
+        value = get_header_value(type(header_value) == "function" and header_value() or header_value)
       end
 
       if value then
@@ -1603,15 +1622,16 @@ function OICHandler:access(conf)
     local scopes_required = args.get_conf_arg("scopes_required")
     if scopes_required then
       log("verifying required scopes")
+      local scopes_claim = args.get_conf_arg("scopes_claim", { "scope" })
 
       local access_token_scopes
       if token_introspected then
-        if token_introspected.scope then
-          log("scope claim found in introspection results")
-          access_token_scopes = token_introspected.scope
+        access_token_scopes = find_claim(token_introspected, scopes_claim)
+        if access_token_scopes then
+          log("scopes found in introspection results")
 
         else
-          log("scope claim not found in introspection results")
+          log("scopes not found in introspection results")
         end
 
       else
@@ -1621,24 +1641,21 @@ function OICHandler:access(conf)
 
         if tokens_decoded then
           if type(tokens_decoded.access_token) == "table" then
-            if tokens_decoded.access_token.payload.scope then
-              log("scope claim found in jwt token")
-              access_token_scopes = tokens_decoded.access_token.payload.scope
+            access_token_scopes = find_claim(tokens_decoded.access_token.payload, scopes_claim)
+            if access_token_scopes then
+              log("scopes found in jwt token")
 
             else
-              log("scope claim not found in jwt token")
+              log("scopes not found in jwt token")
             end
 
           else
-            token_introspected = introspect_token(tokens_encoded.access_token, ttl)
-            if token_introspected then
-              if token_introspected.scope then
-                log("scope claim found in introspection results")
-                access_token_scopes = token_introspected.scope
+            access_token_scopes = find_claim(token_introspected, scopes_claim)
+            if access_token_scopes then
+              log("scopes found in introspection results")
 
-              else
-                log("scope claim not found in introspection results")
-              end
+            else
+              log("scopes not found in introspection results")
             end
           end
         end
@@ -1681,41 +1698,40 @@ function OICHandler:access(conf)
     if audience_required then
       log("verifying required audience")
 
+      local audience_claim = args.get_conf_arg("audience_claim", { "aud" })
+
       local access_token_audience
       if token_introspected then
-        if token_introspected.aud then
-          log("aud claim found in introspection results")
-          access_token_audience = token_introspected.aud
+        access_token_audience = find_claim(token_introspected, audience_claim)
+        if access_token_audience then
+          log("audience found in introspection results")
 
         else
-          log("aud claim not found in introspection results")
+          log("audience not found in introspection results")
         end
 
       else
         if not tokens_decoded then
-          tokens_decoded, err = oic.token:decode(tokens_encoded)
+          tokens_decoded = oic.token:decode(tokens_encoded)
         end
 
         if tokens_decoded then
           if type(tokens_decoded.access_token) == "table" then
-            if tokens_decoded.access_token.payload.aud then
-              log("aud claim found in jwt token")
-              access_token_audience = tokens_decoded.access_token.payload.aud
+            access_token_audience = find_claim(tokens_decoded.access_token.payload, audience_claim)
+            if access_token_audience then
+              log("audience found in jwt token")
 
             else
-              log("aud claim not found in jwt token")
+              log("audience not found in jwt token")
             end
 
           else
-            token_introspected = introspect_token(tokens_encoded.access_token, ttl)
-            if token_introspected then
-              if token_introspected.aud then
-                log("aud claim found in introspection results")
-                access_token_audience = token_introspected.aud
+            access_token_audience = find_claim(token_introspected, audience_claim)
+            if access_token_audience then
+              log("audience found in introspection results")
 
-              else
-                log("aud claim not found in introspection results")
-              end
+            else
+              log("audience not found in introspection results")
             end
           end
         end
@@ -1941,10 +1957,69 @@ function OICHandler:access(conf)
     end
   end
 
-  -- upstream and downstream headers
+  log("setting upstream and downstream headers")
   do
-    log("setting upstream and downstream headers")
+    -- granular headers
+    local token
+    if token_introspected then
+      token = token_introspected
 
+    else
+      if tokens_decoded then
+        if not tokens_decoded then
+          tokens_decoded = oic.token:decode(tokens_encoded)
+        end
+
+        if tokens_decoded then
+          local access_token = tokens_decoded.access_token
+          if type(access_token) == "table" then
+            token = access_token.payload
+          end
+        end
+      end
+    end
+
+    if token then
+      do
+        local upstream_headers_claims = args.get_conf_arg("upstream_headers_claims")
+        local upstream_headers_names  = args.get_conf_arg("upstream_headers_names")
+        if upstream_headers_claims and upstream_headers_names then
+          for i, claim in ipairs(upstream_headers_claims) do
+            claim = args.get_value(claim)
+            if claim then
+              local name = args.get_value(upstream_headers_names[i])
+              if name then
+                local value = get_header_value(args.get_value(token[claim]))
+                if value then
+                  set_upstream_header(name, value)
+                end
+              end
+            end
+          end
+        end
+      end
+
+      do
+        local downstream_headers_claims = args.get_conf_arg("downstream_headers_claims")
+        local downstream_headers_names  = args.get_conf_arg("downstream_headers_names")
+        if downstream_headers_claims and downstream_headers_names then
+          for i, claim in ipairs(downstream_headers_claims) do
+            claim = args.get_value(claim)
+            if claim then
+              local name = args.get_value(downstream_headers_names[i])
+              if name then
+                local value = get_header_value(args.get_value(token[claim]))
+                if value then
+                  set_downstream_header(name, value)
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+
+    -- full headers
     set_headers(args, "access_token",  token_exchanged or tokens_encoded.access_token)
     set_headers(args, "id_token",      tokens_encoded.id_token)
     set_headers(args, "refresh_token", tokens_encoded.refresh_token)

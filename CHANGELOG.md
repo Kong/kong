@@ -1,6 +1,17 @@
 ## v0.0.9
 
+With this release the whole code base got refactored and a lot of
+new features were added. We also made the code a lot more robust.
+
+This release deprecates:
+- OpenID Connect Authentication Plugin
+- OpenID Connect Protection Plugin
+- OpenID Connect Verification Plugin
+
+This release removes:
 - Remove multipart parsing of id tokens (it was never proxy safe)
+
+This release adds:
 - Add `config.session_storage`
 - Add `config.session_memcache_prefix`
 - Add `config.session_memcache_socket`
@@ -12,13 +23,15 @@
 - Add `config.session_redis_port`
 - Add `config.session_redis_auth`
 - Add `config.session_cookie_lifetime`
+- Add `config.authorization_cookie_lifetime`
 - Add `config.forbidden_destroy_session`
 - Add `config.forbidden_redirect_uri`
 - Add `config.unauthorized_redirect_uri`
 - Add `config.unexpected_redirect_uri`
-- Add `config.authorization_cookie_lifetime`
 - Add `config.scopes_required`
+- Add `config.scopes_claim`
 - Add `config.audience_required`
+- Add `config.audience_claim`
 - Add `config.discovery_headers_names`
 - Add `config.discovery_headers_values`
 - Add `config.introspection_hint`
@@ -32,6 +45,10 @@
 - Add `config.hide_credentials`
 - Add `config.cache_ttl`
 - Add `config.run_on_preflight`
+- Add `config.upstream_headers_claims`
+- Add `config.upstream_headers_names`
+- Add `config.downstream_headers_claims`
+- Add `config.downstream_headers_names`
 
 ## v0.0.8
 

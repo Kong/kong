@@ -84,7 +84,7 @@ end
 
 
 
-local function consumer(issuer, tok, claim, anon, consumer_by)
+local function consumer(tok, claim, anon, consumer_by)
   if not tok then
     return nil, "token for consumer mapping was not found"
   end
@@ -109,7 +109,7 @@ local function consumer(issuer, tok, claim, anon, consumer_by)
     return nil, "claim (" .. claim .. ") was not found for consumer mapping"
   end
 
-  return cache.consumers.load(issuer, subject, anon, consumer_by)
+  return cache.consumers.load(subject, anon, consumer_by)
 end
 
 
@@ -134,7 +134,7 @@ function OICProtectionHandler:access(conf)
     return
   end
 
-  local issuer, err = cache.issuers.load(conf)
+  local issuer, err = cache.issuers.load(conf.issuer)
   if not issuer then
     log(ERR, err)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()
@@ -242,13 +242,13 @@ function OICProtectionHandler:access(conf)
     if tokens_decoded then
       local id_token = tokens_decoded.id_token
       if id_token then
-        mapped_consumer, err = consumer(iss, id_token, consumer_claim, false, consumer_by)
+        mapped_consumer, err = consumer(id_token, consumer_claim, false, consumer_by)
         if not mapped_consumer then
-          mapped_consumer = consumer(iss, tokens_decoded.access_token, consumer_claim, false, consumer_by)
+          mapped_consumer = consumer(tokens_decoded.access_token, consumer_claim, false, consumer_by)
         end
 
       else
-        mapped_consumer, err = consumer(iss, tokens_decoded.access_token, consumer_claim, false, consumer_by)
+        mapped_consumer, err = consumer(tokens_decoded.access_token, consumer_claim, false, consumer_by)
       end
     end
 
@@ -273,7 +273,7 @@ function OICProtectionHandler:access(conf)
         }
       }
 
-      mapped_consumer, err = consumer(iss, consumer_token, consumer_claim, true, consumer_by)
+      mapped_consumer, err = consumer(consumer_token, consumer_claim, true, consumer_by)
       if not mapped_consumer then
         if err then
           return forbidden(iss, "anonymous consumer was not found (" .. err .. ")", s)

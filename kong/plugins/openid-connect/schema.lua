@@ -70,6 +70,13 @@ return {
       required                         = false,
       type                             = "array",
     },
+    scopes_claim                       = {
+      required                         = false,
+      type                             = "array",
+      default                          = {
+        "scope"
+      },
+    },
     response_mode                      = {
       required                         = false,
       type                             = "string",
@@ -111,6 +118,13 @@ return {
     audience_required                  = {
       required                         = false,
       type                             = "array",
+    },
+    audience_claim                     = {
+      required                         = false,
+      type                             = "array",
+      default                          = {
+        "aud"
+      },
     },
     domains                            = {
       required                         = false,
@@ -266,11 +280,11 @@ return {
         "body",
       },
     },
-    discovery_headers_names     = {
+    discovery_headers_names            = {
       required                         = false,
       type                             = "array",
     },
-    discovery_headers_values    = {
+    discovery_headers_values           = {
       required                         = false,
       type                             = "array",
     },
@@ -314,6 +328,22 @@ return {
         "client_credentials",
         "authorization_code",
       },
+    },
+    upstream_headers_claims            = {
+      required                         = false,
+      type                             = "array",
+    },
+    upstream_headers_names             = {
+      required                         = false,
+      type                             = "array",
+    },
+    downstream_headers_claims          = {
+      required                         = false,
+      type                             = "array",
+    },
+    downstream_headers_names           = {
+      required                         = false,
+      type                             = "array",
     },
     upstream_access_token_header       = {
       required                         = false,
@@ -381,11 +411,11 @@ return {
       type                             = "string",
       default                          = "access_token",
     },
-    introspection_headers_names     = {
+    introspection_headers_names        = {
       required                         = false,
       type                             = "array",
     },
-    introspection_headers_values    = {
+    introspection_headers_values       = {
       required                         = false,
       type                             = "array",
     },
