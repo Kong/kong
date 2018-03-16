@@ -65,7 +65,11 @@ server {
     error_page 400 404 408 411 412 413 414 417 /kong_error_handler;
     error_page 500 502 503 504 /kong_error_handler;
 
-    access_log ${{PROXY_ACCESS_LOG}};
+> if proxy_custom_log_format then
+    ${{PROXY_CUSTOM_LOG_FORMAT}}
+> end
+
+    access_log ${{PROXY_ACCESS_LOG}} ${{PROXY_LOG_FORMAT}};
     error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 
     client_body_buffer_size ${{CLIENT_BODY_BUFFER_SIZE}};
@@ -154,7 +158,11 @@ server {
     server_name kong_admin;
     listen ${{ADMIN_LISTEN}};
 
-    access_log ${{ADMIN_ACCESS_LOG}};
+> if admin_custom_log_format then
+    ${{ADMIN_CUSTOM_LOG_FORMAT}}
+> end
+
+    access_log ${{ADMIN_ACCESS_LOG}} ${{ADMIN_LOG_FORMAT}};
     error_log ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
 
     client_max_body_size 10m;
