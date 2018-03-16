@@ -18,23 +18,13 @@ local uuid = utils.uuid
 local ceil = math.ceil
 local fmt = string.format
 local ERR = ngx.ERR
+local get_workspace = workspaces.get_workspace
 
 local workspaceable = workspaces.get_workspaceable_relations()
 local TTL_CLEANUP_INTERVAL = 60 -- 1 minute
 
 local function log(lvl, ...)
   return ngx_log(lvl, "[postgres] ", ...)
-end
-
-local function get_workspace()
-  local r = getfenv(0).__ngx_req
-  if not r then
-    return  {
-      name = "*"
-    }
-  else
-    return ngx.ctx.workspace
-  end
 end
 
 local _M = require("kong.dao.db").new_db("postgres")

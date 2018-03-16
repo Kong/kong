@@ -292,11 +292,14 @@ function DAO:find_page(tbl, page_offset, page_size)
   check_arg(page_size, 3, "number")
 
   do
-    local rows, err, page_offset = self.db:find_page(self.table, tbl, page_offset, page_size, self.schema)
+    local rows, err, offset = self.db:find_page(self.table, tbl, page_offset, page_size, self.schema)
+    if err then
+      return ret_error(self.db.name, nil, err)
+    end
     for _, row in ipairs(rows) do
       remove_ws_prefix(self.schema, row)
     end
-    return ret_error(self.db.name, rows, err, page_offset)
+    return ret_error(self.db.name, rows, err, offset)
   end
 
   return ret_error(self.db.name, self.db:find_page(self.table, tbl, page_offset, page_size, self.schema))

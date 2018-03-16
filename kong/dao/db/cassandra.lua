@@ -4,6 +4,8 @@ local Cluster = require "resty.cassandra.cluster"
 local Errors = require "kong.dao.errors"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
+local workspaces = require "kong.workspaces"
+local ws_entities_schema = require "kong.dao.schemas.workspace_entities"
 
 local tonumber = tonumber
 local concat = table.concat
@@ -12,6 +14,7 @@ local fmt = string.format
 local uuid = utils.uuid
 local pairs = pairs
 local ipairs = ipairs
+local get_workspace = workspaces.get_workspace
 
 local _M = require("kong.dao.db").new_db("cassandra")
 
@@ -346,6 +349,25 @@ local function select_query(table_name, where, select_clause)
   return query
 end
 
+local function select_query_page(table_name, where, select_clause, primary_key, token, page_size)
+  select_clause = select_clause or "*"
+  local query = fmt("SELECT %s FROM %s", select_clause, table_name)
+
+  local token_template
+  if token then
+    token_template = fmt(" TOKEN(%s) > TOKEN(%s) LIMIT %s",
+                         primary_key, token, page_size)
+  end
+
+  if where then
+    return fmt("%s WHERE %s %s ALLOW FILTERING", query, where,
+                token and " AND " .. token_template or "")
+  end
+
+  return fmt("%s %s", query, token and " WHERE " ..
+             token_template or "")
+end
+
 --- Querying
 -- @section querying
 
@@ -442,6 +464,23 @@ function _M:insert(table_name, schema, model, constraints, options)
   return self:find(table_name, schema, primary_keys)
 end
 
+local function workspace_entities_map(db, table_name)
+  local ws = get_workspace()
+  local where, args = get_where(ws_entities_schema, {workspace_id = ws.id, entity_type = table_name})
+  local query = select_query("workspace_entities", where)
+  local ws_entities, err = db:query(query, args, nil, ws_entities_schema)
+  if err then
+    return nil, err
+  end
+
+  local ws_entities_map = {}
+  for _, row in ipairs(ws_entities) do
+    ws_entities_map[row.entity_id] = row
+  end
+
+  return ws_entities_map
+end
+
 function _M:find(table_name, schema, filter_keys)
   local where, args = get_where(schema, filter_keys)
   local query = select_query(table_name, where)
@@ -449,6 +488,31 @@ function _M:find(table_name, schema, filter_keys)
   if not rows then       return nil, err
   elseif #rows <= 1 then return rows[1]
   else                   return nil, "bad rows result" end
+end
+
+-- true if we are trying to retrieve the default workspace itself
+local function is_default_ws_retrieval(table_name, filters)
+  local default = workspaces.DEFAULT_WORKSPACE
+  return table_name == "workspaces" and filters and filters.name == default
+end
+
+-- true if the table is workspaceable and the workspace name is not
+-- the wildcard - which should evaluate to all workspaces - and we are not
+-- retrieving the default workspace itself
+--
+-- this is to break the cycle: some methods here - e.g., find_all -
+-- need to retrieve the current workspace entity, which is set in
+-- `before_filter`, but to set the entity some of those same methods are
+-- used
+local function is_workspaceable(table_name, filters)
+  local ws = get_workspace()
+  local workspaceable = workspaces.get_workspaceable_relations()
+  if workspaceable[table_name] and not is_default_ws_retrieval(table_name, filters)
+    and ws and ws.name ~= "*" then
+    return ws
+  else
+    return nil
+  end
 end
 
 function _M:find_all(table_name, tbl, schema)
@@ -461,6 +525,7 @@ function _M:find_all(table_name, tbl, schema)
   local err
   local query = select_query(table_name, where)
   local res_rows = {}
+  local res_rows_ws = {}
 
   local iter = self.cluster.iterate
   local iter_self = self.cluster
@@ -477,6 +542,16 @@ function _M:find_all(table_name, tbl, schema)
     opts.prepared = false
   end
 
+  local ws_entities_map
+  local workspaceable = is_workspaceable(table_name, tbl)
+  if workspaceable then
+    local err
+    ws_entities_map, err = workspace_entities_map(self, table_name)
+    if err then
+      return nil, err
+    end
+  end
+
   for rows, page_err in iter(iter_self, query, args, opts) do
     if page_err then
       err = Errors.db(page_err)
@@ -488,18 +563,68 @@ function _M:find_all(table_name, tbl, schema)
       deserialize_rows(rows, schema)
     end
 
+    if workspaceable then
+      for _, row in ipairs(rows) do
+        if ws_entities_map[row.id] then
+          res_rows_ws[#res_rows_ws+1] = row
+        end
+      end
+    end
+
     for _, row in ipairs(rows) do
       res_rows[#res_rows+1] = row
     end
   end
 
+  if workspaceable then
+    return res_rows_ws, err
+  end
   return res_rows, err
 end
 
+-- XXX paging
 function _M:find_page(table_name, tbl, paging_state, page_size, schema)
   local where, args
   if tbl then
     where, args = get_where(schema, tbl)
+  end
+
+  if is_workspaceable(table_name, tbl) then
+    local primary_key = workspaces.get_workspaceable_relations()[table_name]
+    local ws_entities_map, err = workspace_entities_map(self, table_name)
+    if err then
+      return nil, err
+    end
+
+    local res_rows = {}
+    local rows, err
+
+    local token = paging_state
+    while(true) do
+      local query = select_query_page(table_name, where, nil,
+                                    primary_key, token, page_size)
+      rows, err = self:query(query, args, nil, schema)
+      if not rows then
+        return nil, err
+      end
+
+      for _, row in ipairs(rows) do
+        if ws_entities_map[row.id] then
+          res_rows[#res_rows+1] = row
+          if #res_rows == page_size then
+            paging_state = row.id
+            return res_rows, nil, row.id
+          end
+        end
+        token = row.id
+      end
+
+      if #rows == 0 then
+        break
+      end
+    end
+
+    return res_rows, nil, paging_state
   end
 
   local query = select_query(table_name, where)
@@ -523,6 +648,17 @@ function _M:count(table_name, tbl, schema)
   local where, args
   if tbl then
     where, args = get_where(schema, tbl)
+  end
+
+  if is_workspaceable(table_name, tbl) then
+    local ws_entities_map, err = workspace_entities_map(self, table_name)
+    local cnt = 0
+    for id, entity in pairs(ws_entities_map) do
+      if entity.entity_type == table_name then
+        cnt = cnt + 1
+      end
+    end
+    return cnt
   end
 
   local query = select_query(table_name, where, "COUNT(*)")

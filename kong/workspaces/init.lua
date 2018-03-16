@@ -26,6 +26,21 @@ local function metatable(base)
 end
 
 
+-- get the workspace name
+-- if not in the context of a request, return '*', meaning all
+-- workspaces
+function _M.get_workspace()
+  local r = getfenv(0).__ngx_req
+  if not r then
+    return  {
+      name = "*"
+    }
+  else
+    return ngx.ctx.workspace
+  end
+end
+
+
 -- register a relation name and its primary key name as a workspaceable
 -- relation
 function _M.register_workspaceable_relation(relation, primary_key)
@@ -122,8 +137,7 @@ function _M.add_entity_relation(dao_collection, entity, workspace)
     rel, err = singletons.dao.workspace_entities:insert({
       workspace_id = workspace.id,
       entity_id = entity[primary_key],
-      entity_type = dao_collection.table == "workspaces" and "workspace"
-                    or dao_collection.table
+      entity_type = dao_collection.table
     })
   end
 

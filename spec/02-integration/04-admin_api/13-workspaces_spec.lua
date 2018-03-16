@@ -275,6 +275,9 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
           })
           entities.plugins = plugin1
 
+          -- XXX if instead of inserting at the dao level we insert via the API,
+          -- one test case will fail - ('{"message":"No workspace by name or id bar"}');
+          -- investigate the root cause
           local workspace = assert(dao.workspaces:insert {
               name = "bar",
           })
