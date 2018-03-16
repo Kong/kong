@@ -826,13 +826,15 @@ describe("Entities Schemas", function()
 
       -- tests for failure
       local tests = {
-        {{ active = { timeout = -1 }}, "greater than or equal to 0" },
+        {{ active = { timeout = -1 }}, "between 0 and 65535" },
+        {{ active = { timeout = 1e+42 }}, "between 0 and 65535" },
         {{ active = { concurrency = 0.5 }}, "must be an integer" },
         {{ active = { concurrency = 0 }}, "must be an integer" },
         {{ active = { concurrency = -10 }}, "must be an integer" },
         {{ active = { http_path = "" }}, "is empty" },
         {{ active = { http_path = "ovo" }}, "must be prefixed with slash" },
-        {{ active = { healthy = { interval = -1 }}}, "greater than or equal to 0" },
+        {{ active = { healthy = { interval = -1 }}}, "between 0 and 65535" },
+        {{ active = { healthy = { interval = 1e+42 }}}, "between 0 and 65535" },
         {{ active = { healthy = { http_statuses = 404 }}}, "not an array" },
         {{ active = { healthy = { http_statuses = { "ovo" }}}}, "not a number" },
         {{ active = { healthy = { http_statuses = { -1 }}}}, "status code" },
@@ -842,7 +844,8 @@ describe("Entities Schemas", function()
         {{ active = { healthy = { successes = 0.5 }}}, "must be 0 (disabled), or an integer" },
         --{{ active = { healthy = { successes = 0 }}}, "must be an integer" },
         {{ active = { healthy = { successes = -1 }}}, "an integer between" },
-        {{ active = { unhealthy = { interval = -1 }}}, "greater than or equal to 0" },
+        {{ active = { unhealthy = { interval = -1 }}}, "between 0 and 65535" },
+        {{ active = { unhealthy = { interval = 1e+42 }}}, "between 0 and 65535" },
         {{ active = { unhealthy = { http_statuses = 404 }}}, "not an array" },
         {{ active = { unhealthy = { http_statuses = { "ovo" }}}}, "not a number" },
         {{ active = { unhealthy = { http_statuses = { -1 }}}}, "status code" },
