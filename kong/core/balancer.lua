@@ -242,6 +242,17 @@ do
         if event == hc.events.healthy then
           status = true
         elseif event == hc.events.unhealthy then
+          local upstream = get_upstream_by_id(upstream_id)
+          if not upstream then
+            log(ERR, "upstream not found for upstream_id", upstream_id)
+          else
+            local unhealthy = upstream.healthchecks.passive.unhealthy
+            if unhealthy.tcp_failures == 0
+              and unhealthy.timeouts == 0
+              and unhealthy.http_failures == 0 then
+              return
+            end
+          end
           status = false
         else
           return
