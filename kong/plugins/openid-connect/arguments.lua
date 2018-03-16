@@ -45,7 +45,13 @@ local function create_get_conf_arg(conf)
       return default
     end
 
-    return get_value(conf[name]) or default
+    local value = get_value(conf[name])
+
+    if value == nil then
+      return default
+    end
+
+    return value
   end
 end
 

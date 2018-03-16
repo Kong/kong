@@ -11,6 +11,10 @@
 - Add `config.session_redis_port`
 - Add `config.session_redis_auth`
 - Add `config.session_cookie_lifetime`
+- Add `config.forbidden_destroy_session`
+- Add `config.forbidden_redirect_uri`
+- Add `config.unauthorized_redirect_uri`
+- Add `config.unexpected_redirect_uri`
 - Add `config.authorization_cookie_lifetime`
 - Add `config.scopes_required`
 - Add `config.audience_required`

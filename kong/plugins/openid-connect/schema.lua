@@ -42,6 +42,23 @@ return {
       required                         = false,
       type                             = "array",
     },
+    forbidden_redirect_uri             = {
+      required                         = false,
+      type                             = "array",
+    },
+    unauthorized_redirect_uri          = {
+      required                         = false,
+      type                             = "array",
+    },
+    unexpected_redirect_uri            = {
+      required                         = false,
+      type                             = "array",
+    },
+    forbidden_destroy_session          = {
+      required                         = false,
+      type                             = "boolean",
+      default                          = true,
+    },
     scopes                             = {
       required                         = false,
       type                             = "array",

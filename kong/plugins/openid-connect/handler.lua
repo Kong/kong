@@ -37,8 +37,13 @@ local PARAM_TYPES_ALL = {
 }
 
 
-local function unexpected(...)
+local function unexpected(trusted_client, ...)
   log.err(...)
+
+  if trusted_client.unexpected_redirect_uri then
+    return redirect(trusted_client.unexpected_redirect_uri)
+  end
+
   return responses.send_HTTP_INTERNAL_SERVER_ERROR()
 end
 
@@ -100,13 +105,13 @@ local function create_introspect_token(args, oic)
   if args.get_conf_arg("cache_introspection") then
     return function(access_token, ttl)
         log("introspecting token with caching enabled")
-        return cache.introspection.load(oic, access_token, endpoint, hint, headers, ttl)
+        return cache.introspection.load(oic, access_token, endpoint, hint, headers, ttl, true)
     end
   end
 
-  return function(access_token)
+  return function(access_token, ttl)
     log("introspecting token")
-    return cache.introspection.init(oic, access_token, endpoint, hint, headers)
+    return cache.introspection.load(oic, access_token, endpoint, hint, headers, ttl, false)
   end
 end
 
@@ -162,7 +167,7 @@ local function redirect_uri()
 end
 
 
-local function find_consumer(token, claim, anonymous, consumer_by)
+local function find_consumer(token, claim, anonymous, consumer_by, ttl)
   if not token then
     return nil, "token for consumer mapping was not found"
   end
@@ -187,7 +192,7 @@ local function find_consumer(token, claim, anonymous, consumer_by)
     return nil, "claim (" .. claim .. ") was not found for consumer mapping"
   end
 
-  return cache.consumers.load(subject, anonymous, consumer_by)
+  return cache.consumers.load(subject, anonymous, consumer_by, ttl)
 end
 
 
@@ -267,8 +272,11 @@ local function find_trusted_client(args)
   local secrets   = args.get_conf_arg("client_secret", {})
   local redirects = args.get_conf_arg("redirect_uri",  {})
 
-  local  login_redirect_uris = args.get_conf_arg("login_redirect_uri",  {})
-  local logout_redirect_uris = args.get_conf_arg("logout_redirect_uri", {})
+  local login_redirect_uris        = args.get_conf_arg("login_redirect_uri",        {})
+  local logout_redirect_uris       = args.get_conf_arg("logout_redirect_uri",       {})
+  local forbidden_redirect_uris    = args.get_conf_arg("forbidden_redirect_uri",    {})
+  local unauthorized_redirect_uris = args.get_conf_arg("unauthorized_redirect_uri", {})
+  local unexpected_redirect_uris   = args.get_conf_arg("unexpected_redirect_uris",  {})
 
   clients.n = #clients
 
@@ -288,28 +296,38 @@ local function find_trusted_client(args)
   end
 
   local client = {
-    clients              = clients,
-    secrets              = secrets,
-    redirects            = redirects,
-    login_redirect_uris  = login_redirect_uris,
-    logout_redirect_uris = logout_redirect_uris,
+    clients                    = clients,
+    secrets                    = secrets,
+    redirects                  = redirects,
+    login_redirect_uris        = login_redirect_uris,
+    logout_redirect_uris       = logout_redirect_uris,
+    forbidden_redirect_uris    = forbidden_redirect_uris,
+    forbidden_destroy_session  = args.get_conf_arg("forbidden_destroy_session", true),
+    unauthorized_redirect_uris = unauthorized_redirect_uris,
+    unexpected_redirect_uris   = unexpected_redirect_uris,
   }
 
   if client_id then
-    client.id                  = client_id
-    client.index               = client_index
-    client.secret              = secrets[client_index]              or secrets[1]
-    client.redirect_uri        = redirects[client_index]            or redirects[1] or redirect_uri()
-    client.login_redirect_uri  = login_redirect_uris[client_index]  or login_redirect_uris[1]
-    client.logout_redirect_uri = logout_redirect_uris[client_index] or logout_redirect_uris[1]
+    client.id                        = client_id
+    client.index                     = client_index
+    client.secret                    = secrets[client_index]                    or secrets[1]
+    client.redirect_uri              = redirects[client_index]                  or redirects[1] or redirect_uri()
+    client.login_redirect_uri        = login_redirect_uris[client_index]        or login_redirect_uris[1]
+    client.logout_redirect_uri       = logout_redirect_uris[client_index]       or logout_redirect_uris[1]
+    client.forbidden_redirect_uri    = forbidden_redirect_uris[client_index]    or forbidden_redirect_uris[1]
+    client.unauthorized_redirect_uri = unauthorized_redirect_uris[client_index] or unauthorized_redirect_uris[1]
+    client.unexpected_redirect_uri   = unexpected_redirect_uris[client_index]   or unexpected_redirect_uris[1]
 
   else
-    client.id                  = clients[1]
-    client.index               = 1
-    client.secret              = secrets[1]
-    client.redirect_uri        = redirects[1] or redirect_uri()
-    client.login_redirect_uri  = login_redirect_uris[1]
-    client.logout_redirect_uri = logout_redirect_uris[1]
+    client.id                        = clients[1]
+    client.index                     = 1
+    client.secret                    = secrets[1]
+    client.redirect_uri              = redirects[1] or redirect_uri()
+    client.login_redirect_uri        = login_redirect_uris[1]
+    client.logout_redirect_uri       = logout_redirect_uris[1]
+    client.forbidden_redirect_uri    = forbidden_redirect_uris[1]
+    client.unauthorized_redirect_uri = unauthorized_redirect_uris[1]
+    client.unexpected_redirect_uri   = unexpected_redirect_uris[1]
   end
 
   return client
@@ -326,16 +344,23 @@ local function reset_trusted_client(new_client_index, trusted_client, oic, optio
     return
   end
 
-  trusted_client.index               = new_index
-  trusted_client.id                  = new_id
-  trusted_client.secret              = trusted_client.secrets[new_client_index] or
-                                       trusted_client.secret
-  trusted_client.redirect_uri        = trusted_client.redirects[new_client_index] or
-                                       trusted_client.redirect_uri
-  trusted_client.login_redirect_uri  = trusted_client.login_redirect_uris[new_client_index] or
-                                       trusted_client.login_redirect_uri
-  trusted_client.logout_redirect_uri = trusted_client.logout_redirect_uris[new_client_index] or
-                                       trusted_client.logout_redirect_uri
+  trusted_client.index                     = new_index
+  trusted_client.id                        = new_id
+  trusted_client.secret                    = trusted_client.secrets[new_client_index] or
+                                             trusted_client.secret
+  trusted_client.redirect_uri              = trusted_client.redirects[new_client_index] or
+                                             trusted_client.redirect_uri
+  trusted_client.login_redirect_uri        = trusted_client.login_redirect_uris[new_client_index] or
+                                             trusted_client.login_redirect_uri
+  trusted_client.logout_redirect_uri       = trusted_client.logout_redirect_uris[new_client_index] or
+                                             trusted_client.logout_redirect_uri
+  trusted_client.forbidden_redirect_uri    = trusted_client.forbidden_redirect_uris[new_client_index] or
+                                             trusted_client.forbidden_redirect_uri
+  trusted_client.unauthorized_redirect_uri = trusted_client.unauthorized_redirect_uris[new_client_index] or
+                                             trusted_client.unauthorized_redirect_uri
+  trusted_client.unexpected_redirect_uri   = trusted_client.unexpected_redirect_uris[new_client_index] or
+                                             trusted_client.unexpected_redirect_uri
+
 
   options.client_id     = trusted_client.id
   options.client_secret = trusted_client.secret
@@ -454,7 +479,7 @@ local function set_headers(args, header_key, header_value)
 end
 
 
-local function anonymous_access(anonymous)
+local function anonymous_access(anonymous, trusted_client)
   local consumer_token = {
     payload = {
       id = anonymous
@@ -464,10 +489,10 @@ local function anonymous_access(anonymous)
   local consumer, err = find_consumer(consumer_token, "id", true, "id")
   if not consumer then
     if err then
-      return unexpected("anonymous consumer was not found (", err, ")")
+      return unexpected(trusted_client, "anonymous consumer was not found (", err, ")")
 
     else
-      return unexpected("anonymous consumer was not found")
+      return unexpected(trusted_client, "anonymous consumer was not found")
     end
   end
 
@@ -483,7 +508,7 @@ local function anonymous_access(anonymous)
 end
 
 
-local function unauthorized(issuer, err, session, anonymous)
+local function unauthorized(issuer, err, session, anonymous, trusted_client)
   if err then
     log.notice(err)
   end
@@ -493,7 +518,11 @@ local function unauthorized(issuer, err, session, anonymous)
   end
 
   if anonymous then
-    return anonymous_access(anonymous)
+    return anonymous_access(anonymous, trusted_client)
+  end
+
+  if trusted_client.unauthorized_redirect_uri then
+    return redirect(trusted_client.unauthorized_redirect_uri)
   end
 
   local parts = uri.parse(issuer)
@@ -502,17 +531,21 @@ local function unauthorized(issuer, err, session, anonymous)
 end
 
 
-local function forbidden(issuer, err, session, anonymous)
+local function forbidden(issuer, err, session, anonymous, trusted_client)
   if err then
     log.notice(err)
   end
 
-  if session then
+  if session and trusted_client.forbidden_destroy_session then
     session:destroy()
   end
 
   if anonymous then
-    return anonymous_access(issuer, anonymous)
+    return anonymous_access(anonymous, trusted_client)
+  end
+
+  if trusted_client.forbidden_redirect_uri then
+    return redirect(trusted_client.forbidden_redirect_uri)
   end
 
   local parts = uri.parse(issuer)
@@ -676,6 +709,8 @@ function OICHandler:access(conf)
   local args = arguments(conf)
   args.get_http_opts = create_get_http_opts(args)
 
+  local trusted_client = find_trusted_client(args)
+
   local anonymous = args.get_conf_arg("anonymous")
   if anonymous and ngx.ctx.authenticated_credential then
     -- we're already authenticated, and we're configured for using anonymous,
@@ -689,11 +724,11 @@ function OICHandler:access(conf)
 
   -- load discovery information
   log("loading discovery information")
-  local oic, iss, secret, trusted_client, options
+  local oic, iss, secret, options
   do
     local issuer_uri = args.get_conf_arg("issuer")
     if not issuer_uri then
-      return unexpected("issuer was not specified")
+      return unexpected(trusted_client, "issuer was not specified")
     end
 
     local issuer
@@ -702,10 +737,9 @@ function OICHandler:access(conf)
     })
 
     if not issuer then
-      return unexpected(err or "discovery information could not be loaded")
+      return unexpected(trusted_client, err or "discovery information could not be loaded")
     end
 
-    trusted_client = find_trusted_client(args)
     options = {
       client_id         = trusted_client.id,
       client_secret     = trusted_client.secret,
@@ -728,7 +762,7 @@ function OICHandler:access(conf)
     log("initializing library")
     oic, err = openid.new(options, issuer.configuration, issuer.keys)
     if not oic then
-      return unexpected(err or "unable to initialize library")
+      return unexpected(trusted_client, err or "unable to initialize library")
     end
 
     iss    = oic.configuration.issuer
@@ -1086,10 +1120,10 @@ function OICHandler:access(conf)
                 no_cache_headers()
 
                 if args.get_uri_arg("state") == state then
-                  return unauthorized(iss, err, authorization, anonymous)
+                  return unauthorized(iss, err, authorization, anonymous, trusted_client)
 
                 elseif args.get_post_arg("state") == state then
-                  return unauthorized(iss, err, authorization, anonymous)
+                  return unauthorized(iss, err, authorization, anonymous, trusted_client)
                 end
 
                 log("starting a new authorization code flow with previous parameters")
@@ -1110,7 +1144,7 @@ function OICHandler:access(conf)
 
                 if not token_endpoint_args then
                   log("unable to start authorization code flow request with previous parameters")
-                  return unexpected(err)
+                  return unexpected(trusted_client, err)
                 end
 
                 log("redirecting client to openid connect provider with previous parameters")
@@ -1175,7 +1209,7 @@ function OICHandler:access(conf)
 
             if not token_endpoint_args then
               log("unable to start authorization code flow request")
-              return unexpected(err)
+              return unexpected(trusted_client, err)
             end
 
             authorization.data = {
@@ -1196,7 +1230,12 @@ function OICHandler:access(conf)
           end
 
         else
-          return unauthorized(iss, "no suitable authorization credentials were provided", nil, anonymous)
+          return unauthorized(
+            iss,
+            "no suitable authorization credentials were provided",
+            nil,
+            anonymous,
+            trusted_client)
         end
       end
 
@@ -1227,6 +1266,7 @@ function OICHandler:access(conf)
 
   local auth_method
   local token_introspected
+
   local downstream_headers
 
   -- retrieve or verify tokens
@@ -1236,7 +1276,7 @@ function OICHandler:access(conf)
     tokens_decoded, err = oic.token:verify(tokens_encoded)
     if not tokens_decoded then
       log("unable to verify bearer token")
-      return unauthorized(iss, err, session, anonymous)
+      return unauthorized(iss, err, session, anonymous, trusted_client)
     end
 
     log("bearer token verified")
@@ -1247,7 +1287,8 @@ function OICHandler:access(conf)
 
       if auth_methods.kong_oauth2 then
         log("trying to find matching kong oauth2 token")
-        token_introspected, credential, consumer = cache.kong_oauth2.load(tokens_decoded.access_token)
+        token_introspected, credential, consumer = cache.kong_oauth2.load(
+          tokens_decoded.access_token, ttl_default, true)
         if token_introspected then
           log("found matching kong oauth2 token")
           token_introspected.active = true
@@ -1275,7 +1316,7 @@ function OICHandler:access(conf)
 
         if not token_introspected or not token_introspected.active then
           log("authentication with opaque bearer token failed")
-          return unauthorized(iss, err, session, anonymous)
+          return unauthorized(iss, err, session, anonymous, trusted_client)
         end
 
         auth_method = "introspection"
@@ -1328,11 +1369,11 @@ function OICHandler:access(conf)
 
         if args.get_conf_arg("cache_tokens") then
           log("trying to exchange credentials using token endpoint with caching enabled")
-          tokens_encoded, err, downstream_headers = cache.tokens.load(oic, arg, ttl_default)
+          tokens_encoded, err, downstream_headers = cache.tokens.load(oic, arg, ttl_default, true)
 
         else
           log("trying to exchange credentials using token endpoint")
-          tokens_encoded, err, downstream_headers = oic.token:request(arg)
+          tokens_encoded, err, downstream_headers = cache.tokens.load(oic, arg, ttl_default, false)
         end
 
         if tokens_encoded then
@@ -1346,14 +1387,14 @@ function OICHandler:access(conf)
 
     if not tokens_encoded then
       log("unable to exchange credentials with tokens")
-      return unauthorized(iss, err, session, anonymous)
+      return unauthorized(iss, err, session, anonymous, trusted_client)
     end
 
     log("verifying tokens")
     tokens_decoded, err = oic.token:verify(tokens_encoded, token_endpoint_args)
     if not tokens_decoded then
       log("token verification failed")
-      return unauthorized(iss, err, session, anonymous)
+      return unauthorized(iss, err, session, anonymous, trusted_client)
 
     else
       log("tokens verified")
@@ -1387,7 +1428,7 @@ function OICHandler:access(conf)
   log("checking for access token")
   if not tokens_encoded.access_token then
     log("access token was not found")
-    return unauthorized(iss, "access token was not found", session, anonymous)
+    return unauthorized(iss, "access token was not found", session, anonymous, trusted_client)
 
   else
     log("found access token")
@@ -1406,7 +1447,12 @@ function OICHandler:access(conf)
       tokens_decoded, err = oic.token:verify(tokens_encoded)
       if not tokens_decoded then
         log("reverifying tokens failed")
-        return forbidden(iss, err, session, anonymous)
+        return forbidden(
+          iss,
+          err,
+          session,
+          anonymous,
+          trusted_client)
 
       else
         log("reverified tokens")
@@ -1423,7 +1469,12 @@ function OICHandler:access(conf)
     if auth_methods.refresh_token then
       -- access token has expired, try to refresh the access token before proxying
       if not tokens_encoded.refresh_token then
-        return forbidden(iss, "access token cannot be refreshed in absense of refresh token", session, anonymous)
+        return forbidden(
+          iss,
+          "access token cannot be refreshed in absense of refresh token",
+          session,
+          anonymous,
+          trusted_client)
       end
 
       log("trying to refresh access token using refresh token")
@@ -1434,7 +1485,12 @@ function OICHandler:access(conf)
 
       if not tokens_refreshed then
         log("unable to refresh access token using refresh token")
-        return forbidden(iss, err, session, anonymous)
+        return forbidden(
+          iss,
+          err,
+          session,
+          anonymous,
+          trusted_client)
 
       else
         log("refreshed access token using refresh token")
@@ -1452,7 +1508,12 @@ function OICHandler:access(conf)
       tokens_decoded, err = oic.token:verify(tokens_refreshed)
       if not tokens_decoded then
         log("unable to verify refreshed tokens")
-        return forbidden(iss, err, session, anonymous)
+        return forbidden(
+          iss,
+          err,
+          session,
+          anonymous,
+          trusted_client)
 
       else
         log("verified refreshed tokens")
@@ -1473,7 +1534,12 @@ function OICHandler:access(conf)
       end
 
     else
-      return forbidden(iss, "access token has expired and could not be refreshed", session, anonymous)
+      return forbidden(
+        iss,
+        "access token has expired and could not be refreshed",
+        session,
+        anonymous,
+        trusted_client)
     end
   end
 
@@ -1496,7 +1562,8 @@ function OICHandler:access(conf)
               iss,
               "jwt session cookie was not specified for session claim verification",
               session,
-              anonymous)
+              anonymous,
+              trusted_client)
           end
 
           local jwt_session_claim = args.get_conf_arg("jwt_session_claim", "sid")
@@ -1509,8 +1576,8 @@ function OICHandler:access(conf)
               iss,
               "jwt session claim (" .. jwt_session_claim .. ") was not specified in jwt access token",
               session,
-              anonymous
-            )
+              anonymous,
+              trusted_client)
           end
 
           if jwt_session_claim_value ~= jwt_session_cookie_value then
@@ -1518,8 +1585,8 @@ function OICHandler:access(conf)
               iss,
               "invalid jwt session claim (" .. jwt_session_claim .. ") was specified in jwt access token",
               session,
-              anonymous
-            )
+              anonymous,
+              trusted_client)
           end
 
           log("jwt claim matches jwt session cookie")
@@ -1573,7 +1640,12 @@ function OICHandler:access(conf)
       end
 
       if not access_token_scopes then
-        return forbidden(iss, "[openid-connect] scopes required but no scopes found", session, anonymous)
+        return forbidden(
+          iss,
+          "scopes required but no scopes found",
+          session,
+          anonymous,
+          trusted_client)
       end
 
       access_token_scopes = set.new(access_token_scopes)
@@ -1592,9 +1664,10 @@ function OICHandler:access(conf)
       else
         return forbidden(
           iss,
-          "[openid-connect] required scopes were not found [ " .. concat(access_token_scopes, ", ") .. " ]",
+          "required scopes were not found [ " .. concat(access_token_scopes, ", ") .. " ]",
           session,
-          anonymous)
+          anonymous,
+          trusted_client)
       end
     end
 
@@ -1644,7 +1717,12 @@ function OICHandler:access(conf)
       end
 
       if not access_token_audience then
-        return forbidden(iss, "[openid-connect] audience required but no audience found", session, anonymous)
+        return forbidden(
+          iss,
+          "audience required but no audience found",
+          session,
+          anonymous,
+          trusted_client)
       end
 
       access_token_audience = set.new(access_token_audience)
@@ -1663,9 +1741,10 @@ function OICHandler:access(conf)
       else
         return forbidden(
           iss,
-          "[openid-connect] required audience was not found [ " .. concat(access_token_audience, ", ") .. " ]",
+          "required audience was not found [ " .. concat(access_token_audience, ", ") .. " ]",
           session,
-          anonymous)
+          anonymous,
+          trusted_client)
       end
     end
   end
@@ -1685,36 +1764,44 @@ function OICHandler:access(conf)
       end
 
       if tokens_decoded then
-        log("decoded tokens")
-
         local id_token = tokens_decoded.id_token
         if id_token then
           log("trying to find consumer using id token")
-          consumer, err = find_consumer(id_token, consumer_claim, false, consumer_by)
+          consumer, err = find_consumer(id_token, consumer_claim, false, consumer_by, ttl)
           if not consumer then
             log("trying to find consumer using access token")
-            consumer = find_consumer(tokens_decoded.access_token, consumer_claim, false, consumer_by)
+            consumer, err = find_consumer(tokens_decoded.access_token, consumer_claim, false, consumer_by, ttl)
           end
 
         else
           log("trying to find consumer using access token")
-          consumer, err = find_consumer(tokens_decoded.access_token, consumer_claim, false, consumer_by)
+          consumer, err = find_consumer(tokens_decoded.access_token, consumer_claim, false, consumer_by, ttl)
         end
       end
 
       if not consumer and token_introspected then
         log("trying to find consumer using introspection response")
-        consumer, err = find_consumer(token_introspected, consumer_claim, false, consumer_by)
+        consumer, err = find_consumer(token_introspected, consumer_claim, false, consumer_by, ttl)
       end
 
       if not consumer then
         log("kong consumer was not found")
         if not anonymous then
           if err then
-            return forbidden(iss, "consumer was not found (" .. err .. ")", session, anonymous)
+            return forbidden(
+              iss,
+              "consumer was not found (" .. err .. ")",
+              session,
+              anonymous,
+              trusted_client)
 
           else
-            return forbidden(iss, "consumer was not found", session, anonymous)
+            return forbidden(
+              iss,
+              "consumer was not found",
+              session,
+              anonymous,
+              trusted_client)
           end
         end
 
@@ -1733,10 +1820,10 @@ function OICHandler:access(conf)
           log("anonymous kong consumer was not found")
 
           if err then
-            return unexpected("anonymous consumer was not found (", err, ")")
+            return unexpected(trusted_client, "anonymous consumer was not found (", err, ")")
 
           else
-            return unexpected("anonymous consumer was not found")
+            return unexpected(trusted_client, "anonymous consumer was not found")
           end
 
         else
@@ -1764,10 +1851,10 @@ function OICHandler:access(conf)
           log("anonymous kong consumer was not found")
 
           if err then
-            return unexpected("anonymous consumer was not found (", err, ")")
+            return unexpected(trusted_client, "anonymous consumer was not found (", err, ")")
 
           else
-            return unexpected("anonymous consumer was not found")
+            return unexpected(trusted_client, "anonymous consumer was not found")
           end
 
         else
@@ -1794,7 +1881,7 @@ function OICHandler:access(conf)
   replay_downstream_headers(args, downstream_headers, auth_method)
 
   -- proprietary token exchange
-  local exchanged_access_token
+  local token_exchanged
   do
     local exchange_token_endpoint = args.get_conf_arg("token_exchange_endpoint")
     if exchange_token_endpoint then
@@ -1808,28 +1895,38 @@ function OICHandler:access(conf)
 
       if args.get_conf_arg("cache_token_exchange") then
         log("trying to exchange access token with caching enabled")
-        exchanged_access_token, err, error_status = cache.token_exchange.load(
-          oic, exchange_token_endpoint, tokens_encoded.access_token, opts, ttl)
+        token_exchanged, err, error_status = cache.token_exchange.load(
+          tokens_encoded.access_token, exchange_token_endpoint, opts, ttl, true)
 
       else
         log("trying to exchange access token")
-        exchanged_access_token, err, error_status = cache.token_exchange.load(
-          oic, exchange_token_endpoint, tokens_encoded.access_token, opts)
+        token_exchanged, err, error_status = cache.token_exchange.load(
+          tokens_encoded.access_token, exchange_token_endpoint, opts, ttl, false)
       end
 
-      if not exchanged_access_token or error_status ~= 200 then
+      if not token_exchanged or error_status ~= 200 then
         if error_status == 401 then
-          return unauthorized(iss, err or "exchange token endpoint returned unauthorized", session, anonymous)
+          return unauthorized(
+            iss,
+            err or "exchange token endpoint returned unauthorized",
+            session,
+            anonymous,
+            trusted_client)
 
         elseif error_status == 403 then
-          return forbidden(iss, err or "exchange token endpoint returned forbidden", session, anonymous)
+          return forbidden(
+            iss,
+            err or "exchange token endpoint returned forbidden",
+            session,
+            anonymous,
+            trusted_client)
 
         else
           if err then
-            return unexpected(err)
+            return unexpected(trusted_client, err)
 
           else
-            return unexpected("exchange token endpoint returned ", error_status or "unknown")
+            return unexpected(trusted_client, "exchange token endpoint returned ", error_status or "unknown")
           end
         end
 
@@ -1843,7 +1940,7 @@ function OICHandler:access(conf)
   do
     log("setting upstream and downstream headers")
 
-    set_headers(args, "access_token",  exchanged_access_token or tokens_encoded.access_token)
+    set_headers(args, "access_token",  token_exchanged or tokens_encoded.access_token)
     set_headers(args, "id_token",      tokens_encoded.id_token)
     set_headers(args, "refresh_token", tokens_encoded.refresh_token)
     set_headers(args, "introspection", token_introspected or function()
@@ -1852,10 +1949,10 @@ function OICHandler:access(conf)
 
     set_headers(args, "user_info", function()
       if args.get_conf_arg("cache_user_info") then
-        return cache.userinfo.load(oic, tokens_encoded.access_token, ttl)
+        return cache.userinfo.load(oic, tokens_encoded.access_token, ttl, true)
 
       else
-        return cache.userinfo.init(tokens_encoded.access_token)
+        return cache.userinfo.load(oic, tokens_encoded.access_token, ttl, false)
       end
     end)
 
