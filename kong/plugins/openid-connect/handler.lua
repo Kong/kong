@@ -709,6 +709,11 @@ function OICHandler:access(conf)
   local args = arguments(conf)
   args.get_http_opts = create_get_http_opts(args)
 
+  -- check if preflight request and whether it should be authenticated
+  if not args.get_conf_arg("run_on_preflight", true) and var.request_method == "OPTIONS" then
+    return
+  end
+
   local trusted_client = find_trusted_client(args)
 
   local anonymous = args.get_conf_arg("anonymous")

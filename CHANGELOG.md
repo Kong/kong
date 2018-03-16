@@ -1,5 +1,6 @@
 ## v0.0.9
 
+- Remove multipart parsing of id tokens (it was never proxy safe)
 - Add `config.session_storage`
 - Add `config.session_memcache_prefix`
 - Add `config.session_memcache_socket`
@@ -30,8 +31,7 @@
 - Add `config.password_param_type`
 - Add `config.hide_credentials`
 - Add `config.cache_ttl`
-
-- Remove multipart parsing of id tokens (it was never proxy safe)
+- Add `config.run_on_preflight`
 
 ## v0.0.8
 

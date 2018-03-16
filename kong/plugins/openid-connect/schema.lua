@@ -500,6 +500,11 @@ return {
       type                             = "string",
       func                             = check_user,
     },
+    run_on_preflight                   = {
+      required                         = false,
+      type                             = "boolean",
+      default                          = true,
+    },
     leeway                             = {
       required                         = false,
       type                             = "number",
