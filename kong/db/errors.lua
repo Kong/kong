@@ -24,14 +24,14 @@ end
 
 
 local ERRORS            = {
-  INVALID_PRIMARY_KEY   = 1,
-  SCHEMA_VIOLATION      = 2,
-  PRIMARY_KEY_VIOLATION = 3, -- primary key already exists (HTTP 400)
-  FOREIGN_KEY_VIOLATION = 4, -- foreign entity does not exist (HTTP 400)
-  UNIQUE_VIOLATION      = 5, -- unique key already exists (HTTP 409)
-  NOT_FOUND             = 6, -- WHERE clause leads nowhere (HTTP 404)
-  INVALID_OFFSET        = 7, -- page(size, offset) is invalid
-  DATABASE_ERROR        = 8, -- connection refused or DB error (HTTP 500)
+  INVALID_PRIMARY_KEY   =  1,
+  SCHEMA_VIOLATION      =  2,
+  PRIMARY_KEY_VIOLATION =  3, -- primary key already exists (HTTP 400)
+  FOREIGN_KEY_VIOLATION =  4, -- foreign entity does not exist (HTTP 400)
+  UNIQUE_VIOLATION      =  5, -- unique key already exists (HTTP 409)
+  NOT_FOUND             =  6, -- WHERE clause leads nowhere (HTTP 404)
+  INVALID_OFFSET        =  7, -- page(size, offset) is invalid
+  DATABASE_ERROR        =  8, -- connection refused or DB error (HTTP 500)
 }
 
 
