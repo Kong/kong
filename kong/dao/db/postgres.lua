@@ -78,6 +78,7 @@ end
 
 function _M:infos()
   return {
+    db_name = "PostgreSQL",
     desc = "database",
     name = self:clone_query_options().database,
     version = self.major_minor_version or "unknown",
