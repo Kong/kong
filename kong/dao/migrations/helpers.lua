@@ -3,11 +3,11 @@ local cassandra = require("cassandra")
 local utils = require "kong.tools.utils"
 
 
-local _M = {}
-
-
 local fmt = string.format
 local table_concat = table.concat
+
+
+local _M = {}
 
 
 -- Iterator to update plugin configurations.
