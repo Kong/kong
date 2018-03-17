@@ -1,6 +1,11 @@
 local DAO = require "kong.dao.dao"
+local log = require "kong.cmd.utils.log"
 local utils = require "kong.tools.utils"
+local version = require "version"
+local constants = require "kong.constants"
 local ModelFactory = require "kong.dao.model_factory"
+
+local fmt = string.format
 
 local CORE_MODELS = {
   "apis",
@@ -129,8 +134,50 @@ function _M.new(kong_config, new_db)
   return setmetatable(self, _M)
 end
 
+function _M:check_version_compat(min, deprecated)
+  local db_infos = self:infos()
+  if db_infos.version == "unknown" then
+    return nil, "could not check database compatibility: version " ..
+                "is unknown (did you call ':init'?)"
+  end
+
+  local db_v = version.version(db_infos.version)
+  local min_v = version.version(min)
+
+  if db_v < min_v then
+    if deprecated then
+      local depr_v = version.version(deprecated)
+
+      if db_v >= depr_v then
+        log.warn("Currently using %s %s which is considered deprecated, " ..
+                 "please use %s or greater", db_infos.db_name,
+                 db_infos.version, min)
+
+        return true
+      end
+    end
+
+    return nil, fmt("Kong requires %s %s or greater (currently using %s)",
+                    db_infos.db_name, min, db_infos.version)
+  end
+
+  return true
+end
+
 function _M:init()
-  return self.db:init()
+  local ok, err = self.db:init()
+  if not ok then
+    return nil, err
+  end
+
+  local db_constants = constants.DATABASE[self.db_type:upper()]
+
+  ok, err = self:check_version_compat(db_constants.MIN, db_constants.DEPRECATED)
+  if not ok then
+    return nil, err
+  end
+
+  return true
 end
 
 function _M:init_worker()
@@ -297,13 +344,11 @@ local function migrate(self, identifier, migrations_modules, cur_migrations, on_
 end
 
 local function default_on_migrate(identifier, db_infos)
-  local log = require "kong.cmd.utils.log"
   log("migrating %s for %s %s",
       identifier, db_infos.desc, db_infos.name)
 end
 
 local function default_on_success(identifier, migration_name, db_infos)
-  local log = require "kong.cmd.utils.log"
   log("%s migrated up to: %s",
       identifier, migration_name)
 end
@@ -319,8 +364,6 @@ function _M:are_migrations_uptodate()
     return ret_error_string(self.db.name, nil,
                             "could not retrieve current migrations: " .. err)
   end
-
-  local log = require "kong.cmd.utils.log"
 
   for module, migrations in pairs(migrations_modules) do
     for _, migration in ipairs(migrations) do
@@ -351,8 +394,6 @@ function _M:check_schema_consensus()
     return true -- only applicable for cassandra
   end
 
-  local log = require "kong.cmd.utils.log"
-
   log.verbose("checking Cassandra schema consensus...")
 
   local ok, err = self.db:check_schema_consensus()
@@ -370,8 +411,6 @@ end
 function _M:run_migrations(on_migrate, on_success)
   on_migrate = on_migrate or default_on_migrate
   on_success = on_success or default_on_success
-
-  local log = require "kong.cmd.utils.log"
 
   log.verbose("running datastore migrations")
 

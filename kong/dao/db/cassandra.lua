@@ -182,6 +182,7 @@ end
 
 function _M:infos()
   return {
+    db_name = "Cassandra",
     desc = "keyspace",
     name = self.cluster_options.keyspace,
     version = self.major_minor_version or "unknown",
