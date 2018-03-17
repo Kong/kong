@@ -315,7 +315,7 @@ dao_helpers.for_each_dao(function(kong_config)
         }
         assert.is_nil(err_t)
         assert.is_nil(err)
-        assert.is_true(ok)
+        assert.is_truthy(ok)
 
         -- no more Service
         local api, err = db.services:select {
@@ -364,7 +364,7 @@ dao_helpers.for_each_dao(function(kong_config)
         }
         assert.is_nil(err_t)
         assert.is_nil(err)
-        assert.is_true(ok)
+        assert.is_truthy(ok)
 
         -- no more Route
         local api, err = db.routes:select {
