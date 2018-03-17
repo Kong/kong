@@ -83,4 +83,14 @@ return {
     "kong_cluster_events",
     "kong_healthchecks",
   },
+  DATABASE = {
+    POSTGRES = {
+      MIN = "9.5",
+      DEPRECATED = "9.4",
+    },
+    CASSANDRA = {
+      MIN = "2.2",
+      DEPRECATED = "2.1",
+    }
+  }
 }
