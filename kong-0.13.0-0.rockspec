@@ -31,6 +31,7 @@ dependencies = {
   "lua-resty-worker-events == 0.3.1",
   "lua-resty-mediador == 0.1.2",
   "lua-resty-healthcheck == 0.4.0",
+  "lua-resty-mlcache == 2.0.1",
 }
 build = {
   type = "builtin",
@@ -46,8 +47,6 @@ build = {
     ["kong.cluster_events.strategies.postgres"] = "kong/cluster_events/strategies/postgres.lua",
 
     ["kong.cache"] = "kong/cache.lua",
-
-    ["kong.mlcache"] = "kong/mlcache.lua",
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
