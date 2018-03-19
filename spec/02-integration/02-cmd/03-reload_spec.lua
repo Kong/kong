@@ -27,7 +27,7 @@ describe("kong reload", function()
   end)
   it("reloads from a --conf argument", function()
     assert(helpers.start_kong {
-      proxy_listen = "0.0.0.0:9002"
+      listen = "0.0.0.0:9002"
     })
 
     -- http_client errors out if cannot connect
@@ -40,7 +40,7 @@ describe("kong reload", function()
                              "no nginx master PID")
 
     assert(helpers.kong_exec("reload --conf " .. helpers.test_conf_path, {
-      proxy_listen = "0.0.0.0:9000"
+      listen = "0.0.0.0:9000"
     }))
 
     ngx.sleep(1)
@@ -54,7 +54,7 @@ describe("kong reload", function()
   end)
   it("accepts a custom nginx template", function()
     assert(helpers.start_kong {
-      proxy_listen = "0.0.0.0:9002"
+      listen = "0.0.0.0:9002"
     })
 
     -- http_client errors out if cannot connect

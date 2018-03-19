@@ -81,11 +81,11 @@ upgrade your Kong cluster.
 
 ##### Configuration
 
-- :warning: The `proxy_listen` and `admin_listen` configuration values have a
+- :warning: The `listen` and `admin_listen` configuration values have a
   new syntax.  This syntax is more aligned with that of NGINX and is more
   powerful while also simpler.  As a result, the following configuration values
-  have been removed because superfluous: `ssl`, `admin_ssl`, `http2`,
-  `admin_http2`, `proxy_listen_ssl`, and `admin_listen_ssl`.
+  have been removed because superfluous: `proxy_listen`, `ssl`, `admin_ssl`,
+  `http2`, `admin_http2`, `proxy_listen_ssl`, and `admin_listen_ssl`.
   [#3147](https://github.com/Kong/kong/pull/3147)
 
 ##### Plugins
@@ -123,7 +123,7 @@ upgrade your Kong cluster.
 ##### Configuration
 
 - :fireworks: Support for **control-plane** and **data-plane** modes. The new
-  new syntax of `proxy_listen` and `admin_listen` supports `off`, which
+  new syntax of `listen` and `admin_listen` supports `off`, which
   disables either one of those interfaces. It is now simpler than ever to
   make a Kong node "Proxy only" (data-plane) or "Admin only" (control-plane).
   [#3147](https://github.com/Kong/kong/pull/3147)
