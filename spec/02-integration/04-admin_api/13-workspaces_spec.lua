@@ -5,6 +5,22 @@ local cjson       = require "cjson"
 local utils       = require "kong.tools.utils"
 local workspaces  = require "kong.workspaces"
 
+local function listify(x)
+  if type(x) == "table" then
+    return x
+  else
+    return {x}
+  end
+end
+
+local function any(pred, t)
+  for _,v in ipairs(t) do
+    local r = pred(v)
+    if r then return r end
+  end
+  return false
+end
+
 local function do_post(path, body)
   local client = assert(helpers.admin_client())
   return assert(client:send {
@@ -98,11 +114,41 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
       res = assert.res_status(200, res)
       local json = cjson.decode(res).data
       assert.equals(workspaces.DEFAULT_WORKSPACE, json[1].workspace)
+      local ws = dao.apis:find_all({name = "default:test2"})[1].workspace
+      assert.truthy(
+          any(function(x)
+              return workspaces.DEFAULT_WORKSPACE == x end,
+            listify(ws))) -- protect for multiple ws
+
     end)
     -- it("old entities get the default workspace added when running the migration", function() end)
   end)
 
   describe("workspace name in path", function()
+    local client, dao
+
+    setup(function()
+      dao = assert(DAOFactory.new(kong_config))
+
+      dao:truncate_tables()
+      helpers.run_migrations(dao)
+      assert(helpers.start_kong({
+                 database = kong_config.database
+      }))
+
+      client = assert(helpers.admin_client())
+    end)
+
+    teardown(function()
+      if client then
+        client:close()
+      end
+
+      dao:truncate_tables()
+
+      helpers.stop_kong()
+    end)
+
     it("sets workspace variable", function()
       create_workspace("foo")
       local res = create_api("test3", "my.api.com", "http://api.com")
