@@ -5,6 +5,7 @@ local cjson       = require "cjson"
 local utils       = require "kong.tools.utils"
 local workspaces  = require "kong.workspaces"
 
+
 dao_helpers.for_each_dao(function(kong_config)
 
 describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
