@@ -414,7 +414,9 @@ return {
         workspace_id uuid,
         entity_id text,
         entity_type text,
-        PRIMARY KEY(workspace_id, entity_id)
+        unique_field_name text,
+        unique_field_value text,
+        PRIMARY KEY(workspace_id, entity_id, unique_field_name)
       );
     ]],
     down = [[

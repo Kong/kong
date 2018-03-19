@@ -590,7 +590,7 @@ function _M:find_page(table_name, tbl, paging_state, page_size, schema)
   end
 
   if is_workspaceable(table_name, tbl) then
-    local primary_key = workspaces.get_workspaceable_relations()[table_name]
+    local primary_key = workspaces.get_workspaceable_relations()[table_name].primary_key
     local ws_entities_map, err = workspace_entities_map(self, table_name)
     if err then
       return nil, err

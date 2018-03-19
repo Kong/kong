@@ -8,14 +8,15 @@ local workspaces = require "kong.workspaces"
 -- given an entity ID, look up its entity collection name;
 -- it is only called if the user does not pass in an entity_type
 local function resolve_entity_type(dao_factory, entity_id)
-  local workspaceable = workspaces.get_workspaceable_relations()
-  for relation, pk in pairs(workspaceable) do
-    local row, err = dao_factory[relation]:find_all{[pk] = entity_id}
+  for relation, constraints in pairs(workspaces.get_workspaceable_relations()) do
+    local rows, err = dao_factory[relation]:find_all{
+      [constraints.primary_key] = entity_id
+    }
     if err then
       return nil, err
     end
-    if row[1] then
-      return relation
+    if rows[1] then
+      return relation, rows[1]
     end
   end
   return false, "entity does not belong to any relation"
@@ -140,11 +141,10 @@ return {
         end
       end
 
-
       -- yayyyy, no fuckup! now do the thing
       local res = {}
       for i = 1, #entity_ids do
-        local entity_type, err = resolve_entity_type(dao_factory, entity_ids[i])
+        local entity_type, row, err = resolve_entity_type(dao_factory, entity_ids[i])
         -- database error
         if entity_type == nil then
           return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
@@ -154,18 +154,13 @@ return {
           return helpers.responses.send_HTTP_BAD_REQUEST(err)
         end
 
-        local row, err = dao_factory.workspace_entities:insert({
-          workspace_id = self.workspace.id,
-          entity_id = entity_ids[i],
-          entity_type = entity_type,
-        })
+        local err = workspaces.add_entity_relation({table = entity_type},
+                                                      row, self.workspace)
         if err then
-          helpers.yield_error(err)
+          return helpers.yield_error(err)
         end
-
         table.insert(res, row)
       end
-
 
       return helpers.responses.send_HTTP_CREATED(res)
     end,
@@ -174,7 +169,6 @@ return {
       if not self.params.entities then
         return helpers.responses.send_HTTP_BAD_REQUEST("must provide >= entity")
       end
-
 
       local entity_ids = utils.split(self.params.entities, ",")
 
@@ -214,7 +208,7 @@ return {
     end,
 
     DELETE = function(self, dao_factory, helpers)
-      local e, err = dao_factory.workspace_entities:find({
+      local e, err = dao_factory.workspace_entities:find_all({
         workspace_id = self.workspace.id,
         entity_id = self.params.entity_id,
       })
@@ -223,12 +217,11 @@ return {
       end
 
       if e then
-        local _, err = dao_factory.workspace_entities:delete({
-          workspace_id = self.workspace.id,
-          entity_id = self.params.entity_id,
-        })
-        if err then
-          return helpers.yield_error(err)
+        for _, row in ipairs(e) do
+          local _, err = dao_factory.workspace_entities:delete(row)
+          if err then
+            return helpers.yield_error(err)
+          end
         end
 
         return helpers.responses.send_HTTP_NO_CONTENT()

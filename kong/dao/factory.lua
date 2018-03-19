@@ -94,7 +94,9 @@ local function load_daos(self, schemas, constraints)
                             constraints[m_name])
 
     if schema.workspaceable then
-      workspaces.register_workspaceable_relation(m_name, schema.primary_key)
+      workspaces.register_workspaceable_relation(m_name, schema.primary_key,
+                                                 constraints[m_name] and
+                                                 constraints[m_name].unique)
     end
   end
 end

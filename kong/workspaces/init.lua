@@ -43,11 +43,14 @@ end
 
 -- register a relation name and its primary key name as a workspaceable
 -- relation
-function _M.register_workspaceable_relation(relation, primary_key)
+function _M.register_workspaceable_relation(relation, primary_keys, unique_keys)
   -- we explicitly take only the first component of the primary key - ie,
   -- in plugins, this means we only take the plugin ID
   if not workspaceable_relations[relation] then
-    workspaceable_relations[relation] = primary_key[1]
+    workspaceable_relations[relation] = {
+      primary_key = primary_keys[1],
+      unique_keys = unique_keys
+    }
     return true
   end
   return false
@@ -56,6 +59,16 @@ end
 
 function _M.get_workspaceable_relations()
   return setmetatable({}, metatable(workspaceable_relations))
+end
+
+local function add_entity_relation_db(dao, ws_id, entity_id, table_name, field_name, field_value)
+  return dao:insert({
+    workspace_id = ws_id,
+    entity_id = entity_id,
+    entity_type = table_name,
+    unique_field_name = field_name or "",
+    unique_field_value = field_value or "",
+  })
 end
 
 
@@ -74,20 +87,30 @@ function _M.get_default_workspace_migration()
             return err
           end
 
-          for relation, pk_name in pairs(workspaceable_relations) do
+          for relation, constraints in pairs(workspaceable_relations) do
             local entities, err = dao[relation]:find_all()
             if err then
               return nil, err
             end
 
             for _, entity in ipairs(entities) do
-              local relationship, err = dao.workspace_entities:insert({
-                workspace_id = default.id,
-                entity_id = entity.id,
-                entity_type = relation,
-              })
-              if err then
-                return nil, err
+              if constraints.unique_keys then
+                for k, _ in pairs(constraints.unique_keys) do
+                  local _, err = add_entity_relation_db(dao.workspace_entities, default.id,
+                                                        entity[constraints.primary_key],
+                                                        relation, k, entity[k])
+                  if err then
+                    return nil, err
+                  end
+                end
+              else
+                local _, err = add_entity_relation_db(dao.workspace_entities, default.id,
+                                                      entity[constraints.primary_key],
+                                                      relation, constraints.primary_key,
+                                                      entity[constraints.primary_key])
+                if err then
+                  return nil, err
+                end
               end
             end
           end
@@ -131,31 +154,84 @@ end
 
 
 function _M.add_entity_relation(dao_collection, entity, workspace)
-  local rel, err
-  local primary_key = workspaceable_relations[dao_collection.table]
-  if primary_key then
-    rel, err = singletons.dao.workspace_entities:insert({
-      workspace_id = workspace.id,
-      entity_id = entity[primary_key],
-      entity_type = dao_collection.table
-    })
+  local constraints = workspaceable_relations[dao_collection.table]
+  if constraints.unique_keys then
+    for k, _ in pairs(constraints.unique_keys) do
+      local _, err = add_entity_relation_db(singletons.dao.workspace_entities, workspace.id,
+                                         entity[constraints.primary_key],
+                                         dao_collection.table, k, entity[k])
+      if err then
+        return err
+      end
+    end
+    return
   end
 
-  return rel, err
+  local _, err = add_entity_relation_db(singletons.dao.workspace_entities, workspace.id,
+                                        entity[constraints.primary_key],
+                                        dao_collection.table, constraints.primary_key,
+                                        entity[constraints.primary_key])
+  if err then
+    return err
+  end
 end
 
 
-function _M.delete_entity_relation(ws, dao_collection, entity)
-  local res, err
-  local primary_key = workspaceable_relations[dao_collection.table]
-  if primary_key then
-    res, err = singletons.dao.workspace_entities:delete({
-      entity_id = entity[primary_key],
-      workspace_id = ws.id
-    })
+function _M.delete_entity_relation(dao_collection, entity)
+  local constraints = workspaceable_relations[dao_collection.table]
+  if not constraints then
+    return
   end
 
-  return res, err
+  local res, err = singletons.dao.workspace_entities:find_all({
+    entity_id = entity[constraints.primary_key],
+  })
+  if err then
+    return err
+  end
+
+  for _, row in ipairs(res) do
+    local res , err = singletons.dao.workspace_entities:delete(row)
+    if err then
+      return err
+    end
+  end
+end
+
+
+function _M.update_entity_relation(dao_collection, entity)
+  local constraints = workspaceable_relations[dao_collection.table]
+  if constraints and constraints.unique_keys then
+    for k, _ in pairs(constraints.unique_keys) do
+      local res, err = singletons.dao.workspace_entities:find_all({
+        entity_id = entity[constraints.primary_key],
+        unique_field_name = k,
+      })
+      if err then
+        return err
+      end
+
+      for _, row in ipairs(res) do
+        local res , err = singletons.dao.workspace_entities:update({
+          unique_field_value = entity[k]
+        }, row)
+      end
+      if err then
+        return err
+      end
+    end
+  end
+end
+
+
+function _M.find_entity_by_unique_field(params)
+  local rows, err = singletons.dao.workspace_entities:find_all(params)
+  if err then
+    return nil, err
+  end
+  if rows then
+    return rows[1]
+  end
 end
 
 
