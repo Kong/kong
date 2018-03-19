@@ -10,7 +10,7 @@ local NOTICE  = ngx.NOTICE
 local DEBUG   = ngx.DEBUG
 
 
-local SHM_CACHE = "kong_cache"
+local SHM_CACHE = "kong_db_cache"
 --[[
 Hypothesis
 ----------
@@ -69,7 +69,8 @@ function _M.new(opts)
     return error("opts.resty_lock_opts must be a table")
   end
 
-  local mlcache, err = resty_mlcache.new("kong_db_cache", SHM_CACHE, {
+  local mlcache, err = resty_mlcache.new(SHM_CACHE, SHM_CACHE, {
+    shm_miss         = "kong_db_cache_miss",
     lru_size         = LRU_SIZE,
     ttl              = max(opts.ttl     or 3600, 0),
     neg_ttl          = max(opts.neg_ttl or 300,  0),
