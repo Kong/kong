@@ -121,7 +121,7 @@ local function retrieve_workspace(workspace_name)
 end
 
 
-function _M.get_workspace(params)
+function _M.get_req_workspace(params)
   if params.workspace_name == "*" then
     return { name = "*" }
   else
