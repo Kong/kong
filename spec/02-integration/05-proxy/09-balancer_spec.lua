@@ -258,11 +258,13 @@ local function http_server(timeout, host, port, counts, test_log)
 end
 
 
-local function client_requests(n, headers)
+local function client_requests(n, headers, host, port)
   local oks, fails = 0, 0
   local last_status
   for _ = 1, n do
-    local client = helpers.proxy_client()
+    local client = (host and port)
+                   and helpers.http_client(host, port)
+                   or  helpers.proxy_client()
     local res = client:send {
       method = "GET",
       path = "/",
@@ -299,6 +301,19 @@ local function api_send(method, path, body)
   end
   api_client:close()
   return res.status
+end
+
+
+local function file_contains(filename, searched)
+  local fd = assert(io.open(filename, "r"))
+  for line in fd:lines() do
+    if line:find(searched, 1, true) then
+      fd:close()
+      return true
+    end
+  end
+  fd:close()
+  return false
 end
 
 
@@ -496,6 +511,112 @@ dao_helpers.for_each_dao(function(kong_config)
         local _, server1_oks, server1_fails, hcs = server1:join()
         assert.same({1, 0}, { server1_oks, server1_fails })
         assert.truthy(hcs < 2)
+      end)
+
+    end)
+
+    describe("#healthchecks (#cluster)", function()
+
+      before_each(function()
+
+        helpers.start_kong({
+          log_level = "debug",
+          db_update_frequency = 0.1,
+        })
+
+        -- start a second Kong instance (ports are Kong test ports + 10)
+        helpers.start_kong({
+          admin_listen = "127.0.0.1:9011",
+          proxy_listen = "127.0.0.1:9010",
+          proxy_listen_ssl = "127.0.0.1:9453",
+          admin_listen_ssl = "127.0.0.1:9454",
+          prefix = "servroot2",
+          log_level = "debug",
+          db_update_frequency = 0.1,
+        })
+      end)
+
+      after_each(function()
+        helpers.stop_kong(nil, true)
+        helpers.stop_kong("servroot2", true, true)
+      end)
+
+      it("does not perform health checks when disabled (#3304)", function()
+
+        assert.same(201, api_send("POST", "/apis", {
+          strip_uri = true,
+          hosts = {
+              "balancer.test"
+          },
+          name = "test",
+          methods = {
+              "GET",
+              "HEAD"
+          },
+          http_if_terminated = true,
+          https_only = false,
+          retries = 1,
+          uris = {
+              "/"
+          },
+          preserve_host = false,
+          upstream_connect_timeout = 1000,
+          upstream_read_timeout = 3000,
+          upstream_send_timeout = 3000,
+          upstream_url = "http://test",
+        }))
+
+        assert.same(201, api_send("POST", "/upstreams", {
+          name = "test",
+        }))
+
+        assert.same(201, api_send("POST", "/upstreams/test/targets", {
+          target = "127.0.0.1:" .. PORT
+        }))
+
+        helpers.wait_until(function()
+          return file_contains("servroot2/logs/error.log", "balancer:targets")
+        end, 10)
+
+        local timeout = 10
+        -- server responds, then fails, then responds again
+        local server = http_server(timeout, localhost, PORT, { 20, 20, 20 })
+
+        local oks, fails, last_status = client_requests(10)
+        assert.same(10, oks)
+        assert.same(0, fails)
+        assert.same(200, last_status)
+
+        oks, fails, last_status = client_requests(10, nil, "127.0.0.1", 9010)
+        assert.same(10, oks)
+        assert.same(0, fails)
+        assert.same(200, last_status)
+
+        oks, fails, last_status = client_requests(10)
+        assert.same(0, oks)
+        assert.same(10, fails)
+        assert.same(500, last_status)
+
+        oks, fails, last_status = client_requests(10, nil, "127.0.0.1", 9010)
+        assert.same(0, oks)
+        assert.same(10, fails)
+        assert.same(500, last_status)
+
+        oks, fails, last_status = client_requests(10)
+        assert.same(10, oks)
+        assert.same(0, fails)
+        assert.same(200, last_status)
+
+        oks, fails, last_status = client_requests(10, nil, "127.0.0.1", 9010)
+        assert.same(10, oks)
+        assert.same(0, fails)
+        assert.same(200, last_status)
+
+        -- collect server results
+        local _, server_oks, server_fails = server:join()
+        assert.same(40, server_oks)
+        assert.same(20, server_fails)
+
       end)
 
     end)
