@@ -34,4 +34,65 @@ describe("workspaces", function()
       assert.is_false(val)
     end)
   end)
+
+  it("is able to detect a matching [host, uri, method ] in the router", function()
+    local Router = require "kong.core.router"
+    local method = "GET"
+    local uri = "/"
+    local host = "myapi1"
+
+
+    local apis = {
+      {
+        created_at = 1521209668855,
+        headers = {
+          host = { "myapi1" }
+        },
+        hosts = { "myapi1" },
+        http_if_terminated = false,
+        https_only = false,
+        id = "cd3205b8-5e52-4951-829d-fee3e38949b2",
+        name = "foo2",
+        preserve_host = false,
+        retries = 5,
+        strip_uri = true,
+        upstream_connect_timeout = 60000,
+        upstream_read_timeout = 60000,
+        upstream_send_timeout = 60000,
+        upstream_url = "https://requestb.in/w2r6y3w2",
+        workspace = "default"
+      }, {
+        created_at = 1521494974461,
+        headers = {
+          host = { "myapi1" }
+        },
+        hosts = {"myapi1"},
+        http_if_terminated = false,
+        https_only = false,
+        id = "6b4d66b6-f615-44fe-bfec-116a6a37bdf1",
+        name = "blabla",
+        preserve_host = false,
+        retries = 5,
+        strip_uri = true,
+        upstream_connect_timeout = 60000,
+        upstream_read_timeout = 60000,
+        upstream_send_timeout = 60000,
+        upstream_url = "https://requestb.in/w2r6y3w2",
+        workspace = "foo"
+         }, {
+        name = "api-1",
+        methods = { "POST", "PUT", "GET" },
+        uris = { "/my-api" },
+      }
+    }
+    local  r = Router.new(apis)
+    local matched_route = r.select("GET", "/","")
+    assert.falsy(matched_route)
+    matched_route = r.select("GET", "/","myapi1")
+    assert.truthy(matched_route)
+    matched_route = r.select("GET", "/my-api","")
+    assert.truthy(matched_route)
+    matched_route = workspaces.match_route(r, "GET", "/my-api", "")
+    assert.truthy(matched_route)
+  end)
 end)

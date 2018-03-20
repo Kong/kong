@@ -234,5 +234,8 @@ function _M.find_entity_by_unique_field(params)
   end
 end
 
+function _M.match_route(router, method, uri, host)
+  return router.select(method, uri, method)
+end
 
 return _M
