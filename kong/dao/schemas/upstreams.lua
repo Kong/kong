@@ -3,7 +3,7 @@ local utils = require "kong.tools.utils"
 local match = string.match
 local sub = string.sub
 
-local DEFAULT_SLOTS = 100
+local DEFAULT_SLOTS = 10000
 local SLOTS_MIN, SLOTS_MAX = 10, 2^16
 local SLOTS_MSG = "number of slots must be between " .. SLOTS_MIN .. " and " .. SLOTS_MAX
 
