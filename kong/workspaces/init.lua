@@ -238,4 +238,25 @@ function _M.match_route(router, method, uri, host)
   return router.select(method, uri, method)
 end
 
+function _M.api_in_ws(api, ws1)
+
+  local function listify(x)
+    return (type(x) == "table") and x or {x}
+  end
+
+  local function any(pred, t)
+    for _,v in ipairs(t) do
+      local r = pred(v)
+      if r then return r end
+    end
+    return false
+  end
+
+  return any(
+    function(x) return x == ws1 end,
+    (listify(api.workspace))
+  )
+end
+
+
 return _M
