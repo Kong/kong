@@ -256,6 +256,21 @@ describe("Plugin: key-auth (access)", function()
         end)
       end)
     end
+
+    it("fails with an unsupported request content type", function()
+      local res = assert(client:send {
+        path = "/status/200",
+        headers = {
+          ["Host"] = "key-auth5.com",
+          ["Content-Type"] = "text/plain",
+        },
+        body = "foobar",
+      })
+
+      local body = assert.res_status(400, res)
+      local json = cjson.decode(body)
+      assert.same({ message = "Cannot process request body" }, json)
+    end)
   end)
 
   describe("key in headers", function()
@@ -331,13 +346,13 @@ describe("Plugin: key-auth (access)", function()
       },
       ["post_data.params"] = {
         {
-          headers = { ["Host"] = "key-auth5.com", ["Content-Type"] = "application/x-www-form-urlencoded" },
+          headers = { ["Host"] = "key-auth5.com", },
           body    = { apikey = "kong" },
           method  = "POST",
           path    = "/request",
         },
         {
-          headers = { ["Host"] = "key-auth6.com", ["Content-Type"] = "application/x-www-form-urlencoded" },
+          headers = { ["Host"] = "key-auth6.com", },
           body    = { apikey = "kong" },
           method  = "POST",
           path    = "/request",
@@ -347,22 +362,49 @@ describe("Plugin: key-auth (access)", function()
 
     for type, _ in pairs(harness) do
       describe(type, function()
-        it("false sends key to upstream", function()
-          local res   = assert(client:send(harness[type][1]))
-          local body  = assert.res_status(200, res)
-          local json  = cjson.decode(body)
-          local field = type == "post_data.params" and json.post_data.params or json[type]
-          assert.equal("kong", field.apikey)
-        end)
-        it("true doesn't send key to upstream", function()
-          local res   = assert(client:send(harness[type][2]))
-          local body  = assert.res_status(200, res)
-          local json  = cjson.decode(body)
-          local field = type == "post_data.params" and json.post_data.params or json[type]
-          assert.is_nil(field.apikey)
-        end)
+        for _, content_type in pairs({
+          "application/x-www-form-urlencoded",
+          "application/json",
+          "multipart/form-data",
+          }) do
+
+          if type == "post_data.params" then
+            harness[type][1].headers["Content-Type"] = content_type
+            harness[type][2].headers["Content-Type"] = content_type
+          end
+
+          it("(" .. content_type .. ") false sends key to upstream", function()
+            local res   = assert(client:send(harness[type][1]))
+            local body  = assert.res_status(200, res)
+            local json  = cjson.decode(body)
+            local field = type == "post_data.params" and json.post_data.params or json[type]
+            assert.equal("kong", field.apikey)
+          end)
+          it("(" .. content_type .. ") true doesn't send key to upstream", function()
+            local res   = assert(client:send(harness[type][2]))
+            local body  = assert.res_status(200, res)
+            local json  = cjson.decode(body)
+            local field = type == "post_data.params" and json.post_data.params or json[type]
+            assert.is_nil(field.apikey)
+          end)
+        end
       end)
     end
+
+    it("fails with an unsupported request content type", function()
+      local res = assert(client:send {
+        path = "/status/200",
+        headers = {
+          ["Host"] = "key-auth6.com",
+          ["Content-Type"] = "text/plain",
+        },
+        body = "foobar",
+      })
+
+      local body = assert.res_status(400, res)
+      local json = cjson.decode(body)
+      assert.same({ message = "Cannot process request body" }, json)
+    end)
   end)
 
   describe("config.anonymous", function()
