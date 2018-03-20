@@ -51,9 +51,9 @@ https://konghq.com/kong-enterprise-edition/ or contact us at
 There are several channels where you can get answers from the community
 or the maintainers of this project:
 
-- The mailing list, hosted on the [konglayer Google
-  Group](https://groups.google.com/forum/#!forum/konglayer) for asynchronous
-  and lengthy chatter
+- Our public forum, [Kong Nation](https://discuss.konghq.com/), for
+  asynchronous and lengthy chatter and staying up-to-date with the latest
+  announcements or usage tips
 - Gitter, for faster, but more ephemeral conversations. The room is
   hosted at https://gitter.im/Mashape/kong
 - The IRC channel, registered on freenode as [#kong
@@ -149,14 +149,8 @@ how to do so is the [Distribution
 Section](https://getkong.org/docs/latest/plugin-development/distribution/#distribute-your-plugin)
 of the Plugin Development Guide.
 
-To give visibility to your plugin, we advise that you post an announcement
-thread on the [mailing
-list](https://groups.google.com/forum/#!forum/konglayer). A good title for such
-an announcement would be something like:
-
-```
-[ANN] Community Plugin - [plugin name] [plugin version]
-```
+To give visibility to your plugin, we advise that you create a post in the
+Announcements category of [Kong Nation](https://discuss.konghq.com/)!
 
 In the foreseeable future, we will also include a "Community Plugins" section
 to the online [Plugins Gallery](https://getkong.org/plugins/), and we will
