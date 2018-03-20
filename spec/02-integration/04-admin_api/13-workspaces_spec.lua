@@ -5,80 +5,6 @@ local cjson       = require "cjson"
 local utils       = require "kong.tools.utils"
 local workspaces  = require "kong.workspaces"
 
-local function listify(x)
-  if type(x) == "table" then
-    return x
-  else
-    return {x}
-  end
-end
-
-local function any(pred, t)
-  for _,v in ipairs(t) do
-    local r = pred(v)
-    if r then return r end
-  end
-  return false
-end
-
-local function do_post(path, body)
-  local client = assert(helpers.admin_client())
-  return assert(client:send {
-                  method = "POST",
-                  path = path,
-                  body = body,
-                  headers = {["Content-Type"] = "application/json"}}
-  )
-end
-
-local function do_get(path, params)
-  local pl_stringx = require "pl.stringx"
-
-  local function map(f, arr)
-    local res = {}
-    for k,v in pairs(arr) do
-      res[k] = f(k, v)
-    end
-    return res
-  end
-
-  local function values(arr)
-    local res = {}
-    for _,v in pairs(arr) do
-      res[#res+1] = v
-    end
-    return res
-  end
-
-  local function body_builder(t)
-    local str_table = values(map(function(k,v) return tostring(k) .. "=" .. tostring(v) end, t))
-    return pl_stringx.join("&", str_table)
-  end
-
-  local client = assert(helpers.admin_client())
-
-  return assert(client:send {
-                  method = "GET",
-                  path = path .. "?" .. body_builder(params or {}),
-                  headers = {["Content-Type"] = "application/json"}})
-end
-
-
-local function create_api(name, hosts, upstream_url, ...)
-  local body = ... or {}
-  body.name = name
-  body.hosts = hosts
-  body.upstream_url = upstream_url
-  return do_post("/apis", body)
-end
-
-local function create_workspace(name)
-  local res = do_post("/workspaces", {name = name})
-  return res
-end
-
-
-
 dao_helpers.for_each_dao(function(kong_config)
 
 describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
@@ -106,83 +32,6 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
     helpers.stop_kong()
   end)
 
-  describe("new entities", function()
-    it("get the default ws", function()
-      local res = create_api("test2", "my.api.com", "http://api.com")
-      assert.res_status(201, res)
-      res = do_get("/apis")
-      res = assert.res_status(200, res)
-      local json = cjson.decode(res).data
-      assert.equals(workspaces.DEFAULT_WORKSPACE, json[1].workspace)
-      local ws = dao.apis:find_all({name = "default:test2"})[1].workspace
-      assert.truthy(
-          any(function(x)
-              return workspaces.DEFAULT_WORKSPACE == x end,
-            listify(ws))) -- protect for multiple ws
-
-    end)
-    -- it("old entities get the default workspace added when running the migration", function() end)
-  end)
-
-  describe("workspace name in path", function()
-    local client, dao
-
-    setup(function()
-      dao = assert(DAOFactory.new(kong_config))
-
-      dao:truncate_tables()
-      helpers.run_migrations(dao)
-      assert(helpers.start_kong({
-                 database = kong_config.database
-      }))
-
-      client = assert(helpers.admin_client())
-    end)
-
-    teardown(function()
-      if client then
-        client:close()
-      end
-
-      dao:truncate_tables()
-
-      helpers.stop_kong()
-    end)
-
-    it("sets workspace variable", function()
-      create_workspace("foo")
-      local res = create_api("test3", "my.api.com", "http://api.com")
-      res = assert.res_status(201, res)
-      local api_id = cjson.decode(res).id
-      res = do_get("/foo/apis")
-      res = assert.res_status(200, res)
-      assert.equal(0, cjson.decode(res).total)
-
-
-      res = do_get("/apis")
-      res = assert.res_status(200, res)
-      assert.equal(1, cjson.decode(res).total)
-
-      res = assert(
-        client:send {
-          method = "POST",
-          path = "/workspaces/foo/entities",
-          body = {
-            entities = api_id,
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-      }})
-      res = do_get("/foo/apis")
-      res = assert.res_status(200, res)
-      assert.equal(1, cjson.decode(res).total)
-
-      res = do_get("/default/apis")
-      res = assert.res_status(200, res)
-      assert.equal(1, cjson.decode(res).total)
-    end)
-
-  end)
   describe("/workspaces", function()
     describe("POST", function()
       it("creates a new workspace", function()
@@ -372,8 +221,8 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-
-        assert.equals(2, #json.data)
+        -- only workspace foo belongs to the default workspace
+        assert.equals(1, #json.data)
       end)
       it("returns a list of entities associated with the workspace", function()
         local res = assert(client:send {
