@@ -79,8 +79,8 @@ server {
         kong.ssl_certificate()
     }
 
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 10m;
+    ssl_session_cache shared:SSL:${{SSL_SESSION_CACHE}};
+    ssl_session_timeout ${{SSL_SESSION_TIMEOUT}};
     ssl_prefer_server_ciphers on;
     ssl_ciphers ${{SSL_CIPHERS}};
 > end
