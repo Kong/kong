@@ -327,7 +327,5 @@ build = {
 
     ["kong.plugins.request-termination.handler"] = "kong/plugins/request-termination/handler.lua",
     ["kong.plugins.request-termination.schema"] = "kong/plugins/request-termination/schema.lua",
-
-    ["kong.plugins.openid-connect.env"] = "kong/plugins/openid-connect/env.lua",
   }
 }
