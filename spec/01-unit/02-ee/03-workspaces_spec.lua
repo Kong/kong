@@ -109,4 +109,37 @@ describe("workspaces", function()
     assert.truthy(workspaces.api_in_ws(matched_route.api, "ws2"))
     assert.falsy(workspaces.api_in_ws(matched_route.api, "ws1"))
   end)
+
+  describe("api_in_ws accepts", function()
+    local single_api, multiple_api = {}, {}
+
+    setup(function()
+      single_api = {
+        name = "api-2",
+        methods = { "POST", "PUT", "GET" },
+        uris = { "/my-api2" },
+        workspace = "ws1" ,
+      }
+      multiple_api = {
+        name = "api-2",
+        methods = { "POST", "PUT", "GET" },
+        uris = { "/my-api2" },
+        workspace = {"ws1", "ws2"} ,
+      }
+    end)
+
+    it("single ws per entity", function()
+      assert.truthy(workspaces.api_in_ws(single_api, "ws1"))
+      assert.falsy(workspaces.api_in_ws(single_api, "ws2"))
+      assert.falsy(workspaces.api_in_ws(single_api, "nope"))
+    end)
+
+    it("multiple ws per entity", function()
+      assert.truthy(workspaces.api_in_ws(multiple_api, "ws1"))
+      assert.truthy(workspaces.api_in_ws(multiple_api, "ws2"))
+      assert.falsy(workspaces.api_in_ws(multiple_api, "nope"))
+    end)
+  end)
+
+
 end)
