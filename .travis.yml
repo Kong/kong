@@ -9,6 +9,9 @@ jdk:
 notifications:
   email: false
 
+services:
+  - redis-server
+
 addons:
   postgresql: "9.4"
   apt:

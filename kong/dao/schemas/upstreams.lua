@@ -8,9 +8,9 @@ local SLOTS_MIN, SLOTS_MAX = 10, 2^16
 local SLOTS_MSG = "number of slots must be between " .. SLOTS_MIN .. " and " .. SLOTS_MAX
 
 
-local function check_nonnegative(arg)
-  if arg < 0 then
-    return false, "must be greater than or equal to 0"
+local function check_seconds(arg)
+  if arg < 0 or arg > 65535 then
+    return false, "must be between 0 and 65535"
   end
 end
 
@@ -108,9 +108,9 @@ local healthchecks_defaults = {
 
 
 local funcs = {
-  timeout = check_nonnegative,
+  timeout = check_seconds,
   concurrency = check_positive_int,
-  interval = check_nonnegative,
+  interval = check_seconds,
   successes = check_positive_int_or_zero,
   tcp_failures = check_positive_int_or_zero,
   timeouts = check_positive_int_or_zero,

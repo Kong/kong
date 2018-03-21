@@ -110,7 +110,11 @@ local function compile_conf(kong_config, conf_template)
   compile_env = pl_tablex.merge(compile_env, kong_config, true) -- union
   compile_env.dns_resolver = table.concat(compile_env.dns_resolver, " ")
 
-  local post_template = pl_template.substitute(conf_template, compile_env)
+  local post_template, err = pl_template.substitute(conf_template, compile_env)
+  if not post_template then
+    return nil, "failed to compile nginx config template: " .. err
+  end
+
   return string.gsub(post_template, "(${%b{}})", function(w)
     local name = w:sub(4, -3)
     return compile_env[name:lower()] or ""
