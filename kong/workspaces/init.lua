@@ -26,6 +26,40 @@ local function metatable(base)
 end
 
 
+local function any(pred, t)
+  for _,v in ipairs(t) do
+    local r = pred(v)
+    if r then return r end
+  end
+  return false
+end
+
+
+local function member(elem, t)
+  return any(function(x) return x == elem end, t)
+end
+
+
+local function is_wildcard_host(host)
+  return host:find("*") and true
+end
+
+
+local function is_wildcard(route)
+  return any(is_wildcard_host, route.hosts)
+end
+
+
+local function listify(x)
+  return (type(x) == "table") and x or {x}
+end
+
+
+local function is_blank(t)
+  return not t or #t == 0
+end
+
+
 -- get the workspace name
 -- if not in the context of a request, return '*', meaning all
 -- workspaces
@@ -234,28 +268,44 @@ function _M.find_entity_by_unique_field(params)
   end
 end
 
+
 function _M.match_route(router, method, uri, host)
   return router.select(method, uri, method)
 end
 
-function _M.api_in_ws(api, ws1)
 
-  local function listify(x)
-    return (type(x) == "table") and x or {x}
-  end
+function _M.api_in_ws(api, ws)
+  return member(ws, listify(api.workspace))
+end
 
-  local function any(pred, t)
-    for _,v in ipairs(t) do
-      local r = pred(v)
-      if r then return r end
+function _M.validate_route_for_ws(router, method, uri, host, ws)
+
+  local selected_route = _M.match_route(router, method, uri, host)
+
+  if selected_route == nil then -- no match ,no conflict
+    return true
+
+  elseif _M.api_in_ws(selected_route, ws) then -- same workspace
+    return true
+
+  elseif is_blank(selected_route.api.hosts) then -- we match from a no-host route
+    return true
+
+  elseif is_wildcard(selected_route.api) then -- has host & it's wildcard
+    -- we try to add a wildcard
+    if host and is_wildcard_host(host) and member(host, selected_route.api.hosts) then -- ours is also wildcard
+      return false
+    else
+      return true
     end
+
+  elseif host ~= nil then       -- 2.c.ii.1.b
     return false
+
+  else -- different ws, selected_route has host and candidate not
+    return true
   end
 
-  return any(
-    function(x) return x == ws1 end,
-    (listify(api.workspace))
-  )
 end
 
 
