@@ -12,7 +12,7 @@ local PAYLOAD = {
 }
 
 describe("Plugin: jwt (access)", function()
-  local jwt_secret, base64_jwt_secret, rsa_jwt_secret_1, rsa_jwt_secret_2, rsa_jwt_secret_3
+  local jwt_secret, jwt_secret_2, base64_jwt_secret, rsa_jwt_secret_1, rsa_jwt_secret_2, rsa_jwt_secret_3
   local proxy_client, admin_client
 
   setup(function()
@@ -20,7 +20,7 @@ describe("Plugin: jwt (access)", function()
 
     local apis = {}
 
-    for i = 1, 9 do
+    for i = 1, 10 do
       apis[i] = assert(helpers.dao.apis:insert({
         name         = "tests-jwt" .. i,
         hosts        = { "jwt" .. i .. ".com" },
@@ -34,6 +34,7 @@ describe("Plugin: jwt (access)", function()
     local consumer3 = assert(cdao:insert({ username = "jwt_tests_rsa_consumer_1" }))
     local consumer4 = assert(cdao:insert({ username = "jwt_tests_rsa_consumer_2" }))
     local consumer5 = assert(cdao:insert({ username = "jwt_tests_rsa_consumer_5" }))
+    local consumer6 = assert(cdao:insert({ username = "jwt_tests_consumer_2" }))
     local anonymous_user = assert(cdao:insert({ username = "no-body" }))
 
     local pdao = helpers.dao.plugins
@@ -73,8 +74,13 @@ describe("Plugin: jwt (access)", function()
                          api_id = apis[9].id,
                          config = { cookie_names = { "silly", "crumble" } },
                        }))
+    assert(pdao:insert({ name   = "jwt",
+                         api_id = apis[10].id,
+                         config = { key_claim_name = "kid" },
+                       }))
 
     jwt_secret = assert(helpers.dao.jwt_secrets:insert {consumer_id = consumer1.id})
+    jwt_secret_2 = assert(helpers.dao.jwt_secrets:insert {consumer_id = consumer6.id})
     base64_jwt_secret = assert(helpers.dao.jwt_secrets:insert {consumer_id = consumer2.id})
     rsa_jwt_secret_1 = assert(helpers.dao.jwt_secrets:insert {
       consumer_id = consumer3.id,
@@ -149,6 +155,20 @@ describe("Plugin: jwt (access)", function()
       local body = assert.res_status(403, res)
       local json = cjson.decode(body)
       assert.same({ message = "No credentials found for given 'iss'" }, json)
+    end)
+    it("returns 200 if the key is found in header", function()
+      local header = {typ = "JWT", alg = "HS256", kid = jwt_secret_2.key}
+      local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret_2.secret, "HS256", header)
+      local authorization = "Bearer " .. jwt
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          ["Authorization"] = authorization,
+          ["Host"]          = "jwt10.com",
+        }
+      })
+      assert.res_status(200, res)
     end)
     it("returns 403 Forbidden if the signature is invalid", function()
       PAYLOAD.iss = jwt_secret.key
