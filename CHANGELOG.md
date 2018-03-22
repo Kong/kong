@@ -78,6 +78,8 @@ upgrade your Kong cluster.
 
 ##### Dependencies
 
+- **Note to Docker users**: The `latest` tag on Docker Hub now points to the
+  **alpine** image instead of CentOS. This also applies to the `0.13.0` tag.
 - The Openresty version shipped with our default packages has been bumped to
   `1.13.6.1`. The 0.13.0 release should still be compatible with the OpenResty
   `1.11.2.x` series for the time being.

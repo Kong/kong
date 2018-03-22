@@ -52,6 +52,9 @@ to **run migrations** and upgrade from a previous version of Kong.
 
 #### 1. Breaking Changes
 
+- **Note to Docker users**: The `latest` tag on Docker Hub now points to the
+  **alpine** image instead of CentOS. This also applies to the `0.13.0` tag.
+
 ##### Dependencies
 
 - Support for Cassandra 2.1 was deprecated in 0.12.0, and has been dropped
