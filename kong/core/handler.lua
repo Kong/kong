@@ -65,6 +65,7 @@ local function build_router(dao, version)
   end
 
   singletons.router = router
+
   return true
 end
 
