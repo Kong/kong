@@ -165,6 +165,14 @@ local function do_authentication(conf)
     return false, {status = 401, message = errors}
   end
 
+  -- Verify the JWT registered claims
+  if conf.maximum_expiration ~= nil and conf.maximum_expiration > 0 then
+    local ok, errors = jwt:check_maximum_expiration(conf.maximum_expiration)
+    if not ok then
+      return false, {status = 403, message = errors}
+    end
+  end
+
   -- Retrieve the consumer
   local consumer_cache_key = singletons.db.consumers:cache_key(jwt_secret.consumer_id)
   local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
