@@ -36,6 +36,176 @@ starts new workers, which take over from old workers before those old workers
 are terminated. In this way, Kong will serve new requests via the new
 configuration, without dropping existing in-flight connections.
 
+## Upgrade to `0.13.x`
+
+This version comes with **new model entities**, **database migrations**, and
+**nginx configuration changes**.
+
+This section will only highlight the breaking changes that you need to be
+aware of, and describe a recommended upgrade path. We recommend that you
+consult the full [0.13.0
+Changelog](https://github.com/Kong/kong/blob/master/CHANGELOG.md) for a
+complete list of changes and new features.
+
+See below the breaking changes section for a detailed list of steps recommended
+to **run migrations** and upgrade from a previous version of Kong.
+
+#### 1. Breaking Changes
+
+##### Dependencies
+
+- Support for Cassandra 2.1 was deprecated in 0.12.0, and has been dropped
+  starting with 0.13.0.
+- Various dependencies have been bumped. Once again, consult the Changelog for
+  a detailed list.
+
+##### Configuration
+
+- The `proxy_listen` and `admin_listen` configuration values have a new syntax.
+  See the configuration file or the [0.13.x
+  documentation](https://getkong.org/docs/0.13.x/configuration/) for insights
+  on the new syntax.
+- The nginx configuration file has changed, which means that you need to update
+  it if you are using a custom template. The changes are detailed in a diff
+  included below.
+
+<details>
+<summary><strong>Click here to see the nginx configuration changes</strong></summary>
+<p>
+
+```diff
+diff --git a/kong/templates/nginx_kong.lua b/kong/templates/nginx_kong.lua
+index 5639f319..62f5f1ae 100644
+--- a/kong/templates/nginx_kong.lua
++++ b/kong/templates/nginx_kong.lua
+@@ -51,6 +51,8 @@ init_worker_by_lua_block {
+     kong.init_worker()
+ }
+
++
++> if #proxy_listeners > 0 then
+ upstream kong_upstream {
+     server 0.0.0.1;
+     balancer_by_lua_block {
+@@ -61,7 +63,9 @@ upstream kong_upstream {
+
+ server {
+     server_name kong;
+-    listen ${{PROXY_LISTEN}}${{PROXY_PROTOCOL}};
++> for i = 1, #proxy_listeners do
++    listen $(proxy_listeners[i].listener);
++> end
+     error_page 400 404 408 411 412 413 414 417 /kong_error_handler;
+     error_page 500 502 503 504 /kong_error_handler;
+
+@@ -70,8 +74,7 @@ server {
+
+     client_body_buffer_size ${{CLIENT_BODY_BUFFER_SIZE}};
+
+-> if ssl then
+-    listen ${{PROXY_LISTEN_SSL}} ssl${{HTTP2}}${{PROXY_PROTOCOL}};
++> if proxy_ssl_enabled then
+     ssl_certificate ${{SSL_CERT}};
+     ssl_certificate_key ${{SSL_CERT_KEY}};
+     ssl_protocols TLSv1.1 TLSv1.2;
+@@ -149,10 +152,14 @@ server {
+         }
+     }
+ }
++> end
+
++> if #admin_listeners > 0 then
+ server {
+     server_name kong_admin;
+-    listen ${{ADMIN_LISTEN}};
++> for i = 1, #admin_listeners do
++    listen $(admin_listeners[i].listener);
++> end
+
+     access_log ${{ADMIN_ACCESS_LOG}};
+     error_log ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
+@@ -160,8 +167,7 @@ server {
+     client_max_body_size 10m;
+     client_body_buffer_size 10m;
+
+-> if admin_ssl then
+-    listen ${{ADMIN_LISTEN_SSL}} ssl${{ADMIN_HTTP2}};
++> if admin_ssl_enabled then
+     ssl_certificate ${{ADMIN_SSL_CERT}};
+     ssl_certificate_key ${{ADMIN_SSL_CERT_KEY}};
+     ssl_protocols TLSv1.1 TLSv1.2;
+@@ -189,4 +195,5 @@ server {
+         return 200 'User-agent: *\nDisallow: /';
+     }
+ }
++> end
+```
+
+</p>
+</details>
+
+##### Plugins
+
+- The galileo plugin is considered deprecated and not enabled by default
+  anymore. It is still shipped with Kong 0.13.0, but you must enable it by
+  specifying it in the `custom_plugins` configuration property, like so:
+  `custom_plugins = galileo` (or via the `KONG_CUSTOM_PLUGINS` environment
+  variable).
+- The migrations will remove and re-create the rate-limiting and
+  response-ratelimiting tables storing counters. This means that your counters
+  will reset.
+
+#### 2. Deprecation Notices
+
+Starting with 0.13.0, the "API" entity is considered **deprecated**. While
+still supported, we will eventually remove the entity and its related endpoints
+from the Admin API. Services and Routes are the new first class citizen
+entities that new users (or users upgrading their clusters) should configure.
+
+You can read more about Services and Routes in the [Proxy
+Guide](https://getkong.org/docs/0.13.x/proxy/) and the [Admin API
+Reference](https://getkong.org/docs/0.13.x/admin-api/).
+
+#### 3. Suggested Upgrade Path
+
+You can now start migrating your cluster from `0.12.x` to `0.13`. If you are
+doing this upgrade "in-place", against the datastore of a running 0.12 cluster,
+then for a short period of time, your database schema won't be fully compatible
+with your 0.12 nodes anymore. This is why we suggest either performing this
+upgrade when your 0.12 cluster is warm and most entities are cached, or against
+a new database, if you can migrate your data. If you wish to temporarily make
+your APIs unavailable, you can leverage the
+[request-termination](https://getkong.org/plugins/request-termination/) plugin.
+
+The path to upgrade a 0.12 datastore is identical to the one of previous major
+releases:
+
+1. If you are planning on upgrading Kong while 0.12 nodes are running against
+   the same datastore, make sure those nodes are warm enough (they should have
+   most of your entities cached already), or temporarily disable your APIs.
+2. Provision a 0.13 node and configure it as you wish (environment variables/
+   configuration file). Make sure to point this new 0.13 node to your current
+   datastore.
+3. **Without starting the 0.13 node**, run the 0.13 migrations against your
+   current datastore:
+
+```
+$ kong migrations up [-c kong.conf]
+```
+
+As usual, this step should be executed from a **single node**.
+
+4. You can now provision a fresh 0.13 cluster pointing to your migrated
+   datastore and start your 0.13 nodes.
+5. Gradually switch your traffic from the 0.12 cluster to the new 0.13 cluster.
+   Remember, once your database is migrated, your 0.12 nodes will rely on
+   their cache and not on the underlying database. Your traffic should switch
+   to the new cluster as quickly as possible.
+6. Once your traffic is fully migrated to the 0.13 cluster, decommission
+   your 0.12 cluster.
+
+You have now successfully upgraded your cluster to run 0.13 nodes exclusively.
+
 ## Upgrade to `0.12.x`
 
 As it is the case most of the time, this new major version of Kong comes with
