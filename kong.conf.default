@@ -101,7 +101,7 @@
 # Note bis: see https://www.nginx.com/resources/admin-guide/proxy-protocol/
 # for more details about the `proxy_protocol` parameter.
 
-#admin_listen = 127.0.0.1:8000, 127.0.0.1:8443 ssl
+#admin_listen = 127.0.0.1:8001, 127.0.0.1:8444 ssl
                          # Comma-separated list of addresses and ports on
                          # which the Admin interface should listen.
                          # The Admin interface is the API allowing you to
