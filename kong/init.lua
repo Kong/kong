@@ -170,6 +170,7 @@ function Kong.init()
   singletons.loaded_plugins = assert(load_plugins(config, dao))
   singletons.dao = dao
   singletons.configuration = config
+  singletons.router = nil
 
   assert(core.build_router(dao, "init"))
 end
