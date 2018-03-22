@@ -2,7 +2,7 @@
 
 - [Scheduled](#scheduled)
 - [Released](#released)
-    - [0.13.0rc1](#0130rc1)
+    - [0.13.0](#0130---20180322)
     - [0.12.2](#0122---20180228)
     - [0.12.1](#0121---20180118)
     - [0.12.0](#0120---20180116)
@@ -28,10 +28,7 @@ a detailed changeset of their content.
 This section describes publicly available releases and a detailed changeset of
 their content.
 
-## [0.13.0rc1]
-
-- **rc1 release date**: February 28th 2018
-- **Stable release date (target)**: March 14th 2018
+## [0.13.0] - 2018/03/22
 
 This release introduces two new core entities that will improve the way you
 configure Kong: **Routes** & **Services**. Those entities replace the "API"
@@ -41,8 +38,8 @@ separation of concerns and allowing for plugins to be applied to specific
 
 As usual, major version upgrades require database migrations and changes to
 the NGINX configuration file (if you customized the default template).
-Please take a few minutes to read the [Upgrade
-Path](https://github.com/Kong/kong/blob/master/UPGRADE.md) for
+Please take a few minutes to read the [0.13 Upgrade
+Path](https://github.com/Kong/kong/blob/master/UPGRADE.md#upgrade-to-013x) for
 more details regarding breaking changes and migrations before planning to
 upgrade your Kong cluster.
 
@@ -56,8 +53,8 @@ upgrade your Kong cluster.
 ##### Configuration
 
 - :warning: The `proxy_listen` and `admin_listen` configuration values have a
-  new syntax.  This syntax is more aligned with that of NGINX and is more
-  powerful while also simpler.  As a result, the following configuration values
+  new syntax. This syntax is more aligned with that of NGINX and is more
+  powerful while also simpler. As a result, the following configuration values
   have been removed because superfluous: `ssl`, `admin_ssl`, `http2`,
   `admin_http2`, `proxy_listen_ssl`, and `admin_listen_ssl`.
   [#3147](https://github.com/Kong/kong/pull/3147)
@@ -76,7 +73,7 @@ upgrade your Kong cluster.
   they reach their limit again. There is no such data deletion in PosgreSQL.
   [def201f](https://github.com/Kong/kong/commit/def201f566ccf2dd9b670e2f38e401a0450b1cb5)
 
-### Changed
+### Changes
 
 ##### Dependencies
 
@@ -89,10 +86,13 @@ upgrade your Kong cluster.
 - Bumped [lua-resty-http](https://github.com/pintsized/lua-resty-http) to
   `0.12`.
   [#3196](https://github.com/Kong/kong/pull/3196)
-- Bumped [lua-multipart](https://github.com/Kong/lua-multipart) to `0.5.4`.
-  [#3154](https://github.com/Kong/kong/pull/3054)
+- Bumped [lua-multipart](https://github.com/Kong/lua-multipart) to `0.5.5`.
+  [#3318](https://github.com/Kong/kong/pull/3318)
+- Bumped [lua-resty-healthcheck](https://github.com/Kong/lua-resty-healthcheck)
+  to `0.4.0`.
+  [#3321](https://github.com/Kong/kong/pull/3321)
 
-### Added
+### Additions
 
 ##### Configuration
 
@@ -147,12 +147,25 @@ upgrade your Kong cluster.
   "required", since they have a default value.
   [#3209](https://github.com/Kong/kong/pull/3209)
 
-### Fixed
+### Fixes
+
+##### Core
+
+- Fix an issue causing nodes in a cluster to use the default health checks
+  configuration when the user configured them from another node (event
+  propagated via the cluster).
+  [#3319](https://github.com/Kong/kong/pull/3319)
+- Increase the default load balancer wheel size from 100 to 10.000. This allows
+  for a better distribution of the load between Targets in general.
+  [#3296](https://github.com/Kong/kong/pull/3296)
 
 ##### Admin API
 
 - Fix several issues with application/multipart MIME type parsing of payloads.
-  [#3054](https://github.com/Kong/kong/pull/3054)
+  [#3318](https://github.com/Kong/kong/pull/3318)
+- Fix several issues with the parsing of health checks configuration values.
+  [#3306](https://github.com/Kong/kong/pull/3306)
+  [#3321](https://github.com/Kong/kong/pull/3321)
 
 [Back to TOC](#table-of-contents)
 
@@ -2364,7 +2377,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[0.13.0rc1]: https://github.com/Kong/kong/compare/0.12.2...0.13.0rc1
+[0.13.0]: https://github.com/Kong/kong/compare/0.12.3...0.13.0
 [0.12.2]: https://github.com/Kong/kong/compare/0.12.1...0.12.2
 [0.12.1]: https://github.com/Kong/kong/compare/0.12.0...0.12.1
 [0.12.0]: https://github.com/Kong/kong/compare/0.11.2...0.12.0
