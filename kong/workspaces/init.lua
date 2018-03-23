@@ -27,8 +27,9 @@ end
 
 
 local function any(pred, t)
+  local r = nil
   for _,v in ipairs(t) do
-    local r = pred(v)
+    r = pred(v)
     if r then return r end
   end
   return false
