@@ -354,15 +354,15 @@ local function select_query_ws(self, workspace, select_clause, schema, table, wh
   end
 
   if join_ws then
-    join_tbl = fmt([[
-      workspaces w INNER  JOIN workspace_entities e
-      ON ( e.workspace_id = w.id ) %s JOIN %s %s ON ( e.entity_id = %s.%s%s )
+    join_tbl = fmt([[ ( select DISTINCT workspace_id, entity_id,name
+      from workspaces INNER JOIN workspace_entities ON ( workspace_id = id) )
+      e %s JOIN %s %s ON ( e.entity_id = %s.%s%s )
     ]], (workspace == default_ws or workspace == "*") and "RIGHT OUTER" or
       "INNER", table, table, table, schema.primary_key[1],
       primary_key_type == "uuid" and "::varchar" or "")
 
     if workspace ~= "*" then
-      join_where = fmt("( w.name = '%s' %s ", workspace,
+      join_where = fmt("( e.name = '%s' %s ", workspace,
         workspace == default_ws and " or ( e.entity_id is null and e.workspace_id is null ))" or " )")
     end
   end
@@ -587,6 +587,7 @@ function _M:find_page(table_name, tbl, page, page_size, schema)
   else
     query = select_query(self, get_select_fields(schema), schema, table_name, where, offset, page_size)
   end
+
 
   local rows, err = self:query(query, schema)
   if not rows then

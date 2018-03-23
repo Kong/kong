@@ -367,8 +367,7 @@ function DAO:count(tbl)
     tbl = nil
   end
 
-  return ret_error(self.db.name, self.db:count(self.table, new_params or tbl,
-                                               self.schema))
+  return ret_error(self.db.name, self.db:count(self.table, tbl, self.schema))
 end
 
 local function fix(old, new, schema)
