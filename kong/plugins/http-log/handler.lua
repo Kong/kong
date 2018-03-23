@@ -1,6 +1,7 @@
 local basic_serializer = require "kong.plugins.log-serializers.basic"
 local BasePlugin = require "kong.plugins.base_plugin"
 local cjson = require "cjson"
+local http = require "resty.http"
 local url = require "socket.url"
 
 local string_format = string.format
@@ -13,34 +14,6 @@ HttpLogHandler.VERSION = "0.1.0"
 
 local HTTP = "http"
 local HTTPS = "https"
-
--- Generates the raw http message.
--- @param `method` http method to be used to send data
--- @param `content_type` the type to set in the header
--- @param `parsed_url` contains the host details
--- @param `body`  Body of the message as a string (must be encoded according to the `content_type` parameter)
--- @return raw http message
-local function generate_post_payload(method, content_type, parsed_url, body)
-  local url
-  if parsed_url.query then
-    url = parsed_url.path .. "?" .. parsed_url.query
-  else
-    url = parsed_url.path
-  end
-  local headers = string_format(
-    "%s %s HTTP/1.1\r\nHost: %s\r\nConnection: Keep-Alive\r\nContent-Type: %s\r\nContent-Length: %s\r\n",
-    method:upper(), url, parsed_url.host, content_type, #body)
-
-  if parsed_url.userinfo then
-    local auth_header = string_format(
-      "Authorization: Basic %s\r\n",
-      ngx.encode_base64(parsed_url.userinfo)
-    )
-    headers = headers .. auth_header
-  end
-
-  return string_format("%s\r\n%s", headers, body)
-end
 
 -- Parse host url.
 -- @param `url` host url
@@ -57,6 +30,9 @@ local function parse_url(host_url)
   if not parsed_url.path then
     parsed_url.path = "/"
   end
+  if parsed_url.params then
+    parsed_url.params = "?" .. parsed_url.params
+  end
   return parsed_url
 end
 
@@ -72,37 +48,45 @@ local function log(premature, conf, body, name)
   end
   name = "[" .. name .. "] "
 
-  local ok, err
+  local headers
+  local req_url
   local parsed_url = parse_url(conf.http_endpoint)
-  local host = parsed_url.host
-  local port = tonumber(parsed_url.port)
 
-  local sock = ngx.socket.tcp()
-  sock:settimeout(conf.timeout)
+  if parsed_url.userinfo then
+    -- for lua-resty-http client Authorization
+    headers = {
+      ["Content-Type"] = conf.content_type,
+      ["Authorization"] = string_format(
+        "Basic %s", ngx.encode_base64(parsed_url.userinfo))
+    }
+    req_url = parsed_url.scheme .. "://" .. parsed_url.host .. ":" .. parsed_url.port
+      .. parsed_url.path .. (parsed_url.params or "")
+  else
+    headers = {
+      ["Content-Type"] = conf.content_type
+    }
+    req_url = conf.http_endpoint
+  end
 
-  ok, err = sock:connect(host, port)
-  if not ok then
-    ngx.log(ngx.ERR, name .. "failed to connect to " .. host .. ":" .. tostring(port) .. ": ", err)
+  local httpc = http.new()
+  httpc:set_timeout(conf.timeout)
+  local res, err = httpc:request_uri(req_url, {
+      ssl_verify = false,
+      method = conf.method:upper(),
+      body = body,
+      headers = headers
+  })
+
+  if not res then
+    ngx.log(ngx.ERR, name .. "request failed: " .. req_url, err)
     return
   end
 
-  if parsed_url.scheme == HTTPS then
-    local _, err = sock:sslhandshake(true, host, false)
-    if err then
-      ngx.log(ngx.ERR, name .. "failed to do SSL handshake with " .. host .. ":" .. tostring(port) .. ": ", err)
-    end
+  if res.status >= 400 then
+    ngx.log(ngx.ERR, name .. "request failed: " .. req_url .. "status: " .. tostring(res.status), err)
   end
 
-  ok, err = sock:send(generate_post_payload(conf.method, conf.content_type, parsed_url, body))
-  if not ok then
-    ngx.log(ngx.ERR, name .. "failed to send data to " .. host .. ":" .. tostring(port) .. ": ", err)
-  end
-
-  ok, err = sock:setkeepalive(conf.keepalive)
-  if not ok then
-    ngx.log(ngx.ERR, name .. "failed to keepalive to " .. host .. ":" .. tostring(port) .. ": ", err)
-    return
-  end
+  httpc:set_keepalive(conf.timeout)
 end
 
 -- Only provide `name` when deriving from this class. Not when initializing an instance.
