@@ -169,7 +169,6 @@ function Kong.init()
   singletons.dao = dao
   singletons.configuration = config
   singletons.license = ee.read_license_info()
-  singletons.router = nil
 
   local reports = require "kong.core.reports"
   local l = singletons.license and
