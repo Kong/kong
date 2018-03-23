@@ -153,13 +153,13 @@ function _M.get_req_workspace(params)
 end
 
 
-function _M.add_entity_relation(dao_collection, entity, workspace)
-  local constraints = workspaceable_relations[dao_collection.table]
+function _M.add_entity_relation(table_name, entity, workspace)
+  local constraints = workspaceable_relations[table_name]
   if constraints.unique_keys then
     for k, _ in pairs(constraints.unique_keys) do
       local _, err = add_entity_relation_db(singletons.dao.workspace_entities, workspace.id,
-                                         entity[constraints.primary_key],
-                                         dao_collection.table, k, entity[k])
+                                            entity[constraints.primary_key],
+                                            table_name, k, entity[k])
       if err then
         return err
       end
@@ -169,7 +169,7 @@ function _M.add_entity_relation(dao_collection, entity, workspace)
 
   local _, err = add_entity_relation_db(singletons.dao.workspace_entities, workspace.id,
                                         entity[constraints.primary_key],
-                                        dao_collection.table, constraints.primary_key,
+                                        table_name, constraints.primary_key,
                                         entity[constraints.primary_key])
   if err then
     return err
@@ -177,8 +177,8 @@ function _M.add_entity_relation(dao_collection, entity, workspace)
 end
 
 
-function _M.delete_entity_relation(dao_collection, entity)
-  local constraints = workspaceable_relations[dao_collection.table]
+function _M.delete_entity_relation(table_name, entity)
+  local constraints = workspaceable_relations[table_name]
   if not constraints then
     return
   end
@@ -191,7 +191,7 @@ function _M.delete_entity_relation(dao_collection, entity)
   end
 
   for _, row in ipairs(res) do
-    local res , err = singletons.dao.workspace_entities:delete(row)
+    local res, err = singletons.dao.workspace_entities:delete(row)
     if err then
       return err
     end
@@ -199,8 +199,8 @@ function _M.delete_entity_relation(dao_collection, entity)
 end
 
 
-function _M.update_entity_relation(dao_collection, entity)
-  local constraints = workspaceable_relations[dao_collection.table]
+function _M.update_entity_relation(table_name, entity)
+  local constraints = workspaceable_relations[table_name]
   if constraints and constraints.unique_keys then
     for k, _ in pairs(constraints.unique_keys) do
       local res, err = singletons.dao.workspace_entities:find_all({

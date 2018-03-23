@@ -71,15 +71,15 @@ local function ret_error(db_name, res, err, ...)
   return res, err, ...
 end
 
-local function apply_unique_per_ws(dao_collection, params, workspace, operation)
-  local constraints = workspaceable[dao_collection.table]
+local function apply_unique_per_ws(table_name, params, workspace)
+  local constraints = workspaceable[table_name]
   if not constraints then
     return
   end
 
   if not workspace or
-     dao_collection.table == "workspaces" and
-     workspace.name == workspaces.DEFAULT_WORKSPACE then
+  table_name == "workspaces" and
+  workspace.name == workspaces.DEFAULT_WORKSPACE then
     return
   end
 
@@ -91,42 +91,43 @@ local function apply_unique_per_ws(dao_collection, params, workspace, operation)
 end
 
 
-local function fetch_shared_entity_id(dao_collection, params, workspace)
-  local constraints = workspaceable[dao_collection.table]
-  if not constraints or constraints and not constraints.unique_keys then
+local function fetch_shared_entity_id(table_name, params, workspace)
+  local constraints = workspaceable[table_name]
+  if not constraints or not constraints.unique_keys then
     return
   end
 
   if not workspace or
-    dao_collection.table == "workspaces" and
-      workspace.name == workspaces.DEFAULT_WORKSPACE then
+    table_name == "workspaces" and
+    workspace.name == workspaces.DEFAULT_WORKSPACE then
     return
   end
 
-  for k,v in pairs(params) do
+  for k, v in pairs(params) do
     if constraints.unique_keys[k] then
       local row, err = workspaces.find_entity_by_unique_field({
         workspace_id = workspace.id,
-        entity_type = dao_collection.table,
+        entity_type = table_name,
         unique_field_name = k,
         unique_field_value = v,
       })
+
+      if err then
+        return nil, err
+      end
 
       if row then
         return {
           [constraints.primary_key] = row.entity_id
         }
       end
-      if err then
-        return nil, err
-      end
     end
   end
 end
 
-local function remove_ws_prefix(dao_collection, row)
-  local constraints = workspaceable[dao_collection.table]
-  if not constraints then
+local function remove_ws_prefix(table_name, row)
+  local constraints = workspaceable[table_name]
+  if not constraints or not constraints.unique_keys then
     return
   end
 
@@ -206,7 +207,7 @@ function DAO:insert(tbl, options)
   end
 
   local ws = ngx.ctx.workspace
-  apply_unique_per_ws(self.schema, model, ws)
+  apply_unique_per_ws(self.schema.table, model, ws)
 
   for col, field in pairs(model.__schema.fields) do
     if field.dao_insert_value and model[col] == nil then
@@ -220,7 +221,7 @@ function DAO:insert(tbl, options)
   local res, err = self.db:insert(self.table, self.schema, model, self.constraints, options)
   if not err and not options.quiet then
     if ws then
-      remove_ws_prefix(self.schema, res)
+      remove_ws_prefix(self.schema.table, res)
     end
     if self.events then
       local _, err = self.events.post_local("dao:crud", "create", {
@@ -244,7 +245,7 @@ end
 function DAO:find(tbl)
   check_arg(tbl, 1, "table")
   check_utf8(tbl, 1)
-  apply_unique_per_ws(self.schema, tbl, ngx.ctx.workspace)
+  apply_unique_per_ws(self.schema.table, tbl, ngx.ctx.workspace)
 
   local model = self.model_mt(tbl)
   if not model:has_primary_keys() then
@@ -258,7 +259,7 @@ function DAO:find(tbl)
 
   do
     local row, err = self.db:find(self.table, self.schema, primary_keys)
-    remove_ws_prefix(self.schema, row)
+    remove_ws_prefix(self.schema.table, row)
     return ret_error(self.db.name, row, err)
   end
 
@@ -282,13 +283,14 @@ function DAO:find_all(tbl)
       return ret_error(self.db.name, nil, Errors.schema(err))
     end
 
-    new_params = fetch_shared_entity_id(self.schema, tbl, ngx.ctx.workspace)
+    new_params = fetch_shared_entity_id(self.schema.table,
+                                        tbl, ngx.ctx.workspace)
   end
 
   do
     local rows, err = self.db:find_all(self.table, new_params or tbl, self.schema)
     for _, row in ipairs(rows) do
-      remove_ws_prefix(self.schema, row)
+      remove_ws_prefix(self.schema.table, row)
     end
     return ret_error(self.db.name, rows, err)
   end
@@ -313,7 +315,8 @@ function DAO:find_page(tbl, page_offset, page_size)
       return ret_error(self.db.name, nil, Errors.schema(err))
     end
 
-     new_params = fetch_shared_entity_id(self.schema, tbl, ngx.ctx.workspace)
+     new_params = fetch_shared_entity_id(self.schema.table,
+                                         tbl, ngx.ctx.workspace)
   end
 
   if page_size == nil then
@@ -330,7 +333,7 @@ function DAO:find_page(tbl, page_offset, page_size)
       return ret_error(self.db.name, nil, err)
     end
     for _, row in ipairs(rows) do
-      remove_ws_prefix(self.schema, row)
+      remove_ws_prefix(self.schema.table, row)
     end
     return ret_error(self.db.name, rows, err, offset)
   end
@@ -353,7 +356,11 @@ function DAO:count(tbl)
       return ret_error(self.db.name, nil, Errors.schema(err))
     end
 
-    new_params = fetch_shared_entity_id(self.schema, tbl, ngx.ctx.workspace)
+    new_params = fetch_shared_entity_id(self.schema.table, tbl, ngx.ctx.workspace)
+    if new_params then
+      return ret_error(self.db.name, self.db:count(self.table, new_params,
+                       self.schema))
+    end
   end
 
   if tbl ~= nil and next(tbl) == nil then
@@ -411,7 +418,6 @@ function DAO:update(tbl, filter_keys, options)
       tbl[k] = v
     end
   end
-  tbl.workspace = nil
 
   local model = self.model_mt(tbl)
   local ok, err = model:validate {dao = self, update = true, full_update = options.full}
@@ -435,14 +441,14 @@ function DAO:update(tbl, filter_keys, options)
     fix(old, values, self.schema)
   end
 
-  apply_unique_per_ws(self.schema, values, ngx.ctx.workspace)
+  apply_unique_per_ws(self.schema.table, values, ngx.ctx.workspace)
 
   local res, err = self.db:update(self.table, self.schema, self.constraints, primary_keys, values, nils, options.full, model, options)
   if err then
     return ret_error(self.db.name, nil, err)
   elseif res then
-    remove_ws_prefix(self.schema, res)
-    local err = workspaces.update_entity_relation(self, res)
+    remove_ws_prefix(self.schema.table, res)
+    local err = workspaces.update_entity_relation(self.table, res)
     if err then
       return ret_error(self.db.name, nil, err)
     end
@@ -477,7 +483,7 @@ function DAO:delete(tbl, options)
   check_arg(options, 2, "table")
 
   local ws = ngx.ctx.workspace
-  apply_unique_per_ws(self.schema, tbl, ws)
+  apply_unique_per_ws(self.schema.table, tbl, ws)
 
   local model = self.model_mt(tbl)
   if not model:has_primary_keys() then
@@ -507,7 +513,7 @@ function DAO:delete(tbl, options)
 
   local row, err = self.db:delete(self.table, self.schema, primary_keys, self.constraints)
   if (not err) and (row ~= nil) and ws then
-    local err = workspaces.delete_entity_relation(self, row)
+    local err = workspaces.delete_entity_relation(self.table, row)
     if err then
       ngx.log(ngx.ERR,
               "could not delete enitity relationship with workspace: ",
@@ -530,7 +536,7 @@ function DAO:delete(tbl, options)
     for k, v in pairs(associated_entites) do
       for _, entity in ipairs(v.entities) do
         if ws then
-          local err = workspaces.delete_entity_relation(v, entity)
+          local err = workspaces.delete_entity_relation(v.table, entity)
           if err then
             ngx.log(ngx.ERR,
                     "could not delete enitity relationship with workspace: ",

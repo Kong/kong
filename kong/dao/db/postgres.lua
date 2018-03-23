@@ -588,7 +588,6 @@ function _M:find_page(table_name, tbl, page, page_size, schema)
     query = select_query(self, get_select_fields(schema), schema, table_name, where, offset, page_size)
   end
 
-
   local rows, err = self:query(query, schema)
   if not rows then
     return nil, err

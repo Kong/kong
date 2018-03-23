@@ -154,8 +154,7 @@ return {
           return helpers.responses.send_HTTP_BAD_REQUEST(err)
         end
 
-        local err = workspaces.add_entity_relation({table = entity_type},
-                                                      row, self.workspace)
+        local err = workspaces.add_entity_relation(entity_type, row, self.workspace)
         if err then
           return helpers.yield_error(err)
         end
@@ -216,19 +215,14 @@ return {
         return helpers.yield_error(err)
       end
 
-      if e then
-        for _, row in ipairs(e) do
-          local _, err = dao_factory.workspace_entities:delete(row)
-          if err then
-            return helpers.yield_error(err)
-          end
+      for _, row in ipairs(e) do
+        local _, err = dao_factory.workspace_entities:delete(row)
+        if err then
+          return helpers.yield_error(err)
         end
-
-        return helpers.responses.send_HTTP_NO_CONTENT()
-
-      else
-        return helpers.responses.send_HTTP_NOT_FOUND()
       end
+
+      return helpers.responses.send_HTTP_NO_CONTENT()
     end,
   }
 }

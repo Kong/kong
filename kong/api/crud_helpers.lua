@@ -269,7 +269,7 @@ function _M.post(params, dao_collection, post_process)
   if err then
     return app_helpers.yield_error(err)
   else
-    local err_rel = workspaces.add_entity_relation(dao_collection, data,
+    local err_rel = workspaces.add_entity_relation(dao_collection.table, data,
                                                    ngx.ctx.workspace)
     if err_rel then
       local data, err = dao_collection:delete(data)
