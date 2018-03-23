@@ -1092,6 +1092,16 @@ local function wait_pid(pid_path, timeout, is_retry)
   end
 end
 
+-- Return the actual configuration running at the given prefix.
+-- It may differ from the default, as it may have been modified
+-- by the `env` table given to start_kong.
+-- @param prefix The prefix path where the kong instance is running
+-- @return The conf table of the running instance, or nil on error.
+local function get_running_conf(prefix)
+  local default_conf = conf_loader(nil, {prefix = prefix or conf.prefix})
+  return conf_loader(default_conf.kong_env)
+end
+
 ----------
 -- Exposed
 ----------
@@ -1163,8 +1173,13 @@ return {
   end,
   stop_kong = function(prefix, preserve_prefix, preserve_tables)
     prefix = prefix or conf.prefix
+
+    local running_conf = get_running_conf(prefix)
+    if not running_conf then return end
+
     local ok, err = kong_exec("stop --prefix " .. prefix)
-    wait_pid(conf.nginx_pid, nil)
+
+    wait_pid(running_conf.nginx_pid)
     if not preserve_tables then
       dao:truncate_tables()
     end
@@ -1179,8 +1194,7 @@ return {
 
     dao:truncate_tables()
 
-    local default_conf = conf_loader(nil, {prefix = prefix or conf.prefix})
-    local running_conf = conf_loader(default_conf.kong_env)
+    local running_conf = get_running_conf(prefix)
     if not running_conf then return end
 
     -- kill kong_tests.conf service
