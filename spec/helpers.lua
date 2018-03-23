@@ -121,7 +121,7 @@ do
     end
 end
 
-local function get_db_utils(strategy)
+local function get_db_utils(strategy, no_truncate)
   strategy = strategy or conf.database
 
   -- new DAO (DB module)
@@ -137,12 +137,16 @@ local function get_db_utils(strategy)
     conf.database = database
 
     assert(dao:run_migrations())
-    dao:truncate_tables()
+    if not no_truncate then
+      dao:truncate_tables()
+    end
   end
 
   -- cleanup new DB tables
   assert(db:init_connector())
-  assert(db:truncate())
+  if not no_truncate then
+    assert(db:truncate())
+  end
 
   -- blueprints
   local bp = assert(Blueprints.new(dao, db))
