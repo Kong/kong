@@ -352,35 +352,36 @@ local function select_query_ws(self, workspace, select_clause, schema, table, wh
   if not primary_key_type then
     return nil, err
   end
-
+  -- TODO clean it once support for multiple workspaces added
   if join_ws then
-    join_tbl = fmt([[ ( select DISTINCT workspace_id, entity_id,name
-      from workspaces INNER JOIN workspace_entities ON ( workspace_id = id) )
-      e %s JOIN %s %s ON ( e.entity_id = %s.%s%s )
-    ]], (workspace == default_ws or workspace == "*") and "RIGHT OUTER" or
-      "INNER", table, table, table, schema.primary_key[1],
-      primary_key_type == "uuid" and "::varchar" or "")
+    local ws_join = fmt("SELECT DISTINCT workspace_id, entity_id, name FROM workspaces INNER JOIN workspace_entities ON ( workspace_id = id  AND entity_type = '%s'%s )",
+                        table, workspace ~= "*" and fmt("AND name = '%s'",
+                        workspace) or "")
+
+    join_tbl = fmt("( %s ) e %s JOIN %s %s ON ( e.entity_id = %s.%s%s )",
+                   ws_join, (workspace == default_ws or workspace == "*") and
+                   "RIGHT OUTER" or "INNER", table, table, table, schema.primary_key[1],
+                   primary_key_type == "uuid" and "::varchar" or "")
 
     if workspace ~= "*" then
       join_where = fmt("( e.name = '%s' %s ", workspace,
-        workspace == default_ws and " or ( e.entity_id is null and e.workspace_id is null ))" or " )")
+                       workspace == default_ws and
+                       " or ( e.entity_id is null and e.workspace_id is null ))" or " )")
     end
   end
 
   if join_ttl then
     join_tbl = fmt("%s LEFT OUTER JOIN ttls ON (%s.%s = ttls.primary_%s_value)",
-      join_tbl and join_tbl or table, table, schema.primary_key[1],
-      primary_key_type == "uuid" and "uuid" or "key")
+               join_tbl and join_tbl or table, table, schema.primary_key[1],
+                   primary_key_type == "uuid" and "uuid" or "key")
 
-    join_where = ( join_where and (join_where .. " AND ") or "") .. fmt([[
-      (ttls.primary_key_value IS NULL
-       OR (ttls.table_name = '%s' AND expire_at > CURRENT_TIMESTAMP(0) at time zone 'utc'))
-    ]], table)
+    join_where = ( join_where and (join_where .. " AND ") or "") ..
+      fmt("( ttls.primary_key_value IS NULL OR (ttls.table_name = '%s' AND expire_at > CURRENT_TIMESTAMP(0) at time zone 'utc') )", table)
   end
 
   if join_tbl then
     query = fmt("SELECT %s FROM %s %s", select_clause,
-      join_tbl, (join_where and " WHERE " .. join_where) or "")
+                join_tbl, (join_where and " WHERE " .. join_where) or "")
   else
     query = fmt("SELECT %s FROM %s", select_clause, table)
   end
