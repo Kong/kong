@@ -2,10 +2,17 @@ local singletons = require "kong.singletons"
 local utils      = require "kong.tools.utils"
 
 
+local ngx_log = ngx.log
+local ERR     = ngx.ERR
+local NOTICE  = ngx.NOTICE
+local DEBUG   = ngx.DEBUG
+
+
 local _M = {}
 
 local default_workspace = "default"
 _M.DEFAULT_WORKSPACE = default_workspace
+local ALL_METHODS = {"GET", "POST", "PUT", "DELETE"}
 
 
 -- a map of workspaceable relations to its primary key name
@@ -26,6 +33,63 @@ local function metatable(base)
 end
 
 
+local function map(f, t)
+  local r = {}
+  for _, x in ipairs(t) do
+    r[#r+1] = f(x)
+  end
+  return r
+end
+
+
+-- helper function for permutations
+local function inc(t, pos)
+  if t[pos][2] == #t[pos][1] then
+    if pos == 1 then return nil end
+    t[pos][2] = 1
+    return inc(t, pos-1)
+  else
+    t[pos][2] = t[pos][2] + 1
+    return true
+  end
+end
+
+
+-- permutations iterator
+-- local c = 0
+-- for i in permutations({1,2,3,5,6} , {3,4,5,6,7,6}) do
+--   c = c+1
+--   if c == 10 then break end
+--   print(i)
+-- end
+local function permutations(...)
+
+  local sets = {...}
+
+  -- create triplets of {elements, length, curr_pos}
+  local state = map(function(x)
+                      return {x, 1}
+                    end , sets)
+
+  -- prepare last index to be increased on the first iteration
+  state[#state][2] = 0
+
+  local curr = #state -- first thing to increment is the last set
+
+  return function()
+    while true do
+      if inc(state, curr) then
+        return map(function(s)
+                     return s[1][s[2]] end,
+                   state)
+      else
+        return nil
+      end
+    end
+  end
+end
+
+
 local function any(pred, t)
   local r = nil
   for _,v in ipairs(t) do
@@ -41,13 +105,13 @@ local function member(elem, t)
 end
 
 
-local function is_wildcard_host(host)
+local function is_wildcard(host)
   return host:find("*") and true
 end
 
 
-local function is_wildcard(route)
-  return any(is_wildcard_host, route.hosts)
+local function is_wildcard_route(route)
+  return any(is_wildcard, route.hosts)
 end
 
 
@@ -284,17 +348,20 @@ function _M.validate_route_for_ws(router, method, uri, host, ws)
   local selected_route = _M.match_route(router, method, uri, host)
 
   if selected_route == nil then -- no match ,no conflict
+    ngx_log(DEBUG, "no selected_route")
     return true
 
   elseif _M.api_in_ws(selected_route, ws) then -- same workspace
+    ngx_log(DEBUG, "selected_route in the same ws")
     return true
 
   elseif is_blank(selected_route.api.hosts) then -- we match from a no-host route
+    ngx_log(DEBUG, "selected_route has no host restriction")
     return true
 
-  elseif is_wildcard(selected_route.api) then -- has host & it's wildcard
+  elseif is_wildcard_route(selected_route.api) then -- has host & it's wildcard
     -- we try to add a wildcard
-    if host and is_wildcard_host(host) and member(host, selected_route.api.hosts) then -- ours is also wildcard
+    if host and is_wildcard(host) and member(host, selected_route.api.hosts) then -- ours is also wildcard
       return false
     else
       return true
@@ -309,5 +376,27 @@ function _M.validate_route_for_ws(router, method, uri, host, ws)
 
 end
 
+
+local function extract_req_data(params)
+  return params.methods, params.uris, params.hosts
+end
+
+function _M.validate_route(req)
+  local router = singletons.router
+  local methods, uris, hosts = extract_req_data(req.params)
+  local ws = ngx.ctx.workspace
+  if multiples then
+    for perm in permutations(methods or ALL_METHODS,
+                             uris or {"/"},
+                             hosts or {""}) do
+      if not _M.validate_route_for_ws(router, perm[1], perm[2], perm[3], ws) then
+        return false
+      end
+    end
+    return true
+  else
+    return _M.validate_route_for_ws(router, methods or "GET", uris or "/", hosts or "", ws)
+  end
+end
 
 return _M
