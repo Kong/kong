@@ -372,7 +372,7 @@ local function select_query_ws(self, workspace, select_clause, schema, table, wh
 
   if join_ttl then
     join_tbl = fmt("%s LEFT OUTER JOIN ttls ON (%s.%s = ttls.primary_%s_value)",
-               join_tbl and join_tbl or table, table, schema.primary_key[1],
+               join_tbl or table, table, schema.primary_key[1],
                    primary_key_type == "uuid" and "uuid" or "key")
 
     join_where = ( join_where and (join_where .. " AND ") or "") ..
