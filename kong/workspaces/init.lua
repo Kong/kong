@@ -271,12 +271,12 @@ end
 
 
 function _M.match_route(router, method, uri, host)
-  return router.select(method, uri, method)
+  return router.select(method, uri, host)
 end
 
 
 function _M.api_in_ws(api, ws)
-  return member(ws, listify(api.workspace))
+  return member(ws.name, listify(api.workspace))
 end
 
 function _M.validate_route_for_ws(router, method, uri, host, ws)

@@ -92,6 +92,8 @@ describe("workspaces", function()
     }
     local r = Router.new(apis)
     local matched_route = r.select("GET", "/","")
+    local ws1 = {name = "ws1"}
+    local ws2 = {name = "ws2"}
     assert.falsy(matched_route)
 
     matched_route = r.select("GET", "/","myapi1")
@@ -102,16 +104,18 @@ describe("workspaces", function()
 
     matched_route = workspaces.match_route(r, "GET", "/my-api", "")
     assert.truthy(matched_route)
-    assert.truthy(workspaces.api_in_ws(matched_route.api, "ws1"))
+    assert.truthy(workspaces.api_in_ws(matched_route.api, ws1))
 
     matched_route = workspaces.match_route(r, "GET", "/my-api2", "")
     assert.truthy(matched_route)
-    assert.truthy(workspaces.api_in_ws(matched_route.api, "ws2"))
-    assert.falsy(workspaces.api_in_ws(matched_route.api, "ws1"))
+    assert.truthy(workspaces.api_in_ws(matched_route.api, ws2))
+    assert.falsy(workspaces.api_in_ws(matched_route.api, ws1))
   end)
 
   describe("api_in_ws accepts", function()
     local single_api, multiple_api = {}, {}
+    local ws1 = {name = "ws1"}
+    local ws2 = {name = "ws2"}
 
     setup(function()
       single_api = {
@@ -129,15 +133,15 @@ describe("workspaces", function()
     end)
 
     it("single ws per entity", function()
-      assert.truthy(workspaces.api_in_ws(single_api, "ws1"))
-      assert.falsy(workspaces.api_in_ws(single_api, "ws2"))
-      assert.falsy(workspaces.api_in_ws(single_api, "nope"))
+      assert.truthy(workspaces.api_in_ws(single_api, ws1))
+      assert.falsy(workspaces.api_in_ws(single_api, ws2))
+      assert.falsy(workspaces.api_in_ws(single_api, {name = "nope"}))
     end)
 
     it("multiple ws per entity", function()
-      assert.truthy(workspaces.api_in_ws(multiple_api, "ws1"))
-      assert.truthy(workspaces.api_in_ws(multiple_api, "ws2"))
-      assert.falsy(workspaces.api_in_ws(multiple_api, "nope"))
+      assert.truthy(workspaces.api_in_ws(multiple_api, ws1))
+      assert.truthy(workspaces.api_in_ws(multiple_api, ws2))
+      assert.falsy(workspaces.api_in_ws(multiple_api, {name = "nope"}))
     end)
   end)
 
@@ -194,7 +198,8 @@ describe("workspaces", function()
       local Router = require "kong.core.router"
       local r = Router.new(apis)
       assert.equal("api-2", workspaces.match_route(r, "GET", "/my-api2", "h1").api.name)
-      assert.truthy(workspaces.validate_route_for_ws(r, "GET", "/my-api2", "bla"))
+      assert.truthy(workspaces.validate_route_for_ws(r, "GET", "/my-api2", "bla", {}))
+      -- TODO: Investigate if this last test should be true or false.
     end)
 
     it("adds root route to an empty router", function()
@@ -218,8 +223,10 @@ describe("workspaces", function()
     it("NOT add route in different ws, with same wildcard host", function()
       local Router = require "kong.core.router"
       local r = Router.new(apis)
-      assert.equal("api-3", workspaces.match_route(r, "GET", "/my-api3", "h*").api.name)
-      assert.falsy(workspaces.validate_route_for_ws(r, "GET", "/my-api3", "*", "w4"))
+      assert.equal("api-3", workspaces.match_route(r, "GET", "/my-api3",
+                                                   "h*").api.name)
+      assert.falsy(
+        workspaces.validate_route_for_ws(r, "GET", "/my-api3", "*", "w4"))
     end)
 
     it("ADD route in different ws, with different wildcard host", function()
