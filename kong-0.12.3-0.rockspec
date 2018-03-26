@@ -221,6 +221,14 @@ build = {
     ["kong.plugins.galileo.buffer"] = "kong/plugins/galileo/buffer.lua",
     ["kong.plugins.galileo.alf"] = "kong/plugins/galileo/alf.lua",
 
+    ["kong.plugins.rate-limiting.migrations.cassandra"] = "kong/plugins/rate-limiting/migrations/cassandra.lua",
+    ["kong.plugins.rate-limiting.migrations.postgres"] = "kong/plugins/rate-limiting/migrations/postgres.lua",
+    ["kong.plugins.rate-limiting.handler"] = "kong/plugins/rate-limiting/handler.lua",
+    ["kong.plugins.rate-limiting.schema"] = "kong/plugins/rate-limiting/schema.lua",
+    ["kong.plugins.rate-limiting.daos"] = "kong/plugins/rate-limiting/daos.lua",
+    ["kong.plugins.rate-limiting.policies"] = "kong/plugins/rate-limiting/policies/init.lua",
+    ["kong.plugins.rate-limiting.policies.cluster"] = "kong/plugins/rate-limiting/policies/cluster.lua",
+
     ["kong.plugins.rate-limiting-advanced.migrations.cassandra"] = "kong/plugins/rate-limiting-advanced/migrations/cassandra.lua",
     ["kong.plugins.rate-limiting-advanced.migrations.postgres"] = "kong/plugins/rate-limiting-advanced/migrations/postgres.lua",
     ["kong.plugins.rate-limiting-advanced.handler"] = "kong/plugins/rate-limiting-advanced/handler.lua",

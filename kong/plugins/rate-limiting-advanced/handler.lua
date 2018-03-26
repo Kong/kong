@@ -16,7 +16,7 @@ local RATELIMIT_LIMIT = "X-RateLimit-Limit"
 local RATELIMIT_REMAINING = "X-RateLimit-Remaining"
 
 
-NewRLHandler.PRIORITY = 901
+NewRLHandler.PRIORITY = 902
 NewRLHandler.VERSION = "0.1.0"
 
 
