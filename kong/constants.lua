@@ -15,7 +15,7 @@ local plugins = {
   "request-transformer-advanced",
   "response-transformer",
   "request-size-limiting",
-  "rate-limiting",
+  "rate-limiting-advanced",
   "response-ratelimiting",
   "syslog",
   "loggly",

@@ -10,7 +10,7 @@ local REDIS_DATABASE = 1
 for i, policy in ipairs({"cluster", "redis"}) do
   local MOCK_RATE = 3
 
-  local s = "rate-limiting (access) with policy: " .. policy
+  local s = "rate-limiting-advanced (access) with policy: " .. policy
   if policy == "redis" then
     s = "#flaky " .. s
   end
@@ -50,7 +50,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
         upstream_url = helpers.mock_upstream_url
       })
       assert(helpers.dao.plugins:insert {
-        name = "rate-limiting",
+        name = "rate-limiting-advanced",
         api_id = api1.id,
         config = {
           strategy = policy,
@@ -72,7 +72,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
         upstream_url = helpers.mock_upstream_url
       })
       assert(helpers.dao.plugins:insert {
-        name = "rate-limiting",
+        name = "rate-limiting-advanced",
         api_id = api2.id,
         config = {
           strategy = policy,
@@ -98,7 +98,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
         api_id = api3.id
       })
       assert(helpers.dao.plugins:insert {
-        name = "rate-limiting",
+        name = "rate-limiting-advanced",
         api_id = api3.id,
         config = {
           identifier = "credential",
@@ -121,7 +121,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
         upstream_url = helpers.mock_upstream_url
       })
       assert(helpers.dao.plugins:insert {
-        name = "rate-limiting",
+        name = "rate-limiting-advanced",
         api_id = api4.id,
         config = {
           strategy = policy,
@@ -144,7 +144,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
         upstream_url = helpers.mock_upstream_url
       })
       assert(helpers.dao.plugins:insert {
-        name = "rate-limiting",
+        name = "rate-limiting-advanced",
         api_id = api5.id,
         config = {
           strategy = policy,
@@ -167,7 +167,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
         upstream_url = helpers.mock_upstream_url
       })
       assert(helpers.dao.plugins:insert {
-        name = "rate-limiting",
+        name = "rate-limiting-advanced",
         api_id = api6.id,
         config = {
           strategy = policy,
@@ -194,7 +194,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
         api_id = api7.id
       })
       assert(helpers.dao.plugins:insert {
-        name = "rate-limiting",
+        name = "rate-limiting-advanced",
         api_id = api7.id,
         config = {
           strategy = policy,
@@ -220,7 +220,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
         api_id = api8.id
       })
       assert(helpers.dao.plugins:insert {
-        name = "rate-limiting",
+        name = "rate-limiting-advanced",
         api_id = api8.id,
         config = {
           identifier = "ip",
@@ -243,7 +243,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
         upstream_url = helpers.mock_upstream_url
       })
       assert(helpers.dao.plugins:insert {
-        name = "rate-limiting",
+        name = "rate-limiting-advanced",
         api_id = api9.id,
         config = {
           strategy = policy,

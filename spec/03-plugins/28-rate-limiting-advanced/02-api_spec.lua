@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
-describe("rate-limiting API", function()
+describe("rate-limiting-advanced API", function()
   local admin_client
 
   setup(function()
@@ -31,7 +31,7 @@ describe("rate-limiting API", function()
         method = "POST",
         path = "/apis/test/plugins/",
         body = {
-          name = "rate-limiting",
+          name = "rate-limiting-advanced",
           config = {
             window_size = { 10, 60 },
             limit = { 10 },
@@ -53,7 +53,7 @@ describe("rate-limiting API", function()
         method = "POST",
         path = "/apis/test/plugins/",
         body = {
-          name = "rate-limiting",
+          name = "rate-limiting-advanced",
           config = {
             limit = { 10 },
             sync_rate = 10,
@@ -74,7 +74,7 @@ describe("rate-limiting API", function()
         method = "POST",
         path = "/plugins",
         body = {
-          name = "rate-limiting",
+          name = "rate-limiting-advanced",
           config = {
             window_size = { 3600, 60 },
             limit = { 100, 10 },
@@ -100,7 +100,7 @@ describe("rate-limiting API", function()
         method = "POST",
         path = "/apis/test/plugins/",
         body = {
-          name = "rate-limiting",
+          name = "rate-limiting-advanced",
           config = {
             window_size = { 10 },
             limit = { 10 },
@@ -120,7 +120,7 @@ describe("rate-limiting API", function()
         method = "PATCH",
         path = "/apis/test/plugins/" .. plugin_id,
         body = {
-          name = "rate-limiting",
+          name = "rate-limiting-advanced",
           config = {
             window_size = { 10, 60 },
             limit = { 10 },
@@ -142,7 +142,7 @@ describe("rate-limiting API", function()
         method = "PATCH",
         path = "/apis/test/plugins/" .. plugin_id,
         body = {
-          name = "rate-limiting",
+          name = "rate-limiting-advanced",
           config = {
             limit = { 10 },
             sync_rate = 10,
@@ -163,7 +163,7 @@ describe("rate-limiting API", function()
         method = "PATCH",
         path = "/apis/test/plugins/" .. plugin_id,
         body = {
-          name = "rate-limiting",
+          name = "rate-limiting-advanced",
           config = {
             sync_rate = 10,
           }
@@ -182,7 +182,7 @@ describe("rate-limiting API", function()
         method = "PATCH",
         path = "/apis/test/plugins/" .. plugin_id,
         body = {
-          name = "rate-limiting",
+          name = "rate-limiting-advanced",
           config = {
             window_size = { 20 },
             limit = { 20 },
