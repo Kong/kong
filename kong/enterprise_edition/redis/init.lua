@@ -204,7 +204,7 @@ function _M.connection(conf)
       end
     end
 
-    if conf.database ~= 0 then
+    if conf.database and conf.database ~= 0 then
       local ok, err = red:select(conf.database)
       if not ok then
         log(ERR, "failed to change Redis database: ", err)
