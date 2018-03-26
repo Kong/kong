@@ -1,81 +1,82 @@
-local helpers = require "spec.02-integration.03-dao.helpers"
-local spec_helpers = require "spec.helpers"
-local Factory = require "kong.dao.factory"
+local helpers = require "spec.helpers"
 
-helpers.for_each_dao(function(kong_config)
-  describe("TTL with #" .. kong_config.database, function()
-    local factory
+for _, strategy in helpers.each_strategy() do
+
+  -- Note: ttl values in all tests need to be at least 2 because
+  -- the resolution of the ttl values in the DB is one second.
+  -- If ttl is 1 in the test, we might be unlucky and have
+  -- the insertion happen at the end of a second and the subsequent
+  -- `find` operation to happen at the beginning of the following
+  -- second.
+  describe("TTL with #" .. strategy, function()
+    local dao
+
     setup(function()
-      factory = assert(Factory.new(kong_config))
-      assert(factory:run_migrations())
-
-      factory:truncate_tables()
+      _, _, dao = helpers.get_db_utils(strategy)
     end)
-    after_each(function()
-      factory:truncate_tables()
+
+    before_each(function()
+      dao.apis:truncate()
+      if strategy == "postgres" then
+        dao.db:truncate_table("ttls")
+      end
     end)
 
     it("on insert", function()
-      local api, err = factory.apis:insert({
+      local api, err = dao.apis:insert({
         name         = "example",
         hosts        = { "example.com" },
         upstream_url = "http://example.com"
-      }, { ttl = 3 })
+      }, { ttl = 2 })
       assert.falsy(err)
 
-      local row, err = factory.apis:find {id = api.id}
+      local row, err = dao.apis:find {id = api.id}
       assert.falsy(err)
       assert.truthy(row)
 
-      ngx.sleep(4)
-
-      spec_helpers.wait_until(function()
-        row, err = factory.apis:find {id = api.id}
+      helpers.wait_until(function()
+        row, err = dao.apis:find {id = api.id}
         assert.falsy(err)
         return row == nil
-      end, 1)
+      end, 10)
     end)
 
     it("on update", function()
-      local api, err = factory.apis:insert({
+      local api, err = dao.apis:insert({
         name         = "example",
         hosts        = { "example.com" },
         upstream_url = "http://example.com"
-      }, { ttl = 3 })
+      }, { ttl = 2 })
       assert.falsy(err)
 
-      local row, err = factory.apis:find {id = api.id}
+      local row, err = dao.apis:find {id = api.id}
       assert.falsy(err)
       assert.truthy(row)
 
       -- Updating the TTL to a higher value
-      factory.apis:update({ name = "example2" }, { id = api.id }, { ttl = 4 })
+      dao.apis:update({ name = "example2" }, { id = api.id }, { ttl = 3 })
 
-      ngx.sleep(1)
-
-      row, err = factory.apis:find { id = api.id }
+      row, err = dao.apis:find { id = api.id }
       assert.falsy(err)
       assert.truthy(row)
 
-      ngx.sleep(4)
-
-      spec_helpers.wait_until(function()
-        row, err = factory.apis:find { id = api.id }
+      helpers.wait_until(function()
+        row, err = dao.apis:find { id = api.id }
         assert.falsy(err)
         return row == nil
-      end, 1)
+      end, 10)
     end)
 
-    if kong_config.database == "postgres" then
+    if strategy == "postgres" then
       it("retrieves proper entity with no TTL properties attached", function()
-        local _, err = factory.apis:insert({
+        local _, err = dao.apis:insert({
           name         = "example",
           hosts        = { "example.com" },
           upstream_url = "http://example.com"
-        }, { ttl = 5 })
+        }, { ttl = 2 })
 
         assert.falsy(err)
-        local rows, err = factory.apis:find_all()
+        local rows, err = dao.apis:find_all()
         assert.falsy(err)
         assert.is_table(rows)
         assert.equal(1, #rows)
@@ -89,19 +90,18 @@ helpers.for_each_dao(function(kong_config)
       end)
 
       it("clears old entities", function()
-        local DB = require "kong.dao.db.postgres"
-        local _db = DB.new(kong_config)
+        local _db = dao.db
 
         for i = 1, 4 do
-          local _, err = factory.apis:insert({
+          local _, err = dao.apis:insert({
             name         = "api-" .. i,
             hosts        = { "example" .. i .. ".com" },
             upstream_url = "http://example.com"
-          }, { ttl = 1 })
+          }, { ttl = 2 })
           assert.falsy(err)
         end
 
-        local _, err = factory.apis:insert({
+        local _, err = dao.apis:insert({
           name         = "long-ttl",
           hosts        = { "example-longttl.com" },
           upstream_url = "http://example.com"
@@ -116,13 +116,12 @@ helpers.for_each_dao(function(kong_config)
         assert.falsy(err)
         assert.truthy(res[1].count >= 5)
 
-        ngx.sleep(2)
+        helpers.wait_until(function()
 
-        local ok, err = _db:clear_expired_ttl()
-        assert.falsy(err)
-        assert.truthy(ok)
+          local ok, err = _db:clear_expired_ttl()
+          assert.falsy(err)
+          assert.truthy(ok)
 
-        spec_helpers.wait_until(function()
           local res_apis, err = _db:query("SELECT COUNT(*) FROM apis")
           assert.falsy(err)
 
@@ -130,8 +129,8 @@ helpers.for_each_dao(function(kong_config)
           assert.falsy(err)
 
           return res_apis[1].count == 1 and res_ttls[1].count == 1
-        end, 1)
+        end, 10)
       end)
     end
   end)
-end)
+end
