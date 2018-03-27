@@ -1,3 +1,11 @@
+## v0.1.0
+
+This release only fixes some bugs in 0.0.9.
+
+- Fix `exp` retrival
+- Fix `jwt_session_cookie` verification
+- Fix consumer mapping using introspection
+
 ## v0.0.9
 
 With this release the whole code base got refactored and a lot of

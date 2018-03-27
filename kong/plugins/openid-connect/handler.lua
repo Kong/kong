@@ -686,12 +686,22 @@ end
 
 local function get_exp(access_token, tokens_encoded, now, exp_default)
   if access_token and type(access_token) == "table" then
-    local exp = tonumber(access_token.exp)
+    local exp
+
+    if type(access_token.payload) == "table" then
+      exp = tonumber(access_token.payload.exp)
+      if exp then
+        return exp
+      end
+    end
+
+    exp = tonumber(access_token.exp)
     if exp then
       return exp
     end
+  end
 
-  elseif tokens_encoded and type(tokens_encoded) == "table" then
+  if tokens_encoded and type(tokens_encoded) == "table" then
     local expires_in = tonumber(tokens_encoded.expires_in)
     if expires_in then
       return now + expires_in
@@ -1577,8 +1587,7 @@ function OICHandler:access(conf)
       end
 
       if tokens_decoded then
-        local access_token_decoded = tokens_decoded.access_token
-        if type(access_token_decoded) == "table" then
+        if type(tokens_decoded.access_token) == "table" then
           log("validating jwt claim against jwt session cookie")
           local jwt_session_cookie_value = args.get_value(var["cookie_" .. jwt_session_cookie])
           if not jwt_session_cookie_value then
@@ -1593,7 +1602,7 @@ function OICHandler:access(conf)
           local jwt_session_claim = args.get_conf_arg("jwt_session_claim", "sid")
           local jwt_session_claim_value
 
-          jwt_session_claim_value = access_token_decoded[jwt_session_claim]
+          jwt_session_claim_value = tokens_decoded.access_token.payload[jwt_session_claim]
 
           if not jwt_session_claim_value then
             return unauthorized(
@@ -1785,10 +1794,9 @@ function OICHandler:access(conf)
       end
 
       if tokens_decoded then
-        local id_token = tokens_decoded.id_token
-        if id_token then
+        if tokens_decoded.id_token then
           log("trying to find consumer using id token")
-          consumer, err = find_consumer(id_token, consumer_claim, false, consumer_by, ttl)
+          consumer, err = find_consumer(tokens_decoded.id_token, consumer_claim, false, consumer_by, ttl)
           if not consumer then
             log("trying to find consumer using access token")
             consumer, err = find_consumer(tokens_decoded.access_token, consumer_claim, false, consumer_by, ttl)
@@ -1802,7 +1810,7 @@ function OICHandler:access(conf)
 
       if not consumer and token_introspected then
         log("trying to find consumer using introspection response")
-        consumer, err = find_consumer(token_introspected, consumer_claim, false, consumer_by, ttl)
+        consumer, err = find_consumer({ payload = token_introspected }, consumer_claim, false, consumer_by, ttl)
       end
 
       if not consumer then
