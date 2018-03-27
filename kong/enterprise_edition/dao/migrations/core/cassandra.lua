@@ -355,4 +355,14 @@ return {
       DROP TABLE portal_files;
     ]]
   },
+  {
+    name = "2018-03-27-104242_rbac_portal_resource",
+    up = function(_, _, dao)
+      local rbac = require "kong.rbac"
+      local ok, err = rbac.register_resource("portal", dao)
+      if not ok then
+        return err
+      end
+    end,
+  },
 }

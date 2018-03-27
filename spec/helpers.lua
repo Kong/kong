@@ -118,6 +118,7 @@ local function run_migrations(given_dao)
     "key-auth",
     "oauth2",
     "vitals",
+    "portal",
   } do
     rbac.register_resource(resource, d)
   end

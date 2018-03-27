@@ -74,6 +74,8 @@ local route_resource_map = {
   ["/oauth2/"] = "oauth2",
   ["/consumers/:username_or_id/oauth2/"] = "oauth2",
   ["/consumers/:username_or_id/oauth2/:clientid_or_id"] = "oauth2",
+  ["/files"] = "portal",
+  ["/files/*"] = "portal",
 }
 _M.route_resource_map = route_resource_map
 
