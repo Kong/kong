@@ -52,7 +52,7 @@ describe("api_helpers", function()
     it("complete use case", function()
       assert.same({
         api_id = 123,
-        name = "request-transformer-advanced",
+        name = "request-transformer",
         config = {
           add = {
             form = "new-form-param:some_value, another-form-param:some_value",
@@ -67,7 +67,7 @@ describe("api_helpers", function()
         }
       }, norm {
         api_id = 123,
-        name = "request-transformer-advanced",
+        name = "request-transformer",
         ["config.add.headers"] = "x-new-header:some_value, x-another-header:some_value",
         ["config.add.querystring"] = "new-param:some_value, another-param:some_value",
         ["config.add.form"] = "new-form-param:some_value, another-form-param:some_value",

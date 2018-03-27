@@ -64,6 +64,7 @@ describe("Plugins", function()
       "rate-limiting",
       "response-ratelimiting",
       "request-transformer-advanced",
+      "request-transformer",
       "response-transformer",
       "aws-lambda",
       "http-log",
