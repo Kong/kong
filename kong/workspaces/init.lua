@@ -12,7 +12,7 @@ local _M = {}
 
 local default_workspace = "default"
 _M.DEFAULT_WORKSPACE = default_workspace
-local ALL_METHODS = {"GET", "POST", "PUT", "DELETE"}
+local ALL_METHODS = {"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"}
 
 
 -- a map of workspaceable relations to its primary key name
@@ -65,11 +65,8 @@ end
 local function permutations(...)
 
   local sets = {...}
-
-  -- create triplets of {elements, length, curr_pos}
-  local state = map(function(x)
-                      return {x, 1}
-                    end , sets)
+  -- create tuples of {elements, curr_pos}
+  local state = map(function(x) return {x, 1} end, sets)
 
   -- prepare last index to be increased on the first iteration
   state[#state][2] = 0
@@ -91,10 +88,12 @@ end
 
 
 local function any(pred, t)
-  local r = nil
+  local r
   for _,v in ipairs(t) do
     r = pred(v)
-    if r then return r end
+    if r then
+      return r
+    end
   end
   return false
 end
@@ -342,6 +341,7 @@ end
 function _M.api_in_ws(api, ws)
   return member(ws.name, listify(api.workspace))
 end
+
 
 function _M.validate_route_for_ws(router, method, uri, host, ws)
 
