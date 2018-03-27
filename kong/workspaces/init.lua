@@ -331,25 +331,30 @@ function _M.find_entity_by_unique_field(params)
 end
 
 
-function _M.match_route(router, method, uri, host)
+local function match_route(router, method, uri, host)
   return router.select(method, uri, host)
 end
+_M.match_route           = match_route
 
 
-function _M.api_in_ws(api, ws)
+local function api_in_ws(api, ws)
   return member(ws.name, listify(api.workspace))
 end
+_M.api_in_ws             = api_in_ws
 
 
-function _M.validate_route_for_ws(router, method, uri, host, ws)
+-- returns true if an api with method,uri,host can be added in the
+-- workspace ws in the current router. See
+-- Workspaces-Design-Implementation quip doc for further detail.
+local function validate_route_for_ws(router, method, uri, host, ws)
 
-  local selected_route = _M.match_route(router, method, uri, host)
+  local selected_route = match_route(router, method, uri, host)
 
   if selected_route == nil then -- no match ,no conflict
     ngx_log(DEBUG, "no selected_route")
     return true
 
-  elseif _M.api_in_ws(selected_route, ws) then -- same workspace
+  elseif api_in_ws(selected_route, ws) then -- same workspace
     ngx_log(DEBUG, "selected_route in the same ws")
     return true
 
@@ -375,6 +380,7 @@ function _M.validate_route_for_ws(router, method, uri, host, ws)
   end
 
 end
+_M.validate_route_for_ws = validate_route_for_ws
 
 
 local function extract_req_data(params)
@@ -382,6 +388,12 @@ local function extract_req_data(params)
 end
 
 
+-- Extracts parameters for an api to be validated against the global
+-- current router. An api can have 0..* of each hosts, uris, methods.
+-- We check if a route collides with the current setup by trying to
+-- match each one of the combinations of accepted [hosts, uris,
+-- methods]. The function returns true iff none of the variants
+-- collide.
 function _M.is_route_colliding(req)
   local router = singletons.router
   local methods, uris, hosts = extract_req_data(req.params)
@@ -389,7 +401,7 @@ function _M.is_route_colliding(req)
   for perm in permutations(methods or ALL_METHODS,
                            uris or {"/"},
                            hosts or {""}) do
-    if not _M.validate_route_for_ws(router, perm[1], perm[2], perm[3], ws) then
+    if not validate_route_for_ws(router, perm[1], perm[2], perm[3], ws) then
       return true
     end
   end
