@@ -11,12 +11,15 @@ return {
     end,
 
     PUT = function(self, dao_factory)
+      -- TODO: check when doing updates.  Probably have to remove the
+      -- route from the router before running the check.
       crud.put(self.params, dao_factory.apis)
     end,
 
-    POST = function(self, dao_factory)
+    POST = function(self, dao_factory, helpers)
       if workspaces.is_route_colliding(self) then
-        app_helpers.yield_error({unique = true, tbl = "Collision"})
+        local err = "Api route collides with already defined route"
+        return helpers.responses.send_HTTP_CONFLICT(err)
       end
       crud.post(self.params, dao_factory.apis)
     end

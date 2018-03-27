@@ -12,7 +12,7 @@ local _M = {}
 
 local default_workspace = "default"
 _M.DEFAULT_WORKSPACE = default_workspace
-local ALL_METHODS = {"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"}
+local ALL_METHODS = "GET,POST,PUT,DELETE,OPTIONS,PATCH"
 
 
 -- a map of workspaceable relations to its primary key name
@@ -350,7 +350,7 @@ _M.api_in_ws             = api_in_ws
 local function validate_route_for_ws(router, method, uri, host, ws)
 
   local selected_route = match_route(router, method, uri, host)
-
+  ngx_log(DEBUG, "selected route is " .. tostring(selected_route))
   if selected_route == nil then -- no match ,no conflict
     ngx_log(DEBUG, "no selected_route")
     return true
@@ -374,9 +374,11 @@ local function validate_route_for_ws(router, method, uri, host, ws)
     end
 
   elseif host ~= nil then       -- 2.c.ii.1.b
+    ngx_log(DEBUG, "host is not nil we collide with other")
     return false
 
   else -- different ws, selected_route has host and candidate not
+    ngx_log(DEBUG, "different ws, selected_route has host and candidate not")
     return true
   end
 
@@ -399,9 +401,9 @@ function _M.is_route_colliding(req)
   local router = singletons.router
   local methods, uris, hosts = extract_req_data(req.params)
   local ws = _M.get_workspace()
-  for perm in permutations(methods or ALL_METHODS,
-                           uris or {"/"},
-                           hosts or {""}) do
+  for perm in permutations(utils.split(methods or ALL_METHODS, ","),
+                           utils.split(uris or "/", ","),
+                           utils.split(hosts or "", ",")) do
     if not validate_route_for_ws(router, perm[1], perm[2], perm[3], ws) then
       return true
     end

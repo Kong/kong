@@ -92,6 +92,8 @@ return {
     end,
 
     POST = function(self, dao_factory, helpers)
+      -- TODO: check the collection, if it's an api run the check
+
       if not self.params.entities then
         return helpers.responses.send_HTTP_BAD_REQUEST("must provide >= entity")
       end
