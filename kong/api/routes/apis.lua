@@ -1,6 +1,8 @@
 local crud    = require "kong.api.crud_helpers"
 local utils   = require "kong.tools.utils"
 local reports = require "kong.core.reports"
+local workspaces = require "kong.workspaces"
+local app_helpers = require "lapis.application"
 
 return {
   ["/apis/"] = {
@@ -13,6 +15,9 @@ return {
     end,
 
     POST = function(self, dao_factory)
+      if workspaces.is_route_colliding(self) then
+        app_helpers.yield_error({unique = true, tbl = "Collision"})
+      end
       crud.post(self.params, dao_factory.apis)
     end
   },

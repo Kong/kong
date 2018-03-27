@@ -55,12 +55,10 @@ local function inc(t, pos)
 end
 
 
--- permutations iterator
--- local c = 0
--- for i in permutations({1,2,3,5,6} , {3,4,5,6,7,6}) do
---   c = c+1
---   if c == 10 then break end
---   print(i)
+-- returns a permutations iterator using the "odometer" algorithm.
+-- Example usage:
+-- for i in permutations({1,2} , {3,4}) do
+--   print(i[1], i[2])
 -- end
 local function permutations(...)
 
@@ -360,8 +358,10 @@ function _M.validate_route_for_ws(router, method, uri, host, ws)
     return true
 
   elseif is_wildcard_route(selected_route.api) then -- has host & it's wildcard
+
     -- we try to add a wildcard
-    if host and is_wildcard(host) and member(host, selected_route.api.hosts) then -- ours is also wildcard
+    if host and is_wildcard(host) and member(host, selected_route.api.hosts) then
+      -- ours is also wildcard
       return false
     else
       return true
@@ -381,22 +381,19 @@ local function extract_req_data(params)
   return params.methods, params.uris, params.hosts
 end
 
-function _M.validate_route(req)
+
+function _M.is_route_colliding(req)
   local router = singletons.router
   local methods, uris, hosts = extract_req_data(req.params)
-  local ws = ngx.ctx.workspace
-  if multiples then
-    for perm in permutations(methods or ALL_METHODS,
-                             uris or {"/"},
-                             hosts or {""}) do
-      if not _M.validate_route_for_ws(router, perm[1], perm[2], perm[3], ws) then
-        return false
-      end
+  local ws = _M.get_workspace()
+  for perm in permutations(methods or ALL_METHODS,
+                           uris or {"/"},
+                           hosts or {""}) do
+    if not _M.validate_route_for_ws(router, perm[1], perm[2], perm[3], ws) then
+      return true
     end
-    return true
-  else
-    return _M.validate_route_for_ws(router, methods or "GET", uris or "/", hosts or "", ws)
   end
+  return false
 end
 
 return _M
