@@ -244,5 +244,45 @@ describe("workspaces", function()
     end)
 
   end)
+  describe("permutations", function()
+    it("works for single array", function()
+      local iter = workspaces.permutations({1,2})
+      assert.are.same({1}, iter())
+      assert.are.same({2}, iter())
+    end)
+
+    it("works for 2 arrays", function()
+      local iter = workspaces.permutations({1,2}, {3,4})
+      assert.are.same({1,3}, iter())
+      assert.are.same({1,4}, iter())
+      assert.are.same({2,3}, iter())
+      assert.are.same({2,4}, iter())
+    end)
+
+    it("works for single-pos-array", function()
+      local iter = workspaces.permutations({1}, {3,4})
+      assert.are.same({1,3}, iter())
+      assert.are.same({1,4}, iter())
+      iter = workspaces.permutations({1,2}, {4})
+      assert.are.same({1,4}, iter())
+      assert.are.same({2,4}, iter())
+    end)
+
+    it("works for n arrays", function()
+      local iter = workspaces.permutations({1}, {2}, {3,4})
+      assert.are.same({1, 2, 3}, iter())
+      assert.are.same({1, 2, 4}, iter())
+    end)
+
+    it("works as a loop iterrator", function()
+      local res = {}
+      for i in workspaces.permutations({1}, {2,3}) do
+        res[#res+1] = i
+      end
+      assert.are.same({{1,2}, {1,3}}, res)
+      end)
+
+  end)
+
 
 end)

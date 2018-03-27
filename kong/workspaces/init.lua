@@ -83,6 +83,7 @@ local function permutations(...)
     end
   end
 end
+_M.permutations = permutations
 
 
 local function any(pred, t)
