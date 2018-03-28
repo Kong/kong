@@ -42,7 +42,8 @@ describe("Proxy interface listeners", function()
       proxy_listen = "off",
       admin_listen = "0.0.0.0:9001",
     }))
-    assert.equals(1, count_server_blocks(helpers.test_conf.nginx_kong_conf))
+    -- XXX EE-only 1 + 3
+    assert.equals(4, count_server_blocks(helpers.test_conf.nginx_kong_conf))
     assert.is_nil(get_listeners(helpers.test_conf.nginx_kong_conf).kong)
   end)
 
@@ -52,7 +53,8 @@ describe("Proxy interface listeners", function()
       admin_listen = "0.0.0.0:9000",
     }))
 
-    assert.equals(2, count_server_blocks(helpers.test_conf.nginx_kong_conf))
+    -- XXX EE-only 2 + 3
+    assert.equals(5, count_server_blocks(helpers.test_conf.nginx_kong_conf))
     assert.same({
       ["127.0.0.1:9001"] = 1,
       ["127.0.0.1:9002"] = 2,
