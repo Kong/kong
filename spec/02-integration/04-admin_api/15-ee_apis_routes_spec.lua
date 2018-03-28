@@ -5,14 +5,12 @@ local utils = require "kong.tools.utils"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local DAOFactory = require "kong.dao.factory"
 
-local function it_content_types(title, fn)
-  local test_form_encoded = fn("application/x-www-form-urlencoded")
-  local test_json = fn("application/json")
-  it(title .. " with application/www-form-urlencoded", test_form_encoded)
-  it(title .. " with application/json", test_json)
-end
+local conf_loader = require "kong.conf_loader"
+local kong_config = assert(conf_loader(helpers.test_conf_path, {
+                                         database = "postgres"
+}))
 
-dao_helpers.for_each_dao(function(kong_config)
+
 describe("Admin API #" .. kong_config.database, function()
   local client
   local dao
@@ -31,26 +29,27 @@ describe("Admin API #" .. kong_config.database, function()
   describe("/apis", function()
     describe("POST", function()
       before_each(function()
-        dao:truncate_tables()
         client = assert(helpers.admin_client())
       end)
       after_each(function()
         if client then client:close() end
       end)
-      it_content_types("doesn't create an API when it conflicts", function(content_type)
-        return function()
+      it("doesn't create an API when it conflicts", function()
           local res = assert(client:send {
             method = "POST",
             path = "/apis",
             body = {
               uris = "/my-uri",
               name = "my-api",
+              methods = "GET",
               hosts = "my.api.com",
               upstream_url = "http://api.com"
             },
-            headers = {["Content-Type"] = content_type}
+            headers = {["Content-Type"] = "application/json"}
           })
           local body = assert.res_status(201, res)
+
+          os.execute("sleep 5")
           local json = cjson.decode(body)
           assert.equal("my-api", json.name)
           assert.same({ "my.api.com" }, json.hosts)
@@ -68,26 +67,25 @@ describe("Admin API #" .. kong_config.database, function()
                          body = {
                            name = "foo",
                          },
-                         headers = {["Content-Type"] = content_type}
+                         headers = {["Content-Type"] = "application/json"}
           })
-          local body = assert.res_status(201, res)
 
-          -- res = assert(client:send {
-          --                method = "POST",
-          --                path = "/foo/apis",
-          --                body = {
-          --                  name = "my-api",
-          --                  uris = "/my-uri",
-          --                  hosts = "my.api.com",
-          --                  upstream_url = "http://api.com"
-          --                },
-          --                headers = {["Content-Type"] = content_type}
-          -- })
-          -- assert.res_status(409, res)
+          body = assert.res_status(201, res)
 
-        end
+          res = assert(client:send {
+                         method = "POST",
+                         path = "/foo/apis",
+                         body = {
+                           uris = "/my-uri",
+                           name = "my-api",
+                           methods = "GET",
+                           hosts = "my.api.com",
+                           upstream_url = "http://api.com"
+                         },
+                         headers = {["Content-Type"] = "application/json"}
+          })
+          assert.res_status(409, res)
       end)
     end)
   end)
-end)
 end)
