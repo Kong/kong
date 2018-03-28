@@ -102,6 +102,8 @@ server {
 > end
 
     location / {
+        default_type                     '';
+
         set $upstream_host               '';
         set $upstream_upgrade            '';
         set $upstream_connection         '';
