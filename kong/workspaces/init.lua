@@ -395,7 +395,7 @@ end
 -- current router. An api can have 0..* of each hosts, uris, methods.
 -- We check if a route collides with the current setup by trying to
 -- match each one of the combinations of accepted [hosts, uris,
--- methods]. The function returns true iff none of the variants
+-- methods]. The function returns false iff none of the variants
 -- collide.
 function _M.is_route_colliding(req)
   local router = singletons.router
