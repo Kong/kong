@@ -1,8 +1,22 @@
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
+local utils   = require "kong.tools.utils"
 
-local function acl_cache_key(api_id, username)
-  return "ldap_auth_cache:" .. api_id .. ":" .. username
+
+local lower   = string.lower
+local fmt     = string.format
+local md5     = ngx.md5
+
+
+local function cache_key(conf, username)
+  local prefix = md5(fmt("%s:%u:%s:%s:%u",
+    lower(conf.ldap_host),
+    conf.ldap_port,
+    conf.base_dn,
+    conf.attribute,
+    conf.cache_ttl
+  ))
+
+  return fmt("ldap_auth_cache:%s:%s", prefix, username)
 end
 
 local ldap_host_aws = "ec2-54-172-82-117.compute-1.amazonaws.com"
@@ -36,6 +50,11 @@ describe("Plugin: ldap-auth (access)", function()
     local api5 = assert(dao.apis:insert {
       name         = "test-ldap5",
       hosts        = { "ldap5.com" },
+      upstream_url = helpers.mock_upstream_url,
+    })
+    assert(dao.apis:insert {
+      name         = "test-ldap6",
+      hosts        = { "ldap6.com" },
       upstream_url = helpers.mock_upstream_url,
     })
 
@@ -103,6 +122,16 @@ describe("Plugin: ldap-auth (access)", function()
         base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com",
         attribute = "uid",
         header_type = "basic",
+      }
+    })
+    assert(dao.plugins:insert {
+      name = "ldap-auth",
+      config = {
+        ldap_host = ldap_host_aws,
+        ldap_port = "389",
+        start_tls = false,
+        base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com",
+        attribute = "uid"
       }
     })
 
@@ -323,6 +352,20 @@ describe("Plugin: ldap-auth (access)", function()
     })
     assert.response(r).has.status(403)
   end)
+  it("passes if credential is valid in get request using global plugin", function()
+    local res = assert(client:send {
+      method  = "GET",
+      path    = "/request",
+      headers = {
+        host          = "ldap6.com",
+        authorization = "ldap " .. ngx.encode_base64("einstein:password")
+      }
+    })
+    assert.response(res).has.status(200)
+    local value = assert.request(res).has.header("x-credential-username")
+    assert.are.equal("einstein", value)
+    assert.request(res).has_not.header("x-anonymous-username")
+  end)
   it("caches LDAP Auth Credential", function()
     local r = assert(client:send {
       method = "GET",
@@ -335,12 +378,12 @@ describe("Plugin: ldap-auth (access)", function()
     assert.response(r).has.status(200)
 
     -- Check that cache is populated
-    local cache_key = acl_cache_key(api2.id, "einstein")
+    local key = cache_key(plugin2.config, "einstein")
 
     helpers.wait_until(function()
       local res = assert(client_admin:send {
         method = "GET",
-        path = "/cache/" .. cache_key
+        path = "/cache/" .. key
       })
       res:read_body()
       return res.status == 200
@@ -350,7 +393,7 @@ describe("Plugin: ldap-auth (access)", function()
     helpers.wait_until(function()
       local res = client_admin:send {
         method = "GET",
-        path = "/cache/" .. cache_key
+        path = "/cache/" .. key
       }
       res:read_body()
       --if res.status ~= 404 then
