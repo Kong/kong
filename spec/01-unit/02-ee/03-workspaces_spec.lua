@@ -60,7 +60,8 @@ describe("workspaces", function()
         upstream_send_timeout = 60000,
         upstream_url = "https://requestb.in/w2r6y3w2",
         workspace = "default"
-      }, {
+      },
+      {
         created_at = 1521494974461,
         headers = {
           host = { "myapi1" }
@@ -78,12 +79,14 @@ describe("workspaces", function()
         upstream_send_timeout = 60000,
         upstream_url = "https://requestb.in/w2r6y3w2",
         workspace = "foo"
-       }, {
+      },
+      {
         name = "api-1",
         methods = { "POST", "PUT", "GET" },
         uris = { "/my-api" },
         workspace = "ws1" ,
-       }, {
+      },
+      {
         name = "api-2",
         methods = { "POST", "PUT", "GET" },
         uris = { "/my-api2" },
@@ -113,7 +116,7 @@ describe("workspaces", function()
   end)
 
   describe("api_in_ws accepts", function()
-    local single_api, multiple_api = {}, {}
+    local single_api, multiple_api
     local ws1 = {name = "ws1"}
     local ws2 = {name = "ws2"}
 

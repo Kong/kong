@@ -2,6 +2,8 @@ local singletons = require "kong.singletons"
 local utils      = require "kong.tools.utils"
 
 
+local find = string.find
+local type = type
 local ngx_log = ngx.log
 local ERR     = ngx.ERR
 local NOTICE  = ngx.NOTICE
@@ -88,7 +90,7 @@ _M.permutations = permutations
 
 local function any(pred, t)
   local r
-  for _,v in ipairs(t) do
+  for _, v in ipairs(t) do
     r = pred(v)
     if r then
       return r
@@ -104,7 +106,7 @@ end
 
 
 local function is_wildcard(host)
-  return host:find("*") and true
+  return find(host, "*") and true
 end
 
 
@@ -335,13 +337,13 @@ end
 local function match_route(router, method, uri, host)
   return router.select(method, uri, host)
 end
-_M.match_route           = match_route
+_M.match_route = match_route
 
 
 local function api_in_ws(api, ws)
   return member(ws.name, listify(api.workspace))
 end
-_M.api_in_ws             = api_in_ws
+_M.api_in_ws = api_in_ws
 
 
 -- returns true if an api with method,uri,host can be added in the
