@@ -6,7 +6,7 @@ local reports = require "kong.core.reports"
 
 
 local ngx_log = ngx.log
-local shm = ngx.shared.kong_cache
+local shm = ngx.shared.kong_rate_limiting_counters
 local pairs = pairs
 local fmt = string.format
 
