@@ -7,14 +7,13 @@ local singletons = require "kong.singletons"
 -- Remove functions from a schema definition so that
 -- cjson can encode the schema.
 local function remove_functions(schema)
+  local copy = {}
   for k, v in pairs(schema) do
-    if type(v) == "function" then
-      schema[k] = "function"
-    end
-    if type(v) == "table" then
-      remove_functions(schema[k])
-    end
+    copy[k] =  (type(v) == "function" and "function")
+            or (type(v) == "table"    and remove_functions(schema[k]))
+            or v
   end
+  return copy
 end
 
 return {
@@ -50,9 +49,9 @@ return {
         return helpers.responses.send_HTTP_NOT_FOUND("No plugin named '" .. self.params.name .. "'")
       end
 
-      remove_functions(plugin_schema)
+      local copy = remove_functions(plugin_schema)
 
-      return helpers.responses.send_HTTP_OK(plugin_schema)
+      return helpers.responses.send_HTTP_OK(copy)
     end
   },
 
