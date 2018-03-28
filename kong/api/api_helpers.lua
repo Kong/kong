@@ -1,9 +1,11 @@
 local pl_string = require "pl.stringx"
 local utils = require "kong.tools.utils"
+local url = require "socket.url"
 
 local type = type
 local pairs = pairs
 local remove = table.remove
+local tonumber = tonumber
 
 local _M = {}
 
@@ -49,9 +51,15 @@ function _M.normalize_nested_params(obj)
     end
 
     -- normalize sub-keys with dot notation
-    local keys = pl_string.split(k, ".")
-    if #keys > 1 then -- we have a key containing a dot
-      attach_dotted_key(keys, new_obj, parse_value(v))
+    if type(k) == "string" then
+      local keys = pl_string.split(k, ".")
+      if #keys > 1 then -- we have a key containing a dot
+        attach_dotted_key(keys, new_obj, parse_value(v))
+
+      else
+        new_obj[k] = parse_value(v) -- nothing special with that key, simply attaching the value
+      end
+
     else
       new_obj[k] = parse_value(v) -- nothing special with that key, simply attaching the value
     end
@@ -59,5 +67,19 @@ function _M.normalize_nested_params(obj)
 
   return new_obj
 end
+
+
+function _M.resolve_url_params(self)
+  local sugar_url = self.args.post.url
+  if sugar_url then
+    local parsed_url        = url.parse(sugar_url)
+    self.args.post.protocol = parsed_url.scheme
+    self.args.post.host     = parsed_url.host
+    self.args.post.port     = tonumber(parsed_url.port) or parsed_url.port
+    self.args.post.path     = parsed_url.path
+    self.args.post.url      = nil
+  end
+end
+
 
 return _M

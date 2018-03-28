@@ -1,6 +1,7 @@
-local schemas = require "kong.dao.schemas_validation"
-local plugin_schema = require "kong.plugins.rate-limiting.schema"
+local schemas         = require "kong.dao.schemas_validation"
+local plugin_schema   = require "kong.plugins.rate-limiting.schema"
 local validate_entity = schemas.validate_entity
+
 
 describe("Plugin: rate-limiting (schema)", function()
   it("proper config validates", function()

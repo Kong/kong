@@ -1,6 +1,9 @@
-local schemas = require "kong.dao.schemas_validation"
-local plugin_schema = require "kong.plugins.response-ratelimiting.schema"
+local schemas         = require "kong.dao.schemas_validation"
+local plugin_schema   = require "kong.plugins.response-ratelimiting.schema"
+
+
 local validate_entity = schemas.validate_entity
+
 
 describe("Plugin: response-rate-limiting (schema)", function()
   it("proper config validates", function()

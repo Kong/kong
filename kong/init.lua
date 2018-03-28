@@ -26,12 +26,11 @@
 
 require "luarocks.loader"
 require "resty.core"
+local constants = require "kong.constants"
 
 do
   -- let's ensure the required shared dictionaries are
   -- declared via lua_shared_dict in the Nginx conf
-
-  local constants = require "kong.constants"
 
   for _, dict in ipairs(constants.DICTS) do
     if not ngx.shared[dict] then
@@ -46,6 +45,7 @@ end
 require("kong.core.globalpatches")()
 
 local ip = require "kong.tools.ip"
+local DB = require "kong.db"
 local dns = require "kong.tools.dns"
 local core = require "kong.core.handler"
 local rbac = require "kong.rbac"
@@ -99,8 +99,8 @@ local function load_plugins(kong_conf, dao)
 
   -- load installed plugins
   for plugin in pairs(kong_conf.plugins) do
-    if plugin == "galileo" then
-      ngx_log(ngx.WARN, "the 'galileo' plugin has been deprecated")
+    if constants.DEPRECATED_PLUGINS[plugin] then
+      ngx.log(ngx.WARN, "plugin '", plugin, "' has been deprecated")
     end
 
     local ok, handler = utils.load_module_if_exists("kong.plugins." .. plugin .. ".handler")
@@ -163,7 +163,10 @@ function Kong.init()
   local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
   local config = assert(conf_loader(conf_path))
 
-  local dao = assert(DAOFactory.new(config)) -- instantiate long-lived DAO
+  local db = assert(DB.new(config))
+  assert(db:init_connector())
+
+  local dao = assert(DAOFactory.new(config, db)) -- instantiate long-lived DAO
   local ok, err_t = dao:init()
   if not ok then
     error(tostring(err_t))
@@ -177,6 +180,7 @@ function Kong.init()
   singletons.loaded_plugins = assert(load_plugins(config, dao))
   singletons.dao = dao
   singletons.configuration = config
+  singletons.db = db
   singletons.license = ee.read_license_info()
 
   local reports = require "kong.core.reports"
@@ -198,8 +202,8 @@ function Kong.init()
 
   rbac.load_resource_bitfields(dao)
 
-  assert(core.build_router(dao, "init"))
-
+  assert(core.build_router(db, "init"))
+  assert(core.build_api_router(dao, "init"))
 end
 
 function Kong.init_worker()
@@ -293,12 +297,21 @@ function Kong.init_worker()
     return
   end
 
+  local ok, err = cache:get("api_router:version", { ttl = 0 }, function()
+    return "init"
+  end)
+  if not ok then
+    ngx_log(ngx_CRIT, "could not set API router version in cache: ", err)
+    return
+  end
+
 
   singletons.cache          = cache
   singletons.worker_events  = worker_events
   singletons.cluster_events = cluster_events
 
 
+  singletons.db:set_events_handler(worker_events)
   singletons.dao:set_events_handler(worker_events)
 
   core.init_worker.before()

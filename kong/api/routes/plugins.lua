@@ -31,6 +31,13 @@ return {
       crud.post(self.params, dao_factory.plugins, function(data)
         local r_data = utils.deep_copy(data)
         r_data.config = nil
+        if data.service_id then
+          r_data.e = "s"
+        elseif data.route_id then
+          r_data.e = "r"
+        elseif data.api_id then
+          r_data.e = "a"
+        end
         reports.send("api", r_data)
       end)
     end

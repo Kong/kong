@@ -1,27 +1,32 @@
-local lrucache = require "resty.lrucache"
-local url      = require "socket.url"
-local bit      = require "bit"
+local lrucache      = require "resty.lrucache"
+local utils         = require "kong.tools.utils"
+local bit           = require "bit"
 
 
-local re_match = ngx.re.match
-local re_find  = ngx.re.find
-local insert   = table.insert
-local upper    = string.upper
-local lower    = string.lower
-local find     = string.find
-local fmt      = string.format
-local sub      = string.sub
-local tonumber = tonumber
-local ipairs   = ipairs
-local pairs    = pairs
-local type     = type
-local band     = bit.band
-local bor      = bit.bor
+local hostname_type = utils.hostname_type
+local re_match      = ngx.re.match
+local re_find       = ngx.re.find
+local null          = ngx.null
+local insert        = table.insert
+local sort          = table.sort
+local upper         = string.upper
+local lower         = string.lower
+local find          = string.find
+local fmt           = string.format
+local sub           = string.sub
+local ipairs        = ipairs
+local pairs         = pairs
+local error         = error
+local type          = type
+local band          = bit.band
+local bor           = bit.bor
+
+
 local ERR      = ngx.ERR
+
+
 local clear_tab
 local log
-
-
 do
   local ngx_log = ngx.log
   log = function(lvl, ...)
@@ -77,28 +82,36 @@ for i = 1, categories_len do
 end
 
 
-local match_api
+local match_route
 local reduce
 
 
 local function has_capturing_groups(subj)
   local s =      find(subj, "[^\\]%(.-[^\\]%)")
-  s       = s or find(subj, "^%(.-[^\\]%)")
-  s       = s or find(subj, "%(%)")
+        s = s or find(subj, "^%(.-[^\\]%)")
+        s = s or find(subj, "%(%)")
 
   return s ~= nil
 end
 
 
-local function marshall_api(api)
-  if not (api.headers or api.methods or api.uris) then
-    return nil, "could not categorize API"
+local function marshall_route(r)
+  local route    = r.route          or null
+  local service  = r.service        or null
+  local headers  = r.headers        or null
+  local paths    = route.paths      or null
+  local methods  = route.methods    or null
+  local protocol = service.protocol or null
+
+  if not (headers ~= null or methods ~= null or paths ~= null) then
+    return nil, "could not categorize route"
   end
 
-  local api_t      = {
-    api            = api,
-    strip_uri      = api.strip_uri,
-    preserve_host  = api.preserve_host,
+  local route_t    = {
+    route          = route,
+    service        = service,
+    strip_uri      = route.strip_path    == true,
+    preserve_host  = route.preserve_host == true,
     match_rules    = 0x00,
     hosts          = {},
     uris           = {},
@@ -110,87 +123,89 @@ local function marshall_api(api)
   -- headers
 
 
-  if api.headers then
-    if type(api.headers) ~= "table" then
+  if headers ~= null then
+    if type(headers) ~= "table" then
       return nil, "headers field must be a table"
     end
 
-    for header_name in pairs(api.headers) do
+    for header_name in pairs(headers) do
       if lower(header_name) ~= "host" then
         return nil, "only 'Host' header is supported in headers field, " ..
                     "found: " .. header_name
       end
     end
 
-    local host_values = api.headers["Host"] or api.headers["host"]
+    local host_values = headers["Host"] or headers["host"]
     if type(host_values) ~= "table" then
       return nil, "host field must be a table"
     end
 
+    route_t.headers = headers
+
     if #host_values > 0 then
-      api_t.match_rules = bor(api_t.match_rules, MATCH_RULES.HOST)
+      route_t.match_rules = bor(route_t.match_rules, MATCH_RULES.HOST)
 
       for _, host_value in ipairs(host_values) do
         if find(host_value, "*", nil, true) then
           -- wildcard host matching
           local wildcard_host_regex = host_value:gsub("%.", "\\.")
                                                 :gsub("%*", ".+") .. "$"
-          insert(api_t.hosts, {
+          insert(route_t.hosts, {
             wildcard = true,
             value    = host_value,
             regex    = wildcard_host_regex,
           })
 
         else
-          insert(api_t.hosts, {
+          insert(route_t.hosts, {
             value = host_value,
           })
         end
 
-        api_t.hosts[host_value] = host_value
+        route_t.hosts[host_value] = host_value
       end
     end
   end
 
 
-  -- uris
+  -- paths
 
 
-  if api.uris then
-    if type(api.uris) ~= "table" then
-      return nil, "uris field must be a table"
+  if paths ~= null then
+    if type(paths) ~= "table" then
+      return nil, "paths field must be a table"
     end
 
-    if #api.uris > 0 then
-      api_t.match_rules = bor(api_t.match_rules, MATCH_RULES.URI)
+    if #paths > 0 then
+      route_t.match_rules = bor(route_t.match_rules, MATCH_RULES.URI)
 
-      for _, uri in ipairs(api.uris) do
-        if re_find(uri, [[^[a-zA-Z0-9\.\-_~/%]*$]]) then
+      for _, path in ipairs(paths) do
+        if re_find(path, [[^[a-zA-Z0-9\.\-_~/%]*$]]) then
           -- plain URI or URI prefix
 
           local uri_t = {
             is_prefix = true,
-            value     = uri,
+            value     = path,
           }
 
-          api_t.uris[uri] = uri_t
-          insert(api_t.uris, uri_t)
+          route_t.uris[path] = uri_t
+          insert(route_t.uris, uri_t)
 
         else
           -- regex URI
-          local strip_regex  = uri .. [[/?(?<stripped_uri>.*)]]
-          local has_captures = has_capturing_groups(uri)
+          local strip_regex  = path .. [[/?(?<stripped_uri>.*)]]
+          local has_captures = has_capturing_groups(path)
 
           local uri_t    = {
             is_regex     = true,
-            value        = uri,
-            regex        = uri,
+            value        = path,
+            regex        = path,
             has_captures = has_captures,
             strip_regex  = strip_regex,
           }
 
-          api_t.uris[uri] = uri_t
-          insert(api_t.uris, uri_t)
+          route_t.uris[path] = uri_t
+          insert(route_t.uris, uri_t)
         end
       end
     end
@@ -200,16 +215,16 @@ local function marshall_api(api)
   -- methods
 
 
-  if api.methods then
-    if type(api.methods) ~= "table" then
+  if methods ~= null then
+    if type(methods) ~= "table" then
       return nil, "methods field must be a table"
     end
 
-    if #api.methods > 0 then
-      api_t.match_rules = bor(api_t.match_rules, MATCH_RULES.METHOD)
+    if #methods > 0 then
+      route_t.match_rules = bor(route_t.match_rules, MATCH_RULES.METHOD)
 
-      for _, method in ipairs(api.methods) do
-        api_t.methods[upper(method)] = true
+      for _, method in ipairs(methods) do
+        route_t.methods[upper(method)] = true
       end
     end
   end
@@ -217,41 +232,55 @@ local function marshall_api(api)
 
   -- upstream_url parsing
 
+  if protocol ~= null then
+    route_t.upstream_url_t.scheme = protocol
+  end
 
-  if api.upstream_url then
-    local parsed = url.parse(api.upstream_url)
+  local host = service.host or null
+  if host ~= null then
+    route_t.upstream_url_t.host = host
+    route_t.upstream_url_t.type = hostname_type(host)
 
-    api_t.upstream_url_t = {
-      scheme             = parsed.scheme,
-      host               = parsed.host,
-      port               = tonumber(parsed.port),
-    }
+  else
+    route_t.upstream_url_t.type = hostname_type("")
+  end
 
-    if parsed.path then
-      api_t.upstream_url_t.path = parsed.path
-      api_t.upstream_url_t.file = sub(parsed.path, -1) == "/"
-                                  and parsed.path ~= "/"
-                                  and sub(parsed.path,  1, -2) or parsed.path
-    end
+  local port = service.port or null
+  if port ~= null then
+    route_t.upstream_url_t.port = port
 
-    if not api_t.upstream_url_t.port then
-      if parsed.scheme == "https" then
-        api_t.upstream_url_t.port = 443
+  else
+    if protocol == "https" then
+      route_t.upstream_url_t.port = 443
 
-      else
-        api_t.upstream_url_t.port = 80
-      end
+    else
+      route_t.upstream_url_t.port = 80
     end
   end
 
+  -- TODO: service.path is not supported in new model
+  local path = service.path or null
+  local file = path
+  if path ~= null then
+    if sub(path, -1) == "/" and path ~= "/" then
+      file = sub(path,  1, -2)
+    end
 
-  return api_t
+  else
+    path = "/"
+    file = "/"
+  end
+
+  route_t.upstream_url_t.path = path
+  route_t.upstream_url_t.file = file
+
+  return route_t
 end
 
 
-local function index_api_t(api_t, plain_indexes, uris_prefixes, uris_regexes,
-                           wildcard_hosts)
-  for _, host_t in ipairs(api_t.hosts) do
+local function index_route_t(route_t, plain_indexes, prefix_uris, regex_uris,
+                             wildcard_hosts)
+  for _, host_t in ipairs(route_t.hosts) do
     if host_t.wildcard then
       insert(wildcard_hosts, host_t)
 
@@ -260,67 +289,67 @@ local function index_api_t(api_t, plain_indexes, uris_prefixes, uris_regexes,
     end
   end
 
-  for _, uri_t in ipairs(api_t.uris) do
+  for _, uri_t in ipairs(route_t.uris) do
     if uri_t.is_prefix then
       plain_indexes.uris[uri_t.value] = true
-      insert(uris_prefixes, uri_t)
+      insert(prefix_uris, uri_t)
 
     else
-      insert(uris_regexes, uri_t)
+      insert(regex_uris, uri_t)
     end
   end
 
-  for method in pairs(api_t.methods) do
+  for method in pairs(route_t.methods) do
     plain_indexes.methods[method] = true
   end
 end
 
 
-local function categorize_api_t(api_t, bit_category, categories)
+local function categorize_route_t(route_t, bit_category, categories)
   local category = categories[bit_category]
   if not category then
-    category          = {
-      apis_by_hosts   = {},
-      apis_by_uris    = {},
-      apis_by_methods = {},
-      all             = {},
+    category            = {
+      routes_by_hosts   = {},
+      routes_by_uris    = {},
+      routes_by_methods = {},
+      all               = {},
     }
 
     categories[bit_category] = category
   end
 
-  insert(category.all, api_t)
+  insert(category.all, route_t)
 
-  for _, host_t in ipairs(api_t.hosts) do
-    if not category.apis_by_hosts[host_t.value] then
-      category.apis_by_hosts[host_t.value] = {}
+  for _, host_t in ipairs(route_t.hosts) do
+    if not category.routes_by_hosts[host_t.value] then
+      category.routes_by_hosts[host_t.value] = {}
     end
 
-    insert(category.apis_by_hosts[host_t.value], api_t)
+    insert(category.routes_by_hosts[host_t.value], route_t)
   end
 
-  for _, uri_t in ipairs(api_t.uris) do
-    if not category.apis_by_uris[uri_t.value] then
-      category.apis_by_uris[uri_t.value] = {}
+  for _, uri_t in ipairs(route_t.uris) do
+    if not category.routes_by_uris[uri_t.value] then
+      category.routes_by_uris[uri_t.value] = {}
     end
 
-    insert(category.apis_by_uris[uri_t.value], api_t)
+    insert(category.routes_by_uris[uri_t.value], route_t)
   end
 
-  for method in pairs(api_t.methods) do
-    if not category.apis_by_methods[method] then
-      category.apis_by_methods[method] = {}
+  for method in pairs(route_t.methods) do
+    if not category.routes_by_methods[method] then
+      category.routes_by_methods[method] = {}
     end
 
-    insert(category.apis_by_methods[method], api_t)
+    insert(category.routes_by_methods[method], route_t)
   end
 end
 
 
 do
   local matchers = {
-    [MATCH_RULES.HOST] = function(api_t, ctx)
-      local host = api_t.hosts[ctx.hits.host or ctx.req_host]
+    [MATCH_RULES.HOST] = function(route_t, ctx)
+      local host = route_t.hosts[ctx.hits.host or ctx.req_host]
       if host then
         ctx.matches.host = host
 
@@ -328,9 +357,9 @@ do
       end
     end,
 
-    [MATCH_RULES.URI] = function(api_t, ctx)
+    [MATCH_RULES.URI] = function(route_t, ctx)
       do
-        local uri_t = api_t.uris[ctx.hits.uri or ctx.req_uri]
+        local uri_t = route_t.uris[ctx.hits.uri or ctx.req_uri]
 
         if uri_t then
           if uri_t.is_regex then
@@ -359,7 +388,7 @@ do
           end
 
           -- plain or prefix match from the index
-          if api_t.strip_uri then
+          if route_t.strip_uri then
             local stripped_uri = sub(ctx.req_uri, #uri_t.value + 1)
             if sub(stripped_uri, 1, 1) ~= "/" then
               stripped_uri = "/" .. stripped_uri
@@ -374,8 +403,8 @@ do
         end
       end
 
-      for i = 1, #api_t.uris do
-        local uri_t = api_t.uris[i]
+      for i = 1, #route_t.uris do
+        local uri_t = route_t.uris[i]
 
         if uri_t.is_regex then
           local m, err = re_match(ctx.req_uri, uri_t.strip_regex, "ajo")
@@ -407,7 +436,7 @@ do
           if from == 1 then
             ctx.matches.uri = sub(ctx.req_uri, 1, to)
 
-            if api_t.strip_uri then
+            if route_t.strip_uri then
               local stripped_uri = sub(ctx.req_uri, to + 1)
               if sub(stripped_uri, 1, 1) ~= "/" then
                 stripped_uri = "/" .. stripped_uri
@@ -424,8 +453,8 @@ do
       end
     end,
 
-    [MATCH_RULES.METHOD] = function(api_t, ctx)
-      local method = api_t.methods[ctx.req_method]
+    [MATCH_RULES.METHOD] = function(route_t, ctx)
+      local method = route_t.methods[ctx.req_method]
       if method then
         ctx.matches.method = ctx.req_method
 
@@ -435,11 +464,11 @@ do
   }
 
 
-  match_api = function(api_t, ctx)
+  match_route = function(route_t, ctx)
     -- run cached matcher
-    if type(matchers[api_t.match_rules]) == "function" then
+    if type(matchers[route_t.match_rules]) == "function" then
       clear_tab(ctx.matches)
-      return matchers[api_t.match_rules](api_t, ctx)
+      return matchers[route_t.match_rules](route_t, ctx)
     end
 
     -- build and cache matcher
@@ -447,17 +476,17 @@ do
     local matchers_set = {}
 
     for _, bit_match_rule in pairs(MATCH_RULES) do
-      if band(api_t.match_rules, bit_match_rule) ~= 0 then
+      if band(route_t.match_rules, bit_match_rule) ~= 0 then
         matchers_set[#matchers_set + 1] = matchers[bit_match_rule]
       end
     end
 
-    matchers[api_t.match_rules] = function(api_t, ctx)
-      -- clear matches context for this try on this API
+    matchers[route_t.match_rules] = function(route_t, ctx)
+      -- clear matches context for this try on this route
       clear_tab(ctx.matches)
 
       for i = 1, #matchers_set do
-        if not matchers_set[i](api_t, ctx) then
+        if not matchers_set[i](route_t, ctx) then
           return
         end
       end
@@ -465,7 +494,7 @@ do
       return true
     end
 
-    return matchers[api_t.match_rules](api_t, ctx)
+    return matchers[route_t.match_rules](route_t, ctx)
   end
 end
 
@@ -473,15 +502,15 @@ end
 do
   local reducers = {
     [MATCH_RULES.HOST] = function(category, ctx)
-      return category.apis_by_hosts[ctx.hits.host]
+      return category.routes_by_hosts[ctx.hits.host]
     end,
 
     [MATCH_RULES.URI] = function(category, ctx)
-      return category.apis_by_uris[ctx.hits.uri or ctx.req_uri]
+      return category.routes_by_uris[ctx.hits.uri or ctx.req_uri]
     end,
 
     [MATCH_RULES.METHOD] = function(category, ctx)
-      return category.apis_by_methods[ctx.req_method]
+      return category.routes_by_methods[ctx.req_method]
     end,
   }
 
@@ -529,9 +558,9 @@ local _M = {}
 _M.has_capturing_groups = has_capturing_groups
 
 
-function _M.new(apis)
-  if type(apis) ~= "table" then
-    return error("expected arg #1 apis to be a table")
+function _M.new(routes)
+  if type(routes) ~= "table" then
+    return error("expected arg #1 routes to be a table")
   end
 
 
@@ -555,43 +584,43 @@ function _M.new(apis)
 
   -- when hash lookup in plain_indexes fails, those are arrays
   -- of regexes for `uris` as prefixes and `hosts` as wildcards
-  local uris_prefixes  = {} -- will be sorted by length
-  local uris_regexes   = {}
+  local prefix_uris    = {} -- will be sorted by length
+  local regex_uris     = {}
   local wildcard_hosts = {}
 
 
-  -- all APIs grouped by the category they belong to, to reduce
-  -- iterations over sets of APIs per request
+  -- all routes grouped by the category they belong to, to reduce
+  -- iterations over sets of routes per request
   local categories = {}
 
 
   local cache = lrucache.new(MATCH_LRUCACHE_SIZE)
 
 
-  -- index APIs
+  -- index routes
 
 
-  for i = 1, #apis do
-    local api_t, err = marshall_api(apis[i])
-    if not api_t then
+  for i = 1, #routes do
+    local route_t, err = marshall_route(routes[i])
+    if not route_t then
       return nil, err
     end
 
-    categorize_api_t(api_t, api_t.match_rules, categories)
-    index_api_t(api_t, plain_indexes, uris_prefixes, uris_regexes,
+    categorize_route_t(route_t, route_t.match_rules, categories)
+    index_route_t(route_t, plain_indexes, prefix_uris, regex_uris,
                 wildcard_hosts)
   end
 
-  table.sort(uris_prefixes, function(a, b)
-    return #a > #b
+  sort(prefix_uris, function(p1, p2)
+    return #p1 > #p2
   end)
 
-  table.sort(uris_prefixes, function(uri_t_a, uri_t_b)
-    return #uri_t_a.value > #uri_t_b.value
+  sort(prefix_uris, function(p1, p2)
+    return #p1.value > #p2.value
   end)
 
 
-  local function find_api(req_method, req_uri, req_host, ngx)
+  local function find_route(req_method, req_uri, req_host, ngx)
     if type(req_method) ~= "string" then
       return error("arg #1 method must be a string")
     end
@@ -630,13 +659,13 @@ function _M.new(apis)
     local hits         = ctx.hits
     local req_category = 0x00
 
+    ctx.req_method = req_method
     ctx.req_uri    = req_uri
     ctx.req_host   = req_host
-    ctx.req_method = req_method
 
     clear_tab(hits)
 
-    -- router, router, which of these APIs is the fairest?
+    -- router, router, which of these routes is the fairest?
     --
     -- determine which category this request *might* be targeting
 
@@ -667,23 +696,23 @@ function _M.new(apis)
       req_category = bor(req_category, MATCH_RULES.URI)
 
     else
-      for i = 1, #uris_prefixes do
-        if find(req_uri, uris_prefixes[i].value, nil, true) == 1 then
-          hits.uri     = uris_prefixes[i].value
+      for i = 1, #prefix_uris do
+        if find(req_uri, prefix_uris[i].value, nil, true) == 1 then
+          hits.uri     = prefix_uris[i].value
           req_category = bor(req_category, MATCH_RULES.URI)
           break
         end
       end
 
-      for i = 1, #uris_regexes do
-        local from, _, err = re_find(req_uri, uris_regexes[i].regex, "ajo")
+      for i = 1, #regex_uris do
+        local from, _, err = re_find(req_uri, regex_uris[i].regex, "ajo")
         if err then
           log(ERR, "could not evaluate URI regex: ", err)
           return
         end
 
         if from then
-          hits.uri     = uris_regexes[i].value
+          hits.uri     = regex_uris[i].value
           req_category = bor(req_category, MATCH_RULES.URI)
           break
         end
@@ -699,11 +728,11 @@ function _M.new(apis)
     --print("highest potential category: ", req_category)
 
     -- iterate from the highest matching to the lowest category to
-    -- find our API
+    -- find our route
 
     if req_category ~= 0x00 then
       local category_idx = CATEGORIES_LOOKUP[req_category]
-      local matched_api
+      local matched_route
 
       while category_idx <= categories_len do
         local bit_category = CATEGORIES[category_idx]
@@ -714,40 +743,40 @@ function _M.new(apis)
                                                                  bit_category,
                                                                  ctx)
           if reduced_candidates then
-            -- check against a reduced set of APIs that is a strong candidate
-            -- for this request, instead of iterating over all the APIs of
+            -- check against a reduced set of routes that is a strong candidate
+            -- for this request, instead of iterating over all the routes of
             -- this category
             for i = 1, #reduced_candidates do
-              if match_api(reduced_candidates[i], ctx) then
-                matched_api = reduced_candidates[i]
+              if match_route(reduced_candidates[i], ctx) then
+                matched_route = reduced_candidates[i]
                 break
               end
             end
           end
 
-          if not matched_api then
+          if not matched_route then
             -- no result from the reduced set, must check for results from the
-            -- full list of APIs from that category before checking a lower
+            -- full list of routes from that category before checking a lower
             -- category
             for i = 1, #category_candidates do
-              if match_api(category_candidates[i], ctx) then
-                matched_api = category_candidates[i]
+              if match_route(category_candidates[i], ctx) then
+                matched_route = category_candidates[i]
                 break
               end
             end
           end
 
-          if matched_api then
+          if matched_route then
             local upstream_host
             local upstream_uri   = req_uri
-            local upstream_url_t = matched_api.upstream_url_t
+            local upstream_url_t = matched_route.upstream_url_t
             local matches        = ctx.matches
 
             -- URI stripping logic
 
             local uri_root = req_uri == "/"
 
-            if not uri_root and matched_api.strip_uri
+            if not uri_root and matched_route.strip_uri
                and matches.stripped_uri
             then
               upstream_uri = matches.stripped_uri
@@ -784,20 +813,23 @@ function _M.new(apis)
 
             -- preserve_host header logic
 
-            if matched_api.preserve_host then
+            if matched_route.preserve_host then
               upstream_host = raw_req_host or ngx.var.http_host
             end
 
-            local match_t    = {
-              api            = matched_api.api,
-              upstream_url_t = upstream_url_t,
-              upstream_uri   = upstream_uri,
-              upstream_host  = upstream_host,
-              matches        = {
-                uri_captures = matches.uri_captures,
-                uri          = matches.uri,
-                host         = matches.host,
-                method       = matches.method,
+            local match_t     = {
+              route           = matched_route.route,
+              service         = matched_route.service,
+              headers         = matched_route.headers,
+              upstream_url_t  = upstream_url_t,
+              upstream_scheme = upstream_url_t.scheme,
+              upstream_uri    = upstream_uri,
+              upstream_host   = upstream_host,
+              matches         = {
+                uri_captures  = matches.uri_captures,
+                uri           = matches.uri,
+                host          = matches.host,
+                method        = matches.method,
               }
             }
 
@@ -816,24 +848,22 @@ function _M.new(apis)
   end
 
 
-  self.select = find_api
+  self.select = find_route
 
 
   function self.exec(ngx)
-    local method      = ngx.req.get_method()
-    local request_uri = ngx.var.request_uri
-    local uri         = request_uri
+    local req_method = ngx.req.get_method()
+    local req_uri    = ngx.var.request_uri
+    local req_host   = ngx.var.http_host or ""
 
     do
-      local idx = find(uri, "?", 2, true)
+      local idx = find(req_uri, "?", 2, true)
       if idx then
-        uri = sub(uri, 1, idx - 1)
+        req_uri = sub(req_uri, 1, idx - 1)
       end
     end
 
-    local req_host = ngx.var.http_host or ""
-
-    local match_t = find_api(method, uri, req_host, ngx)
+    local match_t = find_route(req_method, req_uri, req_host, ngx)
     if not match_t then
       return nil
     end
@@ -841,7 +871,12 @@ function _M.new(apis)
     -- debug HTTP request header logic
 
     if ngx.var.http_kong_debug then
-      ngx.header["Kong-Api-Name"] = match_t.api.name
+      ngx.header["Kong-Route-Id"]   = match_t.route.id
+      ngx.header["Kong-Service-Id"] = match_t.service.id
+
+      if match_t.service.name then
+        ngx.header["Kong-Service-Name"] = match_t.service.name
+      end
     end
 
     return match_t

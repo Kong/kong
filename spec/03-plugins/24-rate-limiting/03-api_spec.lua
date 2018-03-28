@@ -1,64 +1,81 @@
-local cjson = require "cjson"
+
+
+local cjson   = require "cjson"
 local helpers = require "spec.helpers"
 
-describe("Plugin: rate-limiting (API)", function()
-  local admin_client
 
-  setup(function()
-    helpers.run_migrations()
-  end)
+for _, strategy in helpers.each_strategy() do
+  describe("Plugin: rate-limiting (API) [#" .. strategy .. "]", function()
+    local admin_client
+    local bp
 
-  teardown(function()
-    if admin_client then admin_client:close() end
-    helpers.stop_kong()
-  end)
-
-  describe("POST", function()
     setup(function()
-      assert(helpers.dao.apis:insert {
-        name         = "test",
-        hosts        = { "test1.com" },
-        upstream_url = helpers.mock_upstream_url,
-      })
-
-      assert(helpers.start_kong({
-        nginx_conf = "spec/fixtures/custom_nginx.template",
-      }))
-      admin_client = helpers.admin_client()
+      bp = helpers.get_db_utils(strategy)
     end)
 
-    it("should not save with empty config", function()
-      local res = assert(admin_client:send {
-        method = "POST",
-        path = "/apis/test/plugins/",
-        body = {
-          name = "rate-limiting"
-        },
-        headers = {
-          ["Content-Type"] = "application/json"
+    teardown(function()
+      if admin_client then
+        admin_client:close()
+      end
+
+      helpers.stop_kong()
+    end)
+
+    describe("POST", function()
+      local route
+
+      setup(function()
+        local service = bp.services:insert()
+
+        route = bp.routes:insert {
+          hosts      = { "test1.com" },
+          protocols  = { "http", "https" },
+          service    = service
         }
-      })
-      local body = assert.res_status(400, res)
-      local json = cjson.decode(body)
-      assert.same({ config = "You need to set at least one limit: second, minute, hour, day, month, year" }, json)
-    end)
 
-    it("should save with proper config", function()
-      local res = assert(admin_client:send {
-        method = "POST",
-        path = "/apis/test/plugins/",
-        body = {
-          name = "rate-limiting",
-          config = {
-            second = 10
+        assert(helpers.start_kong({
+          database   = strategy,
+          nginx_conf = "spec/fixtures/custom_nginx.template",
+        }))
+
+        admin_client = helpers.admin_client()
+      end)
+
+      it("should not save with empty config", function()
+        local res = assert(admin_client:send {
+          method  = "POST",
+          path    = "/plugins",
+          body    = {
+            name             = "rate-limiting",
+            route_id         = route.id,
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
           }
-        },
-        headers = {
-          ["Content-Type"] = "application/json"
-        }
-      })
-      local body = cjson.decode(assert.res_status(201, res))
-      assert.equal(10, body.config.second)
+        })
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same({ config = "You need to set at least one limit: second, minute, hour, day, month, year" }, json)
+      end)
+
+      it("should save with proper config", function()
+        local res = assert(admin_client:send {
+          method  = "POST",
+          path    = "/plugins",
+          body    = {
+            name             = "rate-limiting",
+            route_id         = route.id,
+            config           = {
+              second = 10
+            }
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = cjson.decode(assert.res_status(201, res))
+        assert.equal(10, body.config.second)
+      end)
     end)
   end)
-end)
+end

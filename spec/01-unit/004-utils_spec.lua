@@ -190,13 +190,13 @@ describe("Utils", function()
           foo = {"bar", "zoo"},
           hello = "world"
         }
-        assert.equal("foo=bar&foo=zoo&hello=world", str)
+        assert.equal("foo%5b1%5d=bar&foo%5b2%5d=zoo&hello=world", str)
       end)
       it("should percent-encode given values", function()
         local str = utils.encode_args {
           encode = {"abc|def", ",$@|`"}
         }
-        assert.equal("encode=abc%7cdef&encode=%2c%24%40%7c%60", str)
+        assert.equal("encode%5b1%5d=abc%7cdef&encode%5b2%5d=%2c%24%40%7c%60", str)
       end)
       it("should percent-encode given query args keys", function()
         local str = utils.encode_args {
@@ -216,23 +216,24 @@ describe("Utils", function()
           a = true,
           b = 1
         }
-        assert.equal("a&b=1", str)
+        assert.equal("a=true&b=1", str)
       end)
       it("should ignore nil and false values", function()
         local str = utils.encode_args {
           a = nil,
           b = false
         }
-        assert.equal("", str)
+        assert.equal("b=false", str)
       end)
       it("should encode complex query args", function()
         local str = utils.encode_args {
-          multiple = {"hello, world"},
+          array = {"hello, world"},
+          hash = { answer = 42 },
           hello = "world",
-          ignore  = false,
+          falsy = false,
           ["multiple values"] = true
         }
-        assert.equal("hello=world&multiple=hello%2c%20world&multiple%20values", str)
+        assert.equal("array%5b1%5d=hello%2c%20world&falsy=false&hash%2eanswer=42&hello=world&multiple%20values=true", str)
       end)
       it("should not interpret the `%` character followed by 2 characters in the [0-9a-f] group as an hexadecimal value", function()
         local str = utils.encode_args {
@@ -246,6 +247,10 @@ describe("Utils", function()
           ["hello world"] = "foo, bar"
         }, true)
         assert.equal("hello world=foo, bar", str)
+      end)
+      it("transforms ngx.null into empty string", function()
+        local str = utils.encode_args({ x = ngx.null, y = "foo" })
+        assert.equal("x=&y=foo", str)
       end)
       -- while this method's purpose is to mimic 100% the behavior of ngx.encode_args,
       -- it is also used by Kong specs' http_client, to encode both querystrings and *bodies*.
