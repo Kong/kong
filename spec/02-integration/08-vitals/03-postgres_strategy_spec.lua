@@ -1,6 +1,5 @@
 local pg_strategy = require "kong.vitals.postgres.strategy"
 local dao_factory = require "kong.dao.factory"
-local helpers     = require "spec.helpers"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local utils       = require "kong.tools.utils"
 local fmt         = string.format
@@ -21,9 +20,8 @@ dao_helpers.for_each_dao(function(kong_conf)
 
 
     setup(function()
-      helpers.run_migrations()
-
       dao      = assert(dao_factory.new(kong_conf))
+      dao:run_migrations()
       strategy = pg_strategy.new(dao)
 
       db  = dao.db

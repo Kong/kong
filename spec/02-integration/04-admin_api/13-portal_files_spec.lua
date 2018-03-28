@@ -13,7 +13,7 @@ describe("Admin API - Developer Portal Files", function()
   local client
 
   setup(function()
-    helpers.run_migrations()
+    helpers.get_db_utils()
     assert(helpers.start_kong())
   end)
 

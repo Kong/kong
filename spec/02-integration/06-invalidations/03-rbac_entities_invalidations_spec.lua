@@ -17,10 +17,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
   local wait_for_propagation
 
   setup(function()
-    local kong_dao_factory = require "kong.dao.factory"
-    dao = assert(kong_dao_factory.new(kong_conf))
-    dao:truncate_tables()
-    helpers.run_migrations(dao)
+    dao = select(3, helpers.get_db_utils(kong_conf.database))
 
     local db_update_propagation = kong_conf.database == "cassandra" and 3 or 0
 
