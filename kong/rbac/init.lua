@@ -16,6 +16,31 @@ local function log(lvl, ...)
 end
 
 
+local core_resources_set = {
+  default = true,
+  kong = true,
+  status = true,
+  apis = true,
+  plugins = true,
+  cache = true,
+  certificates = true,
+  consumers = true,
+  snis = true,
+  upstreams = true,
+  targets = true,
+  rbac = true,
+  vitals = true,
+  portal = true,
+  -- core plugins
+  jwt = true,
+  ["basic-auth"] = true,
+  oauth2 = true,
+  ["hmac-auth"] = true,
+  acls = true,
+  ["key-auth"] = true,
+}
+
+
 local route_resource_map = {
   ["/apis/"] = "apis",
   ["/apis/:api_name_or_id"] = "apis",
@@ -174,6 +199,10 @@ _M.register_resource = register_resource
 
 
 function _M.register_resource_route(route_path, resource)
+  if core_resources_set[resource] and not resource_bitfields[resource] then
+    return
+  end
+
   if not resource_bitfields[resource] then
     error("Resource '" .. resource .. "' not previous defined in " ..
           "rbac_resources table", 2)
