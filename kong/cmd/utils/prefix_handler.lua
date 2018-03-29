@@ -278,7 +278,7 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
     kong_config.portal_gui_ssl_cert_key = kong_config.portal_gui_ssl_cert_key_default
   end
 
-  if kong_config.portal_api_ssl and not kong_config.portal_api_ssl_cert and
+  if kong_config.portal_api_ssl_enabled and not kong_config.portal_api_ssl_cert and
     not kong_config.portal_api_ssl_cert_key
   then
     log.verbose("Developer Portal API SSL enabled, no custom certificate set: " ..
@@ -360,7 +360,9 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
     ee.prepare_admin(kong_config)
   end
 
-  ee.prepare_portal(kong_config)
+  if kong_config.portal then
+    ee.prepare_portal(kong_config)
+  end
 
   return true
 end

@@ -117,10 +117,9 @@ describe("NGINX conf compiler", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
         proxy_listen = "127.0.0.1:8000",
         admin_listen = "127.0.0.1:8001",
-        -- TODO fix portal/gui here when listeners were adapted
         admin_gui_listen = "0.0.0.0:9002",
         portal_gui_listen = "0.0.0.0:9003",
-        portal_api_ssl = false,
+        portal_api_listen = "0.0.0.0:9004",
       }))
       local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.not_matches("listen %d+%.%d+%.%d+%.%d+:%d+ ssl;", kong_nginx_conf)
@@ -419,10 +418,9 @@ describe("NGINX conf compiler", function()
           prefix = tmp_config.prefix,
           proxy_listen = "127.0.0.1:8000",
           admin_listen = "127.0.0.1:8001",
-          -- TODO fix gui/portal listeners here
           admin_gui_listen = "0.0.0.0:9002",
           portal_gui_listen = "0.0.0.0:9003",
-          portal_api_ssl = false,
+          portal_api_listen = "0.0.0.0:9004",
         })
 
         assert(prefix_handler.prepare_prefix(conf))
@@ -443,7 +441,7 @@ describe("NGINX conf compiler", function()
           portal_gui_listen = "0.0.0.0:9003, 0.0.0.0:9446 ssl",
           portal_gui_ssl_cert = "spec/fixtures/kong_spec.crt",
           portal_gui_ssl_cert_key = "spec/fixtures/kong_spec.key",
-          portal_api_ssl = true,
+          portal_api_listen = "0.0.0.0:9004, 0.0.0.0:9447 ssl",
           portal_api_ssl_cert = "spec/fixtures/kong_spec.crt",
           portal_api_ssl_cert_key = "spec/fixtures/kong_spec.key",
         })

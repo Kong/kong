@@ -164,16 +164,28 @@ _M.prepare_admin = prepare_admin
 
 
 local function prepare_portal(kong_config)
+  local portal_gui_listeners = kong_config.portal_gui_listeners
+  local portal_gui_port, portal_gui_ssl_port
+  if portal_gui_listeners then
+    portal_gui_port = portal_gui_listeners[1].port
+    portal_gui_ssl_port = portal_gui_listeners[2] and portal_gui_listeners[2].port
+  end
+  local portal_api_listeners = kong_config.portal_api_listeners
+  local portal_api_port, portal_api_ssl_port
+  if portal_api_listeners then
+    portal_api_port = portal_api_listeners[1].port
+    portal_api_ssl_port = portal_api_listeners[2] and portal_api_listeners[2].port
+  end
   return prepare_interface("portal", {
     PORTAL_GUI_URI = tostring(kong_config.portal_gui_uri),
     PORTAL_GUI_SSL_URI = tostring(kong_config.portal_gui_uri_ssl),
     PORTAL_API_URI = tostring(kong_config.portal_api_uri),
     PORTAL_API_SSL_URI = tostring(kong_config.portal_api_uri_ssl),
     PORTAL_API_URI_ENDPOINT = tostring(kong_config.portal_api_proxy_conf_uri),
-    PORTAL_GUI_PORT = tostring(kong_config.portal_gui_port),
-    PORTAL_GUI_SSL_PORT = tostring(kong_config.portal_gui_ssl_port),
-    PORTAL_API_PORT = tostring(kong_config.portal_api_port),
-    PORTAL_API_SSL_PORT = tostring(kong_config.portal_api_ssl_port),
+    PORTAL_GUI_PORT = tostring(portal_gui_port),
+    PORTAL_GUI_SSL_PORT = tostring(portal_gui_ssl_port),
+    PORTAL_API_PORT = tostring(portal_api_port),
+    PORTAL_API_SSL_PORT = tostring(portal_api_ssl_port),
     RBAC_ENFORCED = tostring(kong_config.enforce_rbac),
     RBAC_HEADER = tostring(kong_config.rbac_auth_header),
     KONG_VERSION = tostring(meta.versions.package),

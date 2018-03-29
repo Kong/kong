@@ -269,7 +269,9 @@ server {
 
 server {
     server_name portal_api;
-    listen ${{PORTAL_API_LISTEN}};
+> for i = 1, #portal_api_listeners do
+    listen $(portal_api_listeners[i].listener);
+> end
 
     access_log ${{PORTAL_API_ACCESS_LOG}};
     error_log ${{PORTAL_API_ERROR_LOG}} ${{LOG_LEVEL}};
@@ -277,8 +279,7 @@ server {
     client_max_body_size 10m;
     client_body_buffer_size 10m;
 
-> if portal_api_ssl then
-    listen ${{PORTAL_API_LISTEN_SSL}} ssl;
+> if portal_api_ssl_enabled then
     ssl_certificate ${{PORTAL_API_SSL_CERT}};
     ssl_certificate_key ${{PORTAL_API_SSL_CERT_KEY}};
     ssl_protocols TLSv1.1 TLSv1.2;

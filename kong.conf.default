@@ -584,15 +584,12 @@
                                         # for the `portal_gui_listen_ssl`
                                         # address.
 
-#portal_api_listen = 0.0.0.0:8004       # Address and Port on which Kong
-                                        # will accept HTTP traffic for
-                                        # your Developer Portal API if
-                                        # `portal_api_ssl` is disabled.
-
-#portal_api_listen_ssl = 0.0.0.0:8447   # Address and Port on which Kong
-                                        # will accept HTTPs traffic for
-                                        # your Developer Portal API if
-                                        # `portal_api_ssl` is enabled.
+#portal_api_listen = 0.0.0.0:8004, 0.0.0.0:8447 ssl
+                                        # Comma-separated list of addresses and
+                                        # ports on which Kong will expose the
+                                        # Developer Portal API. Suffixes can be
+                                        # specified for each pair, similarly to
+                                        # other listen directives.
 
 #portal_api_uri = 127.0.0.1:8004        # Heirarchical URI portion of the
                                         # Developer Portal. The portion
@@ -615,13 +612,6 @@
                                         # uses this value to make API
                                         # requests to the Developer Portal
                                         # API.
-
-#portal_api_ssl = on                    # Determines if Nginx should be
-                                        # listening for HTTPS traffic on the
-                                        # `portal_api_listen_ssl` address. If
-                                        # disabled, Nginx will only bind itself
-                                        # itself on `portal_api_listen`, and
-                                        # all SSL settings will be ignored.
 
 #portal_api_ssl_cert =                  # If `portal_api_ssl` is enabled, the
                                         # absolute path to the SSL certificate

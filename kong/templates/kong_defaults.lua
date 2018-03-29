@@ -20,11 +20,10 @@ portal_gui_uri = 127.0.0.1:8003
 portal_gui_uri_ssl = 127.0.0.1:8446
 portal_gui_ssl_cert = NONE
 portal_gui_ssl_cert_key = NONE
-portal_api_listen = 0.0.0.0:8004
-portal_api_listen_ssl = 0.0.0.0:8447
+
+portal_api_listen = 0.0.0.0:8004, 0.0.0.0:8447 ssl
 portal_api_uri = 127.0.0.1:8004
 portal_api_uri_ssl = 127.0.0.1:8447
-portal_api_ssl = on
 portal_api_ssl_cert = NONE
 portal_api_ssl_cert_key = NONE
 portal_api_access_log = logs/portal_api_access.log

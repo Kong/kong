@@ -66,7 +66,6 @@ local PREFIX_PATHS = {
 -- `array`: a comma-separated list
 local CONF_INFERENCES = {
   -- forced string inferences (or else are retrieved as numbers)
-  -- TODO fix listen directives here
   proxy_listen = {typ = "array"},
   admin_listen = {typ = "array"},
   admin_gui_listen = {typ = "array"},
@@ -149,11 +148,7 @@ local CONF_INFERENCES = {
   portal_gui_uri = {typ = "string"},
   portal_gui_uri_ssl = {typ = "string"},
 
-  -- TODO fix portal directives here to follow new format
-  --portal_api_listen = {typ = "array"},
-  portal_api_listen = {typ = "string"},
-  portal_api_listen_ssl = {typ = "string"},
-  portal_api_ssl = {typ = "boolean"},
+  portal_api_listen = {typ = "array"},
   portal_api_uri = {typ = "string"},
   portal_api_uri_ssl = {typ = "string"},
 }
@@ -326,7 +321,7 @@ local function check_and_infer(conf)
   end
 
   if conf.portal then
-    if conf.portal_api_ssl then
+    if (table.concat(conf.portal_api_listen, ",") .. " "):find("%sssl[%s,]") then
       if conf.portal_api_ssl_cert and not conf.portal_api_ssl_cert_key then
         errors[#errors+1] = "portal_api_ssl_cert_key must be specified"
       elseif conf.portal_api_ssl_cert_key and not conf.portal_api_ssl_cert then
@@ -645,24 +640,6 @@ local function load(path, custom_conf)
 
   -- extract ports/listen ips
   do
-    -- TODO fix admin gui and portal listeners
-    local ip_port_pat = "(.+):([%d]+)$"
-
-    if conf.portal then
-      local portal_api_ip, portal_api_port = string.match(conf.portal_api_listen, ip_port_pat)
-      local portal_api_ssl_ip, portal_api_ssl_port = string.match(conf.portal_api_listen_ssl, ip_port_pat)
-
-      if not portal_api_port then return nil, "portal_api_listen must be of form 'address:port'"
-      elseif not portal_api_ssl_port then return nil, "portal_api_listen_ssl must be of form 'address:port'" end
-
-      conf.portal_api_ip = portal_api_ip
-      conf.portal_api_ssl_ip = portal_api_ssl_ip
-      conf.portal_api_port = tonumber(portal_api_port)
-      conf.portal_api_ssl_port = tonumber(portal_api_ssl_port)
-    end
-
-    -- XXX new listeners set up follows - remove after resolving
-
     local err
     -- this meta table will prevent the parsed table to be passed on in the
     -- intermediate Kong config file in the prefix directory
@@ -713,18 +690,35 @@ local function load(path, custom_conf)
       end
     end
 
-    conf.portal_gui_listeners, err = parse_listeners(conf.portal_gui_listen)
-    if err then
-      return nil, "portal_gui_listen " .. err
-    end
+    if conf.portal then
+      conf.portal_gui_listeners, err = parse_listeners(conf.portal_gui_listen)
+      if err then
+        return nil, "portal_gui_listen " .. err
+      end
 
-    setmetatable(conf.portal_gui_listeners, mt)
-    conf.portal_gui_ssl_enabled = false
+      setmetatable(conf.portal_gui_listeners, mt)
+      conf.portal_gui_ssl_enabled = false
 
-    for _, listener in ipairs(conf.portal_gui_listeners) do
-      if listener.ssl == true then
-        conf.portal_gui_ssl_enabled = true
-        break
+      for _, listener in ipairs(conf.portal_gui_listeners) do
+        if listener.ssl == true then
+          conf.portal_gui_ssl_enabled = true
+          break
+        end
+      end
+
+      conf.portal_api_listeners, err = parse_listeners(conf.portal_api_listen)
+      if err then
+        return nil, "portal_api_listen " .. err
+      end
+
+      setmetatable(conf.portal_api_listeners, mt)
+      conf.portal_api_ssl_enabled = false
+
+      for _, listener in ipairs(conf.portal_api_listeners) do
+        if listener.ssl == true then
+          conf.portal_api_ssl_enabled = true
+          break
+        end
       end
     end
   end
