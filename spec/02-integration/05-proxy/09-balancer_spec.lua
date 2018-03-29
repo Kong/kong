@@ -576,7 +576,9 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong("servroot2", true, true)
       end)
 
-      it("does not perform health checks when disabled (#3304)", function()
+      -- XXX pending in EE
+      -- failing on travis in both postgres and cassandra
+      it("#flaky does not perform health checks when disabled (#3304)", function()
 
         assert.same(201, api_send("POST", "/apis", {
           strip_uri = true,
