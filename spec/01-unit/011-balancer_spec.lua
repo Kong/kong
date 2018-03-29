@@ -1,10 +1,13 @@
+local utils = require "kong.tools.utils"
+
 describe("Balancer", function()
   local singletons, balancer
   local UPSTREAMS_FIXTURES
   local TARGETS_FIXTURES
   local crc32 = ngx.crc32_short
   local uuid = require("kong.tools.utils").uuid
-
+  local upstream_hc
+  local upstream_ph
 
   teardown(function()
     ngx.log:revert()
@@ -18,11 +21,6 @@ describe("Balancer", function()
     singletons = require "kong.singletons"
     singletons.worker_events = require "resty.worker.events"
     singletons.dao = {}
-    singletons.dao.upstreams = {
-      find_all = function(self)
-        return UPSTREAMS_FIXTURES
-      end
-    }
 
     singletons.worker_events.configure({
       shm = "kong_process_events", -- defined by "lua_shared_dict"
@@ -33,30 +31,56 @@ describe("Balancer", function()
       wait_max = 0.5,         -- max wait time before discarding event
     })
 
-    UPSTREAMS_FIXTURES = {
-      {id = "a", name = "mashape", slots = 10, orderlist = {1,2,3,4,5,6,7,8,9,10} },
-      {id = "b", name = "kong",    slots = 10, orderlist = {10,9,8,7,6,5,4,3,2,1} },
-      {id = "c", name = "gelato",  slots = 20, orderlist = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20} },
-      {id = "d", name = "galileo", slots = 20, orderlist = {20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1} },
-      {id = "e", name = "upstream_e", slots = 10, orderlist = {1,2,3,4,5,6,7,8,9,10} },
-      {id = "f", name = "upstream_f", slots = 10, orderlist = {1,2,3,4,5,6,7,8,9,10} },
+    local hc_defaults = {
+      active = {
+        timeout = 1,
+        concurrency = 10,
+        http_path = "/",
+        healthy = {
+          interval = 0,  -- 0 = probing disabled by default
+          http_statuses = { 200, 302 },
+          successes = 0, -- 0 = disabled by default
+        },
+        unhealthy = {
+          interval = 0, -- 0 = probing disabled by default
+          http_statuses = { 429, 404,
+                            500, 501, 502, 503, 504, 505 },
+          tcp_failures = 0,  -- 0 = disabled by default
+          timeouts = 0,      -- 0 = disabled by default
+          http_failures = 0, -- 0 = disabled by default
+        },
+      },
+      passive = {
+        healthy = {
+          http_statuses = { 200, 201, 202, 203, 204, 205, 206, 207, 208, 226,
+                            300, 301, 302, 303, 304, 305, 306, 307, 308 },
+          successes = 0,
+        },
+        unhealthy = {
+          http_statuses = { 429, 500, 503 },
+          tcp_failures = 0,  -- 0 = circuit-breaker disabled by default
+          timeouts = 0,      -- 0 = circuit-breaker disabled by default
+          http_failures = 0, -- 0 = circuit-breaker disabled by default
+        },
+      },
     }
 
-    singletons.dao.targets = {
-      find_all = function(self, match_on)
-        local ret = {}
-        for _, rec in ipairs(TARGETS_FIXTURES) do
-          for key, val in pairs(match_on or {}) do
-            if rec[key] ~= val then
-              rec = nil
-              break
-            end
-          end
-          if rec then table.insert(ret, rec) end
-        end
-        return ret
-      end
+    local passive_hc = utils.deep_copy(hc_defaults)
+    passive_hc.passive.healthy.successes = 1
+    passive_hc.passive.unhealthy.http_failures = 1
+
+    UPSTREAMS_FIXTURES = {
+      [1] = { id = "a", name = "mashape", slots = 10, healthchecks = hc_defaults },
+      [2] = { id = "b", name = "kong",    slots = 10, healthchecks = hc_defaults },
+      [3] = { id = "c", name = "gelato",  slots = 20, healthchecks = hc_defaults },
+      [4] = { id = "d", name = "galileo", slots = 20, healthchecks = hc_defaults },
+      [5] = { id = "e", name = "upstream_e", slots = 10, healthchecks = hc_defaults },
+      [6] = { id = "f", name = "upstream_f", slots = 10, healthchecks = hc_defaults },
+      [7] = { id = "hc", name = "upstream_hc", slots = 10, healthchecks = passive_hc },
+      [8] = { id = "ph", name = "upstream_ph", slots = 10, healthchecks = passive_hc },
     }
+    upstream_hc = UPSTREAMS_FIXTURES[7]
+    upstream_ph = UPSTREAMS_FIXTURES[8]
 
     TARGETS_FIXTURES = {
       -- 1st upstream; a
@@ -140,6 +164,29 @@ describe("Balancer", function()
         target = "127.0.0.1:2112",
         weight = 10,
       },
+      -- upstream_hc
+      {
+        id = "hc1",
+        created_at = "001",
+        upstream_id = "hc",
+        target = "localhost:1111",
+        weight = 10,
+      },
+      -- upstream_ph
+      {
+        id = "ph1",
+        created_at = "001",
+        upstream_id = "ph",
+        target = "localhost:1111",
+        weight = 10,
+      },
+      {
+        id = "ph2",
+        created_at = "001",
+        upstream_id = "ph",
+        target = "127.0.0.1:2222",
+        weight = 10,
+      },
     }
 
     local function find_all_in_fixture_fn(fixture)
@@ -190,9 +237,8 @@ describe("Balancer", function()
     dns_client.init()
 
     it("creates a balancer with a healthchecker", function()
-      local my_balancer = balancer._create_balancer(UPSTREAMS_FIXTURES[1])
-      assert.truthy(my_balancer)
-      local hc = balancer._get_healthchecker(my_balancer)
+      local my_balancer = assert(balancer._create_balancer(UPSTREAMS_FIXTURES[1]))
+      local hc = assert(balancer._get_healthchecker(my_balancer))
       local target_history = {
         { name = "mashape.com", port = 80, order = "001:a3", weight = 10 },
         { name = "mashape.com", port = 80, order = "002:a2", weight = 10 },
@@ -200,8 +246,33 @@ describe("Balancer", function()
         { name = "mashape.com", port = 80, order = "003:a1", weight = 10 },
       }
       assert.same(target_history, balancer._get_target_history(my_balancer))
-      assert.truthy(hc)
       hc:stop()
+    end)
+
+    it("reuses a balancer by default", function()
+      local b1 = assert(balancer._create_balancer(UPSTREAMS_FIXTURES[1]))
+      local hc1 = balancer._get_healthchecker(b1)
+      local b2 = balancer._create_balancer(UPSTREAMS_FIXTURES[1])
+      assert.equal(b1, b2)
+      assert(hc1:stop())
+    end)
+
+    it("re-creates a balancer if told to", function()
+      local b1 = assert(balancer._create_balancer(UPSTREAMS_FIXTURES[1], true))
+      local hc1 = balancer._get_healthchecker(b1)
+      assert(hc1:stop())
+      local b2 = assert(balancer._create_balancer(UPSTREAMS_FIXTURES[1], true))
+      local hc2 = balancer._get_healthchecker(b2)
+      assert(hc2:stop())
+      local target_history = {
+        { name = "mashape.com", port = 80, order = "001:a3", weight = 10 },
+        { name = "mashape.com", port = 80, order = "002:a2", weight = 10 },
+        { name = "mashape.com", port = 80, order = "002:a4", weight = 10 },
+        { name = "mashape.com", port = 80, order = "003:a1", weight = 10 },
+      }
+      assert.not_same(b1, b2)
+      assert.same(target_history, balancer._get_target_history(b1))
+      assert.same(target_history, balancer._get_target_history(b2))
     end)
   end)
 
@@ -216,32 +287,32 @@ describe("Balancer", function()
     end)
 
     it("balancer and healthchecker match; remove and re-add", function()
-      local my_balancer = balancer._get_balancer({ host = "upstream_e" }, true)
-      assert.truthy(my_balancer)
+      local my_balancer = assert(balancer._get_balancer({
+        host = "upstream_e"
+      }, true))
       local target_history = {
         { name = "127.0.0.1", port = 2112, order = "001:e1", weight = 10 },
         { name = "127.0.0.1", port = 2112, order = "002:e2", weight = 0  },
         { name = "127.0.0.1", port = 2112, order = "003:e3", weight = 10 },
       }
       assert.same(target_history, balancer._get_target_history(my_balancer))
-      local hc = balancer._get_healthchecker(my_balancer)
-      assert.truthy(hc)
+      local hc = assert(balancer._get_healthchecker(my_balancer))
       assert.same(1, #hc.targets)
       assert.truthy(hc.targets["127.0.0.1"])
       assert.truthy(hc.targets["127.0.0.1"][2112])
     end)
 
     it("balancer and healthchecker match; remove and not re-add", function()
-      local my_balancer = balancer._get_balancer({ host = "upstream_f" }, true)
-      assert.truthy(my_balancer)
+      local my_balancer = assert(balancer._get_balancer({
+        host = "upstream_f"
+      }, true))
       local target_history = {
         { name = "127.0.0.1", port = 5150, order = "001:f1", weight = 10 },
         { name = "127.0.0.1", port = 5150, order = "002:f2", weight = 0  },
         { name = "127.0.0.1", port = 2112, order = "003:f3", weight = 10 },
       }
       assert.same(target_history, balancer._get_target_history(my_balancer))
-      local hc = balancer._get_healthchecker(my_balancer)
-      assert.truthy(hc)
+      local hc = assert(balancer._get_healthchecker(my_balancer))
       assert.same(1, #hc.targets)
       assert.truthy(hc.targets["127.0.0.1"])
       assert.truthy(hc.targets["127.0.0.1"][2112])
@@ -301,6 +372,85 @@ describe("Balancer", function()
       assert(targets[3].id == "a4")
       assert(targets[4].id == "a1")
     end)
+  end)
+
+  describe("post_health()", function()
+    local hc, my_balancer
+
+    setup(function()
+      my_balancer = assert(balancer._create_balancer(upstream_ph))
+      hc = assert(balancer._get_healthchecker(my_balancer))
+    end)
+
+    teardown(function()
+      if hc then
+        hc:stop()
+      end
+    end)
+
+    it("posts healthy/unhealthy using IP and hostname", function()
+      local tests = {
+        { host = "127.0.0.1", port = 2222, health = true },
+        { host = "127.0.0.1", port = 2222, health = false },
+        { host = "localhost", port = 1111, health = true },
+        { host = "localhost", port = 1111, health = false },
+      }
+      for _, t in ipairs(tests) do
+        assert(balancer.post_health(upstream_ph, t.host, t.port, t.health))
+        local health_info = assert(balancer.get_upstream_health("ph"))
+        local response = t.health and "HEALTHY" or "UNHEALTHY"
+        assert.same(response, health_info[t.host .. ":" .. t.port])
+      end
+    end)
+
+    it("requires hostname if that was used in the Target", function()
+      local ok, err = balancer.post_health(upstream_ph, "127.0.0.1", 1111, true)
+      assert.falsy(ok)
+      assert.match(err, "target not found for 127.0.0.1:1111")
+    end)
+
+    it("fails if upstream/balancer doesn't exist", function()
+      local bad = { name = "invalid", id = "bad" }
+      local ok, err = balancer.post_health(bad, "127.0.0.1", 1111, true)
+      assert.falsy(ok)
+      assert.match(err, "Upstream invalid has no balancer")
+    end)
+  end)
+
+  describe("(un)subscribe_to_healthcheck_events()", function()
+    local my_balancer = assert(balancer._create_balancer(upstream_hc))
+    local hc = assert(balancer._get_healthchecker(my_balancer))
+    local data = {}
+    local cb = function(upstream_id, ip, port, hostname, health)
+      table.insert(data, {
+        upstream_id = upstream_id,
+        ip = ip,
+        port = port,
+        hostname = hostname,
+        health = health,
+      })
+    end
+    balancer.subscribe_to_healthcheck_events(cb)
+    my_balancer.report_http_status("127.0.0.1", 1111, 429)
+    my_balancer.report_http_status("127.0.0.1", 1111, 200)
+    balancer.unsubscribe_from_healthcheck_events(cb)
+    my_balancer.report_http_status("127.0.0.1", 1111, 429)
+    hc:stop()
+    assert.same({
+      upstream_id = "hc",
+      ip = "127.0.0.1",
+      port = 1111,
+      hostname = "localhost",
+      health = "unhealthy"
+    }, data[1])
+    assert.same({
+      upstream_id = "hc",
+      ip = "127.0.0.1",
+      port = 1111,
+      hostname = "localhost",
+      health = "healthy"
+    }, data[2])
+    assert.same(nil, data[3])
   end)
 
   describe("creating hash values", function()

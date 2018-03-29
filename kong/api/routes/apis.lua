@@ -49,6 +49,7 @@ return {
       crud.post(self.params, dao_factory.plugins, function(data)
         local r_data = utils.deep_copy(data)
         r_data.config = nil
+        r_data.e = "a"
         reports.send("api", r_data)
       end)
     end,

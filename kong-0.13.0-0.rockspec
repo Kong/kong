@@ -1,9 +1,9 @@
 package = "kong"
-version = "0.12.1-0"
+version = "0.13.0-0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "0.12.1"
+  tag = "0.13.0"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -16,7 +16,7 @@ dependencies = {
   "penlight == 1.5.4",
   "lua-resty-http == 0.12",
   "lua-resty-jit-uuid == 0.0.7",
-  "multipart == 0.5.4",
+  "multipart == 0.5.5",
   "version == 0.2",
   "kong-lapis == 1.6.0.1",
   "lua-cassandra == 1.2.3",
@@ -27,10 +27,11 @@ dependencies = {
   "luaossl == 20171028",
   "luasyslog == 1.0.0",
   "lua_pack == 1.0.5",
-  "lua-resty-dns-client == 1.0.0",
+  "lua-resty-dns-client == 2.0.0",
   "lua-resty-worker-events == 0.3.1",
   "lua-resty-mediador == 0.1.2",
-  "lua-resty-healthcheck == 0.3.0",
+  "lua-resty-healthcheck == 0.4.0",
+  "lua-resty-mlcache == 2.0.1",
 }
 build = {
   type = "builtin",
@@ -46,8 +47,6 @@ build = {
     ["kong.cluster_events.strategies.postgres"] = "kong/cluster_events/strategies/postgres.lua",
 
     ["kong.cache"] = "kong/cache.lua",
-
-    ["kong.mlcache"] = "kong/mlcache.lua",
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
@@ -74,11 +73,15 @@ build = {
 
     ["kong.api"] = "kong/api/init.lua",
     ["kong.api.api_helpers"] = "kong/api/api_helpers.lua",
+    ["kong.api.arguments"] = "kong/api/arguments.lua",
     ["kong.api.crud_helpers"] = "kong/api/crud_helpers.lua",
+    ["kong.api.endpoints"] = "kong/api/endpoints.lua",
     ["kong.api.routes.kong"] = "kong/api/routes/kong.lua",
     ["kong.api.routes.apis"] = "kong/api/routes/apis.lua",
     ["kong.api.routes.consumers"] = "kong/api/routes/consumers.lua",
     ["kong.api.routes.plugins"] = "kong/api/routes/plugins.lua",
+    ["kong.api.routes.routes"] = "kong/api/routes/routes.lua",
+    ["kong.api.routes.services"] = "kong/api/routes/services.lua",
     ["kong.api.routes.cache"] = "kong/api/routes/cache.lua",
     ["kong.api.routes.upstreams"] = "kong/api/routes/upstreams.lua",
     ["kong.api.routes.certificates"] = "kong/api/routes/certificates.lua",
@@ -96,6 +99,7 @@ build = {
     ["kong.core.handler"] = "kong/core/handler.lua",
     ["kong.core.certificate"] = "kong/core/certificate.lua",
     ["kong.core.router"] = "kong/core/router.lua",
+    ["kong.core.api_router"] = "kong/core/api_router.lua",
     ["kong.core.plugins_iterator"] = "kong/core/plugins_iterator.lua",
     ["kong.core.reports"] = "kong/core/reports.lua",
     ["kong.core.error_handlers"] = "kong/core/error_handlers.lua",
@@ -120,6 +124,24 @@ build = {
     ["kong.dao.migrations.helpers"] = "kong/dao/migrations/helpers.lua",
     ["kong.dao.migrations.cassandra"] = "kong/dao/migrations/cassandra.lua",
     ["kong.dao.migrations.postgres"] = "kong/dao/migrations/postgres.lua",
+
+    ["kong.db"] = "kong/db/init.lua",
+    ["kong.db.errors"] = "kong/db/errors.lua",
+    ["kong.db.dao"] = "kong/db/dao/init.lua",
+    ["kong.db.schema"] = "kong/db/schema/init.lua",
+    ["kong.db.schema.entities.routes"] = "kong/db/schema/entities/routes.lua",
+    ["kong.db.schema.entities.services"] = "kong/db/schema/entities/services.lua",
+    ["kong.db.schema.entity"] = "kong/db/schema/entity.lua",
+    ["kong.db.schema.metaschema"] = "kong/db/schema/metaschema.lua",
+    ["kong.db.schema.typedefs"] = "kong/db/schema/typedefs.lua",
+    ["kong.db.strategies"] = "kong/db/strategies/init.lua",
+    ["kong.db.strategies.connector"] = "kong/db/strategies/connector.lua",
+    ["kong.db.strategies.cassandra"] = "kong/db/strategies/cassandra/init.lua",
+    ["kong.db.strategies.cassandra.connector"] = "kong/db/strategies/cassandra/connector.lua",
+    ["kong.db.strategies.cassandra.routes"] = "kong/db/strategies/cassandra/routes.lua",
+    ["kong.db.strategies.cassandra.services"] = "kong/db/strategies/cassandra/services.lua",
+    ["kong.db.strategies.postgres"] = "kong/db/strategies/postgres/init.lua",
+    ["kong.db.strategies.postgres.connector"] = "kong/db/strategies/postgres/connector.lua",
 
     ["kong.plugins.base_plugin"] = "kong/plugins/base_plugin.lua",
 

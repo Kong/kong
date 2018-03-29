@@ -85,14 +85,36 @@ local function log(premature, conf, message)
     return
   end
 
-  local api_name   = string_gsub(message.api.name, "%.", "_")
+  local name
+
+  if message.service and message.service.name then
+    name = string_gsub(message.service.name ~= ngx.null and
+                       message.service.name or message.service.host,
+                       "%.", "_")
+
+  elseif message.api and message.api.name then
+    name = string_gsub(message.api.name, "%.", "_")
+
+  else
+    -- TODO: this follows the pattern used by
+    -- https://github.com/Kong/kong/pull/2702 (which prevents an error from
+    -- being thrown and avoids confusing reports as per our metrics keys), but
+    -- as it stands, hides traffic from monitoring tools when the plugin is
+    -- configured globally. In fact, this basically disables this plugin when
+    -- it is configured to run globally, or per-consumer without an
+    -- API/Route/Service.
+    ngx_log(ngx.DEBUG,
+            "[statsd] no Route/Service/API in context, skipping logging")
+    return
+  end
+
   local stat_name  = {
-    request_size     = api_name .. ".request.size",
-    response_size    = api_name .. ".response.size",
-    latency          = api_name .. ".latency",
-    upstream_latency = api_name .. ".upstream_latency",
-    kong_latency     = api_name .. ".kong_latency",
-    request_count    = api_name .. ".request.count",
+    request_size     = name .. ".request.size",
+    response_size    = name .. ".response.size",
+    latency          = name .. ".latency",
+    upstream_latency = name .. ".upstream_latency",
+    kong_latency     = name .. ".kong_latency",
+    request_count    = name .. ".request.count",
   }
   local stat_value = {
     request_size     = message.request.size,
@@ -113,7 +135,7 @@ local function log(premature, conf, message)
     local metric = metrics[metric_config.name]
 
     if metric then
-      metric(api_name, message, metric_config, logger)
+      metric(name, message, metric_config, logger)
 
     else
       local stat_name = stat_name[metric_config.name]

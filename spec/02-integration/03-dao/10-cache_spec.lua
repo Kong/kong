@@ -69,6 +69,31 @@ describe("dao in-memory cache", function()
   end)
 
 
+  it("ensure callbacks do not increase memory (regression test for #3277)", function()
+    collectgarbage()
+    collectgarbage()
+    local max_gc = collectgarbage("count")
+    local always_growing = true
+    for _ = 1, 10 do
+      for _ = 1, 500 do
+        local wrapped = function(...) return load_into_memory(...) end
+        local value, err = cache:get(key, nil, wrapped, SOFT_ERROR)
+        assert.is_nil(value)
+        assert.matches(SOFT_ERROR.err, err, nil, true)
+      end
+      collectgarbage()
+      collectgarbage()
+      local count = collectgarbage("count")
+      if count <= max_gc then
+        always_growing = false
+      else
+        max_gc = count
+      end
+    end
+    assert.falsy(always_growing)
+  end)
+
+
   it("handles nil as return value", function()
     for _ = 1, 2 do
       local value, err = cache:get(key, nil, load_into_memory, nil)

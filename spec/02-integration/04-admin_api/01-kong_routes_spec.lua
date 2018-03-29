@@ -5,13 +5,15 @@ local DAOFactory = require "kong.dao.factory"
 
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 
+local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
+
 describe("Admin API - Kong routes", function()
   describe("/", function()
     local meta = require "kong.meta"
     local client
 
     setup(function()
-      helpers.run_migrations()
+      assert(helpers.dao:run_migrations())
       assert(helpers.start_kong {
         pg_password = "hide_me"
       })
@@ -32,6 +34,15 @@ describe("Admin API - Kong routes", function()
       local json = cjson.decode(body)
       assert.equal(meta._VERSION, json.version)
       assert.equal("Welcome to kong", json.tagline)
+    end)
+    it("returns a UUID as the node_id", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/"
+      })
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.matches(UUID_PATTERN, json.node_id)
     end)
     it("response has the correct Server header", function()
       local res = assert(client:send {
@@ -91,7 +102,7 @@ describe("Admin API - Kong routes", function()
       local body = assert.response(res).has.status(200)
       local json = cjson.decode(body)
       assert.is_table(json.prng_seeds)
-      for k, v in pairs(json.prng_seeds) do
+      for k in pairs(json.prng_seeds) do
         assert.matches("pid: %d+", k)
         assert.matches("%d+", k)
       end
@@ -105,7 +116,7 @@ describe("Admin API - Kong routes", function()
 
       setup(function()
         dao = assert(DAOFactory.new(kong_conf))
-        helpers.run_migrations(dao)
+        assert(dao:run_migrations())
 
         assert(helpers.start_kong {
           database = kong_conf.database,

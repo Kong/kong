@@ -2,7 +2,7 @@ local schemas = require "kong.dao.schemas_validation"
 local statsd_schema = require "kong.plugins.statsd.schema"
 local validate_entity = schemas.validate_entity
 
-describe("Plugin: statsd (schema)", function()
+pending("Plugin: statsd (schema)", function()
   it("accepts empty config", function()
     local ok, err = validate_entity({}, statsd_schema)
     assert.is_nil(err)

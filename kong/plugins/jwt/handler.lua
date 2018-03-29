@@ -80,13 +80,14 @@ local function load_consumer(consumer_id, anonymous)
   return result
 end
 
-local function set_consumer(consumer, jwt_secret)
+local function set_consumer(consumer, jwt_secret, token)
   ngx_set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
   ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
   ngx_set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
   ngx.ctx.authenticated_consumer = consumer
   if jwt_secret then
     ngx.ctx.authenticated_credential = jwt_secret
+    ngx.ctx.authenticated_jwt_token = token
     ngx_set_header(constants.HEADERS.ANONYMOUS, nil) -- in case of auth plugins concatenation
   else
     ngx_set_header(constants.HEADERS.ANONYMOUS, true)
@@ -177,7 +178,7 @@ local function do_authentication(conf)
     return false, {status = 403, message = string_format("Could not find consumer for '%s=%s'", conf.key_claim_name, jwt_secret_key)}
   end
 
-  set_consumer(consumer, jwt_secret)
+  set_consumer(consumer, jwt_secret, token)
 
   return true
 end
@@ -208,7 +209,7 @@ function JwtHandler:access(conf)
       if err then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end
-      set_consumer(consumer, nil)
+      set_consumer(consumer, nil, nil)
     else
       return responses.send(err.status, err.message)
     end
