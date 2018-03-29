@@ -29,6 +29,8 @@ _M.dao_insert_values = {
   end
 }
 
+_M.additional_tables = { "cluster_events", "routes", "services" }
+
 function _M.new(kong_config)
   local self = _M.super.new()
 
@@ -180,6 +182,7 @@ end
 
 function _M:infos()
   return {
+    db_name = "Cassandra",
     desc = "keyspace",
     name = self.cluster_options.keyspace,
     version = self.major_minor_version or "unknown",

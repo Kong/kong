@@ -1,68 +1,76 @@
-local helpers = require "spec.helpers"
+local helpers   = require "spec.helpers"
+
 
 local BAD_REGEX = [[(https?:\/\/.*]]  -- illegal regex, errors out
 
-describe("Plugin: bot-detection (API)", function()
-  local client
 
-  setup(function()
-    helpers.run_migrations()
+for _, strategy in helpers.each_strategy() do
+  describe("Plugin: bot-detection (API) [#" .. strategy .. "]", function()
+    local proxy_client
+    local route1
+    local route2
 
-    assert(helpers.dao.apis:insert {
-      name         = "bot1.com",
-      hosts        = { "bot1.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-    assert(helpers.dao.apis:insert {
-      name         = "bot2.com",
-      hosts        = { "bot2.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
+    setup(function()
+      local bp = helpers.get_db_utils(strategy)
 
-    assert(helpers.start_kong({
-      nginx_conf = "spec/fixtures/custom_nginx.template",
-    }))
-  end)
-
-  teardown(function()
-    helpers.stop_kong()
-  end)
-
-  before_each(function()
-    client = helpers.admin_client()
-  end)
-
-  after_each(function()
-    if client then client:close() end
-  end)
-
-  it("fails when whitelisting a bad regex", function()
-    local res = assert(client:send {
-      method = "POST",
-      path = "/apis/bot1.com/plugins/",
-      body = {
-        name = "bot-detection",
-        ["config.whitelist"] = { BAD_REGEX }
-      },
-      headers = {
-        ["content-type"] = "application/json"
+      route1 = bp.routes:insert {
+        hosts = { "bot1.com" },
       }
-    })
-    assert.response(res).has.status(400)
-  end)
 
-  it("fails when blacklisting a bad regex", function()
-    local res = assert(client:send {
-      method = "POST",
-      path = "/apis/bot2.com/plugins/",
-      body = {
-        name = "bot-detection",
-        ["config.whitelist"] = { BAD_REGEX }
-      },
-      headers = {
-        ["content-type"] = "application/json"
+      route2 = bp.routes:insert {
+        hosts = { "bot2.com" },
       }
-    })
-    assert.response(res).has.status(400)
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+    end)
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    before_each(function()
+      proxy_client = helpers.admin_client()
+    end)
+
+    after_each(function()
+      if proxy_client then
+        proxy_client:close()
+      end
+    end)
+
+    it("fails when whitelisting a bad regex", function()
+      local res = assert(proxy_client:send {
+        method  = "POST",
+        path    = "/plugins/",
+        body    = {
+          name                 = "bot-detection",
+          ["config.whitelist"] = { BAD_REGEX },
+          route_id             = route1.id
+        },
+        headers = {
+          ["content-type"] = "application/json"
+        }
+      })
+      assert.response(res).has.status(400)
+    end)
+
+    it("fails when blacklisting a bad regex", function()
+      local res = assert(proxy_client:send {
+        method  = "POST",
+        path    = "/plugins/",
+        body    = {
+          name                 = "bot-detection",
+          ["config.whitelist"] = { BAD_REGEX },
+          route_id             = route2.id
+        },
+        headers = {
+          ["content-type"] = "application/json"
+        }
+      })
+      assert.response(res).has.status(400)
+    end)
   end)
-end)
+end

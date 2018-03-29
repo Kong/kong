@@ -575,35 +575,50 @@ end
 --------------------------------------------------------------------------------
 -- Called on any changes to an upstream.
 -- @param operation "create", "update" or "delete"
--- @param upstream Upstream table with `id` and `name` fields
-local function on_upstream_event(operation, upstream)
+-- @param upstream_data table with `id` and `name` fields
+local function on_upstream_event(operation, upstream_data)
+  local upstream_id = upstream_data.id
+  local upstream_name = upstream_data.name
 
   if operation == "create" then
 
     singletons.cache:invalidate_local("balancer:upstreams")
 
+    local upstream = get_upstream_by_id(upstream_id)
+    if not upstream then
+      log(ERR, "upstream not found for ", upstream_id)
+      return
+    end
+
     local _, err = create_balancer(upstream)
     if err then
-      log(CRIT, "failed creating balancer for ", upstream.name, ": ", err)
+      log(CRIT, "failed creating balancer for ", upstream_name, ": ", err)
     end
 
   elseif operation == "delete" or operation == "update" then
 
     singletons.cache:invalidate_local("balancer:upstreams")
-    singletons.cache:invalidate_local("balancer:upstreams:" .. upstream.id)
-    singletons.cache:invalidate_local("balancer:targets:"   .. upstream.id)
+    singletons.cache:invalidate_local("balancer:upstreams:" .. upstream_id)
+    singletons.cache:invalidate_local("balancer:targets:"   .. upstream_id)
 
-    local balancer = balancers[upstream.id]
+    local balancer = balancers[upstream_id]
     if balancer then
       stop_healthchecker(balancer)
     end
 
     if operation == "delete" then
-      balancers[upstream.id] = nil
+      balancers[upstream_id] = nil
+
     else
+      local upstream = get_upstream_by_id(upstream_id)
+      if not upstream then
+        log(ERR, "upstream not found for ", upstream_id)
+        return
+      end
+
       local _, err = create_balancer(upstream, true)
       if err then
-        log(ERR, "failed recreating balancer for ", upstream.name, ": ", err)
+        log(ERR, "failed recreating balancer for ", upstream_name, ": ", err)
       end
     end
 
@@ -764,7 +779,8 @@ local function execute(target)
     hostname = target.host
     if not ip then
       log(ERR, "[dns] ", port, ". Tried: ", tostring(try_list))
-      if port == "dns server error: 3 name error" then
+      if port == "dns server error: 3 name error" or
+         port == "dns client error: 101 empty record received" then
         return nil, "name resolution failed", 503
       end
     end

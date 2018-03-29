@@ -41,7 +41,7 @@ _M.dao_insert_values = {
   end
 }
 
-_M.additional_tables = { "ttls", "cluster_events" }
+_M.additional_tables = { "ttls", "cluster_events", "routes", "services" }
 
 function _M.new(kong_config)
   local self = _M.super.new()
@@ -78,6 +78,7 @@ end
 
 function _M:infos()
   return {
+    db_name = "PostgreSQL",
     desc = "database",
     name = self:clone_query_options().database,
     version = self.major_minor_version or "unknown",

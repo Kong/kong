@@ -1,5 +1,8 @@
 local utils = require "kong.tools.utils"
 local url = require "socket.url"
+local Errors = require "kong.dao.errors"
+local db_errors = require "kong.db.errors"
+
 
 local function validate_uris(v, t, column)
   if v then
@@ -18,6 +21,28 @@ local function validate_uris(v, t, column)
   end
   return true, nil
 end
+
+
+local function validate_service_id(service_id, db)
+
+  if service_id ~= nil then
+    local service, err, err_t = db.services:select({
+      id = service_id,
+    })
+    if err then
+      if err_t.code == db_errors.codes.DATABASE_ERROR then
+        return false, Errors.db(err)
+      end
+
+      return false, Errors.schema(err_t)
+    end
+
+    if not service then
+      return false, Errors.foreign("no such Service (id=" .. service_id .. ")")
+    end
+  end
+end
+
 
 local OAUTH2_CREDENTIALS_SCHEMA = {
   primary_key = {"id"},
@@ -39,13 +64,17 @@ local OAUTH2_AUTHORIZATION_CODES_SCHEMA = {
   table = "oauth2_authorization_codes",
   fields = {
     id = { type = "id", dao_insert_value = true },
+    service_id = { type = "id" }, --foreign = "services:id" -- manually tested in self_check
     api_id = { type = "id", required = false, foreign = "apis:id" },
     credential_id = { type = "id", required = true, foreign = "oauth2_credentials:id" },
     code = { type = "string", required = false, unique = true, immutable = true, default = utils.random_string },
     authenticated_userid = { type = "string", required = false },
     scope = { type = "string" },
     created_at = { type = "timestamp", immutable = true, dao_insert_value = true }
-  }
+  },
+  self_check = function(self, auth_t, dao, is_update)
+    return validate_service_id(auth_t.service_id, dao.db.new_db)
+  end,
 }
 
 local BEARER = "bearer"
@@ -55,6 +84,7 @@ local OAUTH2_TOKENS_SCHEMA = {
   cache_key = { "access_token" },
   fields = {
     id = { type = "id", dao_insert_value = true },
+    service_id = { type = "id" }, --foreign = "services:id" -- manually tested in self_check
     api_id = { type = "id", required = false, foreign = "apis:id" },
     credential_id = { type = "id", required = true, foreign = "oauth2_credentials:id" },
     token_type = { type = "string", required = true, enum = { BEARER }, default = BEARER },
@@ -65,6 +95,9 @@ local OAUTH2_TOKENS_SCHEMA = {
     scope = { type = "string" },
     created_at = { type = "timestamp", immutable = true, dao_insert_value = true }
   },
+  self_check = function(self, token_t, dao, is_update)
+    return validate_service_id(token_t.service_id, dao.db.new_db)
+  end,
 }
 
 return {

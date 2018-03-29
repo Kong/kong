@@ -12,7 +12,6 @@ local plugins = {
   "hmac-auth",
   "basic-auth",
   "ip-restriction",
-  "galileo",
   "request-transformer",
   "response-transformer",
   "request-size-limiting",
@@ -34,8 +33,18 @@ for i = 1, #plugins do
   plugin_map[plugins[i]] = true
 end
 
+local deprecated_plugins = {
+  "galileo",
+}
+
+local deprecated_plugin_map = {}
+for _, plugin in ipairs(deprecated_plugins) do
+  deprecated_plugin_map[plugin] = true
+end
+
 return {
   PLUGINS_AVAILABLE = plugin_map,
+  DEPRECATED_PLUGINS = deprecated_plugin_map,
   -- non-standard headers, specific to Kong
   HEADERS = {
     HOST_OVERRIDE = "X-Host-Override",
@@ -74,4 +83,14 @@ return {
     "kong_cluster_events",
     "kong_healthchecks",
   },
+  DATABASE = {
+    POSTGRES = {
+      MIN = "9.5",
+      DEPRECATED = "9.4",
+    },
+    CASSANDRA = {
+      MIN = "2.2",
+      DEPRECATED = "2.1",
+    }
+  }
 }

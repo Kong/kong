@@ -13,7 +13,7 @@ describe("Admin API - Kong routes", function()
     local client
 
     setup(function()
-      helpers.run_migrations()
+      assert(helpers.dao:run_migrations())
       assert(helpers.start_kong {
         pg_password = "hide_me"
       })
@@ -102,7 +102,7 @@ describe("Admin API - Kong routes", function()
       local body = assert.response(res).has.status(200)
       local json = cjson.decode(body)
       assert.is_table(json.prng_seeds)
-      for k, v in pairs(json.prng_seeds) do
+      for k in pairs(json.prng_seeds) do
         assert.matches("pid: %d+", k)
         assert.matches("%d+", k)
       end
@@ -116,7 +116,7 @@ describe("Admin API - Kong routes", function()
 
       setup(function()
         dao = assert(DAOFactory.new(kong_conf))
-        helpers.run_migrations(dao)
+        assert(dao:run_migrations())
 
         assert(helpers.start_kong {
           database = kong_conf.database,

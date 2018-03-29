@@ -29,12 +29,12 @@ local function get_identifier(conf)
   return identifier
 end
 
-local function get_usage(conf, api_id, identifier, current_timestamp, limits)
+local function get_usage(conf, identifier, current_timestamp, limits)
   local usage = {}
 
   for k, v in pairs(limits) do -- Iterate over limit names
     for lk, lv in pairs(v) do -- Iterare over periods
-      local current_usage, err = policies[conf.policy].usage(conf, api_id, identifier, current_timestamp, lk, k)
+      local current_usage, err = policies[conf.policy].usage(conf, identifier, current_timestamp, lk, k)
       if err then
         return nil, err
       end
@@ -64,12 +64,11 @@ function _M.execute(conf)
   -- Load info
   local current_timestamp = timestamp.get_utc()
   ngx.ctx.current_timestamp = current_timestamp -- For later use
-  local api_id = ngx.ctx.api.id
   local identifier = get_identifier(conf)
   ngx.ctx.identifier = identifier -- For later use
 
   -- Load current metric for configured period
-  local usage, err = get_usage(conf, api_id, identifier, current_timestamp, conf.limits)
+  local usage, err = get_usage(conf, identifier, current_timestamp, conf.limits)
   if err then
     if conf.fault_tolerant then
       ngx.log(ngx.ERR, "failed to get usage: ", tostring(err))
