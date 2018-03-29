@@ -40,7 +40,7 @@ describe("reports", function()
     it("doesn't send if not enabled", function()
       reports.toggle(false)
 
-      local thread = helpers.udp_server(8189)
+      local thread = helpers.udp_server(8189, 1, 0.1)
 
       reports.send({
         foo = "bar"

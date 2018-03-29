@@ -189,5 +189,19 @@ return {
       end
     end,
     down = function(_, _, dao) end  -- not implemented
-  }
+  },
+  {
+     name = "2018-01-09-oauth2_c_add_service_id",
+     up = [[
+       ALTER TABLE oauth2_authorization_codes ADD service_id uuid;
+       CREATE INDEX IF NOT EXISTS ON oauth2_authorization_codes(service_id);
+
+       ALTER TABLE oauth2_tokens ADD service_id uuid;
+       CREATE INDEX IF NOT EXISTS ON oauth2_tokens(service_id);
+     ]],
+     down = [[
+      ALTER TABLE oauth2_authorization_codes DROP service_id;
+      ALTER TABLE oauth2_tokens DROP service_id;
+     ]],
+  },
 }

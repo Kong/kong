@@ -1,7 +1,9 @@
 local schemas_validation = require "kong.dao.schemas_validation"
-local schema = require "kong.plugins.ip-restriction.schema"
+local schema             = require "kong.plugins.ip-restriction.schema"
+
 
 local v = schemas_validation.validate_entity
+
 
 describe("Plugin: ip-restriction (schema)", function()
   it("should accept a valid whitelist", function()

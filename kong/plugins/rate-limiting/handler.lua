@@ -38,12 +38,12 @@ local function get_identifier(conf)
   return identifier
 end
 
-local function get_usage(conf, api_id, identifier, current_timestamp, limits)
+local function get_usage(conf, identifier, current_timestamp, limits)
   local usage = {}
   local stop
 
   for name, limit in pairs(limits) do
-    local current_usage, err = policies[conf.policy].usage(conf, api_id, identifier, current_timestamp, name)
+    local current_usage, err = policies[conf.policy].usage(conf, identifier, current_timestamp, name)
     if err then
       return nil, nil, err
     end
@@ -75,7 +75,6 @@ function RateLimitingHandler:access(conf)
 
   -- Consumer is identified by ip address or authenticated_credential id
   local identifier = get_identifier(conf)
-  local api_id = ngx.ctx.api.id
   local policy = conf.policy
   local fault_tolerant = conf.fault_tolerant
 
@@ -89,7 +88,7 @@ function RateLimitingHandler:access(conf)
     year = conf.year
   }
 
-  local usage, stop, err = get_usage(conf, api_id, identifier, current_timestamp, limits)
+  local usage, stop, err = get_usage(conf, identifier, current_timestamp, limits)
   if err then
     if fault_tolerant then
       ngx_log(ngx.ERR, "failed to get usage: ", tostring(err))
@@ -113,15 +112,15 @@ function RateLimitingHandler:access(conf)
     end
   end
 
-  local incr = function(premature, conf, limits, api_id, identifier, current_timestamp, value)
+  local incr = function(premature, conf, limits, identifier, current_timestamp, value)
     if premature then
       return
     end
-    policies[policy].increment(conf, limits, api_id, identifier, current_timestamp, value)
+    policies[policy].increment(conf, limits, identifier, current_timestamp, value)
   end
 
   -- Increment metrics for configured periods if the request goes through
-  local ok, err = ngx_timer_at(0, incr, conf, limits, api_id, identifier, current_timestamp, 1)
+  local ok, err = ngx_timer_at(0, incr, conf, limits, identifier, current_timestamp, 1)
   if not ok then
     ngx_log(ngx.ERR, "failed to create timer: ", err)
   end

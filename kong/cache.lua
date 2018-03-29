@@ -1,4 +1,4 @@
-local kong_mlcache = require "kong.mlcache"
+local resty_mlcache = require "resty.mlcache"
 
 
 local type    = type
@@ -10,7 +10,7 @@ local NOTICE  = ngx.NOTICE
 local DEBUG   = ngx.DEBUG
 
 
-local SHM_CACHE = "kong_cache"
+local SHM_CACHE = "kong_db_cache"
 --[[
 Hypothesis
 ----------
@@ -29,30 +29,6 @@ local _init
 
 local function log(lvl, ...)
   return ngx_log(lvl, "[DB cache] ", ...)
-end
-
-
--- Temporary fix to convert soft callback errors into hard ones.
--- FIXME: use upstream mlcache lib instead of local copy
-local soft_to_hard
-do
-  local s2h_cache = setmetatable({}, { __mode = "k" })
-  
-  local function create_wrapper(cb)
-    s2h_cache[cb] = function(...)
-      local result, err = cb(...)
-      if err then
-        error(err)
-      end
-      return result
-    end
-    return s2h_cache[cb]
-  end
-
-
-  soft_to_hard = function(cb)
-    return s2h_cache[cb] or create_wrapper(cb)
-  end
 end
 
 
@@ -93,11 +69,25 @@ function _M.new(opts)
     return error("opts.resty_lock_opts must be a table")
   end
 
-  local mlcache, err = kong_mlcache.new(SHM_CACHE, opts.worker_events, {
+  local mlcache, err = resty_mlcache.new(SHM_CACHE, SHM_CACHE, {
+    shm_miss         = "kong_db_cache_miss",
+    shm_set_retries  = 3,
     lru_size         = LRU_SIZE,
     ttl              = max(opts.ttl     or 3600, 0),
     neg_ttl          = max(opts.neg_ttl or 300,  0),
     resty_lock_opts  = opts.resty_lock_opts,
+    ipc = {
+      register_listeners = function(events)
+        for _, event_t in pairs(events) do
+          opts.worker_events.register(function(data)
+            event_t.handler(data)
+          end, "mlcache", event_t.channel)
+        end
+      end,
+      broadcast = function(channel, data)
+        opts.worker_events.post("mlcache", channel, data)
+      end
+    }
   })
   if not mlcache then
     return nil, "failed to instantiate mlcache: " .. err
@@ -131,7 +121,7 @@ function _M:get(key, opts, cb, ...)
 
   --log(DEBUG, "get from key: ", key)
 
-  local v, err = self.mlcache:get(key, opts, soft_to_hard(cb), ...)
+  local v, err = self.mlcache:get(key, opts, cb, ...)
   if err then
     return nil, "failed to get from node cache: " .. err
   end
@@ -145,7 +135,7 @@ function _M:probe(key)
     return error("key must be a string")
   end
 
-  local ttl, err, v = self.mlcache:probe(key)
+  local ttl, err, v = self.mlcache:peek(key)
   if err then
     return nil, "failed to probe from node cache: " .. err
   end

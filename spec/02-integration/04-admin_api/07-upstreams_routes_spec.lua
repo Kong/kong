@@ -3,7 +3,7 @@ local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local cjson = require "cjson"
 local DAOFactory = require "kong.dao.factory"
 
-local slots_default, slots_max = 100, 2^16
+local slots_default, slots_max = 10000, 2^16
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
@@ -20,9 +20,8 @@ describe("Admin API: #" .. kong_config.database, function()
 
   setup(function()
     dao = assert(DAOFactory.new(kong_config))
-    helpers.run_migrations(dao)
+    assert(dao:run_migrations())
 
-    helpers.run_migrations(dao)
     assert(helpers.start_kong{
       database = kong_config.database
     })

@@ -1,21 +1,24 @@
 local header_transformer = require "kong.plugins.response-transformer.header_transformer"
-local CONTENT_LENGTH = "content-length"
+
+
+local CONTENT_LENGTH     = "content-length"
+
 
 describe("Plugin: response-transformer", function()
   describe("execute_headers()", function()
     describe("remove", function()
-      local conf = {
-        remove = {
+      local conf  = {
+        remove    = {
           headers = {"h1", "h2", "h3"}
         },
-        replace = {
+        replace   = {
           headers = {}
         },
-        add = {
-          json = {"p1:v1"},
+        add       = {
+          json    = {"p1:v1"},
           headers = {}
         },
-        append = {
+        append    = {
           headers = {}
         }
       }
@@ -31,18 +34,18 @@ describe("Plugin: response-transformer", function()
       end)
     end)
     describe("replace", function()
-      local conf = {
-        remove = {
+      local conf  = {
+        remove    = {
           headers = {}
         },
-        replace = {
+        replace   = {
           headers = {"h1:v1", "h2:value:2"}  -- payload with colon to verify parsing
         },
-        add = {
-          json = {"p1:v1"},
+        add       = {
+          json    = {"p1:v1"},
           headers = {}
         },
-        append = {
+        append    = {
           headers = {}
         }
       }
@@ -63,18 +66,18 @@ describe("Plugin: response-transformer", function()
       end)
     end)
     describe("add", function()
-      local conf = {
-        remove = {
+      local conf  = {
+        remove    = {
           headers = {}
         },
-        replace = {
+        replace   = {
           headers = {}
         },
-        add = {
-          json = {"p1:v1"},
+        add       = {
+          json    = {"p1:v1"},
           headers = {"h2:v2"}
         },
-        append = {
+        append    = {
           headers = {}
         }
       }
@@ -95,18 +98,18 @@ describe("Plugin: response-transformer", function()
       end)
     end)
     describe("append", function()
-      local conf = {
-        remove = {
+      local conf  = {
+        remove    = {
           headers = {}
         },
-        replace = {
+        replace   = {
           headers = {}
         },
-        add = {
-          json = {"p1:v1"},
+        add       = {
+          json    = {"p1:v1"},
           headers = {}
         },
-        append = {
+        append    = {
           headers = {"h1:v2"}
         }
       }
@@ -127,18 +130,18 @@ describe("Plugin: response-transformer", function()
       end)
     end)
     describe("performing remove, replace, add, append together", function()
-      local conf = {
-        remove = {
+      local conf  = {
+        remove    = {
           headers = {"h1:v1"}
         },
-        replace = {
+        replace   = {
           headers = {"h2:v3"}
         },
-        add = {
-          json = {"p1:v1"},
+        add       = {
+          json    = {"p1:v1"},
           headers = {"h3:v3"}
         },
-        append = {
+        append    = {
           headers = {"h3:v4"}
         }
       }
@@ -155,21 +158,21 @@ describe("Plugin: response-transformer", function()
     end)
     describe("content-type json", function()
       describe("remove", function()
-        local conf = {
-          remove = {
-            json = {"p1"},
+        local conf  = {
+          remove    = {
+            json    = {"p1"},
             headers = {"h1", "h2"}
           },
-          replace = {
-            json = {},
+          replace   = {
+            json    = {},
             headers = {}
           },
-          add = {
-            json = {},
+          add       = {
+            json    = {},
             headers = {}
           },
-          append = {
-            json = {},
+          append    = {
+            json    = {},
             headers = {}
           }
         }
@@ -196,21 +199,21 @@ describe("Plugin: response-transformer", function()
         end)
       end)
       describe("replace", function()
-        local conf = {
-          remove = {
-            json = {},
+        local conf  = {
+          remove    = {
+            json    = {},
             headers = {}
           },
-          replace = {
-            json = {"p1:v1", "p2:v1"},
+          replace   = {
+            json    = {"p1:v1", "p2:v1"},
             headers = {"h1:v1", "h2:v2"}
           },
-          add = {
-            json = {},
+          add       = {
+            json    = {},
             headers = {}
           },
-          append = {
-            json = {},
+          append    = {
+            json    = {},
             headers = {}
           }
         }
@@ -237,21 +240,21 @@ describe("Plugin: response-transformer", function()
         end)
       end)
       describe("add", function()
-        local conf = {
-          remove = {
-            json = {},
+        local conf  = {
+          remove    = {
+            json    = {},
             headers = {}
           },
-          replace = {
-            json = {},
+          replace   = {
+            json    = {},
             headers = {}
           },
-          add = {
-            json = {"p1:v1", "p2:v1"},
+          add       = {
+            json    = {"p1:v1", "p2:v1"},
             headers = {"h1:v1", "h2:v2"}
           },
-          append = {
-            json = {},
+          append    = {
+            json    = {},
             headers = {}
           }
         }
@@ -278,21 +281,21 @@ describe("Plugin: response-transformer", function()
         end)
       end)
       describe("append", function()
-        local conf = {
-          remove = {
-            json = {},
+        local conf  = {
+          remove    = {
+            json    = {},
             headers = {}
           },
-          replace = {
-            json = {},
+          replace   = {
+            json    = {},
             headers = {}
           },
-          add = {
-            json = {},
+          add       = {
+            json    = {},
             headers = {}
           },
-          append = {
-            json = {"p1:v1", "p2:v1"},
+          append    = {
+            json    = {"p1:v1", "p2:v1"},
             headers = {"h1:v1", "h2:v2"}
           }
         }

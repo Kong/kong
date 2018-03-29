@@ -2,7 +2,7 @@ local helpers = require "spec.helpers"
 
 describe("kong start/stop", function()
   setup(function()
-    helpers.run_migrations()
+    assert(helpers.dao:run_migrations())
     helpers.prepare_prefix()
   end)
   after_each(function()
@@ -171,21 +171,6 @@ describe("kong start/stop", function()
       })
       assert.False(ok)
       assert.matches("Kong is already running in " .. helpers.test_conf.prefix, stderr, nil, true)
-    end)
-    it("stops other services when could not start", function()
-      local thread = helpers.tcp_server(helpers.test_conf.proxy_port)
-      finally(function()
-        -- make tcp server receive and close
-        helpers.proxy_client():send {
-          method = "GET",
-          path = "/"
-        }
-        thread:join()
-      end)
-
-      local ok, err = helpers.kong_exec("start --conf " .. helpers.test_conf_path)
-      assert.False(ok)
-      assert.matches("Address already in use", err, nil, true)
     end)
     it("should not stop Kong if already running in prefix", function()
       local kill = require "kong.cmd.utils.kill"

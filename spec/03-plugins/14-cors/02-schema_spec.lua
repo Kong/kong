@@ -1,5 +1,6 @@
 local validate_entity = require("kong.dao.schemas_validation").validate_entity
-local cors_schema = require "kong.plugins.cors.schema"
+local cors_schema     = require "kong.plugins.cors.schema"
+
 
 describe("cors schema", function()
   it("validates '*'", function()

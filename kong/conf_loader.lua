@@ -53,10 +53,8 @@ local PREFIX_PATHS = {
 -- `array`: a comma-separated list
 local CONF_INFERENCES = {
   -- forced string inferences (or else are retrieved as numbers)
-  proxy_listen = {typ = "string"},
-  proxy_listen_ssl = {typ = "string"},
-  admin_listen = {typ = "string"},
-  admin_listen_ssl = {typ = "string"},
+  proxy_listen = {typ = "array"},
+  admin_listen = {typ = "array"},
   db_update_frequency = { typ = "number" },
   db_update_propagation = { typ = "number" },
   db_cache_ttl = { typ = "number" },
@@ -102,11 +100,7 @@ local CONF_INFERENCES = {
   dns_error_ttl = {typ = "number"},
   dns_no_sync = {typ = "boolean"},
 
-  http2 = {typ = "boolean"},
-  admin_http2 = {typ = "boolean"},
-  ssl = {typ = "boolean"},
   client_ssl = {typ = "boolean"},
-  admin_ssl = {typ = "boolean"},
 
   proxy_access_log = {typ = "string"},
   proxy_error_log = {typ = "string"},
@@ -230,7 +224,7 @@ local function check_and_infer(conf)
     end
   end
 
-  if conf.ssl then
+  if (table.concat(conf.proxy_listen, ",") .. " "):find("%sssl[%s,]") then
     if conf.ssl_cert and not conf.ssl_cert_key then
       errors[#errors+1] = "ssl_cert_key must be specified"
     elseif conf.ssl_cert_key and not conf.ssl_cert then
@@ -260,7 +254,7 @@ local function check_and_infer(conf)
     end
   end
 
-  if conf.admin_ssl then
+  if (table.concat(conf.admin_listen, ",") .. " "):find("%sssl[%s,]") then
     if conf.admin_ssl_cert and not conf.admin_ssl_cert_key then
       errors[#errors+1] = "admin_ssl_cert_key must be specified"
     elseif conf.admin_ssl_cert_key and not conf.admin_ssl_cert then
@@ -355,6 +349,85 @@ local function overrides(k, default_v, file_conf, arg_conf)
   end
 
   return value, k
+end
+
+-- @param value The options string to check for flags (whitespace separated)
+-- @param flags List of boolean flags to check for.
+-- @returns 1) remainder string after all flags removed, 2) table with flag
+-- booleans, 3) sanitized flags string
+local function parse_option_flags(value, flags)
+  assert(type(value) == "string")
+
+  value = " " .. value .. " "
+
+  local sanitized = ""
+  local result = {}
+
+  for _, flag in ipairs(flags) do
+    local count
+    local patt = "%s" .. flag .. "%s"
+
+    value, count = value:gsub(patt, " ")
+
+    if count > 0 then
+      result[flag] = true
+      sanitized = sanitized .. " " .. flag
+
+    else
+      result[flag] = false
+    end
+  end
+
+  return pl_stringx.strip(value), result, pl_stringx.strip(sanitized)
+end
+
+-- Parses a listener address line.
+-- Supports multiple (comma separated) addresses, with 'ssl' and 'http2' flags.
+-- Pre- and postfixed whitespace as well as comma's are allowed.
+-- "off" as a first entry will return empty tables.
+-- @value list of entries (strings)
+-- @return list of parsed entries, each entry having fields `ip` (normalized string)
+-- `port` (number), `ssl` (bool), `http2` (bool), `listener` (string, full listener)
+local function parse_listeners(values)
+  local list = {}
+  local flags = { "ssl", "http2", "proxy_protocol" }
+  local usage = "must be of form: [off] | <ip>:<port> [" ..
+                table.concat(flags, "] [") .. "], [... next entry ...]"
+
+  if pl_stringx.strip(values[1]) == "off" then
+    return list
+  end
+
+  for _, entry in ipairs(values) do
+    -- parse the flags
+    local remainder, listener, cleaned_flags = parse_option_flags(entry, flags)
+
+    -- verify IP for remainder
+    local ip
+
+    if utils.hostname_type(remainder) == "name" then
+      -- it's not an IP address, so a name/wildcard/regex
+      ip = {}
+      ip.host, ip.port = remainder:match("(.+):([%d]+)$")
+
+    else
+      -- It's an IPv4 or IPv6, just normalize it
+      ip = utils.normalize_ip(remainder)
+    end
+
+    if not ip or not ip.port then
+      return nil, usage
+    end
+
+    listener.ip = ip.host
+    listener.port = ip.port
+    listener.listener = ip.host .. ":" .. ip.port ..
+                        (#cleaned_flags == 0 and "" or " " .. cleaned_flags)
+
+    table.insert(list, listener)
+  end
+
+  return list
 end
 
 --- Load Kong configuration
@@ -478,24 +551,40 @@ local function load(path, custom_conf)
 
   -- extract ports/listen ips
   do
-    local ip_port_pat = "(.+):([%d]+)$"
-    local admin_ip, admin_port = string.match(conf.admin_listen, ip_port_pat)
-    local admin_ssl_ip, admin_ssl_port = string.match(conf.admin_listen_ssl, ip_port_pat)
-    local proxy_ip, proxy_port = string.match(conf.proxy_listen, ip_port_pat)
-    local proxy_ssl_ip, proxy_ssl_port = string.match(conf.proxy_listen_ssl, ip_port_pat)
+    local err
+    -- this meta table will prevent the parsed table to be passed on in the
+    -- intermediate Kong config file in the prefix directory
+    local mt = { __tostring = function() return "" end }
 
-    if not admin_port then return nil, "admin_listen must be of form 'address:port'"
-    elseif not admin_ssl_port then return nil, "admin_listen_ssl must be of form 'address:port'"
-    elseif not proxy_port then return nil, "proxy_listen must be of form 'address:port'"
-    elseif not proxy_ssl_port then return nil, "proxy_listen_ssl must be of form 'address:port'" end
-    conf.admin_ip = admin_ip
-    conf.admin_ssl_ip = admin_ssl_ip
-    conf.proxy_ip = proxy_ip
-    conf.proxy_ssl_ip = proxy_ssl_ip
-    conf.admin_port = tonumber(admin_port)
-    conf.admin_ssl_port = tonumber(admin_ssl_port)
-    conf.proxy_port = tonumber(proxy_port)
-    conf.proxy_ssl_port = tonumber(proxy_ssl_port)
+    conf.proxy_listeners, err = parse_listeners(conf.proxy_listen)
+    if err then
+      return nil, "proxy_listen " .. err
+    end
+
+    setmetatable(conf.proxy_listeners, mt)  -- do not pass on, parse again
+    conf.proxy_ssl_enabled = false
+
+    for _, listener in ipairs(conf.proxy_listeners) do
+      if listener.ssl == true then
+        conf.proxy_ssl_enabled = true
+        break
+      end
+    end
+
+    conf.admin_listeners, err = parse_listeners(conf.admin_listen)
+    if err then
+      return nil, "admin_listen " .. err
+    end
+
+    setmetatable(conf.admin_listeners, mt)  -- do not pass on, parse again
+    conf.admin_ssl_enabled = false
+
+    for _, listener in ipairs(conf.admin_listeners) do
+      if listener.ssl == true then
+        conf.admin_ssl_enabled = true
+        break
+      end
+    end
   end
 
   -- load absolute paths

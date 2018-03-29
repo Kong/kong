@@ -27,7 +27,7 @@ return {
       local credentials, err = crud.find_by_id_or_field(
         dao_factory.basicauth_credentials,
         { consumer_id = self.params.consumer_id },
-        self.params.credential_username_or_id,
+        ngx.unescape_uri(self.params.credential_username_or_id),
         "username"
       )
 
@@ -63,7 +63,7 @@ return {
       local credentials, err = crud.find_by_id_or_field(
         dao_factory.basicauth_credentials,
         nil,
-        self.params.credential_username_or_id,
+        ngx.unescape_uri(self.params.credential_username_or_id),
         "username"
       )
 

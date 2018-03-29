@@ -28,7 +28,7 @@ return {
       local credentials, err = crud.find_by_id_or_field(
         dao_factory.jwt_secrets,
         { consumer_id = self.params.consumer_id },
-        self.params.jwt_key_or_id,
+        ngx.unescape_uri(self.params.jwt_key_or_id),
         "key"
       )
 
@@ -64,7 +64,7 @@ return {
       local credentials, err = crud.find_by_id_or_field(
         dao_factory.jwt_secrets,
         nil,
-        self.params.jwt_key_or_id,
+        ngx.unescape_uri(self.params.jwt_key_or_id),
         "key"
       )
 
