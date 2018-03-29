@@ -17,41 +17,69 @@ local ngx_encode_base64    = ngx.encode_base64
 local ngx_get_headers      = ngx.req.get_headers
 local get_uri_args         = ngx.req.get_uri_args
 local regex_find           = ngx.re.find
+local gsub                 = string.gsub
+local find                 = string.find
+local sub                  = string.sub
 
 local name_cache = setmetatable({}, { __mode = "k" })
-local CACHE_SIZE = 64
+local CACHE_SIZE = 256
 
 local function get_dynamic_name(conf)
   local hdrs = ngx_get_headers()
   local args = get_uri_args()
   local lambda_key = conf.dynamic_lambda_key
 
-  local function_name = hdrs[lambda_key]
-  if not function_name then
-    function_name = args[lambda_key]
+  local lambda_name = hdrs[lambda_key]
+  if not lambda_name then
+
+    lambda_name = args[lambda_key]
+    if not lambda_name then
+      local uri = gsub(ngx.var.request_uri, "?.*", "")
+
+      local _, endidx = find(uri, "/" .. lambda_key .. "/", 1, true)
+
+      if endidx then
+       lambda_name = sub(uri, endidx + 1)
+      end
+    end
   end
 
-  if function_name then
+  if lambda_name then
     local cache = name_cache[conf]
     if not cache then
       cache = lrucache.new(CACHE_SIZE)
       name_cache[conf] = cache
     end
 
-    local found = cache:get(function_name)
-    if found then
-      ngx.log(ngx.DEBUG, "[aws-lambda] cache hit for: " .. function_name)
+    local function_name = cache:get(lambda_name)
+    if function_name then
+      ngx.log(ngx.DEBUG, "[aws-lambda] cache hit for: " .. lambda_name .. " mapped to: " .. function_name)
 
       return function_name, nil
     end
 
-    for _, pattern in ipairs(conf.dynamic_lambda_whitelist) do
-      if regex_find(function_name, pattern, "jo") then
-        ngx.log(ngx.DEBUG, "[aws-lambda] regexp hit for: " .. function_name .. " pattern: " .. pattern)
+    function_name = lambda_name
 
-        cache:set(function_name, 1)
+    if conf.dynamic_lambda_aliases then
+      for _, alias in ipairs(conf.dynamic_lambda_aliases) do
+        local lb_name, fn_name = alias:match("^([^:]+):*(.-)$")
 
-        return function_name, nil
+        if lb_name == lambda_name then
+          function_name = fn_name
+          break
+        end
+      end
+    end
+
+    if conf.dynamic_lambda_whitelist then
+      for _, pattern in ipairs(conf.dynamic_lambda_whitelist) do
+        if regex_find(function_name, pattern, "jo") then
+          ngx.log(ngx.DEBUG, "[aws-lambda] regexp hit for: " .. function_name .. " pattern: " .. pattern)
+
+          cache:set(lambda_name, function_name)
+
+          return function_name, nil
+        end
       end
     end
 

@@ -1,4 +1,5 @@
 local regex_match = ngx.re.match
+local find = string.find
 
 local function check_status(status)
   if status and (status < 100 or status > 999) then
@@ -14,6 +15,18 @@ local check_regex = function(value)
       local _, err = regex_match("just a string to test", rule)
       if err then
         return false, "value '" .. rule .. "' is not a valid regex"
+      end
+    end
+  end
+  return true
+end
+
+local function check_for_value(value)
+  if value then
+    for i, entry in ipairs(value) do
+      local ok = find(entry, ":")
+      if not ok then
+        return false, "key '" .. entry .. "' has no value"
       end
     end
   end
@@ -117,5 +130,9 @@ return {
       type = "array",
       func = check_regex
     },
+    dynamic_lambda_aliases = {
+       type = "array",
+       func = check_for_value
+    }
   },
 }
