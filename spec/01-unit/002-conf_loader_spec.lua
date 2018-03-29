@@ -11,8 +11,7 @@ describe("Configuration loader", function()
     assert.same({"127.0.0.1:8001", "127.0.0.1:8444 ssl"}, conf.admin_listen)
     assert.same({"0.0.0.0:8000", "0.0.0.0:8443 ssl"}, conf.proxy_listen)
     assert.same({"0.0.0.0:8002", "0.0.0.0:8445 ssl"}, conf.admin_gui_listen)
-    assert.equal("0.0.0.0:8003", conf.portal_gui_listen)
-    assert.equal("0.0.0.0:8446", conf.portal_gui_listen_ssl)
+    assert.same({"0.0.0.0:8003", "0.0.0.0:8446 ssl"}, conf.portal_gui_listen)
     assert.equal("0.0.0.0:8004", conf.portal_api_listen)
     assert.equal("0.0.0.0:8447", conf.portal_api_listen_ssl)
     assert.equal("logs/admin_gui_access.log", conf.admin_gui_access_log)
@@ -40,10 +39,9 @@ describe("Configuration loader", function()
     assert.same({"127.0.0.1:9001"}, conf.admin_listen)
     assert.same({"0.0.0.0:9000", "0.0.0.0:9443 ssl"}, conf.proxy_listen)
     assert.same({"0.0.0.0:9002"}, conf.admin_gui_listen)
-    assert.equal("0.0.0.0:8003", conf.portal_gui_listen)
-    assert.equal("0.0.0.0:8446", conf.portal_gui_listen_ssl)
-    assert.equal("127.0.0.1:8003", conf.portal_gui_uri)
-    assert.equal("127.0.0.1:8446", conf.portal_gui_uri_ssl)
+    assert.same({"0.0.0.0:9003", "0.0.0.0:9446 ssl"}, conf.portal_gui_listen)
+    assert.equal("127.0.0.1:9003", conf.portal_gui_uri)
+    assert.equal("127.0.0.1:9446", conf.portal_gui_uri_ssl)
     assert.equal("0.0.0.0:8004", conf.portal_api_listen)
     assert.equal("0.0.0.0:8447", conf.portal_api_listen_ssl)
     assert.equal("127.0.0.1:8004", conf.portal_api_uri)
@@ -361,14 +359,7 @@ describe("Configuration loader", function()
         portal_gui_listen = "127.0.0.1"
       })
       assert.is_nil(conf)
-      assert.equal("portal_gui_listen must be of form 'address:port'", err)
-
-      conf, err = conf_loader(nil, {
-        portal = "on",
-        portal_gui_listen_ssl = "127.0.0.1"
-      })
-      assert.is_nil(conf)
-      assert.equal("portal_gui_listen_ssl must be of form 'address:port'", err)
+      assert.equal("portal_gui_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol], [... next entry ...]", err)
 
       conf, err = conf_loader(nil, {
         portal = "on",

@@ -216,10 +216,11 @@ server {
 > if portal then
 server {
     server_name kong_portal_gui;
-    listen ${{PORTAL_GUI_LISTEN}};
+> for i = 1, #portal_gui_listeners do
+    listen $(portal_gui_listeners[i].listener);
+> end
 
-> if portal_gui_ssl then
-    listen ${{PORTAL_GUI_LISTEN_SSL}} ssl;
+> if portal_gui_ssl_enabled then
     ssl_certificate ${{PORTAL_GUI_SSL_CERT}};
     ssl_certificate_key ${{PORTAL_GUI_SSL_CERT_KEY}};
     ssl_protocols TLSv1.1 TLSv1.2;

@@ -265,7 +265,7 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
   end
 
   -- Developer Portal GUI & API SSL Certificate Handling
-  if kong_config.portal_gui_ssl and not kong_config.portal_gui_ssl_cert and
+  if kong_config.portal_gui_ssl_enabled and not kong_config.portal_gui_ssl_cert and
     not kong_config.portal_gui_ssl_cert_key
   then
     log.verbose("Developer Portal GUI SSL enabled, no custom certificate set: " ..

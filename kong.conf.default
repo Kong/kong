@@ -567,21 +567,12 @@
                                         # traffic if `portal_gui_ssl` is
                                         # enabled.
 
-#portal_gui_listen = 0.0.0.0:8003       # Address and Port on which Kong will
-                                        # accept non-ssl traffic for your
-                                        # Developer Portal.
-
-#portal_gui_listen_ssl = 0.0.0.0:8446   # Address and Port on which Kong will
-                                        # accept HTTPS traffic for your
-                                        # Developer Portal if `portal_gui_ssl`
-                                        # is enabled.
-
-#portal_gui_ssl = on                    # Determines if Nginx should be
-                                        # listening for HTTPS traffic on the
-                                        # `portal_gui_listen_ssl` address. If
-                                        # disabled, Nginx will only bind itself
-                                        # itself on `portal_gui_listen`, and
-                                        # all SSL settings will be ignored.
+#portal_gui_listen = 0.0.0.0:8003, 0.0.0.0:8446
+                                        # Comma-separated list of addresses and
+                                        # ports on which Kong will expose the
+                                        # Developer Portal GUI. Suffixes can be
+                                        # specified for each pair, similarly to
+                                        # other listen directives.
 
 #portal_gui_ssl_cert =                  # If `portal_gui_ssl` is enabled, the
                                         # absolute path to the SSL certificate

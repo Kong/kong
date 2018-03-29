@@ -119,7 +119,7 @@ describe("NGINX conf compiler", function()
         admin_listen = "127.0.0.1:8001",
         -- TODO fix portal/gui here when listeners were adapted
         admin_gui_listen = "0.0.0.0:9002",
-        portal_gui_ssl = false,
+        portal_gui_listen = "0.0.0.0:9003",
         portal_api_ssl = false,
       }))
       local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
@@ -421,7 +421,7 @@ describe("NGINX conf compiler", function()
           admin_listen = "127.0.0.1:8001",
           -- TODO fix gui/portal listeners here
           admin_gui_listen = "0.0.0.0:9002",
-          portal_gui_ssl = false,
+          portal_gui_listen = "0.0.0.0:9003",
           portal_api_ssl = false,
         })
 
@@ -440,7 +440,7 @@ describe("NGINX conf compiler", function()
           admin_gui_listen = "0.0.0.0:9002, 0.0.0.0:9445 ssl",
           admin_gui_ssl_cert = "spec/fixtures/kong_spec.crt",
           admin_gui_ssl_cert_key = "spec/fixtures/kong_spec.key",
-          portal_gui_ssl = true,
+          portal_gui_listen = "0.0.0.0:9003, 0.0.0.0:9446 ssl",
           portal_gui_ssl_cert = "spec/fixtures/kong_spec.crt",
           portal_gui_ssl_cert_key = "spec/fixtures/kong_spec.key",
           portal_api_ssl = true,

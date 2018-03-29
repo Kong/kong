@@ -15,11 +15,9 @@ vitals_ttl_seconds = 3600
 vitals_ttl_minutes = 90000
 
 portal = off
-portal_gui_listen = 0.0.0.0:8003
-portal_gui_listen_ssl = 0.0.0.0:8446
+portal_gui_listen = 0.0.0.0:8003, 0.0.0.0:8446 ssl
 portal_gui_uri = 127.0.0.1:8003
 portal_gui_uri_ssl = 127.0.0.1:8446
-portal_gui_ssl = on
 portal_gui_ssl_cert = NONE
 portal_gui_ssl_cert_key = NONE
 portal_api_listen = 0.0.0.0:8004
