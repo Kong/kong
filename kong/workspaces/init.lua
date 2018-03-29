@@ -404,8 +404,11 @@ function _M.is_route_colliding(req)
   local methods, uris, hosts = extract_req_data(req.params)
   local ws = _M.get_workspace()
   for perm in permutations(utils.split(methods or ALL_METHODS, ","),
-                           utils.split(uris or "/", ","),
-                           utils.split(hosts or "", ",")) do
+                           utils.split(uris or " ", uris and "," or ""),
+                           -- workarounds for
+                           -- https://github.com/stevedonovan/Penlight/blob/master/tests/test-stringx.lua#L141-L145
+                           utils.split(hosts or " ", hosts and "," or "")) do
+
     if not validate_route_for_ws(router, perm[1], perm[2], perm[3], ws) then
       return true
     end

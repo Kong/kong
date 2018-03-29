@@ -289,6 +289,13 @@ describe("workspaces", function()
       assert.falsy(iter())
     end)
 
+    it("iterates ok with set of only an empty string", function()
+      local iter = workspaces.permutations({""}, {3,4})
+      assert.are.same({"", 3}, iter())
+      assert.are.same({"", 4}, iter())
+      assert.falsy(iter())
+    end)
+
     it("works as a loop iterator", function()
       local res = {}
       for i in workspaces.permutations({1}, {2,3}) do
