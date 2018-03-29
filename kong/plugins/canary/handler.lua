@@ -52,6 +52,10 @@ local function switch_target(conf)
   if conf.upstream_host then
     ngx.ctx.balancer_address.host = conf.upstream_host
   end
+  -- switch upstream port to the new port number
+  if conf.upstream_port then
+    ngx.ctx.balancer_address.port = conf.upstream_port
+  end
   -- switch upstream uri to the new uri
   if conf.upstream_uri then
     ngx.var.upstream_uri = conf.upstream_uri

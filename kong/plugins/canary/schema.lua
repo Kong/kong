@@ -49,6 +49,14 @@ local function check_upstream_host(upstream_host)
   return true
 end
 
+local function check_upstream_port(upstream_port)
+  if upstream_port and (upstream_port < 1 or upstream_port > 65535) then
+    return false, "'upstream_port' must be a valid portnumber (1 - 65535)"
+  end
+
+  return true
+end
+
 local function check_upstream_uri(upstream_uri)
   if upstream_uri and upstream_uri == "" then
     return false, "'upstream_uri' must not be empty"
@@ -87,14 +95,18 @@ return {
       type = "string",
       func = check_upstream_host
     },
+    upstream_port = {  -- target port
+      type = number,
+      func = check_upstream_port
+    },
     upstream_uri = {   -- target uri
       type = "string",
       func = check_upstream_uri
     },
   },
   self_check = function(_, conf, _, is_update)
-    if not is_update and not conf.upstream_uri and not conf.upstream_host then
-      return false, Errors.schema "either 'upstream_uri' or 'upstream_host' must be provided"
+    if not is_update and not conf.upstream_uri and not conf.upstream_host and not conf.upstream_port then
+      return false, Errors.schema "either 'upstream_uri', 'upstream_host', or 'upstream_port' must be provided"
     end
 
     if not is_update and not conf.percentage and not conf.start then
