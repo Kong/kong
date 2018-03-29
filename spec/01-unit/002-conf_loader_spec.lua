@@ -10,8 +10,7 @@ describe("Configuration loader", function()
     -- TODO fix tests after listeners were adapted
     assert.same({"127.0.0.1:8001", "127.0.0.1:8444 ssl"}, conf.admin_listen)
     assert.same({"0.0.0.0:8000", "0.0.0.0:8443 ssl"}, conf.proxy_listen)
-    assert.equal("0.0.0.0:8002", conf.admin_gui_listen)
-    assert.equal("0.0.0.0:8445", conf.admin_gui_listen_ssl)
+    assert.same({"0.0.0.0:8002", "0.0.0.0:8445 ssl"}, conf.admin_gui_listen)
     assert.equal("0.0.0.0:8003", conf.portal_gui_listen)
     assert.equal("0.0.0.0:8446", conf.portal_gui_listen_ssl)
     assert.equal("0.0.0.0:8004", conf.portal_api_listen)
@@ -40,7 +39,7 @@ describe("Configuration loader", function()
     -- TODO fix tests after gui/portal listeners were adapted
     assert.same({"127.0.0.1:9001"}, conf.admin_listen)
     assert.same({"0.0.0.0:9000", "0.0.0.0:9443 ssl"}, conf.proxy_listen)
-    assert.equal("0.0.0.0:9002", conf.admin_gui_listen)
+    assert.same({"0.0.0.0:9002"}, conf.admin_gui_listen)
     assert.equal("0.0.0.0:8003", conf.portal_gui_listen)
     assert.equal("0.0.0.0:8446", conf.portal_gui_listen_ssl)
     assert.equal("127.0.0.1:8003", conf.portal_gui_uri)
@@ -97,10 +96,6 @@ describe("Configuration loader", function()
   it("extracts flags, ports and listen ips from proxy_listen/admin_listen", function()
     local conf = assert(conf_loader())
     -- TODO fix these after listeners were adapted
-    assert.equal("0.0.0.0", conf.admin_gui_ip)
-    assert.equal(8002, conf.admin_gui_port)
-    assert.equal("0.0.0.0", conf.admin_gui_ssl_ip)
-    assert.equal(8445, conf.admin_gui_ssl_port)
     -- portal is disabled by default
     assert.equal(nil, conf.portal_gui_ip)
     assert.equal(nil, conf.portal_gui_port)
@@ -134,6 +129,18 @@ describe("Configuration loader", function()
     assert.equal(true, conf.proxy_listeners[2].ssl)
     assert.equal(false, conf.proxy_listeners[2].http2)
     assert.equal("0.0.0.0:8443 ssl", conf.proxy_listeners[2].listener)
+
+    assert.equal("0.0.0.0", conf.admin_gui_listeners[1].ip)
+    assert.equal(8002, conf.admin_gui_listeners[1].port)
+    assert.equal(false, conf.admin_gui_listeners[1].ssl)
+    assert.equal(false, conf.admin_gui_listeners[1].http2)
+    assert.equal("0.0.0.0:8000", conf.proxy_listeners[1].listener)
+
+    assert.equal("0.0.0.0", conf.admin_gui_listeners[2].ip)
+    assert.equal(8445, conf.admin_gui_listeners[2].port)
+    assert.equal(true, conf.admin_gui_listeners[2].ssl)
+    assert.equal(false, conf.admin_gui_listeners[2].http2)
+    assert.equal("0.0.0.0:8445 ssl", conf.admin_gui_listeners[2].listener)
   end)
   it("extracts ssl flags properly when hostnames contain them", function()
     local conf
@@ -342,13 +349,13 @@ describe("Configuration loader", function()
       assert.is_nil(conf)
       assert.equal("proxy_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol], [... next entry ...]", err)
 
-      -- TODO fix listener tests after gui/portal listeners were adapted
       conf, err = conf_loader(nil, {
-        admin_gui_listen_ssl = "127.0.0.1"
+        admin_gui_listen = "127.0.0.1"
       })
       assert.is_nil(conf)
-      assert.equal("admin_gui_listen_ssl must be of form 'address:port'", err)
+      assert.equal("admin_gui_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol], [... next entry ...]", err)
 
+      -- TODO fix listener tests after gui/portal listeners were adapted
       conf, err = conf_loader(nil, {
         portal = "on",
         portal_gui_listen = "127.0.0.1"

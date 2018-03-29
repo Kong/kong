@@ -118,7 +118,7 @@ describe("NGINX conf compiler", function()
         proxy_listen = "127.0.0.1:8000",
         admin_listen = "127.0.0.1:8001",
         -- TODO fix portal/gui here when listeners were adapted
-        admin_gui_ssl = false,
+        admin_gui_listen = "0.0.0.0:9002",
         portal_gui_ssl = false,
         portal_api_ssl = false,
       }))
@@ -420,7 +420,7 @@ describe("NGINX conf compiler", function()
           proxy_listen = "127.0.0.1:8000",
           admin_listen = "127.0.0.1:8001",
           -- TODO fix gui/portal listeners here
-          admin_gui_ssl = false,
+          admin_gui_listen = "0.0.0.0:9002",
           portal_gui_ssl = false,
           portal_api_ssl = false,
         })
@@ -437,7 +437,7 @@ describe("NGINX conf compiler", function()
           ssl_cert_key = "spec/fixtures/kong_spec.key",
           admin_ssl_cert = "spec/fixtures/kong_spec.crt",
           admin_ssl_cert_key = "spec/fixtures/kong_spec.key",
-          admin_gui_ssl = true,
+          admin_gui_listen = "0.0.0.0:9002, 0.0.0.0:9445 ssl",
           admin_gui_ssl_cert = "spec/fixtures/kong_spec.crt",
           admin_gui_ssl_cert_key = "spec/fixtures/kong_spec.key",
           portal_gui_ssl = true,

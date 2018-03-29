@@ -69,8 +69,7 @@ local CONF_INFERENCES = {
   -- TODO fix listen directives here
   proxy_listen = {typ = "array"},
   admin_listen = {typ = "array"},
-  admin_gui_listen = {typ = "string"},
-  admin_gui_listen_ssl = {typ = "string"},
+  admin_gui_listen = {typ = "array"},
   admin_gui_error_log = {typ = "string"},
   admin_gui_access_log = {typ = "string"},
   admin_gui_flags = {typ = "string"},
@@ -120,8 +119,6 @@ local CONF_INFERENCES = {
   dns_no_sync = {typ = "boolean"},
 
   client_ssl = {typ = "boolean"},
-  -- TODO fix admin_gui_ssl here - it goes away in the new format
-  admin_gui_ssl = {typ = "boolean"},
 
   proxy_access_log = {typ = "string"},
   proxy_error_log = {typ = "string"},
@@ -313,7 +310,7 @@ local function check_and_infer(conf)
     end
   end
 
-  if conf.admin_gui_ssl then
+  if (table.concat(conf.admin_gui_listen, ",") .. " "):find("%sssl[%s,]") then
     if conf.admin_gui_ssl_cert and not conf.admin_gui_ssl_cert_key then
       errors[#errors+1] = "admin_gui_ssl_cert_key must be specified"
     elseif conf.admin_gui_ssl_cert_key and not conf.admin_gui_ssl_cert then
@@ -651,15 +648,6 @@ local function load(path, custom_conf)
     -- TODO fix admin gui and portal listeners
     local ip_port_pat = "(.+):([%d]+)$"
 
-    local admin_gui_ip, admin_gui_port = string.match(conf.admin_gui_listen, ip_port_pat)
-    local admin_gui_ssl_ip, admin_gui_ssl_port = string.match(conf.admin_gui_listen_ssl, ip_port_pat)
-
-    if not admin_gui_port then return nil, "admin_gui_listen must be of form 'address:port'"
-    elseif not admin_gui_ssl_port then return nil, "admin_gui_listen_ssl must be of form 'address:port'" end
-
-    conf.admin_gui_ip = admin_gui_ip
-    conf.admin_gui_ssl_ip = admin_gui_ssl_ip
-
     if conf.portal then
       local portal_gui_ip, portal_gui_port = string.match(conf.portal_gui_listen, ip_port_pat)
       local portal_gui_ssl_ip, portal_gui_ssl_port = string.match(conf.portal_gui_listen_ssl, ip_port_pat)
@@ -681,9 +669,6 @@ local function load(path, custom_conf)
       conf.portal_api_port = tonumber(portal_api_port)
       conf.portal_api_ssl_port = tonumber(portal_api_ssl_port)
     end
-
-    conf.admin_gui_port = tonumber(admin_gui_port)
-    conf.admin_gui_ssl_port = tonumber(admin_gui_ssl_port)
 
     -- XXX new listeners set up follows - remove after resolving
 
@@ -718,6 +703,21 @@ local function load(path, custom_conf)
     for _, listener in ipairs(conf.admin_listeners) do
       if listener.ssl == true then
         conf.admin_ssl_enabled = true
+        break
+      end
+    end
+
+    conf.admin_gui_listeners, err = parse_listeners(conf.admin_gui_listen)
+    if err then
+      return nil, "admin_gui_listen " .. err
+    end
+
+    setmetatable(conf.admin_gui_listeners, mt)  -- do not pass on, parse again
+    conf.admin_gui_ssl_enabled = false
+
+    for _, listener in ipairs(conf.admin_gui_listeners) do
+      if listener.ssl == true then
+        conf.admin_gui_ssl_enabled = true
         break
       end
     end

@@ -251,7 +251,7 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
     kong_config.admin_ssl_cert = kong_config.admin_ssl_cert_default
     kong_config.admin_ssl_cert_key = kong_config.admin_ssl_cert_key_default
   end
-  if kong_config.admin_gui_ssl and not kong_config.admin_gui_ssl_cert and
+  if kong_config.admin_gui_ssl_enabled and not kong_config.admin_gui_ssl_cert and
     not kong_config.admin_gui_ssl_cert_key
   then
     log.verbose("Admin GUI SSL enabled, no custom certificate set: " ..
@@ -356,7 +356,10 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
   end
 
   -- setup Kong Enterprise interfaces based on current configuration
-  ee.prepare_admin(kong_config)
+  if kong_config.admin_gui_listeners then
+    ee.prepare_admin(kong_config)
+  end
+
   ee.prepare_portal(kong_config)
 
   return true

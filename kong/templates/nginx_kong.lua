@@ -158,12 +158,14 @@ server {
 > end
 
 
+> if #admin_listen > 0 and #admin_gui_listeners > 0 then
 server {
     server_name kong_gui;
-    listen ${{ADMIN_GUI_LISTEN}};
+> for i = 1, #admin_gui_listeners do
+    listen $(admin_gui_listeners[i].listener);
+> end
 
-> if admin_gui_ssl then
-    listen ${{ADMIN_GUI_LISTEN_SSL}} ssl;
+> if admin_gui_ssl_enabled then
     ssl_certificate ${{ADMIN_GUI_SSL_CERT}};
     ssl_certificate_key ${{ADMIN_GUI_SSL_CERT_KEY}};
     ssl_protocols TLSv1.1 TLSv1.2;
@@ -208,6 +210,7 @@ server {
         return 200 'User-agent: *\nDisallow: /';
     }
 }
+> end
 
 
 > if portal then

@@ -35,8 +35,7 @@ portal_api_error_log = logs/error.log
 proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 ssl
 admin_listen = 127.0.0.1:8001, 127.0.0.1:8444 ssl
 
-admin_gui_listen = 0.0.0.0:8002
-admin_gui_listen_ssl = 0.0.0.0:8445
+admin_gui_listen = 0.0.0.0:8002, 0.0.0.0:8445 ssl
 admin_gui_access_log = logs/admin_gui_access.log
 admin_gui_error_log = logs/admin_gui_error.log
 admin_gui_flags = {}
@@ -55,7 +54,6 @@ ssl_cipher_suite = modern
 ssl_ciphers = ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256
 admin_ssl_cert = NONE
 admin_ssl_cert_key = NONE
-admin_gui_ssl = on
 admin_gui_ssl_cert = NONE
 admin_gui_ssl_cert_key = NONE
 upstream_keepalive = 60

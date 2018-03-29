@@ -124,11 +124,14 @@
                          # capabilities) pulling its configuration changes
                          # from the database.
 
-#admin_gui_listen = 0.0.0.0:8002 # Address and port on which Kong will
-                                 # expose the Admin API GUI. This interface
-                                 # lets you configure and manage Kong via a
-                                 # web interface and should be kept private
-                                 # and secured.
+#admin_gui_listen = 0.0.0.0:8002, 0.0.0.0:8445 ssl
+                                 # Comma-separated list of addresses and ports
+                                 # on which Kong will expose the Admin API GUI.
+                                 # This interface lets you configure and manage
+                                 # Kong via a web interface and should be kept
+                                 # private and secured. Suffixes can be specified
+                                 # for each pair, similarly to other listen
+                                 # directives.
 
 #admin_gui_access_log = logs/admin_gui_access.log  # Path for admin gui request
                                                    # access logs. If this value
@@ -141,10 +144,6 @@
                                                    # is a relative path it will
                                                    # be placed under the `prefix`
                                                    # location
-
-#admin_gui_listen_ssl = 0.0.0.0:8445 # Address and port on which Kong will
-                                     # accept HTTPS requests to the admin GUI,
-                                     # if `admin_ssl` is enabled.
 
 #nginx_user = nobody nobody      # Defines user and group credentials used by
                                  # worker processes. If group is omitted, a
@@ -206,19 +205,11 @@
 #admin_ssl_cert_key =            # The absolute path to the SSL key for
                                  # `admin_listen` values with SSL enabled.
 
-#admin_gui_ssl = on              # Determines if Nginx should be listening for
-                                 # HTTPS traffic on the `admin_gui_listen_ssl`
-                                 # address. If disabled, Nginx will only bind
-                                 # itself on `admin_gui_listen`, and all SSL
-                                 # settings will be ignored.
+#admin_gui_ssl_cert =            # The absolute path to the SSL certificate for
+                                 # `admin_gui_listen` values with SSL enabled.
 
-#admin_gui_ssl_cert =            # If `admin_gui_ssl` is enabled, the absolute
-                                 # path to the SSL certificate for the
-                                 # `admin_gui_listen_ssl` address.
-
-#admin_gui_ssl_cert_key =        # If `admin_gui_ssl` is enabled, the absolute
-                                 # path to the SSL key for the
-                                 # `admin_gui_listen_ssl` address.
+#admin_gui_ssl_cert_key =        # The absolute path to the SSL key for
+                                 # `admin_gui_listen` values with SSL enabled.
 
 #admin_gui_flags = {}            # Alters the layout Admin GUI (JSON)
 
