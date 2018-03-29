@@ -148,7 +148,7 @@ function AWSLambdaHandler:access(conf)
     return_code = conf.unhandled_status
 
   elseif conf.handled_status_pattern
-    and headers["X-Amz-Function-Error"] == "Handled"
+    and (headers["X-Amz-Function-Error"] == "Handled" or headers["X-Amz-Function-Error"] == "Unhandled")
   then
     local code = tonumber(string.match(body, conf.handled_status_pattern))
     -- supply provided code

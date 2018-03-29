@@ -63,6 +63,14 @@ for _, strategy in helpers.each_strategy() do
         service     = service10
       }
 
+      local route12 = bp.routes:insert {
+        hosts       = { "lambda12.com" }
+      }
+
+      local route13 = bp.routes:insert {
+        hosts       = { "lambda13.com" }
+      }
+
       bp.plugins:insert {
         name     = "aws-lambda",
         route_id = route1.id,
@@ -194,6 +202,32 @@ for _, strategy in helpers.each_strategy() do
           forward_request_uri     = false,
           forward_request_headers = true,
           forward_request_body    = true,
+        }
+      }
+
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route_id = route12.id,
+        config                    = {
+          port                    = 10001,
+          aws_key                 = "mock-key",
+          aws_secret              = "mock-secret",
+          aws_region              = "us-east-1",
+          function_name           = "functionWithHandledError",
+          handled_status_pattern  = "Error:([1-9][0-9][0-9])"
+        }
+      }
+
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route_id = route13.id,
+        config                    = {
+          port                    = 10001,
+          aws_key                 = "mock-key",
+          aws_secret              = "mock-secret",
+          aws_region              = "us-east-1",
+          function_name           = "functionWithUnhandledError",
+          handled_status_pattern  = "Error:([1-9][0-9][0-9])"
         }
       }
 
@@ -496,6 +530,51 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       assert.res_status(412, res)
+      assert.equal("Unhandled", res.headers["X-Amz-Function-Error"])
+    end)
+    it("invokes a Lambda function with an handled function error, status override response", function()
+      local res = assert(proxy_client:send {
+        method = "POST",
+        path = "/post",
+        headers = {
+          ["Host"] = "lambda12.com",
+          ["Content-Type"] = "application/x-www-form-urlencoded"
+        },
+        body = {
+          key1 = "Error:400"
+        }
+      })
+      assert.res_status(400, res)
+      assert.equal("Handled", res.headers["X-Amz-Function-Error"])
+    end)
+    it("invokes a Lambda function with an handled function error, default response", function()
+      local res = assert(proxy_client:send {
+        method = "POST",
+        path = "/post",
+        headers = {
+          ["Host"] = "lambda12.com",
+          ["Content-Type"] = "application/x-www-form-urlencoded"
+        },
+        body = {
+          key1 = "value"
+        }
+      })
+      assert.res_status(200, res)
+      assert.equal("Handled", res.headers["X-Amz-Function-Error"])
+    end)
+    it("invokes a Lambda function with an unhandled function error, status override response", function()
+      local res = assert(proxy_client:send {
+        method = "POST",
+        path = "/post",
+        headers = {
+          ["Host"] = "lambda13.com",
+          ["Content-Type"] = "application/x-www-form-urlencoded"
+        },
+        body = {
+          key1 = "Error:400"
+        }
+      })
+      assert.res_status(400, res)
       assert.equal("Unhandled", res.headers["X-Amz-Function-Error"])
     end)
   end)
