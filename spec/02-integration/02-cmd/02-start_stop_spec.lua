@@ -171,9 +171,10 @@ describe("kong start/stop", function()
 
         -- get a connection, retry until kong starts
         helpers.wait_until(function()
-          proxy_client = helpers.proxy_client()
-          return true
-        end)
+          local pok
+          pok, proxy_client = pcall(helpers.proxy_client)
+          return pok
+        end, 10)
 
         local res = assert(proxy_client:send {
           method = "GET",
