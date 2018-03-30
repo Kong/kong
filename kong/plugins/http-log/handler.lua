@@ -86,7 +86,10 @@ local function log(premature, conf, body, name)
     ngx.log(ngx.ERR, name .. "request failed: " .. req_url .. "status: " .. tostring(res.status), err)
   end
 
-  httpc:set_keepalive(conf.timeout)
+  local ok, err = httpc:set_keepalive(conf.keepalive)
+  if not ok then
+    ngx.log(ngx.ERR, name .. "failed to set_keepalive", err)
+  end
 end
 
 -- Only provide `name` when deriving from this class. Not when initializing an instance.
