@@ -3,9 +3,41 @@ local utils   = require "kong.tools.utils"
 local reports = require "kong.core.reports"
 local workspaces = require "kong.workspaces"
 local app_helpers = require "lapis.application"
+local singletons = require "kong.singletons"
+local Router = require "kong.core.router"
+local core_handler = require "kong.core.handler"
 
 return {
   ["/apis/"] = {
+
+    before = function(self, dao_factory, helpers)
+      local uuid = require("kong.tools.utils").uuid
+      local version, err = singletons.cache:get("router:version", {
+        ttl = 0
+      }, function() return utils.uuid() end)
+      if err then
+        ngx.log(ngx.CRIT, "could not ensure router is up to date: ", err)
+
+      elseif true or router_version ~= version then
+        -- router needs to be rebuilt in this worker
+        ngx.log(ngx.DEBUG, "rebuilding router")
+        local old_ws = ngx.ctx.workspace
+        ngx.ctx.workspace = {name = "*"}
+
+        local ok, err = core_handler.build_router(singletons.dao, uuid())
+
+        ngx.ctx.workspace = old_ws
+        if not ok then
+          ngx.log(ngx.CRIT, "could not rebuild router: ", err)
+        end
+      end
+
+      local old_ws = ngx.ctx.workspace
+      ngx.ctx.workspace = {name = "*"}
+      core_handler.build_router(dao_factory, uuid())
+      ngx.ctx.workspace = old_ws
+    end,
+
     GET = function(self, dao_factory)
       crud.paginated_set(self, dao_factory.apis)
     end,

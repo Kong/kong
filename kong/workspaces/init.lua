@@ -340,9 +340,23 @@ end
 _M.match_route = match_route
 
 
-local function api_in_ws(api, ws)
-  return member(ws.name, listify(api.workspace))
+local function api_workspaces(api)
+  local r = singletons.dao.workspace_entities:find_all({entity_id = api.id})
+  local wss_id = map(function(x) return x.workspace_id end, r)
+  local wss = map(function(x) return singletons.dao.workspaces:find({id = x}) end, wss_id)
+  return map(function(x) return x.name end, wss)
 end
+
+
+local function api_in_ws(api, ws)
+  return member(ws.name, listify(api_workspaces(api)))
+end
+
+-- local function api_in_ws(api, ws) --
+--   ngx.log(0, [[{api, ws}:]], require("inspect")({api, ws}))
+--   return member(ws.name, listify(api.workspace))
+-- end
+
 _M.api_in_ws = api_in_ws
 
 
@@ -357,7 +371,7 @@ local function validate_route_for_ws(router, method, uri, host, ws)
     ngx_log(DEBUG, "no selected_route")
     return true
 
-  elseif api_in_ws(selected_route, ws) then -- same workspace
+  elseif api_in_ws(selected_route.api, ws) then -- same workspace
     ngx_log(DEBUG, "selected_route in the same ws")
     return true
 

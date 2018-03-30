@@ -549,7 +549,6 @@ describe("Admin API #" .. kong_config.database, function()
           })
           local body = assert.res_status(201, res)
 
-          os.execute("sleep 5")
           local json = cjson.decode(body)
           assert.equal("my-api", json.name)
           assert.same({ "my.api.com" }, json.hosts)
@@ -585,6 +584,7 @@ describe("Admin API #" .. kong_config.database, function()
                          headers = {["Content-Type"] = "application/json"}
           })
           assert.res_status(409, res)
+
       end)
     end)
   end)
