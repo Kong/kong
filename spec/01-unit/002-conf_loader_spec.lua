@@ -7,7 +7,6 @@ describe("Configuration loader", function()
     assert.is_string(conf.lua_package_path)
     assert.is_nil(conf.nginx_user)
     assert.equal("auto", conf.nginx_worker_processes)
-    -- TODO fix tests after listeners were adapted
     assert.same({"127.0.0.1:8001", "127.0.0.1:8444 ssl"}, conf.admin_listen)
     assert.same({"0.0.0.0:8000", "0.0.0.0:8443 ssl"}, conf.proxy_listen)
     assert.same({"0.0.0.0:8002", "0.0.0.0:8445 ssl"}, conf.admin_gui_listen)
@@ -34,7 +33,6 @@ describe("Configuration loader", function()
     -- overrides
     assert.is_nil(conf.nginx_user)
     assert.equal("1",            conf.nginx_worker_processes)
-    -- TODO fix tests after gui/portal listeners were adapted
     assert.same({"127.0.0.1:9001"}, conf.admin_listen)
     assert.same({"0.0.0.0:9000", "0.0.0.0:9443 ssl"}, conf.proxy_listen)
     assert.same({"0.0.0.0:9002"}, conf.admin_gui_listen)
@@ -344,7 +342,6 @@ describe("Configuration loader", function()
       assert.is_nil(conf)
       assert.equal("admin_gui_listen must be of form: [off] | <ip>:<port> [ssl] [http2] [proxy_protocol], [... next entry ...]", err)
 
-      -- TODO fix listener tests after gui/portal listeners were adapted
       conf, err = conf_loader(nil, {
         portal = "on",
         portal_gui_listen = "127.0.0.1"
