@@ -21,8 +21,11 @@ return {
       elseif true or router_version ~= version then
         -- router needs to be rebuilt in this worker
         ngx.log(ngx.DEBUG, "rebuilding router")
+
+        -- hack to temporarily set the workspace as the global one so
+        -- the inner find_all is able to find all apis and load them
         local old_ws = ngx.ctx.workspace
-        ngx.ctx.workspace = {name = "*"}
+        ngx.ctx.workspace = { name = "*" }
 
         local ok, err = core_handler.build_router(singletons.dao, uuid())
 
@@ -32,6 +35,7 @@ return {
         end
       end
 
+      -- hack
       local old_ws = ngx.ctx.workspace
       ngx.ctx.workspace = {name = "*"}
       core_handler.build_router(dao_factory, uuid())
@@ -49,6 +53,7 @@ return {
     end,
 
     POST = function(self, dao_factory, helpers)
+
       if workspaces.is_route_colliding(self) then
         local err = "API route collides with an existing API"
         return helpers.responses.send_HTTP_CONFLICT(err)

@@ -347,7 +347,7 @@ end
 
 
 local function api_in_ws(api, ws)
-  return member(ws.id, listify(api_workspaces(api)))
+  return member(ws.id, api_workspaces(api))
 end
 
 -- local function api_in_ws(api, ws) --
