@@ -22,7 +22,7 @@ for i, policy in ipairs({"cluster", "redis"}) do
       helpers.kill_all()
       redis.flush_redis(REDIS_HOST, REDIS_PORT, REDIS_DATABASE, REDIS_PASSWORD)
       helpers.dao:drop_schema()
-      helpers.run_migrations()
+      helpers.get_db_utils()
 
       consumer1 = assert(helpers.dao.consumers:insert {
         custom_id = "provider_123"

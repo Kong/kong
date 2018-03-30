@@ -15,7 +15,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
     dao = assert(DAOFactory.new(kong_config))
 
     dao:truncate_tables()
-    helpers.run_migrations(dao)
+    dao:run_migrations()
     assert(helpers.start_kong({
       database = kong_config.database
     }))
@@ -1235,7 +1235,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
       -- n.b. this is _very_ expensive, particularly with c*, so we avoid it
       -- until now, as here we care about testing defaults and migration results
       dao:drop_schema()
-      helpers.run_migrations(dao)
+      dao:run_migrations()
     end)
 
     it("defines the default roles", function()
@@ -1473,7 +1473,7 @@ for _, h in ipairs({ "", "Custom-Auth-Token" }) do
     local expected = h == "" and "Kong-Admin-Token" or h
 
     setup(function()
-      helpers.run_migrations()
+      helpers.get_db_utils()
       assert(helpers.start_kong({
         rbac_auth_header = h ~= "" and h or nil,
       }))

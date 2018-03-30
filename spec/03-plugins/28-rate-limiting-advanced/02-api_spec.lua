@@ -5,7 +5,7 @@ describe("rate-limiting-advanced API", function()
   local admin_client
 
   setup(function()
-    helpers.run_migrations()
+    helpers.get_db_utils()
     assert(helpers.dao.apis:insert {
       name         = "test",
       hosts        = { "test1.com" },

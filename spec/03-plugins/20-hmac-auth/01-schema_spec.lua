@@ -1,6 +1,7 @@
-local schemas = require "kong.dao.schemas_validation"
+local schemas          = require "kong.dao.schemas_validation"
 local hmac_auth_schema = require "kong.plugins.hmac-auth.schema"
-local validate_entity = schemas.validate_entity
+local validate_entity  = schemas.validate_entity
+
 
 describe("Plugin: hmac-auth (schema)", function()
   it("accepts empty config", function()

@@ -1,19 +1,22 @@
 local aws_lambda_schema = require "kong.plugins.aws-lambda.schema"
-local schemas = require "kong.dao.schemas_validation"
-local utils = require "kong.tools.utils"
-local validate_entity = schemas.validate_entity
+local schemas           = require "kong.dao.schemas_validation"
+local utils             = require "kong.tools.utils"
+
+
+local validate_entity   = schemas.validate_entity
+
 
 describe("Plugin: AWS Lambda (schema)", function()
   local DEFAULTS = {
-    timeout = 60000,
-    keepalive = 60000,
-    aws_key = "my-key",
-    aws_secret = "my-secret",
-    aws_region = "us-east-1",
-    function_name = "my-function",
+    timeout          = 60000,
+    keepalive        = 60000,
+    aws_key          = "my-key",
+    aws_secret       = "my-secret",
+    aws_region       = "us-east-1",
+    function_name    = "my-function",
     invocation_type  = "RequestResponse",
-    log_type = "Tail",
-    port  = 443,
+    log_type         = "Tail",
+    port             = 443,
   }
 
   it("accepts nil Unhandled Response Status Code", function()

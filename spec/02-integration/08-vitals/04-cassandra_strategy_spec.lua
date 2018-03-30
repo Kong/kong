@@ -2,7 +2,6 @@ local cassandra_strategy = require "kong.vitals.cassandra.strategy"
 local dao_factory = require "kong.dao.factory"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local utils = require "kong.tools.utils"
-local helpers = require "spec.helpers"
 local fmt = string.format
 local time = ngx.time
 local cassandra = require "cassandra"
@@ -24,14 +23,13 @@ dao_helpers.for_each_dao(function(kong_conf)
 
 
     setup(function()
-      helpers.run_migrations()
-
       local opts = {
         ttl_seconds = 3600,
         ttl_minutes = 90000,
       }
 
       dao      = assert(dao_factory.new(kong_conf))
+      dao:run_migrations()
       strategy = cassandra_strategy.new(dao, opts)
       cluster  = dao.db.cluster
       uuid     = utils.uuid()

@@ -139,9 +139,15 @@ end
 
 
 local function prepare_admin(kong_config)
+  local admin_listeners = kong_config.admin_listeners
+  local admin_port, admin_ssl_port
+  if admin_listeners then
+    admin_port = admin_listeners[1] and admin_listeners[1].port
+    admin_ssl_port = admin_listeners[2] and admin_listeners[2].port
+  end
   return prepare_interface("gui", {
-    ADMIN_API_PORT = tostring(kong_config.admin_port),
-    ADMIN_API_SSL_PORT = tostring(kong_config.admin_ssl_port),
+    ADMIN_API_PORT = tostring(admin_port),
+    ADMIN_API_SSL_PORT = tostring(admin_ssl_port),
     RBAC_ENFORCED = tostring(kong_config.enforce_rbac),
     RBAC_HEADER = tostring(kong_config.rbac_auth_header),
     KONG_VERSION = tostring(meta.versions.package),

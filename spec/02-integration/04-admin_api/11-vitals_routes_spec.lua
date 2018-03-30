@@ -40,7 +40,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         -- start with a clean db
         dao:drop_schema()
-        helpers.run_migrations(dao)
+        dao:run_migrations()
 
         -- to insert test data
         if dao.db_type == "postgres" then
@@ -765,7 +765,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       setup(function()
         dao = assert(dao_factory.new(kong_conf))
 
-        helpers.run_migrations(dao)
+        dao:run_migrations()
 
         assert(helpers.start_kong({
           database = kong_conf.database,

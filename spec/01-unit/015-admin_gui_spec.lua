@@ -75,8 +75,16 @@ describe("prepare_prefix", function()
     -- prepare with some mock values
     ee.prepare_admin({
       prefix = mock_prefix,
-      admin_port = 9001,
-      admin_ssl_port = 9444,
+      admin_listeners = {
+        {
+          ip = "0.0.0.0",
+          port = 9001
+        },
+        {
+          ip = "0.0.0.0",
+          port = 9444,
+        }
+      },
       enforce_rbac = false,
       rbac_auth_header = "Kong-Admin-Token",
     })
@@ -110,8 +118,16 @@ describe("prepare_prefix", function()
     -- prepare with some mock values
     ee.prepare_admin({
       prefix = mock_prefix,
-      admin_port = 9002,
-      admin_ssl_port = 9445,
+      admin_listeners = {
+        {
+          ip = "0.0.0.0",
+          port = 9002
+        },
+        {
+          ip = "0.0.0.0",
+          port = 9445,
+        }
+      },
       enforce_rbac = true,
       rbac_auth_header = "Kong-Other-Token",
     })

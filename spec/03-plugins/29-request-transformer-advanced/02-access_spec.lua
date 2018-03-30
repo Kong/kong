@@ -5,6 +5,8 @@ describe("Plugin: request-transformer-advanced(access)", function()
   local client
 
   setup(function()
+    helpers.get_db_utils()
+
     local api1 = assert(helpers.dao.apis:insert { name = "api-1", hosts = { "test1.com" }, upstream_url = helpers.mock_upstream_url})
     local api2 = assert(helpers.dao.apis:insert { name = "api-2", hosts = { "test2.com" }, upstream_url = helpers.mock_upstream_url})
     local api3 = assert(helpers.dao.apis:insert { name = "api-3", hosts = { "test3.com" }, upstream_url = helpers.mock_upstream_url})
@@ -24,8 +26,6 @@ describe("Plugin: request-transformer-advanced(access)", function()
     local api17 = assert(helpers.dao.apis:insert { name = "api-17", hosts = { "test17.com" }, uris = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" }, upstream_url = helpers.mock_upstream_url, strip_uri = false})
     local api18 = assert(helpers.dao.apis:insert { name = "api-18", hosts = { "test18.com" }, uris = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" }, upstream_url = helpers.mock_upstream_url, strip_uri = false})
     local api19 = assert(helpers.dao.apis:insert { name = "api-19", hosts = { "test19.com" }, uris = { "/requests/user1/(?<user1>\\w+)/user2/(?<user2>\\S+)" }, upstream_url = helpers.mock_upstream_url, strip_uri = false})
-
-    helpers.run_migrations()
 
     assert(helpers.dao.plugins:insert {
       api_id = api1.id,

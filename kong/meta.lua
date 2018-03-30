@@ -2,8 +2,8 @@ local ee_meta = require "kong.enterprise_edition.meta"
 
 local version = setmetatable({
   major = 0,
-  minor = 12,
-  patch = 3,
+  minor = 13,
+  patch = 0,
   --suffix = ""
 }, {
   __tostring = function(t)

@@ -1,582 +1,543 @@
-local helpers = require "spec.helpers"
+local helpers  = require "spec.helpers"
+
+
+local fmt = string.format
+
+
 local UDP_PORT = 20000
 
-describe("Plugin: statsd (log)", function()
-  local client
-  setup(function()
-    helpers.run_migrations()
 
-    local consumer1 = assert(helpers.dao.consumers:insert {
-      username  = "bob",
-      custom_id = "robert",
-    })
-    assert(helpers.dao.keyauth_credentials:insert {
-      key         = "kong",
-      consumer_id = consumer1.id,
-    })
+for _, strategy in helpers.each_strategy() do
+  describe("Plugin: statsd (log) [#" .. strategy .. "]", function()
+    local proxy_client
 
-    local api1 = assert(helpers.dao.apis:insert {
-      name         = "stastd1",
-      hosts        = { "logging1.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-    assert(helpers.dao.plugins:insert {
-      name   = "key-auth",
-      api_id = api1.id,
-    })
-    local api2 = assert(helpers.dao.apis:insert {
-      name         = "stastd2",
-      hosts        = { "logging2.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-    local api3 = assert(helpers.dao.apis:insert {
-      name         = "stastd3",
-      hosts        = { "logging3.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-    local api4 = assert(helpers.dao.apis:insert {
-      name         = "stastd4",
-      hosts        = { "logging4.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-    local api5 = assert(helpers.dao.apis:insert {
-      name         = "stastd5",
-      hosts        = { "logging5.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-    local api6 = assert(helpers.dao.apis:insert {
-      name         = "stastd6",
-      hosts        = { "logging6.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-    local api7 = assert(helpers.dao.apis:insert {
-      name         = "stastd7",
-      hosts        = { "logging7.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-    local api8 = assert(helpers.dao.apis:insert {
-      name         = "stastd8",
-      hosts        = { "logging8.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-    local api9 = assert(helpers.dao.apis:insert {
-      name         = "stastd9",
-      hosts        = { "logging9.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-    assert(helpers.dao.plugins:insert {
-      name   = "key-auth",
-      api_id = api9.id,
-    })
-    local api10 = assert(helpers.dao.apis:insert {
-      name         = "stastd10",
-      hosts        = { "logging10.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-    assert(helpers.dao.plugins:insert {
-      name   = "key-auth",
-      api_id = api10.id,
-    })
-    local api11 = assert(helpers.dao.apis:insert {
-      name         = "stastd11",
-      hosts        = { "logging11.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
+    setup(function()
+      local bp = helpers.get_db_utils(strategy)
 
-    assert(helpers.dao.plugins:insert {
-      name   = "key-auth",
-      api_id = api11.id,
-    })
-
-    local api12 = assert(helpers.dao.apis:insert {
-      name         = "stastd12",
-      hosts        = { "logging12.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-
-    local api13 = assert(helpers.dao.apis:insert {
-      name         = "stastd13",
-      hosts        = { "logging13.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-
-    assert(helpers.dao.plugins:insert {
-      name   = "key-auth",
-      api_id = api12.id,
-    })
-
-    assert(helpers.dao.plugins:insert {
-      name   = "key-auth",
-      api_id = api13.id,
-    })
-
-    assert(helpers.dao.plugins:insert {
-      api_id = api1.id,
-      name   = "statsd",
-      config = {
-        host = "127.0.0.1",
-        port = UDP_PORT,
-      },
-    })
-    assert(helpers.dao.plugins:insert {
-      api_id = api2.id,
-      name   = "statsd",
-      config = {
-        host    = "127.0.0.1",
-        port    = UDP_PORT,
-        metrics = {{
-          name      = "latency",
-          stat_type = "timer"
-        }},
-      },
-    })
-    assert(helpers.dao.plugins:insert {
-      api_id = api3.id,
-      name   = "statsd",
-      config    = {
-        host    = "127.0.0.1",
-        port    = UDP_PORT,
-        metrics = {{
-          name        = "status_count",
-          stat_type   = "counter",
-          sample_rate = 1,
-        }},
-      },
-    })
-    assert(helpers.dao.plugins:insert {
-      api_id = api4.id,
-      name   = "statsd",
-      config = {
-        host    = "127.0.0.1",
-        port    = UDP_PORT,
-        metrics = {{
-          name      = "request_size",
-          stat_type = "timer",
-        }},
-      },
-    })
-    assert(helpers.dao.plugins:insert {
-      api_id = api5.id,
-      name   = "statsd",
-      config = {
-        host    = "127.0.0.1",
-        port    = UDP_PORT,
-        metrics = {{
-          name        = "request_count",
-          stat_type   = "counter",
-          sample_rate = 1,
-        }}
+      local consumer = bp.consumers:insert {
+        username  = "bob",
+        custom_id = "robert",
       }
-    })
-    assert(helpers.dao.plugins:insert {
-      api_id = api6.id,
-      name   = "statsd",
-      config    = {
-        host    = "127.0.0.1",
-        port    = UDP_PORT,
-        metrics = {{
-          name      = "response_size",
-          stat_type = "timer",
-        }},
-      },
-    })
-    assert(helpers.dao.plugins:insert {
-      api_id = api7.id,
-      name   = "statsd",
-      config = {
-        host    = "127.0.0.1",
-        port    = UDP_PORT,
-        metrics = {{
-          name      = "upstream_latency",
-          stat_type = "timer",
-        }},
-      },
-    })
-    assert(helpers.dao.plugins:insert {
-      api_id = api8.id,
-      name   = "statsd",
-      config = {
-        host    = "127.0.0.1",
-        port    = UDP_PORT,
-        metrics = {{
-          name      = "kong_latency",
-          stat_type = "timer",
-        }},
+
+      bp.keyauth_credentials:insert {
+        key         = "kong",
+        consumer_id = consumer.id,
       }
-    })
-    assert(helpers.dao.plugins:insert {
-      api_id = api9.id,
-      name   = "statsd",
-      config = {
-        host    = "127.0.0.1",
-        port    = UDP_PORT,
-        metrics = {{
-          name                = "unique_users",
-          stat_type           = "set",
-          consumer_identifier = "custom_id",
-        }},
-      },
-    })
-    assert(helpers.dao.plugins:insert {
-      api_id = api10.id,
-      name   = "statsd",
-      config = {
-        host = "127.0.0.1",
-        port = UDP_PORT,
-        metrics = {{
-          name                = "status_count_per_user",
-          stat_type           = "counter",
-          consumer_identifier = "custom_id",
-          sample_rate         = 1,
-        }},
-      },
-    })
-    assert(helpers.dao.plugins:insert {
-      api_id = api11.id,
-      name   = "statsd",
-      config = {
-        host    = "127.0.0.1",
-        port    = UDP_PORT,
-        metrics = {{
-          name                = "request_per_user",
-          stat_type           = "counter",
-          consumer_identifier = "username",
-          sample_rate         = 1,
-        }},
-      },
-    })
-    assert(helpers.dao.plugins:insert {
-      api_id = api12.id,
-      name   = "statsd",
-      config = {
-        host    = "127.0.0.1",
-        port    = UDP_PORT,
-        metrics = {{
-          name        = "latency",
-          stat_type   = "gauge",
-          sample_rate = 1,
-        }},
-      },
-    })
-    assert(helpers.dao.plugins:insert {
-      api_id = api13.id,
-      name   = "statsd",
-      config = {
-        host   = "127.0.0.1",
-        port   = UDP_PORT,
-        prefix = "prefix",
-      },
-    })
 
-    assert(helpers.start_kong({
-      nginx_conf = "spec/fixtures/custom_nginx.template",
-    }))
-    client = helpers.proxy_client()
+      local routes = {}
+      for i = 1, 13 do
+        local service = bp.services:insert {
+          protocol = helpers.mock_upstream_protocol,
+          host     = helpers.mock_upstream_host,
+          port     = helpers.mock_upstream_port,
+          name     = fmt("statsd%s", i)
+        }
+        routes[i] = bp.routes:insert {
+          hosts   = { fmt("logging%d.com", i) },
+          service = service
+        }
+      end
+
+      bp.key_auth_plugins:insert { route_id = routes[1].id }
+
+      bp.statsd_plugins:insert {
+        route_id   = routes[1].id,
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+        },
+      }
+
+      bp.statsd_plugins:insert {
+        route_id   = routes[2].id,
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          metrics  = {
+            {
+              name      = "latency",
+              stat_type = "timer"
+            }
+          },
+        },
+      }
+
+      bp.statsd_plugins:insert {
+        route_id   = routes[3].id,
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          metrics  = {
+            {
+              name        = "status_count",
+              stat_type   = "counter",
+              sample_rate = 1,
+            }
+          },
+        },
+      }
+
+      bp.statsd_plugins:insert {
+        route_id   = routes[4].id,
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          metrics  = {
+            {
+              name      = "request_size",
+              stat_type = "timer",
+            }
+          },
+        },
+      }
+
+      bp.statsd_plugins:insert {
+        route_id   = routes[5].id,
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          metrics  = {
+            {
+              name        = "request_count",
+              stat_type   = "counter",
+              sample_rate = 1,
+            }
+          }
+        }
+      }
+
+      bp.statsd_plugins:insert {
+        route_id   = routes[6].id,
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          metrics  = {
+            {
+              name      = "response_size",
+              stat_type = "timer",
+            }
+          },
+        },
+      }
+
+      bp.statsd_plugins:insert {
+        route_id   = routes[7].id,
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          metrics  = {
+            {
+              name      = "upstream_latency",
+              stat_type = "timer",
+            }
+          },
+        },
+      }
+
+      bp.statsd_plugins:insert {
+        route_id   = routes[8].id,
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          metrics  = {
+            {
+              name      = "kong_latency",
+              stat_type = "timer",
+            }
+          },
+        }
+      }
+
+      bp.key_auth_plugins:insert { route_id = routes[9].id }
+
+      bp.statsd_plugins:insert {
+        route_id   = routes[9].id,
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          metrics  = {
+            {
+              name                = "unique_users",
+              stat_type           = "set",
+              consumer_identifier = "custom_id",
+            }
+          },
+        },
+      }
+
+      bp.key_auth_plugins:insert { route_id = routes[10].id }
+
+      bp.statsd_plugins:insert {
+        route_id   = routes[10].id,
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          metrics  = {
+            {
+              name                = "status_count_per_user",
+              stat_type           = "counter",
+              consumer_identifier = "custom_id",
+              sample_rate         = 1,
+            }
+          },
+        },
+      }
+
+      bp.key_auth_plugins:insert { route_id = routes[11].id }
+
+      bp.statsd_plugins:insert {
+        route_id   = routes[11].id,
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          metrics  = {
+            {
+              name                = "request_per_user",
+              stat_type           = "counter",
+              consumer_identifier = "username",
+              sample_rate         = 1,
+            }
+          },
+        },
+      }
+
+      bp.key_auth_plugins:insert { route_id = routes[12].id }
+
+      bp.statsd_plugins:insert {
+        route_id   = routes[12].id,
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          metrics  = {
+            {
+              name        = "latency",
+              stat_type   = "gauge",
+              sample_rate = 1,
+            }
+          },
+        },
+      }
+
+      bp.key_auth_plugins:insert { route_id = routes[13].id }
+
+      bp.statsd_plugins:insert {
+        route_id   = routes[13].id,
+        config     = {
+          host     = "127.0.0.1",
+          port     = UDP_PORT,
+          prefix   = "prefix",
+        },
+      }
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+
+      proxy_client = helpers.proxy_client()
+    end)
+
+    teardown(function()
+      if proxy_client then
+        proxy_client:close()
+      end
+
+      helpers.stop_kong()
+    end)
+
+    describe("metrics", function()
+      it("logs over UDP with default metrics", function()
+        local threads = require "llthreads2.ex"
+
+        local thread = threads.new({
+          function(port)
+            local socket = require "socket"
+            local server = assert(socket.udp())
+            server:settimeout(1)
+            server:setoption("reuseaddr", true)
+            server:setsockname("127.0.0.1", port)
+            local metrics = {}
+            for i = 1, 12 do
+              metrics[#metrics+1] = server:receive()
+            end
+            server:close()
+            return metrics
+          end
+        }, UDP_PORT)
+        thread:start()
+
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=kong",
+          headers = {
+            host  = "logging1.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, metrics = thread:join()
+        assert.True(ok)
+        assert.contains("kong.statsd1.request.count:1|c", metrics)
+        assert.contains("kong.statsd1.latency:%d+|ms", metrics, true)
+        assert.contains("kong.statsd1.request.size:110|ms", metrics)
+        assert.contains("kong.statsd1.request.status.200:1|c", metrics)
+        assert.contains("kong.statsd1.request.status.total:1|c", metrics)
+        assert.contains("kong.statsd1.response.size:%d+|ms", metrics, true)
+        assert.contains("kong.statsd1.upstream_latency:%d*|ms", metrics, true)
+        assert.contains("kong.statsd1.kong_latency:%d*|ms", metrics, true)
+        assert.contains("kong.statsd1.user.uniques:robert|s", metrics)
+        assert.contains("kong.statsd1.user.robert.request.count:1|c", metrics)
+        assert.contains("kong.statsd1.user.robert.request.status.total:1|c",
+                        metrics)
+        assert.contains("kong.statsd1.user.robert.request.status.200:1|c",
+                        metrics)
+      end)
+      it("logs over UDP with default metrics and new prefix", function()
+        local threads = require "llthreads2.ex"
+
+        local thread = threads.new({
+          function(port)
+            local socket = require "socket"
+            local server = assert(socket.udp())
+            server:settimeout(1)
+            server:setoption("reuseaddr", true)
+            server:setsockname("127.0.0.1", port)
+            local metrics = {}
+            for i = 1, 12 do
+              metrics[#metrics+1] = server:receive()
+            end
+            server:close()
+            return metrics
+          end
+        }, UDP_PORT)
+        thread:start()
+
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=kong",
+          headers = {
+            host  = "logging13.com"
+          }
+        })
+        assert.res_status(200, response)
+        local ok, metrics = thread:join()
+        assert.True(ok)
+        assert.contains("prefix.statsd13.request.count:1|c", metrics)
+        assert.contains("prefix.statsd13.latency:%d+|ms", metrics, true)
+        assert.contains("prefix.statsd13.request.size:%d*|ms", metrics, true)
+        assert.contains("prefix.statsd13.request.status.200:1|c", metrics)
+        assert.contains("prefix.statsd13.request.status.total:1|c", metrics)
+        assert.contains("prefix.statsd13.response.size:%d+|ms", metrics, true)
+        assert.contains("prefix.statsd13.upstream_latency:%d*|ms", metrics, true)
+        assert.contains("prefix.statsd13.kong_latency:%d*|ms", metrics, true)
+        assert.contains("prefix.statsd13.user.uniques:robert|s", metrics)
+        assert.contains("prefix.statsd13.user.robert.request.count:1|c", metrics)
+        assert.contains("prefix.statsd13.user.robert.request.status.total:1|c",
+                        metrics)
+        assert.contains("prefix.statsd13.user.robert.request.status.200:1|c",
+                        metrics)
+      end)
+      it("request_count", function()
+        local thread = helpers.udp_server(UDP_PORT)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            host  = "logging5.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, res = thread:join()
+        assert.True(ok)
+        assert.equal("kong.statsd5.request.count:1|c", res)
+      end)
+      it("status_count", function()
+        local threads = require "llthreads2.ex"
+
+        local thread = threads.new({
+          function(port)
+            local socket = require "socket"
+            local server = assert(socket.udp())
+            server:settimeout(1)
+            server:setoption("reuseaddr", true)
+            server:setsockname("127.0.0.1", port)
+            local metrics = {}
+            for i = 1, 2 do
+              metrics[#metrics+1] = server:receive()
+            end
+            server:close()
+            return metrics
+          end
+        }, UDP_PORT)
+        thread:start()
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            host  = "logging3.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, res = thread:join()
+        assert.True(ok)
+        assert.contains("kong.statsd3.request.status.200:1|c", res)
+        assert.contains("kong.statsd3.request.status.total:1|c", res)
+      end)
+      it("request_size", function()
+        local thread = helpers.udp_server(UDP_PORT)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            host  = "logging4.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, res = thread:join()
+        assert.True(ok)
+        assert.matches("kong.statsd4.request.size:%d+|ms", res)
+      end)
+      it("latency", function()
+        local thread = helpers.udp_server(UDP_PORT)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            host  = "logging2.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, res = thread:join()
+        assert.True(ok)
+        assert.matches("kong.statsd2.latency:.*|ms", res)
+      end)
+      it("response_size", function()
+        local thread = helpers.udp_server(UDP_PORT)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            host  = "logging6.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, res = thread:join()
+        assert.True(ok)
+        assert.matches("kong.statsd6.response.size:%d+|ms", res)
+      end)
+      it("upstream_latency", function()
+        local thread = helpers.udp_server(UDP_PORT)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            host  = "logging7.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, res = thread:join()
+        assert.True(ok)
+        assert.matches("kong.statsd7.upstream_latency:.*|ms", res)
+      end)
+      it("kong_latency", function()
+        local thread = helpers.udp_server(UDP_PORT)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            host  = "logging8.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, res = thread:join()
+        assert.True(ok)
+        assert.matches("kong.statsd8.kong_latency:.*|ms", res)
+      end)
+      it("unique_users", function()
+        local thread = helpers.udp_server(UDP_PORT)
+        local response = assert(proxy_client:send {
+          method = "GET",
+          path = "/request?apikey=kong",
+          headers = {
+            host = "logging9.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, res = thread:join()
+        assert.True(ok)
+        assert.matches("kong.statsd9.user.uniques:robert|s", res)
+      end)
+      it("status_count_per_user", function()
+        local threads = require "llthreads2.ex"
+
+        local thread = threads.new({
+          function(port)
+            local socket = require "socket"
+            local server = assert(socket.udp())
+            server:settimeout(1)
+            server:setoption("reuseaddr", true)
+            server:setsockname("127.0.0.1", port)
+            local metrics = {}
+            for i = 1, 2 do
+              metrics[#metrics+1] = server:receive()
+            end
+            server:close()
+            return metrics
+          end
+        }, UDP_PORT)
+        thread:start()
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=kong",
+          headers = {
+            host  = "logging10.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, res = thread:join()
+        assert.True(ok)
+        assert.contains("kong.statsd10.user.robert.request.status.200:1|c", res)
+        assert.contains("kong.statsd10.user.robert.request.status.total:1|c", res)
+      end)
+      it("request_per_user", function()
+        local thread = helpers.udp_server(UDP_PORT)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=kong",
+          headers = {
+            host  = "logging11.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, res = thread:join()
+        assert.True(ok)
+        assert.matches("kong.statsd11.user.bob.request.count:1|c", res)
+      end)
+      it("latency as gauge", function()
+        local thread = helpers.udp_server(UDP_PORT)
+        local response = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request?apikey=kong",
+          headers = {
+            host  = "logging12.com"
+          }
+        })
+        assert.res_status(200, response)
+
+        local ok, res = thread:join()
+        assert.True(ok)
+        assert.matches("kong%.statsd12%.latency:%d+|g", res)
+      end)
+    end)
   end)
-
-  teardown(function()
-    if client then client:close() end
-    helpers.stop_kong()
-  end)
-
-  describe("metrics", function()
-    it("logs over UDP with default metrics", function()
-      local threads = require "llthreads2.ex"
-
-      local thread = threads.new({
-        function(port)
-          local socket = require "socket"
-          local server = assert(socket.udp())
-          server:settimeout(1)
-          server:setoption("reuseaddr", true)
-          server:setsockname("127.0.0.1", port)
-          local metrics = {}
-          for i = 1, 12 do
-            metrics[#metrics+1] = server:receive()
-          end
-          server:close()
-          return metrics
-        end
-      }, UDP_PORT)
-      thread:start()
-      ngx.sleep(0.1)
-
-      local response = assert(client:send {
-        method = "GET",
-        path = "/request?apikey=kong",
-        headers = {
-          host = "logging1.com"
-        }
-      })
-      assert.res_status(200, response)
-
-      local ok, metrics = thread:join()
-      assert.True(ok)
-      assert.contains("kong.stastd1.request.count:1|c", metrics)
-      assert.contains("kong.stastd1.latency:%d+|ms", metrics, true)
-      assert.contains("kong.stastd1.request.size:110|ms", metrics)
-      assert.contains("kong.stastd1.request.status.200:1|c", metrics)
-      assert.contains("kong.stastd1.request.status.total:1|c", metrics)
-      assert.contains("kong.stastd1.response.size:%d+|ms", metrics, true)
-      assert.contains("kong.stastd1.upstream_latency:%d*|ms", metrics, true)
-      assert.contains("kong.stastd1.kong_latency:%d*|ms", metrics, true)
-      assert.contains("kong.stastd1.user.uniques:robert|s", metrics)
-      assert.contains("kong.stastd1.user.robert.request.count:1|c", metrics)
-      assert.contains("kong.stastd1.user.robert.request.status.total:1|c",
-                      metrics)
-      assert.contains("kong.stastd1.user.robert.request.status.200:1|c",
-                      metrics)
-    end)
-    it("logs over UDP with default metrics and new prefix", function()
-      local threads = require "llthreads2.ex"
-
-      local thread = threads.new({
-        function(port)
-          local socket = require "socket"
-          local server = assert(socket.udp())
-          server:settimeout(1)
-          server:setoption("reuseaddr", true)
-          server:setsockname("127.0.0.1", port)
-          local metrics = {}
-          for i = 1, 12 do
-            metrics[#metrics+1] = server:receive()
-          end
-          server:close()
-          return metrics
-        end
-      }, UDP_PORT)
-      thread:start()
-      ngx.sleep(0.1)
-
-      local response = assert(client:send {
-        method = "GET",
-        path = "/request?apikey=kong",
-        headers = {
-          host = "logging13.com"
-        }
-      })
-      assert.res_status(200, response)
-      local ok, metrics = thread:join()
-      assert.True(ok)
-      assert.contains("prefix.stastd13.request.count:1|c", metrics)
-      assert.contains("prefix.stastd13.latency:%d+|ms", metrics, true)
-      assert.contains("prefix.stastd13.request.size:%d*|ms", metrics, true)
-      assert.contains("prefix.stastd13.request.status.200:1|c", metrics)
-      assert.contains("prefix.stastd13.request.status.total:1|c", metrics)
-      assert.contains("prefix.stastd13.response.size:%d+|ms", metrics, true)
-      assert.contains("prefix.stastd13.upstream_latency:%d*|ms", metrics, true)
-      assert.contains("prefix.stastd13.kong_latency:%d*|ms", metrics, true)
-      assert.contains("prefix.stastd13.user.uniques:robert|s", metrics)
-      assert.contains("prefix.stastd13.user.robert.request.count:1|c", metrics)
-      assert.contains("prefix.stastd13.user.robert.request.status.total:1|c",
-                      metrics)
-      assert.contains("prefix.stastd13.user.robert.request.status.200:1|c",
-                      metrics)
-    end)
-    it("request_count", function()
-      local thread = helpers.udp_server(UDP_PORT)
-      local response = assert(client:send {
-        method = "GET",
-        path = "/request",
-        headers = {
-          host = "logging5.com"
-        }
-      })
-      assert.res_status(200, response)
-
-      local ok, res = thread:join()
-      assert.True(ok)
-      assert.equal("kong.stastd5.request.count:1|c", res)
-    end)
-    it("status_count", function()
-      local threads = require "llthreads2.ex"
-
-      local thread = threads.new({
-        function(port)
-          local socket = require "socket"
-          local server = assert(socket.udp())
-          server:settimeout(1)
-          server:setoption("reuseaddr", true)
-          server:setsockname("127.0.0.1", port)
-          local metrics = {}
-          for i = 1, 2 do
-            metrics[#metrics+1] = server:receive()
-          end
-          server:close()
-          return metrics
-        end
-      }, UDP_PORT)
-      thread:start()
-      ngx.sleep(0.1)
-
-      local response = assert(client:send {
-        method = "GET",
-        path = "/request",
-        headers = {
-          host = "logging3.com"
-        }
-      })
-      assert.res_status(200, response)
-
-      local ok, res = thread:join()
-      assert.True(ok)
-      assert.contains("kong.stastd3.request.status.200:1|c", res)
-      assert.contains("kong.stastd3.request.status.total:1|c", res)
-    end)
-    it("request_size", function()
-      local thread = helpers.udp_server(UDP_PORT)
-      local response = assert(client:send {
-        method = "GET",
-        path = "/request",
-        headers = {
-          host = "logging4.com"
-        }
-      })
-      assert.res_status(200, response)
-
-      local ok, res = thread:join()
-      assert.True(ok)
-      assert.matches("kong.stastd4.request.size:%d+|ms", res)
-    end)
-    it("latency", function()
-      local thread = helpers.udp_server(UDP_PORT)
-      local response = assert(client:send {
-        method = "GET",
-        path = "/request",
-        headers = {
-          host = "logging2.com"
-        }
-      })
-      assert.res_status(200, response)
-
-      local ok, res = thread:join()
-      assert.True(ok)
-      assert.matches("kong.stastd2.latency:.*|ms", res)
-    end)
-    it("response_size", function()
-      local thread = helpers.udp_server(UDP_PORT)
-      local response = assert(client:send {
-        method = "GET",
-        path = "/request",
-        headers = {
-          host = "logging6.com"
-        }
-      })
-      assert.res_status(200, response)
-
-      local ok, res = thread:join()
-      assert.True(ok)
-      assert.matches("kong.stastd6.response.size:%d+|ms", res)
-    end)
-    it("upstream_latency", function()
-      local thread = helpers.udp_server(UDP_PORT)
-      local response = assert(client:send {
-        method = "GET",
-        path = "/request",
-        headers = {
-          host = "logging7.com"
-        }
-      })
-      assert.res_status(200, response)
-
-      local ok, res = thread:join()
-      assert.True(ok)
-      assert.matches("kong.stastd7.upstream_latency:.*|ms", res)
-    end)
-    it("kong_latency", function()
-      local thread = helpers.udp_server(UDP_PORT)
-      local response = assert(client:send {
-        method = "GET",
-        path = "/request",
-        headers = {
-          host = "logging8.com"
-        }
-      })
-      assert.res_status(200, response)
-
-      local ok, res = thread:join()
-      assert.True(ok)
-      assert.matches("kong.stastd8.kong_latency:.*|ms", res)
-    end)
-    it("unique_users", function()
-      local thread = helpers.udp_server(UDP_PORT)
-      local response = assert(client:send {
-        method = "GET",
-        path = "/request?apikey=kong",
-        headers = {
-          host = "logging9.com"
-        }
-      })
-      assert.res_status(200, response)
-
-      local ok, res = thread:join()
-      assert.True(ok)
-      assert.matches("kong.stastd9.user.uniques:robert|s", res)
-    end)
-    it("status_count_per_user", function()
-      local threads = require "llthreads2.ex"
-
-      local thread = threads.new({
-        function(port)
-          local socket = require "socket"
-          local server = assert(socket.udp())
-          server:settimeout(1)
-          server:setoption("reuseaddr", true)
-          server:setsockname("127.0.0.1", port)
-          local metrics = {}
-          for i = 1, 2 do
-            metrics[#metrics+1] = server:receive()
-          end
-          server:close()
-          return metrics
-        end
-      }, UDP_PORT)
-      thread:start()
-      ngx.sleep(0.1)
-
-      local response = assert(client:send {
-        method = "GET",
-        path = "/request?apikey=kong",
-        headers = {
-          host = "logging10.com"
-        }
-      })
-      assert.res_status(200, response)
-
-      local ok, res = thread:join()
-      assert.True(ok)
-      assert.contains("kong.stastd10.user.robert.request.status.200:1|c", res)
-      assert.contains("kong.stastd10.user.robert.request.status.total:1|c", res)
-    end)
-    it("request_per_user", function()
-      local thread = helpers.udp_server(UDP_PORT)
-      local response = assert(client:send {
-        method = "GET",
-        path = "/request?apikey=kong",
-        headers = {
-          host = "logging11.com"
-        }
-      })
-      assert.res_status(200, response)
-
-      local ok, res = thread:join()
-      assert.True(ok)
-      assert.matches("kong.stastd11.user.bob.request.count:1|c", res)
-    end)
-    it("latency as gauge", function()
-      local thread = helpers.udp_server(UDP_PORT)
-      local response = assert(client:send {
-        method = "GET",
-        path = "/request?apikey=kong",
-        headers = {
-          host = "logging12.com"
-        }
-      })
-      assert.res_status(200, response)
-
-      local ok, res = thread:join()
-      assert.True(ok)
-      assert.matches("kong%.stastd12%.latency:%d+|g", res)
-    end)
-  end)
-end)
+end

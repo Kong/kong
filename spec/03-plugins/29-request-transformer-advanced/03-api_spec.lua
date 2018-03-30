@@ -14,7 +14,7 @@ describe("Plugin: request-transformer-advanced(API)", function()
 
   describe("POST", function()
     setup(function()
-      helpers.run_migrations()
+      helpers.get_db_utils()
 
       assert(helpers.dao.apis:insert {
         name         = "test",
