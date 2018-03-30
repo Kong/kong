@@ -342,14 +342,12 @@ _M.match_route = match_route
 
 local function api_workspaces(api)
   local r = singletons.dao.workspace_entities:find_all({entity_id = api.id})
-  local wss_id = map(function(x) return x.workspace_id end, r)
-  local wss = map(function(x) return singletons.dao.workspaces:find({id = x}) end, wss_id)
-  return map(function(x) return x.name end, wss)
+  return map(function(x) return x.workspace_id end, r)
 end
 
 
 local function api_in_ws(api, ws)
-  return member(ws.name, listify(api_workspaces(api)))
+  return member(ws.id, listify(api_workspaces(api)))
 end
 
 -- local function api_in_ws(api, ws) --
