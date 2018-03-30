@@ -191,7 +191,7 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
   describe("/workspaces/:workspace/entites", function()
     local uuid1, uuid2
 
-    setup(function()
+    lazy_setup(function()
       -- yayyyyyyy determinism!
       uuid1, uuid2 = "182f2cc8-008e-11e8-ba89-0ed5f89f718b",
                      "182f2f2a-008e-11e8-ba89-0ed5f89f718b"
@@ -204,11 +204,13 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
       assert(dao.workspace_entities:insert({
         workspace_id = w,
         entity_id = uuid1,
+        unique_field_name = "name",
         entity_type = "foo",
       }))
       assert(dao.workspace_entities:insert({
         workspace_id = w,
         entity_id = uuid2,
+        unique_field_name = "name",
         entity_type = "foo",
       }))
     end)
@@ -262,7 +264,7 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
     describe("POST", function()
       describe("creates a new relationship", function()
         local entities = {}
-        setup(function()
+        lazy_setup(function()
           local api1 = assert(dao.apis:insert {
             name = "api1",
             uris = "/uri",
@@ -284,6 +286,7 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
           })
           entities.workspaces = workspace
         end)
+
         it("with many entity types", function()
           for entity_type, entity in pairs(entities) do
             local res = assert(client:send {
@@ -450,13 +453,14 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
   describe("/workspaces/:workspace/entites/:entity", function()
     local w_id, e_id
 
-    setup(function()
+    lazy_setup(function()
       w_id = dao.workspaces:find_all({ name = "foo" })[1].id
       e_id = utils.uuid()
 
       assert(dao.workspace_entities:insert({
         workspace_id = w_id,
         entity_id = e_id,
+        unique_field_name = "name",
         entity_type = "foo",
       }))
     end)
