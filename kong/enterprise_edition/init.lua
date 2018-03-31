@@ -144,13 +144,28 @@ local function prepare_interface(interface_dir, interface_env, kong_config)
 end
 
 
-local function prepare_admin(kong_config)
-  local admin_listeners = kong_config.admin_listeners
-  local admin_port, admin_ssl_port
-  if admin_listeners then
-    admin_port = admin_listeners[1] and admin_listeners[1].port
-    admin_ssl_port = admin_listeners[2] and admin_listeners[2].port
+-- return first listener matching filters
+local function select_listener(listeners, filters)
+  for _, listener in ipairs(listeners) do
+    local match = true
+    for filter, value in pairs(filters) do
+      if listener[filter] ~= value then
+        match = false
+      end
+    end
+    if match then
+      return listener
+    end
   end
+end
+
+
+local function prepare_admin(kong_config)
+  local listener = select_listener(kong_config.admin_listeners, {ssl = false})
+  local ssl_listener = select_listener(kong_config.admin_listeners, {ssl = true})
+  local admin_port = listener and listener.port
+  local admin_ssl_port = ssl_listener and ssl_listener.port
+
   return prepare_interface("gui", {
     ADMIN_API_PORT = tostring(admin_port),
     ADMIN_API_SSL_PORT = tostring(admin_ssl_port),
@@ -164,24 +179,26 @@ _M.prepare_admin = prepare_admin
 
 
 local function prepare_portal(kong_config)
-  local portal_gui_listeners = kong_config.portal_gui_listeners
-  local portal_gui_port, portal_gui_ssl_port
-  if portal_gui_listeners then
-    portal_gui_port = portal_gui_listeners[1].port
-    portal_gui_ssl_port = portal_gui_listeners[2] and portal_gui_listeners[2].port
-  end
-  local portal_api_listeners = kong_config.portal_api_listeners
-  local portal_api_port, portal_api_ssl_port
-  if portal_api_listeners then
-    portal_api_port = portal_api_listeners[1].port
-    portal_api_ssl_port = portal_api_listeners[2] and portal_api_listeners[2].port
-  end
+  local portal_gui_listener = select_listener(kong_config.portal_gui_listeners,
+                                              {ssl = false})
+  local portal_gui_ssl_listener = select_listener(kong_config.portal_gui_listeners,
+                                                  {ssl = true})
+  local portal_gui_port = portal_gui_listener and portal_gui_listener.port
+  local portal_gui_ssl_port = portal_gui_ssl_listener and portal_gui_ssl_listener.port
+
+  local portal_api_listener = select_listener(kong_config.portal_api_listeners,
+                                              {ssl = false})
+  local portal_api_ssl_listener = select_listener(kong_config.portal_api_listeners,
+                                                  {ssl = true})
+  local portal_api_port = portal_api_listener and portal_api_listener.port
+  local portal_api_ssl_port = portal_api_ssl_listener and portal_api_ssl_listener.port
+
   return prepare_interface("portal", {
     PORTAL_GUI_URI = tostring(kong_config.portal_gui_uri),
     PORTAL_GUI_SSL_URI = tostring(kong_config.portal_gui_uri_ssl),
     PORTAL_API_URI = tostring(kong_config.portal_api_uri),
     PORTAL_API_SSL_URI = tostring(kong_config.portal_api_uri_ssl),
-    PORTAL_API_URI_ENDPOINT = tostring(kong_config.portal_api_proxy_conf_uri),
+    PORTAL_API_URI_ENDPOINT = tostring(kong_config.portal_api_uri_endpoint),
     PORTAL_GUI_PORT = tostring(portal_gui_port),
     PORTAL_GUI_SSL_PORT = tostring(portal_gui_ssl_port),
     PORTAL_API_PORT = tostring(portal_api_port),
