@@ -1,5 +1,4 @@
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
-local DAOFactory = require "kong.dao.factory"
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
@@ -12,10 +11,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
   local dao
 
   setup(function()
-    dao = assert(DAOFactory.new(kong_config))
-
-    dao:truncate_tables()
-    dao:run_migrations()
+    dao = select(3, helpers.get_db_utils(kong_config.database))
     assert(helpers.start_kong({
       database = kong_config.database
     }))
@@ -30,8 +26,15 @@ describe("Admin API RBAC with " .. kong_config.database, function()
 
     -- explicitly clear tables here, as we work on both psql and c*
     dao:truncate_tables()
-
     helpers.stop_kong()
+  end)
+
+  before_each(function()
+    if client then
+      client:close()
+    end
+
+    client = assert(helpers.admin_client())
   end)
 
   describe("/rbac/users with " .. kong_config.database, function()
@@ -157,20 +160,18 @@ describe("Admin API RBAC with " .. kong_config.database, function()
 
         assert.equals(4, #json.data)
       end)
+      pending("lists enabled users", function()	
+        local res = assert(client:send {	
+          method = "GET",	
+          path = "/rbac/users",	
+          query = {	
+            enabled = true,	
+          },	
+        })	
+        local body = assert.res_status(200, res)	
+        local json = cjson.decode(body)	
 
-      it("lists enabled users", function()
-        local res = assert(client:send {
-          method = "GET",
-          path = "/rbac/users",
-          query = {
-            enabled = true,
-          },
-        })
-
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-
-        assert.equals(3, #json.data)
+        assert.equals(3, #json.data)	
       end)
     end)
   end)
@@ -513,7 +514,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
 
         assert.equal("read-only", json.name)
         assert.same({ "read" }, json.actions)
-        assert.equal(18, #json.resources)
+        assert.equal(20, #json.resources)
         assert.is_true(utils.is_valid_uuid(json.id))
       end)
 
@@ -1315,7 +1316,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         assert.is_false(utils.table_contains(json[k], "update"))
         assert.is_false(utils.table_contains(json[k], "delete"))
       end
-      assert.equals(18, n)
+      assert.equals(20, n)
 
       -- this is jerry
       -- jerry can view, create, update, and delete most resources
@@ -1361,7 +1362,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         n = n + 1
         assert.not_equals("rbac", k)
       end
-      assert.equals(17, n)
+      assert.equals(19, n)
 
       -- this is alice
       -- alice can do whatever the hell she wants
@@ -1407,7 +1408,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         n = n + 1
         assert.equals(4, #json[k])
       end
-      assert.equals(18, n)
+      assert.equals(20, n)
     end)
 
     it("will give user permission regardless of their enabled status", function()
@@ -1459,7 +1460,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         assert.is_false(utils.table_contains(json[k], "update"))
         assert.is_false(utils.table_contains(json[k], "delete"))
       end
-      assert.equals(18, n)
+      assert.equals(20, n)
     end)
   end)
 end)
@@ -1473,7 +1474,6 @@ for _, h in ipairs({ "", "Custom-Auth-Token" }) do
     local expected = h == "" and "Kong-Admin-Token" or h
 
     setup(function()
-      helpers.get_db_utils()
       assert(helpers.start_kong({
         rbac_auth_header = h ~= "" and h or nil,
       }))
