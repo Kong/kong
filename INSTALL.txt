@@ -1,0 +1,223 @@
+==========================================
+Installation guide for Kong custom plugins
+==========================================
+
+--------------------------------
+| Kong version    | 0.30       |
+|-----------------|------------|
+| Latest revision | 2017/12/15 |
+--------------------------------
+
+Custom plugins for Kong consist of Lua source files that need to be in the file
+system of each of your Kong nodes. This guide will provide you with step-by-step
+instructions that will make a Kong node aware of your custom plugin(s).
+
+These steps should be applied to each node in your Kong cluster, so that the
+custom plugin(s) are available on each one of them.
+
+Prerequisite: Kong must be installed on the host.
+
+
+1. Extract the custom plugin's sources
+======================================
+
+You were provided with an archive containing the sources and documentation for
+your plugin. You can extract it with:
+
+    $ tar -xvf <plugin-name>-<version>.tar.gz
+
+    Where <plugin-name> is the name of the plugin, and <version> its version
+    number.
+
+The contents of this archive should be close to the following:
+
+    $ tree <plugin-name>
+    <plugin-name>
+    ├── INSTALL.txt
+    ├── README.md
+    ├── kong
+    │   └── plugins
+    │       └── <plugin-name>
+    │           ├── handler.lua
+    │           └── schema.lua
+    └── <plugin-name>-<version>.rockspec
+
+    * README.md is the documentation for this plugin: it covers topics such as
+      its functionalities, configuration capabilities, usage examples, etc.
+    * INSTALL.txt is this file.
+    * `kong/plugins/<plugin-name>` is a directory containing the Lua sources
+      for this plugin. It contains at least 2 files: `handler.lua` and
+      `schema.lua`.
+    * `<plugin-name>-<version>.rockspec` is a file describing the Lua sources
+      in case you wish to install this plugin via LuaRocks, as described later.
+
+
+2. Install the custom plugin's sources
+======================================
+
+For a Kong node to be able to use the custom plugin, the custom plugin's Lua
+sources must be installed on your host's file system. There are two ways of
+doing so: via LuaRocks, or manually. Choose one of the two, and jump to
+section 3.
+
+1. Via LuaRocks
+
+    If the `luarocks` utility is installed in your system (this is likely the
+    case if you used one of the official installation packages), you can
+    install the Lua sources in your LuaRocks tree (a directory in which
+    LuaRocks installs Lua modules).
+
+    You can do so by changing the current directory to the extracted archive,
+    where the rockspec file is:
+
+    $ cd <plugin-name>
+
+    And then run the following:
+
+    $ luarocks make
+
+    This will install the Lua sources in `kong/plugins/<plugin-name>` in your
+    system's LuaRocks tree, where all the Kong sources are already present.
+
+2. Manually
+
+    A more conservative way of installing your plugin's sources is
+    to avoid "polluting" the LuaRocks tree, and instead, point Kong
+    to the directory containing them.
+
+    This is done by tweaking the `lua_package_path` property of your Kong
+    configuration. Under the hood, this property is an alias to the `LUA_PATH`
+    variable of the Lua VM, if you are familiar with it.
+
+    Those properties contain a semicolon-separated list of directories in
+    which to search for Lua sources. It should be set like so in your Kong
+    configuration file:
+
+    lua_package_path = /<path-to-plugin-location>/?.lua;;
+
+    Where:
+
+    * `/<path-to-plugin-location>` is the path to the directory containing the
+      extracted archive. It should be the location of the `kong` directory
+      from the archive.
+    * `?` is a placeholder that will be replaced by
+      `kong.plugins.<plugin-name>` when Kong will try to load your plugin. Do
+      not change it.
+    * `;;` a placeholder for the "the default Lua path". Do not change it.
+
+    Example:
+
+    The plugin `something` being located on the file system such that the
+    handler file is:
+
+    /usr/local/custom/kong/plugins/something/handler.lua
+
+    The location of the `kong` directory is: /usr/local/custom, hence the
+    proper path setup would be:
+
+    lua_package_path = /usr/local/custom/?.lua;;
+
+    Multiple plugins:
+
+    If you wish to install two or more custom plugins this way, you can set
+    the variable to something like:
+
+    lua_package_path = /path/to/plugin1/?.lua;/path/to/plugin2/?.lua;;
+
+    * `;` is the separator between directories.
+    * `;;` still means "the default Lua path".
+
+    Note: you can also set this property via its environment variable
+    equivalent: `KONG_LUA_PACKAGE_PATH`.
+
+Reminder: regardless of which method you are using to install your plugin's
+sources, you must still do so for each node in your Kong nodes.
+
+
+3. Instruct Kong to load your custom plugin
+===========================================
+
+You must now add the custom plugin's name to the `custom_plugins` list in your
+Kong configuration (on each Kong node):
+
+    custom_plugins = <plugin-name>
+
+If you are using two or more custom plugins, insert commas in between, like so:
+
+    custom_plugins = plugin1,plugin2
+
+Note: you can also set this property via its environment variable equivalent:
+`KONG_CUSTOM_PLUGINS`.
+
+Reminder: don't forget to update the `custom_plugins` directive for each node
+in your Kong cluster.
+
+
+4. Start Kong
+=============
+
+You should now be able to start Kong without any issue. Consult your custom
+plugin's README.md file for instructions on how to enable/configure your plugin
+on an API or Consumer object.
+
+To make sure your plugin is being loaded by Kong, you can start Kong with a
+`debug` log level:
+
+    log_level = debug
+
+    or:
+
+    KONG_LOG_LEVEL=debug
+
+Then, you should see the following log for each plugin being loaded:
+
+    [debug] Loading plugin <plugin-name>
+
+
+5. Removing a plugin
+====================
+There are three steps to completely remove a plugin.
+
+1. remove the plugin from your Kong api configuration. Make sure that it
+   is no longer applied globally nor for any api or consumer. This has to be
+   done only once for the entire Kong cluster, no restart/reload required.
+   This step in itself will make that the plugin is no longer used. But
+   it is still possible to re-apply the plugin.
+
+2. remove the plugin from the `custom_plugins` directive (on each Kong node).
+   Make sure to have completed step 1 before doing so. After this step
+   it will be impossible for anyone to re-apply the plugin to any Kong
+   api, consumer, or even globally. This step requires to restart/reload the
+   Kong node to take effect.
+
+3. delete the plugin related files from each of the Kong nodes (for the
+   paranoid only). Make sure to have completed step 2, including restarting/
+   reloading Kong, before deleting the files. If you used LuaRocks to install
+   the plugin, you can do `luarocks remove <pluginname>` to remove it.
+
+
+6. Troubleshooting
+==================
+
+Kong can fail to start because of a misconfigured custom plugin for several
+reasons:
+
+* "plugin is in use but not enabled" -> this error means that you configured a
+  custom plugin from another node, and that the plugin configuration is in the
+  database, but that the current node you are trying to start does not have it
+  in its custom_plugins directive.
+  To resolve, add the plugin's name to the node's custom_plugins directive.
+
+* "plugin is enabled but not installed" -> this means that the plugin's name
+  is present in the custom_plugins directive, but that Kong is unable to load
+  the `handler.lua` source file from the file system.
+  To resolve, make sure that the lua_package_path directive is properly set to
+  load this plugin's Lua sources.
+
+* "no configuration schema found for plugin" -> the plugin is installed,
+  enabled in custom_plugins, but Kong is unable to load the `schema.lua`
+  source file from the file system.
+  To resolve, make sure that the `schema.lua` file is present alongside the
+  plugin's `handler.lua` file.
+
+Feel free to contact <support@mashape.com> for further troubleshooting.
