@@ -251,11 +251,6 @@ build = {
     ["kong.plugins.rate-limiting.policies"] = "kong/plugins/rate-limiting/policies/init.lua",
     ["kong.plugins.rate-limiting.policies.cluster"] = "kong/plugins/rate-limiting/policies/cluster.lua",
 
-    ["kong.plugins.rate-limiting-advanced.migrations.cassandra"] = "kong/plugins/rate-limiting-advanced/migrations/cassandra.lua",
-    ["kong.plugins.rate-limiting-advanced.migrations.postgres"] = "kong/plugins/rate-limiting-advanced/migrations/postgres.lua",
-    ["kong.plugins.rate-limiting-advanced.handler"] = "kong/plugins/rate-limiting-advanced/handler.lua",
-    ["kong.plugins.rate-limiting-advanced.schema"] = "kong/plugins/rate-limiting-advanced/schema.lua",
-
     ["kong.plugins.response-ratelimiting.migrations.cassandra"] = "kong/plugins/response-ratelimiting/migrations/cassandra.lua",
     ["kong.plugins.response-ratelimiting.migrations.postgres"] = "kong/plugins/response-ratelimiting/migrations/postgres.lua",
     ["kong.plugins.response-ratelimiting.handler"] = "kong/plugins/response-ratelimiting/handler.lua",
