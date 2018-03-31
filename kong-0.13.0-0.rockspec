@@ -276,13 +276,6 @@ build = {
     ["kong.plugins.request-transformer.access"] = "kong/plugins/request-transformer/access.lua",
     ["kong.plugins.request-transformer.schema"] = "kong/plugins/request-transformer/schema.lua",
 
-    ["kong.plugins.request-transformer-advanced.migrations.cassandra"] = "kong/plugins/request-transformer-advanced/migrations/cassandra.lua",
-    ["kong.plugins.request-transformer-advanced.migrations.postgres"] = "kong/plugins/request-transformer-advanced/migrations/postgres.lua",
-    ["kong.plugins.request-transformer-advanced.migrations.common"] = "kong/plugins/request-transformer-advanced/migrations/common.lua",
-    ["kong.plugins.request-transformer-advanced.handler"] = "kong/plugins/request-transformer-advanced/handler.lua",
-    ["kong.plugins.request-transformer-advanced.access"] = "kong/plugins/request-transformer-advanced/access.lua",
-    ["kong.plugins.request-transformer-advanced.schema"] = "kong/plugins/request-transformer-advanced/schema.lua",
-
     ["kong.plugins.response-transformer.migrations.cassandra"] = "kong/plugins/response-transformer/migrations/cassandra.lua",
     ["kong.plugins.response-transformer.migrations.postgres"] = "kong/plugins/response-transformer/migrations/postgres.lua",
     ["kong.plugins.response-transformer.handler"] = "kong/plugins/response-transformer/handler.lua",
