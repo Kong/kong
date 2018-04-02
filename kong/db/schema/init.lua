@@ -366,6 +366,7 @@ end
 Schema.entity_checkers = {
 
   at_least_one_of = {
+    run_with_missing_fields = true,
     fn = function(entity, field_names)
       for _, name in ipairs(field_names) do
         if is_nonempty(entity[name]) then
@@ -736,9 +737,11 @@ local function run_entity_check(self, name, input, arg)
   local all_nil = true
   for _, fname in ipairs(fields_to_check) do
     if input[fname] == nil then
-      local err = validation_errors.REQUIRED_FOR_ENTITY_CHECK:format(fname)
-      field_errors[fname] = err
-      ok = false
+      if not checker.run_with_missing_fields then
+        local err = validation_errors.REQUIRED_FOR_ENTITY_CHECK:format(fname)
+        field_errors[fname] = err
+        ok = false
+      end
     else
       all_nil = false
     end
