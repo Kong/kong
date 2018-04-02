@@ -48,13 +48,13 @@ for _, strategy in helpers.each_strategy() do
             strategy = strategy,
             message  = unindent([[
               2 schema violations
-              (at least one of 'methods', 'hosts' or 'paths' must be non-empty;
+              (at least one of these fields must be non-empty: 'methods', 'hosts', 'paths';
               service: required field missing)
             ]], true, true),
             fields   = {
               service     = "required field missing",
               ["@entity"] = {
-                "at least one of 'methods', 'hosts' or 'paths' must be non-empty",
+                "at least one of these fields must be non-empty: 'methods', 'hosts', 'paths'",
               }
             },
 
@@ -347,74 +347,101 @@ for _, strategy in helpers.each_strategy() do
           assert.not_equal(1, new_route.updated_at)
         end)
 
-        it("fails trying to unset an interdependent field by itself", function()
-          local route = bp.routes:insert({
-            hosts   = { "example.com" },
-            methods = { "GET" },
-          })
+        describe("unsetting with ngx.null", function()
+          it("fails if all routing criteria explicitely given are null", function()
+            local route = bp.routes:insert({
+              hosts   = { "example.com" },
+              methods = { "GET" },
+            })
 
-          local new_route, err, err_t = db.routes:update({ id = route.id }, {
-            methods = ngx.null
-          })
-          assert.is_nil(new_route)
-          local message = unindent([[
-            2 schema violations
-            (hosts: field required for entity check;
-            paths: field required for entity check)
-          ]], true, true)
-          assert.equal(fmt("[%s] %s", strategy, message), err)
-          assert.same({
-            code        = Errors.codes.SCHEMA_VIOLATION,
-            name        = "schema violation",
-            strategy    = strategy,
-            message     = message,
-            fields = {
-              hosts = "field required for entity check",
-              paths = "field required for entity check",
-            }
-          }, err_t)
-        end)
+            local new_route, err, err_t = db.routes:update({ id = route.id }, {
+              methods = ngx.null
+            })
+            assert.is_nil(new_route)
+            local message = unindent([[
+              schema violation
+              (when updating, at least one of these fields must be non-empty: 'methods', 'hosts', 'paths')
+            ]], true, true)
+            assert.equal(fmt("[%s] %s", strategy, message), err)
+            assert.same({
+              code        = Errors.codes.SCHEMA_VIOLATION,
+              name        = "schema violation",
+              strategy    = strategy,
+              message     = message,
+              fields      = {
+                ["@entity"] = {
+                  "when updating, at least one of these fields must be non-empty: 'methods', 'hosts', 'paths'",
+                }
+              }
+            }, err_t)
+          end)
 
-        it("unsets a non-required field with ngx.null", function()
-          local route = bp.routes:insert({
-            hosts   = { "example.com" },
-            methods = { "GET" },
-            paths   = ngx.null,
-          })
+          it("fails if all routing criteria would be null", function()
+            local route = bp.routes:insert({
+              hosts   = { "example.com" },
+              methods = { "GET" },
+            })
 
-          local new_route, err, err_t = db.routes:update({ id = route.id }, {
-            hosts   = { "example.com" },
-            methods = ngx.null,
-            paths   = ngx.null,
-          })
-          assert.is_nil(err_t)
-          assert.is_nil(err)
-          assert.equal(ngx.null, new_route.methods)
-          route.methods     = nil
-          new_route.methods = nil
-          assert.same(route, new_route)
-        end)
+            local new_route, _, err_t = db.routes:update({ id = route.id }, {
+              hosts   = ngx.null,
+              methods = ngx.null,
+            })
+            assert.is_nil(new_route)
+            assert.same({
+              code        = Errors.codes.SCHEMA_VIOLATION,
+              name = "schema violation",
+              strategy    = strategy,
+              message  = unindent([[
+                schema violation
+                (when updating, at least one of these fields must be non-empty: 'methods', 'hosts', 'paths')
+              ]], true, true),
+              fields   = {
+                ["@entity"] = {
+                  "when updating, at least one of these fields must be non-empty: 'methods', 'hosts', 'paths'",
+                }
+              },
+            }, err_t)
+          end)
 
-        it("errors when unsetting a required field with ngx.null", function()
-          local route = bp.routes:insert({
-            hosts   = { "example.com" },
-            methods = { "GET" },
-          })
+          it("unsets a non-required field", function()
+            local route = bp.routes:insert({
+              hosts   = { "example.com" },
+              methods = { "GET" },
+              paths   = ngx.null,
+            })
 
-          local new_route, _, err_t = db.routes:update({ id = route.id }, {
-            hosts   = ngx.null,
-            methods = ngx.null,
-          })
-          assert.is_nil(new_route)
-          assert.same({
-            code        = Errors.codes.SCHEMA_VIOLATION,
-            name = "schema violation",
-            strategy    = strategy,
-            message     = "schema violation (paths: field required for entity check)",
-            fields      = {
-              paths = "field required for entity check",
-            }
-          }, err_t)
+            local new_route, err, err_t = db.routes:update({ id = route.id }, {
+              hosts   = { "example.com" },
+              methods = ngx.null,
+              paths   = ngx.null,
+            })
+            assert.is_nil(err_t)
+            assert.is_nil(err)
+            assert.equal(ngx.null, new_route.methods)
+            route.methods     = nil
+            new_route.methods = nil
+            assert.same(route, new_route)
+          end)
+
+          it("unsets a routing criteria when at least one of the fields is not null", function()
+            local route = bp.routes:insert({
+              hosts   = { "example.com" },
+              methods = { "GET" },
+              paths   = ngx.null,
+            })
+
+            local new_route, err, err_t = db.routes:update({ id = route.id }, {
+              hosts   = { "example2.com" },
+            })
+            assert.is_nil(err_t)
+            assert.is_nil(err)
+            assert.same({ "example2.com" }, new_route.hosts)
+            assert.same({ "GET" }, new_route.methods)
+            assert.same(ngx.null, new_route.paths)
+            route.hosts     = nil
+            new_route.hosts = nil
+            assert.same(route, new_route)
+          end)
         end)
       end)
 
