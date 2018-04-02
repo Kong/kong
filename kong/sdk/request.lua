@@ -1,13 +1,14 @@
-local cjson     = require "cjson.safe"
-local multipart = require "multipart"
+local cjson      = require "cjson.safe"
+local multipart  = require "multipart"
+local singletons = require "kong.singletons"
 
 
-local ngx       = ngx
-local sub       = string.sub
-local find      = string.find
-local type      = type
-local assert    = assert
-local tonumber  = tonumber
+local ngx        = ngx
+local sub        = string.sub
+local find       = string.find
+local type       = type
+local assert     = assert
+local tonumber   = tonumber
 
 
 local function get_content_length(request)
@@ -51,6 +52,96 @@ local function new(_SDK_REQUEST, major_version)
   --   -- do the previon version thing
   --   return "hello v0"
   -- end
+
+  function _SDK_REQUEST.get_scheme()
+    if singletons.ip.trusted(ngx.var.realip_remote_addr) then
+      local scheme = _SDK_REQUEST.get_header("X-Forwarded-Proto")
+      if type(scheme) == "table" then
+        scheme = scheme[1]
+      end
+
+      if not scheme then
+        scheme = ngx.var.scheme
+      end
+
+      return scheme
+
+    else
+      return ngx.var.scheme
+    end
+  end
+
+  function _SDK_REQUEST.get_host()
+    -- TODO: add phase and request level caches
+    -- TODO: add support for Forwarded header (the non X-Forwarded one)
+    local host
+    if singletons.ip.trusted(ngx.var.realip_remote_addr) then
+      host = _SDK_REQUEST.get_header("X-Forwarded-Host")
+      if type(host) == "table" then
+        host = host[1]
+      end
+
+      if not host then
+        host = ngx.var.host
+      end
+
+    else
+      host = ngx.var.host
+    end
+
+    -- TODO: this should never be the case, but just in case (remove?)
+    local s = find(host, "@", 1, true)
+    if s then
+      host = sub(host, s + 1)
+    end
+
+    s = find(host, ":", 1, true)
+    if s then
+      host = sub(host, 1, s - 1)
+    end
+
+    return host
+  end
+
+  function _SDK_REQUEST.get_port()
+    -- TODO: add phase and request level caches
+    -- TODO: add support for Forwarded header (the non-X-Forwarded one)
+    local port
+    if singletons.ip.trusted(ngx.var.realip_remote_addr) then
+      port = _SDK_REQUEST.get_header("X-Forwarded-Port")
+      if type(port) == "table" then
+        port = tonumber(port[1])
+      end
+
+      if not port or port < 1 or port > 65535 then
+        local host = _SDK_REQUEST.get_header("X-Forwarded-Host")
+        if type(host) == "table" then
+          host = host[1]
+        end
+
+        if not host then
+          host = ngx.var.host
+        end
+
+        -- TODO: this should never be the case, but just in case (remove?)
+        local s = find(host, "@", 1, true)
+        if s then
+          host = sub(host, s + 1)
+        end
+
+        s = find(host, ":", 1, true)
+        if s then
+          port = tonumber(sub(host, s + 1))
+        end
+      end
+    end
+
+    if not port or port < 1 or port > 65535 then
+      port = tonumber(ngx.var.server_port)
+    end
+
+    return port
+  end
 
   function _SDK_REQUEST.get_headers(max_headers)
     -- TODO: add phase and request level caches (what about max_headers here?)
@@ -198,6 +289,7 @@ local function new(_SDK_REQUEST, major_version)
     end
   end
 end
+
 
 return {
   namespace = "request",
