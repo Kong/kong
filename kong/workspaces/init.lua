@@ -341,7 +341,10 @@ _M.match_route = match_route
 
 
 local function api_workspaces(api)
+  local old_ws = ngx.ctx.workspace
+  ngx.ctx.workspace = {name = "*"}
   local r = singletons.dao.workspace_entities:find_all({entity_id = api.id})
+  ngx.ctx.workspace = old_ws
   return map(function(x) return x.workspace_id end, r)
 end
 
@@ -411,10 +414,11 @@ end
 -- match each one of the combinations of accepted [hosts, uris,
 -- methods]. The function returns false iff none of the variants
 -- collide.
-function _M.is_route_colliding(req)
-  local router = singletons.router
+function _M.is_route_colliding(req, router)
+  router = router or singletons.router
   local methods, uris, hosts = extract_req_data(req.params)
   local ws = _M.get_workspace()
+  ngx.log(0, [[ws:]], require("inspect")(ws))
   for perm in permutations(utils.split(methods or ALL_METHODS, ","),
                            utils.split(uris or " ", uris and "," or ""),
                            -- workarounds for
@@ -422,6 +426,7 @@ function _M.is_route_colliding(req)
                            utils.split(hosts or " ", hosts and "," or "")) do
 
     if not validate_route_for_ws(router, perm[1], perm[2], perm[3], ws) then
+      ngx.log(0, [["we colide!":]], require("inspect")("we colide!"))
       return true
     end
   end

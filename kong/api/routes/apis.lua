@@ -7,9 +7,32 @@ local singletons = require "kong.singletons"
 local Router = require "kong.core.router"
 local core_handler = require "kong.core.handler"
 
-return {
-  ["/apis/"] = {
+local function filter(pred, t)
+  local res = {}
+  for _, v in ipairs(t) do
+    if pred(v) then
+      res[#res+1] = v
+    end
+  end
+  return res
+end
 
+
+-- returns all routes except the current one
+local function all_apis_except(current)
+  local old_ws = ngx.ctx.workspace
+  ngx.ctx.workspace = {name = "*"}
+  local apis = singletons.dao.apis:find_all()
+  apis =  filter(
+    function(x) return x.id ~= current.id end,
+    apis)
+  ngx.ctx.workspace = old_ws
+  return apis
+end
+
+
+return {
+ ["/apis/"] = {
     before = function(self, dao_factory, helpers)
       local uuid = require("kong.tools.utils").uuid
       local version, err = singletons.cache:get("router:version", {
@@ -46,14 +69,38 @@ return {
       crud.paginated_set(self, dao_factory.apis)
     end,
 
-    PUT = function(self, dao_factory)
+    PUT = function(self, dao_factory, helpers)
       -- TODO: check when doing updates.  Probably have to remove the
       -- route from the router before running the check.
+
+      -- if no id, it acts as POST
+      if not self.params.id and workspaces.is_route_colliding(self) then
+        local err = "API route collides with an existing API"
+        return helpers.responses.send_HTTP_CONFLICT(err)
+      end
+
+      local curr_api = singletons.dao.apis:find({id = self.params.id})
+      if curr_api then  -- exists, we create an ad-hoc router
+
+        local r = Router.new(all_apis_except(curr_api))
+        if workspaces.is_route_colliding(self, r) then
+
+          local err = "API route collides with an existing API"
+          return helpers.responses.send_HTTP_CONFLICT(err)
+        end
+
+      else -- doesn't exist, same as post
+        -- TODO: check that this is the intended behavior
+        if workspaces.is_route_colliding(self) then
+          local err = "API route collides with an existing API"
+          return helpers.responses.send_HTTP_CONFLICT(err)
+        end
+      end
+
       crud.put(self.params, dao_factory.apis)
     end,
 
     POST = function(self, dao_factory, helpers)
-
       if workspaces.is_route_colliding(self) then
         local err = "API route collides with an existing API"
         return helpers.responses.send_HTTP_CONFLICT(err)
@@ -72,7 +119,16 @@ return {
     end,
 
     PATCH = function(self, dao_factory)
+
+      local r = Router.new(all_apis_except(self.api))
+      -- create temporary router
+      if workspaces.is_route_colliding(self, r) then
+        local err = "API route collides with an existing API"
+        return helpers.responses.send_HTTP_CONFLICT(err)
+      end
+
       crud.patch(self.params, dao_factory.apis, self.api)
+
     end,
 
     DELETE = function(self, dao_factory)

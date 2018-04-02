@@ -324,14 +324,15 @@ function _M.put(params, dao_collection, post_process)
     end
   else
     -- If entity body has primary key, deal with update
-    local e, err = singletons.dao.workspace_entities:find({
+    local e, err = singletons.dao.workspace_entities:find_all({
       workspace_id = ngx.ctx.workspace.id,
-      entity_id = params[primary_key],
+      entity_id = params[primary_key]
     })
+
     if err then
       return helpers.yield_error(err)
     end
-    if not e then
+    if not e or #e == 0 then
       return responses.send_HTTP_NOT_FOUND()
     end
 

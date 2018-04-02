@@ -534,6 +534,7 @@ describe("Admin API #" .. kong_config.database, function()
     describe("Refresh the router", function()
       before_each(function()
         client = assert(helpers.admin_client())
+        helpers.run_migrations(dao)
       end)
       after_each(function()
         if client then client:close() end
@@ -625,6 +626,81 @@ describe("Admin API #" .. kong_config.database, function()
           })
           assert.res_status(201, res)
       end)
+      it("modifies an api via PUT /apis", function()
+          local res = assert(client:send {
+            method = "POST",
+            path = "/apis",
+            body = {
+              uris = "/my-uri",
+              name = "my-api",
+              methods = "GET",
+              hosts = "my.api.com",
+              upstream_url = "http://api.com"
+            },
+            headers = {["Content-Type"] = "application/json"}
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+
+          res = assert(client:send {
+                         method = "POST",
+                         path = "/workspaces",
+                         body = {
+                           name = "foo",
+                         },
+                         headers = {["Content-Type"] = "application/json"}
+          })
+
+          body = assert.res_status(201, res)
+
+          res = assert(client:send {
+            method = "PUT",
+            path = "/apis",
+            body = {
+              id = json.id,
+              uris = "/my-uri",
+              name = "my-api",
+              methods = "GET",
+              hosts = "my.api.com",
+              upstream_url = "http://api.com"
+            },
+            headers = {["Content-Type"] = "application/json"}
+          })
+          body = assert.res_status(200, res)
+
+          --  create ok in different WS
+          res = assert(client:send {
+                         method = "POST",
+                         path = "/foo/apis",
+                         body = {
+                           uris = "/my-uri",
+                           name = "my-api",
+                           methods = "GET",
+                           hosts = "another",
+                           upstream_url = "http://api.com"
+                         },
+                         headers = {["Content-Type"] = "application/json"}
+          })
+          body = assert.res_status(201, res)
+          json = cjson.decode(body)
+
+          --  create ok in different WS
+          res = assert(client:send {
+                         method = "PUT",
+                         path = "/foo/apis",
+                         body = {
+                           id = json.id,
+                           uris = "/my-uri",
+                           name = "my-api",
+                           methods = "GET",
+                           hosts = "my.api.com",
+                           upstream_url = "http://api.com"
+                         },
+                         headers = {["Content-Type"] = "application/json"}
+          })
+          assert.res_status(409, res)
+
+        end)
     end)
   end)
 end)
