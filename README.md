@@ -29,7 +29,7 @@ $ curl -X POST http://kong:8001/apis/{api}/plugins \
 
 | form parameter | default | description |
 | --- | --- | --- |
-| `name` | `pre-function` or `post-function` | The name of the plugin to use, in this case: `canary` |
+| `name` | `pre-function` or `post-function` | The name of the plugin to use, in this case: `pre-function` |
 | `config.functions` |  | List of one or more lua functions that will be interpreted and ran at run-time, interpreted functions  are then cached for later use. |
 
 ## Usage
