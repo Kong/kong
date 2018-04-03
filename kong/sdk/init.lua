@@ -2,13 +2,17 @@ local MAJOR_VERSIONS = {
   [0] = {
     version = "0.0.1",
     modules = {
+      "base",
+      "singletons",
       "request",
-    }
+    },
   },
 
   [1] = {
     version = "1.0.0",
     modules = {
+      "base",
+      "singletons",
       "request",
       --[[
       "upstream",
@@ -19,7 +23,7 @@ local MAJOR_VERSIONS = {
       "utils",
       "shm",
       --]]
-    }
+    },
   },
 
   latest = 1,
@@ -29,6 +33,8 @@ local MAJOR_VERSIONS = {
 local _SDK = {
   major_versions = MAJOR_VERSIONS,
 }
+
+local _sdk_mt = {}
 
 
 function _SDK.new(major_version)
@@ -60,19 +66,31 @@ function _SDK.new(major_version)
         sdk[mod.namespace] = {}
       end
 
-      mod.new(sdk[mod.namespace], major_version)
+      mod.new(sdk, sdk[mod.namespace], major_version)
 
     else
       -- top-level namespace, directly attach the created functions to the
       -- root SDK instance. Dangeroud but elegant for methods like:
+      --   kong.new_tab()
+      --   kong.clear_tab()
       --   kong.get_phase() -- NYI
-      --   kong.do_top_level_action() -- NYI
 
-      mod.new(sdk)
+      mod.new(sdk, nil, major_version)
     end
   end
 
-  return sdk
+  return setmetatable(sdk, _sdk_mt)
+end
+
+
+function _sdk_mt.__index(sdk, k)
+  local get_singletons = rawget(sdk, "get_singletons")
+  if get_singletons()[k] then
+    -- if here, this is a legitimate singleton instance (because
+    -- declared in the current sdk version's list of singletons initializers)
+    -- but it has not been initialized yet.
+    error(k .. " singleton not initialized", 2)
+  end
 end
 
 
