@@ -15,6 +15,7 @@ local constants = require "kong.constants"
 local responses = require "kong.tools.responses"
 local singletons = require "kong.singletons"
 local certificate = require "kong.core.certificate"
+local workspaces = require "kong.workspaces"
 
 
 local tostring = tostring
@@ -68,7 +69,6 @@ local function build_router(dao, version)
 
   return true
 end
-
 
 -- in the table below the `before` and `after` is to indicate when they run:
 -- before or after the plugins
@@ -442,6 +442,7 @@ return {
         var.upstream_x_forwarded_host  = var.host
         var.upstream_x_forwarded_port  = var.server_port
       end
+      workspaces.add_ws_to_ctx(api)
     end,
     -- Only executed if the `router` module found an API and allows nginx to proxy it.
     after = function(ctx)

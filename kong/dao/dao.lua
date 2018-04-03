@@ -71,7 +71,8 @@ local function ret_error(db_name, res, err, ...)
   return res, err, ...
 end
 
-local function apply_unique_per_ws(table_name, params, workspace)
+local function apply_unique_per_ws(table_name, params)
+  local workspace = workspaces.get_workspaces()[1]
   local constraints = workspaceable[table_name]
   if not constraints then
     return
@@ -91,14 +92,19 @@ local function apply_unique_per_ws(table_name, params, workspace)
 end
 
 
-local function fetch_shared_entity_id(table_name, params, workspace)
+local function fetch_shared_entity_id(table_name, params)
   local constraints = workspaceable[table_name]
   if not constraints or not constraints.unique_keys then
     return
   end
 
-  if not workspace or
-    table_name == "workspaces" and
+  local ws_scope = workspaces.get_workspaces()
+  if #ws_scope == 0 then
+    return
+  end
+
+  local workspace = ws_scope[1]
+  if table_name == "workspaces" and
     workspace.name == workspaces.DEFAULT_WORKSPACE then
     return
   end
@@ -206,8 +212,8 @@ function DAO:insert(tbl, options)
     return ret_error(self.db.name, nil, err)
   end
 
-  local ws = ngx.ctx.workspace
-  apply_unique_per_ws(self.schema.table, model, ws)
+  local ws = workspaces.get_workspaces()[1]
+  apply_unique_per_ws(self.schema.table, model)
 
   for col, field in pairs(model.__schema.fields) do
     if field.dao_insert_value and model[col] == nil then
@@ -245,7 +251,7 @@ end
 function DAO:find(tbl)
   check_arg(tbl, 1, "table")
   check_utf8(tbl, 1)
-  apply_unique_per_ws(self.schema.table, tbl, ngx.ctx.workspace)
+  apply_unique_per_ws(self.schema.table, tbl)
 
   local model = self.model_mt(tbl)
   if not model:has_primary_keys() then
@@ -283,8 +289,7 @@ function DAO:find_all(tbl)
       return ret_error(self.db.name, nil, Errors.schema(err))
     end
 
-    new_params = fetch_shared_entity_id(self.schema.table,
-                                        tbl, ngx.ctx.workspace)
+    new_params = fetch_shared_entity_id(self.schema.table, tbl)
   end
 
   do
@@ -315,8 +320,7 @@ function DAO:find_page(tbl, page_offset, page_size)
       return ret_error(self.db.name, nil, Errors.schema(err))
     end
 
-     new_params = fetch_shared_entity_id(self.schema.table,
-                                         tbl, ngx.ctx.workspace)
+     new_params = fetch_shared_entity_id(self.schema.table, tbl)
   end
 
   if page_size == nil then
@@ -356,7 +360,7 @@ function DAO:count(tbl)
       return ret_error(self.db.name, nil, Errors.schema(err))
     end
 
-    new_params = fetch_shared_entity_id(self.schema.table, tbl, ngx.ctx.workspace)
+    new_params = fetch_shared_entity_id(self.schema.table, tbl)
     if new_params then
       return ret_error(self.db.name, self.db:count(self.table, new_params,
                        self.schema))
@@ -440,7 +444,7 @@ function DAO:update(tbl, filter_keys, options)
     fix(old, values, self.schema)
   end
 
-  apply_unique_per_ws(self.schema.table, values, ngx.ctx.workspace)
+  apply_unique_per_ws(self.schema.table, values)
 
   local res, err = self.db:update(self.table, self.schema, self.constraints, primary_keys, values, nils, options.full, model, options)
   if err then
@@ -481,7 +485,7 @@ function DAO:delete(tbl, options)
   check_arg(tbl, 1, "table")
   check_arg(options, 2, "table")
 
-  local ws = ngx.ctx.workspace
+  local ws = workspaces.get_workspaces()[1]
   apply_unique_per_ws(self.schema.table, tbl, ws)
 
   local model = self.model_mt(tbl)

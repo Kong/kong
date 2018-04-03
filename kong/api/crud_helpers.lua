@@ -270,7 +270,7 @@ function _M.post(params, dao_collection, post_process)
     return app_helpers.yield_error(err)
   else
     local err_rel = workspaces.add_entity_relation(dao_collection.table, data,
-                                                   ngx.ctx.workspace)
+                                                   workspaces.get_workspaces()[1])
     if err_rel then
       local data, err = dao_collection:delete(data)
       if err then
@@ -311,7 +311,7 @@ function _M.put(params, dao_collection, post_process)
     new_entity, err = dao_collection:insert(params)
     if not err then
       local err_rel = workspaces.add_entity_relation(dao_collection, new_entity,
-                                                     ngx.ctx.workspace)
+                                                     workspaces.get_workspaces()[1])
       if err_rel then
         local data, err = dao_collection:delete(new_entity)
         if err then
@@ -325,7 +325,7 @@ function _M.put(params, dao_collection, post_process)
   else
     -- If entity body has primary key, deal with update
     local e, err = singletons.dao.workspace_entities:find_all({
-      workspace_id = ngx.ctx.workspace.id,
+      workspace_id = workspaces.get_workspaces()[1].id,
       entity_id = params[primary_key],
     })
     if err then

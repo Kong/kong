@@ -132,18 +132,15 @@ local function is_blank(t)
 end
 
 
--- get the workspace name
--- if not in the context of a request, return '*', meaning all
--- workspaces
-function _M.get_workspace()
+-- Call can come from init phase, Admin or proxy
+-- mostly ngx.ctx.workspaces would already be set if not
+-- search will be done without workspace
+function _M.get_workspaces()
   local r = getfenv(0).__ngx_req
   if not r then
-    return  {
-      name = "*"
-    }
-  else
-    return ngx.ctx.workspace
+    return {}
   end
+  return ngx.ctx.workspaces or {}
 end
 
 
@@ -246,14 +243,16 @@ local function retrieve_workspace(workspace_name)
     return nil
   end
 
-  return rows[1]
+  return rows
 end
 
-
+-- Coming from admin API request
 function _M.get_req_workspace(params)
   if params.workspace_name == "*" then
-    return { name = "*" }
+    local rows, err = singletons.dao.workspaces:find_all()
+    return rows, err
   else
+
     return retrieve_workspace(params.workspace_name)
   end
 end
@@ -420,7 +419,7 @@ end
 function _M.is_route_colliding(req, router)
   router = router or singletons.router
   local methods, uris, hosts = extract_req_data(req.params)
-  local ws = _M.get_workspace()
+  local ws = _M.get_workspaces()[1]
   for perm in permutations(utils.split(methods or ALL_METHODS, ","),
                            utils.split(uris or " ", uris and "," or ""),
                            -- workarounds for

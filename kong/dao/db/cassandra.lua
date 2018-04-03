@@ -14,7 +14,7 @@ local fmt = string.format
 local uuid = utils.uuid
 local pairs = pairs
 local ipairs = ipairs
-local get_workspace = workspaces.get_workspace
+local get_workspaces = workspaces.get_workspaces
 
 local _M = require("kong.dao.db").new_db("cassandra")
 
@@ -465,7 +465,7 @@ function _M:insert(table_name, schema, model, constraints, options)
 end
 
 local function workspace_entities_map(db, table_name)
-  local ws = get_workspace()
+  local ws = get_workspaces()[1]
   local where, args = get_where(ws_entities_schema, {workspace_id = ws.id, entity_type = table_name})
   local query = select_query("workspace_entities", where)
   local ws_entities, err = db:query(query, args, nil, ws_entities_schema)
@@ -505,7 +505,7 @@ end
 -- `before_filter`, but to set the entity some of those same methods are
 -- used
 local function is_workspaceable(table_name, filters)
-  local ws = get_workspace()
+  local ws = get_workspace()[1]
   local workspaceable = workspaces.get_workspaceable_relations()
   if workspaceable[table_name] and not is_default_ws_retrieval(table_name, filters)
     and ws and ws.name ~= "*" then

@@ -18,7 +18,7 @@ local uuid = utils.uuid
 local ceil = math.ceil
 local fmt = string.format
 local ERR = ngx.ERR
-local get_workspace = workspaces.get_workspace
+local get_workspaces = workspaces.get_workspaces
 
 local workspaceable = workspaces.get_workspaceable_relations()
 local TTL_CLEANUP_INTERVAL = 60 -- 1 minute
@@ -256,6 +256,14 @@ local function escape_literal(val, field)
   error("don't know how to escape value: " .. tostring(val))
 end
 
+local function encode_ws_list(ws_scope)
+  local ids = {}
+  for _, ws in ipairs(ws_scope) do
+    ids[#ids + 1] = "'" .. tostring(ws.id) .. "'"
+  end
+  return table.concat(ids, ", ")
+end
+
 local function get_where(tbl)
   local where = {}
 
@@ -305,6 +313,8 @@ local function get_select_fields_ws(schema, table_name)
       fields[#fields+1] = table_name .. "." .. '"' ..  k .. '"'
     end
   end
+  fields[#fields+1] = "ws_e.workspace_name as workspace_name"
+  fields[#fields+1] = "ws_e.workspace_id as workspace_id"
   return concat(fields, ", ")
 end
 
@@ -342,10 +352,9 @@ local function select_query(self, select_clause, schema, table, where, offset, l
 end
 
 
-local function select_query_ws(self, workspace, select_clause, schema, table, where, offset, limit)
+local function select_query_ws(self, ws_scope, select_clause, schema, table, where, offset, limit)
   local query, join_tbl, join_where
-  local default_ws = workspaces.DEFAULT_WORKSPACE
-  local join_ws = (workspace ~= nil)
+  local join_ws = (#ws_scope > 0)
   local join_ttl = schema.primary_key and #schema.primary_key == 1
 
   local primary_key_type, err = retrieve_primary_key_type(self, schema, table)
@@ -354,20 +363,16 @@ local function select_query_ws(self, workspace, select_clause, schema, table, wh
   end
   -- TODO clean it once support for multiple workspaces added
   if join_ws then
-    local ws_join = fmt("SELECT DISTINCT workspace_id, entity_id, name FROM workspaces INNER JOIN workspace_entities ON ( workspace_id = id  AND entity_type = '%s'%s )",
-                        table, workspace ~= "*" and fmt("AND name = '%s'",
-                        workspace) or "")
+    local ws_list = encode_ws_list(ws_scope)
+    local ws_join = fmt([[SELECT DISTINCT workspace_id, entity_id, name as workspace_name FROM
+                        workspaces INNER JOIN workspace_entities ON
+                        ( workspace_id = id  AND entity_type = '%s' AND id in ( %s ) )]],
+                        table, ws_list)
 
-    join_tbl = fmt("( %s ) e %s JOIN %s %s ON ( e.entity_id = %s.%s%s )",
-                   ws_join, (workspace == default_ws or workspace == "*") and
-                   "RIGHT OUTER" or "INNER", table, table, table, schema.primary_key[1],
+    join_tbl = fmt("( %s ) ws_e INNER JOIN %s %s ON ( ws_e.entity_id = %s.%s%s )",
+                   ws_join, table, table, table, schema.primary_key[1],
                    primary_key_type == "uuid" and "::varchar" or "")
 
-    if workspace ~= "*" then
-      join_where = fmt("( e.name = '%s' %s ", workspace,
-                       workspace == default_ws and
-                       " or ( e.entity_id is null and e.workspace_id is null ))" or " )")
-    end
   end
 
   if join_ttl then
@@ -525,13 +530,16 @@ function _M:insert(table_name, schema, model, _, options)
 end
 
 function _M:find(table_name, schema, primary_keys)
-  local ws = get_workspace()
+  local ws_scope, err = get_workspaces()
+  if err then
+    return nil, err
+  end
 
   local where = ws and get_where_ws(primary_keys, table_name) or get_where(primary_keys)
 
   local query
-  if ws and workspaceable[table_name]  then
-    query = select_query_ws(self, ws.name, get_select_fields_ws(schema, table_name), schema, table_name, where)
+  if #ws_scope > 0 and workspaceable[table_name]  then
+    query = select_query_ws(self, ws_scope, get_select_fields_ws(schema, table_name), schema, table_name, where)
   else
     query = select_query(self, get_select_fields(schema), schema, table_name, where)
   end
@@ -543,16 +551,16 @@ function _M:find(table_name, schema, primary_keys)
 end
 
 function _M:find_all(table_name, tbl, schema)
-  local ws = get_workspace()
+  local ws_scope = get_workspaces()
 
   local where
   if tbl then
-    where = ws and get_where_ws(tbl, table_name) or get_where(tbl)
+    where = #ws_scope > 0 and get_where_ws(tbl, table_name) or get_where(tbl)
   end
 
   local query
-  if ws and workspaceable[table_name]  then
-    query = select_query_ws(self, ws.name, get_select_fields_ws(schema, table_name), schema, table_name, where)
+  if #ws_scope > 0 and workspaceable[table_name] then
+    query = select_query_ws(self, ws_scope, get_select_fields_ws(schema, table_name), schema, table_name, where)
   else
     query = select_query(self, get_select_fields(schema), schema, table_name, where)
   end
@@ -561,7 +569,7 @@ function _M:find_all(table_name, tbl, schema)
 end
 
 function _M:find_page(table_name, tbl, page, page_size, schema)
-  local ws = get_workspace()
+  local ws_scope = get_workspaces()
 
   page = page or 1
 
@@ -575,7 +583,7 @@ function _M:find_page(table_name, tbl, page, page_size, schema)
 
   local where
   if tbl then
-    if ws then
+    if #ws_scope > 0 then
       where = get_where_ws(tbl, table_name)
     else
       where = get_where(tbl)
@@ -583,12 +591,11 @@ function _M:find_page(table_name, tbl, page, page_size, schema)
   end
 
   local query
-  if ws and workspaceable[table_name]  then
-    query = select_query_ws(self, ws.name, get_select_fields_ws(schema, table_name), schema, table_name, where, offset, page_size)
+  if #ws_scope > 0 and workspaceable[table_name]  then
+    query = select_query_ws(self, ws_scope, get_select_fields_ws(schema, table_name), schema, table_name, where, offset, page_size)
   else
     query = select_query(self, get_select_fields(schema), schema, table_name, where, offset, page_size)
   end
-
 
   local rows, err = self:query(query, schema)
   if not rows then
@@ -600,11 +607,11 @@ function _M:find_page(table_name, tbl, page, page_size, schema)
 end
 
 function _M:count(table_name, tbl, schema)
-  local ws = get_workspace()
+  local ws_scope = get_workspaces()
 
   local where
   if tbl then
-    if ws and workspaceable[table_name]  then
+    if #ws_scope >0 and workspaceable[table_name]  then
       where = get_where_ws(tbl, table_name)
     else
       where = get_where(tbl)
@@ -612,8 +619,8 @@ function _M:count(table_name, tbl, schema)
   end
 
   local query
-  if ws and workspaceable[table_name]  then
-    query = select_query_ws(self, ws.name, "COUNT(*)", schema, table_name, where)
+  if ws_scope and workspaceable[table_name]  then
+    query = select_query_ws(self, ws_scope, "COUNT(*)", schema, table_name, where)
   else
     query = select_query(self, "COUNT(*)", schema, table_name, where)
   end

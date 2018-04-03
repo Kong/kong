@@ -96,11 +96,11 @@ app:before_filter(function(self)
     local rbac_handler = require "kong.rbac.handler"
     rbac_handler.validate_filter(self)
 
-    local workspace = workspaces.get_req_workspace(self.params)
-    if not workspace then
+    local workspaces = workspaces.get_req_workspace(self.params)
+    if not workspaces then
       responses.send_HTTP_NOT_FOUND()
     end
-    ngx.ctx.workspace = workspace
+    ngx.ctx.workspaces = workspaces
 
     -- save workspace name in the context; if not passed, default workspace is
     -- 'default'
