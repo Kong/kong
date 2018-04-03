@@ -653,6 +653,7 @@ describe("Admin API #" .. kong_config.database, function()
 
           body = assert.res_status(201, res)
 
+          -- modified ok
           res = assert(client:send {
             method = "PUT",
             path = "/apis",
@@ -684,7 +685,7 @@ describe("Admin API #" .. kong_config.database, function()
           body = assert.res_status(201, res)
           json = cjson.decode(body)
 
-          --  create ok in different WS
+          --  can't modify it if it collides
           res = assert(client:send {
                          method = "PUT",
                          path = "/foo/apis",
@@ -699,8 +700,51 @@ describe("Admin API #" .. kong_config.database, function()
                          headers = {["Content-Type"] = "application/json"}
           })
           assert.res_status(409, res)
-
         end)
+      it("creates with PUT /apis without id", function()
+        local res = assert(client:send {
+                             method = "POST",
+                             path = "/apis",
+                             body = {
+                               uris = "/my-uri",
+                               name = "my-api",
+                               methods = "GET",
+                               hosts = "my.api.com",
+                               upstream_url = "http://api.com"
+                             },
+                             headers = {["Content-Type"] = "application/json"}
+        })
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+
+        res = assert(client:send {
+                       method = "POST",
+                       path = "/workspaces",
+                       body = {
+                         name = "foo",
+                       },
+                       headers = {["Content-Type"] = "application/json"}
+        })
+
+        body = assert.res_status(201, res)
+
+        -- creates in different ws an API that would swallow traffic
+        res = assert(client:send {
+                       method = "PUT",
+                       path = "/foo/apis",
+                       body = {
+                         uris = "/my-uri",
+                         name = "my-api",
+                         methods = "GET",
+                         hosts = "my.api.com",
+                         upstream_url = "http://api.com"
+                       },
+                       headers = {["Content-Type"] = "application/json"}
+        })
+        body = assert.res_status(409, res)
+
+      end)
+
     end)
   end)
 end)
