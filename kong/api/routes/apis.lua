@@ -118,7 +118,7 @@ return {
       return helpers.responses.send_HTTP_OK(self.api)
     end,
 
-    PATCH = function(self, dao_factory)
+    PATCH = function(self, dao_factory, helpers)
 
       local r = Router.new(all_apis_except(self.api))
       -- create temporary router

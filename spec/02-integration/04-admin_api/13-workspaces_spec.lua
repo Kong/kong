@@ -745,6 +745,65 @@ describe("Admin API #" .. kong_config.database, function()
 
       end)
 
+      it("PATCH /apis/:name_or_id checks urls", function()
+
+        local res = assert(client:send {
+                             method = "POST",
+                             path = "/apis",
+                             body = {
+                               uris = "/my-uri",
+                               name = "my-api",
+                               methods = "GET",
+                               hosts = "my.api.com",
+                               upstream_url = "http://api.com"
+                             },
+                             headers = {["Content-Type"] = "application/json"}
+        })
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+
+        res = assert(client:send {
+                       method = "POST",
+                       path = "/workspaces",
+                       body = {
+                         name = "foo",
+                       },
+                       headers = {["Content-Type"] = "application/json"}
+        })
+
+        body = assert.res_status(201, res)
+
+        -- creates in different ws an API that would swallow traffic
+        res = assert(client:send {
+                       method = "POST",
+                       path = "/foo/apis",
+                       body = {
+                         uris = "/my-uri",
+                         name = "my-api",
+                         methods = "GET",
+                         hosts = "another",
+                         upstream_url = "http://api.com"
+                       },
+                       headers = {["Content-Type"] = "application/json"}
+        })
+        body = assert.res_status(201, res)
+
+        res = assert(client:send {
+                       method = "PATCH",
+                       path = "/foo/apis/" .. cjson.decode(body).id,
+                       body = {
+                         uris = "/my-uri",
+                         name = "my-api",
+                         methods = "GET",
+                         hosts = "my.api.com",
+                         upstream_url = "http://api.com"
+                       },
+                       headers = {["Content-Type"] = "application/json"}
+        })
+        body = assert.res_status(409, res)
+      end)
+
+
     end)
   end)
 end)
