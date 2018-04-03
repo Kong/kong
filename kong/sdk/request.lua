@@ -1,95 +1,85 @@
-local cjson      = require "cjson.safe"
-local multipart  = require "multipart"
+local cjson = require "cjson.safe"
+local multipart = require "multipart"
 local singletons = require "kong.singletons"
 
 
-local ngx        = ngx
-local sub        = string.sub
-local find       = string.find
-local type       = type
-local assert     = assert
-local tonumber   = tonumber
+local ngx = ngx
+local sub = string.sub
+local find = string.find
+local type = type
+local assert = assert
+local tonumber = tonumber
 
 
 local function get_content_length(request)
   local content_length = request.get_header("Content-Length")
   if not content_length then
-    return nil
+    return
   end
 
   if type(content_length) == "table" then
     if not content_length[1] then
-      return nil
+      return
     end
 
     content_length = content_length[1]
-  end
-
-  if content_length == "0" then
-    return 0
   end
 
   return tonumber(content_length)
 end
 
 
-local function new(_SDK_REQUEST, major_version)
-  -- instance of this major version of this SDK module
+local function new(sdk, _SDK_REQUEST, major_version)
+  -- could change in future versions
+  local MAX_HEADERS = 50
+  local MAX_QUERY_ARGS = 100
 
-  -- declare any necessary upvalue here, like reused tables
-  -- ...
-
-  -- declare functions below
-  -- ...
-
-  -- function _SDK_REQUEST.get_thing()
-  --   -- here, we can branch out if we ever need to break something:
-  --   if major_version >= 1 then
-  --     -- do something that would be breaking for next version
-  --     return "hello v1"
-  --   end
-  --
-  --   -- do the previon version thing
-  --   return "hello v0"
-  -- end
 
   function _SDK_REQUEST.get_scheme()
-    if singletons.ip.trusted(ngx.var.realip_remote_addr) then
+    --[[
+    -- should probably be optional
+    -- maybe part of get_protocol() instead?
+    if sdk.ip.is_trusted(var.realip_remote_addr) then
       local scheme = _SDK_REQUEST.get_header("X-Forwarded-Proto")
       if type(scheme) == "table" then
         scheme = scheme[1]
       end
 
       if not scheme then
-        scheme = ngx.var.scheme
+        scheme = var.scheme
       end
 
       return scheme
-
-    else
-      return ngx.var.scheme
     end
+    -- ]]
+
+    return ngx.var.scheme
   end
 
+
   function _SDK_REQUEST.get_host()
-    -- TODO: add phase and request level caches
     -- TODO: add support for Forwarded header (the non X-Forwarded one)
+    --[[
+    -- should probably be optional?
+    local var = ngx.var
     local host
-    if singletons.ip.trusted(ngx.var.realip_remote_addr) then
+    if sdk.ip.is_trusted(var.realip_remote_addr) then
       host = _SDK_REQUEST.get_header("X-Forwarded-Host")
       if type(host) == "table" then
         host = host[1]
       end
 
       if not host then
-        host = ngx.var.host
+        host = var.host
       end
 
     else
-      host = ngx.var.host
+      host = var.host
     end
+    --]]
 
     -- TODO: this should never be the case, but just in case (remove?)
+    --[[
     local s = find(host, "@", 1, true)
     if s then
       host = sub(host, s + 1)
@@ -99,15 +89,19 @@ local function new(_SDK_REQUEST, major_version)
     if s then
       host = sub(host, 1, s - 1)
     end
+    --]]
 
-    return host
+    return ngx.var.host
   end
 
+
   function _SDK_REQUEST.get_port()
-    -- TODO: add phase and request level caches
     -- TODO: add support for Forwarded header (the non-X-Forwarded one)
+
+    --[[
+    local var = ngx.var
     local port
-    if singletons.ip.trusted(ngx.var.realip_remote_addr) then
+    if singletons.ip.trusted(var.realip_remote_addr) then
       port = _SDK_REQUEST.get_header("X-Forwarded-Port")
       if type(port) == "table" then
         port = tonumber(port[1])
@@ -120,7 +114,7 @@ local function new(_SDK_REQUEST, major_version)
         end
 
         if not host then
-          host = ngx.var.host
+          host = var.host
         end
 
         -- TODO: this should never be the case, but just in case (remove?)
@@ -135,39 +129,44 @@ local function new(_SDK_REQUEST, major_version)
         end
       end
     end
+    --]]
 
-    if not port or port < 1 or port > 65535 then
-      port = tonumber(ngx.var.server_port)
-    end
-
-    return port
+    return tonumber(ngx.var.remote_port)
   end
 
-  function _SDK_REQUEST.get_headers(max_headers)
-    -- TODO: add phase and request level caches (what about max_headers here?)
 
+  function _SDK_REQUEST.get_headers(max_headers)
     if max_headers == nil then
-      max_headers = 100
+      max_headers = MAX_HEADERS
 
     else
-      assert(type(max_headers) == "number", "max_headers argument is not a number")
-      assert(max_headers > 0, "max_headers argument needs to be a positive number")
+      if type(max_headers) ~= "number" then
+        error("max_headers must be a number", 2)
+      end
+
+      if max_headers < 0 then
+        error("max_headers must be >= 0", 2)
+      end
     end
 
     return ngx.req.get_headers(max_headers)
   end
 
+
   function _SDK_REQUEST.get_header(header)
-    assert(type(header) == "string", "header argument is not a string")
+    if type(header) ~= "string" then
+      error("header must be a string", 2)
+    end
 
     return _SDK_REQUEST.get_headers()[header]
   end
+
 
   function _SDK_REQUEST.get_query_args(max_args)
     -- TODO: add phase and request level caches (what about max_args here?)
 
     if max_args == nil then
-      max_args = 100
+      max_args = MAX_QUERY_ARGS
 
     else
       assert(type(max_args) == "number", "max_args argument is not a number")
@@ -177,8 +176,9 @@ local function new(_SDK_REQUEST, major_version)
     return ngx.req.get_uri_args(max_args)
   end
 
+
   function _SDK_REQUEST.get_post_args(max_args)
-    -- TODO: add phase and request level caches (what about max_args here?)
+    -- TODO: (what about max_args here?)
 
     if max_args == nil then
       max_args = 100
@@ -199,9 +199,8 @@ local function new(_SDK_REQUEST, major_version)
     return ngx.req.get_post_args(max_args)
   end
 
-  function _SDK_REQUEST.get_body()
-    -- TODO: add phase and request level caches
 
+  function _SDK_REQUEST.get_body()
     local content_length = get_content_length(_SDK_REQUEST)
     if content_length and content_length < 1 then
       return "", nil
@@ -224,9 +223,8 @@ local function new(_SDK_REQUEST, major_version)
     return body, nil
   end
 
-  function _SDK_REQUEST.get_body_args()
-    -- TODO: add phase and request level caches
 
+  function _SDK_REQUEST.get_body_args()
     local content_type = _SDK_REQUEST.get_header("Content-Type")
     if not content_type then
       return nil, "content type header was not provided in request", nil
