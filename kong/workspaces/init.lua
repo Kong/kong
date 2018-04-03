@@ -37,8 +37,10 @@ end
 
 local function map(f, t)
   local r = {}
+  local n = 0
   for _, x in ipairs(t) do
-    r[#r+1] = f(x)
+    n = n + 1
+    r[n] = f(x)
   end
   return r
 end
@@ -47,9 +49,13 @@ end
 -- helper function for permutations
 local function inc(t, pos)
   if t[pos][2] == #t[pos][1] then
-    if pos == 1 then return nil end
+    if pos == 1 then
+      return nil
+    end
+
     t[pos][2] = 1
     return inc(t, pos-1)
+
   else
     t[pos][2] = t[pos][2] + 1
     return true
@@ -79,6 +85,7 @@ local function permutations(...)
         return map(function(s)
                      return s[1][s[2]] end,
                    state)
+
       else
         return nil
       end
@@ -349,19 +356,14 @@ local function api_workspaces(api)
 end
 
 
-local function api_in_ws(api, ws)
+-- return true if api is in workspace ws
+local function is_api_in_ws(api, ws)
   return member(ws.id, api_workspaces(api))
 end
-
--- local function api_in_ws(api, ws) --
---   ngx.log(0, [[{api, ws}:]], require("inspect")({api, ws}))
---   return member(ws.name, listify(api.workspace))
--- end
-
-_M.api_in_ws = api_in_ws
+_M.is_api_in_ws = is_api_in_ws
 
 
--- returns true if an api with method,uri,host can be added in the
+-- return true if an api with method,uri,host can be added in the
 -- workspace ws in the current router. See
 -- Workspaces-Design-Implementation quip doc for further detail.
 local function validate_route_for_ws(router, method, uri, host, ws)
@@ -372,7 +374,7 @@ local function validate_route_for_ws(router, method, uri, host, ws)
     ngx_log(DEBUG, "no selected_route")
     return true
 
-  elseif api_in_ws(selected_route.api, ws) then -- same workspace
+  elseif is_api_in_ws(selected_route.api, ws) then -- same workspace
     ngx_log(DEBUG, "selected_route in the same ws")
     return true
 
