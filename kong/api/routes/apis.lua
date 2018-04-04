@@ -6,6 +6,8 @@ local app_helpers = require "lapis.application"
 local singletons = require "kong.singletons"
 local Router = require "kong.core.router"
 local core_handler = require "kong.core.handler"
+local helpers = require "kong.tools.responses"
+
 
 local function filter(pred, t)
   local res = {}
@@ -21,18 +23,16 @@ end
 -- returns all routes except the current one
 local function all_apis_except(current)
   local old_ws = ngx.ctx.workspace
-  ngx.ctx.workspace = {name = "*"}
+  ngx.ctx.workspace = { name = "*" }
   local apis = singletons.dao.apis:find_all()
-  apis =  filter(
-    function(x) return x.id ~= current.id end,
-    apis)
+  apis = filter(function(x) return x.id ~= current.id end, apis)
   ngx.ctx.workspace = old_ws
   return apis
 end
 
 
 return {
- ["/apis/"] = {
+  ["/apis/"] = {
     before = function(self, dao_factory, helpers)
       local uuid = require("kong.tools.utils").uuid
 
@@ -46,10 +46,9 @@ return {
       crud.paginated_set(self, dao_factory.apis)
     end,
 
-    PUT = function(self, dao_factory, helpers)
-      -- TODO: check when doing updates.  Probably have to remove the
-      -- route from the router before running the check.
-
+    -- XXX: DO NOT add helpers as a third parameter. It collides with
+    -- CE and makes merges difficult
+    PUT = function(self, dao_factory)
       -- if no id, it acts as POST
       if not self.params.id and workspaces.is_route_colliding(self) then
         local err = "API route collides with an existing API"
@@ -61,17 +60,9 @@ return {
 
         local r = Router.new(all_apis_except(curr_api))
         if workspaces.is_route_colliding(self, r) then
-
           local err = "API route collides with an existing API"
           return helpers.responses.send_HTTP_CONFLICT(err)
         end
-
-      -- else -- doesn't exist, same as post
-      --   -- TODO: check that this is the intended behavior
-      --   if workspaces.is_route_colliding(self) then
-      --     local err = "API route collides with an existing API"
-      --     return helpers.responses.send_HTTP_CONFLICT(err)
-      --   end
       end
 
       crud.put(self.params, dao_factory.apis)
@@ -95,8 +86,9 @@ return {
       return helpers.responses.send_HTTP_OK(self.api)
     end,
 
-    PATCH = function(self, dao_factory, helpers)
-
+    -- XXX: DO NOT add helpers as a third parameter. It collides with
+    -- CE and makes merges difficult
+    PATCH = function(self, dao_factory)
       local r = Router.new(all_apis_except(self.api))
       -- create temporary router
       if workspaces.is_route_colliding(self, r) then
@@ -105,7 +97,6 @@ return {
       end
 
       crud.patch(self.params, dao_factory.apis, self.api)
-
     end,
 
     DELETE = function(self, dao_factory)

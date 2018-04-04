@@ -421,7 +421,6 @@ function _M.is_route_colliding(req, router)
   router = router or singletons.router
   local methods, uris, hosts = extract_req_data(req.params)
   local ws = _M.get_workspace()
-  ngx.log(0, [[ws:]], require("inspect")(ws))
   for perm in permutations(utils.split(methods or ALL_METHODS, ","),
                            utils.split(uris or " ", uris and "," or ""),
                            -- workarounds for
@@ -429,7 +428,7 @@ function _M.is_route_colliding(req, router)
                            utils.split(hosts or " ", hosts and "," or "")) do
 
     if not validate_route_for_ws(router, perm[1], perm[2], perm[3], ws) then
-      ngx.log(0, [["we colide!":]], require("inspect")("we colide!"))
+      ngx_log(DEBUG, "api colided")
       return true
     end
   end
