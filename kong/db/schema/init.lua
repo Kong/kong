@@ -1067,7 +1067,23 @@ end
 -- indexed numerically for general errors, and by field name for field errors.
 -- In all cases, the input table is untouched.
 function Schema:validate_update(input)
-  return self:validate(input, false)
+
+  -- Monkey-patch some error messages to make it clearer why they
+  -- apply during an update. This avoids propagating update-awareness
+  -- all the way down to the entity checkers (which would otherwise
+  -- defeat the whole purpose of the mechanism).
+  local rfec = validation_errors.REQUIRED_FOR_ENTITY_CHECK
+  local aloo = validation_errors.AT_LEAST_ONE_OF
+  validation_errors.REQUIRED_FOR_ENTITY_CHECK = rfec .. " when updating"
+  validation_errors.AT_LEAST_ONE_OF = "when updating, " .. aloo
+
+  local ok, err, err_t = self:validate(input, false)
+
+  -- Restore the original error messages
+  validation_errors.REQUIRED_FOR_ENTITY_CHECK = rfec
+  validation_errors.AT_LEAST_ONE_OF = aloo
+
+  return ok, err, err_t
 end
 
 
