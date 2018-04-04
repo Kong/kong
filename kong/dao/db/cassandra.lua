@@ -216,7 +216,11 @@ function _M:first_coordinator()
 end
 
 function _M:get_coordinator()
-  return coordinator, coordinator and nil or "no coordinator has been set"
+  if not coordinator then
+    return nil, "no coordinator has been set"
+  end
+
+  return coordinator
 end
 
 function _M:coordinator_change_keyspace(keyspace)
