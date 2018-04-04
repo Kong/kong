@@ -17,72 +17,75 @@ local function new(sdk, _SDK_REQUEST, major_version)
 
 
   function _SDK_REQUEST.get_scheme()
-    --[[
-    -- should probably be optional
-    -- maybe part of get_protocol() instead?
-    if sdk.ip.is_trusted(var.realip_remote_addr) then
-      local scheme = _SDK_REQUEST.get_header("X-Forwarded-Proto")
-      if not scheme then
-        scheme = var.scheme
-      end
-
-      return scheme
-    end
-    -- ]]
-
     return ngx.var.scheme
   end
 
 
-  function _SDK_REQUEST.get_host()
-    -- TODO: add support for Forwarded header (the non X-Forwarded one)
-    --[[
-    -- should probably be optional?
-    local var = ngx.var
-    local host
+  --[[
+  function _SDK_REQUEST.get_real_scheme()
+    -- should probably be optional
+    -- maybe part of get_protocol() instead?
     if sdk.ip.is_trusted(var.realip_remote_addr) then
-      host = _SDK_REQUEST.get_header("X-Forwarded-Host")
-      if not host then
-        host = var.host
+      local scheme = _SDK_REQUEST.get_header("X-Forwarded-Proto")
+      if scheme then
+        return scheme
       end
-
-    else
-      host = var.host
-    end
-    --]]
-
-    -- TODO: this should never be the case, but just in case (remove?)
-    --[[
-    local s = find(host, "@", 1, true)
-    if s then
-      host = sub(host, s + 1)
     end
 
-    s = find(host, ":", 1, true)
-    if s then
-      host = sub(host, 1, s - 1)
-    end
-    --]]
+    return _SDK_REQUEST.get_scheme()
+  end
+  -- ]]
 
+
+  function _SDK_REQUEST.get_host()
     return ngx.var.host
   end
 
 
-  function _SDK_REQUEST.get_port()
-    -- TODO: add support for Forwarded header (the non-X-Forwarded one)
-
-    --[[
+  --[[
+  function _SDK_REQUEST.get_real_host()
+    -- TODO: add support for Forwarded header (the non X-Forwarded one)
     local var = ngx.var
-    local port
-    if singletons.ip.trusted(var.realip_remote_addr) then
-      port = _SDK_REQUEST.get_header("X-Forwarded-Port")
-      if not port or port < 1 or port > 65535 then
-        local host = _SDK_REQUEST.get_header("X-Forwarded-Host")
-        if not host then
-          host = var.host
+    local host
+    if sdk.ip.is_trusted(var.realip_remote_addr) then
+      host = _SDK_REQUEST.get_header("X-Forwarded-Host")
+      if host then
+        local s = find(host, "@", 1, true)
+        if s then
+          host = sub(host, s + 1)
         end
 
-        -- TODO: this should never be the case, but just in case (remove?)
+        s = find(host, ":", 1, true)
+        if s then
+          host = sub(host, 1, s - 1)
+        end
+
+        return host
+      end
+    end
+
+    return _SDK_REQUEST.get_host()
+  end
+  --]]
+
+
+  function _SDK_REQUEST.get_port()
+    return tonumber(ngx.var.server_port)
+  end
+
+
+  --[[
+  function _SDK_REQUEST.get_real_port()
+    -- TODO: add support for Forwarded header (the non-X-Forwarded one)
+    local port
+    if sdk.ip.trusted(var.realip_remote_addr) then
+      port = tonumber(_SDK_REQUEST.get_header("X-Forwarded-Port"))
+      if port and port > 0 and port < 65536 then
+        return port
+      end
+
+      local host = _SDK_REQUEST.get_header("X-Forwarded-Host")
+      if host then
         local s = find(host, "@", 1, true)
         if s then
           host = sub(host, s + 1)
@@ -91,13 +94,17 @@ local function new(sdk, _SDK_REQUEST, major_version)
         s = find(host, ":", 1, true)
         if s then
           port = tonumber(sub(host, s + 1))
+
+          if port and port > 0 and port < 65536 then
+            return port
+          end
         end
       end
     end
-    --]]
 
-    return tonumber(ngx.var.server_port)
+    return _SDK_REQUEST.get_port()
   end
+  --]]
 
 
   function _SDK_REQUEST.get_headers(max_headers)
