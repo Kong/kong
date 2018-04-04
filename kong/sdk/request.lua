@@ -37,6 +37,11 @@ local function new(sdk, _SDK_REQUEST, major_version)
   -- ]]
 
 
+  function _SDK_REQUEST.get_username()
+    return ngx.var.remote_user
+  end
+
+
   function _SDK_REQUEST.get_host()
     return ngx.var.host
   end
@@ -105,6 +110,16 @@ local function new(sdk, _SDK_REQUEST, major_version)
     return _SDK_REQUEST.get_port()
   end
   --]]
+
+
+  function _SDK_REQUEST.get_method()
+    return ngx.req.get_method()
+  end
+
+
+  function _SDK_REQUEST.get_http_version()
+    return ngx.req.http_version()
+  end
 
 
   function _SDK_REQUEST.get_headers(max_headers)
