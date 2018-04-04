@@ -10,6 +10,7 @@ local pg_strat   = require "kong.vitals.postgres.strategy"
 local timer_at   = ngx.timer.at
 local time       = ngx.time
 local sleep      = ngx.sleep
+local floor      = math.floor
 local math_min   = math.min
 local math_max   = math.max
 local log        = ngx.log
@@ -18,7 +19,10 @@ local INFO       = ngx.INFO
 local WARN       = ngx.WARN
 local ERR        = ngx.ERR
 
+local fmt        = string.format
+
 local consumers_dict = ngx.shared.kong_vitals_requests_consumers
+local status_codes_dict = ngx.shared.kong_vitals_status_codes
 
 local new_tab
 do
@@ -174,6 +178,7 @@ function _M.new(opts)
   -- initialized from configuration.
   local self = {
     shm            = ngx.shared.kong,
+    dict           = ngx.shared.kong_vitals,
     strategy       = strategy,
     counters       = {},
     flush_interval = opts.flush_interval or 90000,
@@ -277,6 +282,32 @@ persistence_handler = function(premature, self)
 end
 
 
+local function parse_cache_key(key)
+  local keys = {}
+
+  for k in key:gmatch("([^|]*)|") do
+    table.insert(keys, k)
+  end
+
+  return keys
+end
+
+
+local function parse_status_code_dict_key(key)
+  -- split on |
+  local p = key:find("|", 1, true)
+  local class = key:sub(1, p - 1)
+  p = p + 1
+
+  local p2 = key:find("|",  p, true)
+  local timestamp = tonumber(key:sub(p, p2 - 1))
+  p2 = p2 + 1
+
+  local duration = tonumber(key:sub(p2))
+
+  return class, timestamp, duration
+end
+
 local function parse_dictionary_key(key)
   -- split on |
   local p = key:find("|", 1, true)
@@ -343,6 +374,51 @@ local function convert_stats(vitals, res, level, interval)
   -- only include nodes in metadata if it's a node-level request
   if level == "node" then
     meta.nodes = vitals:get_node_meta(nodes)
+  end
+
+  return { stats = stats, meta = meta }
+end
+
+
+-- converts Kong status codes to format expected by Vitals API
+local function convert_status_codes(res, level, interval, entity_type, entity_id)
+  local stats = {}
+  local meta = {
+    level       = level,
+    interval    = interval,
+    entity_type = entity_type,
+    entity_id   = entity_id,
+  }
+
+  -- no stats to process, return minimal metadata along with empty stats
+  if not res[1] then
+    return { stats = stats, meta = meta }
+  end
+
+  meta.earliest_ts = 0xFFFFFFFF
+  meta.latest_ts = -1
+
+  for _, row in ipairs(res) do
+    local key
+
+    meta.earliest_ts = math_min(meta.earliest_ts, tonumber(row.at))
+    meta.latest_ts = math_max(meta.latest_ts, tonumber(row.at))
+
+    stats["cluster"] = stats["cluster"] or {}
+
+    if row.code_class then
+      key = row.code_class .. "xx"
+    else
+      key = tostring(row.code)
+    end
+
+    if stats["cluster"][tostring(row.at)] then
+      stats["cluster"][tostring(row.at)][key] = row.count
+    else
+      stats["cluster"][tostring(row.at)] = {
+        [key] = row.count
+      }
+    end
   end
 
   return { stats = stats, meta = meta }
@@ -536,6 +612,201 @@ function _M:merge_worker_data(flush_key)
   return flush_data
 end
 
+function _M:flush_status_code_counters(batch_size, max)
+  log(DEBUG, _log_prefix, "flushing status code counters")
+
+  if not batch_size or type(batch_size) ~= "number" then
+    batch_size = 1024
+  end
+
+  -- keys are continually added to cache, so we'll never be "done",
+  -- and we don't want to tie up this worker indefinitely. So,
+  -- process at most 10% of our cache capacity. When it's available,
+  -- we might use ngx.dict:free_space() to judge how full our cache
+  -- is and how much we should work off.
+  if not max or type(max) ~= "number" then
+    max = 4096
+  end
+
+  local keys = status_codes_dict:get_keys(batch_size)
+  local num_fetched = #keys
+  local data = new_tab(num_fetched, 0)
+
+  -- how many keys have we processed?
+  local num_processed = 0
+
+  while num_fetched > 0 and num_processed < max do
+    for i, key in ipairs(keys) do
+      local count, err = status_codes_dict:get(key)
+
+      if count then
+        status_codes_dict:delete(key) -- trust that the insert will succeed
+
+        local code_class, at, duration = parse_status_code_dict_key(key)
+        data[i] = { code_class, at, duration, count }
+
+      elseif err then
+        log(WARN, _log_prefix, "failed to fetch ", key, ". err: ", err)
+
+      else
+        log(DEBUG, _log_prefix, key, " not found")
+      end
+    end
+
+    local ok, err = self.strategy:insert_status_code_classes(data)
+    if not ok then
+      log(WARN, _log_prefix, "failed to save status code classes: ", err)
+    end
+
+    num_processed = num_processed + num_fetched
+    log(DEBUG, _log_prefix, "keys processed: ", num_processed)
+
+    keys = status_codes_dict:get_keys(batch_size)
+    num_fetched = #keys
+    data = new_tab(num_fetched, 0)
+  end
+
+  -- clean up old data
+  local now = time()
+  local cutoff_times = {
+    seconds = now - self.ttl_seconds,
+    minutes = now - self.ttl_minutes,
+  }
+
+  local ok, err = self.strategy:delete_status_code_classes(cutoff_times)
+  if not ok then
+    log(WARN, _log_prefix, "failed to delete status code classes: ", err)
+  end
+
+  return num_processed
+end
+
+
+--[[
+  cache keys are of the form
+    at|duration|service|route|code|...
+
+  This table is a helper to extract identifiers by name instead of position
+]]
+local IDX = {
+  at = 1,
+  duration = 2,
+  service = 3,
+  route = 4,
+  code = 5,
+}
+
+
+--[[
+  "prep*" functions prepare the data we'll pass to the db strategy from
+  the cache entry we're processing.
+
+  By convention, return the id of the entity/ies we prepped. Note that
+  this could be a multi-valued return; e.g., if we're prepping
+  "counts per service per route", we would return `service_id, route_id`.
+ ]]
+local function prep_counts_per_service_and_code(keys, count, data)
+  if keys[IDX.service] == "" then
+    return
+  end
+
+  local row = fmt("%s|%s|%s|%s|",
+                  keys[IDX.service], keys[IDX.code], keys[IDX.at], keys[IDX.duration])
+
+  if data[row] then
+    data[row] = data[row] + count
+  else
+    data[row] = count
+  end
+
+  return keys[IDX.service], keys[IDX.code]
+end
+_M.prep_counts_per_service_and_code = prep_counts_per_service_and_code
+
+
+function _M:flush_vitals_cache(batch_size, max)
+  log(DEBUG, _log_prefix, "flushing vitals cache")
+
+  if not batch_size or type(batch_size) ~= "number" then
+    batch_size = 1024
+  end
+
+  -- keys are continually added to cache, so we'll never be "done",
+  -- and we don't want to tie up this worker indefinitely. So,
+  -- process at most 10% of our cache capacity. When it's available,
+  -- we might use ngx.dict:free_space() to judge how full our cache
+  -- is and how much we should work off.
+  if not max or type(max) ~= "number" then
+    max = 40960  -- TODO change this once we decide size of kong_vitals dict
+  end
+
+  local keys = self.dict:get_keys(batch_size)
+  local num_fetched = #keys
+
+  -- how many keys have we processed?
+  local num_processed = 0
+
+  while num_fetched > 0 and num_processed < max do
+    -- TODO now we can't preallocate data tables, because this cache is
+    -- generic and not guaranteed that every entry will have a consumer, or a
+    -- service, etc.
+    local codes_per_service = {}
+
+    for i, key in ipairs(keys) do
+      local count, err = self.dict:get(key)
+
+      if count then
+        self.dict:delete(key) -- trust that the inserts will succeed
+
+        local key_parts = parse_cache_key(key)
+
+        prep_counts_per_service_and_code(key_parts, count, codes_per_service)
+
+      elseif err then
+        log(WARN, _log_prefix, "failed to fetch ", key, ". err: ", err)
+
+      else
+        log(DEBUG, _log_prefix, key, " not found")
+      end
+    end
+
+    -- convert codes_per_service to an array for the db:
+    -- { service, code, at, duration, count }
+    local codes_to_insert = new_tab(#codes_per_service, 0)
+    local i = 1
+    for k, count in pairs(codes_per_service) do
+      local new_key = parse_cache_key(k)
+      new_key[5] = count
+      codes_to_insert[i] = new_key
+      i = i + 1
+    end
+
+    local ok, err = self.strategy:insert_status_codes_by_service(codes_to_insert)
+    if not ok then
+      log(WARN, _log_prefix, "insert codes per service failed. error: ", err)
+    end
+
+    num_processed = num_processed + num_fetched
+    log(DEBUG, _log_prefix, "keys processed: ", num_processed)
+
+    keys = self.dict:get_keys(batch_size)
+    num_fetched = #keys
+  end
+
+  local now = time()
+  local cutoff_times = {
+    seconds = now - self.ttl_seconds,
+    minutes = now - self.ttl_minutes,
+  }
+
+  local ok, err = self.strategy:delete_status_codes(cutoff_times)
+  if not ok then
+    log(WARN, _log_prefix, "failed to delete status codes per service: ", err)
+  end
+
+  return num_processed
+end
+
 --[[
   consumer request counters are stored in a 50m dictionary
   which holds a max of ~400K keys, or enough for 40K
@@ -596,7 +867,7 @@ function _M:flush_consumer_counters(batch_size, max)
     num_processed = num_processed + num_fetched
     log(DEBUG, _log_prefix, "keys processed: ", num_processed)
 
-    keys = consumers_dict:get_keys()
+    keys = consumers_dict:get_keys(batch_size)
     num_fetched = #keys
     data = new_tab(num_fetched, 0)
   end
@@ -678,6 +949,9 @@ function _M:flush_counters()
 
     -- now flush additional entity counters
     self:flush_consumer_counters()
+    self:flush_status_code_counters()
+
+    self:flush_vitals_cache()
   end
 
   log(DEBUG, _log_prefix, "flush done")
@@ -864,6 +1138,57 @@ function _M:get_stats(query_type, level, node_id)
   return convert_stats(self, res, level, query_type)
 end
 
+function _M:get_status_codes_by_service(opts)
+  if opts.duration ~= "minutes" and opts.duration ~= "seconds" then
+    return nil, "Invalid query params: interval must be 'minutes' or 'seconds'"
+  end
+
+  if opts.level ~= "cluster" then
+    return nil, "Invalid query params: level must be 'cluster'"
+  end
+
+  if not utils.is_valid_uuid(opts.service_id) then
+    return nil, "Invalid query params: invalid service_id"
+  end
+
+  local query_opts = {
+    duration = opts.duration == "seconds" and 1 or 60,
+    service_id = opts.service_id,
+  }
+
+  local res, err = self.strategy:select_status_codes_by_service(query_opts)
+
+  if err then
+    log(WARN, _log_prefix, err)
+    return {}
+  end
+
+  return convert_status_codes(res, opts.level, opts.duration, "service", opts.service_id)
+end
+
+function _M:get_status_codes(opts)
+  if opts.duration ~= "minutes" and opts.duration ~= "seconds" then
+    return nil, "Invalid query params: interval must be 'minutes' or 'seconds'"
+  end
+
+  if opts.level ~= "cluster" then
+    return nil, "Invalid query params: level must be 'cluster'"
+  end
+
+  local query_opts = {
+    duration = opts.duration == "seconds" and 1 or 60,
+  }
+
+  local res, err = self.strategy:select_status_code_classes(query_opts)
+
+  if err then
+    log(WARN, _log_prefix, err)
+    return {}
+  end
+
+  return convert_status_codes(res, opts.level, opts.duration)
+end
+
 
 --[[
 For use by the Vitals API to retrieve consumer stats
@@ -944,6 +1269,7 @@ function _M.table_names(dao)
 
   -- tables common across both dbs
   local table_names = {
+    "vitals_code_classes_by_cluster",
     "vitals_consumers",
     "vitals_node_meta",
     "vitals_stats_hours",
@@ -1032,6 +1358,53 @@ function _M:log_upstream_latency(latency)
 end
 
 
+function _M:log_status_code(status_code)
+  if not self:enabled() then
+    return "vitals not enabled"
+  end
+
+  -- input validation
+  local not_int = type(status_code) ~= "number" or status_code ~= floor(status_code)
+
+  if not_int then
+    log(WARN, _log_prefix, "log_status_code(): integer status code is required")
+    return "integer status code is required"
+  end
+
+  local non_standard_range = status_code < 100 or status_code > 599
+
+  if non_standard_range then
+    log(DEBUG, _log_prefix, "log_status_code(): non-standard status_code: " .. status_code)
+  end
+
+  local status_code_class = floor(status_code / 100) .. "|"
+
+   -- increment seconds
+  local seconds = time()
+  local status_code_class_seconds = status_code_class .. seconds .. "|1"
+  local _, err, forced_eviction  = status_codes_dict:incr(status_code_class_seconds, 1, 0)
+
+  if forced_eviction then
+    log(WARN, _log_prefix, "kong_vitals_status_codes cache is full")
+  elseif err then
+    log(WARN, _log_prefix, "log_status_code() seconds increment failed: ", err)
+  end
+
+  -- increment minute
+  local minute = seconds - (seconds % 60)
+  local status_code_class_minute = status_code_class .. minute .. "|60"
+  local _, err, forced_eviction = status_codes_dict:incr(status_code_class_minute, 1, 0)
+
+  if forced_eviction then
+    log(WARN, _log_prefix, "kong_vitals_status_codes cache is full")
+  elseif err then
+    log(WARN, _log_prefix, "log_status_code() minute increment failed: ", err)
+  end
+
+  return status_code
+end
+
+
 function _M:log_request(ctx)
   if not self:enabled() then
     return "vitals not enabled"
@@ -1066,6 +1439,43 @@ function _M:log_request(ctx)
   end
 
   return retval
+end
+
+
+function _M:log_phase_after_plugins(ctx, status)
+  if not self:enabled() then
+    return "vitals not enabled"
+  end
+
+  if not ctx.service then
+    -- we're only logging for services and routes. if there's no
+    -- service on the request, don't fill up the cache with useless keys
+    return true
+  end
+
+  local seconds = time()
+  local minutes = seconds - (seconds % 60)
+
+  local key = (ctx.service and ctx.service.id or "") .. "|" ..
+    (ctx.route and ctx.route.id or "") .. "|" ..
+    (status or "") .. "|"
+
+  local key_prefixes = {
+    seconds .. "|1|",
+    minutes .. "|60|",
+  }
+
+  for _, kp in ipairs(key_prefixes) do
+    local _, err, forced = self.dict:incr(kp .. key, 1, 0)
+
+    if forced then
+      log(INFO, _log_prefix, "kong_vitals cache is full")
+    elseif err then
+      log(WARN, _log_prefix, "failed to increment counter: ", err)
+    end
+  end
+
+  return key
 end
 
 

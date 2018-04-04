@@ -39,6 +39,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         dao = assert(dao_factory.new(kong_conf))
 
         -- start with a clean db
+        helpers.stop_kong()
         dao:drop_schema()
         dao:run_migrations()
 
@@ -94,8 +95,6 @@ dao_helpers.for_each_dao(function(kong_conf)
         end
 
         helpers.stop_kong()
-
-        dao:truncate_tables()
       end)
 
       describe("/vitals", function()
@@ -352,6 +351,253 @@ dao_helpers.for_each_dao(function(kong_conf)
             local json = cjson.decode(res)
 
             assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+          end)
+        end)
+      end)
+
+      describe("/vitals/cluster/status_codes", function()
+        before_each(function()
+          dao.db:truncate_table("vitals_code_classes_by_cluster")
+        end)
+
+        describe("GET", function()
+          it("retrieves the seconds-level response code data for the cluster", function()
+            local now = time()
+
+            local test_status_code_class_data = {
+              { 4, now - 1, 1, 10 },
+              { 4, now, 1, 15 },
+              { 5, now, 1, 20 },
+            }
+
+            assert(strategy:insert_status_code_classes(test_status_code_class_data))
+
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/cluster/status_codes",
+              query = {
+                interval = "seconds",
+              }
+            })
+            res = assert.res_status(200, res)
+            local json = cjson.decode(res)
+
+            local expected = {
+              meta = {
+                earliest_ts = now - 1,
+                interval = "seconds",
+                latest_ts = now,
+                level = "cluster",
+              },
+              stats = {
+                cluster = {
+                  [tostring(now - 1)] = {
+                    ["4xx"] = 10,
+                  },
+                  [tostring(now)] = {
+                    ["4xx"] = 15,
+                    ["5xx"] = 20,
+                  },
+                }
+              }
+            }
+
+            assert.same(expected, json)
+          end)
+
+          it("retrieves the minutes-level response code data for the cluster", function()
+            local minute_start_at = time() - (time() % 60)
+
+            local test_status_code_class_data = {
+              { 4, minute_start_at - 60, 60, 10 },
+              { 4, minute_start_at, 60, 25 },
+              { 5, minute_start_at, 60, 20 },
+            }
+
+            assert(strategy:insert_status_code_classes(test_status_code_class_data))
+
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/cluster/status_codes",
+              query = {
+                interval = "minutes",
+              }
+            })
+            res = assert.res_status(200, res)
+            local json = cjson.decode(res)
+
+            local expected = {
+              meta = {
+                earliest_ts = minute_start_at - 60,
+                interval = "minutes",
+                latest_ts = minute_start_at,
+                level = "cluster",
+              },
+              stats = {
+                cluster = {
+                  [tostring(minute_start_at - 60)] = {
+                    ["4xx"] = 10,
+                  },
+                  [tostring(minute_start_at)] = {
+                    ["4xx"] = 25,
+                    ["5xx"] = 20,
+                  },
+                }
+              }
+            }
+
+            assert.same(expected, json)
+          end)
+
+          it("returns a 400 if called with invalid query param", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/cluster/status_codes",
+              query = {
+                interval = "so-wrong",
+              }
+            })
+            res = assert.res_status(400, res)
+            local json = cjson.decode(res)
+
+            assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+          end)
+        end)
+      end)
+
+      describe("/vitals/services/{service_id}/status_codes", function()
+        if dao.db_type == "cassandra" then
+          return
+        end
+
+        before_each(function()
+          dao.db:truncate_table("vitals_codes_by_service")
+        end)
+
+        describe("GET", function()
+          it("retrieves the seconds-level response code data for a given service", function()
+            local now = time()
+            local service_id = utils.uuid()
+
+            local test_status_code_data = {
+              { service_id, 404, now, 1, 101},
+              { service_id, 200, now - 1, 1, 205},
+              { service_id, 500, now - 1, 1, 6},
+            }
+
+            assert(strategy:insert_status_codes_by_service(test_status_code_data))
+
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/services/" .. service_id .. "/status_codes",
+              query = {
+                interval = "seconds",
+              }
+            })
+
+            res = assert.res_status(200, res)
+            local json = cjson.decode(res)
+
+            local expected = {
+              meta = {
+                entity_type = "service",
+                entity_id = service_id,
+                earliest_ts = now - 1,
+                interval = "seconds",
+                latest_ts = now,
+                level = "cluster",
+              },
+              stats = {
+                cluster = {
+                  [tostring(now - 1)] = {
+                    ["200"] = 205,
+                    ["500"] = 6,
+                  },
+                  [tostring(now)] = {
+                    ["404"] = 101,
+                  },
+                }
+              }
+            }
+
+            assert.same(expected, json)
+          end)
+
+          it("retrieves the minutes-level response code data for a given service", function()
+            local minute_start_at = time() - (time() % 60)
+            local service_id = utils.uuid()
+
+            local test_status_code_data = {
+              { service_id, 404, minute_start_at, 60, 101},
+              { service_id, 200, minute_start_at - 60, 60, 205},
+              { service_id, 500, minute_start_at - 60, 60, 6},
+            }
+
+            assert(strategy:insert_status_codes_by_service(test_status_code_data))
+
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/services/" .. service_id .. "/status_codes",
+              query = {
+                interval = "minutes",
+              }
+            })
+            res = assert.res_status(200, res)
+            local json = cjson.decode(res)
+
+            local expected = {
+              meta = {
+                entity_type = "service",
+                entity_id = service_id,
+                earliest_ts = minute_start_at - 60,
+                interval = "minutes",
+                latest_ts = minute_start_at,
+                level = "cluster",
+              },
+              stats = {
+                cluster = {
+                  [tostring(minute_start_at - 60)] = {
+                    ["200"] = 205,
+                    ["500"] = 6,
+                  },
+                  [tostring(minute_start_at)] = {
+                    ["404"] = 101,
+                  },
+                }
+              }
+            }
+
+            assert.same(expected, json)
+          end)
+
+          it("returns a 400 if called with invalid query param", function()
+            local service_id = utils.uuid()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/services/" .. service_id .. "/status_codes",
+              query = {
+                interval = "so-wrong",
+              }
+            })
+            res = assert.res_status(400, res)
+            local json = cjson.decode(res)
+
+            assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+          end)
+
+          it("returns a 404 if called with invalid service_id", function()
+            local service_id = "shh.. I'm not a real service id"
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/services/" .. service_id .. "/status_codes",
+              query = {
+                interval = "minutes",
+              }
+            })
+            res = assert.res_status(404, res)
+            local json = cjson.decode(res)
+
+            assert.same("Not found", json.message)
           end)
         end)
       end)

@@ -126,6 +126,27 @@ local DELETE_CONSUMER_STATS = [[
   WHERE consumer_id = ? AND duration = ? AND at < ?
 ]]
 
+local INSERT_CODE_CLASSES_CLUSTER = [[
+  UPDATE vitals_code_classes_by_cluster
+     SET count = count + ?
+   WHERE at = ?
+     AND duration = ?
+     AND code_class = ?
+]]
+
+local SELECT_CODE_CLASSES_CLUSTER = [[
+  SELECT code_class, at, count
+    FROM vitals_code_classes_by_cluster
+   WHERE code_class in (1, 2, 3, 4, 5)
+     AND duration = ? AND at >= ?
+]]
+
+local DELETE_CODE_CLASSES_CLUSTER = [[
+  DELETE FROM vitals_code_classes_by_cluster
+  WHERE code_class in (1, 2, 3, 4, 5)
+  AND duration = ? AND at < ?
+]]
+
 local QUERY_OPTIONS = {
   prepared = true,
 }
@@ -215,6 +236,7 @@ function _M.new(dao_factory, opts)
   end
 
   local self = {
+    db          = dao_factory.db,
     cluster     = dao_factory.db.cluster,
     ttl_seconds = opts.ttl_seconds or 3600,
     ttl_minutes = opts.ttl_minutes or 90000,
@@ -669,6 +691,112 @@ function _M:get_bucket(at, size)
 end
 
 
+function _M:insert_status_code_classes(data)
+  local res, err, count, at, duration, code_class
+
+  for _, row in ipairs(data) do
+    code_class, at, duration, count = unpack(row)
+
+    local count_converted = cassandra.counter(count)
+    local at_converted = cassandra.timestamp(at * 1000)
+
+    res, err = self.cluster:execute(INSERT_CODE_CLASSES_CLUSTER, {
+      count_converted,
+      at_converted,
+      duration,
+      code_class,
+    }, COUNTER_QUERY_OPTIONS)
+
+
+    if not res then
+      return nil, "could not insert status code counters. error: " .. err
+    end
+  end
+
+  return true
+end
+
+
+function _M:select_status_code_classes(opts)
+  local duration = opts.duration
+
+  if duration ~= 1 and duration ~= 60 then
+    return nil, "duration must be 1 or 60"
+  end
+
+  local cutoff_time, args
+
+  if duration == 1 then
+    cutoff_time = time() - self.ttl_seconds
+  else
+    cutoff_time = time() - self.ttl_minutes
+  end
+
+  args = {
+    duration,
+    cassandra.timestamp(cutoff_time * 1000),
+  }
+
+  local res = {}
+  local idx = 1
+
+  for rows, err, page in self.cluster:iterate(SELECT_CODE_CLASSES_CLUSTER, args, QUERY_OPTIONS) do
+    if err then
+      return nil, "could not select code class counters. error: " .. err
+    end
+
+    for _, row in ipairs(rows) do
+      row.at = row.at / 1000
+      row.node_id = "cluster"
+      res[idx] = row
+      idx = idx + 1
+    end
+  end
+
+  return res
+end
+
+
+function _M:delete_status_code_classes(cutoff_times)
+  if self.db.major_version_n < 3 then
+    -- the delete algorithm implemented below doesn't work on 2.x
+    -- this is documented as a known issue, so we aren't going to log it
+    -- or fail here.
+    return 1
+  end
+
+  local count = 0
+  local _, err = self.cluster:execute(DELETE_CODE_CLASSES_CLUSTER, {
+    1,
+    cassandra.timestamp(cutoff_times.seconds * 1000),
+  })
+
+  if err then
+    log(WARN, _log_prefix, "failed to delete status_code_classes (secs). err: ", err)
+    count = count+1
+  else
+    count = count + 1
+  end
+
+  _, err = self.cluster:execute(DELETE_CODE_CLASSES_CLUSTER, {
+    60,
+    cassandra.timestamp(cutoff_times.minutes * 1000),
+  })
+
+  if err then
+    log(WARN, _log_prefix, "failed to delete status_code_classes (mins). err: ", err)
+    count = count+1
+  else
+    count = count + 1
+  end
+
+  -- note this isn't a true count since c* won't tell us how many rows she
+  -- deleted. Basically, anything non-zero means _something_ happened. <sigh/>
+  return count
+end
+
+
+
 --[[
   data: a 2D-array of [
     [consumer_id, timestamp, duration, count]
@@ -727,9 +855,13 @@ function _M:select_consumer_stats(opts)
   local cons_id  = opts.consumer_id
   local duration = opts.duration
 
+  if duration ~= 1 and duration ~= 60 then
+    return nil, "duration must be 1 or 60"
+  end
+
   local cutoff_time, args
 
-  if duration == "seconds" then
+  if duration == 1 then
     cutoff_time = time() - self.ttl_seconds
   else
     cutoff_time = time() - self.ttl_minutes
@@ -782,6 +914,13 @@ end
 
 
 function _M:delete_consumer_stats(consumers, cutoff_times)
+  if self.db.major_version_n < 3 then
+    -- the delete algorithm implemented below doesn't work on 2.x
+    -- this is documented as a known issue, so we aren't going to log it
+    -- or fail here.
+    return 1
+  end
+
   local count = 0
 
   for k, _ in pairs(consumers) do

@@ -470,6 +470,7 @@ function Kong.log()
   end
 
   core.log.after(ctx)
+  ee.handlers.log.after(ctx, ngx.status)
 end
 
 function Kong.handle_error()

@@ -43,6 +43,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       cluster:execute("TRUNCATE vitals_stats_minutes")
       cluster:execute("TRUNCATE vitals_node_meta")
       cluster:execute("TRUNCATE vitals_consumers")
+      cluster:execute("TRUNCATE vitals_code_classes_by_cluster")
     end)
 
     after_each(function()
@@ -55,6 +56,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       cluster:execute("TRUNCATE vitals_stats_minutes")
       cluster:execute("TRUNCATE vitals_node_meta")
       cluster:execute("TRUNCATE vitals_consumers")
+      cluster:execute("TRUNCATE vitals_code_classes_by_cluster")
     end)
 
     describe(":init()", function()
@@ -751,6 +753,20 @@ dao_helpers.for_each_dao(function(kong_conf)
         cluster:execute("TRUNCATE vitals_consumers")
       end)
 
+      it("validates arguments", function()
+        local opts = {
+          consumer_id = cons_id,
+          node_id     = nil,
+          duration    = "seconds",
+          level       = "cluster",
+        }
+
+        local _, err = strategy:select_consumer_stats(opts)
+
+        assert.is_nil(_)
+        assert.same("duration must be 1 or 60", err)
+      end)
+
       it("returns seconds stats for a consumer across the cluster", function()
         local opts = {
           consumer_id = cons_id,
@@ -1050,7 +1066,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         cluster:execute("TRUNCATE vitals_consumers")
       end)
 
-      pending("cleans up consumer stats", function()
+      it("cleans up consumer stats", function()
         local consumers = {
           [cons_1] = true,
           [cons_2] = true,
@@ -1064,11 +1080,259 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         local results, err = strategy:delete_consumer_stats(consumers, cutoff_times)
         assert.is_nil(err)
+        assert.is_true(results > 0)
 
-        local res, err = cluster:execute("select * from vitals_consumers")
+        -- delete only really does something in cassandra 3+
+        if dao.db.major_version_n >= 3 then
+          local res, err = cluster:execute("select * from vitals_consumers")
+          assert.is_nil(err)
+          assert.same(3, #res)
+        end
+      end)
+    end)
+
+
+    describe(":insert_status_code_classes()", function()
+      it("inserts counts of status code classes", function()
+        assert(strategy:init(uuid, hostname))
+
+        local now = ngx.time()
+        local now_ms = now * 1000
+        local minute = now - (now % 60)
+        local minute_ms = minute * 1000
+
+        local data = {
+          { 1, now, 1, 1 },
+          { 2, now, 1, 3 },
+          { 2, now + 1, 1, 5 },
+          { 2, minute, 60, 8 },
+        }
+
+        assert(strategy:insert_status_code_classes(data))
+
+        local expected = {
+          {
+            code_class = 1,
+            duration    = 1,
+            count       = 1,
+            at          = now_ms,
+          },
+          {
+            code_class = 2,
+            duration    = 1,
+            count       = 3,
+            at          = now_ms,
+          },
+          {
+            code_class = 2,
+            duration    = 1,
+            count       = 5,
+            at          = now_ms + 1000,
+          },
+          {
+            code_class = 2,
+            duration    = 60,
+            count       = 8,
+            at          = minute_ms,
+          },
+          meta = {
+            has_more_pages = false
+          },
+          type = "ROWS"
+        }
+
+        local res, _ = cluster:execute("select * from vitals_code_classes_by_cluster")
+
+        table.sort(res, function(a,b)
+          return a.count < b.count
+        end)
+
+        assert.same(expected, res)
+      end)
+    end)
+
+
+    describe(":select_status_code_classes()", function()
+      -- data starts a couple minutes ago
+      local start_at = time() - 90
+      local start_minute = start_at - (start_at % 60)
+
+      before_each(function()
+        local class_4xx_data = {
+          {4, start_at,      1, 1},
+          {4, start_at + 1,  1, 3},
+          {4, start_minute, 60, 4},
+          {4, start_at + 60, 1, 7},
+          {4, start_minute + 60, 60, 7},
+        }
+
+        local class_5xx_data = {
+          {5, start_at + 2,  1, 2},
+          {5, start_minute, 60, 2},
+          {5, start_at + 60, 1, 5},
+          {5, start_at + 61, 1, 6},
+          {5, start_at + 62, 1, 8},
+          {5, start_minute + 60, 60, 19},
+        }
+
+        assert(strategy:insert_status_code_classes(class_4xx_data))
+        assert(strategy:insert_status_code_classes(class_5xx_data))
+      end)
+
+      after_each(function()
+        cluster:execute("TRUNCATE vitals_code_classes_by_cluster")
+      end)
+
+      it("returns seconds counts across the cluster", function()
+        local opts = {
+          duration = 1,
+          level = "cluster",
+        }
+
+        local results, _ = strategy:select_status_code_classes(opts)
+
+        local expected = {
+          {
+            node_id     = "cluster",
+            code_class  = 4,
+            at          = start_at,
+            count       = 1,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 5,
+            at          = start_at + 2,
+            count       = 2,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 4,
+            at          = start_at + 1,
+            count       = 3,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 5,
+            at          = start_at + 60,
+            count       = 5,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 5,
+            at          = start_at + 61,
+            count       = 6,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 4,
+            at          = start_at + 60,
+            count       = 7,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 5,
+            at          = start_at + 62,
+            count       = 8,
+          },
+        }
+
+        table.sort(results, function(a,b)
+          return a.count < b.count
+        end)
+
+        assert.same(expected, results)
+      end)
+
+
+      it("returns minutes counts across the cluster", function()
+        local opts = {
+          duration    = 60,
+          level       = "cluster",
+        }
+
+        local results, _ = strategy:select_status_code_classes(opts)
+
+        local expected = {
+          {
+            node_id     = "cluster",
+            code_class  = 5,
+            at          = start_minute,
+            count       = 2,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 4,
+            at          = start_minute,
+            count       = 4,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 4,
+            at          = start_minute + 60,
+            count       = 7,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 5,
+            at          = start_minute + 60,
+            count       = 19,
+          },
+        }
+
+        table.sort(results, function(a,b)
+          return a.count < b.count
+        end)
+
+        assert.same(expected, results)
+      end)
+    end)
+
+    describe(":delete_status_code_classes()", function()
+      before_each(function()
+        cluster:execute("TRUNCATE vitals_code_classes_by_cluster")
+        local q = "UPDATE vitals_code_classes_by_cluster SET count=count+? WHERE code_class=? AND at=? AND duration=?"
+
+        local test_data = {
+          {cassandra.counter(1), 2, cassandra.timestamp(1510560000000), 1},
+          {cassandra.counter(3), 2, cassandra.timestamp(1510560001000), 1},
+          {cassandra.counter(4), 2, cassandra.timestamp(1510560002000), 1},
+          {cassandra.counter(19), 2, cassandra.timestamp(1510560000000), 60},
+          {cassandra.counter(5), 4, cassandra.timestamp(1510560001000), 1},
+          {cassandra.counter(7), 4, cassandra.timestamp(1510560002000), 1},
+          {cassandra.counter(20), 4, cassandra.timestamp(1510560000000), 60},
+          {cassandra.counter(24), 5, cassandra.timestamp(1510560060000), 60},
+        }
+
+        for _, row in ipairs(test_data) do
+          assert(cluster:execute(q, row, { prepared = true, counter  = true }))
+        end
+
+        local res, _ = cluster:execute("select * from vitals_code_classes_by_cluster")
+        assert.same(8, #res)
+      end)
+
+      after_each(function()
+        cluster:execute("TRUNCATE vitals_code_classes_by_cluster")
+      end)
+
+      it("cleans up counters", function()
+        -- query is "<" so bump the cutoff by a second
+        local cutoff_times = {
+          minutes = 1510560001,
+          seconds = 1510560002,
+        }
+
+        local results, err = strategy:delete_status_code_classes(cutoff_times)
         assert.is_nil(err)
         assert.is_true(results > 0)
-        assert.same(3, #res)
+
+        -- delete only really does something in cassandra 3+
+        if dao.db.major_version_n >= 3 then
+          local res, err = cluster:execute("select * from vitals_code_classes_by_cluster")
+          assert.is_nil(err)
+
+          assert.same(3, #res)
+        end
       end)
     end)
 

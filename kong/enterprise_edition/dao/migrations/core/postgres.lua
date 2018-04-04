@@ -480,4 +480,30 @@ return {
       end
     end,
   },
+  {
+    name = "2018-03-12-000000_vitals_v0.32",
+    up = [[
+      CREATE TABLE IF NOT EXISTS vitals_code_classes_by_cluster(
+        code_class int,
+        at timestamp with time zone,
+        duration int,
+        count int,
+        PRIMARY KEY (code_class, duration, at)
+      );
+
+      CREATE TABLE IF NOT EXISTS vitals_codes_by_service(
+        service_id uuid,
+        code int,
+        at timestamp with time zone,
+        duration int,
+        count int,
+        PRIMARY KEY (service_id, code, duration, at)
+      );
+    ]],
+
+    down = [[
+      DROP TABLE vitals_code_classes_by_cluster;
+      DROP TABLE vitals_codes_by_service;
+    ]]
+  },
 }

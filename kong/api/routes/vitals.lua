@@ -29,6 +29,27 @@ return {
       return helpers.responses.send_HTTP_OK(cluster_stats)
     end
   },
+  ["/vitals/cluster/status_codes"] = {
+    GET = function(self, dao, helpers)
+      local opts = {
+        duration = self.params.interval,
+        level    = "cluster"
+      }
+
+      local status_codes, err = singletons.vitals:get_status_codes(opts)
+
+      if err then
+        if err:find("Invalid query params", nil, true) then
+          return helpers.responses.send_HTTP_BAD_REQUEST(err)
+
+        else
+          return helpers.yield_error(err)
+        end
+      end
+
+      return helpers.responses.send_HTTP_OK(status_codes)
+    end
+  },
   ["/vitals/nodes/"] = {
     GET = function(self, dao, helpers)
       local all_node_stats, err = singletons.vitals:get_stats(self.params.interval, "node", nil)
@@ -110,6 +131,29 @@ return {
       end
 
       return helpers.responses.send_HTTP_OK(requested_node_stats)
+    end
+  },
+  ["/vitals/services/:service_id/status_codes"] = {
+    GET = function(self, dao, helpers)
+      local opts = {
+        duration   = self.params.interval,
+        service_id = self.params.service_id,
+        level      = "cluster",
+      }
+
+      local status_codes, err = singletons.vitals:get_status_codes_by_service(opts)
+
+      if err then
+        if err:find("Invalid query params: invalid service_id") or err:find("service does not exist") then
+          return helpers.responses.send_HTTP_NOT_FOUND()
+        elseif err:find("Invalid query params", nil, true) then
+          return helpers.responses.send_HTTP_BAD_REQUEST(err)
+        else
+          return helpers.yield_error(err)
+        end
+      end
+
+      return helpers.responses.send_HTTP_OK(status_codes)
     end
   }
 }

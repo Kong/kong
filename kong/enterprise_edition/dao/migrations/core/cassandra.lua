@@ -383,4 +383,20 @@ return {
       end
     end,
   },
+  {
+    name = "2018-03-12-000000_vitals_v0.32",
+    up = [[
+      CREATE TABLE IF NOT EXISTS vitals_code_classes_by_cluster(
+        at timestamp,
+        duration int,
+        code_class int,
+        count counter,
+        PRIMARY KEY((code_class, duration), at)
+      );
+    ]],
+
+    down = [[
+      DROP TABLE vitals_code_classes_by_cluster;
+    ]]
+  },
 }

@@ -20,9 +20,15 @@ dao_helpers.for_each_dao(function(kong_conf)
 
 
     setup(function()
-      dao      = assert(dao_factory.new(kong_conf))
+      local opts = {
+        ttl_seconds = 3600,
+        ttl_minutes = 90000,
+      }
+
+      dao = assert(dao_factory.new(kong_conf))
       dao:run_migrations()
-      strategy = pg_strategy.new(dao)
+
+      strategy = pg_strategy.new(dao, opts)
 
       db  = dao.db
 
@@ -40,6 +46,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       assert(db:query("truncate table vitals_stats_seconds_2"))
       assert(db:query("truncate table vitals_node_meta"))
       assert(db:query("truncate table vitals_consumers"))
+      assert(db:query("truncate table vitals_code_classes_by_cluster"))
     end)
 
 
@@ -1026,6 +1033,480 @@ dao_helpers.for_each_dao(function(kong_conf)
         local results, _ = strategy:delete_consumer_stats(consumers, cutoff_times)
 
         assert.same(5, results)
+      end)
+    end)
+
+
+    describe(":insert_status_code_classes", function()
+      it("turns Lua tables into Postgres rows", function()
+        local uuid = utils.uuid()
+
+        assert(strategy:init(uuid, "testhostname"))
+
+        local now = ngx.time()
+        local minute = now - (now % 60)
+
+        local data = {
+          { 1, now, 1, 4 },
+          { 2, now, 1, 1 },
+          { 2, now - 1, 1, 2 },
+          { 2, minute, 60, 3 },
+        }
+
+        assert(strategy:insert_status_code_classes(data))
+
+        -- force a sort order to make assertion easier
+        local q = [[
+          select code_class, extract('epoch' from at) as at,
+            duration, count from vitals_code_classes_by_cluster
+              order by at, duration, count
+        ]]
+
+        local results = db:query(q)
+
+        local expected = {
+          {
+            at         = minute,
+            code_class = 2,
+            count      = 3,
+            duration   = 60,
+          },
+          {
+            at         = now - 1,
+            code_class = 2,
+            count      = 2,
+            duration   = 1,
+          },
+          {
+            at         = now,
+            code_class = 2,
+            count      = 1,
+            duration   = 1,
+          },
+          {
+            at         = now,
+            code_class = 1,
+            count      = 4,
+            duration   = 1,
+          },
+        }
+
+        assert.same(expected, results)
+      end)
+    end)
+
+    describe(":select_status_code_classes", function()
+      -- data starts a couple minutes ago
+      local start_at = time() - 90
+      local start_minute = start_at - (start_at % 60)
+
+      before_each(function()
+        local test_data = {
+          {4, start_at,      1, 1},
+          {4, start_at + 1,  1, 3},
+          {4, start_minute, 60, 4},
+          {4, start_at + 60, 1, 7},
+          {4, start_minute + 60, 60, 7},
+          {5, start_at + 2,  1, 2},
+          {5, start_minute, 60, 2},
+          {5, start_at + 60, 1, 5},
+          {5, start_at + 61, 1, 6},
+          {5, start_at + 62, 1, 8},
+          {5, start_minute + 60, 60, 19},
+        }
+
+        local q, query
+
+        q = "insert into vitals_code_classes_by_cluster(code_class, at, duration, count) " ..
+          "values('%s', to_timestamp(%d), %d, %d)"
+
+        for _, row in ipairs(test_data) do
+          query = fmt(q, unpack(row))
+          assert(db:query(query))
+        end
+      end)
+
+      after_each(function()
+        db:query("TRUNCATE vitals_code_classes_by_cluster")
+      end)
+
+      it("returns seconds counts across the cluster", function()
+        local opts = {
+          duration = 1,
+        }
+
+        local results, err = strategy:select_status_code_classes(opts)
+        assert.is_nil(err)
+
+        local expected = {
+          {
+            node_id     = "cluster",
+            code_class  = 4,
+            at          = start_at,
+            count       = 1,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 5,
+            at          = start_at + 2,
+            count       = 2,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 4,
+            at          = start_at + 1,
+            count       = 3,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 5,
+            at          = start_at + 60,
+            count       = 5,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 5,
+            at          = start_at + 61,
+            count       = 6,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 4,
+            at          = start_at + 60,
+            count       = 7,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 5,
+            at          = start_at + 62,
+            count       = 8,
+          },
+        }
+
+        table.sort(results, function(a,b)
+          return a.count < b.count
+        end)
+
+        assert.same(expected, results)
+      end)
+
+
+      it("returns minutes counts across the cluster", function()
+        local opts = {
+          duration    = 60,
+          level       = "cluster",
+        }
+
+        local results, _ = strategy:select_status_code_classes(opts)
+
+        local expected = {
+          {
+            node_id     = "cluster",
+            code_class  = 5,
+            at          = start_minute,
+            count       = 2,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 4,
+            at          = start_minute,
+            count       = 4,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 4,
+            at          = start_minute + 60,
+            count       = 7,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 5,
+            at          = start_minute + 60,
+            count       = 19,
+          },
+        }
+
+        table.sort(results, function(a,b)
+          return a.count < b.count
+        end)
+
+        assert.same(expected, results)
+      end)
+    end)
+
+
+    describe(":delete_status_code_classes", function()
+      it("cleans up status code classes", function()
+        local q, query
+
+        q = "insert into vitals_code_classes_by_cluster(code_class, at, duration, count) " ..
+            "values('%s', to_timestamp(%d), %d, %d)"
+
+        local test_data = {
+          {4, 1510560000, 1, 1},
+          {4, 1510560001, 1, 3},
+          {4, 1510560002, 1, 4},
+          {4, 1510560000, 60, 19},
+          {5, 1510560001, 1, 5},
+          {5, 1510560002, 1, 7},
+          {5, 1510560000, 60, 20},
+          {5, 1510560060, 60, 24},
+        }
+
+        for _, row in ipairs(test_data) do
+          query = fmt(q, unpack(row))
+          assert(db:query(query))
+        end
+
+        local cutoff_times = {
+          minutes = 1510560001,
+          seconds = 1510560002,
+        }
+
+        local res, err = strategy:delete_status_code_classes(cutoff_times)
+
+        assert.is_nil(err)
+        assert.same(5, res)
+      end)
+
+      it("validates cutoff_times", function()
+        local _, err = strategy:delete_status_code_classes("foo")
+        assert.same("cutoff_times must be a table", err)
+
+        _, err = strategy:delete_status_code_classes({ seconds = "foo" })
+        assert.same("cutoff seconds must be a number", err)
+
+        _, err = strategy:delete_status_code_classes({ seconds = 999 })
+        assert.same("cutoff minutes must be a number", err)
+      end)
+
+      it("returns an error message when it fails", function()
+        stub(strategy.db, "query").returns(nil, "failure!")
+
+        local cutoff_times = {
+          minutes = 1510560001,
+          seconds = 1510560002,
+        }
+
+        local _, err = strategy:delete_status_code_classes(cutoff_times)
+
+        assert.same("failed to delete code_classes. err: failure!", err)
+      end)
+    end)
+
+
+    describe(":insert_status_codes_by_service", function()
+      it("turns Lua tables into Postgres rows", function()
+        local uuid = utils.uuid()
+
+        local now    = ngx.time()
+        local minute = now - (now % 60)
+
+        local data = {
+          { uuid, 404, now, 1, 4 },
+          { uuid, 404, now - 1, 1, 2 },
+          { uuid, 500, minute, 60, 5 },
+        }
+
+        assert(strategy:insert_status_codes_by_service(data))
+
+        -- force a sort order to make assertion easier
+        local q = [[
+          select service_id, code, extract('epoch' from at) as at,
+            duration, count from vitals_codes_by_service
+              order by count
+        ]]
+
+        local results = db:query(q)
+
+        local expected = {
+          {
+            at         = now - 1,
+            code       = 404,
+            count      = 2,
+            duration   = 1,
+            service_id = uuid,
+          },
+          {
+            at         = now,
+            code       = 404,
+            count      = 4,
+            duration   = 1,
+            service_id = uuid,
+          },
+          {
+            at         = minute,
+            code       = 500,
+            count      = 5,
+            duration   = 60,
+            service_id = uuid,
+          },
+        }
+
+        assert.same(expected, results)
+      end)
+    end)
+
+
+    describe(":select_status_codes_by_service", function()
+      local uuid   = utils.uuid()
+      local uuid_2 = utils.uuid()
+
+      assert(strategy:init(uuid, "testhostname"))
+
+      local now    = time()
+      local minute = now - (now % 60)
+
+      before_each(function()
+        db:query("TRUNCATE vitals_codes_by_service")
+
+        local data = {
+          [{ uuid, 404, now, 1 }]       = 4,
+          [{ uuid_2, 404, now, 1 }]     = 6,
+          [{ uuid, 404, now - 1, 1 }]   = 2,
+          [{ uuid, 500, minute, 60 }]   = 3,
+          [{ uuid_2, 500, minute, 60 }] = 5,
+        }
+
+        local q, query, service_id, code, at, duration
+
+        q = "insert into vitals_codes_by_service(service_id, code, at, duration, count) " ..
+          "values('%s', '%s', to_timestamp(%d), %d, %d)"
+
+        for k,count in pairs(data) do
+          service_id, code, at, duration = unpack(k)
+
+          query = fmt(q, service_id, code, at, duration, count)
+          assert(db:query(query))
+        end
+      end)
+
+      it("returns seconds counts by service", function()
+        local opts = {
+          duration   = 1,
+          service_id = uuid,
+        }
+
+        local results, err = strategy:select_status_codes_by_service(opts)
+        assert.is_nil(err)
+
+        local expected = {
+          {
+            at         = now - 1,
+            code       = 404,
+            count      = 2,
+            service_id = uuid,
+          },
+          {
+            at         = now,
+            code       = 404,
+            count      = 4,
+            service_id = uuid,
+          },
+        }
+
+        table.sort(results, function(a,b)
+          return a.count < b.count
+        end)
+
+        assert.same(expected, results)
+      end)
+
+
+      it("returns minutes counts by service", function()
+        local opts = {
+          duration   = 60,
+          service_id = uuid_2,
+        }
+
+        local results, _ = strategy:select_status_codes_by_service(opts)
+
+        local expected = {
+          {
+            at         = minute,
+            code       = 500,
+            count      = 5,
+            service_id = uuid_2,
+          },
+        }
+
+        table.sort(results, function(a,b)
+          return a.count < b.count
+        end)
+
+        assert.same(expected, results)
+      end)
+    end)
+
+
+    describe(":delete_status_codes", function()
+      local uuid   = utils.uuid()
+      local uuid_2 = utils.uuid()
+
+      before_each(function()
+        db:query("TRUNCATE vitals_codes_by_service")
+      end)
+
+      it("cleans up status codes", function()
+        db:query("TRUNCATE vitals_codes_by_service")
+
+        local data = {
+          [{ uuid, 404, 1510560000, 1 }]    = 1,
+          [{ uuid_2, 404, 1510560001, 1 }]  = 5,
+          [{ uuid, 404, 1510560002, 1 }]    = 4,
+          [{ uuid, 404, 1510560000, 60 }]   = 19,
+          [{ uuid_2, 404, 1510560000, 60 }] = 14,
+          [{ uuid, 500, 1510560001, 1 }]    = 5,
+          [{ uuid_2, 500, 1510560002, 1 }]  = 8,
+          [{ uuid, 500, 1510560000, 60 }]   = 20,
+          [{ uuid, 500, 1510560060, 60 }]   = 24,
+        }
+
+        local q, query, service_id, code, at, duration
+
+        q = "insert into vitals_codes_by_service(service_id, code, at, duration, count) " ..
+          "values('%s', '%s', to_timestamp(%d), %d, %d)"
+
+        for k,count in pairs(data) do
+          service_id, code, at, duration = unpack(k)
+
+          query = fmt(q, service_id, code, at, duration, count)
+          assert(db:query(query))
+        end
+
+        local cutoff_times = {
+          minutes = 1510560001,
+          seconds = 1510560002,
+        }
+
+        local res, err = strategy:delete_status_codes(cutoff_times)
+
+        assert.is_nil(err)
+        assert.same(6, res)
+      end)
+
+      it("validates cutoff_times", function()
+        local _, err = strategy:delete_status_codes("foo")
+        assert.same("cutoff_times must be a table", err)
+
+        _, err = strategy:delete_status_codes({ seconds = "foo" })
+        assert.same("cutoff seconds must be a number", err)
+
+        _, err = strategy:delete_status_codes({ seconds = 999 })
+        assert.same("cutoff minutes must be a number", err)
+      end)
+
+      it("returns an error message when it fails", function()
+        stub(strategy.db, "query").returns(nil, "failure!")
+
+        local cutoff_times = {
+          minutes = 1510560001,
+          seconds = 1510560002,
+        }
+
+        local _, err = strategy:delete_status_codes(cutoff_times)
+
+        assert.same("failed to delete codes. err: failure!", err)
       end)
     end)
 

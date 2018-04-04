@@ -73,6 +73,44 @@ local SELECT_NODE_META = [[
   SELECT node_id, hostname FROM vitals_node_meta WHERE node_id IN ('%s')
 ]]
 
+local INSERT_CODE_CLASSES_CLUSTER = [[
+  INSERT INTO vitals_code_classes_by_cluster(code_class, at, duration, count)
+  VALUES('%s', to_timestamp(%d) at time zone 'UTC', %d, %d)
+  ON CONFLICT(code_class, at, duration) DO
+  UPDATE SET COUNT = vitals_code_classes_by_cluster.count + excluded.count
+]]
+
+local SELECT_CODE_CLASSES_CLUSTER = [[
+  SELECT 'cluster' as node_id, code_class, extract('epoch' from at) as at, count
+    FROM vitals_code_classes_by_cluster
+   WHERE duration = %d AND at >= to_timestamp(%d)
+]]
+
+local DELETE_CODE_CLASSES_CLUSTER = [[
+  DELETE FROM vitals_code_classes_by_cluster
+  WHERE ((duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC')
+  OR (duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC'))
+]]
+
+local INSERT_CODES_SERVICE = [[
+  INSERT INTO vitals_codes_by_service(service_id, code, at, duration, count)
+  VALUES('%s', '%s', to_timestamp(%d) at time zone 'UTC', %d, %d)
+  ON CONFLICT(service_id, code, at, duration) DO
+  UPDATE SET COUNT = vitals_codes_by_service.count + excluded.count
+]]
+
+local SELECT_CODES_SERVICE = [[
+  SELECT service_id, code, extract('epoch' from at) as at, count
+    FROM vitals_codes_by_service
+   WHERE service_id = '%s' AND duration = %d AND at >= to_timestamp(%d)
+]]
+
+local DELETE_CODES_SERVICE = [[
+  DELETE FROM vitals_codes_by_service
+  WHERE ((duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC')
+  OR (duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC'))
+]]
+
 function _M.dynamic_table_names(dao)
   local table_names = {}
 
@@ -109,6 +147,8 @@ function _M.new(dao_factory, opts)
   local self = {
     db = dao_factory.db,
     table_rotater = table_rotater,
+    ttl_seconds = opts.ttl_seconds or 3600,
+    ttl_minutes = opts.ttl_minutes or 90000,
     node_id = nil,
     hostname = nil,
   }
@@ -623,6 +663,149 @@ function _M:delete_consumer_stats(consumers, cutoff_times)
   end
 
   return row_count
+end
+
+
+function _M:insert_status_code_classes(data)
+  local res, err, count, at, duration, code_class, query
+
+  for _, row in ipairs(data) do
+    code_class, at, duration, count = unpack(row)
+
+    query = fmt(INSERT_CODE_CLASSES_CLUSTER, code_class, at,
+                duration, count)
+
+    res, err = self.db:query(query)
+
+    if not res then
+      return nil, "could not insert status code counters. error: " .. err
+    end
+  end
+
+  return true
+end
+
+
+function _M:select_status_code_classes(opts)
+  local duration = opts.duration
+
+  if duration ~= 1 and duration ~= 60 then
+    return nil, "duration must be 1 or 60"
+  end
+
+  local cutoff_time
+
+  if duration == 1 then
+    cutoff_time = time() - self.ttl_seconds
+  else
+    cutoff_time = time() - self.ttl_minutes
+  end
+
+  local query = fmt(SELECT_CODE_CLASSES_CLUSTER, opts.duration, cutoff_time)
+  local res, err = self.db:query(query)
+  if err then
+    return nil, "failed to select code classes. err: " .. err
+  end
+
+  return res
+end
+
+
+function _M:delete_status_code_classes(cutoff_times)
+  if type(cutoff_times) ~= "table" then
+    return nil, "cutoff_times must be a table"
+  end
+
+  if type(cutoff_times.seconds) ~= "number" then
+    return nil, "cutoff seconds must be a number"
+  end
+
+  if type(cutoff_times.minutes) ~= "number" then
+    return nil, "cutoff minutes must be a number"
+  end
+
+  local query = fmt(DELETE_CODE_CLASSES_CLUSTER, 1, cutoff_times.seconds,
+                    60, cutoff_times.minutes)
+
+  local res, err = self.db:query(query)
+
+  if err then
+    return nil, "failed to delete code_classes. err: " .. err
+  end
+
+  return res.affected_rows
+end
+
+
+function _M:insert_status_codes_by_service(data)
+  local res, err, service_id, at, duration, code, count, query
+
+  for _, v in ipairs(data) do
+    service_id, code, at, duration, count = unpack(v)
+
+    query = fmt(INSERT_CODES_SERVICE, service_id, code, at, duration, count)
+
+    res, err = self.db:query(query)
+
+    if not res then
+      return nil, "could not insert status code counters. error: " .. err
+    end
+  end
+
+  return true
+end
+
+
+function _M:select_status_codes_by_service(opts)
+  local duration = opts.duration
+
+  if duration ~= 1 and duration ~= 60 then
+    return nil, "duration must be 1 or 60"
+  end
+
+  local cutoff_time
+
+  if duration == 1 then
+    cutoff_time = time() - self.ttl_seconds
+  else
+    cutoff_time = time() - self.ttl_minutes
+  end
+
+  local query = fmt(SELECT_CODES_SERVICE, opts.service_id, opts.duration, cutoff_time)
+
+  local res, err = self.db:query(query)
+
+  if err then
+    return nil, "failed to select codes. err: " .. err
+  end
+
+  return res
+end
+
+
+function _M:delete_status_codes(cutoff_times)
+  if type(cutoff_times) ~= "table" then
+    return nil, "cutoff_times must be a table"
+  end
+
+  if type(cutoff_times.seconds) ~= "number" then
+    return nil, "cutoff seconds must be a number"
+  end
+
+  if type(cutoff_times.minutes) ~= "number" then
+    return nil, "cutoff minutes must be a number"
+  end
+
+  local query = fmt(DELETE_CODES_SERVICE, 1, cutoff_times.seconds,
+                    60, cutoff_times.minutes)
+
+  local res, err = self.db:query(query)
+
+  if err then
+    return nil, "failed to delete codes. err: " .. err
+  end
+
+  return res.affected_rows
 end
 
 

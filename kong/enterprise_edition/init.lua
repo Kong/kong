@@ -21,6 +21,12 @@ local handlers = {
       singletons.vitals:log_upstream_latency(ctx.KONG_WAITING_TIME)
     end
   },
+  log = {
+    after = function(ctx, status)
+      singletons.vitals:log_status_code(status)
+      singletons.vitals:log_phase_after_plugins(ctx, status)
+    end
+  }
 }
 
 _M.handlers = handlers
