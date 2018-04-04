@@ -164,6 +164,7 @@ end
 
 function _M:purge()
   -- noop: redis strategy uses `:expire` to purge old entries
+  return true
 end
 
 return _M
