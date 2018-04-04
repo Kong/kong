@@ -347,6 +347,7 @@ end
 _M.match_route = match_route
 
 
+-- Return sequence of workspace ids an api belongs to
 local function api_workspaces(api)
   local old_ws = ngx.ctx.workspace
   ngx.ctx.workspace = {name = "*"}

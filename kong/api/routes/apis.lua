@@ -35,30 +35,7 @@ return {
  ["/apis/"] = {
     before = function(self, dao_factory, helpers)
       local uuid = require("kong.tools.utils").uuid
-      local version, err = singletons.cache:get("router:version", {
-        ttl = 0
-      }, function() return utils.uuid() end)
-      if err then
-        ngx.log(ngx.CRIT, "could not ensure router is up to date: ", err)
 
-      elseif true or router_version ~= version then
-        -- router needs to be rebuilt in this worker
-        ngx.log(ngx.DEBUG, "rebuilding router")
-
-        -- hack to temporarily set the workspace as the global one so
-        -- the inner find_all is able to find all apis and load them
-        local old_ws = ngx.ctx.workspace
-        ngx.ctx.workspace = { name = "*" }
-
-        local ok, err = core_handler.build_router(singletons.dao, uuid())
-
-        ngx.ctx.workspace = old_ws
-        if not ok then
-          ngx.log(ngx.CRIT, "could not rebuild router: ", err)
-        end
-      end
-
-      -- hack
       local old_ws = ngx.ctx.workspace
       ngx.ctx.workspace = {name = "*"}
       core_handler.build_router(dao_factory, uuid())
@@ -89,12 +66,12 @@ return {
           return helpers.responses.send_HTTP_CONFLICT(err)
         end
 
-      else -- doesn't exist, same as post
-        -- TODO: check that this is the intended behavior
-        if workspaces.is_route_colliding(self) then
-          local err = "API route collides with an existing API"
-          return helpers.responses.send_HTTP_CONFLICT(err)
-        end
+      -- else -- doesn't exist, same as post
+      --   -- TODO: check that this is the intended behavior
+      --   if workspaces.is_route_colliding(self) then
+      --     local err = "API route collides with an existing API"
+      --     return helpers.responses.send_HTTP_CONFLICT(err)
+      --   end
       end
 
       crud.put(self.params, dao_factory.apis)
