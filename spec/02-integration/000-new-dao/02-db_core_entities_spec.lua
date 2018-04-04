@@ -526,7 +526,7 @@ for _, strategy in helpers.each_strategy() do
           setup(function()
             assert(db:truncate())
 
-            for i = 1, 2000 do
+            for i = 1, 1002 do
               bp.routes:insert({ hosts = { "example-" .. i .. ".com" } })
             end
           end)
@@ -540,7 +540,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("max page_size = 1000", function()
-            local rows, err, err_t = db.routes:page(2000)
+            local rows, err, err_t = db.routes:page(1002)
             assert.is_nil(err_t)
             assert.is_nil(err)
             assert.is_table(rows)
@@ -1495,7 +1495,7 @@ for _, strategy in helpers.each_strategy() do
             it("max page_size = 1000", function()
               local rows, err, err_t = db.routes:for_service({
                 id = service.id,
-              }, 2000)
+              }, 1002)
               assert.is_nil(err_t)
               assert.is_nil(err)
               assert.equal(1000, #rows)
