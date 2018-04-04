@@ -48,13 +48,13 @@ for _, strategy in helpers.each_strategy() do
             strategy = strategy,
             message  = unindent([[
               2 schema violations
-              (at least one of 'methods', 'hosts' or 'paths' must be non-empty;
+              (at least one of these fields must be non-empty: 'methods', 'hosts', 'paths';
               service: required field missing)
             ]], true, true),
             fields   = {
               service     = "required field missing",
               ["@entity"] = {
-                "at least one of 'methods', 'hosts' or 'paths' must be non-empty",
+                "at least one of these fields must be non-empty: 'methods', 'hosts', 'paths'",
               }
             },
 
@@ -359,7 +359,7 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(new_route)
           local message = unindent([[
             schema violation
-            (at least one of 'methods', 'hosts' or 'paths' must be non-empty)
+            (at least one of these fields must be non-empty: 'methods', 'hosts', 'paths')
           ]], true, true)
           assert.equal(fmt("[%s] %s", strategy, message), err)
           assert.same({
@@ -369,7 +369,7 @@ for _, strategy in helpers.each_strategy() do
             message     = message,
             fields      = {
               ["@entity"] = {
-                "at least one of 'methods', 'hosts' or 'paths' must be non-empty",
+                "at least one of these fields must be non-empty: 'methods', 'hosts', 'paths'",
               }
             }
           }, err_t)
@@ -432,11 +432,11 @@ for _, strategy in helpers.each_strategy() do
             strategy    = strategy,
             message  = unindent([[
               schema violation
-              (at least one of 'methods', 'hosts' or 'paths' must be non-empty)
+              (at least one of these fields must be non-empty: 'methods', 'hosts', 'paths')
             ]], true, true),
             fields   = {
               ["@entity"] = {
-                "at least one of 'methods', 'hosts' or 'paths' must be non-empty",
+                "at least one of these fields must be non-empty: 'methods', 'hosts', 'paths'",
               }
             },
           }, err_t)
