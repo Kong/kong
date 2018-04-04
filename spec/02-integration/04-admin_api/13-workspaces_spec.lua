@@ -538,6 +538,7 @@ describe("Admin API #" .. kong_config.database, function()
       end)
       after_each(function()
         if client then client:close() end
+        dao:truncate_tables()
       end)
       it("doesn't create an API when it conflicts", function()
           local res = assert(client:send {
