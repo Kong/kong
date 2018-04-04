@@ -130,8 +130,8 @@
                                  # This interface lets you configure and manage
                                  # Kong via a web interface and should be kept
                                  # private and secured. Suffixes can be specified
-                                 # for each pair, similarly to other listen
-                                 # directives.
+                                 # for each pair, similarly to the `admin_listen`
+                                 # directive.
 
 #admin_gui_access_log = logs/admin_gui_access.log  # Path for admin gui request
                                                    # access logs. If this value
@@ -553,75 +553,67 @@
                                         # administration of Developer Portal
                                         # template files.
 
-#portal_gui_uri = 127.0.0.1:8003        # Heirarchical Part of a URI which is
+#portal_gui_uri = 127.0.0.1:8003        # Hierarchical part of a URI which is
                                         # composed optionally of a host,
                                         # port, and path at which your
                                         # Developer Portal accepts HTTP
-                                        # traffic if `portal_gui_ssl` is
-                                        # disabled.
+                                        # traffic if ssl is disabled.
 
-#portal_gui_uri_ssl = 0.0.0.0:8446      # Heirarchical Part of a URI which is
+#portal_gui_uri_ssl = 0.0.0.0:8446      # Hierarchical part of a URI which is
                                         # composed optionally of a host,
                                         # port, and path at which your
                                         # Developer Portal accepts HTTPS
-                                        # traffic if `portal_gui_ssl` is
-                                        # enabled.
+                                        # traffic if ssl is enabled.
 
 #portal_gui_listen = 0.0.0.0:8003, 0.0.0.0:8446
                                         # Comma-separated list of addresses and
                                         # ports on which Kong will expose the
                                         # Developer Portal GUI. Suffixes can be
                                         # specified for each pair, similarly to
-                                        # other listen directives.
+                                        # the `admin_listen` directive.
 
-#portal_gui_ssl_cert =                  # If `portal_gui_ssl` is enabled, the
-                                        # absolute path to the SSL certificate
-                                        # for the `portal_gui_listen_ssl`
-                                        # address.
+#portal_gui_ssl_cert =                  # The absolute path to the SSL
+                                        # certificate for `portal_gui_listen`
+                                        # values with ssl enabled.
 
-#portal_gui_ssl_cert_key =              # If `portal_gui_ssl` is enabled,
-                                        # the absolute path to the SSL key
-                                        # for the `portal_gui_listen_ssl`
-                                        # address.
+#portal_gui_ssl_cert_key =              # The absolute path to the SSL key
+                                        # for `portal_gui_listen` values with
+                                        # ssl enabled.
 
 #portal_api_listen = 0.0.0.0:8004, 0.0.0.0:8447 ssl
                                         # Comma-separated list of addresses and
                                         # ports on which Kong will expose the
                                         # Developer Portal API. Suffixes can be
                                         # specified for each pair, similarly to
-                                        # other listen directives.
+                                        # the `admin_listen` directive.
 
-#portal_api_uri = 127.0.0.1:8004        # Heirarchical URI portion of the
-                                        # Developer Portal. The portion
-                                        # can contain the host, port, or
-                                        # path.
-                                        #
-                                        # If `portal_api_ssl` is not enabled
-                                        # the Developer Portal Loader
-                                        # uses this value to make API
-                                        # requests to the Developer Portal
+#portal_api_uri = 127.0.0.1:8004        # Hierarchical part of a URI which is
+                                        # composed optionally of a host,
+                                        # port, and path at which your
+                                        # Developer Portal accepts HTTP
+                                        # traffic.
+                                        # If ssl is not enabled, the
+                                        # Developer Portal Loader uses this
+                                        # value to make API requests to the
+                                        # Developer Portal API.
+
+#portal_api_uri_ssl = 127.0.0.1:8447    # Hierarchical part of a URI which is
+                                        # composed optionally of a host,
+                                        # port, and path at which your
+                                        # Developer Portal accepts HTTPS
+                                        # traffic.
+                                        # If ssl is enabled, the Developer
+                                        # Portal Loader uses this value to make
+                                        # API requests to the Developer Portal
                                         # API.
 
-#portal_api_uri_ssl = 127.0.0.1:8447    # Heirarchical URI portion of the
-                                        # Developer Portal. The portion
-                                        # can contain the host, port, or
-                                        # path.
-                                        #
-                                        # If `portal_api_ssl` is not enabled
-                                        # the Developer Portal Loader
-                                        # uses this value to make API
-                                        # requests to the Developer Portal
-                                        # API.
+#portal_api_ssl_cert =                  # The absolute path to the SSL
+                                        # certificate for `portal_api_listen`
+                                        # values with ssl enabled.
 
-#portal_api_ssl_cert =                  # If `portal_api_ssl` is enabled, the
-                                        # absolute path to the SSL certificate
-                                        # for the `portal_api_listen_ssl`
-                                        # address.
-
-#portal_api_ssl_cert_key =              # If `portal_api_ssl` is enabled,
-                                        # the absolute path to the SSL key
-                                        # for the `portal_api_listen_ssl`
-                                        # address.
+#portal_api_ssl_cert_key =              # The absolute path to the SSL key
+                                        # for `portal_api_listen` values with
+                                        # ssl enabled.
 
 #portal_api_access_log = logs/portal_api_access.log # Path for Portal API
                                                     # request access logs.
