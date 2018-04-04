@@ -1,38 +1,19 @@
 local cjson = require "cjson.safe"
 local multipart = require "multipart"
-local singletons = require "kong.singletons"
 
 
 local ngx = ngx
 local sub = string.sub
 local find = string.find
 local type = type
-local assert = assert
+local error = error
 local tonumber = tonumber
 
 
-local function get_content_length(request)
-  local content_length = request.get_header("Content-Length")
-  if not content_length then
-    return
-  end
-
-  if type(content_length) == "table" then
-    if not content_length[1] then
-      return
-    end
-
-    content_length = content_length[1]
-  end
-
-  return tonumber(content_length)
-end
-
-
 local function new(sdk, _SDK_REQUEST, major_version)
-  -- could change in future versions
-  local MAX_HEADERS = 50
+  local MAX_HEADERS = 100
   local MAX_QUERY_ARGS = 100
+  local MAX_POST_ARGS = 100
 
 
   function _SDK_REQUEST.get_scheme()
@@ -41,10 +22,6 @@ local function new(sdk, _SDK_REQUEST, major_version)
     -- maybe part of get_protocol() instead?
     if sdk.ip.is_trusted(var.realip_remote_addr) then
       local scheme = _SDK_REQUEST.get_header("X-Forwarded-Proto")
-      if type(scheme) == "table" then
-        scheme = scheme[1]
-      end
-
       if not scheme then
         scheme = var.scheme
       end
@@ -65,10 +42,6 @@ local function new(sdk, _SDK_REQUEST, major_version)
     local host
     if sdk.ip.is_trusted(var.realip_remote_addr) then
       host = _SDK_REQUEST.get_header("X-Forwarded-Host")
-      if type(host) == "table" then
-        host = host[1]
-      end
-
       if not host then
         host = var.host
       end
@@ -103,16 +76,8 @@ local function new(sdk, _SDK_REQUEST, major_version)
     local port
     if singletons.ip.trusted(var.realip_remote_addr) then
       port = _SDK_REQUEST.get_header("X-Forwarded-Port")
-      if type(port) == "table" then
-        port = tonumber(port[1])
-      end
-
       if not port or port < 1 or port > 65535 then
         local host = _SDK_REQUEST.get_header("X-Forwarded-Host")
-        if type(host) == "table" then
-          host = host[1]
-        end
-
         if not host then
           host = var.host
         end
@@ -131,7 +96,7 @@ local function new(sdk, _SDK_REQUEST, major_version)
     end
     --]]
 
-    return tonumber(ngx.var.remote_port)
+    return tonumber(ngx.var.server_port)
   end
 
 
@@ -158,37 +123,61 @@ local function new(sdk, _SDK_REQUEST, major_version)
       error("header must be a string", 2)
     end
 
-    return _SDK_REQUEST.get_headers()[header]
+    local header_value = _SDK_REQUEST.get_headers()[header]
+    if type(header_value) == "table" then
+      return header_value[1]
+    end
+
+    return header_value
   end
 
 
   function _SDK_REQUEST.get_query_args(max_args)
-    -- TODO: add phase and request level caches (what about max_args here?)
-
     if max_args == nil then
       max_args = MAX_QUERY_ARGS
 
     else
-      assert(type(max_args) == "number", "max_args argument is not a number")
-      assert(max_args > 0, "max_args argument needs to be a positive number")
+      if type(max_args) ~= "number" then
+        error("max_args must be a number", 2)
+      end
+
+      if max_args < 0 then
+        error("max_args must be >= 0", 2)
+      end
     end
 
     return ngx.req.get_uri_args(max_args)
   end
 
 
-  function _SDK_REQUEST.get_post_args(max_args)
-    -- TODO: (what about max_args here?)
-
-    if max_args == nil then
-      max_args = 100
-
-    else
-      assert(type(max_args) == "number", "max_args argument is not a number")
-      assert(max_args > 0, "max_args argument needs to be a positive number")
+  function _SDK_REQUEST.get_query_arg(arg)
+    if type(arg) ~= "string" then
+      error("arg must be a string", 2)
     end
 
-    local content_length = get_content_length(_SDK_REQUEST)
+    local arg_value = _SDK_REQUEST.get_query_args()[arg]
+    if type(arg_value) == "table" then
+      return arg_value[1]
+    end
+
+    return arg_value
+  end
+
+
+  function _SDK_REQUEST.get_post_args(max_args)
+    if max_args == nil then
+      max_args = MAX_POST_ARGS
+
+    else
+      if type(max_args) ~= "number" then
+        error("max_args must be a number", 2)
+      end
+
+      if max_args < 0 then
+        error("max_args must be >= 0", 2)
+      end    end
+
+    local content_length = tonumber(_SDK_REQUEST.get_header("Content-Length"))
     if content_length and content_length < 1 then
       return {}
     end
@@ -200,8 +189,22 @@ local function new(sdk, _SDK_REQUEST, major_version)
   end
 
 
+  function _SDK_REQUEST.get_post_arg(arg)
+    if type(arg) ~= "string" then
+      error("arg must be a string", 2)
+    end
+
+    local arg_value = _SDK_REQUEST.get_post_args()[arg]
+    if type(arg_value) == "table" then
+      return arg_value[1]
+    end
+
+    return arg_value
+  end
+
+
   function _SDK_REQUEST.get_body()
-    local content_length = get_content_length(_SDK_REQUEST)
+    local content_length = tonumber(_SDK_REQUEST.get_header("Content-Length"))
     if content_length and content_length < 1 then
       return "", nil
     end
@@ -228,13 +231,6 @@ local function new(sdk, _SDK_REQUEST, major_version)
     local content_type = _SDK_REQUEST.get_header("Content-Type")
     if not content_type then
       return nil, "content type header was not provided in request", nil
-    end
-
-    if type(content_type) == "table" then
-      content_type = content_type[1]
-      if not content_type then
-        return nil, "unexpected error with content type header", nil
-      end
     end
 
     if find(content_type, "application/x-www-form-urlencoded", 1, true) == 1 then
