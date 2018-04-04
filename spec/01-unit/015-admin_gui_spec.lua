@@ -78,11 +78,13 @@ describe("prepare_prefix", function()
       admin_listeners = {
         {
           ip = "0.0.0.0",
-          port = 9001
+          port = 9001,
+          ssl = false,
         },
         {
           ip = "0.0.0.0",
           port = 9444,
+          ssl = true,
         }
       },
       enforce_rbac = false,
@@ -121,11 +123,13 @@ describe("prepare_prefix", function()
       admin_listeners = {
         {
           ip = "0.0.0.0",
-          port = 9002
+          port = 9002,
+          ssl = false,
         },
         {
           ip = "0.0.0.0",
           port = 9445,
+          ssl = true,
         }
       },
       enforce_rbac = true,
