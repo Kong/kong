@@ -48,13 +48,13 @@ for _, strategy in helpers.each_strategy() do
             strategy = strategy,
             message  = unindent([[
               2 schema violations
-              (at least one of 'methods', 'hosts' or 'paths' must be non-empty;
+              (at least one of these fields must be non-empty: 'methods', 'hosts', 'paths';
               service: required field missing)
             ]], true, true),
             fields   = {
               service     = "required field missing",
               ["@entity"] = {
-                "at least one of 'methods', 'hosts' or 'paths' must be non-empty",
+                "at least one of these fields must be non-empty: 'methods', 'hosts', 'paths'",
               }
             },
 
@@ -358,9 +358,8 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.is_nil(new_route)
           local message = unindent([[
-            2 schema violations
-            (hosts: field required for entity check;
-            paths: field required for entity check)
+            schema violation
+            (when updating, at least one of these fields must be non-empty: 'methods', 'hosts', 'paths')
           ]], true, true)
           assert.equal(fmt("[%s] %s", strategy, message), err)
           assert.same({
@@ -368,9 +367,10 @@ for _, strategy in helpers.each_strategy() do
             name        = "schema violation",
             strategy    = strategy,
             message     = message,
-            fields = {
-              hosts = "field required for entity check",
-              paths = "field required for entity check",
+            fields      = {
+              ["@entity"] = {
+                "when updating, at least one of these fields must be non-empty: 'methods', 'hosts', 'paths'",
+              }
             }
           }, err_t)
         end)
@@ -395,6 +395,26 @@ for _, strategy in helpers.each_strategy() do
           assert.same(route, new_route)
         end)
 
+        it("accepts a partial update to routing criteria when at least one of the required fields it not null", function()
+          local route = bp.routes:insert({
+            hosts   = { "example.com" },
+            methods = { "GET" },
+            paths   = ngx.null,
+          })
+
+          local new_route, err, err_t = db.routes:update({ id = route.id }, {
+            hosts   = { "example2.com" },
+          })
+          assert.is_nil(err_t)
+          assert.is_nil(err)
+          assert.same({ "example2.com" }, new_route.hosts)
+          assert.same({ "GET" }, new_route.methods)
+          assert.same(ngx.null, new_route.paths)
+          route.hosts     = nil
+          new_route.hosts = nil
+          assert.same(route, new_route)
+        end)
+
         it("errors when unsetting a required field with ngx.null", function()
           local route = bp.routes:insert({
             hosts   = { "example.com" },
@@ -410,10 +430,15 @@ for _, strategy in helpers.each_strategy() do
             code        = Errors.codes.SCHEMA_VIOLATION,
             name = "schema violation",
             strategy    = strategy,
-            message     = "schema violation (paths: field required for entity check)",
-            fields      = {
-              paths = "field required for entity check",
-            }
+            message  = unindent([[
+              schema violation
+              (when updating, at least one of these fields must be non-empty: 'methods', 'hosts', 'paths')
+            ]], true, true),
+            fields   = {
+              ["@entity"] = {
+                "when updating, at least one of these fields must be non-empty: 'methods', 'hosts', 'paths'",
+              }
+            },
           }, err_t)
         end)
       end)
@@ -526,7 +551,7 @@ for _, strategy in helpers.each_strategy() do
           setup(function()
             assert(db:truncate())
 
-            for i = 1, 2000 do
+            for i = 1, 1002 do
               bp.routes:insert({ hosts = { "example-" .. i .. ".com" } })
             end
           end)
@@ -540,7 +565,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("max page_size = 1000", function()
-            local rows, err, err_t = db.routes:page(2000)
+            local rows, err, err_t = db.routes:page(1002)
             assert.is_nil(err_t)
             assert.is_nil(err)
             assert.is_table(rows)
@@ -1495,7 +1520,7 @@ for _, strategy in helpers.each_strategy() do
             it("max page_size = 1000", function()
               local rows, err, err_t = db.routes:for_service({
                 id = service.id,
-              }, 2000)
+              }, 1002)
               assert.is_nil(err_t)
               assert.is_nil(err)
               assert.equal(1000, #rows)

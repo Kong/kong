@@ -121,13 +121,13 @@ for _, strategy in helpers.each_strategy("postgres") do
                 name    = "schema violation",
                 message = unindent([[
                   2 schema violations
-                  (at least one of 'methods', 'hosts' or 'paths' must be non-empty;
+                  (at least one of these fields must be non-empty: 'methods', 'hosts', 'paths';
                   service: required field missing)
                 ]], true, true),
                 fields  = {
                   service   = "required field missing",
                   ["@entity"] = {
-                    "at least one of 'methods', 'hosts' or 'paths' must be non-empty"
+                    "at least one of these fields must be non-empty: 'methods', 'hosts', 'paths'"
                   }
                 }
               }, cjson.decode(body))
