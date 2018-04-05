@@ -45,6 +45,11 @@ local function load_plugin_configuration(api_id, consumer_id, plugin_name)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
   if plugin ~= nil and plugin.enabled then
+    local plugin_ws = {
+      id = plugin.workspace_id,
+      name = plugin.workspace_name
+    }
+    ngx.ctx.workspaces = { plugin_ws }
     return plugin.config or {}
   end
 end
@@ -98,7 +103,8 @@ local function get_next(self)
   -- return the plugin configuration
   local plugins_for_request = ctx.plugins_for_request
   if plugins_for_request[plugin.name] then
-    return plugin, plugins_for_request[plugin.name]
+    local old_ws = ctx.workspaces
+    return plugin, plugins_for_request[plugin.name], old_ws
   end
 
   return get_next(self) -- Load next plugin

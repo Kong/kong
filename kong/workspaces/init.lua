@@ -434,4 +434,28 @@ function _M.is_route_colliding(req, router)
   return false
 end
 
+
+-- Adds all workspaces, given api belongs
+-- to, to the the context.
+function _M.add_ws_to_ctx(api)
+  local rows, err = singletons.dao.workspace_entities:find_all({
+    entity_id          = api.id,
+    unique_field_name  = "name",
+    unique_field_value = api.name,
+  })
+  if err then
+    return nil, err
+  end
+
+  local workspaces = {}
+  for _, row in ipairs(rows) do
+    local workspace = {}
+    workspace.id = row.workspace_id
+    workspaces[#workspaces + 1] = workspace
+  end
+
+  ngx.ctx.workspaces = workspaces
+end
+
+
 return _M
