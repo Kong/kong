@@ -165,8 +165,8 @@ function Kong.init()
   -- populate singletons
   singletons.ip = ip.init(config)
   singletons.dns = dns(config)
-  singletons.dao = dao
   singletons.loaded_plugins = assert(load_plugins(config, dao))
+  singletons.dao = dao
   singletons.configuration = config
   singletons.license = ee.read_license_info()
 

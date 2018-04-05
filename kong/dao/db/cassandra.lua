@@ -465,17 +465,21 @@ function _M:insert(table_name, schema, model, constraints, options)
 end
 
 local function workspace_entities_map(db, table_name)
-  local ws = get_workspaces()[1]
-  local where, args = get_where(ws_entities_schema, {workspace_id = ws.id, entity_type = table_name})
-  local query = select_query("workspace_entities", where)
-  local ws_entities, err = db:query(query, args, nil, ws_entities_schema)
-  if err then
-    return nil, err
-  end
-
+  local ws_scope = get_workspaces()
   local ws_entities_map = {}
-  for _, row in ipairs(ws_entities) do
-    ws_entities_map[row.entity_id] = row
+
+  for _, ws in ipairs(ws_scope) do
+    local where, args = get_where(ws_entities_schema, {workspace_id = ws.id, entity_type = table_name})
+    local query = select_query("workspace_entities", where)
+    local ws_entities, err = db:query(query, args, nil, ws_entities_schema)
+    if err then
+      return nil, err
+    end
+
+    for _, row in ipairs(ws_entities) do
+      row.workspace_id = ws.id
+      ws_entities_map[row.entity_id] = row
+    end
   end
 
   return ws_entities_map
@@ -505,14 +509,12 @@ end
 -- `before_filter`, but to set the entity some of those same methods are
 -- used
 local function is_workspaceable(table_name, filters)
-  local ws = get_workspace()[1]
+  local ws_scope = get_workspaces()
   local workspaceable = workspaces.get_workspaceable_relations()
-  if workspaceable[table_name] and not is_default_ws_retrieval(table_name, filters)
-    and ws and ws.name ~= "*" then
-    return ws
-  else
-    return nil
+  if workspaceable[table_name] and #ws_scope > 0 then
+    return true
   end
+  return false
 end
 
 function _M:find_all(table_name, tbl, schema)
@@ -565,7 +567,9 @@ function _M:find_all(table_name, tbl, schema)
 
     if workspaceable then
       for _, row in ipairs(rows) do
-        if ws_entities_map[row.id] then
+        local ws_entity = ws_entities_map[row.id]
+        if ws_entity then
+          row.workspace_id = ws_entity.workspace_id
           res_rows_ws[#res_rows_ws+1] = row
         end
       end
@@ -609,7 +613,9 @@ function _M:find_page(table_name, tbl, paging_state, page_size, schema)
       end
 
       for _, row in ipairs(rows) do
-        if ws_entities_map[row.id] then
+        local ws_entity = ws_entities_map[row.id]
+        if ws_entity then
+          row.workspace_id = ws_entity.workspace_id
           res_rows[#res_rows+1] = row
           if #res_rows == page_size then
             paging_state = row.id
@@ -651,14 +657,11 @@ function _M:count(table_name, tbl, schema)
   end
 
   if is_workspaceable(table_name, tbl) then
-    local ws_entities_map, err = workspace_entities_map(self, table_name)
-    local cnt = 0
-    for id, entity in pairs(ws_entities_map) do
-      if entity.entity_type == table_name then
-        cnt = cnt + 1
-      end
+    local rows, err = _M.find_all(self, table_name, tbl, schema)
+    if err then
+      return nil, err
     end
-    return cnt
+    return #rows
   end
 
   local query = select_query(table_name, where, "COUNT(*)")
