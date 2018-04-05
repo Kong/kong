@@ -52,7 +52,7 @@ return {
       -- if no id, it acts as POST
       if not self.params.id and workspaces.is_route_colliding(self) then
         local err = "API route collides with an existing API"
-        return helpers.responses.send_HTTP_CONFLICT(err)
+        return helpers.send_HTTP_CONFLICT(err)
       end
 
       local curr_api = singletons.dao.apis:find({id = self.params.id})
@@ -61,7 +61,7 @@ return {
         local r = Router.new(all_apis_except(curr_api))
         if workspaces.is_route_colliding(self, r) then
           local err = "API route collides with an existing API"
-          return helpers.responses.send_HTTP_CONFLICT(err)
+          return helpers.send_HTTP_CONFLICT(err)
         end
       end
 
@@ -93,7 +93,7 @@ return {
       -- create temporary router
       if workspaces.is_route_colliding(self, r) then
         local err = "API route collides with an existing API"
-        return helpers.responses.send_HTTP_CONFLICT(err)
+        return helpers.send_HTTP_CONFLICT(err)
       end
 
       crud.patch(self.params, dao_factory.apis, self.api)
