@@ -72,20 +72,24 @@ local function ret_error(db_name, res, err, ...)
 end
 
 local function apply_unique_per_ws(table_name, params)
+  if table_name ~= "workspace_entities" then
+    params.workspace_id = nil
+  end
+  params.workspace_name = nil
+
   local workspace = workspaces.get_workspaces()[1]
   local constraints = workspaceable[table_name]
   if not constraints then
     return
   end
 
-  if not workspace or
-  table_name == "workspaces" and
-  workspace.name == workspaces.DEFAULT_WORKSPACE then
+  if not workspace or table_name == "workspaces" and
+    workspace.name == workspaces.DEFAULT_WORKSPACE then
     return
   end
 
   for field_name, field_schema in pairs(constraints.unique_keys) do
-    if params[field_name] then
+    if params[field_name] and field_schema.schema.fields[field_name].type ~= "id" then
       params[field_name] = fmt("%s:%s", workspace.name, params[field_name])
     end
   end
@@ -93,6 +97,11 @@ end
 
 
 local function fetch_shared_entity_id(table_name, params)
+  if table_name ~= "workspace_entities" then
+    params.workspace_id = nil
+  end
+  params.workspace_name = nil
+
   local constraints = workspaceable[table_name]
   if not constraints or not constraints.unique_keys then
     return
@@ -138,7 +147,7 @@ local function remove_ws_prefix(table_name, row)
   end
 
   for field_name, field_schema in pairs(constraints.unique_keys) do
-    if row[field_name] then
+    if row[field_name] and field_schema.schema.fields[field_name].type ~= "id" then
       local names = utils.split(row[field_name], ":")
       if #names > 1 then
         row[field_name] = names[2]
