@@ -565,7 +565,7 @@
                                         # Developer Portal accepts HTTPS
                                         # traffic if ssl is enabled.
 
-#portal_gui_listen = 0.0.0.0:8003, 0.0.0.0:8446
+#portal_gui_listen = 0.0.0.0:8003, 0.0.0.0:8446 ssl
                                         # Comma-separated list of addresses and
                                         # ports on which Kong will expose the
                                         # Developer Portal GUI. Suffixes can be
