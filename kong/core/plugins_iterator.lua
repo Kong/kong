@@ -103,8 +103,7 @@ local function get_next(self)
   -- return the plugin configuration
   local plugins_for_request = ctx.plugins_for_request
   if plugins_for_request[plugin.name] then
-    local old_ws = ctx.workspaces
-    return plugin, plugins_for_request[plugin.name], old_ws
+    return plugin, plugins_for_request[plugin.name]
   end
 
   return get_next(self) -- Load next plugin

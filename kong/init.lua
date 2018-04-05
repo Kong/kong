@@ -309,6 +309,8 @@ function Kong.ssl_certificate()
 
   local old_ws = ctx.workspaces
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
+    -- run certificate phase in global scope
+    ctx.workspaces = {}
     plugin.handler:certificate(plugin_conf)
   end
   ctx.workspaces = old_ws
@@ -385,14 +387,17 @@ function Kong.rewrite()
   local ctx = ngx.ctx
   core.rewrite.before(ctx)
 
+  local old_ws = ctx.workspaces
   -- we're just using the iterator, as in this rewrite phase no consumer nor
   -- api will have been identified, hence we'll just be executing the global
   -- plugins
-  local old_ws = ctx.workspaces
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
+    -- run certificate phase in global scope
+    ctx.workspaces = {}
     plugin.handler:rewrite(plugin_conf)
   end
   ctx.workspaces = old_ws
+
   core.rewrite.after(ctx)
 end
 
@@ -400,8 +405,11 @@ function Kong.access()
   local ctx = ngx.ctx
 
   core.access.before(ctx)
+
   ctx.delay_response = true
-  for plugin, plugin_conf, old_ws in plugins_iterator(singletons.loaded_plugins, true) do
+
+  local old_ws = ctx.workspaces
+  for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
     if not ctx.delayed_response then
       local err = coroutine.wrap(plugin.handler.access)(plugin.handler, plugin_conf)
       if err then
@@ -426,7 +434,8 @@ function Kong.header_filter()
   local ctx = ngx.ctx
   core.header_filter.before(ctx)
 
-  for plugin, plugin_conf, old_ws in plugins_iterator(singletons.loaded_plugins) do
+  local old_ws = ctx.workspaces
+  for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins) do
     plugin.handler:header_filter(plugin_conf)
     ctx.workspaces = old_ws
   end
@@ -437,7 +446,8 @@ end
 
 function Kong.body_filter()
   local ctx = ngx.ctx
-  for plugin, plugin_conf, old_ws in plugins_iterator(singletons.loaded_plugins) do
+  local old_ws = ctx.workspaces
+  for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins) do
     plugin.handler:body_filter(plugin_conf)
     ctx.workspaces = old_ws
   end
@@ -447,9 +457,8 @@ end
 
 function Kong.log()
   local ctx = ngx.ctx
+  local old_ws = ctx.workspaces
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins) do
-    local old_ws = ctx.workspaces
-    ctx.workspaces = plugin.workspace
     plugin.handler:log(plugin_conf)
     ctx.workspaces = old_ws
   end
