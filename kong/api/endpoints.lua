@@ -20,6 +20,8 @@ local ERRORS_HTTP_CODES = {
   [Errors.codes.NOT_FOUND]             = 404,
   [Errors.codes.INVALID_OFFSET]        = 400,
   [Errors.codes.DATABASE_ERROR]        = 500,
+  [Errors.codes.CONFLICTING_INPUT]     = 409,
+  [Errors.codes.INVALID_INPUT]         = 400,
 }
 
 

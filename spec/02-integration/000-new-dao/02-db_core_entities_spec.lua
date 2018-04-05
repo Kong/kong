@@ -432,7 +432,7 @@ for _, strategy in helpers.each_strategy() do
           local ok, err, err_t = db.routes:delete({
             id = u
           })
-          assert.is_true(ok)
+          assert.is_truthy(ok)
           assert.is_nil(err_t)
           assert.is_nil(err)
         end)
@@ -447,7 +447,7 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.is_nil(err_t)
           assert.is_nil(err)
-          assert.is_true(ok)
+          assert.is_truthy(ok)
 
           local route_in_db, err, err_t = db.routes:select({
             id = route.id
@@ -1177,7 +1177,7 @@ for _, strategy in helpers.each_strategy() do
           local ok, err, err_t = db.services:delete({
             id = u
           })
-          assert.is_true(ok)
+          assert.is_truthy(ok)
           assert.is_nil(err_t)
           assert.is_nil(err)
         end)
@@ -1192,7 +1192,7 @@ for _, strategy in helpers.each_strategy() do
           })
           assert.is_nil(err_t)
           assert.is_nil(err)
-          assert.is_true(ok)
+          assert.is_truthy(ok)
 
           local service_in_db, err, err_t = db.services:select({
             id = service.id
@@ -1225,7 +1225,7 @@ for _, strategy in helpers.each_strategy() do
         -- I/O
         it("returns nothing if the Service does not exist", function()
           local ok, err, err_t = db.services:delete_by_name("service_10")
-          assert.is_true(ok)
+          assert.is_truthy(ok)
           assert.is_nil(err_t)
           assert.is_nil(err)
         end)
@@ -1234,7 +1234,7 @@ for _, strategy in helpers.each_strategy() do
           local ok, err, err_t = db.services:delete_by_name("service_1")
           assert.is_nil(err_t)
           assert.is_nil(err)
-          assert.is_true(ok)
+          assert.is_truthy(ok)
 
           local service_in_db, err, err_t = db.services:select({
             id = service.id
@@ -1365,7 +1365,7 @@ for _, strategy in helpers.each_strategy() do
         local ok, err, err_t = db.routes:delete({ id = route.id })
         assert.is_nil(err_t)
         assert.is_nil(err)
-        assert.is_true(ok)
+        assert.is_truthy(ok)
 
         local service_in_db, err, err_t = db.services:select({
           id = service.id
