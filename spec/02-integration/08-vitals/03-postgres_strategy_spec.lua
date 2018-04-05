@@ -1439,7 +1439,7 @@ dao_helpers.for_each_dao(function(kong_conf)
     end)
 
 
-    describe(":delete_status_codes", function()
+    describe(":delete_status_codes_by_service", function()
       local uuid   = utils.uuid()
       local uuid_2 = utils.uuid()
 
@@ -1479,20 +1479,20 @@ dao_helpers.for_each_dao(function(kong_conf)
           seconds = 1510560002,
         }
 
-        local res, err = strategy:delete_status_codes(cutoff_times)
+        local res, err = strategy:delete_status_codes_by_service({}, cutoff_times)
 
         assert.is_nil(err)
         assert.same(6, res)
       end)
 
       it("validates cutoff_times", function()
-        local _, err = strategy:delete_status_codes("foo")
+        local _, err = strategy:delete_status_codes_by_service({}, "foo")
         assert.same("cutoff_times must be a table", err)
 
-        _, err = strategy:delete_status_codes({ seconds = "foo" })
+        _, err = strategy:delete_status_codes_by_service({}, { seconds = "foo" })
         assert.same("cutoff seconds must be a number", err)
 
-        _, err = strategy:delete_status_codes({ seconds = 999 })
+        _, err = strategy:delete_status_codes_by_service({}, { seconds = 999 })
         assert.same("cutoff minutes must be a number", err)
       end)
 
@@ -1504,7 +1504,7 @@ dao_helpers.for_each_dao(function(kong_conf)
           seconds = 1510560002,
         }
 
-        local _, err = strategy:delete_status_codes(cutoff_times)
+        local _, err = strategy:delete_status_codes_by_service({}, cutoff_times)
 
         assert.same("failed to delete codes. err: failure!", err)
       end)

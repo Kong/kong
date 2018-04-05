@@ -1336,6 +1336,460 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
     end)
 
+    describe(":insert_status_codes_by_service()", function()
+      before_each(function()
+        cluster:execute("TRUNCATE vitals_codes_by_service")
+      end)
+
+      it("turns Lua tables into Cassandra rows", function()
+        local uuid = utils.uuid()
+
+        local now    = ngx.time()
+        local minute = now - (now % 60)
+
+        local data = {
+          { uuid, "404", tostring(now), "1", 4 },
+          { uuid, "404", tostring(now - 1), "1", 2 },
+          { uuid, "500", tostring(minute), "60", 5 },
+        }
+
+        assert(strategy:insert_status_codes_by_service(data))
+
+        local expected = {
+          {
+            at         = (now - 1) * 1000,
+            code       = 404,
+            count      = 2,
+            duration   = 1,
+            service_id = uuid,
+          },
+          {
+            at         = now * 1000,
+            code       = 404,
+            count      = 4,
+            duration   = 1,
+            service_id = uuid,
+          },
+          {
+            at         = minute * 1000,
+            code       = 500,
+            count      = 5,
+            duration   = 60,
+            service_id = uuid,
+          },
+          meta = {
+            has_more_pages = false,
+          },
+          type = 'ROWS',
+        }
+        local res, _ = cluster:execute("select * from vitals_codes_by_service")
+
+        table.sort(res, function(a,b)
+          return a.count < b.count
+        end)
+
+        assert.same(expected, res)
+
+      end)
+    end)
+
+    describe(":select_status_codes_by_service()", function()
+      local service_ids = { utils.uuid(), utils.uuid() }
+      local now = ngx.time()
+      local minute = now - (now % 60)
+
+      before_each(function()
+        cluster:execute("TRUNCATE vitals_codes_by_service")
+        local q = "UPDATE vitals_codes_by_service SET count=count+? WHERE service_id=? AND code=? AND at=? AND duration=?"
+
+        local test_data = {
+          {cassandra.counter(1), cassandra.uuid(service_ids[1]), 200, cassandra.timestamp(now * 1000), 1},
+          {cassandra.counter(3), cassandra.uuid(service_ids[1]), 200, cassandra.timestamp((now + 1) * 1000), 1},
+          {cassandra.counter(4), cassandra.uuid(service_ids[1]), 200, cassandra.timestamp((now + 2) * 1000), 1},
+          {cassandra.counter(19), cassandra.uuid(service_ids[1]), 200, cassandra.timestamp(minute * 1000), 60},
+          {cassandra.counter(5), cassandra.uuid(service_ids[2]), 403, cassandra.timestamp((now + 1) * 1000), 1},
+          {cassandra.counter(7), cassandra.uuid(service_ids[2]), 404, cassandra.timestamp((now + 2) * 1000), 1},
+          {cassandra.counter(20), cassandra.uuid(service_ids[2]), 404, cassandra.timestamp(minute * 1000), 60},
+          {cassandra.counter(24), cassandra.uuid(service_ids[2]), 500, cassandra.timestamp((minute + 60) * 1000), 60},
+        }
+
+        for _, row in ipairs(test_data) do
+          assert(cluster:execute(q, row, { prepared = true, counter  = true }))
+        end
+
+        local res, _ = cluster:execute("select * from vitals_codes_by_service")
+        assert.same(8, #res)
+      end)
+
+      after_each(function()
+        cluster:execute("TRUNCATE vitals_codes_by_service")
+      end)
+
+      it("retrieves rows", function()
+        local opts = {
+          ["service_id"] = service_ids[1],
+          ["duration"] = 1,
+        }
+        local res, err = strategy:select_status_codes_by_service(opts)
+        assert.is_nil(err)
+
+        table.sort(res, function(a,b)
+          return a.count < b.count
+        end)
+
+        local expected = {
+          {
+            at = now,
+            code = 200,
+            count = 1,
+            node_id = 'cluster',
+            service_id = service_ids[1],
+          },
+          {
+            at = now + 1,
+            code = 200,
+            count = 3,
+            node_id = 'cluster',
+            service_id = service_ids[1],
+          },
+          {
+            at = now + 2,
+            code = 200,
+            count = 4,
+            node_id = 'cluster',
+            service_id = service_ids[1],
+          }
+        }
+        assert.same(expected, res)
+      end)
+    end)
+
+    describe(":delete_status_codes_by_service()", function()
+      local service_ids = { utils.uuid(), utils.uuid() }
+
+      before_each(function()
+        cluster:execute("TRUNCATE vitals_codes_by_service")
+        local q = "UPDATE vitals_codes_by_service SET count=count+? WHERE service_id=? AND code=? AND at=? AND duration=?"
+
+        -- the rows commented with "-- x" we expect will be deleted based on
+        -- the `cutoff_times` table below
+        local test_data = {
+          {cassandra.counter(1), cassandra.uuid(service_ids[1]), 200, cassandra.timestamp(1510560000000), 1}, -- x
+          {cassandra.counter(3), cassandra.uuid(service_ids[1]), 200, cassandra.timestamp(1510560001000), 1}, -- x
+          {cassandra.counter(4), cassandra.uuid(service_ids[1]), 200, cassandra.timestamp(1510560002000), 1},
+          {cassandra.counter(19), cassandra.uuid(service_ids[1]), 200, cassandra.timestamp(1510560000000), 60}, -- x
+          {cassandra.counter(5), cassandra.uuid(service_ids[2]), 403, cassandra.timestamp(1510560001000), 1}, -- x
+          {cassandra.counter(7), cassandra.uuid(service_ids[2]), 404, cassandra.timestamp(1510560002000), 1},
+          {cassandra.counter(20), cassandra.uuid(service_ids[2]), 404, cassandra.timestamp(1510560000000), 60}, -- x
+          {cassandra.counter(24), cassandra.uuid(service_ids[2]), 500, cassandra.timestamp(1510560060000), 60},
+        }
+
+        for _, row in ipairs(test_data) do
+          assert(cluster:execute(q, row, { prepared = true, counter  = true }))
+        end
+
+        local res, _ = cluster:execute("select * from vitals_codes_by_service")
+        assert.same(8, #res)
+      end)
+
+      after_each(function()
+        cluster:execute("TRUNCATE vitals_codes_by_service")
+      end)
+
+      it("cleans up status_codes_by_service", function()
+        -- query is "<" so bump the cutoff by a second
+        local cutoff_times = {
+          minutes = 1510560001,
+          seconds = 1510560002,
+        }
+
+        local service_id_map = {}
+        for _, v in ipairs(service_ids) do
+          service_id_map[v] = true
+        end
+
+        local results, err = strategy:delete_status_codes_by_service(service_id_map, cutoff_times)
+        assert.is_nil(err)
+        assert.is_true(results > 0)
+
+        -- delete only really does something in cassandra 3+
+        if dao.db.major_version_n >= 3 then
+          local res, err = cluster:execute("select * from vitals_codes_by_service")
+          assert.is_nil(err)
+
+          assert.same(3, #res)
+        end
+      end)
+    end)
+
+    describe(":insert_status_codes_by_route()", function()
+      before_each(function()
+        cluster:execute("TRUNCATE vitals_codes_by_route")
+      end)
+
+      it("turns Lua tables into Cassandra rows", function()
+        local uuid = utils.uuid()
+
+        local now    = ngx.time()
+        local minute = now - (now % 60)
+
+        local data = {
+          { uuid, "404", tostring(now), "1", 4 },
+          { uuid, "404", tostring(now - 1), "1", 2 },
+          { uuid, "500", tostring(minute), "60", 5 },
+        }
+
+        assert(strategy:insert_status_codes_by_route(data))
+
+        local expected = {
+          {
+            at         = (now - 1) * 1000,
+            code       = 404,
+            count      = 2,
+            duration   = 1,
+            route_id = uuid,
+          },
+          {
+            at         = now * 1000,
+            code       = 404,
+            count      = 4,
+            duration   = 1,
+            route_id = uuid,
+          },
+          {
+            at         = minute * 1000,
+            code       = 500,
+            count      = 5,
+            duration   = 60,
+            route_id = uuid,
+          },
+          meta = {
+            has_more_pages = false,
+          },
+          type = 'ROWS',
+        }
+        local res, _ = cluster:execute("select * from vitals_codes_by_route")
+
+        table.sort(res, function(a,b)
+          return a.count < b.count
+        end)
+
+        assert.same(expected, res)
+
+      end)
+    end)
+
+    describe(":select_status_codes_by_route()", function()
+      local route_id_1 = utils.uuid()
+      local route_id_2 = utils.uuid()
+      local now = ngx.time()
+      local minute = now - (now % 60)
+
+      before_each(function()
+        cluster:execute("TRUNCATE vitals_codes_by_route")
+        local q = [[
+          UPDATE vitals_codes_by_route
+            SET count=count + ?
+            WHERE route_id = ?
+            AND code = ?
+            AND at = ?
+            AND duration = ?
+        ]]
+
+        local test_data = {
+          {cassandra.counter(5), cassandra.uuid(route_id_1), 400, cassandra.timestamp((now - 3) * 1000), 1},
+          {cassandra.counter(25), cassandra.uuid(route_id_1), 301, cassandra.timestamp(minute * 1000), 60},
+          {cassandra.counter(57), cassandra.uuid(route_id_1), 404, cassandra.timestamp((minute + 120) * 1000), 60},
+          {cassandra.counter(8), cassandra.uuid(route_id_2), 500, cassandra.timestamp((now - 3) * 1000), 1},
+          {cassandra.counter(31), cassandra.uuid(route_id_2), 201, cassandra.timestamp(minute * 1000), 60},
+          {cassandra.counter(44), cassandra.uuid(route_id_2), 429, cassandra.timestamp((minute + 60) * 1000), 60},
+        }
+
+        for _, row in ipairs(test_data) do
+          assert(cluster:execute(q, row, { prepared = true, counter  = true }))
+        end
+
+        local res, _ = cluster:execute("select * from vitals_codes_by_route")
+        assert.same(6, #res)
+      end)
+
+      after_each(function()
+        cluster:execute("TRUNCATE vitals_codes_by_route")
+      end)
+
+      it("retrieves rows", function()
+        local opts = {
+          ["route_id"] = route_id_1,
+          ["duration"] = 60,
+        }
+        local res, err = strategy:select_status_codes_by_route(opts)
+        assert.is_nil(err)
+
+        table.sort(res, function(a,b)
+          return a.count < b.count
+        end)
+
+        local expected = {
+          {
+            at = minute,
+            code = 301,
+            count = 25,
+            node_id = "cluster",
+            route_id = route_id_1,
+          },
+          {
+            at = minute + 120,
+            code = 404,
+            count = 57,
+            node_id = "cluster",
+            route_id = route_id_1,
+          }
+        }
+        assert.same(expected, res)
+      end)
+    end)
+
+    describe(":delete_status_codes_by_route()", function()
+      local route_ids = { utils.uuid(), utils.uuid() }
+
+      before_each(function()
+        cluster:execute("TRUNCATE vitals_codes_by_route")
+        local q = "UPDATE vitals_codes_by_route SET count=count+? WHERE route_id=? AND code=? AND at=? AND duration=?"
+
+        -- the rows commented with "-- x" we expect will be deleted based on
+        -- the `cutoff_times` table below
+        local test_data = {
+          {cassandra.counter(1), cassandra.uuid(route_ids[1]), 200, cassandra.timestamp(1510560000000), 1}, -- x
+          {cassandra.counter(3), cassandra.uuid(route_ids[1]), 200, cassandra.timestamp(1510560001000), 1}, -- x
+          {cassandra.counter(4), cassandra.uuid(route_ids[1]), 200, cassandra.timestamp(1510560002000), 1},
+          {cassandra.counter(19), cassandra.uuid(route_ids[1]), 200, cassandra.timestamp(1510560000000), 60}, -- x
+          {cassandra.counter(5), cassandra.uuid(route_ids[2]), 403, cassandra.timestamp(1510560001000), 1}, -- x
+          {cassandra.counter(7), cassandra.uuid(route_ids[2]), 404, cassandra.timestamp(1510560002000), 1},
+          {cassandra.counter(20), cassandra.uuid(route_ids[2]), 404, cassandra.timestamp(1510560000000), 60}, -- x
+          {cassandra.counter(24), cassandra.uuid(route_ids[2]), 500, cassandra.timestamp(1510560060000), 60},
+        }
+
+        for _, row in ipairs(test_data) do
+          assert(cluster:execute(q, row, { prepared = true, counter  = true }))
+        end
+
+        local res, _ = cluster:execute("select * from vitals_codes_by_route")
+        assert.same(8, #res)
+      end)
+
+      after_each(function()
+        cluster:execute("TRUNCATE vitals_codes_by_route")
+      end)
+
+      it("cleans up status_codes_by_route", function()
+        -- query is "<" so bump the cutoff by a second
+        local cutoff_times = {
+          minutes = 1510560001,
+          seconds = 1510560002,
+        }
+
+        local route_id_map = {}
+        for _, v in ipairs(route_ids) do
+          route_id_map[v] = true
+        end
+
+        local results, err = strategy:delete_status_codes_by_route(route_id_map, cutoff_times)
+        assert.is_nil(err)
+        assert.is_true(results > 0)
+
+        -- delete only really does something in cassandra 3+
+        if dao.db.major_version_n >= 3 then
+          local res, err = cluster:execute("select * from vitals_codes_by_route")
+          assert.is_nil(err)
+
+          assert.same(3, #res)
+        end
+      end)
+    end)
+
+    describe(":delete_status_codes()", function()
+      local service_ids = { utils.uuid(), utils.uuid() }
+
+      before_each(function()
+        cluster:execute("TRUNCATE vitals_codes_by_service")
+      end)
+
+      after_each(function()
+        cluster:execute("TRUNCATE vitals_codes_by_service")
+      end)
+
+      it("cleans up status codes by service", function()
+        local q = "UPDATE vitals_codes_by_service SET count=count+? WHERE service_id=? AND code=? AND at=? AND duration=?"
+
+        -- the rows commented with "-- x" we expect will be deleted based on
+        -- the `opts.seconds_before` and `opts.minutes_before` values below
+        local test_data = {
+          {cassandra.counter(1), cassandra.uuid(service_ids[1]), 200, cassandra.timestamp(1510560000000), 1}, -- x
+          {cassandra.counter(3), cassandra.uuid(service_ids[1]), 200, cassandra.timestamp(1510560001000), 1}, -- x
+          {cassandra.counter(4), cassandra.uuid(service_ids[1]), 200, cassandra.timestamp(1510560002000), 1},
+          {cassandra.counter(19), cassandra.uuid(service_ids[1]), 200, cassandra.timestamp(1510560000000), 60}, -- x
+          {cassandra.counter(5), cassandra.uuid(service_ids[2]), 403, cassandra.timestamp(1510560001000), 1}, -- x
+          {cassandra.counter(7), cassandra.uuid(service_ids[2]), 404, cassandra.timestamp(1510560002000), 1},
+          {cassandra.counter(20), cassandra.uuid(service_ids[2]), 404, cassandra.timestamp(1510560000000), 60}, -- x
+          {cassandra.counter(24), cassandra.uuid(service_ids[2]), 500, cassandra.timestamp(1510560060000), 60},
+        }
+
+        for _, row in ipairs(test_data) do
+          assert(cluster:execute(q, row, { prepared = true, counter  = true }))
+        end
+
+        local res, _ = cluster:execute("SELECT * FROM vitals_codes_by_service")
+        assert.same(8, #res)
+
+        local service_id_map = {}
+        for _, v in ipairs(service_ids) do
+          service_id_map[v] = true
+        end
+
+        local opts = {
+          entity_type    = "service",
+          entities       = service_id_map,
+          seconds_before = 1510560002,
+          minutes_before = 1510560001,
+        }
+
+        local results, err = strategy:delete_status_codes(opts)
+        assert.is_nil(err)
+        assert.is_true(results > 0)
+
+        -- delete only really does something in cassandra 3+
+        if dao.db.major_version_n >= 3 then
+          local res, err = cluster:execute("select * from vitals_codes_by_service")
+          assert.is_nil(err)
+
+          assert.same(3, #res)
+        end
+      end)
+
+      it("does not clean up status codes for an invalid entity type", function()
+        if dao.db.major_version_n < 3 then
+          pending("fails on Cassandra 2.2", function() end)
+          return
+        end
+
+        local service_id_map = {}
+        for _, v in ipairs(service_ids) do
+          service_id_map[v] = true
+        end
+
+        local opts = {
+          entity_type    = nil,
+          entities       = service_id_map,
+          seconds_before = 1510560002,
+          minutes_before = 1510560001,
+        }
+
+        local _, err = strategy:delete_status_codes(opts)
+
+        assert.is_nil(_)
+        assert.same(err, "entity_type must be service or route")
+      end)
+    end)
 
     describe(":node_exists()", function()
       it("should return false if the node does not exist", function()

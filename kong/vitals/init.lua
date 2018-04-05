@@ -296,7 +296,7 @@ end
 local function parse_status_code_dict_key(key)
   -- split on |
   local p = key:find("|", 1, true)
-  local class = key:sub(1, p - 1)
+  local class = tonumber(key:sub(1, p - 1))
   p = p + 1
 
   local p2 = key:find("|",  p, true)
@@ -746,6 +746,13 @@ function _M:flush_vitals_cache(batch_size, max)
   -- how many keys have we processed?
   local num_processed = 0
 
+  -- keep track of entities we need to delete.
+  -- this is only needed for Cassandra, so there's something wrong with our
+  -- model here
+  local entities_to_delete = {
+    ["services"] = {},
+  }
+
   while num_fetched > 0 and num_processed < max do
     -- TODO now we can't preallocate data tables, because this cache is
     -- generic and not guaranteed that every entry will have a consumer, or a
@@ -760,7 +767,11 @@ function _M:flush_vitals_cache(batch_size, max)
 
         local key_parts = parse_cache_key(key)
 
-        prep_counts_per_service_and_code(key_parts, count, codes_per_service)
+        local service_id, _ = prep_counts_per_service_and_code(key_parts,
+                                                               count,
+                                                               codes_per_service)
+
+        entities_to_delete.services[service_id] = true
 
       elseif err then
         log(WARN, _log_prefix, "failed to fetch ", key, ". err: ", err)
@@ -799,7 +810,7 @@ function _M:flush_vitals_cache(batch_size, max)
     minutes = now - self.ttl_minutes,
   }
 
-  local ok, err = self.strategy:delete_status_codes(cutoff_times)
+  local ok, err = self.strategy:delete_status_codes_by_service(entities_to_delete.services, cutoff_times)
   if not ok then
     log(WARN, _log_prefix, "failed to delete status codes per service: ", err)
   end

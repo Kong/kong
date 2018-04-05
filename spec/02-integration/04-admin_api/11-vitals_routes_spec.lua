@@ -466,10 +466,6 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
 
       describe("/vitals/services/{service_id}/status_codes", function()
-        if dao.db_type == "cassandra" then
-          return
-        end
-
         before_each(function()
           dao.db:truncate_table("vitals_codes_by_service")
         end)

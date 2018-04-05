@@ -441,10 +441,6 @@ dao_helpers.for_each_dao(function(kong_conf)
     end)
 
     describe("flush_vitals_cache()", function()
-      if dao.db.name == "cassandra" then
-        return
-      end
-
       before_each(function()
         assert(dao.db:truncate_table("vitals_codes_by_service"))
       end)

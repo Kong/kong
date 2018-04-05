@@ -147,6 +147,38 @@ local DELETE_CODE_CLASSES_CLUSTER = [[
   AND duration = ? AND at < ?
 ]]
 
+local INSERT_CODES_SERVICE = [[
+  UPDATE vitals_codes_by_service
+     SET count = count + ?
+   WHERE at = ?
+     AND duration = ?
+     AND service_id = ?
+     AND code = ?
+]]
+
+local SELECT_CODES_SERVICE = [[
+  SELECT service_id, code, at, count
+    FROM vitals_codes_by_service
+   WHERE service_id = ? AND duration = ? AND at >= ?
+]]
+
+local INSERT_CODES_ROUTE = [[
+  UPDATE vitals_codes_by_route
+     SET count = count + ?
+   WHERE at = ?
+     AND duration = ?
+     AND route_id = ?
+     AND code = ?
+]]
+
+local SELECT_CODES_ROUTE = [[
+  SELECT route_id, code, at, count
+    FROM vitals_codes_by_route
+   WHERE route_id = ? AND duration = ? AND at >= ?
+]]
+
+local DELETE_CODES = "DELETE FROM %s WHERE %s = ? AND duration = ? AND at < ?"
+
 local QUERY_OPTIONS = {
   prepared = true,
 }
@@ -795,6 +827,212 @@ function _M:delete_status_code_classes(cutoff_times)
   return count
 end
 
+
+function _M:insert_status_codes_by_service(data)
+  local res, err, service_id, at, duration, code, count
+
+  for _, v in ipairs(data) do
+    service_id, code, at, duration, count = unpack(v)
+
+    res, err = self.cluster:execute(INSERT_CODES_SERVICE, {
+      cassandra.counter(count),
+      cassandra.timestamp(at * 1000),
+      tonumber(duration),
+      cassandra.uuid(service_id),
+      tonumber(code),
+    }, COUNTER_QUERY_OPTIONS)
+
+    if not res then
+      return nil, "could not insert codes per service. error: " .. err
+    end
+  end
+
+  return true
+end
+
+
+function _M:select_status_codes_by_service(opts)
+  local duration = opts.duration
+
+  if duration ~= 1 and duration ~= 60 then
+    return nil, "duration must be 1 or 60"
+  end
+
+  local cutoff_time, args
+
+  if duration == 1 then
+    cutoff_time = time() - self.ttl_seconds
+  else
+    cutoff_time = time() - self.ttl_minutes
+  end
+
+  args = {
+    cassandra.uuid(opts.service_id),
+    duration,
+    cassandra.timestamp(cutoff_time * 1000),
+  }
+
+  local res = {}
+  local idx = 1
+
+  for rows, err, page in self.cluster:iterate(SELECT_CODES_SERVICE, args, QUERY_OPTIONS) do
+    if err then
+      return nil, "could not select codes by service. error: " .. err
+    end
+
+    for _, row in ipairs(rows) do
+      row.at = row.at / 1000
+      row.node_id = "cluster"
+      res[idx] = row
+      idx = idx + 1
+    end
+  end
+
+  return res
+end
+
+
+function _M:delete_status_codes_by_service(services, cutoff_times)
+  local opts = {
+    entity_type = "service",
+    entities = services,
+    seconds_before = cutoff_times.seconds,
+    minutes_before = cutoff_times.minutes,
+  }
+
+  return self:delete_status_codes(opts)
+end
+
+
+function _M:insert_status_codes_by_route(data)
+  local res, err, route_id, at, duration, code, count
+
+  for _, v in ipairs(data) do
+    route_id, code, at, duration, count = unpack(v)
+
+    res, err = self.cluster:execute(INSERT_CODES_ROUTE, {
+      cassandra.counter(count),
+      cassandra.timestamp(at * 1000),
+      tonumber(duration),
+      cassandra.uuid(route_id),
+      tonumber(code),
+    }, COUNTER_QUERY_OPTIONS)
+
+    if not res then
+      return nil, "could not insert codes per route. error: " .. err
+    end
+  end
+
+  return true
+end
+
+
+function _M:select_status_codes_by_route(opts)
+  local duration = opts.duration
+
+  if duration ~= 1 and duration ~= 60 then
+    return nil, "duration must be 1 or 60"
+  end
+
+  local cutoff_time, args
+
+  if duration == 1 then
+    cutoff_time = time() - self.ttl_seconds
+  else
+    cutoff_time = time() - self.ttl_minutes
+  end
+
+  args = {
+    cassandra.uuid(opts.route_id),
+    duration,
+    cassandra.timestamp(cutoff_time * 1000),
+  }
+
+  local res = {}
+  local idx = 1
+
+  for rows, err, page in self.cluster:iterate(SELECT_CODES_ROUTE, args, QUERY_OPTIONS) do
+    if err then
+      return nil, "could not select codes by route. error: " .. err
+    end
+
+    for _, row in ipairs(rows) do
+      row.at = row.at / 1000
+      row.node_id = "cluster"
+      res[idx] = row
+      idx = idx + 1
+    end
+  end
+
+  return res
+end
+
+
+function _M:delete_status_codes_by_route(routes, cutoff_times)
+  local opts = {
+    entity_type = "route",
+    entities = routes,
+    seconds_before = cutoff_times.seconds,
+    minutes_before = cutoff_times.minutes,
+  }
+
+  return self:delete_status_codes(opts)
+end
+
+
+function _M:delete_status_codes(opts)
+  local entity_type    = opts.entity_type
+  local entities       = opts.entities
+  local seconds_before = opts.seconds_before
+  local minutes_before = opts.minutes_before
+
+  if self.db.major_version_n < 3 then
+    -- the delete algorithm implemented below doesn't work on 2.x
+    -- this is documented as a known issue, so we aren't going to log it
+    -- or fail here.
+    return 1
+  end
+
+  if entity_type ~= "service" and entity_type ~= "route" then
+    return nil, "entity_type must be service or route"
+  end
+
+  local count = 0
+
+  local table_name  = "vitals_codes_by_" .. entity_type
+  local column_name = entity_type .. "_id"
+  local fmt_query   = string.format(DELETE_CODES, table_name, column_name)
+
+  for k, _ in pairs(entities) do
+    local _, err = self.cluster:execute(fmt_query, {
+      cassandra.uuid(k),
+      1,
+      cassandra.timestamp(seconds_before * 1000),
+    })
+
+    if err then
+      log(WARN, _log_prefix, "failed to delete codes by " .. entity_type .. "(secs). err: ", err)
+    else
+      count = count + 1
+    end
+
+    _, err = self.cluster:execute(fmt_query, {
+      cassandra.uuid(k),
+      60,
+      cassandra.timestamp(minutes_before * 1000),
+    })
+
+    if err then
+      log(WARN, _log_prefix, "failed to delete codes by " .. entity_type .. "(mins). err: ", err)
+    else
+      count = count + 1
+    end
+  end
+
+  -- note this isn't a true count since c* won't tell us how many rows she
+  -- deleted. Basically, anything non-zero means _something_ happened. <sigh/>
+  return count
+end
 
 
 --[[

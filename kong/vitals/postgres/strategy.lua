@@ -75,7 +75,7 @@ local SELECT_NODE_META = [[
 
 local INSERT_CODE_CLASSES_CLUSTER = [[
   INSERT INTO vitals_code_classes_by_cluster(code_class, at, duration, count)
-  VALUES('%s', to_timestamp(%d) at time zone 'UTC', %d, %d)
+  VALUES(%d, to_timestamp(%d) at time zone 'UTC', %d, %d)
   ON CONFLICT(code_class, at, duration) DO
   UPDATE SET COUNT = vitals_code_classes_by_cluster.count + excluded.count
 ]]
@@ -783,7 +783,11 @@ function _M:select_status_codes_by_service(opts)
 end
 
 
-function _M:delete_status_codes(cutoff_times)
+function _M:delete_status_codes_by_service(services, cutoff_times)
+  if type(services) ~= "table" then
+    return nil, "services must be a table"
+  end
+
   if type(cutoff_times) ~= "table" then
     return nil, "cutoff_times must be a table"
   end

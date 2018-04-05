@@ -393,9 +393,29 @@ return {
         count counter,
         PRIMARY KEY((code_class, duration), at)
       );
+
+      CREATE TABLE IF NOT EXISTS vitals_codes_by_service(
+        service_id uuid,
+        code int,
+        at timestamp,
+        duration int,
+        count counter,
+        PRIMARY KEY ((service_id, duration), at, code)
+       );
+
+      CREATE TABLE IF NOT EXISTS vitals_codes_by_route(
+        route_id uuid,
+        code int,
+        at timestamp,
+        duration int,
+        count counter,
+        PRIMARY KEY ((route_id, duration), at, code)
+       );
     ]],
 
     down = [[
+      DROP TABLE vitals_codes_by_service;
+      DROP TABLE vitals_codes_by_route;
       DROP TABLE vitals_code_classes_by_cluster;
     ]]
   },
