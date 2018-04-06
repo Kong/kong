@@ -40,11 +40,13 @@ end)
 
 describe("prepare_prefix", function()
   local mock_idx = [[
-    <meta name="KONG:ADMIN_API_PORT" content="{{ADMIN_API_PORT}}" />
-    <meta name="KONG:ADMIN_API_SSL_PORT" content="{{ADMIN_API_SSL_PORT}}" />
-    <meta name="KONG:RBAC_ENFORCED" content="{{RBAC_ENFORCED}}" />
-    <meta name="KONG:RBAC_HEADER" content="{{RBAC_HEADER}}" />
-]]
+    'ADMIN_API_PORT': '{{ADMIN_API_PORT}}',
+    'ADMIN_API_SSL_PORT': '{{ADMIN_API_SSL_PORT}}',
+    'RBAC_ENFORCED': '{{RBAC_ENFORCED}}',
+    'RBAC_HEADER': '{{RBAC_HEADER}}',
+    'KONG_VERSION': '{{KONG_VERSION}}',
+    'FEATURE_FLAGS': '{{FEATURE_FLAGS}}'
+  ]]
 
   local mock_prefix  = "servroot"
   local idx_filename = mock_prefix .. "/gui/index.html"
@@ -73,6 +75,8 @@ describe("prepare_prefix", function()
 
   it("inserts the appropriate values", function()
     -- prepare with some mock values
+    local conf = assert(conf_loader(helpers.test_conf_path))
+
     ee.prepare_admin({
       prefix = mock_prefix,
       admin_listeners = {
@@ -89,31 +93,35 @@ describe("prepare_prefix", function()
       },
       enforce_rbac = false,
       rbac_auth_header = "Kong-Admin-Token",
+      admin_gui_flags = "{}"
     })
 
     local gui_idx = pl_file.read(idx_filename)
 
-    assert.matches('<meta name="KONG:ADMIN_API_PORT" content="9001" />',
-                   gui_idx, nil, true)
-    assert.matches('<meta name="KONG:ADMIN_API_SSL_PORT" content="9444" />',
-                   gui_idx, nil, true)
-    assert.matches('<meta name="KONG:RBAC_ENFORCED" content="false" />',
-                   gui_idx, nil, true)
-    assert.matches('<meta name="KONG:RBAC_HEADER" content="Kong-Admin-Token" />',
-                   gui_idx, nil, true)
+    assert.matches("'ADMIN_API_PORT': '9001'", gui_idx, nil, true)
+    assert.matches("'ADMIN_API_SSL_PORT': '9444'", gui_idx, nil, true)
+    assert.matches("'RBAC_ENFORCED': 'false'", gui_idx, nil, true)
+    assert.matches("'RBAC_HEADER': 'Kong-Admin-Token'", gui_idx, nil, true)
+    assert.matches("'KONG_VERSION': '" .. tostring(meta.versions.package) ..
+      "'", gui_idx, nil, true)
+    assert.matches("'FEATURE_FLAGS': '" .. tostring(conf.admin_gui_flags) ..
+      "'", gui_idx, nil, true)
   end)
 
   it("retains a template with the template placeholders", function()
     local gui_idx_tpl = pl_file.read(tp_filename)
 
-    assert.matches('<meta name="KONG:ADMIN_API_PORT" content="{{ADMIN_API_PORT}}" />',
+    assert.matches("'ADMIN_API_PORT': '{{ADMIN_API_PORT}}'",
                    gui_idx_tpl, nil, true)
-    assert.matches('<meta name="KONG:ADMIN_API_SSL_PORT" content="{{ADMIN_API_SSL_PORT}}" />',
-                   gui_idx_tpl, nil, true)
-    assert.matches('<meta name="KONG:RBAC_ENFORCED" content="{{RBAC_ENFORCED}}" />',
-                   gui_idx_tpl, nil, true)
-    assert.matches('<meta name="KONG:RBAC_HEADER" content="{{RBAC_HEADER}}" />',
-                   gui_idx_tpl, nil, true)
+    assert.matches("'ADMIN_API_SSL_PORT': '{{ADMIN_API_SSL_PORT}}'",
+                  gui_idx_tpl, nil, true)
+    assert.matches("'RBAC_ENFORCED': '{{RBAC_ENFORCED}}'",
+                  gui_idx_tpl, nil, true)
+    assert.matches("'RBAC_HEADER': '{{RBAC_HEADER}}'", gui_idx_tpl, nil, true)
+    assert.matches("'KONG_VERSION': '{{KONG_VERSION}}'",
+                  gui_idx_tpl, nil, true)
+    assert.matches("'FEATURE_FLAGS': '{{FEATURE_FLAGS}}'",
+                  gui_idx_tpl, nil, true)
   end)
 
   it("inserts new values when called again", function()
@@ -134,17 +142,18 @@ describe("prepare_prefix", function()
       },
       enforce_rbac = true,
       rbac_auth_header = "Kong-Other-Token",
+      admin_gui_flags = "{ HIDE_VITALS: true }"
     })
 
     local gui_idx = pl_file.read(idx_filename)
 
-    assert.matches('<meta name="KONG:ADMIN_API_PORT" content="9002" />',
-                   gui_idx, nil, true)
-    assert.matches('<meta name="KONG:ADMIN_API_SSL_PORT" content="9445" />',
-                   gui_idx, nil, true)
-    assert.matches('<meta name="KONG:RBAC_ENFORCED" content="true" />',
-                   gui_idx, nil, true)
-    assert.matches('<meta name="KONG:RBAC_HEADER" content="Kong-Other-Token" />',
-                   gui_idx, nil, true)
+    assert.matches("'ADMIN_API_PORT': '9002'", gui_idx, nil, true)
+    assert.matches("'ADMIN_API_SSL_PORT': '9445'", gui_idx, nil, true)
+    assert.matches("'RBAC_ENFORCED': 'true'", gui_idx, nil, true)
+    assert.matches("'RBAC_HEADER': 'Kong-Other-Token'", gui_idx, nil, true)
+    assert.matches("'FEATURE_FLAGS': '{ HIDE_VITALS: true }'",
+                  gui_idx, nil, true)
+    assert.matches("'KONG_VERSION': '".. tostring(meta.versions.package) .. "'",
+                  gui_idx, nil, true)
   end)
 end)
