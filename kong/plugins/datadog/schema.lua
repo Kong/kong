@@ -34,6 +34,7 @@ local default_metrics = {
     name        = "request_count",
     stat_type   = "counter",
     sample_rate = 1,
+    consumer_identifier = "custom_id",
     tags        = {"app:kong"}
   },
   {

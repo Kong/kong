@@ -13,6 +13,7 @@ return {
           name        = "request_count",
           stat_type   = "counter",
           sample_rate = 1,
+          consumer_identifier = "consumer_id",
         },
         latency = {
           name      = "latency",

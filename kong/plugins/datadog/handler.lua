@@ -30,6 +30,18 @@ local get_consumer_id = {
 
 
 local metrics = {
+  request_count = function (api_name, message, metric_config, logger)
+    local get_consumer_id = get_consumer_id[metric_config.consumer_identifier]
+    local stat = string_format("%s.request.count", api_name)
+
+    if message.consumer then
+      local consumer_id     = get_consumer_id(message.consumer)
+      table.insert(metric_config.tags, "consumer_id:" .. consumer_id)
+    end
+
+    logger:send_statsd(stat, 1, logger.stat_types.counter,
+                     metric_config.sample_rate, metric_config.tags)
+  end,
   status_count = function (api_name, message, metric_config, logger)
     local fmt = string_format("%s.request.status", api_name,
                        message.response.status)
