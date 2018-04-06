@@ -59,7 +59,7 @@ describe("workspaces", function()
         upstream_read_timeout = 60000,
         upstream_send_timeout = 60000,
         upstream_url = "https://requestb.in/w2r6y3w2",
-        workspace = "default"
+        workspace = {{ id = "default"}}
       },
       {
         created_at = 1521494974461,
@@ -78,25 +78,25 @@ describe("workspaces", function()
         upstream_read_timeout = 60000,
         upstream_send_timeout = 60000,
         upstream_url = "https://requestb.in/w2r6y3w2",
-        workspace = "foo"
+        workspaces = {{ id = "foo"}}
       },
       {
         name = "api-1",
         methods = { "POST", "PUT", "GET" },
         uris = { "/my-api" },
-        workspace = "ws1" ,
+        workspaces = {{ id = "ws1"}} ,
       },
       {
         name = "api-2",
         methods = { "POST", "PUT", "GET" },
         uris = { "/my-api2" },
-        workspace = {"ws2"} ,
+        workspaces = {{id = "ws2"}} ,
       }
     }
     local r = Router.new(apis)
     local matched_route = r.select("GET", "/","")
-    local ws1 = {name = "ws1"}
-    local ws2 = {name = "ws2"}
+    local ws1 = {id = "ws1"}
+    local ws2 = {id = "ws2"}
     assert.falsy(matched_route)
 
     matched_route = r.select("GET", "/","myapi1")
@@ -117,28 +117,28 @@ describe("workspaces", function()
 
   describe("is_api_in_ws accepts", function()
     local single_api, multiple_api
-    local ws1 = {name = "ws1"}
-    local ws2 = {name = "ws2"}
+    local ws1 = {id = "ws1"}
+    local ws2 = {id = "ws2"}
 
     setup(function()
       single_api = {
         name = "api-2",
         methods = { "POST", "PUT", "GET" },
         uris = { "/my-api2" },
-        workspace = "ws1" ,
+        workspaces = {{id = "ws1"}},
       }
       multiple_api = {
         name = "api-2",
         methods = { "POST", "PUT", "GET" },
         uris = { "/my-api2" },
-        workspace = {"ws1", "ws2"} ,
+        workspaces = {{ id = "ws1" }, { id = "ws2"}},
       }
     end)
 
     it("single ws per entity", function()
       assert.truthy(workspaces.is_api_in_ws(single_api, ws1))
       assert.falsy(workspaces.is_api_in_ws(single_api, ws2))
-      assert.falsy(workspaces.is_api_in_ws(single_api, {name = "nope"}))
+      assert.falsy(workspaces.is_api_in_ws(single_api, {id = "nope"}))
     end)
 
     it("multiple ws per entity", function()
@@ -159,7 +159,7 @@ describe("workspaces", function()
         methods = { "POST", "PUT", "GET" },
         name = "foo2",
         upstream_url = "https://requestb.in/w2r6y3w2",
-        workspace = "default"
+        workspaces = {{ id = "default"}}
       }, {
         headers = {
           host = { "myapi1" }
@@ -167,17 +167,17 @@ describe("workspaces", function()
         hosts = { "myapi1" },
         name = "blabla",
         upstream_url = "https://requestb.in/w2r6y3w2",
-        workspace = "foo"
+        workspaces = {{ id = "foo"}}
        }, {
         name = "api-1",
         methods = { "POST", "PUT", "GET" },
         uris = { "/my-api" },
-        workspace = "ws1" ,
+        workspaces = {{ id = "ws1"}} ,
        }, {
         name = "api-2",
         methods = { "POST", "PUT", "GET" },
         uris = { "/my-api2" },
-        workspace = { "ws2" } ,
+        workspaces = {{ id = "ws2" }} ,
       }, {
         headers = {
           host = { "*" }
@@ -186,13 +186,13 @@ describe("workspaces", function()
         name = "api-3",
         methods = { "POST", "PUT", "GET" },
         uris = { "/my-api3" },
-        workspace = {"ws3"} ,
+        workspaces = {{ id = "ws3" }} ,
       }, {
         hosts = { "host4" },
         name = "api-4",
         methods = { "POST", "PUT", "GET" },
         uris = { "/api4" },
-        workspace = { "ws4" } ,
+        workspaces = {{ id = "ws4" }} ,
       }
     }
 

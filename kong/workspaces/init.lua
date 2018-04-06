@@ -352,13 +352,14 @@ local function api_workspaces(api)
   ngx.ctx.workspace = {name = "*"}
   local r = singletons.dao.workspace_entities:find_all({entity_id = api.id})
   ngx.ctx.workspace = old_ws
-  return map(function(x) return x.workspace_id end, r)
+  return r
 end
-
 
 -- return true if api is in workspace ws
 local function is_api_in_ws(api, ws)
-  return member(ws.id, api_workspaces(api))
+  local ws_ids = map(function(ws) return ws.id end,
+                     api.workspaces or api_workspaces(api))
+  return member(ws.id, ws_ids)
 end
 _M.is_api_in_ws = is_api_in_ws
 
