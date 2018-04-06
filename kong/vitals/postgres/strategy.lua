@@ -92,11 +92,11 @@ local DELETE_CODE_CLASSES_CLUSTER = [[
   OR (duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC'))
 ]]
 
-local INSERT_CODES_SERVICE = [[
-  INSERT INTO vitals_codes_by_service(service_id, code, at, duration, count)
+local INSERT_CODES = [[
+  INSERT INTO %s(%s, code, at, duration, count)
   VALUES('%s', '%s', to_timestamp(%d) at time zone 'UTC', %d, %d)
-  ON CONFLICT(service_id, code, at, duration) DO
-  UPDATE SET COUNT = vitals_codes_by_service.count + excluded.count
+  ON CONFLICT(%s, code, at, duration) DO
+  UPDATE SET COUNT = %s.count + excluded.count
 ]]
 
 local SELECT_CODES_SERVICE = [[
@@ -105,8 +105,8 @@ local SELECT_CODES_SERVICE = [[
    WHERE service_id = '%s' AND duration = %d AND at >= to_timestamp(%d)
 ]]
 
-local DELETE_CODES_SERVICE = [[
-  DELETE FROM vitals_codes_by_service
+local DELETE_CODES = [[
+  DELETE FROM %s
   WHERE ((duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC')
   OR (duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC'))
 ]]
@@ -737,13 +737,42 @@ function _M:delete_status_code_classes(cutoff_times)
 end
 
 
-function _M:insert_status_codes_by_service(data)
-  local res, err, service_id, at, duration, code, count, query
+function _M:insert_status_codes(data, opts)
+  if type(opts) ~= "table" then
+    return nil, "opts must be a table"
+  end
+
+  local entity_type = opts.entity_type
+
+  if entity_type ~= "service" and entity_type ~= "route" then
+    return nil, "opts.entity_type must be 'service' or 'route'"
+  end
+
+  local res, err, entity_id, at, duration, code, count, query
+  local table, column
 
   for _, v in ipairs(data) do
-    service_id, code, at, duration, count = unpack(v)
+    -- TODO: obviate the need for this check
+    if entity_type == "service" then
+      entity_id, code, at, duration, count = unpack(v)
+      table = "vitals_codes_by_service"
+      column = "service_id"
+    else
+      entity_id, _, code, at, duration, count = unpack(v)
+      table = "vitals_codes_by_route"
+      column = "route_id"
+    end
 
-    query = fmt(INSERT_CODES_SERVICE, service_id, code, at, duration, count)
+    query = fmt(INSERT_CODES,
+                table,
+                column,
+                entity_id,
+                code,
+                at,
+                duration,
+                count,
+                column,
+                table)
 
     res, err = self.db:query(query)
 
@@ -752,7 +781,25 @@ function _M:insert_status_codes_by_service(data)
     end
   end
 
+  if opts.prune then
+    local now = time()
+
+    self:delete_status_codes({
+      entity_type = entity_type,
+      seconds = now - self.ttl_seconds,
+      minutes = now - self.ttl_minutes,
+    })
+  end
+
   return true
+end
+
+
+function _M:insert_status_codes_by_service(data)
+  return self:insert_status_codes(data, {
+    entity_type = "service",
+    prune = true,
+  })
 end
 
 
@@ -783,25 +830,34 @@ function _M:select_status_codes_by_service(opts)
 end
 
 
-function _M:delete_status_codes_by_service(services, cutoff_times)
-  if type(services) ~= "table" then
-    return nil, "services must be a table"
+function _M:delete_status_codes(opts)
+  if type(opts) ~= "table" then
+    return nil, "opts must be a table"
   end
 
-  if type(cutoff_times) ~= "table" then
-    return nil, "cutoff_times must be a table"
+  if opts.entity_type ~= "service" and opts.entity_type ~= "route" then
+    return nil, "opts.entity_type must be 'service' or 'route'"
   end
 
-  if type(cutoff_times.seconds) ~= "number" then
-    return nil, "cutoff seconds must be a number"
+  if type(opts.seconds) ~= "number" then
+    return nil, "opts.seconds must be a number"
   end
 
-  if type(cutoff_times.minutes) ~= "number" then
-    return nil, "cutoff minutes must be a number"
+  if type(opts.minutes) ~= "number" then
+    return nil, "opts.minutes must be a number"
   end
 
-  local query = fmt(DELETE_CODES_SERVICE, 1, cutoff_times.seconds,
-                    60, cutoff_times.minutes)
+  -- TODO: this logic is written with the assumption that we store
+  -- codes in separate tables
+  local table_name
+  if opts.entity_type == "service" then
+    table_name = "vitals_codes_by_service"
+  else
+    table_name = "vitals_codes_by_route"
+  end
+
+  local query = fmt(DELETE_CODES, table_name, 1, opts.seconds,
+                    60, opts.minutes)
 
   local res, err = self.db:query(query)
 

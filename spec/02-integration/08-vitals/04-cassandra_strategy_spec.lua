@@ -178,23 +178,18 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert.same(seconds_res, expected_seconds)
       end)
 
-      it("should continue to insert minutes even if seconds insert returns an error", function()
+      it("should continue to insert minutes if seconds insert fails", function()
         local way_too_big = 0xFFFFFFFF + 1
 
         local firstInsert = {
           { 1505965513, way_too_big, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110 },
         }
 
-        local secondInsert = {
-          { 1505965513, 1000, 1000, 1000, 1000, way_too_big, 1000, 1000, 1000, 1000, 1000, 1000 },
-        }
-
         assert(strategy:init(uuid, hostname))
         local s_insert_minutes = spy.on(strategy, "insert_minutes")
 
         assert(strategy:insert_stats(firstInsert))
-        assert(strategy:insert_stats(secondInsert))
-        assert.spy(s_insert_minutes).was_called(2)
+        assert.spy(s_insert_minutes).was_called()
       end)
 
       it("should not insert sentinel values (minutes)", function()
@@ -1341,6 +1336,10 @@ dao_helpers.for_each_dao(function(kong_conf)
         cluster:execute("TRUNCATE vitals_codes_by_service")
       end)
 
+      after_each(function()
+        cluster:execute("TRUNCATE vitals_codes_by_service")
+      end)
+
       it("turns Lua tables into Cassandra rows", function()
         local uuid = utils.uuid()
 
@@ -1389,7 +1388,47 @@ dao_helpers.for_each_dao(function(kong_conf)
         end)
 
         assert.same(expected, res)
+      end)
 
+      it("deletes old rows when opts.prune evaluates to true", function()
+        local service_id = utils.uuid()
+        local data = {
+          { service_id, "404", tostring(ngx.time()), "1", 4 },
+        }
+
+        local s = spy.on(cassandra_strategy, "delete_status_codes")
+
+        strategy:insert_status_codes(data, {
+          entity_type = "service",
+          prune = true,
+        })
+
+        assert.spy(s).was_called()
+      end)
+
+      it("does not delete old rows when opts.prune evaluates to false", function()
+        local service_id = utils.uuid()
+        local data = {
+          { service_id, "404", tostring(ngx.time()), "1", 4 },
+        }
+
+        local s = spy.on(cassandra_strategy, "delete_status_codes")
+
+        strategy:insert_status_codes(data, {
+          entity_type = "service",
+          prune = false,
+        })
+
+        assert.spy(s).was_not_called()
+      end)
+
+      pending("validates opts", function()
+        local data = { data = "anything" }
+        local opts = { entity_type = "foo" }
+        local _, err = strategy.insert_status_codes(data, opts)
+
+        assert.is_nil(_)
+        assert.same("entity_type must be 'service' or 'route'", err)
       end)
     end)
 
@@ -1528,54 +1567,17 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
 
       it("turns Lua tables into Cassandra rows", function()
-        local uuid = utils.uuid()
+        stub(cassandra_strategy, "insert_status_codes")
 
-        local now    = ngx.time()
-        local minute = now - (now % 60)
+        local data = {}
 
-        local data = {
-          { uuid, "404", tostring(now), "1", 4 },
-          { uuid, "404", tostring(now - 1), "1", 2 },
-          { uuid, "500", tostring(minute), "60", 5 },
+        local opts = {
+          entity_type = "route",
+          prune = true,
         }
 
-        assert(strategy:insert_status_codes_by_route(data))
-
-        local expected = {
-          {
-            at         = (now - 1) * 1000,
-            code       = 404,
-            count      = 2,
-            duration   = 1,
-            route_id = uuid,
-          },
-          {
-            at         = now * 1000,
-            code       = 404,
-            count      = 4,
-            duration   = 1,
-            route_id = uuid,
-          },
-          {
-            at         = minute * 1000,
-            code       = 500,
-            count      = 5,
-            duration   = 60,
-            route_id = uuid,
-          },
-          meta = {
-            has_more_pages = false,
-          },
-          type = 'ROWS',
-        }
-        local res, _ = cluster:execute("select * from vitals_codes_by_route")
-
-        table.sort(res, function(a,b)
-          return a.count < b.count
-        end)
-
-        assert.same(expected, res)
-
+        strategy:insert_status_codes_by_route(data)
+        assert.stub(cassandra_strategy.insert_status_codes).was_called_with(strategy, data, opts)
       end)
     end)
 

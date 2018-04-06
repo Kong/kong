@@ -147,12 +147,12 @@ local DELETE_CODE_CLASSES_CLUSTER = [[
   AND duration = ? AND at < ?
 ]]
 
-local INSERT_CODES_SERVICE = [[
-  UPDATE vitals_codes_by_service
+local INSERT_CODES = [[
+  UPDATE %s
      SET count = count + ?
    WHERE at = ?
      AND duration = ?
-     AND service_id = ?
+     AND %s = ?
      AND code = ?
 ]]
 
@@ -160,15 +160,6 @@ local SELECT_CODES_SERVICE = [[
   SELECT service_id, code, at, count
     FROM vitals_codes_by_service
    WHERE service_id = ? AND duration = ? AND at >= ?
-]]
-
-local INSERT_CODES_ROUTE = [[
-  UPDATE vitals_codes_by_route
-     SET count = count + ?
-   WHERE at = ?
-     AND duration = ?
-     AND route_id = ?
-     AND code = ?
 ]]
 
 local SELECT_CODES_ROUTE = [[
@@ -829,25 +820,10 @@ end
 
 
 function _M:insert_status_codes_by_service(data)
-  local res, err, service_id, at, duration, code, count
-
-  for _, v in ipairs(data) do
-    service_id, code, at, duration, count = unpack(v)
-
-    res, err = self.cluster:execute(INSERT_CODES_SERVICE, {
-      cassandra.counter(count),
-      cassandra.timestamp(at * 1000),
-      tonumber(duration),
-      cassandra.uuid(service_id),
-      tonumber(code),
-    }, COUNTER_QUERY_OPTIONS)
-
-    if not res then
-      return nil, "could not insert codes per service. error: " .. err
-    end
-  end
-
-  return true
+  return self:insert_status_codes(data, {
+    entity_type = "service",
+    prune = true,
+  })
 end
 
 
@@ -905,25 +881,10 @@ end
 
 
 function _M:insert_status_codes_by_route(data)
-  local res, err, route_id, at, duration, code, count
-
-  for _, v in ipairs(data) do
-    route_id, code, at, duration, count = unpack(v)
-
-    res, err = self.cluster:execute(INSERT_CODES_ROUTE, {
-      cassandra.counter(count),
-      cassandra.timestamp(at * 1000),
-      tonumber(duration),
-      cassandra.uuid(route_id),
-      tonumber(code),
-    }, COUNTER_QUERY_OPTIONS)
-
-    if not res then
-      return nil, "could not insert codes per route. error: " .. err
-    end
-  end
-
-  return true
+  return self:insert_status_codes(data, {
+    entity_type = "route",
+    prune = true,
+  })
 end
 
 
@@ -1001,7 +962,7 @@ function _M:delete_status_codes(opts)
 
   local table_name  = "vitals_codes_by_" .. entity_type
   local column_name = entity_type .. "_id"
-  local fmt_query   = string.format(DELETE_CODES, table_name, column_name)
+  local fmt_query   = fmt(DELETE_CODES, table_name, column_name)
 
   for k, _ in pairs(entities) do
     local _, err = self.cluster:execute(fmt_query, {
@@ -1032,6 +993,71 @@ function _M:delete_status_codes(opts)
   -- note this isn't a true count since c* won't tell us how many rows she
   -- deleted. Basically, anything non-zero means _something_ happened. <sigh/>
   return count
+end
+
+
+function _M:insert_status_codes(data, opts)
+  if type(opts) ~= "table" then
+    return nil, "opts must be a table"
+  end
+
+  local entity_type = opts.entity_type
+  local prune = opts.prune
+
+  if entity_type ~= "service" and entity_type ~= "route" then
+    return nil, "entity_type must be 'service' or 'route'"
+  end
+
+  local insert_stmt
+  if entity_type == "service" then
+    insert_stmt = fmt(INSERT_CODES, "vitals_codes_by_service", "service_id")
+  else
+    insert_stmt = fmt(INSERT_CODES, "vitals_codes_by_route", "route_id")
+  end
+
+  local entities_to_delete = {}
+
+  local res, err, entity_id, at, duration, code, count
+
+  for _, v in ipairs(data) do
+    -- TODO: obviate the need for this check
+    if entity_type == "service" then
+      entity_id, code, at, duration, count = unpack(v)
+    else
+      entity_id, _, code, at, duration, count = unpack(v)
+    end
+
+    res, err = self.cluster:execute(insert_stmt, {
+      cassandra.counter(count),
+      cassandra.timestamp(at * 1000),
+      tonumber(duration),
+      cassandra.uuid(entity_id),
+      tonumber(code),
+    }, COUNTER_QUERY_OPTIONS)
+
+
+    -- TODO: if we break here, we don't do any cleanup
+    if not res then
+      return nil, "insert_status_codes failed: " .. err
+    end
+
+    if prune then
+      entities_to_delete[entity_id] = true
+    end
+  end
+
+  if prune then
+    local now = time()
+
+    self:delete_status_codes({
+      entity_type = entity_type,
+      entities = entities_to_delete,
+      seconds_before = now - self.ttl_seconds,
+      minutes_before = now - self.ttl_minutes,
+    })
+  end
+
+  return true
 end
 
 

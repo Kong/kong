@@ -697,31 +697,91 @@ local IDX = {
 }
 
 
+local KEY_FORMATS = {
+  route = {
+    key_format = "%s|%s|%s|%s|%s|",
+    key_values = { IDX.route, IDX.service, IDX.code, IDX.at, IDX.duration },
+  },
+  service = {
+    key_format = "%s|%s|%s|%s|",
+    key_values = { IDX.service, IDX.code, IDX.at, IDX.duration },
+  },
+}
+
+
+local function extract_keys(master_keys, requested_indexes)
+  local new_key_parts = {}
+
+  for _, v in ipairs(requested_indexes) do
+    table.insert(new_key_parts, master_keys[v])
+  end
+
+  return new_key_parts
+end
+
+--[[
+ turn
+ {
+    ["c903518b-ed9a-475d-8918-50ab886e2ffc|200|1522861680|60|"] = 3,
+    ["c903518b-ed9a-475d-8918-50ab886e2ffc|200|1522861717|1|"] = 1,
+    ["c903518b-ed9a-475d-8918-50ab886e2ffc|404|1522861680|60|"] = 4,
+  }
+  into
+  {
+    { "c903518b-ed9a-475d-8918-50ab886e2ffc", "200", "1522861680", "60", 3 },
+    { "c903518b-ed9a-475d-8918-50ab886e2ffc", "200", "1522861717", "1", 1 }
+    { "c903518b-ed9a-475d-8918-50ab886e2ffc", "404", "1522861680", "60", 4 },
+  }
+ ]]
+local function flatten_counters(counters)
+  local flattened_counters = {}
+
+  local i = 1
+  local row
+  local count_idx
+
+  for k, count in pairs(counters) do
+    row = parse_cache_key(k)
+    count_idx = count_idx or #row + 1
+    row[count_idx] = count
+    flattened_counters[i] = row
+    i = i + 1
+  end
+
+  return flattened_counters
+end
+
+
 --[[
   "prep*" functions prepare the data we'll pass to the db strategy from
   the cache entry we're processing.
-
-  By convention, return the id of the entity/ies we prepped. Note that
-  this could be a multi-valued return; e.g., if we're prepping
-  "counts per service per route", we would return `service_id, route_id`.
  ]]
-local function prep_counts_per_service_and_code(keys, count, data)
+local function prep_code_counts(query_type, keys, count, data)
+  -- so far, only counting response codes for services and routes
   if keys[IDX.service] == "" then
     return
   end
 
-  local row = fmt("%s|%s|%s|%s|",
-                  keys[IDX.service], keys[IDX.code], keys[IDX.at], keys[IDX.duration])
+
+  if query_type == nil then
+    return nil, "query_type is required"
+  end
+
+  if query_type ~= "route" and query_type ~= "service" then
+    return nil, "unknown query_type: " .. query_type
+  end
+
+  -- are we counting by service, or route, or ... ?
+  local count_by = KEY_FORMATS[query_type]
+
+  local row = fmt(count_by.key_format, unpack(extract_keys(keys, count_by.key_values)))
 
   if data[row] then
     data[row] = data[row] + count
   else
     data[row] = count
   end
-
-  return keys[IDX.service], keys[IDX.code]
 end
-_M.prep_counts_per_service_and_code = prep_counts_per_service_and_code
 
 
 function _M:flush_vitals_cache(batch_size, max)
@@ -746,18 +806,12 @@ function _M:flush_vitals_cache(batch_size, max)
   -- how many keys have we processed?
   local num_processed = 0
 
-  -- keep track of entities we need to delete.
-  -- this is only needed for Cassandra, so there's something wrong with our
-  -- model here
-  local entities_to_delete = {
-    ["services"] = {},
-  }
-
   while num_fetched > 0 and num_processed < max do
     -- TODO now we can't preallocate data tables, because this cache is
     -- generic and not guaranteed that every entry will have a consumer, or a
     -- service, etc.
     local codes_per_service = {}
+    local codes_per_route = {}
 
     for i, key in ipairs(keys) do
       local count, err = self.dict:get(key)
@@ -767,11 +821,8 @@ function _M:flush_vitals_cache(batch_size, max)
 
         local key_parts = parse_cache_key(key)
 
-        local service_id, _ = prep_counts_per_service_and_code(key_parts,
-                                                               count,
-                                                               codes_per_service)
-
-        entities_to_delete.services[service_id] = true
+        prep_code_counts("service", key_parts, count, codes_per_service)
+        prep_code_counts("route", key_parts, count, codes_per_route)
 
       elseif err then
         log(WARN, _log_prefix, "failed to fetch ", key, ". err: ", err)
@@ -781,20 +832,17 @@ function _M:flush_vitals_cache(batch_size, max)
       end
     end
 
-    -- convert codes_per_service to an array for the db:
-    -- { service, code, at, duration, count }
-    local codes_to_insert = new_tab(#codes_per_service, 0)
-    local i = 1
-    for k, count in pairs(codes_per_service) do
-      local new_key = parse_cache_key(k)
-      new_key[5] = count
-      codes_to_insert[i] = new_key
-      i = i + 1
-    end
+    local datasets = {
+      insert_status_codes_by_service = flatten_counters(codes_per_service),
+      insert_status_codes_by_route = flatten_counters(codes_per_route),
+    }
 
-    local ok, err = self.strategy:insert_status_codes_by_service(codes_to_insert)
-    if not ok then
-      log(WARN, _log_prefix, "insert codes per service failed. error: ", err)
+    -- call the appropriate strategy function for each dataset
+    for fn, data in pairs(datasets) do
+      local ok, err = self.strategy[fn](self.strategy, data)
+      if not ok then
+        log(WARN, _log_prefix, fn, " failed: ", err)
+      end
     end
 
     num_processed = num_processed + num_fetched
@@ -802,17 +850,6 @@ function _M:flush_vitals_cache(batch_size, max)
 
     keys = self.dict:get_keys(batch_size)
     num_fetched = #keys
-  end
-
-  local now = time()
-  local cutoff_times = {
-    seconds = now - self.ttl_seconds,
-    minutes = now - self.ttl_minutes,
-  }
-
-  local ok, err = self.strategy:delete_status_codes_by_service(entities_to_delete.services, cutoff_times)
-  if not ok then
-    log(WARN, _log_prefix, "failed to delete status codes per service: ", err)
   end
 
   return num_processed

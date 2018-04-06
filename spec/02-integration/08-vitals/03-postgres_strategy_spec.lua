@@ -1439,7 +1439,7 @@ dao_helpers.for_each_dao(function(kong_conf)
     end)
 
 
-    describe(":delete_status_codes_by_service", function()
+    describe(":delete_status_codes", function()
       local uuid   = utils.uuid()
       local uuid_2 = utils.uuid()
 
@@ -1474,37 +1474,42 @@ dao_helpers.for_each_dao(function(kong_conf)
           assert(db:query(query))
         end
 
-        local cutoff_times = {
+        local opts = {
+          entity_type = "service",
           minutes = 1510560001,
           seconds = 1510560002,
         }
 
-        local res, err = strategy:delete_status_codes_by_service({}, cutoff_times)
+        local res, err = strategy:delete_status_codes(opts)
 
         assert.is_nil(err)
         assert.same(6, res)
       end)
 
-      it("validates cutoff_times", function()
-        local _, err = strategy:delete_status_codes_by_service({}, "foo")
-        assert.same("cutoff_times must be a table", err)
+      it("validates parameters", function()
+        local _, err = strategy:delete_status_codes("foo")
+        assert.same("opts must be a table", err)
 
-        _, err = strategy:delete_status_codes_by_service({}, { seconds = "foo" })
-        assert.same("cutoff seconds must be a number", err)
+        _, err = strategy:delete_status_codes({ entity_type = "foo" })
+        assert.same("opts.entity_type must be 'service' or 'route'", err)
 
-        _, err = strategy:delete_status_codes_by_service({}, { seconds = 999 })
-        assert.same("cutoff minutes must be a number", err)
+        _, err = strategy:delete_status_codes({ entity_type = "service", seconds = "foo" })
+        assert.same("opts.seconds must be a number", err)
+
+        _, err = strategy:delete_status_codes({ entity_type = "service", seconds = 999 })
+        assert.same("opts.minutes must be a number", err)
       end)
 
       it("returns an error message when it fails", function()
         stub(strategy.db, "query").returns(nil, "failure!")
 
-        local cutoff_times = {
+        local opts = {
+          entity_type = "service",
           minutes = 1510560001,
           seconds = 1510560002,
         }
 
-        local _, err = strategy:delete_status_codes_by_service({}, cutoff_times)
+        local _, err = strategy:delete_status_codes(opts)
 
         assert.same("failed to delete codes. err: failure!", err)
       end)

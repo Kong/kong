@@ -441,13 +441,20 @@ dao_helpers.for_each_dao(function(kong_conf)
     end)
 
     describe("flush_vitals_cache()", function()
+      if dao.db.name == "postgres" then
+        pending("pending implementation of vitals_codes_by_route", function() end)
+        return
+      end
+
       before_each(function()
+        assert(dao.db:truncate_table("vitals_codes_by_route"))
         assert(dao.db:truncate_table("vitals_codes_by_service"))
       end)
 
       after_each(function()
         vitals.dict:flush_all() -- mark expired
         vitals.dict:flush_expired() -- really clean them up
+        assert(dao.db:truncate_table("vitals_codes_by_route"))
         assert(dao.db:truncate_table("vitals_codes_by_service"))
       end)
 
@@ -493,6 +500,58 @@ dao_helpers.for_each_dao(function(kong_conf)
         }
 
         assert.same(expected, res.stats.cluster)
+
+        local res, err = dao.db:query("select * from vitals_codes_by_route")
+
+        assert.is_nil(err)
+
+        table.sort(res, function(a,b)
+          return a.count < b.count
+        end)
+
+        local ats = {
+          now - 1,
+          now,
+          minute,
+          minute,
+        }
+        if dao.db.name == "cassandra" then
+          for i, v in ipairs(ats) do
+            ats[i] = v * 1000
+          end
+        end
+
+        local expected = {
+          {
+            at = ats[1],
+            code = 200,
+            count = 1,
+            duration = 1,
+            route_id = route_id,
+          }, {
+            at = ats[2],
+            code = 404,
+            count = 2,
+            duration = 1,
+            route_id = route_id,
+          }, {
+            at = ats[3],
+            code = 200,
+            count = 3,
+            duration = 60,
+            route_id = route_id,
+          }, {
+            at = ats[4],
+            code = 404,
+            count = 4,
+            duration = 60,
+            route_id = route_id,
+          }
+        }
+
+        for i = 1, 4 do
+          assert.same(expected[i], res[i])
+        end
       end)
     end)
 
