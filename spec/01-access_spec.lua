@@ -251,10 +251,11 @@ for _, strategy in helpers.each_strategy() do
           count["/requests"] )
       end)
 
-      it("test percentage 50% with upstream_host", function()
+      it("test percentage 50% with upstream_host and upstream_port", function()
         local server1 = http_server(10, 2, 20002)
         add_canary(route1.id, {
-          upstream_host = "127.0.0.1:20002",
+          upstream_host = "127.0.0.1",
+          upstream_port = 20002,
           percentage = "50",
           steps = "4",
         })
@@ -393,7 +394,8 @@ for _, strategy in helpers.each_strategy() do
       it("test start with default hash and upstream_host", function()
         local server1 = http_server(10, 9, 20002)
         add_canary(route1.id, {
-          upstream_host = "127.0.0.1:20002",
+          upstream_host = "127.0.0.1",
+          upstream_port = 20002,
           percentage = nil,
           steps = 3,
           start = ngx.time() + 2,
@@ -495,7 +497,7 @@ for _, strategy in helpers.each_strategy() do
         end
       end)
 
-      it("test 'preserve_host' setting on api", function()
+      it("test 'preserve_host' setting on route", function()
         add_canary(route2.id, {
           upstream_uri = "/requests/path2",
           percentage = 100,  -- move everything to new upstream

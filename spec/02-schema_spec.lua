@@ -74,6 +74,18 @@ describe("canary schema", function()
     assert.False(ok)
     assert.is_same("'upstream_host' must be a valid hostname", err.upstream_host)
   end)
+  it("validate upstream_port", function()
+    local ok, err = validate_entity({ percentage = "10", upstream_port = 100 }, canary_schema)
+
+    assert.True(ok)
+    assert.is_nil(err)
+  end)
+  it("validate upstream_port out of range", function()
+    local ok, err = validate_entity({ percentage = "10", upstream_port = 100000 }, canary_schema)
+
+    assert.False(ok)
+    assert.is_same("'upstream_port' must be a valid portnumber (1 - 65535)", err.upstream_port)
+  end)
   it("validate upstream_uri", function()
     local ok, err = validate_entity({ percentage = "10", upstream_uri = "/" }, canary_schema)
 
@@ -84,7 +96,7 @@ describe("canary schema", function()
     local ok, _, schema = validate_entity({}, canary_schema)
 
     assert.False(ok)
-    assert.is_same("either 'upstream_uri' or 'upstream_host' must be provided",
+    assert.is_same("either 'upstream_uri', 'upstream_host', or 'upstream_port' must be provided",
                    schema.message)
   end)
   it("start or percentage must be provided", function()
