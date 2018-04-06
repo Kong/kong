@@ -176,6 +176,19 @@ describe("NGINX conf compiler", function()
       local nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.matches("error_log syslog:server=.+:61828 error;", nginx_conf)
     end)
+    it("defines the wlarge_client_header_buffers by default", function()
+      local conf = assert(conf_loader(nil, {}))
+      local nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.matches("large_client_header_buffers 4 8k", nginx_conf, nil, true)
+    end)
+    it("writes the large_client_header_buffers as defined", function()
+      local conf = assert(conf_loader(nil, {
+        large_client_header_buffer_count = 16,
+        large_client_header_buffer_size = "32k",
+      }))
+      local nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.matches("large_client_header_buffers 16 32k", nginx_conf, nil, true)
+    end)
     it("defines the client_max_body_size by default", function()
       local conf = assert(conf_loader(nil, {}))
       local nginx_conf = prefix_handler.compile_kong_conf(conf)
@@ -188,6 +201,10 @@ describe("NGINX conf compiler", function()
       local nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.matches("client_max_body_size 1m", nginx_conf, nil, true)
     end)
+
+
+
+
     it("defines the client_body_buffer_size directive by default", function()
       local conf = assert(conf_loader(nil, {}))
       local nginx_conf = prefix_handler.compile_kong_conf(conf)
@@ -489,4 +506,3 @@ describe("NGINX conf compiler", function()
     end)
   end)
 end)
-

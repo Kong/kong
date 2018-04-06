@@ -19,6 +19,7 @@ error_log ${{PROXY_ERROR_LOG}} ${{LOG_LEVEL}};
 >-- reset_timedout_connection on; # disabled until benchmarked
 > end
 
+large_client_header_buffers ${{LARGE_CLIENT_HEADER_BUFFER_COUNT}} ${{LARGE_CLIENT_HEADER_BUFFER_SIZE}};
 client_max_body_size ${{CLIENT_MAX_BODY_SIZE}};
 proxy_ssl_server_name on;
 underscores_in_headers on;
