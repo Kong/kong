@@ -37,11 +37,6 @@ local function new(sdk, _SDK_REQUEST, major_version)
   -- ]]
 
 
-  function _SDK_REQUEST.get_username()
-    return ngx.var.remote_user
-  end
-
-
   function _SDK_REQUEST.get_host()
     return ngx.var.host
   end
