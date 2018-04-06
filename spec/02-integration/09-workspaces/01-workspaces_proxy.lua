@@ -4,10 +4,10 @@ local meta = require "kong.meta"
 local utils = require "kong.tools.utils"
 
 describe("Plugin: workspace scope test key-auth (access)", function()
-  local admin_client, proxy_client
+  local admin_client, proxy_client, api1, ws_foo, plugin1
   setup(function()
-    helpers.dao:truncate_tables()
-
+    helpers.dao:drop_schema()
+    helpers.run_migrations()
 
     assert(helpers.start_kong({
       nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -26,7 +26,7 @@ describe("Plugin: workspace scope test key-auth (access)", function()
       }
     })
     assert.res_status(201, res)
-    local ws_foo = assert.response(res).has.jsonbody()
+    ws_foo = assert.response(res).has.jsonbody()
 
     local res = assert(admin_client:send {
       method = "POST",
@@ -39,7 +39,7 @@ describe("Plugin: workspace scope test key-auth (access)", function()
       }
     })
     assert.res_status(201, res)
-    local ws_bar = assert.response(res).has.jsonbody()
+    ws_bar = assert.response(res).has.jsonbody()
 
     local res = assert(admin_client:send {
       method = "POST",
@@ -47,19 +47,19 @@ describe("Plugin: workspace scope test key-auth (access)", function()
       body   = {
         name = "test",
         upstream_url = "http://httpbin.org",
-        ["Host"] = "api1.com"
+        hosts = "api1.com"
       },
       headers = {
         ["Content-Type"] = "application/json",
       }
     })
     assert.res_status(201, res)
-    local ap1 = assert.response(res).has.jsonbody()
+    api1 = assert.response(res).has.jsonbody()
 
 
     local res = assert(admin_client:send {
       method = "POST",
-      path   = "/apis/" .. api1.name .. "plugins" ,
+      path   = "/apis/" .. api1.name .. "/plugins" ,
       body   = {
         name = "key-auth",
       },
@@ -68,7 +68,7 @@ describe("Plugin: workspace scope test key-auth (access)", function()
       }
     })
     assert.res_status(201, res)
-    local plugin1 = assert.response(res).has.jsonbody()
+    plugin1 = assert.response(res).has.jsonbody()
 
     local res = assert(admin_client:send {
       method = "POST",
@@ -94,25 +94,78 @@ describe("Plugin: workspace scope test key-auth (access)", function()
       }
     })
     assert.res_status(201, res)
-    local credential1 = assert.response(res).has.jsonbody()
+    assert.response(res).has.jsonbody()
   end)
   teardown(function()
     if admin_client then admin_client:close() end
     if proxy_client then proxy_client:close() end
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
-  describe("test", function()
-    it("happy path", function()
+  describe("test sharing api1 with foo", function()
+    it("withoud sharing", function()
       local res = assert(proxy_client:send {
         method = "GET",
-        path = "/anything/",
+        path = "/anything",
         headers = {
           ["Host"] = "api1.com",
           ["apikey"] = "kong",
         }
       })
       assert.res_status(200, res)
+    end)
+    it("share api with foo", function()
+      local res = assert(admin_client:send {
+        method = "POST",
+        path   = "/workspaces/foo/entities",
+        body   = {
+          entities = api1.id,
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        }
+      })
+      assert.res_status(201, res)
+
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/anything",
+        headers = {
+          ["Host"] = "api1.com",
+          ["apikey"] = "kong",
+        }
+      })
+      assert.res_status(200, res)
+    end)
+    it("add request-transformer on foo side", function()
+      local res = assert(admin_client:send {
+        method = "POST",
+        path   = "/foo/apis/" .. api1.name .. "/plugins" ,
+        body   = {
+          name = "request-transformer-advanced",
+          config = {
+            add = {
+              headers = "X-TEST:ok"
+            }
+          }
+        },
+        headers = {
+          ["Content-Type"] = "application/json",
+        }
+      })
+      assert.res_status(201, res)
+
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/anything",
+        headers = {
+          ["Host"] = "api1.com",
+          ["apikey"] = "kong",
+        }
+      })
+      assert.res_status(200, res)
+      local body = assert.response(res).has.jsonbody()
+      assert("ok", body.headers["X-Test"])
     end)
   end)
 end)
