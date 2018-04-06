@@ -68,10 +68,10 @@ return {
       crud.put(self.params, dao_factory.apis)
     end,
 
-    POST = function(self, dao_factory, helpers)
+    POST = function(self, dao_factory)
       if workspaces.is_route_colliding(self) then
         local err = "API route collides with an existing API"
-        return helpers.responses.send_HTTP_CONFLICT(err)
+        return helpers.send_HTTP_CONFLICT(err)
       end
       crud.post(self.params, dao_factory.apis)
     end
