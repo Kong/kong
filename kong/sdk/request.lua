@@ -22,9 +22,7 @@ local function new(sdk, _SDK_REQUEST, major_version)
 
 
   --[[
-  function _SDK_REQUEST.get_real_scheme()
-    -- should probably be optional
-    -- maybe part of get_protocol() instead?
+  function _SDK_REQUEST.get_forwarded_scheme()
     if sdk.ip.is_trusted(var.realip_remote_addr) then
       local scheme = _SDK_REQUEST.get_header("X-Forwarded-Proto")
       if scheme then
@@ -43,8 +41,7 @@ local function new(sdk, _SDK_REQUEST, major_version)
 
 
   --[[
-  function _SDK_REQUEST.get_real_host()
-    -- TODO: add support for Forwarded header (the non X-Forwarded one)
+  function _SDK_REQUEST.get_forwarded_host()
     local var = ngx.var
     local host
     if sdk.ip.is_trusted(var.realip_remote_addr) then
@@ -75,8 +72,7 @@ local function new(sdk, _SDK_REQUEST, major_version)
 
 
   --[[
-  function _SDK_REQUEST.get_real_port()
-    -- TODO: add support for Forwarded header (the non-X-Forwarded one)
+  function _SDK_REQUEST.get_forwared_port()
     local port
     if sdk.ip.trusted(var.realip_remote_addr) then
       port = tonumber(_SDK_REQUEST.get_header("X-Forwarded-Port"))
@@ -107,6 +103,22 @@ local function new(sdk, _SDK_REQUEST, major_version)
   --]]
 
 
+  function _SDK_REQUEST.get_path()
+    local uri = ngx.var.request_uri
+    local idx = find(uri, "?", 2, true)
+    if idx then
+      uri = sub(uri, 1, idx - 1)
+    end
+
+    return uri
+  end
+
+
+  function _SDK_REQUEST.get_query()
+    return ngx.var.args
+  end
+
+
   function _SDK_REQUEST.get_method()
     return ngx.req.get_method()
   end
@@ -135,12 +147,12 @@ local function new(sdk, _SDK_REQUEST, major_version)
   end
 
 
-  function _SDK_REQUEST.get_header(header)
-    if type(header) ~= "string" then
-      error("header must be a string", 2)
+  function _SDK_REQUEST.get_header(name)
+    if type(name) ~= "string" then
+      error("name must be a string", 2)
     end
 
-    local header_value = _SDK_REQUEST.get_headers()[header]
+    local header_value = _SDK_REQUEST.get_headers()[name]
     if type(header_value) == "table" then
       return header_value[1]
     end
@@ -167,12 +179,12 @@ local function new(sdk, _SDK_REQUEST, major_version)
   end
 
 
-  function _SDK_REQUEST.get_query_arg(arg)
-    if type(arg) ~= "string" then
-      error("arg must be a string", 2)
+  function _SDK_REQUEST.get_query_arg(name)
+    if type(name) ~= "string" then
+      error("name must be a string", 2)
     end
 
-    local arg_value = _SDK_REQUEST.get_query_args()[arg]
+    local arg_value = _SDK_REQUEST.get_query_args()[name]
     if type(arg_value) == "table" then
       return arg_value[1]
     end
@@ -192,7 +204,8 @@ local function new(sdk, _SDK_REQUEST, major_version)
 
       if max_args < 0 then
         error("max_args must be >= 0", 2)
-      end    end
+      end
+    end
 
     local content_length = tonumber(_SDK_REQUEST.get_header("Content-Length"))
     if content_length and content_length < 1 then
@@ -206,12 +219,12 @@ local function new(sdk, _SDK_REQUEST, major_version)
   end
 
 
-  function _SDK_REQUEST.get_post_arg(arg)
-    if type(arg) ~= "string" then
-      error("arg must be a string", 2)
+  function _SDK_REQUEST.get_post_arg(name)
+    if type(name) ~= "string" then
+      error("name must be a string", 2)
     end
 
-    local arg_value = _SDK_REQUEST.get_post_args()[arg]
+    local arg_value = _SDK_REQUEST.get_post_args()[name]
     if type(arg_value) == "table" then
       return arg_value[1]
     end
@@ -223,7 +236,7 @@ local function new(sdk, _SDK_REQUEST, major_version)
   function _SDK_REQUEST.get_body()
     local content_length = tonumber(_SDK_REQUEST.get_header("Content-Length"))
     if content_length and content_length < 1 then
-      return "", nil
+      return ""
     end
 
     -- TODO: should we also compare content_length to client_body_buffer_size here?
@@ -236,18 +249,18 @@ local function new(sdk, _SDK_REQUEST, major_version)
         return nil, "request body did not fit into client body buffer, consider raising 'client_body_buffer_size'"
 
       else
-        return "", nil
+        return ""
       end
     end
 
-    return body, nil
+    return body
   end
 
 
   function _SDK_REQUEST.get_body_args()
     local content_type = _SDK_REQUEST.get_header("Content-Type")
     if not content_type then
-      return nil, "content type header was not provided in request", nil
+      return nil, "content type header was not provided in request"
     end
 
     if find(content_type, "application/x-www-form-urlencoded", 1, true) == 1 then
