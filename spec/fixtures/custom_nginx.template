@@ -42,10 +42,12 @@ http {
     lua_max_running_timers 4096;
     lua_max_pending_timers 16384;
     lua_shared_dict kong                5m;
-    lua_shared_dict kong_cache          ${{MEM_CACHE_SIZE}};
+    lua_shared_dict kong_db_cache       ${{MEM_CACHE_SIZE}};
+    lua_shared_dict kong_db_cache_miss 12m;
     lua_shared_dict kong_process_events 5m;
     lua_shared_dict kong_cluster_events 5m;
     lua_shared_dict kong_healthchecks   5m;
+    lua_shared_dict kong_rate_limiting_counters 12m;
 > if database == "cassandra" then
     lua_shared_dict kong_cassandra      5m;
 > end
@@ -101,6 +103,8 @@ http {
 > end
 
         location / {
+            default_type                     '';
+
             set $upstream_host               '';
             set $upstream_upgrade            '';
             set $upstream_connection         '';
@@ -203,8 +207,10 @@ http {
         location ~ "/2015-03-31/functions/(?:[^/])*/invocations" {
             content_by_lua_block {
                 local function say(res, status)
-                  ngx.header["x-amzn-RequestId"] = "foo"
-                  if string.match(ngx.var.uri, "functionWithUnhandledError") then
+
+                  local functionName = string.match(ngx.var.uri, "^.+/(.+)/invocations$")
+                  ngx.header["x-amzn-RequestId"] = functionName
+                  if functionName == "functionWithUnhandledError" then
                     ngx.header["X-Amz-Function-Error"] = "Unhandled"
                   end
                   ngx.status = status
