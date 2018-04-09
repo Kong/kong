@@ -151,6 +151,7 @@ end
 -- @section kong_handlers
 
 local Kong = {}
+Kong.admin_api = {}
 
 function Kong.init()
   local pl_path = require "pl.path"
@@ -444,7 +445,7 @@ function Kong.handle_error()
   return kong_error_handlers(ngx)
 end
 
-function Kong.serve_admin_api(options)
+function Kong.admin_api.serve(options)
   options = options or {}
 
   header["Access-Control-Allow-Origin"] = options.allow_origin or "*"
@@ -457,6 +458,10 @@ function Kong.serve_admin_api(options)
   end
 
   return lapis.serve("kong.api")
+end
+
+function Kong.admin_api.header_filter()
+  header[constants.HEADERS.KONG_RESPONSE_LATENCY] = ngx.now() * 1000 - ngx.req.start_time() * 1000
 end
 
 return Kong

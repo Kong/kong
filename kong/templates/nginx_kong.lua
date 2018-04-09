@@ -185,7 +185,11 @@ server {
     location / {
         default_type application/json;
         content_by_lua_block {
-            kong.serve_admin_api()
+            kong.admin_api.serve()
+        }
+
+        header_filter_by_lua_block {
+            kong.admin_api.header_filter()
         }
     }
 
