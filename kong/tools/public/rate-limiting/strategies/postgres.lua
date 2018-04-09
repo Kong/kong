@@ -236,7 +236,10 @@ function _M:purge(namespace, window_sizes, window_start)
   local res, err = self.db:query(concat(query_tab, '; '))
   if not res then
     log(ERR, "failed to delete counters: ", err)
+    return false
   end
+
+  return true
 end
 
 
