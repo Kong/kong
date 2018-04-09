@@ -723,7 +723,7 @@ return {
         -- time spent receiving the response (header_filter + body_filter)
         -- we could use $upstream_response_time but we need to distinguish the waiting time
         -- from the receiving time in our logging plugins (especially ALF serializer).
-        ctx.KONG_RECEIVE_TIME = get_now() - ctx.KONG_HEADER_FILTER_STARTED_AT
+        ctx.KONG_RECEIVE_TIME = ctx.KONG_HEADER_FILTER_STARTED_AT and get_now() - ctx.KONG_HEADER_FILTER_STARTED_AT or 0
       end
     end
   },
