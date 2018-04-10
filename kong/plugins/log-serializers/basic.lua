@@ -43,7 +43,7 @@ function _M.serialize(ngx)
     api = ngx.ctx.api,
     consumer = ngx.ctx.authenticated_consumer,
     client_ip = ngx.var.remote_addr,
-    started_at = ngx.req.start_time() * 1000
+    started_at = ngx.req.start_time() * 1000,
     started_at_unix_ms = "" .. ngx.req.start_time() * 1000 .. ""
   }
 end
