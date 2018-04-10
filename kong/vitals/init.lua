@@ -177,7 +177,7 @@ function _M.new(opts)
   -- in a normal Kong scenario, opts.flush interval will be
   -- initialized from configuration.
   local self = {
-    shm            = ngx.shared.kong,
+    list_cache     = ngx.shared.kong_vitals_lists,
     dict           = ngx.shared.kong_vitals,
     strategy       = strategy,
     counters       = {},
@@ -476,7 +476,7 @@ end
 
 -- acquire a lock for flushing counters to the database
 function _M:flush_lock()
-  local ok, err = self.shm:safe_add(FLUSH_LOCK_KEY, true,
+  local ok, err = self.list_cache:safe_add(FLUSH_LOCK_KEY, true,
     self.flush_interval - 0.01)
   if not ok then
     if err ~= "exists" then
@@ -500,7 +500,7 @@ function _M:poll_worker_data(flush_key, expected)
   while true do
     sleep(math_max(self.flush_interval / 100, 0.001))
 
-    local num_posted, err = self.shm:llen(flush_key)
+    local num_posted, err = self.list_cache:llen(flush_key)
     if err then
       return nil, err
     end
@@ -530,8 +530,8 @@ function _M:merge_worker_data(flush_key)
   --
   -- n.b. currently this is a nasty polynomial function. this could use
   -- improvement in the future
-  for i = 1, self.shm:llen(flush_key) do
-    local v, err = self.shm:rpop(flush_key)
+  for i = 1, self.list_cache:llen(flush_key) do
+    local v, err = self.list_cache:rpop(flush_key)
 
     if not v then
       return nil, err
@@ -951,7 +951,7 @@ function _M:flush_counters()
     log(DEBUG, _log_prefix, "pid ", ngx.worker.pid(), " caching metrics for ",
         self.counters.start_at)
 
-    local ok, err = self.shm:rpush(flush_key, buf)
+    local ok, err = self.list_cache:rpush(flush_key, buf)
     if not ok then
       -- this is likely an OOM error, dont want to stop processing here
       log(ERR, _log_prefix, "error attempting to push to list: ", err)
@@ -1069,7 +1069,7 @@ end
 
 
 function _M:phone_home(stat_label)
-  local res, err = self.shm:get(PH_STATS_KEY)
+  local res, err = self.list_cache:get(PH_STATS_KEY)
 
   if err then
     log(WARN, _log_prefix, "error retrieving phone home stats: ", err, ". Retrying...")
@@ -1095,7 +1095,7 @@ function _M:phone_home(stat_label)
     end
 
     -- cache results briefly so that all stats for a report are fetched at once
-    local _, c_err = self.shm:add(PH_STATS_KEY, cjson.encode(res), 10)
+    local _, c_err = self.list_cache:add(PH_STATS_KEY, cjson.encode(res), 10)
 
     if c_err then
       log(WARN, _log_prefix, "failed to cache phone home: ", c_err)

@@ -33,6 +33,7 @@ lua_shared_dict kong_cache          ${{MEM_CACHE_SIZE}};
 lua_shared_dict kong_process_events 5m;
 lua_shared_dict kong_cluster_events 5m;
 lua_shared_dict kong_vitals         5m;
+lua_shared_dict kong_vitals_lists   1m;
 lua_shared_dict kong_vitals_requests_consumers 50m;
 lua_shared_dict kong_vitals_status_codes 5m;
 lua_shared_dict kong_healthchecks   5m;

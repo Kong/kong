@@ -56,7 +56,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       before_each(function()
         assert(dao.db:truncate_table("vitals_stats_minutes"))
         assert(dao.db:truncate_table("vitals_node_meta"))
-        assert(vitals.shm:delete("vitals:ph_stats"))
+        assert(vitals.list_cache:delete("vitals:ph_stats"))
       end)
 
       it("returns phone home data", function()
@@ -113,13 +113,13 @@ dao_helpers.for_each_dao(function(kong_conf)
 
     describe("flush_lock()", function()
       before_each(function()
-        ngx.shared.kong:delete("vitals:flush_lock")
+        ngx.shared.kong_vitals_lists:delete("vitals:flush_lock")
       end)
 
       teardown(function()
-        ngx.shared.kong:delete("vitals:flush_lock")
+        ngx.shared.kong_vitals_lists:delete("vitals:flush_lock")
 
-        local v = ngx.shared.kong:get("vitals:flush_lock")
+        local v = ngx.shared.kong_vitals_lists:get("vitals:flush_lock")
         assert.is_nil(v)
       end)
 
