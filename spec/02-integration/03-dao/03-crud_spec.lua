@@ -326,15 +326,11 @@ helpers.for_each_dao(function(kong_config)
         factory:truncate_tables()
 
         for i = 1, 100 do
-          local https_only = true
-          if i == 5 then
-            https_only = false
-          end
           local api, err = apis:insert {
             name = "fixture_" .. i,
             hosts = { "fixture" .. i .. ".com" },
             upstream_url = "http://fixture.org",
-            https_only = https_only
+            https_only = i == 5
           }
           assert.falsy(err)
           assert.truthy(api)
