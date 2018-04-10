@@ -409,19 +409,23 @@ helpers.for_each_dao(function(kong_config)
       end)
       it("filter supports a truthy boolean value", function()
         local rows, err, _ = apis:find_page {
-          name = "fixture_5",
           https_only = "true"
         }
         assert.falsy(err)
         assert.is_table(rows)
+        assert.equal(1, #rows)
+        assert.equal(true, rows[1].https_only)
+        assert.equal("fixture_5", rows[1].name)
       end)
       it("filter supports a false boolean value", function()
         local rows, err, _ = apis:find_page {
-          name = "fixture_2",
           https_only = "false"
         }
         assert.falsy(err)
         assert.is_table(rows)
+        for i = 1, #rows do
+          assert.equal(false, rows[i].https_only)
+        end
       end)
       describe("errors", function()
         it("handle invalid arg", function()
