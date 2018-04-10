@@ -11,7 +11,7 @@ local fmt         = string.format
 dao_helpers.for_each_dao(function(kong_conf)
 
   describe("Admin API Vitals with " .. kong_conf.database, function()
-    local client, dao, strategy
+    local client, dao, strategy, bp
 
     local minute_start_at = time() - ( time() % 60 )
     local node_1 = "20426633-55dc-4050-89ef-2382c95a611e"
@@ -37,6 +37,11 @@ dao_helpers.for_each_dao(function(kong_conf)
     describe("when vitals is enabled", function()
       setup(function()
         dao = assert(dao_factory.new(kong_conf))
+
+        -- TODO: when this file is refactored to use the new dao, this line should
+        -- return `bp, db, dao` and not just bp (there will be lint issues if
+        -- doing so currently).
+        bp = helpers.get_db_utils(kong_conf.database)
 
         -- start with a clean db
         helpers.stop_kong()
@@ -466,14 +471,19 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
 
       describe("/vitals/services/{service_id}/status_codes", function()
+        local service, service_id
+
         before_each(function()
           dao.db:truncate_table("vitals_codes_by_service")
+          dao.db:truncate_table("services")
+
+          service    = bp.services:insert()
+          service_id = service.id
         end)
 
         describe("GET", function()
           it("retrieves the seconds-level response code data for a given service", function()
             local now = time()
-            local service_id = utils.uuid()
 
             local test_status_code_data = {
               { service_id, 404, now, 1, 101},
@@ -521,7 +531,6 @@ dao_helpers.for_each_dao(function(kong_conf)
 
           it("retrieves the minutes-level response code data for a given service", function()
             local minute_start_at = time() - (time() % 60)
-            local service_id = utils.uuid()
 
             local test_status_code_data = {
               { service_id, 404, minute_start_at, 60, 101},
@@ -567,7 +576,6 @@ dao_helpers.for_each_dao(function(kong_conf)
           end)
 
           it("returns a 400 if called with invalid query param", function()
-            local service_id = utils.uuid()
             local res = assert(client:send {
               methd = "GET",
               path = "/vitals/services/" .. service_id .. "/status_codes",
@@ -581,13 +589,205 @@ dao_helpers.for_each_dao(function(kong_conf)
             assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
           end)
 
-          it("returns a 404 if called with invalid service_id", function()
+          it("returns a 400 if called with invalid service_id", function()
             local service_id = "shh.. I'm not a real service id"
             local res = assert(client:send {
               methd = "GET",
               path = "/vitals/services/" .. service_id .. "/status_codes",
               query = {
                 interval = "minutes",
+              }
+            })
+            res = assert.res_status(400, res)
+            local json = cjson.decode(res)
+
+            assert.same("Invalid query params: service_id is invalid", json.message)
+          end)
+
+          it("returns a 404 if called with a service_id that is not an actual id for a service", function()
+            local service_id = "20426633-55dc-4050-89ef-2382c95a611e"
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/services/" .. service_id .. "/status_codes",
+              query = {
+                interval = "minutes",
+              }
+            })
+            res = assert.res_status(404, res)
+            local json = cjson.decode(res)
+
+            assert.same("Not found", json.message)
+          end)
+        end)
+      end)
+
+      describe("/vitals/status_codes/by_route", function()
+        local route, route_id
+
+        if dao.db.name == "postgres" then
+          pending("pending implementation of insert_status_codes_by_route", function() end)
+          return
+        end
+
+        before_each(function()
+          dao.db:truncate_table("vitals_codes_by_route")
+          dao.db:truncate_table("routes")
+
+          route    = bp.routes:insert({ paths = { "/my-route" } })
+          route_id = route.id
+        end)
+
+        describe("GET", function()
+          it("retrieves the seconds-level response code data for a given route", function()
+            local now = time()
+            local service_id = utils.uuid()
+
+            local test_status_code_data = {
+              { route_id, service_id, "404", tostring(now), "1", 101},
+              { route_id, service_id, "200", tostring(now - 1), "1", 205},
+              { route_id, service_id, "500", tostring(now - 1), "1", 6},
+            }
+
+            assert(strategy:insert_status_codes_by_route(test_status_code_data))
+
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/status_codes/by_route",
+              query = {
+                interval = "seconds",
+                route_id = route_id,
+              }
+            })
+
+            res = assert.res_status(200, res)
+            local json = cjson.decode(res)
+
+            local expected = {
+              meta = {
+                entity_type = "route",
+                entity_id   = route_id,
+                earliest_ts = now - 1,
+                interval    = "seconds",
+                latest_ts   = now,
+                level       = "cluster",
+              },
+              stats = {
+                cluster = {
+                  [tostring(now - 1)] = {
+                    ["200"] = 205,
+                    ["500"] = 6,
+                  },
+                  [tostring(now)] = {
+                    ["404"] = 101,
+                  },
+                }
+              }
+            }
+
+            assert.same(expected, json)
+          end)
+
+          it("retrieves the minutes-level response code data for a given route", function()
+            local minute_start_at = time() - (time() % 60)
+            local service_id = utils.uuid()
+
+            local test_status_code_data = {
+              { route_id, service_id, "404", tostring(minute_start_at), "60", 101},
+              { route_id, service_id, "200", tostring(minute_start_at - 60), "60", 205},
+              { route_id, service_id, "500", tostring(minute_start_at - 60), "60", 6},
+            }
+
+            assert(strategy:insert_status_codes_by_route(test_status_code_data))
+
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/status_codes/by_route",
+              query = {
+                interval = "minutes",
+                route_id = route_id,
+              }
+            })
+            res = assert.res_status(200, res)
+            local json = cjson.decode(res)
+
+            local expected = {
+              meta = {
+                entity_type = "route",
+                entity_id   = route_id,
+                earliest_ts = minute_start_at - 60,
+                interval    = "minutes",
+                latest_ts   = minute_start_at,
+                level       = "cluster",
+              },
+              stats = {
+                cluster = {
+                  [tostring(minute_start_at - 60)] = {
+                    ["200"] = 205,
+                    ["500"] = 6,
+                  },
+                  [tostring(minute_start_at)] = {
+                    ["404"] = 101,
+                  },
+                }
+              }
+            }
+
+            assert.same(expected, json)
+          end)
+
+          it("returns a 400 if called with invalid query param", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/status_codes/by_route",
+              query = {
+                interval = "so-wrong",
+                route_id = route_id,
+              }
+            })
+            res = assert.res_status(400, res)
+            local json = cjson.decode(res)
+
+            assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+          end)
+
+          it("returns a 400 if called with invalid route_id", function()
+            local route_id = "shh.. I'm not a real route id"
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/status_codes/by_route",
+              query = {
+                interval = "minutes",
+                route_id = route_id,
+              }
+            })
+            res = assert.res_status(400, res)
+            local json = cjson.decode(res)
+
+            assert.same("Invalid query params: route_id is invalid", json.message)
+          end)
+
+          it("returns a 400 if called with no route_id", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/status_codes/by_route",
+              query = {
+                interval = "minutes",
+              }
+            })
+            res = assert.res_status(400, res)
+            local json = cjson.decode(res)
+
+            assert.same("Invalid query params: route_id is invalid", json.message)
+          end)
+
+          it("returns a 404 if called with a route_id that is not an actual id for a route", function()
+            local route_id = "20426633-55dc-4050-89ef-2382c95a611a"
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/status_codes/by_route",
+              query = {
+                interval = "minutes",
+                route_id = route_id,
               }
             })
             res = assert.res_status(404, res)

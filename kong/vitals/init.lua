@@ -1186,7 +1186,7 @@ function _M:get_stats(query_type, level, node_id)
   return convert_stats(self, res, level, query_type)
 end
 
-function _M:get_status_codes_by_service(opts)
+function _M:get_status_codes(opts)
   if opts.duration ~= "minutes" and opts.duration ~= "seconds" then
     return nil, "Invalid query params: interval must be 'minutes' or 'seconds'"
   end
@@ -1195,26 +1195,33 @@ function _M:get_status_codes_by_service(opts)
     return nil, "Invalid query params: level must be 'cluster'"
   end
 
-  if not utils.is_valid_uuid(opts.service_id) then
-    return nil, "Invalid query params: invalid service_id"
-  end
-
   local query_opts = {
     duration = opts.duration == "seconds" and 1 or 60,
+    route_id = opts.route_id,
     service_id = opts.service_id,
   }
 
-  local res, err = self.strategy:select_status_codes_by_service(query_opts)
+  local res, err
+
+  if opts.entity_type == "route" then
+    res, err = self.strategy:select_status_codes_by_route(query_opts)
+  elseif opts.entity_type == "service" then
+    res, err = self.strategy:select_status_codes_by_service(query_opts)
+  end
 
   if err then
     log(WARN, _log_prefix, err)
     return {}
   end
 
-  return convert_status_codes(res, opts.level, opts.duration, "service", opts.service_id)
+  if opts.entity_type == "route" then
+    return convert_status_codes(res, opts.level, opts.duration, opts.entity_type, opts.route_id)
+  elseif opts.entity_type == "service" then
+    return convert_status_codes(res, opts.level, opts.duration, opts.entity_type, opts.service_id)
+  end
 end
 
-function _M:get_status_codes(opts)
+function _M:get_status_code_classes(opts)
   if opts.duration ~= "minutes" and opts.duration ~= "seconds" then
     return nil, "Invalid query params: interval must be 'minutes' or 'seconds'"
   end

@@ -36,7 +36,7 @@ return {
         level    = "cluster"
       }
 
-      local status_codes, err = singletons.vitals:get_status_codes(opts)
+      local status_codes, err = singletons.vitals:get_status_code_classes(opts)
 
       if err then
         if err:find("Invalid query params", nil, true) then
@@ -135,18 +135,27 @@ return {
   },
   ["/vitals/services/:service_id/status_codes"] = {
     GET = function(self, dao, helpers)
+      local service, service_err = singletons.db.services:select({ id = self.params.service_id })
+
+      if service_err then
+        helpers.responses.send_HTTP_BAD_REQUEST("Invalid query params: service_id is invalid")
+      end
+
+      if not service then
+        helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
       local opts = {
-        duration   = self.params.interval,
-        service_id = self.params.service_id,
-        level      = "cluster",
+        entity_type = "service",
+        duration    = self.params.interval,
+        service_id  = self.params.service_id,
+        level       = "cluster",
       }
 
-      local status_codes, err = singletons.vitals:get_status_codes_by_service(opts)
+      local status_codes, err = singletons.vitals:get_status_codes(opts)
 
       if err then
-        if err:find("Invalid query params: invalid service_id") or err:find("service does not exist") then
-          return helpers.responses.send_HTTP_NOT_FOUND()
-        elseif err:find("Invalid query params", nil, true) then
+        if err:find("Invalid query params", nil, true) then
           return helpers.responses.send_HTTP_BAD_REQUEST(err)
         else
           return helpers.yield_error(err)
@@ -155,5 +164,37 @@ return {
 
       return helpers.responses.send_HTTP_OK(status_codes)
     end
-  }
+  },
+  ["/vitals/status_codes/by_route"] = {
+    GET = function(self, dao, helpers)
+      local route, route_err = singletons.db.routes:select({ id = self.params.route_id })
+
+      if route_err then
+        helpers.responses.send_HTTP_BAD_REQUEST("Invalid query params: route_id is invalid")
+      end
+
+      if not route then
+        helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      local opts = {
+        entity_type = "route",
+        duration    = self.params.interval,
+        route_id    = self.params.route_id,
+        level       = "cluster",
+      }
+
+      local status_codes, err = singletons.vitals:get_status_codes(opts)
+
+      if err then
+        if err:find("Invalid query params", nil, true) then
+          return helpers.responses.send_HTTP_BAD_REQUEST(err)
+        else
+          return helpers.yield_error(err)
+        end
+      end
+
+      return helpers.responses.send_HTTP_OK(status_codes)
+    end
+  },
 }

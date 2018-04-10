@@ -482,10 +482,11 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert.is_nil(err)
         assert.same(4, res)
 
-        local res, err = vitals:get_status_codes_by_service({
-          service_id = service_id,
-          duration = "seconds",
-          level = "cluster"
+        local res, err = vitals:get_status_codes({
+          entity_type = "service",
+          service_id  = service_id,
+          duration    = "seconds",
+          level       = "cluster"
         })
 
         assert.is_nil(err)
@@ -872,7 +873,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
     end)
 
-    describe("get_status_codes()", function()
+    describe("get_status_code_classes()", function()
       local vitals
       local now = ngx_time()
       local data_to_insert = {
@@ -887,7 +888,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
 
       it("rejects invalid query_type", function()
-        local res, err = vitals:get_status_codes({
+        local res, err = vitals:get_status_code_classes({
           duration = "foo",
           level    = "cluster",
         })
@@ -899,7 +900,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
 
       it("rejects invalid level", function()
-        local res, err = vitals:get_status_codes({
+        local res, err = vitals:get_status_code_classes({
           duration = "minutes",
           level    = "not_legit",
         })
@@ -931,7 +932,7 @@ dao_helpers.for_each_dao(function(kong_conf)
           }
         }
 
-        local res, _ = vitals:get_status_codes({
+        local res, _ = vitals:get_status_code_classes({
           duration = "seconds",
           level    = "cluster",
         })
@@ -940,7 +941,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
     end)
 
-    describe("get_status_codes_by_service()", function()
+    describe("get_status_codes()", function()
       local vitals
       local now = ngx_time()
       local uuid = utils.uuid()
@@ -959,10 +960,11 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
 
       it("rejects invalid query_type", function()
-        local res, err = vitals:get_status_codes_by_service({
-          duration = "foo",
-          level    = "cluster",
-          service_id = uuid,
+        local res, err = vitals:get_status_codes({
+          entity_type = "service",
+          duration    = "foo",
+          level       = "cluster",
+          service_id  = uuid,
         })
 
         local expected = "Invalid query params: interval must be 'minutes' or 'seconds'"
@@ -972,26 +974,14 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
 
       it("rejects invalid level", function()
-        local res, err = vitals:get_status_codes_by_service({
-          duration = "minutes",
-          level    = "not_legit",
-          service_id = uuid,
+        local res, err = vitals:get_status_codes({
+          entity_type = "service",
+          duration    = "minutes",
+          level       = "not_legit",
+          service_id  = uuid,
         })
 
         local expected = "Invalid query params: level must be 'cluster'"
-
-        assert.is_nil(res)
-        assert.same(expected, err)
-      end)
-
-      it("rejects invalid service id", function()
-        local res, err = vitals:get_status_codes_by_service({
-          duration = "minutes",
-          level    = "cluster",
-          service_id = "nope",
-        })
-
-        local expected = "Invalid query params: invalid service_id"
 
         assert.is_nil(res)
         assert.same(expected, err)
@@ -1025,10 +1015,96 @@ dao_helpers.for_each_dao(function(kong_conf)
           }
         }
 
-        local res, _ = vitals:get_status_codes_by_service({
-          duration = "seconds",
-          level    = "cluster",
-          service_id = uuid,
+        local res, _ = vitals:get_status_codes({
+          entity_type = "service",
+          duration    = "seconds",
+          level       = "cluster",
+          service_id  = uuid,
+        })
+
+        assert.same(res, expected)
+      end)
+    end)
+
+    describe("get_status_codes()", function()
+      local vitals
+      local now = ngx_time()
+      local uuid = utils.uuid()
+
+      local data_to_insert = {
+        { route_id = uuid, at = now, code = 400, count = 5 },
+        { route_id = uuid, at = now, code = 200, count = 533 },
+        { route_id = uuid, at = now - 1 , code = 200, count = 6 },
+        { route_id = uuid, at = now - 1 , code = 204, count = 17 },
+        { route_id = uuid, at = now - 2, code = 500, count = 1 },
+      }
+
+      setup(function()
+        vitals = kong_vitals.new { dao = dao }
+        stub(vitals.strategy, "select_status_codes_by_route").returns(data_to_insert)
+      end)
+
+      it("rejects invalid query_type", function()
+        local res, err = vitals:get_status_codes({
+          entity_type = "route",
+          duration    = "foo",
+          level       = "cluster",
+          route_id    = uuid,
+        })
+
+        local expected = "Invalid query params: interval must be 'minutes' or 'seconds'"
+
+        assert.is_nil(res)
+        assert.same(expected, err)
+      end)
+
+      it("rejects invalid level", function()
+        local res, err = vitals:get_status_codes({
+          entity_type = "route",
+          duration    = "minutes",
+          level       = "not_legit",
+          route_id    = uuid,
+        })
+
+        local expected = "Invalid query params: level must be 'cluster'"
+
+        assert.is_nil(res)
+        assert.same(expected, err)
+      end)
+
+      it("returns converted stats", function()
+
+        local expected = {
+          meta = {
+            entity_type = "route",
+            entity_id = uuid,
+            earliest_ts = now - 2,
+            interval = "seconds",
+            latest_ts = now,
+            level = "cluster",
+          },
+          stats = {
+            cluster = {
+              [tostring(now - 2)] = {
+                ["500"] = 1,
+              },
+              [tostring(now - 1)] = {
+                ["200"] = 6,
+                ["204"] = 17,
+              },
+              [tostring(now)] = {
+                ["400"] = 5,
+                ["200"] = 533
+              },
+            }
+          }
+        }
+
+        local res, _ = vitals:get_status_codes({
+          entity_type = "route",
+          duration    = "seconds",
+          level       = "cluster",
+          route_id    = uuid,
         })
 
         assert.same(res, expected)
