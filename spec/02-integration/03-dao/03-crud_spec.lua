@@ -326,10 +326,15 @@ helpers.for_each_dao(function(kong_config)
         factory:truncate_tables()
 
         for i = 1, 100 do
+          local https_only = true
+          if i == 5 then
+            https_only = false
+          end
           local api, err = apis:insert {
             name = "fixture_" .. i,
             hosts = { "fixture" .. i .. ".com" },
-            upstream_url = "http://fixture.org"
+            upstream_url = "http://fixture.org",
+            https_only = https_only
           }
           assert.falsy(err)
           assert.truthy(api)
@@ -402,7 +407,15 @@ helpers.for_each_dao(function(kong_config)
         assert.equal(1, #rows)
         assert.same(first_api, rows[1])
       end)
-      it("filter supports a boolean value", function()
+      it("filter supports a truthy boolean value", function()
+        local rows, err, _ = apis:find_page {
+          name = "fixture_5",
+          https_only = "true"
+        }
+        assert.falsy(err)
+        assert.is_table(rows)
+      end)
+      it("filter supports a false boolean value", function()
         local rows, err, _ = apis:find_page {
           name = "fixture_2",
           https_only = "false"
