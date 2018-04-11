@@ -407,11 +407,14 @@ helpers.for_each_dao(function(kong_config)
 
       local run_boolean_checks = true
 
+      -- Filtering on non-primary key columns only supported in C* 3.5+
+      -- Since we do not maintain an index on https_only we can
+      -- only run the boolean checks against Cassandra 3.5+
       if kong_config.database == "cassandra" then
         local db_infos = factory.db:infos()
         if db_infos.version ~= "unknown" then
           local db_v = version.version(db_infos.version)
-          local min_v = version.version("3.0") -- 3.5 is the minimum version, but parsed we get 3.0
+          local min_v = version.version("3.5")
           run_boolean_checks = db_v >= min_v
         end
       end
