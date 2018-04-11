@@ -1,3 +1,5 @@
+use strict;
+use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 use File::Spec;
 
@@ -9,3 +11,41 @@ plan tests => repeat_each() * (blocks() * 3);
 run_tests();
 
 __DATA__
+
+=== TEST 1: client.get_forwarded_port() returns forwarded client port
+--- config
+    location = /t {
+        content_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+            --sdk.init(nil, "ip")
+
+            ngx.say("port: ", sdk.client.get_forwarded_port())
+        }
+    }
+--- request
+GET /t
+--- response_body_like chomp
+port: \d+
+--- no_error_log
+[error]
+
+
+
+=== TEST 2: client.get_forwarded_port() returns a number
+--- config
+    location = /t {
+        content_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+            --sdk.init(nil, "ip")
+
+            ngx.say("port type: ", type(sdk.client.get_forwarded_port()))
+        }
+    }
+--- request
+GET /t
+--- response_body
+port type: number
+--- no_error_log
+[error]

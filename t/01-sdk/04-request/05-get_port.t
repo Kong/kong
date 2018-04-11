@@ -1,3 +1,5 @@
+use strict;
+use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 
 plan tests => repeat_each() * (blocks() * 3);
@@ -6,7 +8,7 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: request.get_port() returns client port
+=== TEST 1: request.get_port() returns server port
 --- config
     location = /t {
         content_by_lua_block {
