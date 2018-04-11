@@ -204,6 +204,8 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         local expected = {
           "vitals_code_classes_by_cluster",
+          "vitals_codes_by_route",
+          "vitals_codes_by_service",
           "vitals_consumers",
           "vitals_node_meta",
           "vitals_stats_hours",
@@ -212,7 +214,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         }
 
         if (dao.db_type == "postgres") then
-          expected[7] = "vitals_stats_seconds_foo"
+          table.insert(expected, "vitals_stats_seconds_foo")
         end
 
         assert.same(expected, results)

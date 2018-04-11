@@ -1325,6 +1325,8 @@ function _M.table_names(dao)
   -- tables common across both dbs
   local table_names = {
     "vitals_code_classes_by_cluster",
+    "vitals_codes_by_route",
+    "vitals_codes_by_service",
     "vitals_consumers",
     "vitals_node_meta",
     "vitals_stats_hours",
