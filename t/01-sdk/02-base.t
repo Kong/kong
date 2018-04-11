@@ -1,4 +1,4 @@
-use Test::Nginx::Socket::Kong;
+use Test::Nginx::Socket::Lua;
 
 plan tests => repeat_each() * (blocks() * 3);
 

@@ -5,6 +5,7 @@ local MAJOR_VERSIONS = {
       "base",
       "singletons",
       "request",
+      "client",
     },
   },
 
@@ -14,6 +15,7 @@ local MAJOR_VERSIONS = {
       "base",
       "singletons",
       "request",
+      "client",
       --[[
       "upstream",
       "upstream.response",
