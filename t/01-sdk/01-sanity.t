@@ -1,4 +1,4 @@
-use Test::Nginx::Socket::Kong;
+use Test::Nginx::Socket::Lua;
 
 #repeat_each(2);
 

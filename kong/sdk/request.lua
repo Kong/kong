@@ -5,6 +5,7 @@ local multipart = require "multipart"
 local ngx = ngx
 local sub = string.sub
 local find = string.find
+local lower = string.lower
 local type = type
 local error = error
 local tonumber = tonumber
@@ -15,24 +16,36 @@ local function new(sdk, _SDK_REQUEST, major_version)
   local MAX_QUERY_ARGS = 100
   local MAX_POST_ARGS = 100
 
+  local MIN_PORT = 1
+  local MAX_PORT = 65535
+
+  local CONTENT_LENGTH = "Content-Length"
+  local CONTENT_TYPE = "Content-Type"
+
+  local CONTENT_TYPE_POST = "application/x-www-form-urlencoded"
+  local CONTENT_TYPE_JSON = "application/json"
+  local CONTENT_TYPE_FORM_DATA = "multipart/form-data"
+
+  local X_FORWARDED_PROTO = "X-Forwarded-Proto"
+  local X_FORWARDED_HOST = "X-Forwarded-Host"
+  local X_FORWARDED_PORT = "X-Forwarded-Port"
+
 
   function _SDK_REQUEST.get_scheme()
     return ngx.var.scheme
   end
 
 
-  --[[
   function _SDK_REQUEST.get_forwarded_scheme()
-    if sdk.ip.is_trusted(var.realip_remote_addr) then
-      local scheme = _SDK_REQUEST.get_header("X-Forwarded-Proto")
+    if sdk.ip.is_trusted(sdk.client.get_ip()) then
+      local scheme = _SDK_REQUEST.get_header(X_FORWARDED_PROTO)
       if scheme then
-        return scheme
+        return lower(scheme)
       end
     end
 
     return _SDK_REQUEST.get_scheme()
   end
-  -- ]]
 
 
   function _SDK_REQUEST.get_host()
@@ -40,12 +53,10 @@ local function new(sdk, _SDK_REQUEST, major_version)
   end
 
 
-  --[[
   function _SDK_REQUEST.get_forwarded_host()
-    local var = ngx.var
     local host
-    if sdk.ip.is_trusted(var.realip_remote_addr) then
-      host = _SDK_REQUEST.get_header("X-Forwarded-Host")
+    if sdk.ip.is_trusted(sdk.client.get_ip()) then
+      host = _SDK_REQUEST.get_header(X_FORWARDED_HOST)
       if host then
         local s = find(host, "@", 1, true)
         if s then
@@ -53,17 +64,12 @@ local function new(sdk, _SDK_REQUEST, major_version)
         end
 
         s = find(host, ":", 1, true)
-        if s then
-          host = sub(host, 1, s - 1)
-        end
-
-        return host
+        return s and lower(sub(host, 1, s - 1)) or lower(host)
       end
     end
 
     return _SDK_REQUEST.get_host()
   end
-  --]]
 
 
   function _SDK_REQUEST.get_port()
@@ -71,16 +77,15 @@ local function new(sdk, _SDK_REQUEST, major_version)
   end
 
 
-  --[[
-  function _SDK_REQUEST.get_forwared_port()
+  function _SDK_REQUEST.get_forwarded_port()
     local port
-    if sdk.ip.trusted(var.realip_remote_addr) then
-      port = tonumber(_SDK_REQUEST.get_header("X-Forwarded-Port"))
-      if port and port > 0 and port < 65536 then
+    if sdk.ip.trusted(sdk.client.get_ip()) then
+      port = tonumber(_SDK_REQUEST.get_header(X_FORWARDED_PORT))
+      if port and port >= MIN_PORT and port <= MAX_PORT then
         return port
       end
 
-      local host = _SDK_REQUEST.get_header("X-Forwarded-Host")
+      local host = _SDK_REQUEST.get_header(X_FORWARDED_HOST)
       if host then
         local s = find(host, "@", 1, true)
         if s then
@@ -91,7 +96,7 @@ local function new(sdk, _SDK_REQUEST, major_version)
         if s then
           port = tonumber(sub(host, s + 1))
 
-          if port and port > 0 and port < 65536 then
+          if port and port >= MIN_PORT and port <= MAX_PORT then
             return port
           end
         end
@@ -100,17 +105,12 @@ local function new(sdk, _SDK_REQUEST, major_version)
 
     return _SDK_REQUEST.get_port()
   end
-  --]]
 
 
   function _SDK_REQUEST.get_path()
     local uri = ngx.var.request_uri
     local idx = find(uri, "?", 2, true)
-    if idx then
-      uri = sub(uri, 1, idx - 1)
-    end
-
-    return uri
+    return idx and sub(uri, 1, idx - 1) or uri
   end
 
 
@@ -207,7 +207,7 @@ local function new(sdk, _SDK_REQUEST, major_version)
       end
     end
 
-    local content_length = tonumber(_SDK_REQUEST.get_header("Content-Length"))
+    local content_length = tonumber(_SDK_REQUEST.get_header(CONTENT_LENGTH))
     if content_length and content_length < 1 then
       return {}
     end
@@ -234,7 +234,7 @@ local function new(sdk, _SDK_REQUEST, major_version)
 
 
   function _SDK_REQUEST.get_body()
-    local content_length = tonumber(_SDK_REQUEST.get_header("Content-Length"))
+    local content_length = tonumber(_SDK_REQUEST.get_header(CONTENT_LENGTH))
     if content_length and content_length < 1 then
       return ""
     end
@@ -258,48 +258,48 @@ local function new(sdk, _SDK_REQUEST, major_version)
 
 
   function _SDK_REQUEST.get_body_args()
-    local content_type = _SDK_REQUEST.get_header("Content-Type")
+    local content_type = _SDK_REQUEST.get_header(CONTENT_TYPE)
     if not content_type then
       return nil, "content type header was not provided in request"
     end
 
-    if find(content_type, "application/x-www-form-urlencoded", 1, true) == 1 then
+    if find(content_type, CONTENT_TYPE_POST, 1, true) == 1 then
       local pargs, err = _SDK_REQUEST.get_post_args()
       if not pargs then
-        return nil, "unable to retrieve request body arguments: " .. err, "application/x-www-form-urlencoded"
+        return nil, "unable to retrieve request body arguments: " .. err, CONTENT_TYPE_POST
       end
 
-      return pargs, nil, "application/x-www-form-urlencoded"
+      return pargs, nil, CONTENT_TYPE_POST
 
-    elseif find(content_type, "application/json", 1, true) == 1 then
+    elseif find(content_type, CONTENT_TYPE_JSON, 1, true) == 1 then
       local body, err = _SDK_REQUEST.get_body()
       if not body then
-        return nil, err, "application/json"
+        return nil, err, CONTENT_TYPE_JSON
       end
 
       if body == "" then
-        return nil, "request body is required for content type '" .. content_type .. "'", "application/json"
+        return nil, "request body is required for content type '" .. content_type .. "'", CONTENT_TYPE_JSON
       end
 
       -- TODO: cjson.decode_array_with_array_mt(true) (?)
       local json, err = cjson.decode(body)
       if not json then
-        return nil, "unable to json decode request body: " .. err, "application/json"
+        return nil, "unable to json decode request body: " .. err, CONTENT_TYPE_JSON
       end
 
       return json, nil, "application/json"
 
-    elseif find(content_type, "multipart/form-data", 1, true) == 1 then
+    elseif find(content_type, CONTENT_TYPE_FORM_DATA, 1, true) == 1 then
       local body, err = _SDK_REQUEST.get_body()
       if not body then
-        return nil, err, "multipart/form-data"
+        return nil, err, CONTENT_TYPE_FORM_DATA
       end
 
       if body == "" then
-        return {}, nil, "multipart/form-data"
+        return {}, nil, CONTENT_TYPE_FORM_DATA
       end
 
-      return multipart(body):get_all(), nil, "multipart/form-data"
+      return multipart(body):get_all(), nil, CONTENT_TYPE_FORM_DATA
 
     else
       local mime_type = content_type
