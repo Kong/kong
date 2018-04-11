@@ -322,7 +322,11 @@ local function serialize_arg(field, value)
   elseif field.type == "timestamp" then
     return cassandra.timestamp(value)
   elseif field.type == "boolean" then
-    return cassandra.boolean(value)
+    if type(value) == "boolean" then
+      return cassandra.boolean(value)
+    end
+
+    return cassandra.boolean(value == "true")
   elseif field.type == "table" or field.type == "array" then
     return cjson.encode(value)
   else
