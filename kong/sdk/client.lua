@@ -14,8 +14,7 @@ local function new(sdk, _SDK_REQUEST, major_version)
 
 
   function _SDK_REQUEST.get_port()
-    local port = ngx.var.realip_remote_addr or ngx.var.remote_addr
-    return tonumber(port) or port
+    return tonumber(ngx.var.realip_remote_port or ngx.var.remote_port)
   end
 
 

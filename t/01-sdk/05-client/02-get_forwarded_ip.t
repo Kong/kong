@@ -1,3 +1,5 @@
+use strict;
+use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 use File::Spec;
 
