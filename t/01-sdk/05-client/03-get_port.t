@@ -18,7 +18,6 @@ __DATA__
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
-            --sdk.init(nil, "ip")
 
             ngx.say("port: ", sdk.client.get_port())
         }
@@ -38,7 +37,6 @@ port: \d+
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
-            --sdk.init(nil, "ip")
 
             ngx.say("port type: ", type(sdk.client.get_port()))
         }
