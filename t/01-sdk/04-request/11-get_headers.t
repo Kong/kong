@@ -2,7 +2,7 @@ use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 
-plan tests => repeat_each() * (blocks() * 2);
+plan tests => repeat_each() * (blocks() * 3);
 
 run_tests();
 
@@ -171,39 +171,6 @@ number of headers fetched: 60
 --- request
 GET /t
 --- response_body
-number of headers fetched: 102
---- no_error_log
-[error]
-
-
-
-=== TEST 7: request.get_headers() fetches all headers when max_headers = 0
---- config
-    location = /t {
-        access_by_lua_block {
-            for i = 1, 200 do
-                ngx.req.set_header("X-Header-" .. i, "test")
-            end
-        }
-
-        content_by_lua_block {
-            local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-
-            local headers = sdk.request.get_headers(0)
-
-            local n = 0
-
-            for _ in pairs(headers) do
-                n = n + 1
-            end
-
-            ngx.say("number of headers fetched: ", n)
-        }
-    }
---- request
-GET /t
---- response_body
-number of headers fetched: 102
+number of headers fetched: 202
 --- no_error_log
 [error]
