@@ -80,20 +80,14 @@ local function apply_unique_per_ws(table_name, params)
   end
   params.workspace_name = nil
 
-  if table_name == "workspaces" and
-    params.name == workspaces.DEFAULT_WORKSPACE then
-    return
-  end
-
   local constraints = workspaceable[table_name]
   if not constraints then
     return
   end
 
   local workspace = workspaces.get_workspaces()[1]
-  if not workspace or table_name == "workspaces" and
-    params.name == workspaces.DEFAULT_WORKSPACE then
-    return
+  if not workspace or table_name == "workspaces" then
+    return workspace
   end
 
   for field_name, field_schema in pairs(constraints.unique_keys) do
@@ -104,7 +98,6 @@ local function apply_unique_per_ws(table_name, params)
   end
   return workspace
 end
-
 
 -- If entity has a unique key it will have workspace_name prefix so we
 -- have to search first in the relationship table
