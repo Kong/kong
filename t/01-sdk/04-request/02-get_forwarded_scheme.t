@@ -40,7 +40,7 @@ scheme: https
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
-            sdk.init({ trusted_ips = { } }, "ip")
+            sdk.init({ trusted_ips = {} }, "ip")
 
             ngx.say("scheme: ", sdk.request.get_forwarded_scheme())
         }

@@ -12,23 +12,23 @@ local tonumber = tonumber
 
 
 local function new(sdk, _SDK_REQUEST, major_version)
-  local MAX_HEADERS = 100
-  local MAX_QUERY_ARGS = 100
-  local MAX_POST_ARGS = 100
+  local MAX_HEADERS            = 100
+  local MAX_QUERY_ARGS         = 100
+  local MAX_POST_ARGS          = 100
 
-  local MIN_PORT = 1
-  local MAX_PORT = 65535
+  local MIN_PORT               = 1
+  local MAX_PORT               = 65535
 
-  local CONTENT_LENGTH = "Content-Length"
-  local CONTENT_TYPE = "Content-Type"
+  local CONTENT_LENGTH         = "Content-Length"
+  local CONTENT_TYPE           = "Content-Type"
 
-  local CONTENT_TYPE_POST = "application/x-www-form-urlencoded"
-  local CONTENT_TYPE_JSON = "application/json"
+  local CONTENT_TYPE_POST      = "application/x-www-form-urlencoded"
+  local CONTENT_TYPE_JSON      = "application/json"
   local CONTENT_TYPE_FORM_DATA = "multipart/form-data"
 
-  local X_FORWARDED_PROTO = "X-Forwarded-Proto"
-  local X_FORWARDED_HOST = "X-Forwarded-Host"
-  local X_FORWARDED_PORT = "X-Forwarded-Port"
+  local X_FORWARDED_PROTO      = "X-Forwarded-Proto"
+  local X_FORWARDED_HOST       = "X-Forwarded-Host"
+  local X_FORWARDED_PORT       = "X-Forwarded-Port"
 
 
   function _SDK_REQUEST.get_scheme()
@@ -54,9 +54,8 @@ local function new(sdk, _SDK_REQUEST, major_version)
 
 
   function _SDK_REQUEST.get_forwarded_host()
-    local host
     if sdk.ip.is_trusted(sdk.client.get_ip()) then
-      host = _SDK_REQUEST.get_header(X_FORWARDED_HOST)
+      local host = _SDK_REQUEST.get_header(X_FORWARDED_HOST)
       if host then
         local s = find(host, "@", 1, true)
         if s then
@@ -78,9 +77,8 @@ local function new(sdk, _SDK_REQUEST, major_version)
 
 
   function _SDK_REQUEST.get_forwarded_port()
-    local port
-    if sdk.ip.trusted(sdk.client.get_ip()) then
-      port = tonumber(_SDK_REQUEST.get_header(X_FORWARDED_PORT))
+    if sdk.ip.is_trusted(sdk.client.get_ip()) then
+      local port = tonumber(_SDK_REQUEST.get_header(X_FORWARDED_PORT))
       if port and port >= MIN_PORT and port <= MAX_PORT then
         return port
       end
