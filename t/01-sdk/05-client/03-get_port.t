@@ -4,7 +4,6 @@ use Test::Nginx::Socket::Lua;
 use File::Spec;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
-$ENV{TEST_NGINX_CERT_DIR} ||= File::Spec->catdir(server_root(), '..', 'certs');
 
 plan tests => repeat_each() * (blocks() * 3);
 
@@ -45,5 +44,46 @@ port: \d+
 GET /t
 --- response_body
 port type: number
+--- no_error_log
+[error]
+
+
+
+=== TEST 3: client.get_ip() returns client port not affected by proxy_protocol
+--- http_config
+    server {
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock proxy_protocol;
+
+        location / {
+            real_ip_header proxy_protocol;
+
+            content_by_lua_block {
+                local SDK = require "kong.sdk"
+                local sdk = SDK.new()
+
+                ngx.say("port: ", sdk.client.get_port())
+            }
+        }
+    }
+--- config
+    location = /t {
+        content_by_lua_block {
+            local sock = ngx.socket.tcp()
+            sock:connect("unix:$TEST_NGINX_HTML_DIR/nginx.sock")
+
+            local request = "PROXY TCP4 10.0.0.1 " ..
+                            ngx.var.server_addr    .. " " ..
+                            ngx.var.remote_port    .. " " ..
+                            ngx.var.server_port    .. "\r\n" ..
+                            "GET /\r\n"
+
+            sock:send(request)
+            ngx.print(sock:receive "*a")
+        }
+    }
+--- request
+GET /t
+--- response_body
+port: nil
 --- no_error_log
 [error]
