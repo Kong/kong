@@ -138,7 +138,7 @@ end
 -- Perform any needed Redis configuration; e.g., parse Sentinel addresses
 function _M.init_conf(conf)
   if is_redis_sentinel(conf) then
-    conf.parse_sentinel_addresses =
+    conf.parsed_sentinel_addresses =
       parse_sentinel_addresses(conf.sentinel_addresses)
   end
 end
