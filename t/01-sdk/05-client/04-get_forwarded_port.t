@@ -4,7 +4,6 @@ use Test::Nginx::Socket::Lua;
 use File::Spec;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
-$ENV{TEST_NGINX_CERT_DIR} ||= File::Spec->catdir(server_root(), '..', 'certs');
 
 plan tests => repeat_each() * (blocks() * 3);
 
@@ -47,5 +46,295 @@ port: \d+
 GET /t
 --- response_body
 port type: number
+--- no_error_log
+[error]
+
+
+
+=== TEST 3: client.get_forwarded_port() returns client port with X-Real-IP header when trusted
+--- config
+    location = /t {
+        real_ip_header X-Real-IP;
+
+        set_real_ip_from 0.0.0.0/0;
+        set_real_ip_from ::/0;
+        set_real_ip_from unix:;
+
+        content_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            ngx.say("port: ", sdk.client.get_forwarded_port())
+        }
+    }
+--- request
+GET /t
+--- more_headers
+X-Real-IP: 10.0.0.1:1234
+--- response_body
+port: 1234
+--- no_error_log
+[error]
+
+
+
+=== TEST 4: client.get_forwarded_port() returns nil as client port when X-Real-IP doesn't define port when trusted
+--- config
+    location = /t {
+        real_ip_header X-Real-IP;
+
+        set_real_ip_from 0.0.0.0/0;
+        set_real_ip_from ::/0;
+        set_real_ip_from unix:;
+
+        content_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            ngx.say("port: ", sdk.client.get_forwarded_port())
+        }
+    }
+--- request
+GET /t
+--- more_headers
+X-Real-IP: 10.0.0.1
+--- response_body
+port: nil
+--- no_error_log
+[error]
+
+
+
+=== TEST 5: client.get_forwarded_port() returns client port with X-Forwarded-For header when trusted
+--- config
+    location = /t {
+        real_ip_header X-Forwarded-For;
+
+        set_real_ip_from 0.0.0.0/0;
+        set_real_ip_from ::/0;
+        set_real_ip_from unix:;
+
+        content_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            ngx.say("port: ", sdk.client.get_forwarded_port())
+        }
+    }
+--- request
+GET /t
+--- more_headers
+X-Forwarded-For: 10.0.0.1:1234
+--- response_body
+port: 1234
+--- no_error_log
+[error]
+
+
+
+=== TEST 6: client.get_forwarded_port() returns nil as client port when X-Forwarded-For doesn't define port when trusted
+--- config
+    location = /t {
+        real_ip_header X-Forwarded-For;
+
+        set_real_ip_from 0.0.0.0/0;
+        set_real_ip_from ::/0;
+        set_real_ip_from unix:;
+
+        content_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            ngx.say("port: ", sdk.client.get_forwarded_port())
+        }
+    }
+--- request
+GET /t
+--- more_headers
+X-Forwarded-For: 10.0.0.1
+--- response_body
+port: nil
+--- no_error_log
+[error]
+
+
+
+=== TEST 7: client.get_forwarded_port() returns client port with proxy_protocol when trusted
+--- http_config
+    server {
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock proxy_protocol;
+
+        location / {
+            real_ip_header proxy_protocol;
+
+            set_real_ip_from 0.0.0.0/0;
+            set_real_ip_from ::/0;
+            set_real_ip_from unix:;
+
+            content_by_lua_block {
+                local SDK = require "kong.sdk"
+                local sdk = SDK.new()
+
+                ngx.say("port: ", sdk.client.get_forwarded_port())
+            }
+        }
+    }
+--- config
+    location = /t {
+        content_by_lua_block {
+            local sock = ngx.socket.tcp()
+            sock:connect("unix:$TEST_NGINX_HTML_DIR/nginx.sock")
+
+            local request = "PROXY TCP4 10.0.0.1 " ..
+                            ngx.var.server_addr    .. " " ..
+                            1234                   .. " " ..
+                            ngx.var.server_port    .. "\r\n" ..
+                            "GET /\r\n"
+
+            sock:send(request)
+            ngx.print(sock:receive "*a")
+        }
+    }
+--- request
+GET /t
+--- response_body
+port: 1234
+--- no_error_log
+[error]
+
+
+
+=== TEST 8: client.get_forwarded_port() returns client port from last hop with X-Real-IP not having port when not trusted
+--- config
+    location = /t {
+        real_ip_header X-Real-IP;
+
+        content_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            ngx.say("port: ", sdk.client.get_forwarded_port())
+        }
+    }
+--- request
+GET /t
+--- more_headers
+X-Real-IP: 10.0.0.1
+--- response_body_like
+port: \d+
+--- no_error_log
+[error]
+
+
+
+=== TEST 9: client.get_forwarded_port() returns client port from last hop with X-Forwarded-For not having port when not trusted
+--- config
+    location = /t {
+        real_ip_header X-Forwarded-For;
+
+        content_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            ngx.say("port: ", sdk.client.get_forwarded_port())
+        }
+    }
+--- request
+GET /t
+--- more_headers
+X-Forwarded-For: 10.0.0.1
+--- response_body_like
+port: \d+
+--- no_error_log
+[error]
+
+
+
+=== TEST 10: client.get_forwarded_port() returns client port from last hop with X-Real-IP with port when not trusted
+--- config
+    location = /t {
+        real_ip_header X-Forwarded-For;
+
+        content_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            ngx.say("port: ", sdk.client.get_forwarded_port())
+        }
+    }
+--- request
+GET /t
+--- more_headers
+X-Real-IP: 10.0.0.1:1234
+--- response_body_unlike
+port: 1234
+--- response_body_like
+port: \d+
+--- no_error_log
+[error]
+
+
+
+=== TEST 11: client.get_forwarded_port() returns client port from last hop with X-Forwarded-For with port when not trusted
+--- config
+    location = /t {
+        real_ip_header X-Forwarded-For;
+
+        content_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            ngx.say("port: ", sdk.client.get_forwarded_port())
+        }
+    }
+--- request
+GET /t
+--- more_headers
+X-Forwarded-For: 10.0.0.1:1234
+--- response_body_unlike
+port: 1234
+--- response_body_like
+port: \d+
+--- no_error_log
+[error]
+
+
+
+=== TEST 12: client.get_forwarded_port() returns client port from last hop with proxy_protocol when not trusted
+--- http_config
+    server {
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock proxy_protocol;
+
+        location / {
+            real_ip_header proxy_protocol;
+
+            content_by_lua_block {
+                local SDK = require "kong.sdk"
+                local sdk = SDK.new()
+
+                ngx.say("port: ", sdk.client.get_forwarded_port())
+            }
+        }
+    }
+--- config
+    location = /t {
+        content_by_lua_block {
+            local sock = ngx.socket.tcp()
+            sock:connect("unix:$TEST_NGINX_HTML_DIR/nginx.sock")
+
+            local request = "PROXY TCP4 10.0.0.1 " ..
+                            ngx.var.server_addr    .. " " ..
+                            1234                   .. " " ..
+                            ngx.var.server_port    .. "\r\n" ..
+                            "GET /\r\n"
+
+            sock:send(request)
+            ngx.print(sock:receive "*a")
+        }
+    }
+--- request
+GET /t
+--- response_body
+port: nil
 --- no_error_log
 [error]
