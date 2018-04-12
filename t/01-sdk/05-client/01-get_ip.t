@@ -46,6 +46,11 @@ ip: 127.0.0.1
         location / {
             real_ip_header proxy_protocol;
 
+            set_real_ip_from 0.0.0.0/0;
+            set_real_ip_from ::/0;
+            set_real_ip_from unix:;
+
+
             content_by_lua_block {
                 local SDK = require "kong.sdk"
                 local sdk = SDK.new()

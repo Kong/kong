@@ -3,9 +3,6 @@ use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 use File::Spec;
 
-$ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
-$ENV{TEST_NGINX_CERT_DIR} ||= File::Spec->catdir(server_root(), '..', 'certs');
-
 plan tests => repeat_each() * (blocks() * 3);
 
 run_tests();
@@ -32,7 +29,53 @@ body: ''
 
 
 
-=== TEST 2: request.get_body() returns the passed body for short bodies
+=== TEST 2: request.get_body() returns empty string when Content-Length header is less than 1
+--- config
+    location = /t {
+
+        content_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            ngx.say("body: '", sdk.request:get_body(), "'")
+        }
+    }
+--- request
+POST /t
+ignored
+--- more_headers
+Content-Length: 0
+--- response_body
+body: ''
+--- no_error_log
+[error]
+
+
+
+=== TEST 3: request.get_body() returns body string when Content-Length header is greater than 0
+--- config
+    location = /t {
+
+        content_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            ngx.say("body: '", sdk.request:get_body(), "'")
+        }
+    }
+--- request
+POST /t
+not ignored
+--- more_headers
+Content-Length: 11
+--- response_body
+body: 'not ignored'
+--- no_error_log
+[error]
+
+
+
+=== TEST 4: request.get_body() returns the passed body for short bodies
 --- config
     location = /t {
 
@@ -53,7 +96,7 @@ body: 'potato'
 
 
 
-=== TEST 3: request.get_body() returns nil + error when the body is just too big
+=== TEST 5: request.get_body() returns nil + error when the body is just too big
 --- config
     location = /t {
         content_by_lua_block {
