@@ -107,8 +107,8 @@ local function new(sdk, _SDK_REQUEST, major_version)
 
   function _SDK_REQUEST.get_path()
     local uri = ngx.var.request_uri
-    local idx = find(uri, "?", 2, true)
-    return idx and sub(uri, 1, idx - 1) or uri
+    local s = find(uri, "?", 2, true)
+    return s and sub(uri, 1, s - 1) or uri
   end
 
 
