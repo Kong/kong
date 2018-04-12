@@ -92,17 +92,30 @@ local DELETE_CODE_CLASSES_CLUSTER = [[
   OR (duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC'))
 ]]
 
-local INSERT_CODES = [[
-  INSERT INTO %s(%s, code, at, duration, count)
+local INSERT_CODES_BY_SERVICE = [[
+  INSERT INTO vitals_codes_by_service(service_id, code, at, duration, count)
   VALUES('%s', '%s', to_timestamp(%d) at time zone 'UTC', %d, %d)
-  ON CONFLICT(%s, code, at, duration) DO
-  UPDATE SET COUNT = %s.count + excluded.count
+  ON CONFLICT(service_id, code, at, duration) DO
+  UPDATE SET COUNT = vitals_codes_by_service.count + excluded.count
+]]
+
+local INSERT_CODES_BY_ROUTE = [[
+  INSERT INTO vitals_codes_by_route(route_id, service_id, code, at, duration, count)
+  VALUES('%s', '%s', '%s', to_timestamp(%d) at time zone 'UTC', %d, %d)
+  ON CONFLICT(route_id, code, at, duration) DO
+  UPDATE SET COUNT = vitals_codes_by_route.count + excluded.count
 ]]
 
 local SELECT_CODES_SERVICE = [[
   SELECT service_id, code, extract('epoch' from at) as at, count
     FROM vitals_codes_by_service
    WHERE service_id = '%s' AND duration = %d AND at >= to_timestamp(%d)
+]]
+
+local SELECT_CODES_ROUTE = [[
+  SELECT route_id, code, extract('epoch' from at) as at, count
+    FROM vitals_codes_by_route
+   WHERE route_id = '%s' AND duration = %d AND at >= to_timestamp(%d)
 ]]
 
 local DELETE_CODES = [[
@@ -748,33 +761,16 @@ function _M:insert_status_codes(data, opts)
     return nil, "opts.entity_type must be 'service' or 'route'"
   end
 
-  local res, err, entity_id, at, duration, code, count, query
-  local table, column
+  local query, res, err
+
+  if entity_type == "service" then
+    query = INSERT_CODES_BY_SERVICE
+  else
+    query = INSERT_CODES_BY_ROUTE
+  end
 
   for _, v in ipairs(data) do
-    -- TODO: obviate the need for this check
-    if entity_type == "service" then
-      entity_id, code, at, duration, count = unpack(v)
-      table = "vitals_codes_by_service"
-      column = "service_id"
-    else
-      entity_id, _, code, at, duration, count = unpack(v)
-      table = "vitals_codes_by_route"
-      column = "route_id"
-    end
-
-    query = fmt(INSERT_CODES,
-                table,
-                column,
-                entity_id,
-                code,
-                at,
-                duration,
-                count,
-                column,
-                table)
-
-    res, err = self.db:query(query)
+    res, err = self.db:query(fmt(query, unpack(v)))
 
     if not res then
       return nil, "could not insert status code counters. error: " .. err
@@ -803,11 +799,29 @@ function _M:insert_status_codes_by_service(data)
 end
 
 
-function _M:select_status_codes_by_service(opts)
+function _M:insert_status_codes_by_route(data)
+  return self:insert_status_codes(data, {
+    entity_type = "route",
+    prune = true,
+  })
+end
+
+
+function _M:select_status_codes(opts)
   local duration = opts.duration
+  local entity_type = opts.entity_type
+  local query
 
   if duration ~= 1 and duration ~= 60 then
     return nil, "duration must be 1 or 60"
+  end
+
+  if entity_type == "service" then
+    query = SELECT_CODES_SERVICE
+  elseif entity_type == "route" then
+    query = SELECT_CODES_ROUTE
+  else
+    return nil, "unknown entity_type"
   end
 
   local cutoff_time
@@ -818,7 +832,7 @@ function _M:select_status_codes_by_service(opts)
     cutoff_time = time() - self.ttl_minutes
   end
 
-  local query = fmt(SELECT_CODES_SERVICE, opts.service_id, opts.duration, cutoff_time)
+  local query = fmt(query, opts.entity_id, opts.duration, cutoff_time)
 
   local res, err = self.db:query(query)
 
@@ -827,6 +841,22 @@ function _M:select_status_codes_by_service(opts)
   end
 
   return res
+end
+
+
+function _M:select_status_codes_by_service(opts)
+  opts.entity_type = "service"
+  opts.entity_id = opts.service_id
+
+  return self:select_status_codes(opts)
+end
+
+
+function _M:select_status_codes_by_route(opts)
+  opts.entity_type = "route"
+  opts.entity_id = opts.route_id
+
+  return self:select_status_codes(opts)
 end
 
 
@@ -847,8 +877,6 @@ function _M:delete_status_codes(opts)
     return nil, "opts.minutes must be a number"
   end
 
-  -- TODO: this logic is written with the assumption that we store
-  -- codes in separate tables
   local table_name
   if opts.entity_type == "service" then
     table_name = "vitals_codes_by_service"

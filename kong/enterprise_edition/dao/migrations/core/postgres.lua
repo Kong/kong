@@ -499,11 +499,25 @@ return {
         count int,
         PRIMARY KEY (service_id, code, duration, at)
       );
+
+      CREATE TABLE IF NOT EXISTS vitals_codes_by_route(
+        service_id uuid,
+        route_id uuid,
+        code int,
+        at timestamp with time zone,
+        duration int,
+        count int,
+        PRIMARY KEY (route_id, code, duration, at)
+      );
+
+      CREATE INDEX IF NOT EXISTS vitals_cbr_service_idx
+      ON vitals_codes_by_route(service_id);
     ]],
 
     down = [[
-      DROP TABLE vitals_code_classes_by_cluster;
+      DROP TABLE vitals_codes_by_route;
       DROP TABLE vitals_codes_by_service;
+      DROP TABLE vitals_code_classes_by_cluster;
     ]]
   },
 }

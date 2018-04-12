@@ -1195,30 +1195,24 @@ function _M:get_status_codes(opts)
     return nil, "Invalid query params: level must be 'cluster'"
   end
 
+  if opts.entity_type ~= "service" and opts.entity_type ~= "route" then
+    return nil, "entity_type must be 'service' or 'route'"
+  end
+
   local query_opts = {
     duration = opts.duration == "seconds" and 1 or 60,
-    route_id = opts.route_id,
-    service_id = opts.service_id,
+    entity_type = opts.entity_type,
+    entity_id = opts.entity_id,
   }
 
-  local res, err
-
-  if opts.entity_type == "route" then
-    res, err = self.strategy:select_status_codes_by_route(query_opts)
-  elseif opts.entity_type == "service" then
-    res, err = self.strategy:select_status_codes_by_service(query_opts)
-  end
+  local res, err = self.strategy:select_status_codes(query_opts)
 
   if err then
     log(WARN, _log_prefix, err)
     return {}
   end
 
-  if opts.entity_type == "route" then
-    return convert_status_codes(res, opts.level, opts.duration, opts.entity_type, opts.route_id)
-  elseif opts.entity_type == "service" then
-    return convert_status_codes(res, opts.level, opts.duration, opts.entity_type, opts.service_id)
-  end
+  return convert_status_codes(res, opts.level, opts.duration, opts.entity_type, opts.entity_id)
 end
 
 function _M:get_status_code_classes(opts)

@@ -827,47 +827,6 @@ function _M:insert_status_codes_by_service(data)
 end
 
 
-function _M:select_status_codes_by_service(opts)
-  local duration = opts.duration
-
-  if duration ~= 1 and duration ~= 60 then
-    return nil, "duration must be 1 or 60"
-  end
-
-  local cutoff_time, args
-
-  if duration == 1 then
-    cutoff_time = time() - self.ttl_seconds
-  else
-    cutoff_time = time() - self.ttl_minutes
-  end
-
-  args = {
-    cassandra.uuid(opts.service_id),
-    duration,
-    cassandra.timestamp(cutoff_time * 1000),
-  }
-
-  local res = {}
-  local idx = 1
-
-  for rows, err, page in self.cluster:iterate(SELECT_CODES_SERVICE, args, QUERY_OPTIONS) do
-    if err then
-      return nil, "could not select codes by service. error: " .. err
-    end
-
-    for _, row in ipairs(rows) do
-      row.at = row.at / 1000
-      row.node_id = "cluster"
-      res[idx] = row
-      idx = idx + 1
-    end
-  end
-
-  return res
-end
-
-
 function _M:delete_status_codes_by_service(services, cutoff_times)
   local opts = {
     entity_type = "service",
@@ -888,14 +847,28 @@ function _M:insert_status_codes_by_route(data)
 end
 
 
-function _M:select_status_codes_by_route(opts)
+function _M:select_status_codes(opts)
+  if not opts.entity_id then
+    return nil, "opts.entity_id is required"
+  end
+
+  local query
+
+  if opts.entity_type == "service" then
+    query = SELECT_CODES_SERVICE
+  elseif opts.entity_type == "route" then
+    query = SELECT_CODES_ROUTE
+  else
+    return nil, "opts.entity_type must be 'service' or 'route'"
+  end
+
   local duration = opts.duration
 
   if duration ~= 1 and duration ~= 60 then
     return nil, "duration must be 1 or 60"
   end
 
-  local cutoff_time, args
+  local cutoff_time
 
   if duration == 1 then
     cutoff_time = time() - self.ttl_seconds
@@ -903,8 +876,8 @@ function _M:select_status_codes_by_route(opts)
     cutoff_time = time() - self.ttl_minutes
   end
 
-  args = {
-    cassandra.uuid(opts.route_id),
+  local args = {
+    cassandra.uuid(opts.entity_id),
     duration,
     cassandra.timestamp(cutoff_time * 1000),
   }
@@ -912,9 +885,9 @@ function _M:select_status_codes_by_route(opts)
   local res = {}
   local idx = 1
 
-  for rows, err, page in self.cluster:iterate(SELECT_CODES_ROUTE, args, QUERY_OPTIONS) do
+  for rows, err, page in self.cluster:iterate(query, args, QUERY_OPTIONS) do
     if err then
-      return nil, "could not select codes by route. error: " .. err
+      return nil, "could not select codes. error: " .. err
     end
 
     for _, row in ipairs(rows) do

@@ -1432,8 +1432,11 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
     end)
 
-    describe(":select_status_codes_by_service()", function()
+    describe(":select_status_codes", function()
       local service_ids = { utils.uuid(), utils.uuid() }
+      local route_id_1 = utils.uuid()
+      local route_id_2 = utils.uuid()
+
       local now = ngx.time()
       local minute = now - (now % 60)
 
@@ -1458,18 +1461,47 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         local res, _ = cluster:execute("select * from vitals_codes_by_service")
         assert.same(8, #res)
+
+        cluster:execute("TRUNCATE vitals_codes_by_route")
+        local q = [[
+          UPDATE vitals_codes_by_route
+            SET count=count + ?
+            WHERE route_id = ?
+            AND code = ?
+            AND at = ?
+            AND duration = ?
+        ]]
+
+        local test_data = {
+          {cassandra.counter(5), cassandra.uuid(route_id_1), 400, cassandra.timestamp((now - 3) * 1000), 1},
+          {cassandra.counter(25), cassandra.uuid(route_id_1), 301, cassandra.timestamp(minute * 1000), 60},
+          {cassandra.counter(57), cassandra.uuid(route_id_1), 404, cassandra.timestamp((minute + 120) * 1000), 60},
+          {cassandra.counter(8), cassandra.uuid(route_id_2), 500, cassandra.timestamp((now - 3) * 1000), 1},
+          {cassandra.counter(31), cassandra.uuid(route_id_2), 201, cassandra.timestamp(minute * 1000), 60},
+          {cassandra.counter(44), cassandra.uuid(route_id_2), 429, cassandra.timestamp((minute + 60) * 1000), 60},
+        }
+
+        for _, row in ipairs(test_data) do
+          assert(cluster:execute(q, row, { prepared = true, counter  = true }))
+        end
+
+        local res, _ = cluster:execute("select * from vitals_codes_by_route")
+        assert.same(6, #res)
       end)
 
       after_each(function()
         cluster:execute("TRUNCATE vitals_codes_by_service")
+        cluster:execute("TRUNCATE vitals_codes_by_route")
       end)
 
-      it("retrieves rows", function()
+      it("retrieves codes by service", function()
         local opts = {
-          ["service_id"] = service_ids[1],
-          ["duration"] = 1,
+          entity_type = "service",
+          entity_id = service_ids[1],
+          duration = 1,
         }
-        local res, err = strategy:select_status_codes_by_service(opts)
+
+        local res, err = strategy:select_status_codes(opts)
         assert.is_nil(err)
 
         table.sort(res, function(a,b)
@@ -1497,6 +1529,39 @@ dao_helpers.for_each_dao(function(kong_conf)
             count = 4,
             node_id = 'cluster',
             service_id = service_ids[1],
+          }
+        }
+        assert.same(expected, res)
+      end)
+
+      it("retrieves codes by route", function()
+        local opts = {
+          entity_type = "route",
+          entity_id = route_id_1,
+          duration = 60,
+        }
+
+        local res, err = strategy:select_status_codes(opts)
+        assert.is_nil(err)
+
+        table.sort(res, function(a,b)
+          return a.count < b.count
+        end)
+
+        local expected = {
+          {
+            at = minute,
+            code = 301,
+            count = 25,
+            node_id = "cluster",
+            route_id = route_id_1,
+          },
+          {
+            at = minute + 120,
+            code = 404,
+            count = 57,
+            node_id = "cluster",
+            route_id = route_id_1,
           }
         }
         assert.same(expected, res)
@@ -1578,76 +1643,6 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         strategy:insert_status_codes_by_route(data)
         assert.stub(cassandra_strategy.insert_status_codes).was_called_with(strategy, data, opts)
-      end)
-    end)
-
-    describe(":select_status_codes_by_route()", function()
-      local route_id_1 = utils.uuid()
-      local route_id_2 = utils.uuid()
-      local now = ngx.time()
-      local minute = now - (now % 60)
-
-      before_each(function()
-        cluster:execute("TRUNCATE vitals_codes_by_route")
-        local q = [[
-          UPDATE vitals_codes_by_route
-            SET count=count + ?
-            WHERE route_id = ?
-            AND code = ?
-            AND at = ?
-            AND duration = ?
-        ]]
-
-        local test_data = {
-          {cassandra.counter(5), cassandra.uuid(route_id_1), 400, cassandra.timestamp((now - 3) * 1000), 1},
-          {cassandra.counter(25), cassandra.uuid(route_id_1), 301, cassandra.timestamp(minute * 1000), 60},
-          {cassandra.counter(57), cassandra.uuid(route_id_1), 404, cassandra.timestamp((minute + 120) * 1000), 60},
-          {cassandra.counter(8), cassandra.uuid(route_id_2), 500, cassandra.timestamp((now - 3) * 1000), 1},
-          {cassandra.counter(31), cassandra.uuid(route_id_2), 201, cassandra.timestamp(minute * 1000), 60},
-          {cassandra.counter(44), cassandra.uuid(route_id_2), 429, cassandra.timestamp((minute + 60) * 1000), 60},
-        }
-
-        for _, row in ipairs(test_data) do
-          assert(cluster:execute(q, row, { prepared = true, counter  = true }))
-        end
-
-        local res, _ = cluster:execute("select * from vitals_codes_by_route")
-        assert.same(6, #res)
-      end)
-
-      after_each(function()
-        cluster:execute("TRUNCATE vitals_codes_by_route")
-      end)
-
-      it("retrieves rows", function()
-        local opts = {
-          ["route_id"] = route_id_1,
-          ["duration"] = 60,
-        }
-        local res, err = strategy:select_status_codes_by_route(opts)
-        assert.is_nil(err)
-
-        table.sort(res, function(a,b)
-          return a.count < b.count
-        end)
-
-        local expected = {
-          {
-            at = minute,
-            code = 301,
-            count = 25,
-            node_id = "cluster",
-            route_id = route_id_1,
-          },
-          {
-            at = minute + 120,
-            code = 404,
-            count = 57,
-            node_id = "cluster",
-            route_id = route_id_1,
-          }
-        }
-        assert.same(expected, res)
       end)
     end)
 

@@ -148,7 +148,7 @@ return {
       local opts = {
         entity_type = "service",
         duration    = self.params.interval,
-        service_id  = self.params.service_id,
+        entity_id   = self.params.service_id,
         level       = "cluster",
       }
 
@@ -180,7 +180,7 @@ return {
       local opts = {
         entity_type = "route",
         duration    = self.params.interval,
-        route_id    = self.params.route_id,
+        entity_id   = self.params.route_id,
         level       = "cluster",
       }
 

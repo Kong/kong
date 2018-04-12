@@ -443,11 +443,6 @@ dao_helpers.for_each_dao(function(kong_conf)
     end)
 
     describe("flush_vitals_cache()", function()
-      if dao.db.name == "postgres" then
-        pending("pending implementation of vitals_codes_by_route", function() end)
-        return
-      end
-
       before_each(function()
         assert(dao.db:truncate_table("vitals_codes_by_route"))
         assert(dao.db:truncate_table("vitals_codes_by_service"))
@@ -486,7 +481,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         local res, err = vitals:get_status_codes({
           entity_type = "service",
-          service_id  = service_id,
+          entity_id   = service_id,
           duration    = "seconds",
           level       = "cluster"
         })
@@ -504,7 +499,12 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         assert.same(expected, res.stats.cluster)
 
-        local res, err = dao.db:query("select * from vitals_codes_by_route")
+        local res, err
+        if dao.db.name == "postgres" then
+          res, err = dao.db:query("SELECT route_id, code, extract('epoch' from at) as at, duration, count FROM vitals_codes_by_route")
+        else
+          res, err = dao.db:query("select * from vitals_codes_by_route")
+        end
 
         assert.is_nil(err)
 
@@ -943,8 +943,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
     end)
 
-    describe("get_status_codes()", function()
-      local vitals
+    describe("get_status_codes() for service", function()
       local now = ngx_time()
       local uuid = utils.uuid()
 
@@ -957,8 +956,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       }
 
       setup(function()
-        vitals = kong_vitals.new { dao = dao }
-        stub(vitals.strategy, "select_status_codes_by_service").returns(data_to_insert)
+        stub(vitals.strategy, "select_status_codes").returns(data_to_insert)
       end)
 
       it("rejects invalid query_type", function()
@@ -1021,19 +1019,18 @@ dao_helpers.for_each_dao(function(kong_conf)
           entity_type = "service",
           duration    = "seconds",
           level       = "cluster",
-          service_id  = uuid,
+          entity_id   = uuid,
         })
 
         assert.same(res, expected)
       end)
     end)
 
-    describe("get_status_codes()", function()
-      local vitals
+    describe("get_status_codes() for route", function()
       local now = ngx_time()
       local uuid = utils.uuid()
 
-      local data_to_insert = {
+      local from_db = {
         { route_id = uuid, at = now, code = 400, count = 5 },
         { route_id = uuid, at = now, code = 200, count = 533 },
         { route_id = uuid, at = now - 1 , code = 200, count = 6 },
@@ -1042,8 +1039,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       }
 
       setup(function()
-        vitals = kong_vitals.new { dao = dao }
-        stub(vitals.strategy, "select_status_codes_by_route").returns(data_to_insert)
+        stub(vitals.strategy, "select_status_codes").returns(from_db)
       end)
 
       it("rejects invalid query_type", function()
@@ -1051,7 +1047,7 @@ dao_helpers.for_each_dao(function(kong_conf)
           entity_type = "route",
           duration    = "foo",
           level       = "cluster",
-          route_id    = uuid,
+          entity_id   = uuid,
         })
 
         local expected = "Invalid query params: interval must be 'minutes' or 'seconds'"
@@ -1065,7 +1061,7 @@ dao_helpers.for_each_dao(function(kong_conf)
           entity_type = "route",
           duration    = "minutes",
           level       = "not_legit",
-          route_id    = uuid,
+          entity_id   = uuid,
         })
 
         local expected = "Invalid query params: level must be 'cluster'"
@@ -1106,10 +1102,10 @@ dao_helpers.for_each_dao(function(kong_conf)
           entity_type = "route",
           duration    = "seconds",
           level       = "cluster",
-          route_id    = uuid,
+          entity_id   = uuid,
         })
 
-        assert.same(res, expected)
+        assert.same(expected, res)
       end)
     end)
 
