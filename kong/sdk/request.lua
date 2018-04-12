@@ -242,7 +242,7 @@ local function new(sdk, _SDK_REQUEST, major_version)
     ngx.req.read_body()
 
     local body = ngx.req.get_body_data()
-    if body == nil then
+    if not body then
       if ngx.req.get_body_file() then
         return nil, "request body did not fit into client body buffer, consider raising 'client_body_buffer_size'"
 
