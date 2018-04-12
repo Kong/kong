@@ -113,7 +113,7 @@ local function new(sdk, _SDK_REQUEST, major_version)
 
 
   function _SDK_REQUEST.get_query()
-    return ngx.var.args
+    return ngx.var.args or ""
   end
 
 
