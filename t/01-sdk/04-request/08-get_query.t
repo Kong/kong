@@ -28,39 +28,39 @@ query: query
 
 
 
-=== TEST 2: request.get_query() returns nil on missing query string
+=== TEST 2: request.get_query() returns empty string on missing query string
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            ngx.say("query: ", sdk.request.get_query())
+            ngx.say("query: '", sdk.request.get_query(), "'")
         }
     }
 --- request
 GET /t
 --- response_body
-query: nil
+query: ''
 --- no_error_log
 [error]
 
 
 
-=== TEST 3: request.get_query() returns nil with empty query string
+=== TEST 3: request.get_query() returns empty string with empty query string
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            ngx.say("query: ", sdk.request.get_query())
+            ngx.say("query: '", sdk.request.get_query(), "'")
         }
     }
 --- request
 GET /t?
 --- response_body
-query: nil
+query: ''
 --- no_error_log
 [error]
 
