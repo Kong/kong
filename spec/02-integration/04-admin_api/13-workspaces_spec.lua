@@ -664,7 +664,8 @@ describe("Admin API #" .. kong_config.database, function()
               name = "my-api",
               methods = "GET",
               hosts = "my.api.com",
-              upstream_url = "http://api.com"
+              created_at = json.created_at,
+              upstream_url = "http://api.com",
             },
             headers = {["Content-Type"] = "application/json"}
           })

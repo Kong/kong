@@ -26,6 +26,7 @@ local cjson = require "cjson.safe"
 local http = require "resty.http"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local log = require "kong.cmd.utils.log"
+local singletons = require "kong.singletons"
 
 log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
 
@@ -93,6 +94,7 @@ local function run_migrations(given_dao)
   -- either use the dao provided to this call, or use
   -- the helper dao
   local d = given_dao or dao
+  singletons.dao = d
 
   assert(d:run_migrations())
 

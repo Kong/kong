@@ -974,7 +974,6 @@ describe("Admin API", function()
           custom_id = "wc",
           username = "wrong-consumer"
         })
-
         -- Try to request the plugin through it (belongs to the fixture consumer instead)
         local res = assert(client:send {
           method = "GET",

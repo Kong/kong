@@ -22,11 +22,11 @@ end
 
 -- returns all routes except the current one
 local function all_apis_except(current)
-  local old_ws = ngx.ctx.workspace
-  ngx.ctx.workspace = { name = "*" }
+  local old_wss = ngx.ctx.workspaces
+  ngx.ctx.workspaces = {}
   local apis = singletons.dao.apis:find_all()
   apis = filter(function(x) return x.id ~= current.id end, apis)
-  ngx.ctx.workspace = old_ws
+  ngx.ctx.workspaces = old_wss
   return apis
 end
 
@@ -35,11 +35,10 @@ return {
   ["/apis/"] = {
     before = function(self, dao_factory, helpers)
       local uuid = require("kong.tools.utils").uuid
-
-      local old_ws = ngx.ctx.workspace
-      ngx.ctx.workspace = {name = "*"}
+      local old_wss = ngx.ctx.workspaces
+      ngx.ctx.workspaces = {}
       core_handler.build_router(dao_factory, uuid())
-      ngx.ctx.workspace = old_ws
+      ngx.ctx.workspaces = old_wss
     end,
 
     GET = function(self, dao_factory)
@@ -55,13 +54,15 @@ return {
         return helpers.send_HTTP_CONFLICT(err)
       end
 
-      local curr_api = singletons.dao.apis:find({id = self.params.id})
-      if curr_api then  -- exists, we create an ad-hoc router
+      if self.params.id then
+        local curr_api = singletons.dao.apis:find({id = self.params.id})
+        if curr_api then  -- exists, we create an ad-hoc router
 
-        local r = Router.new(all_apis_except(curr_api))
-        if workspaces.is_route_colliding(self, r) then
-          local err = "API route collides with an existing API"
-          return helpers.send_HTTP_CONFLICT(err)
+          local r = Router.new(all_apis_except(curr_api))
+          if workspaces.is_route_colliding(self, r) then
+            local err = "API route collides with an existing API"
+            return helpers.send_HTTP_CONFLICT(err)
+          end
         end
       end
 

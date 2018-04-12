@@ -1,3 +1,5 @@
+local singletons = require "kong.singletons"
+
 local function raw_table(state, arguments)
   local tbl = arguments[1]
   if not pcall(assert.falsy, getmetatable(tbl)) then
@@ -35,6 +37,7 @@ helpers.for_each_dao(function(kong_config)
     local factory, apis, oauth2_credentials
     setup(function()
       factory = assert(Factory.new(kong_config))
+      singletons.dao = factory
       apis = factory.apis
 
       -- DAO used for testing arrays

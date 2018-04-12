@@ -1,6 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
+local singletons = require "kong.singletons"
 
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local DAOFactory = require "kong.dao.factory"
@@ -18,14 +19,14 @@ describe("Admin API #" .. kong_config.database, function()
   local dao
   setup(function()
     dao = assert(DAOFactory.new(kong_config))
+    singletons.dao = dao
     helpers.run_migrations(dao)
-
     assert(helpers.start_kong{
       database = kong_config.database
     })
   end)
   teardown(function()
-    helpers.stop_kong()
+    helpers.stop_kong(nil, true)
   end)
 
   describe("/apis", function()
@@ -344,7 +345,6 @@ describe("Admin API #" .. kong_config.database, function()
     describe("GET", function()
       setup(function()
         dao:truncate_tables()
-
         for i = 1, 10 do
           assert(dao.apis:insert {
             name = "api-" .. i,
@@ -364,6 +364,7 @@ describe("Admin API #" .. kong_config.database, function()
       end)
 
       it("retrieves the first page", function()
+        singletons.dao = dao
         local res = assert(client:send {
           method = "GET",
           path = "/apis"
@@ -1252,63 +1253,6 @@ describe("Admin API #" .. kong_config.database, function()
         end)
       end)
     end)
-  end)
-end)
-
-describe("Admin API request size", function()
-  local client
-  setup(function()
-    assert(helpers.dao.apis:insert {
-      name = "my-cool-api",
-      hosts = "my.api.com",
-      upstream_url = "http://api.com"
-    })
-
-    helpers.run_migrations()
-
-    assert(helpers.start_kong())
-    client = assert(helpers.admin_client())
-  end)
-  teardown(function()
-    if client then client:close() end
-    helpers.stop_kong()
-  end)
-
-  it("handles req bodies < 10MB", function()
-    local ip = "204.48.16.0"
-    local n = 2^20 / #ip
-    local buf = {}
-    for i = 1, n do buf[#buf+1] = ip end
-    local ips = table.concat(buf, ",")
-
-    local res = assert(client:send {
-      method = "POST",
-      path = "/apis/my-cool-api/plugins",
-      body = {
-        name = "ip-restriction",
-        ["config.blacklist"] = ips
-      },
-      headers = {["Content-Type"] = "application/json"}
-    })
-    assert.res_status(201, res)
-  end)
-  it("fails with req bodies 10MB", function()
-    local ip = "204.48.16.0"
-    local n = 11 * 2^20 / #ip
-    local buf = {}
-    for i = 1, n do buf[#buf+1] = ip end
-    local ips = table.concat(buf, ",")
-
-    local res = assert(client:send {
-      method = "POST",
-      path = "/apis/my-cool-api/plugins",
-      body = {
-        name = "ip-restriction",
-        ["config.blacklist"] = ips
-      },
-      headers = {["Content-Type"] = "application/json"}
-    })
-    assert.res_status(413, res)
   end)
 end)
 end)

@@ -4,7 +4,6 @@ return {
   table = "rbac_users",
   primary_key = { "id" },
   cache_key = { "user_token" },
-  workspaceable = true,
   fields = {
     id = {
       type = "id",

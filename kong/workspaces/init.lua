@@ -8,6 +8,7 @@ local ngx_log = ngx.log
 local ERR     = ngx.ERR
 local NOTICE  = ngx.NOTICE
 local DEBUG   = ngx.DEBUG
+local next    = next
 
 
 local _M = {}
@@ -144,6 +145,23 @@ function _M.get_workspaces()
 end
 
 
+function _M.get_default_workspace()
+  local old_ws = ngx.ctx.workspaces
+  ngx.ctx.workspaces = {}
+  local rows, err = singletons.dao.workspaces:find_all(
+    {
+      name = _M.DEFAULT_WORKSPACE
+    }
+  )
+  ngx.ctx.workspaces = old_ws
+
+  if err then
+    return nil, err
+  end
+  return rows[1]
+end
+
+
 -- register a relation name and its primary key name as a workspaceable
 -- relation
 function _M.register_workspaceable_relation(relation, primary_keys, unique_keys)
@@ -260,7 +278,8 @@ end
 
 function _M.add_entity_relation(table_name, entity, workspace)
   local constraints = workspaceable_relations[table_name]
-  if constraints.unique_keys then
+
+  if constraints and constraints.unique_keys and next(constraints.unique_keys) then
     for k, _ in pairs(constraints.unique_keys) do
       local _, err = add_entity_relation_db(singletons.dao.workspace_entities, workspace.id,
                                             entity[constraints.primary_key],
@@ -276,9 +295,8 @@ function _M.add_entity_relation(table_name, entity, workspace)
                                         entity[constraints.primary_key],
                                         table_name, constraints.primary_key,
                                         entity[constraints.primary_key])
-  if err then
-    return err
-  end
+
+  return err
 end
 
 
@@ -347,18 +365,20 @@ _M.match_route = match_route
 
 
 -- Return sequence of workspace ids an api belongs to
-local function api_workspaces(api)
-  local old_ws = ngx.ctx.workspace
-  ngx.ctx.workspace = {name = "*"}
-  local r = singletons.dao.workspace_entities:find_all({entity_id = api.id})
-  ngx.ctx.workspace = old_ws
-  return r
+local function api_workspace_ids(api)
+  local old_wss = ngx.ctx.workspaces
+  ngx.ctx.workspaces = nil
+  local ws_rels = singletons.dao.workspace_entities:find_all({entity_id = api.id})
+  ngx.ctx.workspaces = old_wss
+  return map(function(x) return x.workspace_id end, ws_rels)
 end
 
 -- return true if api is in workspace ws
 local function is_api_in_ws(api, ws)
-  local ws_ids = map(function(ws) return ws.id end,
-                     api.workspaces or api_workspaces(api))
+  local ws_ids =
+    api.workspaces and map(function(ws) return ws.id end, api.workspaces)
+      or api_workspace_ids(api)
+
   return member(ws.id, ws_ids)
 end
 _M.is_api_in_ws = is_api_in_ws
@@ -411,6 +431,14 @@ local function extract_req_data(params)
 end
 
 
+local function sanitize_ngx_nulls(...)
+  return utils.unpack(map(
+                        function(x)
+                          return x == ngx.null and "" or x
+                        end, {...}))
+end
+
+
 -- Extracts parameters for an api to be validated against the global
 -- current router. An api can have 0..* of each hosts, uris, methods.
 -- We check if a route collides with the current setup by trying to
@@ -419,7 +447,7 @@ end
 -- collide.
 function _M.is_route_colliding(req, router)
   router = router or singletons.router
-  local methods, uris, hosts = extract_req_data(req.params)
+  local methods, uris, hosts = sanitize_ngx_nulls(extract_req_data(req.params))
   local ws = _M.get_workspaces()[1]
   for perm in permutations(utils.split(methods or ALL_METHODS, ","),
                            utils.split(uris or " ", uris and "," or ""),
@@ -436,26 +464,24 @@ function _M.is_route_colliding(req, router)
 end
 
 
--- Adds all workspaces, given api belongs
+-- Return workspace scope, given api belongs
 -- to, to the the context.
 function _M.add_ws_to_ctx(api)
   local rows, err = singletons.dao.workspace_entities:find_all({
     entity_id          = api.id,
     unique_field_name  = "name",
     unique_field_value = api.name,
-  })
+  }, true)
   if err then
     return nil, err
   end
 
   local workspaces = {}
   for _, row in ipairs(rows) do
-    local workspace = {}
-    workspace.id = row.workspace_id
-    workspaces[#workspaces + 1] = workspace
+    workspaces[#workspaces + 1] = { id = row.workspace_id }
   end
 
-  ngx.ctx.workspaces = workspaces
+  return workspaces
 end
 
 

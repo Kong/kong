@@ -6,11 +6,11 @@ local setmetatable = setmetatable
 -- Loads a plugin config from the datastore.
 -- @return plugin config table or an empty sentinel table in case of a db-miss
 local function load_plugin_into_memory(api_id, consumer_id, plugin_name)
-  local rows, err = singletons.dao.plugins:find_all {
+  local rows, err = singletons.dao.plugins:find_all({
     api_id = api_id,
     consumer_id = consumer_id,
     name = plugin_name
-  }
+  }, true)
   if err then
     error(err)
   end

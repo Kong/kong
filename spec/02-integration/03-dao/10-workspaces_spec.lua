@@ -27,7 +27,7 @@ describe("apis have associated ws when", function()
   it("is created", function()
     local ws_foo = dao.workspaces:insert({name = "foo"})
 
-    ngx.ctx.workspace = "foo"
+    ngx.ctx.workspaces = { ws_foo }
     local api1 = dao.apis:insert({
      name = "api1",
      hosts = "test1",

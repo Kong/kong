@@ -269,15 +269,6 @@ function _M.post(params, dao_collection, post_process)
   if err then
     return app_helpers.yield_error(err)
   else
-    local err_rel = workspaces.add_entity_relation(dao_collection.table, data,
-                                                   workspaces.get_workspaces()[1])
-    if err_rel then
-      local data, err = dao_collection:delete(data)
-      if err then
-        return app_helpers.yield_error(err_rel)
-      end
-      return app_helpers.yield_error(err_rel)
-    end
     return responses.send_HTTP_CREATED(post_process_row(data, post_process))
   end
 end
@@ -310,31 +301,10 @@ function _M.put(params, dao_collection, post_process)
     -- If entity body has no primary key, deal with an insert
     new_entity, err = dao_collection:insert(params)
     if not err then
-      local err_rel = workspaces.add_entity_relation(dao_collection, new_entity,
-                                                     workspaces.get_workspaces()[1])
-      if err_rel then
-        local data, err = dao_collection:delete(new_entity)
-        if err then
-          return app_helpers.yield_error(err)
-        end
-        return app_helpers.yield_error(err_rel)
-      end
-
       return responses.send_HTTP_CREATED(post_process_row(new_entity, post_process))
     end
   else
     -- If entity body has primary key, deal with update
-    local e, err = singletons.dao.workspace_entities:find_all({
-      workspace_id = workspaces.get_workspaces()[1].id,
-      entity_id = params[primary_key],
-    })
-    if err then
-      return helpers.yield_error(err)
-    end
-    if not e or #e == 0 then
-      return responses.send_HTTP_NOT_FOUND()
-    end
-
     new_entity, err = dao_collection:update(params, params, {full = true})
     if not err then
       if not new_entity then

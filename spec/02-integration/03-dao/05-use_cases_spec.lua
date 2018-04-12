@@ -1,11 +1,14 @@
 local helpers = require "spec.02-integration.03-dao.helpers"
 local Factory = require "kong.dao.factory"
+local singletons = require "kong.singletons"
+
 
 helpers.for_each_dao(function(kong_config)
   describe("Real use-cases with DB: #" .. kong_config.database, function()
     local factory
     setup(function()
       factory = assert(Factory.new(kong_config))
+      singletons.dao = factory
       assert(factory:run_migrations())
 
       factory:truncate_tables()

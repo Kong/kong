@@ -443,7 +443,12 @@ return {
         var.upstream_x_forwarded_host  = var.host
         var.upstream_x_forwarded_port  = var.server_port
       end
-      workspaces.add_ws_to_ctx(api)
+      local err
+      ctx.workspaces, err = workspaces.add_ws_to_ctx(api)
+      if err then
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR("failed to retrieve workspace " ..
+          "for the request (reason: " .. tostring(err) .. ")")
+      end
     end,
     -- Only executed if the `router` module found an API and allows nginx to proxy it.
     after = function(ctx)

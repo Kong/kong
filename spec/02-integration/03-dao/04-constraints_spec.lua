@@ -1,6 +1,8 @@
 local helpers = require "spec.02-integration.03-dao.helpers"
 local Factory = require "kong.dao.factory"
 local utils = require "kong.tools.utils"
+local singletons = require "kong.singletons"
+
 
 local api_tbl = {
   name         = "example",
@@ -20,6 +22,7 @@ helpers.for_each_dao(function(kong_config)
     local factory, apis, plugins
     setup(function()
       factory = assert(Factory.new(kong_config))
+      singletons.dao = factory
       apis = factory.apis
       plugins = factory.plugins
       assert(factory:run_migrations())

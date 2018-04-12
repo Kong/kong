@@ -15,6 +15,7 @@ local uuid = utils.uuid
 local pairs = pairs
 local ipairs = ipairs
 local get_workspaces = workspaces.get_workspaces
+local workspaceable_rel = workspaces.get_workspaceable_relations()
 
 local _M = require("kong.dao.db").new_db("cassandra")
 
@@ -356,7 +357,7 @@ local function select_query_page(table_name, where, select_clause, primary_key, 
   local token_template
   if token then
     token_template = fmt(" TOKEN(%s) > TOKEN(%s) LIMIT %s",
-                         primary_key, token, page_size)
+                         primary_key, utils.is_valid_uuid(token) and token or fmt("'%s'", token), page_size)
   end
 
   if where then
@@ -566,8 +567,9 @@ function _M:find_all(table_name, tbl, schema)
     end
 
     if workspaceable then
+      local primary_key = workspaceable_rel[table_name].primary_key
       for _, row in ipairs(rows) do
-        local ws_entity = ws_entities_map[row.id]
+        local ws_entity = ws_entities_map[row[primary_key]]
         if ws_entity then
           row.workspace_id = ws_entity.workspace_id
           res_rows_ws[#res_rows_ws+1] = row
@@ -613,16 +615,16 @@ function _M:find_page(table_name, tbl, paging_state, page_size, schema)
       end
 
       for _, row in ipairs(rows) do
-        local ws_entity = ws_entities_map[row.id]
+        local ws_entity = ws_entities_map[row[primary_key]]
         if ws_entity then
           row.workspace_id = ws_entity.workspace_id
           res_rows[#res_rows+1] = row
           if #res_rows == page_size then
             paging_state = row.id
-            return res_rows, nil, row.id
+            return res_rows, nil, row[primary_key]
           end
         end
-        token = row.id
+        token = row[primary_key]
       end
 
       if #rows == 0 then

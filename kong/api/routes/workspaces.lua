@@ -174,13 +174,16 @@ return {
 
       for i = 1, #entity_ids do
         local e = entity_ids[i]
-
-        local _, err = dao_factory.workspace_entities:delete({
+        local ws_e, err = dao_factory.workspace_entities:find_all({
           workspace_id = self.workspace.id,
-          entity_id = e,
+          entity_id = self.params.entity_id,
         })
-        if err then
-          return helpers.yield_error(err)
+
+        for _, row in ipairs(ws_e) do
+          local _, err = dao_factory.workspace_entities:delete(row)
+          if err then
+            return helpers.yield_error(err)
+          end
         end
       end
 

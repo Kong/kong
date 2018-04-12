@@ -59,24 +59,24 @@ describe("Admin API: #" .. kong_config.database, function()
     end)
 
     describe("GET", function()
-      it("retrieves all certificates", function()
+      it("retrieves all certificates#t", function()
         local res = assert(client:send {
           method = "GET",
           path = "/certificates",
         })
-
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.equal(1, json.total)
         assert.equal(1, #json.data)
         assert.is_string(json.data[1].cert)
         assert.is_string(json.data[1].key)
-        assert.same({ "foo.com", "bar.com" }, json.data[1].snis)
+        assert.contains("foo.com", json.data[1].snis)
+        assert.contains("bar.com", json.data[1].snis)
       end)
     end)
 
     describe("POST", function()
-      it("returns a conflict when duplicates snis are present in the request", function()
+      it("returns a conflict when duplicates snis are present in the request#t", function()
         local res = assert(client:send {
           method  = "POST",
           path    = "/certificates",
@@ -141,8 +141,11 @@ describe("Admin API: #" .. kong_config.database, function()
         json = cjson.decode(body)
         assert.equal(2, #json.data)
         assert.equal(2, json.total)
-        assert.equal("foo.com", json.data[1].name)
-        assert.equal("bar.com", json.data[2].name)
+        local sni_names = {}
+        table.insert(sni_names, json.data[1].name)
+        table.insert(sni_names, json.data[2].name)
+        assert.contains("foo.com", sni_names)
+        assert.contains("bar.com", sni_names)
 
         -- make sure we only have one certificate
         res = assert(client:send {
@@ -156,7 +159,8 @@ describe("Admin API: #" .. kong_config.database, function()
         assert.equal(1, #json.data)
         assert.is_string(json.data[1].cert)
         assert.is_string(json.data[1].key)
-        assert.same({ "foo.com", "bar.com" }, json.data[1].snis)
+        assert.contains("bar.com", json.data[1].snis)
+        assert.contains("foo.com", json.data[1].snis)
       end)
 
       it_content_types("creates a certificate", function(content_type)
@@ -654,7 +658,8 @@ describe("Admin API: #" .. kong_config.database, function()
 
         assert.is_string(json1.cert)
         assert.is_string(json1.key)
-        assert.same({ "foo.com", "bar.com" }, json1.snis)
+        assert.contains("foo.com", json1.snis)
+        assert.contains("bar.com", json1.snis)
         assert.same(json1, json2)
       end)
     end)
@@ -852,7 +857,8 @@ describe("Admin API: #" .. kong_config.database, function()
         local sni_names = {}
         table.insert(sni_names, json.data[1].name)
         table.insert(sni_names, json.data[2].name)
-        assert.are.same( { "baz.com", "bar.com" } , sni_names)
+        assert.contains("baz.com", sni_names)
+        assert.contains("bar.com", sni_names)
 
         -- make sure we did not add any certificate
         res = assert(client:send {

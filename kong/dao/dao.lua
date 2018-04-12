@@ -71,37 +71,44 @@ local function ret_error(db_name, res, err, ...)
   return res, err, ...
 end
 
+-- used only with insert, update and delete
 local function apply_unique_per_ws(table_name, params)
+  -- entity may have workspace_id, workspace_name fields, ex. in case of update
+  -- needs to be removed as entity schema doesn't support them
   if table_name ~= "workspace_entities" then
     params.workspace_id = nil
   end
   params.workspace_name = nil
 
-  local workspace = workspaces.get_workspaces()[1]
+  if table_name == "workspaces" and
+    params.name == workspaces.DEFAULT_WORKSPACE then
+    return
+  end
+
   local constraints = workspaceable[table_name]
   if not constraints then
     return
   end
 
+  local workspace = workspaces.get_workspaces()[1]
   if not workspace or table_name == "workspaces" and
-    workspace.name == workspaces.DEFAULT_WORKSPACE then
+    params.name == workspaces.DEFAULT_WORKSPACE then
     return
   end
 
   for field_name, field_schema in pairs(constraints.unique_keys) do
-    if params[field_name] and field_schema.schema.fields[field_name].type ~= "id" then
+    if params[field_name] and constraints.primary_key ~= field_name and
+      field_schema.schema.fields[field_name].type ~= "id" then
       params[field_name] = fmt("%s:%s", workspace.name, params[field_name])
     end
   end
+  return workspace
 end
 
 
+-- If entity has a unique key it will have workspace_name prefix so we
+-- have to search first in the relationship table
 local function fetch_shared_entity_id(table_name, params)
-  if table_name ~= "workspace_entities" then
-    params.workspace_id = nil
-  end
-  params.workspace_name = nil
-
   local constraints = workspaceable[table_name]
   if not constraints or not constraints.unique_keys then
     return
@@ -111,10 +118,10 @@ local function fetch_shared_entity_id(table_name, params)
   if #ws_scope == 0 then
     return
   end
-
   local workspace = ws_scope[1]
+
   if table_name == "workspaces" and
-    workspace.name == workspaces.DEFAULT_WORKSPACE then
+  params.name == workspaces.DEFAULT_WORKSPACE then
     return
   end
 
@@ -132,27 +139,39 @@ local function fetch_shared_entity_id(table_name, params)
       end
 
       if row then
-        return {
-          [constraints.primary_key] = row.entity_id
-        }
+        params[k] = nil
+        params[constraints.primary_key] = row.entity_id
+        return params
       end
     end
   end
 end
 
-local function remove_ws_prefix(table_name, row)
+local function remove_ws_prefix(table_name, row, include_ws)
+  if not row then
+    return
+  end
+
   local constraints = workspaceable[table_name]
   if not constraints or not constraints.unique_keys then
     return
   end
 
   for field_name, field_schema in pairs(constraints.unique_keys) do
-    if row[field_name] and field_schema.schema.fields[field_name].type ~= "id" then
+    if row[field_name] and constraints.primary_key ~= field_name and
+      field_schema.schema.fields[field_name].type ~= "id" then
       local names = utils.split(row[field_name], ":")
       if #names > 1 then
         row[field_name] = names[2]
       end
     end
+  end
+
+  if not include_ws then
+    if table_name ~= "workspace_entities" then
+      row.workspace_id = nil
+    end
+    row.workspace_name = nil
   end
 end
 
@@ -221,8 +240,10 @@ function DAO:insert(tbl, options)
     return ret_error(self.db.name, nil, err)
   end
 
-  local ws = workspaces.get_workspaces()[1]
-  apply_unique_per_ws(self.schema.table, model)
+  local workspace, err = apply_unique_per_ws(self.schema.table, model)
+  if err then
+    return ret_error(self.db.name, nil, err)
+  end
 
   for col, field in pairs(model.__schema.fields) do
     if field.dao_insert_value and model[col] == nil then
@@ -234,10 +255,19 @@ function DAO:insert(tbl, options)
   end
 
   local res, err = self.db:insert(self.table, self.schema, model, self.constraints, options)
-  if not err and not options.quiet then
-    if ws then
-      remove_ws_prefix(self.schema.table, res)
+  remove_ws_prefix(self.schema.table, res)
+  if not err and workspace then
+    local err_rel = workspaces.add_entity_relation(self.table, res, workspace)
+    if err_rel then
+      local data, err = self:delete(res)
+      if err then
+        return ret_error(self.db.name, nil, err)
+      end
+      return ret_error("workspace_entity", nil, err_rel)
     end
+  end
+
+  if not err and not options.quiet then
     if self.events then
       local _, err = self.events.post_local("dao:crud", "create", {
         schema    = self.schema,
@@ -260,7 +290,7 @@ end
 function DAO:find(tbl)
   check_arg(tbl, 1, "table")
   check_utf8(tbl, 1)
-  apply_unique_per_ws(self.schema.table, tbl)
+  fetch_shared_entity_id(self.schema.table, tbl)
 
   local model = self.model_mt(tbl)
   if not model:has_primary_keys() then
@@ -274,6 +304,9 @@ function DAO:find(tbl)
 
   do
     local row, err = self.db:find(self.table, self.schema, primary_keys)
+    if err then
+      ret_error(self.db.name, row, err)
+    end
     remove_ws_prefix(self.schema.table, row)
     return ret_error(self.db.name, row, err)
   end
@@ -286,7 +319,7 @@ end
 -- @param[type=table] tbl (optional) A table containing the fields and values to search for.
 -- @treturn rows An array of rows.
 -- @treturn table err If an error occured, a table describing the issue.
-function DAO:find_all(tbl)
+function DAO:find_all(tbl, include_ws)
   local new_params
   if tbl ~= nil then
     check_arg(tbl, 1, "table")
@@ -303,8 +336,12 @@ function DAO:find_all(tbl)
 
   do
     local rows, err = self.db:find_all(self.table, new_params or tbl, self.schema)
+    if err then
+      return ret_error(self.db.name, nil, Errors.schema(err))
+    end
+
     for _, row in ipairs(rows) do
-      remove_ws_prefix(self.schema.table, row)
+      remove_ws_prefix(self.schema.table, row, include_ws)
     end
     return ret_error(self.db.name, rows, err)
   end

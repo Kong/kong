@@ -14,18 +14,64 @@ describe("workspaces", function()
       assert.matches("immutable table", err)
     end)
     it("can be added", function()
+      local unique_keys = {
+        field1 = {
+          schema = {
+            fields = {
+              id = {
+                dao_insert_value = true,
+                required = true,
+                type = "id"
+              },
+              field1 = {
+                required = true,
+                type = "string",
+                unique = true
+              },
+            },
+          },
+          table = "rel3"
+        }
+      }
       assert.is_true(workspaces.register_workspaceable_relation("rel1", {"id1"}))
       assert.is_true(workspaces.register_workspaceable_relation("rel2", {"id2"}))
-      assert.equal(workspaceable_relations.rel1, "id1")
-      assert.equal(workspaceable_relations.rel2, "id2")
+      assert.is_true(workspaces.register_workspaceable_relation("rel3", {"id3"}, unique_keys))
+      assert.equal(workspaceable_relations.rel1.primary_key, "id1")
+      assert.equal(workspaceable_relations.rel2.primary_key, "id2")
+      assert.equal(workspaceable_relations.rel3.primary_key, "id3")
+      assert.is_same(workspaceable_relations.rel3.unique_keys, unique_keys)
     end)
     it("iterates", function()
-      local items = {rel1 = "id1", rel2 = "id2"}
+      local items = {
+        rel1 = { primary_key = "id1" },
+        rel2 = { primary_key = "id2" },
+        rel3 = {
+          primary_key = "id3",
+          unique_keys = {
+            field1 = {
+              schema = {
+                fields = {
+                  id = {
+                    dao_insert_value = true,
+                    required = true,
+                    type = "id"
+                  },
+                  field1 = {
+                    required = true,
+                    type = "string",
+                    unique = true
+                  },
+                },
+              },
+              table = "rel3"
+            }
+          }
+        },
+      }
       for k, v in pairs(workspaceable_relations) do
         if items[k] then
-          assert.equals(v, items[k])
+          assert.is_same(v, items[k])
         end
-
       end
     end)
     it("has a protected metatable", function()
@@ -305,6 +351,4 @@ describe("workspaces", function()
       end)
 
   end)
-
-
 end)
