@@ -133,7 +133,7 @@ return {
       return helpers.responses.send_HTTP_OK(requested_node_stats)
     end
   },
-  ["/vitals/services/:service_id/status_codes"] = {
+  ["/vitals/status_codes/by_service"] = {
     GET = function(self, dao, helpers)
       local service, service_err = singletons.db.services:select({ id = self.params.service_id })
 

@@ -470,7 +470,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         end)
       end)
 
-      describe("/vitals/services/{service_id}/status_codes", function()
+      describe("/vitals/status_codes/by_service", function()
         local service, service_id
 
         before_each(function()
@@ -495,9 +495,10 @@ dao_helpers.for_each_dao(function(kong_conf)
 
             local res = assert(client:send {
               methd = "GET",
-              path = "/vitals/services/" .. service_id .. "/status_codes",
+              path = "/vitals/status_codes/by_service",
               query = {
-                interval = "seconds",
+                interval   = "seconds",
+                service_id = service_id,
               }
             })
 
@@ -542,9 +543,10 @@ dao_helpers.for_each_dao(function(kong_conf)
 
             local res = assert(client:send {
               methd = "GET",
-              path = "/vitals/services/" .. service_id .. "/status_codes",
+              path = "/vitals/status_codes/by_service",
               query = {
-                interval = "minutes",
+                interval   = "minutes",
+                service_id = service_id,
               }
             })
             res = assert.res_status(200, res)
@@ -578,9 +580,10 @@ dao_helpers.for_each_dao(function(kong_conf)
           it("returns a 400 if called with invalid query param", function()
             local res = assert(client:send {
               methd = "GET",
-              path = "/vitals/services/" .. service_id .. "/status_codes",
+              path = "/vitals/status_codes/by_service",
               query = {
-                interval = "so-wrong",
+                interval   = "so-wrong",
+                service_id = service_id,
               }
             })
             res = assert.res_status(400, res)
@@ -593,9 +596,10 @@ dao_helpers.for_each_dao(function(kong_conf)
             local service_id = "shh.. I'm not a real service id"
             local res = assert(client:send {
               methd = "GET",
-              path = "/vitals/services/" .. service_id .. "/status_codes",
+              path = "/vitals/status_codes/by_service",
               query = {
-                interval = "minutes",
+                interval   = "minutes",
+                service_id = service_id,
               }
             })
             res = assert.res_status(400, res)
@@ -608,9 +612,10 @@ dao_helpers.for_each_dao(function(kong_conf)
             local service_id = "20426633-55dc-4050-89ef-2382c95a611e"
             local res = assert(client:send {
               methd = "GET",
-              path = "/vitals/services/" .. service_id .. "/status_codes",
+              path = "/vitals/status_codes/by_service",
               query = {
-                interval = "minutes",
+                interval   = "minutes",
+                service_id = service_id,
               }
             })
             res = assert.res_status(404, res)
