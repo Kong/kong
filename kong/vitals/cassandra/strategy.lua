@@ -726,14 +726,20 @@ function _M:insert_status_code_classes(data)
     res, err = self.cluster:execute(INSERT_CODE_CLASSES_CLUSTER, {
       count_converted,
       at_converted,
-      duration,
-      code_class,
+      tonumber(duration),
+      tonumber(code_class),
     }, COUNTER_QUERY_OPTIONS)
 
 
     if not res then
       return nil, "could not insert status code counters. error: " .. err
     end
+  end
+
+  -- non-optional cleanup.
+  local _, err = self:delete_status_code_classes()
+  if err then
+    log(WARN, _log_prefix, "failed to delete status code classes: ", err)
   end
 
   return true
@@ -788,17 +794,22 @@ function _M:delete_status_code_classes(cutoff_times)
     return 1
   end
 
-  local count = 0
+  -- if nothing passed in, use defaults
+  if not cutoff_times then
+    local now = time()
+    cutoff_times = {
+      seconds = now - self.ttl_seconds,
+      minutes = now - self.ttl_minutes,
+    }
+  end
+
   local _, err = self.cluster:execute(DELETE_CODE_CLASSES_CLUSTER, {
     1,
     cassandra.timestamp(cutoff_times.seconds * 1000),
   })
 
   if err then
-    log(WARN, _log_prefix, "failed to delete status_code_classes (secs). err: ", err)
-    count = count+1
-  else
-    count = count + 1
+    return nil, err
   end
 
   _, err = self.cluster:execute(DELETE_CODE_CLASSES_CLUSTER, {
@@ -807,15 +818,12 @@ function _M:delete_status_code_classes(cutoff_times)
   })
 
   if err then
-    log(WARN, _log_prefix, "failed to delete status_code_classes (mins). err: ", err)
-    count = count+1
-  else
-    count = count + 1
+    return nil, err
   end
 
   -- note this isn't a true count since c* won't tell us how many rows she
   -- deleted. Basically, anything non-zero means _something_ happened. <sigh/>
-  return count
+  return 1
 end
 
 

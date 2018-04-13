@@ -1109,6 +1109,12 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         assert.same(expected, results)
       end)
+
+      it("cleans up old records", function()
+        local s = spy.on(strategy, "delete_status_code_classes")
+        strategy:insert_status_code_classes({})
+        assert.spy(s).was_called()
+      end)
     end)
 
 

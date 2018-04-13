@@ -695,6 +695,12 @@ function _M:insert_status_code_classes(data)
     end
   end
 
+  -- non-optional cleanup.
+  local _, err = self:delete_status_code_classes()
+  if err then
+    log(WARN, _log_prefix, "failed to delete status code classes: ", err)
+  end
+
   return true
 end
 
@@ -725,6 +731,15 @@ end
 
 
 function _M:delete_status_code_classes(cutoff_times)
+  -- if nothing passed in, use defaults
+  if not cutoff_times then
+    local now = time()
+    cutoff_times = {
+      seconds = now - self.ttl_seconds,
+      minutes = now - self.ttl_minutes,
+    }
+  end
+
   if type(cutoff_times) ~= "table" then
     return nil, "cutoff_times must be a table"
   end

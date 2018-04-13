@@ -23,7 +23,6 @@ local handlers = {
   },
   log = {
     after = function(ctx, status)
-      singletons.vitals:log_status_code(status)
       singletons.vitals:log_phase_after_plugins(ctx, status)
     end
   }

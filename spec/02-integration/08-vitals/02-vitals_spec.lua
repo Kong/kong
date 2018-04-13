@@ -361,48 +361,6 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
     end)
 
-    describe("log_status_code()", function()
-      it("doesn't log when vitals is off", function()
-        local vitals = kong_vitals.new { dao = dao }
-        stub(vitals, "enabled").returns(false)
-
-        assert.same("vitals not enabled", vitals:log_status_code(nil))
-      end)
-
-      it("doesnt log when passed a non-integer status code", function()
-        local vitals = kong_vitals.new { dao = dao }
-        stub(vitals, "enabled").returns(true)
-
-        vitals:reset_counters()
-
-        assert.same("integer status code is required", vitals:log_status_code("nope"))
-        assert.same("integer status code is required", vitals:log_status_code(nil))
-      end)
-
-      it("does log when vitals is on", function()
-        local vitals = kong_vitals.new { dao = dao }
-        stub(vitals, "enabled").returns(true)
-
-        vitals:reset_counters()
-
-        local status = 200
-        local ok, _ = vitals:log_status_code(status)
-
-        assert.equal(status, ok)
-      end)
-    end)
-
-    describe("flush_status_code_counters()", function()
-      it("returns the number of counters flushed", function()
-        stub(vitals, "enabled").returns(true)
-
-        vitals:reset_counters()
-        vitals:log_status_code(200)
-
-        assert.equal(2, vitals:flush_status_code_counters())
-      end)
-    end)
-
     describe("log_phase_after_plugins()", function()
       -- our mock shm doesn't mock flush_all and flush_expired,
       -- so we have to clean it up key-by-key (?)
@@ -417,8 +375,8 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
 
       after_each(function()
-        vitals.dict:delete(seconds_key)
-        vitals.dict:delete(minutes_key)
+        vitals.counter_cache:delete(seconds_key)
+        vitals.counter_cache:delete(minutes_key)
       end)
 
       it("caches info about the request", function()
@@ -434,8 +392,8 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         vitals:log_phase_after_plugins(ctx, status)
 
-        local seconds = vitals.dict:get(seconds_key)
-        local minutes = vitals.dict:get(minutes_key)
+        local seconds = vitals.counter_cache:get(seconds_key)
+        local minutes = vitals.counter_cache:get(minutes_key)
 
         assert.same(1, seconds)
         assert.same(1, minutes)
@@ -444,13 +402,15 @@ dao_helpers.for_each_dao(function(kong_conf)
 
     describe("flush_vitals_cache()", function()
       before_each(function()
+        assert(dao.db:truncate_table("vitals_code_classes_by_cluster"))
         assert(dao.db:truncate_table("vitals_codes_by_route"))
         assert(dao.db:truncate_table("vitals_codes_by_service"))
       end)
 
       after_each(function()
-        vitals.dict:flush_all() -- mark expired
-        vitals.dict:flush_expired() -- really clean them up
+        vitals.counter_cache:flush_all() -- mark expired
+        vitals.counter_cache:flush_expired() -- really clean them up
+        assert(dao.db:truncate_table("vitals_code_classes_by_cluster"))
         assert(dao.db:truncate_table("vitals_codes_by_route"))
         assert(dao.db:truncate_table("vitals_codes_by_service"))
       end)
@@ -471,9 +431,9 @@ dao_helpers.for_each_dao(function(kong_conf)
         }
 
         for i, v in ipairs(cache_entries) do
-          assert(vitals.dict:set(v, i))
+          assert(vitals.counter_cache:set(v, i))
         end
-        assert.same(4, #vitals.dict:get_keys())
+        assert.same(4, #vitals.counter_cache:get_keys())
 
         local res, err = vitals:flush_vitals_cache()
         assert.is_nil(err)
@@ -549,6 +509,61 @@ dao_helpers.for_each_dao(function(kong_conf)
             count = 4,
             duration = 60,
             route_id = route_id,
+          }
+        }
+
+        for i = 1, 4 do
+          assert.same(expected[i], res[i])
+        end
+
+        local res, err
+        if dao.db.name == "postgres" then
+          res, err = dao.db:query([[
+              select code_class, extract('epoch' from at) as at,
+              duration, count from vitals_code_classes_by_cluster
+           ]])
+        else
+          res, err = dao.db:query("select * from vitals_code_classes_by_cluster")
+        end
+
+        assert.is_nil(err)
+        table.sort(res, function(a,b)
+          return a.count < b.count
+        end)
+
+        local ats = {
+          now - 1,
+          now,
+          minute,
+          minute,
+        }
+        if dao.db.name == "cassandra" then
+          for i, v in ipairs(ats) do
+            ats[i] = v * 1000
+          end
+        end
+
+        local expected = {
+          {
+            at = ats[1],
+            code_class = 2,
+            count = 1,
+            duration = 1,
+          }, {
+            at = ats[2],
+            code_class = 4,
+            count = 2,
+            duration = 1,
+          }, {
+            at = ats[3],
+            code_class = 2,
+            count = 3,
+            duration = 60,
+          }, {
+            at = ats[4],
+            code_class = 4,
+            count = 4,
+            duration = 60,
           }
         }
 

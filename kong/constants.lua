@@ -81,7 +81,7 @@ return {
     "kong_cache",
     "kong_process_events",
     "kong_cluster_events",
-    "kong_vitals",
+    "kong_vitals_counters",
     "kong_vitals_lists",
     "kong_vitals_requests_consumers",
     "kong_healthchecks",

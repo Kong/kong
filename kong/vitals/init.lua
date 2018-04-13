@@ -22,7 +22,6 @@ local ERR        = ngx.ERR
 local fmt        = string.format
 
 local consumers_dict = ngx.shared.kong_vitals_requests_consumers
-local status_codes_dict = ngx.shared.kong_vitals_status_codes
 
 local new_tab
 do
@@ -178,7 +177,7 @@ function _M.new(opts)
   -- initialized from configuration.
   local self = {
     list_cache     = ngx.shared.kong_vitals_lists,
-    dict           = ngx.shared.kong_vitals,
+    counter_cache  = ngx.shared.kong_vitals_counters,
     strategy       = strategy,
     counters       = {},
     flush_interval = opts.flush_interval or 90000,
@@ -293,21 +292,6 @@ local function parse_cache_key(key)
 end
 
 
-local function parse_status_code_dict_key(key)
-  -- split on |
-  local p = key:find("|", 1, true)
-  local class = tonumber(key:sub(1, p - 1))
-  p = p + 1
-
-  local p2 = key:find("|",  p, true)
-  local timestamp = tonumber(key:sub(p, p2 - 1))
-  p2 = p2 + 1
-
-  local duration = tonumber(key:sub(p2))
-
-  return class, timestamp, duration
-end
-
 local function parse_dictionary_key(key)
   -- split on |
   local p = key:find("|", 1, true)
@@ -317,6 +301,7 @@ local function parse_dictionary_key(key)
 
   return id, timestamp
 end
+
 
 local function average_value(total, count)
   if count > 0 then
@@ -612,75 +597,6 @@ function _M:merge_worker_data(flush_key)
   return flush_data
 end
 
-function _M:flush_status_code_counters(batch_size, max)
-  log(DEBUG, _log_prefix, "flushing status code counters")
-
-  if not batch_size or type(batch_size) ~= "number" then
-    batch_size = 1024
-  end
-
-  -- keys are continually added to cache, so we'll never be "done",
-  -- and we don't want to tie up this worker indefinitely. So,
-  -- process at most 10% of our cache capacity. When it's available,
-  -- we might use ngx.dict:free_space() to judge how full our cache
-  -- is and how much we should work off.
-  if not max or type(max) ~= "number" then
-    max = 4096
-  end
-
-  local keys = status_codes_dict:get_keys(batch_size)
-  local num_fetched = #keys
-  local data = new_tab(num_fetched, 0)
-
-  -- how many keys have we processed?
-  local num_processed = 0
-
-  while num_fetched > 0 and num_processed < max do
-    for i, key in ipairs(keys) do
-      local count, err = status_codes_dict:get(key)
-
-      if count then
-        status_codes_dict:delete(key) -- trust that the insert will succeed
-
-        local code_class, at, duration = parse_status_code_dict_key(key)
-        data[i] = { code_class, at, duration, count }
-
-      elseif err then
-        log(WARN, _log_prefix, "failed to fetch ", key, ". err: ", err)
-
-      else
-        log(DEBUG, _log_prefix, key, " not found")
-      end
-    end
-
-    local ok, err = self.strategy:insert_status_code_classes(data)
-    if not ok then
-      log(WARN, _log_prefix, "failed to save status code classes: ", err)
-    end
-
-    num_processed = num_processed + num_fetched
-    log(DEBUG, _log_prefix, "keys processed: ", num_processed)
-
-    keys = status_codes_dict:get_keys(batch_size)
-    num_fetched = #keys
-    data = new_tab(num_fetched, 0)
-  end
-
-  -- clean up old data
-  local now = time()
-  local cutoff_times = {
-    seconds = now - self.ttl_seconds,
-    minutes = now - self.ttl_minutes,
-  }
-
-  local ok, err = self.strategy:delete_status_code_classes(cutoff_times)
-  if not ok then
-    log(WARN, _log_prefix, "failed to delete status code classes: ", err)
-  end
-
-  return num_processed
-end
-
 
 --[[
   cache keys are of the form
@@ -701,10 +617,17 @@ local KEY_FORMATS = {
   route = {
     key_format = "%s|%s|%s|%s|%s|",
     key_values = { IDX.route, IDX.service, IDX.code, IDX.at, IDX.duration },
+    required_fields = { IDX.route, IDX.service },
   },
   service = {
     key_format = "%s|%s|%s|%s|",
     key_values = { IDX.service, IDX.code, IDX.at, IDX.duration },
+    required_fields = { IDX.service },
+  },
+  code_class = {
+    key_format = "%s|%s|%s|",
+    key_values = { IDX.code, IDX.at, IDX.duration },
+    required_fields = { IDX.code },
   },
 }
 
@@ -756,23 +679,28 @@ end
   "prep*" functions prepare the data we'll pass to the db strategy from
   the cache entry we're processing.
  ]]
-local function prep_code_counts(query_type, keys, count, data)
-  -- so far, only counting response codes for services and routes
-  if keys[IDX.service] == "" then
-    return
-  end
-
-
+local function prep_counters(query_type, keys, count, data)
   if query_type == nil then
     return nil, "query_type is required"
   end
 
-  if query_type ~= "route" and query_type ~= "service" then
+  -- are we counting by service, or route, or ... ?
+  local count_by = KEY_FORMATS[query_type]
+
+  if not count_by then
     return nil, "unknown query_type: " .. query_type
   end
 
-  -- are we counting by service, or route, or ... ?
-  local count_by = KEY_FORMATS[query_type]
+  -- do we have the keys we need for this counter?
+  for _, field in ipairs(count_by.required_fields) do
+    if keys[field] == "" then
+      return
+    end
+  end
+
+  if not count_by then
+    return nil, "unknown query_type: " .. query_type
+  end
 
   local row = fmt(count_by.key_format, unpack(extract_keys(keys, count_by.key_values)))
 
@@ -780,6 +708,21 @@ local function prep_code_counts(query_type, keys, count, data)
     data[row] = data[row] + count
   else
     data[row] = count
+  end
+end
+
+
+local function prep_code_class_counters(query_type, keys, count, data)
+  local code = keys[IDX.code]
+
+  if tonumber(code) then
+    -- this one requires a little transformation: though we logged 404, for
+    -- example, we want to store 4.
+    local new_keys = utils.shallow_copy(keys)
+
+    new_keys[IDX.code] = floor(code / 100)
+
+    prep_counters(query_type, new_keys, count, data)
   end
 end
 
@@ -800,7 +743,7 @@ function _M:flush_vitals_cache(batch_size, max)
     max = 40960  -- TODO change this once we decide size of kong_vitals dict
   end
 
-  local keys = self.dict:get_keys(batch_size)
+  local keys = self.counter_cache:get_keys(batch_size)
   local num_fetched = #keys
 
   -- how many keys have we processed?
@@ -812,17 +755,19 @@ function _M:flush_vitals_cache(batch_size, max)
     -- service, etc.
     local codes_per_service = {}
     local codes_per_route = {}
+    local code_classes = {}
 
     for i, key in ipairs(keys) do
-      local count, err = self.dict:get(key)
+      local count, err = self.counter_cache:get(key)
 
       if count then
-        self.dict:delete(key) -- trust that the inserts will succeed
+        self.counter_cache:delete(key) -- trust that the inserts will succeed
 
         local key_parts = parse_cache_key(key)
 
-        prep_code_counts("service", key_parts, count, codes_per_service)
-        prep_code_counts("route", key_parts, count, codes_per_route)
+        prep_counters("service", key_parts, count, codes_per_service)
+        prep_counters("route", key_parts, count, codes_per_route)
+        prep_code_class_counters("code_class", key_parts, count, code_classes)
 
       elseif err then
         log(WARN, _log_prefix, "failed to fetch ", key, ". err: ", err)
@@ -832,12 +777,13 @@ function _M:flush_vitals_cache(batch_size, max)
       end
     end
 
+    -- call the appropriate strategy function for each dataset
     local datasets = {
       insert_status_codes_by_service = flatten_counters(codes_per_service),
       insert_status_codes_by_route = flatten_counters(codes_per_route),
+      insert_status_code_classes = flatten_counters(code_classes),
     }
 
-    -- call the appropriate strategy function for each dataset
     for fn, data in pairs(datasets) do
       local ok, err = self.strategy[fn](self.strategy, data)
       if not ok then
@@ -848,7 +794,7 @@ function _M:flush_vitals_cache(batch_size, max)
     num_processed = num_processed + num_fetched
     log(DEBUG, _log_prefix, "keys processed: ", num_processed)
 
-    keys = self.dict:get_keys(batch_size)
+    keys = self.counter_cache:get_keys(batch_size)
     num_fetched = #keys
   end
 
@@ -997,7 +943,6 @@ function _M:flush_counters()
 
     -- now flush additional entity counters
     self:flush_consumer_counters()
-    self:flush_status_code_counters()
 
     self:flush_vitals_cache()
   end
@@ -1409,53 +1354,6 @@ function _M:log_upstream_latency(latency)
 end
 
 
-function _M:log_status_code(status_code)
-  if not self:enabled() then
-    return "vitals not enabled"
-  end
-
-  -- input validation
-  local not_int = type(status_code) ~= "number" or status_code ~= floor(status_code)
-
-  if not_int then
-    log(WARN, _log_prefix, "log_status_code(): integer status code is required")
-    return "integer status code is required"
-  end
-
-  local non_standard_range = status_code < 100 or status_code > 599
-
-  if non_standard_range then
-    log(DEBUG, _log_prefix, "log_status_code(): non-standard status_code: " .. status_code)
-  end
-
-  local status_code_class = floor(status_code / 100) .. "|"
-
-   -- increment seconds
-  local seconds = time()
-  local status_code_class_seconds = status_code_class .. seconds .. "|1"
-  local _, err, forced_eviction  = status_codes_dict:incr(status_code_class_seconds, 1, 0)
-
-  if forced_eviction then
-    log(WARN, _log_prefix, "kong_vitals_status_codes cache is full")
-  elseif err then
-    log(WARN, _log_prefix, "log_status_code() seconds increment failed: ", err)
-  end
-
-  -- increment minute
-  local minute = seconds - (seconds % 60)
-  local status_code_class_minute = status_code_class .. minute .. "|60"
-  local _, err, forced_eviction = status_codes_dict:incr(status_code_class_minute, 1, 0)
-
-  if forced_eviction then
-    log(WARN, _log_prefix, "kong_vitals_status_codes cache is full")
-  elseif err then
-    log(WARN, _log_prefix, "log_status_code() minute increment failed: ", err)
-  end
-
-  return status_code
-end
-
-
 function _M:log_request(ctx)
   if not self:enabled() then
     return "vitals not enabled"
@@ -1517,7 +1415,7 @@ function _M:log_phase_after_plugins(ctx, status)
   }
 
   for _, kp in ipairs(key_prefixes) do
-    local _, err, forced = self.dict:incr(kp .. key, 1, 0)
+    local _, err, forced = self.counter_cache:incr(kp .. key, 1, 0)
 
     if forced then
       log(INFO, _log_prefix, "kong_vitals cache is full")
