@@ -302,6 +302,8 @@ local function build_permissions_map(user, dao_factory)
     return nil, err
   end
 
+  ngx.ctx.current_user = { user = user, roles = roles }
+
   local permissions, neg_permissions = {}, {}
 
   for i = 1, #roles do
