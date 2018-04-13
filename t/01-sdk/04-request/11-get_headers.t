@@ -37,6 +37,7 @@ type: table
             local headers = sdk.request.get_headers()
             ngx.say("Foo: ", headers.foo)
             ngx.say("Bar: ", headers.bar)
+            ngx.say("Accept: ", table.concat(headers.accept, ", "))
         }
     }
 --- request
@@ -44,9 +45,12 @@ GET /t
 --- more_headers
 Foo: Hello
 Bar: World
+Accept: application/json
+Accept: text/html
 --- response_body
 Foo: Hello
 Bar: World
+Accept: application/json, text/html
 --- no_error_log
 [error]
 
@@ -63,6 +67,7 @@ Bar: World
             ngx.say("X-Foo-Header: ", headers["X-Foo-Header"])
             ngx.say("x-Foo-header: ", headers["x-Foo-header"])
             ngx.say("x_foo_header: ", headers.x_foo_header)
+            ngx.say("x_Foo_header: ", headers.x_Foo_header)
         }
     }
 --- request
@@ -73,6 +78,7 @@ X-Foo-Header: Hello
 X-Foo-Header: Hello
 x-Foo-header: Hello
 x_foo_header: Hello
+x_Foo_header: Hello
 --- no_error_log
 [error]
 
@@ -144,33 +150,63 @@ number of headers fetched: 60
 
 
 
-=== TEST 6: request.get_headers() fetches all headers when max_headers = 0
+=== TEST 6: request.get_headers() raises error when trying to fetch with max_headers invalid value
 --- config
     location = /t {
-        access_by_lua_block {
-            for i = 1, 200 do
-                ngx.req.set_header("X-Header-" .. i, "test")
-            end
-        }
-
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local headers = sdk.request.get_headers(0)
+            local _, err = pcall(sdk.request.get_headers, "invalid")
 
-            local n = 0
-
-            for _ in pairs(headers) do
-                n = n + 1
-            end
-
-            ngx.say("number of headers fetched: ", n)
+            ngx.say("error: ", err)
         }
     }
 --- request
 GET /t
 --- response_body
-number of headers fetched: 202
+error: max_headers must be a number
+--- no_error_log
+[error]
+
+
+
+=== TEST 7: request.get_headers() raises error when trying to fetch with max_headers < 1
+--- config
+    location = /t {
+        content_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            local _, err = pcall(sdk.request.get_headers, 0)
+
+            ngx.say("error: ", err)
+        }
+    }
+--- request
+GET /t
+--- response_body
+error: max_headers must be >= 1
+--- no_error_log
+[error]
+
+
+
+=== TEST 8: request.get_headers() raises error when trying to fetch with max_headers > 1000
+--- config
+    location = /t {
+        content_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            local _, err = pcall(sdk.request.get_headers, 1001)
+
+            ngx.say("error: ", err)
+        }
+    }
+--- request
+GET /t
+--- response_body
+error: max_headers must be <= 1000
 --- no_error_log
 [error]
