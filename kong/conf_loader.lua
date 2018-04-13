@@ -68,6 +68,7 @@ local CONF_INFERENCES = {
   -- forced string inferences (or else are retrieved as numbers)
   proxy_listen = {typ = "array"},
   admin_listen = {typ = "array"},
+  admin_api_uri = {typ = "string"},
   admin_gui_listen = {typ = "array"},
   admin_gui_error_log = {typ = "string"},
   admin_gui_access_log = {typ = "string"},
@@ -146,11 +147,9 @@ local CONF_INFERENCES = {
   portal = {typ = "boolean"},
   portal_gui_listen = {typ = "array"},
   portal_gui_uri = {typ = "string"},
-  portal_gui_uri_ssl = {typ = "string"},
 
   portal_api_listen = {typ = "array"},
   portal_api_uri = {typ = "string"},
-  portal_api_uri_ssl = {typ = "string"},
 }
 
 -- List of settings whose values must not be printed when

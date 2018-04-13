@@ -40,6 +40,7 @@ end)
 
 describe("prepare_prefix", function()
   local mock_idx = [[
+    'ADMIN_API_URI': '{{ADMIN_API_URI}}',
     'ADMIN_API_PORT': '{{ADMIN_API_PORT}}',
     'ADMIN_API_SSL_PORT': '{{ADMIN_API_SSL_PORT}}',
     'RBAC_ENFORCED': '{{RBAC_ENFORCED}}',
@@ -93,11 +94,13 @@ describe("prepare_prefix", function()
       },
       enforce_rbac = false,
       rbac_auth_header = "Kong-Admin-Token",
-      admin_gui_flags = "{}"
+      admin_gui_flags = "{}",
+      admin_api_uri = "admin.evilcorp.com"
     })
 
     local gui_idx = pl_file.read(idx_filename)
 
+    assert.matches("'ADMIN_API_URI': 'admin.evilcorp.com'", gui_idx, nil, true)
     assert.matches("'ADMIN_API_PORT': '9001'", gui_idx, nil, true)
     assert.matches("'ADMIN_API_SSL_PORT': '9444'", gui_idx, nil, true)
     assert.matches("'RBAC_ENFORCED': 'false'", gui_idx, nil, true)
@@ -111,6 +114,8 @@ describe("prepare_prefix", function()
   it("retains a template with the template placeholders", function()
     local gui_idx_tpl = pl_file.read(tp_filename)
 
+    assert.matches("'ADMIN_API_URI': '{{ADMIN_API_URI}}'",
+                   gui_idx_tpl, nil, true)
     assert.matches("'ADMIN_API_PORT': '{{ADMIN_API_PORT}}'",
                    gui_idx_tpl, nil, true)
     assert.matches("'ADMIN_API_SSL_PORT': '{{ADMIN_API_SSL_PORT}}'",
@@ -142,11 +147,13 @@ describe("prepare_prefix", function()
       },
       enforce_rbac = true,
       rbac_auth_header = "Kong-Other-Token",
-      admin_gui_flags = "{ HIDE_VITALS: true }"
+      admin_gui_flags = "{ HIDE_VITALS: true }",
+      admin_api_uri = "another-one.com"
     })
 
     local gui_idx = pl_file.read(idx_filename)
 
+    assert.matches("'ADMIN_API_URI': 'another-one.com'", gui_idx, nil, true)
     assert.matches("'ADMIN_API_PORT': '9002'", gui_idx, nil, true)
     assert.matches("'ADMIN_API_SSL_PORT': '9445'", gui_idx, nil, true)
     assert.matches("'RBAC_ENFORCED': 'true'", gui_idx, nil, true)

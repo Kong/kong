@@ -101,6 +101,13 @@
 # Note bis: see https://www.nginx.com/resources/admin-guide/proxy-protocol/
 # for more details about the `proxy_protocol` parameter.
 
+#admin_api_uri =         # Hierarchical part of a URI which is composed
+                         # optionally of a host, port, and path at which your
+                         # Admin interface API accepts HTTP or HTTPS traffic.
+                         # When this config is disabled, the gui will use the
+                         # window protocol + host and append the resolved
+                         # admin_gui_listen HTTP/HTTPS port.
+
 #admin_listen = 127.0.0.1:8001, 127.0.0.1:8444 ssl
                          # Comma-separated list of addresses and ports on
                          # which the Admin interface should listen.
@@ -553,17 +560,12 @@
                                         # administration of Developer Portal
                                         # template files.
 
-#portal_gui_uri = 127.0.0.1:8003        # Hierarchical part of a URI which is
-                                        # composed optionally of a host,
-                                        # port, and path at which your
-                                        # Developer Portal accepts HTTP
-                                        # traffic if ssl is disabled.
-
-#portal_gui_uri_ssl = 0.0.0.0:8446      # Hierarchical part of a URI which is
-                                        # composed optionally of a host,
-                                        # port, and path at which your
-                                        # Developer Portal accepts HTTPS
-                                        # traffic if ssl is enabled.
+#portal_gui_uri =         # Hierarchical part of a URI which is composed
+                          # optionally of a host, port, and path at which your
+                          # Developer Portal interface accepts HTTP or HTTPS
+                          # traffic. When this config is disabled, the gui will
+                          # use the window request protocol + host and append
+                          # the resolved portal_gui_listen HTTP/HTTPS port.
 
 #portal_gui_listen = 0.0.0.0:8003, 0.0.0.0:8446 ssl
                                         # Comma-separated list of addresses and
@@ -587,25 +589,12 @@
                                         # specified for each pair, similarly to
                                         # the `admin_listen` directive.
 
-#portal_api_uri = 127.0.0.1:8004        # Hierarchical part of a URI which is
-                                        # composed optionally of a host,
-                                        # port, and path at which your
-                                        # Developer Portal accepts HTTP
-                                        # traffic.
-                                        # If ssl is not enabled, the
-                                        # Developer Portal Loader uses this
-                                        # value to make API requests to the
-                                        # Developer Portal API.
-
-#portal_api_uri_ssl = 127.0.0.1:8447    # Hierarchical part of a URI which is
-                                        # composed optionally of a host,
-                                        # port, and path at which your
-                                        # Developer Portal accepts HTTPS
-                                        # traffic.
-                                        # If ssl is enabled, the Developer
-                                        # Portal Loader uses this value to make
-                                        # API requests to the Developer Portal
-                                        # API.
+#portal_api_uri =         # Hierarchical part of a URI which is composed
+                          # optionally of a host, port, and path at which your
+                          # Developer Portal API accepts HTTP or HTTPS traffic.
+                          # When this config is disabled, the gui will
+                          # use the window request protocol + host and append
+                          # the resolved portal_api_listen HTTP/HTTPS port.
 
 #portal_api_ssl_cert =                  # The absolute path to the SSL
                                         # certificate for `portal_api_listen`

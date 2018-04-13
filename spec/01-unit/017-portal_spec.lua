@@ -73,10 +73,7 @@ describe("portal_gui", function()
   describe("prepare_prefix", function()
     local mock_idx = [[
       <meta name="KONG:PORTAL_GUI_URI" content="{{PORTAL_GUI_URI}}" />
-      <meta name="KONG:PORTAL_GUI_SSL_URI" content="{{PORTAL_GUI_SSL_URI}}" />
       <meta name="KONG:PORTAL_API_URI" content="{{PORTAL_API_URI}}" />
-      <meta name="KONG:PORTAL_API_SSL_URI" content="{{PORTAL_API_SSL_URI}}" />
-      <meta name="KONG:PORTAL_API_URI_ENDPOINT" content="{{PORTAL_API_URI_ENDPOINT}}" />
       <meta name="KONG:PORTAL_GUI_PORT" content="{{PORTAL_GUI_PORT}}" />
       <meta name="KONG:PORTAL_GUI_SSL_PORT" content="{{PORTAL_GUI_SSL_PORT}}" />
       <meta name="KONG:PORTAL_API_PORT" content="{{PORTAL_API_PORT}}" />
@@ -94,10 +91,7 @@ describe("portal_gui", function()
     local conf = {
       prefix = mock_prefix,
       portal_gui_uri = '127.0.0.1:8003',
-      portal_gui_uri_ssl = '127.0.0.1:8446',
       portal_api_uri = '127.0.0.1:8004',
-      portal_api_uri_ssl = '127.0.0.1:8447',
-      portal_api_uri_endpoint = '/portal',
       portal_gui_listeners = {
         {
           ip = "0.0.0.0",
@@ -150,10 +144,7 @@ describe("portal_gui", function()
       local portal_idx = pl_file.read(idx_filename)
 
       assert.matches('<meta name="KONG:PORTAL_GUI_URI" content="127.0.0.1:8003" />', portal_idx, nil, true)
-      assert.matches('<meta name="KONG:PORTAL_GUI_SSL_URI" content="127.0.0.1:8446" />', portal_idx, nil, true)
       assert.matches('<meta name="KONG:PORTAL_API_URI" content="127.0.0.1:8004" />', portal_idx, nil, true)
-      assert.matches('<meta name="KONG:PORTAL_API_SSL_URI" content="127.0.0.1:8447" />', portal_idx, nil, true)
-      assert.matches('<meta name="KONG:PORTAL_API_URI_ENDPOINT" content="/portal" />', portal_idx, nil, true)
       assert.matches('<meta name="KONG:PORTAL_GUI_PORT" content="8003" />', portal_idx, nil, true)
       assert.matches('<meta name="KONG:PORTAL_GUI_SSL_PORT" content="8446" />', portal_idx, nil, true)
       assert.matches('<meta name="KONG:PORTAL_API_PORT" content="8004" />', portal_idx, nil, true)
@@ -166,10 +157,7 @@ describe("portal_gui", function()
       local gui_idx_tpl = pl_file.read(tp_filename)
 
       assert.matches('<meta name="KONG:PORTAL_GUI_URI" content="{{PORTAL_GUI_URI}}" />', gui_idx_tpl, nil, true)
-      assert.matches('<meta name="KONG:PORTAL_GUI_SSL_URI" content="{{PORTAL_GUI_SSL_URI}}" />', gui_idx_tpl, nil, true)
       assert.matches('<meta name="KONG:PORTAL_API_URI" content="{{PORTAL_API_URI}}" />', gui_idx_tpl, nil, true)
-      assert.matches('<meta name="KONG:PORTAL_API_SSL_URI" content="{{PORTAL_API_SSL_URI}}" />', gui_idx_tpl, nil, true)
-      assert.matches('<meta name="KONG:PORTAL_API_URI_ENDPOINT" content="{{PORTAL_API_URI_ENDPOINT}}" />', gui_idx_tpl, nil, true)
       assert.matches('<meta name="KONG:PORTAL_GUI_PORT" content="{{PORTAL_GUI_PORT}}" />', gui_idx_tpl, nil, true)
       assert.matches('<meta name="KONG:PORTAL_GUI_SSL_PORT" content="{{PORTAL_GUI_SSL_PORT}}" />', gui_idx_tpl, nil, true)
       assert.matches('<meta name="KONG:PORTAL_API_PORT" content="{{PORTAL_API_PORT}}" />', gui_idx_tpl, nil, true)
@@ -183,9 +171,7 @@ describe("portal_gui", function()
 
       -- change configuration values
       new_conf.portal_gui_uri = 'insecure.domain.com'
-      new_conf.portal_gui_uri_ssl = 'domain.com'
       new_conf.portal_api_uri = '127.0.0.1:8000'
-      new_conf.portal_api_uri_ssl = '127.0.0.1:8443'
 
       -- update template
       ee.prepare_portal(new_conf)
@@ -193,10 +179,7 @@ describe("portal_gui", function()
 
       -- test configuration values against template
       assert.matches('<meta name="KONG:PORTAL_GUI_URI" content="insecure.domain.com" />', portal_idx, nil, true)
-      assert.matches('<meta name="KONG:PORTAL_GUI_SSL_URI" content="domain.com" />', portal_idx, nil, true)
       assert.matches('<meta name="KONG:PORTAL_API_URI" content="127.0.0.1:8000" />', portal_idx, nil, true)
-      assert.matches('<meta name="KONG:PORTAL_API_SSL_URI" content="127.0.0.1:8443" />', portal_idx, nil, true)
-      assert.matches('<meta name="KONG:PORTAL_API_URI_ENDPOINT" content="/portal" />', portal_idx, nil, true)
       assert.matches('<meta name="KONG:PORTAL_GUI_PORT" content="8003" />', portal_idx, nil, true)
       assert.matches('<meta name="KONG:PORTAL_GUI_SSL_PORT" content="8446" />', portal_idx, nil, true)
       assert.matches('<meta name="KONG:PORTAL_API_PORT" content="8004" />', portal_idx, nil, true)
