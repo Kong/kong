@@ -485,4 +485,22 @@ function _M.add_ws_to_ctx(api)
 end
 
 
+-- given an entity ID, look up its entity collection name;
+-- it is only called if the user does not pass in an entity_type
+function _M.resolve_entity_type(entity_id)
+  for relation, constraints in pairs(workspaceable_relations) do
+    local rows, err = singletons.dao[relation]:find_all{
+      [constraints.primary_key] = entity_id
+    }
+    if err then
+      return nil, nil, err
+    end
+    if rows[1] then
+      return relation, rows[1]
+    end
+  end
+  return false, nil, "entity does not belong to any relation"
+end
+
+
 return _M

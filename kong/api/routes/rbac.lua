@@ -5,6 +5,7 @@ local bit       = require "bit"
 local cjson     = require "cjson"
 local responses = require "kong.tools.responses"
 local new_tab   = require "table.new"
+local workspaces = require "kong.workspaces"
 
 
 local band  = bit.band
@@ -648,20 +649,17 @@ return {
     POST = function(self, dao_factory, helpers)
       action_bitfield(self)
 
-      local is_workspace, err = dao_factory.workspaces:find_all({
-        id = self.params.entity_id,
-      })
-      if err then
-        helpers.yield_error(err)
+      local entity_type, row, err = workspaces.resolve_entity_type(self.params.entity_id)
+      -- database error
+      if entity_type == nil then
+        return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end
-      is_workspace = is_workspace[1] and true or false
-
-      if is_workspace then
-        self.params.entity_type = "workspace"
-      else
-        self.params.entity_type = "entity"
+      -- entity doesn't exist
+      if entity_type == false then
+        return helpers.responses.send_HTTP_BAD_REQUEST(err)
       end
 
+      self.params.entity_type = entity_type
       crud.post(self.params, dao_factory.role_entities,
                 post_process_actions)
     end,

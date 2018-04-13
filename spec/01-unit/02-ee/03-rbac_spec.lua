@@ -111,7 +111,7 @@ describe("(#" .. kong_conf.database .. ")", function()
           assert(dao.workspace_entities:insert({
             workspace_id = workspaces[#workspaces],
             entity_id = workspaces[x],
-            entity_type = "workspace",
+            entity_type = "workspaces",
           }))
 
           -- add another workspace, associated with an existing workspace,
@@ -120,7 +120,7 @@ describe("(#" .. kong_conf.database .. ")", function()
           assert(dao.workspace_entities:insert({
             workspace_id = workspaces[#workspaces],
             entity_id = workspaces[x],
-            entity_type = "workspace",
+            entity_type = "workspaces",
           }))
 
           entities[#workspaces] = {}

@@ -4,6 +4,12 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
 
+local function run_with_ws(ws, cb)
+  local old_ws = ngx.ctx.workspaces
+  ngx.ctx.workspaces = ws
+  cb()
+  ngx.ctx.workspaces = old_ws
+end
 
 dao_helpers.for_each_dao(function(kong_config)
 
@@ -553,9 +559,11 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         assert.equals(0, #json.actions)
 
         -- 'nil' is presented to the user; we are represented as 0 here
-        local row = dao.rbac_perms:find({ id = json.id })
-        assert(0, row.resources)
-        assert(0, row.actions)
+        run_with_ws(dao.workspaces:find_all(), function ()
+          local row = dao.rbac_perms:find({ id = json.id })
+          assert(0, row.resources)
+          assert(0, row.actions)
+        end)
       end)
 
       describe("errors", function()
@@ -1252,7 +1260,11 @@ describe("Admin API RBAC with " .. kong_config.database, function()
     end)
 
     it("defines the default roles", function()
-      local rows = dao.rbac_roles:find_all()
+      local rows
+      run_with_ws(dao.workspaces:find_all(), function ()
+        rows = dao.rbac_roles:find_all()
+      end)
+
 
       assert.equals(3, #rows)
 
@@ -1482,18 +1494,25 @@ describe("Admin API RBAC with " .. kong_config.database, function()
 
       setup(function()
         dao:truncate_tables()
+        run_with_ws(dao.workspaces:find_all(), function ()
+          assert(dao.rbac_roles:insert({
+            name = "mock-role",
+          }))
 
-        assert(dao.rbac_roles:insert({
-          name = "mock-role",
-        }))
+          -- workspace to test auto entity_type detection
+          local w = assert(dao.workspaces:insert({
+            name = "mock-workspace",
+          }))
+          w_id = w.id
 
-        -- workspace to test auto entity_type detection
-        local w = assert(dao.workspaces:insert({
-          name = "mock-workspace",
-        }))
-        w_id = w.id
-
-        e_id = utils.uuid()
+          -- workspace to test auto entity_type detection
+          local e = assert(dao.apis:insert({
+            name = "mock-api",
+            uris = "/",
+            upstream_url = "http://httpbin.org"
+          }))
+          e_id = e.id
+        end)
       end)
 
       it("associates an entity with a role", function()
@@ -1514,7 +1533,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
 
         assert.equals(json.entity_id, e_id)
         assert.is_false(json.negative)
-        assert.equals("entity", json.entity_type)
+        assert.equals("apis", json.entity_type)
       end)
 
       it("detects an entity as a workspace", function()
@@ -1533,7 +1552,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         local body = assert.res_status(201, res)
         local json = cjson.decode(body)
 
-        assert.equals("workspace", json.entity_type)
+        assert.equals("workspaces", json.entity_type)
       end)
 
       describe("errors", function()
@@ -1602,9 +1621,11 @@ describe("Admin API RBAC with " .. kong_config.database, function()
     local e_id
 
     setup(function()
-      e_id = assert(dao.role_entities:find_all({
-        entity_type = "entity",
-      }))[1].entity_id
+      run_with_ws(dao.workspaces:find_all(), function ()
+        e_id = assert(dao.apis:find_all({
+          name = "mock-api",
+        }))
+      end)
     end)
 
     describe("GET", function()
@@ -1790,11 +1811,18 @@ describe("Admin API RBAC with " .. kong_config.database, function()
     end)
   end)
 
-  describe("/rbac/roles/:name_or_id/entities/permissions with " ..
+  describe("/rbac/roles/:name_or_id/entities/permissions with" ..
     kong_config.database, function()
-    local e_id = utils.uuid()
+    local e_id
 
     setup(function()
+      -- workspace to test auto entity_type detection
+      run_with_ws(dao.workspaces:find_all(), function ()
+        e_id = assert(dao.apis:find_all({
+          name = "mock-api",
+        }))[1].id
+      end)
+
       local res = assert(client:send {
         method = "POST",
         path = "/rbac/roles/mock-role/entities",
@@ -1831,17 +1859,18 @@ describe("Admin API RBAC with " .. kong_config.database, function()
     end)
   end)
 
-  describe("/rbac/roles/:name_or_id/endpoints with ", function()
+  describe("/rbac/roles/:name_or_id/endpoints with", function()
     setup(function()
       dao:truncate_tables()
+      run_with_ws(dao.workspaces:find_all(), function ()
+        assert(dao.rbac_roles:insert({
+          name = "mock-role",
+        }))
 
-      assert(dao.rbac_roles:insert({
-        name = "mock-role",
-      }))
-
-      assert(dao.workspaces:insert({
-        name = "mock-workspace",
-      }))
+        assert(dao.workspaces:insert({
+          name = "mock-workspace",
+        }))
+      end)
     end)
 
     describe("POST", function()

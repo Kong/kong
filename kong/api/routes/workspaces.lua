@@ -5,24 +5,6 @@ local rbac  = require "kong.rbac"
 local workspaces = require "kong.workspaces"
 
 
--- given an entity ID, look up its entity collection name;
--- it is only called if the user does not pass in an entity_type
-local function resolve_entity_type(dao_factory, entity_id)
-  for relation, constraints in pairs(workspaces.get_workspaceable_relations()) do
-    local rows, err = dao_factory[relation]:find_all{
-      [constraints.primary_key] = entity_id
-    }
-    if err then
-      return nil, err
-    end
-    if rows[1] then
-      return relation, rows[1]
-    end
-  end
-  return false, "entity does not belong to any relation"
-end
-
-
 return {
   ["/workspaces/"] = {
     GET = function(self, dao_factory)
@@ -145,7 +127,7 @@ return {
       -- yayyyy, no fuckup! now do the thing
       local res = {}
       for i = 1, #entity_ids do
-        local entity_type, row, err = resolve_entity_type(dao_factory, entity_ids[i])
+        local entity_type, row, err = workspaces.resolve_entity_type(entity_ids[i])
         -- database error
         if entity_type == nil then
           return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
