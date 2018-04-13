@@ -370,8 +370,8 @@ dao_helpers.for_each_dao(function(kong_conf)
 
       before_each(function()
         now = ngx_time()
-        seconds_key = now .. "|1|myservice|myroute|200|"
-        minutes_key = (now - (now % 60)) .. "|60|myservice|myroute|200|"
+        seconds_key = now .. "|1|myservice|myroute|200||"
+        minutes_key = (now - (now % 60)) .. "|60|myservice|myroute|200||"
       end)
 
       after_each(function()
@@ -402,6 +402,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
     describe("flush_vitals_cache()", function()
       before_each(function()
+        assert(dao.db:truncate_table("vitals_consumers"))
         assert(dao.db:truncate_table("vitals_code_classes_by_cluster"))
         assert(dao.db:truncate_table("vitals_codes_by_route"))
         assert(dao.db:truncate_table("vitals_codes_by_service"))
@@ -410,6 +411,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       after_each(function()
         vitals.counter_cache:flush_all() -- mark expired
         vitals.counter_cache:flush_expired() -- really clean them up
+        assert(dao.db:truncate_table("vitals_consumers"))
         assert(dao.db:truncate_table("vitals_code_classes_by_cluster"))
         assert(dao.db:truncate_table("vitals_codes_by_route"))
         assert(dao.db:truncate_table("vitals_codes_by_service"))
@@ -420,14 +422,15 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         local service_id = utils.uuid()
         local route_id = utils.uuid()
+        local consumer_id = utils.uuid()
         local now = ngx_time()
         local minute = now - (now % 60)
 
         local cache_entries = {
-          (now - 1) .. "|1|" .. service_id .. "|" .. route_id .. "|200|",
-          now .. "|1|" .. service_id .. "|" .. route_id .. "|404|",
-          minute .. "|60|" .. service_id .. "|" .. route_id .. "|200|",
-          minute .. "|60|" .. service_id .. "|" .. route_id .. "|404|",
+          (now - 1) .. "|1|" .. service_id .. "|" .. route_id .. "|200|" .. consumer_id .. "|",
+          now .. "|1|" .. service_id .. "|" .. route_id .. "|404||",
+          minute .. "|60|" .. service_id .. "|" .. route_id .. "|200|" .. consumer_id .. "|",
+          minute .. "|60|" .. service_id .. "|" .. route_id .. "|404||",
         }
 
         for i, v in ipairs(cache_entries) do
@@ -568,6 +571,51 @@ dao_helpers.for_each_dao(function(kong_conf)
         }
 
         for i = 1, 4 do
+          assert.same(expected[i], res[i])
+        end
+
+        local res, err
+        if dao.db.name == "postgres" then
+          res, err = dao.db:query([[
+              select consumer_id, node_id, extract('epoch' from at) as at,
+              duration, count from vitals_consumers ]])
+        else
+          res, err = dao.db:query("select * from vitals_consumers")
+        end
+
+        assert.is_nil(err)
+        table.sort(res, function(a,b)
+          return a.count < b.count
+        end)
+
+        local ats = {
+          now - 1,
+          minute,
+        }
+
+        if dao.db.name == "cassandra" then
+          for i, v in ipairs(ats) do
+            ats[i] = v * 1000
+          end
+        end
+
+        local expected = {
+          {
+            at = ats[1],
+            consumer_id = consumer_id,
+            count = 1,
+            duration = 1,
+            node_id = vitals.node_id,
+          }, {
+            at = ats[2],
+            consumer_id = consumer_id,
+            count = 3,
+            duration = 60,
+            node_id = vitals.node_id,
+          },
+        }
+
+        for i = 1, 2 do
           assert.same(expected[i], res[i])
         end
       end)

@@ -593,8 +593,10 @@ function _M:insert_consumer_stats(data, node_id)
 
   node_id = node_id or self.node_id
 
+  local consumers_to_delete = {}
+
   for _, row in ipairs(data) do
-    row_count = row_count + 2 -- one for seconds, one for minutes
+    row_count = row_count + 1
 
     consumer_id, at, duration, count = unpack(row)
 
@@ -607,21 +609,18 @@ function _M:insert_consumer_stats(data, node_id)
       last_err   = tostring(err)
     end
 
-    -- naive approach - update minutes in-line
-    local mat = self:get_minute(at)
-    query = fmt(INSERT_CONSUMER_STATS, consumer_id, node_id, mat,
-                60, count)
-
-    local res, err = self.db:query(query)
-    if not res then
-      fail_count = fail_count + 1
-      last_err   = tostring(err)
-    end
+    consumers_to_delete[consumer_id] = true
   end
 
   if fail_count > 0 then
     return nil, "failed to insert " .. tostring(fail_count) .. " of " ..
         tostring(row_count) .. " consumer stats. last err: " .. last_err
+  end
+
+  -- non-optional delete
+  local _, err = self:delete_consumer_stats(consumers_to_delete)
+  if err then
+    return nil, err
   end
 
   return true
@@ -641,6 +640,14 @@ end
 function _M:delete_consumer_stats(consumers, cutoff_times)
   if not next(consumers) then
     return 0
+  end
+
+  if not cutoff_times then
+    local now = time()
+    cutoff_times = {
+      seconds = now - self.ttl_seconds,
+      minutes = now - self.ttl_minutes,
+    }
   end
 
   local query, last_err
@@ -698,7 +705,7 @@ function _M:insert_status_code_classes(data)
   -- non-optional cleanup.
   local _, err = self:delete_status_code_classes()
   if err then
-    log(WARN, _log_prefix, "failed to delete status code classes: ", err)
+    return nil, err
   end
 
   return true

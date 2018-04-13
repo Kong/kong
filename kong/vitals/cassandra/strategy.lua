@@ -1056,38 +1056,34 @@ function _M:insert_consumer_stats(data, node_id)
     node_id = self.node_id
   end
 
+  local consumers_to_delete = {}
+
   for _, row in ipairs(data) do
     consumer_id, at, duration, count = unpack(row)
 
     local count_converted = cassandra.counter(count)
     local now_converted = cassandra.timestamp(at * 1000)
-    local minute = cassandra.timestamp(self:get_bucket(at, MINUTE) * 1000)
     local consumer_id_converted = cassandra.uuid(consumer_id)
 
     res, err = self.cluster:execute(INSERT_CONSUMER_STATS, {
       count_converted,
       now_converted,
-      duration,
+      tonumber(duration),
       consumer_id_converted,
       node_id,
     }, COUNTER_QUERY_OPTIONS)
 
 
     if not res then
-      return nil, "could not insert seconds data. error: " .. err
+      return nil, "could not insert consumer stats. error: " .. err
     end
 
-    res, err = self.cluster:execute(INSERT_CONSUMER_STATS, {
-      count_converted,
-      minute,
-      60,
-      consumer_id_converted,
-      node_id,
-    }, COUNTER_QUERY_OPTIONS)
+    consumers_to_delete[consumer_id] = true
+  end
 
-    if not res then
-      return nil, "could not insert minutes data. error: " .. err
-    end
+  local _, err = self:delete_consumer_stats(consumers_to_delete)
+  if err then
+    return nil, "failed to clean up consumer stats: " .. err
   end
 
   return true
@@ -1166,7 +1162,13 @@ function _M:delete_consumer_stats(consumers, cutoff_times)
     return 1
   end
 
-  local count = 0
+  if not cutoff_times then
+    local now = time()
+    cutoff_times = {
+      seconds = now - self.ttl_seconds,
+      minutes = now - self.ttl_minutes,
+    }
+  end
 
   for k, _ in pairs(consumers) do
     local _, err = self.cluster:execute(DELETE_CONSUMER_STATS, {
@@ -1176,9 +1178,7 @@ function _M:delete_consumer_stats(consumers, cutoff_times)
     })
 
     if err then
-      log(WARN, _log_prefix, "failed to delete consumer stats (secs). err: ", err)
-    else
-      count = count + 1
+      return nil, err
     end
 
     _, err = self.cluster:execute(DELETE_CONSUMER_STATS, {
@@ -1188,15 +1188,13 @@ function _M:delete_consumer_stats(consumers, cutoff_times)
     })
 
     if err then
-      log(WARN, _log_prefix, "failed to delete consumer stats (mins). err: ", err)
-    else
-      count = count + 1
+      return nil, err
     end
   end
 
   -- note this isn't a true count since c* won't tell us how many rows she
   -- deleted. Basically, anything non-zero means _something_ happened. <sigh/>
-  return count
+  return 1
 end
 
 

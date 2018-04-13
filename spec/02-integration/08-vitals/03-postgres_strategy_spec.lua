@@ -671,13 +671,16 @@ dao_helpers.for_each_dao(function(kong_conf)
         local node_id = utils.uuid()
         local con1_id = utils.uuid()
         local con2_id = utils.uuid()
+        local now     = time()
 
         strategy:init(node_id, "testhostname")
 
         local data_to_insert = {
-          {con1_id, 1510560000, 1, 1},
-          {con1_id, 1510560001, 1, 3},
-          {con2_id, 1510560001, 1, 2},
+          {con1_id, now, 1, 1},
+          {con1_id, now + 1, 1, 2},
+          {con1_id, now, 60, 3},
+          {con2_id, now + 1, 1, 4},
+          {con2_id, now, 60, 5},
         }
 
         assert(strategy:insert_consumer_stats(data_to_insert))
@@ -686,46 +689,47 @@ dao_helpers.for_each_dao(function(kong_conf)
         local q = [[
             select consumer_id, node_id, extract('epoch' from at) as at,
                    duration, count from vitals_consumers
-            order by at, duration, count
+            order by count
         ]]
 
-        local results = db:query(q)
+        local results, err = db:query(q)
+        assert.is_nil(err)
 
         local expected = {
           {
             consumer_id = con1_id,
             node_id     = node_id,
-            at          = 1510560000,
+            at          = now,
             duration    = 1,
             count       = 1,
           },
           {
-            consumer_id = con2_id,
+            consumer_id = con1_id,
             node_id     = node_id,
-            at           = 1510560000,
-            duration    = 60,
+            at          = now + 1,
+            duration    = 1,
             count       = 2,
           },
           {
             consumer_id = con1_id,
             node_id     = node_id,
-            at          = 1510560000,
+            at          = now,
             duration    = 60,
+            count       = 3,
+          },
+          {
+            consumer_id = con2_id,
+            node_id     = node_id,
+            at          = now + 1,
+            duration    = 1,
             count       = 4,
           },
           {
             consumer_id = con2_id,
             node_id     = node_id,
-            at          = 1510560001,
-            duration    = 1,
-            count       = 2,
-          },
-          {
-            consumer_id = con1_id,
-            node_id     = node_id,
-            at           = 1510560001,
-            duration    = 1,
-            count       = 3,
+            at          = now,
+            duration    = 60,
+            count       = 5,
           },
         }
 
@@ -736,22 +740,23 @@ dao_helpers.for_each_dao(function(kong_conf)
       it("upserts when necessary", function()
         local node_id = utils.uuid()
         local con1_id = utils.uuid()
+        local now     = time()
 
         strategy:init(node_id, "testhostname")
 
         -- insert a row to upsert on
-        assert(strategy:insert_consumer_stats({{ con1_id, 1510560001, 1, 1 }}))
+        assert(strategy:insert_consumer_stats({{ con1_id, now, 1, 1 }}))
 
 
         local data_to_insert = {
-          {con1_id, 1510560003, 1, 19},
+          {con1_id, now, 1, 19},
         }
 
         assert(strategy:insert_consumer_stats(data_to_insert))
 
         local q = [[
             select consumer_id, node_id, extract('epoch' from at) as at,
-                   duration, count from vitals_consumers where duration = 60
+                   duration, count from vitals_consumers where duration = 1
         ]]
 
         local results = db:query(q)
@@ -760,13 +765,19 @@ dao_helpers.for_each_dao(function(kong_conf)
           {
             consumer_id = con1_id,
             node_id     = node_id,
-            at          = 1510560000,
-            duration    = 60,
+            at          = now,
+            duration    = 1,
             count       = 20,
           },
         }
 
         assert.same(expected, results)
+      end)
+
+      it("cleans up old records", function()
+        local s = spy.on(pg_strategy, "delete_consumer_stats")
+        strategy:insert_consumer_stats({})
+        assert.spy(s).was_called()
       end)
     end)
 

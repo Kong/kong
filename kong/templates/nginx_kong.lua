@@ -34,7 +34,6 @@ lua_shared_dict kong_process_events 5m;
 lua_shared_dict kong_cluster_events 5m;
 lua_shared_dict kong_vitals_counters 50m;
 lua_shared_dict kong_vitals_lists   1m;
-lua_shared_dict kong_vitals_requests_consumers 50m;
 lua_shared_dict kong_healthchecks   5m;
 > if database == "cassandra" then
 lua_shared_dict kong_cassandra      5m;

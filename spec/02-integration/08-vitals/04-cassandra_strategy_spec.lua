@@ -641,7 +641,7 @@ dao_helpers.for_each_dao(function(kong_conf)
     end)
 
     describe(":insert_consumer_stats()", function()
-      it("inserts seconds and minutes consumer request counter data", function()
+      it("inserts consumer request counters", function()
         assert(strategy:init(uuid, hostname))
 
         local consumer_uuid_1 = utils.uuid()
@@ -649,11 +649,11 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         local now = ngx.time()
         local now_converted = now * 1000
-        local minute = math.floor(now / 60) * 60000
 
         local data = {
           { consumer_uuid_1, now, 1, 1 },
-          { consumer_uuid_2, now, 1, 1 },
+          { consumer_uuid_2, now, 1, 2 },
+          { consumer_uuid_2, now, 60, 3 },
         }
 
         assert(strategy:insert_consumer_stats(data))
@@ -661,38 +661,28 @@ dao_helpers.for_each_dao(function(kong_conf)
         local consumers_res, _ = cluster:execute("select * from vitals_consumers")
 
         table.sort(consumers_res, function(a,b)
-          if a.consumer_id == b.consumer_id then
-            return a.duration < b.duration
-          end
-          return a.consumer_id < b.consumer_id
+          return a.count < b.count
         end)
 
         local expected_consumers = {
           {
             consumer_id = consumer_uuid_1,
             count       = 1,
-            duration    = 60,
+            duration    = 1,
             node_id     = uuid,
-            at          = minute
+            at          = now_converted,
           },
           {
             consumer_id = consumer_uuid_2,
-            count       = 1,
-            duration    = 60,
-            node_id     = uuid,
-            at          = minute
-          },
-          {
-            consumer_id = consumer_uuid_1,
-            count       = 1,
+            count       = 2,
             duration    = 1,
             node_id     = uuid,
-            at           = now_converted
+            at          = now_converted,
           },
           {
             consumer_id = consumer_uuid_2,
-            count       = 1,
-            duration    = 1,
+            count       = 3,
+            duration    = 60,
             node_id     = uuid,
             at          = now_converted
           },
@@ -702,14 +692,13 @@ dao_helpers.for_each_dao(function(kong_conf)
           type = "ROWS"
         }
 
-        table.sort(expected_consumers, function(a,b)
-          if a.consumer_id == b.consumer_id then
-            return a.duration < b.duration
-          end
-          return a.consumer_id < b.consumer_id
-        end)
-
         assert.same(expected_consumers, consumers_res)
+      end)
+
+      it("cleans up old records", function()
+        local s = spy.on(cassandra_strategy, "delete_consumer_stats")
+        strategy:insert_consumer_stats({})
+        assert.spy(s).was_called()
       end)
     end)
 
@@ -730,6 +719,8 @@ dao_helpers.for_each_dao(function(kong_conf)
           {cons_id, start_at + 60, 1, 7},
           {cons_id, start_at + 61, 1, 11},
           {cons_id, start_at + 62, 1, 18},
+          {cons_id, start_minute, 60, 8},
+          {cons_id, start_minute + 60, 60, 36},
         }
 
         local node_2_data = {
@@ -738,6 +729,8 @@ dao_helpers.for_each_dao(function(kong_conf)
           {cons_id, start_at + 61, 1, 6},
           {cons_id, start_at + 62, 1, 8},
           {cons_id, start_at + 63, 1, 9},
+          {cons_id, start_minute, 60, 2},
+          {cons_id, start_minute + 60, 60, 28},
         }
 
         assert(strategy:insert_consumer_stats(node_1_data, node_1))

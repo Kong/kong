@@ -21,8 +21,6 @@ local ERR        = ngx.ERR
 
 local fmt        = string.format
 
-local consumers_dict = ngx.shared.kong_vitals_requests_consumers
-
 local new_tab
 do
   local ok
@@ -209,6 +207,8 @@ function _M:init()
     return self:init_failed(nil, err)
   end
 
+  self.node_id = node_id
+
   local delay = self.flush_interval
   local when  = delay - (ngx.now() - (math.floor(ngx.now() / delay) * delay))
   log(INFO, _log_prefix, "starting vitals timer (1) in ", when, " seconds")
@@ -289,17 +289,6 @@ local function parse_cache_key(key)
   end
 
   return keys
-end
-
-
-local function parse_dictionary_key(key)
-  -- split on |
-  local p = key:find("|", 1, true)
-  local id = key:sub(1, p - 1)
-  p = p + 1
-  local timestamp = tonumber(key:sub(p))
-
-  return id, timestamp
 end
 
 
@@ -610,6 +599,7 @@ local IDX = {
   service = 3,
   route = 4,
   code = 5,
+  consumer = 6,
 }
 
 
@@ -629,6 +619,11 @@ local KEY_FORMATS = {
     key_values = { IDX.code, IDX.at, IDX.duration },
     required_fields = { IDX.code },
   },
+  consumer = {
+    key_format = "%s|%s|%s|",
+    key_values = { IDX.consumer, IDX.at, IDX.duration },
+    required_fields = { IDX.consumer },
+  }
 }
 
 
@@ -698,10 +693,6 @@ local function prep_counters(query_type, keys, count, data)
     end
   end
 
-  if not count_by then
-    return nil, "unknown query_type: " .. query_type
-  end
-
   local row = fmt(count_by.key_format, unpack(extract_keys(keys, count_by.key_values)))
 
   if data[row] then
@@ -756,6 +747,7 @@ function _M:flush_vitals_cache(batch_size, max)
     local codes_per_service = {}
     local codes_per_route = {}
     local code_classes = {}
+    local requests_per_consumer = {}
 
     for i, key in ipairs(keys) do
       local count, err = self.counter_cache:get(key)
@@ -768,6 +760,7 @@ function _M:flush_vitals_cache(batch_size, max)
         prep_counters("service", key_parts, count, codes_per_service)
         prep_counters("route", key_parts, count, codes_per_route)
         prep_code_class_counters("code_class", key_parts, count, code_classes)
+        prep_counters("consumer", key_parts, count, requests_per_consumer)
 
       elseif err then
         log(WARN, _log_prefix, "failed to fetch ", key, ". err: ", err)
@@ -782,6 +775,7 @@ function _M:flush_vitals_cache(batch_size, max)
       insert_status_codes_by_service = flatten_counters(codes_per_service),
       insert_status_codes_by_route = flatten_counters(codes_per_route),
       insert_status_code_classes = flatten_counters(code_classes),
+      insert_consumer_stats = flatten_counters(requests_per_consumer),
     }
 
     for fn, data in pairs(datasets) do
@@ -796,85 +790,6 @@ function _M:flush_vitals_cache(batch_size, max)
 
     keys = self.counter_cache:get_keys(batch_size)
     num_fetched = #keys
-  end
-
-  return num_processed
-end
-
---[[
-  consumer request counters are stored in a 50m dictionary
-  which holds a max of ~400K keys, or enough for 40K
-  consumers to make requests every second for 10 seconds
-  (our default flush interval). Key is approx 128 bytes.
- ]]
-function _M:flush_consumer_counters(batch_size, max)
-  log(DEBUG, _log_prefix, "flushing consumer counters")
-
-  if not batch_size or type(batch_size) ~= "number" then
-    batch_size = 1024
-  end
-
-  -- keys are continually added to cache, so we'll never be "done",
-  -- and we don't want to tie up this worker indefinitely. So,
-  -- process at most 10% of our cache capacity. When it's available,
-  -- we might use ngx.dict:free_space() to judge how full our cache
-  -- is and how much we should work off.
-  if not max or type(max) ~= "number" then
-    max = 40960
-  end
-
-  local keys = consumers_dict:get_keys(batch_size)
-  local num_fetched = #keys
-  local data = new_tab(num_fetched, 0)
-
-  -- how many keys have we processed?
-  local num_processed = 0
-
-  -- keep track of consumers whose stale data we'll delete
-  local consumers = {}
-
-  while num_fetched > 0 and num_processed < max do
-    for i, key in ipairs(keys) do
-      local count, err = consumers_dict:get(key)
-
-      if count then
-        consumers_dict:delete(key) -- trust that the insert will succeed
-
-        local id, timestamp = parse_dictionary_key(key)
-        data[i] = { id, timestamp, 1, count }
-
-        consumers[id] = true
-
-      elseif err then
-        log(WARN, _log_prefix, "failed to fetch ", key, ". err: ", err)
-
-      else
-        log(DEBUG, _log_prefix, key, " not found")
-      end
-    end
-
-    local ok, err = self.strategy:insert_consumer_stats(data)
-    if not ok then
-      log(WARN, _log_prefix, "failed to save consumer stats: ", err)
-    end
-
-    num_processed = num_processed + num_fetched
-    log(DEBUG, _log_prefix, "keys processed: ", num_processed)
-
-    keys = consumers_dict:get_keys(batch_size)
-    num_fetched = #keys
-    data = new_tab(num_fetched, 0)
-  end
-
-  -- clean up old data
-  local now = time()
-  local cutoff_times = {
-    seconds = now - self.ttl_seconds,
-    minutes = now - self.ttl_minutes,
-  }
-  local ok, err = self.strategy:delete_consumer_stats(consumers, cutoff_times)
-  if not ok then
-    log(WARN, _log_prefix, "failed to delete consumer stats: ", err)
   end
 
   return num_processed
@@ -942,8 +857,6 @@ function _M:flush_counters()
     end
 
     -- now flush additional entity counters
-    self:flush_consumer_counters()
-
     self:flush_vitals_cache()
   end
 
@@ -1359,35 +1272,12 @@ function _M:log_request(ctx)
     return "vitals not enabled"
   end
 
-  if not ctx then
-    -- this won't happen in normal processing
-    ctx = {}
-  end
-
-  local retval = "ok"
-
   local bucket = self:current_bucket()
   if bucket then
     self.counters.metrics[bucket].requests = self.counters.metrics[bucket].requests + 1
   end
 
-  if ctx.authenticated_consumer then
-    local key = ctx.authenticated_consumer.id .. "|" .. time()
-    local ok, err, forced_eviction = consumers_dict:incr(key, 1, 0)
-
-    if forced_eviction then
-      log(WARN, _log_prefix, "kong_vitals_requests_consumers cache is full")
-    elseif err then
-      log(WARN, _log_prefix, "log_request() failed: ", err)
-    end
-
-    if ok then
-      -- handy for testing
-      retval = key
-    end
-  end
-
-  return retval
+  return "ok"
 end
 
 
@@ -1407,7 +1297,8 @@ function _M:log_phase_after_plugins(ctx, status)
 
   local key = (ctx.service and ctx.service.id or "") .. "|" ..
     (ctx.route and ctx.route.id or "") .. "|" ..
-    (status or "") .. "|"
+    (status or "") .. "|" ..
+    (ctx.authenticated_consumer and ctx.authenticated_consumer.id or "") .. "|"
 
   local key_prefixes = {
     seconds .. "|1|",
