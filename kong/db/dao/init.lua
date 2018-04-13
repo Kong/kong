@@ -1,4 +1,7 @@
-local cjson        = require "cjson"
+local cjson     = require "cjson"
+local db_errors = require "kong.db.errors"
+local Errors    = require "kong.dao.errors"
+local pl_pretty = require("pl.pretty").write
 
 local setmetatable = setmetatable
 local tonumber     = tonumber
@@ -9,6 +12,8 @@ local pairs        = pairs
 local type         = type
 local min          = math.min
 local log          = ngx.log
+local fmt          = string.format
+
 
 
 local ERR          = ngx.ERR
@@ -504,6 +509,39 @@ function DAO:post_crud_event(operation, entity)
     end
   end
 
+end
+
+
+function DAO:check_foreign_key(primary_key, human_name)
+  local entity, err, err_t = self:select(primary_key)
+
+  if err then
+    if err_t.code == db_errors.codes.DATABASE_ERROR then
+      return false, Errors.db(err)
+    end
+
+    return false, Errors.schema(err_t)
+  end
+
+  if entity then
+    return entity
+  end
+
+  local msg = string.format("No such %s (%s)" ,
+                            human_name,
+                            pl_pretty(primary_key, ""))
+  return false, Errors.foreign(msg)
+end
+
+
+function DAO:cache_key(arg1, arg2, arg3, arg4, arg5)
+  return fmt("%s:%s:%s:%s:%s:%s",
+             self.schema.name,
+             arg1 == nil and "" or arg1,
+             arg2 == nil and "" or arg2,
+             arg3 == nil and "" or arg3,
+             arg4 == nil and "" or arg4,
+             arg5 == nil and "" or arg5)
 end
 
 

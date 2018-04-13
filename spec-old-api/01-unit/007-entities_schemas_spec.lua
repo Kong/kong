@@ -1,5 +1,4 @@
 local api_schema = require "kong.dao.schemas.apis"
-local consumer_schema = require "kong.dao.schemas.consumers"
 local plugins_schema = require "kong.dao.schemas.plugins"
 local targets_schema = require "kong.dao.schemas.targets"
 local upstreams_schema = require "kong.dao.schemas.upstreams"
@@ -9,7 +8,6 @@ local validate_entity = validations.validate_entity
 describe("Entities Schemas", function()
 
   for k, schema in pairs({api = api_schema,
-                          consumer = consumer_schema,
                           plugins = plugins_schema,
                           targets = targets_schema,
                           upstreams = upstreams_schema}) do
@@ -592,33 +590,6 @@ describe("Entities Schemas", function()
   end)
 
   --
-  -- Consumer
-  --
-
-  describe("Consumers", function()
-    it("should require a `custom_id` or `username`", function()
-      local valid, errors = validate_entity({}, consumer_schema)
-      assert.is_false(valid)
-      assert.equal("At least a 'custom_id' or a 'username' must be specified", errors.username)
-      assert.equal("At least a 'custom_id' or a 'username' must be specified", errors.custom_id)
-
-      valid, errors = validate_entity({ username = "" }, consumer_schema)
-      assert.is_false(valid)
-      assert.equal("At least a 'custom_id' or a 'username' must be specified", errors.username)
-      assert.equal("At least a 'custom_id' or a 'username' must be specified", errors.custom_id)
-
-      valid, errors = validate_entity({ username = true }, consumer_schema)
-      assert.is_false(valid)
-      assert.equal("username is not a string", errors.username)
-      assert.equal("At least a 'custom_id' or a 'username' must be specified", errors.custom_id)
-    end)
-
-    it("has a cache_key", function()
-      assert.is_table(consumer_schema.cache_key)
-    end)
-  end)
-
-  --
   -- Plugins
   --
 
@@ -627,7 +598,22 @@ describe("Entities Schemas", function()
     local dao_stub = {
       find_all = function()
         return {}
-      end
+      end,
+      db = {
+        new_db = {
+          services = {
+            select = function() return true end,
+            check_foreign_key = function() return true end,
+          },
+          routes = {
+            select = function() return true end,
+            check_foreign_key = function() return true end,
+          },
+          consumers = {
+            check_foreign_key = function() return true end,
+          },
+        }
+      }
     }
 
     it("has a cache_key", function()
@@ -698,12 +684,19 @@ describe("Entities Schemas", function()
             string = {type = "string", required = true}
           }
         }
+        do
+          local old_schema_loader = plugins_schema.fields.config.schema
 
-        plugins_schema.fields.config.schema = function()
-          return stub_config_schema
+          plugins_schema.fields.config.schema = function()
+            return stub_config_schema
+          end
+
+          finally(function()
+            plugins_schema.fields.config.schema = old_schema_loader
+          end)
         end
 
-        local valid, _, err = validate_entity({name = "stub", api_id = "0000", consumer_id = "0000", config = {string = "foo"}}, plugins_schema)
+        local valid, _, err = validate_entity({name = "stub", api_id = "0000", consumer_id = "0000", config = {string = "foo"}}, plugins_schema, {dao = dao_stub})
         assert.is_false(valid)
         assert.equal("No consumer can be configured for that plugin", err.message)
 

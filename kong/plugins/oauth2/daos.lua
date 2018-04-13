@@ -50,13 +50,27 @@ local OAUTH2_CREDENTIALS_SCHEMA = {
   cache_key = { "client_id" },
   fields = {
     id = { type = "id", dao_insert_value = true },
-    consumer_id = { type = "id", required = true, foreign = "consumers:id" },
+    consumer_id = { type = "id", required = true,
+                    -- foreign = "consumers:id" -- manually tested in self-check
+                  },
     name = { type = "string", required = true },
     client_id = { type = "string", required = false, unique = true, default = utils.random_string },
     client_secret = { type = "string", required = false, default = utils.random_string },
     redirect_uri = { type = "array", required = true, func = validate_uris },
     created_at = { type = "timestamp", immutable = true, dao_insert_value = true }
   },
+  self_check = function(schema, plugin_t, dao, is_update)
+    local consumer_id = plugin_t.consumer_id
+    if consumer_id ~= nil then
+      local ok, err = dao.db.new_db.consumers:check_foreign_key({ id = consumer_id },
+                                                                "Consumer")
+      if not ok then
+        return false, err
+      end
+    end
+
+    return true
+  end,
 }
 
 local OAUTH2_AUTHORIZATION_CODES_SCHEMA = {

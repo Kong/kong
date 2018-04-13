@@ -18,6 +18,8 @@ local setmetatable = setmetatable
 -- to schemas and entities since schemas will also be used
 -- independently from the DB module (Admin API for GUI)
 local CORE_ENTITIES = {
+  "consumers",
+  "services",
   "routes",
   "services",
   "certificates",
@@ -96,7 +98,6 @@ function DB.new(kong_config, strategy)
   end
 
   -- we are 200 OK
-
 
   return setmetatable(self, DB)
 end

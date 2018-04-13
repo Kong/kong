@@ -3,22 +3,22 @@ local cjson = require "cjson"
 
 describe("Plugin: ACL (access)", function()
   local client, api_client
-  local dao
+  local bp, _, dao
 
   setup(function()
-    dao = select(3, helpers.get_db_utils())
+    bp, _, dao = helpers.get_db_utils()
 
-    local consumer1 = assert(dao.consumers:insert {
+    local consumer1 = bp.consumers:insert {
       username = "consumer1"
-    })
+    }
     assert(dao.keyauth_credentials:insert {
       key = "apikey123",
       consumer_id = consumer1.id
     })
 
-    local consumer2 = assert(dao.consumers:insert {
+    local consumer2 = bp.consumers:insert {
       username = "consumer2"
-    })
+    }
     assert(dao.keyauth_credentials:insert {
       key = "apikey124",
       consumer_id = consumer2.id
@@ -28,9 +28,9 @@ describe("Plugin: ACL (access)", function()
       consumer_id = consumer2.id
     })
 
-    local consumer3 = assert(dao.consumers:insert {
+    local consumer3 = bp.consumers:insert {
       username = "consumer3"
-    })
+    }
     assert(dao.keyauth_credentials:insert {
       key = "apikey125",
       consumer_id = consumer3.id
@@ -44,9 +44,9 @@ describe("Plugin: ACL (access)", function()
       consumer_id = consumer3.id
     })
 
-    local consumer4 = assert(dao.consumers:insert {
+    local consumer4 = bp.consumers:insert {
       username = "consumer4"
-    })
+    }
     assert(dao.keyauth_credentials:insert {
       key = "apikey126",
       consumer_id = consumer4.id
@@ -60,9 +60,9 @@ describe("Plugin: ACL (access)", function()
       consumer_id = consumer4.id
     })
 
-    local anonymous = assert(dao.consumers:insert {
+    local anonymous = bp.consumers:insert {
       username = "anonymous"
-    })
+    }
 
     assert(dao.acls:insert {
       group = "anonymous",

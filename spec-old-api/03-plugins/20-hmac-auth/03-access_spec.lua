@@ -14,7 +14,7 @@ describe("Plugin: hmac-auth (access)", function()
   local client, consumer, credential
 
   setup(function()
-    local dao = select(3, helpers.get_db_utils())
+    local bp, _, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
       name         = "api-1",
@@ -29,19 +29,19 @@ describe("Plugin: hmac-auth (access)", function()
       }
     })
 
-    consumer = assert(dao.consumers:insert {
+    consumer = bp.consumers:insert {
       username = "bob",
       custom_id = "1234"
-    })
+    }
     credential = assert(dao["hmacauth_credentials"]:insert {
       username = "bob",
       secret = "secret",
       consumer_id = consumer.id
     })
 
-    local anonymous_user = assert(dao.consumers:insert {
+    local anonymous_user = bp.consumers:insert {
       username = "no-body"
-    })
+    }
     local api2 = assert(dao.apis:insert {
       name         = "api-2",
       hosts        = { "hmacauth2.com" },
@@ -1204,7 +1204,7 @@ describe("Plugin: hmac-auth (access)", function()
   local client, user1, user2, anonymous, hmacAuth, hmacDate
 
   setup(function()
-    local dao = select(3, helpers.get_db_utils())
+    local bp, _, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
       name         = "api-1",
@@ -1220,15 +1220,15 @@ describe("Plugin: hmac-auth (access)", function()
       api_id = api1.id
     })
 
-    anonymous = assert(dao.consumers:insert {
+    anonymous = bp.consumers:insert {
       username = "Anonymous"
-    })
-    user1 = assert(dao.consumers:insert {
+    }
+    user1 = bp.consumers:insert {
       username = "Mickey"
-    })
-    user2 = assert(dao.consumers:insert {
+    }
+    user2 = bp.consumers:insert {
       username = "Aladdin"
-    })
+    }
 
     local api2 = assert(dao.apis:insert {
       name         = "api-2",

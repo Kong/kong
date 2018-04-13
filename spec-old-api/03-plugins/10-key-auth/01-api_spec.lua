@@ -6,10 +6,11 @@ describe("Plugin: key-auth (API)", function()
   local consumer
   local admin_client
   local dao
+  local bp
 
   setup(function()
     local _
-    _, _, dao = helpers.get_db_utils()
+    bp, _, dao = helpers.get_db_utils()
 
     assert(dao.apis:insert {
       name         = "keyauth1",
@@ -21,9 +22,9 @@ describe("Plugin: key-auth (API)", function()
       upstream_url = helpers.mock_upstream_url,
       hosts        = { "keyauth2.test" },
     })
-    consumer = assert(dao.consumers:insert {
+    consumer = bp.consumers:insert {
       username = "bob"
-    })
+    }
     assert(helpers.start_kong({
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
@@ -178,9 +179,9 @@ describe("Plugin: key-auth (API)", function()
         assert.equal(credential.id, json.id)
       end)
       it("retrieves credential by id only if the credential belongs to the specified consumer", function()
-        assert(dao.consumers:insert {
+        bp.consumers:insert {
           username = "alice"
-        })
+        }
 
         local res = assert(admin_client:send {
           method = "GET",
@@ -328,9 +329,9 @@ describe("Plugin: key-auth (API)", function()
           })
         end
 
-        consumer2 = assert(dao.consumers:insert {
+        consumer2 = bp.consumers:insert {
           username = "bob-the-buidler"
-        })
+        }
 
         for i = 1, 3 do
           assert(dao.keyauth_credentials:insert {

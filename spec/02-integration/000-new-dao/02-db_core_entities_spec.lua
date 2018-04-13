@@ -403,27 +403,7 @@ for _, strategy in helpers.each_strategy() do
             }, err_t)
           end)
 
-          it("unsets a non-required field", function()
-            local route = bp.routes:insert({
-              hosts   = { "example.com" },
-              methods = { "GET" },
-              paths   = ngx.null,
-            })
-
-            local new_route, err, err_t = db.routes:update({ id = route.id }, {
-              hosts   = { "example.com" },
-              methods = ngx.null,
-              paths   = ngx.null,
-            })
-            assert.is_nil(err_t)
-            assert.is_nil(err)
-            assert.equal(ngx.null, new_route.methods)
-            route.methods     = nil
-            new_route.methods = nil
-            assert.same(route, new_route)
-          end)
-
-          it("unsets a routing criteria when at least one of the fields is not null", function()
+          it("accepts a partial update to routing criteria when at least one of the required fields it not null", function()
             local route = bp.routes:insert({
               hosts   = { "example.com" },
               methods = { "GET" },
@@ -441,6 +421,33 @@ for _, strategy in helpers.each_strategy() do
             route.hosts     = nil
             new_route.hosts = nil
             assert.same(route, new_route)
+          end)
+
+          it("errors when unsetting a required field with ngx.null", function()
+            local route = bp.routes:insert({
+              hosts   = { "example.com" },
+              methods = { "GET" },
+            })
+
+            local new_route, _, err_t = db.routes:update({ id = route.id }, {
+              hosts   = ngx.null,
+              methods = ngx.null,
+            })
+            assert.is_nil(new_route)
+            assert.same({
+              code        = Errors.codes.SCHEMA_VIOLATION,
+              name = "schema violation",
+              strategy    = strategy,
+              message  = unindent([[
+                schema violation
+                (when updating, at least one of these fields must be non-empty: 'methods', 'hosts', 'paths')
+              ]], true, true),
+              fields   = {
+                ["@entity"] = {
+                  "when updating, at least one of these fields must be non-empty: 'methods', 'hosts', 'paths'",
+                }
+              },
+            }, err_t)
           end)
         end)
       end)

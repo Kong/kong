@@ -43,9 +43,9 @@ for _, strategy in helpers.each_strategy() do
         },
       })
 
-      local consumer = assert(dao.consumers:insert {
+      local consumer = bp.consumers:insert {
         username = "bob",
-      })
+      }
 
       assert(dao.oauth2_credentials:insert {
         client_id     = "clientid123",
