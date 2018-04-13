@@ -3,7 +3,6 @@ local MAJOR_VERSIONS = {
     version = "0.0.1",
     modules = {
       "base",
-      "singletons",
       "request",
       "client",
     },
@@ -13,7 +12,6 @@ local MAJOR_VERSIONS = {
     version = "1.0.0",
     modules = {
       "base",
-      "singletons",
       "request",
       "client",
       --[[
@@ -59,25 +57,11 @@ function _SDK.new(major_version)
   for _, module_name in ipairs(version_meta.modules) do
     local mod = require("kong.sdk." .. module_name)
 
-    if mod.namespace then
-      -- namespaced SDK module, for the likes of:
-      --   kong.request.get_scheme()
-      --   kong.response.set_header()
-
-      if not sdk[mod.namespace] then
-        sdk[mod.namespace] = {}
-      end
-
-      mod.new(sdk, sdk[mod.namespace], major_version)
+    if module_name == "base" then
+      mod.new(sdk, major_version)
 
     else
-      -- top-level namespace, directly attach the created functions to the
-      -- root SDK instance. Dangeroud but elegant for methods like:
-      --   kong.new_tab()
-      --   kong.clear_tab()
-      --   kong.get_phase() -- NYI
-
-      mod.new(sdk, nil, major_version)
+      sdk[module_name] = mod.new(sdk, major_version)
     end
   end
 

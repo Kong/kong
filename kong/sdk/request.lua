@@ -11,7 +11,10 @@ local error = error
 local tonumber = tonumber
 
 
-local function new(sdk, _SDK_REQUEST, major_version)
+local function new(sdk, major_version)
+  local _REQUEST = {}
+
+
   local MIN_HEADERS            = 1
   local MAX_HEADERS_DEFAULT    = 100
   local MAX_HEADERS            = 1000
@@ -36,31 +39,31 @@ local function new(sdk, _SDK_REQUEST, major_version)
   local X_FORWARDED_PORT       = "X-Forwarded-Port"
 
 
-  function _SDK_REQUEST.get_scheme()
+  function _REQUEST.get_scheme()
     return ngx.var.scheme
   end
 
 
-  function _SDK_REQUEST.get_forwarded_scheme()
+  function _REQUEST.get_forwarded_scheme()
     if sdk.ip.is_trusted(sdk.client.get_ip()) then
-      local scheme = _SDK_REQUEST.get_header(X_FORWARDED_PROTO)
+      local scheme = _REQUEST.get_header(X_FORWARDED_PROTO)
       if scheme then
         return lower(scheme)
       end
     end
 
-    return _SDK_REQUEST.get_scheme()
+    return _REQUEST.get_scheme()
   end
 
 
-  function _SDK_REQUEST.get_host()
+  function _REQUEST.get_host()
     return ngx.var.host
   end
 
 
-  function _SDK_REQUEST.get_forwarded_host()
+  function _REQUEST.get_forwarded_host()
     if sdk.ip.is_trusted(sdk.client.get_ip()) then
-      local host = _SDK_REQUEST.get_header(X_FORWARDED_HOST)
+      local host = _REQUEST.get_header(X_FORWARDED_HOST)
       if host then
         local s = find(host, "@", 1, true)
         if s then
@@ -72,23 +75,23 @@ local function new(sdk, _SDK_REQUEST, major_version)
       end
     end
 
-    return _SDK_REQUEST.get_host()
+    return _REQUEST.get_host()
   end
 
 
-  function _SDK_REQUEST.get_port()
+  function _REQUEST.get_port()
     return tonumber(ngx.var.server_port)
   end
 
 
-  function _SDK_REQUEST.get_forwarded_port()
+  function _REQUEST.get_forwarded_port()
     if sdk.ip.is_trusted(sdk.client.get_ip()) then
-      local port = tonumber(_SDK_REQUEST.get_header(X_FORWARDED_PORT))
+      local port = tonumber(_REQUEST.get_header(X_FORWARDED_PORT))
       if port and port >= MIN_PORT and port <= MAX_PORT then
         return port
       end
 
-      local host = _SDK_REQUEST.get_header(X_FORWARDED_HOST)
+      local host = _REQUEST.get_header(X_FORWARDED_HOST)
       if host then
         local s = find(host, "@", 1, true)
         if s then
@@ -106,33 +109,33 @@ local function new(sdk, _SDK_REQUEST, major_version)
       end
     end
 
-    return _SDK_REQUEST.get_port()
+    return _REQUEST.get_port()
   end
 
 
-  function _SDK_REQUEST.get_path()
+  function _REQUEST.get_path()
     local uri = ngx.var.request_uri
     local s = find(uri, "?", 2, true)
     return s and sub(uri, 1, s - 1) or uri
   end
 
 
-  function _SDK_REQUEST.get_query()
+  function _REQUEST.get_query()
     return ngx.var.args or ""
   end
 
 
-  function _SDK_REQUEST.get_method()
+  function _REQUEST.get_method()
     return ngx.req.get_method()
   end
 
 
-  function _SDK_REQUEST.get_http_version()
+  function _REQUEST.get_http_version()
     return ngx.req.http_version()
   end
 
 
-  function _SDK_REQUEST.get_headers(max_headers)
+  function _REQUEST.get_headers(max_headers)
     if max_headers == nil then
       return ngx.req.get_headers(MAX_HEADERS_DEFAULT)
     end
@@ -151,12 +154,12 @@ local function new(sdk, _SDK_REQUEST, major_version)
   end
 
 
-  function _SDK_REQUEST.get_header(name)
+  function _REQUEST.get_header(name)
     if type(name) ~= "string" then
       error("name must be a string", 2)
     end
 
-    local header_value = _SDK_REQUEST.get_headers()[name]
+    local header_value = _REQUEST.get_headers()[name]
     if type(header_value) == "table" then
       return header_value[1]
     end
@@ -165,7 +168,7 @@ local function new(sdk, _SDK_REQUEST, major_version)
   end
 
 
-  function _SDK_REQUEST.get_query_args(max_args)
+  function _REQUEST.get_query_args(max_args)
     if max_args == nil then
       return ngx.req.get_uri_args(MAX_QUERY_ARGS_DEFAULT)
     end
@@ -186,12 +189,12 @@ local function new(sdk, _SDK_REQUEST, major_version)
   end
 
 
-  function _SDK_REQUEST.get_query_arg(name)
+  function _REQUEST.get_query_arg(name)
     if type(name) ~= "string" then
       error("name must be a string", 2)
     end
 
-    local arg_value = _SDK_REQUEST.get_query_args()[name]
+    local arg_value = _REQUEST.get_query_args()[name]
     if type(arg_value) == "table" then
       return arg_value[1]
     end
@@ -200,7 +203,7 @@ local function new(sdk, _SDK_REQUEST, major_version)
   end
 
 
-  function _SDK_REQUEST.get_post_args(max_args)
+  function _REQUEST.get_post_args(max_args)
     if max_args ~= nil then
       if type(max_args) ~= "number" then
         error("max_args must be a number", 2)
@@ -220,12 +223,12 @@ local function new(sdk, _SDK_REQUEST, major_version)
   end
 
 
-  function _SDK_REQUEST.get_post_arg(name)
+  function _REQUEST.get_post_arg(name)
     if type(name) ~= "string" then
       error("name must be a string", 2)
     end
 
-    local arg_value = _SDK_REQUEST.get_post_args()[name]
+    local arg_value = _REQUEST.get_post_args()[name]
     if type(arg_value) == "table" then
       return arg_value[1]
     end
@@ -234,7 +237,7 @@ local function new(sdk, _SDK_REQUEST, major_version)
   end
 
 
-  function _SDK_REQUEST.get_body()
+  function _REQUEST.get_body()
     ngx.req.read_body()
 
     local body = ngx.req.get_body_data()
@@ -251,14 +254,14 @@ local function new(sdk, _SDK_REQUEST, major_version)
   end
 
 
-  function _SDK_REQUEST.get_body_args()
-    local content_type = _SDK_REQUEST.get_header(CONTENT_TYPE)
+  function _REQUEST.get_body_args()
+    local content_type = _REQUEST.get_header(CONTENT_TYPE)
     if not content_type then
       return nil, "content type header was not provided in request"
     end
 
     if find(content_type, CONTENT_TYPE_POST, 1, true) == 1 then
-      local pargs, err = _SDK_REQUEST.get_post_args()
+      local pargs, err = _REQUEST.get_post_args()
       if not pargs then
         return nil, "unable to retrieve request body arguments: " .. err, CONTENT_TYPE_POST
       end
@@ -266,7 +269,7 @@ local function new(sdk, _SDK_REQUEST, major_version)
       return pargs, nil, CONTENT_TYPE_POST
 
     elseif find(content_type, CONTENT_TYPE_JSON, 1, true) == 1 then
-      local body, err = _SDK_REQUEST.get_body()
+      local body, err = _REQUEST.get_body()
       if not body then
         return nil, err, CONTENT_TYPE_JSON
       end
@@ -284,7 +287,7 @@ local function new(sdk, _SDK_REQUEST, major_version)
       return json, nil, "application/json"
 
     elseif find(content_type, CONTENT_TYPE_FORM_DATA, 1, true) == 1 then
-      local body, err = _SDK_REQUEST.get_body()
+      local body, err = _REQUEST.get_body()
       if not body then
         return nil, err, CONTENT_TYPE_FORM_DATA
       end
@@ -307,10 +310,12 @@ local function new(sdk, _SDK_REQUEST, major_version)
       return nil, "unsupported content type '" .. content_type .. "' was provided", mime_type
     end
   end
+
+
+  return _REQUEST
 end
 
 
 return {
-  namespace = "request",
   new = new,
 }
