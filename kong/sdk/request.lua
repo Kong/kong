@@ -12,14 +12,19 @@ local tonumber = tonumber
 
 
 local function new(sdk, _SDK_REQUEST, major_version)
-  local MAX_HEADERS            = 100
-  local MAX_QUERY_ARGS         = 100
-  local MAX_POST_ARGS          = 100
+  local MIN_HEADERS            = 1
+  local MAX_HEADERS_DEFAULT    = 100
+  local MAX_HEADERS            = 1000
+  local MIN_QUERY_ARGS         = 1
+  local MAX_QUERY_ARGS_DEFAULT = 100
+  local MAX_QUERY_ARGS         = 1000
+  local MIN_POST_ARGS          = 1
+  local MAX_POST_ARGS_DEFAULT  = 100
+  local MAX_POST_ARGS          = 1000
 
   local MIN_PORT               = 1
   local MAX_PORT               = 65535
 
-  local CONTENT_LENGTH         = "Content-Length"
   local CONTENT_TYPE           = "Content-Type"
 
   local CONTENT_TYPE_POST      = "application/x-www-form-urlencoded"
@@ -129,16 +134,17 @@ local function new(sdk, _SDK_REQUEST, major_version)
 
   function _SDK_REQUEST.get_headers(max_headers)
     if max_headers == nil then
-      max_headers = MAX_HEADERS
+      return ngx.req.get_headers(MAX_HEADERS_DEFAULT)
+    end
 
-    else
-      if type(max_headers) ~= "number" then
-        error("max_headers must be a number", 2)
-      end
+    if type(max_headers) ~= "number" then
+      error("max_headers must be a number", 2)
 
-      if max_headers < 0 then
-        error("max_headers must be >= 0", 2)
-      end
+    elseif max_headers < MIN_HEADERS then
+      error("max_headers must be >= " .. MIN_HEADERS, 2)
+
+    elseif max_headers > MAX_HEADERS then
+      error("max_headers must be <= " .. MAX_HEADERS, 2)
     end
 
     return ngx.req.get_headers(max_headers)
@@ -161,16 +167,19 @@ local function new(sdk, _SDK_REQUEST, major_version)
 
   function _SDK_REQUEST.get_query_args(max_args)
     if max_args == nil then
-      max_args = MAX_QUERY_ARGS
+      return ngx.req.get_uri_args(MAX_QUERY_ARGS_DEFAULT)
+    end
 
-    else
-      if type(max_args) ~= "number" then
-        error("max_args must be a number", 2)
-      end
+    if type(max_args) ~= "number" then
+      error("max_args must be a number", 2)
+    end
 
-      if max_args < 0 then
-        error("max_args must be >= 0", 2)
-      end
+    if max_args < MIN_QUERY_ARGS then
+      error("max_args must be >= " .. MIN_QUERY_ARGS, 2)
+    end
+
+    if max_args > MAX_QUERY_ARGS then
+      error("max_args must be <= " .. MAX_QUERY_ARGS, 2)
     end
 
     return ngx.req.get_uri_args(max_args)
@@ -192,28 +201,22 @@ local function new(sdk, _SDK_REQUEST, major_version)
 
 
   function _SDK_REQUEST.get_post_args(max_args)
-    if max_args == nil then
-      max_args = MAX_POST_ARGS
-
-    else
+    if max_args ~= nil then
       if type(max_args) ~= "number" then
         error("max_args must be a number", 2)
-      end
 
-      if max_args < 0 then
-        error("max_args must be >= 0", 2)
-      end
-    end
+      elseif max_args < MIN_POST_ARGS then
+        error("max_args must be >= " .. MIN_POST_ARGS, 2)
 
-    local content_length = tonumber(_SDK_REQUEST.get_header(CONTENT_LENGTH))
-    if content_length and content_length < 1 then
-      return {}
+      elseif max_args > MAX_POST_ARGS then
+        error("max_args must be <= " .. MAX_POST_ARGS, 2)
+      end
     end
 
     -- TODO: should we also compare content_length to client_body_buffer_size here?
 
     ngx.req.read_body()
-    return ngx.req.get_post_args(max_args)
+    return ngx.req.get_post_args(max_args or MAX_POST_ARGS_DEFAULT)
   end
 
 
@@ -232,13 +235,6 @@ local function new(sdk, _SDK_REQUEST, major_version)
 
 
   function _SDK_REQUEST.get_body()
-    local content_length = tonumber(_SDK_REQUEST.get_header(CONTENT_LENGTH))
-    if content_length and content_length < 1 then
-      return ""
-    end
-
-    -- TODO: should we also compare content_length to client_body_buffer_size here?
-
     ngx.req.read_body()
 
     local body = ngx.req.get_body_data()
@@ -297,6 +293,7 @@ local function new(sdk, _SDK_REQUEST, major_version)
         return {}, nil, CONTENT_TYPE_FORM_DATA
       end
 
+      -- TODO: multipart library doesn't support multiple fields with same name
       return multipart(body):get_all(), nil, CONTENT_TYPE_FORM_DATA
 
     else

@@ -138,7 +138,7 @@ boolean
         }
     }
 --- request
-GET /t
+POST /t
 --- response_body
 name must be a string
 --- no_error_log
