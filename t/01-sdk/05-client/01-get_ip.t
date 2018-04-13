@@ -1,7 +1,6 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
-use File::Spec;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 
