@@ -176,6 +176,40 @@ local function bitfield_check(map, key, bit)
 end
 
 
+function _M.validate_entity_operation(entity, method)
+  local action = _M.figure_action(method)
+  local roles = get_current_user().roles
+  local pmap = _M.resolve_role_entity_permissions(roles)
+  return _M.authorize_request_entity(pmap, entity.id, action)
+end
+
+
+function _M.validate(token, route, method, dao_factory)
+  if not token then
+    return false
+  end
+
+  local user, err = get_user(token)
+  if err then
+    return nil, err
+  end
+
+  if not user then
+    return false
+  end
+
+  local map, err = build_permissions_map(user, dao_factory)
+  if err then
+    return nil, err
+  end
+
+  local action = figure_action(method)
+  local resource = route_resources[route]
+
+  return bitfield_check(map, resource, action)
+end
+
+
 local function arr_hash_add(t, e)
   if not t[e] then
     t[e] = true

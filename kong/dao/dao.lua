@@ -560,10 +560,11 @@ function DAO:delete(tbl, options)
     end
   end
 
-  -- XXX error message - and how to report to the user
-  if not rbac.check_cascade(associated_entites) then
+  if not rbac.validate_entity_operation(primary_keys, "DELETE") or
+     not rbac.check_cascade(associated_entites) then
     return ret_error(self.db.name, nil, "cascading error")
   end
+
 
   local row, err = self.db:delete(self.table, self.schema, primary_keys, self.constraints)
   if (not err) and (row ~= nil) and ws then
