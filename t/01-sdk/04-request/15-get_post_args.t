@@ -231,3 +231,23 @@ POST /t
 error: max_args must be <= 1000
 --- no_error_log
 [error]
+
+
+
+=== TEST 10: request.get_post_args() returns nil + error when the body is too big
+--- config
+    location = /t {
+        content_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            local args, err = sdk.request.get_post_args()
+            ngx.say("error: ", err)
+        }
+    }
+--- request eval
+"POST /t\r\n" . ("a=1" x 20000)
+--- response_body
+error: request body in temp file not supported
+--- no_error_log
+[error]
