@@ -301,6 +301,15 @@ return {
 
       CREATE INDEX IF NOT EXISTS ON workspaces(name);
 
+      CREATE TABLE IF NOT EXISTS workspace_entities(
+        workspace_id uuid,
+        entity_id text,
+        entity_type text,
+        unique_field_name text,
+        unique_field_value text,
+        PRIMARY KEY(workspace_id, entity_id, unique_field_name)
+      );
+
       CREATE TABLE IF NOT EXISTS role_entities(
         role_id uuid,
         entity_id uuid,
