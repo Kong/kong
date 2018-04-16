@@ -157,6 +157,7 @@ build = {
     ["kong.dao.migrations.postgres"] = "kong/dao/migrations/postgres.lua",
     ["kong.dao.schemas.workspaces"] = "kong/dao/schemas/workspaces.lua",
     ["kong.dao.schemas.workspace_entities"] = "kong/dao/schemas/workspace_entities.lua",
+    ["kong.dao.schemas.role_endpoints"] = "kong/dao/schemas/role_endpoints.lua",
     ["kong.dao.schemas.role_entities"] = "kong/dao/schemas/role_entities.lua",
 
     ["kong.rbac"] = "kong/rbac/init.lua",
