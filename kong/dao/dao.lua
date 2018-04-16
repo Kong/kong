@@ -298,6 +298,12 @@ function DAO:find(tbl)
 
   -- XXX find a better, cleaner way to handle this logic - so that
   -- there is no unreachable code, but still no upstream tainting
+  local r = rbac.validate_entity_operation(primary_keys, "GET")
+  if not r then
+    ngx.say("RBAC unautohrized")
+    ngx.exit(401)
+  end
+
   do
     local row, err = self.db:find(self.table, self.schema, primary_keys)
     if err then
@@ -485,6 +491,13 @@ function DAO:update(tbl, filter_keys, options)
   elseif old == nil then
     return
   end
+
+  local r = rbac.validate_entity_operation(old, "PATCH")
+  if not r then
+    ngx.say("RBAC unautohrized")
+    ngx.exit(401)
+  end
+
 
   if not options.full then
     fix(old, values, self.schema)
