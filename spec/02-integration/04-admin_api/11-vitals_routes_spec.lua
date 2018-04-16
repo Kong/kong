@@ -274,6 +274,36 @@ dao_helpers.for_each_dao(function(kong_conf)
                     },
                   }
                 },
+                status_code_classes_total = {
+                  levels = {
+                    cluster = {
+                      intervals = {
+                        seconds = { retention_period_seconds = 3600 },
+                        minutes = { retention_period_seconds = 90000 },
+                      },
+                    },
+                  }
+                },
+                status_codes_per_service_total = {
+                  levels = {
+                    cluster = {
+                      intervals = {
+                        seconds = { retention_period_seconds = 3600 },
+                        minutes = { retention_period_seconds = 90000 },
+                      },
+                    },
+                  }
+                },
+                status_codes_per_route_total = {
+                  levels = {
+                    cluster = {
+                      intervals = {
+                        seconds = { retention_period_seconds = 3600 },
+                        minutes = { retention_period_seconds = 90000 },
+                      },
+                    },
+                  }
+                },
               }
             }
 
@@ -390,9 +420,12 @@ dao_helpers.for_each_dao(function(kong_conf)
             local expected = {
               meta = {
                 earliest_ts = now - 1,
-                interval = "seconds",
-                latest_ts = now,
-                level = "cluster",
+                interval    = "seconds",
+                latest_ts   = now,
+                level       = "cluster",
+                stat_labels = {
+                  "status_code_classes_total",
+                },
               },
               stats = {
                 cluster = {
@@ -434,9 +467,12 @@ dao_helpers.for_each_dao(function(kong_conf)
             local expected = {
               meta = {
                 earliest_ts = minute_start_at - 60,
-                interval = "minutes",
-                latest_ts = minute_start_at,
-                level = "cluster",
+                interval    = "minutes",
+                latest_ts   = minute_start_at,
+                level       = "cluster",
+                stat_labels = {
+                  "status_code_classes_total",
+                },
               },
               stats = {
                 cluster = {
@@ -508,11 +544,14 @@ dao_helpers.for_each_dao(function(kong_conf)
             local expected = {
               meta = {
                 entity_type = "service",
-                entity_id = service_id,
+                entity_id   = service_id,
                 earliest_ts = now - 1,
-                interval = "seconds",
-                latest_ts = now,
-                level = "cluster",
+                interval    = "seconds",
+                latest_ts   = now,
+                level       = "cluster",
+                stat_labels = {
+                  "status_codes_per_service_total",
+                },
               },
               stats = {
                 cluster = {
@@ -555,11 +594,14 @@ dao_helpers.for_each_dao(function(kong_conf)
             local expected = {
               meta = {
                 entity_type = "service",
-                entity_id = service_id,
+                entity_id   = service_id,
                 earliest_ts = minute_start_at - 60,
-                interval = "minutes",
-                latest_ts = minute_start_at,
-                level = "cluster",
+                interval    = "minutes",
+                latest_ts   = minute_start_at,
+                level       = "cluster",
+                stat_labels = {
+                  "status_codes_per_service_total",
+                },
               },
               stats = {
                 cluster = {
@@ -670,6 +712,9 @@ dao_helpers.for_each_dao(function(kong_conf)
                 interval    = "seconds",
                 latest_ts   = now,
                 level       = "cluster",
+                stat_labels = {
+                  "status_codes_per_route_total",
+                },
               },
               stats = {
                 cluster = {
@@ -718,6 +763,9 @@ dao_helpers.for_each_dao(function(kong_conf)
                 interval    = "minutes",
                 latest_ts   = minute_start_at,
                 level       = "cluster",
+                stat_labels = {
+                  "status_codes_per_route_total",
+                },
               },
               stats = {
                 cluster = {

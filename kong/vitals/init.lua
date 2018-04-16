@@ -51,6 +51,19 @@ local CONSUMER_STAT_LABELS = {
 }
 
 
+local STATUS_CODE_STAT_LABELS = {
+  cluster = {
+    "status_code_classes_total"
+  },
+  service = {
+    "status_codes_per_service_total",
+  },
+  route = {
+    "status_codes_per_route_total",
+  },
+}
+
+
 local persistence_handler
 local _log_prefix = "[vitals] "
 
@@ -363,6 +376,12 @@ local function convert_status_codes(res, level, interval, entity_type, entity_id
     entity_type = entity_type,
     entity_id   = entity_id,
   }
+
+  meta.stat_labels = STATUS_CODE_STAT_LABELS["cluster"]
+
+  if entity_type then
+    meta.stat_labels = STATUS_CODE_STAT_LABELS[entity_type]
+  end
 
   -- no stats to process, return minimal metadata along with empty stats
   if not res[1] then
@@ -1001,6 +1020,16 @@ function _M:get_index()
     data.stats[stat] = {
       levels = levels_data,
     }
+  end
+
+  for _, stats in pairs(STATUS_CODE_STAT_LABELS) do
+    for _, stat in ipairs(stats) do
+      data.stats[stat] = {
+        levels = {
+          cluster = levels_data.cluster
+        },
+      }
+    end
   end
 
   return data

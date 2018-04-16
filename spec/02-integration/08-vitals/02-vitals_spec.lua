@@ -983,6 +983,9 @@ dao_helpers.for_each_dao(function(kong_conf)
             interval = "seconds",
             latest_ts = now,
             level = "cluster",
+            stat_labels = {
+              "status_code_classes_total",
+            },
           },
           stats = {
             cluster = {
@@ -1060,6 +1063,9 @@ dao_helpers.for_each_dao(function(kong_conf)
             interval = "seconds",
             latest_ts = now,
             level = "cluster",
+            stat_labels = {
+              "status_codes_per_service_total",
+            },
           },
           stats = {
             cluster = {
@@ -1143,6 +1149,9 @@ dao_helpers.for_each_dao(function(kong_conf)
             interval = "seconds",
             latest_ts = now,
             level = "cluster",
+            stat_labels = {
+              "status_codes_per_route_total",
+            },
           },
           stats = {
             cluster = {
