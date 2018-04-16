@@ -11,6 +11,7 @@ local workspaces = require "kong.workspaces"
 
 local find = string.find
 local sub  = string.sub
+local ERR = ngx.ERR
 
 
 local app = lapis.Application()
@@ -93,24 +94,36 @@ end
 
 app:before_filter(function(self)
   do
+    -- in case of endpoint with missing `/`, this block is executed twice.
+    -- So previous workspace should be dropped
+    ngx.ctx.workspaces = nil
+    local workspaces = workspaces.get_req_workspace(self.params)
+    if not workspaces then
+      responses.send_HTTP_NOT_FOUND()
+    end
+
+    -- save workspace name in the context; if not passed, default workspace is
+    -- 'default'
+    ngx.ctx.workspaces = workspaces
+    self.params.workspace_name = nil
+
     local ok, msg = rbac.load_rbac_ctx(singletons.dao)
     if ok == false then
       return responses.send_HTTP_FORBIDDEN("Invalid RBAC credentials")
     end
     if ok == nil then
-      ngx.log(ERR, "[rbac] " .. msg)
+      ngx.log(ERR, "[rbac] ", msg)
       return responses.send_HTTP_INTERNAL_SERVER_ERROR()
     end
 
-    local workspaces = workspaces.get_req_workspace(self.params)
-    if not workspaces then
-      responses.send_HTTP_NOT_FOUND()
+    local valid, err = rbac.validate_endpoint(ngx.var.uri)
+    if err then
+      ngx.log(ERR, "[rbac] ", err)
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
     end
-    ngx.ctx.workspaces = workspaces
-
-    -- save workspace name in the context; if not passed, default workspace is
-    -- 'default'
-    self.params.workspace_name = nil
+    if not valid then
+      return responses.send_HTTP_UNAUTHORIZED()
+    end
   end
 
   if not NEEDS_BODY[ngx.req.get_method()] then

@@ -4,6 +4,7 @@ local utils      = require "kong.tools.utils"
 local singletons = require "kong.singletons"
 local bit        = require "bit"
 local tab_clear  = require "table.clear"
+local workspaces = require "kong.workspaces"
 
 local band   = bit.band
 local bxor   = bit.bxor
@@ -444,6 +445,14 @@ function _M.load_rbac_ctx(dao_factory)
   }
 
   return true
+end
+
+
+function _M.validate_endpoint(route)
+  local rbac_ctx = ngx.ctx.rbac
+  return _M.authorize_request_endpoint(rbac_ctx.endpoints_perms,
+                                       workspaces.get_workspaces()[1],
+                                       route, rbac_ctx.action)
 end
 
 
