@@ -257,57 +257,51 @@ local function new(sdk, major_version)
   function _REQUEST.get_body_args()
     local content_type = _REQUEST.get_header(CONTENT_TYPE)
     if not content_type then
-      return nil, "content type header was not provided in request"
+      return nil, "missing content type"
     end
 
-    if find(content_type, CONTENT_TYPE_POST, 1, true) == 1 then
+    local content_type_lower = lower(content_type)
+
+    if find(content_type_lower, CONTENT_TYPE_POST, 1, true) == 1 then
       local pargs, err = _REQUEST.get_post_args()
       if not pargs then
-        return nil, "unable to retrieve request body arguments: " .. err, CONTENT_TYPE_POST
+        return nil, err, CONTENT_TYPE_POST
       end
 
       return pargs, nil, CONTENT_TYPE_POST
 
-    elseif find(content_type, CONTENT_TYPE_JSON, 1, true) == 1 then
+    elseif find(content_type_lower, CONTENT_TYPE_JSON, 1, true) == 1 then
       local body, err = _REQUEST.get_body()
       if not body then
         return nil, err, CONTENT_TYPE_JSON
       end
 
-      if body == "" then
-        return nil, "request body is required for content type '" .. content_type .. "'", CONTENT_TYPE_JSON
-      end
-
       -- TODO: cjson.decode_array_with_array_mt(true) (?)
-      local json, err = cjson.decode(body)
+      local json = cjson.decode(body)
       if not json then
-        return nil, "unable to json decode request body: " .. err, CONTENT_TYPE_JSON
+        return nil, "invalid json body", CONTENT_TYPE_JSON
       end
 
-      return json, nil, "application/json"
+      return json, nil, CONTENT_TYPE_JSON
 
-    elseif find(content_type, CONTENT_TYPE_FORM_DATA, 1, true) == 1 then
+    elseif find(content_type_lower, CONTENT_TYPE_FORM_DATA, 1, true) == 1 then
       local body, err = _REQUEST.get_body()
       if not body then
         return nil, err, CONTENT_TYPE_FORM_DATA
       end
 
-      if body == "" then
-        return {}, nil, CONTENT_TYPE_FORM_DATA
-      end
-
       -- TODO: multipart library doesn't support multiple fields with same name
-      return multipart(body):get_all(), nil, CONTENT_TYPE_FORM_DATA
+      return multipart(body, content_type):get_all(), nil, CONTENT_TYPE_FORM_DATA
 
     else
-      local mime_type = content_type
+      local mime_type = content_type_lower
 
       local s = find(mime_type, ";", 1, true)
       if s then
         mime_type = sub(mime_type, 1, s - 1)
       end
 
-      return nil, "unsupported content type '" .. content_type .. "' was provided", mime_type
+      return nil, "unsupported content type '" .. content_type .. "'", mime_type
     end
   end
 

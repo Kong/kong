@@ -16,7 +16,7 @@ __DATA__
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            ngx.say("body: '", sdk.request:get_body(), "'")
+            ngx.say("body: '", sdk.request.get_body(), "'")
         }
     }
 --- request
@@ -36,7 +36,7 @@ body: ''
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            ngx.say("body: '", sdk.request:get_body(), "'")
+            ngx.say("body: '", sdk.request.get_body(), "'")
         }
     }
 --- request
@@ -59,7 +59,7 @@ body: ''
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            ngx.say("body: '", sdk.request:get_body(), "'")
+            ngx.say("body: '", sdk.request.get_body(), "'")
         }
     }
 --- request
@@ -82,7 +82,7 @@ body: 'not ignored'
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            ngx.say("body: '", sdk.request:get_body(), "'")
+            ngx.say("body: '", sdk.request.get_body(), "'")
         }
     }
 --- request
@@ -95,16 +95,17 @@ body: 'potato'
 
 
 
-=== TEST 5: request.get_body() returns nil + error when the body is just too big
+=== TEST 5: request.get_body() returns nil + error when the body is too big
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local body, err = sdk.request:get_body()
+            local body, err = sdk.request.get_body()
             if body then
               ngx.say("body: ", body)
+
             else
               ngx.say("body err: ", err)
             end
