@@ -8,8 +8,10 @@ local singletons = require "kong.singletons"
 
 
 local _M = {}
+local DEFAULT_KONG_LICENSE_PATH = "/etc/kong/license.json"
 
-local handlers = {
+
+_M.handlers = {
   access = {
     after = function(ctx)
       singletons.vitals:log_latency(ctx.KONG_PROXY_LATENCY)
@@ -27,10 +29,6 @@ local handlers = {
     end
   }
 }
-
-_M.handlers = handlers
-
-local DEFAULT_KONG_LICENSE_PATH = "/etc/kong/license.json"
 
 
 local function get_license_string()
@@ -69,7 +67,7 @@ local function get_license_string()
 end
 
 
-local function read_license_info()
+function _M.read_license_info()
   local license_data = get_license_string()
   if not license_data then
     return nil
@@ -83,7 +81,6 @@ local function read_license_info()
 
   return license
 end
-_M.read_license_info = read_license_info
 
 
 local function prepare_interface(interface_dir, interface_env, kong_config)
@@ -159,7 +156,7 @@ local function select_listener(listeners, filters)
 end
 
 
-local function prepare_admin(kong_config)
+function _M.prepare_admin(kong_config)
   local listener = select_listener(kong_config.admin_listeners, {ssl = false})
   local ssl_listener = select_listener(kong_config.admin_listeners, {ssl = true})
   local admin_port = listener and listener.port
@@ -175,10 +172,9 @@ local function prepare_admin(kong_config)
     FEATURE_FLAGS = tostring(kong_config.admin_gui_flags),
   }, kong_config)
 end
-_M.prepare_admin = prepare_admin
 
 
-local function prepare_portal(kong_config)
+function _M.prepare_portal(kong_config)
   local portal_gui_listener = select_listener(kong_config.portal_gui_listeners,
                                               {ssl = false})
   local portal_gui_ssl_listener = select_listener(kong_config.portal_gui_listeners,
@@ -205,7 +201,6 @@ local function prepare_portal(kong_config)
     KONG_VERSION = tostring(meta.versions.package),
   }, kong_config)
 end
-_M.prepare_portal = prepare_portal
 
 
 return _M
