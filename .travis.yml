@@ -84,4 +84,4 @@ cache:
 
 branches:
   except:
-    - feat/workspaces
+    - feat/entity-level-rbac
