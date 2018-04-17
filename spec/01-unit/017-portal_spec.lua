@@ -90,8 +90,8 @@ describe("portal_gui", function()
 
     local conf = {
       prefix = mock_prefix,
-      portal_gui_uri = NONE,
-      portal_api_uri = '127.0.0.1:8004',
+      portal_gui_uri = nil,
+      portal_api_uri = nil,
       portal_gui_listeners = {
         {
           ip = "0.0.0.0",
@@ -147,7 +147,7 @@ describe("portal_gui", function()
       local portal_idx = pl_file.read(idx_filename)
 
       assert.matches('<meta name="KONG:PORTAL_GUI_URI" content="" />', portal_idx, nil, true)
-      assert.matches('<meta name="KONG:PORTAL_API_URI" content="127.0.0.1:8004" />', portal_idx, nil, true)
+      assert.matches('<meta name="KONG:PORTAL_API_URI" content="" />', portal_idx, nil, true)
       assert.matches('<meta name="KONG:PORTAL_GUI_PORT" content="8003" />', portal_idx, nil, true)
       assert.matches('<meta name="KONG:PORTAL_GUI_SSL_PORT" content="8446" />', portal_idx, nil, true)
       assert.matches('<meta name="KONG:PORTAL_API_PORT" content="8004" />', portal_idx, nil, true)

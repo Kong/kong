@@ -98,7 +98,7 @@ describe("prepare_prefix", function()
       enforce_rbac = false,
       rbac_auth_header = "Kong-Admin-Token",
       admin_gui_flags = "{}",
-      admin_api_uri = NONE
+      admin_api_uri = nil
     })
 
     local gui_idx = pl_file.read(idx_filename)
