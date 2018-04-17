@@ -90,7 +90,7 @@ describe("portal_gui", function()
 
     local conf = {
       prefix = mock_prefix,
-      portal_gui_uri = '127.0.0.1:8003',
+      portal_gui_uri = NONE,
       portal_api_uri = '127.0.0.1:8004',
       portal_gui_listeners = {
         {
@@ -137,13 +137,16 @@ describe("portal_gui", function()
       if pl_path.isfile(tp_filename) then
         pl_file.delete(tp_filename)
       end
+      if pl_path.isfile(idx_filename) then
+        pl_file.delete(idx_filename)
+      end
     end)
 
     it("inserts the appropriate values", function()
       ee.prepare_portal(conf)
       local portal_idx = pl_file.read(idx_filename)
 
-      assert.matches('<meta name="KONG:PORTAL_GUI_URI" content="127.0.0.1:8003" />', portal_idx, nil, true)
+      assert.matches('<meta name="KONG:PORTAL_GUI_URI" content="" />', portal_idx, nil, true)
       assert.matches('<meta name="KONG:PORTAL_API_URI" content="127.0.0.1:8004" />', portal_idx, nil, true)
       assert.matches('<meta name="KONG:PORTAL_GUI_PORT" content="8003" />', portal_idx, nil, true)
       assert.matches('<meta name="KONG:PORTAL_GUI_SSL_PORT" content="8446" />', portal_idx, nil, true)

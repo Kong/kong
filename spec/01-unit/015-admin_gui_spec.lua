@@ -72,6 +72,9 @@ describe("prepare_prefix", function()
     if pl_path.isfile(tp_filename) then
       pl_file.delete(tp_filename)
     end
+    if pl_path.isfile(idx_filename) then
+      pl_file.delete(idx_filename)
+    end
   end)
 
   it("inserts the appropriate values", function()
@@ -95,12 +98,12 @@ describe("prepare_prefix", function()
       enforce_rbac = false,
       rbac_auth_header = "Kong-Admin-Token",
       admin_gui_flags = "{}",
-      admin_api_uri = "admin.evilcorp.com"
+      admin_api_uri = NONE
     })
 
     local gui_idx = pl_file.read(idx_filename)
 
-    assert.matches("'ADMIN_API_URI': 'admin.evilcorp.com'", gui_idx, nil, true)
+    assert.matches("'ADMIN_API_URI': ''", gui_idx, nil, true)
     assert.matches("'ADMIN_API_PORT': '9001'", gui_idx, nil, true)
     assert.matches("'ADMIN_API_SSL_PORT': '9444'", gui_idx, nil, true)
     assert.matches("'RBAC_ENFORCED': 'false'", gui_idx, nil, true)

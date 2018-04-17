@@ -156,6 +156,15 @@ local function select_listener(listeners, filters)
 end
 
 
+local function prepare_variable(variable)
+  if variable == nil then
+    return ""
+  end
+
+  return tostring(variable)
+end
+
+
 function _M.prepare_admin(kong_config)
   local listener = select_listener(kong_config.admin_listeners, {ssl = false})
   local ssl_listener = select_listener(kong_config.admin_listeners, {ssl = true})
@@ -163,13 +172,13 @@ function _M.prepare_admin(kong_config)
   local admin_ssl_port = ssl_listener and ssl_listener.port
 
   return prepare_interface("gui", {
-    ADMIN_API_URI = tostring(kong_config.admin_api_uri),
-    ADMIN_API_PORT = tostring(admin_port),
-    ADMIN_API_SSL_PORT = tostring(admin_ssl_port),
-    RBAC_ENFORCED = tostring(kong_config.enforce_rbac),
-    RBAC_HEADER = tostring(kong_config.rbac_auth_header),
-    KONG_VERSION = tostring(meta.versions.package),
-    FEATURE_FLAGS = tostring(kong_config.admin_gui_flags),
+    ADMIN_API_URI = prepare_variable(kong_config.admin_api_uri),
+    ADMIN_API_PORT = prepare_variable(admin_port),
+    ADMIN_API_SSL_PORT = prepare_variable(admin_ssl_port),
+    RBAC_ENFORCED = prepare_variable(kong_config.enforce_rbac),
+    RBAC_HEADER = prepare_variable(kong_config.rbac_auth_header),
+    KONG_VERSION = prepare_variable(meta.versions.package),
+    FEATURE_FLAGS = prepare_variable(kong_config.admin_gui_flags),
   }, kong_config)
 end
 
@@ -190,15 +199,15 @@ function _M.prepare_portal(kong_config)
   local portal_api_ssl_port = portal_api_ssl_listener and portal_api_ssl_listener.port
 
   return prepare_interface("portal", {
-    PORTAL_API_URI = tostring(kong_config.portal_api_uri),
-    PORTAL_API_PORT = tostring(portal_api_port),
-    PORTAL_API_SSL_PORT = tostring(portal_api_ssl_port),
-    PORTAL_GUI_URI = tostring(kong_config.portal_gui_uri),
-    PORTAL_GUI_PORT = tostring(portal_gui_port),
-    PORTAL_GUI_SSL_PORT = tostring(portal_gui_ssl_port),
-    RBAC_ENFORCED = tostring(kong_config.enforce_rbac),
-    RBAC_HEADER = tostring(kong_config.rbac_auth_header),
-    KONG_VERSION = tostring(meta.versions.package),
+    PORTAL_API_URI = prepare_variable(kong_config.portal_api_uri),
+    PORTAL_API_PORT = prepare_variable(portal_api_port),
+    PORTAL_API_SSL_PORT = prepare_variable(portal_api_ssl_port),
+    PORTAL_GUI_URI = prepare_variable(kong_config.portal_gui_uri),
+    PORTAL_GUI_PORT = prepare_variable(portal_gui_port),
+    PORTAL_GUI_SSL_PORT = prepare_variable(portal_gui_ssl_port),
+    RBAC_ENFORCED = prepare_variable(kong_config.enforce_rbac),
+    RBAC_HEADER = prepare_variable(kong_config.rbac_auth_header),
+    KONG_VERSION = prepare_variable(meta.versions.package),
   }, kong_config)
 end
 
