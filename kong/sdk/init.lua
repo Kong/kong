@@ -14,8 +14,8 @@ local MAJOR_VERSIONS = {
       "base",
       "request",
       "client",
-      --[[
       "upstream",
+      --[[
       "upstream.response",
       "response",
       "timers",
