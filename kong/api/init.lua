@@ -93,6 +93,15 @@ end
 
 app:before_filter(function(self)
   do
+    local ok, msg = rbac.load_rbac_ctx(singletons.dao)
+    if ok == false then
+      return responses.send_HTTP_FORBIDDEN("Invalid RBAC credentials")
+    end
+    if ok == nil then
+      ngx.log(ERR, "[rbac] " .. msg)
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    end
+
     local rbac_handler = require "kong.rbac.handler"
     rbac_handler.validate_filter(self)
 

@@ -297,13 +297,6 @@ end
 
 
 local function build_permissions_map(user, dao_factory)
-  local roles, err = entity_relationships(dao_factory, user, "user", "role")
-  if err then
-    return nil, err
-  end
-
-  ngx.ctx.current_user = { user = user, roles = roles }
-
   local permissions, neg_permissions = {}, {}
 
   for i = 1, #roles do
@@ -361,19 +354,6 @@ end
 
 
 function _M.validate(token, route, method, dao_factory)
-  if not token then
-    return false
-  end
-
-  local user, err = get_user(token)
-  if err then
-    return nil, err
-  end
-
-  if not user then
-    return false
-  end
-
   local map, err = build_permissions_map(user, dao_factory)
   if err then
     return nil, err
@@ -621,6 +601,54 @@ function _M.authorize_request_endpoint(map, workspace, endpoint, action)
   end
 
   return false
+end
+
+
+function _M.load_rbac_ctx(dao_factory)
+  local rbac_token = ngx.var.rbac_auth_header
+  local http_method = ngx.req.get_method()
+
+  if not rbac_token then
+    return false
+  end
+
+  local user, err = get_user(rbac_token)
+  if err then
+    return nil, err
+  end
+  if not user then
+    return false
+  end
+
+  local roles, err = entity_relationships(dao_factory, user, "user", "role")
+  if err then
+    return nil, err
+  end
+
+  local action, err = figure_action(http_method)
+  if err then
+    return nil, err
+  end
+
+  local entities_perms, err = resolve_role_entity_permissions(roles)
+  if err then
+    return nil, err
+  end
+
+  local endpoints_perms, err = resolve_role_endpoint_permissions(roles)
+  if err then
+    return nil, err
+  end
+
+  ngx.ctx.rbac = {
+    user = user,
+    roles = roles,
+    action = action,
+    entities_perms = entities_perms,
+    endpoints_perms = endpoints_perms,
+  }
+
+  return true
 end
 
 
