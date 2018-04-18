@@ -102,9 +102,6 @@ app:before_filter(function(self)
       return responses.send_HTTP_INTERNAL_SERVER_ERROR()
     end
 
-    local rbac_handler = require "kong.rbac.handler"
-    rbac_handler.validate_filter(self)
-
     local workspaces = workspaces.get_req_workspace(self.params)
     if not workspaces then
       responses.send_HTTP_NOT_FOUND()

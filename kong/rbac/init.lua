@@ -18,68 +18,6 @@ local function log(lvl, ...)
 end
 
 
-local route_resource_map = {
-  ["/apis/"] = "apis",
-  ["/apis/:api_name_or_id"] = "apis",
-  ["/apis/:api_name_or_id/plugins/"] = "plugins",
-  ["/apis/:api_name_or_id/plugins/:id"] = "plugins",
-  ["/cache/:key"] = "cache",
-  ["/cache"] = "cache",
-  ["/certificates/"] = "certificates",
-  ["/certificates/:sni_or_uuid"] = "certificates",
-  ["/consumers/"] = "consumers",
-  ["/consumers/:username_or_id"] = "consumers",
-  ["/consumers/:username_or_id/plugins/"] = "consumers",
-  ["/consumers/:username_or_id/plugins/:id"] = "consumers",
-  ["/"] = "kong",
-  ["/status"] = "status",
-  ["/plugins"] = "plugins",
-  ["/plugins/schema/:name"] = "plugins",
-  ["/plugins/:id"] = "plugins",
-  ["/plugins/enabled"] = "plugins",
-  ["/rbac/users/"] = "rbac",
-  ["/rbac/users/:name_or_id"] = "rbac",
-  ["/rbac/users/:name_or_id/permissions"] = "rbac",
-  ["/rbac/users/:name_or_id/roles"] = "rbac",
-  ["/rbac/roles"] = "rbac",
-  ["/rbac/roles/:name_or_id"] = "rbac",
-  ["/rbac/roles/:name_or_id/permissions"] = "rbac",
-  ["/rbac/permissions"] = "rbac",
-  ["/rbac/permissions/:name_or_id"] = "rbac",
-  ["/rbac/resources"] = "rbac",
-  ["/rbac/resources/routes"] = "rbac",
-  ["/snis/"] = "snis",
-  ["/snis/:name"] = "snis",
-  ["/upstreams/"] = "upstreams",
-  ["/upstreams/:upstream_name_or_id"] = "upstreams",
-  ["/upstreams/:upstream_name_or_id/targets/"] = "upstreams",
-  ["/upstreams/:upstream_name_or_id/targets/active"] = "targets",
-  ["/upstreams/:upstream_name_or_id/targets/:target_or_id"] = "targets",
-  ["/vitals/"] = "vitals",
-  ["/vitals/cluster"] = "vitals",
-  ["/vitals/nodes/"] = "vitals",
-  ["/vitals/nodes/:node_id"] = "vitals",
-  ["/vitals/consumers/:username_or_id/cluster"] = "vitals",
-  ["/vitals/consumers/:username_or_id/nodes"] = "vitals",
-  ["/consumers/:username_or_id/acls/"] = "acls",
-  ["/consumers/:username_or_id/acls/:group_or_id"] = "acls",
-  ["/consumers/:username_or_id/basic-auth/"] = "basic-auth",
-  ["/consumers/:username_or_id/basic-auth/:credential_username_or_id"] = "basic-auth",
-  ["/consumers/:username_or_id/hmac-auth/"] = "hmac-auth",
-  ["/consumers/:username_or_id/hmac-auth/:credential_username_or_id"] = "hmac-auth",
-  ["/consumers/:username_or_id/jwt/"] = "jwt",
-  ["/consumers/:username_or_id/jwt/:credential_key_or_id"] = "jwt",
-  ["/consumers/:username_or_id/key-auth/"] = "key-auth",
-  ["/consumers/:username_or_id/key-auth/:credential_key_or_id"] = "key-auth",
-  ["/oauth2_tokens/"] = "oauth2",
-  ["/oauth2_tokens/:token_or_id"] = "oauth2",
-  ["/oauth2/"] = "oauth2",
-  ["/consumers/:username_or_id/oauth2/"] = "oauth2",
-  ["/consumers/:username_or_id/oauth2/:clientid_or_id"] = "oauth2",
-}
-_M.route_resource_map = route_resource_map
-
-
 local actions_bitfields = {
   read   = 0x01,
   create = 0x02,
@@ -88,10 +26,6 @@ local actions_bitfields = {
 }
 _M.actions_bitfields = actions_bitfields
 local actions_bitfield_size = 4
-
-
-local resource_bitfields = {}
-_M.resource_bitfields = resource_bitfields
 
 
 local figure_action
@@ -120,80 +54,6 @@ do
   end
 
   _M.figure_action = figure_action
-end
-
-
-local route_resources = {}
-local resource_routes = {}
-_M.route_resources = route_resources
-_M.resource_routes = resource_routes
-
-
-local function load_resource_bitfields(dao_factory)
-  tab_clear(resource_bitfields)
-
-  local rows, err = dao_factory.rbac_resources:find_all()
-  if err then
-    error("Error in retrieving RBAC resource entries: " .. err)
-  end
-
-  table.sort(rows, function(a, b) return a.bit_pos < b.bit_pos end)
-
-  for i = 1, #rows do
-    local idx = rows[i].bit_pos
-    local resource = rows[i].name
-
-    resource_bitfields[idx] = resource
-    resource_bitfields[resource] = 2 ^ (idx - 1)
-  end
-end
-_M.load_resource_bitfields = load_resource_bitfields
-
-
-local function register_resource(resource, dao_factory)
-  -- clear and reload our bitfields so we make sure are inserting the correct
-  -- bit_pos
-  load_resource_bitfields(dao_factory)
-
-  local idx = #resource_bitfields + 1
-
-  resource_bitfields[idx] = resource
-  resource_bitfields[resource] = 2 ^ (idx - 1)
-
-  local ok, err = dao_factory.rbac_resources:insert({
-    id = utils.uuid(),
-    name = resource,
-    bit_pos = idx,
-  })
-  if not ok then
-    return nil, err
-  end
-
-  return ok
-end
-_M.register_resource = register_resource
-
-
-function _M.register_resource_route(route_path, resource)
-  if not resource_bitfields[resource] then
-    error("Resource '" .. resource .. "' not previous defined in " ..
-          "rbac_resources table", 2)
-  end
-
-  if route_resources[route_path] then
-    error("Resource route " .. route_path .. " already exists", 2)
-  end
-
-  log(ngx.INFO, "registering RBAC resource ", route_path, " as ",
-      resource)
-
-  route_resources[route_path] = resource
-
-  if not resource_routes[resource] then
-    resource_routes[resource] = {}
-  end
-
-  table.insert(resource_routes[resource], route_path)
 end
 
 
@@ -296,73 +156,8 @@ local function get_user(user_token)
 end
 
 
-local function build_permissions_map(user, dao_factory)
-  local permissions, neg_permissions = {}, {}
-
-  for i = 1, #roles do
-    local p, err = entity_relationships(dao_factory, roles[i], "role", "perm")
-    if err then
-      return nil, err
-    end
-
-    for j = 1, #p do
-      if p[j].negative == false or not p[j].negative then
-        permissions[#permissions + 1] = p[j]
-
-      else
-        neg_permissions[#neg_permissions + 1] = p[j]
-      end
-    end
-  end
-
-  local pmap = {}
-
-  for i = 1, #permissions do
-    local p = permissions[i]
-
-    for j, _ in ipairs(resource_bitfields) do
-      local k = resource_bitfields[j]
-      local n = resource_bitfields[k]
-
-      if band(n, p.resources) == n then
-        pmap[k] = bor(p.actions, pmap[k] or 0x0)
-      end
-    end
-  end
-
-  for i = 1, #neg_permissions do
-    local p = neg_permissions[i]
-
-    for j, _ in ipairs(resource_bitfields) do
-      local k = resource_bitfields[j]
-      local n = resource_bitfields[k]
-
-      if band(n, p.resources) == n then
-        pmap[k] = band(pmap[k], bxor(p.actions, pmap[k] or 0x0))
-      end
-    end
-  end
-
-  return pmap
-end
-_M.build_permissions_map = build_permissions_map
-
-
 local function bitfield_check(map, key, bit)
   return map[key] and band(map[key], bit) == bit or false
-end
-
-
-function _M.validate(token, route, method, dao_factory)
-  local map, err = build_permissions_map(user, dao_factory)
-  if err then
-    return nil, err
-  end
-
-  local action = figure_action(method)
-  local resource = route_resources[route]
-
-  return bitfield_check(map, resource, action)
 end
 
 
