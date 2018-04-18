@@ -187,8 +187,6 @@ function Kong.init()
       ttl_minutes    = config.vitals_ttl_minutes,
   }
 
-  rbac.load_resource_bitfields(dao)
-
   assert(core.build_router(dao, "init"))
 
 end
