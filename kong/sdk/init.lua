@@ -3,6 +3,7 @@ local MAJOR_VERSIONS = {
     version = "0.0.1",
     modules = {
       "base",
+      "ip",
       "request",
       "client",
     },
@@ -12,6 +13,7 @@ local MAJOR_VERSIONS = {
     version = "1.0.0",
     modules = {
       "base",
+      "ip",
       "request",
       "client",
       "upstream",
@@ -37,12 +39,22 @@ local _SDK = {
 local _sdk_mt = {}
 
 
-function _SDK.new(major_version)
-  if major_version and type(major_version) ~= "number" then
-    error("major_version must be a number", 2)
+function _SDK.new(kong_config, major_version)
+  if kong_config then
+    if type(kong_config) ~= "table" then
+      error("kong_config must be a table", 2)
+    end
+
+  else
+    kong_config = {}
   end
 
-  if not major_version then
+  if major_version then
+    if type(major_version) ~= "number" then
+      error("major_version must be a number", 2)
+    end
+
+  else
     major_version = MAJOR_VERSIONS.latest
   end
 
@@ -58,25 +70,14 @@ function _SDK.new(major_version)
     local mod = require("kong.sdk." .. module_name)
 
     if module_name == "base" then
-      mod.new(sdk, major_version)
+      mod.new(sdk, major_version, kong_config)
 
     else
-      sdk[module_name] = mod.new(sdk, major_version)
+      sdk[module_name] = mod.new(sdk, major_version, kong_config)
     end
   end
 
   return setmetatable(sdk, _sdk_mt)
-end
-
-
-function _sdk_mt.__index(sdk, k)
-  local get_singletons = rawget(sdk, "get_singletons")
-  if get_singletons()[k] then
-    -- if here, this is a legitimate singleton instance (because
-    -- declared in the current sdk version's list of singletons initializers)
-    -- but it has not been initialized yet.
-    error(k .. " singleton not initialized", 2)
-  end
 end
 
 

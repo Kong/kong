@@ -18,7 +18,6 @@ __DATA__
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
-            sdk.init({ trusted_ips = {} }, "ip")
 
             ngx.say("host: ", sdk.request.get_forwarded_host())
         }
@@ -45,7 +44,6 @@ host: localhost
             content_by_lua_block {
                 local SDK = require "kong.sdk"
                 local sdk = SDK.new()
-                sdk.init({ trusted_ips = {} }, "ip")
 
                 ngx.say("host: ", sdk.request.get_forwarded_host())
             }
@@ -77,7 +75,6 @@ host: localhost
             content_by_lua_block {
                 local SDK = require "kong.sdk"
                 local sdk = SDK.new()
-                sdk.init({ trusted_ips = {} }, "ip")
 
                 ngx.say("host: ", sdk.request.get_forwarded_host())
             }
@@ -105,7 +102,6 @@ host: kong
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
-            sdk.init({ trusted_ips = {} }, "ip")
 
             ngx.say("host: ", sdk.request.get_forwarded_host())
         }
@@ -127,7 +123,6 @@ host: test
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
-            sdk.init({ trusted_ips = {} }, "ip")
 
             ngx.say("host: ", sdk.request.get_forwarded_host())
         }
@@ -150,7 +145,6 @@ host: kong
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
-            sdk.init({ trusted_ips = {} }, "ip")
 
             ngx.say("host: ", sdk.request.get_forwarded_host())
         }
@@ -173,7 +167,6 @@ host: test
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
-            sdk.init({ trusted_ips = {} }, "ip")
 
             ngx.say("host: ", sdk.request.get_forwarded_host())
         }
@@ -196,7 +189,6 @@ host: test
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
-            sdk.init({ trusted_ips = {} }, "ip")
 
             ngx.say("host: ", sdk.request.get_forwarded_host())
         }
@@ -223,7 +215,6 @@ host: k0ng
             content_by_lua_block {
                 local SDK = require "kong.sdk"
                 local sdk = SDK.new()
-                sdk.init({ trusted_ips = {} }, "ip")
 
                 ngx.say("host: ", sdk.request.get_host())
             }
@@ -250,8 +241,9 @@ host: k0ng
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-            sdk.init({ trusted_ips = { "0.0.0.0/0", "::/0" } }, "ip")
+            local sdk = SDK.new({
+                trusted_ips = { "0.0.0.0/0", "::/0" }
+            })
 
             ngx.say("host: ", sdk.request.get_forwarded_host())
         }
@@ -277,8 +269,9 @@ host: test
         location / {
             content_by_lua_block {
                 local SDK = require "kong.sdk"
-                local sdk = SDK.new()
-                sdk.init({ trusted_ips = { "0.0.0.0/0", "::/0" } }, "ip")
+                local sdk = SDK.new({
+                    trusted_ips = { "0.0.0.0/0", "::/0" }
+                })
 
                 ngx.say("host: ", sdk.request.get_forwarded_host())
             }
@@ -305,8 +298,9 @@ host: test
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-            sdk.init({ trusted_ips = { "0.0.0.0/0", "::/0" } }, "ip")
+            local sdk = SDK.new({
+                trusted_ips = { "0.0.0.0/0", "::/0" }
+            })
 
             ngx.say("host: ", sdk.request.get_forwarded_host())
         }
@@ -328,8 +322,9 @@ host: test
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-            sdk.init({ trusted_ips = { "0.0.0.0/0", "::/0" } }, "ip")
+            local sdk = SDK.new({
+                trusted_ips = { "0.0.0.0/0", "::/0" }
+            })
 
             ngx.say("host: ", sdk.request.get_forwarded_host())
         }
