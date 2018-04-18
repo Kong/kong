@@ -243,4 +243,12 @@ return {
       DROP TABLE IF EXISTS workspaces;
     ]],
   },
+  {
+    name = "2018-04-18-110000_old_rbac_cleanup",
+    up = [[
+      DROP TABLE IF EXISTS rbac_perms;
+      DROP TABLE IF EXISTS rbac_role_perms;
+      DROP TABLE IF EXISTS rbac_resources;
+    ]]
+  },
 }
