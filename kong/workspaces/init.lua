@@ -476,19 +476,27 @@ end
 -- given an entity ID, look up its entity collection name;
 -- it is only called if the user does not pass in an entity_type
 function _M.resolve_entity_type(entity_id)
-  for relation, constraints in pairs(workspaceable_relations) do
-    local rows, err = singletons.dao[relation]:find_all{
-      [constraints.primary_key] = entity_id
-    }
-    if err then
-      return nil, nil, err
-    end
-    if rows[1] then
-      return relation, rows[1]
-    end
+  local rows, err  = singletons.dao.workspace_entities:find_all(
+    {entity_id = entity_id})
+  if err then
+    return nil, nil, err
   end
-  return false, nil, "entity does not belong to any relation"
+  if #rows == 0 then
+    return false, nil, "entity " .. entity_id .. " does not belong to any relation"
+  end
+
+  local entity_type = rows[1].entity_type
+  rows, err = singletons.dao[entity_type]:find(
+    {[workspaceable_relations[entity_type].primary_key] = entity_id}, {skip_rbac = true})  -- is this needed? can we just go with "id"?
+  if err then
+    return nil, nil, err
+  end
+  if #rows then
+    return entity_type, rows[1], nil
+  end
+  error("couldn't find entity " .. entity_id .." in its own table.")
 end
+
 
 
 return _M

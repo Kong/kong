@@ -169,6 +169,19 @@ local function remove_ws_prefix(table_name, row, include_ws)
   end
 end
 
+
+local function is_global_table(t)
+  local reserved_tables = { "rbac_.*", "workspace*", ".*_.*s" }
+  for i, v in ipairs(reserved_tables) do
+    if string.find(t, v) then
+      return true
+    end
+  end
+  return false
+end
+
+
+
 local DAO = Object:extend()
 
 DAO.ret_error = ret_error
@@ -281,7 +294,7 @@ end
 -- @param[type=table] tbl A table containing the primary key field(s) for this row.
 -- @treturn table row The row, or nil if none could be found.
 -- @treturn table err If an error occured, a table describing the issue.
-function DAO:find(tbl)
+function DAO:find(tbl, opts)
   check_arg(tbl, 1, "table")
   check_utf8(tbl, 1)
   fetch_shared_entity_id(self.schema.table, tbl)
@@ -298,10 +311,12 @@ function DAO:find(tbl)
 
   -- XXX find a better, cleaner way to handle this logic - so that
   -- there is no unreachable code, but still no upstream tainting
-  local r = rbac.validate_entity_operation(primary_keys, "GET")
-  if not r then
-    ngx.say("RBAC unautohrized")
-    ngx.exit(401)
+  if not opts.skip_rbac then
+    local r = rbac.validate_entity_operation(primary_keys, "GET")
+    if not r then
+      ngx.say("RBAC unautohrized find for " .. self.schema.table)
+      ngx.exit(401)
+    end
   end
 
   do
@@ -347,6 +362,18 @@ function DAO:find_all(tbl, include_ws)
     for _, row in ipairs(rows) do
       remove_ws_prefix(self.schema.table, row, include_ws)
     end
+
+    local rowss = {}
+    if not is_global_table(self.schema.table) then
+      for i, v in ipairs(rows) do
+        local valid = rbac.validate_entity_operation(v, "GET")
+        if valid then
+          rowss[#rowss+1] = v
+        end
+      end
+      rows = rowss
+    end
+
     return ret_error(self.db.name, rows, err)
   end
 
@@ -391,6 +418,18 @@ function DAO:find_page(tbl, page_offset, page_size)
     for _, row in ipairs(rows) do
       remove_ws_prefix(self.schema.table, row)
     end
+
+    local rowss = {}
+    if not is_global_table(self.schema.table) then
+      for i, v in ipairs(rows) do
+        local valid = rbac.validate_entity_operation(v, "GET")
+        if valid then
+          rowss[#rowss+1] = v
+        end
+      end
+      rows = rowss
+    end
+
     return ret_error(self.db.name, rows, err, offset)
   end
 
@@ -494,7 +533,7 @@ function DAO:update(tbl, filter_keys, options)
 
   local r = rbac.validate_entity_operation(old, "PATCH")
   if not r then
-    ngx.say("RBAC unautohrized")
+    ngx.say("RBAC unautohrized patch")
     ngx.exit(401)
   end
 
