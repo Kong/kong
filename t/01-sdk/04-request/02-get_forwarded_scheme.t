@@ -17,8 +17,9 @@ __DATA__
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-            sdk.init({ trusted_ips = { "0.0.0.0/0", "::/0" } }, "ip")
+            local sdk = SDK.new({
+                trusted_ips = { "0.0.0.0/0", "::/0" }
+            })
 
             ngx.say("scheme: ", sdk.request.get_forwarded_scheme())
         }
@@ -39,8 +40,7 @@ scheme: https
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-            sdk.init({ trusted_ips = {} }, "ip")
+            local sdk = SDK.new({ trusted_ips = {} })
 
             ngx.say("scheme: ", sdk.request.get_forwarded_scheme())
         }
@@ -61,8 +61,7 @@ scheme: http
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-            sdk.init({ trusted_ips = { "0.0.0.0/0", "::/0" } }, "ip")
+            local sdk = SDK.new({ trusted_ips = { "0.0.0.0/0", "::/0" } })
 
             ngx.say("scheme: ", sdk.request.get_forwarded_scheme())
         }
@@ -84,8 +83,7 @@ scheme: http
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-            sdk.init({ trusted_ips = {} }, "ip")
+            local sdk = SDK.new({ trusted_ips = {} })
 
             ngx.say("scheme: ", sdk.request.get_forwarded_scheme())
         }
@@ -107,8 +105,9 @@ scheme: http
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-            sdk.init({ trusted_ips = { "0.0.0.0/0", "::/0" } }, "ip")
+            local sdk = SDK.new({
+                trusted_ips = { "0.0.0.0/0", "::/0" }
+            })
 
             ngx.say("scheme: ", sdk.request.get_forwarded_scheme())
         }
@@ -132,8 +131,9 @@ scheme: http
         location / {
             content_by_lua_block {
                 local SDK = require "kong.sdk"
-                local sdk = SDK.new()
-                sdk.init({ trusted_ips = { "0.0.0.0/0", "::/0" } }, "ip")
+                local sdk = SDK.new({
+                    trusted_ips = { "0.0.0.0/0", "::/0" }
+                })
 
                 ngx.say("scheme: ", sdk.request.get_forwarded_scheme())
             }
@@ -158,8 +158,9 @@ scheme: https
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-            sdk.init({ trusted_ips = { "0.0.0.0/0", "::/0" } }, "ip")
+            local sdk = SDK.new({
+                trusted_ips = { "0.0.0.0/0", "::/0" }
+            })
 
             ngx.say("scheme: ", sdk.request.get_forwarded_scheme())
         }

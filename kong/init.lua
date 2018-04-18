@@ -44,6 +44,8 @@ end
 
 require("kong.globalpatches")()
 
+_G.kong = require "kong.global"
+
 local ip = require "kong.tools.ip"
 local DB = require "kong.db"
 local dns = require "kong.tools.dns"
@@ -60,8 +62,6 @@ local balancer_execute = require("kong.runloop.balancer").execute
 local kong_cluster_events = require "kong.cluster_events"
 local kong_error_handlers = require "kong.error_handlers"
 
-_G.kong = require "kong.kong" -- TODO: we realy need to rearrange our file structure -_-
-
 local ngx              = ngx
 local header           = ngx.header
 local ngx_log          = ngx.log
@@ -76,6 +76,8 @@ local get_last_failure = ngx_balancer.get_last_failure
 local set_current_peer = ngx_balancer.set_current_peer
 local set_timeouts     = ngx_balancer.set_timeouts
 local set_more_tries   = ngx_balancer.set_more_tries
+
+local loaded_plugins
 
 local function load_plugins(kong_conf, dao)
   local in_db_plugins, sorted_plugins = {}, {}
@@ -175,16 +177,24 @@ function Kong.init()
 
   db.old_dao = dao
 
-  -- populate singletons
-  singletons.ip = ip.init(config)
-  singletons.dns = dns(config)
-  singletons.loaded_plugins = assert(load_plugins(config, dao))
-  singletons.dao = dao
-  singletons.configuration = config
-  singletons.db = db
+  loaded_plugins = assert(load_plugins(config, dao))
 
   assert(runloop.build_router(db, "init"))
   assert(runloop.build_api_router(dao, "init"))
+
+  -- LEGACY
+  singletons.ip = ip.init(config)
+  singletons.dns = dns(config)
+  singletons.dao = dao
+  singletons.configuration = config
+  singletons.db = db
+  -- /LEGACY
+
+  kong.init(config)
+
+  kong.dao = dao
+  kong.db = db
+  kong.dns = singletons.dns
 end
 
 function Kong.init_worker()
@@ -198,7 +208,7 @@ function Kong.init_worker()
   -- init DAO
 
 
-  local ok, err = singletons.dao:init_worker()
+  local ok, err = kong.dao:init_worker()
   if not ok then
     ngx_log(ngx_CRIT, "could not init DB: ", err)
     return
@@ -228,14 +238,10 @@ function Kong.init_worker()
   -- init cluster_events
 
 
-  local dao_factory   = singletons.dao
-  local configuration = singletons.configuration
-
-
   local cluster_events, err = kong_cluster_events.new {
-    dao                     = dao_factory,
-    poll_interval           = configuration.db_update_frequency,
-    poll_offset             = configuration.db_update_propagation,
+    dao                     = kong.dao,
+    poll_interval           = kong.configuration.db_update_frequency,
+    poll_offset             = kong.configuration.db_update_propagation,
   }
   if not cluster_events then
     ngx_log(ngx_CRIT, "could not create cluster_events: ", err)
@@ -249,9 +255,9 @@ function Kong.init_worker()
   local cache, err = kong_cache.new {
     cluster_events    = cluster_events,
     worker_events     = worker_events,
-    propagation_delay = configuration.db_update_propagation,
-    ttl               = configuration.db_cache_ttl,
-    neg_ttl           = configuration.db_cache_ttl,
+    propagation_delay = kong.configuration.db_update_propagation,
+    ttl               = kong.configuration.db_cache_ttl,
+    neg_ttl           = kong.configuration.db_cache_ttl,
     resty_lock_opts   = {
       exptime = 10,
       timeout = 5,
@@ -279,13 +285,19 @@ function Kong.init_worker()
   end
 
 
+  -- LEGACY
   singletons.cache          = cache
   singletons.worker_events  = worker_events
   singletons.cluster_events = cluster_events
+  -- /LEGACY
 
 
-  singletons.db:set_events_handler(worker_events)
-  singletons.dao:set_events_handler(worker_events)
+  kong.db_cache = cache
+  kong.worker_events = worker_events
+  kong.cluster_events = cluster_events
+
+  kong.db:set_events_handler(worker_events)
+  kong.dao:set_events_handler(worker_events)
 
 
   runloop.init_worker.before()
@@ -294,7 +306,7 @@ function Kong.init_worker()
   -- run plugins init_worker context
 
 
-  for _, plugin in ipairs(singletons.loaded_plugins) do
+  for _, plugin in ipairs(loaded_plugins) do
     plugin.handler:init_worker()
   end
 end
@@ -303,7 +315,7 @@ function Kong.ssl_certificate()
   local ctx = ngx.ctx
   runloop.certificate.before(ctx)
 
-  for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
+  for plugin, plugin_conf in plugins_iterator(loaded_plugins, true) do
     plugin.handler:certificate(plugin_conf)
   end
 end
@@ -382,7 +394,7 @@ function Kong.rewrite()
   -- we're just using the iterator, as in this rewrite phase no consumer nor
   -- api will have been identified, hence we'll just be executing the global
   -- plugins
-  for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
+  for plugin, plugin_conf in plugins_iterator(loaded_plugins, true) do
     plugin.handler:rewrite(plugin_conf)
   end
 
@@ -396,7 +408,7 @@ function Kong.access()
 
   ctx.delay_response = true
 
-  for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
+  for plugin, plugin_conf in plugins_iterator(loaded_plugins, true) do
     if not ctx.delayed_response then
       local err = coroutine.wrap(plugin.handler.access)(plugin.handler, plugin_conf)
       if err then
@@ -419,7 +431,7 @@ function Kong.header_filter()
   local ctx = ngx.ctx
   runloop.header_filter.before(ctx)
 
-  for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins) do
+  for plugin, plugin_conf in plugins_iterator(loaded_plugins) do
     plugin.handler:header_filter(plugin_conf)
   end
 
@@ -428,7 +440,7 @@ end
 
 function Kong.body_filter()
   local ctx = ngx.ctx
-  for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins) do
+  for plugin, plugin_conf in plugins_iterator(loaded_plugins) do
     plugin.handler:body_filter(plugin_conf)
   end
 
@@ -437,7 +449,7 @@ end
 
 function Kong.log()
   local ctx = ngx.ctx
-  for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins) do
+  for plugin, plugin_conf in plugins_iterator(loaded_plugins) do
     plugin.handler:log(plugin_conf)
   end
 

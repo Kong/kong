@@ -16,8 +16,7 @@ __DATA__
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-            sdk.init({ trusted_ips = { "0.0.0.0/0", "::/0" } }, "ip")
+            local sdk = SDK.new({ trusted_ips = { "0.0.0.0/0", "::/0" } })
 
             ngx.say("port: ", sdk.request.get_forwarded_port())
             ngx.say("type: ", type(sdk.request.get_forwarded_port()))
@@ -41,7 +40,6 @@ type: number
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
-            sdk.init({ trusted_ips = {} }, "ip")
 
             ngx.say("port: ", sdk.request.get_forwarded_port())
         }
@@ -64,8 +62,7 @@ port: \d+
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-            sdk.init({ trusted_ips = { "0.0.0.0/0", "::/0" } }, "ip")
+            local sdk = SDK.new({ trusted_ips = { "0.0.0.0/0", "::/0" } })
 
             ngx.say("port: ", sdk.request.get_forwarded_port())
         }
@@ -88,7 +85,6 @@ port: 1234
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
-            sdk.init({ trusted_ips = {} }, "ip")
 
             ngx.say("port: ", sdk.request.get_forwarded_port())
         }
@@ -112,8 +108,7 @@ port: \d+
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-            sdk.init({ trusted_ips = { "0.0.0.0/0", "::/0" } }, "ip")
+            local sdk = SDK.new({ trusted_ips = { "0.0.0.0/0", "::/0" } })
 
             ngx.say("port: ", sdk.request.get_forwarded_port())
         }
@@ -137,8 +132,7 @@ port: \d+
         location / {
             content_by_lua_block {
                 local SDK = require "kong.sdk"
-                local sdk = SDK.new()
-                sdk.init({ trusted_ips = { "0.0.0.0/0", "::/0" } }, "ip")
+                local sdk = SDK.new({ trusted_ips = { "0.0.0.0/0", "::/0" } })
 
                 ngx.say("port: ", sdk.request.get_forwarded_port())
             }
