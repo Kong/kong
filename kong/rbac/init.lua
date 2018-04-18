@@ -292,9 +292,10 @@ function _M.resolve_role_entity_permissions(roles)
 end
 
 
-function _M.authorize_request_entity(map, id, action)
+local function authorize_request_entity(map, id, action)
   return bitfield_check(map, id, action)
 end
+_M.authorize_request_entity = authorize_request_entity
 
 
 function _M.resolve_role_endpoint_permissions(roles)
@@ -474,6 +475,34 @@ function _M.validate_endpoint(lapis, route)
   ngx.ctx.rbac = rbac_ctx
 end
 
+
+-- checks whether the given action can be cleanly performed in a
+-- set of entities
+function _M.check_cascade(entities)
+  local perms_map = ngx.ctx.rbac.entities_perms
+  local action    = ngx.ctx.rbac.action
+
+  --
+  -- entities = {
+  --  [table name] = {
+  --    entities = {
+  --      ...
+  --    },
+  --    schema = {
+  --      ...
+  --    }
+  --  }
+  -- }
+  for table_name, table_info in pairs(entities) do
+    for entity in ipairs(table_info.entities) do
+      if not authorize_request_entity(perms_map, entity.id, action) then
+        return false
+      end
+    end
+  end
+
+  return true
+end
 
 do
   local reports = require "kong.core.reports"

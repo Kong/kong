@@ -17,6 +17,7 @@ local utils = require "kong.tools.utils"
 local Errors = require "kong.dao.errors"
 local schemas_validation = require "kong.dao.schemas_validation"
 local workspaces = require "kong.workspaces"
+local rbac = require "kong.rbac"
 
 local workspaceable = workspaces.get_workspaceable_relations()
 
@@ -551,6 +552,11 @@ function DAO:delete(tbl, options)
         entities = rows
       }
     end
+  end
+
+  -- XXX error message - and how to report to the user
+  if not rbac.check_cascade(associated_entites) then
+    return ret_error(self.db.name, nil, "cascading error")
   end
 
   local row, err = self.db:delete(self.table, self.schema, primary_keys, self.constraints)
