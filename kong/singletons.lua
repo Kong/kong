@@ -6,6 +6,7 @@ local _M = {
   dns = nil,
   loaded_plugins = nil,
   worker_events = nil,
+  router = nil,
 }
 
 return _M

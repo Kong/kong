@@ -145,6 +145,53 @@ describe("kong start/stop", function()
     end)
   end)
 
+  describe("nginx_daemon = off", function()
+    it("redirects nginx's stdout to 'kong start' stdout", function()
+      local pl_utils = require "pl.utils"
+      local pl_file = require "pl.file"
+
+      local stdout_path = os.tmpname()
+
+      finally(function()
+        os.remove(stdout_path)
+      end)
+
+      local cmd = string.format("KONG_PROXY_ACCESS_LOG=/dev/stdout "    ..
+                                "KONG_NGINX_DAEMON=off %s start -c %s " ..
+                                ">%s 2>/dev/null &", helpers.bin_path,
+                                helpers.test_conf_path, stdout_path)
+
+      local ok, _, _, stderr = pl_utils.executeex(cmd)
+      if not ok then
+        error(stderr)
+      end
+
+      do
+        local proxy_client
+
+        -- get a connection, retry until kong starts
+        helpers.wait_until(function()
+          local pok
+          pok, proxy_client = pcall(helpers.proxy_client)
+          return pok
+        end, 10)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/hello",
+        })
+        assert.res_status(404, res) -- no API configured
+      end
+
+      assert(helpers.stop_kong(helpers.test_conf.prefix))
+
+      -- TEST: since nginx started in the foreground, the 'kong start' command
+      -- stdout should receive all of nginx's stdout as well.
+      local stdout = pl_file.read(stdout_path)
+      assert.matches([["GET /hello HTTP/1.1" 404]] , stdout, nil, true)
+    end)
+  end)
+
   describe("errors", function()
     it("start inexistent Kong conf file", function()
       local ok, stderr = helpers.kong_exec "start --conf foobar.conf"

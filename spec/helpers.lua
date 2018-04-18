@@ -121,7 +121,7 @@ do
     end
 end
 
-local function get_db_utils(strategy)
+local function get_db_utils(strategy, no_truncate)
   strategy = strategy or conf.database
 
   -- new DAO (DB module)
@@ -137,12 +137,16 @@ local function get_db_utils(strategy)
     conf.database = database
 
     assert(dao:run_migrations())
-    dao:truncate_tables()
+    if not no_truncate then
+      dao:truncate_tables()
+    end
   end
 
   -- cleanup new DB tables
   assert(db:init_connector())
-  assert(db:truncate())
+  if not no_truncate then
+    assert(db:truncate())
+  end
 
   -- blueprints
   local bp = assert(Blueprints.new(dao, db))
@@ -207,14 +211,16 @@ local function wait_until(f, timeout)
     error("arg #1 must be a function", 2)
   end
 
+  ngx.update_time()
+
   timeout = timeout or 2
   local tstart = ngx.time()
   local texp = tstart + timeout
   local ok, res, err
 
   repeat
-    ngx.sleep(0.2)
     ok, res, err = pcall(f)
+    ngx.sleep(0.05)
   until not ok or res or ngx.time() >= texp
 
   if not ok then
@@ -1092,6 +1098,16 @@ local function wait_pid(pid_path, timeout, is_retry)
   end
 end
 
+-- Return the actual configuration running at the given prefix.
+-- It may differ from the default, as it may have been modified
+-- by the `env` table given to start_kong.
+-- @param prefix The prefix path where the kong instance is running
+-- @return The conf table of the running instance, or nil on error.
+local function get_running_conf(prefix)
+  local default_conf = conf_loader(nil, {prefix = prefix or conf.prefix})
+  return conf_loader(default_conf.kong_env)
+end
+
 ----------
 -- Exposed
 ----------
@@ -1163,8 +1179,13 @@ return {
   end,
   stop_kong = function(prefix, preserve_prefix, preserve_tables)
     prefix = prefix or conf.prefix
+
+    local running_conf = get_running_conf(prefix)
+    if not running_conf then return end
+
     local ok, err = kong_exec("stop --prefix " .. prefix)
-    wait_pid(conf.nginx_pid, nil)
+
+    wait_pid(running_conf.nginx_pid)
     if not preserve_tables then
       dao:truncate_tables()
     end
@@ -1179,8 +1200,7 @@ return {
 
     dao:truncate_tables()
 
-    local default_conf = conf_loader(nil, {prefix = prefix or conf.prefix})
-    local running_conf = conf_loader(default_conf.kong_env)
+    local running_conf = get_running_conf(prefix)
     if not running_conf then return end
 
     -- kill kong_tests.conf service

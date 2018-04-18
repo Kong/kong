@@ -314,86 +314,114 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     describe("config.hide_credentials", function()
+      for _, content_type in pairs({
+        "application/x-www-form-urlencoded",
+        "application/json",
+        "multipart/form-data",
+      }) do
 
-      local harness = {
-        uri_args = { -- query string
-          {
-            headers = {
-              Host = "key-auth1.com"
+        local harness = {
+          uri_args = { -- query string
+            {
+              headers = { Host = "key-auth1.com" },
+              path    = "/request?apikey=kong",
+              method  = "GET",
             },
-            path    = "/request?apikey=kong",
-            method  = "GET",
+            {
+              headers = { Host = "key-auth2.com" },
+              path    = "/request?apikey=kong",
+              method  = "GET",
+            }
           },
-          {
-            headers = {
-              Host = "key-auth2.com"
+          headers = {
+            {
+              headers = { Host = "key-auth1.com", apikey = "kong" },
+              path    = "/request",
+              method  = "GET",
             },
-            path    = "/request?apikey=kong",
-            method  = "GET",
+            {
+              headers = { Host = "key-auth2.com", apikey = "kong" },
+              path    = "/request",
+              method  = "GET",
+            },
+          },
+          ["post_data.params"] = {
+            {
+              headers = { Host = "key-auth5.com" },
+              body    = { apikey = "kong" },
+              method  = "POST",
+              path    = "/request",
+            },
+            {
+              headers = { Host = "key-auth6.com" },
+              body    = { apikey = "kong" },
+              method  = "POST",
+              path    = "/request",
+            },
           }
-        },
-        headers = {
-          {
-            headers = {
-              Host = "key-auth1.com",
-              ["apikey"] = "kong"
-            },
-            path    = "/request",
-            method  = "GET",
-          },
-          {
-            headers = {
-              Host = "key-auth2.com",
-              ["apikey"] = "kong"
-            },
-            path    = "/request",
-            method  = "GET",
-          },
-        },
-        ["post_data.params"] = {
-          {
-            headers = {
-              ["Host"]         = "key-auth5.com",
-              ["Content-Type"] = "application/x-www-form-urlencoded"
-            },
-            body    = {
-              apikey = "kong"
-            },
-            method  = "POST",
-            path    = "/request",
-          },
-          {
-            headers = {
-              ["Host"]         = "key-auth6.com",
-              ["Content-Type"] = "application/x-www-form-urlencoded"
-            },
-            body    = {
-              apikey = "kong"
-            },
-            method  = "POST",
-            path    = "/request",
-          },
         }
-      }
 
-      for type, _ in pairs(harness) do
-        describe(type, function()
-          it("false sends key to upstream", function()
-            local res   = assert(proxy_client:send(harness[type][1]))
-            local body  = assert.res_status(200, res)
-            local json  = cjson.decode(body)
-            local field = type == "post_data.params" and json.post_data.params or json[type]
-            assert.equal("kong", field.apikey)
+        for type, _ in pairs(harness) do
+          describe(type, function()
+            if type == "post_data.params" then
+              harness[type][1].headers["Content-Type"] = content_type
+              harness[type][2].headers["Content-Type"] = content_type
+            end
+
+            it("(" .. content_type .. ") false sends key to upstream", function()
+              local res   = assert(proxy_client:send(harness[type][1]))
+              local body  = assert.res_status(200, res)
+              local json  = cjson.decode(body)
+              local field = type == "post_data.params" and
+                              json.post_data.params or
+                              json[type]
+
+              assert.equal("kong", field.apikey)
+            end)
+
+            it("(" .. content_type .. ") true doesn't send key to upstream", function()
+              local res   = assert(proxy_client:send(harness[type][2]))
+              local body  = assert.res_status(200, res)
+              local json  = cjson.decode(body)
+              local field = type == "post_data.params" and
+                            json.post_data.params or
+                            json[type]
+
+              assert.is_nil(field.apikey)
+            end)
           end)
-          it("true doesn't send key to upstream", function()
-            local res   = assert(proxy_client:send(harness[type][2]))
-            local body  = assert.res_status(200, res)
-            local json  = cjson.decode(body)
-            local field = type == "post_data.params" and json.post_data.params or json[type]
-            assert.is_nil(field.apikey)
-          end)
+        end
+
+        it("(" .. content_type .. ") true preserves body MIME type", function()
+          local res  = assert(proxy_client:send {
+            method = "POST",
+            path = "/request",
+            headers = {
+              Host = "key-auth6.com",
+              ["Content-Type"] = content_type,
+            },
+            body = { apikey = "kong", foo = "bar" },
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal("bar", json.post_data.params.foo)
         end)
       end
+
+      it("fails with 'key_in_body' and unsupported content type", function()
+        local res = assert(proxy_client:send {
+          path = "/status/200",
+          headers = {
+            ["Host"] = "key-auth6.com",
+            ["Content-Type"] = "text/plain",
+          },
+          body = "foobar",
+        })
+
+        local body = assert.res_status(400, res)
+        local json = cjson.decode(body)
+        assert.same({ message = "Cannot process request body" }, json)
+      end)
     end)
 
     describe("config.anonymous", function()

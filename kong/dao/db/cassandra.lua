@@ -182,6 +182,7 @@ end
 
 function _M:infos()
   return {
+    db_name = "Cassandra",
     desc = "keyspace",
     name = self.cluster_options.keyspace,
     version = self.major_minor_version or "unknown",
@@ -215,7 +216,11 @@ function _M:first_coordinator()
 end
 
 function _M:get_coordinator()
-  return coordinator, coordinator and nil or "no coordinator has been set"
+  if not coordinator then
+    return nil, "no coordinator has been set"
+  end
+
+  return coordinator
 end
 
 function _M:coordinator_change_keyspace(keyspace)
@@ -316,6 +321,12 @@ local function serialize_arg(field, value)
     return cassandra.uuid(value)
   elseif field.type == "timestamp" then
     return cassandra.timestamp(value)
+  elseif field.type == "boolean" then
+    if type(value) == "boolean" then
+      return cassandra.boolean(value)
+    end
+
+    return cassandra.boolean(value == "true")
   elseif field.type == "table" or field.type == "array" then
     return cjson.encode(value)
   else
@@ -356,7 +367,7 @@ local function check_unique_constraints(self, table_name, constraints, values, p
 
   for col, constraint in pairs(constraints.unique) do
     -- Only check constraints if value is non-null
-    if values[col] ~= nil then
+    if values[col] ~= nil and values[col] ~= ngx.null then
       local where, args = get_where(constraint.schema, {[col] = values[col]})
       local query = select_query(table_name, where)
       local rows, err = self:query(query, args, nil, constraint.schema)
@@ -392,7 +403,7 @@ local function check_foreign_constaints(self, values, constraints)
   for col, constraint in pairs(constraints.foreign) do
     -- Only check foreign keys if value is non-null,
     -- if must not be null, field should be required
-    if values[col] ~= nil then
+    if values[col] ~= nil and values[col] ~= ngx.null then
       local res, err = self:find(constraint.table, constraint.schema, {
         [constraint.col] = values[col]
       })

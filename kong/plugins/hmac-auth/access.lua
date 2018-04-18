@@ -127,6 +127,8 @@ local function retrieve_hmac_fields(request, headers, header_name, conf)
   return hmac_params
 end
 
+-- plugin assumes the request parameters being used for creating
+-- signature by client are not changed by core or any other plugin
 local function create_hash(request, hmac_params, headers)
   local signing_string = ""
   local hmac_headers = hmac_params.hmac_headers
@@ -139,7 +141,8 @@ local function create_hash(request, hmac_params, headers)
     if not header_value then
       if header == "request-line" then
         -- request-line in hmac headers list
-        local request_line = fmt("%s %s HTTP/%s", ngx.req.get_method(), ngx.var.uri, ngx.req.http_version())
+        local request_line = fmt("%s %s HTTP/%s", ngx.req.get_method(),
+                                 ngx.var.request_uri, ngx.req.http_version())
         signing_string = signing_string .. request_line
       else
         signing_string = signing_string .. header .. ":"

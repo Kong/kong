@@ -64,6 +64,9 @@ local validation_errors = {
   ENTITY_CHECK              = "failed entity check: %s(%s)",
   ENTITY_CHECK_N_FIELDS     = "entity check requires %d fields",
   CHECK                     = "entity check failed",
+  CONDITIONAL               = "failed conditional validation",
+  AT_LEAST_ONE_OF           = "at least one of these fields must be non-empty: %s",
+  ONLY_ONE_OF               = "only one of these fields must be non-empty: %s",
   -- schema error
   SCHEMA_NO_DEFINITION      = "expected a definition table",
   SCHEMA_NO_FIELDS          = "error in schema definition: no 'fields' table",
@@ -296,24 +299,15 @@ end
 
 --- Produce a nicely quoted list:
 -- Given `{"foo", "bar", "baz"}` and `"or"`, produces
--- `"'foo', 'bar' or 'baz'"`.
+-- `"'foo', 'bar', 'baz'"`.
 -- @param words an array of strings.
--- @param conjunction The conjunction to use before the last item.
 -- @return The string of quoted words.
-local function quoted_list(words, conjunction)
+local function quoted_list(words)
   local msg = {}
-  local next_to_last = #words - 1
-  for i, word in ipairs(words) do
-    insert(msg, "'")
-    insert(msg, word)
-    insert(msg, "'")
-    if i == next_to_last then
-      insert(msg, " " .. conjunction .. " ")
-    elseif i < next_to_last then
-      insert(msg, ", ")
-    end
+  for _, word in ipairs(words) do
+    insert(msg, ("'%s'"):format(word))
   end
-  return concat(msg)
+  return concat(msg, ", ")
 end
 
 
@@ -366,6 +360,7 @@ end
 Schema.entity_checkers = {
 
   at_least_one_of = {
+    run_with_missing_fields = true,
     fn = function(entity, field_names)
       for _, name in ipairs(field_names) do
         if is_nonempty(entity[name]) then
@@ -373,8 +368,7 @@ Schema.entity_checkers = {
         end
       end
 
-      return nil, "at least one of " .. quoted_list(field_names, "or")
-                  .. " must be non-empty"
+      return nil, quoted_list(field_names)
     end,
   },
 
@@ -396,8 +390,7 @@ Schema.entity_checkers = {
       if ok then
         return true
       end
-      return nil, "only one of " .. quoted_list(field_names, "or")
-                  .. " must be non-empty"
+      return nil, quoted_list(field_names)
     end,
   },
 
@@ -425,7 +418,7 @@ Schema.entity_checkers = {
       -- Handle `required`
       if arg.then_match.required == true and then_value == null then
         local field_errors = { [arg.then_field] = validation_errors.REQUIRED }
-        return nil, validation_errors.IF_THEN, field_errors
+        return nil, validation_errors.CONDITIONAL, field_errors
       end
 
       local then_merged = merge_field(schema.fields[arg.then_field], arg.then_match)
@@ -433,7 +426,7 @@ Schema.entity_checkers = {
       ok, err = Schema.validate_field(schema, then_merged, then_value)
       if not ok then
         local field_errors = { [arg.then_field] = err }
-        return nil, validation_errors.IF_THEN, field_errors
+        return nil, validation_errors.CONDITIONAL, field_errors
       end
 
       return true
@@ -736,9 +729,11 @@ local function run_entity_check(self, name, input, arg)
   local all_nil = true
   for _, fname in ipairs(fields_to_check) do
     if input[fname] == nil then
-      local err = validation_errors.REQUIRED_FOR_ENTITY_CHECK:format(fname)
-      field_errors[fname] = err
-      ok = false
+      if not checker.run_with_missing_fields then
+        local err = validation_errors.REQUIRED_FOR_ENTITY_CHECK
+        field_errors[fname] = err
+        ok = false
+      end
     else
       all_nil = false
     end
@@ -759,7 +754,7 @@ local function run_entity_check(self, name, input, arg)
     return true
   end
 
-  err = err or validation_errors[name:upper()]
+  err = validation_errors[name:upper()]:format(err)
   if not err then
     local data = pretty.write({ name = arg }):gsub("%s+", " ")
     err = validation_errors.ENTITY_CHECK:format(name, data)
@@ -1072,7 +1067,23 @@ end
 -- indexed numerically for general errors, and by field name for field errors.
 -- In all cases, the input table is untouched.
 function Schema:validate_update(input)
-  return self:validate(input, false)
+
+  -- Monkey-patch some error messages to make it clearer why they
+  -- apply during an update. This avoids propagating update-awareness
+  -- all the way down to the entity checkers (which would otherwise
+  -- defeat the whole purpose of the mechanism).
+  local rfec = validation_errors.REQUIRED_FOR_ENTITY_CHECK
+  local aloo = validation_errors.AT_LEAST_ONE_OF
+  validation_errors.REQUIRED_FOR_ENTITY_CHECK = rfec .. " when updating"
+  validation_errors.AT_LEAST_ONE_OF = "when updating, " .. aloo
+
+  local ok, err, err_t = self:validate(input, false)
+
+  -- Restore the original error messages
+  validation_errors.REQUIRED_FOR_ENTITY_CHECK = rfec
+  validation_errors.AT_LEAST_ONE_OF = aloo
+
+  return ok, err, err_t
 end
 
 

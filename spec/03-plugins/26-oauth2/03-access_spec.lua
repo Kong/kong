@@ -1831,9 +1831,40 @@ for _, strategy in helpers.each_strategy() do
         assert.are.equal("email", body.headers["x-authenticated-scope"])
         assert.is_nil(body.headers["x-anonymous-consumer"])
       end)
+      it("returns HTTP 400 when scope is not a string", function()
+        local invalid_values = {
+          { "email" },
+          123,
+          false,
+        }
+
+        for _, val in ipairs(invalid_values) do
+          local res = assert(proxy_ssl_client:send {
+            method = "POST",
+            path = "/oauth2/token",
+            body = {
+              provision_key = "provision123",
+              authenticated_userid = "id123",
+              client_id = "clientid123",
+              client_secret="secret123",
+              scope = val,
+              grant_type = "password",
+            },
+            headers = {
+              ["Host"] = "oauth2_5.com",
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+          assert.same({
+            error = "invalid_scope",
+            error_description = "scope must be a string"
+          }, json)
+        end
+      end)
       it("works with right credentials and anonymous", function()
         local token = provision_token("oauth2_7.com")
-
         local res = assert(proxy_ssl_client:send {
           method  = "POST",
           path    = "/request",
