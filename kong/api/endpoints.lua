@@ -337,28 +337,34 @@ local function delete_entity_endpoint(schema_name, entity_has_unique_name,
 end
 
 
-local function generate_collection_endpoints(endpoints, collection_path, ...)
+local function generate_collection_endpoints(endpoints, schema, collection_path, ...)
   endpoints[collection_path] = {
-    --OPTIONS = method_not_allowed,
-    --HEAD    = method_not_allowed,
-    GET     = get_collection_endpoint(...),
-    POST    = post_collection_endpoint(...),
-    --PUT     = method_not_allowed,
-    --PATCH   = method_not_allowed,
-    --DELETE  = method_not_allowed,
+    schema  = schema,
+    methods = {
+      --OPTIONS = method_not_allowed,
+      --HEAD    = method_not_allowed,
+      GET     = get_collection_endpoint(...),
+      POST    = post_collection_endpoint(...),
+      --PUT     = method_not_allowed,
+      --PATCH   = method_not_allowed,
+      --DELETE  = method_not_allowed,
+    },
   }
 end
 
 
-local function generate_entity_endpoints(endpoints, entity_path, ...)
+local function generate_entity_endpoints(endpoints, schema, entity_path, ...)
   endpoints[entity_path] = {
-    --OPTIONS = method_not_allowed,
-    --HEAD    = method_not_allowed,
-    GET     = get_entity_endpoint(...),
-    --POST    = method_not_allowed,
-    --PUT     = method_not_allowed,
-    PATCH   = patch_entity_endpoint(...),
-    DELETE  = delete_entity_endpoint(...),
+    schema   = schema,
+    methods = {
+      --OPTIONS = method_not_allowed,
+      --HEAD    = method_not_allowed,
+      GET     = get_entity_endpoint(...),
+      --POST    = method_not_allowed,
+      --PUT     = method_not_allowed,
+      PATCH   = patch_entity_endpoint(...),
+      DELETE  = delete_entity_endpoint(...),
+    },
   }
 end
 
@@ -394,14 +400,14 @@ local function generate_endpoints(schema, endpoints, prefix)
   local collection_path = path_prefix .. schema_name
 
   -- e.g. /routes
-  generate_collection_endpoints(endpoints, collection_path, schema_name)
+  generate_collection_endpoints(endpoints, schema, collection_path, schema_name)
 
   local entity_path = fmt("%s/:%s", collection_path, schema_name)
   local entity_name_field = schema.fields.name
   local entity_has_unique_name = entity_name_field and entity_name_field.unique
 
   -- e.g. /routes/:routes
-  generate_entity_endpoints(endpoints, entity_path, schema_name,
+  generate_entity_endpoints(endpoints, schema, entity_path, schema_name,
                             entity_has_unique_name)
 
   for foreign_field_name, foreign_field in schema:each_field() do
@@ -414,7 +420,9 @@ local function generate_endpoints(schema, endpoints, prefix)
       local foreign_entity_has_unique_name = foreign_entity_name_field and foreign_entity_name_field.unique
 
       -- e.g. /routes/:routes/service
-      generate_entity_endpoints(endpoints, foreign_entity_path,
+      generate_entity_endpoints(endpoints,
+                                foreign_schema,
+                                foreign_entity_path,
                                 foreign_schema_name,
                                 foreign_entity_has_unique_name,
                                 foreign_field_name, schema_name,
@@ -424,8 +432,11 @@ local function generate_endpoints(schema, endpoints, prefix)
       local foreign_collection_path = fmt("/%s/:%s/%s", foreign_schema_name,
                                           foreign_schema_name, schema_name)
 
-      generate_collection_endpoints(endpoints, foreign_collection_path,
-                                    schema_name, foreign_field_name,
+      generate_collection_endpoints(endpoints,
+                                    schema,
+                                    foreign_collection_path,
+                                    schema_name,
+                                    foreign_field_name,
                                     foreign_schema_name,
                                     foreign_entity_has_unique_name)
     end
