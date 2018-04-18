@@ -150,11 +150,6 @@ local function attach_routes(routes)
   for route_path, methods in pairs(routes) do
     methods.on_error = methods.on_error or on_error
 
-    rbac.register_resource_route(route_path, rbac.route_resource_map[route_path]
-                                             or methods.resource
-                                             or "default")
-    methods.resource = nil
-
     for method_name, method_handler in pairs(methods) do
       local wrapped_handler = function(self)
         return method_handler(self, singletons.dao, handler_helpers)
