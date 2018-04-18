@@ -5,6 +5,7 @@ local singletons = require "kong.singletons"
 local bit        = require "bit"
 local tab_clear  = require "table.clear"
 local workspaces = require "kong.workspaces"
+local responses   = require "kong.tools.responses"
 
 local band   = bit.band
 local bxor   = bit.bxor
@@ -426,33 +427,51 @@ function _M.load_rbac_ctx(dao_factory)
     return nil, err
   end
 
-  local entities_perms, err = resolve_role_entity_permissions(roles)
+  local entities_perms, err = _M.resolve_role_entity_permissions(roles)
   if err then
     return nil, err
   end
 
-  local endpoints_perms, err = resolve_role_endpoint_permissions(roles)
+  local endpoints_perms, err = _M.resolve_role_endpoint_permissions(roles)
   if err then
     return nil, err
   end
 
-  ngx.ctx.rbac = {
+  return {
     user = user,
     roles = roles,
     action = action,
     entities_perms = entities_perms,
     endpoints_perms = endpoints_perms,
   }
-
-  return true
 end
 
 
-function _M.validate_endpoint(route)
-  local rbac_ctx = ngx.ctx.rbac
-  return _M.authorize_request_endpoint(rbac_ctx.endpoints_perms,
-                                       workspaces.get_workspaces()[1],
-                                       route, rbac_ctx.action)
+function _M.validate_endpoint(lapis, route)
+  if lapis.route_name == "default_route" then
+    return
+  end
+
+  if not singletons.configuration.enforce_rbac then
+    return
+  end
+
+  local rbac_ctx, err = _M.load_rbac_ctx(singletons.dao)
+  if err then
+    ngx.log(ngx.ERR, "[rbac] ", err)
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+  end
+  if not rbac_ctx then
+    return responses.send_HTTP_UNAUTHORIZED("Invalid RBAC credentials")
+  end
+
+  local  ok = _M.authorize_request_endpoint(rbac_ctx.endpoints_perms,
+                                            workspaces.get_workspaces()[1],
+                                            route, rbac_ctx.action)
+  if not ok then
+    return responses.send_HTTP_FORBIDDEN()
+  end
+  ngx.ctx.rbac = rbac_ctx
 end
 
 

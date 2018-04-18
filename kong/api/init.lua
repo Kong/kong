@@ -107,23 +107,7 @@ app:before_filter(function(self)
     ngx.ctx.workspaces = workspaces
     self.params.workspace_name = nil
 
-    local ok, msg = rbac.load_rbac_ctx(singletons.dao)
-    if ok == false then
-      return responses.send_HTTP_FORBIDDEN("Invalid RBAC credentials")
-    end
-    if ok == nil then
-      ngx.log(ERR, "[rbac] ", msg)
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
-    end
-
-    local valid, err = rbac.validate_endpoint(ngx.var.uri)
-    if err then
-      ngx.log(ERR, "[rbac] ", err)
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
-    end
-    if not valid then
-      return responses.send_HTTP_UNAUTHORIZED()
-    end
+   rbac.validate_endpoint(self, ngx.var.uri)
   end
 
   if not NEEDS_BODY[ngx.req.get_method()] then
