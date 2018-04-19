@@ -176,14 +176,6 @@ local function bitfield_check(map, key, bit)
 end
 
 
-function _M.validate_entity_operation(entity, method)
-  local action = _M.figure_action(method)
-  local roles = get_current_user().roles
-  local pmap = _M.resolve_role_entity_permissions(roles)
-  return _M.authorize_request_entity(pmap, entity.id, action)
-end
-
-
 function _M.validate(token, route, method, dao_factory)
   if not token then
     return false
@@ -337,7 +329,14 @@ local function resolve_role_entity_permissions(roles)
 
   return pmap
 end
-_M.resolve_role_entity_permissions = resolve_role_entity_permissions
+
+
+function _M.validate_entity_operation(entity, method)
+  local action = figure_action(method)
+  local roles = get_current_user().roles
+  local pmap = resolve_role_entity_permissions(roles)
+  return _M.authorize_request_entity(pmap, entity.id, action)
+end
 
 
 function _M.readable_entities_permissions(roles)
