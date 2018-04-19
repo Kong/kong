@@ -155,26 +155,25 @@ return {
     end,
   },
 
-  -- XXX this endpoint will be reimplemented - or refactored
   ["/rbac/users/:name_or_id/permissions"] = {
     before = function(self, dao_factory, helpers)
       crud.find_rbac_user_by_name_or_id(self, dao_factory, helpers)
     end,
 
     GET = function(self, dao_factory, helpers)
-      local map = rbac.build_permissions_map(self.rbac_user, dao_factory)
-
-      for action, value in pairs(map) do
-        local action_t = {}
-        for k in pairs(rbac.actions_bitfields) do
-          local n = rbac.actions_bitfields[k]
-
-          if band(n, value) == n then
-            action_t[#action_t + 1] = k
-          end
-        end
-        map[action] = #action_t > 0 and action_t or nil
+      local roles, err = rbac.entity_relationships(dao_factory, self.rbac_user,
+                                                   "user", "role")
+      if err then
+        ngx.log(ngx.ERR, "[rbac] ", err)
+        return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
       end
+
+      local map = {}
+      local entities_perms = rbac.readable_entities_permissions(roles)
+      local endpoints_perms = rbac.readable_endpoints_permissions(roles)
+
+      map.entities = entities_perms
+      map.endpoints = endpoints_perms
 
       return helpers.responses.send_HTTP_OK(map)
     end,
@@ -404,22 +403,7 @@ return {
     end,
 
     GET = function(self, dao_factory, helpers)
-      local map = rbac.resolve_role_entity_permissions({ self.rbac_role })
-
-      for k, v in pairs(map) do
-        local actions_t = setmetatable({}, cjson.empty_array_mt)
-        local actions_t_idx = 0
-
-        for action, n in pairs(rbac.actions_bitfields) do
-          if band(n, v) == n then
-            actions_t_idx = actions_t_idx + 1
-            actions_t[actions_t_idx] = action
-          end
-        end
-
-        map[k] = actions_t
-      end
-
+      local map = rbac.readable_entities_permissions({self.rbac_role})
       return helpers.responses.send_HTTP_OK(map)
     end,
   },
@@ -497,24 +481,7 @@ return {
     end,
 
     GET = function(self, dao_factory, helpers)
-      local map = rbac.resolve_role_endpoint_permissions({ self.rbac_role })
-
-      for workspace in pairs(map) do
-        for endpoint, actions in pairs(map[workspace]) do
-          local actions_t = setmetatable({}, cjson.empty_array_mt)
-          local actions_t_idx = 0
-
-          for action, n in pairs(rbac.actions_bitfields) do
-            if band(n, actions) == n then
-              actions_t_idx = actions_t_idx + 1
-              actions_t[actions_t_idx] = action
-            end
-          end
-
-          map[workspace][endpoint] = actions_t
-        end
-      end
-
+      local map = rbac.readable_endpoints_permissions({self.rbac_role})
       return helpers.responses.send_HTTP_OK(map)
     end,
   },

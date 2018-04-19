@@ -5,7 +5,8 @@ local singletons = require "kong.singletons"
 local bit        = require "bit"
 local tab_clear  = require "table.clear"
 local workspaces = require "kong.workspaces"
-local responses   = require "kong.tools.responses"
+local responses  = require "kong.tools.responses"
+local cjson      = require "cjson"
 
 local band   = bit.band
 local bxor   = bit.bxor
@@ -234,7 +235,7 @@ function _M.resolve_workspace_entities(workspaces)
 end
 
 
-function _M.resolve_role_entity_permissions(roles)
+local function resolve_role_entity_permissions(roles)
   local pmap = {}
 
 
@@ -290,6 +291,28 @@ function _M.resolve_role_entity_permissions(roles)
 
   return pmap
 end
+_M.resolve_role_entity_permissions = resolve_role_entity_permissions
+
+
+function _M.readable_entities_permissions(roles)
+  local map = resolve_role_entity_permissions(roles)
+
+  for k, v in pairs(map) do
+    local actions_t = setmetatable({}, cjson.empty_array_mt)
+    local actions_t_idx = 0
+
+    for action, n in pairs(actions_bitfields) do
+      if band(n, v) == n then
+        actions_t_idx = actions_t_idx + 1
+        actions_t[actions_t_idx] = action
+      end
+    end
+
+    map[k] = actions_t
+  end
+
+  return map
+end
 
 
 local function authorize_request_entity(map, id, action)
@@ -298,7 +321,7 @@ end
 _M.authorize_request_entity = authorize_request_entity
 
 
-function _M.resolve_role_endpoint_permissions(roles)
+local function resolve_role_endpoint_permissions(roles)
   local pmap = {}
 
 
@@ -335,6 +358,30 @@ function _M.resolve_role_endpoint_permissions(roles)
 
 
   return pmap
+end
+_M.resolve_role_endpoint_permissions = resolve_role_endpoint_permissions
+
+
+function _M.readable_endpoints_permissions(roles)
+  local map = resolve_role_endpoint_permissions(roles)
+
+  for workspace in pairs(map) do
+    for endpoint, actions in pairs(map[workspace]) do
+      local actions_t = setmetatable({}, cjson.empty_array_mt)
+      local actions_t_idx = 0
+
+      for action, n in pairs(actions_bitfields) do
+        if band(n, actions) == n then
+          actions_t_idx = actions_t_idx + 1
+          actions_t[actions_t_idx] = action
+        end
+      end
+
+      map[workspace][endpoint] = actions_t
+    end
+  end
+
+  return map
 end
 
 
@@ -503,6 +550,7 @@ function _M.check_cascade(entities)
 
   return true
 end
+
 
 do
   local reports = require "kong.core.reports"
