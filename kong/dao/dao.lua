@@ -296,6 +296,8 @@ function DAO:find(tbl)
     return ret_error(self.db.name, nil, Errors.schema(err))
   end
 
+  -- XXX find a better, cleaner way to handle this logic - so that
+  -- there is no unreachable code, but still no upstream tainting
   do
     local row, err = self.db:find(self.table, self.schema, primary_keys)
     if err then
@@ -328,6 +330,8 @@ function DAO:find_all(tbl, include_ws)
     new_params = fetch_shared_entity_id(self.schema.table, tbl)
   end
 
+  -- XXX find a better, cleaner way to handle this logic - so that
+  -- there is no unreachable code, but still no upstream tainting
   do
     local rows, err = self.db:find_all(self.table, new_params or tbl, self.schema)
     if err then
@@ -369,6 +373,8 @@ function DAO:find_page(tbl, page_offset, page_size)
 
   check_arg(page_size, 3, "number")
 
+  -- XXX find a better, cleaner way to handle this logic - so that
+  -- there is no unreachable code, but still no upstream tainting
   do
     local rows, err, offset = self.db:find_page(self.table, new_params or tbl,
                                                 page_offset, page_size,
