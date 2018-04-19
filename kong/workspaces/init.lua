@@ -3,10 +3,7 @@ local utils      = require "kong.tools.utils"
 
 
 local find = string.find
-local type = type
 local ngx_log = ngx.log
-local ERR     = ngx.ERR
-local NOTICE  = ngx.NOTICE
 local DEBUG   = ngx.DEBUG
 local next    = next
 
@@ -81,15 +78,10 @@ local function permutations(...)
   local curr = #state -- first thing to increment is the last set
 
   return function()
-    while true do
-      if inc(state, curr) then
-        return map(function(s)
-                     return s[1][s[2]] end,
-                   state)
-
-      else
-        return nil
-      end
+    if inc(state, curr) then
+      return map(function(s) return s[1][s[2]] end, state)
+    else
+      return nil
     end
   end
 end
@@ -120,11 +112,6 @@ end
 
 local function is_wildcard_route(route)
   return any(is_wildcard, route.hosts)
-end
-
-
-local function listify(x)
-  return (type(x) == "table") and x or {x}
 end
 
 
@@ -253,7 +240,7 @@ local function retrieve_workspace(workspace_name)
   end
 
   if err then
-    log(ngx.ERR, "error in retrieving workspace: ", err)
+    ngx.log(ngx.ERR, "error in retrieving workspace: ", err)
     return nil, err
   end
 
@@ -314,7 +301,7 @@ function _M.delete_entity_relation(table_name, entity)
   end
 
   for _, row in ipairs(res) do
-    local res, err = singletons.dao.workspace_entities:delete(row)
+    local _, err = singletons.dao.workspace_entities:delete(row)
     if err then
       return err
     end
@@ -335,7 +322,8 @@ function _M.update_entity_relation(table_name, entity)
       end
 
       for _, row in ipairs(res) do
-        local res , err = singletons.dao.workspace_entities:update({
+        -- XXX no error handling?
+        singletons.dao.workspace_entities:update({
           unique_field_value = entity[k]
         }, row)
       end

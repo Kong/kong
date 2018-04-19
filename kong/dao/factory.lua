@@ -460,7 +460,7 @@ function _M:run_migrations(on_migrate, on_success)
 
   -- run workspace-related migrations
   local def_workspace_migration = workspaces.get_default_workspace_migration()
-  local ok, err, n_ran = migrate(self, "default_workspace", def_workspace_migration,
+  local _, err, n_ran = migrate(self, "default_workspace", def_workspace_migration,
     cur_migrations, on_migrate, on_success)
   if err then
     return ret_error_string(self.db.name, nil, err)

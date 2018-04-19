@@ -72,23 +72,6 @@ local function action_bitfield(self)
 end
 
 
-local function readable_actions(permission)
-  local action_t     = setmetatable({}, cjson.empty_array_mt)
-  local action_t_idx = 0
-
-  for k in pairs(rbac.actions_bitfields) do
-    local n = rbac.actions_bitfields[k]
-
-    if band(n, permission.actions) == n then
-      action_t_idx = action_t_idx + 1
-      action_t[action_t_idx] = k
-    end
-  end
-
-  permission.actions = action_t
-end
-
-
 local function post_process_actions(row)
   local actions_t = setmetatable({}, cjson.empty_array_mt)
   local actions_t_idx = 0
@@ -348,7 +331,7 @@ return {
     POST = function(self, dao_factory, helpers)
       action_bitfield(self)
 
-      local entity_type, row, err = workspaces.resolve_entity_type(self.params.entity_id)
+      local entity_type, _, err = workspaces.resolve_entity_type(self.params.entity_id)
       -- database error
       if entity_type == nil then
         return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)

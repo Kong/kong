@@ -1,9 +1,7 @@
 local _M = {}
 
-local utils      = require "kong.tools.utils"
 local singletons = require "kong.singletons"
 local bit        = require "bit"
-local tab_clear  = require "table.clear"
 local workspaces = require "kong.workspaces"
 local responses  = require "kong.tools.responses"
 local cjson      = require "cjson"

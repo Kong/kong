@@ -253,7 +253,7 @@ function DAO:insert(tbl, options)
   if not err and workspace then
     local err_rel = workspaces.add_entity_relation(self.table, res, workspace)
     if err_rel then
-      local data, err = self:delete(res)
+      local _, err = self:delete(res)
       if err then
         return ret_error(self.db.name, nil, err)
       end

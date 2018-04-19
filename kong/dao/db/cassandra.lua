@@ -495,12 +495,6 @@ function _M:find(table_name, schema, filter_keys)
   else                   return nil, "bad rows result" end
 end
 
--- true if we are trying to retrieve the default workspace itself
-local function is_default_ws_retrieval(table_name, filters)
-  local default = workspaces.DEFAULT_WORKSPACE
-  return table_name == "workspaces" and filters and filters.name == default
-end
-
 -- true if the table is workspaceable and the workspace name is not
 -- the wildcard - which should evaluate to all workspaces - and we are not
 -- retrieving the default workspace itself

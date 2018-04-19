@@ -2,8 +2,6 @@ local cjson         = require "cjson"
 local utils         = require "kong.tools.utils"
 local responses     = require "kong.tools.responses"
 local app_helpers   = require "lapis.application"
-local singletons    = require "kong.singletons"
-local workspaces    = require "kong.workspaces"
 
 
 local decode_base64 = ngx.decode_base64
@@ -13,7 +11,6 @@ local tonumber      = tonumber
 local ipairs        = ipairs
 local next          = next
 local type          = type
-local fmt           = string.format
 
 
 local function post_process_row(row, post_process)
@@ -294,7 +291,6 @@ end
 -- if it does, we are performing an update, if not, an insert.
 function _M.put(params, dao_collection, post_process)
   local new_entity, err
-  local primary_key = dao_collection.schema.primary_key[1]
 
   local model = dao_collection.model_mt(params)
   if not model:has_primary_keys() then

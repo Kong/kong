@@ -11,7 +11,6 @@ local workspaces = require "kong.workspaces"
 
 local find = string.find
 local sub  = string.sub
-local ERR = ngx.ERR
 
 
 local app = lapis.Application()
