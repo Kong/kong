@@ -448,7 +448,8 @@ end
 
 
 function _M.load_rbac_ctx(dao_factory)
-  local rbac_token = ngx.var.rbac_auth_header
+  local rbac_auth_header = singletons.configuration.rbac_auth_header
+  local rbac_token = ngx.req.get_headers()[rbac_auth_header]
   local http_method = ngx.req.get_method()
 
   if not rbac_token then
