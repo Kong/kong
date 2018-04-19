@@ -486,14 +486,16 @@ function _M.resolve_entity_type(entity_id)
   end
 
   local entity_type = rows[1].entity_type
-  rows, err = singletons.dao[entity_type]:find({
+
+  local row, err = singletons.dao[entity_type]:find({
       [workspaceable_relations[entity_type].primary_key] = entity_id},
     {skip_rbac = true})  -- is this needed? can we just go with "id"?
   if err then
     return nil, nil, err
   end
-  if rows[1] then
-    return entity_type, rows[1], nil
+
+  if row then
+    return entity_type, row, nil
   end
   error("couldn't find entity " .. entity_id .." in its own table.")
 end
