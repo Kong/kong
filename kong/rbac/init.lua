@@ -513,7 +513,7 @@ function _M.validate_endpoint(lapis, route)
   end
 
   local  ok = _M.authorize_request_endpoint(rbac_ctx.endpoints_perms,
-                                            workspaces.get_workspaces()[1],
+                                            workspaces.get_workspaces()[1].name,
                                             route, rbac_ctx.action)
   if not ok then
     return responses.send_HTTP_FORBIDDEN()
