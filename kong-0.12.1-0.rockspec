@@ -149,7 +149,6 @@ build = {
     ["kong.dao.schemas.role_entities"] = "kong/dao/schemas/role_entities.lua",
 
     ["kong.rbac"] = "kong/rbac/init.lua",
-    ["kong.rbac.handler"] = "kong/rbac/handler.lua",
 
     ["kong.workspaces"] = "kong/workspaces/init.lua",
 
