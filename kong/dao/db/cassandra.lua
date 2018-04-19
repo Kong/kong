@@ -614,7 +614,6 @@ function _M:find_page(table_name, tbl, paging_state, page_size, schema)
           row.workspace_id = ws_entity.workspace_id
           res_rows[#res_rows+1] = row
           if #res_rows == page_size then
-            paging_state = row.id
             return res_rows, nil, row[primary_key]
           end
         end

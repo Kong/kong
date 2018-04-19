@@ -380,8 +380,10 @@ local function select_query_ws(self, ws_scope, select_clause, schema, table, whe
                join_tbl or table, table, schema.primary_key[1],
                    primary_key_type == "uuid" and "uuid" or "key")
 
-    join_where = ( join_where and (join_where .. " AND ") or "") ..
-      fmt("( ttls.primary_key_value IS NULL OR (ttls.table_name = '%s' AND expire_at > CURRENT_TIMESTAMP(0) at time zone 'utc') )", table)
+    -- XXX was:
+    --join_where = ( join_where and (join_where .. " AND ") or "") ..
+    --fmt("( ttls.primary_key_value IS NULL OR (ttls.table_name = '%s' AND expire_at > CURRENT_TIMESTAMP(0) at time zone 'utc') )", table)
+    join_where = fmt("( ttls.primary_key_value IS NULL OR (ttls.table_name = '%s' AND expire_at > CURRENT_TIMESTAMP(0) at time zone 'utc') )", table)
   end
 
   if join_tbl then
@@ -535,7 +537,9 @@ function _M:find(table_name, schema, primary_keys)
     return nil, err
   end
 
-  local where = ws and get_where_ws(primary_keys, table_name) or get_where(primary_keys)
+  -- XXX was:
+  --local where = ws and get_where_ws(primary_keys, table_name) or get_where(primary_keys)
+  local where = ws_scope[1] and get_where_ws(primary_keys, table_name) or get_where(primary_keys)
 
   local query
   if #ws_scope > 0 and workspaceable[table_name]  then
