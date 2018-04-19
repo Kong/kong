@@ -331,11 +331,17 @@ local function resolve_role_entity_permissions(roles)
 end
 
 
+local function get_rbac_user_info()
+  local ok, res = pcall(function() return ngx.ctx.rbac end)
+  return ok and res or { roles = {}, user = "guest", entities_perms = {} }
+end
+
+
 function _M.validate_entity_operation(entity, method)
   local action = figure_action(method)
-  local roles = get_current_user().roles
-  local pmap = resolve_role_entity_permissions(roles)
-  return _M.authorize_request_entity(pmap, entity.id, action)
+  local rbac_info = get_rbac_user_info()
+  local permissions_map = rbac_info.entities_perms
+  return _M.authorize_request_entity(permissions_map, entity.id, action)
 end
 
 
