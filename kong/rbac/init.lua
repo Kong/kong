@@ -176,32 +176,6 @@ local function bitfield_check(map, key, bit)
 end
 
 
-function _M.validate(token, route, method, dao_factory)
-  if not token then
-    return false
-  end
-
-  local user, err = get_user(token)
-  if err then
-    return nil, err
-  end
-
-  if not user then
-    return false
-  end
-
-  local map, err = build_permissions_map(user, dao_factory)
-  if err then
-    return nil, err
-  end
-
-  local action = figure_action(method)
-  local resource = route_resources[route]
-
-  return bitfield_check(map, resource, action)
-end
-
-
 local function arr_hash_add(t, e)
   if not t[e] then
     t[e] = true
@@ -329,6 +303,7 @@ local function resolve_role_entity_permissions(roles)
 
   return pmap
 end
+_M.resolve_role_entity_permissions = resolve_role_entity_permissions
 
 
 local function get_rbac_user_info()
