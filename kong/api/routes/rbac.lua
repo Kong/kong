@@ -405,21 +405,22 @@ return {
     POST = function(self, dao_factory, helpers)
       action_bitfield(self)
 
-      local w, err = dao_factory.workspaces:find_all({
-        name = self.params.workspace
-      })
-      if err then
-        helpers.yield_error(err)
+      --XXX we should probably factor this check out into kong.workspaces
+      self.params.workspace = self.params.workspace or "default"
+      if self.params.workspace ~=  "default" then
+        local w, err = dao_factory.workspaces:find_all({
+          name = self.params.workspace
+        })
+        if err then
+          helpers.yield_error(err)
+        end
+        if #w == 0 then
+          local err = fmt("Workspace %s does not exist", self.params.workspace)
+          helpers.responses.send_HTTP_NOT_FOUND(err)
+        end
       end
 
-      if #w == 0 then
-        helpers.responses.send_HTTP_NOT_FOUND("Workspace '" ..
-                                              self.params.workspace .. "' " ..
-                                              "does not exist")
-      end
-
-      crud.post(self.params, dao_factory.role_endpoints,
-                post_process_actions)
+      crud.post(self.params, dao_factory.role_endpoints, post_process_actions)
     end,
   },
 
