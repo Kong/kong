@@ -80,7 +80,7 @@ describe("Server Tokens", function()
 
     setup(start {
       nginx_conf    = "spec/fixtures/custom_nginx.template",
-      server_tokens = "on",
+      headers = "server_tokens",
     })
 
     teardown(helpers.stop_kong)
@@ -119,7 +119,7 @@ describe("Server Tokens", function()
 
     setup(start {
       nginx_conf    = "spec/fixtures/custom_nginx.template",
-      server_tokens = "off",
+      headers = "off",
     })
 
     teardown(helpers.stop_kong)
@@ -212,7 +212,7 @@ describe("Latency Tokens", function()
 
     setup(start {
       nginx_conf = "spec/fixtures/custom_nginx.template",
-      latency_tokens = "on",
+      headers = "latency_tokens",
     })
 
     teardown(helpers.stop_kong)
@@ -251,7 +251,7 @@ describe("Latency Tokens", function()
 
     setup(start {
       nginx_conf     = "spec/fixtures/custom_nginx.template",
-      latency_tokens = "off",
+      headers = "off",
     })
 
     teardown(function()
