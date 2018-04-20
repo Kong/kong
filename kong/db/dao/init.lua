@@ -2,6 +2,7 @@ local cjson        = require "cjson"
 
 local setmetatable = setmetatable
 local tonumber     = tonumber
+local tostring     = tostring
 local require      = require
 local error        = error
 local pairs        = pairs
@@ -122,6 +123,37 @@ local function generate_foreign_key_methods(self)
 
         local row, err_t = self.strategy:update_by_field(name, unique_value,
                                                          entity_to_update)
+        if not row then
+          return nil, tostring(err_t), err_t
+        end
+
+        row, err, err_t = self:row_to_entity(row)
+        if not row then
+          return nil, err, err_t
+        end
+
+        self:post_crud_event("update", row)
+
+        return row
+      end
+
+      self["upsert_by_" .. name] = function(self, unique_value, entity)
+        validate_unique_value(unique_value)
+
+        local entity_to_upsert, err = self.schema:process_auto_fields(entity, "upsert")
+        if not entity_to_upsert then
+          local err_t = self.errors:schema_violation(err)
+          return nil, tostring(err_t), err_t
+        end
+
+        local ok, errors = self.schema:validate_upsert(entity_to_upsert)
+        if not ok then
+          local err_t = self.errors:schema_violation(errors)
+          return nil, tostring(err_t), err_t
+        end
+
+        local row, err_t = self.strategy:upsert_by_field(name, unique_value,
+          entity_to_upsert)
         if not row then
           return nil, tostring(err_t), err_t
         end
@@ -326,6 +358,49 @@ function DAO:update(primary_key, entity)
   end
 
   local row, err_t = self.strategy:update(primary_key, entity_to_update)
+  if not row then
+    return nil, tostring(err_t), err_t
+  end
+
+  row, err, err_t = self:row_to_entity(row)
+  if not row then
+    return nil, err, err_t
+  end
+
+  self:post_crud_event("update", row)
+
+  return row
+end
+
+
+function DAO:upsert(primary_key, entity)
+  if type(primary_key) ~= "table" then
+    error("primary_key must be a table", 2)
+  end
+
+  if type(entity) ~= "table" then
+    error("entity must be a table", 2)
+  end
+
+  local ok, errors = self.schema:validate_primary_key(primary_key)
+  if not ok then
+    local err_t = self.errors:invalid_primary_key(errors)
+    return nil, tostring(err_t), err_t
+  end
+
+  local entity_to_upsert, err = self.schema:process_auto_fields(entity, "upsert")
+  if not entity_to_upsert then
+    local err_t = self.errors:schema_violation(err)
+    return nil, tostring(err_t), err_t
+  end
+
+  local ok, errors = self.schema:validate_upsert(entity_to_upsert)
+  if not ok then
+    local err_t = self.errors:schema_violation(errors)
+    return nil, tostring(err_t), err_t
+  end
+
+  local row, err_t = self.strategy:upsert(primary_key, entity_to_upsert)
   if not row then
     return nil, tostring(err_t), err_t
   end

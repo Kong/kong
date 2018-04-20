@@ -15,7 +15,7 @@ local function it_content_types(title, fn)
 end
 
 
-for _, strategy in helpers.each_strategy("postgres") do
+for _, strategy in helpers.each_strategy() do
   describe("Admin API #" .. strategy, function()
     local bp
     local db
@@ -327,6 +327,133 @@ for _, strategy in helpers.each_strategy("postgres") do
           end)
         end)
 
+        describe("PUT", function()
+          it_content_types("creates if not found", function(content_type)
+            return function()
+              local res = client:put("/routes/" .. route.id, {
+                headers = {
+                  ["Content-Type"] = content_type
+                },
+                body = {
+                  paths   = { "/updated-paths" },
+                  service = route.service
+                },
+              })
+              local body = assert.res_status(200, res)
+              local json = cjson.decode(body)
+              assert.same({ "/updated-paths" }, json.paths)
+              assert.same(cjson.null, json.hosts)
+              assert.same(cjson.null, json.methods)
+              assert.equal(route.id, json.id)
+
+              local in_db = assert(db.routes:select({ id = route.id }))
+              assert.same(json, in_db)
+            end
+          end)
+
+          it_content_types("updates if found", function(content_type)
+            return function()
+              local res = client:put("/routes/" .. route.id, {
+                headers = {
+                  ["Content-Type"] = content_type
+                },
+                body = {
+                  paths   = { "/updated-paths" },
+                  service = route.service
+                },
+              })
+              local body = assert.res_status(200, res)
+              local json = cjson.decode(body)
+              assert.same({ "/updated-paths" }, json.paths)
+              assert.same(cjson.null, json.hosts)
+              assert.same(cjson.null, json.methods)
+              assert.equal(route.id, json.id)
+
+              local in_db = assert(db.routes:select({ id = route.id }))
+              assert.same(json, in_db)
+            end
+          end)
+
+          describe("errors", function()
+            it("handles malformed JSON body", function()
+              local res = client:put("/routes/" .. route.id, {
+                body    = '{"hello": "world"',
+                headers = { ["Content-Type"] = "application/json" }
+              })
+              local body = assert.res_status(400, res)
+              assert.equal('{"message":"Cannot parse JSON body"}', body)
+            end)
+
+
+            it_content_types("handles invalid input", function(content_type)
+              return function()
+                -- Missing params
+                local res = client:put("/routes/" .. utils.uuid(), {
+                  body = {},
+                  headers = { ["Content-Type"] = content_type }
+                })
+                local body = assert.res_status(400, res)
+                assert.same({
+                  code    = Errors.codes.SCHEMA_VIOLATION,
+                  name    = "schema violation",
+                  message = unindent([[
+                  2 schema violations
+                  (at least one of these fields must be non-empty: 'methods', 'hosts', 'paths';
+                  service: required field missing)
+                ]], true, true),
+                  fields  = {
+                    service   = "required field missing",
+                    ["@entity"] = {
+                      "at least one of these fields must be non-empty: 'methods', 'hosts', 'paths'"
+                    }
+                  }
+                }, cjson.decode(body))
+
+                -- Invalid parameter
+                res = client:put("/routes/" .. utils.uuid(), {
+                  body = {
+                    methods   = { "GET" },
+                    protocols = { "foo" },
+                  },
+                  headers = { ["Content-Type"] = content_type }
+                })
+                body = assert.res_status(400, res)
+                assert.same({
+                  code    = Errors.codes.SCHEMA_VIOLATION,
+                  name    = "schema violation",
+                  message = "2 schema violations " ..
+                    "(protocols: expected one of: http, https; " ..
+                    "service: required field missing)",
+                  fields  = {
+                    protocols = "expected one of: http, https",
+                    service   = "required field missing",
+                  }
+                }, cjson.decode(body))
+
+                local res = client:put("/routes/" .. route.id, {
+                  headers = {
+                    ["Content-Type"] = content_type
+                  },
+                  body = {
+                    service        = route.service,
+                    paths          = { "/" },
+                    regex_priority = "foobar",
+                  },
+                })
+                local body = assert.res_status(400, res)
+                assert.same({
+                  code    = Errors.codes.SCHEMA_VIOLATION,
+                  name    = "schema violation",
+                  message = "schema violation (regex_priority: expected an integer)",
+                  fields  = {
+                    regex_priority = "expected an integer"
+                  },
+                }, cjson.decode(body))
+              end
+            end)
+          end)
+        end)
+
         describe("PATCH", function()
           it_content_types("updates if found", function(content_type)
             return function()
@@ -431,12 +558,20 @@ for _, strategy in helpers.each_strategy("postgres") do
             })
 
             local body = assert.res_status(200, res)
-            assert.matches('"methods":%[%]', body)
-            assert.matches('"paths":%[%]', body)
             local json = cjson.decode(body)
-            assert.same({}, json.paths)
+
+            if strategy == "cassandra" then
+              assert.equals(ngx.null, json.paths)
+              assert.equals(ngx.null, json.methods)
+
+            else
+              assert.matches('"methods":%[%]', body)
+              assert.matches('"paths":%[%]', body)
+              assert.same({}, json.paths)
+              assert.same({}, json.methods)
+            end
+
             assert.same({ "my-updated.tld" }, json.hosts)
-            assert.same({}, json.methods)
             assert.equal(route.id, json.id)
           end)
 
