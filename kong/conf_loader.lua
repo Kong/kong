@@ -17,6 +17,16 @@ local DEFAULT_PATHS = {
   "/etc/kong.conf"
 }
 
+local headers = constants.HEADERS
+local header_key_to_name = {
+  ["server_tokens"] = "server_tokens",
+  ["latency_tokens"] = "latency_tokens",
+  [string.lower(headers.VIA)] = headers.VIA,
+  [string.lower(headers.SERVER)] = headers.SERVER,
+  [string.lower(headers.PROXY_LATENCY)] = headers.PROXY_LATENCY,
+  [string.lower(headers.UPSTREAM_LATENCY)] = headers.UPSTREAM_LATENCY,
+}
+
 local PREFIX_PATHS = {
   nginx_pid = {"pids", "nginx.pid"},
   nginx_err_logs = {"logs", "error.log"},
@@ -61,8 +71,7 @@ local CONF_INFERENCES = {
   nginx_user = {typ = "string"},
   nginx_worker_processes = {typ = "string"},
   upstream_keepalive = {typ = "number"},
-  server_tokens = {typ = "boolean"},
-  latency_tokens = {typ = "boolean"},
+  headers = {typ = "array"},
   trusted_ips = {typ = "array"},
   real_ip_header = {typ = "string"},
   real_ip_recursive = {typ = "ngx_boolean"},
@@ -275,6 +284,14 @@ local function check_and_infer(conf)
     end)
     if not ok then
       errors[#errors + 1] = err
+    end
+  end
+
+  if conf.headers then
+    for _, token in ipairs(conf.headers) do
+      if token ~= "off" and not header_key_to_name[string.lower(token)] then
+        errors[#errors+1] = "headers: invalid entry '" .. tostring(token) .. "'"
+      end
     end
   end
 
@@ -585,6 +602,35 @@ local function load(path, custom_conf)
         break
       end
     end
+  end
+
+  -- load headers configuration
+  do
+    local headers_enabled = {}
+
+    for _, v in pairs(header_key_to_name) do
+      headers_enabled[v] = false
+    end
+
+    if #conf.headers > 0 and conf.headers[1] ~= "off" then
+      for _, token in ipairs(conf.headers) do
+        if token ~= "off" then
+          headers_enabled[header_key_to_name[string.lower(token)]] = true
+        end
+      end
+    end
+
+    if headers_enabled.server_tokens then
+      headers_enabled[headers.VIA] = true
+      headers_enabled[headers.SERVER] = true
+    end
+
+    if headers_enabled.latency_tokens then
+      headers_enabled[headers.PROXY_LATENCY] = true
+      headers_enabled[headers.UPSTREAM_LATENCY] = true
+    end
+
+    conf.headers = headers_enabled
   end
 
   -- load absolute paths
