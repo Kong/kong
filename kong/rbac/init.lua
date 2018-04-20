@@ -527,7 +527,7 @@ function _M.load_rbac_ctx(dao_factory)
     return nil, err
   end
 
-  local entities_perms, err = _M.resolve_role_entity_permissions(roles)
+  local entities_perms, err = resolve_role_entity_permissions(roles)
   if err then
     return nil, err
   end
