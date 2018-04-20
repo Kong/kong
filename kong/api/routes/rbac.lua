@@ -324,7 +324,7 @@ return {
     end,
 
     GET = function(self, dao_factory, helpers)
-      return crud.paginated_set(self, dao_factory.role_entities,
+      return crud.paginated_set(self, dao_factory.rbac_role_entities,
                                 post_process_actions)
     end,
 
@@ -342,7 +342,7 @@ return {
       end
 
       self.params.entity_type = entity_type
-      crud.post(self.params, dao_factory.role_entities,
+      crud.post(self.params, dao_factory.rbac_role_entities,
                 post_process_actions)
     end,
   },
@@ -354,7 +354,7 @@ return {
     end,
 
     GET = function(self, dao_factory, helpers)
-      crud.get(self.params, dao_factory.role_entities,
+      crud.get(self.params, dao_factory.rbac_role_entities,
                post_process_actions)
     end,
 
@@ -371,12 +371,12 @@ return {
       self.params.role_id = nil
       self.params.entity_id = nil
 
-      crud.patch(self.params, dao_factory.role_entities, filter,
+      crud.patch(self.params, dao_factory.rbac_role_entities, filter,
                  post_process_actions)
     end,
 
     DELETE = function(self, dao_factory, helpers)
-      crud.delete(self.params, dao_factory.role_entities)
+      crud.delete(self.params, dao_factory.rbac_role_entities)
     end,
   },
 
@@ -398,7 +398,7 @@ return {
     end,
 
     GET = function(self, dao_factory, helpers)
-      return crud.paginated_set(self, dao_factory.role_endpoints,
+      return crud.paginated_set(self, dao_factory.rbac_role_endpoints,
                                 post_process_actions)
     end,
 
@@ -422,7 +422,7 @@ return {
         end
       end
 
-      crud.post(self.params, dao_factory.role_endpoints, post_process_actions)
+      crud.post(self.params, dao_factory.rbac_role_endpoints, post_process_actions)
     end,
   },
 
@@ -433,7 +433,7 @@ return {
     end,
 
     GET = function(self, dao_factory, helpers)
-      crud.get(self.params, dao_factory.role_endpoints,
+      crud.get(self.params, dao_factory.rbac_role_endpoints,
                post_process_actions)
     end,
 
@@ -452,12 +452,12 @@ return {
       self.params.workspace = nil
       self.params.endpoint = nil
 
-      crud.patch(self.params, dao_factory.role_endpoints, filter,
+      crud.patch(self.params, dao_factory.rbac_role_endpoints, filter,
                  post_process_actions)
     end,
 
     DELETE = function(self, dao_factory, helpers)
-      crud.delete(self.params, dao_factory.role_endpoints)
+      crud.delete(self.params, dao_factory.rbac_role_endpoints)
     end,
   },
 

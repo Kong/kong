@@ -1,5 +1,5 @@
 return {
-  table = "role_endpoints",
+  table = "rbac_role_endpoints",
   primary_key = { "role_id", "workspace", "endpoint" },
   fields = {
     role_id = {

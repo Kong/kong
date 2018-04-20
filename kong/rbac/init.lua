@@ -279,7 +279,7 @@ local function resolve_role_entity_permissions(roles)
   -- of an explicit positive overriding an explicit negative based on
   -- the order of iteration
   for _, role in ipairs(roles) do
-    local role_entities, err = singletons.dao.role_entities:find_all({
+    local role_entities, err = singletons.dao.rbac_role_entities:find_all({
       role_id  = role.id,
       negative = false,
     })
@@ -290,7 +290,7 @@ local function resolve_role_entity_permissions(roles)
   end
 
   for _, role in ipairs(roles) do
-    local role_entities, err = singletons.dao.role_entities:find_all({
+    local role_entities, err = singletons.dao.rbac_role_entities:find_all({
       role_id  = role.id,
       negative = true,
     })
@@ -387,7 +387,7 @@ local function resolve_role_endpoint_permissions(roles)
 
 
   for _, role in ipairs(roles) do
-    local roles_endpoints, err = singletons.dao.role_endpoints:find_all({
+    local roles_endpoints, err = singletons.dao.rbac_role_endpoints:find_all({
       role_id = role.id,
     })
     if err then

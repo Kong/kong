@@ -1779,7 +1779,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
 
         assert.res_status(204, res)
 
-        assert.same(1, dao.role_entities:count())
+        assert.same(1, dao.rbac_role_entities:count())
       end)
 
       describe("errors", function()
@@ -2183,7 +2183,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
 
         assert.res_status(204, res)
 
-        assert.same(0, dao.role_entities:count())
+        assert.same(0, dao.rbac_role_entities:count())
       end)
 
       describe("errors", function()

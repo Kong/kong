@@ -31,49 +31,6 @@ return {
     ]],
   },
   {
-    name = "2017-07-19-160000_rbac_skeleton",
-    up = [[
-      CREATE TABLE IF NOT EXISTS rbac_users(
-        id uuid PRIMARY KEY,
-        name text UNIQUE NOT NULL,
-        user_token text UNIQUE NOT NULL,
-        comment text,
-        enabled boolean NOT NULL,
-        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
-      );
-
-      DO $$
-      BEGIN
-        IF (SELECT to_regclass('rbac_users_name_idx')) IS NULL THEN
-          CREATE INDEX rbac_users_name_idx on rbac_users(name);
-        END IF;
-        IF (SELECT to_regclass('rbac_users_token_idx')) IS NULL THEN
-          CREATE INDEX rbac_users_token_idx on rbac_users(user_token);
-        END IF;
-      END$$;
-
-      CREATE TABLE IF NOT EXISTS rbac_user_roles(
-        user_id uuid NOT NULL,
-        role_id uuid NOT NULL,
-        PRIMARY KEY(user_id, role_id)
-      );
-
-      CREATE TABLE IF NOT EXISTS rbac_roles(
-        id uuid PRIMARY KEY,
-        name text UNIQUE NOT NULL,
-        comment text,
-        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
-      );
-
-      DO $$
-      BEGIN
-        IF (SELECT to_regclass('rbac_roles_name_idx')) IS NULL THEN
-          CREATE INDEX rbac_roles_name_idx on rbac_roles(name);
-        END IF;
-      END$$;
-    ]],
-  },
-  {
     name = "2017-07-31-993505_vitals_stats_seconds",
     up = [[
       CREATE TABLE IF NOT EXISTS vitals_stats_seconds(
@@ -225,7 +182,65 @@ return {
         PRIMARY KEY(workspace_id, entity_id, unique_field_name)
       );
 
-      CREATE TABLE IF NOT EXISTS role_entities(
+    ]],
+    down = [[
+      DROP TABLE IF EXISTS workspaces;
+    ]],
+  },
+  {
+    name = "2018-04-18-110000_old_rbac_cleanup",
+    up = [[
+      DROP TABLE IF EXISTS rbac_users;
+      DROP TABLE IF EXISTS rbac_users_roles;
+      DROP TABLE IF EXISTS rbac_roles;
+      DROP TABLE IF EXISTS rbac_perms;
+      DROP TABLE IF EXISTS rbac_role_perms;
+      DROP TABLE IF EXISTS rbac_resources;
+    ]]
+  },
+  {
+    name = "2018-04-20-160000_rbac",
+    up = [[
+      CREATE TABLE IF NOT EXISTS rbac_users(
+        id uuid PRIMARY KEY,
+        name text UNIQUE NOT NULL,
+        user_token text UNIQUE NOT NULL,
+        comment text,
+        enabled boolean NOT NULL,
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
+      );
+
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('rbac_users_name_idx')) IS NULL THEN
+          CREATE INDEX rbac_users_name_idx on rbac_users(name);
+        END IF;
+        IF (SELECT to_regclass('rbac_users_token_idx')) IS NULL THEN
+          CREATE INDEX rbac_users_token_idx on rbac_users(user_token);
+        END IF;
+      END$$;
+
+      CREATE TABLE IF NOT EXISTS rbac_user_roles(
+        user_id uuid NOT NULL,
+        role_id uuid NOT NULL,
+        PRIMARY KEY(user_id, role_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS rbac_roles(
+        id uuid PRIMARY KEY,
+        name text UNIQUE NOT NULL,
+        comment text,
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
+      );
+
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('rbac_roles_name_idx')) IS NULL THEN
+          CREATE INDEX rbac_roles_name_idx on rbac_roles(name);
+        END IF;
+      END$$;
+
+      CREATE TABLE IF NOT EXISTS rbac_role_entities(
         role_id uuid,
         entity_id uuid,
         entity_type text NOT NULL,
@@ -236,7 +251,7 @@ return {
         PRIMARY KEY(role_id, entity_id)
       );
 
-      CREATE TABLE IF NOT EXISTS role_endpoints(
+      CREATE TABLE IF NOT EXISTS rbac_role_endpoints(
         role_id uuid,
         workspace text NOT NULL,
         endpoint text NOT NULL,
@@ -247,17 +262,6 @@ return {
         PRIMARY KEY(role_id, workspace, endpoint)
       );
     ]],
-    down = [[
-      DROP TABLE IF EXISTS workspaces;
-    ]],
-  },
-  {
-    name = "2018-04-18-110000_old_rbac_cleanup",
-    up = [[
-      DROP TABLE IF EXISTS rbac_perms;
-      DROP TABLE IF EXISTS rbac_role_perms;
-      DROP TABLE IF EXISTS rbac_resources;
-    ]]
   },
   {
     name = "2018-04-20-122000_rbac_defaults",
@@ -275,7 +279,7 @@ return {
       end
 
       -- add endpoint permissions to the read only role
-      ok, err = dao.role_endpoints:insert({
+      ok, err = dao.rbac_role_endpoints:insert({
         role_id = role.id,
         workspace = "*",
         endpoint = "*",
@@ -301,7 +305,7 @@ return {
       end
 
       -- add endpoint permissions to the admin role
-      ok, err = dao.role_endpoints:insert({
+      ok, err = dao.rbac_role_endpoints:insert({
         role_id = role.id,
         workspace = "*",
         endpoint = "*",
@@ -312,7 +316,7 @@ return {
       end
 
       -- add negative endpoint permissions to the rbac endpoint
-      ok, err = dao.role_endpoints:insert({
+      ok, err = dao.rbac_role_endpoints:insert({
         role_id = role.id,
         workspace = "*",
         endpoint = "/rbac",
@@ -334,7 +338,7 @@ return {
       end
 
       -- add endpoint permissions to the super admin role
-      ok, err = dao.role_endpoints:insert({
+      ok, err = dao.rbac_role_endpoints:insert({
         role_id = role.id,
         workspace = "*",
         endpoint = "*",

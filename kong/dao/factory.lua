@@ -15,13 +15,10 @@ local CORE_MODELS = {
   "rbac_users",
   "rbac_user_roles",
   "rbac_roles",
-  "rbac_role_perms",
-  "rbac_perms",
-  "rbac_resources",
+  "rbac_role_entities",
+  "rbac_role_endpoints",
   "workspaces",
   "workspace_entities",
-  "role_entities",
-  "role_endpoints",
 }
 
 -- returns db errors as strings, including the initial `nil`

@@ -234,7 +234,7 @@ describe("(#" .. kong_conf.database .. ")", function()
         role_id = u()
         entity_id = u()
 
-        assert(dao.role_entities:insert({
+        assert(dao.rbac_role_entities:insert({
           role_id = role_id,
           entity_id = entity_id,
           entity_type = "entity",
@@ -259,7 +259,7 @@ describe("(#" .. kong_conf.database .. ")", function()
         local role_id2 = utils.uuid()
 
         setup(function()
-          assert(dao.role_entities:insert({
+          assert(dao.rbac_role_entities:insert({
             role_id = role_id2,
             entity_id = entity_id,
             entity_type = "entity",
@@ -326,14 +326,14 @@ describe("(#" .. kong_conf.database .. ")", function()
           -- assign two roles; the first role to the first workspace
           -- (which owns entities[1]), and the second role to the second
           -- workspace (which owns workspaces[1] and entities[2])
-          assert(dao.role_entities:insert({
+          assert(dao.rbac_role_entities:insert({
             role_id = roles[1],
             entity_id = workspaces[1],
             entity_type = "workspace",
             actions = 0x1,
             negative = false,
           }))
-          assert(dao.role_entities:insert({
+          assert(dao.rbac_role_entities:insert({
             role_id = roles[2],
             entity_id = workspaces[2],
             entity_type = "workspace",
@@ -378,7 +378,7 @@ describe("(#" .. kong_conf.database .. ")", function()
         local u = utils.uuid
 
         table.insert(role_ids, u())
-        assert(dao.role_endpoints:insert({
+        assert(dao.rbac_role_endpoints:insert({
           role_id = role_ids[#role_ids],
           workspace = "foo",
           endpoint = "bar",
@@ -387,7 +387,7 @@ describe("(#" .. kong_conf.database .. ")", function()
         }))
 
         table.insert(role_ids, u())
-        assert(dao.role_endpoints:insert({
+        assert(dao.rbac_role_endpoints:insert({
           role_id = role_ids[#role_ids],
           workspace = "foo",
           endpoint = "bar",
@@ -395,7 +395,7 @@ describe("(#" .. kong_conf.database .. ")", function()
           negative = true,
         }))
 
-        assert(dao.role_endpoints:insert({
+        assert(dao.rbac_role_endpoints:insert({
           role_id = role_ids[#role_ids],
           workspace = "baz",
           endpoint = "bar",

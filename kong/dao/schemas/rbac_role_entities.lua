@@ -1,21 +1,21 @@
 return {
-  table = "rbac_perms",
-  primary_key = { "id" },
-  cache_key = { "id" },
+  table = "rbac_role_entities",
+  primary_key = { "role_id", "entity_id" },
   fields = {
-    id = {
+    role_id = {
       type = "id",
-      dao_insert_value = true,
       required = true,
+      immutable = true,
     },
-    name = {
+    entity_id = {
+      type = "id",
+      required = true,
+      immutable = true,
+    },
+    entity_type = {
       type = "string",
       required = true,
-      unique = true,
-    },
-    resources = {
-      type = "number",
-      required = true,
+      immutable = true,
     },
     actions = {
       type = "number",
@@ -33,7 +33,6 @@ return {
       type = "timestamp",
       immutable = true,
       dao_insert_value = true,
-      required = true,
     },
   },
 }

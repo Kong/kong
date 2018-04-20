@@ -131,9 +131,8 @@ build = {
     ["kong.dao.schemas.rbac_users"] = "kong/dao/schemas/rbac_users.lua",
     ["kong.dao.schemas.rbac_user_roles"] = "kong/dao/schemas/rbac_user_roles.lua",
     ["kong.dao.schemas.rbac_roles"] = "kong/dao/schemas/rbac_roles.lua",
-    ["kong.dao.schemas.rbac_role_perms"] = "kong/dao/schemas/rbac_role_perms.lua",
-    ["kong.dao.schemas.rbac_perms"] = "kong/dao/schemas/rbac_perms.lua",
-    ["kong.dao.schemas.rbac_resources"] = "kong/dao/schemas/rbac_resources.lua",
+    ["kong.dao.schemas.rbac_role_endpoints"] = "kong/dao/schemas/rbac_role_endpoints.lua",
+    ["kong.dao.schemas.rbac_role_entities"] = "kong/dao/schemas/rbac_role_entities.lua",
     ["kong.dao.db"] = "kong/dao/db/init.lua",
     ["kong.dao.db.cassandra"] = "kong/dao/db/cassandra.lua",
     ["kong.dao.db.postgres"] = "kong/dao/db/postgres.lua",
@@ -145,8 +144,6 @@ build = {
     ["kong.dao.migrations.postgres"] = "kong/dao/migrations/postgres.lua",
     ["kong.dao.schemas.workspaces"] = "kong/dao/schemas/workspaces.lua",
     ["kong.dao.schemas.workspace_entities"] = "kong/dao/schemas/workspace_entities.lua",
-    ["kong.dao.schemas.role_endpoints"] = "kong/dao/schemas/role_endpoints.lua",
-    ["kong.dao.schemas.role_entities"] = "kong/dao/schemas/role_entities.lua",
 
     ["kong.rbac"] = "kong/rbac/init.lua",
 
