@@ -170,18 +170,6 @@ local function remove_ws_prefix(table_name, row, include_ws)
 end
 
 
-local function is_global_table(t)
-  local reserved_tables = { "rbac_.*", "workspace*", ".*_.*s" }
-  for i, v in ipairs(reserved_tables) do
-    if string.find(t, v) then
-      return true
-    end
-  end
-  return false
-end
-
-
-
 local DAO = Object:extend()
 
 DAO.ret_error = ret_error

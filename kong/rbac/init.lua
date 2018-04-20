@@ -337,7 +337,7 @@ local function get_rbac_user_info()
 end
 
 
-local function is_global_table(t)
+local function is_system_table(t)
   local reserved_tables = { "rbac_.*", "workspace*", ".*_.*s" }
   for i, v in ipairs(reserved_tables) do
     if string.find(t, v) then
@@ -350,7 +350,7 @@ end
 
 function _M.narrow_readable_entities(db_table_name, entities)
   local filtered_rows = {}
-  if not is_global_table(db_table_name) then
+  if not is_system_table(db_table_name) then
     for i, v in ipairs(entities) do
       local valid = _M.validate_entity_operation(v, "GET")
       if valid then
@@ -595,6 +595,7 @@ function _M.validate_endpoint(lapis, route)
   local  ok = _M.authorize_request_endpoint(rbac_ctx.endpoints_perms,
                                             workspaces.get_workspaces()[1].name,
                                             route, rbac_ctx.action)
+
   if not ok then
     local err = fmt("%s, you do not have permissions to %s this resource",
                     rbac_ctx.user.name, readable_action(rbac_ctx.action))
