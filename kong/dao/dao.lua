@@ -314,8 +314,7 @@ function DAO:find(tbl, opts)
   if not opts.skip_rbac then
     local r = rbac.validate_entity_operation(primary_keys, "GET")
     if not r then
-      ngx.say("RBAC unautohrized find for " .. self.schema.table)
-      ngx.exit(401)
+      ret_error(self.db.name, nil, "[RBAC] Unauthorized find")
     end
   end
 
@@ -531,10 +530,8 @@ function DAO:update(tbl, filter_keys, options)
     return
   end
 
-  local r = rbac.validate_entity_operation(old, "PATCH")
-  if not r then
-    ngx.say("RBAC unautohrized patch")
-    ngx.exit(401)
+  if not rbac.validate_entity_operation(old, "PATCH") then
+    return ret_error(self.db.name, nil, "[RBAC] Unauthorized entity modification")
   end
 
 
