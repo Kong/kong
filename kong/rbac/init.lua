@@ -29,7 +29,16 @@ _M.actions_bitfields = actions_bitfields
 local actions_bitfield_size = 4
 
 
+local bitfield_action = {
+  [0x01] = "read",
+  [0x02] = "create",
+  [0x04] = "update",
+  [0x08] = "delete",
+}
+
+
 local figure_action
+local readable_action
 do
   local action_lookup = setmetatable(
     {
@@ -54,7 +63,12 @@ do
     return action_lookup[method]
   end
 
+  readable_action = function(action)
+    return bitfield_action[action]
+  end
+
   _M.figure_action = figure_action
+  _M.readable_action = readable_action
 end
 
 
@@ -516,7 +530,9 @@ function _M.validate_endpoint(lapis, route)
                                             workspaces.get_workspaces()[1].name,
                                             route, rbac_ctx.action)
   if not ok then
-    return responses.send_HTTP_FORBIDDEN()
+    local err = fmt("%s, you do not have permissions to %s this resource",
+                    rbac_ctx.user.name, readable_action(rbac_ctx.action))
+    return responses.send_HTTP_FORBIDDEN(err)
   end
   ngx.ctx.rbac = rbac_ctx
 end
