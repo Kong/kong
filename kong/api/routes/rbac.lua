@@ -407,7 +407,9 @@ return {
 
       --XXX we should probably factor this check out into kong.workspaces
       self.params.workspace = self.params.workspace or "default"
-      if self.params.workspace ~=  "default" then
+      local ws_name = self.params.workspace
+
+      if ws_name ~=  "default" and ws_name ~= "*" then
         local w, err = dao_factory.workspaces:find_all({
           name = self.params.workspace
         })
