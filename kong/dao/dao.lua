@@ -362,17 +362,7 @@ function DAO:find_all(tbl, include_ws)
       remove_ws_prefix(self.schema.table, row, include_ws)
     end
 
-    local rowss = {}
-    if not is_global_table(self.schema.table) then
-      for i, v in ipairs(rows) do
-        local valid = rbac.validate_entity_operation(v, "GET")
-        if valid then
-          rowss[#rowss+1] = v
-        end
-      end
-      rows = rowss
-    end
-
+    rows = rbac.narrow_readable_entities(self.schema.table, rows)
     return ret_error(self.db.name, rows, err)
   end
 
@@ -418,16 +408,7 @@ function DAO:find_page(tbl, page_offset, page_size)
       remove_ws_prefix(self.schema.table, row)
     end
 
-    local rowss = {}
-    if not is_global_table(self.schema.table) then
-      for i, v in ipairs(rows) do
-        local valid = rbac.validate_entity_operation(v, "GET")
-        if valid then
-          rowss[#rowss+1] = v
-        end
-      end
-      rows = rowss
-    end
+    rows = rbac.narrow_readable_entities(self.schema.table, rows)
 
     return ret_error(self.db.name, rows, err, offset)
   end
