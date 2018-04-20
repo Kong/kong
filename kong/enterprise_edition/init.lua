@@ -95,7 +95,7 @@ local function prepare_admin(kong_config)
   local compile_env = {
     ADMIN_API_PORT = tostring(kong_config.admin_port),
     ADMIN_API_SSL_PORT = tostring(kong_config.admin_ssl_port),
-    RBAC_ENFORCED = tostring(kong_config.enforce_rbac),
+    RBAC_ENFORCED = tostring(not kong_config.rbac.off),
     RBAC_HEADER = tostring(kong_config.rbac_auth_header),
     KONG_VERSION = tostring(meta.versions.package),
   }

@@ -36,7 +36,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
       admin_gui_ssl         = false,
       db_update_frequency   = POLL_INTERVAL,
       db_update_propagation = db_update_propagation,
-      enforce_rbac          = true,
+      rbac                  = "on",
     })
 
     assert(helpers.start_kong {
@@ -51,7 +51,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
       admin_gui_ssl         = false,
       db_update_frequency   = POLL_INTERVAL,
       db_update_propagation = db_update_propagation,
-      enforce_rbac          = true,
+      rbac                  = "on",
     })
 
     admin_client_1 = helpers.http_client("127.0.0.1", 8001)

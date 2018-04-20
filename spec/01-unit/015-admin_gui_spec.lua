@@ -77,7 +77,7 @@ describe("prepare_prefix", function()
       prefix = mock_prefix,
       admin_port = 9001,
       admin_ssl_port = 9444,
-      enforce_rbac = false,
+      rbac = {off = true},
       rbac_auth_header = "Kong-Admin-Token",
     })
 
@@ -112,7 +112,7 @@ describe("prepare_prefix", function()
       prefix = mock_prefix,
       admin_port = 9002,
       admin_ssl_port = 9445,
-      enforce_rbac = true,
+      rbac = {endpoint = true, entity = true},
       rbac_auth_header = "Kong-Other-Token",
     })
 

@@ -513,7 +513,7 @@ function _M.validate_endpoint(lapis, route)
     return
   end
 
-  if not singletons.configuration.enforce_rbac then
+  if singletons.configuration.rbac.off then
     return
   end
 

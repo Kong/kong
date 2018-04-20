@@ -129,7 +129,7 @@ local CONF_INFERENCES = {
   lua_ssl_verify_depth = {typ = "number"},
   lua_socket_pool_size = {typ = "number"},
 
-  enforce_rbac = {typ = "boolean"},
+  rbac = {typ = "string"},
   rbac_auth_header = {typ = "string"},
 
   vitals = {typ = "boolean"},
@@ -291,7 +291,7 @@ local function check_and_infer(conf)
   end
 
   -- warn user if ssl is disabled and rbac is enforced
-  if conf.enforce_rbac and not conf.admin_ssl then
+  if not conf.rbac.off and not conf.admin_ssl then
     log.warn("RBAC authorization is enabled but Admin API calls will not be " ..
       "encrypted via SSL")
   end
@@ -346,6 +346,23 @@ local function check_and_infer(conf)
                           "block or 'unix:', got '" .. address .. "'"
     end
   end
+
+  -- rbac can be any of 'endpoint', 'entity', 'on', or 'off'
+  local rbac = {}
+  if conf.rbac == "endpoint" then
+    rbac.endpoint = true
+  elseif conf.rbac == "entity" then
+    rbac.entity = true
+  elseif conf.rbac == "on" then
+    rbac.entity = true
+    rbac.endpoint = true
+  elseif conf.rbac == "off" then
+    rbac.off = true
+  else
+    errors[#errors+1] = "rbac must be one of 'endpoint', 'entity', 'on', " ..
+                        "or 'off'; got '" .. conf.rbac .. "'"
+  end
+  conf.rbac = rbac
 
   return #errors == 0, errors[1], errors
 end
