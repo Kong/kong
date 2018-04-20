@@ -51,7 +51,7 @@ local function action_bitfield(self)
       local action = action_names[i]
 
       -- keyword all sets everything
-      if action == "all" then
+      if action == "*" then
         for k in pairs(rbac.actions_bitfields) do
           action_bitfield = bxor(action_bitfield, rbac.actions_bitfields[k])
         end
