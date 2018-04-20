@@ -481,7 +481,6 @@ local function execute(strategy, statement_name, attributes, is_update)
   local argv   = statement.argv
   local argc   = statement.argc
 
-  -- TODO: probably not needed as we always replace all the values?
   clear_tab(argv)
 
   for i = 1, argc do
@@ -638,23 +637,6 @@ end
 
 function _mt:insert(entity)
   local res, err = execute(self, "insert", self.collapse(entity))
-
-  if res then
-    local row = res[1]
-    if row then
-      return self.expand(row), nil
-    end
-
-    return nil, nil
-  end
-
-  return toerror(self, err, nil, entity)
-end
-
-
-function _mt:upsert(entity)
-  local res, err = execute(self, "upsert", self.collapse(entity))
-
   if res then
     local row = res[1]
     if row then
@@ -670,7 +652,6 @@ end
 
 function _mt:select(primary_key)
   local res, err = execute(self, "select", self.collapse(primary_key))
-
   if res then
     local row = res[1]
     if row then
@@ -691,7 +672,6 @@ function _mt:select_by_field(field_name, unique_value)
   }
 
   local res, err = execute(self, statement_name, self.collapse(filter))
-
   if res then
     local row = res[1]
     if row then
@@ -707,7 +687,6 @@ end
 
 function _mt:update(primary_key, entity)
   local res, err = execute(self, "update", self.collapse(primary_key, entity), true)
-
   if res then
     local row = res[1]
     if row then
@@ -723,7 +702,6 @@ end
 function _mt:update_by_field(field_name, unique_value, entity)
   local statement_name = "update_by_" .. field_name
   local res, err = execute(self, statement_name, self.collapse({ [UNIQUE] = unique_value }, entity), true)
-
   if res then
     local row = res[1]
     if row then
@@ -738,9 +716,106 @@ function _mt:update_by_field(field_name, unique_value, entity)
 end
 
 
+function _mt:upsert(primary_key, entity)
+  local collapsed_entity = self.collapse(entity, primary_key)
+
+  if self.connector.version_num >= 90500 then
+    local res, err = execute(self, "upsert", collapsed_entity)
+    if res then
+      local row = res[1]
+      if row then
+        return self.expand(row), nil
+      end
+      return nil, self.errors:not_found(primary_key)
+    end
+
+    return toerror(self, err, primary_key, entity)
+  end
+
+  while true do
+    local res, err = execute(self, "insert", collapsed_entity)
+    if res then
+      local row = res[1]
+      if row then
+        return self.expand(row), nil
+      end
+
+      return nil, nil
+    end
+
+    local _, err_t = toerror(self, err, nil, entity)
+    if err_t.code ~= self.errors.codes.PRIMARY_KEY_VIOLATION then
+      return _, err_t
+    end
+
+    res, err = execute(self, "update", collapsed_entity, true)
+    if res then
+      local row = res[1]
+      if row then
+        return self.expand(row), nil
+      end
+
+    else
+      return toerror(self, err, primary_key, entity)
+    end
+  end
+end
+
+
+function _mt:upsert_by_field(field_name, unique_value, entity)
+  local collapsed_entity = self.collapse(entity, {
+    [field_name] = unique_value
+  })
+
+  if self.connector.version_num >= 90500 then
+    local statement_name = "upsert_by_" .. field_name
+    local res, err = execute(self, statement_name, collapsed_entity)
+    if res then
+      local row = res[1]
+      if row then
+        return self.expand(row), nil
+      end
+      return nil, self.errors:not_found_by_field {
+        [field_name] = unique_value,
+      }
+    end
+
+    return toerror(self, err, { [field_name] = unique_value }, entity)
+  end
+
+  while true do
+    local res, err = execute(self, "insert", collapsed_entity)
+    if res then
+      local row = res[1]
+      if row then
+        return self.expand(row), nil
+      end
+
+      return nil, nil
+    end
+
+    local _, err_t = toerror(self, err, nil, entity)
+    if err_t.code ~= self.errors.codes.UNIQUE_VIOLATION then
+      return _, err_t
+    end
+
+    local statement_name = "update_by_" .. field_name
+    res, err = execute(self, statement_name, self.collapse({ [UNIQUE] = unique_value }, entity), true)
+    if res then
+      local row = res[1]
+      if row then
+        return self.expand(row), nil
+      end
+
+    else
+      return toerror(self, err, { [field_name] = unique_value }, entity)
+    end
+  end
+end
+
+
 function _mt:delete(primary_key)
   local res, err = execute(self, "delete", self.collapse(primary_key))
-
   if res then
     if res.affected_rows == 0 then
       return nil, nil
@@ -775,7 +850,6 @@ end
 
 function _mt:count_accurate()
   local res, err = execute(self, "count_accurate")
-
   if res then
     local row = res[1]
     if row then
@@ -793,7 +867,6 @@ end
 
 function _mt:count_estimate()
   local res, err = execute(self, "count_estimate")
-
   if res then
     local row = res[1]
     if row then
@@ -1470,6 +1543,22 @@ function _M.new(connector, schema, errors)
         argc = update_by_args_count,
         argv = update_by_args,
         make = compile(concat({ table_name, update_by_statement_name }, "_"), update_by_statement)
+      }
+
+      local upsert_by_statement_name = "upsert_by_" .. unique_name
+      local upsert_by_statement = concat {
+        "INSERT INTO ",  table_name_escaped, " (", insert_columns, ")\n",
+        "     VALUES (", insert_expressions, ")\n",
+        "ON CONFLICT (", unique_escaped, ") DO UPDATE\n",
+        "        SET ",  concat(upsert_expressions, ", "), "\n",
+        "  RETURNING ",  select_expressions, ";",
+      }
+
+      statements[upsert_by_statement_name] = {
+        argn         = insert_names,
+        argc         = fields_count,
+        argv         = insert_args,
+        make         = compile(concat({ table_name, upsert_by_statement_name }, "_"), upsert_by_statement)
       }
 
       local delete_by_statement_name = "delete_by_" .. unique_name
