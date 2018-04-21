@@ -340,10 +340,15 @@ end
 
 
 function _M.validate_entity_operation(entity)
+  if not singletons.configuration.rbac.entity then
+    return true
+  end
+
   local rbac_ctx = get_rbac_user_info()
   if rbac_ctx.user == "guest" then
     return true
   end
+
   local permissions_map = rbac_ctx.entities_perms
   local action = rbac_ctx.action
   return _M.authorize_request_entity(permissions_map, entity, action)
@@ -557,7 +562,7 @@ function _M.validate_endpoint(lapis, route)
     return
   end
 
-  if singletons.configuration.rbac.off then
+  if not singletons.configuration.rbac.endpoint then
     return
   end
 
