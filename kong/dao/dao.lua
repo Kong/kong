@@ -169,7 +169,6 @@ local function remove_ws_prefix(table_name, row, include_ws)
   end
 end
 
-
 local DAO = Object:extend()
 
 DAO.ret_error = ret_error
@@ -397,7 +396,6 @@ function DAO:find_page(tbl, page_offset, page_size)
     end
 
     rows = rbac.narrow_readable_entities(self.schema.table, rows)
-
     return ret_error(self.db.name, rows, err, offset)
   end
 
@@ -503,7 +501,6 @@ function DAO:update(tbl, filter_keys, options)
     return ret_error(self.db.name, nil, "[RBAC] Unauthorized entity modification")
   end
 
-
   if not options.full then
     fix(old, values, self.schema)
   end
@@ -582,7 +579,6 @@ function DAO:delete(tbl, options)
      not rbac.check_cascade(associated_entites) then
     return ret_error(self.db.name, nil, "cascading error")
   end
-
 
   local row, err = self.db:delete(self.table, self.schema, primary_keys, self.constraints)
   if (not err) and (row ~= nil) and ws then

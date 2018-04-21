@@ -570,7 +570,6 @@ function _M.validate_endpoint(lapis, route)
   local  ok = _M.authorize_request_endpoint(rbac_ctx.endpoints_perms,
                                             workspaces.get_workspaces()[1].name,
                                             route, rbac_ctx.action)
-
   if not ok then
     local err = fmt("%s, you do not have permissions to %s this resource",
                     rbac_ctx.user.name, readable_action(rbac_ctx.action))
