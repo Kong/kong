@@ -267,6 +267,23 @@ return {
     end,
   },
 
+  ["/rbac/roles/:name_or_id/permissions"] = {
+    before = function(self, dao_factory, helpers)
+      crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      local map = {}
+      local entities_perms = rbac.readable_entities_permissions({self.rbac_role})
+      local endpoints_perms = rbac.readable_endpoints_permissions({self.rbac_role})
+
+      map.entities = entities_perms
+      map.endpoints = endpoints_perms
+
+      return helpers.responses.send_HTTP_OK(map)
+    end,
+  },
+
   ["/rbac/roles/:name_or_id"] = {
     resource = "rbac",
 
