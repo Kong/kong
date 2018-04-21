@@ -281,10 +281,13 @@ end
 -- @param[type=table] tbl A table containing the primary key field(s) for this row.
 -- @treturn table row The row, or nil if none could be found.
 -- @treturn table err If an error occured, a table describing the issue.
-function DAO:find(tbl, opts)
+function DAO:find(tbl)
   check_arg(tbl, 1, "table")
   check_utf8(tbl, 1)
   fetch_shared_entity_id(self.schema.table, tbl)
+
+  local skip_rbac = tbl.__skip_rbac
+  tbl.__skip_rbac = nil
 
   local model = self.model_mt(tbl)
   if not model:has_primary_keys() then
@@ -298,7 +301,7 @@ function DAO:find(tbl, opts)
 
   -- XXX find a better, cleaner way to handle this logic - so that
   -- there is no unreachable code, but still no upstream tainting
-  if not opts.skip_rbac then
+  if not skip_rbac then
     local r = rbac.validate_entity_operation(primary_keys, "GET")
     if not r then
       ret_error(self.db.name, nil, "[RBAC] Unauthorized find")

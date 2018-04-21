@@ -489,8 +489,9 @@ function _M.resolve_entity_type(entity_id)
   local entity_type = rows[1].entity_type
 
   local row, err = singletons.dao[entity_type]:find({
-      [workspaceable_relations[entity_type].primary_key] = entity_id},
-    {skip_rbac = true})  -- is this needed? can we just go with "id"?
+    [workspaceable_relations[entity_type].primary_key] = entity_id,
+    __skip_rbac = true,
+  })
   if err then
     return nil, nil, err
   end
