@@ -111,7 +111,10 @@ app:before_filter(function(self)
     ngx.ctx.workspaces = workspaces
     self.params.workspace_name = nil
 
-   rbac.validate_endpoint(self, ngx.var.uri)
+   -- ngx.var.uri is used to look for exact matches
+   -- self.route_name is used to look for wildcard matches,
+   -- by replacing named parameters with *
+   rbac.validate_endpoint(self, ngx.var.uri, self.route_name)
   end
 
   if not NEEDS_BODY[ngx.req.get_method()] then

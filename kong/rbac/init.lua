@@ -446,7 +446,12 @@ function _M.readable_endpoints_permissions(roles)
 end
 
 
-function _M.authorize_request_endpoint(map, workspace, endpoint, action)
+function _M.authorize_request_endpoint(map, workspace, endpoint, route_name, action)
+  -- normalized route_name: replace lapis named parameters with *, so that
+  -- any named parameters match wildcard endpoints
+  local route_name = ngx.re.gsub(route_name, ":[^/]*", "*")
+  route_name = ngx.re.gsub(route_name, "/$", "")
+
   -- look for
   -- 1. explicit allow (and _no_ explicit) deny in the specific ws/endpoint
   -- 2. "" in the ws/*
@@ -459,6 +464,17 @@ function _M.authorize_request_endpoint(map, workspace, endpoint, action)
   if map[workspace] then
     if map[workspace][endpoint] then
       local p = map[workspace][endpoint] or 0x0
+
+      if band(p, action) == action then
+        if band(rshift(p, actions_bitfield_size), action) == action then
+          return false
+        else
+          return true
+        end
+      end
+
+    elseif map[workspace][route_name] then
+      local p = map[workspace][route_name] or 0x0
 
       if band(p, action) == action then
         if band(rshift(p, actions_bitfield_size), action) == action then
@@ -484,6 +500,17 @@ function _M.authorize_request_endpoint(map, workspace, endpoint, action)
   if map["*"] then
     if map["*"][endpoint] then
       local p = map["*"][endpoint] or 0x0
+
+      if band(p, action) == action then
+        if band(rshift(p, actions_bitfield_size), action) == action then
+          return false
+        else
+          return true
+        end
+      end
+
+    elseif map["*"][route_name] then
+      local p = map[workspace][route_name] or 0x0
 
       if band(p, action) == action then
         if band(rshift(p, actions_bitfield_size), action) == action then
@@ -557,7 +584,7 @@ function _M.load_rbac_ctx(dao_factory)
 end
 
 
-function _M.validate_endpoint(lapis, route)
+function _M.validate_endpoint(lapis, route, route_name)
   if lapis.route_name == "default_route" then
     return
   end
@@ -577,7 +604,7 @@ function _M.validate_endpoint(lapis, route)
 
   local  ok = _M.authorize_request_endpoint(rbac_ctx.endpoints_perms,
                                             workspaces.get_workspaces()[1].name,
-                                            route, rbac_ctx.action)
+                                            route, route_name, rbac_ctx.action)
   if not ok then
     local err = fmt("%s, you do not have permissions to %s this resource",
                     rbac_ctx.user.name, readable_action(rbac_ctx.action))
@@ -590,6 +617,10 @@ end
 -- checks whether the given action can be cleanly performed in a
 -- set of entities
 function _M.check_cascade(entities)
+  if singletons.configuration.rbac.off then
+    return true
+  end
+
   local perms_map = ngx.ctx.rbac.entities_perms
   local action    = ngx.ctx.rbac.action
 

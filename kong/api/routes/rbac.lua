@@ -439,6 +439,9 @@ return {
         end
       end
 
+      -- normalize endpoint: remove trailing /
+      self.params.endpoint = ngx.re.gsub(self.params.endpoint, "/$", "")
+
       crud.post(self.params, dao_factory.rbac_role_endpoints, post_process_actions)
     end,
   },
