@@ -1,3 +1,11 @@
+local rbac = require "kong.rbac"
+local utils = require "kong.tools.utils"
+local bit = require "bit"
+
+
+local bor = bit.bor
+
+
 return {
   {
     name = "2017-07-13-150200_ratelimiting_lib_counters",
