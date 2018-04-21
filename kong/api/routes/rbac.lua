@@ -443,10 +443,11 @@ return {
     end,
   },
 
-  ["/rbac/roles/:name_or_id/endpoints/:workspace/:endpoint"] = {
+  ["/rbac/roles/:name_or_id/endpoints/:workspace/*"] = {
     before = function(self, dao_factory, helpers)
       crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
       self.params.role_id = self.rbac_role.id
+      self.params.endpoint = self.params.splat
     end,
 
     GET = function(self, dao_factory, helpers)
