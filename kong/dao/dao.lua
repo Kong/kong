@@ -302,7 +302,7 @@ function DAO:find(tbl)
   -- XXX find a better, cleaner way to handle this logic - so that
   -- there is no unreachable code, but still no upstream tainting
   if not skip_rbac then
-    local r = rbac.validate_entity_operation(primary_keys, "GET")
+    local r = rbac.validate_entity_operation(primary_keys)
     if not r then
       ret_error(self.db.name, nil, "[RBAC] Unauthorized find")
     end
@@ -500,7 +500,7 @@ function DAO:update(tbl, filter_keys, options)
     return
   end
 
-  if not rbac.validate_entity_operation(old, "PATCH") then
+  if not rbac.validate_entity_operation(old) then
     return ret_error(self.db.name, nil, "[RBAC] Unauthorized entity modification")
   end
 
@@ -578,7 +578,7 @@ function DAO:delete(tbl, options)
     end
   end
 
-  if not rbac.validate_entity_operation(primary_keys, "DELETE") or
+  if not rbac.validate_entity_operation(primary_keys) or
      not rbac.check_cascade(associated_entites) then
     return ret_error(self.db.name, nil, "cascading error")
   end

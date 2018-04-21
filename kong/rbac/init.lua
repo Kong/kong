@@ -327,7 +327,7 @@ function _M.narrow_readable_entities(db_table_name, entities)
   local filtered_rows = {}
   if not is_system_table(db_table_name) then
     for i, v in ipairs(entities) do
-      local valid = _M.validate_entity_operation(v, "GET")
+      local valid = _M.validate_entity_operation(v)
       if valid then
         filtered_rows[#filtered_rows+1] = v
       end
@@ -339,11 +339,14 @@ function _M.narrow_readable_entities(db_table_name, entities)
 end
 
 
-function _M.validate_entity_operation(entity, method)
-  local action = figure_action(method)
-  local rbac_info = get_rbac_user_info()
-  local permissions_map = rbac_info.entities_perms
-  return _M.authorize_request_entity(permissions_map, entity.id, action)
+function _M.validate_entity_operation(entity)
+  local rbac_ctx = get_rbac_user_info()
+  if rbac_ctx.user == "guest" then
+    return true
+  end
+  local permissions_map = rbac_ctx.entities_perms
+  local action = rbac_ctx.action
+  return _M.authorize_request_entity(permissions_map, entity, action)
 end
 
 
