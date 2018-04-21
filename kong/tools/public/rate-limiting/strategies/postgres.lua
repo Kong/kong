@@ -106,6 +106,11 @@ function _M:push_diffs(diffs)
   local query_tab = new_tab(num_diffs, 0) -- assume num_diffs windows per key
   local query_tab_idx = 1
 
+  -- if no diffs, nothing to do, return...
+  if num_diffs == 0 then
+    return
+  end
+
   do
     local param_tab = new_tab(6, 0)
 
