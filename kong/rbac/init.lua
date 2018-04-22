@@ -472,8 +472,9 @@ function _M.authorize_request_endpoint(map, workspace, endpoint, route_name, act
           return true
         end
       end
+    end
 
-    elseif map[workspace][route_name] then
+    if map[workspace][route_name] then
       local p = map[workspace][route_name] or 0x0
 
       if band(p, action) == action then
@@ -483,8 +484,9 @@ function _M.authorize_request_endpoint(map, workspace, endpoint, route_name, act
           return true
         end
       end
+    end
 
-    elseif map[workspace]["*"] then
+    if map[workspace]["*"] then
       local p = map[workspace]["*"] or 0x0
 
       if band(p, action) == action then
@@ -508,8 +510,9 @@ function _M.authorize_request_endpoint(map, workspace, endpoint, route_name, act
           return true
         end
       end
+    end
 
-    elseif map["*"][route_name] then
+    if map["*"][route_name] then
       local p = map[workspace][route_name] or 0x0
 
       if band(p, action) == action then
@@ -519,8 +522,9 @@ function _M.authorize_request_endpoint(map, workspace, endpoint, route_name, act
           return true
         end
       end
+    end
 
-    elseif map["*"]["*"] then
+    if map["*"]["*"] then
       local p = map["*"]["*"] or 0x0
 
       if band(p, action) == action then
