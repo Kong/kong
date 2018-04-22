@@ -409,7 +409,7 @@ local function resolve_role_endpoint_permissions(roles)
       -- store explicit negative bits adjacent to the positive bits in the mask
       local p = role_endpoint.actions
       if role_endpoint.negative then
-        p = lshift(p, 4)
+        p = bor(p, lshift(p, 4))
       end
 
       pmap[role_endpoint.workspace][role_endpoint.endpoint] =
