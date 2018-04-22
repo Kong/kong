@@ -1,4 +1,6 @@
+local pl_tablex = require "pl.tablex"
 local utils  = require "kong.tools.utils"
+local rl = require "kong.tools.public.rate-limiting"
 local vitals = require "kong.vitals"
 
 
@@ -6,7 +8,7 @@ local _M = {}
 
 
 local function additional_tables(dao)
-  return vitals.table_names(dao)
+  return pl_tablex.merge(vitals.table_names(dao), rl.table_names(), true)
 end
 
 _M.additional_tables = additional_tables
