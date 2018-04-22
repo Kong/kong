@@ -50,6 +50,15 @@ local config = {
 _M.config = config
 
 
+function _M.table_names()
+  local t = {
+    "rl_counters",
+  }
+
+  return t
+end
+
+
 local function window_floor(size, time)
   return floor(time / size) * size
 end
