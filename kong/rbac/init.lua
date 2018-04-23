@@ -454,6 +454,7 @@ end
 -- normalized route_name: replace lapis named parameters with *, so that
 -- any named parameters match wildcard endpoints
 local function normalize_route_name(route_name)
+  route_name = ngx.re.gsub(route_name, "^workspace_", "")
   route_name = ngx.re.gsub(route_name, ":[^/]*", "*")
   route_name = ngx.re.gsub(route_name, "/$", "")
   return route_name
