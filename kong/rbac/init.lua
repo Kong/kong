@@ -480,6 +480,7 @@ local function get_endpoints(workspace, endpoint, route_name)
     endpoint_with_workspace,
     normalized_route_name,
     normalized_route_name_with_workspace,
+    "*",
   }
 end
 
