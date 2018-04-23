@@ -241,13 +241,21 @@ local function send_response(res)
     end
   end
 
-  ngx.header["Content-Length"] = res.body_len
-
   ngx.header["Age"] = floor(time() - res.timestamp)
   ngx.header["X-Cache-Status"] = "Hit"
 
-  ngx_print(res.body)
-  return ngx.exit(res.status)
+  local cjson = require"cjson.safe"
+  local body_t, err = cjson.decode(res.body)
+  if err then
+    responses.send_HTTTP_INTERNAL_SERVER_ERROR("[proxy-cache] " .. err)
+  end
+
+  -- remove old cache status
+  res.headers["X-Cache-Status"] = nil
+  -- remove content length - `send` will encode again and the length will differ
+  res.headers["content-length"] = nil
+
+  return responses.send(res.status, body_t, res.headers)
 end
 
 
