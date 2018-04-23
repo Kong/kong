@@ -366,6 +366,9 @@ function ProxyCacheHandler:access(conf)
       return responses.send(ngx.HTTP_GATEWAY_TIMEOUT)
     end
 
+    ngx.req.read_body()
+    ngx.ctx.req_body = ngx.req.get_body_data()
+
     -- this request is cacheable but wasn't found in the data store
     -- make a note that we should store it in cache later,
     -- and pass the request upstream
@@ -402,6 +405,14 @@ function ProxyCacheHandler:access(conf)
       return signal_cache_req(cache_key, "Refresh")
     end
   end
+
+  -- expose response data for logging plugins
+  ngx.ctx.proxy_cache_hit = {
+    res = res,
+    req = {
+      body = res.req_body,
+    },
+  }
 
   -- we have cache data yo!
   return send_response(res)
@@ -463,6 +474,7 @@ function ProxyCacheHandler:body_filter(conf)
       timestamp = time(),
       ttl       = ctx.res_ttl,
       version   = CACHE_VERSION,
+      req_body  = ngx.ctx.req_body,
     }
 
     local ttl = conf.storage_ttl or conf.cache_control and ctx.res_ttl or
