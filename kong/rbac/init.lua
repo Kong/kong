@@ -446,12 +446,39 @@ function _M.readable_endpoints_permissions(roles)
 end
 
 
-function _M.authorize_request_endpoint(map, workspace, endpoint, route_name, action)
-  -- normalized route_name: replace lapis named parameters with *, so that
-  -- any named parameters match wildcard endpoints
-  local route_name = ngx.re.gsub(route_name, ":[^/]*", "*")
+-- normalized route_name: replace lapis named parameters with *, so that
+-- any named parameters match wildcard endpoints
+local function normalize_route_name(route_name)
+  route_name = ngx.re.gsub(route_name, ":[^/]*", "*")
   route_name = ngx.re.gsub(route_name, "/$", "")
+  return route_name
+end
 
+
+-- return a list of endpoints; if the incoming request endpoint
+-- matches either one of them, we get a positive or negative match
+local function get_endpoints(workspace, endpoint, route_name)
+  local endpoint_with_workspace = "/" .. workspace .. endpoint
+  local normalized_route_name = normalize_route_name(route_name)
+  local normalized_route_name_with_workspace = "/" .. workspace .. normalized_route_name
+
+  -- order is important:
+  --  - first, try to match exact endpoint name
+  --    * without workspace name prepended - e.g., /apis/test
+  --    * with workspace name prepended - e.g., /foo/apis/test
+  --  - normalized route name
+  --    * without workspace name prepended - e.g., /apis/*
+  --    * with workspace name prepended - e.g., /foo/apis/*
+  return {
+    endpoint,
+    endpoint_with_workspace,
+    normalized_route_name,
+    normalized_route_name_with_workspace,
+  }
+end
+
+
+function _M.authorize_request_endpoint(map, workspace, endpoint, route_name, action)
   -- look for
   -- 1. explicit allow (and _no_ explicit) deny in the specific ws/endpoint
   -- 2. "" in the ws/*
@@ -462,38 +489,17 @@ function _M.authorize_request_endpoint(map, workspace, endpoint, route_name, act
   -- and no match on the upper bits. if theres no match on the lower set,
   -- no need to check the upper bit set
   for _, workspace in ipairs{workspace, "*"} do
-     if map[workspace][endpoint] then
-      local p = map[workspace][endpoint] or 0x0
-
-      if band(p, action) == action then
-        if band(rshift(p, actions_bitfield_size), action) == action then
-          return false
-        else
-          return true
-        end
-      end
-    end
-
-    if map[workspace][route_name] then
-      local p = map[workspace][route_name] or 0x0
-
-      if band(p, action) == action then
-        if band(rshift(p, actions_bitfield_size), action) == action then
-          return false
-        else
-          return true
-        end
-      end
-    end
-
-    if map[workspace]["*"] then
-      local p = map[workspace]["*"] or 0x0
-
-      if band(p, action) == action then
-        if band(rshift(p, actions_bitfield_size), action) == action then
-          return false
-        else
-          return true
+    if map[workspace] then
+      for _, endpoint in ipairs(get_endpoints(workspace, endpoint, route_name)) do
+        local perm = map[workspace][endpoint]
+        if perm then
+          if band(perm, action) == action then
+            if band(rshift(perm, actions_bitfield_size), action) == action then
+              return false
+            else
+              return true
+            end
+          end
         end
       end
     end
