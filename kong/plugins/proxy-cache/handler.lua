@@ -412,6 +412,7 @@ function ProxyCacheHandler:access(conf)
     req = {
       body = res.req_body,
     },
+    server_addr = ngx.var.server_addr,
   }
 
   -- we have cache data yo!
