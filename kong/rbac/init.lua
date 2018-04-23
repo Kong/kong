@@ -461,8 +461,8 @@ function _M.authorize_request_endpoint(map, workspace, endpoint, route_name, act
   -- explit allow means a match on the lower bit set
   -- and no match on the upper bits. if theres no match on the lower set,
   -- no need to check the upper bit set
-  if map[workspace] then
-    if map[workspace][endpoint] then
+  for _, workspace in ipairs{workspace, "*"} do
+     if map[workspace][endpoint] then
       local p = map[workspace][endpoint] or 0x0
 
       if band(p, action) == action then
@@ -488,44 +488,6 @@ function _M.authorize_request_endpoint(map, workspace, endpoint, route_name, act
 
     if map[workspace]["*"] then
       local p = map[workspace]["*"] or 0x0
-
-      if band(p, action) == action then
-        if band(rshift(p, actions_bitfield_size), action) == action then
-          return false
-        else
-          return true
-        end
-      end
-    end
-  end
-
-  if map["*"] then
-    if map["*"][endpoint] then
-      local p = map["*"][endpoint] or 0x0
-
-      if band(p, action) == action then
-        if band(rshift(p, actions_bitfield_size), action) == action then
-          return false
-        else
-          return true
-        end
-      end
-    end
-
-    if map["*"][route_name] then
-      local p = map[workspace][route_name] or 0x0
-
-      if band(p, action) == action then
-        if band(rshift(p, actions_bitfield_size), action) == action then
-          return false
-        else
-          return true
-        end
-      end
-    end
-
-    if map["*"]["*"] then
-      local p = map["*"]["*"] or 0x0
 
       if band(p, action) == action then
         if band(rshift(p, actions_bitfield_size), action) == action then
