@@ -952,6 +952,23 @@ function OICHandler:access(conf)
             break
           end
 
+          bearer_token = args.get_header("access_token")
+          if bearer_token then
+            if hide_credentials then
+              args.clear_header("access_token")
+            end
+            break
+          end
+
+          bearer_token = args.get_header("x_access_token")
+          if bearer_token then
+            if hide_credentials then
+              args.clear_header("x_access_token")
+            end
+            break
+          end
+
+
         elseif location == "query" then
           bearer_token = args.get_uri_arg("access_token")
           if bearer_token then

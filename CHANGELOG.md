@@ -1,3 +1,8 @@
+## v0.1.1
+
+- Bearer token is now looked up on `Access-Token` and `X-Access-Token` headers
+  too.
+
 ## v0.1.0
 
 This release only fixes some bugs in 0.0.9.
@@ -75,7 +80,7 @@ as other Kong Authentication plugins regarding to `config.anonymous`.
   mapping) and the plugin always needed valid credentials to be allowed to proxy
   if the client wasn't already authenticated by higher priority auth plugin.
 - Change if `anonymous` consumer is not found we return internal server error
-  instead of forbidden  
+  instead of forbidden
 - Change `config.client_id` from `required` to `optional`
 - Change `config.client_secret` from `required` to `optional`
 
@@ -107,7 +112,7 @@ as other Kong Authentication plugins regarding to `config.anonymous`.
 
 - Add changelog
 - Add config.login_redirect_mode configuration option
-- Fix invalid re-verify to cleanup existing session 
+- Fix invalid re-verify to cleanup existing session
 - Update docs with removal of non-accessible uris
 - Update .rockspec with new homepage and repository link
 
