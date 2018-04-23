@@ -412,7 +412,12 @@ local function resolve_role_endpoint_permissions(roles)
         p = bor(p, lshift(p, 4))
       end
 
-      pmap[role_endpoint.workspace][role_endpoint.endpoint] =
+      local ws_prefix = ""
+      if role_endpoint.endpoint ~= "*" then
+        ws_prefix = "/" .. role_endpoint.workspace
+      end
+
+      pmap[role_endpoint.workspace][ws_prefix .. role_endpoint.endpoint] =
         bor(p, pmap[role_endpoint.workspace][role_endpoint.endpoint] or 0x0)
     end
   end
