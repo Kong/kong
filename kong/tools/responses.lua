@@ -97,7 +97,7 @@ local response_default_content = {
 -- Return a closure which will be usable to respond with a certain status code.
 -- @local
 -- @param[type=number] status_code The status for which to define a function
-local function send_response(status_code)
+local function send_response(status_code, verbatim)
   -- Send a JSON response for the closure's status code with the given content.
   -- If the content happens to be an error (500), it will be logged by ngx.log as an ERR.
   -- @see https://github.com/openresty/lua-nginx-module
@@ -132,19 +132,23 @@ local function send_response(status_code)
       end
     end
 
-    if type(response_default_content[status_code]) == "function" then
-      content = response_default_content[status_code](content)
-    end
-
-    local encoded, err
-    if content then
-      encoded, err = cjson.encode(type(content) == "table" and content or
-                                  {message = content})
-      if not encoded then
-        ngx.log(ngx.ERR, "[admin] could not encode value: ", err)
+    if verbatim then
+      ngx.say(content)
+    else
+      if type(response_default_content[status_code]) == "function" then
+        content = response_default_content[status_code](content)
       end
 
-      ngx.say(encoded)
+      local encoded, err
+      if content then
+        encoded, err = cjson.encode(type(content) == "table" and content or
+        {message = content})
+        if not encoded then
+          ngx.log(ngx.ERR, "[admin] could not encode value: ", err)
+        end
+
+        ngx.say(encoded)
+      end
     end
 
     return ngx.exit(status_code)
@@ -183,10 +187,10 @@ local closure_cache = {}
 -- @param body A string or table which will be the body of the sent response. If table, the response will be encoded as a JSON object. If string, the response will be a JSON object and the string will be contained in the `message` property.
 -- @param[type=table] headers Response headers to send.
 -- @return ngx.exit (Exit current context)
-function _M.send(status_code, body, headers)
+function _M.send(status_code, body, headers, verbatim)
   local res = closure_cache[status_code]
   if not res then
-    res = send_response(status_code)
+    res = send_response(status_code, verbatim)
     closure_cache[status_code] = res
   end
 
