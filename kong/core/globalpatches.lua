@@ -83,7 +83,7 @@ return function(options)
       -- with minor fixes and addtions such as exptime
       --
       -- See https://github.com/openresty/resty-cli/pull/12
-      -- for a definitive solution ot using shms in CLI
+      -- for a definitive solution of using shms in CLI
       local SharedDict = {}
       local function set(data, key, value)
         data[key] = {

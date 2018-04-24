@@ -4,6 +4,7 @@ local public = require "kong.tools.public"
 local ngx_debug = ngx.config.debug
 local DEBUG     = ngx.DEBUG
 local ERR       = ngx.ERR
+local CRIT      = ngx.CRIT
 local max       = math.max
 local type      = type
 local pcall     = pcall
@@ -343,7 +344,7 @@ poll_handler = function(premature, self)
   if not get_lock(self) then
     local ok, err = timer_at(self.poll_interval, poll_handler, self)
     if not ok then
-      log(ERR, "failed to start recurring polling timer: ", err)
+      log(CRIT, "failed to start recurring polling timer: ", err)
     end
 
     return
@@ -365,7 +366,7 @@ poll_handler = function(premature, self)
 
   local ok, err = timer_at(self.poll_interval, poll_handler, self)
   if not ok then
-    log(ERR, "failed to start recurring polling timer: ", err)
+    log(CRIT, "failed to start recurring polling timer: ", err)
   end
 end
 

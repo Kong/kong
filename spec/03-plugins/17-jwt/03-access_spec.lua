@@ -12,10 +12,10 @@ local PAYLOAD = {
   exp = os.time() + 3600
 }
 
-
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: jwt (access) [#" .. strategy .. "]", function()
     local jwt_secret
+    local jwt_secret_2
     local base64_jwt_secret
     local rsa_jwt_secret_1
     local rsa_jwt_secret_2
@@ -28,7 +28,7 @@ for _, strategy in helpers.each_strategy() do
 
       local routes = {}
 
-      for i = 1, 9 do
+      for i = 1, 10 do
         routes[i] = bp.routes:insert {
           hosts = { "jwt" .. i .. ".com" },
         }
@@ -40,6 +40,7 @@ for _, strategy in helpers.each_strategy() do
       local consumer3      = consumers:insert({ username = "jwt_tests_rsa_consumer_1" })
       local consumer4      = consumers:insert({ username = "jwt_tests_rsa_consumer_2" })
       local consumer5      = consumers:insert({ username = "jwt_tests_rsa_consumer_5" })
+      local consumer6      = consumers:insert({ username = "jwt_tests_consumer_6" })
       local anonymous_user = consumers:insert({ username = "no-body" })
 
       local plugins = bp.plugins
@@ -99,12 +100,19 @@ for _, strategy in helpers.each_strategy() do
       })
 
       plugins:insert({
+        name     = "jwt",
+        route_id = routes[10].id,
+        config   = { key_claim_name = "kid" },
+      })
+
+      plugins:insert({
         name     = "ctx-checker",
         route_id = routes[1].id,
         config   = { ctx_field = "authenticated_jwt_token" },
       })
 
       jwt_secret        = bp.jwt_secrets:insert { consumer_id = consumer1.id }
+      jwt_secret_2      = bp.jwt_secrets:insert { consumer_id = consumer6.id }
       base64_jwt_secret = bp.jwt_secrets:insert { consumer_id = consumer2.id }
 
       rsa_jwt_secret_1 = bp.jwt_secrets:insert {
@@ -265,6 +273,20 @@ for _, strategy in helpers.each_strategy() do
         assert.equal(authorization, body.headers.authorization)
         assert.equal("jwt_tests_consumer", body.headers["x-consumer-username"])
         assert.is_nil(body.headers["x-anonymous-consumer"])
+      end)
+      it("proxies the request if the key is found in headers", function()
+        local header = {typ = "JWT", alg = "HS256", kid = jwt_secret_2.key}
+        local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret_2.secret, "HS256", header)
+        local authorization = "Bearer " .. jwt
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Authorization"] = authorization,
+            ["Host"]          = "jwt10.com",
+          }
+        })
+        assert.res_status(200, res)
       end)
       it("proxies the request if secret key is stored in a field other than iss", function()
         PAYLOAD.aud = jwt_secret.key

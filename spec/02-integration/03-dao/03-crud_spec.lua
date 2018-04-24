@@ -21,6 +21,7 @@ assert:register("assertion", "raw_table", raw_table, "assertion.raw_table.positi
 
 local helpers = require "spec.02-integration.03-dao.helpers"
 local Factory = require "kong.dao.factory"
+local version = require "version"
 
 local api_tbl = {
   name = "example",
@@ -329,7 +330,8 @@ helpers.for_each_dao(function(kong_config)
           local api, err = apis:insert {
             name = "fixture_" .. i,
             hosts = { "fixture" .. i .. ".com" },
-            upstream_url = "http://fixture.org"
+            upstream_url = "http://fixture.org",
+            https_only = i == 5
           }
           assert.falsy(err)
           assert.truthy(api)
@@ -402,14 +404,64 @@ helpers.for_each_dao(function(kong_config)
         assert.equal(1, #rows)
         assert.same(first_api, rows[1])
       end)
-      it("filter supports a boolean value", function()
-        local rows, err, _ = apis:find_page {
-          name = "fixture_2",
-          https_only = "false"
-        }
-        assert.falsy(err)
-        assert.is_table(rows)
-      end)
+
+      local run_boolean_checks = true
+
+      -- Filtering on non-primary key columns only supported in C* 3.5+
+      -- Since we do not maintain an index on https_only we can
+      -- only run the boolean checks against Cassandra 3.5+
+      if kong_config.database == "cassandra" then
+        local db_infos = factory.db:infos()
+        if db_infos.version ~= "unknown" then
+          local db_v = version.version(db_infos.version)
+          local min_v = version.version("3.5")
+          run_boolean_checks = db_v >= min_v
+        end
+      end
+
+      if run_boolean_checks then
+        it("filter supports a truthy boolean value", function()
+          local rows, err, _ = apis:find_page {
+            https_only = "true"
+          }
+          assert.falsy(err)
+          assert.is_table(rows)
+          assert.equal(1, #rows)
+          assert.equal(true, rows[1].https_only)
+          assert.equal("fixture_5", rows[1].name)
+        end)
+        it("filter supports a falsey boolean value", function()
+          local rows, err, _ = apis:find_page {
+            https_only = "false"
+          }
+          assert.falsy(err)
+          assert.is_table(rows)
+          for i = 1, #rows do
+            assert.equal(false, rows[i].https_only)
+          end
+        end)
+        it("filter supports a true boolean value", function()
+          local rows, err, _ = apis:find_page {
+            https_only = true
+          }
+          assert.falsy(err)
+          assert.is_table(rows)
+          assert.equal(1, #rows)
+          assert.equal(true, rows[1].https_only)
+          assert.equal("fixture_5", rows[1].name)
+        end)
+        it("filter supports a false boolean value", function()
+          local rows, err, _ = apis:find_page {
+            https_only = false
+          }
+          assert.falsy(err)
+          assert.is_table(rows)
+          for i = 1, #rows do
+            assert.equal(false, rows[i].https_only)
+          end
+        end)
+      end
+
       describe("errors", function()
         it("handle invalid arg", function()
           assert.has_error(function()
@@ -455,6 +507,7 @@ helpers.for_each_dao(function(kong_config)
           assert.truthy(api)
         end
       end)
+
       teardown(function()
         factory:truncate_tables()
       end)

@@ -8,7 +8,11 @@ local format = string.format
 -- Password is salted with the credential's consumer_id (long enough, unique)
 -- @param credential The basic auth credential table
 local function salt_password(credential)
-  return format("%s%s", credential.password, credential.consumer_id)
+  local password = credential.password
+  if password == nil or password == ngx.null then
+    password = ""
+  end
+  return format("%s%s", password, credential.consumer_id)
 end
 
 return {

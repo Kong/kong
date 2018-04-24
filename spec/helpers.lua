@@ -121,7 +121,7 @@ do
     end
 end
 
-local function get_db_utils(strategy)
+local function get_db_utils(strategy, no_truncate)
   strategy = strategy or conf.database
 
   -- new DAO (DB module)
@@ -137,12 +137,16 @@ local function get_db_utils(strategy)
     conf.database = database
 
     assert(dao:run_migrations())
-    dao:truncate_tables()
+    if not no_truncate then
+      dao:truncate_tables()
+    end
   end
 
   -- cleanup new DB tables
   assert(db:init_connector())
-  assert(db:truncate())
+  if not no_truncate then
+    assert(db:truncate())
+  end
 
   local rbac = require "kong.rbac"
 
@@ -234,14 +238,16 @@ local function wait_until(f, timeout)
     error("arg #1 must be a function", 2)
   end
 
+  ngx.update_time()
+
   timeout = timeout or 2
   local tstart = ngx.time()
   local texp = tstart + timeout
   local ok, res, err
 
   repeat
-    ngx.sleep(0.2)
     ok, res, err = pcall(f)
+    ngx.sleep(0.05)
   until not ok or res or ngx.time() >= texp
 
   if not ok then
@@ -463,7 +469,7 @@ local function tcp_server(port, opts, ...)
     function(port, opts)
       local socket = require "socket"
       local server = assert(socket.tcp())
-      server:settimeout(10)
+      server:settimeout(360)
       assert(server:setoption('reuseaddr', true))
       assert(server:bind("*", port))
       assert(server:listen())
@@ -546,26 +552,57 @@ end
 -- Accepts a single connection, reading once and then closes
 -- @name udp_server
 -- @param `port`    The port where the server will be listening to
+-- @param `n`       The number of packets that will be received
+-- @param `timeout` Timeout per read
 -- @return `thread` A thread object
-local function udp_server(port)
+local function udp_server(port, n, timeout)
   local threads = require "llthreads2.ex"
 
   local thread = threads.new({
-    function(port)
+    function(port, n, timeout)
       local socket = require "socket"
       local server = assert(socket.udp())
-      server:settimeout(5)
+      server:settimeout(timeout or 360)
       server:setoption("reuseaddr", true)
       server:setsockname("127.0.0.1", port)
-      local data, err = server:receive()
+      local err
+      local data = {}
+      local handshake_done = false
+      local i = 0
+      while i < n do
+        local pkt, rport
+        pkt, err, rport = server:receivefrom()
+        if not pkt then
+          break
+        end
+        if pkt == "KONG_UDP_HELLO" then
+          if not handshake_done then
+            handshake_done = true
+            server:sendto("KONG_UDP_READY", "127.0.0.1", rport)
+          end
+        else
+          i = i + 1
+          data[i] = pkt
+        end
+      end
       server:close()
-      return data, err
+      return (n > 1 and data or data[1]), err
     end
-  }, port or MOCK_UPSTREAM_PORT)
-
+  }, port or MOCK_UPSTREAM_PORT, n or 1, timeout)
   thread:start()
 
-  ngx.sleep(0.1)
+  local socket = require "socket"
+  local handshake = socket.udp()
+  handshake:settimeout(0.01)
+  handshake:setsockname("127.0.0.1", 0)
+  while true do
+    handshake:sendto("KONG_UDP_HELLO", "127.0.0.1", port)
+    local data = handshake:receive()
+    if data == "KONG_UDP_READY" then
+      break
+    end
+  end
+  handshake:close()
 
   return thread
 end
@@ -1088,6 +1125,16 @@ local function wait_pid(pid_path, timeout, is_retry)
   end
 end
 
+-- Return the actual configuration running at the given prefix.
+-- It may differ from the default, as it may have been modified
+-- by the `env` table given to start_kong.
+-- @param prefix The prefix path where the kong instance is running
+-- @return The conf table of the running instance, or nil on error.
+local function get_running_conf(prefix)
+  local default_conf = conf_loader(nil, {prefix = prefix or conf.prefix})
+  return conf_loader(default_conf.kong_env)
+end
+
 ----------
 -- Exposed
 ----------
@@ -1159,8 +1206,13 @@ return {
   end,
   stop_kong = function(prefix, preserve_prefix, preserve_tables)
     prefix = prefix or conf.prefix
+
+    local running_conf = get_running_conf(prefix)
+    if not running_conf then return end
+
     local ok, err = kong_exec("stop --prefix " .. prefix)
-    wait_pid(conf.nginx_pid, nil)
+
+    wait_pid(running_conf.nginx_pid)
     if not preserve_tables then
       dao:truncate_tables()
     end
@@ -1175,8 +1227,7 @@ return {
 
     dao:truncate_tables()
 
-    local default_conf = conf_loader(nil, {prefix = prefix or conf.prefix})
-    local running_conf = conf_loader(default_conf.kong_env)
+    local running_conf = get_running_conf(prefix)
     if not running_conf then return end
 
     -- kill kong_tests.conf service

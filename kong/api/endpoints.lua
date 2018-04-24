@@ -6,7 +6,6 @@ local app_helpers = require "lapis.application"
 
 local escape_uri  = ngx.escape_uri
 local null        = ngx.null
-local find        = string.find
 local fmt         = string.format
 local sub         = string.sub
 
@@ -392,13 +391,6 @@ local function generate_endpoints(schema, endpoints, prefix)
   end
 
   local schema_name = schema.name
-
-  local collection_key = fmt("/%s/", schema_name)
-
-  if find(path_prefix, collection_key, nil, true) then
-    return endpoints
-  end
-
   local collection_path = path_prefix .. schema_name
 
   -- e.g. /routes

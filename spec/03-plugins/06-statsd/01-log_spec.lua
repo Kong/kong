@@ -247,25 +247,7 @@ for _, strategy in helpers.each_strategy() do
 
     describe("metrics", function()
       it("logs over UDP with default metrics", function()
-        local threads = require "llthreads2.ex"
-
-        local thread = threads.new({
-          function(port)
-            local socket = require "socket"
-            local server = assert(socket.udp())
-            server:settimeout(1)
-            server:setoption("reuseaddr", true)
-            server:setsockname("127.0.0.1", port)
-            local metrics = {}
-            for i = 1, 12 do
-              metrics[#metrics+1] = server:receive()
-            end
-            server:close()
-            return metrics
-          end
-        }, UDP_PORT)
-        thread:start()
-
+        local thread = helpers.udp_server(UDP_PORT, 12)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -293,25 +275,7 @@ for _, strategy in helpers.each_strategy() do
                         metrics)
       end)
       it("logs over UDP with default metrics and new prefix", function()
-        local threads = require "llthreads2.ex"
-
-        local thread = threads.new({
-          function(port)
-            local socket = require "socket"
-            local server = assert(socket.udp())
-            server:settimeout(1)
-            server:setoption("reuseaddr", true)
-            server:setsockname("127.0.0.1", port)
-            local metrics = {}
-            for i = 1, 12 do
-              metrics[#metrics+1] = server:receive()
-            end
-            server:close()
-            return metrics
-          end
-        }, UDP_PORT)
-        thread:start()
-
+        local thread = helpers.udp_server(UDP_PORT, 12)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
@@ -353,24 +317,7 @@ for _, strategy in helpers.each_strategy() do
         assert.equal("kong.statsd5.request.count:1|c", res)
       end)
       it("status_count", function()
-        local threads = require "llthreads2.ex"
-
-        local thread = threads.new({
-          function(port)
-            local socket = require "socket"
-            local server = assert(socket.udp())
-            server:settimeout(1)
-            server:setoption("reuseaddr", true)
-            server:setsockname("127.0.0.1", port)
-            local metrics = {}
-            for i = 1, 2 do
-              metrics[#metrics+1] = server:receive()
-            end
-            server:close()
-            return metrics
-          end
-        }, UDP_PORT)
-        thread:start()
+        local thread = helpers.udp_server(UDP_PORT, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -476,24 +423,7 @@ for _, strategy in helpers.each_strategy() do
         assert.matches("kong.statsd9.user.uniques:robert|s", res)
       end)
       it("status_count_per_user", function()
-        local threads = require "llthreads2.ex"
-
-        local thread = threads.new({
-          function(port)
-            local socket = require "socket"
-            local server = assert(socket.udp())
-            server:settimeout(1)
-            server:setoption("reuseaddr", true)
-            server:setsockname("127.0.0.1", port)
-            local metrics = {}
-            for i = 1, 2 do
-              metrics[#metrics+1] = server:receive()
-            end
-            server:close()
-            return metrics
-          end
-        }, UDP_PORT)
-        thread:start()
+        local thread = helpers.udp_server(UDP_PORT, 2)
         local response = assert(proxy_client:send {
           method  = "GET",
           path    = "/request?apikey=kong",
