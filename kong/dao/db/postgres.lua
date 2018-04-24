@@ -94,7 +94,7 @@ end
 function _M:init()
   local res, err = self:query("SHOW server_version;")
   if not res then
-    return nil, err
+    return nil, Errors.db("could not retrieve server_version: " .. err)
   end
 
   if #res < 1 or not res[1].server_version then
