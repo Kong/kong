@@ -7,6 +7,15 @@ local _LEVELS = {
   quiet = 6
 }
 
+local _NGX_LEVELS = {
+  [1] = ngx.DEBUG,
+  -- verbose
+  [3] = ngx.INFO,
+  [4] = ngx.WARN,
+  [5] = ngx.ERR,
+  -- quiet
+}
+
 local r_levels = {}
 for k, v in pairs(_LEVELS) do
   r_levels[v] = k
@@ -37,7 +46,7 @@ function _M.enable()
   old_lvl = nil
 end
 
-local function log(lvl, ...)
+function _M.log(lvl, ...)
   local format
   local args = {...}
   if lvl >= log_lvl then
@@ -47,6 +56,16 @@ local function log(lvl, ...)
     end
 
     local msg = string.format(format, unpack(args))
+
+    if not ngx.IS_CLI then
+      local ngx_lvl = _NGX_LEVELS[lvl]
+      if ngx_lvl then
+        ngx.log(ngx_lvl, msg)
+      end
+
+      return
+    end
+
     if log_lvl < _LEVELS.info or lvl >= _LEVELS.warn then
       msg = string.format("%s [%s] %s", os.date("%Y/%m/%d %H:%M:%S"), r_levels[lvl], msg)
     end
@@ -61,12 +80,12 @@ end
 
 return setmetatable(_M, {
   __call = function(_, ...)
-    return log(_LEVELS.info, ...)
+    return _M.log(_LEVELS.info, ...)
   end,
   __index = function(t, key)
     if _LEVELS[key] then
       return function(...)
-        log(_LEVELS[key], ...)
+        _M.log(_LEVELS[key], ...)
       end
     end
     return rawget(t, key)

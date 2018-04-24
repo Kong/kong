@@ -1,9 +1,9 @@
 package = "kong"
-version = "0.13.0-0"
+version = "0.13.1-0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong-ee",
-  tag = "0.13.0"
+  tag = "0.13.1"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -28,10 +28,11 @@ dependencies = {
   "luasyslog == 1.0.0",
   "lua_pack == 1.0.5",
   "lua-resty-dns-client == 2.0.0",
-  "lua-resty-worker-events == 0.3.1",
+  "lua-resty-worker-events == 0.3.2",
   "lua-resty-mediador == 0.1.2",
   "lua-resty-redis-connector == 0.03",
   "lua-resty-healthcheck == 0.4.0",
+  "lua-resty-mlcache == 2.0.2",
 }
 build = {
   type = "builtin",
@@ -47,8 +48,6 @@ build = {
     ["kong.cluster_events.strategies.postgres"] = "kong/cluster_events/strategies/postgres.lua",
 
     ["kong.cache"] = "kong/cache.lua",
-
-    ["kong.mlcache"] = "kong/mlcache.lua",
 
     ["kong.enterprise_edition"] = "kong/enterprise_edition/init.lua",
     ["kong.enterprise_edition.meta"] = "kong/enterprise_edition/meta.lua",

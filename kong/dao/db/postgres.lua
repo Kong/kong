@@ -78,6 +78,7 @@ end
 
 function _M:infos()
   return {
+    db_name = "PostgreSQL",
     desc = "database",
     name = self:clone_query_options().database,
     version = self.major_minor_version or "unknown",
@@ -93,7 +94,7 @@ end
 function _M:init()
   local res, err = self:query("SHOW server_version;")
   if not res then
-    return nil, err
+    return nil, Errors.db("could not retrieve server_version: " .. err)
   end
 
   if #res < 1 or not res[1].server_version then

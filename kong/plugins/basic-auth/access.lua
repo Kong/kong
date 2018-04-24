@@ -40,7 +40,7 @@ local function retrieve_credentials(request, header_name, conf)
       local decoded_basic = ngx.decode_base64(m[1])
       if decoded_basic then
         local basic_parts, err = ngx_re_match(decoded_basic,
-                                              "([^:]+):(.+)", "oj")
+                                              "([^:]+):(.*)", "oj")
         if err then
           ngx.log(ngx.ERR, err)
           return

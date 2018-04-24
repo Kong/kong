@@ -28,7 +28,7 @@ return{
       local credentials, err = crud.find_by_id_or_field(
         dao_factory.hmacauth_credentials,
         { consumer_id = self.params.consumer_id },
-        self.params.hmac_username_or_id,
+        ngx.unescape_uri(self.params.hmac_username_or_id),
         "username"
       )
 
@@ -64,7 +64,7 @@ return{
       local credentials, err = crud.find_by_id_or_field(
         dao_factory.hmacauth_credentials,
         {},
-        self.params.hmac_username_or_id,
+        ngx.unescape_uri(self.params.hmac_username_or_id),
         "username"
       )
 
