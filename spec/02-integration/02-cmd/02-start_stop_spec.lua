@@ -142,6 +142,14 @@ describe("kong start/stop", function()
         assert.False(ok)
         assert.matches("the current database schema does not match this version of Kong.", stderr)
       end)
+      it("connection check errors are prefixed with DB-specific prefix", function()
+        local ok, stderr = helpers.kong_exec("start --conf " .. helpers.test_conf_path, {
+          pg_port = 99999,
+          cassandra_port = 99999,
+        })
+        assert.False(ok)
+        assert.matches("[" .. helpers.test_conf.database .. " error]", stderr, 1, true)
+      end)
     end)
   end)
 
