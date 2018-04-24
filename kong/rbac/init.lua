@@ -563,8 +563,8 @@ function _M.load_rbac_ctx(dao_factory)
 end
 
 
-function _M.validate_endpoint(lapis, route, route_name)
-  if lapis.route_name == "default_route" then
+function _M.validate_endpoint(route_name, route)
+  if route_name == "default_route" then
     return
   end
 
