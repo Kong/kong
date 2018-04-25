@@ -1,3 +1,9 @@
+## v0.1.2
+
+This release adds option that allows e.g. rate-limiting by arbitrary claim:
+
+- Add `config.credential_claim`
+
 ## v0.1.1
 
 - Bearer token is now looked up on `Access-Token` and `X-Access-Token` headers

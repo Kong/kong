@@ -525,6 +525,13 @@ return {
         "custom_id",
       },
     },
+    credential_claim                   = {
+      required                         = false,
+      type                             = "array",
+      default                          = {
+        "sub"
+      },
+    },
     anonymous                          = {
       required                         = false,
       type                             = "string",

@@ -1913,6 +1913,61 @@ function OICHandler:access(conf)
   -- setting consumer context and headers
   set_consumer(consumer, credential, is_anonymous)
 
+  -- setting credential by arbitrary claim, in case when consumer mapping was not used
+  if not consumer then
+    local credential_claim = args.get_conf_arg("credential_claim")
+    if credential_claim then
+      log("finding credential claim value")
+
+      local credential_value
+      if token_introspected then
+        credential_value = find_claim(token_introspected, credential_claim)
+        if credential_value then
+          log("credential claim found in introspection results")
+
+        else
+          log("credential claim not found in introspection results")
+        end
+
+      else
+        if not tokens_decoded then
+          tokens_decoded = oic.token:decode(tokens_encoded)
+        end
+
+        if tokens_decoded then
+          if type(tokens_decoded.access_token) == "table" then
+            credential_value = find_claim(tokens_decoded.access_token.payload, credential_claim)
+            if credential_value then
+              log("credential claim found in jwt token")
+
+            else
+              log("credential claim not found in jwt token")
+            end
+
+          else
+            credential_value = find_claim(token_introspected, credential_claim)
+            if credential_value then
+              log("credential claim found in introspection results")
+
+            else
+              log("credential claim not found in introspection results")
+            end
+          end
+        end
+      end
+
+      if type(credential_value) == "table" then
+        log("credential claim is invalid")
+
+      else
+        log("credential found '", credential_value, "'")
+        ngx.ctx.authenticated_credential = {
+          id = tostring(credential_value)
+        }
+      end
+    end
+  end
+
   -- remove session cookie from the upstream request?
   if auth_methods.session then
     log("hiding session cookie from upstream")
