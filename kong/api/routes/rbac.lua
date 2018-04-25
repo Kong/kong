@@ -285,8 +285,6 @@ return {
   },
 
   ["/rbac/roles/:name_or_id"] = {
-    resource = "rbac",
-
     before = function(self, dao_factory, helpers)
       crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
     end,

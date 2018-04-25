@@ -25,8 +25,6 @@ return {
   },
 
   ["/cache"] = {
-    resource = "cache",
-
     DELETE = function(self, _, helpers)
       singletons.cache:purge()
 
