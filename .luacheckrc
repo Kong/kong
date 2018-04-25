@@ -6,9 +6,6 @@ max_line_length = false
 
 globals = {
     "_KONG",
-    "_GMP_LIB_PATH",
-    "_NETTLE_LIB_PATH",
-    "_HOGWEED_LIB_PATH",
     "ngx.IS_CLI",
 }
 
