@@ -3,9 +3,7 @@ local cjson = require "cjson"
 local meta = require "kong.meta"
 local utils = require "kong.tools.utils"
 
--- XXX pending in EE
--- flaky
-describe("#flaky Plugin: key-auth (access)", function()
+describe("Plugin: key-auth (access)", function()
   local client
   setup(function()
     local dao = select(3, helpers.get_db_utils())
@@ -407,9 +405,7 @@ describe("#flaky Plugin: key-auth (access)", function()
 end)
 
 
--- XXX pending in EE
--- flaky
-describe("#flaky Plugin: key-auth (access)", function()
+describe("Plugin: key-auth (access)", function()
 
   local client, user1, user2, anonymous
 

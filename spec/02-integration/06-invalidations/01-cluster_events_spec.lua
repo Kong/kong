@@ -154,9 +154,7 @@ for _, strategy in helpers.each_strategy() do
         assert.spy(spy_func).was_not_called()
       end)
 
-      -- XXX pending in EE
-      -- failing on travis in both postgres and cassandra
-      it("#flaky starts interval polling when subscribing", function()
+      it("starts interval polling when subscribing", function()
         local cluster_events_1 = assert(kong_cluster_events.new {
           dao           = dao,
           poll_interval = 0.3,

@@ -2,9 +2,7 @@ local cjson = require "cjson"
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 
--- XXX pending in EE
--- flaky
-describe("#flaky Plugin: key-auth (API)", function()
+describe("Plugin: key-auth (API)", function()
   local consumer
   local admin_client
   local dao
