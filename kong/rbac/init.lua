@@ -548,7 +548,7 @@ function _M.load_rbac_ctx(dao_factory)
     return nil, err
   end
 
-  local endpoints_perms, err = _M.resolve_role_endpoint_permissions(roles)
+  local endpoints_perms, err = resolve_role_endpoint_permissions(roles)
   if err then
     return nil, err
   end
@@ -595,13 +595,10 @@ end
 
 -- checks whether the given action can be cleanly performed in a
 -- set of entities
-function _M.check_cascade(entities)
+function _M.check_cascade(entities, rbac_ctx)
   if singletons.configuration.rbac.off then
     return true
   end
-
-  local perms_map = ngx.ctx.rbac.entities_perms
-  local action    = ngx.ctx.rbac.action
 
   --
   -- entities = {
@@ -614,9 +611,10 @@ function _M.check_cascade(entities)
   --    }
   --  }
   -- }
-  for table_name, table_info in pairs(entities) do
-    for entity in ipairs(table_info.entities) do
-      if not authorize_request_entity(perms_map, entity.id, action) then
+  for _, table_info in pairs(entities) do
+    for _, entity in ipairs(table_info.entities) do
+      if not authorize_request_entity(rbac_ctx.entities_perms, entity.id,
+                                      rbac_ctx.action) then
         return false
       end
     end

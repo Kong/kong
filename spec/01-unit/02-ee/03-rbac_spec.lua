@@ -58,6 +58,8 @@ describe("(#" .. kong_conf.database .. ")", function()
               workspace_id = workspace,
               entity_id = entity,
               entity_type = "entity",
+              unique_field_name="id",
+              unique_field_value=entity,
             }))
           end
         end
@@ -112,6 +114,8 @@ describe("(#" .. kong_conf.database .. ")", function()
             workspace_id = workspaces[#workspaces],
             entity_id = workspaces[x],
             entity_type = "workspaces",
+            unique_field_name="id",
+            unique_field_value=workspaces[x],
           }))
 
           -- add another workspace, associated with an existing workspace,
@@ -121,6 +125,8 @@ describe("(#" .. kong_conf.database .. ")", function()
             workspace_id = workspaces[#workspaces],
             entity_id = workspaces[x],
             entity_type = "workspaces",
+            unique_field_name="id",
+            unique_field_value=workspaces[x],
           }))
 
           entities[#workspaces] = {}
@@ -130,6 +136,8 @@ describe("(#" .. kong_conf.database .. ")", function()
               workspace_id = workspaces[#workspaces],
               entity_id = entities[#workspaces][i],
               entity_type = "entity",
+              unique_field_name="id",
+              unique_field_value=entities[#workspaces][i],
             }))
           end
         end)
@@ -176,7 +184,9 @@ describe("(#" .. kong_conf.database .. ")", function()
             assert(dao.workspace_entities:insert({
               workspace_id = workspaces[#workspaces],
               entity_id = workspaces[#workspaces - 1],
-              entity_type = "workspace",
+              entity_type = "workspaces",
+              unique_field_name="id",
+              unique_field_value=workspaces[#workspaces - 1],
             }))
           end)
 
@@ -207,12 +217,16 @@ describe("(#" .. kong_conf.database .. ")", function()
           assert(dao.workspace_entities:insert({
             workspace_id = x,
             entity_id = y,
-            entity_type = "workspace"
+            entity_type = "workspaces",
+            unique_field_name="id",
+            unique_field_value=y,
           }))
           assert(dao.workspace_entities:insert({
             workspace_id = y,
             entity_id = x,
-            entity_type = "workspace"
+            entity_type = "workspaces",
+            unique_field_name="id",
+            unique_field_value=x,
           }))
         end)
 
@@ -300,7 +314,7 @@ describe("(#" .. kong_conf.database .. ")", function()
 
 
           -- clear the existing role->entity mappings
-          helpers.run_migrations()
+          dao:run_migrations()
 
 
           -- create a workspace with some entities
@@ -308,6 +322,8 @@ describe("(#" .. kong_conf.database .. ")", function()
             workspace_id = workspaces[1],
             entity_id = entities[1],
             entity_type = "entity",
+            unique_field_name="id",
+            unique_field_value=entities[1],
           }))
 
           -- create a workspace pointing to another workspace, and
@@ -315,12 +331,16 @@ describe("(#" .. kong_conf.database .. ")", function()
           assert(dao.workspace_entities:insert({
             workspace_id = workspaces[2],
             entity_id = workspaces[1],
-            entity_type = "workspace",
+            entity_type = "workspaces",
+            unique_field_name="id",
+            unique_field_value=workspaces[1],
           }))
           assert(dao.workspace_entities:insert({
             workspace_id = workspaces[2],
             entity_id = entities[2],
             entity_type = "entity",
+            unique_field_name="id",
+            unique_field_value=entities[2],
           }))
 
           -- assign two roles; the first role to the first workspace
@@ -350,7 +370,6 @@ describe("(#" .. kong_conf.database .. ")", function()
           assert.equals(0x1, map[entities[1]])
           assert.is_nil(map[entities[2]])
 
-
           map = rbac.resolve_role_entity_permissions({
             { id = roles[2] },
           })
@@ -375,13 +394,13 @@ describe("(#" .. kong_conf.database .. ")", function()
       local role_ids = {}
 
       setup(function()
+        package.loaded["kong.rbac"] = nil
         local u = utils.uuid
-
         table.insert(role_ids, u())
         assert(dao.rbac_role_endpoints:insert({
           role_id = role_ids[#role_ids],
           workspace = "foo",
-          endpoint = "bar",
+          endpoint = "/bar",
           actions = 0x1,
           negative = false,
         }))
@@ -390,7 +409,7 @@ describe("(#" .. kong_conf.database .. ")", function()
         assert(dao.rbac_role_endpoints:insert({
           role_id = role_ids[#role_ids],
           workspace = "foo",
-          endpoint = "bar",
+          endpoint = "/bar",
           actions = 0x1,
           negative = true,
         }))
@@ -398,7 +417,7 @@ describe("(#" .. kong_conf.database .. ")", function()
         assert(dao.rbac_role_endpoints:insert({
           role_id = role_ids[#role_ids],
           workspace = "baz",
-          endpoint = "bar",
+          endpoint = "/bar",
           actions = 0x5,
           negative = false,
         }))
@@ -413,7 +432,7 @@ describe("(#" .. kong_conf.database .. ")", function()
           { id = role_ids[1] },
         })
 
-        assert.equals(0x1, map.foo.bar)
+        assert.equals(0x1, map.foo["/foo/bar"])
       end)
 
       it("returns a permissions map for multiple roles", function()
@@ -422,7 +441,7 @@ describe("(#" .. kong_conf.database .. ")", function()
           { id = role_ids[2] },
         })
 
-        assert.equals(0x11, map.foo.bar)
+        assert.equals(0x11, map.foo["/foo/bar"])
       end)
 
       it("returns separate permissions under separate workspaces", function()
@@ -430,8 +449,8 @@ describe("(#" .. kong_conf.database .. ")", function()
           { id = role_ids[2] },
         })
 
-        assert.equals(0x10, map.foo.bar)
-        assert.equals(0x5, map.baz.bar)
+        assert.equals(0x11,map.foo["/foo/bar"])
+        assert.equals(0x5, map.baz["/baz/bar"])
       end)
     end)
   end)
@@ -441,18 +460,76 @@ describe("(#" .. kong_conf.database .. ")", function()
       describe("workspace/endpoint", function()
         it("(positive)", function()
           assert.equals(true, rbac.authorize_request_endpoint(
-            { foo = { bar = 0x1 } },
+            { foo = { ["bar"] = 0x1 } },
             "foo",
+            "bar",
+            "/bar",
+            rbac.actions_bitfields.read
+          ))
+        end)
+        it("(endpoint with workspace)", function()
+          assert.equals(true, rbac.authorize_request_endpoint(
+            { foo = { ["bar"] = 0x1 } },
+            "foo",
+            "/foo/bar",
             "bar",
             rbac.actions_bitfields.read
           ))
+        end)
+        it("(normalized route)", function()
+          assert.equals(true, rbac.authorize_request_endpoint(
+            { foo = { ["bar"] = 0x1 } },
+            "foo",
+            "bar",
+            "/foo/*",
+            rbac.actions_bitfields.read
+          ))
+        end)
+        it("(route with workspace)", function()
+          assert.equals(true, rbac.authorize_request_endpoint(
+            { foo = { ["bar"] = 0x1 } },
+            "foo",
+            "bar",
+            "/foo/bar/",
+            rbac.actions_bitfields.read
+          ))
+        end)
+        it("(hierarchical path)", function()
+          local map = { foo = { ["/apis/test/plugins/"] = 0x1 } }
+          assert.equals(true, rbac.authorize_request_endpoint(
+            map,
+            "foo",
+            "/apis/test/plugins/",
+            "_workspace/apis/:api_name/plugins/",
+            rbac.actions_bitfields.read
+          ))
+        end)
+        it("(hierarchical path with wildcard)", function()
+          local map = { foo = { ["/apis/*/plugins"] = 0x1 } }
+          assert.equals(true, rbac.authorize_request_endpoint(
+            map,
+            "foo",
+            "/apis/test/plugins",
+            "/apis/:api_name/plugins",
+            rbac.actions_bitfields.read
+          ))
+          local map = { foo = { ["/apis/*/plugins/"] = 0x1 } }
+          -- need code fix
+          --[[assert.equals(true, rbac.authorize_request_endpoint(
+            map,
+            "foo",
+            "/apis/test/plugins/",
+            "/apis/:api_name/plugins",
+            rbac.actions_bitfields.read
+          ))]]
         end)
 
         it("(negative override)", function()
           assert.equals(false, rbac.authorize_request_endpoint(
             { foo = { bar = 0x11 } },
             "foo",
-            "bar",
+            "/bar",
+            "/bar",
             rbac.actions_bitfields.read
           ))
         end)
@@ -460,7 +537,8 @@ describe("(#" .. kong_conf.database .. ")", function()
           assert.equals(false, rbac.authorize_request_endpoint(
             { foo = { baz = 0x1 } },
             "foo",
-            "bar",
+            "/bar",
+            "/bar",
             rbac.actions_bitfields.read
           ))
         end)
@@ -470,7 +548,8 @@ describe("(#" .. kong_conf.database .. ")", function()
           assert.equals(true, rbac.authorize_request_endpoint(
             { foo = { ["*"] = 0x1 } },
             "foo",
-            "bar",
+            "/bar",
+            "/bar",
             rbac.actions_bitfields.read
           ))
         end)
@@ -478,15 +557,17 @@ describe("(#" .. kong_conf.database .. ")", function()
           assert.equals(false, rbac.authorize_request_endpoint(
             { foo = { ["*"] = 0x11 } },
             "foo",
-            "bar",
+            "/bar",
+            "/foo/bar/",
             rbac.actions_bitfields.read
           ))
         end)
         it("does not override specific endpoint", function()
           assert.equals(true, rbac.authorize_request_endpoint(
-            { foo = { ["*"] = 0x11, bar = 0x1 } },
+            { foo = { ["*"] = 0x11, ["bar"] = 0x1 } },
             "foo",
             "bar",
+            "/foo/bar/",
             rbac.actions_bitfields.read
           ))
         end)
@@ -497,6 +578,7 @@ describe("(#" .. kong_conf.database .. ")", function()
             { ["*"] = { bar = 0x1 } },
             "foo",
             "bar",
+            "/foo/bar/",
             rbac.actions_bitfields.read
           ))
         end)
@@ -505,6 +587,7 @@ describe("(#" .. kong_conf.database .. ")", function()
             { ["*"] = { bar = 0x11 } },
             "foo",
             "bar",
+            "/foo/bar/",
             rbac.actions_bitfields.read
           ))
         end)
@@ -513,6 +596,7 @@ describe("(#" .. kong_conf.database .. ")", function()
             { ["*"] = { bar = 0x1 } },
             "baz",
             "bar",
+            "/baz/bar/",
             rbac.actions_bitfields.read
           ))
         end)
@@ -521,12 +605,14 @@ describe("(#" .. kong_conf.database .. ")", function()
             { foo = { ["*"] = 0x11, bar = 0x1 }, ["*"] = { bar = 0x1 } },
             "foo",
             "bar",
+            "/foo/bar/",
             rbac.actions_bitfields.read
           ))
           assert.equals(false, rbac.authorize_request_endpoint(
             { foo = { ["*"] = 0x11, bar = 0x1 }, ["*"] = { bar = 0x1 } },
             "foo",
             "baz",
+            "/foo/baz/",
             rbac.actions_bitfields.read
           ))
         end)
@@ -537,6 +623,7 @@ describe("(#" .. kong_conf.database .. ")", function()
             { ["*"] = { ["*"] = 0x1 } },
             "foo",
             "bar",
+            "/foo/bar/",
             rbac.actions_bitfields.read
           ))
         end)
@@ -545,6 +632,7 @@ describe("(#" .. kong_conf.database .. ")", function()
             { ["*"] = { ["*"] = 0x11 } },
             "foo",
             "bar",
+            "/foo/bar/",
             rbac.actions_bitfields.read
           ))
         end)
@@ -553,12 +641,14 @@ describe("(#" .. kong_conf.database .. ")", function()
             { ["*"] = { ["*"] = 0x1 }, foo = { bar = 0x11 } },
             "foo",
             "bar",
+            "/foo/bar/",
             rbac.actions_bitfields.read
           ))
           assert.equals(true, rbac.authorize_request_endpoint(
             { ["*"] = { ["*"] = 0x1 }, foo = { bar = 0x11 } },
             "baz",
             "bar",
+            "/baz/bar/",
             rbac.actions_bitfields.read
           ))
         end)
@@ -570,18 +660,21 @@ describe("(#" .. kong_conf.database .. ")", function()
           { foo = { bar = 0x1 } },
           "foo",
           "bar",
+          "/foo/bar/",
           rbac.actions_bitfields.read
         ))
         assert.equals(false, rbac.authorize_request_endpoint(
           { foo = { bar = 0x1 } },
           "foo",
           "bar",
+          "/foo/bar/",
           rbac.actions_bitfields.create
         ))
         assert.equals(true, rbac.authorize_request_endpoint(
           { foo = { bar = 0x3 } },
           "foo",
           "bar",
+          "/foo/bar/",
           rbac.actions_bitfields.create
         ))
       end)
@@ -590,12 +683,14 @@ describe("(#" .. kong_conf.database .. ")", function()
           { foo = { bar = 0x12 } },
           "foo",
           "bar",
+          "/foo/bar/",
           rbac.actions_bitfields.read
         ))
         assert.equals(true, rbac.authorize_request_endpoint(
           { foo = { bar = 0x12 } },
           "foo",
           "bar",
+          "/foo/bar/",
           rbac.actions_bitfields.create
         ))
       end)
@@ -641,6 +736,255 @@ describe("(#" .. kong_conf.database .. ")", function()
       ))
     end)
   end)
+  describe("check_cascade", function()
+    local entities
+    setup(function()
+      local singletons = require "kong.singletons"
+      singletons.configuration= {
+        rbac = {
+          endpoint = true,
+          entity = true
+        }
+      }
+      entities = {
+        ["table1"] = {
+          entities = {
+            { id = "t1e1" },
+            { id = "t1e2" },
+          },
+          schema = {
+            ["t1s1"] = {},
+            ["t1s2"] = {},
+          }
+        },
+        ["table2"] = {
+          entities = {
+            { id = "t2e1" },
+            { id = "t2e2" },
+          },
+          schema = {
+            ["t2s1"] = {},
+            ["t2s2"] = {},
+          }
+        }
+      }
+    end)
+    teardown(function()
+      singletons.configuration = nil
+    end)
 
+    it("all entities allowed", function()
+      local rbac_ctx = {
+        user = nil,
+        roles = {},
+        action = 0x1,
+        entities_perms = {
+          t1e1 = 0x1,
+          t1e2 = 0x1,
+          t2e1 = 0x1,
+          t2e2 = 0x1,
+        },
+        endpoints_perms = nil,
+      }
+      assert.equals(true, rbac.check_cascade(entities, rbac_ctx))
+    end)
+    it("one entity not allowed", function()
+      local rbac_ctx = {
+        user = nil,
+        roles = {},
+        action = 0x1,
+        entities_perms = {
+          t1e1 = 0x1,
+          t1e2 = 0x1,
+          t2e1 = 0x2,
+          t2e2 = 0x1,
+        },
+        endpoints_perms = nil,
+      }
+      assert.equals(false, rbac.check_cascade(entities, rbac_ctx))
+    end)
+    it("rbac off", function()
+      singletons.configuration= {
+        rbac = {
+          off = true,
+        }
+      }
+      assert.equals(true, rbac.check_cascade(entities, nil))
+    end)
+  end)
+  describe("readable_entities_permissions", function()
+    local u
+    setup(function()
+      u = utils.uuid
+    end)
+
+    teardown(function()
+      dao:truncate_tables()
+    end)
+
+    it("each action", function()
+      role_id = u()
+      entity_id = u()
+
+      assert(dao.rbac_role_entities:insert({
+        role_id = role_id,
+        entity_id = entity_id,
+        entity_type = "entity",
+        actions = 0x01,
+        negative = false,
+      }))
+      local map = rbac.readable_entities_permissions({
+        { id = role_id },
+      })
+      assert.same(rbac.readable_action(0x1), map[entity_id][1])
+
+      role_id = u()
+      entity_id = u()
+
+      assert(dao.rbac_role_entities:insert({
+        role_id = role_id,
+        entity_id = entity_id,
+        entity_type = "entity",
+        actions = 0x02,
+        negative = false,
+      }))
+      local map = rbac.readable_entities_permissions({
+        { id = role_id },
+      })
+      assert.equals(rbac.readable_action(0x2), map[entity_id][1])
+
+      role_id = u()
+      entity_id = u()
+
+      assert(dao.rbac_role_entities:insert({
+        role_id = role_id,
+        entity_id = entity_id,
+        entity_type = "entity",
+        actions = 0x04,
+        negative = false,
+      }))
+      local map = rbac.readable_entities_permissions({
+        { id = role_id },
+      })
+      assert.equals(rbac.readable_action(0x4), map[entity_id][1])
+
+      role_id = u()
+      entity_id = u()
+
+      assert(dao.rbac_role_entities:insert({
+        role_id = role_id,
+        entity_id = entity_id,
+        entity_type = "entity",
+        actions = 0x08,
+        negative = false,
+      }))
+      local map = rbac.readable_entities_permissions({
+        { id = role_id },
+      })
+      assert.equals(rbac.readable_action(0x08), map[entity_id][1])
+    end)
+    it("multiple permission", function()
+      role_id = u()
+      entity_id = u()
+
+      assert(dao.rbac_role_entities:insert({
+        role_id = role_id,
+        entity_id = entity_id,
+        entity_type = "entity",
+        actions = 0x03,
+        negative = false,
+      }))
+      local map = rbac.readable_entities_permissions({
+        { id = role_id },
+      })
+      assert.same({'create', 'read'}, map[entity_id])
+    end)
+  end)
+  describe("readable_endpoint_permissions#t", function()
+    local u
+    setup(function()
+      u = utils.uuid
+    end)
+
+    teardown(function()
+      dao:truncate_tables()
+    end)
+
+    it("each action", function()
+      role_id = u()
+      entity_id = u()
+
+      assert(dao.rbac_role_endpoints:insert({
+        role_id = role_id,
+        workspace = "foo",
+        endpoint = "/bar",
+        actions = 0x1,
+        negative = false,
+      }))
+      local map = rbac.readable_endpoints_permissions({
+        { id = role_id },
+      })
+
+      assert.same(rbac.readable_action(0x1), map.foo["/foo/bar"][1])
+
+      role_id = u()
+      entity_id = u()
+      assert(dao.rbac_role_endpoints:insert({
+        role_id = role_id,
+        workspace = "foo",
+        endpoint = "/bar",
+        actions = 0x02,
+        negative = false,
+      }))
+      local map = rbac.readable_endpoints_permissions({
+        { id = role_id },
+      })
+      assert.equals(rbac.readable_action(0x2), map.foo["/foo/bar"][1])
+
+      role_id = u()
+      entity_id = u()
+      assert(dao.rbac_role_endpoints:insert({
+        role_id = role_id,
+        workspace = "foo",
+        endpoint = "/bar",
+        actions = 0x04,
+        negative = false,
+      }))
+      local map = rbac.readable_endpoints_permissions({
+        { id = role_id },
+      })
+      assert.equals(rbac.readable_action(0x04), map.foo["/foo/bar"][1])
+
+      role_id = u()
+      entity_id = u()
+      assert(dao.rbac_role_endpoints:insert({
+        role_id = role_id,
+        workspace = "foo",
+        endpoint = "/bar",
+        actions = 0x08,
+        negative = false,
+      }))
+      local map = rbac.readable_endpoints_permissions({
+        { id = role_id },
+      })
+
+      assert.equals(rbac.readable_action(0x08), map.foo["/foo/bar"][1])
+    end)
+    it("multiple permission", function()
+      role_id = u()
+      entity_id = u()
+      assert(dao.rbac_role_endpoints:insert({
+        role_id = role_id,
+        workspace = "foo",
+        endpoint = "/bar",
+        actions = 0x03,
+        negative = false,
+      }))
+      local map = rbac.readable_endpoints_permissions({
+        { id = role_id },
+      })
+      assert.same({'create', 'read'}, map.foo["/foo/bar"])
+    end)
+  end)
 end)
 end)
