@@ -100,10 +100,10 @@ build = {
     ["kong.tools.responses"] = "kong/tools/responses.lua",
     ["kong.tools.timestamp"] = "kong/tools/timestamp.lua",
 
-    ["kong.core.handler"] = "kong/core/handler.lua",
-    ["kong.core.certificate"] = "kong/core/certificate.lua",
-    ["kong.core.plugins_iterator"] = "kong/core/plugins_iterator.lua",
-    ["kong.core.balancer"] = "kong/core/balancer.lua",
+    ["kong.runloop.handler"] = "kong/runloop/handler.lua",
+    ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",
+    ["kong.runloop.plugins_iterator"] = "kong/runloop/plugins_iterator.lua",
+    ["kong.runloop.balancer"] = "kong/runloop/balancer.lua",
 
     ["kong.dao.errors"] = "kong/dao/errors.lua",
     ["kong.dao.schemas_validation"] = "kong/dao/schemas_validation.lua",

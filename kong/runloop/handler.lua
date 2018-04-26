@@ -1,4 +1,4 @@
--- Kong core
+-- Kong runloop
 --
 -- This consists of local_events that need to
 -- be ran at the very beginning and very end of the lua-nginx-module contexts.
@@ -11,11 +11,11 @@ local utils       = require "kong.tools.utils"
 local Router      = require "kong.router"
 local ApiRouter   = require "kong.api_router"
 local reports     = require "kong.reports"
-local balancer    = require "kong.core.balancer"
+local balancer    = require "kong.runloop.balancer"
 local constants   = require "kong.constants"
 local responses   = require "kong.tools.responses"
 local singletons  = require "kong.singletons"
-local certificate = require "kong.core.certificate"
+local certificate = require "kong.runloop.certificate"
 
 
 local tostring    = tostring

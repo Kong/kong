@@ -1,7 +1,7 @@
 local crud = require "kong.api.crud_helpers"
 local app_helpers = require "lapis.application"
 local responses = require "kong.tools.responses"
-local balancer = require "kong.core.balancer"
+local balancer = require "kong.runloop.balancer"
 local singletons = require "kong.singletons"
 local utils = require "kong.tools.utils"
 local public = require "kong.tools.public"
@@ -218,7 +218,7 @@ return {
         -- In case of DNS errors when registering a target,
         -- that error happens inside lua-resty-dns-client
         -- and the end-result is that it just doesn't launch the callback,
-        -- which means kong.core.balancer and healthchecks don't get
+        -- which means kong.runloop.balancer and healthchecks don't get
         -- notified about the target at all. We extrapolate the DNS error
         -- out of the fact that the target is missing from the balancer.
         -- Note that lua-resty-dns-client does retry by itself,
