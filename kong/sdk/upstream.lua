@@ -488,8 +488,6 @@ local function new(sdk, major_version)
         error("mime must be a string", 2)
       end
 
-      ngx.req.read_body()
-
       if not mime then
         mime = ngx.req.get_headers()[CONTENT_TYPE]
         local s = mime:find(";", 1, true)
