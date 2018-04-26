@@ -68,8 +68,7 @@ query must be a string
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_query("")
-            assert(ok)
+            sdk.upstream.set_query("")
         }
 
         proxy_set_header Host $upstream_host;
@@ -104,8 +103,7 @@ query: {nil}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_query("foo=bar&bla&baz=hello%20world")
-            assert(ok)
+            sdk.upstream.set_query("foo=bar&bla&baz=hello%20world")
         }
 
         proxy_set_header Host $upstream_host;
@@ -140,8 +138,7 @@ query: {foo=bar&bla&baz=hello%20world}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_query("foo=bar&bla&baz=hello%20world")
-            assert(ok)
+            sdk.upstream.set_query("foo=bar&bla&baz=hello%20world")
         }
 
         proxy_set_header Host $upstream_host;

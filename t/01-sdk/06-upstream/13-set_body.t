@@ -69,8 +69,8 @@ body must be a string
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_body("")
-            assert(ok)
+            sdk.upstream.set_body("")
+
         }
 
         proxy_set_header Host $upstream_host;
@@ -106,8 +106,8 @@ body: {nil}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_body("foo=bar&bla&baz=hello%20world")
-            assert(ok)
+            sdk.upstream.set_body("foo=bar&bla&baz=hello%20world")
+
         }
 
         proxy_set_header Host $upstream_host;
@@ -143,8 +143,8 @@ body: {foo=bar&bla&baz=hello%20world}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_body("ovo")
-            assert(ok)
+            sdk.upstream.set_body("ovo")
+
         }
 
         proxy_set_header Host $upstream_host;
@@ -195,8 +195,8 @@ body: {ovo}
             for i = 0, 255 do
                 x[i + 1] = string.char(i)
             end
-            local ok, err = sdk.upstream.set_body(table.concat(x))
-            assert(ok)
+            sdk.upstream.set_body(table.concat(x))
+
         }
 
         proxy_set_header Host $upstream_host;
@@ -244,8 +244,8 @@ GET /t
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_body("I am another body")
-            assert(ok)
+            sdk.upstream.set_body("I am another body")
+
         }
 
         proxy_set_header Host $upstream_host;
@@ -289,8 +289,8 @@ body: {I am another body}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_body(("x"):rep(10000000))
-            assert(ok)
+            sdk.upstream.set_body(("x"):rep(10000000))
+
         }
 
         proxy_set_header Host $upstream_host;

@@ -105,14 +105,12 @@ value must be a string
 
             local ok = sdk.upstream.add_header("Host", "example.com")
 
-            ngx.say(tostring(ok))
             ngx.say("host: ", ngx.ctx.balancer_address.host)
         }
     }
 --- request
 GET /t
 --- response_body
-true
 host: example.com
 --- no_error_log
 [error]
@@ -133,16 +131,14 @@ host: example.com
                 host = "foo.xyz"
             }
 
-            local ok = sdk.upstream.add_header("host", "example.com")
+            sdk.upstream.add_header("host", "example.com")
 
-            ngx.say(tostring(ok))
             ngx.say("host: ", ngx.ctx.balancer_address.host)
         }
     }
 --- request
 GET /t
 --- response_body
-true
 host: example.com
 --- no_error_log
 [error]
@@ -173,8 +169,8 @@ host: example.com
                 host = "foo.xyz"
             }
 
-            local ok, err = sdk.upstream.add_header("Host", "example.com")
-            assert(ok)
+            sdk.upstream.add_header("Host", "example.com")
+
         }
 
         proxy_set_header Host $upstream_host;
@@ -213,10 +209,10 @@ host: example.com
                 host = "foo.xyz"
             }
 
-            local ok, err = sdk.upstream.add_header("Host", "example.com")
-            assert(ok)
-            local ok, err = sdk.upstream.add_header("Host", "example2.com")
-            assert(ok)
+            sdk.upstream.add_header("Host", "example.com")
+
+            sdk.upstream.add_header("Host", "example2.com")
+
         }
 
         proxy_set_header Host $upstream_host;
@@ -249,8 +245,8 @@ host: example2.com
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.add_header("X-Foo", "hello world")
-            assert(ok)
+            sdk.upstream.add_header("X-Foo", "hello world")
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -285,10 +281,10 @@ X-Foo: {hello world}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.add_header("X-Foo", "hello")
-            assert(ok)
-            local ok, err = sdk.upstream.add_header("X-Foo", "world")
-            assert(ok)
+            sdk.upstream.add_header("X-Foo", "hello")
+
+            sdk.upstream.add_header("X-Foo", "world")
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -324,8 +320,8 @@ X-Foo: {world}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.add_header("X-Foo", "hello world")
-            assert(ok)
+            sdk.upstream.add_header("X-Foo", "hello world")
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -362,8 +358,8 @@ X-Foo: {hello world}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.add_header("X-Foo", "")
-            assert(ok)
+            sdk.upstream.add_header("X-Foo", "")
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -395,8 +391,8 @@ X-Foo: {}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.add_header("X-Foo", "     hello")
-            assert(ok)
+            sdk.upstream.add_header("X-Foo", "     hello")
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -428,8 +424,8 @@ X-Foo: {hello}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.add_header("X-Foo", "hello       ")
-            assert(ok)
+            sdk.upstream.add_header("X-Foo", "hello       ")
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -463,8 +459,8 @@ X-Foo: {hello}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.add_header("X-Foo", "")
-            assert(ok)
+            sdk.upstream.add_header("X-Foo", "")
+
         }
 
         proxy_pass http://127.0.0.1:9080;

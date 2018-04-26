@@ -28,23 +28,23 @@ path must be a string
 
 
 
-=== TEST 2: upstream.set_path() fails if path doesn't start with "/"
+=== TEST 2: upstream.set_path() errors if path doesn't start with "/"
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_path("foo")
+            local pok, err = pcall(sdk.upstream.set_path, "foo")
 
-            ngx.say(tostring(ok))
+            ngx.say(tostring(pok))
             ngx.say(err)
         }
     }
 --- request
 GET /t
 --- response_body
-nil
+false
 path must start with /
 --- no_error_log
 [error]
@@ -71,8 +71,7 @@ path must start with /
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_path("/foo")
-            assert(ok)
+            sdk.upstream.set_path("/foo")
         }
 
         proxy_pass http://127.0.0.1:9080$upstream_uri;
@@ -106,8 +105,7 @@ this is /foo
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_path("/foo")
-            assert(ok)
+            sdk.upstream.set_path("/foo")
         }
 
         proxy_pass http://127.0.0.1:9080$upstream_uri;

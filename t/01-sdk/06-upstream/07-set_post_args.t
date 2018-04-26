@@ -121,8 +121,7 @@ arg keys must be strings
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_post_args({})
-            assert(ok)
+            sdk.upstream.set_post_args({})
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -158,8 +157,7 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_post_args({})
-            assert(ok)
+            sdk.upstream.set_post_args({})
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -199,10 +197,9 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_post_args({
+            sdk.upstream.set_post_args({
                 foo = "hello world"
             })
-            assert(ok)
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -242,10 +239,9 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_post_args({
+            sdk.upstream.set_post_args({
                 foo = "hello world"
             })
-            assert(ok)
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -283,13 +279,12 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_post_args({
+            sdk.upstream.set_post_args({
                 foo = "hello world",
                 a = true,
                 aa = true,
                 zzz = "goodbye world",
             })
-            assert(ok)
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -327,13 +322,12 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_post_args({
+            sdk.upstream.set_post_args({
                 foo = "hello world",
                 a = true,
                 aa = { "zzz", true, true, "aaa" },
                 zzz = "goodbye world",
             })
-            assert(ok)
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -371,10 +365,9 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_post_args({
+            sdk.upstream.set_post_args({
                 aa = "",
             })
-            assert(ok)
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -412,10 +405,9 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_post_args({
+            sdk.upstream.set_post_args({
                 [""] = "aa",
             })
-            assert(ok)
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -453,10 +445,9 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_post_args({
+            sdk.upstream.set_post_args({
                 ["hello world"] = "aa",
             })
-            assert(ok)
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -495,10 +486,9 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_post_args({
+            sdk.upstream.set_post_args({
                 foo = "bar",
             })
-            assert(ok)
         }
 
         proxy_pass http://127.0.0.1:9080;

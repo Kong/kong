@@ -120,8 +120,8 @@ arg keys must be strings
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_query_args({})
-            assert(ok)
+            sdk.upstream.set_query_args({})
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -153,10 +153,10 @@ query: {nil}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_query_args({
+            sdk.upstream.set_query_args({
                 foo = "hello world"
             })
-            assert(ok)
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -188,10 +188,10 @@ query: {foo=hello%20world}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_query_args({
+            sdk.upstream.set_query_args({
                 foo = "hello world"
             })
-            assert(ok)
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -223,13 +223,13 @@ query: {foo=hello%20world}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_query_args({
+            sdk.upstream.set_query_args({
                 foo = "hello world",
                 a = true,
                 aa = true,
                 zzz = "goodbye world",
             })
-            assert(ok)
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -261,13 +261,13 @@ query: {a&aa&foo=hello%20world&zzz=goodbye%20world}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_query_args({
+            sdk.upstream.set_query_args({
                 foo = "hello world",
                 a = true,
                 aa = { "zzz", true, true, "aaa" },
                 zzz = "goodbye world",
             })
-            assert(ok)
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -299,10 +299,10 @@ query: {a&aa=zzz&aa&aa&aa=aaa&foo=hello%20world&zzz=goodbye%20world}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_query_args({
+            sdk.upstream.set_query_args({
                 aa = "",
             })
-            assert(ok)
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -334,10 +334,10 @@ query: {aa=}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_query_args({
+            sdk.upstream.set_query_args({
                 [""] = "aa",
             })
-            assert(ok)
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -369,10 +369,10 @@ query: {=aa}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_query_args({
+            sdk.upstream.set_query_args({
                 ["hello world"] = "aa",
             })
-            assert(ok)
+
         }
 
         proxy_pass http://127.0.0.1:9080;

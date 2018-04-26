@@ -67,8 +67,8 @@ header must be a string
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.clear_header("X-Foo")
-            assert(ok)
+            sdk.upstream.clear_header("X-Foo")
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -102,8 +102,8 @@ X-Foo: {nil}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.clear_header("X-Foo")
-            assert(ok)
+            sdk.upstream.clear_header("X-Foo")
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -138,10 +138,10 @@ X-Foo: {nil}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_header("X-Foo", "hello")
-            assert(ok)
-            local ok, err = sdk.upstream.clear_header("X-Foo")
-            assert(ok)
+            sdk.upstream.set_header("X-Foo", "hello")
+
+            sdk.upstream.clear_header("X-Foo")
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -174,12 +174,12 @@ X-Foo: {nil}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_header("X-Foo", "hello")
-            assert(ok)
-            local ok, err = sdk.upstream.add_header("X-Foo", "world")
-            assert(ok)
-            local ok, err = sdk.upstream.clear_header("X-Foo")
-            assert(ok)
+            sdk.upstream.set_header("X-Foo", "hello")
+
+            sdk.upstream.add_header("X-Foo", "world")
+
+            sdk.upstream.clear_header("X-Foo")
+
         }
 
         proxy_pass http://127.0.0.1:9080;
