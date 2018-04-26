@@ -1,8 +1,8 @@
-local Router = require "kong.core.api_router"
+local Router = require "kong.api_router"
 
 local function reload_router()
-  package.loaded["kong.core.api_router"] = nil
-  Router = require "kong.core.api_router"
+  package.loaded["kong.api_router"] = nil
+  Router = require "kong.api_router"
 end
 
 local use_case = {

@@ -1,7 +1,7 @@
 local crud = require "kong.api.crud_helpers"
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
-local reports = require "kong.core.reports"
+local reports = require "kong.reports"
 local singletons = require "kong.singletons"
 
 -- Remove functions from a schema definition so that

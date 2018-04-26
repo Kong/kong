@@ -38,15 +38,19 @@ build = {
   modules = {
     ["kong"] = "kong/init.lua",
     ["kong.meta"] = "kong/meta.lua",
+    ["kong.cache"] = "kong/cache.lua",
+    ["kong.router"] = "kong/router.lua",
+    ["kong.api_router"] = "kong/api_router.lua",
+    ["kong.reports"] = "kong/reports.lua",
     ["kong.constants"] = "kong/constants.lua",
     ["kong.singletons"] = "kong/singletons.lua",
     ["kong.conf_loader"] = "kong/conf_loader.lua",
+    ["kong.globalpatches"] = "kong/globalpatches.lua",
+    ["kong.error_handlers"] = "kong/error_handlers.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events.lua",
     ["kong.cluster_events.strategies.cassandra"] = "kong/cluster_events/strategies/cassandra.lua",
     ["kong.cluster_events.strategies.postgres"] = "kong/cluster_events/strategies/postgres.lua",
-
-    ["kong.cache"] = "kong/cache.lua",
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
@@ -98,12 +102,7 @@ build = {
 
     ["kong.core.handler"] = "kong/core/handler.lua",
     ["kong.core.certificate"] = "kong/core/certificate.lua",
-    ["kong.core.router"] = "kong/core/router.lua",
-    ["kong.core.api_router"] = "kong/core/api_router.lua",
     ["kong.core.plugins_iterator"] = "kong/core/plugins_iterator.lua",
-    ["kong.core.reports"] = "kong/core/reports.lua",
-    ["kong.core.error_handlers"] = "kong/core/error_handlers.lua",
-    ["kong.core.globalpatches"] = "kong/core/globalpatches.lua",
     ["kong.core.balancer"] = "kong/core/balancer.lua",
 
     ["kong.dao.errors"] = "kong/dao/errors.lua",
