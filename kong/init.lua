@@ -42,23 +42,23 @@ do
   end
 end
 
-require("kong.core.globalpatches")()
+require("kong.globalpatches")()
 
 local ip = require "kong.tools.ip"
 local DB = require "kong.db"
 local dns = require "kong.tools.dns"
-local core = require "kong.core.handler"
 local utils = require "kong.tools.utils"
 local lapis = require "lapis"
+local runloop = require "kong.runloop.handler"
 local responses = require "kong.tools.responses"
 local singletons = require "kong.singletons"
 local DAOFactory = require "kong.dao.factory"
 local kong_cache = require "kong.cache"
 local ngx_balancer = require "ngx.balancer"
-local plugins_iterator = require "kong.core.plugins_iterator"
-local balancer_execute = require("kong.core.balancer").execute
+local plugins_iterator = require "kong.runloop.plugins_iterator"
+local balancer_execute = require("kong.runloop.balancer").execute
 local kong_cluster_events = require "kong.cluster_events"
-local kong_error_handlers = require "kong.core.error_handlers"
+local kong_error_handlers = require "kong.error_handlers"
 
 local ngx              = ngx
 local header           = ngx.header
@@ -128,7 +128,7 @@ local function load_plugins(kong_conf, dao)
 
   -- add reports plugin if not disabled
   if kong_conf.anonymous_reports then
-    local reports = require "kong.core.reports"
+    local reports = require "kong.reports"
 
     local db_infos = dao:infos()
     reports.add_ping_value("database", kong_conf.database)
@@ -179,12 +179,12 @@ function Kong.init()
   singletons.configuration = config
   singletons.db = db
 
-  assert(core.build_router(db, "init"))
-  assert(core.build_api_router(dao, "init"))
+  assert(runloop.build_router(db, "init"))
+  assert(runloop.build_api_router(dao, "init"))
 end
 
 function Kong.init_worker()
-  -- special math.randomseed from kong.core.globalpatches
+  -- special math.randomseed from kong.globalpatches
   -- not taking any argument. Must be called only once
   -- and in the init_worker phase, to avoid duplicated
   -- seeds.
@@ -284,7 +284,7 @@ function Kong.init_worker()
   singletons.dao:set_events_handler(worker_events)
 
 
-  core.init_worker.before()
+  runloop.init_worker.before()
 
 
   -- run plugins init_worker context
@@ -297,7 +297,7 @@ end
 
 function Kong.ssl_certificate()
   local ctx = ngx.ctx
-  core.certificate.before(ctx)
+  runloop.certificate.before(ctx)
 
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
     plugin.handler:certificate(plugin_conf)
@@ -312,10 +312,10 @@ function Kong.balancer()
   addr.try_count = addr.try_count + 1
   tries[addr.try_count] = current_try
 
-  core.balancer.before()
+  runloop.balancer.before()
 
   if addr.try_count > 1 then
-    -- only call balancer on retry, first one is done in `core.access.after` which runs
+    -- only call balancer on retry, first one is done in `runloop.access.after` which runs
     -- in the ACCESS context and hence has less limitations than this BALANCER context
     -- where the retries are executed
 
@@ -368,12 +368,12 @@ function Kong.balancer()
     ngx_log(ngx_ERR, "could not set upstream timeouts: ", err)
   end
 
-  core.balancer.after()
+  runloop.balancer.after()
 end
 
 function Kong.rewrite()
   local ctx = ngx.ctx
-  core.rewrite.before(ctx)
+  runloop.rewrite.before(ctx)
 
   -- we're just using the iterator, as in this rewrite phase no consumer nor
   -- api will have been identified, hence we'll just be executing the global
@@ -382,13 +382,13 @@ function Kong.rewrite()
     plugin.handler:rewrite(plugin_conf)
   end
 
-  core.rewrite.after(ctx)
+  runloop.rewrite.after(ctx)
 end
 
 function Kong.access()
   local ctx = ngx.ctx
 
-  core.access.before(ctx)
+  runloop.access.before(ctx)
 
   ctx.delay_response = true
 
@@ -408,18 +408,18 @@ function Kong.access()
 
   ctx.delay_response = false
 
-  core.access.after(ctx)
+  runloop.access.after(ctx)
 end
 
 function Kong.header_filter()
   local ctx = ngx.ctx
-  core.header_filter.before(ctx)
+  runloop.header_filter.before(ctx)
 
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins) do
     plugin.handler:header_filter(plugin_conf)
   end
 
-  core.header_filter.after(ctx)
+  runloop.header_filter.after(ctx)
 end
 
 function Kong.body_filter()
@@ -428,7 +428,7 @@ function Kong.body_filter()
     plugin.handler:body_filter(plugin_conf)
   end
 
-  core.body_filter.after(ctx)
+  runloop.body_filter.after(ctx)
 end
 
 function Kong.log()
@@ -437,7 +437,7 @@ function Kong.log()
     plugin.handler:log(plugin_conf)
   end
 
-  core.log.after(ctx)
+  runloop.log.after(ctx)
 end
 
 function Kong.handle_error()

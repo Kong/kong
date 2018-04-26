@@ -2,6 +2,7 @@
 
 - [Scheduled](#scheduled)
 - [Released](#released)
+    - [0.13.1](#0131---20180423)
     - [0.13.0](#0130---20180322)
     - [0.12.3](#0123---20180312)
     - [0.12.2](#0122---20180228)
@@ -28,6 +29,132 @@ a detailed changeset of their content.
 
 This section describes publicly available releases and a detailed changeset of
 their content.
+
+## [0.13.1] - 2018/04/23
+
+This release contains numerous bug fixes and a few convenience features.
+Notably, a best-effort/backwards-compatible approach is followed to resolve
+`no memory` errors caused by the fragmentation of shared memory between the
+core and plugins.
+
+### Added
+
+##### Core
+
+- Cache misses are now stored in a separate shared memory zone from hits if
+  such a zone is defined. This reduces cache turnover and can increase the
+  cache hit ratio quite considerably.
+  Users with a custom Nginx template are advised to define such a zone to
+  benefit from this behavior:
+  `lua_shared_dict kong_db_cache_miss 12m;`.
+- We now ensure that the Cassandra or PostgreSQL instance Kong is connecting
+  to falls within the supported version range. Deprecated versions result in
+  warning logs. As a reminder, Kong 0.13.x supports Cassandra 2.2+,
+  and PostgreSQL 9.5+. Cassandra 2.1 and PostgreSQL 9.4 are supported, but
+  deprecated.
+  [#3310](https://github.com/Kong/kong/pull/3310)
+- HTTP 494 errors thrown by Nginx are now caught by Kong and produce a native,
+  Kong-friendly response.
+  Thanks [@ti-mo](https://github.com/ti-mo) for the contribution!
+  [#3112](https://github.com/Kong/kong/pull/3112)
+
+##### CLI
+
+- Report errors when compiling custom Nginx templates.
+  [#3294](https://github.com/Kong/kong/pull/3294)
+
+##### Admin API
+
+- Friendlier behavior of Routes schema validation: PATCH requests can be made
+  without specifying all three of `methods`, `hosts`, or `paths` if at least
+  one of the three is specified in the body.
+  [#3364](https://github.com/Kong/kong/pull/3364)
+
+##### Plugins
+
+- jwt: Support for identity providers using JWKS by ensuring the
+  `config.key_claim_name` values is looked for in the token header.
+  Thanks [@brycehemme](https://github.com/brycehemme) for the contribution!
+  [#3313](https://github.com/Kong/kong/pull/3313)
+- basic-auth: Allow specifying empty passwords.
+  Thanks [@zhouzhuojie](https://github.com/zhouzhuojie) and
+  [@perryao](https://github.com/perryao) for the contributions!
+  [#3243](https://github.com/Kong/kong/pull/3243)
+
+### Fixed
+
+##### Core
+
+- Numerous users have reported `no memory` errors which were caused by
+  circumstantial memory fragmentation. Such errors, while still possible if
+  plugin authors are not careful, should now mostly be addressed.
+  [#3311](https://github.com/Kong/kong/pull/3311)
+
+  **If you are using a custom Nginx template, be sure to define the following
+  shared memory zones to benefit from these fixes**:
+
+  ```
+  lua_shared_dict kong_db_cache_miss 12m;
+  lua_shared_dict kong_rate_limiting_counters 12m;
+  ```
+
+##### CLI
+
+- Redirect Nginx's stdout and stderr output to `kong start` when
+  `nginx_daemon` is enabled (such as when using the Kong Docker image). This
+  also prevents growing log files when Nginx redirects logs to `/dev/stdout`
+  and `/dev/stderr` but `nginx_daemon` is disabled.
+  [#3297](https://github.com/Kong/kong/pull/3297)
+
+##### Admin API
+
+- Set a Service's `port` to `443` when the `url` convenience parameter uses
+  the `https://` scheme.
+  [#3358](https://github.com/Kong/kong/pull/3358)
+- Ensure PATCH requests do not return an error when un-setting foreign key
+  fields with JSON `null`.
+  [#3355](https://github.com/Kong/kong/pull/3355)
+- Ensure the `/plugin/schema/:name` endpoint does not corrupt plugins' schemas.
+  [#3348](https://github.com/Kong/kong/pull/3348)
+- Properly URL-decode path segments of plugins endpoints accepting spaces
+  (e.g. `/consumers/<consumer>/basic-auth/John%20Doe/`).
+  [#3250](https://github.com/Kong/kong/pull/3250)
+- Properly serialize boolean filtering values when using Cassandra.
+  [#3362](https://github.com/Kong/kong/pull/3362)
+
+##### Plugins
+
+- rate-limiting/response-rate-limiting:
+  - If defined in the Nginx configuration, will use a dedicated
+    `lua_shared_dict` instead of using the `kong_cache` shared memory zone.
+    This prevents memory fragmentation issues resulting in `no memory` errors
+    observed by numerous users. Users with a custom Nginx template are advised
+    to define such a zone to benefit from this fix:
+    `lua_shared_dict kong_rate_limiting_counters 12m;`.
+    [#3311](https://github.com/Kong/kong/pull/3311)
+  - When using the Redis strategy, ensure the correct Redis database is
+    selected. This issue could occur when several request and response
+    rate-limiting were configured using different Redis databases.
+    Thanks [@mengskysama](https://github.com/mengskysama) for the patch!
+    [#3293](https://github.com/Kong/kong/pull/3293)
+- key-auth: Respect request MIME type when re-encoding the request body
+  if both `config.key_in_body` and `config.hide_credentials` are enabled.
+  Thanks [@p0pr0ck5](https://github.com/p0pr0ck5) for the patch!
+  [#3213](https://github.com/Kong/kong/pull/3213)
+- oauth2: Return HTTP 400 on invalid `scope` type.
+  Thanks [@Gman98ish](https://github.com/Gman98ish) for the patch!
+  [#3206](https://github.com/Kong/kong/pull/3206)
+- ldap-auth: Ensure the plugin does not throw errors when configured as a
+  global plugin.
+  [#3354](https://github.com/Kong/kong/pull/3354)
+- hmac-auth: Verify signature against non-normalized (`$request_uri`) request
+  line (instead of `$uri`).
+  [#3339](https://github.com/Kong/kong/pull/3339)
+- aws-lambda: Fix a typo in upstream headers sent to the function. We now
+  properly send the `X-Amz-Log-Type` header.
+  [#3398](https://github.com/Kong/kong/pull/3398)
+
+[Back to TOC](#table-of-contents)
 
 ## [0.13.0] - 2018/03/22
 
@@ -2390,6 +2517,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[0.13.1]: https://github.com/Kong/kong/compare/0.13.0...0.13.1
 [0.13.0]: https://github.com/Kong/kong/compare/0.12.3...0.13.0
 [0.12.3]: https://github.com/Kong/kong/compare/0.12.2...0.12.3
 [0.12.2]: https://github.com/Kong/kong/compare/0.12.1...0.12.2

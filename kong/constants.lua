@@ -80,12 +80,10 @@ return {
   },
   DICTS = {
     "kong",
-    "kong_db_cache",
-    "kong_db_cache_miss",
+    "kong_cache",
     "kong_process_events",
     "kong_cluster_events",
     "kong_healthchecks",
-    "kong_rate_limiting_counters",
   },
   DATABASE = {
     POSTGRES = {

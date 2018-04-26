@@ -697,7 +697,10 @@ function _M:current_migrations()
     end
   end
 
-  if self.major_version_n == 3 then
+  -- For now we will assume that a release version number of 3 and greater
+  -- will use the same schema. This is recognized as a hotfix and will be
+  -- revisited for a more considered solution at a later time.
+  if self.major_version_n >= 3 then
     q_keyspace_exists = [[
       SELECT * FROM system_schema.keyspaces
       WHERE keyspace_name = ?

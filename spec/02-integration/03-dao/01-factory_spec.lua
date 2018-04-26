@@ -20,6 +20,26 @@ helpers.for_each_dao(function(kong_conf)
     end)
   end)
 
+  describe(":init()", function()
+    it("returns DB-specific error string", function()
+      local pg_port = kong_conf.pg_port
+      local cassandra_port = kong_conf.cassandra_port
+
+      finally(function()
+        kong_conf.pg_port = pg_port
+        kong_conf.cassandra_port = cassandra_port
+      end)
+
+      kong_conf.pg_port = 9999
+      kong_conf.cassandra_port = 9999
+
+      local factory = assert(Factory.new(kong_conf))
+      local ok, err = factory:init()
+      assert.is_nil(ok)
+      assert.matches("[" .. kong_conf.database .. " error]", err, 1, true)
+    end)
+  end)
+
   describe(":init() + :infos()", function()
     it("returns DB info + 'unknown' for version if missing", function()
       local factory = assert(Factory.new(kong_conf))

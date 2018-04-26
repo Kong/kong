@@ -1,6 +1,6 @@
 local meta = require "kong.meta"
 local helpers = require "spec.helpers"
-local reports = require "kong.core.reports"
+local reports = require "kong.reports"
 local cjson = require "cjson"
 
 
@@ -79,8 +79,8 @@ describe("reports", function()
     end)
 
     before_each(function()
-      package.loaded["kong.core.reports"] = nil
-      reports = require "kong.core.reports"
+      package.loaded["kong.reports"] = nil
+      reports = require "kong.reports"
       reports.toggle(true)
     end)
 

@@ -1,9 +1,9 @@
 package = "kong"
-version = "0.13.0-0"
+version = "0.13.1-0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "0.13.0"
+  tag = "0.13.1"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -31,22 +31,26 @@ dependencies = {
   "lua-resty-worker-events == 0.3.2",
   "lua-resty-mediador == 0.1.2",
   "lua-resty-healthcheck == 0.4.0",
-  "lua-resty-mlcache == 2.0.1",
+  "lua-resty-mlcache == 2.0.2",
 }
 build = {
   type = "builtin",
   modules = {
     ["kong"] = "kong/init.lua",
     ["kong.meta"] = "kong/meta.lua",
+    ["kong.cache"] = "kong/cache.lua",
+    ["kong.router"] = "kong/router.lua",
+    ["kong.api_router"] = "kong/api_router.lua",
+    ["kong.reports"] = "kong/reports.lua",
     ["kong.constants"] = "kong/constants.lua",
     ["kong.singletons"] = "kong/singletons.lua",
     ["kong.conf_loader"] = "kong/conf_loader.lua",
+    ["kong.globalpatches"] = "kong/globalpatches.lua",
+    ["kong.error_handlers"] = "kong/error_handlers.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events.lua",
     ["kong.cluster_events.strategies.cassandra"] = "kong/cluster_events/strategies/cassandra.lua",
     ["kong.cluster_events.strategies.postgres"] = "kong/cluster_events/strategies/postgres.lua",
-
-    ["kong.cache"] = "kong/cache.lua",
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
@@ -96,15 +100,10 @@ build = {
     ["kong.tools.responses"] = "kong/tools/responses.lua",
     ["kong.tools.timestamp"] = "kong/tools/timestamp.lua",
 
-    ["kong.core.handler"] = "kong/core/handler.lua",
-    ["kong.core.certificate"] = "kong/core/certificate.lua",
-    ["kong.core.router"] = "kong/core/router.lua",
-    ["kong.core.api_router"] = "kong/core/api_router.lua",
-    ["kong.core.plugins_iterator"] = "kong/core/plugins_iterator.lua",
-    ["kong.core.reports"] = "kong/core/reports.lua",
-    ["kong.core.error_handlers"] = "kong/core/error_handlers.lua",
-    ["kong.core.globalpatches"] = "kong/core/globalpatches.lua",
-    ["kong.core.balancer"] = "kong/core/balancer.lua",
+    ["kong.runloop.handler"] = "kong/runloop/handler.lua",
+    ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",
+    ["kong.runloop.plugins_iterator"] = "kong/runloop/plugins_iterator.lua",
+    ["kong.runloop.balancer"] = "kong/runloop/balancer.lua",
 
     ["kong.dao.errors"] = "kong/dao/errors.lua",
     ["kong.dao.schemas_validation"] = "kong/dao/schemas_validation.lua",

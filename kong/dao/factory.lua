@@ -167,14 +167,14 @@ end
 function _M:init()
   local ok, err = self.db:init()
   if not ok then
-    return nil, err
+    return ret_error_string(self.db_type, nil, err)
   end
 
   local db_constants = constants.DATABASE[self.db_type:upper()]
 
   ok, err = self:check_version_compat(db_constants.MIN, db_constants.DEPRECATED)
   if not ok then
-    return nil, err
+    return ret_error_string(self.db_type, nil, err)
   end
 
   return true

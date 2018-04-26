@@ -29,7 +29,7 @@ lua_socket_pool_size ${{LUA_SOCKET_POOL_SIZE}};
 lua_max_running_timers 4096;
 lua_max_pending_timers 16384;
 lua_shared_dict kong                5m;
-lua_shared_dict kong_db_cache       ${{MEM_CACHE_SIZE}};
+lua_shared_dict kong_cache          ${{MEM_CACHE_SIZE}};
 lua_shared_dict kong_db_cache_miss 12m;
 lua_shared_dict kong_process_events 5m;
 lua_shared_dict kong_cluster_events 5m;
@@ -102,8 +102,6 @@ server {
 > end
 
     location / {
-        default_type                     '';
-
         set $upstream_host               '';
         set $upstream_upgrade            '';
         set $upstream_connection         '';

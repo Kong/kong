@@ -21,7 +21,7 @@ describe("DNS", function()
       find_all = function(self) return {} end
     }
 
-    balancer = require "kong.core.balancer"
+    balancer = require "kong.runloop.balancer"
     balancer.init()
 
     resolver = require "resty.dns.resolver"
