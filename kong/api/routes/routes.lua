@@ -2,7 +2,7 @@ local api_helpers = require "kong.api.api_helpers"
 local singletons  = require "kong.singletons"
 local responses   = require "kong.tools.responses"
 local endpoints   = require "kong.api.endpoints"
-local reports     = require "kong.core.reports"
+local reports     = require "kong.reports"
 local utils       = require "kong.tools.utils"
 local crud        = require "kong.api.crud_helpers"
 

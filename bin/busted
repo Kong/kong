@@ -61,7 +61,7 @@ end
 
 require "luarocks.loader"
 
-require("kong.core.globalpatches")({
+require("kong.globalpatches")({
   cli = true,
   rbusted = true
 })

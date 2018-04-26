@@ -42,7 +42,7 @@ do
   end
 end
 
-require("kong.core.globalpatches")()
+require("kong.globalpatches")()
 
 local ip = require "kong.tools.ip"
 local DB = require "kong.db"
@@ -58,7 +58,7 @@ local ngx_balancer = require "ngx.balancer"
 local plugins_iterator = require "kong.core.plugins_iterator"
 local balancer_execute = require("kong.core.balancer").execute
 local kong_cluster_events = require "kong.cluster_events"
-local kong_error_handlers = require "kong.core.error_handlers"
+local kong_error_handlers = require "kong.error_handlers"
 
 local ngx              = ngx
 local header           = ngx.header
@@ -128,7 +128,7 @@ local function load_plugins(kong_conf, dao)
 
   -- add reports plugin if not disabled
   if kong_conf.anonymous_reports then
-    local reports = require "kong.core.reports"
+    local reports = require "kong.reports"
 
     local db_infos = dao:infos()
     reports.add_ping_value("database", kong_conf.database)
@@ -184,7 +184,7 @@ function Kong.init()
 end
 
 function Kong.init_worker()
-  -- special math.randomseed from kong.core.globalpatches
+  -- special math.randomseed from kong.globalpatches
   -- not taking any argument. Must be called only once
   -- and in the init_worker phase, to avoid duplicated
   -- seeds.

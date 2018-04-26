@@ -8,9 +8,9 @@
 -- In the `access_by_lua` phase, it is responsible for retrieving the route being proxied by
 -- a consumer. Then it is responsible for loading the plugins to execute on this request.
 local utils       = require "kong.tools.utils"
-local Router      = require "kong.core.router"
-local ApiRouter   = require "kong.core.api_router"
-local reports     = require "kong.core.reports"
+local Router      = require "kong.router"
+local ApiRouter   = require "kong.api_router"
+local reports     = require "kong.reports"
 local balancer    = require "kong.core.balancer"
 local constants   = require "kong.constants"
 local responses   = require "kong.tools.responses"
