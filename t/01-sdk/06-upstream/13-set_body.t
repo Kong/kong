@@ -122,7 +122,44 @@ body: {foo=bar&bla&baz=hello%20world}
 
 
 
-=== TEST 5: upstream.set_body() is 8-bit clean
+=== TEST 5: upstream.set_body() sets a short body
+--- http_config
+    server {
+        listen 127.0.0.1:9080;
+
+        location /t {
+            content_by_lua_block {
+                ngx.req.read_body()
+                ngx.say("body: {", tostring(ngx.req.get_body_data()), "}")
+            }
+        }
+    }
+--- config
+    location = /t {
+
+        set $upstream_host '';
+
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            local ok, err = sdk.upstream.set_body("ovo")
+            assert(ok)
+        }
+
+        proxy_set_header Host $upstream_host;
+        proxy_pass http://127.0.0.1:9080;
+    }
+--- request
+GET /t
+--- response_body
+body: {ovo}
+--- no_error_log
+[error]
+
+
+
+=== TEST 6: upstream.set_body() is 8-bit clean
 --- http_config
     server {
         listen 127.0.0.1:9080;
@@ -186,7 +223,7 @@ GET /t
 
 
 
-=== TEST 6: upstream.set_body() replaces any existing body
+=== TEST 7: upstream.set_body() replaces any existing body
 --- http_config
     server {
         listen 127.0.0.1:9080;
@@ -225,7 +262,7 @@ body: {I am another body}
 
 
 
-=== TEST 7: upstream.set_body() has no size limits for sending
+=== TEST 8: upstream.set_body() has no size limits for sending
 --- http_config
     server {
         listen 127.0.0.1:9080;
