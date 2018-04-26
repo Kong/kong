@@ -36,8 +36,9 @@ end
 
 -- The upstream request module: functions for dealing with data to be sent
 -- to the upstream service, i.e. for connections made by Kong.
-local function new(sdk, upstream, major_version)
+local function new(sdk, major_version)
 
+  local upstream = {}
 
   -- TODO these constants should be shared with kong.sdk.request
 
@@ -537,12 +538,13 @@ local function new(sdk, upstream, major_version)
 
       return set_body_fn(args)
     end
+
   end
 
+  return upstream
 end
 
 
 return {
-  namespace = "upstream",
   new = new,
 }
