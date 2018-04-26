@@ -53,7 +53,7 @@ port must be an integer
 
 
 
-=== TEST 3: upstream.set_port() fails if out of range
+=== TEST 3: upstream.set_port() errors if out of range
 --- config
     location = /t {
         content_by_lua_block {
@@ -62,9 +62,9 @@ port must be an integer
 
             ngx.ctx.balancer_address = 8000
 
-            local ok, err = sdk.upstream.set_port(-1)
+            local pok, err = pcall(sdk.upstream.set_port, -1)
             ngx.say(err)
-            local ok, err = sdk.upstream.set_port(70000)
+            local pok, err = pcall(sdk.upstream.set_port, 70000)
             ngx.say(err)
         }
     }
@@ -98,7 +98,7 @@ port must be an integer between 0 and 65535: given 70000
 --- request
 GET /t
 --- response_body
-true
+nil
 port: 1234
 --- no_error_log
 [error]

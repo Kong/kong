@@ -72,7 +72,7 @@ headers must be a table
 --- request
 GET /t
 --- response_body
-true
+nil
 host: example.com
 --- no_error_log
 [error]
@@ -102,7 +102,7 @@ host: example.com
 --- request
 GET /t
 --- response_body
-true
+nil
 host: example.com
 --- no_error_log
 [error]
@@ -133,8 +133,8 @@ host: example.com
                 host = "foo.xyz"
             }
 
-            local ok, err = sdk.upstream.set_headers({["Host"] = "example.com"})
-            assert(ok)
+            sdk.upstream.set_headers({["Host"] = "example.com"})
+
         }
 
         proxy_set_header Host $upstream_host;
@@ -167,8 +167,8 @@ host: example.com
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_headers({["X-Foo"] = "hello world"})
-            assert(ok)
+            sdk.upstream.set_headers({["X-Foo"] = "hello world"})
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -200,8 +200,8 @@ X-Foo: {hello world}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_headers({["X-Foo"] = "hello world"})
-            assert(ok)
+            sdk.upstream.set_headers({["X-Foo"] = "hello world"})
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -236,8 +236,8 @@ X-Foo: hello world
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_headers({["X-Foo"] = ""})
-            assert(ok)
+            sdk.upstream.set_headers({["X-Foo"] = ""})
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -269,8 +269,8 @@ X-Foo: {}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_headers({["X-Foo"] = "     hello"})
-            assert(ok)
+            sdk.upstream.set_headers({["X-Foo"] = "     hello"})
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -302,8 +302,8 @@ X-Foo: {hello}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_headers({["X-Foo"] = "hello       "})
-            assert(ok)
+            sdk.upstream.set_headers({["X-Foo"] = "hello       "})
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -337,8 +337,8 @@ X-Foo: {hello}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_headers({["X-Foo"] = ""})
-            assert(ok)
+            sdk.upstream.set_headers({["X-Foo"] = ""})
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -353,7 +353,7 @@ X-Bar: {nil}
 
 
 
-=== TEST 12: upstream.set_headers() fails if key is not a string
+=== TEST 12: upstream.set_headers() errors if key is not a string
 --- http_config
 --- config
     location = /t {
@@ -361,8 +361,8 @@ X-Bar: {nil}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_headers({[2] = "foo"})
-            assert(ok == nil)
+            local pok, err = pcall(sdk.upstream.set_headers, {[2] = "foo"})
+            assert(not pok)
             ngx.say(err)
         }
     }
@@ -375,7 +375,7 @@ invalid key "2": got number, expected string
 
 
 
-=== TEST 13: upstream.set_headers() fails if value is of a bad type
+=== TEST 13: upstream.set_headers() errors if value is of a bad type
 --- http_config
 --- config
     location = /t {
@@ -383,8 +383,8 @@ invalid key "2": got number, expected string
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_headers({["foo"] = 2})
-            assert(ok == nil)
+            local pok, err = pcall(sdk.upstream.set_headers, {["foo"] = 2})
+            assert(not pok)
             ngx.say(err)
         }
     }
@@ -397,7 +397,7 @@ invalid value in "foo": got number, expected string
 
 
 
-=== TEST 14: upstream.set_headers() fails if array element is of a bad type
+=== TEST 14: upstream.set_headers() errors if array element is of a bad type
 --- http_config
 --- config
     location = /t {
@@ -405,8 +405,8 @@ invalid value in "foo": got number, expected string
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_headers({["foo"] = {2}})
-            assert(ok == nil)
+            local pok, err = pcall(sdk.upstream.set_headers, {["foo"] = {2}})
+            assert(not pok)
             ngx.say(err)
         }
     }
@@ -439,14 +439,14 @@ invalid value in array "foo": got number, expected string
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_headers({
+            sdk.upstream.set_headers({
                 ["X-Foo"] = {
                     "hello",
                     "world",
                     ["foo"] = "bar",
                 }
             })
-            assert(ok)
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -482,10 +482,10 @@ X-Foo: {world}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_headers({
+            sdk.upstream.set_headers({
                 ["X-Foo"] = {}
             })
-            assert(ok)
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -522,10 +522,10 @@ X-Foo: world
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_headers({
+            sdk.upstream.set_headers({
                 ["X-Foo"] = { "xxx", "yyy", "zzz" }
             })
-            assert(ok)
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -555,14 +555,14 @@ X-Foo: {zzz}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_headers({})
-            ngx.say(ok)
+            sdk.upstream.set_headers({})
+            ngx.say("ok")
         }
     }
 --- request
 GET /t
 --- response_body
-true
+ok
 --- no_error_log
 [error]
 

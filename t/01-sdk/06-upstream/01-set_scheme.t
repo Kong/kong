@@ -42,7 +42,7 @@ scheme must be a string
 
             ngx.ctx.balancer_address = 8000
 
-            local ok, err = sdk.upstream.set_scheme("HTTP")
+            local pok, err = pcall(sdk.upstream.set_scheme, "HTTP")
             ngx.say(err)
         }
     }

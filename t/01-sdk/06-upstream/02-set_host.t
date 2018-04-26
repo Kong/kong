@@ -51,7 +51,7 @@ host must be a string
 --- request
 GET /t
 --- response_body
-true
+nil
 host: example.com
 --- no_error_log
 [error]
@@ -82,8 +82,7 @@ host: example.com
                 host = "foo.xyz"
             }
 
-            local ok, err = sdk.upstream.set_host("example.com")
-            assert(ok)
+            sdk.upstream.set_host("example.com")
         }
 
         proxy_set_header Host $upstream_host;

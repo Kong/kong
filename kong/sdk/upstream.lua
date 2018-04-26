@@ -54,19 +54,17 @@ local function new(sdk, major_version)
   -- upstream service.
   --
   -- @param scheme Protocol to use. Supported values are `"http"` and `"https"`.
-  -- @return `true` if successful, or nil and an error string.
+  -- @return Nothing; throws an error on invalid inputs.
   upstream.set_scheme = function(scheme)
     if type(scheme) ~= "string" then
       error("scheme must be a string", 2)
     end
 
     if scheme ~= "http" and scheme ~= "https" then
-      return nil, "invalid scheme: " .. scheme
+      error("invalid scheme: " .. scheme, 2)
     end
 
     ngx.var.upstream_scheme = scheme
-
-    return true
   end
 
 
@@ -75,7 +73,7 @@ local function new(sdk, major_version)
   -- proxy the request. The `Host` header is also set accordingly.
   --
   -- @param host Host name to set. Example: "example.com"
-  -- @return `true` if successful, or nil and an error string.
+  -- @return Nothing; throws an error on invalid inputs.
   upstream.set_host = function(host)
     if type(host) ~= "string" then
       error("host must be a string", 2)
@@ -84,8 +82,6 @@ local function new(sdk, major_version)
     ngx.req.set_header("Host", host)
     ngx.var.upstream_host = host
     ngx.ctx.balancer_address.host = host
-
-    return true
   end
 
 
@@ -94,19 +90,17 @@ local function new(sdk, major_version)
   -- proxy the request.
   --
   -- @param port A port number between 0 and 65535.
-  -- @return `true` if successful, or nil and an error string.
+  -- @return Nothing; throws an error on invalid inputs.
   upstream.set_port = function(port)
     if type(port) ~= "number" or math.floor(port) ~= port then
       error("port must be an integer", 2)
     end
 
     if port < 0 or port > 65535 then
-      return nil, "port must be an integer between 0 and 65535: given " .. port
+      error("port must be an integer between 0 and 65535: given " .. port, 2)
     end
 
     ngx.ctx.balancer_address.port = port
-
-    return true
   end
 
 
@@ -115,21 +109,19 @@ local function new(sdk, major_version)
   -- any way and should not include the querystring.
   --
   -- @param path The path string. Example: "/v2/movies"
-  -- @return `true` if successful, or nil and an error string.
+  -- @return Nothing; throws an error on invalid inputs.
   upstream.set_path = function(path)
     if type(path) ~= "string" then
       error("path must be a string", 2)
     end
 
     if path:sub(1,1) ~= "/" then
-      return nil, "path must start with /"
+      error("path must start with /", 2)
     end
 
     -- TODO: is this necessary in specific phases?
     -- ngx.req.set_uri(path)
     ngx.var.upstream_uri = path
-
-    return true
   end
 
 
@@ -141,15 +133,13 @@ local function new(sdk, major_version)
   -- of arguments, see `kong.upstream.set_query_args`.
   --
   -- @param query The raw querystring. Example: "foo=bar&bla&baz=hello%20world"
-  -- @return `true` if successful, or nil and an error string.
+  -- @return Nothing; throws an error on invalid inputs.
   upstream.set_query = function(query)
     if type(query) ~= "string" then
       error("query must be a string", 2)
     end
 
     ngx.req.set_uri_args(query)
-
-    return true
   end
 
 
@@ -181,8 +171,7 @@ local function new(sdk, major_version)
     -- uppercase. Supported values are: `"GET"`, `"HEAD"`, `"PUT"`, `"POST"`,
     -- `"DELETE"`, `"OPTIONS"`, `"MKCOL"`, `"COPY"`, `"MOVE"`, `"PROPFIND"`,
     -- `"PROPPATCH"`, `"LOCK"`, `"UNLOCK"`, `"PATCH"`, `"TRACE"`.
-    -- @return `true` on success or `nil` followed by an error message
-    -- in case of an unsupported method string.
+    -- @return Nothing; throws an error on invalid inputs.
     upstream.set_method = function(method)
       if type(method) ~= "string" then
         error("method must be a string", 2)
@@ -190,12 +179,10 @@ local function new(sdk, major_version)
 
       local method_id = accepted_methods[method]
       if not method_id then
-        return nil, "invalid method: " .. method
+        error("invalid method: " .. method, 2)
       end
 
       ngx.req.set_method(method_id)
-
-      return true
     end
   end
 
@@ -210,8 +197,7 @@ local function new(sdk, major_version)
   -- @param args A table where each key is a string (corresponding to an
   -- argument name), and each value is either a boolean, a string or an array of
   -- strings or booleans. Any string values given are URL-encoded.
-  -- @return `true` on success or nil followed by an error message in case of
-  -- errors.
+  -- @return Nothing; throws an error on invalid inputs.
   upstream.set_post_args = function(args)
     if type(args) ~= "table" then
       error("args must be a table", 2)
@@ -225,8 +211,6 @@ local function new(sdk, major_version)
     ngx.req.read_body()
     ngx.req.set_body_data(querystring)
     ngx.req.set_header(CONTENT_TYPE, CONTENT_TYPE_POST)
-
-    return true
   end
 
 
@@ -243,8 +227,7 @@ local function new(sdk, major_version)
   -- @param args A table where each key is a string (corresponding to an
   -- argument name), and each value is either a boolean, a string or an array of
   -- strings or booleans. Any string values given are URL-encoded.
-  -- @return `true` on success or nil followed by an error message in case of
-  -- errors.
+  -- @return Nothing; throws an error on invalid inputs.
   upstream.set_query_args = function(args)
     if type(args) ~= "table" then
       error("args must be a table", 2)
@@ -256,8 +239,6 @@ local function new(sdk, major_version)
     end
 
     ngx.req.set_uri_args(querystring)
-
-    return true
   end
 
 
@@ -270,8 +251,7 @@ local function new(sdk, major_version)
   --
   -- @param header The header name. Example: "X-Foo"
   -- @param value The header value. Example: "hello world"
-  -- @return `true` on success or nil followed by an error message in case of
-  -- errors.
+  -- @return Nothing; throws an error on invalid inputs.
   upstream.set_header = function(header, value)
     if type(header) ~= "string" then
       error("header must be a string", 2)
@@ -285,8 +265,6 @@ local function new(sdk, major_version)
     end
 
     ngx.req.set_header(header, value ~= "" and value or " ")
-
-    return true
   end
 
 
@@ -300,8 +278,7 @@ local function new(sdk, major_version)
   --
   -- @param header The header name. Example: "Cache-Control"
   -- @param value The header value. Example: "no-cache"
-  -- @return `true` on success or nil followed by an error message in case of
-  -- errors.
+  -- @return Nothing; throws an error on invalid inputs.
   upstream.add_header = function(header, value)
     if type(header) ~= "string" then
       error("header must be a string", 2)
@@ -322,8 +299,6 @@ local function new(sdk, major_version)
     table.insert(headers, value ~= "" and value or " ")
 
     ngx.req.set_header(header, headers)
-
-    return true
   end
 
 
@@ -331,16 +306,14 @@ local function new(sdk, major_version)
   -- Removes any occurrences of the given header.
   --
   -- @param header The header name. Example: "X-Foo"
-  -- @return `true` on no errors, or nil followed by an error message in case of
-  -- errors. It will return `true` even if no header was removed.
+  -- @return Nothing; throws an error on invalid inputs.
+  -- The function does not throw an error if no header was removed.
   upstream.clear_header = function(header)
     if type(header) ~= "string" then
       error("header must be a string", 2)
     end
 
     ngx.req.clear_header(header)
-
-    return true
   end
 
 
@@ -363,8 +336,7 @@ local function new(sdk, major_version)
   --
   -- @param headers A table where each key is a string containing a header name
   -- and each value is either a string or an array of strings.
-  -- @return `true` on success or `nil` followed by an error message in case of
-  -- errors.
+  -- @return Nothing; throws an error on invalid inputs.
   upstream.set_headers = function(headers)
     if type(headers) ~= "table" then
       error("headers must be a table", 2)
@@ -375,7 +347,7 @@ local function new(sdk, major_version)
     for k, v in pairs(headers) do
       local typek = type(k)
       if typek ~= "string" then
-        return nil, ("invalid key %q: got %s, expected string"):format(k, typek)
+        error(("invalid key %q: got %s, expected string"):format(k, typek), 2)
       end
 
       local typev = type(v)
@@ -385,15 +357,15 @@ local function new(sdk, major_version)
         for _, vv in ipairs(v) do
           local typevv = type(vv)
           if typevv ~= "string" then
-            return nil, ("invalid value in array %q: got %s, " ..
-                         "expected string"):format(k, typevv)
+            error(("invalid value in array %q: got %s, " ..
+                   "expected string"):format(k, typevv), 2)
           end
         end
 
       elseif typev ~= "string" then
 
-        return nil, ("invalid value in %q: got %s, " ..
-                     "expected string"):format(k, typev)
+        error(("invalid value in %q: got %s, " ..
+               "expected string"):format(k, typev), 2)
       end
     end
 
@@ -407,7 +379,6 @@ local function new(sdk, major_version)
       end
     end
 
-    return true
   end
 
 
@@ -433,8 +404,6 @@ local function new(sdk, major_version)
 
     ngx.req.read_body()
     ngx.req.set_body_data(body)
-
-    return true
   end
 
 
@@ -446,12 +415,11 @@ local function new(sdk, major_version)
       [CONTENT_TYPE_JSON] = function(args)
         local encoded, err = cjson.encode(args)
         if not encoded then
-          return nil, err
+          error(err, 2)
         end
 
         ngx.req.set_body_data(encoded)
         ngx.req.set_header(CONTENT_TYPE, CONTENT_TYPE_JSON)
-        return true
       end,
 
       [CONTENT_TYPE_FORM_DATA] = function(args)
@@ -461,12 +429,12 @@ local function new(sdk, major_version)
         local i = 1
         for k, v in pairs(args) do
           if type(k) ~= "string" then
-            return nil, ("invalid key %q: got %s, " ..
-                         "expected string"):format(k, type(k))
+            error(("invalid key %q: got %s, " ..
+                   "expected string"):format(k, type(k)), 2)
           end
           if type(v) ~= "string" then
-            return nil, ("invalid value %q: got %s, " ..
-                         "expected string"):format(k, type(v))
+            error(("invalid value %q: got %s, " ..
+                   "expected string"):format(k, type(v)), 2)
           end
           keys[i] = k
           i = i + 1
@@ -483,7 +451,6 @@ local function new(sdk, major_version)
 
         ngx.req.set_body_data(encoded)
         ngx.req.set_header(CONTENT_TYPE, CONTENT_TYPE_FORM_DATA)
-        return true
       end,
 
     }
@@ -533,7 +500,7 @@ local function new(sdk, major_version)
 
       local set_body_fn = set_body_args_handlers[mime]
       if not set_body_fn then
-        return nil, "unsupported content type " .. mime
+        error("unsupported content type " .. mime, 2)
       end
 
       return set_body_fn(args)

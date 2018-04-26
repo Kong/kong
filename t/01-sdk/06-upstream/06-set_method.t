@@ -55,16 +55,13 @@ method must be a string
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_method("FOO")
-
-            ngx.say(tostring(ok))
+            local pok, err = pcall(sdk.upstream.set_method, "FOO")
             ngx.say(err)
         }
     }
 --- request
 GET /t
 --- response_body
-nil
 invalid method: FOO
 --- no_error_log
 [error]
@@ -78,16 +75,13 @@ invalid method: FOO
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_method("get")
-
-            ngx.say(tostring(ok))
+            local pok, err = pcall(sdk.upstream.set_method, "get")
             ngx.say(err)
         }
     }
 --- request
 GET /t
 --- response_body
-nil
 invalid method: get
 --- no_error_log
 [error]
@@ -111,8 +105,8 @@ invalid method: get
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_method("GET")
-            assert(ok, err)
+            sdk.upstream.set_method("GET")
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -143,8 +137,8 @@ method: GET
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_method("HEAD")
-            assert(ok, err)
+            sdk.upstream.set_method("HEAD")
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -174,8 +168,8 @@ method: HEAD
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_method("PUT")
-            assert(ok, err)
+            sdk.upstream.set_method("PUT")
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -206,8 +200,8 @@ method: PUT
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_method("POST")
-            assert(ok, err)
+            sdk.upstream.set_method("POST")
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -238,8 +232,8 @@ method: POST
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_method("DELETE")
-            assert(ok, err)
+            sdk.upstream.set_method("DELETE")
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -270,8 +264,8 @@ method: DELETE
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_method("OPTIONS")
-            assert(ok, err)
+            sdk.upstream.set_method("OPTIONS")
+
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -302,8 +296,7 @@ method: OPTIONS
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_method("MKCOL")
-            assert(ok, err)
+            sdk.upstream.set_method("MKCOL")
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -334,8 +327,7 @@ method: MKCOL
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_method("COPY")
-            assert(ok, err)
+            sdk.upstream.set_method("COPY")
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -366,8 +358,7 @@ method: COPY
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_method("MOVE")
-            assert(ok, err)
+            sdk.upstream.set_method("MOVE")
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -398,8 +389,7 @@ method: MOVE
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_method("PROPFIND")
-            assert(ok, err)
+            sdk.upstream.set_method("PROPFIND")
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -430,8 +420,7 @@ method: PROPFIND
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_method("PROPPATCH")
-            assert(ok, err)
+            sdk.upstream.set_method("PROPPATCH")
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -462,8 +451,7 @@ method: PROPPATCH
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_method("LOCK")
-            assert(ok, err)
+            sdk.upstream.set_method("LOCK")
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -494,8 +482,7 @@ method: LOCK
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_method("UNLOCK")
-            assert(ok, err)
+            sdk.upstream.set_method("UNLOCK")
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -526,8 +513,7 @@ method: UNLOCK
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_method("PATCH")
-            assert(ok, err)
+            sdk.upstream.set_method("PATCH")
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -558,8 +544,7 @@ method: PATCH
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_method("TRACE")
-            assert(ok, err)
+            sdk.upstream.set_method("TRACE")
         }
 
         proxy_pass http://127.0.0.1:9080;

@@ -90,12 +90,11 @@ mime must be a string
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok = sdk.upstream.set_body_args({
+            sdk.upstream.set_body_args({
                 test = "post",
                 aaa = "zzz",
             }, "application/x-www-form-urlencoded")
 
-            assert(ok)
         }
 
         proxy_set_header Host $upstream_host;
@@ -134,12 +133,11 @@ aaa=zzz&test=post
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok = sdk.upstream.set_body_args({
+            sdk.upstream.set_body_args({
                 test = "post",
                 aaa = "zzz",
             }, "application/x-www-form-urlencoded")
 
-            assert(ok)
         }
 
         proxy_set_header Host $upstream_host;
