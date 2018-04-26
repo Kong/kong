@@ -69,7 +69,7 @@ describe("NGINX conf compiler", function()
         admin_listen = "127.0.0.1:8001"
       }))
       local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
-      assert.matches("lua_shared_dict kong_db_cache%s+128k;", kong_nginx_conf)
+      assert.matches("lua_shared_dict kong_cache%s+128k;", kong_nginx_conf)
       assert.matches("listen 0.0.0.0:80;", kong_nginx_conf, nil, true)
       assert.matches("listen 127.0.0.1:8001;", kong_nginx_conf, nil, true)
     end)
