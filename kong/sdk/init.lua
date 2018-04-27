@@ -17,8 +17,8 @@ local MAJOR_VERSIONS = {
       "request",
       "client",
       "upstream",
-      --[[
       "upstream.response",
+      --[[
       "response",
       "timers",
       "http",
@@ -71,6 +71,9 @@ function _SDK.new(kong_config, major_version)
 
     if module_name == "base" then
       mod.new(sdk, major_version, kong_config)
+
+    elseif module_name == "upstream.response" then
+      sdk.upstream.response = mod.new(sdk, major_version, kong_config)
 
     else
       sdk[module_name] = mod.new(sdk, major_version, kong_config)
