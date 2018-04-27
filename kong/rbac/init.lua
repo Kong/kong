@@ -278,28 +278,24 @@ local function resolve_role_entity_permissions(roles)
   -- assign all the positive bits first such that we dont have a case
   -- of an explicit positive overriding an explicit negative based on
   -- the order of iteration
+  local positive_entities, negative_entities =  {}, {}
   for _, role in ipairs(roles) do
     local role_entities, err = singletons.dao.rbac_role_entities:find_all({
       role_id  = role.id,
-      negative = false,
     })
     if err then
       error(err)
     end
-    iter(role_entities, positive_mask)
-  end
-
-  for _, role in ipairs(roles) do
-    local role_entities, err = singletons.dao.rbac_role_entities:find_all({
-      role_id  = role.id,
-      negative = true,
-    })
-    if err then
-      error(err)
+    for _, role_entity in ipairs(role_entities) do
+      if role_entity.negative then
+        negative_entities[#negative_entities + 1] = role_entity
+      else
+        positive_entities[#positive_entities + 1] = role_entity
+      end
     end
-    iter(role_entities, negative_mask)
   end
-
+  iter(positive_entities, positive_mask)
+  iter(negative_entities, negative_mask)
 
   return pmap
 end
