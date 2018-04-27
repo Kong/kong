@@ -8,14 +8,14 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: upstream.set_post_args() errors if not a table
+=== TEST 1: upstream.set_parsed_body() errors if args is not a table
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.upstream.set_post_args, 127001)
+            local pok, err = pcall(sdk.upstream.set_parsed_body, 127001)
             ngx.say(err)
         }
     }
@@ -28,14 +28,14 @@ args must be a table
 
 
 
-=== TEST 2: upstream.set_post_args() errors if given no arguments
+=== TEST 2: upstream.set_parsed_body() errors if given no arguments
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.upstream.set_post_args)
+            local pok, err = pcall(sdk.upstream.set_parsed_body)
             ngx.say(err)
         }
     }
@@ -48,7 +48,27 @@ args must be a table
 
 
 
-=== TEST 3: upstream.set_post_args() errors if table values have bad types
+=== TEST 3: upstream.set_parsed_body() errors if mime is not a string
+--- config
+    location = /t {
+        content_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            local pok, err = pcall(sdk.upstream.set_parsed_body, {}, 123)
+            ngx.say(err)
+        }
+    }
+--- request
+GET /t
+--- response_body
+mime must be a string
+--- no_error_log
+[error]
+
+
+
+=== TEST 4: upstream.set_parsed_body() for application/x-www-form-urlencoded errors if table values have bad types
 --- config
     location = /t {
 
@@ -56,7 +76,8 @@ args must be a table
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.upstream.set_post_args, {
+            sdk.upstream.set_header("Content-Type", "application/x-www-form-urlencoded")
+            local pok, err = pcall(sdk.upstream.set_parsed_body, {
                 aaa = "foo",
                 bbb = function() end,
                 ccc = "bar",
@@ -75,7 +96,7 @@ attempt to use function as query arg value
 
 
 
-=== TEST 4: upstream.set_post_args() errors if table keys have bad types
+=== TEST 5: upstream.set_parsed_body() for application/x-www-form-urlencoded errors if table keys have bad types
 --- config
     location = /t {
 
@@ -83,7 +104,8 @@ attempt to use function as query arg value
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.upstream.set_post_args, {
+            sdk.upstream.set_header("Content-Type", "application/x-www-form-urlencoded")
+            local pok, err = pcall(sdk.upstream.set_parsed_body, {
                 aaa = "foo",
                 [true] = "what",
                 ccc = "bar",
@@ -102,7 +124,7 @@ arg keys must be strings
 
 
 
-=== TEST 5: upstream.set_post_args() sets the Content-Type header
+=== TEST 6: upstream.set_parsed_body() for application/x-www-form-urlencoded sets the Content-Type header
 --- http_config
     server {
         listen 127.0.0.1:9080;
@@ -121,7 +143,7 @@ arg keys must be strings
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_post_args({})
+            sdk.upstream.set_parsed_body({}, "application/x-www-form-urlencoded")
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -135,7 +157,7 @@ content-type: {application/x-www-form-urlencoded}
 
 
 
-=== TEST 6: upstream.set_post_args() accepts an empty table
+=== TEST 7: upstream.set_parsed_body() for application/x-www-form-urlencoded accepts an empty table
 --- http_config
     server {
         listen 127.0.0.1:9080;
@@ -157,7 +179,8 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_post_args({})
+            sdk.upstream.set_header("Content-Type", "application/x-www-form-urlencoded")
+            sdk.upstream.set_parsed_body({})
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -175,7 +198,7 @@ content-type: {application/x-www-form-urlencoded}
 
 
 
-=== TEST 7: upstream.set_post_args() replaces the received post args
+=== TEST 8: upstream.set_parsed_body() for application/x-www-form-urlencoded replaces the received post args
 --- http_config
     server {
         listen 127.0.0.1:9080;
@@ -197,9 +220,9 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_post_args({
+            sdk.upstream.set_parsed_body({
                 foo = "hello world"
-            })
+            }, "application/x-www-form-urlencoded")
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -217,7 +240,7 @@ content-type: {application/x-www-form-urlencoded}
 
 
 
-=== TEST 8: upstream.set_post_args() urlencodes table values
+=== TEST 9: upstream.set_parsed_body() for application/x-www-form-urlencoded urlencodes table values
 --- http_config
     server {
         listen 127.0.0.1:9080;
@@ -239,9 +262,9 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_post_args({
+            sdk.upstream.set_parsed_body({
                 foo = "hello world"
-            })
+            }, "application/x-www-form-urlencoded")
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -257,7 +280,7 @@ content-type: {application/x-www-form-urlencoded}
 
 
 
-=== TEST 9: upstream.set_post_args() produces a deterministic lexicographical order
+=== TEST 10: upstream.set_parsed_body() for application/x-www-form-urlencoded produces a deterministic lexicographical order
 --- http_config
     server {
         listen 127.0.0.1:9080;
@@ -279,12 +302,12 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_post_args({
+            sdk.upstream.set_parsed_body({
                 foo = "hello world",
                 a = true,
                 aa = true,
                 zzz = "goodbye world",
-            })
+            }, "application/x-www-form-urlencoded")
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -300,7 +323,7 @@ content-type: {application/x-www-form-urlencoded}
 
 
 
-=== TEST 10: upstream.set_post_args() preserves the order of array arguments
+=== TEST 11: upstream.set_parsed_body() for application/x-www-form-urlencoded preserves the order of array arguments
 --- http_config
     server {
         listen 127.0.0.1:9080;
@@ -322,12 +345,12 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_post_args({
+            sdk.upstream.set_parsed_body({
                 foo = "hello world",
                 a = true,
                 aa = { "zzz", true, true, "aaa" },
                 zzz = "goodbye world",
-            })
+            }, "application/x-www-form-urlencoded")
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -343,7 +366,7 @@ content-type: {application/x-www-form-urlencoded}
 
 
 
-=== TEST 11: upstream.set_post_args() supports empty values
+=== TEST 12: upstream.set_parsed_body() for application/x-www-form-urlencoded supports empty values
 --- http_config
     server {
         listen 127.0.0.1:9080;
@@ -365,9 +388,9 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_post_args({
+            sdk.upstream.set_parsed_body({
                 aa = "",
-            })
+            }, "application/x-www-form-urlencoded")
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -383,7 +406,7 @@ content-type: {application/x-www-form-urlencoded}
 
 
 
-=== TEST 12: upstream.set_post_args() accepts empty keys
+=== TEST 13: upstream.set_parsed_body() for application/x-www-form-urlencoded accepts empty keys
 --- http_config
     server {
         listen 127.0.0.1:9080;
@@ -405,9 +428,9 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_post_args({
+            sdk.upstream.set_parsed_body({
                 [""] = "aa",
-            })
+            }, "application/x-www-form-urlencoded")
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -423,7 +446,7 @@ content-type: {application/x-www-form-urlencoded}
 
 
 
-=== TEST 13: upstream.set_post_args() urlencodes table keys
+=== TEST 14: upstream.set_parsed_body() for application/x-www-form-urlencoded urlencodes table keys
 --- http_config
     server {
         listen 127.0.0.1:9080;
@@ -445,9 +468,9 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_post_args({
+            sdk.upstream.set_parsed_body({
                 ["hello world"] = "aa",
-            })
+            }, "application/x-www-form-urlencoded")
         }
 
         proxy_pass http://127.0.0.1:9080;
@@ -463,7 +486,7 @@ content-type: {application/x-www-form-urlencoded}
 
 
 
-=== TEST 14: upstream.set_post_args() does not force a POST method
+=== TEST 15: upstream.set_parsed_body() for application/x-www-form-urlencoded does not force a POST method
 --- http_config
     server {
         listen 127.0.0.1:9080;
@@ -486,9 +509,9 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_post_args({
+            sdk.upstream.set_parsed_body({
                 foo = "bar",
-            })
+            }, "application/x-www-form-urlencoded")
         }
 
         proxy_pass http://127.0.0.1:9080;

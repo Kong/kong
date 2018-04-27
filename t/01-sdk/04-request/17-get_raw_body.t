@@ -8,7 +8,7 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: request.get_body() returns empty strings for empty bodies
+=== TEST 1: request.get_raw_body() returns empty strings for empty bodies
 --- config
     location = /t {
 
@@ -16,7 +16,7 @@ __DATA__
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            ngx.say("body: '", sdk.request.get_body(), "'")
+            ngx.say("body: '", sdk.request.get_raw_body(), "'")
         }
     }
 --- request
@@ -28,7 +28,7 @@ body: ''
 
 
 
-=== TEST 2: request.get_body() returns empty string when Content-Length header is less than 1
+=== TEST 2: request.get_raw_body() returns empty string when Content-Length header is less than 1
 --- config
     location = /t {
 
@@ -36,7 +36,7 @@ body: ''
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            ngx.say("body: '", sdk.request.get_body(), "'")
+            ngx.say("body: '", sdk.request.get_raw_body(), "'")
         }
     }
 --- request
@@ -51,7 +51,7 @@ body: ''
 
 
 
-=== TEST 3: request.get_body() returns body string when Content-Length header is greater than 0
+=== TEST 3: request.get_raw_body() returns body string when Content-Length header is greater than 0
 --- config
     location = /t {
 
@@ -59,7 +59,7 @@ body: ''
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            ngx.say("body: '", sdk.request.get_body(), "'")
+            ngx.say("body: '", sdk.request.get_raw_body(), "'")
         }
     }
 --- request
@@ -74,7 +74,7 @@ body: 'not ignored'
 
 
 
-=== TEST 4: request.get_body() returns the passed body for short bodies
+=== TEST 4: request.get_raw_body() returns the passed body for short bodies
 --- config
     location = /t {
 
@@ -82,7 +82,7 @@ body: 'not ignored'
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            ngx.say("body: '", sdk.request.get_body(), "'")
+            ngx.say("body: '", sdk.request.get_raw_body(), "'")
         }
     }
 --- request
@@ -95,14 +95,14 @@ body: 'potato'
 
 
 
-=== TEST 5: request.get_body() returns nil + error when the body is too big
+=== TEST 5: request.get_raw_body() returns nil + error when the body is too big
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local body, err = sdk.request.get_body()
+            local body, err = sdk.request.get_raw_body()
             if body then
               ngx.say("body: ", body)
 

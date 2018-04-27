@@ -8,14 +8,14 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: request.get_body_args() returns arguments with application/x-www-form-urlencoded
+=== TEST 1: request.get_parsed_body() returns arguments with application/x-www-form-urlencoded
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local args, err, mime = sdk.request.get_body_args()
+            local args, err, mime = sdk.request.get_parsed_body()
 
             ngx.say("type=", type(args))
             ngx.say("test=", args.test)
@@ -36,14 +36,14 @@ mime=application/x-www-form-urlencoded
 
 
 
-=== TEST 2: request.get_body_args() returns arguments with application/json
+=== TEST 2: request.get_parsed_body() returns arguments with application/json
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local args, err, mime = sdk.request.get_body_args()
+            local args, err, mime = sdk.request.get_parsed_body()
 
             ngx.say("type=", type(args))
             ngx.say("test=", args.test)
@@ -66,14 +66,14 @@ mime=application/json
 
 
 
-=== TEST 3: request.get_body_args() returns arguments with multipart/form-data
+=== TEST 3: request.get_parsed_body() returns arguments with multipart/form-data
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local args, err, mime = sdk.request.get_body_args()
+            local args, err, mime = sdk.request.get_parsed_body()
 
             ngx.say("type=", type(args))
             ngx.say("test=", args.test)
@@ -98,14 +98,14 @@ mime=multipart/form-data
 
 
 
-=== TEST 4: request.get_body_args() returns error when missing content type header
+=== TEST 4: request.get_parsed_body() returns error when missing content type header
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local _, err = sdk.request.get_body_args()
+            local _, err = sdk.request.get_parsed_body()
 
             ngx.say("error: ", err)
         }
@@ -120,14 +120,14 @@ error: missing content type
 
 
 
-=== TEST 5: request.get_body_args() returns error when using unsupported content type
+=== TEST 5: request.get_parsed_body() returns error when using unsupported content type
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local _, err = sdk.request.get_body_args()
+            local _, err = sdk.request.get_parsed_body()
 
             ngx.say("error: ", err)
         }
@@ -144,14 +144,14 @@ error: unsupported content type 'application/x-unsupported'
 
 
 
-=== TEST 6: request.get_body_args() returns error with invalid json body
+=== TEST 6: request.get_parsed_body() returns error with invalid json body
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local _, err = sdk.request.get_body_args()
+            local _, err = sdk.request.get_parsed_body()
 
             ngx.say("error: ", err)
         }
@@ -167,14 +167,14 @@ error: invalid json body
 
 
 
-=== TEST 7: request.get_body_args() content type value is case-insensitive
+=== TEST 7: request.get_parsed_body() content type value is case-insensitive
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local args, err, mime = sdk.request.get_body_args()
+            local args, err, mime = sdk.request.get_parsed_body()
 
             ngx.say("type=", type(args))
             ngx.say("test=", args.test)

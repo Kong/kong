@@ -237,7 +237,7 @@ local function new(sdk, major_version)
   end
 
 
-  function _REQUEST.get_body()
+  function _REQUEST.get_raw_body()
     ngx.req.read_body()
 
     local body = ngx.req.get_body_data()
@@ -254,7 +254,7 @@ local function new(sdk, major_version)
   end
 
 
-  function _REQUEST.get_body_args()
+  function _REQUEST.get_parsed_body()
     local content_type = _REQUEST.get_header(CONTENT_TYPE)
     if not content_type then
       return nil, "missing content type"
@@ -271,7 +271,7 @@ local function new(sdk, major_version)
       return pargs, nil, CONTENT_TYPE_POST
 
     elseif find(content_type_lower, CONTENT_TYPE_JSON, 1, true) == 1 then
-      local body, err = _REQUEST.get_body()
+      local body, err = _REQUEST.get_raw_body()
       if not body then
         return nil, err, CONTENT_TYPE_JSON
       end
@@ -285,7 +285,7 @@ local function new(sdk, major_version)
       return json, nil, CONTENT_TYPE_JSON
 
     elseif find(content_type_lower, CONTENT_TYPE_FORM_DATA, 1, true) == 1 then
-      local body, err = _REQUEST.get_body()
+      local body, err = _REQUEST.get_raw_body()
       if not body then
         return nil, err, CONTENT_TYPE_FORM_DATA
       end
