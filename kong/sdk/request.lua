@@ -203,26 +203,6 @@ local function new(sdk, major_version)
   end
 
 
-  function _REQUEST.get_post_args(max_args)
-    if max_args ~= nil then
-      if type(max_args) ~= "number" then
-        error("max_args must be a number", 2)
-
-      elseif max_args < MIN_POST_ARGS then
-        error("max_args must be >= " .. MIN_POST_ARGS, 2)
-
-      elseif max_args > MAX_POST_ARGS then
-        error("max_args must be <= " .. MAX_POST_ARGS, 2)
-      end
-    end
-
-    -- TODO: should we also compare content_length to client_body_buffer_size here?
-
-    ngx.req.read_body()
-    return ngx.req.get_post_args(max_args or MAX_POST_ARGS_DEFAULT)
-  end
-
-
   function _REQUEST.get_raw_body()
     ngx.req.read_body()
 
@@ -240,8 +220,8 @@ local function new(sdk, major_version)
   end
 
 
-  function _REQUEST.get_parsed_body()
-    local content_type = _REQUEST.get_header(CONTENT_TYPE)
+  function _REQUEST.get_parsed_body(mimetype, max_args)
+    local content_type = mimetype or _REQUEST.get_header(CONTENT_TYPE)
     if not content_type then
       return nil, "missing content type"
     end
@@ -249,7 +229,22 @@ local function new(sdk, major_version)
     local content_type_lower = lower(content_type)
 
     if find(content_type_lower, CONTENT_TYPE_POST, 1, true) == 1 then
-      local pargs, err = _REQUEST.get_post_args()
+      if max_args ~= nil then
+        if type(max_args) ~= "number" then
+          error("max_args must be a number", 2)
+
+        elseif max_args < MIN_POST_ARGS then
+          error("max_args must be >= " .. MIN_POST_ARGS, 2)
+
+        elseif max_args > MAX_POST_ARGS then
+          error("max_args must be <= " .. MAX_POST_ARGS, 2)
+        end
+      end
+
+      -- TODO: should we also compare content_length to client_body_buffer_size here?
+
+      ngx.req.read_body()
+      local pargs, err = ngx.req.get_post_args(max_args or MAX_POST_ARGS_DEFAULT)
       if not pargs then
         return nil, err, CONTENT_TYPE_POST
       end
