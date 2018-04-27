@@ -2,7 +2,7 @@ local ngx = ngx
 local tonumber = tonumber
 
 
-local function new(sdk, major_version)
+local function new(self)
   local _CLIENT = {}
 
 

@@ -1,12 +1,12 @@
 local ip = require "resty.mediador.ip"
 
 
-local function new(sdk, major_version, kong_config)
+local function new(self)
   local _IP = {}
 
-  local ips = kong_config.trusted_ips or {}
+  local ips = self.configuration.trusted_ips or {}
   local n_ips = #ips
-  local trusted_ips = sdk.new_tab(n_ips, 0)
+  local trusted_ips = self.table.new(n_ips, 0)
   local trust_all_ipv4
   local trust_all_ipv6
 
@@ -44,6 +44,7 @@ local function new(sdk, major_version, kong_config)
 
   return _IP
 end
+
 
 return {
   new = new,

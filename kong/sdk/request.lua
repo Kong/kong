@@ -11,7 +11,7 @@ local error = error
 local tonumber = tonumber
 
 
-local function new(sdk, major_version)
+local function new(self)
   local _REQUEST = {}
 
 
@@ -45,7 +45,7 @@ local function new(sdk, major_version)
 
 
   function _REQUEST.get_forwarded_scheme()
-    if sdk.ip.is_trusted(sdk.client.get_ip()) then
+    if self.ip.is_trusted(self.client.get_ip()) then
       local scheme = _REQUEST.get_header(X_FORWARDED_PROTO)
       if scheme then
         return lower(scheme)
@@ -62,7 +62,7 @@ local function new(sdk, major_version)
 
 
   function _REQUEST.get_forwarded_host()
-    if sdk.ip.is_trusted(sdk.client.get_ip()) then
+    if self.ip.is_trusted(self.client.get_ip()) then
       local host = _REQUEST.get_header(X_FORWARDED_HOST)
       if host then
         local s = find(host, "@", 1, true)
@@ -85,7 +85,7 @@ local function new(sdk, major_version)
 
 
   function _REQUEST.get_forwarded_port()
-    if sdk.ip.is_trusted(sdk.client.get_ip()) then
+    if self.ip.is_trusted(self.client.get_ip()) then
       local port = tonumber(_REQUEST.get_header(X_FORWARDED_PORT))
       if port and port >= MIN_PORT and port <= MAX_PORT then
         return port

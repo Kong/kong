@@ -8,14 +8,14 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: base has new_tab()
+=== TEST 1: table.new()
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.new_tab(0, 12)
+            sdk.table.new(0, 12)
 
             ngx.say("ok")
         }
@@ -29,7 +29,7 @@ ok
 
 
 
-=== TEST 2: base has clear_tab()
+=== TEST 2: table.clear()
 --- config
     location = /t {
         content_by_lua_block {
@@ -42,7 +42,7 @@ ok
                 "bar"
             }
 
-            sdk.clear_tab(t)
+            sdk.table.clear(t)
 
             ngx.say("hello: ", nil)
             ngx.say("#t: ", #t)
