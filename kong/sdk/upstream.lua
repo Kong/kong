@@ -3,6 +3,12 @@ local multipart = require "multipart"
 
 
 local ngx = ngx
+local table_insert = table.insert
+local table_sort = table.sort
+local table_concat = table.concat
+local string_find = string.find
+local string_sub = string.sub
+local string_lower = string.lower
 
 
 --------------------------------------------------------------------------------
@@ -26,11 +32,11 @@ local function make_ordered_args(args)
       return nil, s
     end
 
-    table.insert(out, s)
+    table_insert(out, s)
     t[k] = nil
   end
-  table.sort(out)
-  return table.concat(out, "&")
+  table_sort(out)
+  return table_concat(out, "&")
 end
 
 
@@ -115,7 +121,7 @@ local function new(sdk, major_version)
       error("path must be a string", 2)
     end
 
-    if path:sub(1,1) ~= "/" then
+    if string_sub(path, 1, 1) ~= "/" then
       error("path must start with /", 2)
     end
 
@@ -260,7 +266,7 @@ local function new(sdk, major_version)
       error("value must be a string", 2)
     end
 
-    if header:lower() == "host" then
+    if string_lower(header) == "host" then
       return upstream.set_host(value)
     end
 
@@ -287,7 +293,7 @@ local function new(sdk, major_version)
       error("value must be a string", 2)
     end
 
-    if header:lower() == "host" then
+    if string_lower(header) == "host" then
       return upstream.set_host(value)
     end
 
@@ -296,7 +302,7 @@ local function new(sdk, major_version)
       headers = { headers }
     end
 
-    table.insert(headers, value ~= "" and value or " ")
+    table_insert(headers, value ~= "" and value or " ")
 
     ngx.req.set_header(header, headers)
   end
@@ -372,7 +378,7 @@ local function new(sdk, major_version)
     -- Now we can use ngx.req.set_header without pcall
 
     for k, v in pairs(headers) do
-      if k:lower() == "host" then
+      if string_lower(k) == "host" then
         upstream.set_host(v)
       else
         ngx.req.set_header(k, v ~= "" and v or " ")
@@ -440,7 +446,7 @@ local function new(sdk, major_version)
           i = i + 1
         end
 
-        table.sort(keys)
+        table_sort(keys)
 
         for _, k in pairs(keys) do
           local v = args[k]
@@ -490,9 +496,9 @@ local function new(sdk, major_version)
 
       if not mime then
         mime = ngx.req.get_headers()[CONTENT_TYPE]
-        local s = mime:find(";", 1, true)
+        local s = string_find(mime, ";", 1, true)
         if s then
-          mime = mime:sub(1, s - 1)
+          mime = string_sub(mime, 1, s - 1)
         end
       end
 
