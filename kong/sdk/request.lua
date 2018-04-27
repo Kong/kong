@@ -223,20 +223,6 @@ local function new(sdk, major_version)
   end
 
 
-  function _REQUEST.get_post_arg(name)
-    if type(name) ~= "string" then
-      error("name must be a string", 2)
-    end
-
-    local arg_value = _REQUEST.get_post_args()[name]
-    if type(arg_value) == "table" then
-      return arg_value[1]
-    end
-
-    return arg_value
-  end
-
-
   function _REQUEST.get_raw_body()
     ngx.req.read_body()
 
