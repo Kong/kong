@@ -2,8 +2,9 @@ local MAJOR_VERSIONS = {
   [0] = {
     version = "0.0.1",
     modules = {
-      "base",
+      "table",
       "log",
+      "ctx",
       "ip",
       "request",
       "client",
@@ -13,8 +14,9 @@ local MAJOR_VERSIONS = {
   [1] = {
     version = "1.0.0",
     modules = {
-      "base",
+      "table",
       "log",
+      "ctx",
       "ip",
       "request",
       "client",
@@ -38,10 +40,8 @@ local _SDK = {
   major_versions = MAJOR_VERSIONS,
 }
 
-local _sdk_mt = {}
 
-
-function _SDK.new(kong_config, major_version)
+function _SDK.new(kong_config, major_version, self)
   if kong_config then
     if type(kong_config) ~= "table" then
       error("kong_config must be a table", 2)
@@ -62,27 +62,36 @@ function _SDK.new(kong_config, major_version)
 
   local version_meta = MAJOR_VERSIONS[major_version]
 
-  local sdk = {
-    sdk_major_version = major_version,
-    sdk_version = version_meta.version,
-    sdk_version_num = nil, -- TODO (not sure if needed at all)
-  }
+  self = self or {}
+
+  self.sdk_major_version = major_version
+  self.sdk_version = version_meta.version
+
+  self.configuration = setmetatable({}, {
+    __index = function(_, v)
+      return kong_config[v]
+    end,
+
+    __newindex = function()
+      error("cannot write to configuration", 2)
+    end,
+  })
 
   for _, module_name in ipairs(version_meta.modules) do
+    if self[module_name] then
+      error("SDK module '" .. module_name .. "' conflicts with a key")
+    end
+
     local mod = require("kong.sdk." .. module_name)
 
-    if module_name == "base" then
-      mod.new(sdk, major_version, kong_config)
-
-    elseif module_name == "upstream.response" then
-      sdk.upstream.response = mod.new(sdk, major_version, kong_config)
-
+    if module_name == "upstream.response" then
+      self.upstream.response = mod.new(self)
     else
-      sdk[module_name] = mod.new(sdk, major_version, kong_config)
+      self[module_name] = mod.new(self)
     end
   end
 
-  return setmetatable(sdk, _sdk_mt)
+  return self
 end
 
 

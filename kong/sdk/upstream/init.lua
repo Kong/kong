@@ -42,11 +42,11 @@ end
 
 -- The upstream request module: functions for dealing with data to be sent
 -- to the upstream service, i.e. for connections made by Kong.
-local function new(sdk, major_version)
+local function new(self)
 
   local upstream = {}
 
-  -- TODO these constants should be shared with kong.sdk.request
+  -- TODO these constants should be shared with kong.request
 
   local CONTENT_TYPE           = "Content-Type"
 

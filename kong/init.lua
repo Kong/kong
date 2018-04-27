@@ -44,7 +44,16 @@ end
 
 require("kong.globalpatches")()
 
-_G.kong = require "kong.global"
+
+local kong_global = require "kong.global"
+
+
+--_G.kong = kong_global.new()
+_G.kong = kong_global.new() -- no versioned SDK for plugins for now
+
+
+kong_global.set_named_ctx(kong, "core", {})
+
 
 local DB = require "kong.db"
 local dns = require "kong.tools.dns"
@@ -102,6 +111,8 @@ local function load_plugins(kong_conf, dao)
     if constants.DEPRECATED_PLUGINS[plugin] then
       ngx.log(ngx.WARN, "plugin '", plugin, "' has been deprecated")
     end
+
+    -- NOTE: no version _G.kong (nor SDK) in plugins main chunk
 
     local ok, handler = utils.load_module_if_exists("kong.plugins." .. plugin .. ".handler")
     if not ok then
@@ -186,7 +197,8 @@ function Kong.init()
   singletons.db = db
   -- /LEGACY
 
-  kong.init(config)
+  kong_global.init_sdk(kong, config, nil) -- nil: latest SDK
+  kong_global.init_sdk(kong, config, nil) -- nil: latest SDK
 
   kong.dao = dao
   kong.db = db
@@ -391,6 +403,8 @@ function Kong.rewrite()
   -- api will have been identified, hence we'll just be executing the global
   -- plugins
   for plugin, plugin_conf in plugins_iterator(loaded_plugins, true) do
+    kong_global.set_named_ctx("plugin", plugin_conf)
+
     plugin.handler:rewrite(plugin_conf)
   end
 
@@ -406,6 +420,8 @@ function Kong.access()
 
   for plugin, plugin_conf in plugins_iterator(loaded_plugins, true) do
     if not ctx.delayed_response then
+      kong_global.set_named_ctx("plugin", plugin_conf)
+
       local err = coroutine.wrap(plugin.handler.access)(plugin.handler, plugin_conf)
       if err then
         ctx.delay_response = false
@@ -425,9 +441,12 @@ end
 
 function Kong.header_filter()
   local ctx = ngx.ctx
+
   runloop.header_filter.before(ctx)
 
   for plugin, plugin_conf in plugins_iterator(loaded_plugins) do
+    kong_global.set_named_ctx("plugin", plugin_conf)
+
     plugin.handler:header_filter(plugin_conf)
   end
 
@@ -435,21 +454,23 @@ function Kong.header_filter()
 end
 
 function Kong.body_filter()
-  local ctx = ngx.ctx
   for plugin, plugin_conf in plugins_iterator(loaded_plugins) do
+    kong_global.set_req_ctx_key(_G.kong, plugin_conf)
+
     plugin.handler:body_filter(plugin_conf)
   end
 
-  runloop.body_filter.after(ctx)
+  runloop.body_filter.after(ngx.ctx)
 end
 
 function Kong.log()
-  local ctx = ngx.ctx
   for plugin, plugin_conf in plugins_iterator(loaded_plugins) do
+    kong_global.set_named_ctx("plugin", plugin_conf)
+
     plugin.handler:log(plugin_conf)
   end
 
-  runloop.log.after(ctx)
+  runloop.log.after(ngx.ctx)
 end
 
 function Kong.handle_error()
