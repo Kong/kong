@@ -8,14 +8,14 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: upstream.set_body() errors if not a string
+=== TEST 1: upstream.set_raw_body() errors if not a string
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.upstream.set_body, 127001)
+            local pok, err = pcall(sdk.upstream.set_raw_body, 127001)
             ngx.say(err)
         }
     }
@@ -28,14 +28,14 @@ body must be a string
 
 
 
-=== TEST 2: upstream.set_body() errors if given no arguments
+=== TEST 2: upstream.set_raw_body() errors if given no arguments
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.upstream.set_body)
+            local pok, err = pcall(sdk.upstream.set_raw_body)
             ngx.say(err)
         }
     }
@@ -48,7 +48,7 @@ body must be a string
 
 
 
-=== TEST 3: upstream.set_body() accepts an empty string
+=== TEST 3: upstream.set_raw_body() accepts an empty string
 --- http_config
     server {
         listen 127.0.0.1:9080;
@@ -69,7 +69,7 @@ body must be a string
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_body("")
+            sdk.upstream.set_raw_body("")
 
         }
 
@@ -85,7 +85,7 @@ body: {nil}
 
 
 
-=== TEST 4: upstream.set_body() sets the body
+=== TEST 4: upstream.set_raw_body() sets the body
 --- http_config
     server {
         listen 127.0.0.1:9080;
@@ -106,7 +106,7 @@ body: {nil}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_body("foo=bar&bla&baz=hello%20world")
+            sdk.upstream.set_raw_body("foo=bar&bla&baz=hello%20world")
 
         }
 
@@ -122,7 +122,7 @@ body: {foo=bar&bla&baz=hello%20world}
 
 
 
-=== TEST 5: upstream.set_body() sets a short body
+=== TEST 5: upstream.set_raw_body() sets a short body
 --- http_config
     server {
         listen 127.0.0.1:9080;
@@ -143,7 +143,7 @@ body: {foo=bar&bla&baz=hello%20world}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_body("ovo")
+            sdk.upstream.set_raw_body("ovo")
 
         }
 
@@ -159,7 +159,7 @@ body: {ovo}
 
 
 
-=== TEST 6: upstream.set_body() is 8-bit clean
+=== TEST 6: upstream.set_raw_body() is 8-bit clean
 --- http_config
     server {
         listen 127.0.0.1:9080;
@@ -195,7 +195,7 @@ body: {ovo}
             for i = 0, 255 do
                 x[i + 1] = string.char(i)
             end
-            sdk.upstream.set_body(table.concat(x))
+            sdk.upstream.set_raw_body(table.concat(x))
 
         }
 
@@ -223,7 +223,7 @@ GET /t
 
 
 
-=== TEST 7: upstream.set_body() replaces any existing body
+=== TEST 7: upstream.set_raw_body() replaces any existing body
 --- http_config
     server {
         listen 127.0.0.1:9080;
@@ -244,7 +244,7 @@ GET /t
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_body("I am another body")
+            sdk.upstream.set_raw_body("I am another body")
 
         }
 
@@ -262,7 +262,7 @@ body: {I am another body}
 
 
 
-=== TEST 8: upstream.set_body() has no size limits for sending
+=== TEST 8: upstream.set_raw_body() has no size limits for sending
 --- http_config
     server {
         listen 127.0.0.1:9080;
@@ -289,7 +289,7 @@ body: {I am another body}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_body(("x"):rep(10000000))
+            sdk.upstream.set_raw_body(("x"):rep(10000000))
 
         }
 

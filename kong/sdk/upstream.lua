@@ -194,33 +194,6 @@ local function new(sdk, major_version)
 
 
   ------------------------------------------------------------------------------
-  -- Defines a `application/x-www-form-urlencoded` body with a table of
-  -- arguments for a POST request.
-  --
-  -- Keys are produced in lexicographical order. The order of entries within the
-  -- same key (when values are given as an array) is retained.
-  --
-  -- @param args A table where each key is a string (corresponding to an
-  -- argument name), and each value is either a boolean, a string or an array of
-  -- strings or booleans. Any string values given are URL-encoded.
-  -- @return Nothing; throws an error on invalid inputs.
-  upstream.set_post_args = function(args)
-    if type(args) ~= "table" then
-      error("args must be a table", 2)
-    end
-
-    local querystring, err = make_ordered_args(args)
-    if not querystring then
-      error(err, 2) -- type error inside the table
-    end
-
-    ngx.req.read_body()
-    ngx.req.set_body_data(querystring)
-    ngx.req.set_header(CONTENT_TYPE, CONTENT_TYPE_POST)
-  end
-
-
-  ------------------------------------------------------------------------------
   -- Defines a query string for the upstream request, given a table of
   -- arguments.
   --
@@ -394,12 +367,11 @@ local function new(sdk, major_version)
   -- header appropriately. To set an empty body, use an empty string (`""`).
   --
   -- For a higher-level function for setting the body based on the request
-  -- content type, see `kong.upstream.set_body_args`.
+  -- content type, see `kong.upstream.set_parsed_body`.
   --
   -- @param body The raw body, as a string.
-  -- @return `true` on success or `nil` followed by an error message in case of
-  -- errors.
-  upstream.set_body = function(body)
+  -- @return Nothing; throws an error on invalid inputs.
+  upstream.set_raw_body = function(body)
     if type(body) ~= "string" then
       error("body must be a string", 2)
     end
@@ -408,24 +380,38 @@ local function new(sdk, major_version)
     -- length based on that, and fail gracefully before attempting to set
     -- the body?
 
+    -- Ensure client request body has been read.
+    -- This function is a nop if body has already been read,
+    -- and necessary to write the upstream request if it has not.
     ngx.req.read_body()
+
     ngx.req.set_body_data(body)
   end
 
 
   do
-    local set_body_args_handlers = {
+    local set_parsed_body_handlers = {
 
-      [CONTENT_TYPE_POST] = upstream.set_post_args,
+      [CONTENT_TYPE_POST] = function(args)
+        if type(args) ~= "table" then
+          error("args must be a table", 3)
+        end
+
+        local querystring, err = make_ordered_args(args)
+        if not querystring then
+          error(err, 3) -- type error inside the table
+        end
+
+        return querystring
+      end,
 
       [CONTENT_TYPE_JSON] = function(args)
         local encoded, err = cjson.encode(args)
         if not encoded then
-          error(err, 2)
+          error(err, 3)
         end
 
-        ngx.req.set_body_data(encoded)
-        ngx.req.set_header(CONTENT_TYPE, CONTENT_TYPE_JSON)
+        return encoded
       end,
 
       [CONTENT_TYPE_FORM_DATA] = function(args)
@@ -436,11 +422,11 @@ local function new(sdk, major_version)
         for k, v in pairs(args) do
           if type(k) ~= "string" then
             error(("invalid key %q: got %s, " ..
-                   "expected string"):format(k, type(k)), 2)
+                   "expected string"):format(k, type(k)), 3)
           end
           if type(v) ~= "string" then
             error(("invalid value %q: got %s, " ..
-                   "expected string"):format(k, type(v)), 2)
+                   "expected string"):format(k, type(v)), 3)
           end
           keys[i] = k
           i = i + 1
@@ -453,10 +439,7 @@ local function new(sdk, major_version)
           data:set_simple(k, v)
         end
 
-        local encoded = data:tostring()
-
-        ngx.req.set_body_data(encoded)
-        ngx.req.set_header(CONTENT_TYPE, CONTENT_TYPE_FORM_DATA)
+        return data:tostring()
       end,
 
     }
@@ -467,26 +450,37 @@ local function new(sdk, major_version)
     -- if the `mimetype` argument is not given).
     --
     -- * if the request content type is `application/x-www-form-urlencoded`:
-    --   * encodes the form arguments (same as `kong.upstream.set_post_args()`)
+    --   * encodes the form arguments: keys are produced in lexicographical
+    --     order. The order of entries within the same key (when values are
+    --     given as an array) is retained.
+    --     Any string values given are URL-encoded.
     -- * if the request content type is `multipart/form-data`:
     --   * encodes the multipart form data
     -- * if the request content type is `application/json`:
     --   * encodes the request as JSON
-    --     (same as `kong.upstream.set_body(json.encode(args))`)
+    --     (same as `kong.upstream.set_raw_body(json.encode(args))`)
     --   * JSON types are converted to matching Lua types
     -- * If none of the above, it returns `nil` and an error message.
     --
     -- If further control of the body generation is needed, a raw body
-    -- can be given as a string with `kong.upstream.set_body`.
+    -- can be given as a string with `kong.upstream.set_raw_body`.
     --
     -- @param args a table with data to be converted to the appropriate format
     -- and stored in the body.
+    -- * If the request content type is `application/x-www-form-urlencoded`:
+    --   * input should be a table where each key is a string (corresponding
+    --     to an argument name), and each value is either a boolean,
+    --     a string or an array of strings or booleans.
+    -- * If the request content type is `application/json`:
+    --   * the table should be JSON-encodable (all tables should be either
+    --     Lua sequences or all keys should be strings).
+    -- * if the request content type is `multipart/form-data`:
+    --   * the table should be multipart-encodable.
     -- @param mime if given, it should be in the same format as the
-    -- value returned by `kong.request.get_body_args`. The `Content-Type` header
+    -- value returned by `kong.request.get_parsed_body`. The `Content-Type` header
     -- will be updated to match the appropriate type.
-    -- @return `true` on success or `nil` followed by an error message in case of
-    -- errors.
-    upstream.set_body_args = function(args, mime)
+    -- @return Nothing; throws an error on invalid inputs.
+    upstream.set_parsed_body = function(args, mime)
       if type(args) ~= "table" then
         error("args must be a table", 2)
       end
@@ -502,12 +496,19 @@ local function new(sdk, major_version)
         end
       end
 
-      local set_body_fn = set_body_args_handlers[mime]
-      if not set_body_fn then
+      local handler_fn = set_parsed_body_handlers[mime]
+      if not handler_fn then
         error("unsupported content type " .. mime, 2)
       end
 
-      return set_body_fn(args)
+      -- Ensure client request body has been read.
+      -- This function is a nop if body has already been read,
+      -- and necessary to write the upstream request if it has not.
+      ngx.req.read_body()
+
+      local body = handler_fn(args)
+      ngx.req.set_body_data(body)
+      ngx.req.set_header(CONTENT_TYPE, mime)
     end
 
   end
