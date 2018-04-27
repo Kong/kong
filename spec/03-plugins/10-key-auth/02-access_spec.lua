@@ -72,6 +72,12 @@ for _, strategy in helpers.each_strategy() do
         consumer_id = consumer.id,
       }
 
+      bp.keyauth_credentials:insert {
+        key         = "key_with_expires_in",
+        consumer_id = consumer.id,
+        expires_in  = 1
+      }
+
       bp.plugins:insert {
         name     = "key-auth",
         route_id = route3.id,
@@ -173,6 +179,18 @@ for _, strategy in helpers.each_strategy() do
         })
         res:read_body()
         assert.equal('Key realm="' .. meta._NAME .. '"', res.headers["WWW-Authenticate"])
+      end)
+      it("returns key_invalid if key expires", function()
+        ngx.sleep(2)
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["Host"]   = "key-auth1.com",
+            ["apikey"] = "key_with_expires_in"
+          }
+        })
+        assert.res_status(401, res)
       end)
     end)
 

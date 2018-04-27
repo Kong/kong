@@ -37,4 +37,14 @@ return {
     end,
     down = function(_, _, dao) end  -- not implemented
   },
+  {
+    name = "2018-04-26_key-auth_expires_in",
+    up = [[
+      ALTER TABLE keyauth_credentials ADD expires_in int;
+    ]],
+    down = [[
+      ALTER TABLE keyauth_credentials DROP expires_in;
+    ]]
+  },
 }
+

@@ -1,5 +1,6 @@
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
+local timestamp = require "kong.tools.timestamp"
 local singletons = require "kong.singletons"
 local public_tools = require "kong.tools.public"
 local BasePlugin = require "kong.plugins.base_plugin"
@@ -185,6 +186,15 @@ local function do_authentication(conf)
   -- no credential in DB, for this key, it is invalid, HTTP 403
   if not credential then
     return false, {status = 403, message = "Invalid authentication credentials"}
+  end
+
+  -- check expires_in
+  if credential.expires_in > 0 then -- zero means the key never expires
+    local now = timestamp.get_utc()
+    if now - credential.created_at > (credential.expires_in * 1000) then
+      ngx.header["WWW-Authenticate"] = _realm
+      return false, { status = 401, message = "The key is invalid or has expired" }
+    end
   end
 
   -----------------------------------------

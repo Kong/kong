@@ -62,6 +62,7 @@ for _, strategy in helpers.each_strategy() do
           local json = cjson.decode(body)
           assert.equal(consumer.id, json.consumer_id)
           assert.equal("1234", json.key)
+          assert.equal(0, json.expires_in) -- expires_in default should be 0
         end)
         it("creates a key-auth auto-generating a unique key", function()
           local res = assert(admin_client:send {
@@ -94,6 +95,24 @@ for _, strategy in helpers.each_strategy() do
           assert.is_string(json.key)
 
           assert.not_equal(first_key, json.key)
+        end)
+        it("creates a key-auth credential with expires_in", function()
+          local res = assert(admin_client:send {
+            method  = "POST",
+            path    = "/consumers/bob/key-auth",
+            body    = {
+              key        = "12345",
+              expires_in = 1000
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal(consumer.id, json.consumer_id)
+          assert.equal("12345", json.key)
+          assert.equal(1000, json.expires_in)
         end)
       end)
 
