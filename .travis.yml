@@ -1,0 +1,26 @@
+language: python
+
+sudo: false
+
+branches:
+  only:
+    - master
+
+before_install:
+  - pip install hererocks
+  - hererocks ~/hererocks -r^ --luajit 2.1
+  - export PATH=$PATH:~/hererocks/bin
+  - eval $(luarocks path --bin)
+  - luarocks install luacheck
+
+script:
+  - luacheck .
+
+notifications:
+  email:
+    on_success: change
+    on_failure: always
+
+cache:
+  directories:
+    - $HOME/.cache/hererocks
