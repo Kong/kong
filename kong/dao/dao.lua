@@ -286,9 +286,6 @@ function DAO:find(tbl)
   check_utf8(tbl, 1)
   fetch_shared_entity_id(self.schema.table, tbl)
 
-  local skip_rbac = tbl.__skip_rbac
-  tbl.__skip_rbac = nil
-
   local model = self.model_mt(tbl)
   if not model:has_primary_keys() then
     error("Missing PRIMARY KEY field", 2)
@@ -301,11 +298,9 @@ function DAO:find(tbl)
 
   -- XXX find a better, cleaner way to handle this logic - so that
   -- there is no unreachable code, but still no upstream tainting
-  if not skip_rbac then
-    local r = rbac.validate_entity_operation(primary_keys)
-    if not r then
-      ret_error(self.db.name, nil, "[RBAC] Unauthorized find")
-    end
+  local r = rbac.validate_entity_operation(primary_keys)
+  if not r then
+    ret_error(self.db.name, nil, "[RBAC] Unauthorized find")
   end
 
   do
@@ -327,7 +322,11 @@ end
 -- @treturn table err If an error occured, a table describing the issue.
 function DAO:find_all(tbl, include_ws)
   local new_params
+  local skip_rbac
   if tbl ~= nil then
+    skip_rbac = tbl.__skip_rbac
+    tbl.__skip_rbac = nil
+
     check_arg(tbl, 1, "table")
     check_utf8(tbl, 1)
     check_not_empty(tbl, 1)
@@ -352,7 +351,10 @@ function DAO:find_all(tbl, include_ws)
       remove_ws_prefix(self.schema.table, row, include_ws)
     end
 
-    rows = rbac.narrow_readable_entities(self.schema.table, rows)
+    if skip_rbac ~= true then
+      rows = rbac.narrow_readable_entities(self.schema.table, rows)
+    end
+
     return ret_error(self.db.name, rows, err)
   end
 

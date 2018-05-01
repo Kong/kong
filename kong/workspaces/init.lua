@@ -488,18 +488,18 @@ function _M.resolve_entity_type(entity_id)
 
   local entity_type = rows[1].entity_type
 
-  local row, err = singletons.dao[entity_type]:find({
+  rows, err = singletons.dao[entity_type]:find_all({
     [workspaceable_relations[entity_type].primary_key] = entity_id,
     __skip_rbac = true,
   })
   if err then
     return nil, nil, err
   end
-
-  if row then
-    return entity_type, row, nil
+  if not rows[1] then
+    return false, nil, "entity " .. entity_id .. "not found"
   end
-  error("couldn't find entity " .. entity_id .." in its own table.")
+
+  return entity_type, row
 end
 
 
