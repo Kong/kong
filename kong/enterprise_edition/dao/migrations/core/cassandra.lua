@@ -109,6 +109,8 @@ return {
         unique_field_value text,
         PRIMARY KEY(workspace_id, entity_id, unique_field_name)
       );
+
+      CREATE INDEX IF NOT EXISTS ON workspace_entities(unique_field_value);
     ]],
   },
   {
