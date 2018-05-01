@@ -1,5 +1,6 @@
 local helpers = require "spec.helpers"
 local constants = require "kong.constants"
+local cjson = require "cjson"
 
 
 local default_server_header = _KONG._NAME .. "/" .. _KONG._VERSION
@@ -492,6 +493,25 @@ describe("headers [#" .. strategy .. "]", function()
         assert.is_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
       end)
 
+      it("can be specified via configuration file", function()
+        -- A regression test added with https://github.com/Kong/kong/pull/3419
+        -- to ensure that the `headers` configuration value can be specified
+        -- via the configuration file (vs. environment variables as the rest
+        -- of this test suite uses).
+        -- This regression occured because of the dumping of config values into
+        -- .kong_env (and the lack of serialization for the `headers` table).
+        assert(helpers.kong_exec("restart -c spec/fixtures/headers.conf"))
+
+        local admin_client = helpers.admin_client()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path   = "/",
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal("server_tokens", json.configuration.headers[1])
+        assert.equal("X-Kong-Proxy-Latency", json.configuration.headers[2])
+      end)
     end)
 
     describe("(with headers='server_tokens, off, X-Kong-Proxy-Latency')", function()

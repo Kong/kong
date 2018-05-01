@@ -607,31 +607,33 @@ local function load(path, custom_conf)
 
   -- load headers configuration
   do
-    local headers_enabled = {}
+    local enabled_headers = {}
 
     for _, v in pairs(header_key_to_name) do
-      headers_enabled[v] = false
+      enabled_headers[v] = false
     end
 
     if #conf.headers > 0 and conf.headers[1] ~= "off" then
       for _, token in ipairs(conf.headers) do
         if token ~= "off" then
-          headers_enabled[header_key_to_name[string.lower(token)]] = true
+          enabled_headers[header_key_to_name[string.lower(token)]] = true
         end
       end
     end
 
-    if headers_enabled.server_tokens then
-      headers_enabled[headers.VIA] = true
-      headers_enabled[headers.SERVER] = true
+    if enabled_headers.server_tokens then
+      enabled_headers[headers.VIA] = true
+      enabled_headers[headers.SERVER] = true
     end
 
-    if headers_enabled.latency_tokens then
-      headers_enabled[headers.PROXY_LATENCY] = true
-      headers_enabled[headers.UPSTREAM_LATENCY] = true
+    if enabled_headers.latency_tokens then
+      enabled_headers[headers.PROXY_LATENCY] = true
+      enabled_headers[headers.UPSTREAM_LATENCY] = true
     end
 
-    conf.headers = headers_enabled
+    conf.enabled_headers = setmetatable(enabled_headers, {
+      __tostring = function() return "" end,
+    })
   end
 
   -- load absolute paths
