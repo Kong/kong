@@ -449,6 +449,7 @@ return {
       crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
       self.params.role_id = self.rbac_role.id
       self.params.endpoint = self.params.splat
+      self.params.splat = nil
     end,
 
     GET = function(self, dao_factory, helpers)
