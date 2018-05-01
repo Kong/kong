@@ -499,7 +499,7 @@ function _M.resolve_entity_type(entity_id)
     return false, nil, "entity " .. entity_id .. "not found"
   end
 
-  return entity_type, row
+  return entity_type, rows[1]
 end
 
 
