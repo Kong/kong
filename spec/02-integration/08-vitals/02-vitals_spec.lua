@@ -204,6 +204,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         local expected = {
           "vitals_code_classes_by_cluster",
+          "vitals_codes_by_consumer_route",
           "vitals_codes_by_route",
           "vitals_codes_by_service",
           "vitals_consumers",
@@ -406,6 +407,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert(dao.db:truncate_table("vitals_code_classes_by_cluster"))
         assert(dao.db:truncate_table("vitals_codes_by_route"))
         assert(dao.db:truncate_table("vitals_codes_by_service"))
+        assert(dao.db:truncate_table("vitals_codes_by_consumer_route"))
       end)
 
       after_each(function()
@@ -415,6 +417,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert(dao.db:truncate_table("vitals_code_classes_by_cluster"))
         assert(dao.db:truncate_table("vitals_codes_by_route"))
         assert(dao.db:truncate_table("vitals_codes_by_service"))
+        assert(dao.db:truncate_table("vitals_codes_by_consumer_route"))
       end)
 
       it("flushes cache entries", function()
@@ -618,6 +621,55 @@ dao_helpers.for_each_dao(function(kong_conf)
         for i = 1, 2 do
           assert.same(expected[i], res[i])
         end
+
+        local res, err
+
+        if dao.db.name == "postgres" then
+          res, err = dao.db:query("SELECT consumer_id, service_id, route_id, code, extract('epoch' from at) as at, duration, count FROM vitals_codes_by_consumer_route")
+        else
+          res, err = dao.db:query("select * from vitals_codes_by_consumer_route")
+        end
+
+        assert.is_nil(err)
+        table.sort(res, function(a,b)
+          return a.count < b.count
+        end)
+
+        local ats = {
+          now - 1,
+          minute,
+        }
+
+        if dao.db.name == "cassandra" then
+          for i, v in ipairs(ats) do
+            ats[i] = v * 1000
+          end
+        end
+
+        local expected = {
+          {
+            at = ats[1],
+            consumer_id = consumer_id,
+            route_id    = route_id,
+            service_id  = service_id,
+            code = 200,
+            count = 1,
+            duration = 1,
+          }, {
+            at = ats[2],
+            consumer_id = consumer_id,
+            route_id    = route_id,
+            service_id  = service_id,
+            code = 200,
+            count = 3,
+            duration = 60,
+          },
+        }
+
+        for i = 1, 2 do
+          assert.same(expected[i], res[i])
+        end
+
       end)
     end)
 
@@ -938,7 +990,37 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
     end)
 
-    describe("get_status_code_classes()", function()
+    describe("get_status_codes() - validation", function()
+      it("rejects invalid query_type", function()
+        local res, err = vitals:get_status_codes({
+          entity_type = "service",
+          duration    = "foo",
+          level       = "cluster",
+          service_id  = utils.uuid(),
+        })
+
+        local expected = "Invalid query params: interval must be 'minutes' or 'seconds'"
+
+        assert.is_nil(res)
+        assert.same(expected, err)
+      end)
+
+      it("rejects invalid level", function()
+        local res, err = vitals:get_status_codes({
+          entity_type = "service",
+          duration    = "minutes",
+          level       = "not_legit",
+          service_id  = utils.uuid(),
+        })
+
+        local expected = "Invalid query params: level must be 'cluster'"
+
+        assert.is_nil(res)
+        assert.same(expected, err)
+      end)
+    end)
+
+    describe("get_status_codes() for cluster", function()
       local vitals
       local now = ngx_time()
       local data_to_insert = {
@@ -949,13 +1031,14 @@ dao_helpers.for_each_dao(function(kong_conf)
 
       setup(function()
         vitals = kong_vitals.new { dao = dao }
-        stub(vitals.strategy, "select_status_code_classes").returns(data_to_insert)
+        stub(vitals.strategy, "select_status_codes").returns(data_to_insert)
       end)
 
       it("rejects invalid query_type", function()
-        local res, err = vitals:get_status_code_classes({
-          duration = "foo",
-          level    = "cluster",
+        local res, err = vitals:get_status_codes({
+          duration    = "foo",
+          level       = "cluster",
+          entity_type = "cluster",
         })
 
         local expected = "Invalid query params: interval must be 'minutes' or 'seconds'"
@@ -965,9 +1048,10 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
 
       it("rejects invalid level", function()
-        local res, err = vitals:get_status_code_classes({
-          duration = "minutes",
-          level    = "not_legit",
+        local res, err = vitals:get_status_codes({
+          duration    = "minutes",
+          level       = "not_legit",
+          entity_type = "cluster",
         })
 
         local expected = "Invalid query params: level must be 'cluster'"
@@ -983,6 +1067,7 @@ dao_helpers.for_each_dao(function(kong_conf)
             interval = "seconds",
             latest_ts = now,
             level = "cluster",
+            entity_type = "cluster",
             stat_labels = {
               "status_code_classes_total",
             },
@@ -1000,9 +1085,10 @@ dao_helpers.for_each_dao(function(kong_conf)
           }
         }
 
-        local res, _ = vitals:get_status_code_classes({
-          duration = "seconds",
-          level    = "cluster",
+        local res, _ = vitals:get_status_codes({
+          duration    = "seconds",
+          level       = "cluster",
+          entity_type = "cluster",
         })
 
         assert.same(res, expected)
@@ -1023,34 +1109,6 @@ dao_helpers.for_each_dao(function(kong_conf)
 
       setup(function()
         stub(vitals.strategy, "select_status_codes").returns(data_to_insert)
-      end)
-
-      it("rejects invalid query_type", function()
-        local res, err = vitals:get_status_codes({
-          entity_type = "service",
-          duration    = "foo",
-          level       = "cluster",
-          service_id  = uuid,
-        })
-
-        local expected = "Invalid query params: interval must be 'minutes' or 'seconds'"
-
-        assert.is_nil(res)
-        assert.same(expected, err)
-      end)
-
-      it("rejects invalid level", function()
-        local res, err = vitals:get_status_codes({
-          entity_type = "service",
-          duration    = "minutes",
-          level       = "not_legit",
-          service_id  = uuid,
-        })
-
-        local expected = "Invalid query params: level must be 'cluster'"
-
-        assert.is_nil(res)
-        assert.same(expected, err)
       end)
 
       it("returns converted stats", function()
@@ -1111,34 +1169,6 @@ dao_helpers.for_each_dao(function(kong_conf)
         stub(vitals.strategy, "select_status_codes").returns(from_db)
       end)
 
-      it("rejects invalid query_type", function()
-        local res, err = vitals:get_status_codes({
-          entity_type = "route",
-          duration    = "foo",
-          level       = "cluster",
-          entity_id   = uuid,
-        })
-
-        local expected = "Invalid query params: interval must be 'minutes' or 'seconds'"
-
-        assert.is_nil(res)
-        assert.same(expected, err)
-      end)
-
-      it("rejects invalid level", function()
-        local res, err = vitals:get_status_codes({
-          entity_type = "route",
-          duration    = "minutes",
-          level       = "not_legit",
-          entity_id   = uuid,
-        })
-
-        local expected = "Invalid query params: level must be 'cluster'"
-
-        assert.is_nil(res)
-        assert.same(expected, err)
-      end)
-
       it("returns converted stats", function()
 
         local expected = {
@@ -1175,6 +1205,66 @@ dao_helpers.for_each_dao(function(kong_conf)
           duration    = "seconds",
           level       = "cluster",
           entity_id   = uuid,
+        })
+
+        assert.same(expected, res)
+      end)
+    end)
+
+    describe("get_status_codes() for consumer_route", function()
+      local now = ngx_time()
+      local route_id = utils.uuid()
+      local service_id = utils.uuid()
+      local consumer_id = utils.uuid()
+
+      local from_db = {
+        { consumer_id = consumer_id, service_id = service_id, route_id = route_id, at = now, code = 400, count = 10 },
+        { consumer_id = consumer_id, service_id = service_id, route_id = route_id, at = now, code = 200, count = 11 },
+        { consumer_id = consumer_id, service_id = service_id, route_id = route_id, at = now - 1 , code = 200, count = 5 },
+        { consumer_id = consumer_id, service_id = service_id, route_id = route_id, at = now - 1 , code = 204, count = 3 },
+        { consumer_id = consumer_id, service_id = service_id, route_id = route_id, at = now - 2, code = 500, count = 1 },
+      }
+
+      setup(function()
+        stub(vitals.strategy, "select_status_codes").returns(from_db)
+      end)
+
+      it("returns converted stats", function()
+
+        local expected = {
+          meta = {
+            entity_type = "consumer_route",
+            entity_id = consumer_id,
+            earliest_ts = now - 2,
+            interval = "seconds",
+            latest_ts = now,
+            level = "cluster",
+            stat_labels = {
+              "status_codes_per_consumer_route_total",
+            },
+          },
+          stats = {
+            cluster = {
+              [tostring(now - 2)] = {
+                ["500"] = 1,
+              },
+              [tostring(now - 1)] = {
+                ["200"] = 5,
+                ["204"] = 3,
+              },
+              [tostring(now)] = {
+                ["400"] = 10,
+                ["200"] = 11
+              },
+            }
+          }
+        }
+
+        local res, _ = vitals:get_status_codes({
+          entity_type = "consumer_route",
+          duration    = "seconds",
+          level       = "cluster",
+          entity_id   = consumer_id,
         })
 
         assert.same(expected, res)

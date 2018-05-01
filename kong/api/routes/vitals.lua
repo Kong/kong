@@ -33,10 +33,11 @@ return {
     GET = function(self, dao, helpers)
       local opts = {
         duration = self.params.interval,
-        level    = "cluster"
+        level      = "cluster",
+        entity_type = "cluster"
       }
 
-      local status_codes, err = singletons.vitals:get_status_code_classes(opts)
+      local status_codes, err = singletons.vitals:get_status_codes(opts)
 
       if err then
         if err:find("Invalid query params", nil, true) then
@@ -195,6 +196,61 @@ return {
       end
 
       return helpers.responses.send_HTTP_OK(status_codes)
+    end
+  },
+  ["/vitals/status_codes/by_consumer"] = {
+    GET = function(self, dao, helpers)
+      self.params.username_or_id = ngx.unescape_uri(self.params.consumer_id)
+      crud.find_consumer_by_username_or_id(self, dao, helpers)
+
+      local opts = {
+        entity_type = "consumer",
+        duration    = self.params.interval,
+        entity_id   = self.consumer.id,
+        level       = "cluster",
+      }
+
+      local requested_routes, err = singletons.vitals:get_status_codes(opts)
+
+      if err then
+        if err:find("Invalid query params", nil, true) then
+          return helpers.responses.send_HTTP_BAD_REQUEST("Invalid query params: interval must be 'minutes' or 'seconds'")
+
+        else
+          return helpers.yield_error(err)
+        end
+      end
+
+      return helpers.responses.send_HTTP_OK(requested_routes)
+    end
+  },
+  ["/vitals/status_codes/by_consumer_and_route"] = {
+    GET = function(self, dao, helpers)
+      self.params.username_or_id = ngx.unescape_uri(self.params.consumer_id)
+      crud.find_consumer_by_username_or_id(self, dao, helpers)
+
+      local opts = {
+        entity_type = "consumer_route",
+        duration    = self.params.interval,
+        consumer_id   = self.consumer.id,
+        entity_id   = self.consumer.id,
+        level       = "cluster",
+      }
+
+      local key_by = "route_id"
+
+      local requested_routes, err = singletons.vitals:get_status_codes(opts, key_by)
+
+      if err then
+        if err:find("Invalid query params", nil, true) then
+          return helpers.responses.send_HTTP_BAD_REQUEST("Invalid query params: interval must be 'minutes' or 'seconds'")
+
+        else
+          return helpers.yield_error(err)
+        end
+      end
+
+      return helpers.responses.send_HTTP_OK(requested_routes)
     end
   },
 }

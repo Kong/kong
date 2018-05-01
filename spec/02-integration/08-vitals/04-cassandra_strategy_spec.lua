@@ -44,6 +44,9 @@ dao_helpers.for_each_dao(function(kong_conf)
       cluster:execute("TRUNCATE vitals_node_meta")
       cluster:execute("TRUNCATE vitals_consumers")
       cluster:execute("TRUNCATE vitals_code_classes_by_cluster")
+      cluster:execute("TRUNCATE vitals_codes_by_service")
+      cluster:execute("TRUNCATE vitals_codes_by_route")
+      cluster:execute("TRUNCATE vitals_codes_by_consumer_route")
     end)
 
     after_each(function()
@@ -57,6 +60,9 @@ dao_helpers.for_each_dao(function(kong_conf)
       cluster:execute("TRUNCATE vitals_node_meta")
       cluster:execute("TRUNCATE vitals_consumers")
       cluster:execute("TRUNCATE vitals_code_classes_by_cluster")
+      cluster:execute("TRUNCATE vitals_codes_by_service")
+      cluster:execute("TRUNCATE vitals_codes_by_route")
+      cluster:execute("TRUNCATE vitals_codes_by_consumer_route")
     end)
 
     describe(":init()", function()
@@ -1145,142 +1151,6 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
     end)
 
-
-    describe(":select_status_code_classes()", function()
-      -- data starts a couple minutes ago
-      local start_at = time() - 90
-      local start_minute = start_at - (start_at % 60)
-
-      before_each(function()
-        local class_4xx_data = {
-          {4, start_at,      1, 1},
-          {4, start_at + 1,  1, 3},
-          {4, start_minute, 60, 4},
-          {4, start_at + 60, 1, 7},
-          {4, start_minute + 60, 60, 7},
-        }
-
-        local class_5xx_data = {
-          {5, start_at + 2,  1, 2},
-          {5, start_minute, 60, 2},
-          {5, start_at + 60, 1, 5},
-          {5, start_at + 61, 1, 6},
-          {5, start_at + 62, 1, 8},
-          {5, start_minute + 60, 60, 19},
-        }
-
-        assert(strategy:insert_status_code_classes(class_4xx_data))
-        assert(strategy:insert_status_code_classes(class_5xx_data))
-      end)
-
-      after_each(function()
-        cluster:execute("TRUNCATE vitals_code_classes_by_cluster")
-      end)
-
-      it("returns seconds counts across the cluster", function()
-        local opts = {
-          duration = 1,
-          level = "cluster",
-        }
-
-        local results, _ = strategy:select_status_code_classes(opts)
-
-        local expected = {
-          {
-            node_id     = "cluster",
-            code_class  = 4,
-            at          = start_at,
-            count       = 1,
-          },
-          {
-            node_id     = "cluster",
-            code_class  = 5,
-            at          = start_at + 2,
-            count       = 2,
-          },
-          {
-            node_id     = "cluster",
-            code_class  = 4,
-            at          = start_at + 1,
-            count       = 3,
-          },
-          {
-            node_id     = "cluster",
-            code_class  = 5,
-            at          = start_at + 60,
-            count       = 5,
-          },
-          {
-            node_id     = "cluster",
-            code_class  = 5,
-            at          = start_at + 61,
-            count       = 6,
-          },
-          {
-            node_id     = "cluster",
-            code_class  = 4,
-            at          = start_at + 60,
-            count       = 7,
-          },
-          {
-            node_id     = "cluster",
-            code_class  = 5,
-            at          = start_at + 62,
-            count       = 8,
-          },
-        }
-
-        table.sort(results, function(a,b)
-          return a.count < b.count
-        end)
-
-        assert.same(expected, results)
-      end)
-
-
-      it("returns minutes counts across the cluster", function()
-        local opts = {
-          duration    = 60,
-          level       = "cluster",
-        }
-
-        local results, _ = strategy:select_status_code_classes(opts)
-
-        local expected = {
-          {
-            node_id     = "cluster",
-            code_class  = 5,
-            at          = start_minute,
-            count       = 2,
-          },
-          {
-            node_id     = "cluster",
-            code_class  = 4,
-            at          = start_minute,
-            count       = 4,
-          },
-          {
-            node_id     = "cluster",
-            code_class  = 4,
-            at          = start_minute + 60,
-            count       = 7,
-          },
-          {
-            node_id     = "cluster",
-            code_class  = 5,
-            at          = start_minute + 60,
-            count       = 19,
-          },
-        }
-
-        table.sort(results, function(a,b)
-          return a.count < b.count
-        end)
-
-        assert.same(expected, results)
-      end)
-    end)
-
     describe(":delete_status_code_classes()", function()
       before_each(function()
         cluster:execute("TRUNCATE vitals_code_classes_by_cluster")
@@ -1330,16 +1200,8 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
     end)
 
-    describe(":insert_status_codes_by_service()", function()
-      before_each(function()
-        cluster:execute("TRUNCATE vitals_codes_by_service")
-      end)
-
-      after_each(function()
-        cluster:execute("TRUNCATE vitals_codes_by_service")
-      end)
-
-      it("turns Lua tables into Cassandra rows", function()
+    describe(":insert_status_codes", function()
+      it("inserts service data", function()
         local uuid = utils.uuid()
 
         local now    = ngx.time()
@@ -1351,7 +1213,16 @@ dao_helpers.for_each_dao(function(kong_conf)
           { uuid, "500", tostring(minute), "60", 5 },
         }
 
-        assert(strategy:insert_status_codes_by_service(data))
+        local opts = {
+          entity_type = "service",
+          prune = true,
+        }
+
+        assert(strategy:insert_status_codes(data, opts))
+
+        local q = "select * from vitals_codes_by_service"
+
+        local results = cluster:execute(q)
 
         local expected = {
           {
@@ -1380,13 +1251,137 @@ dao_helpers.for_each_dao(function(kong_conf)
           },
           type = 'ROWS',
         }
-        local res, _ = cluster:execute("select * from vitals_codes_by_service")
 
-        table.sort(res, function(a,b)
+        table.sort(results, function(a,b)
           return a.count < b.count
         end)
 
-        assert.same(expected, res)
+        assert.same(expected, results)
+      end)
+
+      it("inserts route data", function()
+        local route_id   = utils.uuid()
+        local service_id = utils.uuid()
+
+        local now    = ngx.time()
+        local minute = now - (now % 60)
+
+        local data = {
+          { route_id, service_id, "404", tostring(now), "1", 4 },
+          { route_id, service_id, "404", tostring(now - 1), "1", 2 },
+          { route_id, service_id, "500", tostring(minute), "60", 5 },
+        }
+
+        local opts = {
+          entity_type = "route",
+          prune       = true,
+        }
+
+        assert(strategy:insert_status_codes(data, opts))
+
+        local q = "select * from vitals_codes_by_route"
+
+        local results = cluster:execute(q)
+
+        local expected = {
+          {
+            at       = (now - 1) * 1000,
+            code     = 404,
+            count    = 2,
+            duration = 1,
+            route_id = route_id,
+          },
+          {
+            at       = now * 1000,
+            code     = 404,
+            count    = 4,
+            duration = 1,
+            route_id = route_id,
+          },
+          {
+            at       = minute * 1000,
+            code     = 500,
+            count    = 5,
+            duration = 60,
+            route_id = route_id,
+          },
+          meta = {
+            has_more_pages = false,
+          },
+          type = 'ROWS',
+        }
+
+        table.sort(results, function(a,b)
+          return a.count < b.count
+        end)
+
+        assert.same(expected, results)
+      end)
+
+      it("inserts consumer data", function()
+        local consumer_id = utils.uuid()
+        local route_id    = utils.uuid()
+        local service_id  = utils.uuid()
+
+        local now    = ngx.time()
+        local minute = now - (now % 60)
+
+        local data = {
+          { consumer_id, route_id, service_id, "404", tostring(now), "1", 4 },
+          { consumer_id, route_id, service_id, "404", tostring(now - 1), "1", 2 },
+          { consumer_id, route_id, service_id, "500", tostring(minute), "60", 5 },
+        }
+
+        local opts = {
+          entity_type = "consumer_route",
+          prune       = true,
+        }
+
+        assert(strategy:insert_status_codes(data, opts))
+
+        local q = "select * from vitals_codes_by_consumer_route"
+
+        local results = cluster:execute(q)
+
+        local expected = {
+          {
+            at          = (now - 1) * 1000,
+            code        = 404,
+            count       = 2,
+            duration    = 1,
+            consumer_id = consumer_id,
+            route_id    = route_id,
+            service_id  = service_id,
+          },
+          {
+            at          = now * 1000,
+            code        = 404,
+            count       = 4,
+            duration    = 1,
+            consumer_id = consumer_id,
+            route_id    = route_id,
+            service_id  = service_id,
+          },
+          {
+            at          = minute * 1000,
+            code        = 500,
+            count       = 5,
+            duration    = 60,
+            consumer_id = consumer_id,
+            route_id    = route_id,
+            service_id  = service_id,
+          },
+          meta = {
+            has_more_pages = false,
+          },
+          type = 'ROWS',
+        }
+
+        table.sort(results, function(a,b)
+          return a.count < b.count
+        end)
+
+        assert.same(expected, results)
       end)
 
       it("deletes old rows when opts.prune evaluates to true", function()
@@ -1420,48 +1415,274 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         assert.spy(s).was_not_called()
       end)
+    end)
 
-      pending("validates opts", function()
-        local data = { data = "anything" }
-        local opts = { entity_type = "foo" }
-        local _, err = strategy.insert_status_codes(data, opts)
+    describe(":insert_status_codes_by_service()", function()
+      it("turns Lua tables into Cassandra rows", function()
+        stub(cassandra_strategy, "insert_status_codes")
 
-        assert.is_nil(_)
-        assert.same("entity_type must be 'service' or 'route'", err)
+        local data = {}
+
+        local opts = {
+          entity_type = "service",
+          prune = true,
+        }
+
+        strategy:insert_status_codes_by_service(data)
+        assert.stub(cassandra_strategy.insert_status_codes).was_called_with(strategy, data, opts)
       end)
     end)
 
-    describe(":select_status_codes", function()
-      local service_ids = { utils.uuid(), utils.uuid() }
-      local route_id_1 = utils.uuid()
-      local route_id_2 = utils.uuid()
+    describe(":select_status_codes (cluster)", function()
+      -- data starts a couple minutes ago
+      local start_at = time() - 90
+      local start_minute = start_at - (start_at % 60)
 
-      local now = ngx.time()
+      before_each(function()
+        local class_4xx_data = {
+          {4, start_at,      1, 1},
+          {4, start_at + 1,  1, 3},
+          {4, start_minute, 60, 4},
+          {4, start_at + 60, 1, 7},
+          {4, start_minute + 60, 60, 7},
+        }
+
+        local class_5xx_data = {
+          {5, start_at + 2,  1, 2},
+          {5, start_minute, 60, 2},
+          {5, start_at + 60, 1, 5},
+          {5, start_at + 61, 1, 6},
+          {5, start_at + 62, 1, 8},
+          {5, start_minute + 60, 60, 19},
+        }
+
+        assert(strategy:insert_status_code_classes(class_4xx_data))
+        assert(strategy:insert_status_code_classes(class_5xx_data))
+      end)
+
+      after_each(function()
+        cluster:execute("TRUNCATE vitals_code_classes_by_cluster")
+      end)
+
+      it("returns seconds counts across the cluster", function()
+        local opts = {
+          duration    = 1,
+          level       = "cluster",
+          entity_type = "cluster",
+        }
+
+        local results, _ = strategy:select_status_codes(opts)
+
+        local expected = {
+          {
+            code_class = 4,
+            at         = start_at,
+            count      = 1,
+          },
+          {
+            code_class = 5,
+            at         = start_at + 2,
+            count      = 2,
+          },
+          {
+            code_class = 4,
+            at         = start_at + 1,
+            count      = 3,
+          },
+          {
+            code_class = 5,
+            at         = start_at + 60,
+            count      = 5,
+          },
+          {
+            code_class = 5,
+            at         = start_at + 61,
+            count      = 6,
+          },
+          {
+            code_class = 4,
+            at         = start_at + 60,
+            count      = 7,
+          },
+          {
+            code_class = 5,
+            at         = start_at + 62,
+            count      = 8,
+          },
+        }
+
+        table.sort(results, function(a,b)
+          return a.count < b.count
+        end)
+
+        assert.same(expected, results)
+      end)
+
+
+      it("returns minutes counts across the cluster", function()
+        local opts = {
+          duration    = 60,
+          level       = "cluster",
+          entity_type = "cluster",
+        }
+
+        local results, _ = strategy:select_status_codes(opts)
+
+        local expected = {
+          {
+            code_class = 5,
+            at         = start_minute,
+            count      = 2,
+          },
+          {
+            code_class = 4,
+            at         = start_minute,
+            count      = 4,
+          },
+          {
+            code_class = 4,
+            at         = start_minute + 60,
+            count      = 7,
+          },
+          {
+            code_class = 5,
+            at         = start_minute + 60,
+            count      = 19,
+          },
+        }
+
+        table.sort(results, function(a,b)
+          return a.count < b.count
+        end)
+
+        assert.same(expected, results)
+      end)
+    end)
+
+    describe(":select_status_codes (service)", function()
+      local uuid   = utils.uuid()
+      local uuid_2 = utils.uuid()
+
+      assert(strategy:init(uuid, "testhostname"))
+
+      local now    = time()
       local minute = now - (now % 60)
 
       before_each(function()
-        cluster:execute("TRUNCATE vitals_codes_by_service")
-        local q = "UPDATE vitals_codes_by_service SET count=count+? WHERE service_id=? AND code=? AND at=? AND duration=?"
-
-        local test_data = {
-          {cassandra.counter(1), cassandra.uuid(service_ids[1]), 200, cassandra.timestamp(now * 1000), 1},
-          {cassandra.counter(3), cassandra.uuid(service_ids[1]), 200, cassandra.timestamp((now + 1) * 1000), 1},
-          {cassandra.counter(4), cassandra.uuid(service_ids[1]), 200, cassandra.timestamp((now + 2) * 1000), 1},
-          {cassandra.counter(19), cassandra.uuid(service_ids[1]), 200, cassandra.timestamp(minute * 1000), 60},
-          {cassandra.counter(5), cassandra.uuid(service_ids[2]), 403, cassandra.timestamp((now + 1) * 1000), 1},
-          {cassandra.counter(7), cassandra.uuid(service_ids[2]), 404, cassandra.timestamp((now + 2) * 1000), 1},
-          {cassandra.counter(20), cassandra.uuid(service_ids[2]), 404, cassandra.timestamp(minute * 1000), 60},
-          {cassandra.counter(24), cassandra.uuid(service_ids[2]), 500, cassandra.timestamp((minute + 60) * 1000), 60},
+        local service_data = {
+          { cassandra.counter(1), cassandra.uuid(uuid), 200, cassandra.timestamp(now * 1000), 1 },
+          { cassandra.counter(3), cassandra.uuid(uuid), 200, cassandra.timestamp((now + 1) * 1000), 1 },
+          { cassandra.counter(4), cassandra.uuid(uuid), 200, cassandra.timestamp((now + 2) * 1000), 1 },
+          { cassandra.counter(19), cassandra.uuid(uuid), 200, cassandra.timestamp(minute * 1000), 60 },
+          { cassandra.counter(5), cassandra.uuid(uuid_2), 403, cassandra.timestamp((now + 1) * 1000), 1 },
+          { cassandra.counter(7), cassandra.uuid(uuid_2), 404, cassandra.timestamp((now + 2) * 1000), 1 },
+          { cassandra.counter(20), cassandra.uuid(uuid_2), 404, cassandra.timestamp(minute * 1000), 60 },
+          { cassandra.counter(24), cassandra.uuid(uuid_2), 500, cassandra.timestamp((minute + 60) * 1000), 60 },
         }
 
-        for _, row in ipairs(test_data) do
+        local q = [[
+          UPDATE vitals_codes_by_service
+            SET count=count + ?
+            WHERE service_id = ?
+            AND code = ?
+            AND at = ?
+            AND duration = ?
+        ]]
+
+        for _, row in ipairs(service_data) do
           assert(cluster:execute(q, row, { prepared = true, counter  = true }))
         end
+      end)
 
-        local res, _ = cluster:execute("select * from vitals_codes_by_service")
-        assert.same(8, #res)
+      it("returns codes by service (seconds)", function()
+        local opts = {
+          duration    = 1,
+          entity_id   = uuid,
+          entity_type = "service",
+        }
 
-        cluster:execute("TRUNCATE vitals_codes_by_route")
+        local results, err = strategy:select_status_codes(opts)
+        assert.is_nil(err)
+
+        local expected = {
+          {
+            at         = now,
+            code       = 200,
+            count      = 1,
+            service_id = uuid,
+          },
+          {
+            at         = now + 1,
+            code       = 200,
+            count      = 3,
+            service_id = uuid,
+          },
+          {
+            at         = now + 2,
+            code       = 200,
+            count      = 4,
+            service_id = uuid,
+          },
+        }
+
+        table.sort(results, function(a,b)
+          return a.count < b.count
+        end)
+
+        assert.same(expected, results)
+      end)
+
+      it("returns codes by service (minutes)", function()
+        local opts = {
+          duration    = 60,
+          entity_id   = uuid_2,
+          entity_type = "service",
+        }
+
+        local results, err = strategy:select_status_codes(opts)
+
+        assert.is_nil(err)
+
+        local expected = {
+          {
+            at         = minute,
+            code       = 404,
+            count      = 20,
+            service_id = uuid_2,
+          },
+          {
+            at         = minute + 60,
+            code       = 500,
+            count      = 24,
+            service_id = uuid_2,
+          },
+        }
+
+        assert.same(expected, results)
+      end)
+    end)
+
+    describe(":select_status_codes (route)", function()
+      local uuid   = utils.uuid()
+      local uuid_2 = utils.uuid()
+
+      assert(strategy:init(uuid, "testhostname"))
+
+      local now    = time()
+      local minute = now - (now % 60)
+
+      before_each(function()
+        local route_data = {
+          { cassandra.counter(1), cassandra.uuid(uuid), 200, cassandra.timestamp(now * 1000), 1 },
+          { cassandra.counter(3), cassandra.uuid(uuid), 200, cassandra.timestamp((now + 1) * 1000), 1 },
+          { cassandra.counter(4), cassandra.uuid(uuid), 200, cassandra.timestamp((now + 2) * 1000), 1 },
+          { cassandra.counter(19), cassandra.uuid(uuid), 200, cassandra.timestamp(minute * 1000), 60 },
+          { cassandra.counter(5), cassandra.uuid(uuid_2), 403, cassandra.timestamp((now + 1) * 1000), 1 },
+          { cassandra.counter(7), cassandra.uuid(uuid_2), 404, cassandra.timestamp((now + 2) * 1000), 1 },
+          { cassandra.counter(20), cassandra.uuid(uuid_2), 404, cassandra.timestamp(minute * 1000), 60 },
+          { cassandra.counter(24), cassandra.uuid(uuid_2), 500, cassandra.timestamp((minute + 60) * 1000), 60 },
+        }
+
         local q = [[
           UPDATE vitals_codes_by_route
             SET count=count + ?
@@ -1471,99 +1692,218 @@ dao_helpers.for_each_dao(function(kong_conf)
             AND duration = ?
         ]]
 
-        local test_data = {
-          {cassandra.counter(5), cassandra.uuid(route_id_1), 400, cassandra.timestamp((now - 3) * 1000), 1},
-          {cassandra.counter(25), cassandra.uuid(route_id_1), 301, cassandra.timestamp(minute * 1000), 60},
-          {cassandra.counter(57), cassandra.uuid(route_id_1), 404, cassandra.timestamp((minute + 120) * 1000), 60},
-          {cassandra.counter(8), cassandra.uuid(route_id_2), 500, cassandra.timestamp((now - 3) * 1000), 1},
-          {cassandra.counter(31), cassandra.uuid(route_id_2), 201, cassandra.timestamp(minute * 1000), 60},
-          {cassandra.counter(44), cassandra.uuid(route_id_2), 429, cassandra.timestamp((minute + 60) * 1000), 60},
-        }
-
-        for _, row in ipairs(test_data) do
+        for _, row in ipairs(route_data) do
           assert(cluster:execute(q, row, { prepared = true, counter  = true }))
         end
-
-        local res, _ = cluster:execute("select * from vitals_codes_by_route")
-        assert.same(6, #res)
       end)
 
-      after_each(function()
-        cluster:execute("TRUNCATE vitals_codes_by_service")
-        cluster:execute("TRUNCATE vitals_codes_by_route")
-      end)
-
-      it("retrieves codes by service", function()
+      it("returns codes by route (seconds)", function()
         local opts = {
-          entity_type = "service",
-          entity_id = service_ids[1],
-          duration = 1,
-        }
-
-        local res, err = strategy:select_status_codes(opts)
-        assert.is_nil(err)
-
-        table.sort(res, function(a,b)
-          return a.count < b.count
-        end)
-
-        local expected = {
-          {
-            at = now,
-            code = 200,
-            count = 1,
-            node_id = 'cluster',
-            service_id = service_ids[1],
-          },
-          {
-            at = now + 1,
-            code = 200,
-            count = 3,
-            node_id = 'cluster',
-            service_id = service_ids[1],
-          },
-          {
-            at = now + 2,
-            code = 200,
-            count = 4,
-            node_id = 'cluster',
-            service_id = service_ids[1],
-          }
-        }
-        assert.same(expected, res)
-      end)
-
-      it("retrieves codes by route", function()
-        local opts = {
+          duration    = 1,
+          entity_id   = uuid,
           entity_type = "route",
-          entity_id = route_id_1,
-          duration = 60,
         }
 
-        local res, err = strategy:select_status_codes(opts)
+        local results, err = strategy:select_status_codes(opts)
         assert.is_nil(err)
-
-        table.sort(res, function(a,b)
-          return a.count < b.count
-        end)
 
         local expected = {
           {
-            at = minute,
-            code = 301,
-            count = 25,
-            node_id = "cluster",
-            route_id = route_id_1,
+            at       = now,
+            code     = 200,
+            count    = 1,
+            route_id = uuid,
           },
           {
-            at = minute + 120,
-            code = 404,
-            count = 57,
-            node_id = "cluster",
-            route_id = route_id_1,
-          }
+            at       = now + 1,
+            code     = 200,
+            count    = 3,
+            route_id = uuid,
+          },
+          {
+            at       = now + 2,
+            code     = 200,
+            count    = 4,
+            route_id = uuid,
+          },
         }
-        assert.same(expected, res)
+
+        table.sort(results, function(a,b)
+          return a.count < b.count
+        end)
+
+        assert.same(expected, results)
+      end)
+
+      it("returns codes by route (minutes)", function()
+        local opts = {
+          duration    = 60,
+          entity_id   = uuid_2,
+          entity_type = "route",
+        }
+
+        local results, err = strategy:select_status_codes(opts)
+
+        assert.is_nil(err)
+
+        local expected = {
+          {
+            at       = minute,
+            code     = 404,
+            count    = 20,
+            route_id = uuid_2,
+          },
+          {
+            at       = minute + 60,
+            code     = 500,
+            count    = 24,
+            route_id = uuid_2,
+          },
+        }
+
+        assert.same(expected, results)
+      end)
+    end)
+
+    describe(":select_status_codes (consumer)", function()
+      local uuid       = utils.uuid()
+      local uuid_2     = utils.uuid()
+      local route_id   = utils.uuid()
+      local route_id_2 = utils.uuid()
+      local service_id = utils.uuid()
+
+      assert(strategy:init(uuid, "testhostname"))
+
+      local now    = time()
+      local minute = now - (now % 60)
+
+      before_each(function()
+        local consumer_data = {
+          { cassandra.counter(1), cassandra.uuid(uuid), cassandra.uuid(route_id), cassandra.uuid(service_id), 200, cassandra.timestamp(now * 1000), 1 },
+          { cassandra.counter(3), cassandra.uuid(uuid), cassandra.uuid(route_id), cassandra.uuid(service_id), 200, cassandra.timestamp((now + 1) * 1000), 1 },
+          { cassandra.counter(4), cassandra.uuid(uuid), cassandra.uuid(route_id), cassandra.uuid(service_id), 200, cassandra.timestamp((now + 2) * 1000), 1 },
+          { cassandra.counter(19), cassandra.uuid(uuid), cassandra.uuid(route_id), cassandra.uuid(service_id), 200, cassandra.timestamp(minute * 1000), 60 },
+          { cassandra.counter(5), cassandra.uuid(uuid_2), cassandra.uuid(route_id), cassandra.uuid(service_id), 403, cassandra.timestamp((now + 1) * 1000), 1 },
+          { cassandra.counter(7), cassandra.uuid(uuid_2), cassandra.uuid(route_id), cassandra.uuid(service_id), 404, cassandra.timestamp((now + 2) * 1000), 1 },
+          { cassandra.counter(20), cassandra.uuid(uuid_2), cassandra.uuid(route_id), cassandra.uuid(service_id), 404, cassandra.timestamp(minute * 1000), 60 },
+          { cassandra.counter(24), cassandra.uuid(uuid_2), cassandra.uuid(route_id_2), cassandra.uuid(service_id), 500, cassandra.timestamp((minute + 60) * 1000), 60 },
+        }
+
+        local q = [[
+          UPDATE vitals_codes_by_consumer_route
+            SET count=count + ?
+            WHERE consumer_id = ?
+            AND route_id = ?
+            AND service_id = ?
+            AND code = ?
+            AND at = ?
+            AND duration = ?
+        ]]
+
+        for _, row in ipairs(consumer_data) do
+          assert(cluster:execute(q, row, { prepared = true, counter  = true }))
+        end
+      end)
+
+      it("returns codes by consumer (seconds)", function()
+        local opts = {
+          duration    = 1,
+          entity_id   = uuid,
+          entity_type = "consumer",
+        }
+
+        local results, err = strategy:select_status_codes(opts)
+        assert.is_nil(err)
+
+        local expected = {
+          {
+            at          = now,
+            code        = 200,
+            count       = 1,
+            consumer_id = uuid,
+          },
+          {
+            at          = now + 1,
+            code        = 200,
+            count       = 3,
+            consumer_id = uuid,
+          },
+          {
+            at          = now + 2,
+            code        = 200,
+            count       = 4,
+            consumer_id = uuid,
+          },
+        }
+
+        table.sort(results, function(a,b)
+          return a.count < b.count
+        end)
+
+        assert.same(expected, results)
+      end)
+
+      it("returns codes by consumer (minutes)", function()
+        local opts = {
+          duration    = 60,
+          entity_id   = uuid_2,
+          entity_type = "consumer",
+        }
+
+        local results, err = strategy:select_status_codes(opts)
+
+        assert.is_nil(err)
+
+        local expected = {
+          {
+            at          = minute,
+            code        = 404,
+            count       = 20,
+            consumer_id = uuid_2,
+          },
+          {
+            at          = minute + 60,
+            code        = 500,
+            count       = 24,
+            consumer_id = uuid_2,
+          },
+        }
+
+        assert.same(expected, results)
+      end)
+
+      it("returns codes for a consumer and all routes", function()
+        local opts = {
+          duration    = 60,
+          entity_id   = uuid_2,
+          entity_type = "consumer_route",
+        }
+
+        local results, err = strategy:select_status_codes(opts)
+        assert.is_nil(err)
+
+        local expected = {
+          {
+            at          = minute,
+            code        = 404,
+            count       = 20,
+            consumer_id = uuid_2,
+            route_id    = route_id,
+          },
+          {
+            at          = minute + 60,
+            code        = 500,
+            count       = 24,
+            consumer_id = uuid_2,
+            route_id    = route_id_2,
+          },
+        }
+
+        table.sort(results, function(a,b)
+          return a.count < b.count
+        end)
+
+        assert.same(expected, results)
       end)
     end)
 
@@ -1571,7 +1911,6 @@ dao_helpers.for_each_dao(function(kong_conf)
       local service_ids = { utils.uuid(), utils.uuid() }
 
       before_each(function()
-        cluster:execute("TRUNCATE vitals_codes_by_service")
         local q = "UPDATE vitals_codes_by_service SET count=count+? WHERE service_id=? AND code=? AND at=? AND duration=?"
 
         -- the rows commented with "-- x" we expect will be deleted based on
@@ -1593,10 +1932,6 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         local res, _ = cluster:execute("select * from vitals_codes_by_service")
         assert.same(8, #res)
-      end)
-
-      after_each(function()
-        cluster:execute("TRUNCATE vitals_codes_by_service")
       end)
 
       it("cleans up status_codes_by_service", function()
@@ -1626,10 +1961,6 @@ dao_helpers.for_each_dao(function(kong_conf)
     end)
 
     describe(":insert_status_codes_by_route()", function()
-      before_each(function()
-        cluster:execute("TRUNCATE vitals_codes_by_route")
-      end)
-
       it("turns Lua tables into Cassandra rows", function()
         stub(cassandra_strategy, "insert_status_codes")
 
@@ -1637,10 +1968,26 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         local opts = {
           entity_type = "route",
-          prune = true,
+          prune       = true,
         }
 
         strategy:insert_status_codes_by_route(data)
+        assert.stub(cassandra_strategy.insert_status_codes).was_called_with(strategy, data, opts)
+      end)
+    end)
+
+    describe(":insert_status_codes_by_consumer_and_route()", function()
+      it("turns Lua tables into Cassandra rows", function()
+        stub(cassandra_strategy, "insert_status_codes")
+
+        local data = {}
+
+        local opts = {
+          entity_type = "consumer_route",
+          prune       = true,
+        }
+
+        strategy:insert_status_codes_by_consumer_and_route(data)
         assert.stub(cassandra_strategy.insert_status_codes).was_called_with(strategy, data, opts)
       end)
     end)
@@ -1649,7 +1996,6 @@ dao_helpers.for_each_dao(function(kong_conf)
       local route_ids = { utils.uuid(), utils.uuid() }
 
       before_each(function()
-        cluster:execute("TRUNCATE vitals_codes_by_route")
         local q = "UPDATE vitals_codes_by_route SET count=count+? WHERE route_id=? AND code=? AND at=? AND duration=?"
 
         -- the rows commented with "-- x" we expect will be deleted based on
@@ -1671,10 +2017,6 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         local res, _ = cluster:execute("select * from vitals_codes_by_route")
         assert.same(8, #res)
-      end)
-
-      after_each(function()
-        cluster:execute("TRUNCATE vitals_codes_by_route")
       end)
 
       it("cleans up status_codes_by_route", function()
@@ -1705,14 +2047,6 @@ dao_helpers.for_each_dao(function(kong_conf)
 
     describe(":delete_status_codes()", function()
       local service_ids = { utils.uuid(), utils.uuid() }
-
-      before_each(function()
-        cluster:execute("TRUNCATE vitals_codes_by_service")
-      end)
-
-      after_each(function()
-        cluster:execute("TRUNCATE vitals_codes_by_service")
-      end)
 
       it("cleans up status codes by service", function()
         local q = "UPDATE vitals_codes_by_service SET count=count+? WHERE service_id=? AND code=? AND at=? AND duration=?"

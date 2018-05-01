@@ -284,6 +284,26 @@ dao_helpers.for_each_dao(function(kong_conf)
                     },
                   }
                 },
+                status_codes_per_consumer_route_total = {
+                  levels = {
+                    cluster = {
+                      intervals = {
+                        seconds = { retention_period_seconds = 3600 },
+                        minutes = { retention_period_seconds = 90000 },
+                      },
+                    },
+                  }
+                },
+                status_codes_per_consumer_total = {
+                  levels = {
+                    cluster = {
+                      intervals = {
+                        seconds = { retention_period_seconds = 3600 },
+                        minutes = { retention_period_seconds = 90000 },
+                      },
+                    },
+                  }
+                },
                 status_codes_per_service_total = {
                   levels = {
                     cluster = {
@@ -423,6 +443,7 @@ dao_helpers.for_each_dao(function(kong_conf)
                 interval    = "seconds",
                 latest_ts   = now,
                 level       = "cluster",
+                entity_type = "cluster",
                 stat_labels = {
                   "status_code_classes_total",
                 },
@@ -470,6 +491,7 @@ dao_helpers.for_each_dao(function(kong_conf)
                 interval    = "minutes",
                 latest_ts   = minute_start_at,
                 level       = "cluster",
+                entity_type = "cluster",
                 stat_labels = {
                   "status_code_classes_total",
                 },
@@ -836,6 +858,393 @@ dao_helpers.for_each_dao(function(kong_conf)
               query = {
                 interval = "minutes",
                 route_id = route_id,
+              }
+            })
+            res = assert.res_status(404, res)
+            local json = cjson.decode(res)
+
+            assert.same("Not found", json.message)
+          end)
+        end)
+      end)
+
+      describe("/vitals/status_codes/by_consumer", function()
+        before_each(function()
+          dao.db:truncate_table("consumers")
+          dao.db:truncate_table("vitals_codes_by_consumer_route")
+        end)
+
+        describe("GET", function()
+          it("retrieves the seconds-level response code data for a given consumer", function()
+            local consumer = assert(dao.consumers:insert {
+              username  = "bob",
+              custom_id = "1234"
+            })
+
+            local now        = time()
+            local minute     = now - (now % 60)
+            local route_id   = utils.uuid()
+            local service_id = utils.uuid()
+
+            local test_status_code_data = {
+              { consumer.id, route_id, service_id, "404", tostring(now), "1", 4 },
+              { consumer.id, route_id, service_id, "404", tostring(now - 1), "1", 2 },
+              { consumer.id, route_id, service_id, "500", tostring(minute), "60", 5 },
+            }
+
+            assert(strategy:insert_status_codes_by_consumer_and_route(test_status_code_data))
+
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/status_codes/by_consumer",
+              query = {
+                interval    = "seconds",
+                consumer_id = consumer.id,
+              }
+            })
+
+            res = assert.res_status(200, res)
+            local json = cjson.decode(res)
+
+            local expected = {
+              meta = {
+                entity_type = "consumer",
+                entity_id   = consumer.id,
+                earliest_ts = now - 1,
+                interval    = "seconds",
+                latest_ts   = now,
+                level       = "cluster",
+                stat_labels = {
+                  "status_codes_per_consumer_total",
+                },
+              },
+              stats = {
+                cluster = {
+                  [tostring(now - 1)] = {
+                    ["404"] = 2,
+
+                  },
+                  [tostring(now)] = {
+                    ["404"] = 4,
+                  },
+                }
+              }
+            }
+
+            assert.same(expected, json)
+          end)
+
+          it("retrieves the minutes-level response code data for a given consumer", function()
+            local consumer = assert(dao.consumers:insert {
+              username  = "bob",
+              custom_id = "1234"
+            })
+
+            local minute_start_at = time() - (time() % 60)
+            local route_id        = utils.uuid()
+            local service_id      = utils.uuid()
+
+            local test_status_code_data = {
+              { consumer.id, route_id, service_id, "404", tostring(minute_start_at), "60", 101},
+              { consumer.id, route_id, service_id, "200", tostring(minute_start_at - 60), "60", 205},
+              { consumer.id, route_id, service_id, "500", tostring(minute_start_at - 60), "60", 6},
+            }
+
+            assert(strategy:insert_status_codes_by_consumer_and_route(test_status_code_data))
+
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/status_codes/by_consumer",
+              query = {
+                interval = "minutes",
+                consumer_id = consumer.id,
+              }
+            })
+            res = assert.res_status(200, res)
+            local json = cjson.decode(res)
+
+            local expected = {
+              meta = {
+                entity_type = "consumer",
+                entity_id   = consumer.id,
+                earliest_ts = minute_start_at - 60,
+                interval    = "minutes",
+                latest_ts   = minute_start_at,
+                level       = "cluster",
+                stat_labels = {
+                  "status_codes_per_consumer_total",
+                },
+              },
+              stats = {
+                cluster = {
+                  [tostring(minute_start_at - 60)] = {
+                    ["200"] = 205,
+                    ["500"] = 6,
+                  },
+                  [tostring(minute_start_at)] = {
+                    ["404"] = 101,
+                  },
+                }
+              }
+            }
+
+            assert.same(expected, json)
+          end)
+
+          it("returns a 400 if called with invalid query param", function()
+            local consumer = assert(dao.consumers:insert {
+              username  = "bob",
+              custom_id = "1234"
+            })
+
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/status_codes/by_consumer",
+              query = {
+                interval = "so-wrong",
+                consumer_id = consumer.id,
+              }
+            })
+            res = assert.res_status(400, res)
+            local json = cjson.decode(res)
+
+            assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+          end)
+
+          it("returns a 404 if called with invalid consumer_id", function()
+            local consumer_id = "shh.. I'm not a real consumer id"
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/status_codes/by_consumer",
+              query = {
+                interval = "minutes",
+                consumer_id = consumer_id,
+              }
+            })
+            res = assert.res_status(404, res)
+            local json = cjson.decode(res)
+
+            assert.same("Not found", json.message)
+          end)
+
+          it("returns a 404 if called with no consumer_id", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/status_codes/by_consumer",
+              query = {
+                interval = "minutes",
+              }
+            })
+            res = assert.res_status(404, res)
+            local json = cjson.decode(res)
+
+            assert.same("Not found", json.message)
+          end)
+
+          it("returns a 404 if called with a consumer_id that is not an actual id for a consumer", function()
+            local consumer_id = "20426633-55dc-4050-89ef-2382c95a611a"
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/status_codes/by_consumer",
+              query = {
+                interval = "minutes",
+                consumer_id = consumer_id,
+              }
+            })
+            res = assert.res_status(404, res)
+            local json = cjson.decode(res)
+
+            assert.same("Not found", json.message)
+          end)
+        end)
+      end)
+
+      describe("/vitals/status_codes/by_consumer_and_route", function()
+        before_each(function()
+          dao.db:truncate_table("consumers")
+          dao.db:truncate_table("routes")
+          dao.db:truncate_table("vitals_codes_by_consumer_route")
+        end)
+
+        describe("GET", function()
+          it("retrieves the seconds-level response code data for a given consumer", function()
+            local consumer = assert(dao.consumers:insert {
+              username  = "bob",
+              custom_id = "1234"
+            })
+
+            local route    = bp.routes:insert({ paths = { "/my-route" } })
+            local route_id = route.id
+
+            local now        = time()
+            local minute     = now - (now % 60)
+            local service_id = utils.uuid()
+
+            local test_status_code_data = {
+              { consumer.id, route_id, service_id, "404", tostring(now), "1", 4 },
+              { consumer.id, route_id, service_id, "404", tostring(now - 1), "1", 2 },
+              { consumer.id, route_id, service_id, "500", tostring(minute), "60", 5 },
+            }
+
+            assert(strategy:insert_status_codes_by_consumer_and_route(test_status_code_data))
+
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/status_codes/by_consumer_and_route",
+              query = {
+                interval    = "seconds",
+                consumer_id = consumer.id,
+              }
+            })
+
+            res = assert.res_status(200, res)
+            local json = cjson.decode(res)
+
+            local expected = {
+              meta = {
+                entity_type = "consumer_route",
+                entity_id   = consumer.id,
+                earliest_ts = now - 1,
+                interval    = "seconds",
+                latest_ts   = now,
+                level       = "cluster",
+                stat_labels = {
+                  "status_codes_per_consumer_route_total",
+                },
+              },
+              stats = {
+                [route_id] = {
+                  [tostring(now - 1)] = {
+                    ["404"] = 2,
+
+                  },
+                  [tostring(now)] = {
+                    ["404"] = 4,
+                  },
+                }
+              }
+            }
+
+            assert.same(expected, json)
+          end)
+
+          it("retrieves the minutes-level response code data for a given consumer", function()
+            local consumer = assert(dao.consumers:insert {
+              username  = "bob",
+              custom_id = "1234"
+            })
+
+            local route    = bp.routes:insert({ paths = { "/my-route" } })
+            local route_id = route.id
+
+            local minute_start_at = time() - (time() % 60)
+            local service_id      = utils.uuid()
+
+            local test_status_code_data = {
+              { consumer.id, route_id, service_id, "404", tostring(minute_start_at), "60", 101},
+              { consumer.id, route_id, service_id, "200", tostring(minute_start_at - 60), "60", 205},
+              { consumer.id, route_id, service_id, "500", tostring(minute_start_at - 60), "60", 6},
+            }
+
+            assert(strategy:insert_status_codes_by_consumer_and_route(test_status_code_data))
+
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/status_codes/by_consumer_and_route",
+              query = {
+                interval = "minutes",
+                consumer_id = consumer.id,
+              }
+            })
+            res = assert.res_status(200, res)
+            local json = cjson.decode(res)
+
+            local expected = {
+              meta = {
+                entity_type = "consumer_route",
+                entity_id   = consumer.id,
+                earliest_ts = minute_start_at - 60,
+                interval    = "minutes",
+                latest_ts   = minute_start_at,
+                level       = "cluster",
+                stat_labels = {
+                  "status_codes_per_consumer_route_total",
+                },
+              },
+              stats = {
+                [route_id] = {
+                  [tostring(minute_start_at - 60)] = {
+                    ["200"] = 205,
+                    ["500"] = 6,
+                  },
+                  [tostring(minute_start_at)] = {
+                    ["404"] = 101,
+                  },
+                }
+              }
+            }
+
+            assert.same(expected, json)
+          end)
+
+          it("returns a 400 if called with invalid query param", function()
+            local consumer = assert(dao.consumers:insert {
+              username  = "bob",
+              custom_id = "1234"
+            })
+
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/status_codes/by_consumer_and_route",
+              query = {
+                interval = "so-wrong",
+                consumer_id = consumer.id,
+              }
+            })
+            res = assert.res_status(400, res)
+            local json = cjson.decode(res)
+
+            assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+          end)
+
+          it("returns a 404 if called with invalid consumer_id", function()
+            local consumer_id = "shh.. I'm not a real consumer id"
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/status_codes/by_consumer_and_route",
+              query = {
+                interval = "minutes",
+                consumer_id = consumer_id,
+              }
+            })
+            res = assert.res_status(404, res)
+            local json = cjson.decode(res)
+
+            assert.same("Not found", json.message)
+          end)
+
+          it("returns a 404 if called with no consumer_id", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/status_codes/by_consumer_and_route",
+              query = {
+                interval = "minutes",
+              }
+            })
+            res = assert.res_status(404, res)
+            local json = cjson.decode(res)
+
+            assert.same("Not found", json.message)
+          end)
+
+          it("returns a 404 if called with a consumer_id that is not an actual id for a consumer", function()
+            local consumer_id = "20426633-55dc-4050-89ef-2382c95a611a"
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/status_codes/by_consumer_and_route",
+              query = {
+                interval = "minutes",
+                consumer_id = consumer_id,
               }
             })
             res = assert.res_status(404, res)

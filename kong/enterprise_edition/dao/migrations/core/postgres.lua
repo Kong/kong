@@ -512,9 +512,24 @@ return {
 
       CREATE INDEX IF NOT EXISTS vitals_cbr_service_idx
       ON vitals_codes_by_route(service_id);
+
+      CREATE TABLE IF NOT EXISTS vitals_codes_by_consumer_route(
+        consumer_id uuid,
+        service_id uuid,
+        route_id uuid,
+        code int,
+        at timestamp with time zone,
+        duration int,
+        count int,
+        PRIMARY KEY (consumer_id, route_id, code, duration, at)
+      );
+
+      CREATE INDEX IF NOT EXISTS vitals_cbcr_service_idx
+      ON vitals_codes_by_consumer_route(consumer_id, service_id);
     ]],
 
     down = [[
+      DROP TABLE vitals_codes_by_consumer_route;
       DROP TABLE vitals_codes_by_route;
       DROP TABLE vitals_codes_by_service;
       DROP TABLE vitals_code_classes_by_cluster;

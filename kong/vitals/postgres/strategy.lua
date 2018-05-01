@@ -106,6 +106,13 @@ local INSERT_CODES_BY_ROUTE = [[
   UPDATE SET COUNT = vitals_codes_by_route.count + excluded.count
 ]]
 
+local INSERT_CODES_BY_CONSUMER_AND_ROUTE = [[
+  INSERT INTO vitals_codes_by_consumer_route(consumer_id, route_id, service_id, code, at, duration, count)
+  VALUES('%s', '%s', '%s', '%s', to_timestamp(%d) at time zone 'UTC', %d, %d)
+  ON CONFLICT(consumer_id, route_id, code, at, duration) DO
+  UPDATE SET COUNT = vitals_codes_by_consumer_route.count + excluded.count
+]]
+
 local SELECT_CODES_SERVICE = [[
   SELECT service_id, code, extract('epoch' from at) as at, count
     FROM vitals_codes_by_service
@@ -118,11 +125,40 @@ local SELECT_CODES_ROUTE = [[
    WHERE route_id = '%s' AND duration = %d AND at >= to_timestamp(%d)
 ]]
 
+local SELECT_CODES_CONSUMER = [[
+  SELECT consumer_id, code, extract('epoch' from at) as at, sum(count) as count
+    FROM vitals_codes_by_consumer_route
+   WHERE consumer_id = '%s' AND duration = %d AND at >= to_timestamp(%d)
+   GROUP BY consumer_id, code, at
+]]
+
+local SELECT_CODES_CONSUMER_ROUTE = [[
+  SELECT consumer_id, route_id, code, extract('epoch' from at) as at, sum(count) as count
+    FROM vitals_codes_by_consumer_route
+   WHERE consumer_id = '%s' AND duration = %d AND at >= to_timestamp(%d)
+   GROUP BY consumer_id, route_id, code, at
+]]
+
 local DELETE_CODES = [[
   DELETE FROM %s
   WHERE ((duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC')
   OR (duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC'))
 ]]
+
+local STATUS_CODE_QUERIES = {
+  SELECT = {
+    cluster = SELECT_CODE_CLASSES_CLUSTER,
+    consumer_route = SELECT_CODES_CONSUMER_ROUTE,
+    consumer = SELECT_CODES_CONSUMER,
+    service = SELECT_CODES_SERVICE,
+    route = SELECT_CODES_ROUTE,
+  },
+  INSERT = {
+    consumer_route = INSERT_CODES_BY_CONSUMER_AND_ROUTE,
+    service = INSERT_CODES_BY_SERVICE,
+    route = INSERT_CODES_BY_ROUTE,
+  },
+}
 
 function _M.dynamic_table_names(dao)
   local table_names = {}
@@ -144,6 +180,7 @@ function _M.dynamic_table_names(dao)
 
   return table_names
 end
+
 
 function _M.new(dao_factory, opts)
   if opts == nil then
@@ -712,11 +749,18 @@ function _M:insert_status_code_classes(data)
 end
 
 
-function _M:select_status_code_classes(opts)
+function _M:select_status_codes(opts)
   local duration = opts.duration
+  local entity_type = opts.entity_type
 
   if duration ~= 1 and duration ~= 60 then
     return nil, "duration must be 1 or 60"
+  end
+
+  local query = STATUS_CODE_QUERIES.SELECT[entity_type]
+
+  if not query then
+    return nil, "unknown entity_type: " .. tostring(entity_type)
   end
 
   local cutoff_time
@@ -727,15 +771,20 @@ function _M:select_status_code_classes(opts)
     cutoff_time = time() - self.ttl_minutes
   end
 
-  local query = fmt(SELECT_CODE_CLASSES_CLUSTER, opts.duration, cutoff_time)
+  if entity_type ~= "cluster" then
+    query = fmt(query, opts.entity_id, opts.duration, cutoff_time)
+  else
+    query = fmt(query, opts.duration, cutoff_time)
+  end
+
   local res, err = self.db:query(query)
+
   if err then
-    return nil, "failed to select code classes. err: " .. err
+    return nil, "failed to select codes. err: " .. err
   end
 
   return res
 end
-
 
 function _M:delete_status_code_classes(cutoff_times)
   -- if nothing passed in, use defaults
@@ -779,23 +828,19 @@ function _M:insert_status_codes(data, opts)
 
   local entity_type = opts.entity_type
 
-  if entity_type ~= "service" and entity_type ~= "route" then
-    return nil, "opts.entity_type must be 'service' or 'route'"
+  local query = STATUS_CODE_QUERIES.INSERT[entity_type]
+
+  if not query then
+    return nil, "unknown entity_type: " .. tostring(entity_type)
   end
 
-  local query, res, err
-
-  if entity_type == "service" then
-    query = INSERT_CODES_BY_SERVICE
-  else
-    query = INSERT_CODES_BY_ROUTE
-  end
-
+  local res, err
   for _, v in ipairs(data) do
     res, err = self.db:query(fmt(query, unpack(v)))
 
     if not res then
-      return nil, "could not insert status code counters. error: " .. err
+      return nil, "could not insert status code counters. entity_type: " ..
+             entity_type .. ". error: " .. err
     end
   end
 
@@ -829,43 +874,6 @@ function _M:insert_status_codes_by_route(data)
 end
 
 
-function _M:select_status_codes(opts)
-  local duration = opts.duration
-  local entity_type = opts.entity_type
-  local query
-
-  if duration ~= 1 and duration ~= 60 then
-    return nil, "duration must be 1 or 60"
-  end
-
-  if entity_type == "service" then
-    query = SELECT_CODES_SERVICE
-  elseif entity_type == "route" then
-    query = SELECT_CODES_ROUTE
-  else
-    return nil, "unknown entity_type"
-  end
-
-  local cutoff_time
-
-  if duration == 1 then
-    cutoff_time = time() - self.ttl_seconds
-  else
-    cutoff_time = time() - self.ttl_minutes
-  end
-
-  local query = fmt(query, opts.entity_id, opts.duration, cutoff_time)
-
-  local res, err = self.db:query(query)
-
-  if err then
-    return nil, "failed to select codes. err: " .. err
-  end
-
-  return res
-end
-
-
 function _M:select_status_codes_by_service(opts)
   opts.entity_type = "service"
   opts.entity_id = opts.service_id
@@ -877,6 +885,22 @@ end
 function _M:select_status_codes_by_route(opts)
   opts.entity_type = "route"
   opts.entity_id = opts.route_id
+
+  return self:select_status_codes(opts)
+end
+
+
+function _M:select_status_codes_by_consumer(opts)
+  opts.entity_type = "consumer"
+  opts.entity_id = opts.consumer_id
+
+  return self:select_status_codes(opts)
+end
+
+
+function _M:select_status_codes_by_consumer_and_route(opts)
+  opts.entity_type = "consumer_route"
+  opts.entity_id = opts.consumer_id
 
   return self:select_status_codes(opts)
 end
@@ -916,6 +940,14 @@ function _M:delete_status_codes(opts)
   end
 
   return res.affected_rows
+end
+
+
+function _M:insert_status_codes_by_consumer_and_route(data)
+  return self:insert_status_codes(data, {
+    entity_type = "consumer_route",
+    prune = true,
+  })
 end
 
 

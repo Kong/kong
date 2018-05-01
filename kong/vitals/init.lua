@@ -61,6 +61,12 @@ local STATUS_CODE_STAT_LABELS = {
   route = {
     "status_codes_per_route_total",
   },
+  consumer = {
+    "status_codes_per_consumer_total"
+  },
+  consumer_route = {
+    "status_codes_per_consumer_route_total",
+  },
 }
 
 
@@ -368,7 +374,7 @@ end
 
 
 -- converts Kong status codes to format expected by Vitals API
-local function convert_status_codes(res, level, interval, entity_type, entity_id)
+local function convert_status_codes(res, level, interval, entity_type, entity_id, row_key)
   local stats = {}
   local meta = {
     level       = level,
@@ -377,11 +383,7 @@ local function convert_status_codes(res, level, interval, entity_type, entity_id
     entity_id   = entity_id,
   }
 
-  meta.stat_labels = STATUS_CODE_STAT_LABELS["cluster"]
-
-  if entity_type then
-    meta.stat_labels = STATUS_CODE_STAT_LABELS[entity_type]
-  end
+  meta.stat_labels =  STATUS_CODE_STAT_LABELS[entity_type or "cluster"]
 
   -- no stats to process, return minimal metadata along with empty stats
   if not res[1] then
@@ -392,33 +394,23 @@ local function convert_status_codes(res, level, interval, entity_type, entity_id
   meta.latest_ts = -1
 
   for _, row in ipairs(res) do
-    local key
+    local key = row_key and row[row_key] or "cluster"
+    local at = tostring(row.at)
+    local code = row.code_class and row.code_class .. "xx" or tostring(row.code)
 
-    meta.earliest_ts = math_min(meta.earliest_ts, tonumber(row.at))
-    meta.latest_ts = math_max(meta.latest_ts, tonumber(row.at))
+    meta.earliest_ts = math_min(meta.earliest_ts, at)
+    meta.latest_ts = math_max(meta.latest_ts, at)
 
-    stats["cluster"] = stats["cluster"] or {}
-
-    if row.code_class then
-      key = row.code_class .. "xx"
-    else
-      key = tostring(row.code)
-    end
-
-    if stats["cluster"][tostring(row.at)] then
-      stats["cluster"][tostring(row.at)][key] = row.count
-    else
-      stats["cluster"][tostring(row.at)] = {
-        [key] = row.count
-      }
-    end
+    stats[key] = stats[key] or {}
+    stats[key][at] = stats[key][at] or {}
+    stats[key][at][code] = row.count
   end
 
   return { stats = stats, meta = meta }
 end
 
 
--- converts customer stats to format expected by Vitals API
+-- converts consumer stats to format expected by Vitals API
 local function convert_consumer_stats(vitals, res, level, interval)
   local stats = {}
   local meta = {
@@ -623,26 +615,31 @@ local IDX = {
 
 
 local KEY_FORMATS = {
-  route = {
+  codes_route = {
     key_format = "%s|%s|%s|%s|%s|",
     key_values = { IDX.route, IDX.service, IDX.code, IDX.at, IDX.duration },
     required_fields = { IDX.route, IDX.service },
   },
-  service = {
+  codes_service = {
     key_format = "%s|%s|%s|%s|",
     key_values = { IDX.service, IDX.code, IDX.at, IDX.duration },
     required_fields = { IDX.service },
   },
-  code_class = {
+  code_classes = {
     key_format = "%s|%s|%s|",
     key_values = { IDX.code, IDX.at, IDX.duration },
     required_fields = { IDX.code },
   },
-  consumer = {
+  requests_consumer= {
     key_format = "%s|%s|%s|",
     key_values = { IDX.consumer, IDX.at, IDX.duration },
     required_fields = { IDX.consumer },
-  }
+  },
+  codes_consumer_route = {
+    key_format = "%s|%s|%s|%s|%s|%s|",
+    key_values = { IDX.consumer, IDX.route, IDX.service, IDX.code, IDX.at, IDX.duration },
+    required_fields = { IDX.consumer, IDX.route, IDX.service },
+  },
 }
 
 
@@ -765,6 +762,7 @@ function _M:flush_vitals_cache(batch_size, max)
     -- service, etc.
     local codes_per_service = {}
     local codes_per_route = {}
+    local codes_per_consumer_route = {}
     local code_classes = {}
     local requests_per_consumer = {}
 
@@ -776,10 +774,11 @@ function _M:flush_vitals_cache(batch_size, max)
 
         local key_parts = parse_cache_key(key)
 
-        prep_counters("service", key_parts, count, codes_per_service)
-        prep_counters("route", key_parts, count, codes_per_route)
-        prep_code_class_counters("code_class", key_parts, count, code_classes)
-        prep_counters("consumer", key_parts, count, requests_per_consumer)
+        prep_counters("codes_service", key_parts, count, codes_per_service)
+        prep_counters("codes_route", key_parts, count, codes_per_route)
+        prep_counters("codes_consumer_route", key_parts, count, codes_per_consumer_route)
+        prep_code_class_counters("code_classes", key_parts, count, code_classes)
+        prep_counters("requests_consumer", key_parts, count, requests_per_consumer)
 
       elseif err then
         log(WARN, _log_prefix, "failed to fetch ", key, ". err: ", err)
@@ -793,6 +792,7 @@ function _M:flush_vitals_cache(batch_size, max)
     local datasets = {
       insert_status_codes_by_service = flatten_counters(codes_per_service),
       insert_status_codes_by_route = flatten_counters(codes_per_route),
+      insert_status_codes_by_consumer_and_route = flatten_counters(codes_per_consumer_route),
       insert_status_code_classes = flatten_counters(code_classes),
       insert_consumer_stats = flatten_counters(requests_per_consumer),
     }
@@ -1073,17 +1073,13 @@ function _M:get_stats(query_type, level, node_id)
   return convert_stats(self, res, level, query_type)
 end
 
-function _M:get_status_codes(opts)
+function _M:get_status_codes(opts, key_by)
   if opts.duration ~= "minutes" and opts.duration ~= "seconds" then
     return nil, "Invalid query params: interval must be 'minutes' or 'seconds'"
   end
 
   if opts.level ~= "cluster" then
     return nil, "Invalid query params: level must be 'cluster'"
-  end
-
-  if opts.entity_type ~= "service" and opts.entity_type ~= "route" then
-    return nil, "entity_type must be 'service' or 'route'"
   end
 
   local query_opts = {
@@ -1099,32 +1095,8 @@ function _M:get_status_codes(opts)
     return {}
   end
 
-  return convert_status_codes(res, opts.level, opts.duration, opts.entity_type, opts.entity_id)
+  return convert_status_codes(res, opts.level, opts.duration, opts.entity_type, opts.entity_id, key_by)
 end
-
-function _M:get_status_code_classes(opts)
-  if opts.duration ~= "minutes" and opts.duration ~= "seconds" then
-    return nil, "Invalid query params: interval must be 'minutes' or 'seconds'"
-  end
-
-  if opts.level ~= "cluster" then
-    return nil, "Invalid query params: level must be 'cluster'"
-  end
-
-  local query_opts = {
-    duration = opts.duration == "seconds" and 1 or 60,
-  }
-
-  local res, err = self.strategy:select_status_code_classes(query_opts)
-
-  if err then
-    log(WARN, _log_prefix, err)
-    return {}
-  end
-
-  return convert_status_codes(res, opts.level, opts.duration)
-end
-
 
 --[[
 For use by the Vitals API to retrieve consumer stats
@@ -1206,6 +1178,7 @@ function _M.table_names(dao)
   -- tables common across both dbs
   local table_names = {
     "vitals_code_classes_by_cluster",
+    "vitals_codes_by_consumer_route",
     "vitals_codes_by_route",
     "vitals_codes_by_service",
     "vitals_consumers",

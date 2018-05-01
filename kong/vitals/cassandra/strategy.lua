@@ -147,13 +147,33 @@ local DELETE_CODE_CLASSES_CLUSTER = [[
   AND duration = ? AND at < ?
 ]]
 
-local INSERT_CODES = [[
-  UPDATE %s
+local INSERT_CODES_BY_SERVICE = [[
+  UPDATE vitals_codes_by_service
      SET count = count + ?
    WHERE at = ?
      AND duration = ?
-     AND %s = ?
      AND code = ?
+     AND service_id = ?
+]]
+
+local INSERT_CODES_BY_ROUTE = [[
+  UPDATE vitals_codes_by_route
+     SET count = count + ?
+   WHERE at = ?
+     AND duration = ?
+     AND code = ?
+     AND route_id = ?
+]]
+
+local INSERT_CODES_BY_CONSUMER_AND_ROUTE = [[
+  UPDATE vitals_codes_by_consumer_route
+     SET count = count + ?
+   WHERE at = ?
+     AND duration = ?
+     AND code = ?
+     AND consumer_id = ?
+     AND route_id = ?
+     AND service_id = ?
 ]]
 
 local SELECT_CODES_SERVICE = [[
@@ -168,7 +188,34 @@ local SELECT_CODES_ROUTE = [[
    WHERE route_id = ? AND duration = ? AND at >= ?
 ]]
 
+local SELECT_CODES_CONSUMER = [[
+  SELECT consumer_id, code, at, count
+    FROM vitals_codes_by_consumer_route
+   WHERE consumer_id = ? AND duration = ? AND at >= ?
+]]
+
+local SELECT_CODES_CONSUMER_ROUTE = [[
+  SELECT consumer_id, route_id, code, at, count
+    FROM vitals_codes_by_consumer_route
+   WHERE consumer_id = ? AND duration = ? AND at >= ?
+]]
+
 local DELETE_CODES = "DELETE FROM %s WHERE %s = ? AND duration = ? AND at < ?"
+
+local STATUS_CODE_QUERIES = {
+  SELECT = {
+    cluster        = SELECT_CODE_CLASSES_CLUSTER,
+    consumer_route = SELECT_CODES_CONSUMER_ROUTE,
+    consumer       = SELECT_CODES_CONSUMER,
+    service        = SELECT_CODES_SERVICE,
+    route          = SELECT_CODES_ROUTE,
+  },
+  INSERT = {
+    consumer_route = INSERT_CODES_BY_CONSUMER_AND_ROUTE,
+    service        = INSERT_CODES_BY_SERVICE,
+    route          = INSERT_CODES_BY_ROUTE,
+  },
+}
 
 local QUERY_OPTIONS = {
   prepared = true,
@@ -745,47 +792,6 @@ function _M:insert_status_code_classes(data)
   return true
 end
 
-
-function _M:select_status_code_classes(opts)
-  local duration = opts.duration
-
-  if duration ~= 1 and duration ~= 60 then
-    return nil, "duration must be 1 or 60"
-  end
-
-  local cutoff_time, args
-
-  if duration == 1 then
-    cutoff_time = time() - self.ttl_seconds
-  else
-    cutoff_time = time() - self.ttl_minutes
-  end
-
-  args = {
-    duration,
-    cassandra.timestamp(cutoff_time * 1000),
-  }
-
-  local res = {}
-  local idx = 1
-
-  for rows, err, page in self.cluster:iterate(SELECT_CODE_CLASSES_CLUSTER, args, QUERY_OPTIONS) do
-    if err then
-      return nil, "could not select code class counters. error: " .. err
-    end
-
-    for _, row in ipairs(rows) do
-      row.at = row.at / 1000
-      row.node_id = "cluster"
-      res[idx] = row
-      idx = idx + 1
-    end
-  end
-
-  return res
-end
-
-
 function _M:delete_status_code_classes(cutoff_times)
   if self.db.major_version_n < 3 then
     -- the delete algorithm implemented below doesn't work on 2.x
@@ -856,18 +862,11 @@ end
 
 
 function _M:select_status_codes(opts)
-  if not opts.entity_id then
-    return nil, "opts.entity_id is required"
-  end
+  local entity_type = opts.entity_type
+  local query       = STATUS_CODE_QUERIES.SELECT[entity_type]
 
-  local query
-
-  if opts.entity_type == "service" then
-    query = SELECT_CODES_SERVICE
-  elseif opts.entity_type == "route" then
-    query = SELECT_CODES_ROUTE
-  else
-    return nil, "opts.entity_type must be 'service' or 'route'"
+  if not query then
+    return nil, "unknown entity_type: " .. tostring(entity_type)
   end
 
   local duration = opts.duration
@@ -876,7 +875,7 @@ function _M:select_status_codes(opts)
     return nil, "duration must be 1 or 60"
   end
 
-  local cutoff_time
+  local cutoff_time, args
 
   if duration == 1 then
     cutoff_time = time() - self.ttl_seconds
@@ -884,11 +883,18 @@ function _M:select_status_codes(opts)
     cutoff_time = time() - self.ttl_minutes
   end
 
-  local args = {
-    cassandra.uuid(opts.entity_id),
-    duration,
-    cassandra.timestamp(cutoff_time * 1000),
-  }
+  if entity_type == "cluster" then
+    args = {
+      duration,
+      cassandra.timestamp(cutoff_time * 1000),
+    }
+  else
+    args = {
+      cassandra.uuid(opts.entity_id),
+      duration,
+      cassandra.timestamp(cutoff_time * 1000),
+    }
+  end
 
   local res = {}
   local idx = 1
@@ -900,7 +906,6 @@ function _M:select_status_codes(opts)
 
     for _, row in ipairs(rows) do
       row.at = row.at / 1000
-      row.node_id = "cluster"
       res[idx] = row
       idx = idx + 1
     end
@@ -983,39 +988,44 @@ function _M:insert_status_codes(data, opts)
   end
 
   local entity_type = opts.entity_type
-  local prune = opts.prune
+  local prune       = opts.prune
+  local query       = STATUS_CODE_QUERIES.INSERT[entity_type]
 
-  if entity_type ~= "service" and entity_type ~= "route" then
-    return nil, "entity_type must be 'service' or 'route'"
-  end
-
-  local insert_stmt
-  if entity_type == "service" then
-    insert_stmt = fmt(INSERT_CODES, "vitals_codes_by_service", "service_id")
-  else
-    insert_stmt = fmt(INSERT_CODES, "vitals_codes_by_route", "route_id")
+  if not query then
+    return nil, "unknown entity_type: " .. tostring(entity_type)
   end
 
   local entities_to_delete = {}
 
-  local res, err, entity_id, at, duration, code, count
+  local res, err, entity_id, route_id, service_id, at, duration, code, count
 
   for _, v in ipairs(data) do
     -- TODO: obviate the need for this check
     if entity_type == "service" then
       entity_id, code, at, duration, count = unpack(v)
+    elseif entity_type == "consumer_route" then
+      entity_id, route_id, service_id, code, at, duration, count = unpack(v)
     else
       entity_id, _, code, at, duration, count = unpack(v)
     end
 
-    res, err = self.cluster:execute(insert_stmt, {
+    local insert_data = {
       cassandra.counter(count),
       cassandra.timestamp(at * 1000),
       tonumber(duration),
-      cassandra.uuid(entity_id),
       tonumber(code),
-    }, COUNTER_QUERY_OPTIONS)
+      cassandra.uuid(entity_id),
+    }
 
+    if entity_type == "consumer_route" then
+      local ids = { route_id, service_id }
+
+      for _, id in ipairs(ids) do
+        table.insert(insert_data, cassandra.uuid(id))
+      end
+    end
+
+    res, err = self.cluster:execute(query, insert_data, COUNTER_QUERY_OPTIONS)
 
     -- TODO: if we break here, we don't do any cleanup
     if not res then
@@ -1031,14 +1041,22 @@ function _M:insert_status_codes(data, opts)
     local now = time()
 
     self:delete_status_codes({
-      entity_type = entity_type,
-      entities = entities_to_delete,
+      entity_type    = entity_type,
+      entities       = entities_to_delete,
       seconds_before = now - self.ttl_seconds,
       minutes_before = now - self.ttl_minutes,
     })
   end
 
   return true
+end
+
+
+function _M:insert_status_codes_by_consumer_and_route(data)
+  return self:insert_status_codes(data, {
+    entity_type = "consumer_route",
+    prune = true,
+  })
 end
 
 
