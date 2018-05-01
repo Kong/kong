@@ -26,6 +26,8 @@ local plugins = {
   "bot-detection",
   "aws-lambda",
   "request-termination",
+  -- external plugins
+  "azure-functions",
 }
 
 local plugin_map = {}
