@@ -313,21 +313,6 @@ return {
         })
       end
 
-      -- delete the role <-> permission mappings
-      -- we have to get our row, then delete it
-      local perms, err = entity_relationships(dao_factory, self.rbac_role,
-                                              "role", "perm")
-      if err then
-        return helpers.yield_error(err)
-      end
-
-      for i = 1, #perms do
-        dao_factory.rbac_role_perms:delete({
-          role_id = self.rbac_role.id,
-          perm_id = perms[i].id
-        })
-      end
-
       crud.delete(self.rbac_role, dao_factory.rbac_roles)
     end,
   },
