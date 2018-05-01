@@ -120,6 +120,12 @@ local function build_router(db, version)
     return nil, "could not load routes: " .. err
   end
 
+  -- inject internal proxies into the router
+  local _, err = singletons.internal_proxies:build_routes(i, routes)
+  if err then
+    return nil, err
+  end
+
   sort(routes, function(r1, r2)
     r1, r2 = r1.route, r2.route
     if r1.regex_priority == r2.regex_priority then

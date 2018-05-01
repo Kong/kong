@@ -95,6 +95,34 @@
                          # capabilities) which can configure a cluster of
                          # nodes connected to the same database.
 
+#proxy_uri =
+                        # Kong Proxy URI
+                        #
+                        # Here you may provide the lookup, or balancer,
+                        # address for your Kong Proxy nodes.
+                        #
+                        # This value is commonly used in a microservices
+                        # or service-mesh oriented architecture.
+                        #
+                        # Accepted format (parts in parenthesis are optional):
+                        #
+                        #   <IP / HOSTNAME>(:<PORT>(/<PATH>))
+                        #
+                        # Examples:
+                        #
+                        #   - <IP>:<PORT>
+                        #     proxy_uri = 127.0.0.1:8003
+                        #   - <HOSTNAME>
+                        #     proxy_uri = portal.domain.tld
+                        #   - <HOSTNAME>/<PATH>
+                        #     proxy_uri = dev-machine/dev-285
+                        #
+                        # By default:
+                        #
+                        #  Kong Manager, and Kong Portal will use
+                        #  the window request host and append the resolved
+                        #  listener port depending on the requested protocol.
+
 # Note: see http://nginx.org/en/docs/http/ngx_http_core_module.html#listen for
 # a description of the accepted formats for this and other *_listen values.
 
@@ -552,68 +580,174 @@
 # DEVELOPER PORTAL
 #------------------------------------------------------------------------------
 
-#portal = off                           # When enabled, Kong will expose the
-                                        # Kong Developer Portal and its
-                                        # functionality. This flag also
-                                        # extends the Admin API with a new
-                                        # endpoint named `/files` for the
-                                        # administration of Developer Portal
-                                        # template files.
-
-#portal_gui_uri =         # Hierarchical part of a URI which is composed
-                          # optionally of a host, port, and path at which your
-                          # Developer Portal interface accepts HTTP or HTTPS
-                          # traffic. When this config is disabled, the gui will
-                          # use the window request protocol + host and append
-                          # the resolved portal_gui_listen HTTP/HTTPS port.
+#portal = off
+                        # Developer Portal Switch
+                        #
+                        # When enabled:
+                        #
+                        #   Kong will expose the Dev Portal interface and
+                        #   read-only APIs on the `portal_gui_listen` address,
+                        #   and endpoints on the Admin API to manage assets.
+                        #
+                        # When enabled along with `portal_auth`:
+                        #
+                        #   Kong will expose management endpoints for developer
+                        #   accounts on the Admin API and the Dev Portal API.
 
 #portal_gui_listen = 0.0.0.0:8003, 0.0.0.0:8446 ssl
-                                        # Comma-separated list of addresses and
-                                        # ports on which Kong will expose the
-                                        # Developer Portal GUI. Suffixes can be
-                                        # specified for each pair, similarly to
-                                        # the `admin_listen` directive.
+                        # Developer Portal GUI Listeners
+                        #
+                        # Comma-separated list of addresses on which Kong will
+                        # expose the Developer Portal GUI. Suffixes can be
+                        # specified for each pair, similarly to
+                        # the `admin_listen` directive.
 
-#portal_gui_ssl_cert =                  # The absolute path to the SSL
-                                        # certificate for `portal_gui_listen`
-                                        # values with ssl enabled.
+#portal_gui_uri =
+                        # Developer Portal GUI URI
+                        #
+                        # Here you may provide the lookup, or balancer,
+                        # address for your Kong Proxy nodes.
+                        #
+                        # This value is commonly used in a microservices
+                        # or service-mesh oriented architecture.
+                        #
+                        # Accepted format (items in parenthesis are optional):
+                        #
+                        #   <IP / HOSTNAME>(:<PORT>(/<PATH>))
+                        #
+                        # Examples:
+                        #
+                        #   - <IP>:<PORT>
+                        #     portal_gui_uri = 127.0.0.1:8003
+                        #   - <HOSTNAME>
+                        #     portal_gui_uri = portal.domain.tld
+                        #   - <HOSTNAME>/<PATH>
+                        #     portal_gui_uri = dev-machine/dev-285
+                        #
+                        # By default:
+                        #
+                        #  Your Developer Portal will use the window request
+                        #  host and append the resolved listener port depending
+                        #  on the requested protocol.
 
-#portal_gui_ssl_cert_key =              # The absolute path to the SSL key
-                                        # for `portal_gui_listen` values with
-                                        # ssl enabled.
+#portal_gui_ssl_cert =
+                        # Developer Portal GUI SSL Certificate
+                        #
+                        # The absolute path to the SSL certificate for
+                        # `portal_gui_listen` values with SSL enabled.
+
+#portal_gui_ssl_cert_key =
+                        # Developer Portal GUI SSL Certificate Key
+                        #
+                        # The absolute path to the SSL key for
+                        # `portal_gui_listen` values with SSL enabled.
 
 #portal_api_listen = 0.0.0.0:8004, 0.0.0.0:8447 ssl
-                                        # Comma-separated list of addresses and
-                                        # ports on which Kong will expose the
-                                        # Developer Portal API. Suffixes can be
-                                        # specified for each pair, similarly to
-                                        # the `admin_listen` directive.
+                        # Developer Portal API Listeners
+                        #
+                        # Comma-separated list of addresses on which Kong will
+                        # expose the Developer Portal API. Suffixes can be
+                        # specified for each pair, similarly to
+                        # the `admin_listen` directive.
 
-#portal_api_uri =         # Hierarchical part of a URI which is composed
-                          # optionally of a host, port, and path at which your
-                          # Developer Portal API accepts HTTP or HTTPS traffic.
-                          # When this config is disabled, the gui will
-                          # use the window request protocol + host and append
-                          # the resolved portal_api_listen HTTP/HTTPS port.
+#portal_api_url =
+                        # Developer Portal API URL
+                        #
+                        # Here you may provide the lookup, or balancer,
+                        # address for your Developer Portal nodes.
+                        #
+                        # This value is commonly used in a microservices
+                        # or service-mesh oriented architecture.
+                        #
+                        # Accepted format (parts in parenthesis are optional):
+                        #
+                        #   <scheme>://<IP / HOSTNAME>(:<PORT>(/<PATH>))
+                        #
+                        # Examples:
+                        #
+                        #   - <IP>:<PORT>
+                        #     portal_api_uri = http://127.0.0.1:8003
+                        #   - SSL <HOSTNAME>
+                        #     portal_api_uri = https://portal.domain.tld
+                        #   - <HOSTNAME>/<PATH>
+                        #     portal_api_uri = http://dev-machine/dev-285
+                        #
+                        # By default this value points to the local interface:
+                        #
+                        #   - http://0.0.0.0:8004
 
-#portal_api_ssl_cert =                  # The absolute path to the SSL
-                                        # certificate for `portal_api_listen`
-                                        # values with ssl enabled.
+#portal_api_ssl_cert =
+                        # Developer Portal API SSL Certificate
+                        #
+                        # The absolute path to the SSL certificate for
+                        # `portal_api_listen` values with SSL enabled.
 
-#portal_api_ssl_cert_key =              # The absolute path to the SSL key
-                                        # for `portal_api_listen` values with
-                                        # ssl enabled.
+#portal_api_ssl_cert_key =
+                        # Developer Portal API SSL Certificate Key
+                        #
+                        # The absolute path to the SSL key for
+                        # `portal_api_listen` values with SSL enabled.
 
-#portal_api_access_log = logs/portal_api_access.log # Path for Portal API
-                                                    # request access logs.
-                                                    # Set this value to `off`
-                                                    # to disable logging Portal
-                                                    # API requests.
-                                                    # If this value is a relative
-                                                    # path, it will be placed
-                                                    # under the `prefix` location.
+#portal_api_access_log = logs/portal_api_access.log
+                        # Developer Portal API Access Log location
+                        #
+                        # Here you can set an absolute or relative path for your
+                        # Portal API access logs.
+                        #
+                        # Setting this value to `off` will disable logging
+                        # Portal API access logs.
+                        #
+                        # When using relative pathing, logs will be placed under
+                        # the `prefix` location.
 
-#portal_api_error_log = logs/error.log  # Path for Developer Portal API request
-                                        # error logs. Granularity of these logs
-                                        # is adjusted by the `log_level`
-                                        # directive.
+#portal_api_error_log = logs/error.log
+                        # Developer Portal API Error Log location
+                        #
+                        # Here you can set an absolute or relative path for your
+                        # Portal API access logs.
+                        #
+                        # Setting this value to `off` will disable logging
+                        # Portal API access logs.
+                        #
+                        # When using relative pathing, logs will be placed under
+                        # the `prefix` location.
+                        #
+                        # Granularity can be adjusted through the `log_level`
+                        # directive.
+
+#------------------------------------------------------------------------------
+# DEVELOPER PORTAL AUTHENTICATION
+#------------------------------------------------------------------------------
+
+#portal_auth =
+                        # Developer Portal Authentication Plugin Name
+                        #
+                        # Here you may specify the authentication plugin
+                        # to apply to your Developer Portal. Developers
+                        # will use the specified form of authentication
+                        # to request access, register, and login to your
+                        # Developer Portal.
+                        #
+                        # Supported Plugins:
+                        #
+                        #   - Basic Authentication:
+                        #
+                        #       portal_auth = basic-auth
+                        #
+                        #   - OIDC Authentication:
+                        #
+                        #       portal_auth = oidc
+
+#portal_auth_conf =
+                        # Developer Portal Authentication Plugin Config (JSON)
+                        #
+                        # Here you may specify the plugin configuration object
+                        # in JSON format to be applied to your Developer
+                        # Portal authentication.
+                        #
+                        # For information about Plugin Configuration
+                        # consult the associated plugin documentation.
+                        #
+                        # Example for `basic-auth`:
+                        #
+                        #  portal_auth_conf = { "hide_credentials": true }

@@ -67,6 +67,7 @@ build = {
     ["kong.enterprise_edition.dao.migrations.oauth2.postgres"] = "kong/enterprise_edition/dao/migrations/oauth2/postgres.lua",
     ["kong.enterprise_edition.dao.migrations.oauth2.cassandra"] = "kong/enterprise_edition/dao/migrations/oauth2/cassandra.lua",
     ["kong.enterprise_edition.redis"] = "kong/enterprise_edition/redis/init.lua",
+    ["kong.enterprise_edition.proxies"] = "kong/enterprise_edition/proxies.lua",
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",

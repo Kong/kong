@@ -60,6 +60,7 @@ local plugins_iterator = require "kong.core.plugins_iterator"
 local balancer_execute = require("kong.core.balancer").execute
 local kong_cluster_events = require "kong.cluster_events"
 local kong_error_handlers = require "kong.core.error_handlers"
+local internal_proxies = require "kong.enterprise_edition.proxies"
 local vitals = require "kong.vitals"
 local ee = require "kong.enterprise_edition"
 
@@ -182,6 +183,7 @@ function Kong.init()
   singletons.configuration = config
   singletons.db = db
   singletons.license = ee.read_license_info()
+  singletons.internal_proxies = internal_proxies.new()
 
   local reports = require "kong.core.reports"
   local l = singletons.license and

@@ -27,6 +27,11 @@ portal_api_ssl_cert_key = NONE
 portal_api_access_log = logs/portal_api_access.log
 portal_api_error_log = logs/error.log
 
+portal_auth = NONE
+portal_auth_conf = NONE
+
+proxy_uri = NONE
+
 proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 ssl
 admin_listen = 127.0.0.1:8001, 127.0.0.1:8444 ssl
 

@@ -7,6 +7,7 @@ local pl_config = require "pl.config"
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 local tablex = require "pl.tablex"
+local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
 local ip = require "kong.tools.ip"
@@ -150,6 +151,10 @@ local CONF_INFERENCES = {
 
   portal_api_listen = {typ = "array"},
   portal_api_uri = {typ = "string"},
+
+  proxy_uri = {typ = "string"},
+  portal_auth = {typ = "string"},
+  portal_auth_conf = {typ = "string"}
 }
 
 -- List of settings whose values must not be printed when
@@ -348,6 +353,27 @@ local function check_and_infer(conf)
       if conf.portal_gui_ssl_cert_key and not pl_path.exists(conf.portal_gui_ssl_cert_key) then
         errors[#errors+1] = "portal_gui_ssl_cert_key: no such file at " .. conf.portal_gui_ssl_cert_key
       end
+    end
+  end
+
+  -- portal auth conf json conversion
+  if conf.portal_auth and conf.portal_auth_conf then
+    local json, err = cjson.decode(tostring(conf.portal_auth_conf))
+    if json then
+      conf.portal_auth_conf = json
+
+      -- used for writing back to prefix/.kong_env as a string
+      setmetatable(conf.portal_auth_conf, {
+        __tostring = function (v)
+          return assert(cjson.encode(v))
+        end
+      })
+    end
+
+    if err then
+      errors[#errors+1] = "portal_auth_conf must be valid json: "
+        .. err
+        .. " - " .. conf.portal_auth_conf
     end
   end
 

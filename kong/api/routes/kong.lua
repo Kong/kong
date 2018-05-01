@@ -33,6 +33,8 @@ return {
           end
           map[row.name] = true
         end
+
+        singletons.internal_proxies:add_internal_plugins(distinct_plugins, map)
       end
 
       do

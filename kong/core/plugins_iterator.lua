@@ -82,6 +82,19 @@ local function load_plugin_configuration(route_id,
 
     return cfg
   end
+
+  -- check for internal plugins
+  local cfg = singletons.internal_proxies:get_plugin_config({
+    route_id = route_id,
+    service_id = service_id,
+    consumer_id = consumer_id,
+    plugin_name = plugin_name,
+    api_id = api_id
+  })
+
+  if cfg then
+    return cfg
+  end
 end
 
 
@@ -193,6 +206,10 @@ local function get_next(self)
     if plugin_configuration then
       ctx.plugins_for_request[plugin.name] = plugin_configuration
     end
+
+    -- filter non-specific plugins out for internal services
+    ctx.plugins_for_request = singletons.internal_proxies:filter_plugins(
+      service_id, ctx.plugins_for_request)
   end
 
   -- return the plugin configuration

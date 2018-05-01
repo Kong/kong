@@ -85,38 +85,46 @@ return {
     end
 
     if plugin_t.service_id ~= nil then
-      local service, err, err_t = dao.db.new_db.services:select({
-        id = plugin_t.service_id
-      })
-      if err then
-        if err_t.code == db_errors.codes.DATABASE_ERROR then
-          return false, Errors.db(err)
+      -- Patch service / route lookups to ignore internal plugins, for more
+      -- details check enterprise_edition/proxies.lua add_plugin method
+      if string.sub(plugin_t.service_id, 1, 8) ~= "00000000" then
+        local service, err, err_t = dao.db.new_db.services:select({
+          id = plugin_t.service_id
+        })
+        if err then
+          if err_t.code == db_errors.codes.DATABASE_ERROR then
+            return false, Errors.db(err)
+          end
+
+          return false, Errors.schema(err_t)
         end
 
-        return false, Errors.schema(err_t)
-      end
-
-      if not service then
-        return false, Errors.foreign("no such Service (id=" ..
-                                     plugin_t.service_id .. ")")
+        if not service then
+          return false, Errors.foreign("no such Service (id=" ..
+                                      plugin_t.service_id .. ")")
+        end
       end
     end
 
     if plugin_t.route_id ~= nil then
-      local route, err, err_t = dao.db.new_db.routes:select({
-        id = plugin_t.route_id
-      })
-      if err then
-        if err_t.code == db_errors.codes.DATABASE_ERROR then
-          return false, Errors.db(err)
+      -- Patch service / route lookups to ignore internal plugins, for more
+      -- details check enterprise_edition/proxies.lua add_plugin method
+      if string.sub(plugin_t.route_id, 1, 8) ~= "00000000" then
+        local route, err, err_t = dao.db.new_db.routes:select({
+          id = plugin_t.route_id
+        })
+        if err then
+          if err_t.code == db_errors.codes.DATABASE_ERROR then
+            return false, Errors.db(err)
+          end
+
+          return false, Errors.schema(err_t)
         end
 
-        return false, Errors.schema(err_t)
-      end
-
-      if not route then
-        return false, Errors.foreign("no such Route (id=" ..
-                                     plugin_t.route_id .. ")")
+        if not route then
+          return false, Errors.foreign("no such Route (id=" ..
+                                      plugin_t.route_id .. ")")
+        end
       end
     end
 

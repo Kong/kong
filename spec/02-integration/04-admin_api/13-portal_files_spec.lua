@@ -14,7 +14,9 @@ describe("Admin API - Developer Portal Files", function()
 
   setup(function()
     helpers.get_db_utils()
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      portal = true
+    }))
   end)
 
   teardown(function()
