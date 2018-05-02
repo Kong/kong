@@ -94,6 +94,3 @@ GET /t
 host: example.com
 --- no_error_log
 [error]
-
-
-

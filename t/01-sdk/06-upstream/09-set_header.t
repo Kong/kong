@@ -28,7 +28,6 @@ header must be a string
 
 
 
-
 === TEST 2: upstream.set_header() errors if header is not a string
 --- config
     location = /t {
@@ -386,6 +385,3 @@ X-Foo: {}
 X-Bar: {nil}
 --- no_error_log
 [error]
-
-
-

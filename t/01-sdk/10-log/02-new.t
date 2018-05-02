@@ -1,0 +1,117 @@
+use strict;
+use warnings FATAL => 'all';
+use Test::Nginx::Socket::Lua;
+
+plan tests => repeat_each() * (blocks() * 3);
+
+run_tests();
+
+__DATA__
+
+=== TEST 1: kong.log.new() requires a namespace
+--- config
+    location /t {
+        content_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            local ok, err = pcall(sdk.log.new)
+            if not ok then
+                ngx.say(err)
+            end
+        }
+    }
+--- request
+GET /t
+--- response_body
+namespace must be a string
+--- no_error_log
+[error]
+
+
+
+=== TEST 2: kong.log.new() requires a non-empty namespace
+--- config
+    location /t {
+        content_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            local ok, err = pcall(sdk.log.new, "")
+            if not ok then
+                ngx.say(err)
+            end
+        }
+    }
+--- request
+GET /t
+--- response_body
+namespace cannot be an empty string
+--- no_error_log
+[error]
+
+
+
+=== TEST 3: kong.log.new() accepts non-empty format
+--- config
+    location /t {
+        content_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            local ok, err = pcall(sdk.log.new, "my_namespace", "")
+            if not ok then
+                ngx.say(err)
+            end
+        }
+    }
+--- request
+GET /t
+--- response_body
+format cannot be an empty string if specified
+--- no_error_log
+[error]
+
+
+
+=== TEST 4: kong.log.new() logs with namespaced format by default
+--- config
+    location /t {
+        content_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            local log = sdk.log.new("my_namespace")
+
+            log("hello world")
+        }
+    }
+--- request
+GET /t
+--- no_response_body
+--- no_error_log
+[error]
+--- error_log eval
+qr/\[kong\] content_by_lua\(nginx\.conf:\d+\):\d+ \[my_namespace\] hello world/
+
+
+
+=== TEST 5: kong.log.new() logs with custom format if specified
+--- config
+    location /t {
+        content_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            local log = sdk.log.new("my_namespace", "%message")
+
+            log("hello world")
+        }
+    }
+--- request
+GET /t
+--- no_response_body
+--- no_error_log
+[error]
+--- error_log eval
+qr/\[kong\] hello world/

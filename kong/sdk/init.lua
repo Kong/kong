@@ -3,6 +3,7 @@ local MAJOR_VERSIONS = {
     version = "0.0.1",
     modules = {
       "base",
+      "log",
       "ip",
       "request",
       "client",
@@ -13,6 +14,7 @@ local MAJOR_VERSIONS = {
     version = "1.0.0",
     modules = {
       "base",
+      "log",
       "ip",
       "request",
       "client",
