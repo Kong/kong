@@ -25,6 +25,7 @@ local header_key_to_name = {
   [string.lower(headers.SERVER)] = headers.SERVER,
   [string.lower(headers.PROXY_LATENCY)] = headers.PROXY_LATENCY,
   [string.lower(headers.UPSTREAM_LATENCY)] = headers.UPSTREAM_LATENCY,
+  [string.lower(headers.UPSTREAM_STATUS)] = headers.UPSTREAM_STATUS,
 }
 
 local PREFIX_PATHS = {
