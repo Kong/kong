@@ -701,7 +701,7 @@ return {
       local upstream_status_header = constants.HEADERS.UPSTREAM_STATUS
       if singletons.configuration.headers[upstream_status_header] then
         local matches, err = re_match(var.upstream_status,
-                                          "[0-9]+$", "oj")
+                                      "[0-9]+$", "oj")
         if err then
           log(ERR, "failed to set ", upstream_status_header, " header: ", err)
         else
