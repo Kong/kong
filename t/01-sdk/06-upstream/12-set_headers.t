@@ -28,7 +28,6 @@ headers must be a table
 
 
 
-
 === TEST 2: upstream.set_headers() errors if header is not a string
 --- config
     location = /t {
@@ -565,6 +564,3 @@ GET /t
 ok
 --- no_error_log
 [error]
-
-
-

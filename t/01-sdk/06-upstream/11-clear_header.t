@@ -28,7 +28,6 @@ header must be a string
 
 
 
-
 === TEST 2: upstream.clear_header() errors if header is not a string
 --- config
     location = /t {
@@ -155,7 +154,6 @@ X-Foo: {nil}
 
 
 
-
 === TEST 6: upstream.clear_header() clears headers set via add_header
 --- http_config
     server {
@@ -190,6 +188,3 @@ GET /t
 X-Foo: {nil}
 --- no_error_log
 [error]
-
-
-

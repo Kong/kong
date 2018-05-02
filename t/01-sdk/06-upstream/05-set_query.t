@@ -150,6 +150,3 @@ GET /t?bla&baz=hello%20mars&something_else=is_set
 query: {foo=bar&bla&baz=hello%20world}
 --- no_error_log
 [error]
-
-
-

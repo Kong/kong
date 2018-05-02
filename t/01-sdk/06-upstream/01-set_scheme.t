@@ -55,7 +55,6 @@ invalid scheme: HTTP
 
 
 
-
 === TEST 3: upstream.set_scheme() sets the scheme to https
 --- http_config
     server {
@@ -123,6 +122,3 @@ GET /t
 scheme: http
 --- no_error_log
 [error]
-
-
-
