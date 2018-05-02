@@ -1,5 +1,6 @@
 local helpers = require "spec.helpers"
 local constants = require "kong.constants"
+local cjson = require "cjson"
 
 
 local default_server_header = _KONG._NAME .. "/" .. _KONG._VERSION
@@ -490,6 +491,22 @@ describe("headers [#" .. strategy .. "]", function()
         assert.equal(default_server_header, res.headers["server"])
         assert.is_nil(res.headers["via"])
         assert.is_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
+      end)
+
+      it("are correctly serialized (regression)", function()
+        -- a regression test added with https://github.com/Kong/kong/pull/3419
+        -- to ensure that the `headers` configuration value is correctly
+        -- serialized and deseriazlied
+        assert(helpers.kong_exec("restart -c spec/fixtures/headers.conf"))
+        local admin_client = helpers.admin_client()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path   = "/",
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal("server_tokens", json.configuration.headers[1])
+        assert.equal("X-Kong-Proxy-Latency", json.configuration.headers[2])
       end)
 
     end)
