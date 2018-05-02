@@ -5,6 +5,7 @@ local pl_file    = require "pl.file"
 local pl_utils   = require "pl.utils"
 local pl_path    = require "pl.path"
 local singletons = require "kong.singletons"
+local feature_flags = require "kong.enterprise_edition.feature_flags"
 
 
 local _M = {}
@@ -29,6 +30,16 @@ _M.handlers = {
     end
   }
 }
+
+
+function _M.feature_flags_init(config)
+  if config and config.feature_conf_path and config.feature_conf_path ~= "" then
+    local _, err = feature_flags.init(config.feature_conf_path)
+    if err then
+      return err
+    end
+  end
+end
 
 
 local function get_license_string()

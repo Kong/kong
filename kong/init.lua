@@ -164,6 +164,11 @@ function Kong.init()
   local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
   local config = assert(conf_loader(conf_path))
 
+  local err = ee.feature_flags_init(config)
+  if err then
+    error(tostring(err))
+  end
+
   local db = assert(DB.new(config))
   assert(db:init_connector())
 
