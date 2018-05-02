@@ -94,7 +94,13 @@ return {
     redis = {
       type = "table",
       schema = redis.config_schema,
-    }
+    },
+    vary_query_params = {
+      type = "array",
+    },
+    vary_headers = {
+      type = "array",
+    },
   },
   self_check = function(schema, plugin_t, dao, is_updating)
     if plugin_t.strategy == "memory" then
@@ -113,6 +119,18 @@ return {
       for i = 1, #plugin_t.response_code do
         plugin_t.response_code[i] = tonumber(plugin_t.response_code[i])
       end
+    end
+
+    if plugin_t.vary_headers then
+      for i, v in ipairs(plugin_t.vary_headers) do
+        plugin_t.vary_headers[i] = string.lower(v)
+      end
+
+      table.sort(plugin_t.vary_headers)
+    end
+
+    if plugin_t.vary_query_params then
+      table.sort(plugin_t.vary_query_params)
     end
 
     return true

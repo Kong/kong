@@ -1,5 +1,5 @@
 local helpers = require "spec.helpers"
-local rbac = require "kong.core.rbac"
+local rbac = require "kong.rbac"
 local json = require "cjson"
 local pl_file = require "pl.file"
 local redis = require "kong.enterprise_edition.redis"
@@ -29,8 +29,8 @@ for i, policy in ipairs({"memory", "redis"}) do
     end
 
     setup(function()
-      helpers.dao:truncate_tables()
-      helpers.run_migrations()
+      helpers.dao:drop_schema()
+      helpers.dao:run_migrations()
       rbac.register_resource("proxy-cache", helpers.dao)
       redis.flush_redis(REDIS_HOST, REDIS_PORT, REDIS_DATABASE, REDIS_PASSWORD)
 
@@ -82,6 +82,16 @@ for i, policy in ipairs({"memory", "redis"}) do
       local api10 = assert(helpers.dao.apis:insert {
         name = "api-10",
         hosts = { "api-10.com" },
+        upstream_url = "http://httpbin.org",
+      })
+      local api11 = assert(helpers.dao.apis:insert {
+        name = "api-11",
+        hosts = { "api-11.com" },
+        upstream_url = "http://httpbin.org",
+      })
+      local api12 = assert(helpers.dao.apis:insert {
+        name = "api-12",
+        hosts = { "api-12.com" },
         upstream_url = "http://httpbin.org",
       })
 
@@ -200,6 +210,32 @@ for i, policy in ipairs({"memory", "redis"}) do
           response_code = { 200, 418 },
           request_method = { "GET", "HEAD", "POST" },
           [policy] = policy_config,
+        },
+      })
+
+      assert(helpers.dao.plugins:insert {
+        name = "proxy-cache",
+        api_id = api11.id,
+        config = {
+          strategy = policy,
+          [policy] = policy_config,
+          content_type = { "text/plain", "application/json" },
+          response_code = { 200 },
+          request_method = { "GET", "HEAD", "POST" },
+          vary_headers = {"foo"}
+        },
+      })
+
+      assert(helpers.dao.plugins:insert {
+        name = "proxy-cache",
+        api_id = api12.id,
+        config = {
+          strategy = policy,
+          [policy] = policy_config,
+          content_type = { "text/plain", "application/json" },
+          response_code = { 200 },
+          request_method = { "GET", "HEAD", "POST" },
+          vary_query_params = {"foo"}
         },
       })
 
@@ -640,7 +676,7 @@ for i, policy in ipairs({"memory", "redis"}) do
     it("uses request params as part of the cache key", function()
       local res = assert(client:send {
         method = "GET",
-        path = "/get?a=b",
+        path = "/get?a=b&b=c",
         headers = {
           host = "api-1.com",
         }
@@ -659,6 +695,77 @@ for i, policy in ipairs({"memory", "redis"}) do
 
       assert.res_status(200, res)
 
+      assert.same("Miss", res.headers["X-Cache-Status"])
+
+      res = assert(client:send {
+        method = "GET",
+        path = "/get?b=c&a=b",
+        headers = {
+          host = "api-1.com",
+        }
+      })
+
+      assert.res_status(200, res)
+      assert.same("Hit", res.headers["X-Cache-Status"])
+    end)
+
+    it("can focus only in a subset of the query arguments", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/get?foo=b&b=c",
+        headers = {
+          host = "api-12.com",
+        }
+      })
+
+      assert.res_status(200, res)
+      assert.same("Miss", res.headers["X-Cache-Status"])
+
+      res = assert(client:send {
+        method = "GET",
+        path = "/get?b=d&foo=b",
+        headers = {
+          host = "api-12.com",
+        }
+      })
+
+      assert.res_status(200, res)
+
+      assert.same("Hit", res.headers["X-Cache-Status"])
+    end)
+
+    it("uses headers if instructed to do so", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/get",
+        headers = {
+          host = "api-11.com",
+          foo = "bar"
+        }
+      })
+      assert.res_status(200, res)
+      assert.same("Miss", res.headers["X-Cache-Status"])
+
+      res = assert(client:send {
+        method = "GET",
+        path = "/get",
+        headers = {
+          host = "api-11.com",
+          foo = "bar"
+        }
+      })
+      assert.res_status(200, res)
+      assert.same("Hit", res.headers["X-Cache-Status"])
+
+      res = assert(client:send {
+        method = "GET",
+        path = "/get",
+        headers = {
+          host = "api-11.com",
+          foo = "baz"
+        }
+      })
+      assert.res_status(200, res)
       assert.same("Miss", res.headers["X-Cache-Status"])
     end)
 

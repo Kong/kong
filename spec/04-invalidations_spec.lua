@@ -26,7 +26,7 @@ describe("proxy-cache invalidations via: " .. kong_conf.database, function()
     local kong_dao_factory = require "kong.dao.factory"
     dao = assert(kong_dao_factory.new(kong_conf))
     dao:truncate_tables()
-    helpers.run_migrations(dao)
+    helpers.dao:run_migrations()
 
     api1 = assert(dao.apis:insert {
       name = "api-1",

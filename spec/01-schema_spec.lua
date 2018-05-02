@@ -116,4 +116,45 @@ describe("proxy-cache schema", function()
     assert.is_false(ok)
     assert.same("No redis config provided", err.message)
   end)
+
+  it("supports vary_query_params values", function()
+    local ok, _, err = validate_entity({
+      strategy = "memory",
+      vary_query_params = "foo",
+    }, proxy_cache_schema)
+
+    assert.True(ok)
+  end)
+
+  it("supports vary_headers values", function()
+    local ok, _, err = validate_entity({
+      strategy = "memory",
+      vary_headers = "foo",
+    }, proxy_cache_schema)
+
+    assert.True(ok)
+  end)
+
+  it("sorts vary_query_params values", function()
+    local t = {
+        strategy = "memory",
+        vary_query_params = {"b", "a"}
+    }
+    local ok, _, err = validate_entity(t, proxy_cache_schema)
+
+    assert.True(ok)
+    assert.are.same({"a", "b"}, t.vary_query_params)
+    end)
+
+  it("sorts vary_headers values", function()
+    local t = {
+        strategy = "memory",
+        vary_headers = {"b", "A"}
+    }
+    local ok, _, err = validate_entity(t, proxy_cache_schema)
+
+    assert.True(ok)
+    assert.are.same({"a", "b"}, t.vary_headers)
+    end)
+
 end)

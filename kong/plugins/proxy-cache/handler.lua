@@ -1,5 +1,6 @@
 local BasePlugin  = require "kong.plugins.base_plugin"
 local strategies  = require "kong.plugins.proxy-cache.strategies"
+local cache_key   = require "kong.plugins.proxy-cache.cache_key"
 local responses   = require "kong.tools.responses"
 local singletons  = require "kong.singletons"
 local utils       = require "kong.tools.utils"
@@ -12,13 +13,12 @@ local md5              = ngx.md5
 local get_method       = ngx.req.get_method
 local resp_get_headers = ngx.resp.get_headers
 local timer_at         = ngx.timer.at
-local ngx_print        = ngx.print
 local ngx_log          = ngx.log
 local ngx_now          = ngx.now
 local ngx_re_gmatch    = ngx.re.gmatch
+local ngx_re_sub       = ngx.re.gsub
 local ngx_re_match     = ngx.re.match
 local parse_http_time  = ngx.parse_http_time
-local str_find         = string.find
 local str_lower        = string.lower
 local time             = ngx.time
 
@@ -207,8 +207,8 @@ local function signal_cache_req(cache_key, cache_status)
 end
 
 
-local function build_cache_key(prefix_uuid, method, request)
-  return md5(prefix_uuid .. method .. request)
+local function build_cache_key(prefix_uuid, method, uri, params, headers)
+  return md5(table.concat({prefix_uuid, method, uri, params, headers}, "|"))
 end
 
 
@@ -341,7 +341,11 @@ function ProxyCacheHandler:access(conf)
   -- try to fetch the cached object
   -- first we need a uuid of this; try the consumer uuid, then the api uuid,
   -- and finally a default value
-  local cache_key = build_cache_key(prefix_uuid(), get_method(), ngx.var.request)
+  local cache_key = build_cache_key(prefix_uuid(),
+                                    get_method(),
+                                    ngx_re_sub(ngx.var.request, "\\?.*", "", "oj"),
+                                    cache_key.params_key(ngx.req.get_uri_args(), conf),
+                                    cache_key.headers_key(ngx.req.get_headers(100), conf))
   ngx.header["X-Cache-Key"] = cache_key
 
   local strategy = require(STRATEGY_PATH)({
