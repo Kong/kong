@@ -1,6 +1,5 @@
 local utils = require "kong.tools.utils"
 local Errors = require "kong.dao.errors"
-local db_errors = require "kong.db.errors"
 local singletons = require "kong.singletons"
 local constants = require "kong.constants"
 
@@ -53,11 +52,11 @@ return {
     },
     route_id = {
       type = "id",
-      --foreign = "routes:id" -- manually tested in self_check
+      foreign = "routes:id",
     },
     service_id = {
       type = "id",
-      --foreign = "services:id" -- manually tested in self_check
+      foreign = "services:id",
     },
     consumer_id = {
       type = "id",
@@ -82,42 +81,6 @@ return {
     if plugin_t.api_id and (plugin_t.route_id or plugin_t.service_id) then
       return false, Errors.schema("cannot configure plugin with api_id " ..
                                   "and one of route_id or service_id")
-    end
-
-    if plugin_t.service_id ~= nil then
-      local service, err, err_t = dao.db.new_db.services:select({
-        id = plugin_t.service_id
-      })
-      if err then
-        if err_t.code == db_errors.codes.DATABASE_ERROR then
-          return false, Errors.db(err)
-        end
-
-        return false, Errors.schema(err_t)
-      end
-
-      if not service then
-        return false, Errors.foreign("no such Service (id=" ..
-                                     plugin_t.service_id .. ")")
-      end
-    end
-
-    if plugin_t.route_id ~= nil then
-      local route, err, err_t = dao.db.new_db.routes:select({
-        id = plugin_t.route_id
-      })
-      if err then
-        if err_t.code == db_errors.codes.DATABASE_ERROR then
-          return false, Errors.db(err)
-        end
-
-        return false, Errors.schema(err_t)
-      end
-
-      if not route then
-        return false, Errors.foreign("no such Route (id=" ..
-                                     plugin_t.route_id .. ")")
-      end
     end
 
     -- Load the config schema

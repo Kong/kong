@@ -249,7 +249,7 @@ dao_helpers.for_each_dao(function(kong_config)
         assert.falsy(plugin)
         assert.truthy(err)
         assert.True(err.foreign)
-        assert.equal("no such Service (id=" .. plugin_fixture.service_id .. ")",
+        assert.equal("service_id=does not exist with value '" .. plugin_fixture.service_id .. "'",
                      err.message)
       end)
 
@@ -261,7 +261,7 @@ dao_helpers.for_each_dao(function(kong_config)
         assert.falsy(plugin)
         assert.truthy(err)
         assert.True(err.foreign)
-        assert.equal("no such Route (id=" .. plugin_fixture.route_id .. ")",
+        assert.equal("route_id=does not exist with value '" .. plugin_fixture.route_id .. "'",
                      err.message)
       end)
 
@@ -291,7 +291,7 @@ dao_helpers.for_each_dao(function(kong_config)
         assert.falsy(plugin)
         assert.truthy(err)
         assert.True(err.foreign)
-        assert.equal("no such Service (id=" .. fake_service_id .. ")",
+        assert.equal("service_id=does not exist with value '" .. fake_service_id .. "'",
                      err.message)
       end)
     end)

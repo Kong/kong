@@ -20,8 +20,8 @@ describe("Admin API #" .. kong_config.database, function()
   local db
 
   setup(function()
-    dao = assert(DAOFactory.new(kong_config))
     db = assert(DB.new(kong_config))
+    dao = assert(DAOFactory.new(kong_config, db))
     assert(db:init_connector())
     assert(dao:run_migrations())
 
