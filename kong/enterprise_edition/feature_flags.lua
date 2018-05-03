@@ -7,10 +7,19 @@ local pl_file = require "pl.file"
 local FLAGS = {
   HMAC_AUTH_DISABLE_VALIDATE_REQUEST_BODY = "hmac_auth_disable_validate_request_body",
   KEY_AUTH_DISABLE_KEY_IN_BODY = "key_auth_disable_key_in_body",
+  RATE_LIMITING_RESTRICT_REDIS_ONLY = "rate_limiting_restrict_redis_only",
+  RESPONSE_RATELIMITING_RESTRICT_REDIS_ONLY = "response_ratelimiting_restrict_redis_only",
+  RATE_LIMITING_ADVANCED_RESTRICT_REDIS_ONLY = "rate_limiting_advanced_restrict_redis_only",
 }
 
 
-local VALUES = {}
+local VALUES = {
+  REDIS_HOST = "redis_host",
+  REDIS_PORT = "redis_port",
+  REDIS_NAMESPACE = "redis_namespace",
+}
+
+
 local loaded_conf = {}
 
 
