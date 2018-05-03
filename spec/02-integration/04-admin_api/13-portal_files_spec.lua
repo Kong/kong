@@ -1,6 +1,8 @@
 local helpers = require "spec.helpers"
 local escape = require("socket.url").escape
 local cjson = require "cjson"
+local enums = require "kong.portal.enums"
+
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
@@ -9,11 +11,13 @@ local function it_content_types(title, fn)
   it(title .. " with application/json", test_json)
 end
 
-describe("Admin API - Developer Portal Files", function()
+describe("Admin API - Developer Portal", function()
   local client
+  local dao
+
 
   setup(function()
-    helpers.get_db_utils()
+    dao = select(3, helpers.get_db_utils())
     assert(helpers.start_kong({
       portal = true
     }))
@@ -468,4 +472,75 @@ describe("Admin API - Developer Portal Files", function()
       end)
     end)
   end)
+
+  describe("/portal/developers", function()
+    describe("GET", function ()
+
+      before_each(function()
+        local portal = require "kong.portal.dao_helpers"
+        helpers.dao:truncate_tables()
+
+        portal.register_resources(dao)
+
+        for i = 1, 10 do
+          assert(helpers.dao.consumers:insert {
+            username = "proxy-consumer-" .. i,
+            custom_id = "proxy-consumer-" .. i,
+            type = enums.CONSUMERS.TYPE.PROXY,
+          })
+          -- only insert half as many developers
+          if i % 2 == 0 then
+            assert(helpers.dao.consumers:insert {
+              username = "developer-consumer-" .. i,
+              custom_id = "developer-consumer-" .. i,
+              type = enums.CONSUMERS.TYPE.DEVELOPER
+            })
+          end
+        end
+      end)
+
+      teardown(function()
+        helpers.dao:truncate_tables()
+      end)
+
+      it("retrieves list of developers only", function()
+        local res = assert(client:send {
+          methd = "GET",
+          path = "/portal/developers"
+        })
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+        assert.equal(5, #json.data)
+      end)
+
+      it("cannot retrieve proxy consumers", function()
+        local res = assert(client:send {
+          methd = "GET",
+          path = "/portal/developers?type=0"
+        })
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+        assert.equal(5, #json.data)
+      end)
+
+      it("filters by developer status", function()
+        assert(helpers.dao.consumers:insert {
+          username = "developer-pending",
+          custom_id = "developer-pending",
+          type = enums.CONSUMERS.TYPE.DEVELOPER,
+          status = enums.CONSUMERS.STATUS.PENDING
+        })
+
+        local res = assert(client:send {
+          methd = "GET",
+          path = "/portal/developers/?status=1"
+        })
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+        assert.equal(1, #json.data)
+      end)
+    end)
+  end)
+
+
 end)

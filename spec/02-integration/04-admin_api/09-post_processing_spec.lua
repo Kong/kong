@@ -32,6 +32,7 @@ describe("Admin API post-processing", function()
 
   before_each(function()
     helpers.dao:truncate_tables()
+    helpers.register_consumer_relations(helpers.dao)
     assert(helpers.dao.consumers:insert({
       username = "michael",
       custom_id = "landon",

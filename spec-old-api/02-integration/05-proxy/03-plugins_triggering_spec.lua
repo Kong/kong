@@ -175,7 +175,7 @@ describe("Plugins triggering", function()
 
       helpers.stop_kong()
       helpers.dao:truncate_tables()
-
+      helpers.register_consumer_relations(helpers.dao)
 
       do
         local api = assert(helpers.dao.apis:insert {
@@ -390,7 +390,7 @@ describe("Plugins triggering", function()
       helpers.stop_kong()
 
       helpers.dao:truncate_tables()
-
+      helpers.register_consumer_relations(helpers.dao)
       local api      = assert(helpers.dao.apis:insert {
         name         = "example",
         hosts        = { "mock_upstream" },

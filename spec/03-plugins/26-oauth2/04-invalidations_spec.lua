@@ -21,6 +21,7 @@ for _, strategy in helpers.each_strategy() do
     before_each(function()
       assert(db:truncate())
       dao:truncate_tables()
+      helpers.register_consumer_relations(dao)
 
       -- XXX EE-only
       bp, db, dao = helpers.get_db_utils(strategy)

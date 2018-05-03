@@ -24,6 +24,7 @@ describe("Plugin: hmac-auth (API)", function()
     describe("POST", function()
       before_each(function()
         dao:truncate_tables()
+        helpers.register_consumer_relations(dao)
         consumer = assert(dao.consumers:insert {
           username = "bob",
           custom_id = "1234"

@@ -1,69 +1,42 @@
-local lapis = require "lapis"
-local responses = require "kong.tools.responses"
-local singletons = require "kong.singletons"
+local responses   = require "kong.tools.responses"
+local singletons  = require "kong.singletons"
 local app_helpers = require "lapis.application"
-local crud = require "kong.api.crud_helpers"
+local crud        = require "kong.api.crud_helpers"
+local enums       = require "kong.portal.enums"
+local utils       = require "kong.portal.utils"
+local constants   = require "kong.constants"
 
 
--- Initialize Lapis Application
-local app = lapis.Application()
-
-
--- Instantiate a single helper object for wrapped methods
-local method_helpers = {
-  responses = responses,
-  yield_error = app_helpers.yield_error
+local plugin_route_dao_dict = {
+  ["basic-auth"] = "basicauth_credentials",
+  ["acls"] = "acls",
+  ["oauth2"] = "oauth2_credentials",
+  ["hmac-auth"] = "hmacauth_credentials",
+  ["jwt"] = "jwt_secrets",
+  ["key-auth"] = "keyauth_credentials",
 }
 
 
--- Create a method wrapper to pass DAO and Response helpers
--- This allows us to easily abstract routes out of this file in the future
--- by reducing the amount of externally scoped variables that are used within
--- a route method handler
-local function wrap_method_handler(method_handler)
-  return function(self)
-    return method_handler(self, singletons.dao, method_helpers)
-  end
-end
+return {
+  ["/files"] = {
+    before = function(self, dao_factory, helpers)
+      local consumer_id = ngx.req.get_headers()[constants.HEADERS.CONSUMER_ID]
+      local portal_auth = singletons.configuration.portal_auth
 
+      if portal_auth and not consumer_id then
+        return helpers.responses.send_HTTP_UNAUTHORIZED()
+      end
 
--- Take routes table and iterate over each route, for each route take the
--- route's methods and wrap them with the wrap_method_handler function
-local function register_routes(routes)
-  for route_path, route_methods in pairs(routes) do
-    local methods = {}
+      if portal_auth then
+        self.params.email_or_id = consumer_id
+        crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
+        if self.consumer
+           and self.consumer.status ~= enums.CONSUMERS.STATUS.APPROVED then
+          return helpers.responses.send_HTTP_UNAUTHORIZED()
+        end
+      end
+    end,
 
-    for method, method_handler in pairs(route_methods) do
-      methods[method] = wrap_method_handler(method_handler)
-    end
-
-    app:match(route_path, route_path, app_helpers.respond_to(methods))
-  end
-end
-
-
--- Register application defaults
-app.handle_404 = function(self)
-  return responses.send_HTTP_NOT_FOUND()
-end
-
-
-app.handle_error = function(self, err, trace)
-  if err and string.find(err, "don't know how to respond to", nil, true) then
-    return responses.send_HTTP_METHOD_NOT_ALLOWED()
-  end
-
-  ngx.log(ngx.ERR, err, "\n", trace)
-
-  -- We just logged the error so no need to give it to responses and log it
-  -- twice
-  return responses.send_HTTP_INTERNAL_SERVER_ERROR()
-end
-
-
--- Declare routing object
-register_routes({
-  ['/files'] = {
     GET = function(self, dao_factory, helpers)
       crud.paginated_set(self, dao_factory.portal_files)
     end,
@@ -77,10 +50,10 @@ register_routes({
       }
 
       crud.paginated_set(self, dao_factory.portal_files)
-    end
+    end,
   },
 
-  ['/files/*'] = {
+  ["/files/*"] = {
     before = function(self, dao_factory, helpers)
       local dao = dao_factory.portal_files
       local identifier = self.params.splat
@@ -104,7 +77,278 @@ register_routes({
     GET = function(self, dao_factory, helpers)
       return helpers.responses.send_HTTP_OK(self.portal_file)
     end,
-  }
-})
+  },
 
-return app
+  ["/portal/register"] = {
+    before = function(self, dao_factory, helpers)
+      self.portal_auth = singletons.configuration.portal_auth
+      self.auto_approve = singletons.configuration.portal_auto_approve
+    end,
+
+    POST = function(self, dao_factory, helpers)
+      if utils.validate_email(self.params.email) == nil then
+        return helpers.responses.send_HTTP_BAD_REQUEST("Invalid email")
+      end
+
+      self.params.type = enums.CONSUMERS.TYPE.DEVELOPER
+      self.params.status = enums.CONSUMERS.STATUS.PENDING
+      self.params.username = self.params.email
+
+      if self.auto_approve then
+        self.params.status = enums.CONSUMERS.STATUS.APPROVED
+      end
+
+      local password = self.params.password
+      self.params.password = nil
+
+      local consumer, err = dao_factory.consumers:insert(self.params)
+      if err then
+        return app_helpers.yield_error(err)
+      end
+
+      -- omit credential post for oidc
+      if self.portal_auth == 'openid-connect' then
+        return responses.send_HTTP_CREATED({
+          consumer = consumer,
+          credential = {}
+        })
+      end
+
+      local collection = dao_factory[plugin_route_dao_dict[self.portal_auth]]
+      local credential_data
+
+      if self.portal_auth == "basic-auth" then
+        credential_data = {
+          consumer_id = consumer.id,
+          username = self.params.username,
+          password = password,
+        }
+      end
+
+      if self.portal_auth == "key-auth" then
+        credential_data = {
+          consumer_id = consumer.id,
+          key = self.params.key
+        }
+      end
+
+      if credential_data == nil then
+        return helpers.responses.send_HTTP_BAD_REQUEST(
+          "Cannot create credential with portal_auth = " ..
+            self.portal_auth)
+      end
+
+      local credential, err = collection:insert(credential_data)
+      if err then
+        return app_helpers.yield_error(err)
+      end
+
+      responses.send_HTTP_CREATED({
+        consumer = consumer,
+        credential = credential
+      })
+    end,
+  },
+
+  ["/config"] = {
+    before = function(self, dao_factory, helpers)
+      local consumer_id = ngx.req.get_headers()[constants.HEADERS.CONSUMER_ID]
+
+      if singletons.configuration.portal_auth and not consumer_id then
+        return helpers.responses.send_HTTP_UNAUTHORIZED()
+      end
+
+      self.params.email_or_id = consumer_id
+      crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
+
+      if self.consumer
+         and self.consumer.status ~= enums.CONSUMERS.STATUS.APPROVED then
+        return helpers.responses.send_HTTP_UNAUTHORIZED(
+          "Developer " .. consumer_id .. " not approved"
+        )
+      end
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      local distinct_plugins = {}
+
+      do
+        local rows, err = dao_factory.plugins:find_all()
+        if err then
+          return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+        end
+
+        local map = {}
+        for _, row in ipairs(rows) do
+          if not map[row.name] then
+            distinct_plugins[#distinct_plugins+1] = row.name
+          end
+          map[row.name] = true
+        end
+
+        singletons.internal_proxies:add_internal_plugins(distinct_plugins, map)
+      end
+
+      self.config = {
+        plugins = {
+          enabled_in_cluster = distinct_plugins,
+        }
+      }
+
+      return helpers.responses.send_HTTP_OK(self.config)
+    end,
+  },
+
+  ["/developer"] = {
+    before = function(self, dao_factory, helpers)
+      local consumer_id = ngx.req.get_headers()[constants.HEADERS.CONSUMER_ID]
+
+      if singletons.configuration.portal_auth and not consumer_id then
+        return helpers.responses.send_HTTP_UNAUTHORIZED()
+      end
+
+      self.params.email_or_id = consumer_id
+      crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      return helpers.responses.send_HTTP_OK(self.consumer)
+    end,
+  },
+
+  ["/credentials"] = {
+    before = function(self, dao_factory, helpers)
+      local consumer_id = ngx.req.get_headers()[constants.HEADERS.CONSUMER_ID]
+
+      if singletons.configuration.portal_auth and not consumer_id then
+        return helpers.responses.send_HTTP_UNAUTHORIZED()
+      end
+
+      self.portal_auth = singletons.configuration.portal_auth
+      self.collection = dao_factory[plugin_route_dao_dict[self.portal_auth]]
+
+      self.params.consumer_id = consumer_id
+      self.params.email_or_id = self.params.consumer_id
+
+      crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
+
+      if not self.consumer.status == enums.CONSUMERS.STATUS.APPROVED then
+        return helpers.responses.send_HTTP_UNAUTHORIZED(
+          "Developer " .. consumer_id .. " not approved"
+        )
+      end
+    end,
+
+    PATCH = function(self, dao_factory, helpers)
+      if self.params.id == nil then
+        return helpers.responses.send_HTTP_BAD_REQUEST(
+                                                  "credential id is required")
+      end
+
+      crud.patch(self.params, self.collection, {
+        id = self.params.id
+      })
+    end,
+
+    POST = function(self, dao_factory)
+      crud.post(self.params, self.collection)
+    end,
+  },
+
+  ["/credentials/:plugin"] = {
+    before = function(self, dao_factory, helpers)
+      local consumer_id = ngx.req.get_headers()[constants.HEADERS.CONSUMER_ID]
+
+      if singletons.configuration.portal_auth and not consumer_id then
+        helpers.responses.send_HTTP_UNAUTHORIZED()
+      end
+
+      self.params.plugin = ngx.unescape_uri(self.params.plugin)
+      self.collection = dao_factory[plugin_route_dao_dict[self.params.plugin]]
+
+      self.params.consumer_id = consumer_id
+      self.params.email_or_id = self.params.consumer_id
+      self.params.plugin = nil
+
+      crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
+
+      if not self.consumer.status == enums.CONSUMERS.STATUS.APPROVED then
+        return helpers.responses.send_HTTP_UNAUTHORIZED(
+          "Developer " .. consumer_id .. " not approved"
+        )
+      end
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      crud.paginated_set(self, self.collection)
+    end,
+
+    POST = function(self, dao_factory, helpers)
+      crud.post(self.params, self.collection)
+    end,
+
+    PATCH = function(self, dao_factory, helpers)
+      if self.params.id == nil then
+        return helpers.responses.send_HTTP_BAD_REQUEST(
+                                                  "credential id is required")
+      end
+
+      crud.patch(self.params, self.collection, {
+        id = self.params.id
+      })
+    end,
+  },
+
+  ["/credentials/:plugin/:credential_id"] = {
+    before = function(self, dao_factory, helpers)
+      local consumer_id = ngx.req.get_headers()[constants.HEADERS.CONSUMER_ID]
+
+      if singletons.configuration.portal_auth and not consumer_id then
+        helpers.responses.send_HTTP_UNAUTHORIZED()
+      end
+
+      self.params.plugin = ngx.unescape_uri(self.params.plugin)
+      self.collection = dao_factory[plugin_route_dao_dict[self.params.plugin]]
+
+      self.params.consumer_id = consumer_id
+      self.params.email_or_id = self.params.consumer_id
+      self.params.plugin = nil
+
+      crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
+
+      if not self.consumer.status == enums.CONSUMERS.STATUS.APPROVED then
+        return helpers.responses.send_HTTP_UNAUTHORIZED(
+          "Developer " .. consumer_id .. " not approved"
+        )
+      end
+
+      local credentials, err = self.collection:find_all({
+        consumer_id = consumer_id,
+        id = self.params.credential_id
+      })
+
+      if err then
+        return app_helpers.yield_error(err)
+      end
+
+      if next(credentials) == nil then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      self.params.credential_id = nil
+      self.credential = credentials[1]
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      return helpers.responses.send_HTTP_OK(self.credential)
+    end,
+
+    PATCH = function(self, dao_factory)
+      crud.patch(self.params, self.collection, self.credential)
+    end,
+
+    DELETE = function(self, dao_factory)
+      crud.delete(self.credential, self.collection)
+    end,
+  },
+}

@@ -2,6 +2,7 @@ local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local Factory = require "kong.dao.factory"
 local utils = require "kong.tools.utils"
 local DB = require "kong.db"
+local helper = require "spec.helpers"
 
 dao_helpers.for_each_dao(function(kong_config)
   describe("Model (Constraints) with DB: #" .. kong_config.database, function()
@@ -21,6 +22,7 @@ dao_helpers.for_each_dao(function(kong_config)
     before_each(function()
       dao:truncate_tables()
       assert(db:truncate())
+      helper.register_consumer_relations(dao)
 
       local service, _, err_t = db.services:insert {
         protocol = "http",

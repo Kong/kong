@@ -142,6 +142,8 @@ build = {
     ["kong.dao.schemas_validation"] = "kong/dao/schemas_validation.lua",
     ["kong.dao.schemas.apis"] = "kong/dao/schemas/apis.lua",
     ["kong.dao.schemas.consumers"] = "kong/dao/schemas/consumers.lua",
+    ["kong.dao.schemas.consumer_types"] = "kong/dao/schemas/consumer_types.lua",
+    ["kong.dao.schemas.consumer_statuses"] = "kong/dao/schemas/consumer_statuses.lua",
     ["kong.dao.schemas.plugins"] = "kong/dao/schemas/plugins.lua",
     ["kong.dao.schemas.upstreams"] = "kong/dao/schemas/upstreams.lua",
     ["kong.dao.schemas.targets"] = "kong/dao/schemas/targets.lua",
@@ -167,7 +169,11 @@ build = {
     ["kong.rbac"] = "kong/rbac/init.lua",
     ["kong.rbac.handler"] = "kong/rbac/handler.lua",
 
+    ["kong.portal"] = "kong/portal/init.lua",
+    ["kong.portal.enums"] = "kong/portal/enums.lua",
     ["kong.portal.api"] = "kong/portal/api.lua",
+    ["kong.portal.dao_helpers"] = "kong/portal/dao_helpers.lua",
+    ["kong.portal.utils"] = "kong/portal/utils.lua",
 
     ["kong.vitals"] = "kong/vitals/init.lua",
     ["kong.vitals.cassandra.strategy"] = "kong/vitals/cassandra/strategy.lua",

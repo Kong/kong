@@ -18,6 +18,7 @@ for _, strategy in helpers.each_strategy() do
       dao:truncate_tables()
       assert(dao:run_migrations())
 
+      helpers.register_consumer_relations(dao)
       helpers.prepare_prefix()
 
       assert(helpers.start_kong({
@@ -253,6 +254,7 @@ for _, strategy in helpers.each_strategy() do
         dao:truncate_table("oauth2_credentials")
         dao:truncate_table("consumers")
         db:truncate("services")
+        helpers.register_consumer_relations(dao)
 
         service = bp.services:insert({ host = "oauth2_token.com" })
         consumer = bp.consumers:insert({ username = "bob" })

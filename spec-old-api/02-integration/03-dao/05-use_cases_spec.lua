@@ -1,5 +1,6 @@
 local helpers = require "spec.02-integration.03-dao.helpers"
 local Factory = require "kong.dao.factory"
+local spec_helpers = require "spec.helpers"
 
 helpers.for_each_dao(function(kong_config)
   describe("Real use-cases with DB: #" .. kong_config.database, function()
@@ -9,9 +10,11 @@ helpers.for_each_dao(function(kong_config)
       assert(factory:run_migrations())
 
       factory:truncate_tables()
+      spec_helpers.register_consumer_relations(spec_helpers.dao)
     end)
     after_each(function()
       factory:truncate_tables()
+      spec_helpers.register_consumer_relations(spec_helpers.dao)
     end)
 
     it("retrieves plugins for plugins_iterator", function()

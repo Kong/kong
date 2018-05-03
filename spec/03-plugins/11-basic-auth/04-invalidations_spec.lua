@@ -16,6 +16,7 @@ for _, strategy in helpers.each_strategy() do
     before_each(function()
       assert(db:truncate())
       dao:truncate_tables()
+      helpers.register_consumer_relations(dao)
 
       local route = bp.routes:insert {
         hosts = { "basic-auth.com" },

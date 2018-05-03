@@ -1,9 +1,13 @@
 local singletons = require "kong.singletons"
 local url = require "socket.url"
+local utils = require "kong.tools.utils"
 
 
 local _M = {}
 local mt = { __index = _M }
+
+
+_M.proxy_prefix = "_kong"
 
 
 -- todo move this into helpers
@@ -103,7 +107,7 @@ function _M:setup_admin()
   self:add_route({
     id = "00000000-0000-0000-0001-000000000000",
     service = admin_config.name,
-    paths = { "/_kong/manager" },
+    paths = { "/" .. _M.proxy_prefix .. "/manager" },
   })
 end
 
@@ -128,7 +132,7 @@ function _M:setup_portal()
   self:add_route({
     id = "00000000-0000-0000-0002-000000000000",
     service = portal_config.name,
-    paths = { "/_kong/portal" },
+    paths = { "/" .. _M.proxy_prefix .. "/portal" },
   })
 
   self:add_plugin({
@@ -136,17 +140,62 @@ function _M:setup_portal()
     service = portal_config.name,
     config = {
       origins = kong_config.portal_gui_url or "http://127.0.0.1:8003",
-      methods = { "GET", "POST" },
-      credentials = true,
+      methods = { "GET", "PATCH", "DELETE", "POST" },
+      credentials = true
     }
   })
 
   -- Enable authentication
   if kong_config.portal_auth then
+
     self:add_plugin({
       name = kong_config.portal_auth,
       service = portal_config.name,
-      config = kong_config.portal_auth_conf or {},
+      config = kong_config.portal_auth_conf or {}
+    })
+
+    local portal_config_unauthenticated = utils.shallow_copy(portal_config)
+
+    portal_config_unauthenticated.name ="_kong-portal-files-unauthenticated"
+    portal_config_unauthenticated.id = "00000000-0000-0000-0000-000000000003"
+    portal_config_unauthenticated.path = "/files/unauthenticated"
+
+    self:add_service(portal_config_unauthenticated)
+
+    self:add_route({
+      id = "00000000-0000-0000-0003-000000000000",
+      service = portal_config_unauthenticated.name,
+      paths = { "/" .. _M.proxy_prefix .. "/portal/files/unauthenticated" },
+    })
+
+    local portal_config_register = utils.shallow_copy(portal_config)
+
+    portal_config_register.name ="_kong-portal-register"
+    portal_config_register.id = "00000000-0000-0000-0000-000000000004"
+    portal_config_register.path = "/portal/register"
+
+    self:add_service({
+      id = portal_config_register.id,
+      name = portal_config_register.name,
+      host = portal_config.host,
+      port = portal_config.port,
+      path = portal_config_register.path
+    })
+
+    self:add_route({
+      id = "00000000-0000-0000-0004-000000000000",
+      service = portal_config_register.name,
+      paths = { "/" .. _M.proxy_prefix .. "/portal/register" },
+    })
+
+    self:add_plugin({
+      name = "cors",
+      service = portal_config_unauthenticated.name,
+      config = {
+        origins = kong_config.portal_gui_url or "http://127.0.0.1:8003",
+        methods = { "GET" },
+        credentials = true
+      }
     })
   end
 end
@@ -216,7 +265,6 @@ end
 function _M:build_routes(i, routes)
   local i_routes = self.config.routes
   local i_services = self.config.services
-
   for internal_route_index = 1, #i_routes do
     local route = i_routes[internal_route_index]
     local service = i_services[route.service.id]

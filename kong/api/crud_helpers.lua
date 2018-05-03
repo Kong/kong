@@ -139,8 +139,25 @@ function _M.find_consumer_by_username_or_id(self, dao_factory, helpers)
     return helpers.yield_error(err)
   end
   self.params.username_or_id = nil
+  self.params.type = nil
 
   -- We know username and id are unique, so if we have a row, it must be the only one
+  self.consumer = rows[1]
+  if not self.consumer then
+    return helpers.responses.send_HTTP_NOT_FOUND()
+  end
+end
+
+function _M.find_consumer_by_email_or_id(self, dao_factory, helpers)
+  local rows, err = _M.find_by_id_or_field(dao_factory.consumers, {},
+                                           self.params.email_or_id, "email")
+
+  if err then
+    return helpers.yield_error(err)
+  end
+  self.params.email_or_id = nil
+
+  -- We know email and id are unique, so if we have a row, it must be the only one
   self.consumer = rows[1]
   if not self.consumer then
     return helpers.responses.send_HTTP_NOT_FOUND()

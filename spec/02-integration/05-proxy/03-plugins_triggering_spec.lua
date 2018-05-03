@@ -216,6 +216,7 @@ for _, strategy in helpers.each_strategy() do
 
         helpers.stop_kong()
         dao:truncate_tables()
+        helpers.register_consumer_relations(dao)
 
         do
           local service = assert(bp.services:insert {
@@ -442,6 +443,7 @@ for _, strategy in helpers.each_strategy() do
 
         assert(db:truncate())
         dao:truncate_tables()
+        helpers.register_consumer_relations(dao)
 
         local service = bp.services:insert {
           name = "example",

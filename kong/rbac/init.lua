@@ -101,6 +101,8 @@ local route_resource_map = {
   ["/consumers/:username_or_id/oauth2/:clientid_or_id"] = "oauth2",
   ["/files"] = "portal",
   ["/files/*"] = "portal",
+  ["/portal/developers"] = "portal",
+  ["/portal/developers/:email_or_id"] = "portal",
 }
 _M.route_resource_map = route_resource_map
 

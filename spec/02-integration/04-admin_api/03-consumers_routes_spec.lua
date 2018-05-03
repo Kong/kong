@@ -21,6 +21,7 @@ describe("Admin API", function()
     assert(helpers.start_kong({
       database = strategy
     }))
+    helpers.register_consumer_relations(dao)
   end)
 
   teardown(function()
@@ -30,6 +31,7 @@ describe("Admin API", function()
   local consumer, consumer2, consumer3
   before_each(function()
     dao:truncate_tables()
+    helpers.register_consumer_relations(dao)
     consumer = assert(dao.consumers:insert {
       username = "bob",
       custom_id = "1234"
@@ -379,6 +381,7 @@ describe("Admin API", function()
     describe("GET", function()
       before_each(function()
         dao:truncate_tables()
+        helpers.register_consumer_relations(dao)
 
         for i = 1, 10 do
           assert(dao.consumers:insert {

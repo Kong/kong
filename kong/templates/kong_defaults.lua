@@ -16,21 +16,22 @@ vitals_ttl_minutes = 90000
 
 portal = off
 portal_gui_listen = 0.0.0.0:8003, 0.0.0.0:8446 ssl
-portal_gui_uri = NONE
+portal_gui_url = NONE
 portal_gui_ssl_cert = NONE
 portal_gui_ssl_cert_key = NONE
 
 portal_api_listen = 0.0.0.0:8004, 0.0.0.0:8447 ssl
-portal_api_uri = 127.0.0.1:8004
+portal_api_url = NONE
 portal_api_ssl_cert = NONE
 portal_api_ssl_cert_key = NONE
 portal_api_access_log = logs/portal_api_access.log
 portal_api_error_log = logs/error.log
 
+portal_auto_approve = off
 portal_auth = NONE
 portal_auth_conf = NONE
 
-proxy_uri = NONE
+proxy_url = NONE
 
 proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 ssl
 admin_listen = 127.0.0.1:8001, 127.0.0.1:8444 ssl

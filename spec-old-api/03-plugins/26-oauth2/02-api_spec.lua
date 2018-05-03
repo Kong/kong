@@ -5,6 +5,7 @@ describe("Plugin: oauth (API)", function()
   local consumer, api, admin_client
   setup(function()
     helpers.dao:run_migrations()
+    helpers.register_consumer_relations(helpers.dao)
 
     helpers.prepare_prefix()
     assert(helpers.start_kong({

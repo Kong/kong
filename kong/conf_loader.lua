@@ -147,14 +147,15 @@ local CONF_INFERENCES = {
 
   portal = {typ = "boolean"},
   portal_gui_listen = {typ = "array"},
-  portal_gui_uri = {typ = "string"},
+  portal_gui_url = {typ = "string"},
 
   portal_api_listen = {typ = "array"},
-  portal_api_uri = {typ = "string"},
+  portal_api_url = {typ = "string"},
 
   proxy_uri = {typ = "string"},
   portal_auth = {typ = "string"},
-  portal_auth_conf = {typ = "string"}
+  portal_auth_conf = {typ = "string"},
+  portal_auto_approve = {typ = "boolean"},
 }
 
 -- List of settings whose values must not be printed when

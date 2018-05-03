@@ -431,4 +431,57 @@ return {
       DROP TABLE vitals_code_classes_by_cluster;
     ]]
   },
+  {
+    name = "2018-04-20-160400_dev_portal_consumer_types",
+    up = [[
+      CREATE TABLE IF NOT EXISTS consumer_statuses (
+        id               int PRIMARY KEY,
+        name 			       text,
+        comment 		     text,
+        created_at       timestamp
+      );
+
+      CREATE TABLE IF NOT EXISTS consumer_types (
+        id               int PRIMARY KEY,
+        name 			       text,
+        comment 		     text,
+        created_at       timestamp
+      );
+
+      ALTER TABLE consumers ADD type int;
+      ALTER TABLE consumers ADD email text;
+      ALTER TABLE consumers ADD status int;
+      ALTER TABLE consumers ADD meta text;
+
+      CREATE INDEX IF NOT EXISTS consumers_type_idx ON consumers(type);
+      CREATE INDEX IF NOT EXISTS consumers_status_idx ON consumers(status);
+
+      CREATE INDEX IF NOT EXISTS consumer_statuses_names_idx ON consumer_statuses(name);
+      CREATE INDEX IF NOT EXISTS consumer_types_name_idx ON consumer_types(name);
+    ]],
+
+    down = [[
+      DROP TABLE consumer_statuses;
+      DROP TABLE consumer_types;
+      DROP INDEX consumer_statuses_names_idx;
+      DROP INDEX consumer_types_name_idx;
+      ALTER TABLE consumers DROP type;
+      ALTER TABLE consumers DROP email;
+      ALTER TABLE consumers DROP status;
+      ALTER TABLE consumers DROP meta;
+    ]]
+  },
+  {
+    name = "2018-04-20-160400_consumer_type_status_defaults",
+    up = function(_, _, dao)
+      local helper = require('kong.portal.dao_helpers')
+
+      return helper.register_resources(dao)
+    end,
+
+    down = [[
+      DELETE FROM consumer_statuses;
+      DELETE FROM consumer_types;
+    ]]
+  },
 }

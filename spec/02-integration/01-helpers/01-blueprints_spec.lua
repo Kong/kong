@@ -16,6 +16,7 @@ for _, strategy in helpers.each_strategy() do
       local db = assert(DB.new(helpers.test_conf, strategy))
       assert(db:init_connector())
       assert(db:truncate())
+      helpers.register_consumer_relations(helpers.dao)
       bp = assert(Blueprints.new({}, db))
     end)
 

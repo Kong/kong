@@ -1,6 +1,7 @@
 local helpers = require "spec.02-integration.03-dao.helpers"
 local Factory = require "kong.dao.factory"
 local utils = require "kong.tools.utils"
+local spec_helpers = require "spec.helpers"
 
 local api_tbl = {
   name         = "example",
@@ -25,6 +26,7 @@ helpers.for_each_dao(function(kong_config)
       assert(factory:run_migrations())
 
       factory:truncate_tables()
+      spec_helpers.register_consumer_relations(spec_helpers.dao)
     end)
     before_each(function()
       plugin_fixture = utils.shallow_copy(plugin_tbl)
@@ -34,6 +36,7 @@ helpers.for_each_dao(function(kong_config)
     end)
     after_each(function()
       factory:truncate_tables()
+      spec_helpers.register_consumer_relations(spec_helpers.dao)
     end)
 
     -- Check behavior just in case
@@ -168,6 +171,7 @@ helpers.for_each_dao(function(kong_config)
           upstream_url = "https://example.com",
         }
         assert.falsy(err)
+        spec_helpers.register_consumer_relations(spec_helpers.dao)
 
         consumer_fixture, err = factory.consumers:insert {
           username = "bob"

@@ -175,6 +175,9 @@ local function get_db_utils(strategy, no_truncate)
     rbac.register_resource(resource, dao)
   end
 
+  local portal_helper = require "kong.portal.dao_helpers"
+  portal_helper.register_resources(dao)
+
   -- blueprints
   local bp = assert(Blueprints.new(dao, db))
 
@@ -1135,6 +1138,13 @@ local function get_running_conf(prefix)
   return conf_loader(default_conf.kong_env)
 end
 
+-- consumer_statuses/types need to be poplated after table truncate without
+-- need for rerunning migrations, due to foreign keys on consumers table
+local function register_consumer_relations(dao)
+  local portal = require "kong.portal.dao_helpers"
+  portal.register_resources(dao)
+end
+
 ----------
 -- Exposed
 ----------
@@ -1186,6 +1196,7 @@ return {
   clean_prefix = clean_prefix,
   wait_for_invalidation = wait_for_invalidation,
   each_strategy = each_strategy,
+  register_consumer_relations = register_consumer_relations,
 
   -- miscellaneous
   intercept = intercept,

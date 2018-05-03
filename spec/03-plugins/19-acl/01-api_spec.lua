@@ -31,6 +31,7 @@ for _, strategy in helpers.each_strategy() do
     describe("/consumers/:consumer/acls/", function()
       setup(function()
         dao:truncate_tables()
+        helpers.register_consumer_relations(dao)
         consumer = assert(dao.consumers:insert {
           username = "bob"
         })

@@ -130,8 +130,8 @@ local function prepare_interface(interface_dir, interface_env, kong_config)
   end
 
   -- load the template, do our substitutions, and write it out
-  local index = pl_file.read(tp_filename)
-  if not index then
+    local index = pl_file.read(tp_filename)
+    if not index then
     log.warn("Could not read " .. interface_dir .. " index template. Ensure that the template " ..
              "file '" .. tp_filename .. "' exists and that the Kong CLI " ..
              "user has permissions to read this file, and that the Kong CLI " ..
@@ -210,10 +210,11 @@ function _M.prepare_portal(kong_config)
   local portal_api_ssl_port = portal_api_ssl_listener and portal_api_ssl_listener.port
 
   return prepare_interface("portal", {
-    PORTAL_API_URI = prepare_variable(kong_config.portal_api_uri),
+    PROXY_URL = prepare_variable(kong_config.proxy_url),
+    PORTAL_AUTH = prepare_variable(kong_config.portal_auth),
     PORTAL_API_PORT = prepare_variable(portal_api_port),
     PORTAL_API_SSL_PORT = prepare_variable(portal_api_ssl_port),
-    PORTAL_GUI_URI = prepare_variable(kong_config.portal_gui_uri),
+    PORTAL_GUI_URL = prepare_variable(kong_config.portal_gui_url),
     PORTAL_GUI_PORT = prepare_variable(portal_gui_port),
     PORTAL_GUI_SSL_PORT = prepare_variable(portal_gui_ssl_port),
     RBAC_ENFORCED = prepare_variable(kong_config.enforce_rbac),

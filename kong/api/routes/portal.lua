@@ -1,5 +1,6 @@
 local crud        = require "kong.api.crud_helpers"
 local singletons  = require "kong.singletons"
+local enums       = require "kong.portal.enums"
 
 
 -- Disable API when Developer Portal is not enabled
@@ -57,6 +58,44 @@ return {
     DELETE = function(self, dao_factory, helpers)
       crud.delete(self.portal_file, dao_factory.portal_files)
     end
+  },
+
+  ["/portal/developers"] = {
+    before = function(self, dao_factory)
+      self.params.type = enums.CONSUMERS.TYPE.DEVELOPER
+      self.params.status = tonumber(self.params.status)
+    end,
+
+    GET = function(self, dao_factory)
+      crud.paginated_set(self, dao_factory.consumers)
+    end,
+
+    PATCH = function(self, dao_factory)
+      crud.patch(self.params, dao_factory.consumers)
+    end,
+
+    POST = function(self, dao_factory)
+      crud.post(self.params, dao_factory.consumers)
+    end
+  },
+
+  ["/portal/developers/:email_or_id"] = {
+    before = function(self, dao_factory, helpers)
+      self.params.email_or_id = ngx.unescape_uri(self.params.email_or_id)
+      self.params.status = tonumber(self.params.status)
+      crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      return helpers.responses.send_HTTP_OK(self.consumer)
+    end,
+
+    PATCH = function(self, dao_factory)
+      crud.patch(self.params, dao_factory.consumers, self.consumer)
+    end,
+
+    DELETE = function(self, dao_factory)
+      crud.delete(self.consumer, dao_factory.consumers)
+    end
   }
 }
-

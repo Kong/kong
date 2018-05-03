@@ -6,6 +6,7 @@ describe("Plugin: oauth2 (invalidations)", function()
 
   before_each(function()
     helpers.dao:truncate_tables()
+    helpers.register_consumer_relations(helpers.dao)
 
     local api = assert(helpers.dao.apis:insert {
       name         = "api-1",
