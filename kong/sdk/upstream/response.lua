@@ -51,10 +51,12 @@ local function new(sdk, major_version)
 
 
   function _UPSTREAM_RESPONSE.get_raw_body()
+    -- TODO: implement
   end
 
 
   function _UPSTREAM_RESPONSE.get_parsed_body()
+    -- TODO: implement
   end
 
 
