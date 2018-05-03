@@ -2,6 +2,7 @@ local table_rotater_module = require "kong.vitals.postgres.table_rotater"
 local fmt                  = string.format
 local unpack               = unpack
 local tostring             = tostring
+local match                = string.match
 local time                 = ngx.time
 local log                  = ngx.log
 local WARN                 = ngx.WARN
@@ -428,8 +429,23 @@ function _M:insert_stats(data, node_id)
     res, err = self.db:query(query)
 
     if not res then
-      log(WARN, _log_prefix, "failed to insert seconds: ", err)
-      log(DEBUG, _log_prefix, "failed query: ", query)
+      -- attempt to create missing table
+      if match(tostring(err), "does not exist") then
+        log(DEBUG, _log_prefix, "attempting to create missing table: ", tname)
+        res, err = self:create_missing_seconds_table(tname)
+
+        if not res then
+          log(WARN, _log_prefix, "could not create missing table: ", err)
+        else
+          res, err = self.db:query(query)
+        end
+      end
+
+      -- still having issues... log it
+      if not res then
+        log(WARN, _log_prefix, "failed to insert seconds: ", err)
+        log(DEBUG, _log_prefix, "failed query: ", query)
+      end
     end
   end
 
@@ -963,6 +979,11 @@ end
 
 function _M:table_names_for_select()
   return self.table_rotater:table_names_for_select()
+end
+
+
+function _M:create_missing_seconds_table(tname)
+  return self.table_rotater:create_missing_seconds_table(tname)
 end
 
 

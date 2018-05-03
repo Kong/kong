@@ -62,6 +62,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       assert(db:query("truncate table vitals_stats_minutes"))
       assert(db:query("truncate table vitals_stats_seconds"))
       assert(db:query("truncate table vitals_stats_seconds_2"))
+      assert(db:query("truncate table missing_seconds_table"))
       assert(db:query("truncate table vitals_node_meta"))
       assert(db:query("truncate table vitals_consumers"))
       assert(db:query("truncate table vitals_code_classes_by_cluster"))
@@ -180,6 +181,51 @@ dao_helpers.for_each_dao(function(kong_conf)
         local new_rep = res[1].last_report
 
         assert.not_same(new_rep, orig_rep)
+      end)
+
+      it("will attempt to create a missing seconds table if an insert fails", function()
+        stub(strategy, "current_table_name").returns("missing_seconds_table")
+
+        local data = {
+          { 1505964713, 0, 0, nil, nil, nil, nil, 0, 0, 0, 0, 0 },
+          { 1505964714, 19, 99, 0, 120, 12, 47, 7, 7, 294, 6, 193 },
+        }
+
+        local node_id = utils.uuid()
+
+        assert(strategy:insert_stats(data, node_id))
+
+        local res, _ = db:query("select * from missing_seconds_table")
+
+        local expected = {
+          {
+            at       = 1505964713,
+            node_id  = node_id,
+            l2_hit   = 0,
+            l2_miss  = 0,
+            requests = 0,
+            plat_count = 0,
+            plat_total = 0,
+            ulat_count = 0,
+            ulat_total = 0,
+          },
+          {
+            at       = 1505964714,
+            node_id  = node_id,
+            l2_hit   = 19,
+            l2_miss  = 99,
+            plat_min = 0,
+            plat_max = 120,
+            ulat_min = 12,
+            ulat_max = 47,
+            requests = 7,
+            plat_count = 7,
+            plat_total = 294,
+            ulat_count = 6,
+            ulat_total = 193,
+          },
+        }
+        assert.same(expected, res)
       end)
     end)
 
