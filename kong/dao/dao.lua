@@ -189,16 +189,29 @@ function DAO:new(db, model_mt, schema, constraints)
   self.constraints = constraints
 end
 
+local function cache_key_ws(table, attach_ws, arg1, arg2, arg3, arg4, arg5)
+  local workspace = workspaces.get_workspaces()[1]
+  return fmt("%s:%s:%s:%s:%s:%s:%s", table,
+    arg1 == nil and "" or arg1,
+    arg2 == nil and "" or arg2,
+    arg3 == nil and "" or arg3,
+    arg4 == nil and "" or arg4,
+    arg5 == nil and "" or arg5,
+    attach_ws and (workspace == nil and "" or workspace.id) or "")
+end
+
 function DAO:cache_key(arg1, arg2, arg3, arg4, arg5)
-  return fmt("%s:%s:%s:%s:%s:%s", self.table,
+  local workspace = workspaces.get_workspaces()[1]
+  return fmt("%s:%s:%s:%s:%s:%s:%s", self.table,
              arg1 == nil and "" or arg1,
              arg2 == nil and "" or arg2,
              arg3 == nil and "" or arg3,
              arg4 == nil and "" or arg4,
-             arg5 == nil and "" or arg5)
+             arg5 == nil and "" or arg5,
+             workspace == nil and "" or workspace.id)
 end
 
-function DAO:entity_cache_key(entity)
+function DAO:entity_cache_key(entity, attach_ws)
   local schema    = self.schema
   local cache_key = schema.cache_key
 
@@ -214,7 +227,7 @@ function DAO:entity_cache_key(entity)
     keys[i] = entity[cache_key[i]]
   end
 
-  return self:cache_key(utils.unpack(keys))
+  return cache_key_ws(self.table, attach_ws, utils.unpack(keys))
 end
 
 --- Insert a row.
@@ -249,7 +262,7 @@ function DAO:insert(tbl, options)
   end
 
   local res, err = self.db:insert(self.table, self.schema, model, self.constraints, options)
-  remove_ws_prefix(self.schema.table, res)
+  remove_ws_prefix(self.table, res)
   if not err and workspace then
     local err_rel = workspaces.add_entity_relation(self.table, res, workspace)
     if err_rel then
@@ -516,12 +529,13 @@ function DAO:update(tbl, filter_keys, options)
   if err then
     return ret_error(self.db.name, nil, err)
   elseif res then
-    remove_ws_prefix(self.schema.table, res)
+    remove_ws_prefix(self.table, res)
     local err = workspaces.update_entity_relation(self.table, res)
     if err then
       return ret_error(self.db.name, nil, err)
     end
     if not options.quiet then
+      remove_ws_prefix(self.table, old)
       if self.events then
         local _, err = self.events.post_local("dao:crud", "update", {
           schema     = self.schema,
@@ -587,14 +601,6 @@ function DAO:delete(tbl, options)
   end
 
   local row, err = self.db:delete(self.table, self.schema, primary_keys, self.constraints)
-  if (not err) and (row ~= nil) and ws then
-    local err = workspaces.delete_entity_relation(self.table, row)
-    if err then
-      ngx.log(ngx.ERR,
-              "could not delete enitity relationship with workspace: ",
-              err)
-    end
-  end
   if not err and row ~= nil and not options.quiet then
     if self.events then
       local _, err = self.events.post_local("dao:crud", "delete", {
@@ -610,15 +616,7 @@ function DAO:delete(tbl, options)
     -- Also propagate the deletion for the associated entities
     for k, v in pairs(associated_entites) do
       for _, entity in ipairs(v.entities) do
-        if ws then
-          local err = workspaces.delete_entity_relation(v.table, entity)
-          if err then
-            ngx.log(ngx.ERR,
-                    "could not delete enitity relationship with workspace: ",
-                    err)
-          end
-        end
-
+        remove_ws_prefix(k, entity)
         if self.events then
           local _, err = self.events.post_local("dao:crud", "delete", {
             schema    = v.schema,
@@ -629,7 +627,25 @@ function DAO:delete(tbl, options)
             ngx.log(ngx.ERR, "could not propagate CRUD operation: ", err)
           end
         end
+
+        if ws then
+          local err = workspaces.delete_entity_relation(k, entity)
+          if err then
+            ngx.log(ngx.ERR,
+              "could not delete enitity relationship with workspace: ",
+              err)
+          end
+        end
       end
+    end
+  end
+  if not err and not row and ws then
+    remove_ws_prefix(self.schema.table, row)
+    local err = workspaces.delete_entity_relation(self.table, row)
+    if err then
+      ngx.log(ngx.ERR,
+        "could not delete enitity relationship with workspace: ",
+        err)
     end
   end
   return ret_error(self.db.name, row, err)

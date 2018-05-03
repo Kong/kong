@@ -110,10 +110,22 @@ return {
 
         -- invalidate this entity anywhere it is cached if it has a
         -- caching key
+        if data.schema.table == "workspace_entities" then
+          return
+        end
+
+        local workspaces, err = dao.workspace_entities:find_all({
+          entity_id = data.entity[data.schema.primary_key[1]],
+          __skip_rbac = true,
+        })
+        if err then
+          log(ngx.ERR, "[events] could not fetch workopaces: ", err)
+          return
+        end
 
         local cache_key = dao[data.schema.table]:entity_cache_key(data.entity)
         if cache_key then
-          cache:invalidate(cache_key)
+          cache:invalidate(cache_key, workspaces)
         end
 
         -- if we had an update, but the cache key was part of what was updated,
@@ -122,7 +134,7 @@ return {
         if data.old_entity then
           cache_key = dao[data.schema.table]:entity_cache_key(data.old_entity)
           if cache_key then
-            cache:invalidate(cache_key)
+            cache:invalidate(cache_key, workspaces)
           end
         end
 

@@ -37,6 +37,7 @@ local function load_plugin_configuration(api_id, consumer_id, plugin_name)
   local plugin_cache_key = singletons.dao.plugins:cache_key(plugin_name,
                                                             api_id,
                                                             consumer_id)
+
   local plugin, err = singletons.cache:get(plugin_cache_key, nil,
                                            load_plugin_into_memory,
                                            api_id, consumer_id, plugin_name)

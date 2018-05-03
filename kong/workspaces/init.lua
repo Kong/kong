@@ -322,13 +322,14 @@ function _M.update_entity_relation(table_name, entity)
       end
 
       for _, row in ipairs(res) do
-        -- XXX no error handling?
-        singletons.dao.workspace_entities:update({
-          unique_field_value = entity[k]
-        }, row)
-      end
-      if err then
-        return err
+        if entity[k] then
+          local _, err =  singletons.dao.workspace_entities:update({
+            unique_field_value = entity[k]
+          }, row)
+          if err then
+            return err
+          end
+        end
       end
     end
   end
