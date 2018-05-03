@@ -745,16 +745,82 @@ describe("Admin API RBAC with " .. kong_config.database, function()
       helpers.run_migrations(dao)
     end)
 
-    -- TODO implement this
     it("defines the default roles", function()
+      local res = assert(client:send {
+        path = "/rbac/roles/",
+        method = "GET",
+      })
+
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+
+      -- only three default roles
+      assert.equal(3, #json.data)
+
+      -- body contains those default roles names
+      assert.matches("read-only", body, nil, true)
+      assert.matches("admin", body, nil, true)
+      assert.matches("super-admin", body, nil, true)
     end)
 
-    -- TODO implement this
     it("defines the default endpoint permissions", function()
+      local res, body
+
+      -- check read-only role permissions
+      res = assert(client:send {
+        path = "/rbac/roles/read-only/endpoints/permissions",
+        method = "GET",
+      })
+
+      body = assert.res_status(200, res)
+      assert.matches("*", body, nil, true)
+      assert.matches("read", body, nil, true)
+
+      -- check read-only role permissions
+      res = assert(client:send {
+        path = "/rbac/roles/admin/endpoints/permissions",
+        method = "GET",
+      })
+
+      body = assert.res_status(200, res)
+      -- check existence of permissions for every endpoint, every action
+      assert.matches("*", body, nil, true)
+      assert.matches("delete", body, nil, true)
+      assert.matches("create", body, nil, true)
+      assert.matches("update", body, nil, true)
+      assert.matches("read", body, nil, true)
+
+      -- check existence of negative permissions for rbac
+      -- TODO add check to make sure it's a negative permission - to be
+      -- done after that endpoint returns said info
+      assert.matches("rbac", body, nil, true)
+
+      -- check read-only role permissions
+      res = assert(client:send {
+        path = "/rbac/roles/super-admin/endpoints/permissions",
+        method = "GET",
+      })
+
+      body = assert.res_status(200, res)
+      -- check existence of permissions for every endpoint, every action
+      assert.matches("*", body, nil, true)
+      assert.matches("delete", body, nil, true)
+      assert.matches("create", body, nil, true)
+      assert.matches("update", body, nil, true)
+      assert.matches("read", body, nil, true)
+      assert.not_matches("rbac", body, nil, true)
     end)
 
-    -- TODO implement this
     it("defines no default entity permissions", function()
+      local res = assert(client:send {
+        path = "/rbac/roles/read-only/entities/permissions",
+        method = "GET",
+      })
+
+      local body = assert.res_status(200, res)
+      -- TODO needs improvement, when the corresponding endpoint gets
+      -- to its final shape
+      assert.same("{}", body, nil, true)
     end)
 
     it("will give user permissions when assigned to a role", function()
