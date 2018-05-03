@@ -1,6 +1,8 @@
 local ngx = ngx
+local sub = string.sub
 local type = type
 local error = error
+local tonumber = tonumber
 
 
 local function new(sdk, major_version)
@@ -13,7 +15,20 @@ local function new(sdk, major_version)
 
 
   function _UPSTREAM_RESPONSE.get_status()
-    return ngx.status
+    local upstream_status = ngx.var.upstream_status
+    if not upstream_status then
+      return nil
+    end
+
+    local status = tonumber(upstream_status)
+    if status then
+      return status
+    end
+
+    status = tonumber(sub(upstream_status, -3))
+    if status then
+      return status
+    end
   end
 
 
