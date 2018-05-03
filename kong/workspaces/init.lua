@@ -132,23 +132,6 @@ function _M.get_workspaces()
 end
 
 
-function _M.get_default_workspace()
-  local old_ws = ngx.ctx.workspaces
-  ngx.ctx.workspaces = {}
-  local rows, err = singletons.dao.workspaces:find_all(
-    {
-      name = _M.DEFAULT_WORKSPACE
-    }
-  )
-  ngx.ctx.workspaces = old_ws
-
-  if err then
-    return nil, err
-  end
-  return rows[1]
-end
-
-
 -- register a relation name and its primary key name as a workspaceable
 -- relation
 function _M.register_workspaceable_relation(relation, primary_keys, unique_keys)
@@ -229,37 +212,48 @@ function _M.get_default_workspace_migration()
 end
 
 
-local function retrieve_workspace(workspace_name)
-  workspace_name = workspace_name or _M.DEFAULT_WORKSPACE
+local function load_ws_cb(ws_name)
+  local result, err = singletons.dao.workspaces:find_all(
+    {
+      name = ws_name
+    }
+  )
 
-  local rows, err = singletons.dao.workspaces:find_all({
-    name = workspace_name
-  })
-  if err then
+  if not result then
     return nil, err
   end
-
-  if err then
-    ngx.log(ngx.ERR, "error in retrieving workspace: ", err)
-    return nil, err
-  end
-
-  if not rows or #rows == 0 then
-    return nil
-  end
-
-  return rows
+  return result[1]
 end
+
+
+local function get_cached_workspace(ws_name)
+  local ws_cache_key = singletons.dao.workspaces:cache_key(ws_name)
+  local ws, err = singletons.cache:get(ws_cache_key, nil, load_ws_cb, ws_name)
+
+  if err then
+    return nil, err
+  end
+  return ws
+end
+
 
 -- Coming from admin API request
 function _M.get_req_workspace(params)
-  if params.workspace_name == "*" then
-    local rows, err = singletons.dao.workspaces:find_all()
-    return rows, err
-  else
+  local ws_name = params.workspace_name or default_workspace
+  local workspaces, err
 
-    return retrieve_workspace(params.workspace_name)
+  local old_ws       = ngx.ctx.workspaces
+  ngx.ctx.workspaces = {}
+
+  if ws_name == "*" then
+    workspaces, err = singletons.dao.workspaces:find_all()
+  else
+    workspaces, err = get_cached_workspace(ws_name)
+    workspaces = workspaces and { workspaces }
   end
+
+  ngx.ctx.workspaces = old_ws
+  return workspaces, err
 end
 
 

@@ -102,7 +102,7 @@ end
 
 -- If entity has a unique key it will have workspace_name prefix so we
 -- have to search first in the relationship table
-local function fetch_shared_entity_id(table_name, params)
+local function resolve_shared_entity_id(table_name, params)
   local constraints = workspaceable[table_name]
   if not constraints or not constraints.unique_keys then
     return
@@ -135,7 +135,6 @@ local function fetch_shared_entity_id(table_name, params)
       if row then
         params[k] = nil
         params[constraints.primary_key] = row.entity_id
-        return params
       end
     end
   end
@@ -173,13 +172,13 @@ local DAO = Object:extend()
 
 DAO.ret_error = ret_error
 
---- Instanciate a DAO.
--- The DAO Factory is responsible for instanciating DAOs for each entity.
+--- Instantiate a DAO.
+-- The DAO Factory is responsible for instantiating DAOs for each entity.
 -- This method is only documented for clarity.
 -- @param db An instance of the underlying database object (`cassandra_db` or `postgres_db`)
 -- @param model_mt The related model metatable. Such metatables contain, among other things, validation methods.
--- @param schema The schema of the entity for which this DAO is instanciated. The schema contains crucial informations about how to interact with the database (fields type, table name, etc...)
--- @param constraints A table of contraints built by the DAO Factory. Such constraints are mostly useful for databases without support for foreign keys. SQL databases handle those contraints natively.
+-- @param schema The schema of the entity for which this DAO is instantiated. The schema contains crucial information about how to interact with the database (fields type, table name, etc...)
+-- @param constraints A table of constraints built by the DAO Factory. Such constraints are mostly useful for databases without support for foreign keys. SQL databases handle those contraints natively.
 -- @return self
 function DAO:new(db, model_mt, schema, constraints)
   self.db = db
@@ -297,7 +296,7 @@ end
 function DAO:find(tbl)
   check_arg(tbl, 1, "table")
   check_utf8(tbl, 1)
-  fetch_shared_entity_id(self.schema.table, tbl)
+  resolve_shared_entity_id(self.schema.table, tbl)
 
   local model = self.model_mt(tbl)
   if not model:has_primary_keys() then
@@ -334,7 +333,6 @@ end
 -- @treturn rows An array of rows.
 -- @treturn table err If an error occured, a table describing the issue.
 function DAO:find_all(tbl, include_ws)
-  local new_params
   local skip_rbac
   if tbl ~= nil then
     skip_rbac = tbl.__skip_rbac
@@ -349,13 +347,13 @@ function DAO:find_all(tbl, include_ws)
       return ret_error(self.db.name, nil, Errors.schema(err))
     end
 
-    new_params = fetch_shared_entity_id(self.schema.table, tbl)
+    resolve_shared_entity_id(self.schema.table, tbl)
   end
 
   -- XXX find a better, cleaner way to handle this logic - so that
   -- there is no unreachable code, but still no upstream tainting
   do
-    local rows, err = self.db:find_all(self.table, new_params or tbl, self.schema)
+    local rows, err = self.db:find_all(self.table, tbl, self.schema)
     if err then
       return ret_error(self.db.name, nil, Errors.schema(err))
     end
@@ -382,7 +380,6 @@ end
 -- @treturn table rows An array of rows.
 -- @treturn table err If an error occured, a table describing the issue.
 function DAO:find_page(tbl, page_offset, page_size)
-  local new_params
    if tbl ~= nil then
     check_arg(tbl, 1, "table")
     check_not_empty(tbl, 1)
@@ -391,7 +388,7 @@ function DAO:find_page(tbl, page_offset, page_size)
       return ret_error(self.db.name, nil, Errors.schema(err))
     end
 
-     new_params = fetch_shared_entity_id(self.schema.table, tbl)
+     resolve_shared_entity_id(self.schema.table, tbl)
   end
 
   if page_size == nil then
@@ -403,9 +400,8 @@ function DAO:find_page(tbl, page_offset, page_size)
   -- XXX find a better, cleaner way to handle this logic - so that
   -- there is no unreachable code, but still no upstream tainting
   do
-    local rows, err, offset = self.db:find_page(self.table, new_params or tbl,
-                                                page_offset, page_size,
-                                                self.schema)
+    local rows, err, offset = self.db:find_page(self.table, tbl, page_offset,
+                                                page_size, self.schema)
     if err then
       return ret_error(self.db.name, nil, err)
     end
@@ -426,7 +422,6 @@ end
 -- @treturn number count The total count of rows matching the given filter, or total count of rows if no filter was given.
 -- @treturn table err If an error occured, a table describing the issue.
 function DAO:count(tbl)
-  local new_params
   if tbl ~= nil then
     check_arg(tbl, 1, "table")
     check_not_empty(tbl, 1)
@@ -435,11 +430,7 @@ function DAO:count(tbl)
       return ret_error(self.db.name, nil, Errors.schema(err))
     end
 
-    new_params = fetch_shared_entity_id(self.schema.table, tbl)
-    if new_params then
-      return ret_error(self.db.name, self.db:count(self.table, new_params,
-                       self.schema))
-    end
+    resolve_shared_entity_id(self.schema.table, tbl)
   end
 
   if tbl ~= nil and next(tbl) == nil then

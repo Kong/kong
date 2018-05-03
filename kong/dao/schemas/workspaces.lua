@@ -1,7 +1,7 @@
 return {
   table = "workspaces",
   primary_key = { "id" },
-  cache_key = { "id" },
+  cache_key = { "name" },
   workspaceable = true,
   fields = {
     id = {
