@@ -630,9 +630,8 @@ function DAO:delete(tbl, options)
       end
     end
   end
-  if not err and not row and ws then
-    remove_ws_prefix(self.schema.table, row)
-    local err = workspaces.delete_entity_relation(self.table, row)
+  if not err and ws then
+    local err = workspaces.delete_entity_relation(self.table, tbl)
     if err then
       ngx.log(ngx.ERR,
         "could not delete enitity relationship with workspace: ",

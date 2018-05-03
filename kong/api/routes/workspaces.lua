@@ -38,6 +38,17 @@ return {
       if self.workspace.name == workspaces.DEFAULT_WORKSPACE then
         return helpers.responses.send_HTTP_METHOD_NOT_ALLOWED()
       end
+
+      local results, err = dao_factory.workspace_entities:find_page({
+        workspace_id = self.workspace.id,
+      })
+      if err then
+        return helpers.yield_error(err)
+      end
+
+      if #results > 0 then
+        return helpers.responses.send_HTTP_METHOD_NOT_ALLOWED()
+      end
       crud.delete(self.workspace, dao_factory.workspaces)
     end,
   },
