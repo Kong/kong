@@ -2135,7 +2135,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert.same("opts must be a table", err)
 
         _, err = strategy:delete_status_codes({ entity_type = "foo" })
-        assert.same("opts.entity_type must be 'service' or 'route'", err)
+        assert.same("opts.entity_type must be 'service', 'route', or 'consumer_route'", err)
 
         _, err = strategy:delete_status_codes({ entity_type = "service", seconds = "foo" })
         assert.same("opts.seconds must be a number", err)

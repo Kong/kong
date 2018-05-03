@@ -927,8 +927,10 @@ function _M:delete_status_codes(opts)
     return nil, "opts must be a table"
   end
 
-  if opts.entity_type ~= "service" and opts.entity_type ~= "route" then
-    return nil, "opts.entity_type must be 'service' or 'route'"
+  if opts.entity_type ~= "service" and
+     opts.entity_type ~= "route"   and
+     opts.entity_type ~= "consumer_route" then
+    return nil, "opts.entity_type must be 'service', 'route', or 'consumer_route'"
   end
 
   if type(opts.seconds) ~= "number" then
@@ -939,12 +941,7 @@ function _M:delete_status_codes(opts)
     return nil, "opts.minutes must be a number"
   end
 
-  local table_name
-  if opts.entity_type == "service" then
-    table_name = "vitals_codes_by_service"
-  else
-    table_name = "vitals_codes_by_route"
-  end
+  local table_name = "vitals_codes_by_" .. opts.entity_type
 
   local query = fmt(DELETE_CODES, table_name, 1, opts.seconds,
                     60, opts.minutes)
