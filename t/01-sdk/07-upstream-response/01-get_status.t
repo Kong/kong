@@ -80,7 +80,7 @@ status: 200
 
 
 
-=== TEST 3: upstream.response.get_status() returns 200
+=== TEST 3: upstream.response.get_status() returns 404
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
