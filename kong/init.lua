@@ -518,7 +518,8 @@ function Kong.serve_portal_api(options)
     return ngx.exit(204)
   end
 
-  return lapis.serve("kong.portal")
+  local app = require "kong.portal".app
+  return lapis.serve(app)
 end
 
 return Kong
