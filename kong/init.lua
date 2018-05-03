@@ -27,6 +27,7 @@
 require "luarocks.loader"
 require "resty.core"
 local constants = require "kong.constants"
+local plugin_overwrite = require "kong.enterprise_edition.plugin_overwrite"
 
 do
   -- let's ensure the required shared dictionaries are
@@ -112,6 +113,11 @@ local function load_plugins(kong_conf, dao)
     local ok, schema = utils.load_module_if_exists("kong.plugins." .. plugin .. ".schema")
     if not ok then
       return nil, "no configuration schema found for plugin: " .. plugin
+    end
+
+    local _, err = plugin_overwrite.add_overwrite(plugin, schema)
+    if err then
+      return nil, plugin .. " plugin schema overwrite error: " .. err
     end
 
     ngx_log(ngx_DEBUG, "Loading plugin: " .. plugin)

@@ -4,8 +4,13 @@ local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 
 
-local flags = {}
-local values = {}
+local FLAGS = {
+  HMAC_AUTH_DISABLE_VALIDATE_REQUEST_BODY = "hmac_auth_disable_validate_request_body",
+  KEY_AUTH_DISABLE_KEY_IN_BODY = "key_auth_disable_key_in_body",
+}
+
+
+local VALUES = {}
 local loaded_conf = {}
 
 
@@ -48,8 +53,8 @@ end
 
 return {
   init = init,
-  flags = flags,
-  values = values,
+  FLAGS = FLAGS,
+  VALUES = VALUES,
   is_enabled = is_enabled,
   get_feature_value = get_feature_value,
 }

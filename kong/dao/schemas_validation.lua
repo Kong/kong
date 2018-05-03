@@ -122,6 +122,10 @@ function _M.validate_entity(tbl, schema, options)
           end
         end
 
+        if t[column] ~= nil and v.overwrite ~= nil then
+          errors = utils.add_error(errors, error_prefix .. column, column .. " cannot be set in your environment")
+        end
+
         -- [TYPE] Check if type is valid. Booleans and Numbers as strings are accepted and converted
         if t[column] ~= nil and t[column] ~= ngx.null and v.type ~= nil then
           local is_valid_type
@@ -202,6 +206,8 @@ function _M.validate_entity(tbl, schema, options)
               for sub_field_k, sub_field in pairs(sub_schema.fields) do
                 if sub_field.default ~= nil then -- Sub-value has a default, be polite and pre-assign the sub-value
                   t[column] = {}
+                elseif sub_field.overwrite ~= nil then
+                  t[column] = {}
                 elseif sub_field.required then -- Only check required if field doesn't have a default and dao_insert_value
                   errors = utils.add_error(errors, error_prefix .. column, column .. "." .. sub_field_k .. " is required")
                 end
@@ -261,6 +267,18 @@ function _M.validate_entity(tbl, schema, options)
         end
 
         ::continue::
+      end
+
+      for column, v in pairs(schema.fields) do
+        if v.overwrite ~= nil then
+          if type(v.overwrite) == "function" then
+            t[column] = v.overwrite()
+          elseif v.overwrite == ngx.null then
+            t[column] = nil
+          else
+           t[column] = utils.deep_copy(v.overwrite)
+          end
+        end
       end
 
       -- Check for unexpected fields in the entity
