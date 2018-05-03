@@ -17,6 +17,7 @@ docker run -it --rm \
   -v $PWD:/src \
   -v /tmp:/tmp \
   -v /var/run/docker.sock:/var/run/docker.sock \
+  -e NPM_TOKEN=$NPM_TOKEN \
   mashape/docker-packer /src/package.sh -p alpine -u "$BINTRAY_USER" -k "$BINTRAY_API_KEY" --ee
 
 popd
