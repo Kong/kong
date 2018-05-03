@@ -1,6 +1,7 @@
 local kong_cache = require "kong.cache"
 local kong_cluster_events = require "kong.cluster_events"
 local Factory = require "kong.dao.factory"
+local DB = require "kong.db"
 local helpers = require "spec.helpers"
 local worker_events = require "resty.worker.events"
 local create_unique_key = require("kong.tools.utils").uuid
@@ -33,7 +34,7 @@ describe("dao in-memory cache", function()
     assert(worker_events.configure {
       shm = "kong_process_events",
     })
-    local dao_factory = assert(Factory.new(helpers.test_conf))
+    local dao_factory = assert(Factory.new(helpers.test_conf, DB.new(helpers.test_conf)))
     local cluster_events = assert(kong_cluster_events.new {
       dao = dao_factory,
     })

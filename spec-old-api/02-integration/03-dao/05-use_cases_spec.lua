@@ -1,5 +1,6 @@
 local helpers = require "spec.02-integration.03-dao.helpers"
 local Factory = require "kong.dao.factory"
+local DB = require "kong.db"
 
 helpers.for_each_dao(function(kong_config)
   describe("Real use-cases with DB: #" .. kong_config.database, function()
@@ -138,7 +139,7 @@ describe("#cassandra", function()
       kong_config.cassandra_lb_policy        = "DCAwareRoundRobin"
       kong_config.cassandra_local_datacenter = "my-dc"
 
-      assert(Factory.new(kong_config))
+      assert(Factory.new(kong_config, DB.new(kong_config)))
     end)
   end)
 end)

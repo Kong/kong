@@ -3,8 +3,6 @@ local cjson = require "cjson"
 local utils = require "kong.tools.utils"
 
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
-local DAOFactory = require "kong.dao.factory"
-local DB         = require "kong.db"
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
@@ -21,13 +19,8 @@ pending("Admin API #" .. kong_config.database, function()
   local db
 
   setup(function()
-    dao = assert(DAOFactory.new(kong_config))
-    db = assert(DB.new(kong_config))
-    assert(db:init_connector())
-    assert(dao:run_migrations())
-
-    dao:truncate_tables()
-    db:truncate()
+    local _
+    _, db, dao = helpers.get_db_utils(kong_config.database)
 
     assert(helpers.start_kong{
       database = kong_config.database

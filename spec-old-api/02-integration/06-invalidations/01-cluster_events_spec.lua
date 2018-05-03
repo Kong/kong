@@ -3,7 +3,6 @@ _G.ngx.config.debug = true
 
 local helpers             = require "spec.helpers"
 local dao_helpers         = require "spec.02-integration.03-dao.helpers"
-local dao_factory         = require "kong.dao.factory"
 local kong_cluster_events = require "kong.cluster_events"
 
 
@@ -13,9 +12,8 @@ describe("cluster_events with db: #" .. kong_conf.database, function()
   local dao
 
   setup(function()
-    dao = assert(dao_factory.new(kong_conf))
-
-    assert(dao:run_migrations())
+    local _
+    _, _, dao = helpers.get_db_utils(kong_conf.database)
   end)
 
   teardown(function()
