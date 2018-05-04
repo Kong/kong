@@ -24,13 +24,13 @@ A tracer is created with the "http_headers" formatter set to use the headers des
 
 ## Spans
 
-  - `kong-request`: encompasing the whole request in kong.
+  - `kong.request`: encompasing the whole request in kong.
     All other spans are children of this.
-  - `kong-rewrite`: encompassing the kong rewrite phase
-  - `kong-access`: encompassing the kong access phase
-  - `kong-balancer`: each balancer phase will have it's own span
-  - `kong-header_filter`: encompassing the kong header filter phase
-  - `kong-body_filter`: encompassing the kong body filter phase
+  - `kong.rewrite`: encompassing the kong rewrite phase
+  - `kong.access`: encompassing the kong access phase
+  - `kong.balancer`: each balancer phase will have it's own span
+  - `kong.header_filter`: encompassing the kong header filter phase
+  - `kong.body_filter`: encompassing the kong body filter phase
 
 
 ## Tags
