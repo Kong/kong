@@ -682,7 +682,6 @@ return {
       -- record try-latency
       local try_latency = get_now() - current_try.balancer_start
       current_try.balancer_latency = try_latency
-      current_try.balancer_start = nil
 
       -- record overall latency
       ctx.KONG_BALANCER_TIME = (ctx.KONG_BALANCER_TIME or 0) + try_latency
