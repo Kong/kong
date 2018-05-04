@@ -536,6 +536,24 @@ return {
     ]]
   },
   {
+    name = "2018-04-25-000001_portal_initial_files",
+    up = function(_, _, dao)
+      local utils = require "kong.tools.utils"
+      local files = require "kong.portal.migrations.01_initial_files"
+
+      -- Iterate over file list and insert files that do not exist
+      for _, file in ipairs(files) do
+        dao.portal_files:insert({
+          id = utils.uuid(),
+          auth = file.auth,
+          name = file.name,
+          type = file.type,
+          contents = file.contents
+        })
+      end
+    end,
+  },
+  {
     name = "2018-04-10-094800_dev_portal_consumer_types",
     up = [[
       CREATE TABLE IF NOT EXISTS "consumer_statuses" (

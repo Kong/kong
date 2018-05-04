@@ -174,6 +174,7 @@ build = {
     ["kong.portal.api"] = "kong/portal/api.lua",
     ["kong.portal.dao_helpers"] = "kong/portal/dao_helpers.lua",
     ["kong.portal.utils"] = "kong/portal/utils.lua",
+    ["kong.portal.migrations.01_initial_files"] = "kong/portal/migrations/01_initial_files.lua",
 
     ["kong.vitals"] = "kong/vitals/init.lua",
     ["kong.vitals.cassandra.strategy"] = "kong/vitals/cassandra/strategy.lua",
