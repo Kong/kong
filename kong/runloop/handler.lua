@@ -750,11 +750,16 @@ return {
   },
   body_filter = {
     after = function(ctx)
-      if ngx.arg[2] and ctx.KONG_PROXIED then
-        -- time spent receiving the response (header_filter + body_filter)
-        -- we could use $upstream_response_time but we need to distinguish the waiting time
-        -- from the receiving time in our logging plugins (especially ALF serializer).
-        ctx.KONG_RECEIVE_TIME = get_now() - ctx.KONG_HEADER_FILTER_STARTED_AT
+      if ngx.arg[2] then
+        local now = get_now()
+        ctx.KONG_BODY_FILTER_ENDED_AT = now
+
+        if ctx.KONG_PROXIED then
+          -- time spent receiving the response (header_filter + body_filter)
+          -- we could use $upstream_response_time but we need to distinguish the waiting time
+          -- from the receiving time in our logging plugins (especially ALF serializer).
+          ctx.KONG_RECEIVE_TIME = now - ctx.KONG_HEADER_FILTER_STARTED_AT
+        end
       end
     end
   },
