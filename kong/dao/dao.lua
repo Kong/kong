@@ -623,7 +623,7 @@ function DAO:delete(tbl, options)
           local err = workspaces.delete_entity_relation(k, entity)
           if err then
             ngx.log(ngx.ERR,
-              "could not delete enitity relationship with workspace: ",
+              "could not delete entity relationship with workspace: ",
               err)
           end
         end
@@ -634,7 +634,7 @@ function DAO:delete(tbl, options)
     local err = workspaces.delete_entity_relation(self.table, tbl)
     if err then
       ngx.log(ngx.ERR,
-        "could not delete enitity relationship with workspace: ",
+        "could not delete entity relationship with workspace: ",
         err)
     end
   end

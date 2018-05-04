@@ -180,7 +180,7 @@ return {
           __skip_rbac = true,
         })
         if err then
-          log(ngx.ERR, "[events] could not fetch workopaces: ", err)
+          log(ngx.ERR, "[events] could not fetch workspaces: ", err)
           return
         end
 

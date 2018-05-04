@@ -153,6 +153,7 @@ function _M.get_workspaceable_relations()
   return setmetatable({}, metatable(workspaceable_relations))
 end
 
+
 local function add_entity_relation_db(dao, ws_id, entity_id, table_name, field_name, field_value)
   return dao:insert({
     workspace_id = ws_id,
@@ -442,7 +443,7 @@ function _M.is_route_colliding(req, router)
                            utils.split(hosts or " ", hosts and "," or "")) do
 
     if not validate_route_for_ws(router, perm[1], perm[2], perm[3], ws) then
-      ngx_log(DEBUG, "api colided")
+      ngx_log(DEBUG, "api collided")
       return true
     end
   end
@@ -451,22 +452,19 @@ end
 
 
 local function load_workspace_scope(api)
+  local old_wss = ngx.ctx.workspaces
+  ngx.ctx.workspaces = {}
   local rows, err = singletons.dao.workspace_entities:find_all({
     entity_id          = api.id,
     unique_field_name  = "name",
     unique_field_value = api.name,
-  }, true)
-
+  })
+  ngx.ctx.workspaces = old_wss
   if not rows then
     return nil, err
   end
 
-  local workspaces = {}
-  for _, row in ipairs(rows) do
-    workspaces[#workspaces + 1] = { id = row.workspace_id }
-  end
-
-  return workspaces
+  return map(function(x) return { id = x.workspace_id } end, rows)
 end
 
 
