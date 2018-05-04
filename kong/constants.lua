@@ -28,6 +28,7 @@ local plugins = {
   "request-termination",
   -- external plugins
   "azure-functions",
+  "zipkin",
 }
 
 local plugin_map = {}
