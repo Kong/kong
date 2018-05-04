@@ -2,7 +2,8 @@ local singletons = require "kong.singletons"
 local utils      = require "kong.tools.utils"
 
 
-local find = string.find
+local find    = string.find
+local format  = string.format
 local ngx_log = ngx.log
 local DEBUG   = ngx.DEBUG
 local next    = next
@@ -262,11 +263,13 @@ function _M.add_entity_relation(table_name, entity, workspace)
 
   if constraints and constraints.unique_keys and next(constraints.unique_keys) then
     for k, _ in pairs(constraints.unique_keys) do
-      local _, err = add_entity_relation_db(singletons.dao.workspace_entities, workspace.id,
-                                            entity[constraints.primary_key],
-                                            table_name, k, entity[k])
-      if err then
-        return err
+      if entity[k] then
+        local _, err = add_entity_relation_db(singletons.dao.workspace_entities, workspace.id,
+          entity[constraints.primary_key],
+          table_name, k, entity[k])
+        if err then
+          return err
+        end
       end
     end
     return
@@ -447,15 +450,14 @@ function _M.is_route_colliding(req, router)
 end
 
 
--- Return workspace scope, given api belongs
--- to, to the the context.
-function _M.add_ws_to_ctx(api)
+local function load_workspace_scope(api)
   local rows, err = singletons.dao.workspace_entities:find_all({
     entity_id          = api.id,
     unique_field_name  = "name",
     unique_field_value = api.name,
   }, true)
-  if err then
+
+  if not rows then
     return nil, err
   end
 
@@ -464,6 +466,20 @@ function _M.add_ws_to_ctx(api)
     workspaces[#workspaces + 1] = { id = row.workspace_id }
   end
 
+  return workspaces
+end
+
+
+-- Return workspace scope, given api belongs
+-- to, to the the context.
+function _M.resolve_ws_scope(api)
+  local ws_scope_key = format("apis_ws_resolution:%s", api.id)
+  local workspaces, err = singletons.cache:get(ws_scope_key, nil,
+                                               load_workspace_scope, api)
+
+  if err then
+    return nil, err
+  end
   return workspaces
 end
 

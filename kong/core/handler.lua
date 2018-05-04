@@ -174,9 +174,6 @@ return {
       worker_events.register(function(data)
         -- invalidate this entity anywhere it is cached if it has a
         -- caching key
-        if data.schema.table == "workspace_entities" then
-          return
-        end
 
         local workspaces, err = dao.workspace_entities:find_all({
           entity_id = data.entity[data.schema.primary_key[1]],
@@ -423,6 +420,16 @@ return {
         end
       end)
 
+      worker_events.register(function(data)
+        log(DEBUG, "[events] workspace_entites updated, invalidating API workspace scope")
+        local target = data.entity
+        if target.entity_type ~= "apis" then
+          return
+        end
+
+        local ws_scope_key = fmt("apis_ws_resolution:%s", target.entity_id)
+        cache:invalidate(ws_scope_key)
+      end, "crud", "workspace_entities")
 
       -- initialize balancers for active healthchecks
       ngx.timer.at(0, function()
@@ -636,7 +643,7 @@ return {
       var.upstream_x_forwarded_port  = forwarded_port
 
       local err
-      ctx.workspaces, err = workspaces.add_ws_to_ctx(api)
+      ctx.workspaces, err = workspaces.resolve_ws_scope(api)
       if err then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR("failed to retrieve workspace " ..
           "for the request (reason: " .. tostring(err) .. ")")

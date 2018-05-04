@@ -172,13 +172,13 @@ local DAO = Object:extend()
 
 DAO.ret_error = ret_error
 
---- Instantiate a DAO.
--- The DAO Factory is responsible for instantiating DAOs for each entity.
+--- Instanciate a DAO.
+-- The DAO Factory is responsible for instanciating DAOs for each entity.
 -- This method is only documented for clarity.
 -- @param db An instance of the underlying database object (`cassandra_db` or `postgres_db`)
 -- @param model_mt The related model metatable. Such metatables contain, among other things, validation methods.
--- @param schema The schema of the entity for which this DAO is instantiated. The schema contains crucial information about how to interact with the database (fields type, table name, etc...)
--- @param constraints A table of constraints built by the DAO Factory. Such constraints are mostly useful for databases without support for foreign keys. SQL databases handle those contraints natively.
+-- @param schema The schema of the entity for which this DAO is instanciated. The schema contains crucial informations about how to interact with the database (fields type, table name, etc...)
+-- @param constraints A table of contraints built by the DAO Factory. Such constraints are mostly useful for databases without support for foreign keys. SQL databases handle those contraints natively.
 -- @return self
 function DAO:new(db, model_mt, schema, constraints)
   self.db = db
