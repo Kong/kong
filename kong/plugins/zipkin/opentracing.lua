@@ -91,7 +91,7 @@ function OpenTracingHandler:access(conf)
 	opentracing.rewrite_span = opentracing.request_span:start_child_span(
 		"kong.rewrite",
 		ctx.KONG_REWRITE_START / 1000
-	)
+	):finish((ctx.KONG_REWRITE_START + ctx.KONG_REWRITE_TIME) / 1000)
 
 	opentracing.access_span = opentracing.request_span:start_child_span(
 		"kong.access",
@@ -144,9 +144,6 @@ function OpenTracingHandler:log(conf)
 	local opentracing = self:get_context(conf, ctx)
 	local request_span = opentracing.request_span
 
-	if opentracing.rewrite_span then
-		opentracing.rewrite_span:finish((ctx.KONG_REWRITE_START + ctx.KONG_REWRITE_TIME) / 1000)
-	end
 	if opentracing.access_span then
 		opentracing.access_span:finish(ctx.KONG_ACCESS_ENDED_AT / 1000)
 	end
