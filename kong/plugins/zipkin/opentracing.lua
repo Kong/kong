@@ -55,7 +55,6 @@ function OpenTracingHandler:initialise_request(conf, ctx)
 			component = "kong";
 			["span.kind"] = "server";
 			["http.method"] = ngx.req.get_method();
-			["http.status_code"] = ngx.status;
 			["http.url"] = ngx.var.scheme .. "://" .. ngx.var.host .. ":" .. ngx.var.server_port .. ngx.var.request_uri;
 			[ip_tag(ngx.var.remote_addr)] = ngx.var.remote_addr;
 			["peer.ipv6"] = nil;
@@ -180,6 +179,7 @@ function OpenTracingHandler:log(conf)
 		opentracing.body_filter_span:finish(ctx.KONG_BODY_FILTER_ENDED_AT / 1000)
 	end
 
+	request_span:set_tag("http.status_code", ngx.status)
 	if ctx.authenticated_consumer then
 		request_span:set_tag("kong.consumer", ctx.authenticated_consumer.id)
 	end
