@@ -173,6 +173,7 @@ function OpenTracingHandler:log(conf)
 
 	if not opentracing.header_filter_finished then
 		opentracing.header_filter_span:finish(now)
+		opentracing.header_filter_finished = true
 	end
 
 	if opentracing.body_filter_span then
