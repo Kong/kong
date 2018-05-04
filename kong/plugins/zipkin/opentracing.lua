@@ -67,6 +67,7 @@ function OpenTracingHandler:initialise_request(conf, ctx)
 		request_span = request_span;
 		rewrite_span = nil;
 		access_span = nil;
+		proxy_span = nil;
 		header_filter_span = nil;
 		body_filter_span = nil;
 	}
@@ -93,14 +94,19 @@ function OpenTracingHandler:access(conf)
 		ctx.KONG_REWRITE_START / 1000
 	):finish((ctx.KONG_REWRITE_START + ctx.KONG_REWRITE_TIME) / 1000)
 
-	opentracing.access_span = opentracing.request_span:start_child_span(
+	opentracing.proxy_span = opentracing.request_span:start_child_span(
+		"kong.proxy",
+		ctx.KONG_ACCESS_START / 1000
+	)
+
+	opentracing.access_span = opentracing.proxy_span:start_child_span(
 		"kong.access",
 		ctx.KONG_ACCESS_START / 1000
 	)
 
 	-- Want to send headers to upstream
 	local outgoing_headers = {}
-	opentracing.tracer:inject(opentracing.request_span, "http_headers", outgoing_headers)
+	opentracing.tracer:inject(opentracing.proxy_span, "http_headers", outgoing_headers)
 	for k, v in pairs(outgoing_headers) do
 		ngx_set_header(k, v)
 	end
@@ -112,7 +118,7 @@ function OpenTracingHandler:header_filter(conf)
 	local ctx = ngx.ctx
 	local opentracing = self:get_context(conf, ctx)
 
-	opentracing.header_filter_span = opentracing.request_span:start_child_span(
+	opentracing.header_filter_span = opentracing.proxy_span:start_child_span(
 		"kong.header_filter",
 		ctx.KONG_HEADER_FILTER_STARTED_AT and ctx.KONG_HEADER_FILTER_STARTED_AT / 1000 or ngx.now()
 	)
@@ -131,7 +137,7 @@ function OpenTracingHandler:body_filter(conf)
 		opentracing.header_filter_span:finish(now)
 		opentracing.header_filter_finished = true
 
-		opentracing.body_filter_span = opentracing.request_span:start_child_span("kong.body_filter", now)
+		opentracing.body_filter_span = opentracing.proxy_span:start_child_span("kong.body_filter", now)
 	end
 end
 
@@ -144,6 +150,16 @@ function OpenTracingHandler:log(conf)
 	local opentracing = self:get_context(conf, ctx)
 	local request_span = opentracing.request_span
 
+	local proxy_span = opentracing.proxy_span
+	if not proxy_span then
+		proxy_span = request_span:start_child_span(
+			"kong.proxy",
+			ctx.KONG_ACCESS_ENDED_AT / 1000
+		)
+		opentracing.proxy_span = proxy_span
+	end
+	proxy_span:set_tag("span.kind", "client")
+
 	if opentracing.access_span then
 		opentracing.access_span:finish(ctx.KONG_ACCESS_ENDED_AT / 1000)
 	end
@@ -153,8 +169,7 @@ function OpenTracingHandler:log(conf)
 		local balancer_tries = balancer_address.tries
 		for i=1, balancer_address.try_count do
 			local try = balancer_tries[i]
-			local span = request_span:start_child_span("kong.balancer", try.balancer_start / 1000)
-			span:set_tag("span.kind", "client")
+			local span = proxy_span:start_child_span("kong.balancer", try.balancer_start / 1000)
 			span:set_tag(ip_tag(try.ip), try.ip)
 			span:set_tag("peer.port", try.port)
 			span:set_tag("kong.balancer.try", i)
@@ -165,7 +180,9 @@ function OpenTracingHandler:log(conf)
 			end
 			span:finish((try.balancer_start + try.balancer_latency) / 1000)
 		end
-		request_span:set_tag("peer.hostname", balancer_address.hostname)
+		proxy_span:set_tag("peer.hostname", balancer_address.hostname) -- could be nil
+		proxy_span:set_tag(ip_tag(balancer_address.ip), balancer_address.ip)
+		proxy_span:set_tag("peer.port", balancer_address.port)
 	end
 
 	if not opentracing.header_filter_finished then
@@ -185,12 +202,13 @@ function OpenTracingHandler:log(conf)
 		request_span:set_tag("kong.credential", ctx.authenticated_credentials.id)
 	end
 	if ctx.route then
-		request_span:set_tag("kong.route", ctx.route.id)
+		proxy_span:set_tag("kong.route", ctx.route.id)
 	end
 	if ctx.service then
-		request_span:set_tag("kong.service", ctx.service.id)
-		request_span:set_tag("peer.service", ctx.service.name)
+		proxy_span:set_tag("kong.service", ctx.service.id)
+		proxy_span:set_tag("peer.service", ctx.service.name)
 	end
+	proxy_span:finish(ctx.KONG_BODY_FILTER_ENDED_AT and ctx.KONG_BODY_FILTER_ENDED_AT/1000 or now)
 	request_span:finish(now)
 end
 
