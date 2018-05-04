@@ -56,7 +56,7 @@ function OpenTracingHandler:initialise_request(conf, ctx)
 			["span.kind"] = "server";
 			["http.method"] = ngx.req.get_method();
 			["http.status_code"] = ngx.status;
-			["http.url"] = ngx.var.request_uri;
+			["http.url"] = ngx.var.scheme .. "://" .. ngx.var.host .. ":" .. ngx.var.server_port .. ngx.var.request_uri;
 			[ip_tag(ngx.var.remote_addr)] = ngx.var.remote_addr;
 			["peer.ipv6"] = nil;
 			["peer.port"] = tonumber(ngx.var.remote_port, 10);
