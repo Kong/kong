@@ -57,7 +57,6 @@ In addition to the above standardised tags, this plugin also adds:
   - `kong.credential`
   - `kong.route`
   - `kong.service`
-
   - `kong.balancer.try`
   - `kong.balancer.state`: see [here](https://github.com/openresty/lua-resty-core/blob/master/lib/ngx/balancer.md#get_last_failure) for possible values
   - `kong.balancer.code`
