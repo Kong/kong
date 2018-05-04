@@ -46,7 +46,7 @@ function zipkin_reporter_methods:report(span)
 			port = port; -- port is *not* optional
 		} or cjson.null;
 		tags = span.tags; -- XXX: not guaranteed by documented opentracing-lua API
-		annotations = span.logs -- XXX: not guaranteed by documented opentrace-lua API to be in correct format
+		annotations = span.logs -- XXX: not guaranteed by documented opentracing-lua API to be in correct format
 	}
 
 	local i = self.pending_spans_n + 1
