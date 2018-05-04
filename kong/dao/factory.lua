@@ -9,7 +9,6 @@ local fmt = string.format
 
 local CORE_MODELS = {
   "apis",
-  "consumers",
   "plugins",
   "upstreams",
   "targets",

@@ -253,17 +253,17 @@ for _, strategy in helpers.each_strategy() do
       describe("GET", function()
         setup(function()
           dao:truncate_table("hmacauth_credentials")
-          assert(dao.hmacauth_credentials:insert {
+          bp.hmacauth_credentials:insert {
             consumer_id = consumer.id,
             username = "bob"
-          })
-          consumer2 = assert(dao.consumers:insert {
+          }
+          consumer2 = bp.consumers:insert {
             username = "bob-the-buidler"
-          })
-          assert(dao.hmacauth_credentials:insert {
+          }
+          bp.hmacauth_credentials:insert {
             consumer_id = consumer2.id,
             username = "bob-the-buidler"
-          })
+          }
         end)
         it("retrieves all the hmac-auths with trailing slash", function()
           local res = assert(admin_client:send {

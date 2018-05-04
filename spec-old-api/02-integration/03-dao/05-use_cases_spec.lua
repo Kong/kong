@@ -1,50 +1,51 @@
-local helpers = require "spec.02-integration.03-dao.helpers"
 local Factory = require "kong.dao.factory"
 local DB = require "kong.db"
 
-helpers.for_each_dao(function(kong_config)
-  describe("Real use-cases with DB: #" .. kong_config.database, function()
-    local factory
-    setup(function()
-      factory = assert(Factory.new(kong_config))
-      assert(factory:run_migrations())
+local helpers = require "spec.helpers"
 
-      factory:truncate_tables()
+for _, strategy in helpers.each_strategy() do
+  describe("Real use-cases with DB: #" .. strategy, function()
+    local dao
+    local bp
+    setup(function()
+      local _
+      bp, _, dao = helpers.get_db_utils(strategy)
     end)
-    after_each(function()
-      factory:truncate_tables()
+
+    before_each(function()
+      dao:truncate_tables()
     end)
 
     it("retrieves plugins for plugins_iterator", function()
-      local api, err = factory.apis:insert {
+      local api, err = dao.apis:insert {
         name = "example",
         hosts = { "example.com" },
         upstream_url = "http://example.com",
       }
       assert.falsy(err)
 
-      local consumer, err = factory.consumers:insert {username = "bob"}
+      local consumer, err = bp.consumers:insert {username = "bob"}
       assert.falsy(err)
 
-      local key_auth, err = factory.plugins:insert {
+      local key_auth, err = bp.plugins:insert {
         name = "key-auth", api_id = api.id
       }
       assert.falsy(err)
 
-      local _, err = factory.plugins:insert {
+      local _, err = bp.plugins:insert {
         name = "rate-limiting", api_id = api.id,
         config = {minute = 1}
       }
       assert.falsy(err)
 
-      local rate_limiting_for_consumer, err = factory.plugins:insert {
+      local rate_limiting_for_consumer, err = bp.plugins:insert {
         name = "rate-limiting", api_id = api.id, consumer_id = consumer.id,
         config = {minute = 1}
       }
       assert.falsy(err)
 
       -- Retrieval
-      local rows, err = factory.plugins:find_all {
+      local rows, err = dao.plugins:find_all {
         name = "key-auth",
         api_id = api.id
       }
@@ -53,7 +54,7 @@ helpers.for_each_dao(function(kong_config)
       assert.same(key_auth, rows[1])
 
       --
-      rows, err = factory.plugins:find_all {
+      rows, err = dao.plugins:find_all {
         name = "rate-limiting",
         api_id = api.id
       }
@@ -61,7 +62,7 @@ helpers.for_each_dao(function(kong_config)
       assert.equal(2, #rows)
 
       --
-      rows, err = factory.plugins:find_all {
+      rows, err = dao.plugins:find_all {
         name = "rate-limiting",
         api_id = api.id,
         consumer_id = consumer.id
@@ -72,19 +73,19 @@ helpers.for_each_dao(function(kong_config)
     end)
 
     it("update a plugin config", function()
-      local api, err = factory.apis:insert {
+      local api, err = dao.apis:insert {
         name         = "example",
         hosts        = { "example.com" },
         upstream_url = "http://example.com",
       }
       assert.falsy(err)
 
-      local key_auth, err = factory.plugins:insert {
+      local key_auth, err = bp.plugins:insert {
         name = "key-auth", api_id = api.id
       }
       assert.falsy(err)
 
-      local updated_key_auth, err = factory.plugins:update({
+      local updated_key_auth, err = dao.plugins:update({
         config = {key_names = {"key-updated"}}
       }, key_auth)
       assert.falsy(err)
@@ -92,14 +93,14 @@ helpers.for_each_dao(function(kong_config)
     end)
 
     it("does not override plugin config if partial update", function()
-      local api, err = factory.apis:insert {
+      local api, err = dao.apis:insert {
         name         = "example",
         hosts        = { "example.com" },
         upstream_url = "http://example.com",
       }
       assert.falsy(err)
 
-      local key_auth, err = factory.plugins:insert {
+      local key_auth, err = bp.plugins:insert {
         name = "key-auth", api_id = api.id,
         config = {
           hide_credentials = true
@@ -107,7 +108,7 @@ helpers.for_each_dao(function(kong_config)
       }
       assert.falsy(err)
 
-      local updated_key_auth, err = factory.plugins:update({
+      local updated_key_auth, err = dao.plugins:update({
         config = {key_names = {"key-set-null-test-updated"}}
       }, key_auth)
       assert.falsy(err)
@@ -115,7 +116,7 @@ helpers.for_each_dao(function(kong_config)
       assert.True(updated_key_auth.config.hide_credentials)
     end)
   end)
-end)
+end
 
 
 describe("#cassandra", function()
