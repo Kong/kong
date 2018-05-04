@@ -12,11 +12,12 @@ end
 
 describe("Admin API post-processing", function()
   local client
+  local plugin
 
   setup(function()
     assert(helpers.dao:run_migrations())
     assert(helpers.start_kong {
-      custom_plugins = "admin-api-post-process"
+      custom_plugins = "admin-api-post-process, dummy"
     })
 
     client = assert(helpers.admin_client())
@@ -32,23 +33,21 @@ describe("Admin API post-processing", function()
 
   before_each(function()
     helpers.dao:truncate_tables()
-    assert(helpers.dao.consumers:insert({
-      username = "michael",
-      custom_id = "landon",
-    }))
+    plugin =  helpers.dao.plugins:insert({
+      name = "admin-api-post-process",
+    })
   end)
 
   it_content_types("post-processes paginated sets", function(content_type)
     return function()
       local res = assert(client:send {
         method = "GET",
-        path = "/consumers/post_processed",
+        path = "/plugins/post_processed",
         headers = { ["Content-Type"] = content_type }
       })
       local body = assert.res_status(200, res)
       local json = cjson.decode(body).data[1]
-      assert.equal("MICHAEL", json.username)
-      assert.equal("LANDON", json.custom_id)
+      assert.equal("ADMIN-API-POST-PROCESS", json.name)
     end
   end)
 
@@ -56,17 +55,15 @@ describe("Admin API post-processing", function()
     return function()
       local res = assert(client:send {
         method = "POST",
-        path = "/consumers/post_processed",
+        path = "/plugins/post_processed",
         body = {
-          username = "devon",
-          custom_id = "miles",
+          name = "dummy",
         },
         headers = { ["Content-Type"] = content_type }
       })
       local body = assert.res_status(201, res)
       local json = cjson.decode(body)
-      assert.equal("DEVON", json.username)
-      assert.equal("MILES", json.custom_id)
+      assert.equal("DUMMY", json.name)
     end
   end)
 
@@ -74,13 +71,12 @@ describe("Admin API post-processing", function()
     return function()
       local res = assert(client:send {
         method = "GET",
-        path = "/consumers/michael/post_processed",
+        path = "/plugins/" .. plugin.id .. "/post_processed",
         headers = { ["Content-Type"] = content_type }
       })
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      assert.equal("MICHAEL", json.username)
-      assert.equal("LANDON", json.custom_id)
+      assert.equal("ADMIN-API-POST-PROCESS", json.name)
     end
   end)
 
@@ -88,16 +84,17 @@ describe("Admin API post-processing", function()
     return function()
       local res = assert(client:send {
         method = "PATCH",
-        path = "/consumers/michael/post_processed",
+        path = "/plugins/" .. plugin.id .. "/post_processed",
         body = {
-          custom_id = "knight",
+          config = {
+            foo = "potato"
+          }
         },
         headers = { ["Content-Type"] = content_type }
       })
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      assert.equal("MICHAEL", json.username)
-      assert.equal("KNIGHT", json.custom_id)
+      assert.equal("POTATO", json.config.foo)
     end
   end)
 
@@ -105,17 +102,19 @@ describe("Admin API post-processing", function()
     return function()
       local res = assert(client:send {
         method = "PUT",
-        path = "/consumers/michael/post_processed",
+        path = "/plugins/" .. plugin.id .. "/post_processed",
         body = {
-          username = "garthe",
-          custom_id = "knight",
+          name = "admin-api-post-process",
+          created_at = 1,
+          config = {
+            foo = "carrot",
+          }
         },
         headers = { ["Content-Type"] = content_type }
       })
-      local body = assert.res_status(201, res)
+      local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      assert.equal("GARTHE", json.username)
-      assert.equal("KNIGHT", json.custom_id)
+      assert.equal("CARROT", json.config.foo)
     end
   end)
 end)

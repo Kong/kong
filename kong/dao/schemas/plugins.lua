@@ -1,6 +1,5 @@
 local utils = require "kong.tools.utils"
 local Errors = require "kong.dao.errors"
-local db_errors = require "kong.db.errors"
 local singletons = require "kong.singletons"
 local constants = require "kong.constants"
 
@@ -61,7 +60,7 @@ return {
     },
     consumer_id = {
       type = "id",
-      foreign = "consumers:id"
+      -- foreign = "consumers:id" -- manually tested in self_check
     },
     name = {
       type = "string",
@@ -84,39 +83,33 @@ return {
                                   "and one of route_id or service_id")
     end
 
-    if plugin_t.service_id ~= nil then
-      local service, err, err_t = dao.db.new_db.services:select({
-        id = plugin_t.service_id
-      })
-      if err then
-        if err_t.code == db_errors.codes.DATABASE_ERROR then
-          return false, Errors.db(err)
-        end
 
-        return false, Errors.schema(err_t)
-      end
+    local new_db = dao.db.new_db
 
-      if not service then
-        return false, Errors.foreign("no such Service (id=" ..
-                                     plugin_t.service_id .. ")")
+    local service_id = plugin_t.service_id
+    if service_id ~= nil then
+      local ok, err = new_db.services:check_foreign_key({ id = service_id },
+                                                        "Service")
+      if not ok then
+        return false, err
       end
     end
 
-    if plugin_t.route_id ~= nil then
-      local route, err, err_t = dao.db.new_db.routes:select({
-        id = plugin_t.route_id
-      })
-      if err then
-        if err_t.code == db_errors.codes.DATABASE_ERROR then
-          return false, Errors.db(err)
-        end
-
-        return false, Errors.schema(err_t)
+    local route_id = plugin_t.route_id
+    if route_id ~= nil then
+      local ok, err = new_db.routes:check_foreign_key({ id = route_id },
+                                                      "Route")
+      if not ok then
+        return false, err
       end
+    end
 
-      if not route then
-        return false, Errors.foreign("no such Route (id=" ..
-                                     plugin_t.route_id .. ")")
+    local consumer_id = plugin_t.consumer_id
+    if consumer_id ~= nil then
+      local ok, err = new_db.consumers:check_foreign_key({ id = consumer_id },
+                                                         "Consumer")
+      if not ok then
+        return false, err
       end
     end
 

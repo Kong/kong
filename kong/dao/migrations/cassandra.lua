@@ -1,6 +1,7 @@
 local log = require "kong.cmd.utils.log"
 local cassandra = require "cassandra"
 local utils = require "kong.tools.utils"
+local helpers = require "kong.dao.migrations.helpers"
 
 local migration_helpers = require "kong.dao.migrations.helpers"
 
@@ -732,7 +733,7 @@ return {
         return err
       end
     end,
-    down = nil
+    down = nil,
   },
   { name = "2018-03-27-002500_drop_old_ssl_tables",
     up = [[
@@ -740,6 +741,33 @@ return {
       DROP TABLE ssl_certificates;
       DROP TABLE ssl_servers_names;
     ]],
-    down = nil
+    down = nil,
+  },
+  {
+    name = "2018-03-13-160000_partition_consumers",
+    up = function(db, kong_config, dao)
+      local consumers = {
+        name = "consumers",
+        columns = {
+          id = "uuid",
+          created_at = "timestamp",
+          custom_id = "text",
+          username = "text",
+        },
+        partition_keys = { "id" },
+      }
+      local _, err = helpers.cassandra.add_partition(dao, consumers)
+      if err then
+        return err
+      end
+    end,
+    down = nil,
+  },
+  {
+    name = "2018-03-16-160000_index_consumers",
+    up = [[
+      CREATE INDEX IF NOT EXISTS ON consumers(custom_id);
+      CREATE INDEX IF NOT EXISTS ON consumers(username);
+    ]]
   }
 }

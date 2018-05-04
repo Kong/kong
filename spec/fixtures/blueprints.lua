@@ -92,7 +92,7 @@ function _M.new(dao, db)
 
   local consumer_custom_id_seq = new_sequence("consumer-id-%d")
   local consumer_username_seq = new_sequence("consumer-username-%d")
-  res.consumers = new_blueprint(dao.consumers, function()
+  res.consumers = new_blueprint(db.consumers, function()
     return {
       custom_id = consumer_custom_id_seq:next(),
       username  = consumer_username_seq:next(),
