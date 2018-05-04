@@ -15,20 +15,7 @@ local function new(sdk, major_version)
 
 
   function _UPSTREAM_RESPONSE.get_status()
-    local upstream_status = ngx.var.upstream_status
-    if not upstream_status then
-      return nil
-    end
-
-    local status = tonumber(upstream_status)
-    if status then
-      return status
-    end
-
-    status = tonumber(sub(upstream_status, -3))
-    if status then
-      return status
-    end
+     return tonumber(sub(ngx.var.upstream_status or "", -3))
   end
 
 
