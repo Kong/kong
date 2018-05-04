@@ -2,6 +2,7 @@ local multipart = require "multipart"
 local cjson = require "cjson"
 local pl_template = require "pl.template"
 local pl_tablex = require "pl.tablex"
+local feature_flag_limit_body = require "kong.plugins.request-transformer-advanced.feature_flags.limit_body"
 
 local table_insert = table.insert
 local req_set_uri_args = ngx.req.set_uri_args
@@ -515,7 +516,9 @@ function _M.execute(conf)
   clear_environment()
   transform_uri(conf)
   transform_method(conf)
-  transform_body(conf)
+  if feature_flag_limit_body.should_transform_body() then
+    transform_body(conf)
+  end
   transform_headers(conf)
   transform_querystrings(conf)
 end

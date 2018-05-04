@@ -20,5 +20,6 @@ build = {
     ["kong.plugins.request-transformer-advanced.handler"] = "kong/plugins/request-transformer-advanced/handler.lua",
     ["kong.plugins.request-transformer-advanced.access"] = "kong/plugins/request-transformer-advanced/access.lua",
     ["kong.plugins.request-transformer-advanced.schema"] = "kong/plugins/request-transformer-advanced/schema.lua",
+    ["kong.plugins.request-transformer-advanced.feature_flags.limit_body"] = "kong/plugins/request-transformer-advanced/feature_flags/limit_body.lua",
   }
 }
