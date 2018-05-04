@@ -47,6 +47,8 @@ Of those, this plugin currently uses:
   - `peer.ipv4`
   - `peer.ipv6`
   - `peer.port`
+  - `peer.hostname`
+  - `peer.service`
 
 
 ### Non-Standard tags

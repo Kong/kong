@@ -168,6 +168,7 @@ function OpenTracingHandler:log(conf)
 			end
 			span:finish((try.balancer_start + try.balancer_latency) / 1000)
 		end
+		request_span:set_tag("peer.hostname", balancer_address.hostname)
 	end
 
 	if not opentracing.header_filter_finished then
@@ -191,6 +192,7 @@ function OpenTracingHandler:log(conf)
 	end
 	if ctx.service then
 		request_span:set_tag("kong.service", ctx.service.id)
+		request_span:set_tag("peer.service", ctx.service.name)
 	end
 	request_span:finish(now)
 end
