@@ -28,6 +28,7 @@ local ngx         = ngx
 local log         = ngx.log
 local null        = ngx.null
 local ngx_now     = ngx.now
+local update_time = ngx.update_time
 local re_match    = ngx.re.match
 local unpack      = unpack
 
@@ -46,6 +47,7 @@ local server_header = _KONG._NAME .. "/" .. _KONG._VERSION
 
 
 local function get_now()
+  update_time()
   return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
 end
 
