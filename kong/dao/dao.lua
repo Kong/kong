@@ -364,7 +364,7 @@ function DAO:delete(tbl, options)
   end
 
   -- Find associated entities
-  local associated_entites = {}
+  local associated_entities = {}
   if self.constraints.cascade ~= nil then
     for f_entity, cascade in pairs(self.constraints.cascade) do
       local f_fetch_keys = {[cascade.f_col] = tbl[cascade.col]}
@@ -372,7 +372,7 @@ function DAO:delete(tbl, options)
       if err then
         return ret_error(self.db.name, nil, err)
       end
-      associated_entites[cascade.table] = {
+      associated_entities[cascade.table] = {
         schema = cascade.schema,
         entities = rows
       }
@@ -393,7 +393,7 @@ function DAO:delete(tbl, options)
     end
 
     -- Also propagate the deletion for the associated entities
-    for k, v in pairs(associated_entites) do
+    for k, v in pairs(associated_entities) do
       for _, entity in ipairs(v.entities) do
         if self.events then
           local _, err = self.events.post_local("dao:crud", "delete", {
