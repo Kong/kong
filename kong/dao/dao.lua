@@ -188,15 +188,14 @@ function DAO:new(db, model_mt, schema, constraints)
   self.constraints = constraints
 end
 
-local function cache_key_ws(table, attach_ws, arg1, arg2, arg3, arg4, arg5)
-  local workspace = workspaces.get_workspaces()[1]
-  return fmt("%s:%s:%s:%s:%s:%s:%s", table,
+function DAO:cache_key_ws(workspace, arg1, arg2, arg3, arg4, arg5)
+  return fmt("%s:%s:%s:%s:%s:%s:%s", self.table,
     arg1 == nil and "" or arg1,
     arg2 == nil and "" or arg2,
     arg3 == nil and "" or arg3,
     arg4 == nil and "" or arg4,
     arg5 == nil and "" or arg5,
-    attach_ws and (workspace == nil and "" or workspace.id) or "")
+    workspace == nil and "" or workspace.id)
 end
 
 function DAO:cache_key(arg1, arg2, arg3, arg4, arg5)
@@ -210,7 +209,7 @@ function DAO:cache_key(arg1, arg2, arg3, arg4, arg5)
              workspace == nil and "" or workspace.id)
 end
 
-function DAO:entity_cache_key(entity, attach_ws)
+function DAO:entity_cache_key(entity)
   local schema    = self.schema
   local cache_key = schema.cache_key
 
@@ -226,7 +225,7 @@ function DAO:entity_cache_key(entity, attach_ws)
     keys[i] = entity[cache_key[i]]
   end
 
-  return cache_key_ws(self.table, attach_ws, utils.unpack(keys))
+  return self:cache_key_ws(workspaces.get_workspaces()[1], utils.unpack(keys))
 end
 
 --- Insert a row.

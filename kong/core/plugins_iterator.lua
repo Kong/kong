@@ -3,6 +3,7 @@ local singletons   = require "kong.singletons"
 
 
 local setmetatable = setmetatable
+local format       = string.format
 local ipairs       = ipairs
 local error        = error
 
@@ -37,6 +38,63 @@ local function load_plugin_into_memory(route_id,
   end
   -- insert a cached value to not trigger too many DB queries.
   return { null = true }  -- works because: `.enabled == nil`
+end
+
+
+
+local function load_plugin_into_memory_ws(api_id, consumer_id, plugin_name)
+  ngx.ctx.workspaces = ngx.ctx.workspaces or {}
+
+  -- check if plugin in cache for each workspace
+  local plugin, err, ttl
+  for _, ws in ipairs(ngx.ctx.workspaces) do
+    local plugin_cache_key = singletons.dao.plugins:cache_key_ws(ws, plugin_name,
+                                                                 api_id,
+                                                                 consumer_id)
+    ttl, err, plugin = singletons.cache:probe(plugin_cache_key)
+    if err then
+      return nil, err
+    end
+
+    if ttl and plugin then
+      return plugin
+    end
+  end
+  -- if negative cache return nil
+  if ttl and not plugin then
+    return nil
+  end
+
+  -- load plugin, here workspace scope can contain more than one workspace
+  -- depending on with how many workspace api being shared
+  local plugin = load_plugin_into_memory(api_id, consumer_id, plugin_name)
+  if plugin then
+    local plugin_cache_key = singletons.dao.plugins:cache_key_ws({id = plugin.workspace_id},
+                                                                 plugin_name, api_id,
+                                                                 consumer_id)
+    plugin, err = singletons.cache:get(plugin_cache_key, nil, function ()
+      return plugin
+    end)
+
+    return plugin, err
+  end
+
+  -- plugin not found in any of the workspace in workspace scope,
+  -- add negative cache
+  for _, ws in ipairs(ngx.ctx.workspaces) do
+    local plugin_cache_key = singletons.dao.plugins:cache_key_ws(ws, plugin_name,
+                                                                 api_id,
+                                                                 consumer_id)
+
+    local plugin, err = singletons.cache:get(plugin_cache_key, nil, function ()
+      return nil
+    end)
+    if err then
+      return nil, err
+    end
+  end
+
+  return plugin
 end
 
 
