@@ -1,13 +1,3 @@
-local bit         = require "bit"
-
-
-local bxor        = bit.bxor
-local ipairs      = ipairs
-
-
-local is_ee, rbac = pcall(require, "kong.rbac")
-
-
 local migrations = {
   {
     name = "2017-06-01-180000_init_oic",
@@ -79,38 +69,6 @@ local migrations = {
     ]]
   },
 }
-
-
-if is_ee then
-  migrations[#migrations + 1] = {
-    name = "2017-08-26-150000_rbac_oic_resources",
-    up = function(_, _, dao)
-      local resource, err = rbac.register_resource("openid-connect", dao)
-      if not resource then
-        return err
-      end
-
-      for _, p in ipairs({ "read-only", "full-access" }) do
-        local perm
-        perm, err = dao.rbac_perms:find_all({
-          name = p,
-        })
-        if err then
-          return err
-        end
-
-        perm = perm[1]
-        perm.resources = bxor(perm.resources, 2 ^ (resource.bit_pos - 1))
-
-        local ok
-        ok, err = dao.rbac_perms:update(perm, { id = perm.id })
-        if not ok then
-          return err
-        end
-      end
-    end,
-  }
-end
 
 
 return migrations
