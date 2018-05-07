@@ -1,18 +1,34 @@
+local cjson = require "cjson.safe"
+local meta = require "kong.meta"
+
+
 local ngx = ngx
 local type = type
+local find = string.find
+local lower = string.lower
 local error = error
 local pairs = pairs
 local ipairs = ipairs
 local insert = table.insert
+local coroutine = coroutine
 
 
 local function new(sdk, major_version)
   local _RESPONSE = {}
 
+  local SERVER_HEADER_NAME  = "Server"
+  local SERVER_HEADER_VALUE = meta._NAME .. "/" .. meta._VERSION
 
-  local MIN_HEADERS            = 1
-  local MAX_HEADERS_DEFAULT    = 100
-  local MAX_HEADERS            = 1000
+  local MIN_HEADERS         = 1
+  local MAX_HEADERS_DEFAULT = 100
+  local MAX_HEADERS         = 1000
+
+  local DEFAULT_BODY = {
+    [ngx.HTTP_NOT_ALLOWED]           = "Method Not Allowed",
+    [ngx.HTTP_UNAUTHORIZED]          = "Unauthorized",
+    [ngx.HTTP_SERVICE_UNAVAILABLE]   = "Service Unavailable",
+    [ngx.HTTP_INTERNAL_SERVER_ERROR] = "Internal Server Error",
+  }
 
 
   function _RESPONSE.get_status()
@@ -23,6 +39,9 @@ local function new(sdk, major_version)
   function _RESPONSE.set_status(code)
     if type(code) ~= "number" then
       error("code must be a number", 2)
+
+    elseif code < 100 or code > 599 then
+      error("code must be a number between 100 and 599", 2)
     end
 
     if ngx.headers_sent then
@@ -162,15 +181,107 @@ local function new(sdk, major_version)
   end
 
 
-  function _RESPONSE.set_raw_body()
+  function _RESPONSE.set_raw_body(body)
     -- TODO: implement
   end
 
 
-  function _RESPONSE.set_parsed_body()
+  function _RESPONSE.set_parsed_body(args, mimetype)
     -- TODO: implement
   end
 
+
+  local function send(code, body, headers)
+    ngx.status = code
+    ngx.header[SERVER_HEADER_NAME] = SERVER_HEADER_VALUE
+    if headers then
+      for k, v in pairs(headers) do
+        ngx.header[k] = v
+      end
+    end
+
+    if code == ngx.HTTP_NO_CONTENT then
+      body = DEFAULT_BODY[ngx.HTTP_NO_CONTENT]
+
+    elseif code == ngx.HTTP_NOT_ALLOWED then
+      body = DEFAULT_BODY[ngx.HTTP_NOT_ALLOWED]
+
+    elseif code == ngx.HTTP_INTERNAL_SERVER_ERROR then
+      if body then
+        ngx.log(ngx.ERR, body)
+      end
+
+      body = DEFAULT_BODY[ngx.HTTP_INTERNAL_SERVER_ERROR]
+
+    elseif not body then
+      body = DEFAULT_BODY[code]
+    end
+
+    if body then
+      local content_type = ngx.header["Content-Type"]
+      if content_type == nil or find(lower(content_type), "application/json", 1, true) then
+        local json = cjson.encode(type(body) == "table" and body or { message = body })
+        if json then
+          if not content_type then
+            ngx.header["Content-Type"] = "application/json; charset=utf-8"
+          end
+
+          ngx.say(json)
+
+        else
+          ngx.print(body)
+        end
+
+      else
+        ngx.print(body)
+      end
+    end
+
+    return ngx.exit(code)
+  end
+
+
+  local function flush(ctx)
+    return send(ctx.status_code, ctx.content, ctx.headers)
+  end
+
+
+  function _RESPONSE.exit(code, body, headers)
+    if code ~= nil then
+      if type(code) ~= "number" then
+        error("code must be a number", 2)
+
+      elseif code < 100 or code > 599 then
+        error("code must be a number between 100 and 599", 2)
+      end
+    end
+
+    if body ~= nil and type(body) ~= "string" and type(body) ~= "table" then
+      error("body must be a nil, string or table", 2)
+    end
+
+    if headers ~= nil and type(body) ~= "table" then
+      error("headers must be a nil or table", 2)
+    end
+
+    if ngx.headers_sent then
+      return nil, "headers have been sent"
+    end
+
+    local ctx = ngx.ctx
+    if ctx.delay_response and not ctx.delayed_response then
+      ctx.delayed_response = {
+        status_code = code,
+        content     = body,
+        headers     = headers,
+      }
+
+      ctx.delayed_response_callback = flush
+      coroutine.yield()
+    end
+
+    send(code, body, headers)
+  end
 
   return _RESPONSE
 end
