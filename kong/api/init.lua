@@ -64,6 +64,8 @@ local function on_error(self)
   if type(err) == "table" then
     if err.db then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err.message)
+    end
+  end
   if type(err) ~= "table" then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(tostring(err))
   end
