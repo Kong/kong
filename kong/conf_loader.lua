@@ -801,6 +801,32 @@ local function load(path, custom_conf)
     end
   end
 
+  -- rbac can be any of 'endpoint', 'entity', 'on', or 'off'
+  local rbac = {}
+  if conf.rbac == "endpoint" then
+    rbac.endpoint = true
+  elseif conf.rbac == "entity" then
+    rbac.entity = true
+  elseif conf.rbac == "on" then
+    rbac.entity = true
+    rbac.endpoint = true
+  elseif conf.rbac == "off" then
+    rbac.off = true
+  else
+    errors[#errors+1] = "rbac must be one of 'endpoint', 'entity', 'on', " ..
+                        "or 'off'; got '" .. conf.rbac .. "'"
+  end
+  conf.rbac = rbac
+
+  -- warn user if ssl is disabled and rbac is enforced
+  -- TODO CE would probably benefit from some helpers - eg, see
+  -- kong.enterprise_edition.select_listener
+  local ssl_on = (table.concat(conf.admin_listen, ",") .. " "):find("%sssl[%s,]")
+  if not conf.rbac.off and not ssl_on then
+    log.warn("RBAC authorization is enabled but Admin API calls will not be " ..
+      "encrypted via SSL")
+  end
+
   -- attach prefix files paths
   for property, t_path in pairs(PREFIX_PATHS) do
     conf[property] = pl_path.join(conf.prefix, unpack(t_path))
