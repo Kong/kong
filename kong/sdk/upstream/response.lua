@@ -1,8 +1,30 @@
 local ngx = ngx
 local sub = string.sub
+local fmt = string.format
+local gsub = string.gsub
 local type = type
 local error = error
+local lower = string.lower
 local tonumber = tonumber
+local getmetatable = getmetatable
+
+
+local function headers(response_headers)
+  local mt = getmetatable(response_headers)
+  local index = mt.__index
+  mt.__index = function(_, name)
+    if type(name) == "string" then
+      local var = fmt("upstream_http_%s", gsub(lower(name), "-", "_"))
+      if not ngx.var[var] then
+        return nil
+      end
+    end
+
+    return index(response_headers, name)
+  end
+
+  return response_headers
+end
 
 
 local function new(sdk, major_version)
@@ -21,7 +43,7 @@ local function new(sdk, major_version)
 
   function _UPSTREAM_RESPONSE.get_headers(max_headers)
     if max_headers == nil then
-      return ngx.resp.get_headers(MAX_HEADERS_DEFAULT)
+      return headers(ngx.resp.get_headers(MAX_HEADERS_DEFAULT))
     end
 
     if type(max_headers) ~= "number" then
@@ -34,7 +56,7 @@ local function new(sdk, major_version)
       error("max_headers must be <= " .. MAX_HEADERS, 2)
     end
 
-    return ngx.resp.get_headers(max_headers)
+    return headers(ngx.resp.get_headers(max_headers))
   end
 
 
