@@ -112,3 +112,41 @@ GET /t
 status: 404
 --- no_error_log
 [error]
+
+
+
+=== TEST 4: upstream.response.get_status() upstream status only
+--- http_config
+    server {
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+
+        location / {
+            return 404;
+        }
+    }
+--- config
+    location /t {
+        proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+
+        header_filter_by_lua_block {
+            ngx.header.content_length = nil
+            ngx.status = 200
+        }
+
+        body_filter_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            ngx.arg[1] = "upstream status: " .. sdk.upstream.response.get_status() .. "\n" ..
+                         "response status: " .. ngx.status
+            ngx.arg[2] = true
+        }
+    }
+--- request
+GET /t
+--- error_code: 200
+--- response_body chop
+upstream status: 404
+response status: 200
+--- no_error_log
+[error]
