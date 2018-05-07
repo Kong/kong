@@ -378,12 +378,6 @@ local function check_and_infer(conf)
     end
   end
 
-  -- warn user if ssl is disabled and rbac is enforced
-  if not conf.rbac.off and not conf.admin_ssl then
-    log.warn("RBAC authorization is enabled but Admin API calls will not be " ..
-      "encrypted via SSL")
-  end
-
   if conf.ssl_cipher_suite ~= "custom" then
     local ok, err = pcall(function()
       conf.ssl_ciphers = ciphers(conf.ssl_cipher_suite)
@@ -430,23 +424,6 @@ local function check_and_infer(conf)
                           "block or 'unix:', got '" .. address .. "'"
     end
   end
-
-  -- rbac can be any of 'endpoint', 'entity', 'on', or 'off'
-  local rbac = {}
-  if conf.rbac == "endpoint" then
-    rbac.endpoint = true
-  elseif conf.rbac == "entity" then
-    rbac.entity = true
-  elseif conf.rbac == "on" then
-    rbac.entity = true
-    rbac.endpoint = true
-  elseif conf.rbac == "off" then
-    rbac.off = true
-  else
-    errors[#errors+1] = "rbac must be one of 'endpoint', 'entity', 'on', " ..
-                        "or 'off'; got '" .. conf.rbac .. "'"
-  end
-  conf.rbac = rbac
 
   return #errors == 0, errors[1], errors
 end
