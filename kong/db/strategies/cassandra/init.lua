@@ -60,6 +60,149 @@ local function extract_pk_values(schema, entity)
 end
 
 
+local function is_partitioned(self)
+  local cql
+
+  if self.connector.major_version == 3 then
+    cql = fmt([[
+      SELECT * FROM system_schema.columns
+      WHERE keyspace_name = '%s'
+      AND table_name = '%s'
+      AND column_name = 'partition';
+    ]], self.connector.keyspace, self.schema.name)
+
+  else
+    cql = fmt([[
+      SELECT * FROM system.schema_columns
+      WHERE keyspace_name = '%s'
+      AND columnfamily_name = '%s'
+      AND column_name = 'partition';
+    ]], self.connector.keyspace, self.schema.name)
+  end
+
+  local rows, err = self.connector:query(cql, {}, nil, "read")
+  if err then
+    return nil, err
+  end
+
+  if self.connector.major_version == 3 then
+    return rows[1] and rows[1].kind == "partition_key"
+  end
+
+  return not not rows[1]
+end
+
+
+local function build_queries(self)
+  local schema   = self.schema
+  local n_fields = #schema.fields
+  local n_pk     = #schema.primary_key
+
+  local insert_columns = new_tab(n_fields, 0)
+  for field_name, field in schema:each_field() do
+    if field.type == "foreign" then
+      local db_columns = self.foreign_keys_db_columns[field_name]
+      for i = 1, #db_columns do
+        insert(insert_columns, db_columns[i].col_name)
+      end
+    else
+      insert(insert_columns, field_name)
+    end
+  end
+  insert_columns = concat(insert_columns, ", ")
+
+  local select_bind_args = new_tab(n_pk, 0)
+  for _, field_name in self.each_pk_field() do
+    insert(select_bind_args, field_name .. " = ?")
+  end
+  select_bind_args = concat(select_bind_args, " AND ")
+
+  local insert_bind_args = rep("?, ", n_fields):sub(1, -3)
+
+  local partitioned, err = is_partitioned(self)
+  if err then
+    return nil, err
+  end
+
+  if partitioned then
+    return {
+      insert = fmt([[
+        INSERT INTO %s(partition, %s) VALUES('%s', %s) IF NOT EXISTS
+      ]], schema.name, insert_columns, schema.name, insert_bind_args),
+
+      select = fmt([[
+        SELECT %s FROM %s WHERE partition = '%s' AND %s
+      ]], insert_columns, schema.name, schema.name, select_bind_args),
+
+      select_page = fmt([[
+        SELECT %s FROM %s WHERE partition = '%s'
+      ]], insert_columns, schema.name, schema.name),
+
+      select_with_filter = fmt([[
+        SELECT %s FROM %s WHERE partition = '%s' AND %s
+      ]], insert_columns, schema.name, schema.name, "%s"),
+
+      update = fmt([[
+        UPDATE %s SET %s WHERE partition = '%s' AND %s IF EXISTS
+      ]], schema.name, "%s", schema.name, select_bind_args),
+
+      upsert = fmt([[
+        UPDATE %s SET %s WHERE partition = '%s' AND %s
+      ]], schema.name, "%s", schema.name, select_bind_args),
+
+      delete = fmt([[
+        DELETE FROM %s WHERE partition = '%s' AND %s
+      ]], schema.name, schema.name, select_bind_args),
+    }
+  end
+
+  return {
+    insert = fmt([[
+      INSERT INTO %s(%s) VALUES(%s) IF NOT EXISTS
+    ]], schema.name, insert_columns, insert_bind_args),
+
+    -- might raise a "you must enable ALLOW FILTERING" error
+    select = fmt([[
+      SELECT %s FROM %s WHERE %s
+    ]], insert_columns, schema.name, select_bind_args),
+
+    -- might raise a "you must enable ALLOW FILTERING" error
+    select_page = fmt([[
+      SELECT %s FROM %s
+    ]], insert_columns, schema.name),
+
+    -- might raise a "you must enable ALLOW FILTERING" error
+    select_with_filter = fmt([[
+      SELECT %s FROM %s WHERE %s
+    ]], insert_columns, schema.name, "%s"),
+
+    update = fmt([[
+      UPDATE %s SET %s WHERE %s IF EXISTS
+    ]], schema.name, "%s", select_bind_args),
+
+    upsert = fmt([[
+      UPDATE %s SET %s WHERE %s
+    ]], schema.name, "%s", select_bind_args),
+
+    delete = fmt([[
+      DELETE FROM %s WHERE %s
+    ]], schema.name, select_bind_args),
+  }
+end
+
+
+local function get_query(self, query_name)
+  if not self.queries then
+    local err
+    self.queries, err = build_queries(self)
+    if err then
+      return nil, err
+    end
+  end
+  return self.queries[query_name]
+end
+
+
 local function serialize_arg(field, arg)
   local serialized_arg
 
@@ -166,9 +309,6 @@ end
 function _M.new(connector, schema, errors)
   local n_fields         = #schema.fields
   local n_pk             = #schema.primary_key
-  local select_bind_args = new_tab(n_pk, 0)
-  local insert_columns   = new_tab(n_fields, 0)
-  local insert_bind_args = rep("?, ", n_fields):sub(1, -3)
 
   local each_pk_field
   local each_non_pk_field
@@ -209,10 +349,6 @@ function _M.new(connector, schema, errors)
     end
   end
 
-  for _, field_name in each_pk_field() do
-    insert(select_bind_args, field_name .. " = ?")
-  end
-
   -- self instanciation
 
   local self = {
@@ -251,9 +387,6 @@ function _M.new(connector, schema, errors)
       for i = 1, #db_columns do
         -- keep args_names for 'for_*' methods
         db_columns_args_names[i] = db_columns[i].col_name .. " = ?"
-
-        -- keep insert column names for 'insert'
-        insert(insert_columns, db_columns[i].col_name)
       end
 
       db_columns.args_names = concat(db_columns_args_names, " AND ")
@@ -266,21 +399,13 @@ function _M.new(connector, schema, errors)
         schema     = schema,
         field_name = field_name,
       }
-
-    else
-      insert(insert_columns, field_name)
     end
   end
 
-  insert_columns   = concat(insert_columns, ", ")
-  select_bind_args = concat(select_bind_args, " AND ")
-
-  -- build queries
-
+  -- generate for_ method for inverse selection
+  -- e.g. routes:for_service(service_pk)
   for field_name, field in schema:each_field() do
     if field.type == "foreign" then
-      -- generate for_ method for inverse selection
-      -- e.g. routes:for_service(service_pk)
 
       local method_name = "for_" .. field_name
       local db_columns = self.foreign_keys_db_columns[field_name]
@@ -295,44 +420,6 @@ function _M.new(connector, schema, errors)
       end
     end
   end
-
-  local insert_query = fmt([[
-    INSERT INTO %s(partition, %s) VALUES('%s', %s) IF NOT EXISTS
-  ]], schema.name, insert_columns, schema.name, insert_bind_args)
-
-  local select_query = fmt([[
-    SELECT %s FROM %s WHERE partition = '%s' AND %s
-  ]], insert_columns, schema.name, schema.name, select_bind_args)
-
-  local select_page_query = fmt([[
-    SELECT %s FROM %s WHERE partition = '%s'
-  ]], insert_columns, schema.name, schema.name)
-
-  local select_with_filter = fmt([[
-    SELECT %s FROM %s WHERE partition = '%s' AND %s
-  ]], insert_columns, schema.name, schema.name, "%s")
-
-  local update_query = fmt([[
-    UPDATE %s SET %s WHERE partition = '%s' AND %s IF EXISTS
-  ]], schema.name, "%s", schema.name, select_bind_args)
-
-  local upsert_query = fmt([[
-    UPDATE %s SET %s WHERE partition = '%s' AND %s
-  ]], schema.name, "%s", schema.name, select_bind_args)
-
-  local delete_query = fmt([[
-    DELETE FROM %s WHERE partition = '%s' AND %s
-  ]], schema.name, schema.name, select_bind_args)
-
-  self.queries = {
-    insert             = insert_query,
-    select             = select_query,
-    select_page        = select_page_query,
-    select_with_filter = select_with_filter,
-    update             = update_query,
-    upsert             = upsert_query,
-    delete             = delete_query,
-  }
 
   return setmetatable(self, _mt)
 end
@@ -404,9 +491,11 @@ end
 
 function _mt:insert(entity)
   local schema = self.schema
-  local cql = self.queries.insert
-  local args = new_tab(#schema.fields, 0)
-
+  local args     = new_tab(#schema.fields, 0)
+  local cql, err = get_query(self, "insert")
+  if err then
+    return nil, err
+  end
   -- serialize VALUES clause args
 
   for field_name, field in schema:each_field() do
@@ -495,7 +584,10 @@ end
 
 function _mt:select(primary_key)
   local schema = self.schema
-  local cql = self.queries.select
+  local cql, err = get_query(self, "select")
+  if err then
+    return nil, err
+  end
   local args = new_tab(#schema.primary_key, 0)
 
   -- serialize WHERE clause args
@@ -511,7 +603,11 @@ end
 
 
 function _mt:select_by_field(field_name, field_value)
-  local select_cql = fmt(self.queries.select_with_filter, field_name .. " = ?")
+  local cql, err = get_query(self, "select_with_filter")
+  if err then
+    return nil, err
+  end
+  local select_cql = fmt(cql, field_name .. " = ?")
   local bind_args = new_tab(1, 0)
   bind_args[1] = field_value
 
@@ -535,13 +631,21 @@ do
 
     local cql
     local args
+    local err
 
     if not foreign_key then
-      cql = self.queries.select_page
+      cql, err = get_query(self, "select_page")
+      if err then
+        return nil, err
+      end
 
     elseif foreign_key and foreign_key_db_columns then
       args = new_tab(#foreign_key_db_columns, 0)
-      cql = fmt(self.queries.select_with_filter, foreign_key_db_columns.args_names)
+      cql, err = get_query(self, "select_with_filter")
+      if err then
+        return nil, err
+      end
+      cql = fmt(cql, foreign_key_db_columns.args_names)
 
       serialize_foreign_pk(foreign_key_db_columns, args, nil, foreign_key)
 
@@ -640,7 +744,10 @@ end
 do
   local function update(self, primary_key, entity, mode)
     local schema = self.schema
-    local cql = self.queries[mode]
+    local cql, err = get_query(self, mode)
+    if err then
+      return nil, err
+    end
     local args = new_tab(#schema.fields, 0)
     local args_names = new_tab(#schema.fields, 0)
 
@@ -776,7 +883,10 @@ do
                                        foreign_field_name, foreign_key)
     local n_fields = #foreign_schema.fields
     local strategy = _M.new(self.connector, foreign_schema, self.errors)
-    local cql = strategy.queries.select_with_filter
+    local cql, err = get_query(strategy, "select_with_filter")
+    if err then
+      return nil, err
+    end
     local args = new_tab(n_fields, 0)
     local args_names = new_tab(n_fields, 0)
 
@@ -797,7 +907,10 @@ do
 
   function _mt:delete(primary_key)
     local schema = self.schema
-    local cql = self.queries.delete
+    local cql, err = get_query(self, "delete")
+    if err then
+      return nil, err
+    end
     local args = new_tab(#schema.primary_key, 0)
 
     local constraint = _constraints[schema.name]
