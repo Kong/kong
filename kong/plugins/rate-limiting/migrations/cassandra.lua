@@ -1,7 +1,3 @@
-local utils = require "kong.tools.utils"
-
-local insert = table.insert
-
 return {
   {
     name = "2015-08-03-132400_init_ratelimiting",
@@ -60,118 +56,21 @@ return {
     end
   },
   {
-    name = "2017-07-11-180000_update_config",
-    up = function(_, _, dao)
-      local plugins, err = dao.plugins:find_all({ name = "rate-limiting" })
-      if err then
-        return err
-      end
-
-      for i = 1, #plugins do
-        local plugin = plugins[i]
-
-        -- drop the old entry
-        local _, err = dao.plugins:delete(plugin)
-        if err then
-          return err
-        end
-
-        -- base config
-        local config = {
-          identifier = plugin.config.limit_by,
-          window_size = {},
-          limit = {},
-          sync_rate = plugin.config.policy == "local" and -1 or 10, -- arbitrary default for cluster/redis
-          namespace = utils.random_string(),
-          strategy = plugin.config.policy == "redis" and "redis" or "cluster",
-        }
-
-        -- translate old windows to new arbitrary windows
-        do
-          local c = plugin.config
-          local t = tonumber
-          if t(c.second) then
-            insert(config.window_size, 1)
-            insert(config.limit, c.second)
-          end
-
-          if t(c.minute) then
-            insert(config.window_size, 60)
-            insert(config.limit, c.minute)
-          end
-
-          if t(c.hour) then
-            insert(config.window_size, 3600)
-            insert(config.limit, c.hour)
-          end
-
-          if t(c.day) then
-            insert(config.window_size, 86400)
-            insert(config.limit, c.day)
-          end
-
-          if t(c.month) then
-            insert(config.window_size, 2592000)
-            insert(config.limit, c.month)
-          end
-
-          if t(c.year) then
-            insert(config.window_size, 31536000)
-            insert(config.limit, c.year)
-          end
-
-          -- implied redis
-          if c.redis_host then
-            config.redis = {
-              host = c.redis_host,
-              port = c.redis_port,
-              password = c.redis_password or "",
-              database = c.redis_database or 0,
-              timeout = c.redis_timeout or 2000,
-            }
-          end
-
-          -- implied EE redis
-          if c.redis_sentinel_master then
-            config.redis = {
-              sentinel_master = c.redis_sentinel_master,
-              sentinel_role = c.redis_sentinel_role,
-              sentinel_addresses = c.redis_sentinel_addresses,
-              password = c.redis_password or "",
-              database = c.redis_database or 0,
-              timeout = c.redis_timeout or 2000,
-            }
-          end
-        end
-
-        local _, err = dao.plugins:insert({
-          name = "rate-limiting",
-          api_id = plugin.api_id,
-          consumer_id = plugin.consumer_id,
-          enabled = plugin.enabled,
-          config = config,
-        })
-        if err then
-          return err
-        end
-      end
-    end,
-    down = function() end,
-  },
-  {
-    name = "2017-07-11-190000_cleanup",
+    name = "2017-11-30-120000_add_route_and_service_id",
     up = [[
       DROP TABLE ratelimiting_metrics;
-    ]],
-    down = [[
-      CREATE TABLE IF NOT EXISTS ratelimiting_metrics(
+      CREATE TABLE ratelimiting_metrics(
+        route_id uuid,
+        service_id uuid,
         api_id uuid,
         identifier text,
         period text,
         period_date timestamp,
         value counter,
-        PRIMARY KEY ((api_id, identifier, period_date, period))
+        PRIMARY KEY ((route_id, service_id, api_id, identifier, period_date, period))
       );
     ]],
+    down = nil,
   },
+
 }

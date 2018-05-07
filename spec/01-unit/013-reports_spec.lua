@@ -40,7 +40,7 @@ describe("reports", function()
     it("doesn't send if not enabled", function()
       reports.toggle(false)
 
-      local thread = helpers.udp_server(8189)
+      local thread = helpers.udp_server(8189, 1, 0.1)
 
       reports.send({
         foo = "bar"
@@ -71,8 +71,11 @@ describe("reports", function()
 
   describe("retrieve_redis_version()", function()
     setup(function()
-      _G.ngx = ngx
-      _G.ngx.log = function() return end
+      stub(ngx, "log")
+    end)
+
+    teardown(function()
+      ngx.log:revert()
     end)
 
     before_each(function()

@@ -349,4 +349,198 @@ return {
       end
     end
   },
+  {
+    name = "2018-02-01-000000_vitals_stats_v0.31",
+    up = [[
+      ALTER TABLE vitals_stats_seconds
+      ADD COLUMN plat_count int default 0,
+      ADD COLUMN plat_total int default 0,
+      ADD COLUMN ulat_count int default 0,
+      ADD COLUMN ulat_total int default 0;
+
+      ALTER TABLE vitals_stats_minutes
+      ADD COLUMN plat_count int default 0,
+      ADD COLUMN plat_total int default 0,
+      ADD COLUMN ulat_count int default 0,
+      ADD COLUMN ulat_total int default 0;
+    ]],
+    down = [[
+      ALTER TABLE vitals_stats_seconds
+      DROP COLUMN plat_count,
+      DROP COLUMN plat_total,
+      DROP COLUMN ulat_count,
+      DROP COLUMN ulat_total;
+
+      ALTER TABLE vitals_stats_minutes
+      DROP COLUMN plat_count,
+      DROP COLUMN plat_total,
+      DROP COLUMN ulat_count,
+      DROP COLUMN ulat_total;
+    ]]
+  },
+  {
+    name = "2018-02-13-621974_portal_files_entity",
+    up = [[
+      CREATE TABLE IF NOT EXISTS portal_files(
+        id uuid PRIMARY KEY,
+        auth boolean NOT NULL,
+        name text UNIQUE NOT NULL,
+        type text NOT NULL,
+        contents text,
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
+      );
+
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('portal_files_name_idx')) IS NULL THEN
+          CREATE INDEX portal_files_name_idx on portal_files(name);
+        END IF;
+      END$$;
+    ]],
+    down = [[
+      DROP TABLE portal_files;
+    ]]
+  },
+  {
+    name = "2018-03-12-000000_vitals_v0.32",
+    up = [[
+      CREATE TABLE IF NOT EXISTS vitals_code_classes_by_cluster(
+        code_class int,
+        at timestamp with time zone,
+        duration int,
+        count int,
+        PRIMARY KEY (code_class, duration, at)
+      );
+
+      CREATE TABLE IF NOT EXISTS vitals_codes_by_service(
+        service_id uuid,
+        code int,
+        at timestamp with time zone,
+        duration int,
+        count int,
+        PRIMARY KEY (service_id, code, duration, at)
+      );
+
+      CREATE TABLE IF NOT EXISTS vitals_codes_by_route(
+        service_id uuid,
+        route_id uuid,
+        code int,
+        at timestamp with time zone,
+        duration int,
+        count int,
+        PRIMARY KEY (route_id, code, duration, at)
+      );
+
+      CREATE INDEX IF NOT EXISTS vitals_cbr_service_idx
+      ON vitals_codes_by_route(service_id);
+
+      CREATE TABLE IF NOT EXISTS vitals_codes_by_consumer_route(
+        consumer_id uuid,
+        service_id uuid,
+        route_id uuid,
+        code int,
+        at timestamp with time zone,
+        duration int,
+        count int,
+        PRIMARY KEY (consumer_id, route_id, code, duration, at)
+      );
+
+      CREATE INDEX IF NOT EXISTS vitals_cbcr_service_idx
+      ON vitals_codes_by_consumer_route(consumer_id, service_id);
+    ]],
+
+    down = [[
+      DROP TABLE vitals_codes_by_consumer_route;
+      DROP TABLE vitals_codes_by_route;
+      DROP TABLE vitals_codes_by_service;
+      DROP TABLE vitals_code_classes_by_cluster;
+    ]]
+  },
+  {
+    name = "2018-04-25-000001_portal_initial_files",
+    up = function(_, _, dao)
+      local utils = require "kong.tools.utils"
+      local files = require "kong.portal.migrations.01_initial_files"
+
+      -- Iterate over file list and insert files that do not exist
+      for _, file in ipairs(files) do
+        dao.portal_files:insert({
+          id = utils.uuid(),
+          auth = file.auth,
+          name = file.name,
+          type = file.type,
+          contents = file.contents
+        })
+      end
+    end,
+  },
+  {
+    name = "2018-04-10-094800_dev_portal_consumer_types",
+    up = [[
+      CREATE TABLE IF NOT EXISTS "consumer_statuses" (
+        "id"               int PRIMARY KEY,
+        "name" 			       text COLLATE pg_catalog."default" NOT NULL,
+        "comment" 		     text COLLATE pg_catalog."default",
+        "created_at"       timestamp without time zone DEFAULT timezone('utc'::text, ('now'::text)::timestamp(0) with time zone)
+      );
+
+      CREATE TABLE IF NOT EXISTS "consumer_types" (
+        "id"               int PRIMARY KEY,
+        "name" 			       text COLLATE pg_catalog."default" NOT NULL,
+        "comment" 		     text COLLATE pg_catalog."default",
+        "created_at"       timestamp without time zone DEFAULT timezone('utc'::text, ('now'::text)::timestamp(0) with time zone)
+      );
+
+      ALTER TABLE consumers
+        ADD COLUMN "type" int NOT NULL DEFAULT 0 REFERENCES consumer_types (id),
+        ADD COLUMN "email" text COLLATE pg_catalog."default",
+        ADD COLUMN "status" integer REFERENCES consumer_statuses (id),
+        ADD COLUMN "meta" text COLLATE pg_catalog."default";
+
+      ALTER TABLE consumers ADD CONSTRAINT consumers_email_type_key UNIQUE("email", "type");
+
+      CREATE INDEX consumers_type_idx
+          ON public.consumers USING btree (type)
+          TABLESPACE pg_default;
+
+      CREATE INDEX consumers_status_idx
+          ON public.consumers USING btree (status)
+          TABLESPACE pg_default;
+
+      CREATE INDEX consumers_statuses_names_idx
+          ON public.consumer_statuses USING btree
+          (name COLLATE pg_catalog."default")
+          TABLESPACE pg_default;
+
+      CREATE INDEX consumer_types_name_idx
+          ON public.consumer_types USING btree
+          (name COLLATE pg_catalog."default")
+          TABLESPACE pg_default;
+    ]],
+
+    down = [[
+      DROP TABLE "consumer_statuses";
+      DROP TABLE "consumer_types";
+      DROP INDEX "consumers_statuses_names_idx";
+      DROP INDEX "consumer_types_name_idx";
+      ALTER TABLE consumers DROP CONSTRAINT consumers_email_type_key;
+      ALTER TABLE consumers DROP COLUMN type;
+      ALTER TABLE consumers DROP COLUMN email;
+      ALTER TABLE consumers DROP COLUMN status;
+      ALTER TABLE consumers DROP COLUMN meta;
+    ]]
+  },
+  {
+    name = "2018-04-10-094800_consumer_type_status_defaults",
+    up = function(_, _, dao)
+      local helper = require('kong.portal.dao_helpers')
+
+      return helper.register_resources(dao)
+    end,
+
+    down = [[
+      DELETE FROM consumer_statuses;
+      DELETE FROM consumer_types;
+    ]]
+  },
 }

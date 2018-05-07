@@ -50,7 +50,7 @@ function _M.execute(conf)
   end
 
   local stop
-  for limit_name, v in pairs(usage) do
+  for limit_name in pairs(usage) do
     for period_name, lv in pairs(usage[limit_name]) do
       if not conf.hide_client_headers then
         ngx.header[RATELIMIT_LIMIT .. "-" .. limit_name .. "-" .. period_name] = lv.limit

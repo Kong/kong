@@ -11,7 +11,7 @@ local concat = table.concat
 local tostring = tostring
 local pairs = pairs
 local type = type
-local ERR = ngx.ERR
+local WARN = ngx.WARN
 local sub = string.sub
 
 
@@ -58,7 +58,7 @@ local function serialize_report_value(v)
   if type(v) == "table" then
     local json, err = cjson.encode(v)
     if err then
-      log(ERR, "could not JSON encode given table entity: ", err)
+      log(WARN, "could not JSON encode given table entity: ", err)
     end
 
     v = json
@@ -103,7 +103,7 @@ local function send_report(signal_type, t, host, port)
   local sock = udp_sock()
   local ok, err = sock:setpeername(host, port)
   if not ok then
-    log(ERR, "could not set peer name for UDP socket: ", err)
+    log(WARN, "could not set peer name for UDP socket: ", err)
     return
   end
 
@@ -113,12 +113,12 @@ local function send_report(signal_type, t, host, port)
 
   ok, err = sock:send(concat(_buffer, ";", 1, mutable_idx))
   if not ok then
-    log(ERR, "could not send data: ", err)
+    log(WARN, "could not send data: ", err)
   end
 
   ok, err = sock:close()
   if not ok then
-    log(ERR, "could not close socket: ", err)
+    log(WARN, "could not close socket: ", err)
   end
 end
 
@@ -135,7 +135,7 @@ end
 local function get_lock(key, exptime)
   local ok, err = kong_dict:safe_add(key, true, exptime - 0.001)
   if not ok and err ~= "exists" then
-    log(ERR, "could not get lock from 'kong' shm: ", err)
+    log(WARN, "could not get lock from 'kong' shm: ", err)
   end
 
   return ok
@@ -145,7 +145,7 @@ end
 local function create_timer(...)
   local ok, err = timer_at(...)
   if not ok then
-    log(ERR, "could not create ping timer: ", err)
+    log(WARN, "could not create ping timer: ", err)
   end
 end
 
@@ -165,7 +165,7 @@ local function ping_handler(premature)
 
   local n_requests, err = kong_dict:get(BUFFERED_REQUESTS_COUNT_KEYS)
   if err then
-    log(ERR, "could not get buffered requests count from 'kong' shm: ", err)
+    log(WARN, "could not get buffered requests count from 'kong' shm: ", err)
   elseif not n_requests then
     n_requests = 0
   end
@@ -177,7 +177,7 @@ local function ping_handler(premature)
 
   local ok, err = kong_dict:incr(BUFFERED_REQUESTS_COUNT_KEYS, -n_requests, n_requests)
   if not ok then
-    log(ERR, "could not reset buffered requests count in 'kong' shm: ", err)
+    log(WARN, "could not reset buffered requests count in 'kong' shm: ", err)
   end
 end
 
@@ -220,7 +220,7 @@ do
     local res, err = red:info("server")
     if type(res) ~= "string" then
       -- could be nil or ngx.null
-      ngx_log(ERR, "failed to retrieve Redis version: ", err)
+      ngx_log(WARN, "failed to retrieve Redis version: ", err)
 
     else
       -- retrieve first 2 digits only
@@ -253,7 +253,7 @@ return {
 
     local ok, err = kong_dict:incr(BUFFERED_REQUESTS_COUNT_KEYS, 1, 0)
     if not ok then
-      log(ERR, "could not increment buffered requests count in 'kong' shm: ",
+      log(WARN, "could not increment buffered requests count in 'kong' shm: ",
                 err)
     end
   end,

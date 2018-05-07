@@ -7,6 +7,7 @@ local pl_config = require "pl.config"
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 local tablex = require "pl.tablex"
+local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
 local ip = require "kong.tools.ip"
@@ -22,6 +23,7 @@ local PREFIX_PATHS = {
   nginx_err_logs = {"logs", "error.log"},
   nginx_acc_logs = {"logs", "access.log"},
   nginx_admin_acc_logs = {"logs", "admin_access.log"},
+  nginx_portal_api_acc_logs = {"logs", "portal_api_access.log"},
   nginx_conf = {"nginx.conf"},
   nginx_kong_conf = {"nginx-kong.conf"}
   ;
@@ -42,6 +44,14 @@ local PREFIX_PATHS = {
   admin_gui_ssl_cert_default = {"ssl", "admin-gui-kong-default.crt"},
   admin_gui_ssl_cert_key_default = {"ssl", "admin-gui-kong-default.key"},
   admin_gui_ssl_cert_csr_default = {"ssl", "admin-gui-kong-default.csr"}
+  ;
+  portal_api_ssl_cert_default = {"ssl", "portal-api-kong-default.crt"},
+  portal_api_ssl_cert_key_default = {"ssl", "portal-api-kong-default.key"},
+  portal_api_ssl_cert_csr_default = {"ssl", "portal-api-kong-default.csr"}
+  ;
+  portal_gui_ssl_cert_default = {"ssl", "portal-gui-kong-default.crt"},
+  portal_gui_ssl_cert_key_default = {"ssl", "portal-gui-kong-default.key"},
+  portal_gui_ssl_cert_csr_default = {"ssl", "portal-gui-kong-default.csr"}
 }
 
 -- By default, all properties in the configuration are considered to
@@ -57,12 +67,13 @@ local PREFIX_PATHS = {
 -- `array`: a comma-separated list
 local CONF_INFERENCES = {
   -- forced string inferences (or else are retrieved as numbers)
-  proxy_listen = {typ = "string"},
-  proxy_listen_ssl = {typ = "string"},
-  admin_listen = {typ = "string"},
-  admin_listen_ssl = {typ = "string"},
-  admin_gui_listen = {typ = "string"},
-  admin_gui_listen_ssl = {typ = "string"},
+  proxy_listen = {typ = "array"},
+  admin_listen = {typ = "array"},
+  admin_api_uri = {typ = "string"},
+  admin_gui_listen = {typ = "array"},
+  admin_gui_error_log = {typ = "string"},
+  admin_gui_access_log = {typ = "string"},
+  admin_gui_flags = {typ = "string"},
   db_update_frequency = { typ = "number" },
   db_update_propagation = { typ = "number" },
   db_cache_ttl = { typ = "number" },
@@ -108,17 +119,14 @@ local CONF_INFERENCES = {
   dns_error_ttl = {typ = "number"},
   dns_no_sync = {typ = "boolean"},
 
-  http2 = {typ = "boolean"},
-  admin_http2 = {typ = "boolean"},
-  ssl = {typ = "boolean"},
   client_ssl = {typ = "boolean"},
-  admin_ssl = {typ = "boolean"},
-  admin_gui_ssl = {typ = "boolean"},
 
   proxy_access_log = {typ = "string"},
   proxy_error_log = {typ = "string"},
   admin_access_log = {typ = "string"},
   admin_error_log = {typ = "string"},
+  portal_api_access_log = {typ = "string"},
+  portal_api_error_log = {typ = "string"},
   log_level = {enum = {"debug", "info", "notice", "warn",
                        "error", "crit", "alert", "emerg"}},
   custom_plugins = {typ = "array"},
@@ -136,6 +144,18 @@ local CONF_INFERENCES = {
   vitals_flush_interval = {typ = "number"},
   vitals_ttl_seconds = {typ = "number"},
   vitals_ttl_minutes = {typ = "number"},
+
+  portal = {typ = "boolean"},
+  portal_gui_listen = {typ = "array"},
+  portal_gui_url = {typ = "string"},
+
+  portal_api_listen = {typ = "array"},
+  portal_api_url = {typ = "string"},
+
+  proxy_uri = {typ = "string"},
+  portal_auth = {typ = "string"},
+  portal_auth_conf = {typ = "string"},
+  portal_auto_approve = {typ = "boolean"},
 }
 
 -- List of settings whose values must not be printed when
@@ -245,7 +265,7 @@ local function check_and_infer(conf)
     end
   end
 
-  if conf.ssl then
+  if (table.concat(conf.proxy_listen, ",") .. " "):find("%sssl[%s,]") then
     if conf.ssl_cert and not conf.ssl_cert_key then
       errors[#errors+1] = "ssl_cert_key must be specified"
     elseif conf.ssl_cert_key and not conf.ssl_cert then
@@ -275,7 +295,7 @@ local function check_and_infer(conf)
     end
   end
 
-  if conf.admin_ssl then
+  if (table.concat(conf.admin_listen, ",") .. " "):find("%sssl[%s,]") then
     if conf.admin_ssl_cert and not conf.admin_ssl_cert_key then
       errors[#errors+1] = "admin_ssl_cert_key must be specified"
     elseif conf.admin_ssl_cert_key and not conf.admin_ssl_cert then
@@ -290,10 +310,72 @@ local function check_and_infer(conf)
     end
   end
 
-  -- warn user if ssl is disabled and rbac is enforced
-  if not conf.rbac.off and not conf.admin_ssl then
-    log.warn("RBAC authorization is enabled but Admin API calls will not be " ..
-      "encrypted via SSL")
+  if (table.concat(conf.admin_gui_listen, ",") .. " "):find("%sssl[%s,]") then
+    if conf.admin_gui_ssl_cert and not conf.admin_gui_ssl_cert_key then
+      errors[#errors+1] = "admin_gui_ssl_cert_key must be specified"
+    elseif conf.admin_gui_ssl_cert_key and not conf.admin_gui_ssl_cert then
+      errors[#errors+1] = "admin_gui_ssl_cert must be specified"
+    end
+
+    if conf.admin_gui_ssl_cert and not pl_path.exists(conf.admin_gui_ssl_cert) then
+      errors[#errors+1] = "admin_gui_ssl_cert: no such file at " .. conf.admin_gui_ssl_cert
+    end
+    if conf.admin_gui_ssl_cert_key and not pl_path.exists(conf.admin_gui_ssl_cert_key) then
+      errors[#errors+1] = "admin_gui_ssl_cert_key: no such file at " .. conf.admin_gui_ssl_cert_key
+    end
+  end
+
+  if conf.portal then
+    if (table.concat(conf.portal_api_listen, ",") .. " "):find("%sssl[%s,]") then
+      if conf.portal_api_ssl_cert and not conf.portal_api_ssl_cert_key then
+        errors[#errors+1] = "portal_api_ssl_cert_key must be specified"
+      elseif conf.portal_api_ssl_cert_key and not conf.portal_api_ssl_cert then
+        errors[#errors+1] = "portal_api_ssl_cert must be specified"
+      end
+
+      if conf.portal_api_ssl_cert and not pl_path.exists(conf.portal_api_ssl_cert) then
+        errors[#errors+1] = "portal_api_ssl_cert: no such file at " .. conf.portal_api_ssl_cert
+      end
+      if conf.portal_api_ssl_cert_key and not pl_path.exists(conf.portal_api_ssl_cert_key) then
+        errors[#errors+1] = "portal_api_ssl_cert_key: no such file at " .. conf.portal_api_ssl_cert_key
+      end
+    end
+
+    if (table.concat(conf.portal_gui_listen, ",") .. " "):find("%sssl[%s,]") then
+      if conf.portal_gui_ssl_cert and not conf.portal_gui_ssl_cert_key then
+        errors[#errors+1] = "portal_gui_ssl_cert_key must be specified"
+      elseif conf.portal_gui_ssl_cert_key and not conf.portal_gui_ssl_cert then
+        errors[#errors+1] = "portal_gui_ssl_cert must be specified"
+      end
+
+      if conf.portal_gui_ssl_cert and not pl_path.exists(conf.portal_gui_ssl_cert) then
+        errors[#errors+1] = "portal_gui_ssl_cert: no such file at " .. conf.portal_gui_ssl_cert
+      end
+      if conf.portal_gui_ssl_cert_key and not pl_path.exists(conf.portal_gui_ssl_cert_key) then
+        errors[#errors+1] = "portal_gui_ssl_cert_key: no such file at " .. conf.portal_gui_ssl_cert_key
+      end
+    end
+  end
+
+  -- portal auth conf json conversion
+  if conf.portal_auth and conf.portal_auth_conf then
+    local json, err = cjson.decode(tostring(conf.portal_auth_conf))
+    if json then
+      conf.portal_auth_conf = json
+
+      -- used for writing back to prefix/.kong_env as a string
+      setmetatable(conf.portal_auth_conf, {
+        __tostring = function (v)
+          return assert(cjson.encode(v))
+        end
+      })
+    end
+
+    if err then
+      errors[#errors+1] = "portal_auth_conf must be valid json: "
+        .. err
+        .. " - " .. conf.portal_auth_conf
+    end
   end
 
   if conf.ssl_cipher_suite ~= "custom" then
@@ -330,10 +412,6 @@ local function check_and_infer(conf)
     end
   end
 
-  if conf.vitals and conf.database == "cassandra" then
-    errors[#errors+1] = "vitals: not available on cassandra. Restart with vitals=off."
-  end
-
   if not conf.lua_package_cpath then
     conf.lua_package_cpath = ""
   end
@@ -346,23 +424,6 @@ local function check_and_infer(conf)
                           "block or 'unix:', got '" .. address .. "'"
     end
   end
-
-  -- rbac can be any of 'endpoint', 'entity', 'on', or 'off'
-  local rbac = {}
-  if conf.rbac == "endpoint" then
-    rbac.endpoint = true
-  elseif conf.rbac == "entity" then
-    rbac.entity = true
-  elseif conf.rbac == "on" then
-    rbac.entity = true
-    rbac.endpoint = true
-  elseif conf.rbac == "off" then
-    rbac.off = true
-  else
-    errors[#errors+1] = "rbac must be one of 'endpoint', 'entity', 'on', " ..
-                        "or 'off'; got '" .. conf.rbac .. "'"
-  end
-  conf.rbac = rbac
 
   return #errors == 0, errors[1], errors
 end
@@ -397,6 +458,85 @@ local function overrides(k, default_v, file_conf, arg_conf)
   end
 
   return value, k
+end
+
+-- @param value The options string to check for flags (whitespace separated)
+-- @param flags List of boolean flags to check for.
+-- @returns 1) remainder string after all flags removed, 2) table with flag
+-- booleans, 3) sanitized flags string
+local function parse_option_flags(value, flags)
+  assert(type(value) == "string")
+
+  value = " " .. value .. " "
+
+  local sanitized = ""
+  local result = {}
+
+  for _, flag in ipairs(flags) do
+    local count
+    local patt = "%s" .. flag .. "%s"
+
+    value, count = value:gsub(patt, " ")
+
+    if count > 0 then
+      result[flag] = true
+      sanitized = sanitized .. " " .. flag
+
+    else
+      result[flag] = false
+    end
+  end
+
+  return pl_stringx.strip(value), result, pl_stringx.strip(sanitized)
+end
+
+-- Parses a listener address line.
+-- Supports multiple (comma separated) addresses, with 'ssl' and 'http2' flags.
+-- Pre- and postfixed whitespace as well as comma's are allowed.
+-- "off" as a first entry will return empty tables.
+-- @value list of entries (strings)
+-- @return list of parsed entries, each entry having fields `ip` (normalized string)
+-- `port` (number), `ssl` (bool), `http2` (bool), `listener` (string, full listener)
+local function parse_listeners(values)
+  local list = {}
+  local flags = { "ssl", "http2", "proxy_protocol" }
+  local usage = "must be of form: [off] | <ip>:<port> [" ..
+                table.concat(flags, "] [") .. "], [... next entry ...]"
+
+  if pl_stringx.strip(values[1]) == "off" then
+    return list
+  end
+
+  for _, entry in ipairs(values) do
+    -- parse the flags
+    local remainder, listener, cleaned_flags = parse_option_flags(entry, flags)
+
+    -- verify IP for remainder
+    local ip
+
+    if utils.hostname_type(remainder) == "name" then
+      -- it's not an IP address, so a name/wildcard/regex
+      ip = {}
+      ip.host, ip.port = remainder:match("(.+):([%d]+)$")
+
+    else
+      -- It's an IPv4 or IPv6, just normalize it
+      ip = utils.normalize_ip(remainder)
+    end
+
+    if not ip or not ip.port then
+      return nil, usage
+    end
+
+    listener.ip = ip.host
+    listener.port = ip.port
+    listener.listener = ip.host .. ":" .. ip.port ..
+                        (#cleaned_flags == 0 and "" or " " .. cleaned_flags)
+
+    table.insert(list, listener)
+  end
+
+  return list
 end
 
 --- Load Kong configuration
@@ -520,31 +660,87 @@ local function load(path, custom_conf)
 
   -- extract ports/listen ips
   do
-    local ip_port_pat = "(.+):([%d]+)$"
-    local admin_ip, admin_port = string.match(conf.admin_listen, ip_port_pat)
-    local admin_ssl_ip, admin_ssl_port = string.match(conf.admin_listen_ssl, ip_port_pat)
-    local admin_gui_ip, admin_gui_port = string.match(conf.admin_gui_listen, ip_port_pat)
-    local admin_gui_ssl_ip, admin_gui_ssl_port = string.match(conf.admin_gui_listen_ssl, ip_port_pat)
-    local proxy_ip, proxy_port = string.match(conf.proxy_listen, ip_port_pat)
-    local proxy_ssl_ip, proxy_ssl_port = string.match(conf.proxy_listen_ssl, ip_port_pat)
+    local err
+    -- this meta table will prevent the parsed table to be passed on in the
+    -- intermediate Kong config file in the prefix directory
+    local mt = { __tostring = function() return "" end }
 
-    if not admin_port then return nil, "admin_listen must be of form 'address:port'"
-    elseif not admin_ssl_port then return nil, "admin_listen_ssl must be of form 'address:port'"
-    elseif not proxy_port then return nil, "proxy_listen must be of form 'address:port'"
-    elseif not admin_gui_port then return nil, "admin_gui_listen must be of form 'address:port'"
-    elseif not proxy_ssl_port then return nil, "proxy_listen_ssl must be of form 'address:port'" end
-    conf.admin_ip = admin_ip
-    conf.admin_ssl_ip = admin_ssl_ip
-    conf.admin_gui_ip = admin_gui_ip
-    conf.admin_gui_ssl_ip = admin_gui_ssl_ip
-    conf.proxy_ip = proxy_ip
-    conf.proxy_ssl_ip = proxy_ssl_ip
-    conf.admin_port = tonumber(admin_port)
-    conf.admin_ssl_port = tonumber(admin_ssl_port)
-    conf.admin_gui_port = tonumber(admin_gui_port)
-    conf.admin_gui_ssl_port = tonumber(admin_gui_ssl_port)
-    conf.proxy_port = tonumber(proxy_port)
-    conf.proxy_ssl_port = tonumber(proxy_ssl_port)
+    conf.proxy_listeners, err = parse_listeners(conf.proxy_listen)
+    if err then
+      return nil, "proxy_listen " .. err
+    end
+
+    setmetatable(conf.proxy_listeners, mt)  -- do not pass on, parse again
+    conf.proxy_ssl_enabled = false
+
+    for _, listener in ipairs(conf.proxy_listeners) do
+      if listener.ssl == true then
+        conf.proxy_ssl_enabled = true
+        break
+      end
+    end
+
+    conf.admin_listeners, err = parse_listeners(conf.admin_listen)
+    if err then
+      return nil, "admin_listen " .. err
+    end
+
+    setmetatable(conf.admin_listeners, mt)  -- do not pass on, parse again
+    conf.admin_ssl_enabled = false
+
+    for _, listener in ipairs(conf.admin_listeners) do
+      if listener.ssl == true then
+        conf.admin_ssl_enabled = true
+        break
+      end
+    end
+
+    conf.admin_gui_listeners, err = parse_listeners(conf.admin_gui_listen)
+    if err then
+      return nil, "admin_gui_listen " .. err
+    end
+
+    setmetatable(conf.admin_gui_listeners, mt)  -- do not pass on, parse again
+    conf.admin_gui_ssl_enabled = false
+
+    for _, listener in ipairs(conf.admin_gui_listeners) do
+      if listener.ssl == true then
+        conf.admin_gui_ssl_enabled = true
+        break
+      end
+    end
+
+    if conf.portal then
+      conf.portal_gui_listeners, err = parse_listeners(conf.portal_gui_listen)
+      if err then
+        return nil, "portal_gui_listen " .. err
+      end
+
+      setmetatable(conf.portal_gui_listeners, mt)
+      conf.portal_gui_ssl_enabled = false
+
+      for _, listener in ipairs(conf.portal_gui_listeners) do
+        if listener.ssl == true then
+          conf.portal_gui_ssl_enabled = true
+          break
+        end
+      end
+
+      conf.portal_api_listeners, err = parse_listeners(conf.portal_api_listen)
+      if err then
+        return nil, "portal_api_listen " .. err
+      end
+
+      setmetatable(conf.portal_api_listeners, mt)
+      conf.portal_api_ssl_enabled = false
+
+      for _, listener in ipairs(conf.portal_api_listeners) do
+        if listener.ssl == true then
+          conf.portal_api_ssl_enabled = true
+          break
+        end
+      end
+    end
   end
 
   -- load absolute paths
@@ -563,6 +759,49 @@ local function load(path, custom_conf)
   if conf.admin_ssl_cert and conf.admin_ssl_cert_key then
     conf.admin_ssl_cert = pl_path.abspath(conf.admin_ssl_cert)
     conf.admin_ssl_cert_key = pl_path.abspath(conf.admin_ssl_cert_key)
+  end
+
+  if conf.admin_gui_ssl_cert and conf.admin_gui_ssl_cert_key then
+    conf.admin_gui_ssl_cert = pl_path.abspath(conf.admin_gui_ssl_cert)
+    conf.admin_gui_ssl_cert_key = pl_path.abspath(conf.admin_gui_ssl_cert_key)
+  end
+
+  if conf.portal then
+    if conf.portal_api_ssl_cert and conf.portal_api_ssl_cert_key then
+      conf.portal_api_ssl_cert = pl_path.abspath(conf.portal_api_ssl_cert)
+      conf.portal_api_ssl_cert_key = pl_path.abspath(conf.portal_api_ssl_cert_key)
+    end
+
+    if conf.portal_gui_ssl_cert and conf.portal_gui_ssl_cert_key then
+      conf.portal_gui_ssl_cert = pl_path.abspath(conf.portal_gui_ssl_cert)
+      conf.portal_gui_ssl_cert_key = pl_path.abspath(conf.portal_gui_ssl_cert_key)
+    end
+  end
+
+  -- rbac can be any of 'endpoint', 'entity', 'on', or 'off'
+  local rbac = {}
+  if conf.rbac == "endpoint" then
+    rbac.endpoint = true
+  elseif conf.rbac == "entity" then
+    rbac.entity = true
+  elseif conf.rbac == "on" then
+    rbac.entity = true
+    rbac.endpoint = true
+  elseif conf.rbac == "off" then
+    rbac.off = true
+  else
+    errors[#errors+1] = "rbac must be one of 'endpoint', 'entity', 'on', " ..
+                        "or 'off'; got '" .. conf.rbac .. "'"
+  end
+  conf.rbac = rbac
+
+  -- warn user if ssl is disabled and rbac is enforced
+  -- TODO CE would probably benefit from some helpers - eg, see
+  -- kong.enterprise_edition.select_listener
+  local ssl_on = (table.concat(conf.admin_listen, ",") .. " "):find("%sssl[%s,]")
+  if not conf.rbac.off and not ssl_on then
+    log.warn("RBAC authorization is enabled but Admin API calls will not be " ..
+      "encrypted via SSL")
   end
 
   -- attach prefix files paths

@@ -1,9 +1,10 @@
-local utils = require "kong.tools.utils"
+local public = require "kong.tools.public"
 
 
 local ngx_debug = ngx.config.debug
 local DEBUG     = ngx.DEBUG
 local ERR       = ngx.ERR
+local CRIT      = ngx.CRIT
 local max       = math.max
 local type      = type
 local pcall     = pcall
@@ -13,7 +14,6 @@ local ngx_now   = ngx.now
 local timer_at  = ngx.timer.at
 
 
-local NODE_ID_KEY            = "cluster_events:id"
 local POLL_INTERVAL_LOCK_KEY = "cluster_events:poll_interval"
 local POLL_RUNNING_LOCK_KEY  = "cluster_events:poll_running"
 local CURRENT_AT_KEY         = "cluster_events:at"
@@ -122,18 +122,9 @@ function _M.new(opts)
 
   -- set node id (uuid)
 
-  ok, err = self.shm:safe_add(NODE_ID_KEY, utils.uuid())
-  if not ok and err ~= "exists" then
-    return nil, "failed to set 'node_id' in shm: " .. err
-  end
-
-  self.node_id, err = self.shm:get(NODE_ID_KEY)
-  if err then
-    return nil, "failed to get 'node_id' in shm: " .. err
-  end
-
+  self.node_id, err = public.get_node_id()
   if not self.node_id then
-    return nil, "no 'node_id' set in shm"
+    return nil, err
   end
 
   if ngx_debug and opts.node_id then
@@ -353,7 +344,7 @@ poll_handler = function(premature, self)
   if not get_lock(self) then
     local ok, err = timer_at(self.poll_interval, poll_handler, self)
     if not ok then
-      log(ERR, "failed to start recurring polling timer: ", err)
+      log(CRIT, "failed to start recurring polling timer: ", err)
     end
 
     return
@@ -375,7 +366,7 @@ poll_handler = function(premature, self)
 
   local ok, err = timer_at(self.poll_interval, poll_handler, self)
   if not ok then
-    log(ERR, "failed to start recurring polling timer: ", err)
+    log(CRIT, "failed to start recurring polling timer: ", err)
   end
 end
 

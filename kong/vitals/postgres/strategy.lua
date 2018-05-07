@@ -2,6 +2,7 @@ local table_rotater_module = require "kong.vitals.postgres.table_rotater"
 local fmt                  = string.format
 local unpack               = unpack
 local tostring             = tostring
+local match                = string.match
 local time                 = ngx.time
 local log                  = ngx.log
 local WARN                 = ngx.WARN
@@ -15,55 +16,150 @@ local mt = { __index = _M }
 local _log_prefix = "[vitals-strategy] "
 
 local INSERT_STATS = [[
-  insert into %s (at, node_id, l2_hit, l2_miss, plat_min, plat_max, ulat_min, ulat_max, requests)
-  values (%d, '%s', %d, %d, %s, %s, %s, %s, %d)
-  on conflict (node_id, at) do update set
+  INSERT INTO %s (at, node_id, l2_hit, l2_miss, plat_min, plat_max, ulat_min,
+    ulat_max, requests, plat_count, plat_total, ulat_count, ulat_total)
+  VALUES (%d, '%s', %d, %d, %s, %s, %s, %s, %d, %d, %d, %d, %d)
+  ON CONFLICT (node_id, at) DO UPDATE SET
     l2_hit = %s.l2_hit + excluded.l2_hit,
     l2_miss = %s.l2_miss + excluded.l2_miss,
     plat_min = least(%s.plat_min, excluded.plat_min),
     plat_max = greatest(%s.plat_max, excluded.plat_max),
     ulat_min = least(%s.ulat_min, excluded.ulat_min),
     ulat_max = greatest(%s.ulat_max, excluded.ulat_max),
-    requests = %s.requests + excluded.requests
+    requests = %s.requests + excluded.requests,
+    plat_count = %s.plat_count + excluded.plat_count,
+    plat_total = %s.plat_total + excluded.plat_total,
+    ulat_count = %s.ulat_count + excluded.ulat_count,
+    ulat_total = %s.ulat_total + excluded.ulat_total
 ]]
 
 local SELECT_STATS_FOR_PHONE_HOME = [[
-  select sum(l2_hit) as "v.cdht",
-  sum(l2_miss) as "v.cdmt",
-  min(plat_min) as "v.lprn",
-  max(plat_max) as "v.lprx",
-  min(ulat_min) as "v.lun",
-  max(ulat_max) as "v.lux"
-  from vitals_stats_minutes where at >= %d
-  and node_id = '%s'
+  SELECT SUM(l2_hit) AS "v.cdht",
+  SUM(l2_miss) AS "v.cdmt",
+  MIN(plat_min) AS "v.lprn",
+  MAX(plat_max) AS "v.lprx",
+  MIN(ulat_min) AS "v.lun",
+  MAX(ulat_max) AS "v.lux",
+  SUM(plat_count) AS plat_count,
+  SUM(plat_total) AS plat_total,
+  SUM(ulat_count) AS ulat_count,
+  SUM(ulat_total) AS ulat_total
+  FROM vitals_stats_minutes WHERE at >= %d AND node_id = '%s'
 ]]
 
 local SELECT_NODES_FOR_PHONE_HOME = [[
-  select count(distinct node_id) as "v.nt" from vitals_stats_minutes where at >= %d
+  SELECT COUNT(DISTINCT node_id) AS "v.nt" FROM vitals_stats_minutes WHERE at >= %d
 ]]
 
 local INSERT_CONSUMER_STATS = [[
-  insert into vitals_consumers(consumer_id, node_id, at, duration, count)
-  values('%s', '%s', to_timestamp(%d) at time zone 'UTC', %d, %d)
-  on conflict(consumer_id, node_id, at, duration) do
-  update set count = vitals_consumers.count + excluded.count
+  INSERT INTO vitals_consumers(consumer_id, node_id, at, duration, count)
+  VALUES('%s', '%s', to_timestamp(%d) at time zone 'UTC', %d, %d)
+  ON CONFLICT(consumer_id, node_id, at, duration) DO
+  UPDATE SET COUNT = vitals_consumers.count + excluded.count
 ]]
 
-local UPDATE_NODE_META = "update vitals_node_meta set last_report = now() where node_id = '%s'"
+local UPDATE_NODE_META = "UPDATE vitals_node_meta SET last_report = now() WHERE node_id = '%s'"
 
-local DELETE_STATS = "delete from %s where at < %d"
+local DELETE_STATS = "DELETE FROM %s WHERE at < %d"
 
 local DELETE_CONSUMER_STATS = [[
-  delete from vitals_consumers where consumer_id = '{%s}'
-  and ((duration = %d and at < to_timestamp(%d) at time zone 'UTC')
-  or (duration = %d and at < to_timestamp(%d) at time zone 'UTC'))
+  DELETE FROM vitals_consumers WHERE consumer_id = '{%s}'
+  AND ((duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC')
+  OR (duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC'))
 ]]
 
-local SELECT_NODE = "select node_id from vitals_node_meta where node_id = '%s'"
+local SELECT_NODE = "SELECT node_id FROM vitals_node_meta WHERE node_id = '%s'"
 
 local SELECT_NODE_META = [[
-  select node_id, hostname from vitals_node_meta where node_id in ('%s')
+  SELECT node_id, hostname FROM vitals_node_meta WHERE node_id IN ('%s')
 ]]
+
+local INSERT_CODE_CLASSES_CLUSTER = [[
+  INSERT INTO vitals_code_classes_by_cluster(code_class, at, duration, count)
+  VALUES(%d, to_timestamp(%d) at time zone 'UTC', %d, %d)
+  ON CONFLICT(code_class, at, duration) DO
+  UPDATE SET COUNT = vitals_code_classes_by_cluster.count + excluded.count
+]]
+
+local SELECT_CODE_CLASSES_CLUSTER = [[
+  SELECT 'cluster' as node_id, code_class, extract('epoch' from at) as at, count
+    FROM vitals_code_classes_by_cluster
+   WHERE duration = %d AND at >= to_timestamp(%d)
+]]
+
+local DELETE_CODE_CLASSES_CLUSTER = [[
+  DELETE FROM vitals_code_classes_by_cluster
+  WHERE ((duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC')
+  OR (duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC'))
+]]
+
+local INSERT_CODES_BY_SERVICE = [[
+  INSERT INTO vitals_codes_by_service(service_id, code, at, duration, count)
+  VALUES('%s', '%s', to_timestamp(%d) at time zone 'UTC', %d, %d)
+  ON CONFLICT(service_id, code, at, duration) DO
+  UPDATE SET COUNT = vitals_codes_by_service.count + excluded.count
+]]
+
+local INSERT_CODES_BY_ROUTE = [[
+  INSERT INTO vitals_codes_by_route(route_id, service_id, code, at, duration, count)
+  VALUES('%s', '%s', '%s', to_timestamp(%d) at time zone 'UTC', %d, %d)
+  ON CONFLICT(route_id, code, at, duration) DO
+  UPDATE SET COUNT = vitals_codes_by_route.count + excluded.count
+]]
+
+local INSERT_CODES_BY_CONSUMER_AND_ROUTE = [[
+  INSERT INTO vitals_codes_by_consumer_route(consumer_id, route_id, service_id, code, at, duration, count)
+  VALUES('%s', '%s', '%s', '%s', to_timestamp(%d) at time zone 'UTC', %d, %d)
+  ON CONFLICT(consumer_id, route_id, code, at, duration) DO
+  UPDATE SET COUNT = vitals_codes_by_consumer_route.count + excluded.count
+]]
+
+local SELECT_CODES_SERVICE = [[
+  SELECT service_id, code, extract('epoch' from at) as at, count
+    FROM vitals_codes_by_service
+   WHERE service_id = '%s' AND duration = %d AND at >= to_timestamp(%d)
+]]
+
+local SELECT_CODES_ROUTE = [[
+  SELECT route_id, code, extract('epoch' from at) as at, count
+    FROM vitals_codes_by_route
+   WHERE route_id = '%s' AND duration = %d AND at >= to_timestamp(%d)
+]]
+
+local SELECT_CODES_CONSUMER = [[
+  SELECT consumer_id, code, extract('epoch' from at) as at, sum(count) as count
+    FROM vitals_codes_by_consumer_route
+   WHERE consumer_id = '%s' AND duration = %d AND at >= to_timestamp(%d)
+   GROUP BY consumer_id, code, at
+]]
+
+local SELECT_CODES_CONSUMER_ROUTE = [[
+  SELECT consumer_id, route_id, code, extract('epoch' from at) as at, sum(count) as count
+    FROM vitals_codes_by_consumer_route
+   WHERE consumer_id = '%s' AND duration = %d AND at >= to_timestamp(%d)
+   GROUP BY consumer_id, route_id, code, at
+]]
+
+local DELETE_CODES = [[
+  DELETE FROM %s
+  WHERE ((duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC')
+  OR (duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC'))
+]]
+
+local STATUS_CODE_QUERIES = {
+  SELECT = {
+    cluster = SELECT_CODE_CLASSES_CLUSTER,
+    consumer_route = SELECT_CODES_CONSUMER_ROUTE,
+    consumer = SELECT_CODES_CONSUMER,
+    service = SELECT_CODES_SERVICE,
+    route = SELECT_CODES_ROUTE,
+  },
+  INSERT = {
+    consumer_route = INSERT_CODES_BY_CONSUMER_AND_ROUTE,
+    service = INSERT_CODES_BY_SERVICE,
+    route = INSERT_CODES_BY_ROUTE,
+  },
+}
 
 function _M.dynamic_table_names(dao)
   local table_names = {}
@@ -86,6 +182,7 @@ function _M.dynamic_table_names(dao)
   return table_names
 end
 
+
 function _M.new(dao_factory, opts)
   if opts == nil then
     opts = {}
@@ -101,6 +198,8 @@ function _M.new(dao_factory, opts)
   local self = {
     db = dao_factory.db,
     table_rotater = table_rotater,
+    ttl_seconds = opts.ttl_seconds or 3600,
+    ttl_minutes = opts.ttl_minutes or 90000,
     node_id = nil,
     hostname = nil,
   }
@@ -162,7 +261,11 @@ function _M:select_stats(query_type, level, node_id, start_at, end_before)
              max(plat_max) as plat_max,
              min(ulat_min) as ulat_min,
              max(ulat_max) as ulat_max,
-             sum(requests) as requests
+             sum(requests) as requests,
+             sum(plat_count) as plat_count,
+             sum(plat_total) as plat_total,
+             sum(ulat_count) as ulat_count,
+             sum(ulat_total) as ulat_total
       ]]
     group = " GROUP BY at "
   end
@@ -227,6 +330,20 @@ function _M:select_phone_home()
     return nil, "could not select stats: " .. err
   end
 
+  -- the only time res[1].plat_count would be nil is when phone_home is
+  -- invoked before any minutes data is written. Oh, and in unit tests.
+  if res[1].plat_count and res[1].plat_count > 0 then
+    res[1]["v.lpra"] = math.floor(res[1].plat_total / res[1].plat_count + 0.5)
+  end
+
+  if res[1].ulat_count and res[1].ulat_count > 0 then
+    res[1]["v.lua"] = math.floor(res[1].ulat_total / res[1].ulat_count + 0.5)
+  end
+
+  for _, v in ipairs({ "plat_count", "plat_total", "ulat_count", "ulat_total" }) do
+    res[1][v] = nil
+  end
+
   local nodes, err = self.db:query(fmt(SELECT_NODES_FOR_PHONE_HOME, time() - 3600))
   if not res then
     return nil, "could not count nodes: " .. err
@@ -250,8 +367,9 @@ end
   ]
 ]]
 function _M:insert_stats(data, node_id)
-  local at, hit, miss, plat_min, plat_max, query, res, err, ulat_min, ulat_max, requests
-  local table_name = self:current_table_name()
+  local at, hit, miss, plat_min, plat_max, query, res, err, ulat_min, ulat_max,
+        requests, plat_count, plat_total, ulat_count, ulat_total
+  local tname = self:current_table_name()
 
   -- node_id is an optional argument to simplify testing
   node_id = node_id or self.node_id
@@ -262,7 +380,8 @@ function _M:insert_stats(data, node_id)
   local mnext = 1  -- next index in mdata
 
   for _, row in ipairs(data) do
-    at, hit, miss, plat_min, plat_max, ulat_min, ulat_max, requests = unpack(row)
+    at, hit, miss, plat_min, plat_max, ulat_min, ulat_max, requests,
+      plat_count, plat_total, ulat_count, ulat_total = unpack(row)
 
     local mat = self:get_minute(at)
     local i   = midx[mat]
@@ -274,6 +393,10 @@ function _M:insert_stats(data, node_id)
       mdata[i][6] = math_min(mdata[i][6], ulat_min or 0xFFFFFFFF)
       mdata[i][7] = math_max(mdata[i][7], ulat_max or -1)
       mdata[i][8] = mdata[i][8] + requests
+      mdata[i][9] = mdata[i][9] + plat_count
+      mdata[i][10] = mdata[i][10] + plat_total
+      mdata[i][11] = mdata[i][11] + ulat_count
+      mdata[i][12] = mdata[i][12] + ulat_total
     else
       mdata[mnext] = {
         mat,
@@ -284,6 +407,10 @@ function _M:insert_stats(data, node_id)
         ulat_min or 0xFFFFFFFF,
         ulat_max or -1,
         requests,
+        plat_count,
+        plat_total,
+        ulat_count,
+        ulat_total
       }
       midx[mat] = mnext
       mnext  = mnext + 1
@@ -294,21 +421,39 @@ function _M:insert_stats(data, node_id)
     ulat_min = ulat_min or "null"
     ulat_max = ulat_max or "null"
 
-    query = fmt(INSERT_STATS, table_name, at, node_id, hit, miss, plat_min,
-                plat_max, ulat_min, ulat_max, requests, table_name, table_name,
-                table_name, table_name, table_name, table_name, table_name)
+    query = fmt(INSERT_STATS, tname, at, node_id, hit, miss, plat_min,
+                plat_max, ulat_min, ulat_max, requests, plat_count, plat_total,
+                ulat_count, ulat_total, tname, tname, tname, tname, tname, tname,
+                tname, tname, tname, tname, tname)
+
     res, err = self.db:query(query)
 
     if not res then
-      log(WARN, _log_prefix, "failed to insert seconds: ", err)
-      log(DEBUG, _log_prefix, "failed query: ", query)
+      -- attempt to create missing table
+      if match(tostring(err), "does not exist") then
+        log(DEBUG, _log_prefix, "attempting to create missing table: ", tname)
+        res, err = self:create_missing_seconds_table(tname)
+
+        if not res then
+          log(WARN, _log_prefix, "could not create missing table: ", err)
+        else
+          res, err = self.db:query(query)
+        end
+      end
+
+      -- still having issues... log it
+      if not res then
+        log(WARN, _log_prefix, "failed to insert seconds: ", err)
+        log(DEBUG, _log_prefix, "failed query: ", query)
+      end
     end
   end
 
   -- insert minutes data
   local tname = "vitals_stats_minutes"
   for _, row in ipairs(mdata) do
-    at, hit, miss, plat_min, plat_max, ulat_min, ulat_max, requests = unpack(row)
+    at, hit, miss, plat_min, plat_max, ulat_min, ulat_max, requests,
+    plat_count, plat_total, ulat_count, ulat_total = unpack(row)
 
     -- replace sentinels
     if plat_min == 0xFFFFFFFF then
@@ -320,9 +465,11 @@ function _M:insert_stats(data, node_id)
       ulat_max = "null"
     end
 
-    query = fmt(INSERT_STATS, tname, at, node_id,
-                hit, miss, plat_min, plat_max, ulat_min, ulat_max, requests,
-                tname, tname, tname, tname, tname, tname, tname)
+    query = fmt(INSERT_STATS, tname, at, node_id, hit, miss, plat_min,
+      plat_max, ulat_min, ulat_max, requests, plat_count, plat_total,
+      ulat_count, ulat_total, tname, tname, tname, tname, tname, tname,
+      tname, tname, tname, tname, tname)
+
     res, err = self.db:query(query)
 
     if not res then
@@ -333,7 +480,7 @@ function _M:insert_stats(data, node_id)
 
   local ok, err = self:update_node_meta(node_id)
   if not ok then
-    return nil, "could not update metadata. query: " .. query .. " error: " .. err
+    return nil, "could not update metadata. error: " .. err
   end
 
   return true
@@ -499,8 +646,10 @@ function _M:insert_consumer_stats(data, node_id)
 
   node_id = node_id or self.node_id
 
+  local consumers_to_delete = {}
+
   for _, row in ipairs(data) do
-    row_count = row_count + 2 -- one for seconds, one for minutes
+    row_count = row_count + 1
 
     consumer_id, at, duration, count = unpack(row)
 
@@ -513,21 +662,18 @@ function _M:insert_consumer_stats(data, node_id)
       last_err   = tostring(err)
     end
 
-    -- naive approach - update minutes in-line
-    local mat = self:get_minute(at)
-    query = fmt(INSERT_CONSUMER_STATS, consumer_id, node_id, mat,
-                60, count)
-
-    local res, err = self.db:query(query)
-    if not res then
-      fail_count = fail_count + 1
-      last_err   = tostring(err)
-    end
+    consumers_to_delete[consumer_id] = true
   end
 
   if fail_count > 0 then
     return nil, "failed to insert " .. tostring(fail_count) .. " of " ..
         tostring(row_count) .. " consumer stats. last err: " .. last_err
+  end
+
+  -- non-optional delete
+  local _, err = self:delete_consumer_stats(consumers_to_delete)
+  if err then
+    return nil, err
   end
 
   return true
@@ -547,6 +693,14 @@ end
 function _M:delete_consumer_stats(consumers, cutoff_times)
   if not next(consumers) then
     return 0
+  end
+
+  if not cutoff_times then
+    local now = time()
+    cutoff_times = {
+      seconds = now - self.ttl_seconds,
+      minutes = now - self.ttl_minutes,
+    }
   end
 
   local query, last_err
@@ -585,13 +739,233 @@ function _M:delete_consumer_stats(consumers, cutoff_times)
 end
 
 
-function _M:get_minute(second)
-  return second - (second % 60)
+function _M:insert_status_code_classes(data)
+  local res, err, count, at, duration, code_class, query
+
+  for _, row in ipairs(data) do
+    code_class, at, duration, count = unpack(row)
+
+    query = fmt(INSERT_CODE_CLASSES_CLUSTER, code_class, at,
+                duration, count)
+
+    res, err = self.db:query(query)
+
+    if not res then
+      return nil, "could not insert status code counters. error: " .. err
+    end
+  end
+
+  -- non-optional cleanup.
+  local _, err = self:delete_status_code_classes()
+  if err then
+    return nil, err
+  end
+
+  return true
 end
 
 
-function _M:get_timestamp_str(ts)
-  return tostring(ts)
+function _M:select_status_codes(opts)
+  local duration = opts.duration
+  local entity_type = opts.entity_type
+
+  if duration ~= 1 and duration ~= 60 then
+    return nil, "duration must be 1 or 60"
+  end
+
+  local query = STATUS_CODE_QUERIES.SELECT[entity_type]
+
+  if not query then
+    return nil, "unknown entity_type: " .. tostring(entity_type)
+  end
+
+  local cutoff_time
+
+  if duration == 1 then
+    cutoff_time = time() - self.ttl_seconds
+  else
+    cutoff_time = time() - self.ttl_minutes
+  end
+
+  if entity_type ~= "cluster" then
+    query = fmt(query, opts.entity_id, opts.duration, cutoff_time)
+  else
+    query = fmt(query, opts.duration, cutoff_time)
+  end
+
+  local res, err = self.db:query(query)
+
+  if err then
+    return nil, "failed to select codes. err: " .. err
+  end
+
+  return res
+end
+
+function _M:delete_status_code_classes(cutoff_times)
+  -- if nothing passed in, use defaults
+  if not cutoff_times then
+    local now = time()
+    cutoff_times = {
+      seconds = now - self.ttl_seconds,
+      minutes = now - self.ttl_minutes,
+    }
+  end
+
+  if type(cutoff_times) ~= "table" then
+    return nil, "cutoff_times must be a table"
+  end
+
+  if type(cutoff_times.seconds) ~= "number" then
+    return nil, "cutoff seconds must be a number"
+  end
+
+  if type(cutoff_times.minutes) ~= "number" then
+    return nil, "cutoff minutes must be a number"
+  end
+
+  local query = fmt(DELETE_CODE_CLASSES_CLUSTER, 1, cutoff_times.seconds,
+                    60, cutoff_times.minutes)
+
+  local res, err = self.db:query(query)
+
+  if err then
+    return nil, "failed to delete code_classes. err: " .. err
+  end
+
+  return res.affected_rows
+end
+
+
+function _M:insert_status_codes(data, opts)
+  if type(opts) ~= "table" then
+    return nil, "opts must be a table"
+  end
+
+  local entity_type = opts.entity_type
+
+  local query = STATUS_CODE_QUERIES.INSERT[entity_type]
+
+  if not query then
+    return nil, "unknown entity_type: " .. tostring(entity_type)
+  end
+
+  local res, err
+  for _, v in ipairs(data) do
+    res, err = self.db:query(fmt(query, unpack(v)))
+
+    if not res then
+      return nil, "could not insert status code counters. entity_type: " ..
+             entity_type .. ". error: " .. err
+    end
+  end
+
+  if opts.prune then
+    local now = time()
+
+    self:delete_status_codes({
+      entity_type = entity_type,
+      seconds = now - self.ttl_seconds,
+      minutes = now - self.ttl_minutes,
+    })
+  end
+
+  return true
+end
+
+
+function _M:insert_status_codes_by_service(data)
+  return self:insert_status_codes(data, {
+    entity_type = "service",
+    prune = true,
+  })
+end
+
+
+function _M:insert_status_codes_by_route(data)
+  return self:insert_status_codes(data, {
+    entity_type = "route",
+    prune = true,
+  })
+end
+
+
+function _M:select_status_codes_by_service(opts)
+  opts.entity_type = "service"
+  opts.entity_id = opts.service_id
+
+  return self:select_status_codes(opts)
+end
+
+
+function _M:select_status_codes_by_route(opts)
+  opts.entity_type = "route"
+  opts.entity_id = opts.route_id
+
+  return self:select_status_codes(opts)
+end
+
+
+function _M:select_status_codes_by_consumer(opts)
+  opts.entity_type = "consumer"
+  opts.entity_id = opts.consumer_id
+
+  return self:select_status_codes(opts)
+end
+
+
+function _M:select_status_codes_by_consumer_and_route(opts)
+  opts.entity_type = "consumer_route"
+  opts.entity_id = opts.consumer_id
+
+  return self:select_status_codes(opts)
+end
+
+
+function _M:delete_status_codes(opts)
+  if type(opts) ~= "table" then
+    return nil, "opts must be a table"
+  end
+
+  if opts.entity_type ~= "service" and
+     opts.entity_type ~= "route"   and
+     opts.entity_type ~= "consumer_route" then
+    return nil, "opts.entity_type must be 'service', 'route', or 'consumer_route'"
+  end
+
+  if type(opts.seconds) ~= "number" then
+    return nil, "opts.seconds must be a number"
+  end
+
+  if type(opts.minutes) ~= "number" then
+    return nil, "opts.minutes must be a number"
+  end
+
+  local table_name = "vitals_codes_by_" .. opts.entity_type
+
+  local query = fmt(DELETE_CODES, table_name, 1, opts.seconds,
+                    60, opts.minutes)
+
+  local res, err = self.db:query(query)
+
+  if err then
+    return nil, "failed to delete codes. err: " .. err
+  end
+
+  return res.affected_rows
+end
+
+
+function _M:insert_status_codes_by_consumer_and_route(data)
+  return self:insert_status_codes(data, {
+    entity_type = "consumer_route",
+    prune = true,
+  })
+end
+
+
+function _M:get_minute(second)
+  return second - (second % 60)
 end
 
 
@@ -602,6 +976,11 @@ end
 
 function _M:table_names_for_select()
   return self.table_rotater:table_names_for_select()
+end
+
+
+function _M:create_missing_seconds_table(tname)
+  return self.table_rotater:create_missing_seconds_table(tname)
 end
 
 

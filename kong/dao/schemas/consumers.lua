@@ -1,4 +1,5 @@
 local utils = require "kong.tools.utils"
+local enums = require "kong.portal.enums"
 
 local function check_custom_id_and_username(value, consumer_t)
   local username = type(consumer_t.username) == "string" and utils.strip(consumer_t.username) or ""
@@ -20,6 +21,10 @@ return {
     id = {type = "id", dao_insert_value = true, required = true},
     created_at = {type = "timestamp", immutable = true, dao_insert_value = true, required = true},
     custom_id = {type = "string", unique = true, func = check_custom_id_and_username},
-    username = {type = "string", unique = true, func = check_custom_id_and_username}
+    username = {type = "string", unique = true, func = check_custom_id_and_username},
+    type = { type = "integer", required = true, default = enums.CONSUMERS.TYPE.PROXY },
+    email = { type = "string" },
+    status = { type = "integer" },
+    meta = { type = "string" },
   },
 }

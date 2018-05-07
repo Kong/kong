@@ -4,6 +4,7 @@ local responses = require "kong.tools.responses"
 local balancer = require "kong.core.balancer"
 local singletons = require "kong.singletons"
 local utils = require "kong.tools.utils"
+local public = require "kong.tools.public"
 local cjson = require "cjson"
 local cluster_events = singletons.cluster_events
 
@@ -91,6 +92,48 @@ local function post_health(is_healthy)
 end
 
 
+local function get_active_targets(dao_factory, upstream_id)
+  local target_history, err = dao_factory.targets:find_all({
+    upstream_id = upstream_id,
+  })
+  if not target_history then
+    return app_helpers.yield_error(err)
+  end
+
+  --sort and walk based on target and creation time
+  for _, target in ipairs(target_history) do
+    target.order = target.target .. ":" ..
+      target.created_at .. ":" .. target.id
+  end
+  table.sort(target_history, function(a, b) return a.order > b.order end)
+
+  local seen     = {}
+  local active   = setmetatable({}, cjson.empty_array_mt)
+  local active_n = 0
+
+  for _, entry in ipairs(target_history) do
+    if not seen[entry.target] then
+      if entry.weight == 0 then
+        seen[entry.target] = true
+
+      else
+        entry.order = nil -- dont show our order key to the client
+
+        -- add what we want to send to the client in our array
+        active_n = active_n + 1
+        active[active_n] = entry
+
+        -- track that we found this host:port so we only show
+        -- the most recent one (kinda)
+        seen[entry.target] = true
+      end
+    end
+  end
+
+  return active, active_n
+end
+
+
 return {
   ["/upstreams/"] = {
     GET = function(self, dao_factory)
@@ -131,44 +174,8 @@ return {
     end,
 
     GET = function(self, dao_factory)
-      self.params.active = nil
-
-      local target_history, err = dao_factory.targets:find_all({
-        upstream_id = self.params.upstream_id,
-      })
-      if not target_history then
-        return app_helpers.yield_error(err)
-      end
-
-      --sort and walk based on target and creation time
-      for _, target in ipairs(target_history) do
-        target.order = target.target .. ":" ..
-          target.created_at .. ":" .. target.id
-      end
-      table.sort(target_history, function(a, b) return a.order > b.order end)
-
-      local seen     = {}
-      local active   = setmetatable({}, cjson.empty_array_mt)
-      local active_n = 0
-
-      for _, entry in ipairs(target_history) do
-        if not seen[entry.target] then
-          if entry.weight == 0 then
-            seen[entry.target] = true
-
-          else
-            entry.order = nil -- dont show our order key to the client
-
-            -- add what we want to send to the client in our array
-            active_n = active_n + 1
-            active[active_n] = entry
-
-            -- track that we found this host:port so we only show
-            -- the most recent one (kinda)
-            seen[entry.target] = true
-          end
-        end
-      end
+      local active, active_n = get_active_targets(dao_factory,
+                                                  self.params.upstream_id)
 
       -- for now lets not worry about rolling our own pagination
       -- we also end up returning a "backwards" list of targets because
@@ -183,6 +190,53 @@ return {
       clean_history(self.params.upstream_id, dao_factory)
 
       crud.post(self.params, dao_factory.targets)
+    end,
+  },
+
+  ["/upstreams/:upstream_name_or_id/health/"] = {
+    before = function(self, dao_factory, helpers)
+      crud.find_upstream_by_name_or_id(self, dao_factory, helpers)
+      self.params.upstream_id = self.upstream.id
+    end,
+
+    GET = function(self, dao_factory)
+      local upstream_id = self.params.upstream_id
+      local active, active_n = get_active_targets(dao_factory, upstream_id)
+
+      local node_id, err = public.get_node_id()
+      if err then
+        ngx.log(ngx.ERR, "failed getting node id: ", err)
+      end
+
+      local health_info
+      health_info, err = balancer.get_upstream_health(upstream_id)
+      if err then
+        ngx.log(ngx.ERR, "failed getting upstream health: ", err)
+      end
+
+      for _, entry in ipairs(active) do
+        -- In case of DNS errors when registering a target,
+        -- that error happens inside lua-resty-dns-client
+        -- and the end-result is that it just doesn't launch the callback,
+        -- which means kong.core.balancer and healthchecks don't get
+        -- notified about the target at all. We extrapolate the DNS error
+        -- out of the fact that the target is missing from the balancer.
+        -- Note that lua-resty-dns-client does retry by itself,
+        -- meaning that if DNS is down and it eventually resumes working, the
+        -- library will issue the callback and the target will change state.
+        entry.health = health_info
+                       and (health_info[entry.target] or "DNS_ERROR")
+                       or  "HEALTHCHECKS_OFF"
+      end
+
+      -- for now lets not worry about rolling our own pagination
+      -- we also end up returning a "backwards" list of targets because
+      -- of how we sorted- do we care?
+      return responses.send_HTTP_OK {
+        node_id = node_id,
+        total = active_n,
+        data = active,
+      }
     end,
   },
 

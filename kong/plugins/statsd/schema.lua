@@ -140,18 +140,15 @@ end
 return {
   fields = {
     host    = {
-      required = true,
       type     = "string",
       default  = "localhost",
     },
     port    = {
-      required = true,
       type     = "number",
       default  = 8125,
     },
     metrics = {
       type     = "array",
-      required = true,
       default  = default_metrics,
       func     = check_schema,
     },

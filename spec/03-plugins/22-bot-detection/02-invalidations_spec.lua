@@ -1,119 +1,126 @@
 local helpers = require "spec.helpers"
 
-describe("Plugin: bot-detection (hooks)", function()
-  local plugin, proxy_client, admin_client
+for _, strategy in helpers.each_strategy() do
+  describe("Plugin: bot-detection (hooks) [#" .. strategy .. "]", function()
+    local plugin
+    local proxy_client
+    local admin_client
 
-  setup(function()
-    helpers.run_migrations()
+    setup(function()
+      local bp = helpers.get_db_utils(strategy)
 
-    local api1 = assert(helpers.dao.apis:insert {
-      name         = "bot.com",
-      hosts        = { "bot.com" },
-      upstream_url = helpers.mock_upstream_url,
-    })
-    plugin = assert(helpers.dao.plugins:insert {
-      api_id = api1.id,
-      name   = "bot-detection",
-      config = {},
-    })
-
-    assert(helpers.start_kong({
-      nginx_conf = "spec/fixtures/custom_nginx.template",
-    }))
-  end)
-
-  teardown(function()
-    helpers.stop_kong()
-  end)
-
-  before_each(function()
-    proxy_client = helpers.proxy_client()
-    admin_client = helpers.admin_client()
-  end)
-
-  after_each(function()
-    if proxy_client then proxy_client:close() end
-    if admin_client then admin_client:close() end
-  end)
-
-  it("blocks a newly entered user-agent", function()
-    local res
-    res = assert( proxy_client:send {
-      method = "GET",
-      path = "/request",
-      headers = {
-        host = "bot.com",
-        ["user-agent"] = "helloworld"
+      local route = bp.routes:insert {
+        hosts = { "bot.com" },
       }
-    })
-    assert.response(res).has.status(200)
 
-    -- Update the plugin
-    res = assert(admin_client:send {
-      method = "PATCH",
-      path = "/apis/bot.com/plugins/" .. plugin.id,
-      body = {
-        ["config.blacklist"] = "helloworld"
-      },
-      headers = {
-        ["content-type"] = "application/json"
+      plugin = bp.plugins:insert {
+        route_id = route.id,
+        name     = "bot-detection",
+        config   = {},
       }
-    })
-    assert.response(res).has.status(200)
 
-    local check_status = function()
-      local res = assert(proxy_client:send {
-        mehod = "GET",
-        path = "/request",
+      assert(helpers.start_kong({
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+    end)
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    before_each(function()
+      proxy_client = helpers.proxy_client()
+      admin_client = helpers.admin_client()
+    end)
+
+    after_each(function()
+      if proxy_client then
+        proxy_client:close()
+      end
+
+      if admin_client then
+        admin_client:close()
+      end
+    end)
+
+    it("blocks a newly entered user-agent", function()
+      local res = assert( proxy_client:send {
+        method  = "GET",
+        path    = "/request",
         headers = {
-          host = "bot.com",
-          ["user-agent"] = "helloworld",
-        },
+          host           = "bot.com",
+          ["user-agent"] = "helloworld"
+        }
       })
-      res:read_body()  -- must call read_body to complete call, otherwise next iteration fails
-      return res.status == 403
-    end
-    helpers.wait_until(check_status, 10)
-  end)
+      assert.response(res).has.status(200)
 
-  it("allows a newly entered user-agent", function()
-    local res
-    res = assert(proxy_client:send {
-      method = "GET",
-      path = "/request",
-      headers = {
-        host = "bot.com",
-        ["user-agent"] = "facebookexternalhit/1.1"
-      }
-    })
-    assert.response(res).has.status(403)
-
-    -- Update the plugin
-    res = assert(admin_client:send {
-      method = "PATCH",
-      path = "/apis/bot.com/plugins/" .. plugin.id,
-      body = {
-        ["config.whitelist"] = "facebookexternalhit/1.1"
-      },
-      headers = {
-        ["content-type"] = "application/json",
-      }
-    })
-    assert.response(res).has.status(200)
-
-    local check_status = function()
-      local res = assert(proxy_client:send {
-        mehod = "GET",
-        path = "/request",
+      -- Update the plugin
+      res = assert(admin_client:send {
+        method  = "PATCH",
+        path    = "/plugins/" .. plugin.id,
+        body    = {
+          ["config.blacklist"] = "helloworld"
+        },
         headers = {
-          host = "bot.com",
+          ["content-type"]     = "application/json"
+        }
+      })
+      assert.response(res).has.status(200)
+
+      local check_status = function()
+        local res = assert(proxy_client:send {
+          mehod   = "GET",
+          path    = "/request",
+          headers = {
+            host           = "bot.com",
+            ["user-agent"] = "helloworld",
+          },
+        })
+        res:read_body()  -- must call read_body to complete call, otherwise next iteration fails
+        return res.status == 403
+      end
+      helpers.wait_until(check_status, 10)
+    end)
+
+    it("allows a newly entered user-agent", function()
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          host           = "bot.com",
           ["user-agent"] = "facebookexternalhit/1.1"
         }
       })
-      res:read_body()  -- must call read_body to complete call, otherwise next iteration fails
-      return res.status == 200
-    end
-    helpers.wait_until(check_status, 10)
-  end)
+      assert.response(res).has.status(403)
 
-end)
+      -- Update the plugin
+      res = assert(admin_client:send {
+        method  = "PATCH",
+        path    = "/plugins/" .. plugin.id,
+        body    = {
+          ["config.whitelist"] = "facebookexternalhit/1.1"
+        },
+        headers = {
+          ["content-type"] = "application/json",
+        }
+      })
+      assert.response(res).has.status(200)
+
+      local check_status = function()
+        local res = assert(proxy_client:send {
+          mehod   = "GET",
+          path    = "/request",
+          headers = {
+            host           = "bot.com",
+            ["user-agent"] = "facebookexternalhit/1.1"
+          }
+        })
+        res:read_body()  -- must call read_body to complete call, otherwise next iteration fails
+        return res.status == 200
+      end
+
+      helpers.wait_until(check_status, 10)
+    end)
+  end)
+end

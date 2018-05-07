@@ -24,9 +24,15 @@ describe("Admin API: #" .. kong_config.database, function()
     client = assert(helpers.admin_client())
   end)
 
+  after_each(function()
+    if client then
+      client:close()
+    end
+  end)
+
   setup(function()
     dao = assert(DAOFactory.new(kong_config))
-    helpers.run_migrations(dao)
+    assert(dao:run_migrations())
 
     assert(helpers.start_kong({
       database = kong_config.database
@@ -34,10 +40,6 @@ describe("Admin API: #" .. kong_config.database, function()
   end)
 
   teardown(function()
-    if client then
-      client:close()
-    end
-
     helpers.stop_kong()
   end)
 
@@ -661,6 +663,22 @@ describe("Admin API: #" .. kong_config.database, function()
         assert.contains("foo.com", json1.snis)
         assert.contains("bar.com", json1.snis)
         assert.same(json1, json2)
+      end)
+
+      it("returns 404 for a random non-existing uuid", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/certificates/" .. utils.uuid(),
+        })
+        assert.res_status(404, res)
+      end)
+
+      it("returns 404 for a random non-existing SNI", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/certificates/doesntexist.com",
+        })
+        assert.res_status(404, res)
       end)
     end)
 

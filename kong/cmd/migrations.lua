@@ -46,7 +46,9 @@ local function execute(args)
           db_infos.desc, db_infos.name)
     end
   elseif args.command == "reset" then
-    if confirm("Are you sure? This operation is irreversible.") then
+    if args.yes
+      or confirm("Are you sure? This operation is irreversible.")
+    then
       dao:drop_schema()
       log("Schema successfully reset")
     else
@@ -67,6 +69,7 @@ The available commands are:
 
 Options:
  -c,--conf        (optional string) configuration file
+ -y,--yes         assume "yes" to prompts and run non-interactively
 ]]
 
 return {

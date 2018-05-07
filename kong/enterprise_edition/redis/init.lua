@@ -138,7 +138,7 @@ end
 -- Perform any needed Redis configuration; e.g., parse Sentinel addresses
 function _M.init_conf(conf)
   if is_redis_sentinel(conf) then
-    conf.parse_sentinel_addresses =
+    conf.parsed_sentinel_addresses =
       parse_sentinel_addresses(conf.sentinel_addresses)
   end
 end
@@ -204,7 +204,7 @@ function _M.connection(conf)
       end
     end
 
-    if conf.database ~= 0 then
+    if conf.database and conf.database ~= 0 then
       local ok, err = red:select(conf.database)
       if not ok then
         log(ERR, "failed to change Redis database: ", err)

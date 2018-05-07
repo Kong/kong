@@ -6,9 +6,6 @@ max_line_length = false
 
 globals = {
     "_KONG",
-    "_GMP_LIB_PATH",
-    "_NETTLE_LIB_PATH",
-    "_HOGWEED_LIB_PATH",
     "ngx.IS_CLI",
 }
 
@@ -26,6 +23,7 @@ ignore = {
 
 exclude_files = {
     "spec/fixtures/invalid-module.lua",
+    "spec-old-api/fixtures/invalid-module.lua",
 }
 
 
@@ -39,5 +37,9 @@ files["kong/plugins/ldap-auth/*.lua"] = {
 
 
 files["spec/**/*.lua"] = {
+    std = "ngx_lua+busted",
+}
+
+files["spec-old-api/**/*.lua"] = {
     std = "ngx_lua+busted",
 }

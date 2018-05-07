@@ -1,57 +1,79 @@
 local helpers = require "spec.helpers"
-local Factory = require "kong.dao.factory"
-local dao_helpers = require "spec.02-integration.03-dao.helpers"
 
+for _, strategy in helpers.each_strategy() do
+  describe("upstream timeouts with DB: #" .. strategy, function()
+    local proxy_client
+    local bp
 
-local factory
+    local function insert_routes(routes)
+      if type(routes) ~= "table" then
+        return error("expected arg #1 to be a table", 2)
+      end
 
+      for i = 1, #routes do
+        local route = routes[i]
+        local service = route.service or {}
 
-local function insert_apis(arr)
-  if type(arr) ~= "table" then
-    return error("expected arg #1 to be a table", 2)
-  end
+        if not service.name then
+          service.name = "service-" .. i
+        end
 
-  factory:truncate_tables()
+        if not service.host then
+          service.host = helpers.mock_upstream_host
+        end
 
-  for i = 1, #arr do
-    assert(factory.apis:insert(arr[i]))
-  end
-end
+        if not service.port then
+          service.port = helpers.mock_upstream_port
+        end
 
+        if not service.protocol then
+          service.protocol = helpers.mock_upstream_protocol
+        end
 
-dao_helpers.for_each_dao(function(kong_config)
+        route.service = bp.services:insert(service)
 
-  describe("upstream timeouts with DB: #" .. kong_config.database, function()
-    local client
+        if not route.protocols then
+          route.protocols = { "http" }
+        end
+
+        bp.routes:insert(route)
+      end
+
+      return true
+    end
 
     setup(function()
-      factory = assert(Factory.new(kong_config))
-      assert(factory:run_migrations())
-      factory:truncate_tables()
+      bp = helpers.get_db_utils(strategy)
 
-      insert_apis {
+      insert_routes {
         {
-          name                     = "api-1",
-          methods                  = "HEAD",
-          upstream_url             = "http://httpbin.org:81",
-          upstream_connect_timeout = 1, -- ms
+          methods = { "HEAD" },
+          service = {
+            name            = "api-1",
+            protocol        = "http",
+            host            = "httpbin.org",
+            port            = 81,
+            connect_timeout = 1, -- ms
+          },
         },
         {
-          name                  = "api-2",
-          methods               = "POST",
-          upstream_url          = helpers.mock_upstream_url,
-          upstream_send_timeout = 1, -- ms
+          methods = { "POST" },
+          service = {
+            name            = "api-2",
+            write_timeout   = 1, -- ms
+          },
         },
         {
-          name                  = "api-3",
-          methods               = "GET",
-          upstream_url          = helpers.mock_upstream_url,
-          upstream_read_timeout = 1, -- ms
-        }
+          methods = { "GET" },
+          service = {
+            name           = "api-3",
+            read_timeout   = 1, -- ms
+          },
+        },
       }
 
       assert(helpers.start_kong({
-        database   = kong_config.database,
+        database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
     end)
@@ -61,20 +83,20 @@ dao_helpers.for_each_dao(function(kong_config)
     end)
 
     before_each(function()
-      client = helpers.proxy_client()
+      proxy_client = helpers.proxy_client()
     end)
 
     after_each(function()
-      if client then
-        client:close()
+      if proxy_client then
+        proxy_client:close()
       end
     end)
 
     describe("upstream_connect_timeout", function()
       it("sets upstream connect timeout value", function()
-        local res = assert(client:send {
-          method = "HEAD",
-          path = "/",
+        local res = assert(proxy_client:send {
+          method  = "HEAD",
+          path    = "/",
         })
 
         assert.res_status(504, res)
@@ -83,9 +105,9 @@ dao_helpers.for_each_dao(function(kong_config)
 
     describe("upstream_read_timeout", function()
       it("sets upstream read timeout value", function()
-        local res = assert(client:send {
-          method = "GET",
-          path = "/delay/2",
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/delay/2",
         })
 
         assert.res_status(504, res)
@@ -94,11 +116,11 @@ dao_helpers.for_each_dao(function(kong_config)
 
     describe("upstream_send_timeout", function()
       it("sets upstream send timeout value", function()
-        local res = assert(client:send {
+        local res = assert(proxy_client:send {
           method  = "POST",
           path    = "/post",
           body    = {
-            huge = string.rep("a", 2^25)
+            huge  = string.rep("a", 2^25)
           },
           headers = { ["Content-Type"] = "application/json" },
         })
@@ -109,5 +131,4 @@ dao_helpers.for_each_dao(function(kong_config)
       end)
     end)
   end)
-
-end) -- for_each_dao
+end

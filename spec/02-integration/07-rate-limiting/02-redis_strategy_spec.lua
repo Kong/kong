@@ -167,8 +167,8 @@ describe("rate-limiting: Redis strategy", function()
       strategy:push_diffs(diff)
       assert.equal(1, redis_client:exists(mock_prev_red_key))
 
-      -- wait 2 * window size for key to expire
-      ngx.sleep(2)
+      -- wait a little more than 2 * window size for key to expire
+      ngx.sleep(2 * mock_window_size_short + 1)
       assert.equal(0, redis_client:exists(mock_prev_red_key))
     end)
   end)

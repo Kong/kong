@@ -14,19 +14,39 @@ vitals_flush_interval = 10
 vitals_ttl_seconds = 3600
 vitals_ttl_minutes = 90000
 
-proxy_listen = 0.0.0.0:8000
-proxy_listen_ssl = 0.0.0.0:8443
-admin_listen = 127.0.0.1:8001
-admin_listen_ssl = 127.0.0.1:8444
-admin_gui_listen = 0.0.0.0:8002
-admin_gui_listen_ssl = 0.0.0.0:8445
+portal = off
+portal_gui_listen = 0.0.0.0:8003, 0.0.0.0:8446 ssl
+portal_gui_url = NONE
+portal_gui_ssl_cert = NONE
+portal_gui_ssl_cert_key = NONE
+
+portal_api_listen = 0.0.0.0:8004, 0.0.0.0:8447 ssl
+portal_api_url = NONE
+portal_api_ssl_cert = NONE
+portal_api_ssl_cert_key = NONE
+portal_api_access_log = logs/portal_api_access.log
+portal_api_error_log = logs/error.log
+
+portal_auto_approve = off
+portal_auth = NONE
+portal_auth_conf = NONE
+
+proxy_url = NONE
+
+proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 ssl
+admin_listen = 127.0.0.1:8001, 127.0.0.1:8444 ssl
+
+admin_api_uri = NONE
+admin_gui_listen = 0.0.0.0:8002, 0.0.0.0:8445 ssl
+admin_gui_access_log = logs/admin_gui_access.log
+admin_gui_error_log = logs/admin_gui_error.log
+admin_gui_flags = {}
+
 nginx_user = nobody nobody
 nginx_worker_processes = auto
 nginx_optimizations = on
 nginx_daemon = on
 mem_cache_size = 128m
-http2 = off
-ssl = on
 ssl_cert = NONE
 ssl_cert_key = NONE
 client_ssl = off
@@ -34,11 +54,8 @@ client_ssl_cert = NONE
 client_ssl_cert_key = NONE
 ssl_cipher_suite = modern
 ssl_ciphers = ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256
-admin_http2 = off
-admin_ssl = on
 admin_ssl_cert = NONE
 admin_ssl_cert_key = NONE
-admin_gui_ssl = on
 admin_gui_ssl_cert = NONE
 admin_gui_ssl_cert_key = NONE
 upstream_keepalive = 60
@@ -92,4 +109,6 @@ lua_ssl_trusted_certificate = NONE
 lua_ssl_verify_depth = 1
 lua_package_path = ./?.lua;./?/init.lua;
 lua_package_cpath = NONE
+
+feature_conf_path = NONE
 ]]

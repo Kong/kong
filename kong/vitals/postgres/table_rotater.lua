@@ -136,6 +136,18 @@ function _M:table_names_for_select()
 end
 
 
+function _M:create_missing_seconds_table(table_name)
+  local query = fmt(CREATE_VITALS_STATS_SECONDS, table_name)
+  local _, err = self.db:query(query)
+
+  if err and not match(tostring(err), "exists") then
+    return nil, "could not create missing table: " .. table_name .. " err: " .. err
+  end
+
+  return table_name
+end
+
+
 function _M:create_next_table()
   local now           = time()
   local next_interval = now - (now % self.rotation_interval) + self.rotation_interval

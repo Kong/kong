@@ -6,7 +6,7 @@ describe("Admin API - Kong routes", function()
     local client
 
     setup(function()
-      helpers.run_migrations()
+      helpers.get_db_utils()
       assert(helpers.start_kong({
         license_path = "spec/fixtures/mock_license.json",
       }))
@@ -40,7 +40,7 @@ describe("Admin API - Kong routes", function()
       local d = f:read("*a")
       f:close()
 
-      helpers.run_migrations()
+      helpers.get_db_utils()
       assert(helpers.start_kong({
         license_data = d,
       }))
@@ -70,7 +70,7 @@ describe("Admin API - Kong routes", function()
     local client
 
     setup(function()
-      helpers.run_migrations()
+      helpers.get_db_utils()
       assert(helpers.start_kong())
       client = helpers.admin_client()
     end)

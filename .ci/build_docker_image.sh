@@ -17,7 +17,8 @@ docker run -it --rm \
   -v $PWD:/src \
   -v /tmp:/tmp \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  mashape/docker-packer /src/package.sh -p alpine -u "$BINTRAY_USER" -k "$BINTRAY_API_KEY" -e
+  -e NPM_TOKEN=$NPM_TOKEN \
+  mashape/docker-packer /src/package.sh -p alpine -u "$BINTRAY_USER" -k "$BINTRAY_API_KEY" --ee
 
 popd
 sudo mv kong-distributions/output/kong-*.tar.gz docker-kong/alpine/kong.tar.gz

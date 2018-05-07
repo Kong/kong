@@ -30,10 +30,13 @@ lua_max_running_timers 4096;
 lua_max_pending_timers 16384;
 lua_shared_dict kong                5m;
 lua_shared_dict kong_cache          ${{MEM_CACHE_SIZE}};
+lua_shared_dict kong_db_cache_miss 12m;
 lua_shared_dict kong_process_events 5m;
 lua_shared_dict kong_cluster_events 5m;
-lua_shared_dict kong_vitals_requests_consumers 50m;
+lua_shared_dict kong_vitals_counters 50m;
+lua_shared_dict kong_vitals_lists   1m;
 lua_shared_dict kong_healthchecks   5m;
+lua_shared_dict kong_rate_limiting_counters 12m;
 > if database == "cassandra" then
 lua_shared_dict kong_cassandra      5m;
 > end
@@ -52,8 +55,8 @@ init_worker_by_lua_block {
     kong.init_worker()
 }
 
-proxy_next_upstream_tries 999;
 
+> if #proxy_listeners > 0 then
 upstream kong_upstream {
     server 0.0.0.1;
     balancer_by_lua_block {
@@ -64,8 +67,10 @@ upstream kong_upstream {
 
 server {
     server_name kong;
-    listen ${{PROXY_LISTEN}}${{PROXY_PROTOCOL}};
-    error_page 400 404 408 411 412 413 414 417 /kong_error_handler;
+> for i = 1, #proxy_listeners do
+    listen $(proxy_listeners[i].listener);
+> end
+    error_page 400 404 408 411 412 413 414 417 494 /kong_error_handler;
     error_page 500 502 503 504 /kong_error_handler;
 
     access_log ${{PROXY_ACCESS_LOG}};
@@ -73,8 +78,7 @@ server {
 
     client_body_buffer_size ${{CLIENT_BODY_BUFFER_SIZE}};
 
-> if ssl then
-    listen ${{PROXY_LISTEN_SSL}} ssl${{HTTP2}}${{PROXY_PROTOCOL}};
+> if proxy_ssl_enabled then
     ssl_certificate ${{SSL_CERT}};
     ssl_certificate_key ${{SSL_CERT_KEY}};
     ssl_protocols TLSv1.1 TLSv1.2;
@@ -152,13 +156,17 @@ server {
         }
     }
 }
+> end
 
+
+> if #admin_listen > 0 and #admin_gui_listeners > 0 then
 server {
     server_name kong_gui;
-    listen ${{ADMIN_GUI_LISTEN}};
+> for i = 1, #admin_gui_listeners do
+    listen $(admin_gui_listeners[i].listener);
+> end
 
-> if admin_gui_ssl then
-    listen ${{ADMIN_GUI_LISTEN_SSL}} ssl;
+> if admin_gui_ssl_enabled then
     ssl_certificate ${{ADMIN_GUI_SSL_CERT}};
     ssl_certificate_key ${{ADMIN_GUI_SSL_CERT_KEY}};
     ssl_protocols TLSv1.1 TLSv1.2;
@@ -195,8 +203,63 @@ server {
         add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
         etag off;
 
-        access_log logs/admin_gui_access.log;
-        error_log logs/admin_gui_error.log;
+        access_log ${{ADMIN_GUI_ACCESS_LOG}};
+        error_log ${{ADMIN_GUI_ERROR_LOG}};
+    }
+
+    location /robots.txt {
+        return 200 'User-agent: *\nDisallow: /';
+    }
+}
+> end
+
+
+> if portal then
+server {
+    server_name kong_portal_gui;
+> for i = 1, #portal_gui_listeners do
+    listen $(portal_gui_listeners[i].listener);
+> end
+
+> if portal_gui_ssl_enabled then
+    ssl_certificate ${{PORTAL_GUI_SSL_CERT}};
+    ssl_certificate_key ${{PORTAL_GUI_SSL_CERT_KEY}};
+    ssl_protocols TLSv1.1 TLSv1.2;
+> end
+
+    client_max_body_size 10m;
+    client_body_buffer_size 10m;
+
+    types {
+      text/html                             html htm shtml;
+      text/css                              css;
+      text/xml                              xml;
+      image/gif                             gif;
+      image/jpeg                            jpeg jpg;
+      application/javascript                js;
+      application/json                      json;
+      image/png                             png;
+      image/tiff                            tif tiff;
+      image/x-icon                          ico;
+      image/x-jng                           jng;
+      image/x-ms-bmp                        bmp;
+      image/svg+xml                         svg svgz;
+      image/webp                            webp;
+    }
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript;
+
+    location / {
+        root portal;
+
+        try_files $uri /index.html;
+
+        add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
+        etag off;
+
+        access_log logs/portal_gui_access.log;
+        error_log logs/portal_gui_error.log;
     }
 
     location /robots.txt {
@@ -206,8 +269,50 @@ server {
 
 
 server {
+    server_name portal_api;
+> for i = 1, #portal_api_listeners do
+    listen $(portal_api_listeners[i].listener);
+> end
+
+    access_log ${{PORTAL_API_ACCESS_LOG}};
+    error_log ${{PORTAL_API_ERROR_LOG}} ${{LOG_LEVEL}};
+
+    client_max_body_size 10m;
+    client_body_buffer_size 10m;
+
+> if portal_api_ssl_enabled then
+    ssl_certificate ${{PORTAL_API_SSL_CERT}};
+    ssl_certificate_key ${{PORTAL_API_SSL_CERT_KEY}};
+    ssl_protocols TLSv1.1 TLSv1.2;
+
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+    ssl_prefer_server_ciphers on;
+    ssl_ciphers ${{SSL_CIPHERS}};
+> end
+
+    location / {
+        default_type application/json;
+        content_by_lua_block {
+            kong.serve_portal_api({
+                acah = "Content-Type",
+            })
+        }
+    }
+
+    location /robots.txt {
+        return 200 'User-agent: *\nDisallow: /';
+    }
+}
+> end
+
+
+> if #admin_listeners > 0 then
+server {
     server_name kong_admin;
-    listen ${{ADMIN_LISTEN}};
+> for i = 1, #admin_listeners do
+    listen $(admin_listeners[i].listener);
+> end
 
     access_log ${{ADMIN_ACCESS_LOG}};
     error_log ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
@@ -215,8 +320,7 @@ server {
     client_max_body_size 10m;
     client_body_buffer_size 10m;
 
-> if admin_ssl then
-    listen ${{ADMIN_LISTEN_SSL}} ssl${{ADMIN_HTTP2}};
+> if admin_ssl_enabled then
     ssl_certificate ${{ADMIN_SSL_CERT}};
     ssl_certificate_key ${{ADMIN_SSL_CERT_KEY}};
     ssl_protocols TLSv1.1 TLSv1.2;
@@ -246,4 +350,5 @@ server {
         return 200 'User-agent: *\nDisallow: /';
     }
 }
+> end
 ]]

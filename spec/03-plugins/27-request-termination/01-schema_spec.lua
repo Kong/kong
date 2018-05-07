@@ -1,7 +1,9 @@
 local schemas_validation = require "kong.dao.schemas_validation"
-local schema = require "kong.plugins.request-termination.schema"
+local schema             = require "kong.plugins.request-termination.schema"
+
 
 local v = schemas_validation.validate_entity
+
 
 describe("Plugin: request-termination (schema)", function()
   it("should accept a valid status_code", function()
