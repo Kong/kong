@@ -30,16 +30,17 @@
                                  # working directory.
 
 #log_level = notice              # Log level of the Nginx server. Logs are
-                                 # found at <prefix>/logs/error.log
-# Note: See http://nginx.org/en/docs/ngx_core_module.html#error_log for a list
+                                 # found at <prefix>/logs/error.log.
+
+# Note: see http://nginx.org/en/docs/ngx_core_module.html#error_log for a list
 # of accepted values.
 
 #proxy_access_log = logs/access.log       # Path for proxy port request access
                                           # logs. Set this value to `off` to
                                           # disable logging proxy requests.
-                                          # If this value is a relative path, it
-                                          # will be placed under the `prefix`
-                                          # location.
+                                          # If this value is a relative path,
+                                          # it will be placed under the
+                                          # `prefix` location.
 
 #proxy_error_log = logs/error.log         # Path for proxy port request error
                                           # logs. Granularity of these logs is
@@ -49,9 +50,9 @@
 #admin_access_log = logs/admin_access.log # Path for Admin API request access
                                           # logs. Set this value to `off` to
                                           # disable logging Admin API requests.
-                                          # If this value is a relative path, it
-                                          # will be placed under the `prefix`
-                                          # location.
+                                          # If this value is a relative path,
+                                          # it will be placed under the
+                                          # `prefix` location.
 
 #admin_error_log = logs/error.log         # Path for Admin API request error
                                           # logs. Granularity of these logs is
@@ -72,35 +73,140 @@
 # NGINX
 #------------------------------------------------------------------------------
 
-#proxy_listen = 0.0.0.0:8000     # Address and port on which Kong will accept
-                                 # HTTP requests.
-                                 # This is the public-facing entrypoint of
-                                 # Kong, to which your consumers will make
-                                 # requests.
-# Note: See http://nginx.org/en/docs/http/ngx_http_core_module.html#listen for
+#proxy_listen = 0.0.0.0:8000, 0.0.0.0:8443 ssl
+                        # Comma-separated list of addresses and ports on
+                        # which the proxy server should listen.
+                        # The proxy server is the public entrypoint of Kong,
+                        # which proxies traffic from your consumers to your
+                        # backend services. This value accepts IPv4, IPv6, and
+                        # hostnames.
+                        # Some suffixes can be specified for each pair:
+                        # - `ssl` will require that all connections made
+                        #   through a particular address/port be made with TLS
+                        #   enabled.
+                        # - `http2` will allow for clients to open HTTP/2
+                        #   connections to Kong's proxy server.
+                        # - Finally, `proxy_protocol` will enable usage of the
+                        #   PROXY protocol for a given address/port.
+                        #
+                        # This value can be set to `off`, thus disabling
+                        # the proxy port for this node, enabling a
+                        # 'control-plane' mode (without traffic proxying
+                        # capabilities) which can configure a cluster of
+                        # nodes connected to the same database.
+
+#proxy_url =
+                        # Kong Proxy URI
+                        #
+                        # Here you may provide the lookup, or balancer,
+                        # address for your Kong Proxy nodes.
+                        #
+                        # This value is commonly used in a microservices
+                        # or service-mesh oriented architecture.
+                        #
+                        # Accepted format (parts in parenthesis are optional):
+                        #
+                        #   <scheme>://<IP / HOSTNAME>(:<PORT>(/<PATH>))
+                        #
+                        # Examples:
+                        #
+                        #   - <scheme>://<IP>:<PORT>
+                        #     proxy_url = http://127.0.0.1:8000
+                        #   - SSL <scheme>://<HOSTNAME>
+                        #     proxy_url = https://proxy.domain.tld
+                        #   - <scheme>://<HOSTNAME>/<PATH>
+                        #     proxy_url = http://dev-machine/dev-285
+                        #
+                        # By default:
+                        #
+                        #  Kong Manager, and Kong Portal will use
+                        #  the window request host and append the resolved
+                        #  listener port depending on the requested protocol.
+
+#proxy_uri =
+                        # Kong Proxy URI
+                        #
+                        # Here you may provide the lookup, or balancer,
+                        # address for your Kong Proxy nodes.
+                        #
+                        # This value is commonly used in a microservices
+                        # or service-mesh oriented architecture.
+                        #
+                        # Accepted format (parts in parenthesis are optional):
+                        #
+                        #   <IP / HOSTNAME>(:<PORT>(/<PATH>))
+                        #
+                        # Examples:
+                        #
+                        #   - <IP>:<PORT>
+                        #     proxy_uri = 127.0.0.1:8003
+                        #   - <HOSTNAME>
+                        #     proxy_uri = portal.domain.tld
+                        #   - <HOSTNAME>/<PATH>
+                        #     proxy_uri = dev-machine/dev-285
+                        #
+                        # By default:
+                        #
+                        #  Kong Manager, and Kong Portal will use
+                        #  the window request host and append the resolved
+                        #  listener port depending on the requested protocol.
+
+# Note: see http://nginx.org/en/docs/http/ngx_http_core_module.html#listen for
 # a description of the accepted formats for this and other *_listen values.
 
-#proxy_listen_ssl = 0.0.0.0:8443 # Address and port on which Kong will accept
-                                 # HTTPS requests if `ssl` is enabled.
+# Note bis: see https://www.nginx.com/resources/admin-guide/proxy-protocol/
+# for more details about the `proxy_protocol` parameter.
 
-#admin_listen = 127.0.0.1:8001   # Address and port on which Kong will expose
-                                 # an entrypoint to the Admin API.
-                                 # This API lets you configure and manage Kong,
-                                 # and should be kept private and secured.
+#admin_api_uri =         # Hierarchical part of a URI which is composed
+                         # optionally of a host, port, and path at which your
+                         # Admin interface API accepts HTTP or HTTPS traffic.
+                         # When this config is disabled, the gui will use the
+                         # window protocol + host and append the resolved
+                         # admin_gui_listen HTTP/HTTPS port.
 
-#admin_listen_ssl = 127.0.0.1:8444  # Address and port on which Kong will
-                                    # accept HTTPS requests to the admin API,
-                                    # if `admin_ssl` is enabled.
+#admin_listen = 127.0.0.1:8001, 127.0.0.1:8444 ssl
+                         # Comma-separated list of addresses and ports on
+                         # which the Admin interface should listen.
+                         # The Admin interface is the API allowing you to
+                         # configure and manage Kong.
+                         # Access to this interface should be *restricted*
+                         # to Kong administrators *only*. This value accepts
+                         # IPv4, IPv6, and hostnames.
+                         # Some suffixes can be specified for each pair:
+                         # - `ssl` will require that all connections made
+                         #   through a particular address/port be made with TLS
+                         #   enabled.
+                         # - `http2` will allow for clients to open HTTP/2
+                         #   connections to Kong's proxy server.
+                         # - Finally, `proxy_protocol` will enable usage of the
+                         #   PROXY protocol for a given address/port.
+                         #
+                         # This value can be set to `off`, thus disabling
+                         # the Admin interface for this node, enabling a
+                         # 'data-plane' mode (without configuration
+                         # capabilities) pulling its configuration changes
+                         # from the database.
 
-#admin_gui_listen = 0.0.0.0:8002 # Address and port on which Kong will
-                                 # expose the Admin API GUI. This interface
-                                 # lets you configure and manage Kong via a
-                                 # web interface and should be kept private
-                                 # and secured.
+#admin_gui_listen = 0.0.0.0:8002, 0.0.0.0:8445 ssl
+                                 # Comma-separated list of addresses and ports
+                                 # on which Kong will expose the Admin API GUI.
+                                 # This interface lets you configure and manage
+                                 # Kong via a web interface and should be kept
+                                 # private and secured. Suffixes can be specified
+                                 # for each pair, similarly to the `admin_listen`
+                                 # directive.
 
-#admin_gui_listen_ssl = 0.0.0.0:8445 # Address and port on which Kong will
-                                     # accept HTTPS requests to the admin GUI,
-                                     # if `admin_ssl` is enabled.
+#admin_gui_access_log = logs/admin_gui_access.log  # Path for admin gui request
+                                                   # access logs. If this value
+                                                   # is a relative path it will
+                                                   # be placed under the `prefix`
+                                                   # location
+
+#admin_gui_error_log = logs/admin_gui_error.log    # Path for admin gui request
+                                                   # error logs. If this value
+                                                   # is a relative path it will
+                                                   # be placed under the `prefix`
+                                                   # location
 
 #nginx_user = nobody nobody      # Defines user and group credentials used by
                                  # worker processes. If group is omitted, a
@@ -120,16 +226,11 @@
                                  # `m`, with a minimum recommended value of
                                  # a few MBs.
 
-#ssl = on                        # Determines if Nginx should be listening for
-                                 # HTTPS traffic on the `proxy_listen_ssl`
-                                 # address. If disabled, Nginx will only bind
-                                 # itself on `proxy_listen`, and all SSL
-                                 # settings will be ignored.
-
 #ssl_cipher_suite = modern       # Defines the TLS ciphers served by Nginx.
-                                 # Accepted values are `modern`, `intermediate`,
-                                 # `old`, or `custom`.
-# Note: See https://wiki.mozilla.org/Security/Server_Side_TLS for detailed
+                                 # Accepted values are `modern`,
+                                 # `intermediate`, `old`, or `custom`.
+
+# Note: see https://wiki.mozilla.org/Security/Server_Side_TLS for detailed
 # descriptions of each cipher suite.
 
 #ssl_ciphers =                   # Defines a custom list of TLS ciphers to be
@@ -138,64 +239,42 @@
                                  # This value is ignored if `ssl_cipher_suite`
                                  # is not `custom`.
 
-#ssl_cert =                      # If `ssl` is enabled, the absolute path to
-                                 # the SSL certificate for the
-                                 # `proxy_listen_ssl` address.
+#ssl_cert =                      # The absolute path to the SSL certificate for
+                                 # `proxy_listen` values with SSL enabled.
 
-#ssl_cert_key =                  # If `ssl` is enabled, the absolute path to
-                                 # the SSL key for the `proxy_listen_ssl`
-                                 # address.
-
-#http2 = off                     # Enables HTTP2 support for HTTPS traffic on
-                                 # the `proxy_listen_ssl` address.
+#ssl_cert_key =                  # The absolute path to the SSL key for
+                                 # `proxy_listen` values with SSL enabled.
 
 #client_ssl = off                # Determines if Nginx should send client-side
                                  # SSL certificates when proxying requests.
 
-#client_ssl_cert =               # If `client_ssl` is enabled, the absolute path
-                                 # to the client SSL certificate for the
+#client_ssl_cert =               # If `client_ssl` is enabled, the absolute
+                                 # path to the client SSL certificate for the
                                  # `proxy_ssl_certificate` directive. Note that
-                                 # this value is statically defined on the node,
-                                 # and currently cannot be configured on a
-                                 # per-API basis.
+                                 # this value is statically defined on the
+                                 # node, and currently cannot be configured on
+                                 # a per-API basis.
 
-#client_ssl_cert_key =           # If `client_ssl` is enabled, the absolute path
-                                 # to the client SSL key for the
+#client_ssl_cert_key =           # If `client_ssl` is enabled, the absolute
+                                 # path to the client SSL key for the
                                  # `proxy_ssl_certificate_key` address. Note
-                                 # this value is statically defined on the node,
-                                 # and currently cannot be configured on a
-                                 # per-API basis.
+                                 # this value is statically defined on the
+                                 # node, and currently cannot be configured on
+                                 # a per-API basis.
 
-#admin_ssl = on                  # Determines if Nginx should be listening for
-                                 # HTTPS traffic on the `admin_listen_ssl`
-                                 # address. If disabled, Nginx will only bind
-                                 # itself on `admin_listen`, and all SSL
-                                 # settings will be ignored.
+#admin_ssl_cert =                # The absolute path to the SSL certificate for
+                                 # `admin_listen` values with SSL enabled.
 
-#admin_ssl_cert =                # If `admin_ssl` is enabled, the absolute path
-                                 # to the SSL certificate for the
-                                 # `admin_listen_ssl` address.
+#admin_ssl_cert_key =            # The absolute path to the SSL key for
+                                 # `admin_listen` values with SSL enabled.
 
-#admin_ssl_cert_key =            # If `admin_ssl` is enabled, the absolute path
-                                 # to the SSL key for the `admin_listen_ssl`
-                                 # address.
+#admin_gui_ssl_cert =            # The absolute path to the SSL certificate for
+                                 # `admin_gui_listen` values with SSL enabled.
 
-#admin_http2 = off               # Enables HTTP2 support for HTTPS traffic on
-                                 # the `admin_listen_ssl` address.
+#admin_gui_ssl_cert_key =        # The absolute path to the SSL key for
+                                 # `admin_gui_listen` values with SSL enabled.
 
-#admin_gui_ssl = on              # Determines if Nginx should be listening for
-                                 # HTTPS traffic on the `admin_gui_listen_ssl`
-                                 # address. If disabled, Nginx will only bind
-                                 # itself on `admin_gui_listen`, and all SSL
-                                 # settings will be ignored.
-
-#admin_gui_ssl_cert =            # If `admin_gui_ssl` is enabled, the absolute
-                                 # path to the SSL certificate for the
-                                 # `admin_gui_listen_ssl` address.
-
-#admin_gui_ssl_cert_key =        # If `admin_gui_ssl` is enabled, the absolute
-                                 # path to the SSL key for the
-                                 # `admin_gui_listen_ssl` address.
+#admin_gui_flags = {}            # Alters the layout Admin GUI (JSON)
 
 #upstream_keepalive = 60         # Sets the maximum number of idle keepalive
                                  # connections to upstream servers that are
@@ -220,19 +299,19 @@
                                  # Non-trusted requests make Kong insert its
                                  # own X-Forwarded-* headers.
                                  #
-                                 # This property also sets the `set_real_ip_from`
-                                 # directive(s) in the Nginx configuration. It
-                                 # accepts the same type of values (CIDR blocks)
-                                 # but as a comma-separated list.
+                                 # This property also sets the
+                                 # `set_real_ip_from` directive(s) in the Nginx
+                                 # configuration. It accepts the same type of
+                                 # values (CIDR blocks) but as a
+                                 # comma-separated list.
                                  #
                                  # To trust *all* /!\ IPs, set this value to
                                  # `0.0.0.0/0,::/0`.
                                  #
                                  # If the special value `unix:` is specified,
                                  # all UNIX-domain sockets will be trusted.
-# Note:
-#
-# See http://nginx.org/en/docs/http/ngx_http_realip_module.html for
+
+# Note: see http://nginx.org/en/docs/http/ngx_http_realip_module.html for
 # examples of accepted values.
 
 #real_ip_header = X-Real-IP      # Defines the request header field whose value
@@ -240,38 +319,31 @@
                                  # This value sets the ngx_http_realip_module
                                  # directive of the same name in the Nginx
                                  # configuration.
-                                 #
-                                 # If this value receives `proxy_protocol`, the
-                                 # `proxy_protocol` parameter will be appended
-                                 # to the `listen` directive of the Nginx
-                                 # template.
-# Note:
-#
-# See http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_header
+                                 # If set to `proxy_protocol`, then at least
+                                 # one of the `proxy_listen` entries must
+                                 # have the `proxy_protocol` flag enabled.
+
+# Note: see http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_header
 # for a description of this directive.
-#
-# See https://www.nginx.com/resources/admin-guide/proxy-protocol/ for more
-# details about the `proxy_protocol` parameter.
 
 #real_ip_recursive = off         # This value sets the ngx_http_realip_module
                                  # directive of the same name in the Nginx
                                  # configuration.
-# Note:
-#
-# See http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_recursive
+
+# Note: see http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_recursive
 # for a description of this directive.
 
 #client_max_body_size = 0        # Defines the maximum request body size allowed
-                                 # by requests proxied by Kong, specified in the
-                                 # Content-Length request header. If a request
-                                 # exceeds this limit, Kong will respond with a
-                                 # 413 (Request Entity Too Large). Setting this
-                                 # value to 0 disables checking the request body
-                                 # size.
-# Note: See
-# http://nginx.org/en/docs/http/ngx_http_core_module.html#client_max_body_size
-# for further description of this parameter. Numeric values may be suffixed with
-# 'k' or 'm' to denote limits in terms of kilobytes or megabytes.
+                                 # by requests proxied by Kong, specified in
+                                 # the Content-Length request header. If a
+                                 # request exceeds this limit, Kong will
+                                 # respond with a 413 (Request Entity Too
+                                 # Large). Setting this value to 0 disables
+                                 # checking the request body size.
+
+# Note: see http://nginx.org/en/docs/http/ngx_http_core_module.html#client_max_body_size
+# for further description of this parameter. Numeric values may be suffixed
+# with 'k' or 'm' to denote limits in terms of kilobytes or megabytes.
 
 #client_body_buffer_size = 8k    # Defines the buffer size for reading the
                                  # request body. If the client request body is
@@ -286,10 +358,10 @@
                                  # high-concurrency environments will require
                                  # significant memory allocations to process
                                  # many concurrent large request bodies.
-# Note: See
-# http://nginx.org/en/docs/http/ngx_http_core_module.html#client_body_buffer_size
-# for further description of this parameter. Numeric values may be suffixed with
-# 'k' or 'm' to denote limits in terms of kilobytes or megabytes.
+
+# Note: see http://nginx.org/en/docs/http/ngx_http_core_module.html#client_body_buffer_size
+# for further description of this parameter. Numeric values may be suffixed
+# with 'k' or 'm' to denote limits in terms of kilobytes or megabytes.
 
 #error_default_type = text/plain  # Default MIME type to use when the request
                                   # `Accept` header is missing and Nginx
@@ -515,7 +587,7 @@
 
 #lua_socket_pool_size = 30       # Specifies the size limit for every cosocket
                                  # connection pool associated with every remote
-                                 # server
+                                 # server.
 
 #rbac = off                      # Specifies whether Admin API RBAC is enforced;
                                  # accepts one of 'endpoint', 'entity', 'on', or
@@ -538,6 +610,189 @@
                                       # attempt to identify the RBAC user.
 
 #vitals = off                    # When enabled, Kong will store and report
-                                 # metrics about its performance. This feature
-                                 # is experimental and currently available only
-                                 # on Postgres. Do not enable with Cassandra.
+                                 # metrics about its performance.
+
+#------------------------------------------------------------------------------
+# DEVELOPER PORTAL
+#------------------------------------------------------------------------------
+
+#portal = off
+                        # Developer Portal Switch
+                        #
+                        # When enabled:
+                        #
+                        #   Kong will expose the Dev Portal interface and
+                        #   read-only APIs on the `portal_gui_listen` address,
+                        #   and endpoints on the Admin API to manage assets.
+                        #
+                        # When enabled along with `portal_auth`:
+                        #
+                        #   Kong will expose management endpoints for developer
+                        #   accounts on the Admin API and the Dev Portal API.
+
+#portal_gui_listen = 0.0.0.0:8003, 0.0.0.0:8446 ssl
+                        # Developer Portal GUI Listeners
+                        #
+                        # Comma-separated list of addresses on which Kong will
+                        # expose the Developer Portal GUI. Suffixes can be
+                        # specified for each pair, similarly to
+                        # the `admin_listen` directive.
+
+#portal_gui_url =
+                        # Developer Portal GUI URI
+                        #
+                        # Here you may provide the lookup, or balancer,
+                        # address for your Kong Proxy nodes.
+                        #
+                        # This value is commonly used in a microservices
+                        # or service-mesh oriented architecture.
+                        #
+                        # Accepted format (items in parenthesis are optional):
+                        #
+                        #   <scheme>://<IP / HOSTNAME>(:<PORT>(/<PATH>))
+                        #
+                        # Examples:
+                        #
+                        #   - <scheme>://<IP>:<PORT>
+                        #     portal_gui_url = http://127.0.0.1:8003
+                        #   - SSL <scheme>://<HOSTNAME>
+                        #     portal_gui_url = https://portal.domain.tld
+                        #   - <scheme>://<HOSTNAME>/<PATH>
+                        #     portal_gui_url = http://dev-machine/dev-285
+                        #
+                        # By default:
+                        #
+                        #  Your Developer Portal will use the window request
+                        #  host and append the resolved listener port depending
+                        #  on the requested protocol.
+
+#portal_gui_ssl_cert =
+                        # Developer Portal GUI SSL Certificate
+                        #
+                        # The absolute path to the SSL certificate for
+                        # `portal_gui_listen` values with SSL enabled.
+
+#portal_gui_ssl_cert_key =
+                        # Developer Portal GUI SSL Certificate Key
+                        #
+                        # The absolute path to the SSL key for
+                        # `portal_gui_listen` values with SSL enabled.
+
+#portal_api_listen = 0.0.0.0:8004, 0.0.0.0:8447 ssl
+                        # Developer Portal API Listeners
+                        #
+                        # Comma-separated list of addresses on which Kong will
+                        # expose the Developer Portal API. Suffixes can be
+                        # specified for each pair, similarly to
+                        # the `admin_listen` directive.
+
+#portal_api_url =
+                        # Developer Portal API URL
+                        #
+                        # Here you may provide the lookup, or balancer,
+                        # address for your Developer Portal nodes.
+                        #
+                        # This value is commonly used in a microservices
+                        # or service-mesh oriented architecture.
+                        #
+                        # Accepted format (parts in parenthesis are optional):
+                        #
+                        #   <scheme>://<IP / HOSTNAME>(:<PORT>(/<PATH>))
+                        #
+                        # Examples:
+                        #
+                        #   - <scheme>://<IP>:<PORT>
+                        #     portal_api_url = http://127.0.0.1:8003
+                        #   - SSL <scheme>://<HOSTNAME>
+                        #     portal_api_url = https://portal_api.domain.tld
+                        #   - <scheme>://<HOSTNAME>/<PATH>
+                        #     portal_api_url = http://dev-machine/dev-285
+                        #
+                        # By default this value points to the local interface:
+                        #
+                        #   - http://0.0.0.0:8004
+
+#portal_api_ssl_cert =
+                        # Developer Portal API SSL Certificate
+                        #
+                        # The absolute path to the SSL certificate for
+                        # `portal_api_listen` values with SSL enabled.
+
+#portal_api_ssl_cert_key =
+                        # Developer Portal API SSL Certificate Key
+                        #
+                        # The absolute path to the SSL key for
+                        # `portal_api_listen` values with SSL enabled.
+
+#portal_api_access_log = logs/portal_api_access.log
+                        # Developer Portal API Access Log location
+                        #
+                        # Here you can set an absolute or relative path for your
+                        # Portal API access logs.
+                        #
+                        # Setting this value to `off` will disable logging
+                        # Portal API access logs.
+                        #
+                        # When using relative pathing, logs will be placed under
+                        # the `prefix` location.
+
+#portal_api_error_log = logs/error.log
+                        # Developer Portal API Error Log location
+                        #
+                        # Here you can set an absolute or relative path for your
+                        # Portal API access logs.
+                        #
+                        # Setting this value to `off` will disable logging
+                        # Portal API access logs.
+                        #
+                        # When using relative pathing, logs will be placed under
+                        # the `prefix` location.
+                        #
+                        # Granularity can be adjusted through the `log_level`
+                        # directive.
+
+#------------------------------------------------------------------------------
+# DEVELOPER PORTAL AUTHENTICATION
+#------------------------------------------------------------------------------
+
+#portal_auto_approve = off
+                        # Developer Portal Auto Approve Access
+                        #
+                        # When this flag is set to "on", a developer will
+                        # automatically be marked as "approved" after completing
+                        # registration. Access can still be revoked through the
+                        # Admin GUI or API.
+
+#portal_auth =
+                        # Developer Portal Authentication Plugin Name
+                        #
+                        # Here you may specify the authentication plugin
+                        # to apply to your Developer Portal. Developers
+                        # will use the specified form of authentication
+                        # to request access, register, and login to your
+                        # Developer Portal.
+                        #
+                        # Supported Plugins:
+                        #
+                        #   - Basic Authentication:
+                        #
+                        #       portal_auth = basic-auth
+                        #
+                        #   - OIDC Authentication:
+                        #
+                        #       portal_auth = openid-connect
+                        #
+
+#portal_auth_conf =
+                        # Developer Portal Authentication Plugin Config (JSON)
+                        #
+                        # Here you may specify the plugin configuration object
+                        # in JSON format to be applied to your Developer
+                        # Portal authentication.
+                        #
+                        # For information about Plugin Configuration
+                        # consult the associated plugin documentation.
+                        #
+                        # Example for `basic-auth`:
+                        #
+                        #  portal_auth_conf = { "hide_credentials": true }

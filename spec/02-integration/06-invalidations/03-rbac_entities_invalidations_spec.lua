@@ -17,10 +17,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
   local wait_for_propagation
 
   setup(function()
-    local kong_dao_factory = require "kong.dao.factory"
-    dao = assert(kong_dao_factory.new(kong_conf))
-    dao:truncate_tables()
-    helpers.run_migrations(dao)
+    dao = select(3, helpers.get_db_utils(kong_conf.database))
 
     local db_update_propagation = kong_conf.database == "cassandra" and 3 or 0
 
@@ -28,12 +25,11 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
       log_level             = "debug",
       prefix                = "servroot1",
       database              = kong_conf.database,
-      proxy_listen          = "0.0.0.0:8000",
-      proxy_listen_ssl      = "0.0.0.0:8443",
+      proxy_listen          = "0.0.0.0:8000, 0.0.0.0:8443 ssl",
       admin_listen          = "0.0.0.0:8001",
       admin_gui_listen      = "0.0.0.0:8002",
-      admin_ssl             = false,
-      admin_gui_ssl         = false,
+      portal_gui_listen     = "0.0.0.0:8003",
+      portal_api_listen     = "0.0.0.0:8004",
       db_update_frequency   = POLL_INTERVAL,
       db_update_propagation = db_update_propagation,
       rbac                  = "on",
@@ -43,12 +39,11 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
       log_level             = "debug",
       prefix                = "servroot2",
       database              = kong_conf.database,
-      proxy_listen          = "0.0.0.0:9000",
-      proxy_listen_ssl      = "0.0.0.0:9443",
+      proxy_listen          = "0.0.0.0:9000, 0.0.0.0:9443 ssl",
       admin_listen          = "0.0.0.0:9001",
       admin_gui_listen      = "0.0.0.0:9002",
-      admin_ssl             = false,
-      admin_gui_ssl         = false,
+      portal_gui_listen     = "0.0.0.0:9003",
+      portal_api_listen     = "0.0.0.0:9004",
       db_update_frequency   = POLL_INTERVAL,
       db_update_propagation = db_update_propagation,
       rbac                  = "on",

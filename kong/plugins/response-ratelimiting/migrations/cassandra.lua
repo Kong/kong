@@ -55,5 +55,21 @@ return {
         end
       end
     end
-  }
+  }, {
+    name = "2017-12-19-120000_add_route_and_service_id_to_response_ratelimiting",
+    up = [[
+      DROP TABLE response_ratelimiting_metrics;
+      CREATE TABLE response_ratelimiting_metrics(
+        route_id uuid,
+        service_id uuid,
+        api_id uuid,
+        identifier text,
+        period text,
+        period_date timestamp,
+        value counter,
+        PRIMARY KEY ((route_id, service_id, api_id, identifier, period_date, period))
+      );
+    ]],
+    down = nil,
+  },
 }

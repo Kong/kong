@@ -2,7 +2,7 @@ local helpers = require "spec.helpers"
 
 describe("kong start/stop", function()
   setup(function()
-    helpers.run_migrations()
+    assert(helpers.dao:run_migrations())
     helpers.prepare_prefix()
   end)
   after_each(function()
@@ -142,6 +142,61 @@ describe("kong start/stop", function()
         assert.False(ok)
         assert.matches("the current database schema does not match this version of Kong.", stderr)
       end)
+      it("connection check errors are prefixed with DB-specific prefix", function()
+        local ok, stderr = helpers.kong_exec("start --conf " .. helpers.test_conf_path, {
+          pg_port = 99999,
+          cassandra_port = 99999,
+        })
+        assert.False(ok)
+        assert.matches("[" .. helpers.test_conf.database .. " error]", stderr, 1, true)
+      end)
+    end)
+  end)
+
+  describe("nginx_daemon = off", function()
+    it("redirects nginx's stdout to 'kong start' stdout", function()
+      local pl_utils = require "pl.utils"
+      local pl_file = require "pl.file"
+
+      local stdout_path = os.tmpname()
+
+      finally(function()
+        os.remove(stdout_path)
+      end)
+
+      local cmd = string.format("KONG_PROXY_ACCESS_LOG=/dev/stdout "    ..
+                                "KONG_NGINX_DAEMON=off %s start -c %s " ..
+                                ">%s 2>/dev/null &", helpers.bin_path,
+                                helpers.test_conf_path, stdout_path)
+
+      local ok, _, _, stderr = pl_utils.executeex(cmd)
+      if not ok then
+        error(stderr)
+      end
+
+      do
+        local proxy_client
+
+        -- get a connection, retry until kong starts
+        helpers.wait_until(function()
+          local pok
+          pok, proxy_client = pcall(helpers.proxy_client)
+          return pok
+        end, 10)
+
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/hello",
+        })
+        assert.res_status(404, res) -- no API configured
+      end
+
+      assert(helpers.stop_kong(helpers.test_conf.prefix))
+
+      -- TEST: since nginx started in the foreground, the 'kong start' command
+      -- stdout should receive all of nginx's stdout as well.
+      local stdout = pl_file.read(stdout_path)
+      assert.matches([["GET /hello HTTP/1.1" 404]] , stdout, nil, true)
     end)
   end)
 
@@ -171,21 +226,6 @@ describe("kong start/stop", function()
       })
       assert.False(ok)
       assert.matches("Kong is already running in " .. helpers.test_conf.prefix, stderr, nil, true)
-    end)
-    it("stops other services when could not start", function()
-      local thread = helpers.tcp_server(helpers.test_conf.proxy_port)
-      finally(function()
-        -- make tcp server receive and close
-        helpers.proxy_client():send {
-          method = "GET",
-          path = "/"
-        }
-        thread:join()
-      end)
-
-      local ok, err = helpers.kong_exec("start --conf " .. helpers.test_conf_path)
-      assert.False(ok)
-      assert.matches("Address already in use", err, nil, true)
     end)
     it("should not stop Kong if already running in prefix", function()
       local kill = require "kong.cmd.utils.kill"

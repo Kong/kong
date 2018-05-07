@@ -8,7 +8,11 @@ describe("Plugins", function()
   local plugins
 
   setup(function()
-    local conf = assert(conf_loader())
+    local conf = assert(conf_loader(nil, {
+      -- ensure we test the galileo priority even if galileo isn't enabled by
+      -- default anymore
+      custom_plugins = "galileo",
+    }))
 
     plugins = {}
 
@@ -58,7 +62,7 @@ describe("Plugins", function()
       "acl",
       "rate-limiting",
       "response-ratelimiting",
-      "request-transformer-advanced",
+      "request-transformer",
       "response-transformer",
       "aws-lambda",
       "http-log",

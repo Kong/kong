@@ -26,12 +26,12 @@
 
 require "luarocks.loader"
 require "resty.core"
+local constants = require "kong.constants"
+local plugin_overwrite = require "kong.enterprise_edition.plugin_overwrite"
 
 do
   -- let's ensure the required shared dictionaries are
   -- declared via lua_shared_dict in the Nginx conf
-
-  local constants = require "kong.constants"
 
   for _, dict in ipairs(constants.DICTS) do
     if not ngx.shared[dict] then
@@ -46,6 +46,7 @@ end
 require("kong.core.globalpatches")()
 
 local ip = require "kong.tools.ip"
+local DB = require "kong.db"
 local dns = require "kong.tools.dns"
 local core = require "kong.core.handler"
 local utils = require "kong.tools.utils"
@@ -59,6 +60,7 @@ local plugins_iterator = require "kong.core.plugins_iterator"
 local balancer_execute = require("kong.core.balancer").execute
 local kong_cluster_events = require "kong.cluster_events"
 local kong_error_handlers = require "kong.core.error_handlers"
+local internal_proxies = require "kong.enterprise_edition.proxies"
 local vitals = require "kong.vitals"
 local ee = require "kong.enterprise_edition"
 
@@ -98,6 +100,10 @@ local function load_plugins(kong_conf, dao)
 
   -- load installed plugins
   for plugin in pairs(kong_conf.plugins) do
+    if constants.DEPRECATED_PLUGINS[plugin] then
+      ngx.log(ngx.WARN, "plugin '", plugin, "' has been deprecated")
+    end
+
     local ok, handler = utils.load_module_if_exists("kong.plugins." .. plugin .. ".handler")
     if not ok then
       return nil, plugin .. " plugin is enabled but not installed;\n" .. handler
@@ -106,6 +112,11 @@ local function load_plugins(kong_conf, dao)
     local ok, schema = utils.load_module_if_exists("kong.plugins." .. plugin .. ".schema")
     if not ok then
       return nil, "no configuration schema found for plugin: " .. plugin
+    end
+
+    local _, err = plugin_overwrite.add_overwrite(plugin, schema)
+    if err then
+      return nil, plugin .. " plugin schema overwrite error: " .. err
     end
 
     ngx_log(ngx_DEBUG, "Loading plugin: " .. plugin)
@@ -144,6 +155,7 @@ local function load_plugins(kong_conf, dao)
   return sorted_plugins
 end
 
+
 -- Kong public context handlers.
 -- @section kong_handlers
 
@@ -157,8 +169,20 @@ function Kong.init()
   local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
   local config = assert(conf_loader(conf_path))
 
-  local dao = assert(DAOFactory.new(config)) -- instantiate long-lived DAO
-  assert(dao:init())
+  local err = ee.feature_flags_init(config)
+  if err then
+    error(tostring(err))
+  end
+
+  local db = assert(DB.new(config))
+  assert(db:init_connector())
+
+  local dao = assert(DAOFactory.new(config, db)) -- instantiate long-lived DAO
+  local ok, err_t = dao:init()
+  if not ok then
+    error(tostring(err_t))
+  end
+
   assert(dao:are_migrations_uptodate())
 
   -- populate singletons
@@ -167,7 +191,10 @@ function Kong.init()
   singletons.configuration = config
   singletons.loaded_plugins = assert(load_plugins(config, dao))
   singletons.dao = dao
+  singletons.configuration = config
+  singletons.db = db
   singletons.license = ee.read_license_info()
+  singletons.internal_proxies = internal_proxies.new()
 
   local reports = require "kong.core.reports"
   local l = singletons.license and
@@ -186,8 +213,8 @@ function Kong.init()
       ttl_minutes    = config.vitals_ttl_minutes,
   }
 
-  assert(core.build_router(dao, "init"))
-
+  assert(core.build_router(db, "init"))
+  assert(core.build_api_router(dao, "init"))
 end
 
 function Kong.init_worker()
@@ -281,12 +308,21 @@ function Kong.init_worker()
     return
   end
 
+  local ok, err = cache:get("api_router:version", { ttl = 0 }, function()
+    return "init"
+  end)
+  if not ok then
+    ngx_log(ngx_CRIT, "could not set API router version in cache: ", err)
+    return
+  end
+
 
   singletons.cache          = cache
   singletons.worker_events  = worker_events
   singletons.cluster_events = cluster_events
 
 
+  singletons.db:set_events_handler(worker_events)
   singletons.dao:set_events_handler(worker_events)
 
   core.init_worker.before()
@@ -461,6 +497,7 @@ function Kong.log()
   end
 
   core.log.after(ctx)
+  ee.handlers.log.after(ctx, ngx.status)
 end
 
 function Kong.handle_error()
@@ -482,6 +519,20 @@ function Kong.serve_admin_api(options)
   end
 
   return lapis.serve("kong.api")
+end
+
+function Kong.serve_portal_api(options)
+  options = options or {}
+
+  header["Access-Control-Allow-Origin"] = options.allow_origin or "*"
+
+  if ngx.req.get_method() == "OPTIONS" then
+    header["Access-Control-Allow-Methods"] = options.acam or "GET, HEAD, PUT, DELETE"
+    header["Access-Control-Allow-Headers"] = options.acah or "Content-Type"
+    return ngx.exit(204)
+  end
+
+  return lapis.serve("kong.portal")
 end
 
 return Kong

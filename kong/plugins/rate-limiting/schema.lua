@@ -1,116 +1,64 @@
 local Errors = require "kong.dao.errors"
-local utils  = require "kong.tools.utils"
-local redis  = require "kong.enterprise_edition.redis"
 
-local function validate_rl(value)
-  for i = 1, #value do
-    local x = tonumber(value[i])
-
-    if not x then
-      return false, "size/limit values must be numbers"
-    end
-  end
-
-  return true
-end
+local REDIS = "redis"
 
 return {
   fields = {
-    identifier = {
-      type = "string",
-      enum = { "ip", "credential", "consumer" },
-      required = true,
-      default = "consumer",
-    },
-    window_size = {
-      type = "array",
-      required = true,
-      func = validate_rl,
-    },
-    window_type = {
-      type = "string",
-      enum = { "fixed", "sliding" },
-      default = "sliding",
-    },
-    limit = {
-      type = "array",
-      required = true,
-      func = validate_rl,
-    },
-    sync_rate = {
-      type = "number",
-      required = true,
-    },
-    namespace = {
-      type = "string",
-      default = utils.random_string,
-    },
-    strategy = {
-      type = "string",
-      enum = { "cluster", "redis", },
-      required = true,
-      default = "cluster",
-    },
-    redis = {
-      type = "table",
-      schema = redis.config_schema,
-    },
-    hide_client_headers = {
-      type = "boolean",
-      default = false,
-    },
+    second = { type = "number" },
+    minute = { type = "number" },
+    hour = { type = "number" },
+    day = { type = "number" },
+    month = { type = "number" },
+    year = { type = "number" },
+    limit_by = { type = "string", enum = {"consumer", "credential", "ip"}, default = "consumer" },
+    policy = { type = "string", enum = {"local", "cluster", REDIS}, default = "cluster" },
+    fault_tolerant = { type = "boolean", default = true },
+    redis_host = { type = "string" },
+    redis_port = { type = "number", default = 6379 },
+    redis_password = { type = "string" },
+    redis_timeout = { type = "number", default = 2000 },
+    redis_database = { type = "number", default = 0 },
+    hide_client_headers = { type = "boolean", default = false },
   },
-  self_check = function(schema, plugin_t, dao, is_updating)
-    -- empty semi-optional redis config, needs to be cluster strategy
-    if plugin_t.strategy == "redis" then
-      if not plugin_t.redis then
-        return false, Errors.schema("No redis config provided")
+  self_check = function(schema, plugin_t, dao, is_update)
+    local ordered_periods = { "second", "minute", "hour", "day", "month", "year"}
+    local has_value
+    local invalid_order
+    local invalid_value
+
+    for i, v in ipairs(ordered_periods) do
+      if plugin_t[v] then
+        has_value = true
+        if plugin_t[v] <=0 then
+          invalid_value = "Value for " .. v .. " must be greater than zero"
+        else
+          for t = i+1, #ordered_periods do
+            if plugin_t[ordered_periods[t]] and plugin_t[ordered_periods[t]] < plugin_t[v] then
+              invalid_order = "The limit for " .. ordered_periods[t] .. " cannot be lower than the limit for " .. v
+            end
+          end
+        end
       end
     end
 
-    -- on update we dont need to enforce re-defining window_size and limit
-    -- e.g., skip the next checks if this is an update and the request body
-    -- did not contain either the window_size or limit values. the reason for
-    -- this is the check that is executing here looks at the request body, not
-    -- the entity post-update. so to simplify PATCH requests we do not want to
-    -- force the user to define window_size and limit when they don't need to
-    -- (say, they are only updating sync_rate)
-    --
-    -- if this request is an update, and window_size and/or limit are being
-    -- updated, then we do want to execute the manual checks on these entities.
-    -- in such case the condition below evaluates to false, and we fall through
-    -- to the next series of checks
-    if is_updating and not plugin_t.window_size and not plugin_t.limit then
-      return true
+    if not has_value then
+      return false, Errors.schema "You need to set at least one limit: second, minute, hour, day, month, year"
+    elseif invalid_value then
+      return false, Errors.schema(invalid_value)
+    elseif invalid_order then
+      return false, Errors.schema(invalid_order)
     end
 
-    if not plugin_t.window_size or not plugin_t.limit then
-      return false, Errors.schema(
-                    "Both window_size and limit must be provided")
-    end
-
-    if #plugin_t.window_size ~= #plugin_t.limit then
-      return false, Errors.schema(
-                    "You must provide the same number of windows and limits")
-    end
-
-    -- sort the window_size and limit arrays by limit
-    -- first we create a temp table, each element of which is a pair of
-    -- limit/window_size values. we then sort based on the limit element
-    -- of this array of pairs. finally, we re-assign the plugin_t configuration
-    -- elements directly based off the sorted temp table
-    local t = {}
-    for i, v in ipairs(plugin_t.limit) do
-      t[i] = { plugin_t.limit[i], plugin_t.window_size[i] }
-    end
-
-    table.sort(t, function(a, b) return tonumber(a[1]) < tonumber(b[1]) end)
-
-    for i = 1, #t do
-      plugin_t.limit[i] = tonumber(t[i][1])
-      plugin_t.window_size[i] = tonumber(t[i][2])
+    if plugin_t.policy == REDIS then
+      if not plugin_t.redis_host then
+        return false, Errors.schema "You need to specify a Redis host"
+      elseif not plugin_t.redis_port then
+        return false, Errors.schema "You need to specify a Redis port"
+      elseif not plugin_t.redis_timeout then
+        return false, Errors.schema "You need to specify a Redis timeout"
+      end
     end
 
     return true
-  end,
+  end
 }

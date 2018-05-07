@@ -15,7 +15,9 @@ endif
 install:
 	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR)
 
-dev: install
+dev:
+	-@luarocks remove kong
+	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR)
 	@for rock in $(DEV_ROCKS) ; do \
 	  if luarocks list --porcelain $$rock | grep -q "installed" ; then \
 	    echo $$rock already installed, skipping ; \
@@ -40,3 +42,15 @@ test-plugins:
 
 test-all:
 	@$(TEST_CMD) spec/
+
+old-test:
+	@$(TEST_CMD) spec-old-api/01-unit
+
+old-test-integration:
+	@$(TEST_CMD) spec-old-api/02-integration
+
+old-test-plugins:
+	@$(TEST_CMD) spec-old-api/03-plugins
+
+old-test-all:
+	@$(TEST_CMD) spec-old-api/

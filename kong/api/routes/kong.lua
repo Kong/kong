@@ -1,5 +1,6 @@
 local utils = require "kong.tools.utils"
 local singletons = require "kong.singletons"
+local public = require "kong.tools.public"
 local conf_loader = require "kong.conf_loader"
 local cjson = require "cjson"
 
@@ -32,6 +33,8 @@ return {
           end
           map[row.name] = true
         end
+
+        singletons.internal_proxies:add_internal_plugins(distinct_plugins, map)
       end
 
       do
@@ -58,10 +61,16 @@ return {
         license.license_key = nil
       end
 
+      local node_id, err = public.get_node_id()
+      if node_id == nil then
+        ngx.log(ngx.ERR, "could not get node id: ", err)
+      end
+
       return helpers.responses.send_HTTP_OK {
         tagline = tagline,
         version = version,
         hostname = utils.get_hostname(),
+        node_id = node_id,
         timers = {
           running = ngx.timer.running_count(),
           pending = ngx.timer.pending_count()

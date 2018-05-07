@@ -3,6 +3,8 @@ local constants = require "kong.constants"
 local singletons = require "kong.singletons"
 local public_tools = require "kong.tools.public"
 local BasePlugin = require "kong.plugins.base_plugin"
+local multipart = require "multipart"
+local cjson = require "cjson"
 
 local ngx_set_header = ngx.req.set_header
 local ngx_get_headers = ngx.req.get_headers
@@ -62,6 +64,35 @@ local function set_consumer(consumer, credential)
 
 end
 
+
+local hide_body_credentials
+do
+  local MIME_TYPES = public_tools.req_mime_types
+
+
+  hide_body_credentials = {
+    [MIME_TYPES.form_url_encoded] = function(key, body)
+      body[key] = nil
+      return ngx_encode_args(body)
+    end,
+
+    [MIME_TYPES.json] = function(key, body)
+      body[key] = nil
+      return cjson.encode(body)
+    end,
+
+    [MIME_TYPES.multipart] = function(key, _, raw_body)
+      -- im not a fan of recreating the lua-multipart object here,
+      -- but the current Kong API doesn't provide us the original
+      -- metatable, so our hands are tied here
+      local m_body = multipart(raw_body, ngx.var.content_type)
+      m_body:delete(key)
+      return m_body:tostring()
+    end,
+  }
+end
+
+
 local function do_authentication(conf)
   if type(conf.key_names) ~= "table" then
     ngx.log(ngx.ERR, "[key-auth] no conf.key_names set, aborting plugin execution")
@@ -71,12 +102,17 @@ local function do_authentication(conf)
   local key
   local headers = ngx_get_headers()
   local uri_args = get_uri_args()
-  local body_data
+  local body_data, raw_body, req_mime
 
   -- read in the body if we want to examine POST args
   if conf.key_in_body then
     ngx_req_read_body()
-    body_data = public_tools.get_body_args()
+    local err
+    body_data, err, raw_body, req_mime = public_tools.get_body_info()
+
+    if err then
+      return false, { status = 400, message = "Cannot process request body" }
+    end
   end
 
   -- search in headers & querystring
@@ -101,8 +137,24 @@ local function do_authentication(conf)
         clear_header(name)
 
         if conf.key_in_body then
-          body_data[name] = nil
-          ngx_req_set_body_data(ngx_encode_args(body_data))
+          if not hide_body_credentials[req_mime] then
+            -- the request was indeed well formed but could not be processed
+            -- the status '422' might be a good candidate here, but it's part
+            -- of the WebDAV extension, so it doesn't seem appropriate here
+            -- and a 5xx status seems inappropriate as well- the server (plugin)
+            -- configuration is not incorrect. it's up to the client to present
+            -- the appropriate body encoding, given the server configuration
+            -- this places an onus of responsibility on the server operator to
+            -- properly document the acceptable body encodings when
+            -- 'hide_credentials' and 'key_in_body' are both set
+            return false, { status = 400, message = "Cannot process request body" }
+          end
+
+          ngx_req_set_body_data(hide_body_credentials[req_mime](
+            name,
+            body_data,
+            raw_body
+          ))
         end
       end
       break
@@ -121,7 +173,7 @@ local function do_authentication(conf)
   -- retrieve our consumer linked to this API key
 
   local cache = singletons.cache
-  local dao       = singletons.dao
+  local dao = singletons.dao
 
   local credential_cache_key = dao.keyauth_credentials:cache_key(key)
   local credential, err = cache:get(credential_cache_key, nil,

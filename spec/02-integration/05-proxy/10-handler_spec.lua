@@ -1,151 +1,184 @@
 local helpers = require "spec.helpers"
 
-describe("OpenResty phases", function()
-  describe("rewrite_by_lua", function()
-    describe("enabled on all APIs", function()
-      local api_client, proxy_client
+for _, strategy in helpers.each_strategy() do
+  describe("OpenResty phases [#" .. strategy .. "]", function()
+    describe("rewrite_by_lua", function()
+      describe("enabled on all routes", function()
+        local admin_client
+        local proxy_client
 
-      setup(function()
-        -- insert plugin-less api and a global plugin
-        assert(helpers.dao.apis:insert {
-          name         = "mock_upstream",
-          hosts        = { "mock_upstream" },
-          upstream_url = helpers.mock_upstream_url,
-        })
-        assert(helpers.dao.plugins:insert {
-          name   = "rewriter",
-          config = {
-            value = "global plugin",
-          },
-        })
+        setup(function()
+          local bp = helpers.get_db_utils(strategy)
 
-        assert(helpers.start_kong({
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
+          -- insert plugin-less route and a global plugin
+          local service = bp.services:insert {
+            name = "mock_upstream",
+          }
 
-        api_client   = helpers.admin_client()
-        proxy_client = helpers.proxy_client()
+          bp.routes:insert {
+            protocols = { "http" },
+            hosts     = { "mock_upstream" },
+            service   = service,
+          }
+
+          bp.plugins:insert {
+            name    = "rewriter",
+            config  = {
+              value = "global plugin",
+            },
+          }
+
+          assert(helpers.start_kong({
+            database   = strategy,
+            nginx_conf = "spec/fixtures/custom_nginx.template",
+          }))
+
+          admin_client = helpers.admin_client()
+          proxy_client = helpers.proxy_client()
+        end)
+
+        teardown(function()
+          if admin_client then admin_client:close() end
+          helpers.stop_kong()
+        end)
+
+        it("runs", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/request",
+            headers = {
+              host  = "mock_upstream",
+            },
+          })
+          assert.response(res).has.status(200)
+          local value = assert.request(res).has.header("rewriter")
+          assert.equal("global plugin", value)
+        end)
       end)
 
-      teardown(function()
-        if api_client then api_client:close() end
-        helpers.stop_kong()
+      describe("enabled on a specific routes", function()
+        local admin_client
+        local proxy_client
+
+        setup(function()
+          local bp = helpers.get_db_utils(strategy)
+
+          -- route specific plugin
+          local service = bp.services:insert {
+            name = "mock_upstream",
+          }
+
+          local route = bp.routes:insert {
+            hosts   = { "mock_upstream" },
+            service = service,
+          }
+
+          bp.plugins:insert {
+            route_id   = route.id,
+            service_id = service.id,
+            name       = "rewriter",
+            config     = {
+              value    = "route-specific plugin",
+            },
+          }
+
+          assert(helpers.start_kong({
+            database   = strategy,
+            nginx_conf = "spec/fixtures/custom_nginx.template"
+          }))
+
+          admin_client = helpers.admin_client()
+          proxy_client = helpers.proxy_client()
+        end)
+
+        teardown(function()
+          if admin_client then admin_client:close() end
+          helpers.stop_kong()
+        end)
+
+        it("doesn't run", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/request",
+            headers = {
+              host  = "mock_upstream",
+            },
+          })
+          assert.response(res).has.status(200)
+          assert.request(res).has.no.header("rewriter")
+        end)
       end)
 
-      it("runs", function()
-        local res = assert(proxy_client:send {
-          method  = "GET",
-          path    = "/request",
-          headers = {
-            host = "mock_upstream",
-          },
-        })
-        assert.response(res).has.status(200)
-        local value = assert.request(res).has.header("rewriter")
-        assert.equal("global plugin", value)
-      end)
-    end)
+      describe("enabled on a specific Consumer", function()
+        local admin_client
+        local proxy_client
 
-    describe("enabled on a specific APIs", function()
-      local api_client, proxy_client
+        setup(function()
+          local bp = helpers.get_db_utils(strategy)
 
-      setup(function()
-        -- api specific plugin
-        local api2 = assert(helpers.dao.apis:insert {
-          name         = "mock_upstream",
-          hosts        = { "mock_upstream" },
-          upstream_url = helpers.mock_upstream_url,
-        })
-        assert(helpers.dao.plugins:insert {
-          api_id = api2.id,
-          name   = "rewriter",
-          config = {
-            value = "api-specific plugin",
-          },
-        })
+          -- consumer specific plugin
+          local service = bp.services:insert {
+            name = "mock_upstream",
+          }
 
-        assert(helpers.start_kong({
-          nginx_conf = "spec/fixtures/custom_nginx.template"
-        }))
+          local route = bp.routes:insert {
+            protocols = { "http" },
+            hosts     = { "mock_upstream" },
+            service   = service,
+          }
 
-        api_client = helpers.admin_client()
-        proxy_client = helpers.proxy_client()
-      end)
+          bp.plugins:insert {
+            name       = "key-auth",
+            route_id   = route.id,
+            service_id = service.id,
+          }
 
-      teardown(function()
-        if api_client then api_client:close() end
-        helpers.stop_kong()
-      end)
+          local consumer3 = bp.consumers:insert {
+            username = "test-consumer",
+          }
 
-      it("doesn't run", function()
-        local res = assert(proxy_client:send {
-          method  = "GET",
-          path    = "/request",
-          headers = {
-            host = "mock_upstream",
-          },
-        })
-        assert.response(res).has.status(200)
-        assert.request(res).has.no.header("rewriter")
-      end)
-    end)
+          bp.keyauth_credentials:insert {
+            consumer_id = consumer3.id,
+            key         = "kong",
+          }
 
-    describe("enabled on a specific Consumers", function()
-      local api_client, proxy_client
+          bp.plugins:insert {
+            consumer_id = consumer3.id,
+            name        = "rewriter",
+            config      = {
+              value     = "consumer-specific plugin",
+            },
+          }
 
-      setup(function()
-        -- consumer specific plugin
-        local api3 = assert(helpers.dao.apis:insert {
-          name         = "mock_upstream",
-          hosts        = { "mock_upstream" },
-          upstream_url = helpers.mock_upstream_url,
-        })
-        assert(helpers.dao.plugins:insert {
-          api_id = api3.id,
-          name   = "key-auth",
-        })
-        local consumer3 = assert(helpers.dao.consumers:insert {
-          username = "test-consumer",
-        })
-        assert(helpers.dao.keyauth_credentials:insert {
-          key         = "kong",
-          consumer_id = consumer3.id,
-        })
-        assert(helpers.dao.plugins:insert {
-          consumer_id = consumer3.id,
-          name        = "rewriter",
-          config      = {
-            value = "consumer-specific plugin",
-          },
-        })
+          assert(helpers.start_kong({
+            database   = strategy,
+            nginx_conf = "spec/fixtures/custom_nginx.template",
+          }))
 
-        assert(helpers.start_kong({
-          nginx_conf = "spec/fixtures/custom_nginx.template",
-        }))
+          admin_client = helpers.admin_client()
+          proxy_client = helpers.proxy_client()
+        end)
 
-        api_client = helpers.admin_client()
-        proxy_client = helpers.proxy_client()
-      end)
+        teardown(function()
+          if admin_client then admin_client:close() end
+          helpers.stop_kong()
+        end)
 
-      teardown(function()
-        if api_client then api_client:close() end
-        helpers.stop_kong()
-      end)
-
-      it("doesn't run", function()
-        local res = assert(proxy_client:send {
-          method  = "GET",
-          path    = "/request",
-          headers = {
-            host   = "mock_upstream",
-            apikey = "kong",
-          },
-        })
-        assert.response(res).has.status(200)
-        local value = assert.request(res).has.header("x-consumer-username")
-        assert.equal("test-consumer", value)
-        assert.request(res).has.no.header("rewriter")
+        it("doesn't run", function()
+          local res = assert(proxy_client:send {
+            method  = "GET",
+            path    = "/request",
+            headers = {
+              host   = "mock_upstream",
+              apikey = "kong",
+            },
+          })
+          assert.response(res).has.status(200)
+          local value = assert.request(res).has.header("x-consumer-username")
+          assert.equal("test-consumer", value)
+          assert.request(res).has.no.header("rewriter")
+        end)
       end)
     end)
   end)
-end)
+end

@@ -106,6 +106,11 @@ function _M:push_diffs(diffs)
   local query_tab = new_tab(num_diffs, 0) -- assume num_diffs windows per key
   local query_tab_idx = 1
 
+  -- if no diffs, nothing to do, return...
+  if num_diffs == 0 then
+    return
+  end
+
   do
     local param_tab = new_tab(6, 0)
 
@@ -236,7 +241,10 @@ function _M:purge(namespace, window_sizes, window_start)
   local res, err = self.db:query(concat(query_tab, '; '))
   if not res then
     log(ERR, "failed to delete counters: ", err)
+    return false
   end
+
+  return true
 end
 
 

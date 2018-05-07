@@ -1,8 +1,14 @@
 local crud = require "kong.api.crud_helpers"
+local enums = require "kong.portal.enums"
 
 return {
   ["/consumers/"] = {
+    before = function(self, dao_factory, helpers)
+      self.params.type = enums.CONSUMERS.TYPE.PROXY
+    end,
+
     GET = function(self, dao_factory)
+      self.params.type = enums.CONSUMERS.TYPE.PROXY
       crud.paginated_set(self, dao_factory.consumers)
     end,
 
@@ -17,6 +23,7 @@ return {
 
   ["/consumers/:username_or_id"] = {
     before = function(self, dao_factory, helpers)
+      self.params.type = enums.CONSUMERS.TYPE.PROXY
       self.params.username_or_id = ngx.unescape_uri(self.params.username_or_id)
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
     end,
@@ -36,6 +43,7 @@ return {
 
   ["/consumers/:username_or_id/plugins/"] = {
     before = function(self, dao_factory, helpers)
+      self.params.type = enums.CONSUMERS.TYPE.PROXY
       self.params.username_or_id = ngx.unescape_uri(self.params.username_or_id)
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
       self.params.consumer_id = self.consumer.id
@@ -56,6 +64,7 @@ return {
 
   ["/consumers/:username_or_id/plugins/:id"] = {
     before = function(self, dao_factory, helpers)
+      self.params.type = enums.CONSUMERS.TYPE.PROXY
       self.params.username_or_id = ngx.unescape_uri(self.params.username_or_id)
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
       crud.find_plugin_by_filter(self, dao_factory, {

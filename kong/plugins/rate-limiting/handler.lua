@@ -1,245 +1,129 @@
 -- Copyright (C) Kong Inc.
 
-local BasePlugin   = require "kong.plugins.base_plugin"
-local ratelimiting = require "kong.tools.public.rate-limiting"
-local responses    = require "kong.tools.responses"
-local singletons   = require "kong.singletons"
+local policies = require "kong.plugins.rate-limiting.policies"
+local timestamp = require "kong.tools.timestamp"
+local responses = require "kong.tools.responses"
+local BasePlugin = require "kong.plugins.base_plugin"
 
-local max      = math.max
-local tonumber = tonumber
-
-
-local NewRLHandler = BasePlugin:extend()
-
+local ngx_log = ngx.log
+local pairs = pairs
+local tostring = tostring
+local ngx_timer_at = ngx.timer.at
 
 local RATELIMIT_LIMIT = "X-RateLimit-Limit"
 local RATELIMIT_REMAINING = "X-RateLimit-Remaining"
 
+local RateLimitingHandler = BasePlugin:extend()
 
-NewRLHandler.PRIORITY = 901
-NewRLHandler.VERSION = "0.1.0"
+RateLimitingHandler.PRIORITY = 901
+RateLimitingHandler.VERSION = "0.1.0"
 
+local function get_identifier(conf)
+  local identifier
 
-local human_window_size_lookup = {
-  [1]        = "second",
-  [60]       = "minute",
-  [3600]     = "hour",
-  [86400]    = "day",
-  [2592000]  = "month",
-  [31536000] = "year",
-}
-
-
-local id_lookup = {
-  ip = function()
-    return ngx.var.remote_addr
-  end,
-  credential = function()
-    return ngx.ctx.authenticated_credential and
-           ngx.ctx.authenticated_credential.id
-  end,
-  consumer = function()
-    -- try the consumer, fall back to credential
-    return ngx.ctx.authenticated_consumer and
-           ngx.ctx.authenticated_consumer.id or
-           ngx.ctx.authenticated_credential and
-           ngx.ctx.authenticated_credential.id
+  -- Consumer is identified by ip address or authenticated_credential id
+  if conf.limit_by == "consumer" then
+    identifier = ngx.ctx.authenticated_consumer and ngx.ctx.authenticated_consumer.id
+    if not identifier and ngx.ctx.authenticated_credential then -- Fallback on credential
+      identifier = ngx.ctx.authenticated_credential.id
+    end
+  elseif conf.limit_by == "credential" then
+    identifier = ngx.ctx.authenticated_credential and ngx.ctx.authenticated_credential.id
   end
-}
 
+  if not identifier then
+    identifier = ngx.var.remote_addr
+  end
 
-local function new_namespace(config, init_timer)
-  ngx.log(ngx.DEBUG, "attempting to add namespace ", config.namespace)
+  return identifier
+end
 
-  local ok, err = pcall(function()
-    local strategy = config.strategy == "cluster" and
-                     singletons.configuration.database or
-                     "redis"
+local function get_usage(conf, identifier, current_timestamp, limits)
+  local usage = {}
+  local stop
 
-    local strategy_opts = strategy == "redis" and config.redis
-
-    ratelimiting.new({
-      namespace     = config.namespace,
-      sync_rate     = config.sync_rate,
-      strategy      = strategy,
-      strategy_opts = strategy_opts,
-      dict          = "kong",
-      window_sizes  = config.window_size,
-      dao_factory   = singletons.dao,
-    })
-  end)
-
-  local ret = true
-
-  -- if we created a new namespace, start the recurring sync timer and
-  -- run an intial sync to fetch our counter values from the data store
-  -- (if applicable)
-  if ok then
-    if init_timer and config.sync_rate > 0 then
-      local rate = config.sync_rate
-      local when = rate - (ngx.now() - (math.floor(ngx.now() / rate) * rate))
-      ngx.log(ngx.DEBUG, "initial sync in ", when, " seconds")
-      ngx.timer.at(when, ratelimiting.sync, config.namespace)
-
-      -- run the fetch from a timer because it uses cosockets
-      -- kong patches this for psql and c*, but not redis
-      ngx.timer.at(0, ratelimiting.fetch, config.namespace, ngx.now())
+  for name, limit in pairs(limits) do
+    local current_usage, err = policies[conf.policy].usage(conf, identifier, current_timestamp, name)
+    if err then
+      return nil, nil, err
     end
 
-  else
-    ngx.log(ngx.ERR, "err in creating new ratelimit namespace: ",
-                     err)
-    ret = false
+    -- What is the current usage for the configured limit name?
+    local remaining = limit - current_usage
+
+    -- Recording usage
+    usage[name] = {
+      limit = limit,
+      remaining = remaining
+    }
+
+    if remaining <= 0 then
+      stop = name
+    end
   end
 
-  return ret
+  return usage, stop
 end
 
-
-function NewRLHandler:new()
-  NewRLHandler.super.new(self, "new-rl")
+function RateLimitingHandler:new()
+  RateLimitingHandler.super.new(self, "rate-limiting")
 end
 
-function NewRLHandler:init_worker()
-  local worker_events = singletons.worker_events
-  local dao_factory   = singletons.dao
+function RateLimitingHandler:access(conf)
+  RateLimitingHandler.super.access(self)
+  local current_timestamp = timestamp.get_utc()
 
-  -- to start with, load existing plugins and create the
-  -- namespaces/sync timers
-  local plugins, err = dao_factory.plugins:find_all({
-    name = "rate-limiting",
-  })
+  -- Consumer is identified by ip address or authenticated_credential id
+  local identifier = get_identifier(conf)
+  local policy = conf.policy
+  local fault_tolerant = conf.fault_tolerant
+
+  -- Load current metric for configured period
+  local limits = {
+    second = conf.second,
+    minute = conf.minute,
+    hour = conf.hour,
+    day = conf.day,
+    month = conf.month,
+    year = conf.year
+  }
+
+  local usage, stop, err = get_usage(conf, identifier, current_timestamp, limits)
   if err then
-    ngx.log(ngx.ERR, "err in fetching plugins: ", err)
-  end
-
-  local namespaces = {}
-  for i = 1, #plugins do
-    local namespace = plugins[i].config.namespace
-
-    if not namespaces[namespace] then
-      local ret = new_namespace(plugins[i].config, true)
-
-      if ret then
-        namespaces[namespace] = true
-      end
-    end
-  end
-
-  -- event handlers to update recurring sync timers
-
-  -- catch any plugins update and forward config data to each worker
-  worker_events.register(function(data)
-    if data.entity.name == "rate-limiting" then
-      worker_events.post("rl", data.operation, data.entity.config)
-    end
-  end, "crud", "plugins")
-
-  -- new plugin? try to make a namespace!
-  worker_events.register(function(config)
-    if not ratelimiting.config[config.namespace] then
-      new_namespace(config, true)
-    end
-  end, "rl", "create")
-
-  -- updates should clear the existing config and create a new
-  -- namespace config. we do not initiate a new fetch/sync recurring
-  -- timer as it's already running in the background
-  worker_events.register(function(config)
-    ngx.log(ngx.DEBUG, "clear and reset ", config.namespace)
-
-    -- if the previous config did not have a background timer,
-    -- we need to start one
-    local start_timer = false
-    if ratelimiting.config[config.namespace].sync_rate <= 0 and
-       config.sync_rate > 0 then
-
-      start_timer = true
-    end
-
-    ratelimiting.clear_config(config.namespace)
-    new_namespace(config, start_timer)
-
-    -- clear the timer if we dont need it
-    if config.sync_rate <= 0 then
-      if ratelimiting.config[config.namespace] then
-        ratelimiting.config[config.namespace].kill = true
-
-      else
-        ngx.log(ngx.WARN, "did not find namespace ", config.namespace, " to kill")
-      end
-    end
-  end, "rl", "update")
-
-  -- nuke this from orbit
-  worker_events.register(function(config)
-    -- set the kill flag on this namespace
-    -- this will clear the config at the next sync() execution, and
-    -- abort the recurring syncs
-    if ratelimiting.config[config.namespace] then
-      ratelimiting.config[config.namespace].kill = true
-
+    if fault_tolerant then
+      ngx_log(ngx.ERR, "failed to get usage: ", tostring(err))
     else
-      ngx.log(ngx.WARN, "did not find namespace ", config.namespace, " to kill")
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     end
-  end, "rl", "delete")
-end
-
-function NewRLHandler:access(conf)
-  local key = id_lookup[conf.identifier]()
-
-  -- legacy logic, if authenticated consumer or credential is not found
-  -- use the IP
-  if not key then
-    key = id_lookup["ip"]()
   end
 
-  local deny
-
-  -- if this worker has not yet seen the "rl:create" event propagated by the
-  -- instatiation of a new plugin, create the namespace. in this case, the call
-  -- to new_namespace in the registered rl handler will never be called on this
-  -- worker
-  --
-  -- this workaround will not be necessary when real IPC is implemented for
-  -- inter-worker communications
-  if not ratelimiting.config[conf.namespace] then
-    new_namespace(conf, true)
-  end
-
-  for i = 1, #conf.window_size do
-    local window_size = tonumber(conf.window_size[i])
-    local limit       = tonumber(conf.limit[i])
-
-    -- if we have exceeded any rate, we should not increment any other windows,
-    -- butwe should still show the rate to the client, maintaining a uniform
-    -- set of response headers regardless of whether we block the request
-    local rate
-    if deny then
-      rate = ratelimiting.sliding_window(key, window_size, nil, conf.namespace)
-
-    else
-      rate = ratelimiting.increment(key, window_size, 1, conf.namespace,
-                                    conf.window_type == "fixed" and 0 or nil)
-    end
-
-    -- legacy logic of naming rate limiting headers. if we configured a window
-    -- size that looks like a human friendly name, give that name
-    local window_name = human_window_size_lookup[window_size] or window_size
-
+  if usage then
+    -- Adding headers
     if not conf.hide_client_headers then
-      ngx.header[RATELIMIT_LIMIT .. "-" .. window_name] = limit
-      ngx.header[RATELIMIT_REMAINING .. "-" .. window_name] = max(limit - rate, 0)
+      for k, v in pairs(usage) do
+        ngx.header[RATELIMIT_LIMIT .. "-" .. k] = v.limit
+        ngx.header[RATELIMIT_REMAINING .. "-" .. k] = math.max(0, (stop == nil or stop == k) and v.remaining - 1 or v.remaining) -- -increment_value for this current request
+      end
     end
 
-    if rate > limit then
-      deny = true
+    -- If limit is exceeded, terminate the request
+    if stop then
+      return responses.send(429, "API rate limit exceeded")
     end
   end
 
-  if deny then
-    return responses.send(429, "API rate limit exceeded")
+  local incr = function(premature, conf, limits, identifier, current_timestamp, value)
+    if premature then
+      return
+    end
+    policies[policy].increment(conf, limits, identifier, current_timestamp, value)
+  end
+
+  -- Increment metrics for configured periods if the request goes through
+  local ok, err = ngx_timer_at(0, incr, conf, limits, identifier, current_timestamp, 1)
+  if not ok then
+    ngx_log(ngx.ERR, "failed to create timer: ", err)
   end
 end
 
-return NewRLHandler
+return RateLimitingHandler

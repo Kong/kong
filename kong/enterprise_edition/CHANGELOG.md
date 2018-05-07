@@ -1,3 +1,57 @@
+## 0.31 - 2018/03/13
+
+### Changed
+
+- Galileo plugin is disabled by default in this version, needing to be explicitly enabled via the custom_plugins configuration
+  - NOTE: If a user had the Galileo plugin applied in an older version and migrate to 0.31, Kong will fail to restart unless the user enables it via the custom_plugins configuration; however, it is still possible to enable the plugin per API or globally without adding it to custom_plugins
+- OpenID Connect plugin:
+  - Change config.client_secret from required to optional
+  - Change config.client_id from required to optional
+  - If anonymous consumer is not found Internal Server Error is returned instead of Forbidden
+  - Breaking Change - config.anonymous now behaves similarly to other plugins and doesn't halt execution or proxying (previously it was used just as a fallback for consumer mapping) and the plugin always needed valid credentials to be allowed to proxy if the client wasn't already authenticated by higher priority auth plugin
+  - Anonymous consumer now uses a simple cache key that is used in other plugins
+In case of auth plugins concatenation, the OpenID Connect plugin now removes remnants of anonymous
+
+### Added
+
+- Admin GUI
+  - Add notification bar alerting users that their license is about to expire, and has expired.
+  - Add new design to vitals overview, table breakdown, and a new tabbed chart interface.
+  - Add top-level vitals section to the sidebar.
+- Requires migration - Vitals
+  - New datastore support: Cassandra 2.1+
+  - Support for averages for Proxy Request Latency and Upstream Latency
+- Requires migration - Dev Portal
+  - Not-production-ready feature preview of:
+   - "Public only" Portal - no authentication (eg. the portal is fully accessible to anyone who can access it)
+   - Authenticated Portal - Developers must log in, and then they can see what they are entitled to see
+
+### Fixed
+
+- Admin GUI
+  - Remove deprecated orderlist field from Admin GUI Upstreams entity settings
+  - Fix issue where Admin GUI would break when running Kong in a custom prefix
+  - Fix issue where Healthchecks had a field typed as number instead of string.
+  - Fix issue where Healthchecks form had incorrect default values.
+  - Fix issue where table row text was overflowing and expanding the page.
+  - Fix issue where notification bar in mobile view could have text overflow beyond the container.
+  - Fix issue where deleting multiple entities in a list would cause the delete modal to not show.
+  - Fix issue where cards on the dashboard were not evenly sized and spaced.
+  - Fix issue where cards on the dashboard in certain widths could have text overflow beyond their container.
+  - Fix issue where Array's on Plugin Entities were not being processed and sent to the Admin API.
+  - Fix issue where Models were improperly handled when not updated and not sending default values properly.
+  - Fix issue where Plugin lists were not displaying config object.
+  - Fix issue where Kong was not processing SSL configuration for Admin GUI
+- OpenID Connect plugin:
+  - Fixed anonymous consumer mapping
+- Vitals
+  - Correct the stats returned in the "metadata" attribute of the /vitals/consumers/:consumer_id/* endpoints
+  - Correct a problem where workers get out of sync when adding their data to cache
+  - Correct inconsistencies in chart axes when toggling between views or when Kong has no traffic
+
+- Proxy Cache
+  - Fix issue that prevented cached requests from showing up in Vitals or Total Requests graphs
+
 ## 0.30 - 2018/01/22
 
 ### Changed

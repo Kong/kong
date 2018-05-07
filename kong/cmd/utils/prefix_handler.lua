@@ -33,6 +33,16 @@ local function gen_default_ssl_cert(kong_config, pair_type)
     ssl_cert_key = kong_config.admin_gui_ssl_cert_key_default
     ssl_cert_csr = kong_config.admin_gui_ssl_cert_csr_default
 
+  elseif pair_type == "portal_api" then
+    ssl_cert = kong_config.portal_api_ssl_cert_default
+    ssl_cert_key = kong_config.portal_api_ssl_cert_key_default
+    ssl_cert_csr = kong_config.portal_api_ssl_cert_csr_default
+
+  elseif pair_type == "portal_gui" then
+    ssl_cert = kong_config.portal_gui_ssl_cert_default
+    ssl_cert_key = kong_config.portal_gui_ssl_cert_key_default
+    ssl_cert_csr = kong_config.portal_gui_ssl_cert_csr_default
+
   elseif pair_type == "default" then
     ssl_cert = kong_config.ssl_cert_default
     ssl_cert_key = kong_config.ssl_cert_key_default
@@ -82,7 +92,7 @@ local function get_ulimit()
   end
 end
 
-local function gather_system_infos(compile_env)
+local function gather_system_infos()
   local infos = {}
 
   local ulimit, err = get_ulimit()
@@ -119,11 +129,11 @@ local function compile_conf(kong_config, conf_template)
   compile_env = pl_tablex.merge(compile_env, kong_config, true) -- union
   compile_env.dns_resolver = table.concat(compile_env.dns_resolver, " ")
 
-  compile_env.http2 = kong_config.http2 and " http2" or ""
-  compile_env.admin_http2 = kong_config.admin_http2 and " http2" or ""
-  compile_env.proxy_protocol = kong_config.real_ip_header == "proxy_protocol" and " proxy_protocol" or ""
+  local post_template, err = pl_template.substitute(conf_template, compile_env)
+  if not post_template then
+    return nil, "failed to compile nginx config template: " .. err
+  end
 
-  local post_template = pl_template.substitute(conf_template, compile_env)
   return string.gsub(post_template, "(${%b{}})", function(w)
     local name = w:sub(4, -3)
     return compile_env[name:lower()] or ""
@@ -210,8 +220,23 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
     end
   end
 
+  -- Portal API Logs
+  local log_files = {
+    kong_config.nginx_portal_api_acc_logs,
+    kong_config.nginx_portal_api_err_logs,
+  }
+  for _, log_file in ipairs(log_files) do
+    if not pl_path.exists(log_file) then
+      local ok, err = pl_file.write(log_file, "")
+      if not ok then
+        return nil, err
+      end
+    end
+  end
+
   -- generate default SSL certs if needed
-  if kong_config.ssl and not kong_config.ssl_cert and not kong_config.ssl_cert_key then
+  if kong_config.proxy_ssl_enabled and not kong_config.ssl_cert and
+     not kong_config.ssl_cert_key then
     log.verbose("SSL enabled, no custom certificate set: using default certificate")
     local ok, err = gen_default_ssl_cert(kong_config, "default")
     if not ok then
@@ -220,7 +245,8 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
     kong_config.ssl_cert = kong_config.ssl_cert_default
     kong_config.ssl_cert_key = kong_config.ssl_cert_key_default
   end
-  if kong_config.admin_ssl and not kong_config.admin_ssl_cert and not kong_config.admin_ssl_cert_key then
+  if kong_config.admin_ssl_enabled and not kong_config.admin_ssl_cert and
+     not kong_config.admin_ssl_cert_key then
     log.verbose("Admin SSL enabled, no custom certificate set: using default certificate")
     local ok, err = gen_default_ssl_cert(kong_config, "admin")
     if not ok then
@@ -229,10 +255,9 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
     kong_config.admin_ssl_cert = kong_config.admin_ssl_cert_default
     kong_config.admin_ssl_cert_key = kong_config.admin_ssl_cert_key_default
   end
-  if kong_config.admin_gui_ssl and not kong_config.admin_gui_ssl_cert and
+  if kong_config.admin_gui_ssl_enabled and not kong_config.admin_gui_ssl_cert and
     not kong_config.admin_gui_ssl_cert_key
   then
-
     log.verbose("Admin GUI SSL enabled, no custom certificate set: " ..
                 "using default certificate")
     local ok, err = gen_default_ssl_cert(kong_config, "admin_gui")
@@ -241,6 +266,33 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
     end
     kong_config.admin_gui_ssl_cert = kong_config.admin_gui_ssl_cert_default
     kong_config.admin_gui_ssl_cert_key = kong_config.admin_gui_ssl_cert_key_default
+  end
+
+  -- Developer Portal GUI & API SSL Certificate Handling
+  if kong_config.portal_gui_ssl_enabled and not kong_config.portal_gui_ssl_cert and
+    not kong_config.portal_gui_ssl_cert_key
+  then
+    log.verbose("Developer Portal GUI SSL enabled, no custom certificate set: " ..
+                "using default certificate")
+    local ok, err = gen_default_ssl_cert(kong_config, "portal_gui")
+    if not ok then
+      return nil, err
+    end
+    kong_config.portal_gui_ssl_cert = kong_config.portal_gui_ssl_cert_default
+    kong_config.portal_gui_ssl_cert_key = kong_config.portal_gui_ssl_cert_key_default
+  end
+
+  if kong_config.portal_api_ssl_enabled and not kong_config.portal_api_ssl_cert and
+    not kong_config.portal_api_ssl_cert_key
+  then
+    log.verbose("Developer Portal API SSL enabled, no custom certificate set: " ..
+                "using default certificate")
+    local ok, err = gen_default_ssl_cert(kong_config, "portal_api")
+    if not ok then
+      return nil, err
+    end
+    kong_config.portal_api_ssl_cert = kong_config.portal_api_ssl_cert_default
+    kong_config.portal_api_ssl_cert_key = kong_config.portal_api_ssl_cert_key_default
   end
 
 
@@ -289,7 +341,12 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
 
   for k, v in pairs(kong_config) do
     if type(v) == "table" then
-      v = table.concat(v, ",")
+      if (getmetatable(v) or {}).__tostring then
+        -- the 'tostring' meta-method knows how to serialize
+        v = tostring(v)
+      else
+        v = table.concat(v, ",")
+      end
     end
     if v ~= "" then
       buf[#buf+1] = k .. " = " .. tostring(v)
@@ -302,8 +359,14 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
     return nil, err
   end
 
-  -- prep the admin gui html based on our config env
-  ee.prepare_admin(kong_config)
+  -- setup Kong Enterprise interfaces based on current configuration
+  if kong_config.admin_gui_listeners then
+    ee.prepare_admin(kong_config)
+  end
+
+  if kong_config.portal then
+    ee.prepare_portal(kong_config)
+  end
 
   return true
 end

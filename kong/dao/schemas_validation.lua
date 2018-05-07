@@ -122,6 +122,10 @@ function _M.validate_entity(tbl, schema, options)
           end
         end
 
+        if t[column] ~= nil and v.overwrite ~= nil then
+          errors = utils.add_error(errors, error_prefix .. column, column .. " cannot be set in your environment")
+        end
+
         -- [TYPE] Check if type is valid. Booleans and Numbers as strings are accepted and converted
         if t[column] ~= nil and t[column] ~= ngx.null and v.type ~= nil then
           local is_valid_type
@@ -147,6 +151,7 @@ function _M.validate_entity(tbl, schema, options)
           if not is_valid_type and POSSIBLE_TYPES[v.type] then
             errors = utils.add_error(errors, error_prefix .. column,
                     string.format("%s is not %s %s", column, v.type == "array" and "an" or "a", v.type))
+            goto continue
           end
         end
 
@@ -200,6 +205,8 @@ function _M.validate_entity(tbl, schema, options)
             if t[column] == nil then
               for sub_field_k, sub_field in pairs(sub_schema.fields) do
                 if sub_field.default ~= nil then -- Sub-value has a default, be polite and pre-assign the sub-value
+                  t[column] = {}
+                elseif sub_field.overwrite ~= nil then
                   t[column] = {}
                 elseif sub_field.required then -- Only check required if field doesn't have a default and dao_insert_value
                   errors = utils.add_error(errors, error_prefix .. column, column .. "." .. sub_field_k .. " is required")
@@ -258,6 +265,20 @@ function _M.validate_entity(tbl, schema, options)
             end
           end
         end
+
+        ::continue::
+      end
+
+      for column, v in pairs(schema.fields) do
+        if v.overwrite ~= nil then
+          if type(v.overwrite) == "function" then
+            t[column] = v.overwrite()
+          elseif v.overwrite == ngx.null then
+            t[column] = nil
+          else
+           t[column] = utils.deep_copy(v.overwrite)
+          end
+        end
       end
 
       -- Check for unexpected fields in the entity
@@ -274,9 +295,19 @@ function _M.validate_entity(tbl, schema, options)
       end
 
       if errors == nil and type(schema.self_check) == "function" then
+        local nil_c = {}
+        for column in pairs(schema.fields) do
+          if t[column] == ngx.null then
+            t[column] = nil
+            table.insert(nil_c, column)
+          end
+        end
         local ok, err = schema.self_check(schema, t, options.dao, options.update)
         if ok == false then
           return false, nil, err
+        end
+        for _, column in ipairs(nil_c) do
+          t[column] = ngx.null
         end
       end
     end
