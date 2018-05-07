@@ -474,7 +474,6 @@ function _M.resolve_ws_scope(api)
   local ws_scope_key = format("apis_ws_resolution:%s", api.id)
   local workspaces, err = singletons.cache:get(ws_scope_key, nil,
                                                load_workspace_scope, api)
-
   if err then
     return nil, err
   end

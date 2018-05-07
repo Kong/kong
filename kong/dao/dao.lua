@@ -225,7 +225,7 @@ function DAO:entity_cache_key(entity)
     keys[i] = entity[cache_key[i]]
   end
 
-  return self:cache_key_ws(workspaces.get_workspaces()[1], utils.unpack(keys))
+  return self:cache_key_ws(nil, utils.unpack(keys))
 end
 
 --- Insert a row.
