@@ -740,6 +740,13 @@ return {
       DROP TABLE ssl_certificates;
       DROP TABLE ssl_servers_names;
     ]],
-    down = nil
+    down = nil,
+  },
+  {
+    name = "2018-03-16-160000_index_consumers",
+    up = [[
+      CREATE INDEX IF NOT EXISTS ON consumers(custom_id);
+      CREATE INDEX IF NOT EXISTS ON consumers(username);
+    ]]
   }
 }

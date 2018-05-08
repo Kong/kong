@@ -5,8 +5,10 @@ local utils = require "kong.tools.utils"
 describe("Plugin: acl (API)", function()
   local consumer, admin_client
   local dao
+  local bp
+  local _
   setup(function()
-    dao = select(3, helpers.get_db_utils())
+    bp, _, dao = helpers.get_db_utils()
 
     assert(helpers.start_kong())
     admin_client = helpers.admin_client()
@@ -19,9 +21,9 @@ describe("Plugin: acl (API)", function()
   describe("/consumers/:consumer/acls/", function()
     setup(function()
       dao:truncate_tables()
-      consumer = assert(dao.consumers:insert {
+      consumer = bp.consumers:insert {
         username = "bob"
-      })
+      }
     end)
     after_each(function()
       dao:truncate_table("acls")
@@ -154,9 +156,9 @@ describe("Plugin: acl (API)", function()
         assert.equal(acl.id, json.id)
       end)
       it("retrieves ACL by id only if the ACL belongs to the specified consumer", function()
-        assert(dao.consumers:insert {
+        bp.consumers:insert {
           username = "alice"
-        })
+        }
 
         local res = assert(admin_client:send {
           method = "GET",
@@ -285,9 +287,9 @@ describe("Plugin: acl (API)", function()
           })
         end
 
-        consumer2 = assert(dao.consumers:insert {
+        consumer2 = bp.consumers:insert {
           username = "bob-the-buidler"
-        })
+        }
 
         for i = 1, 3 do
           assert(dao.acls:insert {

@@ -1,7 +1,7 @@
 local helpers          = require "spec.02-integration.03-dao.helpers"
 local apis_schema      = require "kong.dao.schemas.apis"
 local kong_dao_factory = require "kong.dao.factory"
-
+local DB               = require "kong.db"
 
 local mock_ipc_module = {
   post_local = function(source, event, data)
@@ -23,7 +23,7 @@ describe("DAO propagates CRUD events with DB: #" .. kong_conf.database, function
   before_each(function()
     mock_ipc = mock(mock_ipc_module)
 
-    dao = assert(kong_dao_factory.new(kong_conf))
+    dao = assert(kong_dao_factory.new(kong_conf, DB.new(kong_conf)))
     dao:set_events_handler(mock_ipc)
     dao:truncate_tables()
   end)

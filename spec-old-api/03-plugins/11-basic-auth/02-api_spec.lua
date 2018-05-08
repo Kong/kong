@@ -4,10 +4,12 @@ local utils = require "kong.tools.utils"
 
 describe("Plugin: basic-auth (API)", function()
   local consumer, admin_client
+  local bp
+  local _
   local dao
 
   setup(function()
-    dao = select(3, helpers.get_db_utils())
+    bp, _, dao = helpers.get_db_utils()
 
     assert(helpers.start_kong())
     admin_client = helpers.admin_client()
@@ -19,9 +21,9 @@ describe("Plugin: basic-auth (API)", function()
 
   describe("/consumers/:consumer/basic-auth/", function()
     setup(function()
-      consumer = assert(dao.consumers:insert {
+      consumer = bp.consumers:insert {
         username = "bob"
-      })
+      }
     end)
     after_each(function()
       dao:truncate_table("basicauth_credentials")
@@ -206,9 +208,9 @@ describe("Plugin: basic-auth (API)", function()
         assert.equal(credential.id, json.id)
       end)
       it("retrieves credential by id only if the credential belongs to the specified consumer", function()
-        assert(dao.consumers:insert {
+        bp.consumers:insert {
           username = "alice"
-        })
+        }
 
         local res = assert(admin_client:send {
           method = "GET",
@@ -313,9 +315,9 @@ describe("Plugin: basic-auth (API)", function()
           consumer_id = consumer.id,
           username = "bob"
         })
-        consumer2 = assert(dao.consumers:insert {
+        consumer2 = bp.consumers:insert {
           username = "bob-the-buidler"
-        })
+        }
         assert(dao.basicauth_credentials:insert {
           consumer_id = consumer2.id,
           username = "bob-the-buidler"

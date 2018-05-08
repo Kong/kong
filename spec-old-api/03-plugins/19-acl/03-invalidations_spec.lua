@@ -4,13 +4,15 @@ describe("Plugin: ACL (invalidations)", function()
   local admin_client, proxy_client
   local consumer1, acl1
   local dao
+  local bp
+  local _
 
   before_each(function()
-    dao = select(3, helpers.get_db_utils())
+    bp, _, dao = helpers.get_db_utils()
 
-    consumer1 = assert(dao.consumers:insert {
+    consumer1 = bp.consumers:insert {
       username = "consumer1"
-    })
+    }
     assert(dao.keyauth_credentials:insert {
       key = "apikey123",
       consumer_id = consumer1.id
@@ -24,9 +26,9 @@ describe("Plugin: ACL (invalidations)", function()
       consumer_id = consumer1.id
     })
 
-    local consumer2 = assert(dao.consumers:insert {
+    local consumer2 = bp.consumers:insert {
       username = "consumer2"
-    })
+    }
     assert(dao.keyauth_credentials:insert {
       key = "apikey124",
       consumer_id = consumer2.id

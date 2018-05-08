@@ -4,10 +4,12 @@ local utils = require "kong.tools.utils"
 
 describe("Plugin: hmac-auth (API)", function()
   local client, credential, consumer
+  local bp
+  local db
   local dao
 
   setup(function()
-    dao = select(3, helpers.get_db_utils())
+    bp, db, dao = helpers.get_db_utils()
 
     helpers.prepare_prefix()
     assert(helpers.start_kong())
@@ -24,10 +26,11 @@ describe("Plugin: hmac-auth (API)", function()
     describe("POST", function()
       before_each(function()
         dao:truncate_tables()
-        consumer = assert(dao.consumers:insert {
+        db:truncate()
+        consumer = bp.consumers:insert {
           username = "bob",
           custom_id = "1234"
-        })
+        }
       end)
       it("[SUCCESS] should create a hmac-auth credential", function()
         local res = assert(client:send {
@@ -211,9 +214,9 @@ describe("Plugin: hmac-auth (API)", function()
           consumer_id = consumer.id,
           username = "bob"
         })
-        consumer2 = assert(dao.consumers:insert {
+        consumer2 = bp.consumers:insert {
           username = "bob-the-buidler"
-        })
+        }
         assert(dao.hmacauth_credentials:insert {
           consumer_id = consumer2.id,
           username = "bob-the-buidler"

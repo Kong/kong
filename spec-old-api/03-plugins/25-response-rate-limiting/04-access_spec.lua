@@ -53,19 +53,19 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       helpers.dao:drop_schema()
       helpers.run_migrations()
 
-      local consumer1 = assert(helpers.dao.consumers:insert {custom_id = "provider_123"})
+      local consumer1 = assert(helpers.db.consumers:insert {custom_id = "provider_123"})
       assert(helpers.dao.keyauth_credentials:insert {
         key = "apikey123",
         consumer_id = consumer1.id
       })
 
-      local consumer2 = assert(helpers.dao.consumers:insert {custom_id = "provider_124"})
+      local consumer2 = assert(helpers.db.consumers:insert {custom_id = "provider_124"})
       assert(helpers.dao.keyauth_credentials:insert {
         key = "apikey124",
         consumer_id = consumer2.id
       })
 
-      local consumer3 = assert(helpers.dao.consumers:insert {custom_id = "provider_125"})
+      local consumer3 = assert(helpers.db.consumers:insert {custom_id = "provider_125"})
       assert(helpers.dao.keyauth_credentials:insert {
         key = "apikey125",
         consumer_id = consumer3.id

@@ -18,6 +18,7 @@ local setmetatable = setmetatable
 -- to schemas and entities since schemas will also be used
 -- independently from the DB module (Admin API for GUI)
 local CORE_ENTITIES = {
+  "consumers",
   "routes",
   "services",
   "certificates",

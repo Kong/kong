@@ -4,9 +4,11 @@ local cjson = require "cjson"
 describe("Plugin: basic-auth (invalidations)", function()
   local admin_client, proxy_client
   local dao
+  local bp
+  local _
 
   before_each(function()
-    dao = select(3, helpers.get_db_utils())
+    bp, _, dao = helpers.get_db_utils()
 
     local api = assert(dao.apis:insert {
       name         = "api-1",
@@ -18,9 +20,9 @@ describe("Plugin: basic-auth (invalidations)", function()
       api_id = api.id,
     })
 
-    local consumer = assert(dao.consumers:insert {
+    local consumer = bp.consumers:insert {
       username = "bob",
-    })
+    }
     assert(dao.basicauth_credentials:insert {
       username    = "bob",
       password    = "kong",

@@ -94,6 +94,7 @@ end
 local conf = assert(conf_loader(TEST_CONF_PATH))
 local db = assert(DB.new(conf))
 local dao = assert(DAOFactory.new(conf, db))
+db.old_dao = dao
 local blueprints = assert(Blueprints.new(dao, db))
 -- make sure migrations are up-to-date
 
@@ -147,6 +148,8 @@ local function get_db_utils(strategy, no_truncate)
   if not no_truncate then
     assert(db:truncate())
   end
+
+  db.old_dao = dao
 
   -- blueprints
   local bp = assert(Blueprints.new(dao, db))

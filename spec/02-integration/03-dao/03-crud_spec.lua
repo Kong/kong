@@ -21,6 +21,7 @@ assert:register("assertion", "raw_table", raw_table, "assertion.raw_table.positi
 
 local helpers = require "spec.02-integration.03-dao.helpers"
 local Factory = require "kong.dao.factory"
+local DB = require "kong.db"
 local version = require "version"
 
 local api_tbl = {
@@ -35,7 +36,7 @@ helpers.for_each_dao(function(kong_config)
   describe("Model (CRUD) with DB: #" .. kong_config.database, function()
     local factory, apis, oauth2_credentials
     setup(function()
-      factory = assert(Factory.new(kong_config))
+      factory = assert(Factory.new(kong_config, DB.new(kong_config)))
       apis = factory.apis
 
       -- DAO used for testing arrays
@@ -829,7 +830,7 @@ helpers.for_each_dao(function(kong_config)
         kong_config.cassandra_timeout = 1000
 
         assert.error_matches(function()
-          local fact = assert(Factory.new(kong_config))
+          local fact = assert(Factory.new(kong_config, DB.new(kong_config)))
           assert(fact.apis:find_all())
         end, "[" .. kong_config.database .. " error]", nil, true)
       end)

@@ -9,7 +9,6 @@ local fmt = string.format
 
 local CORE_MODELS = {
   "apis",
-  "consumers",
   "plugins",
   "upstreams",
   "targets",
@@ -42,7 +41,7 @@ local function build_constraints(schemas)
         if f_entity ~= nil and f_field ~= nil then
           local f_schema = schemas[f_entity]
           constraints.foreign[col] = {
-            table = f_schema.table,
+            table = f_schema and f_schema.table or f_entity,
             schema = f_schema,
             col = f_field,
             f_entity = f_entity
@@ -67,6 +66,12 @@ local function load_daos(self, schemas, constraints)
     if constraints[m_name] ~= nil and constraints[m_name].foreign ~= nil then
       for col, f_constraint in pairs(constraints[m_name].foreign) do
         local parent_name = f_constraint.f_entity
+
+        -- New-DAO parents may not have a `constraints` entry yet
+        if not constraints[parent_name] then
+          constraints[parent_name] = {}
+        end
+
         local parent_constraints = constraints[parent_name]
         if parent_constraints.cascade == nil then
           parent_constraints.cascade = {}
@@ -87,6 +92,93 @@ local function load_daos(self, schemas, constraints)
                             constraints[m_name])
   end
 end
+
+
+local function create_legacy_wrappers(self, constraints)
+  local new_db = self.db.new_db
+  local dao_wrappers = {}
+  for name, new_dao in pairs(new_db.daos) do
+    dao_wrappers[name] = {
+
+      constraints = constraints[name],
+
+      cache_key = function(_, a1, a2, a3, a4, a5)
+        return new_dao:cache_key(a1, a2, a3, a4, a5)
+      end,
+
+      entity_cache_key = function(_, entity)
+        log.debug(debug.traceback("[legacy wrapper] using legacy wrapper"))
+        log.err("[legacy wrapper] entity_cache_key not implemented")
+        return nil
+      end,
+
+      insert = function(_, tbl, opts)
+        log.debug(debug.traceback("[legacy wrapper] using legacy wrapper"))
+        if opts then
+          if opts.ttl then
+            log.warn("[legacy wrapper] ttl is ignored")
+          end
+          if opts.quiet then
+            log.warn("[legacy wrapper] quiet is ignored, event always sent")
+          end
+        end
+        return new_dao:insert(tbl)
+      end,
+
+      find = function(_, args)
+        log.debug(debug.traceback("[legacy wrapper] using legacy wrapper"))
+        return new_dao:select(args)
+      end,
+
+      find_all = function(_)
+        log.debug(debug.traceback("[legacy wrapper] using legacy wrapper"))
+        return nil, "[legacy wrapper] find_all not implemented"
+      end,
+
+      find_page = function(_, tbl, page_offset, page_size)
+        log.debug(debug.traceback("[legacy wrapper] using legacy wrapper"))
+        if tbl and next(tbl) then
+          return nil, "[legacy wrapper] filtering is not supported"
+        end
+        return new_dao:page(page_size, page_offset)
+      end,
+
+      update = function(_, tbl, filter_keys, opts)
+        log.debug(debug.traceback("[legacy wrapper] using legacy wrapper"))
+        if opts then
+          if opts.full then
+            log.warn("[legacy wrapper] full is ignored")
+          end
+          if opts.quiet then
+            log.warn("[legacy wrapper] quiet is ignored, event always sent")
+          end
+        end
+        return new_dao:update(filter_keys, tbl)
+      end,
+
+      delete = function(_, tbl, opts)
+        log.debug(debug.traceback("[legacy wrapper] using legacy wrapper"))
+        if opts then
+          if opts.quiet then
+            log.warn("[legacy wrapper] quiet is ignored, event always sent")
+          end
+        end
+        return new_dao:delete(tbl)
+      end,
+
+      truncate = function(_)
+        log.debug(debug.traceback("[legacy wrapper] using legacy wrapper"))
+        log.err("[legacy wrapper] truncate not implemented")
+        return nil
+      end,
+    }
+  end
+
+  -- Make wrappers accessible by keying daos, but do not return
+  -- them when iterating self.daos with pairs()
+  setmetatable(self.daos, { __index = dao_wrappers })
+end
+
 
 function _M.new(kong_config, new_db)
   local self = {
@@ -128,6 +220,8 @@ function _M.new(kong_config, new_db)
 
   local constraints = build_constraints(schemas)
   load_daos(self, schemas, constraints)
+
+  create_legacy_wrappers(self, constraints)
 
   return setmetatable(self, _M)
 end
