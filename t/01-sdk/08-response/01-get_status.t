@@ -10,29 +10,14 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: upstream.response.get_status() returns a number
---- http_config
-    server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
-
-        location / {
-            return 200;
-        }
-    }
+=== TEST 1: response.get_status() returns a number
 --- config
     location /t {
-        proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
-
-        header_filter_by_lua_block {
-            ngx.header.content_length = nil
-        }
-
-        body_filter_by_lua_block {
+        content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            ngx.arg[1] = "type: " .. type(sdk.upstream.response.get_status())
-            ngx.arg[2] = true
+            ngx.print("type: " .. type(sdk.response.get_status()))
         }
     }
 --- request
@@ -44,7 +29,7 @@ type: number
 
 
 
-=== TEST 2: upstream.response.get_status() returns 200
+=== TEST 2: response.get_status() returns 200 from upstream
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -65,7 +50,7 @@ type: number
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            ngx.arg[1] = "status: " .. sdk.upstream.response.get_status()
+            ngx.arg[1] = "status: " .. sdk.response.get_status()
             ngx.arg[2] = true
         }
     }
@@ -78,7 +63,7 @@ status: 200
 
 
 
-=== TEST 3: upstream.response.get_status() returns 404
+=== TEST 3: response.get_status() returns 404 from upstream
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -99,7 +84,7 @@ status: 200
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            ngx.arg[1] = "status: " .. sdk.upstream.response.get_status()
+            ngx.arg[1] = "status: " .. sdk.response.get_status()
             ngx.arg[2] = true
         }
     }
@@ -112,39 +97,70 @@ status: 404
 [error]
 
 
+set_by_lua*, rewrite_by_lua*, access_by_lua*, content_by_lua*, header_filter_by_lua*, body_filter_by_lua*, log_by_lua*
 
-=== TEST 4: upstream.response.get_status() upstream status only
+
+
+=== TEST 4: response.get_status() returns last status code set
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location / {
-            return 404;
+            content_by_lua_block {
+                ngx.status = 203
+            }
         }
     }
 --- config
     location /t {
+        rewrite_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            assert(sdk.response.get_status() == 0, "0 ~=" .. tostring(sdk.response.get_status()))
+            ngx.status = 201
+            assert(sdk.response.get_status() == 201, "201 ~=" .. tostring(sdk.response.get_status()))
+        }
+
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            assert(sdk.response.get_status() == 201, "201 ~=" .. tostring(sdk.response.get_status()))
+            ngx.status = 202
+            assert(sdk.response.get_status() == 202, "202 ~=" .. tostring(sdk.response.get_status()))
+        }
+
         proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         header_filter_by_lua_block {
             ngx.header.content_length = nil
-            ngx.status = 200
+
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            assert(sdk.response.get_status() == 203, "203 ~=" .. tostring(sdk.response.get_status()))
+            ngx.status = 204
+            assert(sdk.response.get_status() == 204, "204 ~=" .. tostring(sdk.response.get_status()))
         }
 
         body_filter_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            ngx.arg[1] = "upstream status: " .. sdk.upstream.response.get_status() .. "\n" ..
-                         "response status: " .. ngx.status
-            ngx.arg[2] = true
+            assert(sdk.response.get_status() == 204, "204 ~=" .. tostring(sdk.response.get_status()))
+        }
+
+        log_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            assert(sdk.response.get_status() == 204, "204 ~=" .. tostring(sdk.response.get_status()))
         }
     }
 --- request
 GET /t
---- error_code: 200
---- response_body chop
-upstream status: 404
-response status: 200
+--- error_code: 204
 --- no_error_log
 [error]
