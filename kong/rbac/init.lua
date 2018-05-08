@@ -321,7 +321,7 @@ end
 
 function _M.narrow_readable_entities(db_table_name, entities)
   local filtered_rows = {}
-  if not is_system_table(db_table_name) then
+  if not is_system_table(db_table_name) and ngx.ctx.admin_api_request then
     for i, v in ipairs(entities) do
       local valid = _M.validate_entity_operation(v)
       if valid then
@@ -336,6 +336,12 @@ end
 
 
 function _M.validate_entity_operation(entity)
+  -- rbac only applies to the admin api - ie, proxy side
+  -- requests are not to be considered
+  if not ngx.ctx.admin_api_request then
+    return true
+  end
+
   if not singletons.configuration or not singletons.configuration.rbac.entity then
     return true
   end

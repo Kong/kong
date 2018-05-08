@@ -156,6 +156,7 @@ app:before_filter(function(self)
   do
     -- in case of endpoint with missing `/`, this block is executed twice.
     -- So previous workspace should be dropped
+    ngx.ctx.admin_api_request = true
     ngx.ctx.workspaces = nil
     local workspaces = workspaces.get_req_workspace(self.params)
     if not workspaces then
