@@ -450,7 +450,7 @@ return {
     end,
   },
   {
-    name = "2018-04-20-160400_dev_portal_consumer_types",
+    name = "2018-04-20-094800_dev_portal_consumer_types_statuses",
     up = [[
       CREATE TABLE IF NOT EXISTS consumer_statuses (
         id               int PRIMARY KEY,
@@ -466,14 +466,6 @@ return {
         created_at       timestamp
       );
 
-      ALTER TABLE consumers ADD type int;
-      ALTER TABLE consumers ADD email text;
-      ALTER TABLE consumers ADD status int;
-      ALTER TABLE consumers ADD meta text;
-
-      CREATE INDEX IF NOT EXISTS consumers_type_idx ON consumers(type);
-      CREATE INDEX IF NOT EXISTS consumers_status_idx ON consumers(status);
-
       CREATE INDEX IF NOT EXISTS consumer_statuses_names_idx ON consumer_statuses(name);
       CREATE INDEX IF NOT EXISTS consumer_types_name_idx ON consumer_types(name);
     ]],
@@ -483,10 +475,6 @@ return {
       DROP TABLE consumer_types;
       DROP INDEX consumer_statuses_names_idx;
       DROP INDEX consumer_types_name_idx;
-      ALTER TABLE consumers DROP type;
-      ALTER TABLE consumers DROP email;
-      ALTER TABLE consumers DROP status;
-      ALTER TABLE consumers DROP meta;
     ]]
   },
   {
@@ -500,6 +488,25 @@ return {
     down = [[
       DELETE FROM consumer_statuses;
       DELETE FROM consumer_types;
+    ]]
+  },
+  {
+    name = "2018-05-08-145300_consumer_dev_portal_columns",
+    up = [[
+      ALTER TABLE consumers ADD type int;
+      ALTER TABLE consumers ADD email text;
+      ALTER TABLE consumers ADD status int;
+      ALTER TABLE consumers ADD meta text;
+
+      CREATE INDEX IF NOT EXISTS consumers_type_idx ON consumers(type);
+      CREATE INDEX IF NOT EXISTS consumers_status_idx ON consumers(status);
+    ]],
+
+    down = [[
+      ALTER TABLE consumers DROP type;
+      ALTER TABLE consumers DROP email;
+      ALTER TABLE consumers DROP status;
+      ALTER TABLE consumers DROP meta;
     ]]
   },
 }
