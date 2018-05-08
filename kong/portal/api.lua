@@ -147,7 +147,9 @@ return {
       end
 
       crud.post(credential_data, collection, function(credential)
-        crud.portal_crud.insert_credential(credential, self.portal_auth)
+        crud.portal_crud.insert_credential(credential,
+                                           self.portal_auth,
+                                           enums.CONSUMERS.TYPE.DEVELOPER)
         return {
           credential = credential,
           consumer = consumer
