@@ -176,6 +176,7 @@ build = {
     ["kong.portal.dao_helpers"] = "kong/portal/dao_helpers.lua",
     ["kong.portal.crud_helpers"] = "kong/portal/crud_helpers.lua",
     ["kong.portal.utils"] = "kong/portal/utils.lua",
+    ["kong.portal.migrations.01_initial_files"] = "kong/portal/migrations/01_initial_files.lua",
 
     ["kong.vitals"] = "kong/vitals/init.lua",
     ["kong.vitals.cassandra.strategy"] = "kong/vitals/cassandra/strategy.lua",
@@ -280,6 +281,7 @@ build = {
     ["kong.plugins.request-transformer.handler"] = "kong/plugins/request-transformer/handler.lua",
     ["kong.plugins.request-transformer.access"] = "kong/plugins/request-transformer/access.lua",
     ["kong.plugins.request-transformer.schema"] = "kong/plugins/request-transformer/schema.lua",
+    ["kong.plugins.request-transformer.feature_flags.limit_body"] = "kong/plugins/request-transformer/feature_flags/limit_body.lua",
 
     ["kong.plugins.response-transformer.migrations.cassandra"] = "kong/plugins/response-transformer/migrations/cassandra.lua",
     ["kong.plugins.response-transformer.migrations.postgres"] = "kong/plugins/response-transformer/migrations/postgres.lua",
@@ -287,6 +289,7 @@ build = {
     ["kong.plugins.response-transformer.body_transformer"] = "kong/plugins/response-transformer/body_transformer.lua",
     ["kong.plugins.response-transformer.header_transformer"] = "kong/plugins/response-transformer/header_transformer.lua",
     ["kong.plugins.response-transformer.schema"] = "kong/plugins/response-transformer/schema.lua",
+    ["kong.plugins.response-transformer.feature_flags.limit_body"] = "kong/plugins/response-transformer/feature_flags/limit_body.lua",
 
     ["kong.plugins.cors.handler"] = "kong/plugins/cors/handler.lua",
     ["kong.plugins.cors.schema"] = "kong/plugins/cors/schema.lua",

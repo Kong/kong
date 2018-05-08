@@ -21,29 +21,47 @@ local auth_plugins = {
 }
 
 
+local function validate_developer_status(helpers, consumer)
+  local status = consumer.status
+
+  if consumer.id and status ~= enums.CONSUMERS.STATUS.APPROVED then
+    local label = enums.get_key_from_value(enums.CONSUMERS.STATUS, status)
+
+    return helpers.responses.send_HTTP_UNAUTHORIZED({
+      status = status,
+      label  = label
+    })
+  end
+end
+
+
+local function validate_consumer(helpers, consumer_id)
+  local consumer_id = ngx.req.get_headers()[constants.HEADERS.CONSUMER_ID]
+
+  if singletons.configuration.portal_auth and not consumer_id then
+    return helpers.responses.send_HTTP_UNAUTHORIZED()
+  end
+
+  return consumer_id
+end
+
+
+local function validate_portal_auth_enabled(helpers)
+  if not singletons.configuration.portal_auth then
+    return helpers.responses.send_HTTP_NOT_FOUND()
+  end
+end
+
+
 return {
   ["/files"] = {
     before = function(self, dao_factory, helpers)
-      local consumer_id = ngx.req.get_headers()[constants.HEADERS.CONSUMER_ID]
-      local portal_auth = singletons.configuration.portal_auth
+      local consumer_id = validate_consumer(helpers)
 
-      if portal_auth and not consumer_id then
-        return helpers.responses.send_HTTP_UNAUTHORIZED()
-      end
-
-      if portal_auth then
+      if consumer_id then
         self.params.email_or_id = consumer_id
         crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
-
-        if self.consumer
-           and self.consumer.status ~= enums.CONSUMERS.STATUS.APPROVED then
-          local status = self.consumer.status
-          local label = enums.CONSUMERS.STATUS_LABELS[status]
-          return helpers.responses.send_HTTP_UNAUTHORIZED({
-            status = status,
-            label  = label
-          })
-        end
+        validate_developer_status(helpers, self.consumer)
       end
     end,
 
@@ -117,7 +135,7 @@ return {
       end
 
       -- omit credential post for oidc
-      if self.portal_auth == 'openid-connect' then
+      if self.portal_auth == "openid-connect" then
         return responses.send_HTTP_CREATED({
           consumer = consumer,
           credential = {}
@@ -162,21 +180,14 @@ return {
 
   ["/config"] = {
     before = function(self, dao_factory, helpers)
-      local consumer_id = ngx.req.get_headers()[constants.HEADERS.CONSUMER_ID]
+      validate_portal_auth_enabled(helpers)
 
-      if singletons.configuration.portal_auth and not consumer_id then
-        return helpers.responses.send_HTTP_UNAUTHORIZED()
-      end
+      local consumer_id = validate_consumer(helpers)
 
       self.params.email_or_id = consumer_id
       crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
 
-      if self.consumer
-         and self.consumer.status ~= enums.CONSUMERS.STATUS.APPROVED then
-        return helpers.responses.send_HTTP_UNAUTHORIZED(
-          "Developer " .. consumer_id .. " not approved"
-        )
-      end
+      validate_developer_status(helpers, self.consumer)
     end,
 
     GET = function(self, dao_factory, helpers)
@@ -211,11 +222,9 @@ return {
 
   ["/developer"] = {
     before = function(self, dao_factory, helpers)
-      local consumer_id = ngx.req.get_headers()[constants.HEADERS.CONSUMER_ID]
+      validate_portal_auth_enabled(helpers)
 
-      if singletons.configuration.portal_auth and not consumer_id then
-        return helpers.responses.send_HTTP_UNAUTHORIZED()
-      end
+      local consumer_id = validate_consumer(helpers)
 
       self.params.email_or_id = consumer_id
       crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
@@ -228,11 +237,9 @@ return {
 
   ["/credentials"] = {
     before = function(self, dao_factory, helpers)
-      local consumer_id = ngx.req.get_headers()[constants.HEADERS.CONSUMER_ID]
+      validate_portal_auth_enabled(helpers)
 
-      if singletons.configuration.portal_auth and not consumer_id then
-        return helpers.responses.send_HTTP_UNAUTHORIZED()
-      end
+      local consumer_id = validate_consumer()
 
       self.portal_auth = singletons.configuration.portal_auth
       self.collection = dao_factory[auth_plugins[self.portal_auth].dao]
@@ -242,11 +249,7 @@ return {
 
       crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
 
-      if not self.consumer.status == enums.CONSUMERS.STATUS.APPROVED then
-        return helpers.responses.send_HTTP_UNAUTHORIZED(
-          "Developer " .. consumer_id .. " not approved"
-        )
-      end
+      validate_developer_status(helpers, self.consumer)
     end,
 
     PATCH = function(self, dao_factory, helpers)
@@ -268,11 +271,9 @@ return {
 
   ["/credentials/:plugin"] = {
     before = function(self, dao_factory, helpers)
-      local consumer_id = ngx.req.get_headers()[constants.HEADERS.CONSUMER_ID]
+      validate_portal_auth_enabled(helpers)
 
-      if singletons.configuration.portal_auth and not consumer_id then
-        helpers.responses.send_HTTP_UNAUTHORIZED()
-      end
+      local consumer_id = validate_consumer()
 
       self.plugin = ngx.unescape_uri(self.params.plugin)
       self.collection = dao_factory[auth_plugins[self.plugin].dao]
@@ -282,12 +283,7 @@ return {
       self.params.email_or_id = consumer_id
 
       crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
-
-      if not self.consumer.status == enums.CONSUMERS.STATUS.APPROVED then
-        return helpers.responses.send_HTTP_UNAUTHORIZED(
-          "Developer " .. consumer_id .. " not approved"
-        )
-      end
+      validate_developer_status(helpers, self.consumer)
     end,
 
     GET = function(self, dao_factory, helpers)
@@ -314,11 +310,9 @@ return {
 
   ["/credentials/:plugin/:credential_id"] = {
     before = function(self, dao_factory, helpers)
-      local consumer_id = ngx.req.get_headers()[constants.HEADERS.CONSUMER_ID]
+      validate_portal_auth_enabled(helpers)
 
-      if singletons.configuration.portal_auth and not consumer_id then
-        helpers.responses.send_HTTP_UNAUTHORIZED()
-      end
+      local consumer_id = validate_consumer()
 
       self.plugin = ngx.unescape_uri(self.params.plugin)
       self.collection = dao_factory[auth_plugins[self.plugin].dao]
@@ -329,11 +323,7 @@ return {
 
       crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
 
-      if not self.consumer.status == enums.CONSUMERS.STATUS.APPROVED then
-        return helpers.responses.send_HTTP_UNAUTHORIZED(
-          "Developer " .. consumer_id .. " not approved"
-        )
-      end
+      validate_developer_status(helpers, self.consumer)
 
       local credentials, err = self.collection:find_all({
         consumer_id = consumer_id,

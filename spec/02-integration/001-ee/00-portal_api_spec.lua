@@ -113,7 +113,7 @@ describe("Developer Portal - Portal API", function()
 
       local consumer_pending = bp.consumers:insert {
         username = "dale",
-        status = enums.CONSUMERS.TYPE.PENDING
+        status = enums.CONSUMERS.STATUS.PENDING
       }
 
       consumer_approved = bp.consumers:insert {
@@ -163,7 +163,9 @@ describe("Developer Portal - Portal API", function()
           }
         })
 
-        assert.res_status(401, res)
+        local body = assert.res_status(401, res)
+        local json = cjson.decode(body)
+        assert.same({ status = 1, label = "PENDING" }, json)
       end)
 
       it("retrieves files with an approved consumer", function()
@@ -329,7 +331,7 @@ describe("Developer Portal - Portal API", function()
     end)
   end)
 
-  describe("z/credentials/:plugin", function()
+  describe("/credentials/:plugin", function()
     local credential
     local credential_key_auth
 
