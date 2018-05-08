@@ -12,9 +12,7 @@ return {
     end,
 
     PUT = function(self, dao_factory, helpers)
-      crud.put(self.params, dao_factory.jwt_secrets, function(credential)
-        crud.portal_crud.update_credential(credential)
-      end)
+      crud.put(self.params, dao_factory.jwt_secrets)
     end,
 
     POST = function(self, dao_factory, helpers)
