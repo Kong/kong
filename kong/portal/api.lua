@@ -15,9 +15,9 @@ local auth_plugins = {
   ["basic-auth"] = { name = "basic-auth", dao = "basicauth_credentials", },
   ["acls"] =       { name = "acl",        dao = "acls" },
   ["oauth2"] =     { name = "oauth2",     dao = "oauth2_credentials" },
-  ["hmac-auth"] =  { name = "hmac",       dao = "hmacauth_credentials" },
-  ["jwt"] =        { name= "jwt",         dao = "jwt_secrets" },
-  ["key-auth"] =   { name="key-auth",     dao ="keyauth_credentials" },
+  ["hmac-auth"] =  { name = "hmac-auth",  dao = "hmacauth_credentials" },
+  ["jwt"] =        { name = "jwt",        dao = "jwt_secrets" },
+  ["key-auth"] =   { name = "key-auth",   dao = "keyauth_credentials" },
 }
 
 
