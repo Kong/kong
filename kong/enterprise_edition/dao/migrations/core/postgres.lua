@@ -606,12 +606,12 @@ return {
     name = "2018-05-03-120000_credentials_master_table",
     up = [[
       CREATE TABLE IF NOT EXISTS credentials (
-        id             uuid PRIMARY KEY,
-        consumer_id    uuid REFERENCES consumers (id) ON DELETE CASCADE,
-        consumer_type  integer REFERENCES consumer_types (id),
-        plugin         text NOT NULL,
-        blob           json,
-        created_at     timestamp without time zone DEFAULT timezone('utc'::text, ('now'::text)::timestamp(0) with time zone)
+        id                uuid PRIMARY KEY,
+        consumer_id       uuid REFERENCES consumers (id) ON DELETE CASCADE,
+        consumer_type     integer REFERENCES consumer_types (id),
+        plugin            text NOT NULL,
+        credential_data   json,
+        created_at        timestamp without time zone DEFAULT timezone('utc'::text, ('now'::text)::timestamp(0) with time zone)
       );
 
       CREATE INDEX credentials_consumer_type

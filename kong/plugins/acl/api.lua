@@ -12,11 +12,16 @@ return {
     end,
 
     PUT = function(self, dao_factory)
-      crud.put(self.params, dao_factory.acls)
+      crud.put(self.params, dao_factory.acls, function(credential)
+        -- can we assume update here? is this supported?
+        crud.portal_crud.update_credential(credential)
+      end)
     end,
 
     POST = function(self, dao_factory)
-      crud.post(self.params, dao_factory.acls)
+      crud.post(self.params, dao_factory.acls, function(credential)
+        crud.portal_crud.insert_credential(credential, 'acl')
+      end)
     end
   },
 
@@ -47,10 +52,13 @@ return {
     end,
 
     PATCH = function(self, dao_factory)
-      crud.patch(self.params, dao_factory.acls, self.acl)
+      crud.patch(self.params, dao_factory.acls, self.acl, function(credential)
+        crud.portal_crud.update_credential(credential)
+      end)
     end,
 
     DELETE = function(self, dao_factory)
+      crud.portal_crud.delete_credential(self.acl.id)
       crud.delete(self.acl, dao_factory.acls)
     end
   },

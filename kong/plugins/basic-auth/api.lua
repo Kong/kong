@@ -12,7 +12,10 @@ return {
     end,
 
     PUT = function(self, dao_factory)
-      crud.put(self.params, dao_factory.basicauth_credentials)
+      crud.put(self.params, dao_factory.basicauth_credentials, function(credential)
+        -- should we support PUT?
+        crud.portal_crud.update_credential(credential)
+      end)
     end,
 
     POST = function(self, dao_factory)
