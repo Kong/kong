@@ -29,23 +29,23 @@ describe("Developer Portal - Portal API", function()
   local consumerApproved
 
   setup(function()
-    bp, db, dao = helpers.get_db_utils(strategy, true)
+    bp, db, dao = helpers.get_db_utils(strategy)
   end)
 
   teardown(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
   describe("/_kong/portal/files without auth", function()
     before_each(function()
-      helpers.stop_kong(nil, true)
-      --assert(db:truncate())
+      helpers.stop_kong()
       helpers.register_consumer_relations(dao)
 
       assert(helpers.start_kong({
         database   = strategy,
         portal     = true
       }))
+
 
       client = assert(helpers.proxy_client())
     end)
@@ -62,7 +62,7 @@ describe("Developer Portal - Portal API", function()
       end)
 
       teardown(function()
-        --db:truncate()
+        db:truncate()
       end)
 
       it("retrieves files", function()
@@ -98,8 +98,8 @@ describe("Developer Portal - Portal API", function()
 
   describe("/_kong/portal/files with auth", function()
     setup(function()
-      helpers.stop_kong(nil, true)
-      --assert(db:truncate())
+      helpers.stop_kong()
+      assert(db:truncate())
       helpers.register_consumer_relations(dao)
 
       insert_files(dao)
@@ -246,7 +246,6 @@ describe("Developer Portal - Portal API", function()
 
         local body = assert.res_status(201, res)
         local resp_body_json = cjson.decode(body)
-
         local credential = resp_body_json.credential
         local consumer = resp_body_json.consumer
 
@@ -259,6 +258,276 @@ describe("Developer Portal - Portal API", function()
         assert.equal(enums.CONSUMERS.TYPE.DEVELOPER, consumer.type)
 
         assert.equal(consumer.id, credential.consumer_id)
+      end)
+    end)
+  end)
+
+  describe("/credentials", function()
+    local credential
+
+    before_each(function()
+      client = assert(helpers.proxy_client())
+    end)
+
+    after_each(function()
+      if client then
+        client:close()
+      end
+    end)
+
+    describe("POST", function()
+      it("adds a credential to a developer - basic-auth", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/" .. proxy_prefix .. "/portal/credentials",
+          body = {
+            username = "kong",
+            password = "hunter1"
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+            ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+          }
+        })
+
+        local body = assert.res_status(201, res)
+        local resp_body_json = cjson.decode(body)
+
+        credential = resp_body_json
+
+        assert.equal("kong", credential.username)
+        assert.are_not.equals("hunter1", credential.password)
+        assert.is_true(is_valid_uuid(credential.id))
+      end)
+    end)
+
+    describe("PATCH", function()
+      it("patches a credential - basic-auth", function()
+        local res = assert(client:send {
+          method = "PATCH",
+          path = "/" .. proxy_prefix .. "/portal/credentials",
+          body = {
+            id = credential.id,
+            username = "anotherone",
+            password = "another-hunter1"
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+            ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+          }
+        })
+
+        local body = assert.res_status(200, res)
+        local resp_body_json = cjson.decode(body)
+        local credential_res = resp_body_json
+
+        assert.equal("anotherone", credential_res.username)
+        assert.are_not.equals(credential_res.username, credential.username)
+        assert.are_not.equals("another-hunter1", credential_res.password)
+        assert.is_true(is_valid_uuid(credential_res.id))
+      end)
+    end)
+  end)
+
+  describe("z/credentials/:plugin", function()
+    local credential
+    local credential_key_auth
+
+    before_each(function()
+      client = assert(helpers.proxy_client())
+    end)
+
+    after_each(function()
+      if client then
+        client:close()
+      end
+    end)
+
+
+    describe("POST", function()
+      it("adds auth plugin credential - basic-auth", function()
+        local plugin = "basic-auth"
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/" .. proxy_prefix .. "/portal/credentials/" .. plugin,
+          body = {
+            username = "dude",
+            password = "hunter1"
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+            ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+          }
+        })
+
+        local body = assert.res_status(201, res)
+        local resp_body_json = cjson.decode(body)
+
+        credential = resp_body_json
+
+        assert.equal("dude", credential.username)
+        assert.are_not.equals("hunter1", credential.password)
+        assert.is_true(is_valid_uuid(credential.id))
+      end)
+
+      it("adds auth plugin credential - key-auth", function()
+        local plugin = "key-auth"
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/" .. proxy_prefix .. "/portal/credentials/" .. plugin,
+          body = {
+            key = "letmein"
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+            ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+          }
+        })
+
+        local body = assert.res_status(201, res)
+        local resp_body_json = cjson.decode(body)
+
+        credential_key_auth = resp_body_json
+
+        assert.equal("letmein", credential_key_auth.key)
+        assert.is_true(is_valid_uuid(credential_key_auth.id))
+      end)
+    end)
+
+    describe("GET", function()
+      it("retrieves a credential - basic-auth", function()
+        local plugin = "basic-auth"
+        local path = "/" .. proxy_prefix .. "/portal/credentials/"
+                      .. plugin .. "/" .. credential.id
+
+        local res = assert(client:send {
+          method = "GET",
+          path = path,
+          headers = {
+            ["Content-Type"] = "application/json",
+            ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+          }
+        })
+
+        local body = assert.res_status(200, res)
+        local resp_body_json = cjson.decode(body)
+        local credential_res = resp_body_json
+
+        assert.equal(credential.username, credential_res.username)
+        assert.equal(credential.id, credential_res.id)
+      end)
+    end)
+
+    describe("PATCH", function()
+      it("/portal/credentials/:plugin/ - basic-auth", function()
+        local plugin = "basic-auth"
+        local path = "/" .. proxy_prefix .. "/portal/credentials/"
+                       .. plugin .. "/" .. credential.id
+
+        local res = assert(client:send {
+          method = "PATCH",
+          path = path,
+          body = {
+            id = credential.id,
+            username = "dudett",
+            password = "a-new-password"
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+            ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+          }
+        })
+
+        local body = assert.res_status(200, res)
+        local resp_body_json = cjson.decode(body)
+        local credential_res = resp_body_json
+
+        assert.equal("dudett", credential_res.username)
+        assert.are_not.equals("a-new-password", credential_res.password)
+        assert.is_true(is_valid_uuid(credential_res.id))
+
+        assert.are_not.equals(credential_res.username, credential.username)
+      end)
+
+      it("/portal/credentials/:plugin/:credential_id - basic-auth", function()
+        local plugin = "basic-auth"
+        local path = "/" .. proxy_prefix .. "/portal/credentials/"
+                       .. plugin .. "/" .. credential.id
+
+        local res = assert(client:send {
+          method = "PATCH",
+          path = path,
+          body = {
+            username = "duderino",
+            password = "a-new-new-password"
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+            ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+          }
+        })
+
+        local body = assert.res_status(200, res)
+        local resp_body_json = cjson.decode(body)
+        local credential_res = resp_body_json
+
+        assert.equal("duderino", credential_res.username)
+        assert.are_not.equals("a-new-new-password", credential_res.password)
+        assert.is_true(is_valid_uuid(credential_res.id))
+
+        assert.are_not.equals(credential_res.username, credential.username)
+      end)
+    end)
+
+    describe("DELETE", function()
+      it("deletes a credential", function()
+        local plugin = "key-auth"
+        local path = "/" .. proxy_prefix .. "/portal/credentials/"
+                       .. plugin .. "/" .. credential_key_auth.id
+
+        local res = assert(client:send {
+          method = "DELETE",
+          path = path,
+          headers = {
+            ["Content-Type"] = "application/json",
+            ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+          }
+        })
+
+        assert.res_status(204, res)
+
+        local res = assert(client:send {
+          method = "GET",
+          path = path,
+          headers = {
+            ["Content-Type"] = "application/json",
+            ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+          }
+        })
+
+        assert.res_status(404, res)
+      end)
+    end)
+
+    describe("GET", function()
+      it("retrieves the kong config tailored for the dev portal", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/" .. proxy_prefix .. "/portal/config",
+          headers = {
+            ["Content-Type"] = "application/json",
+            ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+          }
+        })
+
+        local body = assert.res_status(200, res)
+        local resp_body_json = cjson.decode(body)
+
+        local config = resp_body_json
+
+        assert.same({ "cors", "basic-auth" }, config.plugins.enabled_in_cluster)
       end)
     end)
   end)

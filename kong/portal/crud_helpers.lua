@@ -23,13 +23,11 @@ function _M.insert_credential(credential, plugin, consumer_type)
 end
 
 
-function _M.patch_credential(credential)
+function _M.update_credential(credential)
   local params = {
     blob = cjson.encode(credential)
   }
 
-  credential.created_at = nil
-  print(require("pl.pretty").write(singletons.dao.credentials))
   local _credential, err = singletons.dao.credentials:update(params, {
       id = credential.id,
       consumer_id = credential.consumer_id

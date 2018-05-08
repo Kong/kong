@@ -148,6 +148,10 @@ return {
 
       crud.post(credential_data, collection, function(credential)
         crud.portal_crud.insert_credential(credential, self.portal_auth)
+        return {
+          credential = credential,
+          consumer = consumer
+        }
       end)
     end,
   },
@@ -253,7 +257,9 @@ return {
     end,
 
     POST = function(self, dao_factory)
-      crud.post(self.params, self.collection)
+      crud.post(self.params, self.collection, function(credential)
+        crud.portal_crud.insert_credential(credential, self.portal_auth)
+      end)
     end,
   },
 
@@ -288,7 +294,9 @@ return {
     end,
 
     POST = function(self, dao_factory, helpers)
-      crud.post(self.params, self.collection)
+      crud.post(self.params, self.collection, function(credential)
+        crud.portal_crud.insert_credential(credential, self.plugin)
+      end)
     end,
 
     PATCH = function(self, dao_factory, helpers)
@@ -299,7 +307,7 @@ return {
 
       crud.patch(self.params, self.collection, { id = self.params.id },
         function(credential)
-          crud.portal_crud.patch_credential(credential)
+          crud.portal_crud.update_credential(credential)
       end)
     end,
   },
@@ -350,7 +358,7 @@ return {
 
     PATCH = function(self, dao_factory)
       crud.patch(self.params, self.collection, self.credential, function(credential)
-        crud.portal_crud.patch_credential(credential)
+        crud.portal_crud.update_credential(credential)
       end)
     end,
 
