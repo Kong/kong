@@ -19,7 +19,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
   setup(function()
     dao = assert(DAOFactory.new(kong_config))
     dao:drop_schema()
-    helpers.run_migrations(dao)
+    helpers.dao:run_migrations()
 
     assert(helpers.start_kong({
       database = kong_config.database
@@ -742,7 +742,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
   describe("rbac defaults", function()
     setup(function()
       dao:drop_schema()
-      helpers.run_migrations(dao)
+      helpers.dao:run_migrations(dao)
     end)
 
     it("defines the default roles", function()
@@ -1735,7 +1735,7 @@ for _, h in ipairs({ "", "Custom-Auth-Token" }) do
     local expected = h == "" and "Kong-RBAC-Token" or h
 
     setup(function()
-      helpers.run_migrations()
+      helpers.dao:run_migrations()
       assert(helpers.start_kong({
         rbac_auth_header = h ~= "" and h or nil,
       }))

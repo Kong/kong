@@ -347,7 +347,7 @@ function _M.validate_entity_operation(entity)
 
   local permissions_map = rbac_ctx.entities_perms
   local action = rbac_ctx.action
-  return _M.authorize_request_entity(permissions_map, entity, action)
+  return _M.authorize_request_entity(permissions_map, entity.id, action)
 end
 
 
