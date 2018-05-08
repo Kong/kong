@@ -12,10 +12,7 @@ return {
     end,
 
     PUT = function(self, dao_factory)
-      crud.put(self.params, dao_factory.acls, function(credential)
-        -- can we assume update here? is this supported?
-        crud.portal_crud.update_credential(credential)
-      end)
+      crud.put(self.params, dao_factory.acls)
     end,
 
     POST = function(self, dao_factory)
