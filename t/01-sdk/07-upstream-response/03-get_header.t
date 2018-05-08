@@ -141,7 +141,6 @@ X-Missing: nil
             }
         }
     }
-
 --- config
     location = /t {
         proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;

@@ -10,7 +10,7 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: upstream.response.get_parsed_body() returns full raw body
+=== TEST 1: response.get_parsed_body() returns full raw body
 --- config
     location = /t {
         content_by_lua_block {

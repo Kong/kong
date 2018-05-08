@@ -3,6 +3,7 @@ local meta = require "kong.meta"
 
 
 local ngx = ngx
+local fmt = string.format
 local type = type
 local find = string.find
 local lower = string.lower
@@ -10,18 +11,27 @@ local error = error
 local pairs = pairs
 local ipairs = ipairs
 local insert = table.insert
+local tostring = tostring
 local coroutine = coroutine
+local getmetatable = getmetatable
 
 
 local function new(sdk, major_version)
   local _RESPONSE = {}
 
-  local SERVER_HEADER_NAME  = "Server"
-  local SERVER_HEADER_VALUE = meta._NAME .. "/" .. meta._VERSION
+  local SERVER_HEADER_NAME   = "Server"
+  local SERVER_HEADER_VALUE  = meta._NAME .. "/" .. meta._VERSION
 
-  local MIN_HEADERS         = 1
-  local MAX_HEADERS_DEFAULT = 100
-  local MAX_HEADERS         = 1000
+  local MIN_HEADERS          = 1
+  local MAX_HEADERS_DEFAULT  = 100
+  local MAX_HEADERS          = 1000
+
+  local MIN_STATUS_CODE      = 100
+  local MAX_STATUS_CODE      = 599
+
+  local CONTENT_TYPE         = "Content-Type"
+  local CONTENT_TYPE_JSON    = "application/json"
+  local CONTENT_TYPE_DEFAULT = "application/json; charset=utf-8"
 
   local DEFAULT_BODY = {
     [ngx.HTTP_NOT_ALLOWED]           = "Method Not Allowed",
@@ -40,12 +50,12 @@ local function new(sdk, major_version)
     if type(code) ~= "number" then
       error("code must be a number", 2)
 
-    elseif code < 100 or code > 599 then
-      error("code must be a number between 100 and 599", 2)
+    elseif code < MIN_STATUS_CODE or code > MAX_STATUS_CODE then
+      error(fmt("code must be a number between %u and %u", MIN_STATUS_CODE, MAX_STATUS_CODE), 2)
     end
 
     if ngx.headers_sent then
-      return nil, "headers have been sent"
+      error("headers have been sent", 2)
     end
 
     ngx.status = code
@@ -95,10 +105,10 @@ local function new(sdk, major_version)
     end
 
     if ngx.headers_sent then
-      return nil, "headers have been sent"
+      error("headers have been sent", 2)
     end
 
-    ngx.header[name] = value
+    ngx.header[name] = value ~= "" and value or " "
   end
 
 
@@ -112,7 +122,7 @@ local function new(sdk, major_version)
     end
 
     if ngx.headers_sent then
-      return nil, "headers have been sent"
+      error("headers have been sent", 2)
     end
 
     local header = _RESPONSE.get_headers()[name]
@@ -132,7 +142,7 @@ local function new(sdk, major_version)
     end
 
     if ngx.headers_sent then
-      return nil, "headers have been sent"
+      error("headers have been sent", 2)
     end
 
     ngx.header[name] = nil
@@ -148,7 +158,7 @@ local function new(sdk, major_version)
     for name, value in pairs(headers) do
       local name_t = type(name)
       if name_t ~= "string" then
-        error(("invalid name %q: got %s, expected string"):format(name, name_t), 2)
+        error(fmt("invalid name %q: got %s, expected string", name, name_t), 2)
       end
 
       local value_t = type(value)
@@ -156,13 +166,17 @@ local function new(sdk, major_version)
         for _, array_value in ipairs(value) do
           local array_value_t = type(array_value)
           if array_value_t ~= "string" then
-            error(("invalid value in array %q: got %s, expected string"):format(name, array_value_t), 2)
+            error(fmt("invalid value in array %q: got %s, expected string", name, array_value_t), 2)
           end
         end
 
       elseif value_t ~= "string" then
-        error(("invalid value in %q: got %s, expected string"):format(name, value_t), 2)
+        error(fmt("invalid value in %q: got %s, expected string", name, value_t), 2)
       end
+    end
+
+    if ngx.headers_sent then
+      error("headers have been sent", 2)
     end
 
     for name, value in pairs(headers) do
@@ -192,11 +206,16 @@ local function new(sdk, major_version)
 
 
   local function send(code, body, headers)
+    if ngx.headers_sent then
+      error("headers have been sent", 2)
+    end
+
     ngx.status = code
     ngx.header[SERVER_HEADER_NAME] = SERVER_HEADER_VALUE
+
     if headers then
-      for k, v in pairs(headers) do
-        ngx.header[k] = v
+      for name, value in pairs(headers) do
+        ngx.header[name] = value ~= "" and value or " "
       end
     end
 
@@ -208,7 +227,18 @@ local function new(sdk, major_version)
 
     elseif code == ngx.HTTP_INTERNAL_SERVER_ERROR then
       if body then
-        ngx.log(ngx.ERR, body)
+        if type(body) ~= "table" then
+          ngx.log(ngx.ERR, body)
+
+        elseif getmetatable(body) and type(getmetatable(body).__tostring) == "function" then
+          ngx.log(ngx.ERR, tostring(body))
+
+        else
+          local json = cjson.encode(body)
+          if json then
+            ngx.log(ngx.ERR, json)
+          end
+        end
       end
 
       body = DEFAULT_BODY[ngx.HTTP_INTERNAL_SERVER_ERROR]
@@ -217,55 +247,81 @@ local function new(sdk, major_version)
       body = DEFAULT_BODY[code]
     end
 
-    if body then
-      local content_type = ngx.header["Content-Type"]
-      if content_type == nil or find(lower(content_type), "application/json", 1, true) then
+    while body do
+      local content_type = ngx.header[CONTENT_TYPE]
+      if content_type == nil or find(lower(content_type), CONTENT_TYPE_JSON, 1, true) then
         local json = cjson.encode(type(body) == "table" and body or { message = body })
         if json then
-          if not content_type then
-            ngx.header["Content-Type"] = "application/json; charset=utf-8"
+          if content_type == nil then
+            ngx.header[CONTENT_TYPE] = CONTENT_TYPE_DEFAULT
           end
 
-          ngx.say(json)
-
-        else
-          ngx.print(body)
+          ngx.print(json)
+          break
         end
-
-      else
-        ngx.print(body)
       end
+
+      if type(body) ~= "table" then
+        ngx.print(body)
+
+      elseif getmetatable(body) and type(getmetatable(body).__tostring) == "function" then
+        ngx.print(tostring(body))
+      end
+
+      break
     end
 
-    return ngx.exit(code)
+    ngx.exit(code)
   end
 
 
   local function flush(ctx)
-    return send(ctx.status_code, ctx.content, ctx.headers)
+    ctx = ctx or ngx.ctx
+    local response = ctx.delayed_response
+    return send(response.status_code, response.content, response.headers)
   end
 
 
   function _RESPONSE.exit(code, body, headers)
-    if code ~= nil then
-      if type(code) ~= "number" then
-        error("code must be a number", 2)
+    if type(code) ~= "number" then
+      error("code must be a number", 2)
 
-      elseif code < 100 or code > 599 then
-        error("code must be a number between 100 and 599", 2)
-      end
+    elseif code < MIN_STATUS_CODE or code > MAX_STATUS_CODE then
+      error(fmt("code must be a number between %u and %u", MIN_STATUS_CODE, MAX_STATUS_CODE), 2)
     end
 
     if body ~= nil and type(body) ~= "string" and type(body) ~= "table" then
       error("body must be a nil, string or table", 2)
     end
 
-    if headers ~= nil and type(body) ~= "table" then
+    if headers ~= nil and type(headers) ~= "table" then
       error("headers must be a nil or table", 2)
     end
 
+    if headers ~= nil then
+      for name, value in pairs(headers) do
+        local name_t = type(name)
+        if name_t ~= "string" then
+          error(fmt("invalid header name %q: got %s, expected string", name, name_t), 2)
+        end
+
+        local value_t = type(value)
+        if value_t == "table" then
+          for _, array_value in ipairs(value) do
+            local array_value_t = type(array_value)
+            if array_value_t ~= "string" then
+              error(fmt("invalid header value in array %q: got %s, expected string", name, array_value_t), 2)
+            end
+          end
+
+        elseif value_t ~= "string" then
+          error(fmt("invalid header value in %q: got %s, expected string", name, value_t), 2)
+        end
+      end
+    end
+
     if ngx.headers_sent then
-      return nil, "headers have been sent"
+      error("headers have been sent", 2)
     end
 
     local ctx = ngx.ctx
@@ -278,9 +334,10 @@ local function new(sdk, major_version)
 
       ctx.delayed_response_callback = flush
       coroutine.yield()
-    end
 
-    send(code, body, headers)
+    else
+      send(code, body, headers)
+    end
   end
 
   return _RESPONSE
