@@ -578,20 +578,20 @@ return {
 
       ALTER TABLE consumers ADD CONSTRAINT consumers_email_type_key UNIQUE("email", "type");
 
-      CREATE INDEX consumers_type_idx
+      CREATE INDEX IF NOT EXISTS consumers_type_idx
           ON public.consumers USING btree (type)
           TABLESPACE pg_default;
 
-      CREATE INDEX consumers_status_idx
+      CREATE INDEX IF NOT EXISTS consumers_status_idx
           ON public.consumers USING btree (status)
           TABLESPACE pg_default;
 
-      CREATE INDEX consumers_statuses_names_idx
+      CREATE INDEX IF NOT EXISTS consumers_statuses_names_idx
           ON public.consumer_statuses USING btree
           (name COLLATE pg_catalog."default")
           TABLESPACE pg_default;
 
-      CREATE INDEX consumer_types_name_idx
+      CREATE INDEX IF NOT EXISTS consumer_types_name_idx
           ON public.consumer_types USING btree
           (name COLLATE pg_catalog."default")
           TABLESPACE pg_default;
