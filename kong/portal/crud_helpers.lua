@@ -44,8 +44,8 @@ end
 
 function _M.delete_credential(credential_id)
   local ok, err = singletons.dao.credentials:delete({ id = credential_id })
-    if err then
-      return app_helpers.yield_error(err)
+  if err then
+    return app_helpers.yield_error(err)
   end
 end
 
