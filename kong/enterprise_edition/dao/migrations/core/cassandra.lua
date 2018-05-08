@@ -497,8 +497,8 @@ return {
       );
 
 
-      CREATE INDEX IF NOT EXISTS credentials_consumer_type ON credentials(consumer_id);
-      CREATE INDEX IF NOT EXISTS credentials_consumer_id_plugin ON credentials(plugin);
+      CREATE INDEX IF NOT EXISTS credentials_consumer_id ON credentials(consumer_id);
+      CREATE INDEX IF NOT EXISTS credentials_plugin ON credentials(plugin);
     ]],
 
     down = [[
