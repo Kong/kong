@@ -35,12 +35,10 @@ return {
            and self.consumer.status ~= enums.CONSUMERS.STATUS.APPROVED then
           local status = self.consumer.status
           local label = enums.get_key_from_value(enums.CONSUMERS.STATUS, status)
-          return helpers.responses.send_HTTP_UNAUTHORIZED(
-            {
+          return helpers.responses.send_HTTP_UNAUTHORIZED({
               ["status"] = status,
               ["label"]  = label
-            }
-          )
+            })
         end
       end
     end,
@@ -147,14 +145,14 @@ return {
       end
 
       crud.post(credential_data, collection, function(credential)
-        crud.portal_crud.insert_credential(credential,
-                                           self.portal_auth,
-                                           enums.CONSUMERS.TYPE.DEVELOPER)
-        return {
-          credential = credential,
-          consumer = consumer
-        }
-      end)
+          crud.portal_crud.insert_credential(credential,
+                                            self.portal_auth,
+                                            enums.CONSUMERS.TYPE.DEVELOPER)
+          return {
+            credential = credential,
+            consumer = consumer,
+          }
+        end)
     end,
   },
 
