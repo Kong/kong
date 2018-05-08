@@ -601,14 +601,14 @@
                                       # header from which the Admin API will
                                       # attempt to identify the RBAC user.
 
-vitals = on                    # When enabled, Kong will store and report
+#vitals = off                    # When enabled, Kong will store and report
                                  # metrics about its performance.
 
 #------------------------------------------------------------------------------
 # DEVELOPER PORTAL
 #------------------------------------------------------------------------------
 
-portal = on
+#portal = off
                         # Developer Portal Switch
                         #
                         # When enabled:
@@ -630,7 +630,7 @@ portal = on
                         # specified for each pair, similarly to
                         # the `admin_listen` directive.
 
-portal_gui_url = http://127.0.0.1:8081
+#portal_gui_url =
                         # Developer Portal GUI URI
                         #
                         # Here you may provide the lookup, or balancer,
@@ -755,7 +755,7 @@ portal_gui_url = http://127.0.0.1:8081
                         # registration. Access can still be revoked through the
                         # Admin GUI or API.
 
-portal_auth = basic-auth
+#portal_auth =
                         # Developer Portal Authentication Plugin Name
                         #
                         # Here you may specify the authentication plugin
