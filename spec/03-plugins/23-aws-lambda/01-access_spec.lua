@@ -1,4 +1,5 @@
 local helpers = require "spec.helpers"
+local cjson = require "cjson.safe"
 
 
 for _, strategy in helpers.each_strategy() do
@@ -61,6 +62,11 @@ for _, strategy in helpers.each_strategy() do
         hosts       = { "lambda10.com" },
         protocols   = { "http", "https" },
         service     = service10
+      }
+
+      local route11 = bp.routes:insert {
+        hosts       = { "lambda11.com" },
+        paths       = { "/versions/(?<version>\\d+)/users/(?<user>\\S+)" }
       }
 
       bp.plugins:insert {
@@ -194,6 +200,20 @@ for _, strategy in helpers.each_strategy() do
           forward_request_uri     = false,
           forward_request_headers = true,
           forward_request_body    = true,
+        }
+      }
+
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route_id = route11.id,
+        config                        = {
+          port                        = 10001,
+          aws_key                     = "mock-key",
+          aws_secret                  = "mock-secret",
+          aws_region                  = "us-east-1",
+          function_name               = "kongLambdaTest",
+          forward_request_uri         = true,
+          forward_request_uri_path_params = true,
         }
       }
 
@@ -497,6 +517,19 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.res_status(412, res)
       assert.equal("Unhandled", res.headers["X-Amz-Function-Error"])
+    end)
+    it("passes through the request uri path params", function()
+      local res = assert(proxy_client:send {
+        method  = "POST",
+        path    = "/versions/12/users/batman",
+        headers = {
+          ["Host"] = "lambda11.com"
+        }
+      })
+      local responseBody, _ = res:read_body()
+      local body = cjson.decode(responseBody)
+      assert.equal(body.request_uri_path_params.version, "12")
+      assert.equal(body.request_uri_path_params.user, "batman")
     end)
   end)
 end

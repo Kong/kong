@@ -96,5 +96,9 @@ return {
       type = "boolean",
       default = false,
     },
+    forward_request_uri_path_params = {
+      type = "boolean",
+      default = false
+    },
   },
 }

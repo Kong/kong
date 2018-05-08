@@ -38,6 +38,7 @@ function AWSLambdaHandler:access(conf)
 
   if conf.forward_request_body or conf.forward_request_headers
     or conf.forward_request_method or conf.forward_request_uri
+    or conf.forward_request_uri_path_params
   then
     -- new behavior to forward request method, body, uri and their args
     local var = ngx.var
@@ -67,6 +68,11 @@ function AWSLambdaHandler:access(conf)
 
       upstream_body.request_body      = body_raw
       upstream_body.request_body_args = body_args
+    end
+
+    if conf.forward_request_uri_path_params then
+      local uri_captures = ngx.ctx.router_matches.uri_captures
+      upstream_body.request_uri_path_params = uri_captures
     end
 
   else
