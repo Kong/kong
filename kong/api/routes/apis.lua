@@ -36,7 +36,7 @@ return {
       local uuid = require("kong.tools.utils").uuid
       local old_wss = ngx.ctx.workspaces
       ngx.ctx.workspaces = {}
-      core_handler.build_router(dao_factory, uuid())
+      core_handler.build_api_router(dao_factory, uuid())
       ngx.ctx.workspaces = old_wss
     end,
 
