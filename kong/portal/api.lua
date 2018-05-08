@@ -6,14 +6,18 @@ local enums       = require "kong.portal.enums"
 local utils       = require "kong.portal.utils"
 local constants   = require "kong.constants"
 
-
-local plugin_route_dao_dict = {
-  ["basic-auth"] = "basicauth_credentials",
-  ["acls"] = "acls",
-  ["oauth2"] = "oauth2_credentials",
-  ["hmac-auth"] = "hmacauth_credentials",
-  ["jwt"] = "jwt_secrets",
-  ["key-auth"] = "keyauth_credentials",
+--- Allowed auth plugins
+-- Table containing allowed auth plugins that the developer portal api
+-- can create credentials for.
+--
+--["<route>"]:     {  name = "<name>",    dao = "<dao_collection>" }
+local auth_plugins = {
+  ["basic-auth"] = { name = "basic-auth", dao = "basicauth_credentials", },
+  ["acls"] =       { name = "acl",        dao = "acls" },
+  ["oauth2"] =     { name = "oauth2",     dao = "oauth2_credentials" },
+  ["hmac-auth"] =  { name = "hmac",       dao = "hmacauth_credentials" },
+  ["jwt"] =        { name= "jwt",         dao = "jwt_secrets" },
+  ["key-auth"] =   { name="key-auth",     dao ="keyauth_credentials" },
 }
 
 
@@ -120,7 +124,7 @@ return {
         })
       end
 
-      local collection = dao_factory[plugin_route_dao_dict[self.portal_auth]]
+      local collection = dao_factory[auth_plugins[self.portal_auth].dao]
       local credential_data
 
       if self.portal_auth == "basic-auth" then
@@ -145,9 +149,9 @@ return {
       end
 
       crud.post(credential_data, collection, function(credential)
-          crud.portal_crud.insert_credential(credential,
-                                            self.portal_auth,
-                                            enums.CONSUMERS.TYPE.DEVELOPER)
+          crud.portal_crud.insert_credential(auth_plugins[self.portal_auth].name,
+                                             enums.CONSUMERS.TYPE.DEVELOPER
+                                            )(credential)
           return {
             credential = credential,
             consumer = consumer,
@@ -231,7 +235,7 @@ return {
       end
 
       self.portal_auth = singletons.configuration.portal_auth
-      self.collection = dao_factory[plugin_route_dao_dict[self.portal_auth]]
+      self.collection = dao_factory[auth_plugins[self.portal_auth].dao]
 
       self.params.consumer_id = consumer_id
       self.params.email_or_id = self.params.consumer_id
@@ -257,9 +261,8 @@ return {
     end,
 
     POST = function(self, dao_factory)
-      crud.post(self.params, self.collection, function(credential)
-        crud.portal_crud.insert_credential(credential, self.portal_auth)
-      end)
+      crud.post(self.params, self.collection,
+                crud.portal_crud.insert_credential(self.portal_auth))
     end,
   },
 
@@ -272,7 +275,7 @@ return {
       end
 
       self.plugin = ngx.unescape_uri(self.params.plugin)
-      self.collection = dao_factory[plugin_route_dao_dict[self.plugin]]
+      self.collection = dao_factory[auth_plugins[self.plugin].dao]
 
       self.params.plugin = nil
       self.params.consumer_id = consumer_id
@@ -289,14 +292,13 @@ return {
 
     GET = function(self, dao_factory, helpers)
       self.params.consumer_type = enums.CONSUMERS.TYPE.PROXY
-      self.params.plugin = self.plugin
+      self.params.plugin = auth_plugins[self.plugin].name
       crud.paginated_set(self, dao_factory.credentials)
     end,
 
     POST = function(self, dao_factory, helpers)
-      crud.post(self.params, self.collection, function(credential)
-        crud.portal_crud.insert_credential(credential, self.plugin)
-      end)
+      crud.post(self.params, self.collection,
+                crud.portal_crud.insert_credential(auth_plugins[self.plugin].name))
     end,
 
     PATCH = function(self, dao_factory, helpers)
@@ -306,9 +308,7 @@ return {
       end
 
       crud.patch(self.params, self.collection, { id = self.params.id },
-        function(credential)
-          crud.portal_crud.update_credential(credential)
-      end)
+                 crud.portal_crud.update_credential)
     end,
   },
 
@@ -321,7 +321,7 @@ return {
       end
 
       self.plugin = ngx.unescape_uri(self.params.plugin)
-      self.collection = dao_factory[plugin_route_dao_dict[self.plugin]]
+      self.collection = dao_factory[auth_plugins[self.plugin].dao]
 
       self.params.consumer_id = consumer_id
       self.params.email_or_id = self.params.consumer_id
@@ -357,13 +357,12 @@ return {
     end,
 
     PATCH = function(self, dao_factory)
-      crud.patch(self.params, self.collection, self.credential, function(credential)
-        crud.portal_crud.update_credential(credential)
-      end)
+      crud.patch(self.params, self.collection, self.credential,
+                 crud.portal_crud.update_credential)
     end,
 
     DELETE = function(self, dao_factory)
-      crud.portal_crud.delete_credential(self.credential.id)
+      crud.portal_crud.delete_credential(self.credential)
       crud.delete(self.credential, self.collection)
     end,
   },

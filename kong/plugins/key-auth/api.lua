@@ -12,15 +12,12 @@ return {
     end,
 
     PUT = function(self, dao_factory)
-      crud.put(self.params, dao_factory.keyauth_credentials, function(credential)
-        crud.portal_crud.update_credential(credential)
-      end)
+      crud.put(self.params, dao_factory.keyauth_credentials)
     end,
 
     POST = function(self, dao_factory)
-      crud.post(self.params, dao_factory.keyauth_credentials, function(credential)
-        crud.portal_crud.insert_credential(credential, 'key-auth')
-      end)
+      crud.post(self.params, dao_factory.keyauth_credentials,
+                crud.portal_crud.insert_credential('key-auth'))
     end
   },
   ["/consumers/:username_or_id/key-auth/:credential_key_or_id"] = {
@@ -51,13 +48,11 @@ return {
 
     PATCH = function(self, dao_factory)
       crud.patch(self.params, dao_factory.keyauth_credentials, self.keyauth_credential,
-        function(credential)
-          crud.portal_crud.update_credential(credential)
-      end)
+                 crud.portal_crud.update_credential)
     end,
 
     DELETE = function(self, dao_factory)
-      crud.portal_crud.delete_credential(self.keyauth_credential.id)
+      crud.portal_crud.delete_credential(self.keyauth_credential)
       crud.delete(self.keyauth_credential, dao_factory.keyauth_credentials)
     end
   },

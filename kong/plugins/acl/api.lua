@@ -16,9 +16,8 @@ return {
     end,
 
     POST = function(self, dao_factory)
-      crud.post(self.params, dao_factory.acls, function(credential)
-        crud.portal_crud.insert_credential(credential, 'acl')
-      end)
+      crud.post(self.params, dao_factory.acls,
+                crud.portal_crud.insert_credential('acl'))
     end
   },
 
@@ -49,13 +48,12 @@ return {
     end,
 
     PATCH = function(self, dao_factory)
-      crud.patch(self.params, dao_factory.acls, self.acl, function(credential)
-        crud.portal_crud.update_credential(credential)
-      end)
+      crud.patch(self.params, dao_factory.acls, self.acl,
+                 crud.portal_crud.update_credential)
     end,
 
     DELETE = function(self, dao_factory)
-      crud.portal_crud.delete_credential(self.acl.id)
+      crud.portal_crud.delete_credential(self.acl)
       crud.delete(self.acl, dao_factory.acls)
     end
   },

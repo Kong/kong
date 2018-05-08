@@ -26,7 +26,7 @@ describe("Developer Portal - Portal API", function()
   local db
   local dao
   local client
-  local consumerApproved
+  local consumer_approved
 
   setup(function()
     bp, db, dao = helpers.get_db_utils(strategy)
@@ -111,12 +111,12 @@ describe("Developer Portal - Portal API", function()
         portal_auth_config = "{ \"hide_credentials\": true }"
       }))
 
-      local consumerPending = bp.consumers:insert {
+      local consumer_pending = bp.consumers:insert {
         username = "dale",
         status = enums.CONSUMERS.TYPE.PENDING
       }
 
-      consumerApproved = bp.consumers:insert {
+      consumer_approved = bp.consumers:insert {
         username = "hawk",
         status = enums.CONSUMERS.STATUS.APPROVED
       }
@@ -124,13 +124,13 @@ describe("Developer Portal - Portal API", function()
       assert(dao.basicauth_credentials:insert {
         username    = "dale",
         password    = "kong",
-        consumer_id = consumerPending.id
+        consumer_id = consumer_pending.id
       })
 
       assert(dao.basicauth_credentials:insert {
         username    = "hawk",
         password    = "kong",
-        consumer_id = consumerApproved.id
+        consumer_id = consumer_approved.id
       })
     end)
 

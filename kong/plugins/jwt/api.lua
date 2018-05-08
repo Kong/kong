@@ -16,9 +16,8 @@ return {
     end,
 
     POST = function(self, dao_factory, helpers)
-      crud.post(self.params, dao_factory.jwt_secrets, function(credential)
-        crud.portal_crud.insert_credential(credential, "jwt")
-      end)
+      crud.post(self.params, dao_factory.jwt_secrets,
+                crud.portal_crud.insert_credential("jwt"))
     end
   },
 
@@ -50,13 +49,11 @@ return {
 
     PATCH = function(self, dao_factory)
       crud.patch(self.params, dao_factory.jwt_secrets, self.jwt_secret,
-        function(credential)
-          crud.portal_crud.update_credential(credential)
-      end)
+                 crud.portal_crud.update_credential)
     end,
 
     DELETE = function(self, dao_factory)
-      crud.portal_crud.delete_credential(self.jwt_secret.id)
+      crud.portal_crud.delete_credential(self.jwt_secret)
       crud.delete(self.jwt_secret, dao_factory.jwt_secrets)
     end
   },
