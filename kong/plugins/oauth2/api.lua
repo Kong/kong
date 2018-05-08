@@ -11,7 +11,9 @@ return {
     end,
 
     POST = function(self, dao_factory)
-      crud.post(self.params, dao_factory.oauth2_tokens)
+      crud.post(self.params, dao_factory.oauth2_tokens, function(credential)
+        crud.portal_crud.insert_credential(credential, 'oauth2')
+      end)
     end
   },
 
@@ -39,10 +41,14 @@ return {
     end,
 
     PATCH = function(self, dao_factory)
-      crud.patch(self.params, dao_factory.oauth2_tokens, self.oauth2_token)
+      crud.patch(self.params, dao_factory.oauth2_tokens, self.oauth2_token,
+        function(credential)
+          crud.portal_crud.update_credential(credential)
+      end)
     end,
 
     DELETE = function(self, dao_factory)
+      crud.portal_crud.delete_credential(self.oauth2_token.id)
       crud.delete(self.oauth2_token, dao_factory.oauth2_tokens)
     end
   },

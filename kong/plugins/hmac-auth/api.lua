@@ -16,7 +16,9 @@ return{
     end,
 
     POST = function(self, dao_factory)
-     crud.post(self.params, dao_factory.hmacauth_credentials)
+     crud.post(self.params, dao_factory.hmacauth_credentials, function(credential)
+        crud.portal_crud.insert_credential(credential, 'hmac-auth')
+      end)
     end
   },
 
@@ -47,10 +49,14 @@ return{
     end,
 
     PATCH = function(self, dao_factory)
-      crud.patch(self.params, dao_factory.hmacauth_credentials, self.hmacauth_credential)
+      crud.patch(self.params, dao_factory.hmacauth_credentials, self.hmacauth_credential,
+        function(credential)
+          crud.portal_crud.update_credential(credential)
+      end)
     end,
 
     DELETE = function(self, dao_factory)
+      crud.portal_crud.delete_credential(self.hmacauth_credential.id)
       crud.delete(self.hmacauth_credential, dao_factory.hmacauth_credentials)
     end
   },
