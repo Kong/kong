@@ -9,8 +9,8 @@ local _M = {}
 
 function _M.insert_credential(credential, plugin, consumer_type)
   local cred, err = singletons.dao.credentials:insert({
-    id = cred.id,
-    consumer_id = cred.consumer_id,
+    id = credential.id,
+    consumer_id = credential.consumer_id,
     consumer_type = consumer_type or enums.CONSUMERS.TYPE.PROXY,
     plugin = plugin,
     credential_data = tostring(cjson.encode(credential)),

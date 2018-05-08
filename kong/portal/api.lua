@@ -34,11 +34,11 @@ return {
         if self.consumer
            and self.consumer.status ~= enums.CONSUMERS.STATUS.APPROVED then
           local status = self.consumer.status
-          local label = enums.get_key_from_value(enums.CONSUMERS.STATUS, status)
+          local label = enums.CONSUMERS.STATUS_LABELS[status]
           return helpers.responses.send_HTTP_UNAUTHORIZED({
-              ["status"] = status,
-              ["label"]  = label
-            })
+            status = status,
+            label  = label
+          })
         end
       end
     end,
