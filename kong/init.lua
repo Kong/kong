@@ -418,6 +418,9 @@ end
 
 function Kong.rewrite()
   local ctx = ngx.ctx
+
+  ctx.request_kind = "proxy"
+
   core.rewrite.before(ctx)
 
   local old_ws = ctx.workspaces
@@ -506,6 +509,8 @@ end
 
 function Kong.serve_admin_api(options)
   options = options or {}
+
+  ngx.ctx.request_kind = "admin"
 
   header["Access-Control-Allow-Origin"] = options.allow_origin or "*"
 
