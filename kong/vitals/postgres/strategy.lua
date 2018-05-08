@@ -274,6 +274,11 @@ function _M:select_stats(query_type, level, node_id, start_at, end_before)
   if query_type == "seconds" then
     local table_names, err = self:table_names_for_select()
 
+    -- edge case, should only happen when computer has been sleeping
+    if not table_names[1] then
+      return {}
+    end
+
     if err then
       return nil, err
     end
