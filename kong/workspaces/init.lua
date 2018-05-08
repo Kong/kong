@@ -418,11 +418,10 @@ local function extract_req_data(params)
 end
 
 
-local function sanitize_ngx_nulls(...)
-  return utils.unpack(map(
-                        function(x)
-                          return x == ngx.null and "" or x
-                        end, {...}))
+local function sanitize_ngx_nulls(methods, uris, hosts)
+  return (methods == ngx.null) and "" or methods,
+         (uris    == ngx.null) and "" or uris,
+         (hosts   == ngx.null) and "" or hosts
 end
 
 
@@ -433,7 +432,7 @@ end
 -- methods]. The function returns false iff none of the variants
 -- collide.
 function _M.is_route_colliding(req, router)
-  router = router or singletons.router
+  router = router or singletons.api_router
   local methods, uris, hosts = sanitize_ngx_nulls(extract_req_data(req.params))
   local ws = _M.get_workspaces()[1]
   for perm in permutations(utils.split(methods or ALL_METHODS, ","),

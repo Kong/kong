@@ -7,6 +7,7 @@ local _M = {
   loaded_plugins = nil,
   worker_events = nil,
   router = nil,
+  api_router = nil,
 }
 
 return _M

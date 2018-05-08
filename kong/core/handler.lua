@@ -75,6 +75,8 @@ local function build_api_router(dao, version)
     api_router_version = version
   end
 
+  singletons.api_router = api_router
+
   return true
 end
 

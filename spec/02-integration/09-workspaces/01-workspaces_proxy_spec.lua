@@ -7,7 +7,7 @@ describe("Plugin: workspace scope test key-auth (access)", function()
   local admin_client, proxy_client, api1, ws_foo, plugin1
   setup(function()
     helpers.dao:drop_schema()
-    helpers.run_migrations()
+    helpers.dao:run_migrations()
 
     assert(helpers.start_kong({
       nginx_conf = "spec/fixtures/custom_nginx.template",
