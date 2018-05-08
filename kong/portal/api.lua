@@ -30,9 +30,17 @@ return {
       if portal_auth then
         self.params.email_or_id = consumer_id
         crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
+
         if self.consumer
            and self.consumer.status ~= enums.CONSUMERS.STATUS.APPROVED then
-          return helpers.responses.send_HTTP_UNAUTHORIZED()
+          local status = self.consumer.status
+          local label = enums.get_key_from_value(enums.CONSUMERS.STATUS, status)
+          return helpers.responses.send_HTTP_UNAUTHORIZED(
+            {
+              ["status"] = status,
+              ["label"]  = label
+            }
+          )
         end
       end
     end,
@@ -138,15 +146,9 @@ return {
             self.portal_auth)
       end
 
-      local credential, err = collection:insert(credential_data)
-      if err then
-        return app_helpers.yield_error(err)
-      end
-
-      responses.send_HTTP_CREATED({
-        consumer = consumer,
-        credential = credential
-      })
+      crud.post(credential_data, collection, function(credential)
+        crud.portal_crud.insert_credential(credential, self.portal_auth)
+      end)
     end,
   },
 
@@ -263,12 +265,12 @@ return {
         helpers.responses.send_HTTP_UNAUTHORIZED()
       end
 
-      self.params.plugin = ngx.unescape_uri(self.params.plugin)
-      self.collection = dao_factory[plugin_route_dao_dict[self.params.plugin]]
+      self.plugin = ngx.unescape_uri(self.params.plugin)
+      self.collection = dao_factory[plugin_route_dao_dict[self.plugin]]
 
-      self.params.consumer_id = consumer_id
-      self.params.email_or_id = self.params.consumer_id
       self.params.plugin = nil
+      self.params.consumer_id = consumer_id
+      self.params.email_or_id = consumer_id
 
       crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
 
@@ -280,7 +282,9 @@ return {
     end,
 
     GET = function(self, dao_factory, helpers)
-      crud.paginated_set(self, self.collection)
+      self.params.consumer_type = enums.CONSUMERS.TYPE.PROXY
+      self.params.plugin = self.plugin
+      crud.paginated_set(self, dao_factory.credentials)
     end,
 
     POST = function(self, dao_factory, helpers)
@@ -293,9 +297,10 @@ return {
                                                   "credential id is required")
       end
 
-      crud.patch(self.params, self.collection, {
-        id = self.params.id
-      })
+      crud.patch(self.params, self.collection, { id = self.params.id },
+        function(credential)
+          crud.portal_crud.patch_credential(credential)
+      end)
     end,
   },
 
@@ -307,8 +312,8 @@ return {
         helpers.responses.send_HTTP_UNAUTHORIZED()
       end
 
-      self.params.plugin = ngx.unescape_uri(self.params.plugin)
-      self.collection = dao_factory[plugin_route_dao_dict[self.params.plugin]]
+      self.plugin = ngx.unescape_uri(self.params.plugin)
+      self.collection = dao_factory[plugin_route_dao_dict[self.plugin]]
 
       self.params.consumer_id = consumer_id
       self.params.email_or_id = self.params.consumer_id
@@ -344,10 +349,13 @@ return {
     end,
 
     PATCH = function(self, dao_factory)
-      crud.patch(self.params, self.collection, self.credential)
+      crud.patch(self.params, self.collection, self.credential, function(credential)
+        crud.portal_crud.patch_credential(credential)
+      end)
     end,
 
     DELETE = function(self, dao_factory)
+      crud.portal_crud.delete_credential(self.credential.id)
       crud.delete(self.credential, self.collection)
     end,
   },

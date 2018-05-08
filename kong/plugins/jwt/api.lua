@@ -16,7 +16,9 @@ return {
     end,
 
     POST = function(self, dao_factory, helpers)
-      crud.post(self.params, dao_factory.jwt_secrets)
+      crud.post(self.params, dao_factory.jwt_secrets, function(credential)
+        crud.portal_crud.insert_credential(credential, "jwt")
+      end)
     end
   },
 

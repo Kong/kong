@@ -1,4 +1,5 @@
 local crud = require "kong.api.crud_helpers"
+local enums = require "kong.portal.enums"
 
 return {
   ["/consumers/:username_or_id/basic-auth/"] = {
@@ -16,7 +17,9 @@ return {
     end,
 
     POST = function(self, dao_factory)
-      crud.post(self.params, dao_factory.basicauth_credentials)
+      crud.post(self.params, dao_factory.basicauth_credentials, function(credential)
+        return crud.portal_crud.insert_credential(credential, 'basic-auth')
+      end)
     end
   },
   ["/consumers/:username_or_id/basic-auth/:credential_username_or_id"] = {

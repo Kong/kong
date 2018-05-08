@@ -144,6 +144,7 @@ build = {
     ["kong.dao.schemas.consumers"] = "kong/dao/schemas/consumers.lua",
     ["kong.dao.schemas.consumer_types"] = "kong/dao/schemas/consumer_types.lua",
     ["kong.dao.schemas.consumer_statuses"] = "kong/dao/schemas/consumer_statuses.lua",
+    ["kong.dao.schemas.credentials"] = "kong/dao/schemas/credentials.lua",
     ["kong.dao.schemas.plugins"] = "kong/dao/schemas/plugins.lua",
     ["kong.dao.schemas.upstreams"] = "kong/dao/schemas/upstreams.lua",
     ["kong.dao.schemas.targets"] = "kong/dao/schemas/targets.lua",
@@ -173,6 +174,7 @@ build = {
     ["kong.portal.enums"] = "kong/portal/enums.lua",
     ["kong.portal.api"] = "kong/portal/api.lua",
     ["kong.portal.dao_helpers"] = "kong/portal/dao_helpers.lua",
+    ["kong.portal.crud_helpers"] = "kong/portal/crud_helpers.lua",
     ["kong.portal.utils"] = "kong/portal/utils.lua",
 
     ["kong.vitals"] = "kong/vitals/init.lua",
