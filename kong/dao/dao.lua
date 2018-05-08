@@ -1,8 +1,8 @@
 --- Operates over entities of a given type in a database table.
--- An instance of this class is to be instanciated for each entity, and can interact
+-- An instance of this class is to be instantiated for each entity, and can interact
 -- with the table representing the entity in the database.
 --
--- Instanciations of this class are managed by the DAO Factory.
+-- Instantiations of this class are managed by the DAO Factory.
 --
 -- This class provides an abstraction for various databases (PostgreSQL, Cassandra)
 -- and is responsible for propagating clustering events related to data invalidation,
@@ -73,13 +73,13 @@ local DAO = Object:extend()
 
 DAO.ret_error = ret_error
 
---- Instanciate a DAO.
--- The DAO Factory is responsible for instanciating DAOs for each entity.
+--- Instantiate a DAO.
+-- The DAO Factory is responsible for instantiating DAOs for each entity.
 -- This method is only documented for clarity.
 -- @param db An instance of the underlying database object (`cassandra_db` or `postgres_db`)
 -- @param model_mt The related model metatable. Such metatables contain, among other things, validation methods.
--- @param schema The schema of the entity for which this DAO is instanciated. The schema contains crucial informations about how to interact with the database (fields type, table name, etc...)
--- @param constraints A table of contraints built by the DAO Factory. Such constraints are mostly useful for databases without support for foreign keys. SQL databases handle those contraints natively.
+-- @param schema The schema of the entity for which this DAO is instantiated. The schema contains crucial information about how to interact with the database (fields type, table name, etc...)
+-- @param constraints A table of constraints built by the DAO Factory. Such constraints are mostly useful for databases without support for foreign keys. SQL databases handle those contraints natively.
 -- @return self
 function DAO:new(db, model_mt, schema, constraints)
   self.db = db
@@ -122,7 +122,7 @@ end
 -- @param[type=table] tbl Table to insert as a row.
 -- @param[type=table] options Options to use for this insertion. (`ttl`: Time-to-live for this row, in seconds, `quiet`: does not send event)
 -- @treturn table res A table representing the insert row (with fields created during the insertion).
--- @treturn table err If an error occured, a table describing the issue.
+-- @treturn table err If an error occurred, a table describing the issue.
 function DAO:insert(tbl, options)
   options = options or {}
   check_arg(tbl, 1, "table")
@@ -163,7 +163,7 @@ end
 -- Find a row by its given, mandatory primary key. All other fields are ignored.
 -- @param[type=table] tbl A table containing the primary key field(s) for this row.
 -- @treturn table row The row, or nil if none could be found.
--- @treturn table err If an error occured, a table describing the issue.
+-- @treturn table err If an error occurred, a table describing the issue.
 function DAO:find(tbl)
   check_arg(tbl, 1, "table")
   check_utf8(tbl, 1)
@@ -185,7 +185,7 @@ end
 -- Find all rows in the table, eventually matching the values in the given fields.
 -- @param[type=table] tbl (optional) A table containing the fields and values to search for.
 -- @treturn rows An array of rows.
--- @treturn table err If an error occured, a table describing the issue.
+-- @treturn table err If an error occurred, a table describing the issue.
 function DAO:find_all(tbl)
   if tbl ~= nil then
     check_arg(tbl, 1, "table")
@@ -202,12 +202,12 @@ function DAO:find_all(tbl)
 end
 
 --- Find a paginated set of rows.
--- Find a pginated set of rows eventually matching the values in the given fields.
+-- Find a paginated set of rows eventually matching the values in the given fields.
 -- @param[type=table] tbl (optional) A table containing the fields and values to filter for.
 -- @param page_offset Offset at which to resume pagination.
 -- @param page_size Size of the page to retrieve (number of rows).
 -- @treturn table rows An array of rows.
--- @treturn table err If an error occured, a table describing the issue.
+-- @treturn table err If an error occurred, a table describing the issue.
 function DAO:find_page(tbl, page_offset, page_size)
    if tbl ~= nil then
     check_arg(tbl, 1, "table")
@@ -231,7 +231,7 @@ end
 -- Count the number of rows matching the given values.
 -- @param[type=table] tbl (optional) A table containing the fields and values to filter for.
 -- @treturn number count The total count of rows matching the given filter, or total count of rows if no filter was given.
--- @treturn table err If an error occured, a table describing the issue.
+-- @treturn table err If an error occurred, a table describing the issue.
 function DAO:count(tbl)
   if tbl ~= nil then
     check_arg(tbl, 1, "table")
@@ -275,14 +275,14 @@ local function fix(old, new, schema)
 end
 
 --- Update a row.
--- Update a row in the related table. Performe a partial update by default (only fields in `tbl` will)
+-- Update a row in the related table. Perform a partial update by default (only fields in `tbl` will)
 -- be updated. If asked, can perform a "full" update, replacing the entire entity (assuming it is valid)
 -- with the one specified in `tbl` at once.
 -- @param[type=table] tbl A table containing the new values for this row.
 -- @param[type=table] filter_keys A table which must contain the primary key(s) to select the row to be updated.
 -- @param[type=table] options Options to use for this update. (`full`: performs a full update of the entity, `quiet`: does not send event).
 -- @treturn table res A table representing the updated entity.
--- @treturn table err If an error occured, a table describing the issue.
+-- @treturn table err If an error occurred, a table describing the issue.
 function DAO:update(tbl, filter_keys, options)
   options = options or {}
   check_arg(tbl, 1, "table")
@@ -347,7 +347,7 @@ end
 -- manually.
 -- @param[type=table] tbl A table containing the primary key field(s) for this row.
 -- @treturn table row A table representing the deleted row
--- @treturn table err If an error occured, a table describing the issue.
+-- @treturn table err If an error occurred, a table describing the issue.
 function DAO:delete(tbl, options)
   options = options or {}
   check_arg(tbl, 1, "table")
@@ -364,7 +364,7 @@ function DAO:delete(tbl, options)
   end
 
   -- Find associated entities
-  local associated_entites = {}
+  local associated_entities = {}
   if self.constraints.cascade ~= nil then
     for f_entity, cascade in pairs(self.constraints.cascade) do
       local f_fetch_keys = {[cascade.f_col] = tbl[cascade.col]}
@@ -372,7 +372,7 @@ function DAO:delete(tbl, options)
       if err then
         return ret_error(self.db.name, nil, err)
       end
-      associated_entites[cascade.table] = {
+      associated_entities[cascade.table] = {
         schema = cascade.schema,
         entities = rows
       }
@@ -393,7 +393,7 @@ function DAO:delete(tbl, options)
     end
 
     -- Also propagate the deletion for the associated entities
-    for k, v in pairs(associated_entites) do
+    for k, v in pairs(associated_entities) do
       for _, entity in ipairs(v.entities) do
         if self.events then
           local _, err = self.events.post_local("dao:crud", "delete", {
