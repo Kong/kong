@@ -606,7 +606,9 @@ end
 -- checks whether the given action can be cleanly performed in a
 -- set of entities
 function _M.check_cascade(entities, rbac_ctx)
-  if not singletons.configuration or singletons.configuration.rbac.off then
+  if not singletons.configuration or
+    not singletons.configuration.rbac.entity
+  then
     return true
   end
 
