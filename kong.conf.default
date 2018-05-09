@@ -580,7 +580,7 @@
 # DEVELOPER PORTAL
 #------------------------------------------------------------------------------
 
-#portal = off
+portal = on
                         # Developer Portal Switch
                         #
                         # When enabled:
@@ -602,7 +602,7 @@
                         # specified for each pair, similarly to
                         # the `admin_listen` directive.
 
-#portal_gui_url =
+portal_gui_url = http://127.0.0.1:8081
                         # Developer Portal GUI URI
                         #
                         # Here you may provide the lookup, or balancer,
@@ -727,7 +727,7 @@
                         # registration. Access can still be revoked through the
                         # Admin GUI or API.
 
-#portal_auth =
+portal_auth = basic-auth
                         # Developer Portal Authentication Plugin Name
                         #
                         # Here you may specify the authentication plugin

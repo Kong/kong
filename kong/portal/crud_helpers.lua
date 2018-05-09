@@ -9,7 +9,7 @@ local _M = {}
 
 function _M.insert_credential(plugin, consumer_type)
   return function(credential)
-    local cred, err = singletons.dao.credentials:insert({
+    local _, err = singletons.dao.credentials:insert({
       id = credential.id,
       consumer_id = credential.consumer_id,
       consumer_type = consumer_type or enums.CONSUMERS.TYPE.PROXY,
@@ -31,7 +31,7 @@ function _M.update_credential(credential)
     credential_data = cjson.encode(credential),
   }
 
-  local cred, err = singletons.dao.credentials:update(params, {
+  local _, err = singletons.dao.credentials:update(params, {
       id = credential.id,
       consumer_id = credential.consumer_id
   })
@@ -49,7 +49,7 @@ function _M.delete_credential(credential)
     ngx.log(ngx.DEBUG, "Failed to delete credential from credentials")
   end
 
-  local ok, err = singletons.dao.credentials:delete({ id = credential.id })
+  local _, err = singletons.dao.credentials:delete({ id = credential.id })
   if err then
     return app_helpers.yield_error(err)
   end
