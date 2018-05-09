@@ -95,21 +95,21 @@ local DELETE_CODE_CLASSES_CLUSTER = [[
 
 local INSERT_CODES_BY_SERVICE = [[
   INSERT INTO vitals_codes_by_service(service_id, code, at, duration, count)
-  VALUES('%s', '%s', to_timestamp(%d) at time zone 'UTC', %d, %d)
+  VALUES %s
   ON CONFLICT(service_id, code, at, duration) DO
   UPDATE SET COUNT = vitals_codes_by_service.count + excluded.count
 ]]
 
 local INSERT_CODES_BY_ROUTE = [[
   INSERT INTO vitals_codes_by_route(route_id, service_id, code, at, duration, count)
-  VALUES('%s', '%s', '%s', to_timestamp(%d) at time zone 'UTC', %d, %d)
+  VALUES %s
   ON CONFLICT(route_id, code, at, duration) DO
   UPDATE SET COUNT = vitals_codes_by_route.count + excluded.count
 ]]
 
 local INSERT_CODES_BY_CONSUMER_AND_ROUTE = [[
   INSERT INTO vitals_codes_by_consumer_route(consumer_id, route_id, service_id, code, at, duration, count)
-  VALUES('%s', '%s', '%s', '%s', to_timestamp(%d) at time zone 'UTC', %d, %d)
+  VALUES %s
   ON CONFLICT(consumer_id, route_id, code, at, duration) DO
   UPDATE SET COUNT = vitals_codes_by_consumer_route.count + excluded.count
 ]]
@@ -141,9 +141,16 @@ local SELECT_CODES_CONSUMER_ROUTE = [[
 ]]
 
 local DELETE_CODES = [[
-  DELETE FROM %s
-  WHERE ((duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC')
-  OR (duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC'))
+  DELETE FROM %s t USING
+         (SELECT at, duration
+            FROM %s
+           WHERE (duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC')
+              OR (duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC')
+           ORDER BY at, duration
+             FOR UPDATE
+         ) to_delete
+   WHERE t.at = to_delete.at
+     AND t.duration = to_delete.duration
 ]]
 
 local STATUS_CODE_QUERIES = {
@@ -849,19 +856,39 @@ function _M:insert_status_codes(data, opts)
 
   local entity_type = opts.entity_type
 
-  local query = STATUS_CODE_QUERIES.INSERT[entity_type]
+  if data[1] then
+    local query = STATUS_CODE_QUERIES.INSERT[entity_type]
 
-  if not query then
-    return nil, "unknown entity_type: " .. tostring(entity_type)
-  end
+    if not query then
+      return nil, "unknown entity_type: " .. tostring(entity_type)
+    end
 
-  local res, err
-  for _, v in ipairs(data) do
-    res, err = self.db:query(fmt(query, unpack(v)))
+    local res, err
+
+    -- TODO this is a hack around non-specific datatypes in our data array
+    local values_fmt
+    if entity_type == "service" then
+      values_fmt = "%s('%s','%s',to_timestamp(%d) at time zone 'UTC',%d,%d), "
+    elseif entity_type == "route" then
+      values_fmt = "%s('%s','%s','%s',to_timestamp(%d) at time zone 'UTC',%d,%d), "
+    elseif entity_type == "consumer_route" then
+      values_fmt = "%s('%s','%s','%s','%s',to_timestamp(%d) at time zone 'UTC',%d,%d), "
+    end
+
+
+    local values = ""
+    for _, v in ipairs(data) do
+      values = fmt(values_fmt, values, unpack(v))
+    end
+
+    -- strip last comma
+    values = values:sub(1, -3)
+
+    res, err = self.db:query(fmt(query, values))
 
     if not res then
       return nil, "could not insert status code counters. entity_type: " ..
-             entity_type .. ". error: " .. err
+        entity_type .. ". error: " .. err
     end
   end
 
@@ -932,6 +959,8 @@ function _M:delete_status_codes(opts)
     return nil, "opts must be a table"
   end
 
+  -- TODO: Refactor this validation so that we don't have to edit
+  -- it every time we add an entity_type?
   if opts.entity_type ~= "service" and
      opts.entity_type ~= "route"   and
      opts.entity_type ~= "consumer_route" then
@@ -948,7 +977,7 @@ function _M:delete_status_codes(opts)
 
   local table_name = "vitals_codes_by_" .. opts.entity_type
 
-  local query = fmt(DELETE_CODES, table_name, 1, opts.seconds,
+  local query = fmt(DELETE_CODES, table_name, table_name, 1, opts.seconds,
                     60, opts.minutes)
 
   local res, err = self.db:query(query)
