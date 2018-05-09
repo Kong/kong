@@ -215,13 +215,8 @@ local function validate_body(digest_received)
     return not body
   end
 
-  if not body then
-    -- if no body, calculate sha-256 over 0 bytes
-    body = ''
-  end
-
   local sha256 = resty_sha256:new()
-  sha256:update(body)
+  sha256:update(body or '')
   local digest_created = "SHA-256=" .. ngx_encode_base64(sha256:final())
 
   return digest_created == digest_received
