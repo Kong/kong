@@ -33,6 +33,11 @@ local SELECT_PREVIOUS_VITALS_STATS_SECONDS = [[
 
 local DROP_PREVIOUS_VITALS_STATS_SECONDS = "DROP TABLE IF EXISTS %s"
 
+local TABLE_NAMES_FOR_SELECT = [[
+    SELECT tablename FROM pg_tables WHERE tablename IN ('%s', '%s')
+    ORDER BY tablename DESC
+]]
+
 
 function _M.new(opts)
   if not opts.db then
@@ -113,6 +118,7 @@ function _M:current_table_name()
   return "vitals_stats_seconds_" .. current_interval
 end
 
+
 --[[
   returns the current table name and the previous table name (if previous table exists)
   data: [ current_table_name, previous_table_name ]
@@ -120,19 +126,28 @@ end
 function _M:table_names_for_select()
   local current_table_name = self:current_table_name()
 
-  local q = SELECT_PREVIOUS_VITALS_STATS_SECONDS:gsub('?', current_table_name)
+  local now = time()
 
-  log(DEBUG, _log_prefix, q)
+  local previous_interval = now - (now % self.rotation_interval) - self.rotation_interval
 
-  local previous_table, err = self.db:query(q)
+  local previous_table_name = "vitals_stats_seconds_" .. previous_interval
 
+  local res, err = self.db:query(fmt(TABLE_NAMES_FOR_SELECT, current_table_name,
+                                     previous_table_name))
   if err then
-    return tostring(err)
-  elseif previous_table[1] then
-    return { current_table_name, previous_table[1].table_name }
-  else
-    return { current_table_name }
+    return nil, err
   end
+
+  local table_names_for_select = {}
+  if res[2] then
+    -- both tables exist
+    table_names_for_select = { current_table_name, previous_table_name }
+  elseif res[1] then
+    -- only current table exists
+    table_names_for_select = { current_table_name }
+  end
+
+  return table_names_for_select
 end
 
 

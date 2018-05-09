@@ -1,6 +1,7 @@
 local json_null  = require("cjson").null
 local cjson      = require "cjson.safe"
 local ffi        = require "ffi"
+local tablex     = require("pl.tablex")
 local reports    = require "kong.core.reports"
 local singletons = require "kong.singletons"
 local utils      = require "kong.tools.utils"
@@ -674,7 +675,7 @@ local function flatten_counters(counters)
   local row
   local count_idx
 
-  for k, count in pairs(counters) do
+  for k, count in tablex.sort(counters) do
     row = parse_cache_key(k)
     count_idx = count_idx or #row + 1
     row[count_idx] = count
@@ -805,12 +806,12 @@ function _M:flush_vitals_cache(batch_size, max)
     end
 
     num_processed = num_processed + num_fetched
-    log(DEBUG, _log_prefix, "keys processed: ", num_processed)
 
     keys = self.counter_cache:get_keys(batch_size)
     num_fetched = #keys
   end
 
+  log(DEBUG, _log_prefix, "total keys processed: ", num_processed)
   return num_processed
 end
 
@@ -1249,7 +1250,6 @@ function _M:log_upstream_latency(latency)
   end
 
   if not latency then
-    log(DEBUG, _log_prefix, "upstream latency is required")
     return "ok"
   end
 
