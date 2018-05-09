@@ -57,7 +57,7 @@ local function on_error(self)
   local err = self.errors[1]
 
   -- XXX create standard error codes in the rbac module?
-  if err:match("cascading error") then
+  if type(err) == "string" and err:match("cascading error") then
     return responses.send_HTTP_FORBIDDEN("entity cannot be deleted due to your rbac permissions")
   end
 
