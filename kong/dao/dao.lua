@@ -243,7 +243,6 @@ end
 -- @treturn table res A table representing the insert row (with fields created during the insertion).
 -- @treturn table err If an error occured, a table describing the issue.
 function DAO:insert(tbl, options)
-
   options = options or {}
   check_arg(tbl, 1, "table")
   check_arg(options, 2, "table")

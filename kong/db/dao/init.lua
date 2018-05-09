@@ -1,5 +1,12 @@
 local cjson        = require "cjson"
 
+local workspaces = require "kong.workspaces"
+local ws_helper  = require "kong.workspaces.helper"
+local rbac       = require "kong.rbac"
+
+
+local workspaceable = workspaces.get_workspaceable_relations()
+
 local setmetatable = setmetatable
 local tonumber     = tonumber
 local require      = require
@@ -8,6 +15,7 @@ local pairs        = pairs
 local type         = type
 local min          = math.min
 local log          = ngx.log
+local tostring     = tostring
 
 
 local ERR          = ngx.ERR
@@ -92,6 +100,21 @@ local function generate_foreign_key_methods(self)
 
       self["select_by_" .. name] = function(self, unique_value)
         validate_unique_value(unique_value)
+        local pk, err_t = ws_helper.resolve_shared_entity_id(self.schema.name,
+                                                     { [name] = unique_value },
+                                                             workspaceable[self.schema.name])
+        if err_t then
+          return nil, tostring(err_t), err_t
+        end
+
+        if pk then
+          return self:select(pk)
+        end
+
+        local ws_scope = workspaces.get_workspaces()
+        if #ws_scope then
+          return nil
+        end
 
         local row, err_t = self.strategy:select_by_field(name, unique_value)
         if err_t then
@@ -120,6 +143,15 @@ local function generate_foreign_key_methods(self)
           return nil, tostring(err_t), err_t
         end
 
+        local pk, err_t = ws_helper.resolve_shared_entity_id(self.schema.name,
+                                                     { [name] = unique_value },
+                                                             workspaceable[self.schema.name])
+        if err_t then
+          return nil, tostring(err_t), err_t
+        end
+        if pk then
+          return self:update(pk, entity_to_update)
+        end
         local row, err_t = self.strategy:update_by_field(name, unique_value,
                                                          entity_to_update)
         if not row then
@@ -138,6 +170,16 @@ local function generate_foreign_key_methods(self)
 
       self["delete_by_" .. name] = function(self, unique_value)
         validate_unique_value(unique_value)
+        local pk, err_t = ws_helper.resolve_shared_entity_id(self.schema.name,
+                                                     { [name] = unique_value },
+                                                             workspaceable[self.schema.name])
+        if err_t then
+          return nil, tostring(err_t), err_t
+        end
+
+        if pk then
+          return self:delete(pk)
+        end
 
         local _, err_t = self.strategy:delete_by_field(name, unique_value)
         if err_t then
@@ -188,6 +230,7 @@ function DAO:select(primary_key)
   if err_t then
     return nil, tostring(err_t), err_t
   end
+  ws_helper.remove_ws_prefix(self.schema.name, row)
 
   if not row then
     return nil
@@ -282,9 +325,27 @@ function DAO:insert(entity)
     return nil, tostring(err_t), err_t
   end
 
+  local workspace, err_t = ws_helper.apply_unique_per_ws(self.schema.name, entity_to_insert,
+                                                         workspaceable[self.schema.name])
+  if err then
+    return nil, tostring(err_t), err_t
+  end
+
   local row, err_t = self.strategy:insert(entity_to_insert)
   if not row then
     return nil, tostring(err_t), err_t
+  end
+
+  ws_helper.remove_ws_prefix(self.schema.name, row)
+  if not err and workspace then
+    local err_rel = workspaces.add_entity_relation(self.schema.name, row, workspace)
+    if err_rel then
+      local _, err_t = self:delete(row)
+      if err then
+        return nil, tostring(err_t), err_t
+      end
+      return nil, tostring(err_rel), err_rel
+    end
   end
 
   row, err, err_t = self:row_to_entity(row)
@@ -325,6 +386,10 @@ function DAO:update(primary_key, entity)
     return nil, tostring(err_t), err_t
   end
 
+  ws_helper.apply_unique_per_ws(self.schema.name, entity_to_update,
+  workspaceable[self.schema.name])
+
+
   local row, err_t = self.strategy:update(primary_key, entity_to_update)
   if not row then
     return nil, tostring(err_t), err_t
@@ -333,6 +398,14 @@ function DAO:update(primary_key, entity)
   row, err, err_t = self:row_to_entity(row)
   if not row then
     return nil, err, err_t
+  end
+
+  ws_helper.remove_ws_prefix(self.schema.name, row)
+  if not err then
+    local err_rel = workspaces.update_entity_relation(self.schema.name, row)
+    if err_rel then
+      return nil, tostring(err_rel), err_rel
+    end
   end
 
   self:post_crud_event("update", row)
@@ -346,6 +419,9 @@ function DAO:delete(primary_key)
     error("primary_key must be a table", 2)
   end
 
+  ws_helper.apply_unique_per_ws(self.schema.name, primary_key,
+                                workspaceable[self.schema.name])
+
   local ok, errors = self.schema:validate_primary_key(primary_key)
   if not ok then
     local err_t = self.errors:invalid_primary_key(errors)
@@ -353,6 +429,12 @@ function DAO:delete(primary_key)
   end
 
   local _, err_t = self.strategy:delete(primary_key)
+  if err_t then
+    return nil, tostring(err_t), err_t
+  end
+
+  -- TODO Delete associated entities from workspace_entities
+  local err_t = workspaces.delete_entity_relation(self.schema.name, primary_key)
   if err_t then
     return nil, tostring(err_t), err_t
   end

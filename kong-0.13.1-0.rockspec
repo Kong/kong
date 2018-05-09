@@ -160,6 +160,7 @@ build = {
     ["kong.rbac.migrations.01_defaults"] = "kong/rbac/migrations/01_defaults.lua",
 
     ["kong.workspaces"] = "kong/workspaces/init.lua",
+    ["kong.workspaces.helper"] = "kong/workspaces/helper.lua",
 
     ["kong.portal"] = "kong/portal/init.lua",
     ["kong.portal.enums"] = "kong/portal/enums.lua",
