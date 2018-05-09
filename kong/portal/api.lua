@@ -25,11 +25,9 @@ local function validate_developer_status(helpers, consumer)
   local status = consumer.status
 
   if consumer.id and status ~= enums.CONSUMERS.STATUS.APPROVED then
-    local label = enums.get_key_from_value(enums.CONSUMERS.STATUS, status)
-
     return helpers.responses.send_HTTP_UNAUTHORIZED({
       status = status,
-      label  = label
+      label  = enums.CONSUMERS.STATUS_LABELS[status]
     })
   end
 end
