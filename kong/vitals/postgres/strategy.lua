@@ -892,15 +892,16 @@ function _M:insert_status_codes(data, opts)
     end
   end
 
-  if opts.prune then
-    local now = time()
-
-    self:delete_status_codes({
-      entity_type = entity_type,
-      seconds = now - self.ttl_seconds,
-      minutes = now - self.ttl_minutes,
-    })
-  end
+--  TODO: Commenting out for bug bash. Reinstate afterward.
+--  if opts.prune then
+--    local now = time()
+--
+--    self:delete_status_codes({
+--      entity_type = entity_type,
+--      seconds = now - self.ttl_seconds,
+--      minutes = now - self.ttl_minutes,
+--    })
+--  end
 
   return true
 end
