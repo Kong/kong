@@ -604,12 +604,12 @@ return {
     name = "2018-05-08-143700_consumer_dev_portal_columns",
     up = [[
       ALTER TABLE consumers
-        ADD COLUMN "type" int NOT NULL DEFAULT 0 REFERENCES consumer_types (id),
-        ADD COLUMN "email" text COLLATE pg_catalog."default",
-        ADD COLUMN "status" integer REFERENCES consumer_statuses (id),
-        ADD COLUMN "meta" text COLLATE pg_catalog."default";
+        ADD COLUMN type int NOT NULL DEFAULT 0 REFERENCES consumer_types (id),
+        ADD COLUMN email text COLLATE pg_catalog."default",
+        ADD COLUMN status integer REFERENCES consumer_statuses (id),
+        ADD COLUMN meta text COLLATE pg_catalog."default";
 
-      ALTER TABLE consumers ADD CONSTRAINT consumers_email_type_key UNIQUE("email", "type");
+      ALTER TABLE consumers ADD CONSTRAINT consumers_email_type_key UNIQUE(email, type);
 
       CREATE INDEX IF NOT EXISTS consumers_type_idx
           ON consumers USING btree (type)
@@ -646,7 +646,7 @@ return {
         ON credentials USING btree (consumer_id)
         TABLESPACE pg_default;
 
-      CREATE INDEX  IF NOT EXISTS credentials_consumer_id_plugin
+      CREATE INDEX IF NOT EXISTS credentials_consumer_id_plugin
         ON credentials USING btree (consumer_id, plugin)
         TABLESPACE pg_default;
     ]],

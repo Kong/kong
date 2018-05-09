@@ -491,6 +491,25 @@ return {
     ]]
   },
   {
+    name = "2018-05-08-145300_consumer_dev_portal_columns",
+    up = [[
+      ALTER TABLE consumers ADD type int;
+      ALTER TABLE consumers ADD email text;
+      ALTER TABLE consumers ADD status int;
+      ALTER TABLE consumers ADD meta text;
+
+      CREATE INDEX IF NOT EXISTS consumers_type_idx ON consumers(type);
+      CREATE INDEX IF NOT EXISTS consumers_status_idx ON consumers(status);
+    ]],
+
+    down = [[
+      ALTER TABLE consumers DROP type;
+      ALTER TABLE consumers DROP email;
+      ALTER TABLE consumers DROP status;
+      ALTER TABLE consumers DROP meta;
+    ]]
+  },
+  {
     name = "2018-05-07-171200_credentials_master_table",
     up = [[
       CREATE TABLE IF NOT EXISTS credentials (
@@ -509,25 +528,6 @@ return {
 
     down = [[
       DROP TABLE credentials
-    ]]
-  },
-  {
-    name = "2018-05-08-145300_consumer_dev_portal_columns",
-    up = [[
-      ALTER TABLE consumers ADD type int;
-      ALTER TABLE consumers ADD email text;
-      ALTER TABLE consumers ADD status int;
-      ALTER TABLE consumers ADD meta text;
-
-      CREATE INDEX IF NOT EXISTS consumers_type_idx ON consumers(type);
-      CREATE INDEX IF NOT EXISTS consumers_status_idx ON consumers(status);
-    ]],
-
-    down = [[
-      ALTER TABLE consumers DROP type;
-      ALTER TABLE consumers DROP email;
-      ALTER TABLE consumers DROP status;
-      ALTER TABLE consumers DROP meta;
     ]]
   },
 }
