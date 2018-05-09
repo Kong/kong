@@ -97,20 +97,33 @@ dao_helpers.for_each_dao(function(kong_conf)
 
     describe(":table_names_for_select()", function()
       it("returns only the current table name when no previous tables exist", function()
-        stub(rotater, "current_table_name").returns("vitals_stats_seconds_1505865600")
+        local current = rotater:current_table_name()
+        assert(db:query("create table if not exists " .. current .. " (like vitals_stats_seconds)"))
 
-        assert.same({ "vitals_stats_seconds_1505865600" }, rotater:table_names_for_select())
+        assert.same({ current }, rotater:table_names_for_select())
       end)
 
-      it("returns the most recent table name when previous tables exist", function()
-        assert(db:query("create table if not exists vitals_stats_seconds_1505862000 (like vitals_stats_seconds)"))
-        assert(db:query("create table if not exists vitals_stats_seconds_1505865600 (like vitals_stats_seconds)"))
+      it("returns the most recent table names when previous tables exist", function()
 
-        stub(rotater, "current_table_name").returns("vitals_stats_seconds_1505865600")
+        local now = ngx_time()
+        local previous = "vitals_stats_seconds_" .. (now - (now % 3600) - 3600)
+
+        local current = rotater:current_table_name()
+
+        assert(db:query("create table if not exists " .. current .. " (like vitals_stats_seconds)"))
+        assert(db:query("create table if not exists " .. previous .. " (like vitals_stats_seconds)"))
 
         local res = rotater:table_names_for_select()
 
-        assert.same({ "vitals_stats_seconds_1505865600", "vitals_stats_seconds_1505862000" }, res)
+        assert.same({ current, previous }, res)
+      end)
+
+      it("does not return older table names", function()
+        assert(db:query("create table if not exists vitals_stats_seconds_1505865600 (like vitals_stats_seconds)"))
+
+        local res = rotater:table_names_for_select()
+
+        assert.same({}, res)
       end)
     end)
 

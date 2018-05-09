@@ -96,7 +96,7 @@
                         # nodes connected to the same database.
 
 #proxy_url =
-                        # Kong Proxy URI
+                        # Kong Proxy URL
                         #
                         # Here you may provide the lookup, or balancer,
                         # address for your Kong Proxy nodes.
@@ -116,34 +116,6 @@
                         #     proxy_url = https://proxy.domain.tld
                         #   - <scheme>://<HOSTNAME>/<PATH>
                         #     proxy_url = http://dev-machine/dev-285
-                        #
-                        # By default:
-                        #
-                        #  Kong Manager, and Kong Portal will use
-                        #  the window request host and append the resolved
-                        #  listener port depending on the requested protocol.
-
-#proxy_uri =
-                        # Kong Proxy URI
-                        #
-                        # Here you may provide the lookup, or balancer,
-                        # address for your Kong Proxy nodes.
-                        #
-                        # This value is commonly used in a microservices
-                        # or service-mesh oriented architecture.
-                        #
-                        # Accepted format (parts in parenthesis are optional):
-                        #
-                        #   <IP / HOSTNAME>(:<PORT>(/<PATH>))
-                        #
-                        # Examples:
-                        #
-                        #   - <IP>:<PORT>
-                        #     proxy_uri = 127.0.0.1:8003
-                        #   - <HOSTNAME>
-                        #     proxy_uri = portal.domain.tld
-                        #   - <HOSTNAME>/<PATH>
-                        #     proxy_uri = dev-machine/dev-285
                         #
                         # By default:
                         #

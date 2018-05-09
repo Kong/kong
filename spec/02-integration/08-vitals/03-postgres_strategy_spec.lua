@@ -632,6 +632,15 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
     end)
 
+    describe(":select_stats() when no current table names", function()
+      it("returns an empty set", function()
+        stub(strategy, "table_names_for_select").returns({})
+        local res, err = strategy:select_stats("seconds", "cluster")
+
+        assert.is_nil(err)
+        assert.same({}, res)
+      end)
+    end)
 
     describe(":select_phone_home", function()
       -- data starts 10 minutes ago
