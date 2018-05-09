@@ -16,7 +16,8 @@ return {
     end,
 
     POST = function(self, dao_factory)
-      crud.post(self.params, dao_factory.basicauth_credentials)
+      crud.post(self.params, dao_factory.basicauth_credentials,
+                crud.portal_crud.insert_credential('basic-auth'))
     end
   },
   ["/consumers/:username_or_id/basic-auth/:credential_username_or_id"] = {
@@ -46,10 +47,12 @@ return {
     end,
 
     PATCH = function(self, dao_factory)
-      crud.patch(self.params, dao_factory.basicauth_credentials, self.basicauth_credential)
+      crud.patch(self.params, dao_factory.basicauth_credentials, self.basicauth_credential,
+          crud.portal_crud.update_credential)
     end,
 
     DELETE = function(self, dao_factory)
+      crud.portal_crud.delete_credential(self.basicauth_credential)
       crud.delete(self.basicauth_credential, dao_factory.basicauth_credentials)
     end
   },

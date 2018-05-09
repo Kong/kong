@@ -25,6 +25,7 @@ local CORE_MODELS = {
   "portal_files",
   "consumer_types",
   "consumer_statuses",
+  "credentials",
 }
 
 -- returns db errors as strings, including the initial `nil`
