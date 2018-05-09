@@ -1,7 +1,7 @@
 local package = {
   x = 0,
   y = 32,
-  z = "dev",
+  z = "rbac-dev",
 }
 
 local features = {
