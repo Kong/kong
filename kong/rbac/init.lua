@@ -359,10 +359,6 @@ function _M.validate_entity_operation(entity)
     return true
   end
 
-  if ngx.ctx.request_kind == "proxy" then
-    return true
-  end
-
   local permissions_map = rbac_ctx.entities_perms
   local action = rbac_ctx.action
   return _M.authorize_request_entity(permissions_map, entity.id, action)
