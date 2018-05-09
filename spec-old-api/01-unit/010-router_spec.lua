@@ -1,8 +1,8 @@
-local Router = require "kong.core.api_router"
+local Router = require "kong.api_router"
 
 local function reload_router()
-  package.loaded["kong.core.api_router"] = nil
-  Router = require "kong.core.api_router"
+  package.loaded["kong.api_router"] = nil
+  Router = require "kong.api_router"
 end
 
 local use_case = {
@@ -920,6 +920,25 @@ describe("Router", function()
 
       return _ngx
     end
+
+    it("[uri + empty host]", function()
+      -- uri only (no Host)
+      -- Supported for HTTP/1.0 requests without a Host header
+      -- Regression for https://github.com/Kong/kong/issues/3435
+      local use_case_apis = {
+        {
+          name = "api-1",
+          uris = { "/my-api" },
+          upstream_url = "http://example.org",
+        },
+      }
+
+      local router = assert(Router.new(use_case_apis))
+
+      local _ngx = mock_ngx("GET", "/my-api", { ["host"] = nil })
+      local match_t = router.exec(_ngx)
+      assert.same(use_case_apis[1], match_t.api)
+    end)
 
     it("returns parsed upstream_url + upstream_uri", function()
       local use_case_apis = {

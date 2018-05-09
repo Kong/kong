@@ -2,8 +2,21 @@ local helpers = require "spec.helpers"
 local utils   = require "kong.tools.utils"
 
 
-local function acl_cache_key(route_id, username)
-  return "ldap_auth_cache:" .. route_id .. ":" .. username
+local lower   = string.lower
+local fmt     = string.format
+local md5     = ngx.md5
+
+
+local function cache_key(conf, username)
+  local prefix = md5(fmt("%s:%u:%s:%s:%u",
+    lower(conf.ldap_host),
+    conf.ldap_port,
+    conf.base_dn,
+    conf.attribute,
+    conf.cache_ttl
+  ))
+
+  return fmt("ldap_auth_cache:%s:%s", prefix, username)
 end
 
 
@@ -38,6 +51,10 @@ for _, strategy in helpers.each_strategy() do
 
       local route5 = bp.routes:insert {
         hosts = { "ldap5.com" },
+      }
+
+      bp.routes:insert {
+        hosts = { "ldap6.com" },
       }
 
       local anonymous_user = bp.consumers:insert {
@@ -107,6 +124,17 @@ for _, strategy in helpers.each_strategy() do
           base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
           attribute = "uid",
           header_type = "basic",
+        }
+      }
+
+      bp.plugins:insert {
+        name     = "ldap-auth",
+        config   = {
+          ldap_host = ldap_host_aws,
+          ldap_port = "389",
+          start_tls = false,
+          base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
+          attribute = "uid"
         }
       }
 
@@ -334,6 +362,20 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.response(r).has.status(403)
     end)
+    it("passes if credential is valid in get request using global plugin", function()
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          host          = "ldap6.com",
+          authorization = "ldap " .. ngx.encode_base64("einstein:password")
+        }
+      })
+      assert.response(res).has.status(200)
+      local value = assert.request(res).has.header("x-credential-username")
+      assert.are.equal("einstein", value)
+      assert.request(res).has_not.header("x-anonymous-username")
+    end)
     it("caches LDAP Auth Credential", function()
       local res = assert(proxy_client:send {
         method  = "GET",
@@ -346,12 +388,12 @@ for _, strategy in helpers.each_strategy() do
       assert.response(res).has.status(200)
 
       -- Check that cache is populated
-      local cache_key = acl_cache_key(route2.id, "einstein")
+      local key = cache_key(plugin2.config, "einstein")
 
       helpers.wait_until(function()
         local res = assert(admin_client:send {
           method  = "GET",
-          path    = "/cache/" .. cache_key
+          path    = "/cache/" .. key
         })
         res:read_body()
         return res.status == 200
@@ -361,7 +403,7 @@ for _, strategy in helpers.each_strategy() do
       helpers.wait_until(function()
         local res = admin_client:send {
           method  = "GET",
-          path    = "/cache/" .. cache_key
+          path    = "/cache/" .. key
         }
         res:read_body()
         --if res.status ~= 404 then

@@ -173,7 +173,7 @@ local function do_authentication(conf)
   -- retrieve our consumer linked to this API key
 
   local cache = singletons.cache
-  local dao       = singletons.dao
+  local dao = singletons.dao
 
   local credential_cache_key = dao.keyauth_credentials:cache_key(key)
   local credential, err = cache:get(credential_cache_key, nil,

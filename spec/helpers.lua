@@ -211,14 +211,16 @@ local function wait_until(f, timeout)
     error("arg #1 must be a function", 2)
   end
 
+  ngx.update_time()
+
   timeout = timeout or 2
   local tstart = ngx.time()
   local texp = tstart + timeout
   local ok, res, err
 
   repeat
-    ngx.sleep(0.2)
     ok, res, err = pcall(f)
+    ngx.sleep(0.05)
   until not ok or res or ngx.time() >= texp
 
   if not ok then

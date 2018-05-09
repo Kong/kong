@@ -97,6 +97,31 @@ for _, strategy in helpers.each_strategy() do
             assert.equals(60000, json.read_timeout)
           end
         end)
+
+        it_content_types("'port' defaults to 443 when 'url' scheme is https", function(content_type)
+          return function()
+            local res = client:post("/services", {
+              body = {
+                url = "https://service.com/",
+              },
+              headers = { ["Content-Type"] = content_type },
+            })
+            local body = assert.res_status(201, res)
+            local json = cjson.decode(body)
+
+            assert.is_string(json.id)
+            assert.is_number(json.created_at)
+            assert.is_number(json.updated_at)
+            assert.equals(cjson.null, json.name)
+            assert.equals("https", json.protocol)
+            assert.equals("service.com", json.host)
+            assert.equals("/", json.path)
+            assert.equals(443, json.port)
+            assert.equals(60000, json.connect_timeout)
+            assert.equals(60000, json.write_timeout)
+            assert.equals(60000, json.read_timeout)
+          end
+        end)
       end)
 
       describe("GET", function()

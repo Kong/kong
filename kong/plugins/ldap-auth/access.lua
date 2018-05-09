@@ -7,10 +7,12 @@ local match = string.match
 local lower = string.lower
 local find = string.find
 local sub = string.sub
+local fmt = string.format
 local ngx_log = ngx.log
 local request = ngx.req
 local ngx_error = ngx.ERR
 local ngx_debug = ngx.DEBUG
+local md5 = ngx.md5
 local decode_base64 = ngx.decode_base64
 local ngx_socket_tcp = ngx.socket.tcp
 local ngx_set_header = ngx.req.set_header
@@ -18,6 +20,10 @@ local tostring =  tostring
 
 local AUTHORIZATION = "authorization"
 local PROXY_AUTHORIZATION = "proxy-authorization"
+
+
+local ldap_config_cache = setmetatable({}, { __mode = "k" })
+
 
 local _M = {}
 
@@ -37,7 +43,6 @@ end
 local function ldap_authenticate(given_username, given_password, conf)
   local is_authenticated
   local err, suppressed_err, ok
-  local who = conf.attribute .. "=" .. given_username .. "," .. conf.base_dn
 
   local sock = ngx_socket_tcp()
   sock:settimeout(conf.timeout)
@@ -58,6 +63,7 @@ local function ldap_authenticate(given_username, given_password, conf)
     end
   end
 
+  local who = conf.attribute .. "=" .. given_username .. "," .. conf.base_dn
   is_authenticated, err = ldap.bind_request(sock, who, given_password)
 
   ok, suppressed_err = sock:setkeepalive(conf.keepalive)
@@ -84,15 +90,29 @@ local function load_credential(given_username, given_password, conf)
   return {username = given_username, password = given_password}
 end
 
+
+local function cache_key(conf, username)
+  if not ldap_config_cache[conf] then
+    ldap_config_cache[conf] = md5(fmt("%s:%u:%s:%s:%u",
+      lower(conf.ldap_host),
+      conf.ldap_port,
+      conf.base_dn,
+      conf.attribute,
+      conf.cache_ttl
+    ))
+  end
+
+  return fmt("ldap_auth_cache:%s:%s", ldap_config_cache[conf], username)
+end
+
+
 local function authenticate(conf, given_credentials)
   local given_username, given_password = retrieve_credentials(given_credentials, conf)
   if given_username == nil then
     return false
   end
 
-  local route_id = conf.route_id or conf.api_id
-  local cache_key = "ldap_auth_cache:" .. route_id .. ":" .. given_username
-  local credential, err = singletons.cache:get(cache_key, {
+  local credential, err = singletons.cache:get(cache_key(conf, given_username), {
     ttl = conf.cache_ttl,
     neg_ttl = conf.cache_ttl,
   }, load_credential, given_username, given_password, conf)

@@ -1,6 +1,6 @@
 local crud    = require "kong.api.crud_helpers"
 local utils   = require "kong.tools.utils"
-local reports = require "kong.core.reports"
+local reports = require "kong.reports"
 
 return {
   ["/apis/"] = {
