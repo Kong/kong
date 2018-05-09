@@ -22,10 +22,11 @@ local function create_certificate(self, dao_factory, helpers)
         return helpers.responses.send_HTTP_CONFLICT("duplicate SNI in " ..
                                                     "request: " .. sni)
       end
-
-      local cnt, err = dao_factory.ssl_servers_names:count {
+      local cnt, err = dao_factory.ssl_servers_names:run_with_ws_scope({},
+        dao_factory.ssl_servers_names.count, {
         name = sni,
-      }
+      })
+
       if err then
         return helpers.yield_error(err)
       end
