@@ -8,9 +8,8 @@ return {
       immutable = true,
     },
     entity_id = {
-      type = "id",
+      type = "string",
       required = true,
-      immutable = true,
     },
     entity_type = {
       type = "string",

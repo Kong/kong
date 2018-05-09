@@ -309,8 +309,8 @@ end
 
 
 local function is_system_table(t)
-  local reserved_tables = { "rbac_.*", "workspace*", ".*_.*s" }
-  for i, v in ipairs(reserved_tables) do
+  local reserved_tables = { "rbac_.*", "workspace*" }
+  for _, v in ipairs(reserved_tables) do
     if string.find(t, v) then
       return true
     end
@@ -327,11 +327,11 @@ local function is_admin_api_request()
 end
 
 
-function _M.narrow_readable_entities(db_table_name, entities)
+function _M.narrow_readable_entities(db_table_name, entities, constraints)
   local filtered_rows = {}
   if not is_system_table(db_table_name) and is_admin_api_request() then
     for i, v in ipairs(entities) do
-      local valid = _M.validate_entity_operation(v)
+      local valid = _M.validate_entity_operation(v, constraints)
       if valid then
         filtered_rows[#filtered_rows+1] = v
       end
@@ -343,7 +343,7 @@ function _M.narrow_readable_entities(db_table_name, entities)
 end
 
 
-function _M.validate_entity_operation(entity)
+function _M.validate_entity_operation(entity, constraints)
   -- rbac only applies to the admin api - ie, proxy side
   -- requests are not to be considered
   if not is_admin_api_request() then
@@ -361,7 +361,11 @@ function _M.validate_entity_operation(entity)
 
   local permissions_map = rbac_ctx.entities_perms
   local action = rbac_ctx.action
-  return _M.authorize_request_entity(permissions_map, entity.id, action)
+  local entity_id = "id"
+  if constraints then
+    entity_id = constraints.primary_key
+  end
+  return _M.authorize_request_entity(permissions_map, entity[entity_id], action)
 end
 
 
@@ -625,7 +629,8 @@ function _M.check_cascade(entities, rbac_ctx)
   -- }
   for _, table_info in pairs(entities) do
     for _, entity in ipairs(table_info.entities) do
-      if not authorize_request_entity(rbac_ctx.entities_perms, entity.id,
+      if not authorize_request_entity(rbac_ctx.entities_perms,
+                                      entity[table_info.schema.primary_key[1]],
                                       rbac_ctx.action) then
         return false
       end

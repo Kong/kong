@@ -156,7 +156,7 @@ return {
 
       CREATE TABLE IF NOT EXISTS rbac_role_entities(
         role_id uuid,
-        entity_id uuid,
+        entity_id text,
         entity_type text,
         actions int,
         negative boolean,

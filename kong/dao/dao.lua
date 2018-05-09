@@ -73,7 +73,7 @@ local function ret_error(db_name, res, err, ...)
 end
 
 -- used only with insert, update and delete
-local function apply_unique_per_ws(table_name, params)
+local function apply_unique_per_ws(table_name, params, constraints)
   -- entity may have workspace_id, workspace_name fields, ex. in case of update
   -- needs to be removed as entity schema doesn't support them
   if table_name ~= "workspace_entities" then
@@ -81,7 +81,6 @@ local function apply_unique_per_ws(table_name, params)
   end
   params.workspace_name = nil
 
-  local constraints = workspaceable[table_name]
   if not constraints then
     return
   end
@@ -102,21 +101,20 @@ end
 
 -- If entity has a unique key it will have workspace_name prefix so we
 -- have to search first in the relationship table
-local function resolve_shared_entity_id(table_name, params)
-  local constraints = workspaceable[table_name]
+local function resolve_shared_entity_id(table_name, params, constraints)
   if not constraints or not constraints.unique_keys then
-    return
+    return true
   end
 
   local ws_scope = workspaces.get_workspaces()
   if #ws_scope == 0 then
-    return
+    return true
   end
   local workspace = ws_scope[1]
 
   if table_name == "workspaces" and
   params.name == workspaces.DEFAULT_WORKSPACE then
-    return
+    return true
   end
 
   for k, v in pairs(params) do
@@ -129,7 +127,7 @@ local function resolve_shared_entity_id(table_name, params)
       })
 
       if err then
-        return nil, err
+        return false, err
       end
 
       if row then
@@ -138,6 +136,7 @@ local function resolve_shared_entity_id(table_name, params)
       end
     end
   end
+  return true
 end
 
 local function remove_ws_prefix(table_name, row, include_ws)
@@ -235,6 +234,7 @@ end
 -- @treturn table res A table representing the insert row (with fields created during the insertion).
 -- @treturn table err If an error occured, a table describing the issue.
 function DAO:insert(tbl, options)
+
   options = options or {}
   check_arg(tbl, 1, "table")
   check_arg(options, 2, "table")
@@ -245,7 +245,8 @@ function DAO:insert(tbl, options)
     return ret_error(self.db.name, nil, err)
   end
 
-  local workspace, err = apply_unique_per_ws(self.schema.table, model)
+  local workspace, err = apply_unique_per_ws(self.table, model,
+                                             workspaceable[self.table])
   if err then
     return ret_error(self.db.name, nil, err)
   end
@@ -295,7 +296,13 @@ end
 function DAO:find(tbl)
   check_arg(tbl, 1, "table")
   check_utf8(tbl, 1)
-  resolve_shared_entity_id(self.schema.table, tbl)
+
+  local table_name = self.table
+  local constraints = workspaceable[table_name]
+  local ok, err = resolve_shared_entity_id(table_name, tbl, constraints)
+  if not ok then
+    return ret_error(self.db.name, nil, Errors.schema(err))
+  end
 
   local model = self.model_mt(tbl)
   if not model:has_primary_keys() then
@@ -309,7 +316,7 @@ function DAO:find(tbl)
 
   -- XXX find a better, cleaner way to handle this logic - so that
   -- there is no unreachable code, but still no upstream tainting
-  local r = rbac.validate_entity_operation(primary_keys)
+  local r = rbac.validate_entity_operation(primary_keys, constraints)
   if not r then
     ret_error(self.db.name, nil, "[RBAC] Unauthorized find")
   end
@@ -333,6 +340,9 @@ end
 -- @treturn table err If an error occured, a table describing the issue.
 function DAO:find_all(tbl, include_ws)
   local skip_rbac
+  local table_name = self.table
+  local constraints = workspaceable[table_name]
+
   if tbl ~= nil then
     skip_rbac = tbl.__skip_rbac
     tbl.__skip_rbac = nil
@@ -346,7 +356,10 @@ function DAO:find_all(tbl, include_ws)
       return ret_error(self.db.name, nil, Errors.schema(err))
     end
 
-    resolve_shared_entity_id(self.schema.table, tbl)
+    local ok, err = resolve_shared_entity_id(table_name, tbl, constraints)
+    if not ok then
+      return ret_error(self.db.name, nil, Errors.schema(err))
+    end
   end
 
   -- XXX find a better, cleaner way to handle this logic - so that
@@ -358,11 +371,11 @@ function DAO:find_all(tbl, include_ws)
     end
 
     for _, row in ipairs(rows) do
-      remove_ws_prefix(self.schema.table, row, include_ws)
+      remove_ws_prefix(table_name, row, include_ws)
     end
 
     if skip_rbac ~= true then
-      rows = rbac.narrow_readable_entities(self.schema.table, rows)
+      rows = rbac.narrow_readable_entities(table_name, rows, constraints)
     end
 
     return ret_error(self.db.name, rows, err)
@@ -379,6 +392,9 @@ end
 -- @treturn table rows An array of rows.
 -- @treturn table err If an error occured, a table describing the issue.
 function DAO:find_page(tbl, page_offset, page_size)
+  local table_name = self.table
+  local constraints = workspaceable[table_name]
+
    if tbl ~= nil then
     check_arg(tbl, 1, "table")
     check_not_empty(tbl, 1)
@@ -387,7 +403,10 @@ function DAO:find_page(tbl, page_offset, page_size)
       return ret_error(self.db.name, nil, Errors.schema(err))
     end
 
-     resolve_shared_entity_id(self.schema.table, tbl)
+     local ok, err = resolve_shared_entity_id(table_name, tbl, constraints)
+     if not ok then
+       return ret_error(self.db.name, nil, Errors.schema(err))
+     end
   end
 
   if page_size == nil then
@@ -408,7 +427,7 @@ function DAO:find_page(tbl, page_offset, page_size)
       remove_ws_prefix(self.schema.table, row)
     end
 
-    rows = rbac.narrow_readable_entities(self.schema.table, rows)
+    rows = rbac.narrow_readable_entities(self.schema.table, rows, constraints)
     return ret_error(self.db.name, rows, err, offset)
   end
 
@@ -421,6 +440,9 @@ end
 -- @treturn number count The total count of rows matching the given filter, or total count of rows if no filter was given.
 -- @treturn table err If an error occured, a table describing the issue.
 function DAO:count(tbl)
+  local table_name = self.table
+  local constraints = workspaceable[table_name]
+
   if tbl ~= nil then
     check_arg(tbl, 1, "table")
     check_not_empty(tbl, 1)
@@ -429,7 +451,10 @@ function DAO:count(tbl)
       return ret_error(self.db.name, nil, Errors.schema(err))
     end
 
-    resolve_shared_entity_id(self.schema.table, tbl)
+    local ok, err = resolve_shared_entity_id(table_name, tbl, constraints)
+    if not ok then
+      return ret_error(self.db.name, nil, Errors.schema(err))
+    end
   end
 
   if tbl ~= nil and next(tbl) == nil then
@@ -505,7 +530,8 @@ function DAO:update(tbl, filter_keys, options)
     return
   end
 
-  if not rbac.validate_entity_operation(old) then
+  local constraints = workspaceable[self.table]
+  if not rbac.validate_entity_operation(old, constraints) then
     return ret_error(self.db.name, nil, "[RBAC] Unauthorized entity modification")
   end
 
@@ -513,7 +539,7 @@ function DAO:update(tbl, filter_keys, options)
     fix(old, values, self.schema)
   end
 
-  apply_unique_per_ws(self.schema.table, values)
+  apply_unique_per_ws(self.table, values, constraints)
 
   local res, err = self.db:update(self.table, self.schema, self.constraints, primary_keys, values, nils, options.full, model, options)
   if err then
@@ -556,7 +582,8 @@ function DAO:delete(tbl, options)
   check_arg(options, 2, "table")
 
   local ws = workspaces.get_workspaces()[1]
-  apply_unique_per_ws(self.schema.table, tbl, ws)
+  local constraints = workspaceable[self.table]
+  apply_unique_per_ws(self.schema.table, tbl, constraints)
 
   local model = self.model_mt(tbl)
   if not model:has_primary_keys() then
@@ -584,8 +611,7 @@ function DAO:delete(tbl, options)
     end
   end
 
-
-  if not rbac.validate_entity_operation(primary_keys) or
+  if not rbac.validate_entity_operation(primary_keys, constraints) or
      not rbac.check_cascade(associated_entites, ngx.ctx.rbac) then
     return ret_error(self.db.name, nil, "cascading error")
   end

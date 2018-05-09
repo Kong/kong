@@ -31,8 +31,7 @@ describe("(#" .. kong_conf.database .. ")", function()
       math.randomseed(ngx.now())
       iterations = math.random(4, MAX_ITERATIONS)
 
-
-      helpers.run_migrations(dao)
+      dao:run_migrations()
     end)
 
     describe(".resolve_workspace_entities", function()
@@ -755,16 +754,18 @@ describe("(#" .. kong_conf.database .. ")", function()
           schema = {
             ["t1s1"] = {},
             ["t1s2"] = {},
+            primary_key = { "id" },
           }
         },
         ["table2"] = {
           entities = {
-            { id = "t2e1" },
-            { id = "t2e2" },
+            { name = "t2e1" },
+            { name = "t2e2" },
           },
           schema = {
             ["t2s1"] = {},
             ["t2s2"] = {},
+            primary_key = { "name" },
           }
         }
       }
@@ -828,7 +829,7 @@ describe("(#" .. kong_conf.database .. ")", function()
 
       assert(dao.rbac_role_entities:insert({
         role_id = role_id,
-        entity_id = entity_id,
+        entity_id = tostring(entity_id),
         entity_type = "entity",
         actions = 0x01,
         negative = false,
