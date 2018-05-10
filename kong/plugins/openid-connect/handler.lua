@@ -470,6 +470,10 @@ end
 
 
 local function set_headers(args, header_key, header_value)
+  if not header_key or not header_value then
+    return
+  end
+
   local us = "upstream_"   .. header_key
   local ds = "downstream_" .. header_key
 
@@ -478,7 +482,13 @@ local function set_headers(args, header_key, header_value)
 
     local usm = args.get_conf_arg(us .. "_header")
     if usm then
-      value = get_header_value(type(header_value) == "function" and header_value() or header_value)
+      if type(header_value) == "function" then
+        value = header_value()
+
+      else
+        value = header_value
+      end
+
       if value then
         set_upstream_header(usm, value)
       end
@@ -487,7 +497,12 @@ local function set_headers(args, header_key, header_value)
     local dsm = args.get_conf_arg(ds .. "_header")
     if dsm then
       if not usm then
-        value = get_header_value(type(header_value) == "function" and header_value() or header_value)
+        if type(header_value) == "function" then
+          value = header_value()
+
+        else
+          value = header_value
+        end
       end
 
       if value then
@@ -718,6 +733,13 @@ local function no_cache_headers()
 end
 
 
+local function rediscover_keys(issuer, options)
+  return function()
+    return cache.issuers.rediscover(issuer, options)
+  end
+end
+
+
 local OICHandler = BasePlugin:extend()
 
 
@@ -765,10 +787,13 @@ function OICHandler:access(conf)
       return unexpected(trusted_client, "issuer was not specified")
     end
 
+    local discovery_options = args.get_http_opts {
+      headers         = args.get_conf_args("discovery_headers_names", "discovery_headers_values"),
+      extra_jwks_uris = args.get_conf_arg("extra_jwks_uris"),
+    }
+
     local issuer
-    issuer, err = cache.issuers.load(issuer_uri, args.get_http_opts {
-      headers = args.get_conf_args("discovery_headers_names", "discovery_headers_values"),
-    })
+    issuer, err = cache.issuers.load(issuer_uri, discovery_options)
 
     if not issuer then
       return unexpected(trusted_client, err or "discovery information could not be loaded")
@@ -791,6 +816,7 @@ function OICHandler:access(conf)
       verify_nonce      = args.get_conf_arg("verify_nonce"),
       verify_signature  = args.get_conf_arg("verify_signature"),
       verify_claims     = args.get_conf_arg("verify_claims"),
+      rediscover_keys   = rediscover_keys(issuer_uri, discovery_options),
     }
 
     log("initializing library")
@@ -967,7 +993,6 @@ function OICHandler:access(conf)
             end
             break
           end
-
 
         elseif location == "query" then
           bearer_token = args.get_uri_arg("access_token")

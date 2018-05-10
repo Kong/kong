@@ -1,3 +1,10 @@
+## v0.1.3
+
+- Add `config.extra_jwks_uris`
+- Fix set headers when callback to get header value failed
+- Rediscovery of JWKS is now cached
+- Admin API self-check discovery
+
 ## v0.1.2
 
 This release adds option that allows e.g. rate-limiting by arbitrary claim:

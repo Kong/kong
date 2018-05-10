@@ -1,4 +1,7 @@
-local utils = require "kong.tools.utils"
+local utils     = require "kong.tools.utils"
+local Errors    = require "kong.dao.errors"
+local cache     = require "kong.plugins.openid-connect.cache"
+local arguments = require "kong.plugins.openid-connect.arguments"
 
 
 local function check_user(anonymous)
@@ -10,8 +13,38 @@ local function check_user(anonymous)
 end
 
 
+local function self_check(_, conf, _, is_update)
+  if is_update then
+    return true
+  end
+
+  local args = arguments(conf)
+
+  local issuer_uri = args.get_conf_arg("issuer")
+  if not issuer_uri then
+    return false, "issuer was not specified"
+  end
+
+  local options = {
+    http_version    = args.get_conf_arg("http_version", 1.1),
+    ssl_verify      = args.get_conf_arg("ssl_verify",   true),
+    timeout         = args.get_conf_arg("timeout",      10000),
+    headers         = args.get_conf_args("discovery_headers_names", "discovery_headers_values"),
+    extra_jwks_uris = args.get_conf_arg("extra_jwks_uris"),
+  }
+
+  local issuer = cache.issuers.load(issuer_uri, options)
+  if not issuer then
+    return false, Errors.schema("openid connect discovery failed")
+  end
+
+  return true
+end
+
+
 return {
   no_consumer                          = true,
+  self_check                           = self_check,
   fields                               = {
     issuer                             = {
       required                         = true,
@@ -205,6 +238,10 @@ return {
     session_redis_auth                 = {
       required                         = false,
       type                             = "string",
+    },
+    extra_jwks_uris                    = {
+      required                         = false,
+      type                             = "array",
     },
     jwt_session_cookie                 = {
       required                         = false,

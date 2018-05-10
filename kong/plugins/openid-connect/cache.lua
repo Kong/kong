@@ -12,6 +12,7 @@ local http          = require "resty.http"
 
 
 local concat        = table.concat
+local insert        = table.insert
 local ipairs        = ipairs
 local json          = codec.json
 local base64        = codec.base64
@@ -22,6 +23,7 @@ local null          = ngx.null
 local time          = ngx.time
 local sub           = string.sub
 local tonumber      = tonumber
+local tostring      = tostring
 
 
 local cache_get, cache_key, cache_invalidate
@@ -133,7 +135,171 @@ local function normalize_issuer(issuer)
 end
 
 
+local function discover(issuer, opts, now)
+  log.notice("loading configuration for ", issuer, " using discovery")
+  local claims, err = configuration.load(issuer, opts)
+  if not claims then
+    log.err("loading configuration for ", issuer, " using discovery failed with ", err)
+    return nil
+  end
+
+  local cdec
+  cdec, err = json.decode(claims)
+  if not cdec then
+    log.err("decoding discovery document failed with ", err)
+    return nil
+  end
+
+  cdec.updated_at = now or time()
+
+  local jwks_uri = cdec.jwks_uri
+  local jwks
+  if jwks_uri then
+    log.notice("loading jwks from ", jwks_uri)
+
+    jwks, err = keys.load(jwks_uri, opts)
+    if not jwks then
+      log.err("loading jwks from ", jwks_uri, " failed with ", err)
+      return nil
+    end
+
+    jwks, err = json.decode(jwks)
+    if not jwks then
+      log.err("decoding jwks failed with ", err)
+      return nil
+    end
+
+    if jwks.keys then
+      jwks = jwks.keys
+    end
+
+  elseif type(cdec.jwks) == "table" and cdec.jwks.keys then
+    jwks = cdec.jwks.keys
+  end
+
+  local extra_jwks_uris = opts.extra_jwks_uris
+  if extra_jwks_uris then
+    if type(extra_jwks_uris) ~= "table" then
+      extra_jwks_uris = { extra_jwks_uris }
+    end
+
+    local extra_jwks
+    for _, extra_jwks_uri in ipairs(extra_jwks_uris) do
+      if type(extra_jwks_uri) ~= "string" then
+        log.err("extra jwks uri is not a string (", tostring(extra_jwks_uri) , ")")
+        return nil
+
+      else
+        log.notice("loading extra jwks from ", extra_jwks_uri)
+        extra_jwks, err = keys.load(extra_jwks_uri, opts)
+        if not extra_jwks then
+          log.err("loading extra jwks from ", extra_jwks_uri, " failed with ", err)
+          return nil
+        end
+
+        extra_jwks, err = json.decode(extra_jwks)
+        if not extra_jwks then
+          log.err("decoding extra jwks failed with ", err)
+          return nil
+        end
+
+        if extra_jwks.keys then
+          extra_jwks = extra_jwks.keys
+        end
+
+        if not jwks then
+          jwks = extra_jwks
+
+        else
+          for _, extra_jwk in ipairs(extra_jwks) do
+            insert(jwks, extra_jwk)
+          end
+        end
+      end
+    end
+  end
+
+  if type(jwks) == "table" then
+    jwks, err = json.encode(jwks)
+    if not jwks then
+      log.err("encoding jwks keys failed with ", err)
+      return nil
+    end
+  end
+
+  claims, err = json.encode(cdec)
+  if not claims then
+    log.err("encoding discovery document failed with ", err)
+    return nil
+  end
+
+  return claims, jwks
+end
+
+
 local issuers = {}
+
+
+function issuers.rediscover(issuer, opts)
+  issuer = normalize_issuer(issuer)
+
+  local discovery = singletons.dao.oic_issuers:find_all { issuer = issuer }
+  local now = time()
+
+  if discovery and discovery[1] then
+    discovery = discovery[1]
+
+    local cdec, err = json.decode(discovery.configuration)
+    if not cdec then
+      return nil, "decoding discovery document failed with " .. err
+    end
+
+    local updated_at = cdec.updated_at or 0
+    if now - updated_at < 300 then
+      log.notice("openid connect rediscovery was done in less than 5 mins ago, skipping")
+      return discovery.keys
+    end
+  end
+
+  local claims, jwks = discover(issuer, opts, now)
+  if not claims then
+    return nil, "openid connect rediscovery failed"
+  end
+
+  if discovery then
+    local data = {
+      configuration = claims,
+      keys          = jwks,
+    }
+
+    local err
+    data, err = singletons.dao.oic_issuers:update({ id = discovery.id }, data)
+    if not data then
+      log.err("unable to update issuer ", issuer, " discovery documents in database (", err , ")")
+      return nil
+    end
+
+    return data.keys
+
+  else
+    local secret = sub(base64.encode(utils.get_rand_bytes(32)), 1, 32)
+    local err
+    local data = {
+      issuer        = issuer,
+      configuration = claims,
+      keys          = jwks,
+      secret        = secret,
+    }
+
+    data, err = singletons.dao.oic_issuers:insert(data)
+    if not data then
+      log.err("unable to store issuer ", issuer, " discovery documents in database (", err , ")")
+      return nil
+    end
+
+    return data.keys
+  end
+end
 
 
 local function issuers_init(issuer, opts)
@@ -151,36 +317,9 @@ local function issuers_init(issuer, opts)
     }
   end
 
-  log.notice("loading configuration for ", issuer, " using discovery")
-  local claims, err = configuration.load(issuer, opts)
+  local claims, jwks = discover(issuer, opts)
   if not claims then
-    log.err("loading configuration for ", issuer, " using discovery failed with ", err)
-    return nil
-  end
-
-  local cdec
-  cdec, err = json.decode(claims)
-  if not cdec then
-    log.err(err)
-    return nil
-  end
-
-  local jwks_uri = cdec.jwks_uri
-  local jwks
-  if jwks_uri then
-    log.notice("loading jwks from ", jwks_uri)
-
-    jwks, err = keys.load(jwks_uri, opts)
-    if not jwks then
-      log.err("loading jwks from ", jwks_uri, " failed with ", err)
-      return nil
-    end
-
-  elseif cdec.jwks and cdec.jwks.keys then
-    jwks, err = json.encode(cdec.jwks.keys)
-    if not jwks then
-      log.err("unable to encode jwks received as part of the ", issuer, "discovery document (", err , ")")
-    end
+    return nil, "openid connect discovery failed"
   end
 
   local secret = sub(base64.encode(utils.get_rand_bytes(32)), 1, 32)
@@ -192,6 +331,7 @@ local function issuers_init(issuer, opts)
     secret        = secret,
   }
 
+  local err
   data, err = singletons.dao.oic_issuers:insert(data)
   if not data then
     log.err("unable to store issuer ", issuer, " discovery documents in database (", err , ")")
@@ -660,6 +800,7 @@ end
 
 return {
   init_worker    = init_worker,
+  keys           = keys,
   issuers        = issuers,
   consumers      = consumers,
   kong_oauth2    = kong_oauth2,
@@ -667,5 +808,5 @@ return {
   tokens         = tokens,
   token_exchange = token_exchange,
   userinfo       = userinfo,
-  version        = "0.1.2",
+  version        = "0.1.3",
 }
