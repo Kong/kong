@@ -3,7 +3,7 @@ local utils   = require "kong.tools.utils"
 local reports = require "kong.core.reports"
 local workspaces = require "kong.workspaces"
 local singletons = require "kong.singletons"
-local Router = require "kong.core.router"
+local ApiRouter = require "kong.core.api_router"
 local core_handler = require "kong.core.handler"
 local helpers = require "kong.tools.responses"
 
@@ -57,7 +57,7 @@ return {
         local curr_api = singletons.dao.apis:find({id = self.params.id})
         if curr_api then  -- exists, we create an ad-hoc router
 
-          local r = Router.new(all_apis_except(curr_api))
+          local r = ApiRouter.new(all_apis_except(curr_api))
           if workspaces.is_route_colliding(self, r) then
             local err = "API route collides with an existing API"
             return helpers.send_HTTP_CONFLICT(err)
@@ -89,7 +89,7 @@ return {
     -- XXX: DO NOT add helpers as a third parameter. It collides with
     -- CE and makes merges difficult
     PATCH = function(self, dao_factory)
-      local r = Router.new(all_apis_except(self.api))
+      local r = ApiRouter.new(all_apis_except(self.api))
       -- create temporary router
       if workspaces.is_route_colliding(self, r) then
         local err = "API route collides with an existing API"
