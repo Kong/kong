@@ -430,7 +430,8 @@ describe("Admin API: #" .. kong_config.database, function()
         local sni_names = {}
         table.insert(sni_names, json.data[1].name)
         table.insert(sni_names, json.data[2].name)
-        assert.are.same({ "baz.com", "bar.com" }, sni_names)
+        assert.contains("baz.com", sni_names)
+        assert.contains("bar.com", sni_names)
 
         -- make sure we did not add any certificate
         res = assert(client:send {
