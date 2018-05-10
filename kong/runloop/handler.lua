@@ -814,12 +814,12 @@ return {
       local trusted_ip = kong.ip.is_trusted(realip_remote_addr)
       if trusted_ip then
         forwarded_proto = var.http_x_forwarded_proto or var.scheme
-        forwarded_host  = var.http_x_forwarded_host  or var.host
+        forwarded_host  = var.http_x_forwarded_host  or var.http_host or var.host
         forwarded_port  = var.http_x_forwarded_port  or var.server_port
 
       else
         forwarded_proto = var.scheme
-        forwarded_host  = var.host
+        forwarded_host  = var.http_host or var.host
         forwarded_port  = var.server_port
       end
 
