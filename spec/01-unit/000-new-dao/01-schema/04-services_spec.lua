@@ -301,16 +301,6 @@ describe("services", function()
       end
     end)
 
-    it("rejects values with a valid port", function()
-      local service = {
-        host = "example.com:80",
-      }
-
-      local ok, err = Services:validate(service)
-      assert.falsy(ok)
-      assert.equal("must not have a port", err.host)
-    end)
-
     it("rejects values with an invalid port", function()
       local service = {
         host = "example.com:1000000",
@@ -318,7 +308,7 @@ describe("services", function()
 
       local ok, err = Services:validate(service)
       assert.falsy(ok)
-      assert.equal("must not have a port", err.host)
+      assert.equal("invalid value: example.com:1000000", err.host)
     end)
 
     -- acceptance
@@ -336,6 +326,7 @@ describe("services", function()
         "hello.abcd",
         "example_api.com",
         "localhost",
+        "example.com:80",
         -- below:
         -- punycode examples from RFC3492;
         -- https://tools.ietf.org/html/rfc3492#page-14

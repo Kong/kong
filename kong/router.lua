@@ -907,7 +907,7 @@ function _M.new(routes)
     end
   end
 
-  local function find_route(req_method, req_uri, req_host, ngx,
+  local function find_route(req_method, req_uri, req_host, req_scheme, ngx,
                             src_ip, src_port, dst_ip, dst_port, sni)
     if req_method and type(req_method) ~= "string" then
       error("method must be a string", 2)
@@ -917,6 +917,9 @@ function _M.new(routes)
     end
     if req_host and type(req_host) ~= "string" then
       error("host must be a string", 2)
+    end
+    if req_scheme and type(req_scheme) ~= "string" then
+      error("scheme must be a string", 2)
     end
     if src_ip and type(src_ip) ~= "string" then
       error("src_ip must be a string", 2)
@@ -968,10 +971,18 @@ function _M.new(routes)
     req_method = upper(req_method)
 
     if req_host ~= "" then
-      -- strip port number if given because matching ignores ports
+      -- strip port number if default
       local idx = find(req_host, ":", 2, true)
       if idx then
-        ctx.req_host = sub(req_host, 1, idx - 1)
+        local default_port
+        if req_scheme == "http" then
+          default_port = "80"
+        elseif req_scheme == "https" then
+          default_port = "443"
+        end
+        if sub(req_host, idx + 1) == default_port then
+          ctx.req_host = sub(req_host, 1, idx - 1)
+        end
       end
     end
 
@@ -1202,6 +1213,7 @@ function _M.new(routes)
     function self.exec(ngx)
       local var = ngx.var
 
+      local req_scheme = var.scheme
       local req_method = ngx.req.get_method()
       local req_uri = var.request_uri
       local req_host = var.http_host or ""
@@ -1218,8 +1230,8 @@ function _M.new(routes)
         end
       end
 
-      local match_t = find_route(req_method, req_uri, req_host, ngx,
-                                 src_ip, src_port, dst_ip, dst_port, sni)
+      local match_t = find_route(req_method, req_uri, req_host, req_scheme,
+                                 ngx, src_ip, src_port, dst_ip, dst_port, sni)
       if not match_t then
         return nil
       end
@@ -1248,7 +1260,7 @@ function _M.new(routes)
       local dst_port = tonumber(var.server_port, 10)
       local sni = var.ssl_preread_server_name
 
-      return find_route(nil, nil, nil, ngx,
+      return find_route(nil, nil, nil, "tcp", ngx,
                         src_ip, src_port, dst_ip, dst_port, sni)
     end
   end

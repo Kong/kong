@@ -351,16 +351,6 @@ describe("routes schema", function()
       end
     end)
 
-    it("rejects values with a valid port", function()
-      local route = {
-        hosts = { "example.com:80" }
-      }
-
-      local ok, err = Routes:validate(route)
-      assert.falsy(ok)
-      assert.equal("must not have a port", err.hosts)
-    end)
-
     it("rejects values with an invalid port", function()
       local route = {
         hosts = { "example.com:1000000" }
@@ -368,7 +358,7 @@ describe("routes schema", function()
 
       local ok, err = Routes:validate(route)
       assert.falsy(ok)
-      assert.equal("must not have a port", err.hosts)
+      assert.equal("invalid value: example.com:1000000", err.hosts)
     end)
 
     it("rejects invalid wildcard placement", function()
@@ -424,6 +414,7 @@ describe("routes schema", function()
         "hello.abcd",
         "example_api.com",
         "localhost",
+        "example.com:80",
         -- below:
         -- punycode examples from RFC3492;
         -- https://tools.ietf.org/html/rfc3492#page-14

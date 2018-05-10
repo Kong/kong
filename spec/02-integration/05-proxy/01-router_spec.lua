@@ -678,7 +678,7 @@ for _, strategy in helpers.each_strategy() do
         insert_routes {
           {
             preserve_host = true,
-            hosts         = { "preserved.com" },
+            hosts         = { "preserved.com", "preserved.com:123" },
             service       = {
               path        = "/request"
             },
