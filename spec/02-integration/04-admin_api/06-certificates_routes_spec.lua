@@ -4,6 +4,7 @@ local DAOFactory = require "kong.dao.factory"
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
+local singletons = require "kong.singletons"
 
 
 local function it_content_types(title, fn)
@@ -34,6 +35,8 @@ describe("Admin API: #" .. kong_config.database, function()
     dao = assert(DAOFactory.new(kong_config))
     assert(dao:run_migrations())
 
+    singletons.dao = dao
+
     assert(helpers.start_kong({
       database = kong_config.database
     }))
@@ -61,7 +64,7 @@ describe("Admin API: #" .. kong_config.database, function()
     end)
 
     describe("GET", function()
-      it("retrieves all certificates#t", function()
+      it("retrieves all certificates", function()
         local res = assert(client:send {
           method = "GET",
           path = "/certificates",
@@ -1121,6 +1124,7 @@ describe("Admin API: #" .. kong_config.database, function()
 
     before_each(function()
       dao:truncate_tables()
+      ngx.ctx.workspaces = dao.workspaces:find_all()
       ssl_certificate = assert(dao.ssl_certificates:insert {
         cert = ssl_fixtures.cert,
         key = ssl_fixtures.key,
@@ -1129,16 +1133,19 @@ describe("Admin API: #" .. kong_config.database, function()
           name               = "foo.com",
           ssl_certificate_id = ssl_certificate.id,
       })
+      ngx.ctx.workspaces = {}
     end)
 
     describe("POST", function()
       before_each(function()
         dao:truncate_tables()
 
+        ngx.ctx.workspaces = dao.workspaces:find_all()
         ssl_certificate = assert(dao.ssl_certificates:insert {
           cert = ssl_fixtures.cert,
           key = ssl_fixtures.key,
         })
+        ngx.ctx.workspaces = {}
       end)
 
       describe("errors", function()
@@ -1180,10 +1187,12 @@ describe("Admin API: #" .. kong_config.database, function()
       end)
 
       it("returns a conflict when an SNI already exists", function()
-          assert(dao.ssl_servers_names:insert {
+        ngx.ctx.workspaces = dao.workspaces:find_all()
+        assert(dao.ssl_servers_names:insert {
             name = "foo.com",
             ssl_certificate_id = ssl_certificate.id,
           })
+        ngx.ctx.workspaces = {}
 
           local res = assert(client:send {
             method  = "POST",
@@ -1223,6 +1232,7 @@ describe("Admin API: #" .. kong_config.database, function()
 
     before_each(function()
       dao:truncate_tables()
+      ngx.ctx.workspaces = dao.workspaces:find_all()
       ssl_certificate = assert(dao.ssl_certificates:insert {
         cert = ssl_fixtures.cert,
         key = ssl_fixtures.key,
@@ -1231,6 +1241,7 @@ describe("Admin API: #" .. kong_config.database, function()
           name               = "foo.com",
           ssl_certificate_id = ssl_certificate.id,
       })
+      ngx.ctx.workspaces = {}
     end)
 
     describe("GET", function()
@@ -1261,10 +1272,12 @@ describe("Admin API: #" .. kong_config.database, function()
           -- ssl_certificate_id field because it is in the `SET` part of the
           -- query built by the DAO, but in C*, one cannot change a value
           -- from the clustering key.
+          ngx.ctx.workspaces = dao.workspaces:find_all()
           local ssl_certificate_2 = assert(dao.ssl_certificates:insert {
             cert = "foo",
             key = "bar",
           })
+          ngx.ctx.workspaces = {}
 
           local res = assert(client:send {
             method  = "PATCH",
