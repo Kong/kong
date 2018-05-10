@@ -234,7 +234,7 @@ describe("Admin API: #" .. strategy, function()
           body = {
             cert = "created_cert",
             key = "created_key",
-            snis = { "pandoras-box.com" },
+            snis = { "example.com" },
           },
           headers = { ["Content-Type"] = "application/json" },
         })
@@ -242,10 +242,31 @@ describe("Admin API: #" .. strategy, function()
         local json = cjson.decode(body)
         assert.same("created_cert", json.cert)
 
-        assert.same({ "pandoras-box.com" }, json.snis)
+        assert.same({ "example.com" }, json.snis)
         json.snis = nil
 
         local in_db = assert(db.certificates:select({ id = id }))
+        assert.same(json, in_db)
+      end)
+
+      it("creates a new sni when provided in the url", function()
+        local res = client:put("/certificates/new-sni.com", {
+          body = {
+            cert = "created_cert",
+            key = "created_key",
+            snis = { "example.com" },
+          },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.same("created_cert", json.cert)
+
+        assert.same({ "example.com", "new-sni.com" }, json.snis)
+        json.snis = nil
+
+        local in_db = assert(db.certificates:select({ id = json.id }))
         assert.same(json, in_db)
       end)
 
