@@ -15,6 +15,9 @@ local timer_at = ngx.timer.at
 local EMPTY = {}
 local RATELIMIT_LIMIT = "X-RateLimit-Limit"
 local RATELIMIT_REMAINING = "X-RateLimit-Remaining"
+local RATELIMIT_RESET = "X-RateLimit-Reset"
+local RETRY_AFTER = "Retry-After"
+local EXPIRATIONS = policies["EXPIRATIONS"]
 
 local RateLimitingHandler = BasePlugin:extend()
 
@@ -115,6 +118,8 @@ function RateLimitingHandler:access(conf)
     -- Adding headers
     if not conf.hide_client_headers then
       local headers = {}
+      -- Find the closer limit.
+      local lowest = nil
       for k, v in pairs(usage) do
         if stop == nil or stop == k then
           v.remaining = v.remaining - 1
@@ -122,13 +127,28 @@ function RateLimitingHandler:access(conf)
 
         headers[RATELIMIT_LIMIT .. "-" .. k] = v.limit
         headers[RATELIMIT_REMAINING .. "-" .. k] = max(0, v.remaining)
+
+        if (lowest == nil
+            or usage[lowest].remaining > v.remaining
+            or (usage[lowest].remaining == v.remaining and EXPIRATIONS[k] > EXPIRATIONS[lowest])
+           ) then
+          lowest = k
+        end
+
       end
+
+      -- Set the normalized ratelimit values.
+      headers[RATELIMIT_LIMIT] = headers[RATELIMIT_LIMIT .. "-" .. lowest]
+      headers[RATELIMIT_REMAINING] = headers[RATELIMIT_REMAINING .. "-" .. lowest]
+      -- Set the expected reset time.
+      headers[RATELIMIT_RESET] = EXPIRATIONS[lowest] - (current_timestamp/1000 % EXPIRATIONS[lowest])
 
       kong.ctx.plugin.headers = headers
     end
 
     -- If limit is exceeded, terminate the request
     if stop then
+      kong.ctx.plugin.headers[RETRY_AFTER] = kong.ctx.plugin.headers[RATELIMIT_RESET]
       return kong.response.exit(429, { message = "API rate limit exceeded" })
     end
   end
