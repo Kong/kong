@@ -1,3 +1,7 @@
+## v0.1.5
+
+- Change `self_check` to run only on `content` and `access` phases. 
+
 ## v0.1.4
 
 - Fix `config.scopes` when set to `null` or `""` so that it doesn't add `openid`

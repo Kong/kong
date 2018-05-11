@@ -4,6 +4,9 @@ local cache     = require "kong.plugins.openid-connect.cache"
 local arguments = require "kong.plugins.openid-connect.arguments"
 
 
+local get_phase = ngx.get_phase
+
+
 local function check_user(anonymous)
   if anonymous == nil or anonymous == ngx.null or anonymous == "" or utils.is_valid_uuid(anonymous) then
     return true
@@ -18,24 +21,27 @@ local function self_check(_, conf, _, is_update)
     return true
   end
 
-  local args = arguments(conf)
+  local phase = get_phase()
+  if phase == "access" or phase == "content" then
+    local args = arguments(conf)
 
-  local issuer_uri = args.get_conf_arg("issuer")
-  if not issuer_uri then
-    return false, "issuer was not specified"
-  end
+    local issuer_uri = args.get_conf_arg("issuer")
+    if not issuer_uri then
+      return false, "issuer was not specified"
+    end
 
-  local options = {
-    http_version    = args.get_conf_arg("http_version", 1.1),
-    ssl_verify      = args.get_conf_arg("ssl_verify",   true),
-    timeout         = args.get_conf_arg("timeout",      10000),
-    headers         = args.get_conf_args("discovery_headers_names", "discovery_headers_values"),
-    extra_jwks_uris = args.get_conf_arg("extra_jwks_uris"),
-  }
+    local options = {
+      http_version    = args.get_conf_arg("http_version", 1.1),
+      ssl_verify      = args.get_conf_arg("ssl_verify",   true),
+      timeout         = args.get_conf_arg("timeout",      10000),
+      headers         = args.get_conf_args("discovery_headers_names", "discovery_headers_values"),
+      extra_jwks_uris = args.get_conf_arg("extra_jwks_uris"),
+    }
 
-  local issuer = cache.issuers.load(issuer_uri, options)
-  if not issuer then
-    return false, Errors.schema("openid connect discovery failed")
+    local issuer = cache.issuers.load(issuer_uri, options)
+    if not issuer then
+      return false, Errors.schema("openid connect discovery failed")
+    end
   end
 
   return true
