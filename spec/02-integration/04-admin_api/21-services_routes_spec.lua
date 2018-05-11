@@ -122,6 +122,30 @@ for _, strategy in helpers.each_strategy() do
             assert.equals(60000, json.read_timeout)
           end
         end)
+
+        it_content_types("client error with with empty url", function(content_type)
+          return function()
+            local res = client:post("/services", {
+              body = {
+                url = "",
+              },
+              headers = { ["Content-Type"] = content_type },
+            })
+            assert.res_status(400, res)
+          end
+        end)
+
+        it_content_types("client error with invalid url", function(content_type)
+          return function()
+            local res = client:post("/services", {
+              body = {
+                url = " ",
+              },
+              headers = { ["Content-Type"] = content_type },
+            })
+            assert.res_status(400, res)
+          end
+        end)
       end)
 
       describe("GET", function()
