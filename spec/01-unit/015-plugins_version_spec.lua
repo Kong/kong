@@ -9,7 +9,7 @@ describe("Plugins", function()
 
     plugins = {}
 
-    for plugin in pairs(conf.plugins) do
+    for plugin in pairs(conf.loaded_plugins) do
       local handler = require("kong.plugins." .. plugin .. ".handler")
       table.insert(plugins, {
         name    = plugin,
