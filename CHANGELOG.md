@@ -1,3 +1,7 @@
+## v0.1.6
+
+- Revert ill-merged RBACv2 PR #17.
+
 ## v0.1.5
 
 - Change `self_check` to run only on `content` and `access` phases. 
