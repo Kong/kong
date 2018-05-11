@@ -803,7 +803,7 @@ function OICHandler:access(conf)
       client_id         = trusted_client.id,
       client_secret     = trusted_client.secret,
       redirect_uri      = trusted_client.redirect_uri,
-      scope             = args.get_conf_arg("scopes", { "openid" }),
+      scope             = args.get_conf_arg("scopes", {}),
       response_mode     = args.get_conf_arg("response_mode"),
       audience          = args.get_conf_arg("audience"),
       domains           = args.get_conf_arg("domains"),

@@ -1,3 +1,8 @@
+## v0.1.4
+
+- Fix `config.scopes` when set to `null` or `""` so that it doesn't add `openid`
+  scope anymore.
+
 ## v0.1.3
 
 - Add `config.extra_jwks_uris`
