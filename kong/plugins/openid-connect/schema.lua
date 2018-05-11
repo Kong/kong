@@ -445,6 +445,11 @@ return {
       required                         = false,
       type                             = "string",
     },
+    introspect_jwt_tokens              = {
+      required                         = false,
+      type                             = "boolean",
+      default                          = false,
+    },
     introspection_endpoint             = {
       required                         = false,
       type                             = "url",

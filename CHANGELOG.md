@@ -1,3 +1,9 @@
+## v0.1.7
+
+- Change expired or non-active access tokens to give `401` instead of `403`
+  to better follow: https://tools.ietf.org/html/rfc7231#section-6.5.3
+- Add `config.introspect_jwt_tokens`
+
 ## v0.1.6
 
 - Revert ill-merged RBACv2 PR #17.

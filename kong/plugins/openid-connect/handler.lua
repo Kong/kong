@@ -1342,6 +1342,7 @@ function OICHandler:access(conf)
 
   local auth_method
   local token_introspected
+  local jwt_token_introspected
 
   local downstream_headers
 
@@ -1376,7 +1377,7 @@ function OICHandler:access(conf)
 
       if not token_introspected then
         if auth_methods.introspection then
-          token_introspected = introspect_token(tokens_decoded.access_token, ttl_default)
+          token_introspected, err = introspect_token(tokens_decoded.access_token, ttl_default)
           if token_introspected then
             if token_introspected.active then
               log("authenticated using oauth2 introspection")
@@ -1404,6 +1405,23 @@ function OICHandler:access(conf)
       exp = get_exp(token_introspected, tokens_encoded, now, exp_default)
 
     else
+      if args.get_conf_arg("introspect_jwt_tokens", false) then
+        log("introspecting jwt bearer token")
+        jwt_token_introspected, err = introspect_token(tokens_encoded.access_token, ttl_default)
+        if jwt_token_introspected then
+          if jwt_token_introspected.active then
+            log("jwt bearer token is active and not revoked")
+
+          else
+            return unauthorized(iss, "jwt bearer token is not active anymore or has been revoked", session, anonymous, trusted_client)
+          end
+
+        else
+          log("unable to introspect jwt bearer token")
+          return unauthorized(iss, err, session, anonymous, trusted_client)
+        end
+      end
+
       log("authenticated using jwt bearer token")
       auth_method = "bearer"
       exp = get_exp(tokens_decoded.access_token, tokens_encoded, now, exp_default)
@@ -1503,7 +1521,6 @@ function OICHandler:access(conf)
 
   log("checking for access token")
   if not tokens_encoded.access_token then
-    log("access token was not found")
     return unauthorized(iss, "access token was not found", session, anonymous, trusted_client)
 
   else
@@ -1523,7 +1540,7 @@ function OICHandler:access(conf)
       tokens_decoded, err = oic.token:verify(tokens_encoded)
       if not tokens_decoded then
         log("reverifying tokens failed")
-        return forbidden(
+        return unauthorized(
           iss,
           err,
           session,
@@ -1545,7 +1562,7 @@ function OICHandler:access(conf)
     if auth_methods.refresh_token then
       -- access token has expired, try to refresh the access token before proxying
       if not tokens_encoded.refresh_token then
-        return forbidden(
+        return unauthorized(
           iss,
           "access token cannot be refreshed in absense of refresh token",
           session,
@@ -1561,7 +1578,7 @@ function OICHandler:access(conf)
 
       if not tokens_refreshed then
         log("unable to refresh access token using refresh token")
-        return forbidden(
+        return unauthorized(
           iss,
           err,
           session,
@@ -1584,7 +1601,7 @@ function OICHandler:access(conf)
       tokens_decoded, err = oic.token:verify(tokens_refreshed)
       if not tokens_decoded then
         log("unable to verify refreshed tokens")
-        return forbidden(
+        return unauthorized(
           iss,
           err,
           session,
@@ -1610,7 +1627,7 @@ function OICHandler:access(conf)
       end
 
     else
-      return forbidden(
+      return unauthorized(
         iss,
         "access token has expired and could not be refreshed",
         session,
@@ -2128,7 +2145,7 @@ function OICHandler:access(conf)
     set_headers(args, "access_token",  token_exchanged or tokens_encoded.access_token)
     set_headers(args, "id_token",      tokens_encoded.id_token)
     set_headers(args, "refresh_token", tokens_encoded.refresh_token)
-    set_headers(args, "introspection", token_introspected or function()
+    set_headers(args, "introspection", token_introspected or jwt_token_introspected or function()
       return introspect_token(tokens_encoded.access_token, ttl)
     end)
 
