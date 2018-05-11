@@ -186,7 +186,7 @@ function _M.prepare_admin(kong_config)
     ADMIN_API_URI = prepare_variable(kong_config.admin_api_uri),
     ADMIN_API_PORT = prepare_variable(admin_port),
     ADMIN_API_SSL_PORT = prepare_variable(admin_ssl_port),
-    RBAC_ENFORCED = prepare_variable(kong_config.enforce_rbac),
+    RBAC = prepare_variable(kong_config.rbac),
     RBAC_HEADER = prepare_variable(kong_config.rbac_auth_header),
     KONG_VERSION = prepare_variable(meta.versions.package),
     FEATURE_FLAGS = prepare_variable(kong_config.admin_gui_flags),

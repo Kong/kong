@@ -43,7 +43,7 @@ describe("prepare_prefix", function()
     'ADMIN_API_URI': '{{ADMIN_API_URI}}',
     'ADMIN_API_PORT': '{{ADMIN_API_PORT}}',
     'ADMIN_API_SSL_PORT': '{{ADMIN_API_SSL_PORT}}',
-    'RBAC_ENFORCED': '{{RBAC_ENFORCED}}',
+    'RBAC': '{{RBAC}}',
     'RBAC_HEADER': '{{RBAC_HEADER}}',
     'KONG_VERSION': '{{KONG_VERSION}}',
     'FEATURE_FLAGS': '{{FEATURE_FLAGS}}'
@@ -95,7 +95,7 @@ describe("prepare_prefix", function()
           ssl = true,
         }
       },
-      rbac = {off = true},
+      rbac = "off",
       rbac_auth_header = "Kong-Admin-Token",
       admin_gui_flags = "{}",
       admin_api_uri = nil
@@ -106,7 +106,7 @@ describe("prepare_prefix", function()
     assert.matches("'ADMIN_API_URI': ''", gui_idx, nil, true)
     assert.matches("'ADMIN_API_PORT': '9001'", gui_idx, nil, true)
     assert.matches("'ADMIN_API_SSL_PORT': '9444'", gui_idx, nil, true)
-    assert.matches("'RBAC_ENFORCED': 'false'", gui_idx, nil, true)
+    assert.matches("'RBAC': 'off'", gui_idx, nil, true)
     assert.matches("'RBAC_HEADER': 'Kong-Admin-Token'", gui_idx, nil, true)
     assert.matches("'KONG_VERSION': '" .. tostring(meta.versions.package) ..
       "'", gui_idx, nil, true)
@@ -123,7 +123,7 @@ describe("prepare_prefix", function()
                    gui_idx_tpl, nil, true)
     assert.matches("'ADMIN_API_SSL_PORT': '{{ADMIN_API_SSL_PORT}}'",
                   gui_idx_tpl, nil, true)
-    assert.matches("'RBAC_ENFORCED': '{{RBAC_ENFORCED}}'",
+    assert.matches("'RBAC': '{{RBAC}}'",
                   gui_idx_tpl, nil, true)
     assert.matches("'RBAC_HEADER': '{{RBAC_HEADER}}'", gui_idx_tpl, nil, true)
     assert.matches("'KONG_VERSION': '{{KONG_VERSION}}'",
@@ -148,7 +148,7 @@ describe("prepare_prefix", function()
           ssl = true,
         }
       },
-      rbac = {endpoint = true, entity = true},
+      rbac = "on",
       rbac_auth_header = "Kong-Other-Token",
       admin_gui_flags = "{ HIDE_VITALS: true }",
       admin_api_uri = "another-one.com"
@@ -159,7 +159,7 @@ describe("prepare_prefix", function()
     assert.matches("'ADMIN_API_URI': 'another-one.com'", gui_idx, nil, true)
     assert.matches("'ADMIN_API_PORT': '9002'", gui_idx, nil, true)
     assert.matches("'ADMIN_API_SSL_PORT': '9445'", gui_idx, nil, true)
-    assert.matches("'RBAC_ENFORCED': 'true'", gui_idx, nil, true)
+    assert.matches("'RBAC': 'on'", gui_idx, nil, true)
     assert.matches("'RBAC_HEADER': 'Kong-Other-Token'", gui_idx, nil, true)
     assert.matches("'FEATURE_FLAGS': '{ HIDE_VITALS: true }'",
                   gui_idx, nil, true)
