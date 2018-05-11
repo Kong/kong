@@ -24,6 +24,7 @@ Consult the Table of Contents below, and jump to the desired section.
     - [Static linting](#static-linting)
     - [Writing tests](#writing-tests)
     - [Writing performant code](#writing-performant-code)
+  - [Contributor T-shirt](#contributor-t-shirt)
 - [Code style](#code-style)
 
 
@@ -195,9 +196,11 @@ you are probably the one in need of it. You must be prepared to apply changes
 to it if necessary.
 
 If your Pull Request was accepted, congratulations! You are now an official
-contributor of Kong. Your change will be included in the subsequent release
-Changelog, and we will not forget to include your name if you are an external
-contributor. :wink:
+contributor of Kong. Get in touch with us to receive your very own
+[Contributor T-shirt](#contributor-t-shirt)!
+
+Your change will be included in the subsequent release Changelog, and we will
+not forget to include your name if you are an external contributor. :wink:
 
 [Back to TOC](#table-of-contents)
 
@@ -506,6 +509,21 @@ And finally, most importantly: use your best judgement to design an
 efficient algorithm. Doing so will always be more performant than a
 poorly-designed algorithm, even following all the performance tricks of the
 language you are using. :smile:
+
+[Back to TOC](#table-of-contents)
+
+
+### Contributor T-shirt
+
+If your Pull Request to [Kong/kong](https://github.com/Kong/kong) was accepted,
+congratulations, you are eligible to receive the very special Contributor
+T-shirt! Go ahead and fill-out the [Contributors Submissions
+form](https://goo.gl/forms/5w6mxLaE4tz2YM0L2).
+
+Proudly wear your T-shirt and show it to us by tagging
+[@thekonginc](https://twitter.com/thekonginc) on Twitter!
+
+![Kong Contributor T-shirt](https://konghq.com/wp-content/uploads/2018/04/100-contributor-t-shirt-1024x768.jpg)
 
 [Back to TOC](#table-of-contents)
 
