@@ -141,7 +141,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong {
         database          = strategy,
-        custom_plugins    = "ctx-checker",
+        plugins           = "bundled, ctx-checker",
         real_ip_header    = "X-Forwarded-For",
         real_ip_recursive = "on",
         trusted_ips       = "0.0.0.0/0, ::/0",

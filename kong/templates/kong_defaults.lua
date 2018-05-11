@@ -5,6 +5,7 @@ proxy_access_log = logs/access.log
 proxy_error_log = logs/error.log
 admin_access_log = logs/admin_access.log
 admin_error_log = logs/error.log
+plugins = bundled
 custom_plugins = NONE
 anonymous_reports = on
 

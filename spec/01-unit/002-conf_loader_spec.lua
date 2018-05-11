@@ -1,5 +1,6 @@
 local conf_loader = require "kong.conf_loader"
 local helpers = require "spec.helpers"
+local tablex = require "pl.tablex"
 
 describe("Configuration loader", function()
   it("loads the defaults", function()
@@ -53,21 +54,33 @@ describe("Configuration loader", function()
   it("returns a plugins table", function()
     local constants = require "kong.constants"
     local conf = assert(conf_loader())
-    assert.same(constants.PLUGINS_AVAILABLE, conf.plugins)
+    assert.same(constants.BUNDLED_PLUGINS, conf.loaded_plugins)
   end)
   it("loads custom plugins", function()
     local conf = assert(conf_loader(nil, {
       custom_plugins = "hello-world,my-plugin"
     }))
-    assert.True(conf.plugins["hello-world"])
-    assert.True(conf.plugins["my-plugin"])
+    assert.True(conf.loaded_plugins["hello-world"])
+    assert.True(conf.loaded_plugins["my-plugin"])
+  end)
+  it("merges plugins and custom plugins", function()
+    local conf = assert(conf_loader(nil, {
+      plugins = "foo, bar",
+      custom_plugins = "baz,foobaz",
+    }))
+    assert.is_not_nil(conf.loaded_plugins)
+    assert.same(4, tablex.size(conf.loaded_plugins))
+    assert.True(conf.loaded_plugins["foo"])
+    assert.True(conf.loaded_plugins["bar"])
+    assert.True(conf.loaded_plugins["baz"])
+    assert.True(conf.loaded_plugins["foobaz"])
   end)
   it("loads custom plugins surrounded by spaces", function()
     local conf = assert(conf_loader(nil, {
       custom_plugins = " hello-world ,   another-one  "
     }))
-    assert.True(conf.plugins["hello-world"])
-    assert.True(conf.plugins["another-one"])
+    assert.True(conf.loaded_plugins["hello-world"])
+    assert.True(conf.loaded_plugins["another-one"])
   end)
   it("extracts flags, ports and listen ips from proxy_listen/admin_listen", function()
     local conf = assert(conf_loader())
@@ -163,8 +176,8 @@ describe("Configuration loader", function()
   it("overcomes penlight's list_delim option", function()
     local conf = assert(conf_loader("spec/fixtures/to-strip.conf"))
     assert.False(conf.pg_ssl)
-    assert.True(conf.plugins.foobar)
-    assert.True(conf.plugins["hello-world"])
+    assert.True(conf.loaded_plugins.foobar)
+    assert.True(conf.loaded_plugins["hello-world"])
   end)
   it("correctly parses values containing an octothorpe", function()
     local conf = assert(conf_loader("spec/fixtures/to-strip.conf"))

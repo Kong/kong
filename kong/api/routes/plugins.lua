@@ -78,7 +78,7 @@ return {
   ["/plugins/enabled"] = {
     GET = function(self, dao_factory, helpers)
       local enabled_plugins = setmetatable({}, cjson.empty_array_mt)
-      for k in pairs(singletons.configuration.plugins) do
+      for k in pairs(singletons.configuration.loaded_plugins) do
         enabled_plugins[#enabled_plugins+1] = k
       end
       return helpers.responses.send_HTTP_OK {

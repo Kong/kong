@@ -14,9 +14,9 @@ local function load_config_schema(plugin_t)
 
     -- singletons.configuration would be nil when plugin operations are
     -- done through DAOs like in migrations or tests
-    if singletons.configuration and not singletons.configuration.plugins[plugin_name] then
+    if singletons.configuration and not singletons.configuration.loaded_plugins[plugin_name] then
       return nil, "plugin '" .. plugin_name .. "' not enabled; " ..
-                  "add it to the 'custom_plugins' configuration property"
+                  "add it to the 'plugins' configuration property"
     end
 
     local loaded, plugin_schema = utils.load_module_if_exists("kong.plugins."

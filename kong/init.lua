@@ -89,13 +89,13 @@ local function load_plugins(kong_conf, dao)
 
   -- check all plugins in DB are enabled/installed
   for plugin in pairs(in_db_plugins) do
-    if not kong_conf.plugins[plugin] then
+    if not kong_conf.loaded_plugins[plugin] then
       return nil, plugin .. " plugin is in use but not enabled"
     end
   end
 
   -- load installed plugins
-  for plugin in pairs(kong_conf.plugins) do
+  for plugin in pairs(kong_conf.loaded_plugins) do
     if constants.DEPRECATED_PLUGINS[plugin] then
       ngx.log(ngx.WARN, "plugin '", plugin, "' has been deprecated")
     end
