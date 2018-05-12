@@ -160,18 +160,3 @@ describe("Plugins conf property" , function()
   end)
 end)
 
-describe("Using deprecated custom_plugin property" , function()
-  after_each(function()
-    helpers.kill_all()
-  end)
-
-  it("prints a warning to stderr", function()
-    local _, stderr, stdout = assert(helpers.kong_exec("start --conf " ..
-                                "spec/fixtures/deprecated_custom_plugin.conf"))
-    assert.matches("Kong started", stdout, nil, true)
-    assert.matches("[warn] You are using a deprecated option 'custom_plugins' " ..
-                   "in kong.conf, which will be removed in a future release. " ..
-                   "Please use 'plugins' option to specify your " ..
-                   "custom plugins.", stderr, nil, true)
-  end)
-end)
