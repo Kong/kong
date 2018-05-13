@@ -119,7 +119,7 @@ Reference](https://getkong.org/docs/latest/lua-reference/).
 #### Vagrant
 
 You can use a Vagrant box running Kong and Postgres that you can find at
-[Mashape/kong-vagrant](https://github.com/Kong/kong-vagrant).
+[Kong/kong-vagrant](https://github.com/Kong/kong-vagrant).
 
 #### Source Install
 

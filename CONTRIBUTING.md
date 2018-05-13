@@ -56,7 +56,7 @@ or the maintainers of this project:
   asynchronous and lengthy chatter and staying up-to-date with the latest
   announcements or usage tips
 - Gitter, for faster, but more ephemeral conversations. The room is
-  hosted at https://gitter.im/Mashape/kong
+  hosted at https://gitter.im/Kong/kong
 - The IRC channel, registered on freenode as [#kong
   ](https://webchat.freenode.net/?channels=kong)
 
