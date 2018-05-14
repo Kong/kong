@@ -58,12 +58,24 @@ local function new_namespace(config, init_timer)
 
     local strategy_opts = strategy == "redis" and config.redis
 
+    local dict_name = config.dictionary_name
+
+    -- if dictionary name was passed but doesn't exist, fallback to kong
+    if ngx.shared[dict_name] == nil then
+      ngx.log(ngx.NOTICE, "[rate-limiting] specified shared dictionary '", dict_name,
+        "' doesn't exist. Falling back to the 'kong' shared dictionary")
+      dict_name = "kong"
+    end
+
+    ngx.log(ngx.NOTICE, "[rate-limiting] using shared dictionary '"
+                         .. dict_name .. "'")
+
     ratelimiting.new({
       namespace     = config.namespace,
       sync_rate     = config.sync_rate,
       strategy      = strategy,
       strategy_opts = strategy_opts,
-      dict          = "kong",
+      dict          = dict_name,
       window_sizes  = config.window_size,
       dao_factory   = singletons.dao,
     })

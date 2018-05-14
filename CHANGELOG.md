@@ -1,3 +1,12 @@
-## 0.1.0
+## 0.31.1
 
-- `pre-function` and `post-function` enterprise plugins added
+### Changed
+
+- The default shared dictionary for storing RL counters is now
+  `kong_rate_limiting_counters` - which is also used by Kong CE rate-limiting
+
+### Added
+
+## 0.31.0
+
+- Plugin was moved out of Kong Enterprise core into its own repository

@@ -1,6 +1,7 @@
 local Errors = require "kong.dao.errors"
 local utils  = require "kong.tools.utils"
 local redis  = require "kong.enterprise_edition.redis"
+local errors = require "kong.dao.errors"
 
 local function validate_rl(value)
   for i = 1, #value do
@@ -13,6 +14,16 @@ local function validate_rl(value)
 
   return true
 end
+
+
+local function check_shdict(name)
+  if not ngx.shared[name] then
+    return false, "missing shared dict '" .. name .. "'"
+  end
+
+  return true
+end
+
 
 return {
   fields = {
@@ -55,12 +66,24 @@ return {
       type = "table",
       schema = redis.config_schema,
     },
+    dictionary_name = {
+      type = "string",
+      required = true,
+      default = "kong_rate_limiting_counters",
+    },
     hide_client_headers = {
       type = "boolean",
       default = false,
     },
   },
   self_check = function(schema, plugin_t, dao, is_updating)
+    if plugin_t.dictionary_name ~= nil then
+      local ok, err = check_shdict(plugin_t.dictionary_name)
+      if not ok then
+        return false, errors.schema(err)
+      end
+    end
+
     -- empty semi-optional redis config, needs to be cluster strategy
     if plugin_t.strategy == "redis" then
       if not plugin_t.redis then
