@@ -2,6 +2,8 @@ use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 
+$ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
+
 plan tests => repeat_each() * (blocks() * 3);
 
 run_tests();
@@ -147,7 +149,7 @@ host: example.com
 === TEST 7: upstream.set_header("Host") sets Host header sent to upstream
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -173,7 +175,7 @@ host: example.com
         }
 
         proxy_set_header Host $upstream_host;
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
@@ -187,7 +189,7 @@ host: example.com
 === TEST 8: upstream.set_header() sets a header in the upstream request
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -206,7 +208,7 @@ host: example.com
 
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
@@ -220,7 +222,7 @@ X-Foo: {hello world}
 === TEST 9: upstream.set_header() replaces all headers with that name if any exist
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -239,7 +241,7 @@ X-Foo: {hello world}
 
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
@@ -256,7 +258,7 @@ X-Foo: hello world
 === TEST 10: upstream.set_header() can set to an empty string
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -275,7 +277,7 @@ X-Foo: hello world
 
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
@@ -289,7 +291,7 @@ X-Foo: {}
 === TEST 11: upstream.set_header() ignores spaces in the beginning of value
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -308,7 +310,7 @@ X-Foo: {}
 
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
@@ -322,7 +324,7 @@ X-Foo: {hello}
 === TEST 12: upstream.set_header() ignores spaces in the end of value
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -341,7 +343,7 @@ X-Foo: {hello}
 
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
@@ -355,7 +357,7 @@ X-Foo: {hello}
 === TEST 13: upstream.set_header() can differentiate empty string from unset
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -376,7 +378,7 @@ X-Foo: {hello}
 
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t

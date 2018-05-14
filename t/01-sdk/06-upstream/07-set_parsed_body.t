@@ -2,6 +2,8 @@ use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 
+$ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
+
 plan tests => repeat_each() * (blocks() * 3);
 
 run_tests();
@@ -127,7 +129,7 @@ arg keys must be strings
 === TEST 6: upstream.set_parsed_body() for application/x-www-form-urlencoded sets the Content-Type header
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -146,7 +148,7 @@ arg keys must be strings
             sdk.upstream.set_parsed_body({}, "application/x-www-form-urlencoded")
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 POST /t
@@ -160,7 +162,7 @@ content-type: {application/x-www-form-urlencoded}
 === TEST 7: upstream.set_parsed_body() for application/x-www-form-urlencoded accepts an empty table
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -183,7 +185,7 @@ content-type: {application/x-www-form-urlencoded}
             sdk.upstream.set_parsed_body({})
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 POST /t
@@ -201,7 +203,7 @@ content-type: {application/x-www-form-urlencoded}
 === TEST 8: upstream.set_parsed_body() for application/x-www-form-urlencoded replaces the received post args
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -225,7 +227,7 @@ content-type: {application/x-www-form-urlencoded}
             }, "application/x-www-form-urlencoded")
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 POST /t
@@ -243,7 +245,7 @@ content-type: {application/x-www-form-urlencoded}
 === TEST 9: upstream.set_parsed_body() for application/x-www-form-urlencoded urlencodes table values
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -267,7 +269,7 @@ content-type: {application/x-www-form-urlencoded}
             }, "application/x-www-form-urlencoded")
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 POST /t
@@ -283,7 +285,7 @@ content-type: {application/x-www-form-urlencoded}
 === TEST 10: upstream.set_parsed_body() for application/x-www-form-urlencoded produces a deterministic lexicographical order
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -310,7 +312,7 @@ content-type: {application/x-www-form-urlencoded}
             }, "application/x-www-form-urlencoded")
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 POST /t
@@ -326,7 +328,7 @@ content-type: {application/x-www-form-urlencoded}
 === TEST 11: upstream.set_parsed_body() for application/x-www-form-urlencoded preserves the order of array arguments
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -353,7 +355,7 @@ content-type: {application/x-www-form-urlencoded}
             }, "application/x-www-form-urlencoded")
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 POST /t
@@ -369,7 +371,7 @@ content-type: {application/x-www-form-urlencoded}
 === TEST 12: upstream.set_parsed_body() for application/x-www-form-urlencoded supports empty values
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -393,7 +395,7 @@ content-type: {application/x-www-form-urlencoded}
             }, "application/x-www-form-urlencoded")
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 POST /t
@@ -409,7 +411,7 @@ content-type: {application/x-www-form-urlencoded}
 === TEST 13: upstream.set_parsed_body() for application/x-www-form-urlencoded accepts empty keys
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -433,7 +435,7 @@ content-type: {application/x-www-form-urlencoded}
             }, "application/x-www-form-urlencoded")
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 POST /t
@@ -449,7 +451,7 @@ content-type: {application/x-www-form-urlencoded}
 === TEST 14: upstream.set_parsed_body() for application/x-www-form-urlencoded urlencodes table keys
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -473,7 +475,7 @@ content-type: {application/x-www-form-urlencoded}
             }, "application/x-www-form-urlencoded")
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 POST /t
@@ -489,7 +491,7 @@ content-type: {application/x-www-form-urlencoded}
 === TEST 15: upstream.set_parsed_body() for application/x-www-form-urlencoded does not force a POST method
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -514,7 +516,7 @@ content-type: {application/x-www-form-urlencoded}
             }, "application/x-www-form-urlencoded")
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t

@@ -2,6 +2,8 @@ use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 
+$ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
+
 plan tests => repeat_each() * (blocks() * 3);
 
 run_tests();
@@ -91,7 +93,7 @@ invalid method: get
 === TEST 5: upstream.set_method() sets the request method to GET
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -109,7 +111,7 @@ invalid method: get
 
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
@@ -123,7 +125,7 @@ method: GET
 === TEST 6: upstream.set_method() sets the request method to HEAD
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -141,7 +143,7 @@ method: GET
 
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
@@ -154,7 +156,7 @@ method: HEAD
 === TEST 7: upstream.set_method() sets the request method to PUT
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -172,7 +174,7 @@ method: HEAD
 
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
@@ -186,7 +188,7 @@ method: PUT
 === TEST 8: upstream.set_method() sets the request method to POST
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -204,7 +206,7 @@ method: PUT
 
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
@@ -218,7 +220,7 @@ method: POST
 === TEST 9: upstream.set_method() sets the request method to DELETE
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -236,7 +238,7 @@ method: POST
 
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
@@ -250,7 +252,7 @@ method: DELETE
 === TEST 10: upstream.set_method() sets the request method to OPTIONS
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -268,7 +270,7 @@ method: DELETE
 
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
@@ -282,7 +284,7 @@ method: OPTIONS
 === TEST 11: upstream.set_method() sets the request method to MKCOL
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -299,7 +301,7 @@ method: OPTIONS
             sdk.upstream.set_method("MKCOL")
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
@@ -313,7 +315,7 @@ method: MKCOL
 === TEST 12: upstream.set_method() sets the request method to COPY
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -330,7 +332,7 @@ method: MKCOL
             sdk.upstream.set_method("COPY")
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
@@ -344,7 +346,7 @@ method: COPY
 === TEST 13: upstream.set_method() sets the request method to MOVE
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -361,7 +363,7 @@ method: COPY
             sdk.upstream.set_method("MOVE")
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
@@ -375,7 +377,7 @@ method: MOVE
 === TEST 14: upstream.set_method() sets the request method to PROPFIND
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -392,7 +394,7 @@ method: MOVE
             sdk.upstream.set_method("PROPFIND")
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
@@ -406,7 +408,7 @@ method: PROPFIND
 === TEST 15: upstream.set_method() sets the request method to PROPPATCH
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -423,7 +425,7 @@ method: PROPFIND
             sdk.upstream.set_method("PROPPATCH")
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
@@ -437,7 +439,7 @@ method: PROPPATCH
 === TEST 16: upstream.set_method() sets the request method to LOCK
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -454,7 +456,7 @@ method: PROPPATCH
             sdk.upstream.set_method("LOCK")
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
@@ -468,7 +470,7 @@ method: LOCK
 === TEST 17: upstream.set_method() sets the request method to UNLOCK
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -485,7 +487,7 @@ method: LOCK
             sdk.upstream.set_method("UNLOCK")
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
@@ -499,7 +501,7 @@ method: UNLOCK
 === TEST 18: upstream.set_method() sets the request method to PATCH
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -516,7 +518,7 @@ method: UNLOCK
             sdk.upstream.set_method("PATCH")
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
@@ -530,7 +532,7 @@ method: PATCH
 === TEST 19: upstream.set_method() sets the request method to TRACE (for which Nginx always returns 405)
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -547,7 +549,7 @@ method: PATCH
             sdk.upstream.set_method("TRACE")
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t

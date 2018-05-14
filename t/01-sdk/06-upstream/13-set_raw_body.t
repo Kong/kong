@@ -2,6 +2,8 @@ use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 
+$ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
+
 plan tests => repeat_each() * (blocks() * 3);
 
 run_tests();
@@ -51,7 +53,7 @@ body must be a string
 === TEST 3: upstream.set_raw_body() accepts an empty string
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -74,7 +76,7 @@ body must be a string
         }
 
         proxy_set_header Host $upstream_host;
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
@@ -88,7 +90,7 @@ body: {nil}
 === TEST 4: upstream.set_raw_body() sets the body
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -111,7 +113,7 @@ body: {nil}
         }
 
         proxy_set_header Host $upstream_host;
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
@@ -125,7 +127,7 @@ body: {foo=bar&bla&baz=hello%20world}
 === TEST 5: upstream.set_raw_body() sets a short body
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -148,7 +150,7 @@ body: {foo=bar&bla&baz=hello%20world}
         }
 
         proxy_set_header Host $upstream_host;
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
@@ -162,7 +164,7 @@ body: {ovo}
 === TEST 6: upstream.set_raw_body() is 8-bit clean
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -200,7 +202,7 @@ body: {ovo}
         }
 
         proxy_set_header Host $upstream_host;
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
@@ -226,7 +228,7 @@ GET /t
 === TEST 7: upstream.set_raw_body() replaces any existing body
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -249,7 +251,7 @@ GET /t
         }
 
         proxy_set_header Host $upstream_host;
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 POST /t
@@ -265,7 +267,7 @@ body: {I am another body}
 === TEST 8: upstream.set_raw_body() has no size limits for sending
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         client_max_body_size 10m;
         client_body_buffer_size 10m;
@@ -294,7 +296,7 @@ body: {I am another body}
         }
 
         proxy_set_header Host $upstream_host;
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- only
 --- request

@@ -3,6 +3,7 @@ use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 use File::Spec;
 
+$ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 $ENV{TEST_NGINX_CERT_DIR} ||= File::Spec->catdir(server_root(), '..', 'certs');
 
 plan tests => repeat_each() * (blocks() * 3);
@@ -94,7 +95,7 @@ scheme: https
 === TEST 4: upstream.set_scheme() sets the scheme to http
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -114,7 +115,7 @@ scheme: https
             local ok, err = sdk.upstream.set_scheme("http")
         }
 
-        proxy_pass $upstream_scheme://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
