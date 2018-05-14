@@ -2,6 +2,8 @@ use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 
+$ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
+
 plan tests => repeat_each() * (blocks() * 3);
 
 run_tests();
@@ -105,7 +107,7 @@ arg keys must be strings
 === TEST 5: upstream.set_query_args() accepts an empty table
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -124,7 +126,7 @@ arg keys must be strings
 
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
@@ -138,7 +140,7 @@ query: {nil}
 === TEST 6: upstream.set_query_args() replaces the received post args
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -159,7 +161,7 @@ query: {nil}
 
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t?foo=bar
@@ -173,7 +175,7 @@ query: {foo=hello%20world}
 === TEST 7: upstream.set_query_args() urlencodes table values
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -194,7 +196,7 @@ query: {foo=hello%20world}
 
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 POST /t
@@ -208,7 +210,7 @@ query: {foo=hello%20world}
 === TEST 8: upstream.set_query_args() produces a deterministic lexicographical order
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -232,7 +234,7 @@ query: {foo=hello%20world}
 
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 POST /t
@@ -246,7 +248,7 @@ query: {a&aa&foo=hello%20world&zzz=goodbye%20world}
 === TEST 9: upstream.set_query_args() preserves the order of array arguments
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -270,7 +272,7 @@ query: {a&aa&foo=hello%20world&zzz=goodbye%20world}
 
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 POST /t
@@ -284,7 +286,7 @@ query: {a&aa=zzz&aa&aa&aa=aaa&foo=hello%20world&zzz=goodbye%20world}
 === TEST 10: upstream.set_query_args() supports empty values
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -305,7 +307,7 @@ query: {a&aa=zzz&aa&aa&aa=aaa&foo=hello%20world&zzz=goodbye%20world}
 
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 POST /t
@@ -319,7 +321,7 @@ query: {aa=}
 === TEST 11: upstream.set_query_args() accepts empty keys
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -340,7 +342,7 @@ query: {aa=}
 
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 POST /t
@@ -354,7 +356,7 @@ query: {=aa}
 === TEST 12: upstream.set_query_args() urlencodes table keys
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -375,7 +377,7 @@ query: {=aa}
 
         }
 
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 POST /t

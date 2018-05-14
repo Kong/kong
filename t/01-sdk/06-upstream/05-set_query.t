@@ -2,6 +2,8 @@ use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 
+$ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
+
 plan tests => repeat_each() * (blocks() * 3);
 
 run_tests();
@@ -51,7 +53,7 @@ query must be a string
 === TEST 3: upstream.set_query() accepts an empty string
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -72,7 +74,7 @@ query must be a string
         }
 
         proxy_set_header Host $upstream_host;
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
@@ -86,7 +88,7 @@ query: {nil}
 === TEST 4: upstream.set_query() sets the query string
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -107,7 +109,7 @@ query: {nil}
         }
 
         proxy_set_header Host $upstream_host;
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
@@ -121,7 +123,7 @@ query: {foo=bar&bla&baz=hello%20world}
 === TEST 5: upstream.set_query() replaces any existing query string
 --- http_config
     server {
-        listen 127.0.0.1:9080;
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -142,7 +144,7 @@ query: {foo=bar&bla&baz=hello%20world}
         }
 
         proxy_set_header Host $upstream_host;
-        proxy_pass http://127.0.0.1:9080;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t?bla&baz=hello%20mars&something_else=is_set
