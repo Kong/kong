@@ -247,7 +247,7 @@ local function new(sdk, major_version)
       body = DEFAULT_BODY[code]
     end
 
-    while body do
+    if body then
       local content_type = ngx.header[CONTENT_TYPE]
       if content_type == nil or find(lower(content_type), CONTENT_TYPE_JSON, 1, true) then
         local json = cjson.encode(type(body) == "table" and body or { message = body })
@@ -256,8 +256,7 @@ local function new(sdk, major_version)
             ngx.header[CONTENT_TYPE] = CONTENT_TYPE_DEFAULT
           end
 
-          ngx.print(json)
-          break
+          body = json
         end
       end
 
@@ -267,8 +266,6 @@ local function new(sdk, major_version)
       elseif getmetatable(body) and type(getmetatable(body).__tostring) == "function" then
         ngx.print(tostring(body))
       end
-
-      break
     end
 
     ngx.exit(code)
