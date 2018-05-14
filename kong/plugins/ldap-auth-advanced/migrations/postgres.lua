@@ -1,9 +1,9 @@
 local plugin_config_iterator = require("kong.dao.migrations.helpers").plugin_config_iterator
-local schema = require("kong.plugins.ldap-auth.schema")
+local schema = require("kong.plugins.ldap-auth-advanced.schema")
 
 return {
   {
-    name = "2017-10-23-150900_header_type_default",
+    name = "2018-05-14-150900_header_type_default",
     up = function(_, _, dao)
       for ok, config, update in plugin_config_iterator(dao, "ldap-auth") do
         if not ok then
