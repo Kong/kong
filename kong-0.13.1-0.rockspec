@@ -60,6 +60,7 @@ build = {
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
     ["kong.templates.kong_defaults"] = "kong/templates/kong_defaults.lua",
 
+    ["kong.resty.ctx"] = "kong/resty/ctx.lua",
     ["kong.vendor.classic"] = "kong/vendor/classic.lua",
 
     ["kong.cmd"] = "kong/cmd/init.lua",

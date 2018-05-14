@@ -112,6 +112,7 @@ server {
 > end
 
     location / {
+        set $ctx_ref                     '';
         set $upstream_host               '';
         set $upstream_upgrade            '';
         set $upstream_connection         '';
@@ -159,8 +160,22 @@ server {
 
     location = /kong_error_handler {
         internal;
+        uninitialized_variable_warn off;
+
         content_by_lua_block {
             kong.handle_error()
+        }
+
+        header_filter_by_lua_block {
+            kong.header_filter()
+        }
+
+        body_filter_by_lua_block {
+            kong.body_filter()
+        }
+
+        log_by_lua_block {
+            kong.log()
         }
     }
 }

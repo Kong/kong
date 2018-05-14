@@ -13,10 +13,12 @@ function _M.serialize(ngx)
     }
   end
 
+  local request_uri = ngx.var.request_uri or ""
+
   return {
     request = {
-      uri = ngx.var.request_uri,
-      url = ngx.var.scheme .. "://" .. ngx.var.host .. ":" .. ngx.var.server_port .. ngx.var.request_uri,
+      uri = request_uri,
+      url = ngx.var.scheme .. "://" .. ngx.var.host .. ":" .. ngx.var.server_port .. request_uri,
       querystring = ngx.req.get_uri_args(), -- parameters, as a table
       method = ngx.req.get_method(), -- http method
       headers = ngx.req.get_headers(),
