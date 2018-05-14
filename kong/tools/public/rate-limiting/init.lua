@@ -416,7 +416,7 @@ local function run_maintenance_cycle(premature, period, namespace)
   end
 
   local dict = ngx.shared[cfg.dict]
-  local ok, err = dict:safe_add("rl-maint-" .. namespace, true, period - 0.1)
+  local ok, err = dict:add("rl-maint-" .. namespace, true, period - 0.1)
   if not ok then
     if err ~= "exists" then
       log(ERR, "failed to execute lock acquisition: ", err)
