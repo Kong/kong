@@ -125,7 +125,10 @@ return {
       end
 
       local password = self.params.password
+      local key = self.params.key
+
       self.params.password = nil
+      self.params.key = nil
 
       local consumer, err = dao_factory.consumers:insert(self.params)
       if err then
@@ -154,7 +157,7 @@ return {
       if self.portal_auth == "key-auth" then
         credential_data = {
           consumer_id = consumer.id,
-          key = self.params.key
+          key = key,
         }
       end
 
