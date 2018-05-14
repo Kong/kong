@@ -1,6 +1,7 @@
 local cjson   = require "cjson"
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
+local singletons = require "kong.singletons"
 
 
 for _, strategy in helpers.each_strategy() do
@@ -13,6 +14,8 @@ for _, strategy in helpers.each_strategy() do
     setup(function()
       local _
       bp, _, dao = helpers.get_db_utils(strategy)
+
+      singletons.dao = dao
 
       assert(helpers.start_kong({
         database = strategy,
@@ -27,10 +30,13 @@ for _, strategy in helpers.each_strategy() do
 
     describe("/consumers/:consumer/basic-auth/", function()
       setup(function()
-        consumer = bp.consumers:insert {
-          username = "bob"
-        }
+        consumer = dao.consumers:run_with_ws_scope(
+          dao.workspaces:find_all({name = "default"}),
+          dao.consumers.insert,
+          {username = "bob"}
+        )
       end)
+
       after_each(function()
         dao:truncate_table("basicauth_credentials")
       end)
@@ -159,13 +165,17 @@ for _, strategy in helpers.each_strategy() do
 
       describe("GET", function()
         setup(function()
-          for i = 1, 3 do
-            assert(dao.basicauth_credentials:insert {
-              username    = "bob" .. i,
-              password    = "kong",
-              consumer_id = consumer.id
-            })
-          end
+          helpers.with_default_ws(
+            dao.workspaces:find_all({name = "default"}),
+            function()
+                for i = 1, 3 do
+                assert(dao.basicauth_credentials:insert {
+                            username    = "bob" .. i,
+                            password    = "kong",
+                            consumer_id = consumer.id
+                })
+            end
+          end)
         end)
         teardown(function()
           dao:truncate_table("basicauth_credentials")
@@ -188,10 +198,12 @@ for _, strategy in helpers.each_strategy() do
       local credential
       before_each(function()
         dao:truncate_table("basicauth_credentials")
-        credential = assert(dao.basicauth_credentials:insert {
-          username    = "bob",
-          password    = "kong",
-          consumer_id = consumer.id
+        credential = dao.basicauth_credentials:run_with_ws_scope(
+          dao.workspaces:find_all({name = "default"}),
+          dao.basicauth_credentials.insert, {
+            username = "bob",
+            password = "kong",
+            consumer_id = consumer.id
         })
       end)
       describe("GET", function()
@@ -214,9 +226,14 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(credential.id, json.id)
         end)
         it("retrieves credential by id only if the credential belongs to the specified consumer", function()
-          assert(dao.consumers:insert {
-            username = "alice"
-          })
+          helpers.with_default_ws(
+            dao.workspaces:find_all({name = "default"}),
+            function()
+              assert(dao.consumers:insert {
+                       username = "alice"
+              })
+          end)
+
 
           local res = assert(admin_client:send {
             method  = "GET",
@@ -317,17 +334,21 @@ for _, strategy in helpers.each_strategy() do
       describe("GET", function()
         setup(function()
           dao:truncate_table("basicauth_credentials")
-          assert(dao.basicauth_credentials:insert {
-            consumer_id = consumer.id,
-            username = "bob"
-          })
-          consumer2 = assert(dao.consumers:insert {
-            username = "bob-the-buidler"
-          })
-          assert(dao.basicauth_credentials:insert {
-            consumer_id = consumer2.id,
-            username = "bob-the-buidler"
-          })
+          helpers.with_default_ws(
+            dao.workspaces:find_all({name = "default"}),
+            function()
+              assert(dao.basicauth_credentials:insert {
+                  consumer_id = consumer.id,
+                  username = "bob"
+              })
+              consumer2 = assert(dao.consumers:insert {
+                  username = "bob-the-buidler"
+              })
+              assert(dao.basicauth_credentials:insert {
+                  consumer_id = consumer2.id,
+                  username = "bob-the-buidler"
+              })
+            end)
         end)
         it("retrieves all the basic-auths with trailing slash", function()
           local res = assert(admin_client:send {
@@ -411,10 +432,14 @@ for _, strategy in helpers.each_strategy() do
         local credential
         setup(function()
           dao:truncate_table("basicauth_credentials")
-          credential = assert(dao.basicauth_credentials:insert {
-            consumer_id = consumer.id,
-            username = "bob"
-          })
+          helpers.with_default_ws(
+            dao.workspaces:find_all({name = "default"}),
+            function()
+              credential = assert(dao.basicauth_credentials:insert {
+                  consumer_id = consumer.id,
+                  username = "bob"
+              })
+          end)
         end)
         it("retrieve consumer from a basic-auth id", function()
           local res = assert(admin_client:send {

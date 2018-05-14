@@ -29,6 +29,7 @@ local http = require "resty.http"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
+local workspaces = require "kong.workspaces"
 
 local table_merge = utils.table_merge
 
@@ -1221,5 +1222,12 @@ return {
       kill.kill(pid_path, "-TERM")
       wait_pid(pid_path, timeout)
     end
-end
+  end,
+  with_default_ws = function(ws,fn)
+    local old_ws = ngx.ctx.workspaces
+    ngx.ctx.workspaces = ws
+    local res = fn()
+    ngx.ctx.workspaces = old_ws
+    return res
+  end,
 }
