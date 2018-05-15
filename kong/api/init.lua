@@ -205,6 +205,10 @@ local function attach_new_db_routes(routes)
   for route_path, methods in pairs(routes) do
     methods.on_error = methods.on_error or new_db_on_error
 
+    rbac.register_resource_route(route_path, rbac.route_resource_map[route_path]
+                                             or methods.resource
+                                             or "default")
+
     for method_name, method_handler in pairs(methods) do
       local wrapped_handler = function(self)
         self.args = arguments.load()
