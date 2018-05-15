@@ -48,9 +48,10 @@ In case of auth plugins concatenation, the OpenID Connect plugin now removes rem
   - Correct the stats returned in the "metadata" attribute of the /vitals/consumers/:consumer_id/* endpoints
   - Correct a problem where workers get out of sync when adding their data to cache
   - Correct inconsistencies in chart axes when toggling between views or when Kong has no traffic
-
 - Proxy Cache
   - Fix issue that prevented cached requests from showing up in Vitals or Total Requests graphs
+- Rate Limiting
+  - Fix lock acquisition failure
 
 ## 0.30 - 2018/01/22
 
