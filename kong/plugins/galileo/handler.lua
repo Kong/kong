@@ -38,9 +38,14 @@ end
 function GalileoHandler:body_filter(conf)
   GalileoHandler.super.body_filter(self)
 
+  -- XXX EE: if request was cached, don' t proceed - no body to read
+  local ctx = ngx.ctx
+  if ctx.proxy_cache_hit then
+    return
+  end
+
   if conf.log_bodies then
     local chunk = ngx.arg[1]
-    local ctx = ngx.ctx
     local res_body = ctx.galileo and ctx.galileo.res_body or ""
     res_body = res_body .. (chunk or "")
     ctx.galileo.res_body = res_body
@@ -50,6 +55,12 @@ end
 function GalileoHandler:log(conf)
   GalileoHandler.super.log(self)
 
+  -- XXX: EE: if request was cached, fill in server_addr from proxy-cache
+  -- context
+  local ctx = ngx.ctx
+  if ctx.proxy_cache_hit then
+    _server_addr = ctx.proxy_cache_hit.server_addr
+  end
 
   local route_id = conf.route_id or conf.api_id
 
@@ -68,7 +79,13 @@ function GalileoHandler:log(conf)
   local req_body, res_body
 
   local ctx = ngx.ctx
-  if ctx.galileo then
+
+  -- XXX EE: if request was cached, fill in the bodies from the proxy-cache
+  -- context
+  if ctx.proxy_cache_hit then
+    req_body = ctx.proxy_cache_hit.req.body
+    res_body = ctx.proxy_cache_hit.res.body
+  elseif ctx.galileo then
     req_body = ctx.galileo.req_body
     res_body = ctx.galileo.res_body
   end
