@@ -2,6 +2,8 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local escape = require("socket.url").escape
 local utils = require "kong.tools.utils"
+local singletons = require "kong.singletons"
+
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
@@ -18,6 +20,7 @@ describe("Admin API", function()
 
   setup(function()
     _, _, dao = helpers.get_db_utils(strategy)
+    singletons.dao = dao
     assert(helpers.start_kong({
       database = strategy
     }))
@@ -31,6 +34,7 @@ describe("Admin API", function()
   local consumer, consumer2, consumer3
   before_each(function()
     dao:truncate_tables()
+    ngx.ctx.workspaces = dao.workspaces:find_all()
     helpers.register_consumer_relations(dao)
     consumer = assert(dao.consumers:insert {
       username = "bob",
@@ -45,6 +49,7 @@ describe("Admin API", function()
       custom_id = "1a2b"
     })
     client = helpers.admin_client()
+    ngx.ctx.workspaces = {}
   end)
 
   after_each(function()
@@ -382,12 +387,13 @@ describe("Admin API", function()
       before_each(function()
         dao:truncate_tables()
         helpers.register_consumer_relations(dao)
-
+        ngx.ctx.workspaces = dao.workspaces:find_all()
         for i = 1, 10 do
           assert(dao.consumers:insert {
             username = "consumer-" .. i,
           })
         end
+        ngx.ctx.workspaces = {}
       end)
       teardown(function()
         dao:truncate_tables()
@@ -813,11 +819,13 @@ describe("Admin API", function()
       end)
       it_content_types("prefers default values when replacing", function(content_type)
         return function()
+          ngx.ctx.workspaces = dao.workspaces:find_all()
           local plugin = assert(dao.plugins:insert {
             name = "rewriter",
             consumer_id = consumer.id,
             config = { value = "potato", extra = "super" }
           })
+          ngx.ctx.workspaces = {}
           assert.equal("potato", plugin.config.value)
           assert.equal("super", plugin.config.extra)
 
@@ -847,10 +855,12 @@ describe("Admin API", function()
       end)
       it_content_types("overrides a plugin previous config if partial", function(content_type)
         return function()
+          ngx.ctx.workspaces = dao.workspaces:find_all()
           local plugin = assert(dao.plugins:insert {
             name = "rewriter",
             consumer_id = consumer.id
           })
+          ngx.ctx.workspaces = {}
           assert.equal("extra", plugin.config.extra)
 
           local res = assert(client:send {
@@ -871,10 +881,12 @@ describe("Admin API", function()
       end)
       it_content_types("updates the enabled property", function(content_type)
         return function()
+          ngx.ctx.workspaces = dao.workspaces:find_all()
           local plugin = assert(dao.plugins:insert {
             name = "rewriter",
             consumer_id = consumer.id
           })
+          ngx.ctx.workspaces = {}
           assert.True(plugin.enabled)
 
           local res = assert(client:send {
@@ -918,10 +930,12 @@ describe("Admin API", function()
 
     describe("GET", function()
       it("retrieves the first page", function()
+        ngx.ctx.workspaces = dao.workspaces:find_all()
         assert(dao.plugins:insert {
           name = "rewriter",
           consumer_id = consumer.id
         })
+        ngx.ctx.workspaces = {}
         local res = assert(client:send {
           method = "GET",
           path = "/consumers/" .. consumer.id .. "/plugins"
@@ -949,6 +963,7 @@ describe("Admin API", function()
   describe("/consumers/{username_or_id}/plugins/{plugin}", function()
     local plugin, plugin2
     before_each(function()
+      ngx.ctx.workspaces = dao.workspaces:find_all()
       plugin = assert(dao.plugins:insert {
         name = "rewriter",
         consumer_id = consumer.id
@@ -957,6 +972,7 @@ describe("Admin API", function()
         name = "rewriter",
         consumer_id = consumer2.id
       })
+      ngx.ctx.workspaces = {}
     end)
 
     describe("GET", function()
@@ -980,10 +996,12 @@ describe("Admin API", function()
       end)
       it("only retrieves if associated to the correct consumer", function()
         -- Create an consumer and try to query our plugin through it
+        ngx.ctx.workspaces = dao.workspaces:find_all()
         local w_consumer = assert(dao.consumers:insert {
           custom_id = "wc",
           username = "wrong-consumer"
         })
+        ngx.ctx.workspaces = {}
         -- Try to request the plugin through it (belongs to the fixture consumer instead)
         local res = assert(client:send {
           method = "GET",
