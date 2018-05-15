@@ -530,4 +530,13 @@ return {
       DROP TABLE credentials
     ]]
   },
+  {
+    name = "2018-05-09-215700_consumers_type_default",
+    up = function(_, _, dao)
+      local portal = require "kong.portal.dao_helpers"
+      local CONSUMERS = require("kong.portal.enums").CONSUMERS
+
+      return portal.update_consumers(dao, CONSUMERS.TYPE.PROXY)
+    end,
+  },
 }

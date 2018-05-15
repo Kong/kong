@@ -38,4 +38,22 @@ function _M.register_resources(dao)
 end
 
 
+-- Update all consumers without a "type"
+function _M.update_consumers(dao, type)
+  local rows, err = dao.consumers:find_all()
+  if err then
+    return err
+  end
+
+  for _, row in ipairs(rows) do
+    if not row.type then
+      local _, err = dao.consumers:update({ type = type }, { id = row.id })
+      if err then
+        return err
+      end
+    end
+  end
+end
+
+
 return _M
