@@ -39,8 +39,10 @@ build = {
   type = "builtin",
   modules = {
     ["kong"] = "kong/init.lua",
+    ["kong.ctx"] = "kong/ctx.lua",
     ["kong.meta"] = "kong/meta.lua",
     ["kong.cache"] = "kong/cache.lua",
+    ["kong.global"] = "kong/global.lua",
     ["kong.router"] = "kong/router.lua",
     ["kong.api_router"] = "kong/api_router.lua",
     ["kong.reports"] = "kong/reports.lua",
@@ -146,6 +148,17 @@ build = {
     ["kong.db.strategies.cassandra.services"] = "kong/db/strategies/cassandra/services.lua",
     ["kong.db.strategies.postgres"] = "kong/db/strategies/postgres/init.lua",
     ["kong.db.strategies.postgres.connector"] = "kong/db/strategies/postgres/connector.lua",
+
+    ["kong.sdk.base"] = "kong/sdk/base.lua",
+    ["kong.sdk.client"] = "kong/sdk/client.lua",
+    ["kong.sdk"] = "kong/sdk/init.lua",
+    ["kong.sdk.ip"] = "kong/sdk/ip.lua",
+    ["kong.sdk.log"] = "kong/sdk/log.lua",
+    ["kong.sdk.request"] = "kong/sdk/request.lua",
+    ["kong.sdk.response"] = "kong/sdk/response.lua",
+    ["kong.sdk.upstream"] = "kong/sdk/upstream/init.lua",
+    ["kong.sdk.upstream.response"] = "kong/sdk/upstream/response.lua",
+    ["kong.sdk.utils.base"] = "kong/sdk/utils/base.lua",
 
     ["kong.plugins.base_plugin"] = "kong/plugins/base_plugin.lua",
 
