@@ -487,6 +487,7 @@ return {
   {
     name = "2017-05-19-173100_remove_nodes_table",
     up = [[
+      DROP INDEX IF EXISTS nodes_cluster_listening_address_idx;
       DROP TABLE nodes;
     ]],
   },
