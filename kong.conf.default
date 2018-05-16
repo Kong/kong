@@ -603,7 +603,7 @@
                         # the `admin_listen` directive.
 
 #portal_gui_url =
-                        # Developer Portal GUI URI
+                        # Developer Portal GUI URL
                         #
                         # Here you may provide the lookup, or balancer,
                         # address for your Kong Proxy nodes.
@@ -719,14 +719,6 @@
 # DEVELOPER PORTAL AUTHENTICATION
 #------------------------------------------------------------------------------
 
-#portal_auto_approve = off
-                        # Developer Portal Auto Approve Access
-                        #
-                        # When this flag is set to "on", a developer will
-                        # automatically be marked as "approved" after completing
-                        # registration. Access can still be revoked through the
-                        # Admin GUI or API.
-
 #portal_auth =
                         # Developer Portal Authentication Plugin Name
                         #
@@ -760,3 +752,11 @@
                         # Example for `basic-auth`:
                         #
                         #  portal_auth_conf = { "hide_credentials": true }
+
+#portal_auto_approve = off
+                        # Developer Portal Auto Approve Access
+                        #
+                        # When this flag is set to "on", a developer will
+                        # automatically be marked as "approved" after completing
+                        # registration. Access can still be revoked through the
+                        # Admin GUI or API.
