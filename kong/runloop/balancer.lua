@@ -799,7 +799,7 @@ end
 
 --------------------------------------------------------------------------------
 -- Update health status and broadcast to workers
--- @param upstream a table with upstream data
+-- @param upstream a table with upstream data: must have `name` and `id`
 -- @param hostname target hostname
 -- @param port target port
 -- @param is_healthy boolean: true if healthy, false if unhealthy
