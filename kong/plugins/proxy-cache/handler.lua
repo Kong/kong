@@ -51,6 +51,14 @@ local hop_by_hop_headers = {
 }
 
 
+local function overwritable_header(header)
+  local n_header = str_lower(header)
+
+  return     not hop_by_hop_headers[n_header]
+         and not (ngx_re_match(n_header, "ratelimit-remaining"))
+end
+
+
 local function parse_directive_header(h)
   if not h then
     return {}
@@ -236,7 +244,7 @@ local function send_response(res)
 
   -- TODO refactor this to not use pairs
   for k, v in pairs(res.headers) do
-    if not hop_by_hop_headers[str_lower(k)] then
+    if overwritable_header(k) then
       ngx.header[k] = v
     end
   end
