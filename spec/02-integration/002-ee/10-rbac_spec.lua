@@ -4,12 +4,6 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
 
-local function run_with_ws(ws, cb)
-  local old_ws = ngx.ctx.workspaces
-  ngx.ctx.workspaces = ws
-  cb()
-  ngx.ctx.workspaces = old_ws
-end
 
 dao_helpers.for_each_dao(function(kong_config)
 
@@ -742,7 +736,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
   describe("rbac defaults", function()
     setup(function()
       dao:drop_schema()
-      helpers.dao:run_migrations(dao)
+      helpers.dao:run_migrations()
     end)
 
     it("defines the default roles", function()
