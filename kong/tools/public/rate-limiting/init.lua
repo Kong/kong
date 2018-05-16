@@ -13,6 +13,9 @@ local DEBUG = ngx.DEBUG
 local ERR   = ngx.ERR
 
 
+local locks_shm = ngx.shared.kong_cache
+
+
 local new_tab
 do
   local ok
@@ -76,7 +79,7 @@ local function fetch(premature, namespace, time, timeout)
   -- mutex so only one worker fetches from the cluster and
   -- updates our shared zone
   local lock_key = "rl-init-fetch-" .. namespace
-  local ok, err  = dict:add(lock_key, true, timeout)
+  local ok, err  = locks_shm:add(lock_key, true, timeout)
   if not ok then
     if err ~= "exists" then
       log(ERR, "err in setting initial ratelimit fetch mutex for ",
@@ -102,7 +105,7 @@ local function fetch(premature, namespace, time, timeout)
   end
 
   if not timeout then
-    dict:delete(lock_key)
+    locks_shm:delete(lock_key)
   end
 end
 _M.fetch = fetch
@@ -155,7 +158,7 @@ function _M.sync(premature, namespace)
 
     log(DEBUG, "try sync ", key)
 
-    local ok, err = dict:add(key .. "|sync-lock", true, cfg.sync_rate - 0.001)
+    local ok, err = locks_shm:add(key .. "|sync-lock", true, cfg.sync_rate - 0.001)
     if not ok and err ~= "exists" then
       ngx.log(ngx.WARN, "error in establishing sync-lock for ", key, ": ", err)
     end
@@ -415,8 +418,7 @@ local function run_maintenance_cycle(premature, period, namespace)
     log(ERR, "error starting new maintenance timer: ", err)
   end
 
-  local dict = ngx.shared[cfg.dict]
-  local ok, err = dict:add("rl-maint-" .. namespace, true, period - 0.1)
+  local ok, err = locks_shm:add("rl-maint-" .. namespace, true, period - 0.1)
   if not ok then
     if err ~= "exists" then
       log(ERR, "failed to execute lock acquisition: ", err)
