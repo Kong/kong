@@ -246,9 +246,8 @@ limitations under the License.
 ```
 
 [kong-url]: https://konghq.com/
-[kong-logo]: https://d2ffutrenqvap3.cloudfront.net/items/1946191x3s1H0M2u3J18/slack-imgs.png
-[kong-benefits]: https://cl.ly/002i2Z432A1s/Image%202017-10-16%20at%2012.30.08%20AM.png
-[google-groups-url]: https://groups.google.com/forum/#!forum/konglayer
+[kong-logo]: https://konghq.com/wp-content/uploads/2018/05/kong-logo-github-readme.png
+[kong-benefits]: https://konghq.com/wp-content/uploads/2018/05/kong-benefits-github-readme.png
 [badge-travis-url]: https://travis-ci.org/Kong/kong/branches
 [badge-travis-image]: https://travis-ci.org/Kong/kong.svg?branch=master
 
