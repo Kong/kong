@@ -7,6 +7,7 @@
 --
 -- In the `access_by_lua` phase, it is responsible for retrieving the route being proxied by
 -- a consumer. Then it is responsible for loading the plugins to execute on this request.
+local ck          = require "resty.cookie"
 local utils       = require "kong.tools.utils"
 local Router      = require "kong.router"
 local ApiRouter   = require "kong.api_router"
@@ -705,6 +706,18 @@ return {
 
           elseif matches then
             header[upstream_status_header] = matches[0]
+          end
+        end
+
+        local cookie_hash_data = ctx.balancer_hash_cookie
+        if cookie_hash_data then
+          local cookie = ck:new()
+          local ok, err = cookie:set(cookie_hash_data)
+
+          if not ok then
+            log(ngx.WARN, "failed to set the cookie for hash-based load balancing: ", err,
+                          " (key=", cookie_hash_data.key,
+                          ", path=", cookie_hash_data.path, ")")
           end
         end
       end

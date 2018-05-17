@@ -1,5 +1,6 @@
 local pl_tablex = require "pl.tablex"
 local singletons = require "kong.singletons"
+local utils = require "kong.tools.utils"
 
 -- due to startup/require order, cannot use the ones from 'singletons' here
 local dns_client = require "resty.dns.client"
@@ -656,6 +657,25 @@ local create_hash = function(upstream)
       if type(identifier) == "table" then
         identifier = table_concat(identifier)
       end
+
+    elseif hash_on == "cookie" then
+      identifier = ngx.var["cookie_" .. upstream.hash_on_cookie]
+
+      -- If the cookie doesn't exist, create one and store in `ctx`
+      -- to be added to the "Set-Cookie" header in the response
+      if not identifier then
+        identifier = utils.uuid()
+
+        -- TODO: This should be added the `ngx.ctx.balancer_address`
+        -- structure, where other balancer-related values are stored,
+        -- when that is renamed/ refactored.
+        ctx.balancer_hash_cookie = {
+          key = upstream.hash_on_cookie,
+          value = identifier,
+          path = upstream.hash_on_cookie_path
+        }
+      end
+
     end
 
     if identifier then
