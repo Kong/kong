@@ -7,7 +7,6 @@ local ngx_log       = ngx.log
 local ngx_timer_at  = ngx.timer.at
 local string_gsub   = string.gsub
 local pairs         = pairs
-local string_format = string.format
 local NGX_ERR       = ngx.ERR
 
 
