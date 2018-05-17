@@ -1331,37 +1331,74 @@ for _, strategy in helpers.each_strategy() do
 
           describe("with consistent hashing", function()
 
-            it("over multiple targets", function()
-              local requests = SLOTS * 2 -- go round the balancer twice
+            describe("over multiple targets", function()
 
-              local upstream_name = add_upstream({
-                hash_on = "header",
-                hash_on_header = "hashme",
-              })
-              local port1 = add_target(upstream_name, localhost)
-              local port2 = add_target(upstream_name, localhost)
-              local api_host = add_api(upstream_name)
+              it("hashing on header", function()
+                local requests = SLOTS * 2 -- go round the balancer twice
 
-              -- setup target servers
-              local server1 = http_server(localhost, port1, { requests })
-              local server2 = http_server(localhost, port2, { requests })
+                local upstream_name = add_upstream({
+                  hash_on = "header",
+                  hash_on_header = "hashme",
+                })
+                local port1 = add_target(upstream_name, localhost)
+                local port2 = add_target(upstream_name, localhost)
+                local api_host = add_api(upstream_name)
 
-              -- Go hit them with our test requests
-              local oks = client_requests(requests, {
-                ["Host"] = api_host,
-                ["hashme"] = "just a value",
-              })
-              assert.are.equal(requests, oks)
+                -- setup target servers
+                local server1 = http_server(localhost, port1, { requests })
+                local server2 = http_server(localhost, port2, { requests })
 
-              -- collect server results; hitcount
-              -- one should get all the hits, the other 0
-              local _, count1 = server1:done()
-              local _, count2 = server2:done()
+                -- Go hit them with our test requests
+                local oks = client_requests(requests, {
+                  ["Host"] = api_host,
+                  ["hashme"] = "just a value",
+                })
+                assert.are.equal(requests, oks)
 
-              -- verify
-              assert(count1 == 0 or count1 == requests, "counts should either get 0 or ALL hits")
-              assert(count2 == 0 or count2 == requests, "counts should either get 0 or ALL hits")
-              assert(count1 + count2 == requests)
+                -- collect server results; hitcount
+                -- one should get all the hits, the other 0
+                local _, count1 = server1:done()
+                local _, count2 = server2:done()
+
+                -- verify
+                assert(count1 == 0 or count1 == requests, "counts should either get 0 or ALL hits")
+                assert(count2 == 0 or count2 == requests, "counts should either get 0 or ALL hits")
+                assert(count1 + count2 == requests)
+              end)
+
+              it("hashing on cookie", function()
+                local requests = SLOTS * 2 -- go round the balancer twice
+
+                local upstream_name = add_upstream({
+                  hash_on = "cookie",
+                  hash_on_cookie = "hashme",
+                })
+                local port1 = add_target(upstream_name, localhost)
+                local port2 = add_target(upstream_name, localhost)
+                local api_host = add_api(upstream_name)
+
+                -- setup target servers
+                local server1 = http_server(localhost, port1, { requests })
+                local server2 = http_server(localhost, port2, { requests })
+
+                -- Go hit them with our test requests
+                local oks = client_requests(requests, {
+                  ["Host"] = api_host,
+                  ["Cookie"] = "hashme=just a value",
+                })
+                assert.are.equal(requests, oks)
+
+                -- collect server results; hitcount
+                -- one should get all the hits, the other 0
+                local _, count1 = server1:done()
+                local _, count2 = server2:done()
+
+                -- verify
+                assert(count1 == 0 or count1 == requests, "counts should either get 0 or ALL hits")
+                assert(count2 == 0 or count2 == requests, "counts should either get 0 or ALL hits")
+                assert(count1 + count2 == requests)
+              end)
+
             end)
 
           end)

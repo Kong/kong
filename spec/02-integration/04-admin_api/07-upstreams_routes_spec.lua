@@ -87,6 +87,33 @@ describe("Admin API: #" .. kong_config.database, function()
           assert.are.equal("HeaderFallback", json.hash_fallback_header)
         end
       end)
+      it_content_types("creates an upstream with 2 cookie hashes", function(content_type)
+        return function()
+          local res = assert(client:send {
+            method = "POST",
+            path = "/upstreams",
+            body = {
+              name = "my.upstream",
+              slots = 10,
+              hash_on = "cookie",
+              hash_fallback = "cookie",
+              hash_on_cookie = "CookieName1",
+              hash_fallback_cookie = "CookieName2",
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          assert.response(res).has.status(201)
+          local json = assert.response(res).has.jsonbody()
+          assert.equal("my.upstream", json.name)
+          assert.is_number(json.created_at)
+          assert.is_string(json.id)
+          assert.are.equal(10, json.slots)
+          assert.are.equal("cookie", json.hash_on)
+          assert.are.equal("cookie", json.hash_fallback)
+          assert.are.equal("CookieName1", json.hash_on_header)
+          assert.are.equal("CookieName2", json.hash_fallback_header)
+        end
+      end)
       it_content_types("creates an upstream with 2 header hashes", function(content_type)
         return function()
           local res = assert(client:send {
@@ -198,7 +225,7 @@ describe("Admin API: #" .. kong_config.database, function()
             })
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ hash_on = '"something that is invalid" is not allowed. Allowed values are: "none", "consumer", "ip", "header"' }, json)
+            assert.same({ hash_on = '"something that is invalid" is not allowed. Allowed values are: "none", "consumer", "ip", "header", "cookie"' }, json)
 
             -- Invalid hash_fallback entries
             res = assert(client:send {
@@ -213,7 +240,7 @@ describe("Admin API: #" .. kong_config.database, function()
             })
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ hash_fallback = '"something that is invalid" is not allowed. Allowed values are: "none", "consumer", "ip", "header"' }, json)
+            assert.same({ hash_fallback = '"something that is invalid" is not allowed. Allowed values are: "none", "consumer", "ip", "header", "cookie"' }, json)
 
             -- same hash entries
             res = assert(client:send {
