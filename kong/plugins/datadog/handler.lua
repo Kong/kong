@@ -31,26 +31,22 @@ local get_consumer_id = {
 
 local metrics = {
   status_count = function (api_name, message, metric_config, logger)
-    local fmt = string_format("%s.request.status", api_name,
-                       message.response.status)
-
-    logger:send_statsd(string_format("%s.%s", fmt, message.response.status),
+    logger:send_statsd("api.request.status",
                        1, logger.stat_types.counter,
-                       metric_config.sample_rate, metric_config.tags)
-
-    logger:send_statsd(string_format("%s.%s", fmt, "total"), 1,
-                       logger.stat_types.counter,
-                       metric_config.sample_rate, metric_config.tags)
+                       metric_config.sample_rate, 
+                       {
+                          "app:kong",
+                          "api_name:" .. api_name,
+                          "response_code:" .. message.response.status
+                       })
   end,
   unique_users = function (api_name, message, metric_config, logger)
     local get_consumer_id = get_consumer_id[metric_config.consumer_identifier]
     local consumer_id     = get_consumer_id(message.consumer)
 
     if consumer_id then
-      local stat = string_format("%s.user.uniques", api_name)
-
-      logger:send_statsd(stat, consumer_id, logger.stat_types.set,
-                         nil, metric_config.tags)
+      logger:send_statsd("api.user.uniques", consumer_id, logger.stat_types.set,
+                         nil, {"app:kong", "api_name:" .. api_name} )
     end
   end,
   request_per_user = function (api_name, message, metric_config, logger)
@@ -58,10 +54,13 @@ local metrics = {
     local consumer_id     = get_consumer_id(message.consumer)
 
     if consumer_id then
-      local stat = string_format("%s.user.%s.request.count", api_name, consumer_id)
-
-      logger:send_statsd(stat, 1, logger.stat_types.counter,
-                         metric_config.sample_rate, metric_config.tags)
+      logger:send_statsd("api.user.request.count", 1, logger.stat_types.counter,
+                         metric_config.sample_rate, 
+                         {
+                           "app:kong",
+                           "api_name:" .. api_name,
+                           "consumer_id:" .. consumer_id
+                         })
     end
   end,
   status_count_per_user = function (api_name, message, metric_config, logger)
@@ -69,15 +68,14 @@ local metrics = {
     local consumer_id     = get_consumer_id(message.consumer)
 
     if consumer_id then
-      local fmt = string_format("%s.user.%s.request.status", api_name, consumer_id)
-
-      logger:send_statsd(string_format("%s.%s", fmt, message.response.status),
+      logger:send_statsd("api.user.request.status",
                          1, logger.stat_types.counter,
-                         metric_config.sample_rate, metric_config.tags)
-
-      logger:send_statsd(string_format("%s.%s", fmt,  "total"),
-                         1, logger.stat_types.counter,
-                         metric_config.sample_rate, metric_config.tags)
+                         metric_config.sample_rate,
+                         {
+                           "app:kong",
+                           "api_name:" .. api_name,
+                           "consumer_id:" .. consumer_id
+                         })
     end
   end,
 }
@@ -112,12 +110,12 @@ local function log(premature, conf, message)
   end
 
   local stat_name  = {
-    request_size     = name .. ".request.size",
-    response_size    = name .. ".response.size",
-    latency          = name .. ".latency",
-    upstream_latency = name .. ".upstream_latency",
-    kong_latency     = name .. ".kong_latency",
-    request_count    = name .. ".request.count",
+    request_size     = "api.request.size",
+    response_size    = "api.response.size",
+    latency          = "api.latency",
+    upstream_latency = "api.upstream_latency",
+    kong_latency     = "api.kong_latency",
+    request_count    = "api.request.count",
   }
   local stat_value = {
     request_size     = message.request.size,
@@ -146,7 +144,8 @@ local function log(premature, conf, message)
 
       logger:send_statsd(stat_name, stat_value,
                          logger.stat_types[metric_config.stat_type],
-                         metric_config.sample_rate, metric_config.tags)
+                         metric_config.sample_rate, 
+                         {"app:kong", "api_name:" .. name})
     end
   end
 
