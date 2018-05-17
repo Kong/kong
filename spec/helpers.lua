@@ -128,6 +128,12 @@ local function get_db_utils(strategy, no_truncate)
   -- new DAO (DB module)
   local db = assert(DB.new(conf, strategy))
 
+  -- cleanup new DB tables
+  assert(db:init_connector())
+  if not no_truncate then
+    assert(db:truncate())
+  end
+
   -- legacy DAO
   local dao
 
@@ -141,12 +147,6 @@ local function get_db_utils(strategy, no_truncate)
     if not no_truncate then
       dao:truncate_tables()
     end
-  end
-
-  -- cleanup new DB tables
-  assert(db:init_connector())
-  if not no_truncate then
-    assert(db:truncate())
   end
 
   -- XXX rbac resources are gone

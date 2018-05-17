@@ -120,6 +120,24 @@ local function is_blank(t)
   return not t or #t == 0
 end
 
+function _M.create_default(dao)
+  dao = dao or singletons.dao
+
+  local res, err = dao.workspaces:insert({
+      name = _M.DEFAULT_WORKSPACE,
+  }, { quiet = true })
+
+  if not err then
+    dao.workspace_entities:insert({
+        workspace_id = res.id,
+        entity_id = res.id,
+        entity_type = "workspaces",
+        unique_field_name = "name",
+        unique_field_value = "default",
+  }, { quiet = true })
+  end
+end
+
 
 -- Call can come from init phase, Admin or proxy
 -- mostly ngx.ctx.workspaces would already be set if not

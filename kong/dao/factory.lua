@@ -267,20 +267,7 @@ function _M:truncate_tables()
     end
   end
 
-  -- re-create the default workspace - that's so ugly
-  local res, err = self.workspaces:insert({
-    name = workspaces.DEFAULT_WORKSPACE,
-  }, { quiet = true })
-
-  if not err then
-    self.workspace_entities:insert({
-        workspace_id = res.id,
-        entity_id = res.id,
-        entity_type = "workspaces",
-        unique_field_name = "name",
-        unique_field_value = "default",
-    }, { quiet = true })
-  end
+  workspaces.create_default(self)
 end
 
 function _M:migrations_modules()
