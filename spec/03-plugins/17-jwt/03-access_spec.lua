@@ -3,6 +3,7 @@ local helpers     = require "spec.helpers"
 local fixtures    = require "spec.03-plugins.17-jwt.fixtures"
 local jwt_encoder = require "kong.plugins.jwt.jwt_parser"
 local utils       = require "kong.tools.utils"
+local singletons  = require "kong.singletons"
 
 
 local PAYLOAD = {
@@ -24,115 +25,125 @@ for _, strategy in helpers.each_strategy() do
     local admin_client
 
     setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp, _, dao = helpers.get_db_utils(strategy)
+      singletons.dao = dao
 
       local routes = {}
+      local consumers, consumer1, consumer2, consumer3
+      local consumer4, consumer5, consumer6, anonymous_user, plugins
 
-      for i = 1, 10 do
-        routes[i] = bp.routes:insert {
-          hosts = { "jwt" .. i .. ".com" },
-        }
-      end
+      local ws = dao.workspaces:find_all({name = "default"})
 
-      local consumers      = bp.consumers
-      local consumer1      = consumers:insert({ username = "jwt_tests_consumer" })
-      local consumer2      = consumers:insert({ username = "jwt_tests_base64_consumer" })
-      local consumer3      = consumers:insert({ username = "jwt_tests_rsa_consumer_1" })
-      local consumer4      = consumers:insert({ username = "jwt_tests_rsa_consumer_2" })
-      local consumer5      = consumers:insert({ username = "jwt_tests_rsa_consumer_5" })
-      local consumer6      = consumers:insert({ username = "jwt_tests_consumer_6" })
-      local anonymous_user = consumers:insert({ username = "no-body" })
+      helpers.with_default_ws(
+        ws,
+        function()
+          for i = 1, 10 do
+            routes[i] = bp.routes:insert {
+              hosts = { "jwt" .. i .. ".com" },
+            }
+          end
 
-      local plugins = bp.plugins
+          consumers      = bp.consumers
+          consumer1      = consumers:insert({ username = "jwt_tests_consumer" })
+          consumer2      = consumers:insert({ username = "jwt_tests_base64_consumer" })
+          consumer3      = consumers:insert({ username = "jwt_tests_rsa_consumer_1" })
+          consumer4      = consumers:insert({ username = "jwt_tests_rsa_consumer_2" })
+          consumer5      = consumers:insert({ username = "jwt_tests_rsa_consumer_5" })
+          consumer6      = consumers:insert({ username = "jwt_tests_consumer_6" })
+          anonymous_user = consumers:insert({ username = "no-body" })
 
-      plugins:insert({
-        name     = "jwt",
-        route_id = routes[1].id,
-        config   = {},
-      })
+          plugins = bp.plugins
 
-      plugins:insert({
-        name     = "jwt",
-        route_id = routes[2].id,
-        config   = { uri_param_names = { "token", "jwt" } },
-      })
+          plugins:insert({
+              name     = "jwt",
+              route_id = routes[1].id,
+              config   = {},
+          })
 
-      plugins:insert({
-        name     = "jwt",
-        route_id = routes[3].id,
-        config   = { claims_to_verify = {"nbf", "exp"} },
-      })
+          plugins:insert({
+              name     = "jwt",
+              route_id = routes[2].id,
+              config   = { uri_param_names = { "token", "jwt" } },
+          })
 
-      plugins:insert({
-        name     = "jwt",
-        route_id = routes[4].id,
-        config   = { key_claim_name = "aud" },
-      })
+          plugins:insert({
+              name     = "jwt",
+              route_id = routes[3].id,
+              config   = { claims_to_verify = {"nbf", "exp"} },
+          })
 
-      plugins:insert({
-        name     = "jwt",
-        route_id = routes[5].id,
-        config   = { secret_is_base64 = true },
-      })
+          plugins:insert({
+              name     = "jwt",
+              route_id = routes[4].id,
+              config   = { key_claim_name = "aud" },
+          })
 
-      plugins:insert({
-        name     = "jwt",
-        route_id = routes[6].id,
-        config   = { anonymous = anonymous_user.id },
-      })
+          plugins:insert({
+              name     = "jwt",
+              route_id = routes[5].id,
+              config   = { secret_is_base64 = true },
+          })
 
-      plugins:insert({
-        name     = "jwt",
-        route_id = routes[7].id,
-        config   = { anonymous = utils.uuid() },
-      })
+          plugins:insert({
+              name     = "jwt",
+              route_id = routes[6].id,
+              config   = { anonymous = anonymous_user.id },
+          })
 
-      plugins:insert({
-        name     = "jwt",
-        route_id = routes[8].id,
-        config   = { run_on_preflight = false },
-      })
+          plugins:insert({
+              name     = "jwt",
+              route_id = routes[7].id,
+              config   = { anonymous = utils.uuid() },
+          })
 
-      plugins:insert({
-        name     = "jwt",
-        route_id = routes[9].id,
-        config   = { cookie_names = { "silly", "crumble" } },
-      })
+          plugins:insert({
+              name     = "jwt",
+              route_id = routes[8].id,
+              config   = { run_on_preflight = false },
+          })
 
-      plugins:insert({
-        name     = "jwt",
-        route_id = routes[10].id,
-        config   = { key_claim_name = "kid" },
-      })
+          plugins:insert({
+              name     = "jwt",
+              route_id = routes[9].id,
+              config   = { cookie_names = { "silly", "crumble" } },
+          })
 
-      plugins:insert({
-        name     = "ctx-checker",
-        route_id = routes[1].id,
-        config   = { ctx_field = "authenticated_jwt_token" },
-      })
+          plugins:insert({
+              name     = "jwt",
+              route_id = routes[10].id,
+              config   = { key_claim_name = "kid" },
+          })
 
-      jwt_secret        = bp.jwt_secrets:insert { consumer_id = consumer1.id }
-      jwt_secret_2      = bp.jwt_secrets:insert { consumer_id = consumer6.id }
-      base64_jwt_secret = bp.jwt_secrets:insert { consumer_id = consumer2.id }
+          plugins:insert({
+              name     = "ctx-checker",
+              route_id = routes[1].id,
+              config   = { ctx_field = "authenticated_jwt_token" },
+          })
 
-      rsa_jwt_secret_1 = bp.jwt_secrets:insert {
-        consumer_id    = consumer3.id,
-        algorithm      = "RS256",
-        rsa_public_key = fixtures.rs256_public_key
-      }
+          jwt_secret        = bp.jwt_secrets:insert { consumer_id = consumer1.id }
+          jwt_secret_2      = bp.jwt_secrets:insert { consumer_id = consumer6.id }
+          base64_jwt_secret = bp.jwt_secrets:insert { consumer_id = consumer2.id }
 
-      rsa_jwt_secret_2 = bp.jwt_secrets:insert {
-        consumer_id    = consumer4.id,
-        algorithm      = "RS256",
-        rsa_public_key = fixtures.rs256_public_key
-      }
+          rsa_jwt_secret_1 = bp.jwt_secrets:insert {
+            consumer_id    = consumer3.id,
+            algorithm      = "RS256",
+            rsa_public_key = fixtures.rs256_public_key
+          }
 
-      rsa_jwt_secret_3 = bp.jwt_secrets:insert {
-        consumer_id    = consumer5.id,
-        algorithm      = "RS512",
-        rsa_public_key = fixtures.rs512_public_key
-      }
+          rsa_jwt_secret_2 = bp.jwt_secrets:insert {
+            consumer_id    = consumer4.id,
+            algorithm      = "RS256",
+            rsa_public_key = fixtures.rs256_public_key
+          }
 
+          rsa_jwt_secret_3 = bp.jwt_secrets:insert {
+            consumer_id    = consumer5.id,
+            algorithm      = "RS512",
+            rsa_public_key = fixtures.rs512_public_key
+          }
+
+
+      end)
       assert(helpers.start_kong {
         database          = strategy,
         custom_plugins    = "ctx-checker",
@@ -632,70 +643,77 @@ for _, strategy in helpers.each_strategy() do
     setup(function()
       local bp = helpers.get_db_utils(strategy)
 
-      local service1 = bp.services:insert({
-        path = "/request"
-      })
+      local jwt_secret, route2, service2, route1, service1
+      local ws = dao.workspaces:find_all({name = "default"})
 
-      local route1 = bp.routes:insert {
-        hosts     = { "logical-and.com" },
-        service   = service1,
-      }
+      helpers.with_default_ws(
+        ws,
+        function()
+          service1 = bp.services:insert({
+              path = "/request"
+          })
 
-      bp.plugins:insert {
-        name     = "jwt",
-        route_id = route1.id,
-      }
+          route1 = bp.routes:insert {
+            hosts     = { "logical-and.com" },
+            service   = service1,
+          }
 
-      bp.plugins:insert {
-        name     = "key-auth",
-        route_id = route1.id,
-      }
+          bp.plugins:insert {
+            name     = "jwt",
+            route_id = route1.id,
+          }
 
-      anonymous = bp.consumers:insert {
-        username = "Anonymous",
-      }
+          bp.plugins:insert {
+            name     = "key-auth",
+            route_id = route1.id,
+          }
 
-      user1 = bp.consumers:insert {
-        username = "Mickey",
-      }
+          anonymous = bp.consumers:insert {
+            username = "Anonymous",
+          }
 
-      user2 = bp.consumers:insert {
-        username = "Aladdin",
-      }
+          user1 = bp.consumers:insert {
+            username = "Mickey",
+          }
 
-      local service2 = bp.services:insert({
-        path = "/request"
-      })
+          user2 = bp.consumers:insert {
+            username = "Aladdin",
+          }
 
-      local route2 = bp.routes:insert {
-        hosts     = { "logical-or.com" },
-        service   = service2,
-      }
+          service2 = bp.services:insert({
+              path = "/request"
+          })
 
-      bp.plugins:insert {
-        name     = "jwt",
-        route_id = route2.id,
-        config   = {
-          anonymous = anonymous.id,
-        },
-      }
+          route2 = bp.routes:insert {
+            hosts     = { "logical-or.com" },
+            service   = service2,
+          }
 
-      bp.plugins:insert {
-        name     = "key-auth",
-        route_id = route2.id,
-        config   = {
-          anonymous = anonymous.id,
-        },
-      }
+          bp.plugins:insert {
+            name     = "jwt",
+            route_id = route2.id,
+            config   = {
+              anonymous = anonymous.id,
+            },
+          }
 
-      bp.keyauth_credentials:insert {
-        key         = "Mouse",
-        consumer_id = user1.id,
-      }
+          bp.plugins:insert {
+            name     = "key-auth",
+            route_id = route2.id,
+            config   = {
+              anonymous = anonymous.id,
+            },
+          }
 
-      local jwt_secret = bp.jwt_secrets:insert {
-        consumer_id = user2.id,
-      }
+          bp.keyauth_credentials:insert {
+            key         = "Mouse",
+            consumer_id = user1.id,
+          }
+
+          jwt_secret = bp.jwt_secrets:insert {
+            consumer_id = user2.id,
+          }
+      end)
 
       PAYLOAD.iss = jwt_secret.key
       jwt_token   = "Bearer " .. jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
