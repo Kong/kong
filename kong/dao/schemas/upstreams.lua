@@ -168,6 +168,7 @@ return {
         "consumer",
         "ip",
         "header",
+        "cookie",
       },
     },
     hash_fallback = {
@@ -179,6 +180,7 @@ return {
         "consumer",
         "ip",
         "header",
+        "cookie",
       },
     },
     hash_on_header = {
@@ -187,6 +189,14 @@ return {
     },
     hash_fallback_header = {
       -- header name, if `hash_fallback == "header"`
+      type = "string",
+    },
+    hash_on_cookie = {
+      -- cookie name, if `hash_on == "cookie"`
+      type = "string",
+    },
+    hash_fallback_cookie = {
+      -- cookie name, if `hash_fallback == "cookie"`
       type = "string",
     },
     slots = {

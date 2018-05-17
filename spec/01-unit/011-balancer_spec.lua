@@ -506,6 +506,15 @@ describe("Balancer", function()
       })
       assert.are.same(crc32(value), hash)
     end)
+    it("cookie", function()
+      local value = "some cookie value"
+      ngx.var.cookie_Foo = value
+      local hash = balancer._create_hash({
+          hash_on = "cookie",
+          hash_on_cookie = "Foo",
+      })
+      assert.are.same(crc32(value), hash)
+    end)
     it("multi-header", function()
       local value = { "some header value", "another value" }
       headers.HeaderName = value

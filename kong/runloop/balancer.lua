@@ -640,6 +640,7 @@ local create_hash = function(upstream)
   local ctx = ngx.ctx
   local identifier
   local header_field_name = "hash_on_header"
+  local cookie_field_name = "hash_on_cookie"
 
   for _ = 1,2 do
 
@@ -656,6 +657,9 @@ local create_hash = function(upstream)
       if type(identifier) == "table" then
         identifier = table_concat(identifier)
       end
+
+    elseif hash_on == "cookie" then
+      identifier = ngx.var["cookie_" .. upstream[cookie_field_name]]
     end
 
     if identifier then
@@ -665,6 +669,7 @@ local create_hash = function(upstream)
     -- we missed the first, so now try the fallback
     hash_on = upstream.hash_fallback
     header_field_name = "hash_fallback_header"
+    cookie_field_name = "hash_fallback_cookie"
     if hash_on == "none" then
       return nil
     end
