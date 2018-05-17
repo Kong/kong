@@ -1,6 +1,7 @@
 local helpers        = require "spec.helpers"
 local timestamp      = require "kong.tools.timestamp"
 local cjson          = require "cjson"
+local singletons = require "kong.singletons"
 
 
 local REDIS_HOST     = "127.0.0.1"
@@ -61,175 +62,182 @@ for _, strategy in helpers.each_strategy() do
       local bp
       local db
       local dao
+      local consumer1, consumer2, route1, route2, route3, route4, route5, service
 
       setup(function()
         helpers.kill_all()
         flush_redis()
 
         bp, db, dao = helpers.get_db_utils(strategy)
+        singletons.dao = dao
         assert(db:truncate())
         dao:truncate_tables()
         assert(dao:run_migrations())
 
-        local consumer1 = bp.consumers:insert {
-          custom_id = "provider_123",
-        }
+        local ws = dao.workspaces:find_all({name = "default" })
+        helpers.with_default_ws(
+          ws,
+          function()
 
-        bp.keyauth_credentials:insert {
-          key         = "apikey122",
-          consumer_id = consumer1.id,
-        }
+            consumer1 = bp.consumers:insert {
+              custom_id = "provider_123",
+            }
 
-        local consumer2 = bp.consumers:insert {
-          custom_id = "provider_124",
-        }
+            bp.keyauth_credentials:insert {
+              key         = "apikey122",
+              consumer_id = consumer1.id,
+            }
 
-        bp.keyauth_credentials:insert {
-          key         = "apikey123",
-          consumer_id = consumer2.id,
-        }
+            consumer2 = bp.consumers:insert {
+              custom_id = "provider_124",
+            }
 
-        bp.keyauth_credentials:insert {
-          key         = "apikey333",
-          consumer_id = consumer2.id,
-        }
+            bp.keyauth_credentials:insert {
+              key         = "apikey123",
+              consumer_id = consumer2.id,
+            }
 
-        local route1 = bp.routes:insert {
-          hosts = { "test1.com" },
-        }
+            bp.keyauth_credentials:insert {
+              key         = "apikey333",
+              consumer_id = consumer2.id,
+            }
 
-        bp.rate_limiting_plugins:insert({
-          route_id = route1.id,
-          config = {
-            policy         = policy,
-            minute         = 6,
-            fault_tolerant = false,
-            redis_host     = REDIS_HOST,
-            redis_port     = REDIS_PORT,
-            redis_password = REDIS_PASSWORD,
-            redis_database = REDIS_DATABASE,
-          }
-        })
+            route1 = bp.routes:insert {
+              hosts = { "test1.com" },
+            }
 
-        local route2 = bp.routes:insert {
-          hosts      = { "test2.com" },
-        }
+            bp.rate_limiting_plugins:insert({
+                route_id = route1.id,
+                config = {
+                  policy         = policy,
+                  minute         = 6,
+                  fault_tolerant = false,
+                  redis_host     = REDIS_HOST,
+                  redis_port     = REDIS_PORT,
+                  redis_password = REDIS_PASSWORD,
+                  redis_database = REDIS_DATABASE,
+                }
+            })
 
-        bp.rate_limiting_plugins:insert({
-          route_id = route2.id,
-          config = {
-            minute         = 3,
-            hour           = 5,
-            fault_tolerant = false,
-            policy         = policy,
-            redis_host     = REDIS_HOST,
-            redis_port     = REDIS_PORT,
-            redis_password = REDIS_PASSWORD,
-            redis_database = REDIS_DATABASE,
-          }
-        })
+            route2 = bp.routes:insert {
+              hosts      = { "test2.com" },
+            }
 
-        local route3 = bp.routes:insert {
-          hosts = { "test3.com" },
-        }
+            bp.rate_limiting_plugins:insert({
+                route_id = route2.id,
+                config = {
+                  minute         = 3,
+                  hour           = 5,
+                  fault_tolerant = false,
+                  policy         = policy,
+                  redis_host     = REDIS_HOST,
+                  redis_port     = REDIS_PORT,
+                  redis_password = REDIS_PASSWORD,
+                  redis_database = REDIS_DATABASE,
+                }
+            })
 
-        bp.plugins:insert {
-          name     = "key-auth",
-          route_id = route3.id,
-        }
+            route3 = bp.routes:insert {
+              hosts = { "test3.com" },
+            }
 
-        bp.rate_limiting_plugins:insert({
-          route_id = route3.id,
-          config = {
-            minute         = 6,
-            limit_by       = "credential",
-            fault_tolerant = false,
-            policy         = policy,
-            redis_host     = REDIS_HOST,
-            redis_port     = REDIS_PORT,
-            redis_password = REDIS_PASSWORD,
-            redis_database = REDIS_DATABASE,
-          }
-        })
+            bp.plugins:insert {
+              name     = "key-auth",
+              route_id = route3.id,
+            }
 
-        bp.rate_limiting_plugins:insert({
-          route_id = route3.id,
-          consumer_id = consumer1.id,
-          config      = {
-            minute         = 8,
-            fault_tolerant = false,
-            policy         = policy,
-            redis_host     = REDIS_HOST,
-            redis_port     = REDIS_PORT,
-            redis_password = REDIS_PASSWORD,
-            redis_database = REDIS_DATABASE
-          }
-        })
+            bp.rate_limiting_plugins:insert({
+                route_id = route3.id,
+                config = {
+                  minute         = 6,
+                  limit_by       = "credential",
+                  fault_tolerant = false,
+                  policy         = policy,
+                  redis_host     = REDIS_HOST,
+                  redis_port     = REDIS_PORT,
+                  redis_password = REDIS_PASSWORD,
+                  redis_database = REDIS_DATABASE,
+                }
+            })
 
-        local route4 = bp.routes:insert {
-          hosts = { "test4.com" },
-        }
+            bp.rate_limiting_plugins:insert({
+                route_id = route3.id,
+                consumer_id = consumer1.id,
+                config      = {
+                  minute         = 8,
+                  fault_tolerant = false,
+                  policy         = policy,
+                  redis_host     = REDIS_HOST,
+                  redis_port     = REDIS_PORT,
+                  redis_password = REDIS_PASSWORD,
+                  redis_database = REDIS_DATABASE
+                }
+            })
 
-        bp.plugins:insert {
-          name     = "key-auth",
-          route_id = route4.id,
-        }
+            route4 = bp.routes:insert {
+              hosts = { "test4.com" },
+            }
 
-        bp.rate_limiting_plugins:insert({
-          route_id = route4.id,
-          consumer_id = consumer1.id,
-          config           = {
-            minute         = 6,
-            fault_tolerant = true,
-            policy         = policy,
-            redis_host     = REDIS_HOST,
-            redis_port     = REDIS_PORT,
-            redis_password = REDIS_PASSWORD,
-            redis_database = REDIS_DATABASE,
-          },
-        })
+            bp.plugins:insert {
+              name     = "key-auth",
+              route_id = route4.id,
+            }
 
-        local route5 = bp.routes:insert {
-          hosts = { "test5.com" },
-        }
+            bp.rate_limiting_plugins:insert({
+                route_id = route4.id,
+                consumer_id = consumer1.id,
+                config           = {
+                  minute         = 6,
+                  fault_tolerant = true,
+                  policy         = policy,
+                  redis_host     = REDIS_HOST,
+                  redis_port     = REDIS_PORT,
+                  redis_password = REDIS_PASSWORD,
+                  redis_database = REDIS_DATABASE,
+                },
+            })
 
-        bp.rate_limiting_plugins:insert({
-          route_id = route5.id,
-          config = {
-            policy              = policy,
-            minute              = 6,
-            hide_client_headers = true,
-            fault_tolerant      = false,
-            redis_host          = REDIS_HOST,
-            redis_port          = REDIS_PORT,
-            redis_password      = REDIS_PASSWORD,
-            redis_database      = REDIS_DATABASE,
-          },
-        })
+            route5 = bp.routes:insert {
+              hosts = { "test5.com" },
+            }
 
-        local service = bp.services:insert()
-        bp.routes:insert {
-          hosts = { "test-service1.com" },
-          service = service,
-        }
-        bp.routes:insert {
-          hosts = { "test-service2.com" },
-          service = service,
-        }
+            bp.rate_limiting_plugins:insert({
+                route_id = route5.id,
+                config = {
+                  policy              = policy,
+                  minute              = 6,
+                  hide_client_headers = true,
+                  fault_tolerant      = false,
+                  redis_host          = REDIS_HOST,
+                  redis_port          = REDIS_PORT,
+                  redis_password      = REDIS_PASSWORD,
+                  redis_database      = REDIS_DATABASE,
+                },
+            })
 
-        bp.rate_limiting_plugins:insert({
-          service_id = service.id,
-          config = {
-            policy         = policy,
-            minute         = 6,
-            fault_tolerant = false,
-            redis_host     = REDIS_HOST,
-            redis_port     = REDIS_PORT,
-            redis_password = REDIS_PASSWORD,
-            redis_database = REDIS_DATABASE,
-          }
-        })
+            service = bp.services:insert()
+            bp.routes:insert {
+              hosts = { "test-service1.com" },
+              service = service,
+            }
+            bp.routes:insert {
+              hosts = { "test-service2.com" },
+              service = service,
+            }
 
+            bp.rate_limiting_plugins:insert({
+                service_id = service.id,
+                config = {
+                  policy         = policy,
+                  minute         = 6,
+                  fault_tolerant = false,
+                  redis_host     = REDIS_HOST,
+                  redis_port     = REDIS_PORT,
+                  redis_password = REDIS_PASSWORD,
+                  redis_database = REDIS_DATABASE,
+                }
+            })
+        end)
         assert(helpers.start_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -429,25 +437,30 @@ for _, strategy in helpers.each_strategy() do
             assert(db:truncate())
             dao:truncate_tables()
 
-            local route1 = bp.routes:insert {
-              hosts = { "failtest1.com" },
-            }
+            local ws = dao.workspaces:find_all({name = "default" })
+            helpers.with_default_ws(
+              ws,
+              function()
 
-            bp.rate_limiting_plugins:insert {
-              route_id = route1.id,
-              config   = { minute = 6, fault_tolerant = false }
-            }
+                local route1 = bp.routes:insert {
+                  hosts = { "failtest1.com" },
+                }
 
-            local route2 = bp.routes:insert {
-              hosts = { "failtest2.com" },
-            }
+                bp.rate_limiting_plugins:insert {
+                  route_id = route1.id,
+                  config   = { minute = 6, fault_tolerant = false }
+                }
 
-            bp.rate_limiting_plugins:insert {
-              name     = "rate-limiting",
-              route_id = route2.id,
-              config   = { minute = 6, fault_tolerant = true },
-            }
+                local route2 = bp.routes:insert {
+                  hosts = { "failtest2.com" },
+                }
 
+                bp.rate_limiting_plugins:insert {
+                  name     = "rate-limiting",
+                  route_id = route2.id,
+                  config   = { minute = 6, fault_tolerant = true },
+                }
+            end)
             assert(helpers.start_kong({
               database   = strategy,
               nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -505,34 +518,39 @@ for _, strategy in helpers.each_strategy() do
 
           before_each(function()
             helpers.kill_all()
+            local ws = dao.workspaces:find_all({name = "default" })
+            helpers.with_default_ws(
+              ws,
+              function()
 
-            local service1 = bp.services:insert()
+                local service1 = bp.services:insert()
 
-            local route1 = bp.routes:insert {
-              hosts      = { "failtest3.com" },
-              protocols  = { "http", "https" },
-              service    = service1
-            }
+                local route1 = bp.routes:insert {
+                  hosts      = { "failtest3.com" },
+                  protocols  = { "http", "https" },
+                  service    = service1
+                }
 
-            bp.rate_limiting_plugins:insert {
-              route_id = route1.id,
-              config  = { minute = 6, policy = policy, redis_host = "5.5.5.5", fault_tolerant = false },
-            }
+                bp.rate_limiting_plugins:insert {
+                  route_id = route1.id,
+                  config  = { minute = 6, policy = policy, redis_host = "5.5.5.5", fault_tolerant = false },
+                }
 
-            local service2 = bp.services:insert()
+                local service2 = bp.services:insert()
 
-            local route2 = bp.routes:insert {
-              hosts      = { "failtest4.com" },
-              protocols  = { "http", "https" },
-              service    = service2
-            }
+                local route2 = bp.routes:insert {
+                  hosts      = { "failtest4.com" },
+                  protocols  = { "http", "https" },
+                  service    = service2
+                }
 
-            bp.rate_limiting_plugins:insert {
-              name   = "rate-limiting",
-              route_id = route2.id,
-              config = { minute = 6, policy = policy, redis_host = "5.5.5.5", fault_tolerant = true },
-            }
+                bp.rate_limiting_plugins:insert {
+                  name   = "rate-limiting",
+                  route_id = route2.id,
+                  config = { minute = 6, policy = policy, redis_host = "5.5.5.5", fault_tolerant = true },
+                }
 
+            end)
             assert(helpers.start_kong({
               database   = strategy,
               nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -625,40 +643,45 @@ for _, strategy in helpers.each_strategy() do
         helpers.kill_all()
         flush_redis()
         bp, db, dao = helpers.get_db_utils(strategy)
+        singletons.dao = dao
         assert(db:truncate())
         dao:truncate_tables()
         assert(dao:run_migrations())
 
-        local consumer = bp.consumers:insert {
-          custom_id = "provider_125",
-        }
+        local ws = dao.workspaces:find_all({name = "default" })
+        helpers.with_default_ws(
+          ws,
+          function()
+            local consumer = bp.consumers:insert {
+              custom_id = "provider_125",
+            }
 
-        bp.key_auth_plugins:insert()
+            bp.key_auth_plugins:insert()
 
-        bp.keyauth_credentials:insert {
-          key         = "apikey125",
-          consumer_id = consumer.id,
-        }
+            bp.keyauth_credentials:insert {
+              key         = "apikey125",
+              consumer_id = consumer.id,
+            }
 
-        -- just consumer, no no route or service
-        bp.rate_limiting_plugins:insert({
-          consumer_id = consumer.id,
-          config = {
-            limit_by       = "credential",
-            policy         = policy,
-            minute         = 6,
-            fault_tolerant = false,
-            redis_host     = REDIS_HOST,
-            redis_port     = REDIS_PORT,
-            redis_password = REDIS_PASSWORD,
-            redis_database = REDIS_DATABASE,
-          }
-        })
+            -- just consumer, no no route or service
+            bp.rate_limiting_plugins:insert({
+                consumer_id = consumer.id,
+                config = {
+                  limit_by       = "credential",
+                  policy         = policy,
+                  minute         = 6,
+                  fault_tolerant = false,
+                  redis_host     = REDIS_HOST,
+                  redis_port     = REDIS_PORT,
+                  redis_password = REDIS_PASSWORD,
+                  redis_database = REDIS_DATABASE,
+                }
+            })
 
-        for i = 1, 6 do
-          bp.routes:insert({ hosts = { fmt("test%d.com", i) } })
-        end
-
+            for i = 1, 6 do
+              bp.routes:insert({ hosts = { fmt("test%d.com", i) } })
+            end
+        end)
         assert(helpers.start_kong({
           database   = strategy,
           nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -760,5 +783,3 @@ for _, strategy in helpers.each_strategy() do
     end)
   end
 end
-
-
