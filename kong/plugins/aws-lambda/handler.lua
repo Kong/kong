@@ -129,13 +129,12 @@ function AWSLambdaHandler:access(conf)
   AWSLambdaHandler.super.access(self)
 
   local upstream_body = new_tab(0, 6)
+  local var = ngx.var
 
   if conf.forward_request_body or conf.forward_request_headers
     or conf.forward_request_method or conf.forward_request_uri
   then
     -- new behavior to forward request method, body, uri and their args
-    local var = ngx.var
-
     if conf.forward_request_method then
       upstream_body.request_method = var.request_method
     end
@@ -229,6 +228,10 @@ function AWSLambdaHandler:access(conf)
 
   local content = res:read_body()
   local headers = res.headers
+
+  if var.http2 then
+    headers["Connection"] = ""
+  end
 
   local ok, err = client:set_keepalive(conf.keepalive)
   if not ok then
