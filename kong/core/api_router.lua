@@ -2,6 +2,7 @@ local lrucache = require "resty.lrucache"
 local url      = require "socket.url"
 local bit      = require "bit"
 local utils    = require "kong.tools.utils"
+local reports = require "kong.core.reports"
 
 
 local hostname_type = utils.hostname_type
@@ -613,6 +614,8 @@ function _M.new(apis)
     do
       local match_t = cache:get(cache_key)
       if match_t then
+        reports.report_cached_entity(match_t)
+
         return match_t
       end
     end

@@ -15,6 +15,7 @@ local WARN = ngx.WARN
 local sub = string.sub
 
 
+local HOUR = 3600
 local PING_INTERVAL = 3600
 local PING_KEY = "events:reports"
 local BUFFERED_REQUESTS_COUNT_KEYS = "events:requests"
@@ -232,6 +233,55 @@ do
 end
 
 
+local function increment_counter(counter, entity)
+  if not entity or not entity.id then
+    return
+  end
+
+  if counter ~= "apis" and
+    counter ~= "routes" and
+    counter ~= "services" and
+    counter ~= "consumers" then
+      return
+  end
+
+  local dict = ngx.shared["kong_reports_" .. counter]
+  if dict then
+    dict:set(entity.id, true, HOUR*3)
+  end
+end
+
+
+-- Takes entity into account in case it needs to be counted for PHL
+-- reporting.  It's the function responsibility to increment it only
+-- if needed (not seen before).
+local function report_cached_entity(entity)
+  if type(entity) ~= "table" then
+    return
+  end
+
+  if entity.api then
+    increment_counter("apis", entity.api)
+  end
+
+  if entity.consumer_id then
+    increment_counter("consumers", {id = entity.consumer_id})
+  end
+
+  if entity.service_id then
+    increment_counter("services", {id = entity.service_id})
+  end
+
+  if entity.route then
+    increment_counter("routes", entity.route)
+  end
+
+  if entity.service then
+    increment_counter("services", entity.service)
+  end
+end
+
+
 return {
   -- plugin handler
   init_worker = function()
@@ -264,4 +314,5 @@ return {
   end,
   send = send_report,
   retrieve_redis_version = retrieve_redis_version,
+  report_cached_entity = report_cached_entity,
 }

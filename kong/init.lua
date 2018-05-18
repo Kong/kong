@@ -146,6 +146,22 @@ local function load_plugins(kong_conf, dao)
 
     reports.toggle(true)
 
+    local shm = ngx.shared
+
+    local reported_entities = {
+      a = "apis",
+      r = "routes",
+      c = "consumers",
+      s = "services",
+    }
+
+    for k, v in pairs(reported_entities) do
+      reports.add_ping_value(k, function()
+        return shm["kong_reports_" .. v] and
+          #shm["kong_reports_" .. v]:get_keys(70000)
+      end)
+    end
+
     sorted_plugins[#sorted_plugins+1] = {
       name = "reports",
       handler = reports,

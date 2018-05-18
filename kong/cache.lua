@@ -1,5 +1,6 @@
 local resty_mlcache = require "resty.mlcache"
 local singletons = require "kong.singletons"
+local reports = require "kong.core.reports"
 
 
 local type    = type
@@ -129,6 +130,7 @@ function _M:get(key, opts, cb, ...)
   end
 
   singletons.vitals:cache_accessed(hit_lvl, key, v)
+  reports.report_cached_entity(v)
 
   return v
 end
