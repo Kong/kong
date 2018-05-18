@@ -354,6 +354,10 @@ return {
     before = function(self, dao_factory, helpers)
       crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
       self.params.role_id = self.rbac_role.id
+      if not utils.is_valid_uuid(self.params.entity_id) then
+        return helpers.responses.send_HTTP_BAD_REQUEST(
+          self.params.entity_id .. " is not a valid uuid")
+      end
     end,
 
     GET = function(self, dao_factory, helpers)
