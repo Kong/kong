@@ -1,4 +1,3 @@
-local helpers     = require "spec.helpers"
 local dao_factory = require "kong.dao.factory"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local utils       = require "kong.tools.utils"
@@ -512,17 +511,16 @@ describe("(#" .. kong_conf.database .. ")", function()
             "/apis/:api_name/plugins",
             rbac.actions_bitfields.read
           ))
-          local map = { foo = { ["/apis/*/plugins/"] = 0x1 } }
-          -- need code fix
-          --[[assert.equals(true, rbac.authorize_request_endpoint(
-            map,
-            "foo",
-            "/apis/test/plugins/",
-            "/apis/:api_name/plugins",
-            rbac.actions_bitfields.read
-          ))]]
         end)
-
+        pending("(hierarchical path with wildcard ending with slash)", function()
+          local map = { foo = { ["/apis/*/plugins/"] = 0x1 } }
+          assert.equals(true, rbac.authorize_request_endpoint(
+                          map,
+                          "foo",
+                          "/apis/test/plugins/",
+                          "/apis/:api_name/plugins",
+                          rbac.actions_bitfields.read))
+        end)
         it("(negative override)", function()
           assert.equals(false, rbac.authorize_request_endpoint(
             { foo = { bar = 0x11 } },
@@ -814,7 +812,7 @@ describe("(#" .. kong_conf.database .. ")", function()
     end)
   end)
   describe("readable_entities_permissions", function()
-    local u
+    local u, role_id, entity_id
     setup(function()
       u = utils.uuid
     end)

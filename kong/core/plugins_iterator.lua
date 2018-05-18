@@ -3,7 +3,6 @@ local singletons   = require "kong.singletons"
 
 
 local setmetatable = setmetatable
-local format       = string.format
 local ipairs       = ipairs
 local error        = error
 
@@ -103,7 +102,7 @@ local function load_plugin_into_memory_ws(route_id,
                                                                  consumer_id,
                                                                  api_id)
 
-    local plugin, err = singletons.cache:get(plugin_cache_key, nil, function ()
+    local _, err = singletons.cache:get(plugin_cache_key, nil, function ()
       return { null = true }
     end)
     if err then
