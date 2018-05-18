@@ -106,15 +106,15 @@ describe("portal_gui", function()
           ssl = true,
         },
       },
-      portal_api_listeners = {
+      proxy_listeners = {
         {
           ip = "0.0.0.0",
-          port = 8004,
+          port = 8000,
           ssl = false,
         },
         {
           ip = "0.0.0.0",
-          port = 8447,
+          port = 8443,
           ssl = true,
         }
       },
@@ -153,8 +153,8 @@ describe("portal_gui", function()
       assert.matches('<meta name="KONG:PROXY_URL" content="" />', portal_idx, nil, true)
       assert.matches('<meta name="KONG:PORTAL_GUI_PORT" content="8003" />', portal_idx, nil, true)
       assert.matches('<meta name="KONG:PORTAL_GUI_SSL_PORT" content="8446" />', portal_idx, nil, true)
-      assert.matches('<meta name="KONG:PORTAL_API_PORT" content="8004" />', portal_idx, nil, true)
-      assert.matches('<meta name="KONG:PORTAL_API_SSL_PORT" content="8447" />', portal_idx, nil, true)
+      assert.matches('<meta name="KONG:PORTAL_API_PORT" content="8000" />', portal_idx, nil, true)
+      assert.matches('<meta name="KONG:PORTAL_API_SSL_PORT" content="8443" />', portal_idx, nil, true)
       assert.matches('<meta name="KONG:RBAC_ENFORCED" content="false" />', portal_idx, nil, true)
       assert.matches('<meta name="KONG:RBAC_HEADER" content="Kong-Admin-Token" />', portal_idx, nil, true)
     end)
@@ -189,8 +189,8 @@ describe("portal_gui", function()
       assert.matches('<meta name="KONG:PROXY_URL" content="http://127.0.0.1:8000" />', portal_idx, nil, true)
       assert.matches('<meta name="KONG:PORTAL_GUI_PORT" content="8003" />', portal_idx, nil, true)
       assert.matches('<meta name="KONG:PORTAL_GUI_SSL_PORT" content="8446" />', portal_idx, nil, true)
-      assert.matches('<meta name="KONG:PORTAL_API_PORT" content="8004" />', portal_idx, nil, true)
-      assert.matches('<meta name="KONG:PORTAL_API_SSL_PORT" content="8447" />', portal_idx, nil, true)
+      assert.matches('<meta name="KONG:PORTAL_API_PORT" content="8000" />', portal_idx, nil, true)
+      assert.matches('<meta name="KONG:PORTAL_API_SSL_PORT" content="8443" />', portal_idx, nil, true)
       assert.matches('<meta name="KONG:RBAC_ENFORCED" content="false" />', portal_idx, nil, true)
       assert.matches('<meta name="KONG:RBAC_HEADER" content="Kong-Admin-Token" />', portal_idx, nil, true)
     end)
