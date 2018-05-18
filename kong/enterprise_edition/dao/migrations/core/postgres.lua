@@ -499,6 +499,11 @@ return {
         count int,
         PRIMARY KEY (service_id, code, duration, at)
       );
+      ALTER TABLE vitals_codes_by_service
+      SET (autovacuum_vacuum_scale_factor = 0.01);
+
+      ALTER TABLE vitals_codes_by_service
+      SET (autovacuum_analyze_scale_factor = 0.01);
 
       CREATE TABLE IF NOT EXISTS vitals_codes_by_route(
         service_id uuid,
@@ -509,9 +514,11 @@ return {
         count int,
         PRIMARY KEY (route_id, code, duration, at)
       );
+      ALTER TABLE vitals_codes_by_route
+      SET (autovacuum_vacuum_scale_factor = 0.01);
 
-      CREATE INDEX IF NOT EXISTS vitals_cbr_service_idx
-      ON vitals_codes_by_route(service_id);
+      ALTER TABLE vitals_codes_by_route
+      SET (autovacuum_analyze_scale_factor = 0.01);
 
       CREATE TABLE IF NOT EXISTS vitals_codes_by_consumer_route(
         consumer_id uuid,
@@ -523,9 +530,11 @@ return {
         count int,
         PRIMARY KEY (consumer_id, route_id, code, duration, at)
       );
+      ALTER TABLE vitals_codes_by_consumer_route
+      SET (autovacuum_vacuum_scale_factor = 0.01);
 
-      CREATE INDEX IF NOT EXISTS vitals_cbcr_service_idx
-      ON vitals_codes_by_consumer_route(consumer_id, service_id);
+      ALTER TABLE vitals_codes_by_consumer_route
+      SET (autovacuum_analyze_scale_factor = 0.01);
     ]],
 
     down = [[
@@ -686,5 +695,20 @@ return {
         end
       end
     end
+  },
+  {
+    name = "2017-05-15-110000_vitals_locks",
+    up = [[
+      CREATE TABLE IF NOT EXISTS vitals_locks(
+        key text,
+        expiry timestamp with time zone,
+        PRIMARY KEY(key)
+      );
+      INSERT INTO vitals_locks(key, expiry)
+      VALUES ('delete_status_codes', NULL);
+    ]],
+    down = [[
+      DROP TABLE vitals_locks;
+    ]]
   },
 }

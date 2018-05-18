@@ -142,6 +142,7 @@ local CONF_INFERENCES = {
 
   vitals = {typ = "boolean"},
   vitals_flush_interval = {typ = "number"},
+  vitals_delete_interval_pg = {typ = "number"},
   vitals_ttl_seconds = {typ = "number"},
   vitals_ttl_minutes = {typ = "number"},
 

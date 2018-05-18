@@ -180,6 +180,7 @@ function _M.new(opts)
 
     if dao_factory.db_type == "postgres" then
       db_strategy = pg_strat
+      strategy_opts.delete_interval = opts.delete_interval_pg or 90000
     elseif dao_factory.db_type == "cassandra" then
       db_strategy = require "kong.vitals.cassandra.strategy"
     else
@@ -1183,6 +1184,7 @@ function _M.table_names(dao)
     "vitals_codes_by_route",
     "vitals_codes_by_service",
     "vitals_consumers",
+    "vitals_locks",
     "vitals_node_meta",
     "vitals_stats_hours",
     "vitals_stats_minutes",

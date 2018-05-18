@@ -11,6 +11,7 @@ enforce_rbac = off
 rbac_auth_header = Kong-Admin-Token
 vitals = off
 vitals_flush_interval = 10
+vitals_delete_interval_pg = 30
 vitals_ttl_seconds = 3600
 vitals_ttl_minutes = 90000
 

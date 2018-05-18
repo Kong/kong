@@ -225,6 +225,7 @@ function Kong.init()
   singletons.vitals = vitals.new {
       dao            = dao,
       flush_interval = config.vitals_flush_interval,
+      delete_interval_pg = config.vitals_delete_interval_pg,
       ttl_seconds    = config.vitals_ttl_seconds,
       ttl_minutes    = config.vitals_ttl_minutes,
   }

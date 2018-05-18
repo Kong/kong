@@ -208,6 +208,7 @@ dao_helpers.for_each_dao(function(kong_conf)
           "vitals_codes_by_route",
           "vitals_codes_by_service",
           "vitals_consumers",
+          "vitals_locks",
           "vitals_node_meta",
           "vitals_stats_hours",
           "vitals_stats_minutes",
