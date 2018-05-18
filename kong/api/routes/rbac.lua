@@ -6,6 +6,7 @@ local cjson     = require "cjson"
 local responses = require "kong.tools.responses"
 local new_tab   = require "table.new"
 local workspaces = require "kong.workspaces"
+local singletons = require "kong.singletons"
 
 
 local band  = bit.band
@@ -247,6 +248,8 @@ return {
           user_id = self.rbac_user.id,
           role_id = roles[i].id,
         })
+        local ck = dao_factory["rbac_user_roles"]:cache_key(self.rbac_user.id)
+        singletons.cache:invalidate_local(ck)
       end
 
       return helpers.responses.send_HTTP_NO_CONTENT()
