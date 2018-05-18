@@ -134,7 +134,7 @@ local serializers = {
 }
 
 
-local function gen_log_func(lvl_const, imm_buf, to_string, stack_level)
+local function gen_log_func(lvl_const, imm_buf, to_string, stack_level, sep)
   to_string = to_string or tostring
   stack_level = stack_level or 2
 
@@ -183,7 +183,7 @@ local function gen_log_func(lvl_const, imm_buf, to_string, stack_level)
       end
     end
 
-    local msg = concat(variadic_buf, nil, 1, n)
+    local msg = concat(variadic_buf, sep, 1, n)
 
     for i = 1, imm_buf.n_messages do
       imm_buf[imm_buf.message_idxs[i]] = msg
@@ -217,7 +217,7 @@ do
     local self = {}
 
     function self.on()
-      self.print = gen_log_func(_LEVELS.notice, inspect_buf, inspect, 3)
+      self.print = gen_log_func(_LEVELS.notice, inspect_buf, inspect, 3, " ")
     end
 
     function self.off()

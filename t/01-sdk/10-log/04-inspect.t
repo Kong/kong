@@ -147,3 +147,26 @@ hello
 --- no_error_log
 my_namespace
 [error]
+
+
+
+=== TEST 7: log.inspect() concatenates argument with a space
+--- config
+    location /t {
+        content_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            local log = sdk.log.new("my_namespace")
+
+            log.inspect("hello", "world")
+        }
+    }
+--- request
+GET /t
+--- no_response_body
+--- error_log
+"hello" "world"
+--- no_error_log
+my_namespace
+[error]
