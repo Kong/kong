@@ -28,7 +28,7 @@ end
 
 
 PreFunction.PRIORITY = math.huge
-PreFunction.VERSION = "1.0.0"
+PreFunction.VERSION = "0.1.0"
 
 
 return PreFunction

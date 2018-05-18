@@ -28,7 +28,7 @@ end
 
 
 PostFunction.PRIORITY = -1000
-PostFunction.VERSION = "1.0.0"
+PostFunction.VERSION = "0.1.0"
 
 
 return PostFunction
