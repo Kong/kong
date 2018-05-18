@@ -13,6 +13,6 @@ function LdapAuthHandler:access(conf)
 end
 
 LdapAuthHandler.PRIORITY = 1002
-LdapAuthHandler.VERSION = "0.1.0"
+LdapAuthHandler.VERSION = "0.32.0"
 
 return LdapAuthHandler
