@@ -155,7 +155,7 @@ function AWSLambdaHandler:access(conf)
     ngx.header[k] = v
   end
 
-  ngx.say(body)
+  ngx.print(body)
 
   return ngx.exit(res.status)
 end
