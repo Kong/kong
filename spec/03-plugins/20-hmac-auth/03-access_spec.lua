@@ -881,6 +881,73 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(body.headers["x-anonymous-consumer"])
       end)
 
+      it("should return 403 when body validation enabled and no digest header is present", function()
+        local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
+        local postBody = '{"a":"apple","b":"ball"}'
+        local sha256 = resty_sha256:new()
+        sha256:update(postBody)
+
+        local encodedSignature   = ngx.encode_base64(
+          hmac_sha1_binary("secret", "date: "..date))
+        local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
+                ..[[headers="date",signature="]]..encodedSignature..[["]]
+        local res = assert(proxy_client:send {
+          method  = "POST",
+          path    = "/request",
+          body    = postBody,
+          headers = {
+            ["HOST"]      = "hmacauth4.com",
+            date          = date,
+            authorization = hmacAuth,
+          }
+        })
+        local body = assert.res_status(403, res)
+        body = cjson.decode(body)
+        assert.equal("HMAC signature does not match", body.message)
+      end)
+
+      it("should return 200 when body validation enabled and no body and no digest header is present", function()
+        local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
+
+        local encodedSignature   = ngx.encode_base64(
+          hmac_sha1_binary("secret", "date: "..date))
+        local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
+                ..[[headers="date",signature="]]..encodedSignature..[["]]
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["HOST"]      = "hmacauth4.com",
+            date          = date,
+            authorization = hmacAuth,
+          }
+        })
+        assert.res_status(200, res)
+      end)
+
+      it("should return 200 when body validation enabled and no body and an digest header is present", function()
+        local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
+        local sha256 = resty_sha256:new()
+        sha256:update('')
+        local digest = "SHA-256=" .. ngx.encode_base64(sha256:final())
+
+        local encodedSignature   = ngx.encode_base64(
+          hmac_sha1_binary("secret", "date: "..date.."\n".."digest: "..digest))
+        local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
+                ..[[headers="date digest",signature="]]..encodedSignature..[["]]
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/request",
+          headers = {
+            ["HOST"]      = "hmacauth4.com",
+            date          = date,
+            digest        = digest,
+            authorization = hmacAuth,
+          }
+        })
+        assert.res_status(200, res)
+      end)
+
       it("should pass with invalid credentials and anonymous", function()
         local res = assert(proxy_client:send {
           method  = "GET",

@@ -213,24 +213,20 @@ local function validate_clock_skew(headers, date_header_name, allowed_clock_skew
   return true
 end
 
-local function validate_body(digest_recieved)
-  -- client doesnt want body validation
-  if not digest_recieved then
-    return true
-  end
-
+local function validate_body(digest_received)
   req_read_body()
   local body = req_get_body_data()
-  -- request must have body as client sent a digest header
-  if not body then
-    return false
+
+  if not digest_received then
+    -- if there is no digest and no body, it is ok
+    return not body
   end
 
   local sha256 = resty_sha256:new()
-  sha256:update(body)
+  sha256:update(body or '')
   local digest_created = "SHA-256=" .. ngx_encode_base64(sha256:final())
 
-  return digest_created == digest_recieved
+  return digest_created == digest_received
 end
 
 local function load_consumer_into_memory(consumer_id, anonymous)
