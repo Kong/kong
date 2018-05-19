@@ -67,6 +67,8 @@ local CONF_INFERENCES = {
   real_ip_header = {typ = "string"},
   real_ip_recursive = {typ = "ngx_boolean"},
   client_max_body_size = {typ = "string"},
+  large_client_header_buffer_count = {typ = "number"},
+  large_client_header_buffer_size = {typ = "string"},
   client_body_buffer_size = {typ = "string"},
   error_default_type = {enum = {"application/json", "application/xml",
                                 "text/html", "text/plain"}},

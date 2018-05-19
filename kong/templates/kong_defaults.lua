@@ -31,6 +31,8 @@ trusted_ips = NONE
 real_ip_header = X-Real-IP
 real_ip_recursive = off
 client_max_body_size = 0
+large_client_header_buffer_count = 4
+large_client_header_buffer_size = 8k
 client_body_buffer_size = 8k
 error_default_type = text/plain
 
