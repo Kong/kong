@@ -8,7 +8,7 @@ local _M = {}
 
 do
   local multipart = require "multipart"
-  local cjson     = require "kong_cjson.safe"
+  local cjson     = require "cjson.safe"
 
 
   local str_find              = string.find
