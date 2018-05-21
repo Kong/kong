@@ -112,7 +112,7 @@ local function generate_foreign_key_methods(self)
         end
 
         local ws_scope = workspaces.get_workspaces()
-        if #ws_scope then
+        if #ws_scope > 0 then
           return nil
         end
 
@@ -179,6 +179,11 @@ local function generate_foreign_key_methods(self)
 
         if pk then
           return self:delete(pk)
+        end
+
+        local ws_scope = workspaces.get_workspaces()
+        if #ws_scope > 0 then
+          return nil
         end
 
         local _, err_t = self.strategy:delete_by_field(name, unique_value)

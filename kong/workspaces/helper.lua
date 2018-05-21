@@ -105,4 +105,20 @@ function _M.remove_ws_prefix(table_name, row, include_ws)
   return row
 end
 
+
+-- true if the table is workspaceable and the workspace name is not
+-- the wildcard - which should evaluate to all workspaces - and we are not
+-- retrieving the default workspace itself
+--
+-- this is to break the cycle: some methods here - e.g., find_all -
+-- need to retrieve the current workspace entity, which is set in
+-- `before_filter`, but to set the entity some of those same methods are
+-- used
+function _M.is_workspaceable(table_name, ws_scope)
+  local workspaceable = workspaces.get_workspaceable_relations()
+  if workspaceable[table_name] and #ws_scope > 0 then
+    return true
+  end
+  return false
+end
 return _M
