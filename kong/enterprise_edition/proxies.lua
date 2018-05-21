@@ -179,6 +179,7 @@ function _M:setup_portal()
       name = portal_config_register.name,
       host = portal_config.host,
       port = portal_config.port,
+      protocol = portal_config.protocol,
       path = portal_config_register.path
     })
 
