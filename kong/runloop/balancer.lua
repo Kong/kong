@@ -416,8 +416,9 @@ local function check_target_history(upstream, balancer)
   -- compare balancer history with db-loaded history
   local last_equal_index = 0  -- last index where history is the same
   for i, entry in ipairs(old_history) do
-    if entry.order ~= (new_history[i] or EMPTY_T).order then
-      last_equal_index = i - 1
+    if new_history[i] and entry.order == new_history[i].order then
+      last_equal_index = i
+    else
       break
     end
   end
