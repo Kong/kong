@@ -277,9 +277,19 @@ function _M.validate_entity(tbl, schema, options)
       end
 
       if errors == nil and type(schema.self_check) == "function" then
+        local nil_c = {}
+        for column in pairs(schema.fields) do
+          if t[column] == ngx.null then
+            t[column] = nil
+            table.insert(nil_c, column)
+          end
+        end
         local ok, err = schema.self_check(schema, t, options.dao, options.update)
         if ok == false then
           return false, nil, err
+        end
+        for _, column in ipairs(nil_c) do
+          t[column] = ngx.null
         end
       end
     end

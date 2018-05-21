@@ -1,4 +1,4 @@
--- Kong core
+-- Kong runloop
 --
 -- This consists of local_events that need to
 -- be ran at the very beginning and very end of the lua-nginx-module contexts.
@@ -8,14 +8,14 @@
 -- In the `access_by_lua` phase, it is responsible for retrieving the route being proxied by
 -- a consumer. Then it is responsible for loading the plugins to execute on this request.
 local utils       = require "kong.tools.utils"
-local Router      = require "kong.core.router"
-local ApiRouter   = require "kong.core.api_router"
-local reports     = require "kong.core.reports"
-local balancer    = require "kong.core.balancer"
+local Router      = require "kong.router"
+local ApiRouter   = require "kong.api_router"
+local reports     = require "kong.reports"
+local balancer    = require "kong.runloop.balancer"
 local constants   = require "kong.constants"
 local responses   = require "kong.tools.responses"
 local singletons  = require "kong.singletons"
-local certificate = require "kong.core.certificate"
+local certificate = require "kong.runloop.certificate"
 
 
 local tostring    = tostring
@@ -136,6 +136,8 @@ local function build_router(db, version)
   if version then
     router_version = version
   end
+
+  singletons.router = router
 
   return true
 end
@@ -334,9 +336,10 @@ return {
 
       -- manual health updates
       cluster_events:subscribe("balancer:post_health", function(data)
-        local ip, port, health, name = data:match("([^|]+)|([^|]+)|([^|]+)|(.*)")
+        local pattern = "([^|]+)|([^|]+)|([^|]+)|([^|]+)|(.*)"
+        local ip, port, health, id, name = data:match(pattern)
         port = tonumber(port)
-        local upstream = { name = name }
+        local upstream = { id = id, name = name }
         local ok, err = balancer.post_health(upstream, ip, port, health == "1")
         if not ok then
           log(ERR, "failed posting health of ", name, " to workers: ", err)

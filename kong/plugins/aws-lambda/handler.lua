@@ -96,7 +96,7 @@ function AWSLambdaHandler:access(conf)
     headers = {
       ["X-Amz-Target"] = "invoke",
       ["X-Amz-Invocation-Type"] = conf.invocation_type,
-      ["X-Amx-Log-Type"] = conf.log_type,
+      ["X-Amz-Log-Type"] = conf.log_type,
       ["Content-Type"] = "application/x-amz-json-1.1",
       ["Content-Length"] = upstream_body_json and tostring(#upstream_body_json),
     },

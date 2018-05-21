@@ -127,6 +127,8 @@ local function retrieve_hmac_fields(request, headers, header_name, conf)
   return hmac_params
 end
 
+-- plugin assumes the request parameters being used for creating
+-- signature by client are not changed by core or any other plugin
 local function create_hash(request, hmac_params, headers)
   local signing_string = ""
   local hmac_headers = hmac_params.hmac_headers
@@ -139,7 +141,8 @@ local function create_hash(request, hmac_params, headers)
     if not header_value then
       if header == "request-line" then
         -- request-line in hmac headers list
-        local request_line = fmt("%s %s HTTP/%s", ngx.req.get_method(), ngx.var.uri, ngx.req.http_version())
+        local request_line = fmt("%s %s HTTP/%s", ngx.req.get_method(),
+                                 ngx.var.request_uri, ngx.req.http_version())
         signing_string = signing_string .. request_line
       else
         signing_string = signing_string .. header .. ":"
@@ -203,24 +206,20 @@ local function validate_clock_skew(headers, date_header_name, allowed_clock_skew
   return true
 end
 
-local function validate_body(digest_recieved)
-  -- client doesnt want body validation
-  if not digest_recieved then
-    return true
-  end
-
+local function validate_body(digest_received)
   req_read_body()
   local body = req_get_body_data()
-  -- request must have body as client sent a digest header
-  if not body then
-    return false
+
+  if not digest_received then
+    -- if there is no digest and no body, it is ok
+    return not body
   end
 
   local sha256 = resty_sha256:new()
-  sha256:update(body)
+  sha256:update(body or '')
   local digest_created = "SHA-256=" .. ngx_encode_base64(sha256:final())
 
-  return digest_created == digest_recieved
+  return digest_created == digest_received
 end
 
 local function load_consumer_into_memory(consumer_id, anonymous)

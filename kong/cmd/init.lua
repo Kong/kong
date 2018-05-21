@@ -1,4 +1,4 @@
-require("kong.core.globalpatches")({cli = true})
+require("kong.globalpatches")({cli = true})
 
 math.randomseed() -- Generate PRNG seed
 

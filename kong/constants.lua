@@ -85,4 +85,14 @@ return {
     "kong_healthchecks",
     "kong_rate_limiting_counters",
   },
+  DATABASE = {
+    POSTGRES = {
+      MIN = "9.5",
+      DEPRECATED = "9.4",
+    },
+    CASSANDRA = {
+      MIN = "2.2",
+      DEPRECATED = "2.1",
+    }
+  }
 }

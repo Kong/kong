@@ -22,6 +22,7 @@ local BODIES = {
   s413 = "Payload too large",
   s414 = "URI too long",
   s417 = "Expectation failed",
+  s494 = "Request Header Or Cookie Too Large",
   s500 = "An unexpected error occurred",
   s502 = "An invalid response was received from the upstream server",
   s503 = "The upstream server is currently unavailable",

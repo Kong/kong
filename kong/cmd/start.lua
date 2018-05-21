@@ -13,8 +13,14 @@ local function execute(args)
   assert(not kill.is_running(conf.nginx_pid),
          "Kong is already running in " .. conf.prefix)
 
-  local err
   local dao = assert(DAOFactory.new(conf))
+  local ok, err_t = dao:init()
+  if not ok then
+    error(tostring(err_t))
+  end
+
+  local err
+
   xpcall(function()
     assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
 
