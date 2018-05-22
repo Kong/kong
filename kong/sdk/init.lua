@@ -20,7 +20,7 @@ local MAJOR_VERSIONS = {
       "ip",
       "request",
       "client",
-      "upstream",
+      "service.request",
       "upstream.response",
       "response",
       --[[

@@ -12,7 +12,7 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: upstream.set_scheme() errors if not a string
+=== TEST 1: service.request.set_scheme() errors if not a string
 --- config
     location = /t {
         content_by_lua_block {
@@ -21,7 +21,7 @@ __DATA__
 
             ngx.ctx.balancer_address = 8000
 
-            local pok, err = pcall(sdk.upstream.set_scheme)
+            local pok, err = pcall(sdk.service.request.set_scheme)
             ngx.say(err)
         }
     }
@@ -34,7 +34,7 @@ scheme must be a string
 
 
 
-=== TEST 2: upstream.set_scheme() errors if not a valid scheme
+=== TEST 2: service.request.set_scheme() errors if not a valid scheme
 --- config
     location = /t {
         content_by_lua_block {
@@ -43,7 +43,7 @@ scheme must be a string
 
             ngx.ctx.balancer_address = 8000
 
-            local pok, err = pcall(sdk.upstream.set_scheme, "HTTP")
+            local pok, err = pcall(sdk.service.request.set_scheme, "HTTP")
             ngx.say(err)
         }
     }
@@ -56,7 +56,7 @@ invalid scheme: HTTP
 
 
 
-=== TEST 3: upstream.set_scheme() sets the scheme to https
+=== TEST 3: service.request.set_scheme() sets the scheme to https
 --- http_config
     server {
         listen 127.0.0.1:9443 ssl;
@@ -78,7 +78,7 @@ invalid scheme: HTTP
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_scheme("https")
+            local ok, err = sdk.service.request.set_scheme("https")
         }
 
         proxy_pass $upstream_scheme://127.0.0.1:9443;
@@ -92,7 +92,7 @@ scheme: https
 
 
 
-=== TEST 4: upstream.set_scheme() sets the scheme to http
+=== TEST 4: service.request.set_scheme() sets the scheme to http
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -112,7 +112,7 @@ scheme: https
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = sdk.upstream.set_scheme("http")
+            local ok, err = sdk.service.request.set_scheme("http")
         }
 
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;

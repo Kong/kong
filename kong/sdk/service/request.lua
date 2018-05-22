@@ -40,11 +40,11 @@ local function make_ordered_args(args)
 end
 
 
--- The upstream request module: functions for dealing with data to be sent
--- to the upstream service, i.e. for connections made by Kong.
+-- The service request module: functions for dealing with data to be sent
+-- to the service, i.e. for connections made by Kong.
 local function new(self)
 
-  local upstream = {}
+  local request = {}
 
   -- TODO these constants should be shared with kong.request
 
@@ -56,12 +56,11 @@ local function new(self)
 
 
   ------------------------------------------------------------------------------
-  -- Sets the protocol to use when proxying the request to the
-  -- upstream service.
+  -- Sets the protocol to use when proxying the request to the service.
   --
   -- @param scheme Protocol to use. Supported values are `"http"` and `"https"`.
   -- @return Nothing; throws an error on invalid inputs.
-  upstream.set_scheme = function(scheme)
+  request.set_scheme = function(scheme)
     if type(scheme) ~= "string" then
       error("scheme must be a string", 2)
     end
@@ -75,12 +74,12 @@ local function new(self)
 
 
   ------------------------------------------------------------------------------
-  -- Sets the target host for the upstream service to which Kong will
+  -- Sets the target host for the service to which Kong will
   -- proxy the request. The `Host` header is also set accordingly.
   --
   -- @param host Host name to set. Example: "example.com"
   -- @return Nothing; throws an error on invalid inputs.
-  upstream.set_host = function(host)
+  request.set_host = function(host)
     if type(host) ~= "string" then
       error("host must be a string", 2)
     end
@@ -92,12 +91,12 @@ local function new(self)
 
 
   ------------------------------------------------------------------------------
-  -- Sets the target port for the upstream service to which Kong will
+  -- Sets the target port for the service to which Kong will
   -- proxy the request.
   --
   -- @param port A port number between 0 and 65535.
   -- @return Nothing; throws an error on invalid inputs.
-  upstream.set_port = function(port)
+  request.set_port = function(port)
     if type(port) ~= "number" or math.floor(port) ~= port then
       error("port must be an integer", 2)
     end
@@ -111,12 +110,12 @@ local function new(self)
 
 
   ------------------------------------------------------------------------------
-  -- Sets the path component for the upstream request. It is not normalized in
-  -- any way and should not include the querystring.
+  -- Sets the path component for the request to the service. It is not
+  -- normalized in any way and should not include the querystring.
   --
   -- @param path The path string. Example: "/v2/movies"
   -- @return Nothing; throws an error on invalid inputs.
-  upstream.set_path = function(path)
+  request.set_path = function(path)
     if type(path) ~= "string" then
       error("path must be a string", 2)
     end
@@ -132,15 +131,15 @@ local function new(self)
 
 
   ------------------------------------------------------------------------------
-  -- Sets the querystring for the upstream request. Input argument is a
+  -- Sets the querystring for the request to the service. Input argument is a
   -- raw string that is not processed in any way.
   --
   -- For a higher-level function for setting the query string from a Lua table
-  -- of arguments, see `kong.upstream.set_query_args`.
+  -- of arguments, see `kong.service.request.set_query_args`.
   --
   -- @param query The raw querystring. Example: "foo=bar&bla&baz=hello%20world"
   -- @return Nothing; throws an error on invalid inputs.
-  upstream.set_query = function(query)
+  request.set_query = function(query)
     if type(query) ~= "string" then
       error("query must be a string", 2)
     end
@@ -171,14 +170,14 @@ local function new(self)
 
     ----------------------------------------------------------------------------
     -- Sets the HTTP method for the request that Kong will make to
-    -- the upstream service.
+    -- the service.
     --
     -- @param method The method string, which should be given in all
     -- uppercase. Supported values are: `"GET"`, `"HEAD"`, `"PUT"`, `"POST"`,
     -- `"DELETE"`, `"OPTIONS"`, `"MKCOL"`, `"COPY"`, `"MOVE"`, `"PROPFIND"`,
     -- `"PROPPATCH"`, `"LOCK"`, `"UNLOCK"`, `"PATCH"`, `"TRACE"`.
     -- @return Nothing; throws an error on invalid inputs.
-    upstream.set_method = function(method)
+    request.set_method = function(method)
       if type(method) ~= "string" then
         error("method must be a string", 2)
       end
@@ -194,20 +193,20 @@ local function new(self)
 
 
   ------------------------------------------------------------------------------
-  -- Defines a query string for the upstream request, given a table of
+  -- Defines a query string for the request to the service, given a table of
   -- arguments.
   --
   -- Keys are produced in lexicographical order. The order of entries within the
   -- same key (when values are given as an array) is retained.
   --
   -- If further control of the querystring generation is needed, a raw
-  -- querystring can be given as a string with `kong.upstream.set_query`.
+  -- querystring can be given as a string with `kong.service.request.set_query`.
   --
   -- @param args A table where each key is a string (corresponding to an
   -- argument name), and each value is either a boolean, a string or an array of
   -- strings or booleans. Any string values given are URL-encoded.
   -- @return Nothing; throws an error on invalid inputs.
-  upstream.set_query_args = function(args)
+  request.set_query_args = function(args)
     if type(args) ~= "table" then
       error("args must be a table", 2)
     end
@@ -226,12 +225,12 @@ local function new(self)
   -- if one or more headers are already set with header name, they are removed.
   --
   -- The `Host` header has special treatment internally, and setting it is
-  -- equivalent to calling `kong.upstream.set_host`.
+  -- equivalent to calling `kong.service.request.set_host`.
   --
   -- @param header The header name. Example: "X-Foo"
   -- @param value The header value. Example: "hello world"
   -- @return Nothing; throws an error on invalid inputs.
-  upstream.set_header = function(header, value)
+  request.set_header = function(header, value)
     if type(header) ~= "string" then
       error("header must be a string", 2)
     end
@@ -240,7 +239,7 @@ local function new(self)
     end
 
     if string_lower(header) == "host" then
-      return upstream.set_host(value)
+      return request.set_host(value)
     end
 
     ngx.req.set_header(header, value ~= "" and value or " ")
@@ -248,17 +247,17 @@ local function new(self)
 
 
   ------------------------------------------------------------------------------
-  -- Adds a request header with the given value to the upstream request, without
-  -- removing any existing headers with the same name. The order in which
-  -- headers are added is retained.
+  -- Adds a header with the given value to the request to the service,
+  -- without removing any existing headers with the same name. The order in
+  -- which headers are added is retained.
   --
   -- The Host header is treated in a special way, and behaves the same as
-  -- `upstream.set_host`.
+  -- `request.set_host`.
   --
   -- @param header The header name. Example: "Cache-Control"
   -- @param value The header value. Example: "no-cache"
   -- @return Nothing; throws an error on invalid inputs.
-  upstream.add_header = function(header, value)
+  request.add_header = function(header, value)
     if type(header) ~= "string" then
       error("header must be a string", 2)
     end
@@ -267,7 +266,7 @@ local function new(self)
     end
 
     if string_lower(header) == "host" then
-      return upstream.set_host(value)
+      return request.set_host(value)
     end
 
     local headers = ngx.req.get_headers()[header]
@@ -287,7 +286,7 @@ local function new(self)
   -- @param header The header name. Example: "X-Foo"
   -- @return Nothing; throws an error on invalid inputs.
   -- The function does not throw an error if no header was removed.
-  upstream.clear_header = function(header)
+  request.clear_header = function(header)
     if type(header) ~= "string" then
       error("header must be a string", 2)
     end
@@ -307,16 +306,16 @@ local function new(self)
   -- are not referenced as keys of the `headers` table remain untouched.
   --
   -- The `Host` header has special treatment internally, and setting it is
-  -- equivalent to calling `kong.upstream.set_host`.
+  -- equivalent to calling `kong.service.request.set_host`.
   --
   -- If further control on the order of headers is needed, these should be
-  -- added one by one using `kong.upstream.set_header` and
-  -- `kong.upstream.add_header`.
+  -- added one by one using `kong.service.request.set_header` and
+  -- `kong.service.request.add_header`.
   --
   -- @param headers A table where each key is a string containing a header name
   -- and each value is either a string or an array of strings.
   -- @return Nothing; throws an error on invalid inputs.
-  upstream.set_headers = function(headers)
+  request.set_headers = function(headers)
     if type(headers) ~= "table" then
       error("headers must be a table", 2)
     end
@@ -352,7 +351,7 @@ local function new(self)
 
     for k, v in pairs(headers) do
       if string_lower(k) == "host" then
-        upstream.set_host(v)
+        request.set_host(v)
       else
         ngx.req.set_header(k, v ~= "" and v or " ")
       end
@@ -362,16 +361,16 @@ local function new(self)
 
 
   ------------------------------------------------------------------------------
-  -- Sets the raw body for the upstream request. Input argument is a
+  -- Sets the raw body for the request to the service. Input argument is a
   -- raw string that is not processed in any way. Sets the `Content-Length`
   -- header appropriately. To set an empty body, use an empty string (`""`).
   --
   -- For a higher-level function for setting the body based on the request
-  -- content type, see `kong.upstream.set_parsed_body`.
+  -- content type, see `kong.service.request.set_parsed_body`.
   --
   -- @param body The raw body, as a string.
   -- @return Nothing; throws an error on invalid inputs.
-  upstream.set_raw_body = function(body)
+  request.set_raw_body = function(body)
     if type(body) ~= "string" then
       error("body must be a string", 2)
     end
@@ -382,7 +381,7 @@ local function new(self)
 
     -- Ensure client request body has been read.
     -- This function is a nop if body has already been read,
-    -- and necessary to write the upstream request if it has not.
+    -- and necessary to write the request to the service if it has not.
     ngx.req.read_body()
 
     ngx.req.set_body_data(body)
@@ -445,7 +444,7 @@ local function new(self)
     }
 
     ----------------------------------------------------------------------------
-    -- Sets the body for the upstream request, encoding it based on the
+    -- Sets the body for the request to the service, encoding it based on the
     -- `mimetype` argument (or the `Content-Type` header of the request
     -- if the `mimetype` argument is not given).
     --
@@ -458,12 +457,12 @@ local function new(self)
     --   * encodes the multipart form data
     -- * if the request content type is `application/json`:
     --   * encodes the request as JSON
-    --     (same as `kong.upstream.set_raw_body(json.encode(args))`)
+    --     (same as `kong.service.request.set_raw_body(json.encode(args))`)
     --   * JSON types are converted to matching Lua types
     -- * If none of the above, it returns `nil` and an error message.
     --
     -- If further control of the body generation is needed, a raw body
-    -- can be given as a string with `kong.upstream.set_raw_body`.
+    -- can be given as a string with `kong.service.request.set_raw_body`.
     --
     -- @param args a table with data to be converted to the appropriate format
     -- and stored in the body.
@@ -477,10 +476,10 @@ local function new(self)
     -- * if the request content type is `multipart/form-data`:
     --   * the table should be multipart-encodable.
     -- @param mime if given, it should be in the same format as the
-    -- value returned by `kong.request.get_parsed_body`. The `Content-Type` header
-    -- will be updated to match the appropriate type.
+    -- value returned by `kong.service.request.get_parsed_body`.
+    -- The `Content-Type` header will be updated to match the appropriate type.
     -- @return Nothing; throws an error on invalid inputs.
-    upstream.set_parsed_body = function(args, mime)
+    request.set_parsed_body = function(args, mime)
       if type(args) ~= "table" then
         error("args must be a table", 2)
       end
@@ -503,7 +502,7 @@ local function new(self)
 
       -- Ensure client request body has been read.
       -- This function is a nop if body has already been read,
-      -- and necessary to write the upstream request if it has not.
+      -- and necessary to write the request to the service if it has not.
       ngx.req.read_body()
 
       local body = handler_fn(args)
@@ -513,7 +512,7 @@ local function new(self)
 
   end
 
-  return upstream
+  return request
 end
 
 

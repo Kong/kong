@@ -10,14 +10,14 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: upstream.set_path() errors if not a string
+=== TEST 1: service.request.set_path() errors if not a string
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.upstream.set_path, 127001)
+            local pok, err = pcall(sdk.service.request.set_path, 127001)
             ngx.say(err)
         }
     }
@@ -30,14 +30,14 @@ path must be a string
 
 
 
-=== TEST 2: upstream.set_path() errors if path doesn't start with "/"
+=== TEST 2: service.request.set_path() errors if path doesn't start with "/"
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.upstream.set_path, "foo")
+            local pok, err = pcall(sdk.service.request.set_path, "foo")
 
             ngx.say(tostring(pok))
             ngx.say(err)
@@ -53,7 +53,7 @@ path must start with /
 
 
 
-=== TEST 3: upstream.set_path() works from access phase
+=== TEST 3: service.request.set_path() works from access phase
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -72,7 +72,7 @@ path must start with /
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_path("/foo")
+            sdk.service.request.set_path("/foo")
         }
 
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock:$upstream_uri;
@@ -86,7 +86,7 @@ this is /foo
 
 
 
-=== TEST 4: upstream.set_path() works from rewrite phase
+=== TEST 4: service.request.set_path() works from rewrite phase
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -105,7 +105,7 @@ this is /foo
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_path("/foo")
+            sdk.service.request.set_path("/foo")
         }
 
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock:$upstream_uri;
