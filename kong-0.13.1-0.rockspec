@@ -190,6 +190,8 @@ build = {
     ["kong.db.strategies.cassandra.services"] = "kong/db/strategies/cassandra/services.lua",
     ["kong.db.strategies.postgres"] = "kong/db/strategies/postgres/init.lua",
     ["kong.db.strategies.postgres.connector"] = "kong/db/strategies/postgres/connector.lua",
+    ["kong.db.strategies.postgres.connector"] = "kong/db/strategies/postgres/connector.lua",
+    ["kong.db.strategies.postgres.routes"] = "kong/db/strategies/postgres/routes.lua",
 
     ["kong.plugins.base_plugin"] = "kong/plugins/base_plugin.lua",
 

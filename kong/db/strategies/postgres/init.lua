@@ -921,7 +921,12 @@ function _mt:each(size)
 end
 
 
-local _M  = {}
+local _M  = {
+  CUSTOM_STRATEGIES = {
+    services = require("kong.db.strategies.postgres.services"),
+    routes   = require("kong.db.strategies.postgres.routes"),
+  }
+}
 
 
 function _M.new(connector, schema, errors)
