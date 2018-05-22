@@ -90,63 +90,7 @@ value must be a string
 
 
 
-=== TEST 5: service.request.add_header("Host") sets ngx.ctx.balancer_address.host
---- config
-    location = /t {
-
-        set $upstream_host '';
-
-        content_by_lua_block {
-            local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-
-            ngx.ctx.balancer_address = {
-                host = "foo.xyz"
-            }
-
-            local ok = sdk.service.request.add_header("Host", "example.com")
-
-            ngx.say("host: ", ngx.ctx.balancer_address.host)
-        }
-    }
---- request
-GET /t
---- response_body
-host: example.com
---- no_error_log
-[error]
-
-
-
-=== TEST 6: service.request.add_header("host") has special Host-behavior in lowercase as well
---- config
-    location = /t {
-
-        set $upstream_host '';
-
-        content_by_lua_block {
-            local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-
-            ngx.ctx.balancer_address = {
-                host = "foo.xyz"
-            }
-
-            sdk.service.request.add_header("host", "example.com")
-
-            ngx.say("host: ", ngx.ctx.balancer_address.host)
-        }
-    }
---- request
-GET /t
---- response_body
-host: example.com
---- no_error_log
-[error]
-
-
-
-=== TEST 7: service.request.add_header("Host") sets Host header sent to the service
+=== TEST 5: service.request.add_header("Host") sets Host header sent to the service
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -186,7 +130,7 @@ host: example.com
 
 
 
-=== TEST 8: service.request.add_header("Host") cannot add two hosts
+=== TEST 6: service.request.add_header("Host") cannot add two hosts
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -228,7 +172,7 @@ host: example2.com
 
 
 
-=== TEST 9: service.request.add_header() sets a header in the request to the service
+=== TEST 7: service.request.add_header() sets a header in the request to the service
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -261,7 +205,7 @@ X-Foo: {hello world}
 
 
 
-=== TEST 10: service.request.add_header() adds two headers to an request to the service
+=== TEST 8: service.request.add_header() adds two headers to an request to the service
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -300,7 +244,7 @@ X-Foo: {world}
 
 
 
-=== TEST 11: service.request.add_header() preserves headers with that name if any exist
+=== TEST 9: service.request.add_header() preserves headers with that name if any exist
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -341,7 +285,7 @@ X-Foo: {hello world}
 
 
 
-=== TEST 12: service.request.add_header() can set to an empty string
+=== TEST 10: service.request.add_header() can set to an empty string
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -374,7 +318,7 @@ X-Foo: {}
 
 
 
-=== TEST 13: service.request.add_header() ignores spaces in the beginning of value
+=== TEST 11: service.request.add_header() ignores spaces in the beginning of value
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -407,7 +351,7 @@ X-Foo: {hello}
 
 
 
-=== TEST 14: service.request.add_header() ignores spaces in the end of value
+=== TEST 12: service.request.add_header() ignores spaces in the end of value
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -440,7 +384,7 @@ X-Foo: {hello}
 
 
 
-=== TEST 15: service.request.add_header() can differentiate empty string from unset
+=== TEST 13: service.request.add_header() can differentiate empty string from unset
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;

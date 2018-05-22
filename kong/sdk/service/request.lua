@@ -74,42 +74,6 @@ local function new(self)
 
 
   ------------------------------------------------------------------------------
-  -- Sets the target host for the service to which Kong will
-  -- proxy the request. The `Host` header is also set accordingly.
-  --
-  -- @param host Host name to set. Example: "example.com"
-  -- @return Nothing; throws an error on invalid inputs.
-  request.set_host = function(host)
-    if type(host) ~= "string" then
-      error("host must be a string", 2)
-    end
-
-    ngx.req.set_header("Host", host)
-    ngx.var.upstream_host = host
-    ngx.ctx.balancer_address.host = host
-  end
-
-
-  ------------------------------------------------------------------------------
-  -- Sets the target port for the service to which Kong will
-  -- proxy the request.
-  --
-  -- @param port A port number between 0 and 65535.
-  -- @return Nothing; throws an error on invalid inputs.
-  request.set_port = function(port)
-    if type(port) ~= "number" or math.floor(port) ~= port then
-      error("port must be an integer", 2)
-    end
-
-    if port < 0 or port > 65535 then
-      error("port must be an integer between 0 and 65535: given " .. port, 2)
-    end
-
-    ngx.ctx.balancer_address.port = port
-  end
-
-
-  ------------------------------------------------------------------------------
   -- Sets the path component for the request to the service. It is not
   -- normalized in any way and should not include the querystring.
   --
@@ -224,9 +188,6 @@ local function new(self)
   -- Sets a request header to the given value. It overrides any existing ones:
   -- if one or more headers are already set with header name, they are removed.
   --
-  -- The `Host` header has special treatment internally, and setting it is
-  -- equivalent to calling `kong.service.request.set_host`.
-  --
   -- @param header The header name. Example: "X-Foo"
   -- @param value The header value. Example: "hello world"
   -- @return Nothing; throws an error on invalid inputs.
@@ -239,7 +200,7 @@ local function new(self)
     end
 
     if string_lower(header) == "host" then
-      return request.set_host(value)
+      ngx.var.upstream_host = value
     end
 
     ngx.req.set_header(header, value ~= "" and value or " ")
@@ -250,9 +211,6 @@ local function new(self)
   -- Adds a header with the given value to the request to the service,
   -- without removing any existing headers with the same name. The order in
   -- which headers are added is retained.
-  --
-  -- The Host header is treated in a special way, and behaves the same as
-  -- `request.set_host`.
   --
   -- @param header The header name. Example: "Cache-Control"
   -- @param value The header value. Example: "no-cache"
@@ -266,7 +224,7 @@ local function new(self)
     end
 
     if string_lower(header) == "host" then
-      return request.set_host(value)
+      ngx.var.upstream_host = value
     end
 
     local headers = ngx.req.get_headers()[header]
@@ -304,9 +262,6 @@ local function new(self)
   -- It overrides any existing headers for the given keys: if one or more
   -- headers are already set with a header name, they are removed. Headers that
   -- are not referenced as keys of the `headers` table remain untouched.
-  --
-  -- The `Host` header has special treatment internally, and setting it is
-  -- equivalent to calling `kong.service.request.set_host`.
   --
   -- If further control on the order of headers is needed, these should be
   -- added one by one using `kong.service.request.set_header` and
@@ -351,10 +306,10 @@ local function new(self)
 
     for k, v in pairs(headers) do
       if string_lower(k) == "host" then
-        request.set_host(v)
-      else
-        ngx.req.set_header(k, v ~= "" and v or " ")
+        ngx.var.upstream_host = v
       end
+
+      ngx.req.set_header(k, v ~= "" and v or " ")
     end
 
   end
