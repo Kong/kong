@@ -10,14 +10,14 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: service.request.set_parsed_body() errors if args is not a table
+=== TEST 1: service.request.set_body() errors if args is not a table
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.service.request.set_parsed_body, 127001)
+            local pok, err = pcall(sdk.service.request.set_body, 127001)
             ngx.say(err)
         }
     }
@@ -30,14 +30,14 @@ args must be a table
 
 
 
-=== TEST 2: service.request.set_parsed_body() errors if given no arguments
+=== TEST 2: service.request.set_body() errors if given no arguments
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.service.request.set_parsed_body)
+            local pok, err = pcall(sdk.service.request.set_body)
             ngx.say(err)
         }
     }
@@ -50,14 +50,14 @@ args must be a table
 
 
 
-=== TEST 3: service.request.set_parsed_body() errors if mime is not a string
+=== TEST 3: service.request.set_body() errors if mime is not a string
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.service.request.set_parsed_body, {}, 123)
+            local pok, err = pcall(sdk.service.request.set_body, {}, 123)
             ngx.say(err)
         }
     }
@@ -70,7 +70,7 @@ mime must be a string
 
 
 
-=== TEST 4: service.request.set_parsed_body() for application/x-www-form-urlencoded errors if table values have bad types
+=== TEST 4: service.request.set_body() for application/x-www-form-urlencoded errors if table values have bad types
 --- config
     location = /t {
 
@@ -79,7 +79,7 @@ mime must be a string
             local sdk = SDK.new()
 
             sdk.service.request.set_header("Content-Type", "application/x-www-form-urlencoded")
-            local pok, err = pcall(sdk.service.request.set_parsed_body, {
+            local pok, err = pcall(sdk.service.request.set_body, {
                 aaa = "foo",
                 bbb = function() end,
                 ccc = "bar",
@@ -98,7 +98,7 @@ attempt to use function as query arg value
 
 
 
-=== TEST 5: service.request.set_parsed_body() for application/x-www-form-urlencoded errors if table keys have bad types
+=== TEST 5: service.request.set_body() for application/x-www-form-urlencoded errors if table keys have bad types
 --- config
     location = /t {
 
@@ -107,7 +107,7 @@ attempt to use function as query arg value
             local sdk = SDK.new()
 
             sdk.service.request.set_header("Content-Type", "application/x-www-form-urlencoded")
-            local pok, err = pcall(sdk.service.request.set_parsed_body, {
+            local pok, err = pcall(sdk.service.request.set_body, {
                 aaa = "foo",
                 [true] = "what",
                 ccc = "bar",
@@ -126,7 +126,7 @@ arg keys must be strings
 
 
 
-=== TEST 6: service.request.set_parsed_body() for application/x-www-form-urlencoded sets the Content-Type header
+=== TEST 6: service.request.set_body() for application/x-www-form-urlencoded sets the Content-Type header
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -145,7 +145,7 @@ arg keys must be strings
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_parsed_body({}, "application/x-www-form-urlencoded")
+            sdk.service.request.set_body({}, "application/x-www-form-urlencoded")
         }
 
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -159,7 +159,7 @@ content-type: {application/x-www-form-urlencoded}
 
 
 
-=== TEST 7: service.request.set_parsed_body() for application/x-www-form-urlencoded accepts an empty table
+=== TEST 7: service.request.set_body() for application/x-www-form-urlencoded accepts an empty table
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -182,7 +182,7 @@ content-type: {application/x-www-form-urlencoded}
             local sdk = SDK.new()
 
             sdk.service.request.set_header("Content-Type", "application/x-www-form-urlencoded")
-            sdk.service.request.set_parsed_body({})
+            sdk.service.request.set_body({})
         }
 
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -200,7 +200,7 @@ content-type: {application/x-www-form-urlencoded}
 
 
 
-=== TEST 8: service.request.set_parsed_body() for application/x-www-form-urlencoded replaces the received post args
+=== TEST 8: service.request.set_body() for application/x-www-form-urlencoded replaces the received post args
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -222,7 +222,7 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_parsed_body({
+            sdk.service.request.set_body({
                 foo = "hello world"
             }, "application/x-www-form-urlencoded")
         }
@@ -242,7 +242,7 @@ content-type: {application/x-www-form-urlencoded}
 
 
 
-=== TEST 9: service.request.set_parsed_body() for application/x-www-form-urlencoded urlencodes table values
+=== TEST 9: service.request.set_body() for application/x-www-form-urlencoded urlencodes table values
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -264,7 +264,7 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_parsed_body({
+            sdk.service.request.set_body({
                 foo = "hello world"
             }, "application/x-www-form-urlencoded")
         }
@@ -282,7 +282,7 @@ content-type: {application/x-www-form-urlencoded}
 
 
 
-=== TEST 10: service.request.set_parsed_body() for application/x-www-form-urlencoded produces a deterministic lexicographical order
+=== TEST 10: service.request.set_body() for application/x-www-form-urlencoded produces a deterministic lexicographical order
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -304,7 +304,7 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_parsed_body({
+            sdk.service.request.set_body({
                 foo = "hello world",
                 a = true,
                 aa = true,
@@ -325,7 +325,7 @@ content-type: {application/x-www-form-urlencoded}
 
 
 
-=== TEST 11: service.request.set_parsed_body() for application/x-www-form-urlencoded preserves the order of array arguments
+=== TEST 11: service.request.set_body() for application/x-www-form-urlencoded preserves the order of array arguments
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -347,7 +347,7 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_parsed_body({
+            sdk.service.request.set_body({
                 foo = "hello world",
                 a = true,
                 aa = { "zzz", true, true, "aaa" },
@@ -368,7 +368,7 @@ content-type: {application/x-www-form-urlencoded}
 
 
 
-=== TEST 12: service.request.set_parsed_body() for application/x-www-form-urlencoded supports empty values
+=== TEST 12: service.request.set_body() for application/x-www-form-urlencoded supports empty values
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -390,7 +390,7 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_parsed_body({
+            sdk.service.request.set_body({
                 aa = "",
             }, "application/x-www-form-urlencoded")
         }
@@ -408,7 +408,7 @@ content-type: {application/x-www-form-urlencoded}
 
 
 
-=== TEST 13: service.request.set_parsed_body() for application/x-www-form-urlencoded accepts empty keys
+=== TEST 13: service.request.set_body() for application/x-www-form-urlencoded accepts empty keys
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -430,7 +430,7 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_parsed_body({
+            sdk.service.request.set_body({
                 [""] = "aa",
             }, "application/x-www-form-urlencoded")
         }
@@ -448,7 +448,7 @@ content-type: {application/x-www-form-urlencoded}
 
 
 
-=== TEST 14: service.request.set_parsed_body() for application/x-www-form-urlencoded urlencodes table keys
+=== TEST 14: service.request.set_body() for application/x-www-form-urlencoded urlencodes table keys
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -470,7 +470,7 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_parsed_body({
+            sdk.service.request.set_body({
                 ["hello world"] = "aa",
             }, "application/x-www-form-urlencoded")
         }
@@ -488,7 +488,7 @@ content-type: {application/x-www-form-urlencoded}
 
 
 
-=== TEST 15: service.request.set_parsed_body() for application/x-www-form-urlencoded does not force a POST method
+=== TEST 15: service.request.set_body() for application/x-www-form-urlencoded does not force a POST method
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -511,7 +511,7 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_parsed_body({
+            sdk.service.request.set_body({
                 foo = "bar",
             }, "application/x-www-form-urlencoded")
         }

@@ -10,14 +10,14 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: service.request.set_query() errors if not a string
+=== TEST 1: service.request.set_raw_query() errors if not a string
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.service.request.set_query, 127001)
+            local pok, err = pcall(sdk.service.request.set_raw_query, 127001)
             ngx.say(err)
         }
     }
@@ -30,14 +30,14 @@ query must be a string
 
 
 
-=== TEST 2: service.request.set_query() errors if given no arguments
+=== TEST 2: service.request.set_raw_query() errors if given no arguments
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.service.request.set_query)
+            local pok, err = pcall(sdk.service.request.set_raw_query)
             ngx.say(err)
         }
     }
@@ -50,7 +50,7 @@ query must be a string
 
 
 
-=== TEST 3: service.request.set_query() accepts an empty string
+=== TEST 3: service.request.set_raw_query() accepts an empty string
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -70,7 +70,7 @@ query must be a string
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_query("")
+            sdk.service.request.set_raw_query("")
         }
 
         proxy_set_header Host $upstream_host;
@@ -85,7 +85,7 @@ query: {nil}
 
 
 
-=== TEST 4: service.request.set_query() sets the query string
+=== TEST 4: service.request.set_raw_query() sets the query string
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -105,7 +105,7 @@ query: {nil}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_query("foo=bar&bla&baz=hello%20world")
+            sdk.service.request.set_raw_query("foo=bar&bla&baz=hello%20world")
         }
 
         proxy_set_header Host $upstream_host;
@@ -120,7 +120,7 @@ query: {foo=bar&bla&baz=hello%20world}
 
 
 
-=== TEST 5: service.request.set_query() replaces any existing query string
+=== TEST 5: service.request.set_raw_query() replaces any existing query string
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -140,7 +140,7 @@ query: {foo=bar&bla&baz=hello%20world}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_query("foo=bar&bla&baz=hello%20world")
+            sdk.service.request.set_raw_query("foo=bar&bla&baz=hello%20world")
         }
 
         proxy_set_header Host $upstream_host;

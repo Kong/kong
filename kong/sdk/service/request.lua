@@ -103,7 +103,7 @@ local function new(self)
   --
   -- @param query The raw querystring. Example: "foo=bar&bla&baz=hello%20world"
   -- @return Nothing; throws an error on invalid inputs.
-  request.set_query = function(query)
+  request.set_raw_query = function(query)
     if type(query) ~= "string" then
       error("query must be a string", 2)
     end
@@ -170,7 +170,7 @@ local function new(self)
   -- argument name), and each value is either a boolean, a string or an array of
   -- strings or booleans. Any string values given are URL-encoded.
   -- @return Nothing; throws an error on invalid inputs.
-  request.set_query_args = function(args)
+  request.set_query = function(args)
     if type(args) ~= "table" then
       error("args must be a table", 2)
     end
@@ -434,7 +434,7 @@ local function new(self)
     -- value returned by `kong.service.request.get_parsed_body`.
     -- The `Content-Type` header will be updated to match the appropriate type.
     -- @return Nothing; throws an error on invalid inputs.
-    request.set_parsed_body = function(args, mime)
+    request.set_body = function(args, mime)
       if type(args) ~= "table" then
         error("args must be a table", 2)
       end
