@@ -28,7 +28,7 @@ end
 
 
 local function new(sdk, major_version)
-  local _UPSTREAM_RESPONSE = {}
+  local response = {}
 
 
   local MIN_HEADERS            = 1
@@ -36,12 +36,12 @@ local function new(sdk, major_version)
   local MAX_HEADERS            = 1000
 
 
-  function _UPSTREAM_RESPONSE.get_status()
+  function response.get_status()
      return tonumber(sub(ngx.var.upstream_status or "", -3))
   end
 
 
-  function _UPSTREAM_RESPONSE.get_headers(max_headers)
+  function response.get_headers(max_headers)
     if max_headers == nil then
       return headers(ngx.resp.get_headers(MAX_HEADERS_DEFAULT))
     end
@@ -60,12 +60,12 @@ local function new(sdk, major_version)
   end
 
 
-  function _UPSTREAM_RESPONSE.get_header(name)
+  function response.get_header(name)
     if type(name) ~= "string" then
       error("name must be a string", 2)
     end
 
-    local header_value = _UPSTREAM_RESPONSE.get_headers()[name]
+    local header_value = response.get_headers()[name]
     if type(header_value) == "table" then
       return header_value[1]
     end
@@ -74,17 +74,17 @@ local function new(sdk, major_version)
   end
 
 
-  function _UPSTREAM_RESPONSE.get_raw_body()
+  function response.get_raw_body()
     -- TODO: implement
   end
 
 
-  function _UPSTREAM_RESPONSE.get_parsed_body()
+  function response.get_parsed_body()
     -- TODO: implement
   end
 
 
-  return _UPSTREAM_RESPONSE
+  return response
 end
 
 

@@ -10,7 +10,7 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: upstream.response.get_headers() returns a table
+=== TEST 1: service.response.get_headers() returns a table
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -31,7 +31,7 @@ __DATA__
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            ngx.arg[1] = "type: " .. type(sdk.upstream.response.get_headers())
+            ngx.arg[1] = "type: " .. type(sdk.service.response.get_headers())
             ngx.arg[2] = true
         }
     }
@@ -44,7 +44,7 @@ type: table
 
 
 
-=== TEST 2: upstream.response.get_headers() returns upstream response headers
+=== TEST 2: service.response.get_headers() returns service response headers
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -72,7 +72,7 @@ type: table
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local headers = sdk.upstream.response.get_headers()
+            local headers = sdk.service.response.get_headers()
 
             ngx.arg[1] = "Foo: " .. headers.Foo .. "\n" ..
                          "Bar: " .. headers.Bar .. "\n" ..
@@ -93,7 +93,7 @@ Accept: application/json, text/html
 
 
 
-=== TEST 3: upstream.response.get_headers() returns upstream response headers with case-insensitive metatable
+=== TEST 3: service.response.get_headers() returns service response headers with case-insensitive metatable
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -116,7 +116,7 @@ Accept: application/json, text/html
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local headers = sdk.upstream.response.get_headers()
+            local headers = sdk.service.response.get_headers()
 
             ngx.arg[1] = "X-Foo-Header: " .. headers["X-Foo-Header"] .. "\n" ..
                          "x-Foo-header: " .. headers["x-Foo-header"] .. "\n" ..
@@ -138,7 +138,7 @@ x_Foo_header: Hello
 
 
 
-=== TEST 4: upstream.response.get_headers() fetches 100 headers max by default
+=== TEST 4: service.response.get_headers() fetches 100 headers max by default
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -165,7 +165,7 @@ x_Foo_header: Hello
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local headers = sdk.upstream.response.get_headers()
+            local headers = sdk.service.response.get_headers()
 
             local n = 0
 
@@ -188,7 +188,7 @@ number of headers fetched: 100
 
 
 
-=== TEST 5: upstream.response.get_headers() fetches max_headers argument
+=== TEST 5: service.response.get_headers() fetches max_headers argument
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -215,7 +215,7 @@ number of headers fetched: 100
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local headers = sdk.upstream.response.get_headers(60)
+            local headers = sdk.service.response.get_headers(60)
 
             local n = 0
 
@@ -238,7 +238,7 @@ number of headers fetched: 60
 
 
 
-=== TEST 6: upstream.response.get_headers() raises error when trying to fetch with max_headers invalid value
+=== TEST 6: service.response.get_headers() raises error when trying to fetch with max_headers invalid value
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -259,7 +259,7 @@ number of headers fetched: 60
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local _, err = pcall(sdk.upstream.response.get_headers, "invalid")
+            local _, err = pcall(sdk.service.response.get_headers, "invalid")
 
             ngx.arg[1] = "error: " .. err
             ngx.arg[2] = true
@@ -274,7 +274,7 @@ error: max_headers must be a number
 
 
 
-=== TEST 7: upstream.response.get_headers() raises error when trying to fetch with max_headers < 1
+=== TEST 7: service.response.get_headers() raises error when trying to fetch with max_headers < 1
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -295,7 +295,7 @@ error: max_headers must be a number
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local _, err = pcall(sdk.upstream.response.get_headers, 0)
+            local _, err = pcall(sdk.service.response.get_headers, 0)
 
             ngx.arg[1] = "error: " .. err
             ngx.arg[2] = true
@@ -310,7 +310,7 @@ error: max_headers must be >= 1
 
 
 
-=== TEST 8: upstream.response.get_headers() raises error when trying to fetch with max_headers > 1000
+=== TEST 8: service.response.get_headers() raises error when trying to fetch with max_headers > 1000
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -331,7 +331,7 @@ error: max_headers must be >= 1
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local _, err = pcall(sdk.upstream.response.get_headers, 1001)
+            local _, err = pcall(sdk.service.response.get_headers, 1001)
 
             ngx.arg[1] = "error: " .. err
             ngx.arg[2] = true
@@ -346,21 +346,21 @@ error: max_headers must be <= 1000
 
 
 
-=== TEST 9: upstream.response.get_headers() returns only upstream headers
+=== TEST 9: service.response.get_headers() returns only service headers
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location / {
             content_by_lua_block {
-                ngx.header["X-Upstream-Header"] = "test"
+                ngx.header["X-Service-Header"] = "test"
             }
         }
     }
 --- config
     location = /t {
         access_by_lua_block {
-            ngx.header["X-Non-Upstream-Header"] = "test"
+            ngx.header["X-Non-Service-Header"] = "test"
         }
 
         proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -373,11 +373,11 @@ error: max_headers must be <= 1000
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local headers = sdk.upstream.response.get_headers()
+            local headers = sdk.service.response.get_headers()
 
-            ngx.arg[1] = "X-Upstream-Header: " .. headers["X-Upstream-Header"] .. "\n" ..
-                         "X-Non-Upstream-Header: " .. type(headers["X-Non-Upstream-Header"]) .. "\n" ..
-                         "X-Non-Upstream-Header: " .. ngx.header["X-Non-Upstream-Header"]
+            ngx.arg[1] = "X-Service-Header: " .. headers["X-Service-Header"] .. "\n" ..
+                         "X-Non-Service-Header: " .. type(headers["X-Non-Service-Header"]) .. "\n" ..
+                         "X-Non-Service-Header: " .. ngx.header["X-Non-Service-Header"]
 
             ngx.arg[2] = true
         }
@@ -385,8 +385,8 @@ error: max_headers must be <= 1000
 --- request
 GET /t
 --- response_body chop
-X-Upstream-Header: test
-X-Non-Upstream-Header: nil
-X-Non-Upstream-Header: test
+X-Service-Header: test
+X-Non-Service-Header: nil
+X-Non-Service-Header: test
 --- no_error_log
 [error]
