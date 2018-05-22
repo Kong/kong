@@ -1,3 +1,6 @@
+local balancer = require("kong.runloop.balancer")
+
+
 local ngx = ngx
 
 
@@ -6,20 +9,26 @@ local function new()
 
 
   ------------------------------------------------------------------------------
-  -- Sets the internal balancer object (managed by the Upstream entity)
-  -- to be used by the service to which Kong will proxy the request.
+  -- Sets the Upstream object to be used by the service to which
+  -- Kong will proxy the request.
   -- The `Host` header is not set: use
   -- `kong.service.request.set_header` to set the header.
   --
   -- @param host Host name to set. Example: "example.com"
-  -- @return Nothing; throws an error on invalid inputs.
-  function service.set_balancer(host)
+  -- @return `true` on success, `nil` and an error message if the
+  -- upstream name is invalid; throws an error on malformed inputs.
+  function service.set_upstream(host)
     if type(host) ~= "string" then
       error("host must be a string", 2)
     end
 
-    ngx.var.upstream_host = host
+    local upstream = balancer.get_upstream_by_name(host)
+    if not upstream then
+      return nil, "could not find an Upstream named '" .. host .. "'"
+    end
+
     ngx.ctx.balancer_address.host = host
+    return true
   end
 
 
@@ -30,7 +39,7 @@ local function new()
   --
   -- @param host Host name to set. Example: "example.com"
   -- @param port A port number between 0 and 65535.
-  -- @return Nothing; throws an error on invalid inputs.
+  -- @return Nothing; throws an error on malformed inputs.
   function service.set_target(host, port)
     if type(host) ~= "string" then
       error("host must be a string", 2)
