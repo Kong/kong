@@ -29,7 +29,7 @@ type: table
 
 
 
-=== TEST 2: response.get_headers() returns upstream response headers
+=== TEST 2: response.get_headers() returns service response headers
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -78,7 +78,7 @@ Accept: application/json, text/html
 
 
 
-=== TEST 3: response.get_headers() returns upstream response headers with case-insensitive metatable
+=== TEST 3: response.get_headers() returns service response headers with case-insensitive metatable
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -258,21 +258,21 @@ error: max_headers must be <= 1000
 
 
 
-=== TEST 9: response.get_headers() returns not-only upstream headers
+=== TEST 9: response.get_headers() returns not-only service headers
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location / {
             content_by_lua_block {
-                ngx.header["X-Upstream-Header"] = "test"
+                ngx.header["X-Service-Header"] = "test"
             }
         }
     }
 --- config
     location = /t {
         access_by_lua_block {
-            ngx.header["X-Non-Upstream-Header"] = "test"
+            ngx.header["X-Non-Service-Header"] = "test"
         }
 
         proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -287,8 +287,8 @@ error: max_headers must be <= 1000
 
             local headers = sdk.response.get_headers()
 
-            ngx.arg[1] = "X-Upstream-Header: "     .. headers["X-Upstream-Header"]      .. "\n" ..
-                         "X-Non-Upstream-Header: " .. headers["X-Non-Upstream-Header"]
+            ngx.arg[1] = "X-Service-Header: "     .. headers["X-Service-Header"]      .. "\n" ..
+                         "X-Non-Service-Header: " .. headers["X-Non-Service-Header"]
 
             ngx.arg[2] = true
         }
@@ -296,7 +296,7 @@ error: max_headers must be <= 1000
 --- request
 GET /t
 --- response_body chop
-X-Upstream-Header: test
-X-Non-Upstream-Header: test
+X-Service-Header: test
+X-Non-Service-Header: test
 --- no_error_log
 [error]

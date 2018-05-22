@@ -29,7 +29,7 @@ type: number
 
 
 
-=== TEST 2: response.get_status() returns 200 from upstream
+=== TEST 2: response.get_status() returns 200 from service
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -63,7 +63,7 @@ status: 200
 
 
 
-=== TEST 3: response.get_status() returns 404 from upstream
+=== TEST 3: response.get_status() returns 404 from service
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
