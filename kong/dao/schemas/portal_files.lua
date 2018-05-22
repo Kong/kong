@@ -1,6 +1,6 @@
 return {
   table = "portal_files",
-  primary_key = {"id"},
+  primary_key = {"id", "name"},
   fields = {
     id = {
       type = "id",
