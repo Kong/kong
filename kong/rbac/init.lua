@@ -601,7 +601,7 @@ function _M.validate_endpoint(route_name, route)
   if not ok then
     local err = fmt("%s, you do not have permissions to %s this resource",
                     rbac_ctx.user.name, readable_action(rbac_ctx.action))
-    return responses.send_HTTP_FORBIDDEN(err)
+    return responses.send_HTTP_UNAUTHORIZED(err)
   end
   ngx.ctx.rbac = rbac_ctx
 end

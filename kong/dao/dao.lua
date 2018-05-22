@@ -199,6 +199,15 @@ end
 
 function DAO:cache_key(arg1, arg2, arg3, arg4, arg5)
   local workspace = workspaces.get_workspaces()[1]
+
+  -- Entities that are not workspaceable do not need to be cached with
+  -- the current workspace. No matter what ws is the request (if any)
+  -- comming from.
+  local workspaceable = self.schema.workspaceable
+  if not workspaceable then
+    workspace = nil
+  end
+
   return fmt("%s:%s:%s:%s:%s:%s:%s", self.table,
              arg1 == nil and "" or arg1,
              arg2 == nil and "" or arg2,
@@ -612,7 +621,7 @@ function DAO:delete(tbl, options)
   end
 
   if not rbac.validate_entity_operation(primary_keys, constraints) or
-     not rbac.check_cascade(associated_entites, ngx.ctx.rbac) then
+    not rbac.check_cascade(associated_entites, ngx.ctx.rbac)  then
     return ret_error(self.db.name, nil, "cascading error")
   end
 

@@ -211,6 +211,10 @@ return {
         end
       end
 
+      -- invalidate rbac user so we don't fetch the old roles
+      local cache_key = dao_factory["rbac_user_roles"]:cache_key(self.rbac_user.id)
+      singletons.cache:invalidate(cache_key)
+
       -- re-fetch the users roles so we show all the role objects, not just our
       -- newly assigned mappings
       roles, err = entity_relationships(dao_factory, self.rbac_user,
@@ -248,9 +252,10 @@ return {
           user_id = self.rbac_user.id,
           role_id = roles[i].id,
         })
-        local ck = dao_factory["rbac_user_roles"]:cache_key(self.rbac_user.id)
-        singletons.cache:invalidate_local(ck)
       end
+
+      local cache_key = dao_factory["rbac_users"]:cache_key(self.rbac_user.id)
+      singletons.cache:invalidate(cache_key)
 
       return helpers.responses.send_HTTP_NO_CONTENT()
     end,
@@ -428,6 +433,9 @@ return {
           helpers.responses.send_HTTP_NOT_FOUND(err)
         end
       end
+
+      local cache_key = dao_factory["rbac_roles"]:cache_key(self.rbac_role.id)
+      singletons.cache:invalidate(cache_key)
 
       -- normalize endpoint: remove trailing /
       self.params.endpoint = ngx.re.gsub(self.params.endpoint, "/$", "")
