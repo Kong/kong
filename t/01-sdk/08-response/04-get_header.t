@@ -138,21 +138,21 @@ error: name must be a string
 
 
 
-=== TEST 6: response.get_header() returns not-only upstream header
+=== TEST 6: response.get_header() returns not-only service header
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location / {
             content_by_lua_block {
-                ngx.header["X-Upstream-Header"] = "test"
+                ngx.header["X-Service-Header"] = "test"
             }
         }
     }
 --- config
     location = /t {
         access_by_lua_block {
-            ngx.header["X-Non-Upstream-Header"] = "test"
+            ngx.header["X-Non-Service-Header"] = "test"
         }
 
         proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -167,8 +167,8 @@ error: name must be a string
 
             local get_header = sdk.response.get_header
 
-            ngx.arg[1] = "X-Upstream-Header: "     .. get_header("X-Upstream-Header") .. "\n" ..
-                         "X-Non-Upstream-Header: " .. get_header("X-Non-Upstream-Header")
+            ngx.arg[1] = "X-Service-Header: "     .. get_header("X-Service-Header") .. "\n" ..
+                         "X-Non-Service-Header: " .. get_header("X-Non-Service-Header")
 
             ngx.arg[2] = true
         }
@@ -176,7 +176,7 @@ error: name must be a string
 --- request
 GET /t
 --- response_body chop
-X-Upstream-Header: test
-X-Non-Upstream-Header: test
+X-Service-Header: test
+X-Non-Service-Header: test
 --- no_error_log
 [error]
