@@ -10,7 +10,7 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: upstream.response.get_header() returns first header when multiple is given with same name
+=== TEST 1: service.response.get_header() returns first header when multiple is given with same name
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -36,7 +36,7 @@ __DATA__
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            ngx.arg[1] = "content type header value: " .. sdk.upstream.response.get_header("Accept")
+            ngx.arg[1] = "content type header value: " .. sdk.service.response.get_header("Accept")
             ngx.arg[2] = true
         }
     }
@@ -49,7 +49,7 @@ content type header value: application/json
 
 
 
-=== TEST 2: upstream.response.get_header() returns values from case-insensitive metatable
+=== TEST 2: service.response.get_header() returns values from case-insensitive metatable
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -72,10 +72,10 @@ content type header value: application/json
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            ngx.arg[1] = "X-Foo-Header: " .. sdk.upstream.response.get_header("X-Foo-Header") .. "\n" ..
-                         "x-Foo-header: " .. sdk.upstream.response.get_header("x-Foo-header") .. "\n" ..
-                         "x_foo_header: " .. sdk.upstream.response.get_header("x_foo_header") .. "\n" ..
-                         "x_Foo_header: " .. sdk.upstream.response.get_header("x_Foo_header")
+            ngx.arg[1] = "X-Foo-Header: " .. sdk.service.response.get_header("X-Foo-Header") .. "\n" ..
+                         "x-Foo-header: " .. sdk.service.response.get_header("x-Foo-header") .. "\n" ..
+                         "x_foo_header: " .. sdk.service.response.get_header("x_foo_header") .. "\n" ..
+                         "x_Foo_header: " .. sdk.service.response.get_header("x_Foo_header")
 
             ngx.arg[2] = true
         }
@@ -92,7 +92,7 @@ x_Foo_header: Hello
 
 
 
-=== TEST 3: upstream.response.get_header() returns nil when header is missing
+=== TEST 3: service.response.get_header() returns nil when header is missing
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -113,7 +113,7 @@ x_Foo_header: Hello
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            ngx.arg[1] = "X-Missing: " .. type(sdk.upstream.response.get_header("X-Missing"))
+            ngx.arg[1] = "X-Missing: " .. type(sdk.service.response.get_header("X-Missing"))
             ngx.arg[2] = true
         }
     }
@@ -126,7 +126,7 @@ X-Missing: nil
 
 
 
-=== TEST 4: upstream.response.get_header() returns nil when response header does not fit in default max_headers
+=== TEST 4: service.response.get_header() returns nil when response header does not fit in default max_headers
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -153,7 +153,7 @@ X-Missing: nil
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            ngx.arg[1] = "accept header value: " .. type(sdk.upstream.response.get_header("Accept"))
+            ngx.arg[1] = "accept header value: " .. type(sdk.service.response.get_header("Accept"))
             ngx.arg[2] = true
         }
     }
@@ -166,7 +166,7 @@ accept header value: nil
 
 
 
-=== TEST 5: upstream.response.get_header() raises error when trying to fetch with invalid argument
+=== TEST 5: service.response.get_header() raises error when trying to fetch with invalid argument
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -187,7 +187,7 @@ accept header value: nil
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local _, err = pcall(sdk.upstream.response.get_header)
+            local _, err = pcall(sdk.service.response.get_header)
 
             ngx.arg[1] = "error: " .. err
             ngx.arg[2] = true
@@ -202,21 +202,21 @@ error: name must be a string
 
 
 
-=== TEST 6: upstream.response.get_header() returns only upstream header
+=== TEST 6: service.response.get_header() returns only service header
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location / {
             content_by_lua_block {
-                ngx.header["X-Upstream-Header"] = "test"
+                ngx.header["X-Service-Header"] = "test"
             }
         }
     }
 --- config
     location = /t {
         access_by_lua_block {
-            ngx.header["X-Non-Upstream-Header"] = "test"
+            ngx.header["X-Non-Service-Header"] = "test"
         }
 
         proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -229,11 +229,11 @@ error: name must be a string
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local get_header = sdk.upstream.response.get_header
+            local get_header = sdk.service.response.get_header
 
-            ngx.arg[1] = "X-Upstream-Header: " .. get_header("X-Upstream-Header") .. "\n" ..
-                         "X-Non-Upstream-Header: " .. type(get_header("X-Non-Upstream-Header")) .. "\n" ..
-                         "X-Non-Upstream-Header: " .. ngx.header["X-Non-Upstream-Header"]
+            ngx.arg[1] = "X-Service-Header: " .. get_header("X-Service-Header") .. "\n" ..
+                         "X-Non-Service-Header: " .. type(get_header("X-Non-Service-Header")) .. "\n" ..
+                         "X-Non-Service-Header: " .. ngx.header["X-Non-Service-Header"]
 
             ngx.arg[2] = true
         }
@@ -241,8 +241,8 @@ error: name must be a string
 --- request
 GET /t
 --- response_body chop
-X-Upstream-Header: test
-X-Non-Upstream-Header: nil
-X-Non-Upstream-Header: test
+X-Service-Header: test
+X-Non-Service-Header: nil
+X-Non-Service-Header: test
 --- no_error_log
 [error]

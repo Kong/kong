@@ -10,7 +10,7 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: upstream.response.get_status() returns a number
+=== TEST 1: service.response.get_status() returns a number
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -31,7 +31,7 @@ __DATA__
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            ngx.arg[1] = "type: " .. type(sdk.upstream.response.get_status())
+            ngx.arg[1] = "type: " .. type(sdk.service.response.get_status())
             ngx.arg[2] = true
         }
     }
@@ -44,7 +44,7 @@ type: number
 
 
 
-=== TEST 2: upstream.response.get_status() returns 200
+=== TEST 2: service.response.get_status() returns 200
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -65,7 +65,7 @@ type: number
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            ngx.arg[1] = "status: " .. sdk.upstream.response.get_status()
+            ngx.arg[1] = "status: " .. sdk.service.response.get_status()
             ngx.arg[2] = true
         }
     }
@@ -78,7 +78,7 @@ status: 200
 
 
 
-=== TEST 3: upstream.response.get_status() returns 404
+=== TEST 3: service.response.get_status() returns 404
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -99,7 +99,7 @@ status: 200
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            ngx.arg[1] = "status: " .. sdk.upstream.response.get_status()
+            ngx.arg[1] = "status: " .. sdk.service.response.get_status()
             ngx.arg[2] = true
         }
     }
@@ -113,7 +113,7 @@ status: 404
 
 
 
-=== TEST 4: upstream.response.get_status() upstream status only
+=== TEST 4: service.response.get_status() gets service status only
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -135,7 +135,7 @@ status: 404
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            ngx.arg[1] = "upstream status: " .. sdk.upstream.response.get_status() .. "\n" ..
+            ngx.arg[1] = "service response status: " .. sdk.service.response.get_status() .. "\n" ..
                          "response status: " .. ngx.status
             ngx.arg[2] = true
         }
@@ -144,7 +144,7 @@ status: 404
 GET /t
 --- error_code: 200
 --- response_body chop
-upstream status: 404
+service response status: 404
 response status: 200
 --- no_error_log
 [error]
