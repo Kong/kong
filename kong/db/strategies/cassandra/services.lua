@@ -1,4 +1,5 @@
 local cassandra = require "cassandra"
+local workspaces = require "kong.workspaces"
 
 
 local fmt = string.format
@@ -29,7 +30,7 @@ local function select_by_service_id(cluster, table_name, service_id, errors)
   return res
 end
 
-local function delete_cascade(connector, table_name, service_id, errors)
+local function delete_cascade(connector, table_name, service_id, errors, ws)
   local entities = select_by_service_id(connector.cluster, table_name, service_id, errors)
 
   for i = 1, #entities do
@@ -44,6 +45,14 @@ local function delete_cascade(connector, table_name, service_id, errors)
         fmt("could not delete instance of %s associated with Service: %s",
             table_name, err))
     end
+
+    if ws then
+      local err = workspaces.delete_entity_relation(table_name, {id = entities[i].id})
+      if err then
+        return nil, self.errors:database_error("could not delete " .. table_name ..
+                                               " relationship with Workspace: " .. err)
+      end
+    end
   end
 
   return true
@@ -51,6 +60,7 @@ end
 
 
 function _Services:delete(primary_key)
+  local ws = workspaces.get_workspaces()[1]
   local ok, err_t = self.super.delete(self, primary_key)
   if not ok then
     return nil, err_t
@@ -60,9 +70,18 @@ function _Services:delete(primary_key)
   local service_id = primary_key.id
   local errors     = self.errors
 
-  local ok1, err1 = delete_cascade(connector, "plugins", service_id, errors)
-  local ok2, err2 = delete_cascade(connector, "oauth2_tokens", service_id, errors)
-  local ok3, err3 = delete_cascade(connector, "oauth2_authorization_codes", service_id, errors)
+  local ok1, err1 = delete_cascade(connector, "plugins", service_id, errors, ws)
+  local ok2, err2 = delete_cascade(connector, "oauth2_tokens", service_id, errors, ws)
+  local ok3, err3 = delete_cascade(connector, "oauth2_authorization_codes", service_id, errors, ws)
+
+
+  if ok and ws then
+    local err = workspaces.delete_entity_relation("services", {id = primary_key})
+    if err then
+      return nil, self.errors:database_error("could not delete Route relationship " ..
+                                             "with Workspace: " .. err)
+    end
+  end
 
   return ok1 and ok2 and ok3,
          err1 or err2 or err3

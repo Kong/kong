@@ -1,4 +1,5 @@
 local cassandra = require "cassandra"
+local workspaces = require "kong.workspaces"
 
 
 local _Routes = {}
@@ -31,7 +32,7 @@ function _Routes:delete(primary_key)
   end
 
   -- CASCADE delete associated plugins
-
+  local ws = workspaces.get_workspaces()[1]
   for i = 1, #plugins do
     local res, err = connector:query("DELETE FROM plugins WHERE id = ?", {
       cassandra.uuid(plugins[i].id)
@@ -39,6 +40,22 @@ function _Routes:delete(primary_key)
     if not res then
       return nil, self.errors:database_error("could not delete plugin " ..
                                               "associated with Route: " .. err)
+    end
+
+    if ws then
+      local err = workspaces.delete_entity_relation("plugins", {id = plugins[i].id})
+      if err then
+        return nil, self.errors:database_error("could not delete Plugin relationship " ..
+                                               "with Workspace: " .. err)
+      end
+    end
+  end
+
+  if ok and ws then
+    local err = workspaces.delete_entity_relation("routes", {id = primary_key})
+    if err then
+      return nil, self.errors:database_error("could not delete Route relationship " ..
+                                             "with Workspace: " .. err)
     end
   end
 

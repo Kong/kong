@@ -14,7 +14,6 @@ local type        = type
 return {
   ["/services"] = {
     POST = function(self, _, _, parent)
-      print("=========================")
       api_helpers.resolve_url_params(self)
       return parent()
     end,
