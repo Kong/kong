@@ -10,14 +10,14 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: upstream.set_host() errors if not a string
+=== TEST 1: service.request.set_host() errors if not a string
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.upstream.set_host, 127001)
+            local pok, err = pcall(sdk.service.request.set_host, 127001)
             ngx.say(err)
         }
     }
@@ -30,7 +30,7 @@ host must be a string
 
 
 
-=== TEST 2: upstream.set_host() sets ngx.ctx.balancer_address.host
+=== TEST 2: service.request.set_host() sets ngx.ctx.balancer_address.host
 --- config
     location = /t {
 
@@ -44,7 +44,7 @@ host must be a string
                 host = "foo.xyz"
             }
 
-            local ok = sdk.upstream.set_host("example.com")
+            local ok = sdk.service.request.set_host("example.com")
 
             ngx.say(tostring(ok))
             ngx.say("host: ", ngx.ctx.balancer_address.host)
@@ -60,7 +60,7 @@ host: example.com
 
 
 
-=== TEST 3: upstream.set_host() sets Host header sent to upstream
+=== TEST 3: service.request.set_host() sets Host header sent to the service
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -84,7 +84,7 @@ host: example.com
                 host = "foo.xyz"
             }
 
-            sdk.upstream.set_host("example.com")
+            sdk.service.request.set_host("example.com")
         }
 
         proxy_set_header Host $upstream_host;

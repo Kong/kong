@@ -10,14 +10,14 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: upstream.set_header() errors if arguments are not given
+=== TEST 1: service.request.add_header() errors if arguments are not given
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.upstream.set_header)
+            local pok, err = pcall(sdk.service.request.add_header)
             ngx.say(err)
         }
     }
@@ -30,14 +30,14 @@ header must be a string
 
 
 
-=== TEST 2: upstream.set_header() errors if header is not a string
+=== TEST 2: service.request.add_header() errors if header is not a string
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.upstream.set_header, 127001, "foo")
+            local pok, err = pcall(sdk.service.request.add_header, 127001, "foo")
             ngx.say(err)
         }
     }
@@ -50,14 +50,14 @@ header must be a string
 
 
 
-=== TEST 3: upstream.set_header() errors if value is not a string
+=== TEST 3: service.request.add_header() errors if value is not a string
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.upstream.set_header, "foo", 123456)
+            local pok, err = pcall(sdk.service.request.add_header, "foo", 123456)
             ngx.say(err)
         }
     }
@@ -70,14 +70,14 @@ value must be a string
 
 
 
-=== TEST 4: upstream.set_header() errors if value is not given
+=== TEST 4: service.request.add_header() errors if value is not given
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.upstream.set_header, "foo")
+            local pok, err = pcall(sdk.service.request.add_header, "foo")
             ngx.say(err)
         }
     }
@@ -90,7 +90,7 @@ value must be a string
 
 
 
-=== TEST 5: upstream.set_header("Host") sets ngx.ctx.balancer_address.host
+=== TEST 5: service.request.add_header("Host") sets ngx.ctx.balancer_address.host
 --- config
     location = /t {
 
@@ -104,7 +104,7 @@ value must be a string
                 host = "foo.xyz"
             }
 
-            sdk.upstream.set_header("Host", "example.com")
+            local ok = sdk.service.request.add_header("Host", "example.com")
 
             ngx.say("host: ", ngx.ctx.balancer_address.host)
         }
@@ -118,7 +118,7 @@ host: example.com
 
 
 
-=== TEST 6: upstream.set_header("host") has special Host-behavior in lowercase as well
+=== TEST 6: service.request.add_header("host") has special Host-behavior in lowercase as well
 --- config
     location = /t {
 
@@ -132,7 +132,7 @@ host: example.com
                 host = "foo.xyz"
             }
 
-            sdk.upstream.set_header("host", "example.com")
+            sdk.service.request.add_header("host", "example.com")
 
             ngx.say("host: ", ngx.ctx.balancer_address.host)
         }
@@ -146,7 +146,7 @@ host: example.com
 
 
 
-=== TEST 7: upstream.set_header("Host") sets Host header sent to upstream
+=== TEST 7: service.request.add_header("Host") sets Host header sent to the service
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -170,7 +170,7 @@ host: example.com
                 host = "foo.xyz"
             }
 
-            sdk.upstream.set_header("Host", "example.com")
+            sdk.service.request.add_header("Host", "example.com")
 
         }
 
@@ -186,7 +186,49 @@ host: example.com
 
 
 
-=== TEST 8: upstream.set_header() sets a header in the upstream request
+=== TEST 8: service.request.add_header("Host") cannot add two hosts
+--- http_config
+    server {
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+
+        location /t {
+            content_by_lua_block {
+                ngx.say("host: ", ngx.req.get_headers()["Host"])
+            }
+        }
+    }
+--- config
+    location = /t {
+
+        set $upstream_host '';
+
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            ngx.ctx.balancer_address = {
+                host = "foo.xyz"
+            }
+
+            sdk.service.request.add_header("Host", "example.com")
+
+            sdk.service.request.add_header("Host", "example2.com")
+
+        }
+
+        proxy_set_header Host $upstream_host;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
+    }
+--- request
+GET /t
+--- response_body
+host: example2.com
+--- no_error_log
+[error]
+
+
+
+=== TEST 9: service.request.add_header() sets a header in the request to the service
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -204,7 +246,7 @@ host: example.com
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_header("X-Foo", "hello world")
+            sdk.service.request.add_header("X-Foo", "hello world")
 
         }
 
@@ -219,14 +261,17 @@ X-Foo: {hello world}
 
 
 
-=== TEST 9: upstream.set_header() replaces all headers with that name if any exist
+=== TEST 10: service.request.add_header() adds two headers to an request to the service
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
-                ngx.say("X-Foo: ", tostring(ngx.req.get_headers()["X-Foo"]))
+                local foo_headers = ngx.req.get_headers()["X-Foo"]
+                for _, v in ipairs(foo_headers) do
+                    ngx.say("X-Foo: {" .. tostring(v) .. "}")
+                end
             }
         }
     }
@@ -237,7 +282,46 @@ X-Foo: {hello world}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_header("X-Foo", "hello world")
+            sdk.service.request.add_header("X-Foo", "hello")
+
+            sdk.service.request.add_header("X-Foo", "world")
+
+        }
+
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
+    }
+--- request
+GET /t
+--- response_body
+X-Foo: {hello}
+X-Foo: {world}
+--- no_error_log
+[error]
+
+
+
+=== TEST 11: service.request.add_header() preserves headers with that name if any exist
+--- http_config
+    server {
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+
+        location /t {
+            content_by_lua_block {
+                local foo_headers = ngx.req.get_headers()["X-Foo"]
+                for _, v in ipairs(foo_headers) do
+                    ngx.say("X-Foo: {" .. tostring(v) .. "}")
+                end
+            }
+        }
+    }
+--- config
+    location = /t {
+
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            sdk.service.request.add_header("X-Foo", "hello world")
 
         }
 
@@ -249,13 +333,15 @@ GET /t
 X-Foo: bla bla
 X-Foo: baz
 --- response_body
-X-Foo: hello world
+X-Foo: {bla bla}
+X-Foo: {baz}
+X-Foo: {hello world}
 --- no_error_log
 [error]
 
 
 
-=== TEST 10: upstream.set_header() can set to an empty string
+=== TEST 12: service.request.add_header() can set to an empty string
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -273,7 +359,7 @@ X-Foo: hello world
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_header("X-Foo", "")
+            sdk.service.request.add_header("X-Foo", "")
 
         }
 
@@ -288,7 +374,7 @@ X-Foo: {}
 
 
 
-=== TEST 11: upstream.set_header() ignores spaces in the beginning of value
+=== TEST 13: service.request.add_header() ignores spaces in the beginning of value
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -306,7 +392,7 @@ X-Foo: {}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_header("X-Foo", "     hello")
+            sdk.service.request.add_header("X-Foo", "     hello")
 
         }
 
@@ -321,7 +407,7 @@ X-Foo: {hello}
 
 
 
-=== TEST 12: upstream.set_header() ignores spaces in the end of value
+=== TEST 14: service.request.add_header() ignores spaces in the end of value
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -339,7 +425,7 @@ X-Foo: {hello}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_header("X-Foo", "hello       ")
+            sdk.service.request.add_header("X-Foo", "hello       ")
 
         }
 
@@ -354,7 +440,7 @@ X-Foo: {hello}
 
 
 
-=== TEST 13: upstream.set_header() can differentiate empty string from unset
+=== TEST 15: service.request.add_header() can differentiate empty string from unset
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -374,7 +460,7 @@ X-Foo: {hello}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_header("X-Foo", "")
+            sdk.service.request.add_header("X-Foo", "")
 
         }
 

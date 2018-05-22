@@ -10,108 +10,190 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: upstream.set_query_args() errors if not a table
+=== TEST 1: service.request.set_header() errors if arguments are not given
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.upstream.set_query_args, 127001)
+            local pok, err = pcall(sdk.service.request.set_header)
             ngx.say(err)
         }
     }
 --- request
 GET /t
 --- response_body
-args must be a table
+header must be a string
 --- no_error_log
 [error]
 
 
 
-=== TEST 2: upstream.set_query_args() errors if given no arguments
+=== TEST 2: service.request.set_header() errors if header is not a string
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.upstream.set_query_args)
+            local pok, err = pcall(sdk.service.request.set_header, 127001, "foo")
             ngx.say(err)
         }
     }
 --- request
 GET /t
 --- response_body
-args must be a table
+header must be a string
 --- no_error_log
 [error]
 
 
 
-=== TEST 3: upstream.set_query_args() errors if table values have bad types
+=== TEST 3: service.request.set_header() errors if value is not a string
 --- config
     location = /t {
-
-        access_by_lua_block {
+        content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.upstream.set_query_args, {
-                aaa = "foo",
-                bbb = function() end,
-                ccc = "bar",
-            })
+            local pok, err = pcall(sdk.service.request.set_header, "foo", 123456)
             ngx.say(err)
         }
-
-        proxy_pass http://127.0.0.1:9080;
     }
 --- request
-POST /t
+GET /t
 --- response_body
-attempt to use function as query arg value
+value must be a string
 --- no_error_log
 [error]
 
 
 
-=== TEST 4: upstream.set_query_args() errors if table keys have bad types
+=== TEST 4: service.request.set_header() errors if value is not given
 --- config
     location = /t {
-
-        access_by_lua_block {
+        content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.upstream.set_query_args, {
-                aaa = "foo",
-                [true] = "what",
-                ccc = "bar",
-            })
+            local pok, err = pcall(sdk.service.request.set_header, "foo")
             ngx.say(err)
         }
-
-        proxy_pass http://127.0.0.1:9080;
     }
 --- request
-POST /t
+GET /t
 --- response_body
-arg keys must be strings
+value must be a string
 --- no_error_log
 [error]
 
 
 
-=== TEST 5: upstream.set_query_args() accepts an empty table
+=== TEST 5: service.request.set_header("Host") sets ngx.ctx.balancer_address.host
+--- config
+    location = /t {
+
+        set $upstream_host '';
+
+        content_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            ngx.ctx.balancer_address = {
+                host = "foo.xyz"
+            }
+
+            sdk.service.request.set_header("Host", "example.com")
+
+            ngx.say("host: ", ngx.ctx.balancer_address.host)
+        }
+    }
+--- request
+GET /t
+--- response_body
+host: example.com
+--- no_error_log
+[error]
+
+
+
+=== TEST 6: service.request.set_header("host") has special Host-behavior in lowercase as well
+--- config
+    location = /t {
+
+        set $upstream_host '';
+
+        content_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            ngx.ctx.balancer_address = {
+                host = "foo.xyz"
+            }
+
+            sdk.service.request.set_header("host", "example.com")
+
+            ngx.say("host: ", ngx.ctx.balancer_address.host)
+        }
+    }
+--- request
+GET /t
+--- response_body
+host: example.com
+--- no_error_log
+[error]
+
+
+
+=== TEST 7: service.request.set_header("Host") sets Host header sent to the service
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
-                ngx.say("query: {", ngx.var.args, "}")
+                ngx.say("host: ", ngx.req.get_headers()["Host"])
+            }
+        }
+    }
+--- config
+    location = /t {
+
+        set $upstream_host '';
+
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            ngx.ctx.balancer_address = {
+                host = "foo.xyz"
+            }
+
+            sdk.service.request.set_header("Host", "example.com")
+
+        }
+
+        proxy_set_header Host $upstream_host;
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
+    }
+--- request
+GET /t
+--- response_body
+host: example.com
+--- no_error_log
+[error]
+
+
+
+=== TEST 8: service.request.set_header() sets a header in the request to the service
+--- http_config
+    server {
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+
+        location /t {
+            content_by_lua_block {
+                ngx.say("X-Foo: {" .. ngx.req.get_headers()["X-Foo"] .. "}")
             }
         }
     }
@@ -122,7 +204,7 @@ arg keys must be strings
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_query_args({})
+            sdk.service.request.set_header("X-Foo", "hello world")
 
         }
 
@@ -131,20 +213,20 @@ arg keys must be strings
 --- request
 GET /t
 --- response_body
-query: {nil}
+X-Foo: {hello world}
 --- no_error_log
 [error]
 
 
 
-=== TEST 6: upstream.set_query_args() replaces the received post args
+=== TEST 9: service.request.set_header() replaces all headers with that name if any exist
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
-                ngx.say("query: {", ngx.var.args, "}")
+                ngx.say("X-Foo: ", tostring(ngx.req.get_headers()["X-Foo"]))
             }
         }
     }
@@ -155,31 +237,32 @@ query: {nil}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_query_args({
-                foo = "hello world"
-            })
+            sdk.service.request.set_header("X-Foo", "hello world")
 
         }
 
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
-GET /t?foo=bar
+GET /t
+--- more_headers
+X-Foo: bla bla
+X-Foo: baz
 --- response_body
-query: {foo=hello%20world}
+X-Foo: hello world
 --- no_error_log
 [error]
 
 
 
-=== TEST 7: upstream.set_query_args() urlencodes table values
+=== TEST 10: service.request.set_header() can set to an empty string
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
-                ngx.say("query: {", ngx.var.args, "}")
+                ngx.say("X-Foo: {" .. ngx.req.get_headers()["X-Foo"] .. "}")
             }
         }
     }
@@ -190,31 +273,29 @@ query: {foo=hello%20world}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_query_args({
-                foo = "hello world"
-            })
+            sdk.service.request.set_header("X-Foo", "")
 
         }
 
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
-POST /t
+GET /t
 --- response_body
-query: {foo=hello%20world}
+X-Foo: {}
 --- no_error_log
 [error]
 
 
 
-=== TEST 8: upstream.set_query_args() produces a deterministic lexicographical order
+=== TEST 11: service.request.set_header() ignores spaces in the beginning of value
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
-                ngx.say("query: {", ngx.var.args, "}")
+                ngx.say("X-Foo: {" .. ngx.req.get_headers()["X-Foo"] .. "}")
             }
         }
     }
@@ -225,34 +306,29 @@ query: {foo=hello%20world}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_query_args({
-                foo = "hello world",
-                a = true,
-                aa = true,
-                zzz = "goodbye world",
-            })
+            sdk.service.request.set_header("X-Foo", "     hello")
 
         }
 
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
-POST /t
+GET /t
 --- response_body
-query: {a&aa&foo=hello%20world&zzz=goodbye%20world}
+X-Foo: {hello}
 --- no_error_log
 [error]
 
 
 
-=== TEST 9: upstream.set_query_args() preserves the order of array arguments
+=== TEST 12: service.request.set_header() ignores spaces in the end of value
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
-                ngx.say("query: {", ngx.var.args, "}")
+                ngx.say("X-Foo: {" .. ngx.req.get_headers()["X-Foo"] .. "}")
             }
         }
     }
@@ -263,34 +339,31 @@ query: {a&aa&foo=hello%20world&zzz=goodbye%20world}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_query_args({
-                foo = "hello world",
-                a = true,
-                aa = { "zzz", true, true, "aaa" },
-                zzz = "goodbye world",
-            })
+            sdk.service.request.set_header("X-Foo", "hello       ")
 
         }
 
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
-POST /t
+GET /t
 --- response_body
-query: {a&aa=zzz&aa&aa&aa=aaa&foo=hello%20world&zzz=goodbye%20world}
+X-Foo: {hello}
 --- no_error_log
 [error]
 
 
 
-=== TEST 10: upstream.set_query_args() supports empty values
+=== TEST 13: service.request.set_header() can differentiate empty string from unset
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
 
         location /t {
             content_by_lua_block {
-                ngx.say("query: {", ngx.var.args, "}")
+                local headers = ngx.req.get_headers()
+                ngx.say("X-Foo: {" .. headers["X-Foo"] .. "}")
+                ngx.say("X-Bar: {" .. tostring(headers["X-Bar"]) .. "}")
             }
         }
     }
@@ -301,87 +374,16 @@ query: {a&aa=zzz&aa&aa&aa=aaa&foo=hello%20world&zzz=goodbye%20world}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.upstream.set_query_args({
-                aa = "",
-            })
+            sdk.service.request.set_header("X-Foo", "")
 
         }
 
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
-POST /t
+GET /t
 --- response_body
-query: {aa=}
---- no_error_log
-[error]
-
-
-
-=== TEST 11: upstream.set_query_args() accepts empty keys
---- http_config
-    server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
-
-        location /t {
-            content_by_lua_block {
-                ngx.say("query: {", ngx.var.args, "}")
-            }
-        }
-    }
---- config
-    location = /t {
-
-        access_by_lua_block {
-            local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-
-            sdk.upstream.set_query_args({
-                [""] = "aa",
-            })
-
-        }
-
-        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
-    }
---- request
-POST /t
---- response_body
-query: {=aa}
---- no_error_log
-[error]
-
-
-
-=== TEST 12: upstream.set_query_args() urlencodes table keys
---- http_config
-    server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
-
-        location /t {
-            content_by_lua_block {
-                ngx.say("query: {", ngx.var.args, "}")
-            }
-        }
-    }
---- config
-    location = /t {
-
-        access_by_lua_block {
-            local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-
-            sdk.upstream.set_query_args({
-                ["hello world"] = "aa",
-            })
-
-        }
-
-        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
-    }
---- request
-POST /t
---- response_body
-query: {hello%20world=aa}
+X-Foo: {}
+X-Bar: {nil}
 --- no_error_log
 [error]

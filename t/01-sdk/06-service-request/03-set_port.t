@@ -8,7 +8,7 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: upstream.set_port() errors if not a number
+=== TEST 1: service.request.set_port() errors if not a number
 --- config
     location = /t {
         content_by_lua_block {
@@ -17,7 +17,7 @@ __DATA__
 
             ngx.ctx.balancer_address = 8000
 
-            local pok, err = pcall(sdk.upstream.set_port, "foo")
+            local pok, err = pcall(sdk.service.request.set_port, "foo")
             ngx.say(err)
         }
     }
@@ -30,7 +30,7 @@ port must be an integer
 
 
 
-=== TEST 2: upstream.set_port() errors if not an integer
+=== TEST 2: service.request.set_port() errors if not an integer
 --- config
     location = /t {
         content_by_lua_block {
@@ -39,7 +39,7 @@ port must be an integer
 
             ngx.ctx.balancer_address = 8000
 
-            local pok, err = pcall(sdk.upstream.set_port, 123.4)
+            local pok, err = pcall(sdk.service.request.set_port, 123.4)
 
             ngx.say(err)
         }
@@ -53,7 +53,7 @@ port must be an integer
 
 
 
-=== TEST 3: upstream.set_port() errors if out of range
+=== TEST 3: service.request.set_port() errors if out of range
 --- config
     location = /t {
         content_by_lua_block {
@@ -62,9 +62,9 @@ port must be an integer
 
             ngx.ctx.balancer_address = 8000
 
-            local pok, err = pcall(sdk.upstream.set_port, -1)
+            local pok, err = pcall(sdk.service.request.set_port, -1)
             ngx.say(err)
-            local pok, err = pcall(sdk.upstream.set_port, 70000)
+            local pok, err = pcall(sdk.service.request.set_port, 70000)
             ngx.say(err)
         }
     }
@@ -78,7 +78,7 @@ port must be an integer between 0 and 65535: given 70000
 
 
 
-=== TEST 4: upstream.set_port() sets the balancer port
+=== TEST 4: service.request.set_port() sets the balancer port
 --- config
     location = /t {
         content_by_lua_block {
@@ -89,7 +89,7 @@ port must be an integer between 0 and 65535: given 70000
                 port = 8000
             }
 
-            local ok = sdk.upstream.set_port(1234)
+            local ok = sdk.service.request.set_port(1234)
 
             ngx.say(tostring(ok))
             ngx.say("port: ", ngx.ctx.balancer_address.port)
