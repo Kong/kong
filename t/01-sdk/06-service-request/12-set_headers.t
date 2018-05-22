@@ -50,67 +50,7 @@ headers must be a table
 
 
 
-=== TEST 3: service.request.set_headers() with "Host" sets ngx.ctx.balancer_address.host
---- config
-    location = /t {
-
-        set $upstream_host '';
-
-        content_by_lua_block {
-            local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-
-            ngx.ctx.balancer_address = {
-                host = "foo.xyz"
-            }
-
-            local ok = sdk.service.request.set_headers({["Host"] = "example.com"})
-
-            ngx.say(tostring(ok))
-            ngx.say("host: ", ngx.ctx.balancer_address.host)
-        }
-    }
---- request
-GET /t
---- response_body
-nil
-host: example.com
---- no_error_log
-[error]
-
-
-
-=== TEST 4: service.request.set_headers() with "host" has special Host-behavior in lowercase as well
---- config
-    location = /t {
-
-        set $upstream_host '';
-
-        content_by_lua_block {
-            local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-
-            ngx.ctx.balancer_address = {
-                host = "foo.xyz"
-            }
-
-            local ok = sdk.service.request.set_headers({["host"] = "example.com"})
-
-            ngx.say(tostring(ok))
-            ngx.say("host: ", ngx.ctx.balancer_address.host)
-        }
-    }
---- request
-GET /t
---- response_body
-nil
-host: example.com
---- no_error_log
-[error]
-
-
-
-=== TEST 5: service.request.set_headers() with "Host" sets Host header sent to the service
+=== TEST 3: service.request.set_headers() with "Host" sets Host header sent to the service
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -150,7 +90,7 @@ host: example.com
 
 
 
-=== TEST 6: service.request.set_headers() sets a header in the request to the service
+=== TEST 4: service.request.set_headers() sets a header in the request to the service
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -183,7 +123,7 @@ X-Foo: {hello world}
 
 
 
-=== TEST 7: service.request.set_headers() replaces all headers with that name if any exist
+=== TEST 5: service.request.set_headers() replaces all headers with that name if any exist
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -219,7 +159,7 @@ X-Foo: hello world
 
 
 
-=== TEST 8: service.request.set_headers() can set to an empty string
+=== TEST 6: service.request.set_headers() can set to an empty string
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -252,7 +192,7 @@ X-Foo: {}
 
 
 
-=== TEST 9: service.request.set_headers() ignores spaces in the beginning of value
+=== TEST 7: service.request.set_headers() ignores spaces in the beginning of value
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -285,7 +225,7 @@ X-Foo: {hello}
 
 
 
-=== TEST 10: service.request.set_headers() ignores spaces in the end of value
+=== TEST 8: service.request.set_headers() ignores spaces in the end of value
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -318,7 +258,7 @@ X-Foo: {hello}
 
 
 
-=== TEST 11: service.request.set_headers() can differentiate empty string from unset
+=== TEST 9: service.request.set_headers() can differentiate empty string from unset
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -354,7 +294,7 @@ X-Bar: {nil}
 
 
 
-=== TEST 12: service.request.set_headers() errors if key is not a string
+=== TEST 10: service.request.set_headers() errors if key is not a string
 --- http_config
 --- config
     location = /t {
@@ -376,7 +316,7 @@ invalid key "2": got number, expected string
 
 
 
-=== TEST 13: service.request.set_headers() errors if value is of a bad type
+=== TEST 11: service.request.set_headers() errors if value is of a bad type
 --- http_config
 --- config
     location = /t {
@@ -398,7 +338,7 @@ invalid value in "foo": got number, expected string
 
 
 
-=== TEST 14: service.request.set_headers() errors if array element is of a bad type
+=== TEST 12: service.request.set_headers() errors if array element is of a bad type
 --- http_config
 --- config
     location = /t {
@@ -420,7 +360,7 @@ invalid value in array "foo": got number, expected string
 
 
 
-=== TEST 15: service.request.set_headers() ignores non-sequence elements in arrays
+=== TEST 13: service.request.set_headers() ignores non-sequence elements in arrays
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -462,7 +402,7 @@ X-Foo: {world}
 
 
 
-=== TEST 16: service.request.set_headers() removes headers when given an empty array
+=== TEST 14: service.request.set_headers() removes headers when given an empty array
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -503,7 +443,7 @@ X-Foo: world
 
 
 
-=== TEST 17: service.request.set_headers() replaces every header of a given name
+=== TEST 15: service.request.set_headers() replaces every header of a given name
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -548,7 +488,7 @@ X-Foo: {zzz}
 
 
 
-=== TEST 18: service.request.set_headers() accepts an empty table
+=== TEST 16: service.request.set_headers() accepts an empty table
 --- http_config
 --- config
     location = /t {
