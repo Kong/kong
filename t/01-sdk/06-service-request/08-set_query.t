@@ -10,14 +10,14 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: service.request.set_query_args() errors if not a table
+=== TEST 1: service.request.set_query() errors if not a table
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.service.request.set_query_args, 127001)
+            local pok, err = pcall(sdk.service.request.set_query, 127001)
             ngx.say(err)
         }
     }
@@ -30,14 +30,14 @@ args must be a table
 
 
 
-=== TEST 2: service.request.set_query_args() errors if given no arguments
+=== TEST 2: service.request.set_query() errors if given no arguments
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.service.request.set_query_args)
+            local pok, err = pcall(sdk.service.request.set_query)
             ngx.say(err)
         }
     }
@@ -50,7 +50,7 @@ args must be a table
 
 
 
-=== TEST 3: service.request.set_query_args() errors if table values have bad types
+=== TEST 3: service.request.set_query() errors if table values have bad types
 --- config
     location = /t {
 
@@ -58,7 +58,7 @@ args must be a table
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.service.request.set_query_args, {
+            local pok, err = pcall(sdk.service.request.set_query, {
                 aaa = "foo",
                 bbb = function() end,
                 ccc = "bar",
@@ -77,7 +77,7 @@ attempt to use function as query arg value
 
 
 
-=== TEST 4: service.request.set_query_args() errors if table keys have bad types
+=== TEST 4: service.request.set_query() errors if table keys have bad types
 --- config
     location = /t {
 
@@ -85,7 +85,7 @@ attempt to use function as query arg value
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.service.request.set_query_args, {
+            local pok, err = pcall(sdk.service.request.set_query, {
                 aaa = "foo",
                 [true] = "what",
                 ccc = "bar",
@@ -104,7 +104,7 @@ arg keys must be strings
 
 
 
-=== TEST 5: service.request.set_query_args() accepts an empty table
+=== TEST 5: service.request.set_query() accepts an empty table
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -122,7 +122,7 @@ arg keys must be strings
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_query_args({})
+            sdk.service.request.set_query({})
 
         }
 
@@ -137,7 +137,7 @@ query: {nil}
 
 
 
-=== TEST 6: service.request.set_query_args() replaces the received post args
+=== TEST 6: service.request.set_query() replaces the received post args
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -155,7 +155,7 @@ query: {nil}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_query_args({
+            sdk.service.request.set_query({
                 foo = "hello world"
             })
 
@@ -172,7 +172,7 @@ query: {foo=hello%20world}
 
 
 
-=== TEST 7: service.request.set_query_args() urlencodes table values
+=== TEST 7: service.request.set_query() urlencodes table values
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -190,7 +190,7 @@ query: {foo=hello%20world}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_query_args({
+            sdk.service.request.set_query({
                 foo = "hello world"
             })
 
@@ -207,7 +207,7 @@ query: {foo=hello%20world}
 
 
 
-=== TEST 8: service.request.set_query_args() produces a deterministic lexicographical order
+=== TEST 8: service.request.set_query() produces a deterministic lexicographical order
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -225,7 +225,7 @@ query: {foo=hello%20world}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_query_args({
+            sdk.service.request.set_query({
                 foo = "hello world",
                 a = true,
                 aa = true,
@@ -245,7 +245,7 @@ query: {a&aa&foo=hello%20world&zzz=goodbye%20world}
 
 
 
-=== TEST 9: service.request.set_query_args() preserves the order of array arguments
+=== TEST 9: service.request.set_query() preserves the order of array arguments
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -263,7 +263,7 @@ query: {a&aa&foo=hello%20world&zzz=goodbye%20world}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_query_args({
+            sdk.service.request.set_query({
                 foo = "hello world",
                 a = true,
                 aa = { "zzz", true, true, "aaa" },
@@ -283,7 +283,7 @@ query: {a&aa=zzz&aa&aa&aa=aaa&foo=hello%20world&zzz=goodbye%20world}
 
 
 
-=== TEST 10: service.request.set_query_args() supports empty values
+=== TEST 10: service.request.set_query() supports empty values
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -301,7 +301,7 @@ query: {a&aa=zzz&aa&aa&aa=aaa&foo=hello%20world&zzz=goodbye%20world}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_query_args({
+            sdk.service.request.set_query({
                 aa = "",
             })
 
@@ -318,7 +318,7 @@ query: {aa=}
 
 
 
-=== TEST 11: service.request.set_query_args() accepts empty keys
+=== TEST 11: service.request.set_query() accepts empty keys
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -336,7 +336,7 @@ query: {aa=}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_query_args({
+            sdk.service.request.set_query({
                 [""] = "aa",
             })
 
@@ -353,7 +353,7 @@ query: {=aa}
 
 
 
-=== TEST 12: service.request.set_query_args() urlencodes table keys
+=== TEST 12: service.request.set_query() urlencodes table keys
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -371,7 +371,7 @@ query: {=aa}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_query_args({
+            sdk.service.request.set_query({
                 ["hello world"] = "aa",
             })
 
