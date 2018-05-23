@@ -4,95 +4,10 @@ local dao_helpers  = require "spec.02-integration.03-dao.helpers"
 local rbac = require "kong.rbac"
 local singletons = require "kong.singletons"
 local bit        = require "bit"
-
+local rbac_migrations_defaults = require "kong.rbac.migrations.01_defaults"
 
 local POLL_INTERVAL = 0.3
 
-
-local function create_rbac_defaults(dao)
-  local utils = require "kong.tools.utils"
-  local role, ok, err
-
-  -- create read only role
-  role, err = dao.rbac_roles:insert({
-      id = utils.uuid(),
-      name = "read-only",
-      comment = "Read access to all endpoints, across all workspaces",
-  })
-  if err then
-    return err
-  end
-
-  -- add endpoint permissions to the read only role
-  ok, err = dao.rbac_role_endpoints:insert({
-      role_id = role.id,
-      workspace = "*",
-      endpoint = "*",
-      actions = rbac.actions_bitfields.read,
-  })
-  if not ok then
-    return err
-  end
-
-  -- create admin role
-  role, err = dao.rbac_roles:insert({
-      id = utils.uuid(),
-      name = "admin",
-      comment = "Full access to all endpoints, across all workspaces - except RBAC Admin API",
-  })
-  if err then
-    return err
-  end
-
-  local action_bits_all = 0x0
-  for k, v in pairs(rbac.actions_bitfields) do
-    action_bits_all = bit.bor(action_bits_all, rbac.actions_bitfields[k])
-  end
-
-  -- add endpoint permissions to the admin role
-  ok, err = dao.rbac_role_endpoints:insert({
-      role_id = role.id,
-      workspace = "*",
-      endpoint = "*",
-      actions = action_bits_all, -- all actions
-  })
-  if not ok then
-    return err
-  end
-
-  -- add negative endpoint permissions to the rbac endpoint
-  ok, err = dao.rbac_role_endpoints:insert({
-      role_id = role.id,
-      workspace = "*",
-      endpoint = "/rbac",
-      negative = true,
-      actions = action_bits_all, -- all actions
-  })
-  if not ok then
-    return err
-  end
-
-  -- create super admin role
-  role, err = dao.rbac_roles:insert({
-      id = utils.uuid(),
-      name = "super-admin",
-      comment = "Full access to all endpoints, across all workspaces",
-  })
-  if err then
-    return err
-  end
-
-  -- add endpoint permissions to the super admin role
-  ok, err = dao.rbac_role_endpoints:insert({
-      role_id = role.id,
-      workspace = "*",
-      endpoint = "*",
-      actions = action_bits_all, -- all actions
-  })
-  if not ok then
-    return err
-  end
-end
 
 dao_helpers.for_each_dao(function(kong_conf)
 
@@ -183,7 +98,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
       helpers.with_default_ws(
         ws,
         function()
-          create_rbac_defaults(dao)
+          rbac_migrations_defaults.up(nil, nil, dao)
           -- a few extra mock entities for our test
           dao.rbac_users:insert({
               name = "alice",

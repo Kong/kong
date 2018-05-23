@@ -1,9 +1,4 @@
-local rbac = require "kong.rbac"
-local utils = require "kong.tools.utils"
-local bit = require "bit"
-
-
-local bor = bit.bor
+local rbac_migrations_defaults = require "kong.rbac.migrations.01_defaults"
 
 
 return {
@@ -265,7 +260,9 @@ return {
   },
   {
     name = "2018-04-20-122000_rbac_defaults",
-    rbac_migrations_defaults()
+    up = function(_, _, dao)
+      rbac_migrations_defaults.up(nil, nil, dao)
+    end
   },
   {
     name = "2018-02-01-000000_vitals_stats_v0.31",

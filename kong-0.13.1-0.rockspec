@@ -157,6 +157,7 @@ build = {
     ["kong.dao.schemas.workspace_entities"] = "kong/dao/schemas/workspace_entities.lua",
 
     ["kong.rbac"] = "kong/rbac/init.lua",
+    ["kong.rbac.migrations.01_defaults"] = "kong/rbac/migrations/01_defaults.lua",
 
     ["kong.workspaces"] = "kong/workspaces/init.lua",
 
