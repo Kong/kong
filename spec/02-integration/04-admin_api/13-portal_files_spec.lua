@@ -332,7 +332,10 @@ describe("Admin API - Developer Portal", function()
             assert.equal("bar", json.contents)
             assert.equal(fileStub.id, json.id)
 
-            local in_db = assert(helpers.dao.portal_files:find {id = fileStub.id})
+            local in_db = assert(helpers.dao.portal_files:find {
+              id = fileStub.id,
+              name = fileStub.name,
+            })
             assert.same(json, in_db)
           end
         end)
@@ -353,7 +356,10 @@ describe("Admin API - Developer Portal", function()
             assert.equal("bar", json.contents)
             assert.equal(fileStub.id, json.id)
 
-            local in_db = assert(helpers.dao.portal_files:find {id = fileStub.id})
+            local in_db = assert(helpers.dao.portal_files:find {
+              id = fileStub.id,
+              name = fileStub.name,
+            })
             assert.same(json, in_db)
           end
         end)
