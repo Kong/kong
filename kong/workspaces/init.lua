@@ -117,7 +117,7 @@ end
 
 
 local function is_blank(t)
-  return not t or #t == 0
+  return not t or not t[1]
 end
 
 function _M.create_default(dao)
