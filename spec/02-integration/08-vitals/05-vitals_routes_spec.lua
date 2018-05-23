@@ -5,6 +5,7 @@ local utils       = require "kong.tools.utils"
 local cassandra   = require "kong.vitals.cassandra.strategy"
 local postgres    = require "kong.vitals.postgres.strategy"
 local cjson       = require "cjson"
+local singletons = require "kong.singletons"
 local time        = ngx.time
 local fmt         = string.format
 
@@ -37,6 +38,7 @@ dao_helpers.for_each_dao(function(kong_conf)
     describe("when vitals is enabled", function()
       setup(function()
         dao = assert(dao_factory.new(kong_conf))
+        dao.singletons = singletons
 
         -- TODO: when this file is refactored to use the new dao, this line should
         -- return `bp, db, dao` and not just bp (there will be lint issues if
@@ -1658,6 +1660,7 @@ dao_helpers.for_each_dao(function(kong_conf)
     describe("when vitals is not enabled", function()
       setup(function()
         dao = assert(dao_factory.new(kong_conf))
+        dao.singletons = singletons
 
         dao:run_migrations()
 
