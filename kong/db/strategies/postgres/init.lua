@@ -558,6 +558,9 @@ local function execute(strategy, statement_name, attributes, is_update, ws_scope
 
   local sql = statement.make(argv)
 
+  local inspect = require("inspect")
+  print(inspect(sql))
+
   return connector:query(sql)
 end
 
@@ -588,7 +591,7 @@ local function page(self, size, token, foreign_key, foreign_entity_name)
       statement_name = "page_next"
       attributes     = {
         [LIMIT] = limit,
-      }----
+      }
     end
 
     local token_decoded = decode_base64(token)
@@ -648,7 +651,7 @@ local function page(self, size, token, foreign_key, foreign_entity_name)
       return rows, nil, offset
     end
 
-    rows[i] = ws_helper.remove_ws_prefix(self.schema.name, self.expand(row))
+    rows[i] = self.expand(row)
   end
 
   return rows
@@ -743,6 +746,7 @@ function _mt:select(primary_key)
 end
 
 
+-- TODO may not be needed
 function _mt:select_ws(primary_key, ws_scope)
   local res, err = execute(self, "select_ws", self.collapse(primary_key))
 
@@ -1303,8 +1307,9 @@ function _M.new(connector, schema, errors)
     " LIMIT 1;"
   }
 
+  local ws_fields = ", \"workspace_id\", \"workspace_name\""
   local select_statement_ws = concat {
-    "  SELECT ",  select_expressions, "\n",
+    "  SELECT ",  select_expressions .. ws_fields, "\n",
     "    FROM ( (",
     "            SELECT DISTINCT workspace_id, entity_id, name as workspace_name FROM",
     "            workspaces INNER JOIN workspace_entities ON",
@@ -1323,7 +1328,7 @@ function _M.new(connector, schema, errors)
   }
 
   local page_first_statement_ws = concat {
-    "  SELECT ",  select_expressions, "\n",
+    "  SELECT ",  select_expressions .. ws_fields, "\n",
     "    FROM ( (",
     "            SELECT DISTINCT workspace_id, entity_id, name as workspace_name FROM",
     "            workspaces INNER JOIN workspace_entities ON",
@@ -1343,7 +1348,7 @@ function _M.new(connector, schema, errors)
   }
 
   local page_next_statement_ws = concat {
-    "  SELECT ",  select_expressions, "\n",
+    "  SELECT ",  select_expressions .. ws_fields, "\n",
     "    FROM ( (",
     "            SELECT DISTINCT workspace_id, entity_id, name as workspace_name FROM",
     "            workspaces INNER JOIN workspace_entities ON",
@@ -1529,8 +1534,9 @@ function _M.new(connector, schema, errors)
         "   LIMIT $", argc_first, ";";
       }
 
+      local ws_fields = ", \"workspace_id\", \"workspace_name\""
       page_first_statement_ws = concat {
-        "  SELECT ",  select_expressions, "\n",
+        "  SELECT ",  select_expressions .. ws_fields, "\n",
         "    FROM ( (",
         "            SELECT DISTINCT workspace_id, entity_id, name as workspace_name FROM",
         "            workspaces INNER JOIN workspace_entities ON",
@@ -1552,7 +1558,7 @@ function _M.new(connector, schema, errors)
       }
 
       page_next_statement_ws = concat {
-        "  SELECT ",  select_expressions, "\n",
+        "  SELECT ",  select_expressions .. ws_fields, "\n",
         "    FROM ( (",
         "            SELECT DISTINCT workspace_id, entity_id, name as workspace_name FROM",
         "            workspaces INNER JOIN workspace_entities ON",
@@ -1625,7 +1631,7 @@ function _M.new(connector, schema, errors)
         make = compile(concat({ table_name, select_by_statement_name }, "_"), select_by_statement)
       }
 
-      local select_by_statement_name_ws = "select_by_" .. unique_name
+      local select_by_statement_name_ws = "select_by_" .. unique_name .. "_ws"
       local select_by_statement_ws = concat {
         "SELECT ", select_expressions, "\n",
         "    FROM ( (",

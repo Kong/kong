@@ -534,35 +534,11 @@ do
                token_template or "")
   end
 
+
   local opts = new_tab(0, 2)
 
 
-  function _mt:page_ws(ws_scope, size, offset, foreign_key, foreign_key_db_columns)
-    if offset then
-      local offset_decoded = decode_base64(offset)
-      if not offset_decoded then
-        return nil, self.errors:invalid_offset(offset, "bad base64 encoding")
-      end
-
-      offset = offset_decoded
-    end
-
-    local cql
-    local args
-
-    if not foreign_key then
-      cql = self.queries.select_page
-
-    elseif foreign_key and foreign_key_db_columns then
-      args = new_tab(#foreign_key_db_columns, 0)
-      cql = fmt(self.queries.select_with_filter, foreign_key_db_columns.args_names)
-
-      serialize_foreign_pk(foreign_key_db_columns, args, nil, foreign_key)
-
-    else
-      error("should provide both of: foreign_key, foreign_key_db_columns", 2)
-    end
-
+  function _mt:page_ws(ws_scope, size, offset, cql, args)
     local table_name = self.schema.name
 
     local primary_key = workspaces.get_workspaceable_relations()[table_name].primary_key
@@ -577,23 +553,22 @@ do
     local token = offset
     while(true) do
       local cql = select_query_page(cql, table_name,  primary_key, token, size)
-      local rows, err = self.connector:query(cql, args, opts, "read")
+      local rows, err = self.connector:query(cql, args, {}, "read")
       if not rows then
         return nil, self.errors:database_error("could not execute page query: "
-          .. err)
+                                               .. err)
       end
 
       for _, row in ipairs(rows) do
-        local row_decoded = ws_helper.remove_ws_prefix(table_name, deserialize_row(self, row))
-        local ws_entity = ws_entities_map[row_decoded[primary_key]]
+        local ws_entity = ws_entities_map[row[primary_key]]
         if ws_entity then
-          row_decoded.workspace_id = ws_entity.workspace_id
-          res_rows[#res_rows+1] = row_decoded
+          row.workspace_id = ws_entity.workspace_id
+          res_rows[#res_rows+1] = row
           if #res_rows == size then
-            return res_rows, nil, encode_base64(row_decoded[primary_key])
+            return res_rows, nil, encode_base64(row[primary_key])
           end
         end
-        token = row_decoded[primary_key]
+        token = row[primary_key]
       end
 
       if #rows == 0 then
@@ -601,7 +576,7 @@ do
       end
     end
 
-    return res_rows, nil, nil
+    return res_rows
   end
 end
 
@@ -610,11 +585,6 @@ do
 
 
   function _mt:page(size, offset, foreign_key, foreign_key_db_columns)
-    local ws_scope = get_workspaces()
-    if #ws_scope > 0 and workspaceable[self.schema.name]  then
-      return self:page_ws(ws_scope, size, offset, foreign_key, foreign_key_db_columns)
-    end
-
     if offset then
       local offset_decoded = decode_base64(offset)
       if not offset_decoded then
@@ -638,6 +608,11 @@ do
 
     else
       error("should provide both of: foreign_key, foreign_key_db_columns", 2)
+    end
+
+    local ws_scope = get_workspaces()
+    if #ws_scope > 0 and workspaceable[self.schema.name]  then
+      return self:page_ws(ws_scope, size, offset, cql, args)
     end
 
     opts.page_size = size

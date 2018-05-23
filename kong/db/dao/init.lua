@@ -181,6 +181,8 @@ local function generate_foreign_key_methods(self)
           return self:delete(pk)
         end
 
+        -- if workspace present and pk is nil
+        -- entity not found, return
         local ws_scope = workspaces.get_workspaces()
         if #ws_scope > 0 then
           return nil
@@ -235,7 +237,6 @@ function DAO:select(primary_key)
   if err_t then
     return nil, tostring(err_t), err_t
   end
-  ws_helper.remove_ws_prefix(self.schema.name, row)
 
   if not row then
     return nil
@@ -341,7 +342,11 @@ function DAO:insert(entity)
     return nil, tostring(err_t), err_t
   end
 
-  ws_helper.remove_ws_prefix(self.schema.name, row)
+  row, err, err_t = self:row_to_entity(row)
+  if not row then
+    return nil, err, err_t
+  end
+
   if not err and workspace then
     local err_rel = workspaces.add_entity_relation(self.schema.name, row, workspace)
     if err_rel then
@@ -351,11 +356,6 @@ function DAO:insert(entity)
       end
       return nil, tostring(err_rel), err_rel
     end
-  end
-
-  row, err, err_t = self:row_to_entity(row)
-  if not row then
-    return nil, err, err_t
   end
 
   self:post_crud_event("create", row)
@@ -405,7 +405,6 @@ function DAO:update(primary_key, entity)
     return nil, err, err_t
   end
 
-  ws_helper.remove_ws_prefix(self.schema.name, row)
   if not err then
     local err_rel = workspaces.update_entity_relation(self.schema.name, row)
     if err_rel then
@@ -438,19 +437,13 @@ function DAO:delete(primary_key)
     return nil, tostring(err_t), err_t
   end
 
-  -- TODO Delete associated entities from workspace_entities
-  local err_t = workspaces.delete_entity_relation(self.schema.name, primary_key)
-  if err_t then
-    return nil, tostring(err_t), err_t
-  end
-
   self:post_crud_event("delete")
 
   return true
 end
 
 
-function DAO:rows_to_entities(rows)
+function DAO:rows_to_entities(rows, include_ws)
   local count = #rows
   if count == 0 then
     return setmetatable(rows, cjson.empty_array_mt)
@@ -459,7 +452,7 @@ function DAO:rows_to_entities(rows)
   local entities = new_tab(count, 0)
 
   for i = 1, count do
-    local entity, err, err_t = self:row_to_entity(rows[i])
+    local entity, err, err_t = self:row_to_entity(rows[i], include_ws)
     if not entity then
       return nil, err, err_t
     end
@@ -471,12 +464,14 @@ function DAO:rows_to_entities(rows)
 end
 
 
-function DAO:row_to_entity(row)
+function DAO:row_to_entity(row, include_ws)
   local entity, errors = self.schema:process_auto_fields(row, "select")
   if not entity then
     local err_t = self.errors:schema_violation(errors)
     return nil, tostring(err_t), err_t
   end
+
+  ws_helper.remove_ws_prefix(self.schema.name, entity, include_ws)
 
   return entity
 end
