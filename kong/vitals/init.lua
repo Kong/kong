@@ -98,6 +98,17 @@ local worker_count = ngx.worker.count()
 local _M = {}
 local mt = { __index = _M }
 
+-- map to where to find certain metrics in ngx.ctx, and what type they are
+-- initially for use by logging plugins.
+local logging_metrics = {
+  cache_metrics = {
+    cache_datastore_hits_total   = "counter",
+    cache_datastore_misses_total = "counter",
+  }
+}
+_M.logging_metrics = logging_metrics
+
+
 --[[
   use signed ints to support sentinel values on "max" stats e.g.,
   proxy and upstream max latencies
@@ -888,6 +899,7 @@ end
 
 
 local function increment_counter(vitals, counter_name)
+  -- increment in our bucket
   local bucket, err = vitals:current_bucket()
 
   if bucket then
@@ -895,6 +907,23 @@ local function increment_counter(vitals, counter_name)
   else
     log(DEBUG, _log_prefix, err)
   end
+
+  -- increment in ngx.ctx
+  local cache_metrics = ngx.ctx.cache_metrics or {
+    cache_datastore_hits_total = 0,
+    cache_datastore_misses_total = 0,
+  }
+
+  -- assume it's a hit
+  local ctx_key = "cache_datastore_hits_total"
+  if counter_name == "l2_misses" then
+    ctx_key = "cache_datastore_misses_total"
+  end
+
+  cache_metrics[ctx_key] = cache_metrics[ctx_key] + 1
+
+  -- make sure it's set -- we may have init'ed cache_metrics in this call
+  ngx.ctx.cache_metrics = cache_metrics
 end
 
 
