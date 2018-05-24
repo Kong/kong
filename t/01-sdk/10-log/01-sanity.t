@@ -31,7 +31,7 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: sdk has top-level logging facility
+=== TEST 1: sdk has core logging facility
 --- config
     location /t {
         content_by_lua_block {
@@ -50,7 +50,7 @@ type: table
 
 
 
-=== TEST 2: kong.log() produces top-level notice message
+=== TEST 2: kong.log() produces core notice message
 --- config
     location /t {
         content_by_lua_block {
@@ -70,7 +70,7 @@ qr/\[notice\] .*? \[kong\] .*? hello world/
 
 
 
-=== TEST 3: kong.debug() produces top-level debug message
+=== TEST 3: kong.debug() produces core debug message
 --- config
     location /t {
         content_by_lua_block {
@@ -90,7 +90,7 @@ qr/\[debug\] .*? \[kong\] .*? hello world/
 
 
 
-=== TEST 4: kong.info() produces top-level info message
+=== TEST 4: kong.info() produces core info message
 --- config
     location /t {
         content_by_lua_block {
@@ -110,7 +110,7 @@ qr/\[info\] .*? \[kong\] .*? hello world/
 
 
 
-=== TEST 5: kong.notice() produces top-level notice message
+=== TEST 5: kong.notice() produces core notice message
 --- config
     location /t {
         content_by_lua_block {
@@ -130,7 +130,7 @@ qr/\[notice\] .*? \[kong\] .*? hello world/
 
 
 
-=== TEST 6: kong.warn() produces top-level warn message
+=== TEST 6: kong.warn() produces core warn message
 --- config
     location /t {
         content_by_lua_block {
@@ -150,7 +150,7 @@ qr/\[warn\] .*? \[kong\] .*? hello world/
 
 
 
-=== TEST 7: kong.err() produces top-level err message
+=== TEST 7: kong.err() produces core err message
 --- config
     location /t {
         content_by_lua_block {
@@ -170,7 +170,7 @@ qr/\[error\] .*? \[kong\] .*? hello world/
 
 
 
-=== TEST 8: kong.crit() produces top-level crit message
+=== TEST 8: kong.crit() produces core crit message
 --- config
     location /t {
         content_by_lua_block {
@@ -190,7 +190,7 @@ qr/\[crit\] .*? \[kong\] .*? hello world/
 
 
 
-=== TEST 9: kong.alert() produces top-level alert message
+=== TEST 9: kong.alert() produces core alert message
 --- config
     location /t {
         content_by_lua_block {
@@ -210,7 +210,7 @@ qr/\[alert\] .*? \[kong\] .*? hello world/
 
 
 
-=== TEST 10: kong.alert() produces top-level emerg message
+=== TEST 10: kong.alert() produces core emerg message
 --- config
     location /t {
         content_by_lua_block {
@@ -230,7 +230,7 @@ qr/\[emerg\] .*? \[kong\] .*? hello world/
 
 
 
-=== TEST 11: kong.log has top-level logging format & proper stack level (1/2)
+=== TEST 11: kong.log has core logging format & proper stack level (1/2)
 --- config
     location /t {
         content_by_lua_block {
@@ -254,7 +254,7 @@ qr/\[notice\] .*? \[kong\] content_by_lua\(nginx\.conf:\d+\):6 hello from my_fun
 
 
 
-=== TEST 12: kong.log has top-level logging format & proper stack level (2/2)
+=== TEST 12: kong.log has core logging format & proper stack level (2/2)
 --- config
     location /t {
         content_by_lua_block {

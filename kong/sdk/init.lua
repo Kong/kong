@@ -79,16 +79,16 @@ function _SDK.new(kong_config, major_version, self)
   })
 
   for _, module_name in ipairs(version_meta.modules) do
-
     local parent = self
     for part in module_name:gmatch("([^.]+)%.") do
       if not parent[part] then
         parent[part] = {}
       end
+
       parent = parent[part]
     end
-    local child = module_name:match("[^.]*$")
 
+    local child = module_name:match("[^.]*$")
     if parent[child] then
       error("SDK module '" .. module_name .. "' conflicts with a key")
     end
@@ -96,7 +96,6 @@ function _SDK.new(kong_config, major_version, self)
     local mod = require("kong.sdk." .. module_name)
 
     parent[child] = mod.new(self)
-
   end
 
   return self

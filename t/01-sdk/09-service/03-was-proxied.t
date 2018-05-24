@@ -48,6 +48,3 @@ GET /t
 false
 --- no_error_log
 [error]
-
-
-
