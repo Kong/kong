@@ -142,7 +142,7 @@ describe("Plugin: workspace scope test key-auth (access)", function()
         method = "POST",
         path   = "/foo/apis/" .. api1.name .. "/plugins" ,
         body   = {
-          name = "request-transformer-advanced",
+          name = "request-transformer",
           config = {
             add = {
               headers = "X-TEST:ok"
