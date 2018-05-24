@@ -56,12 +56,50 @@ function _GLOBAL.set_named_ctx(self, name, key)
 end
 
 
-function _GLOBAL.init_sdk(self, kong_config, sdk_major_version)
-  if not self then
-    error("arg #1 cannot be nil", 2)
+do
+  local log_facilities = {
+    core = nil,
+    namespaced = setmetatable({}, { __index = "k" }),
+  }
+
+
+  function _GLOBAL.set_namespaced_log(self, namespace)
+    if not self then
+      error("arg #1 cannot be nil", 2)
+    end
+
+    if type(namespace) ~= "string" then
+      error("namespace (arg #2) must be a string", 2)
+    end
+
+    local log = log_facilities.namespaced[namespace]
+    if not log then
+      log = self.log.new(namespace) -- use default namespaced format
+      log_facilities.namespaced[namespace] = log
+    end
+
+    self.log = log
   end
 
-  return SDK.new(kong_config, sdk_major_version, self)
+
+  function _GLOBAL.reset_log(self)
+    if not self then
+      error("arg #1 cannot be nil", 2)
+    end
+
+    self.log = log_facilities.core
+  end
+
+
+  function _GLOBAL.init_sdk(self, kong_config, sdk_major_version)
+    if not self then
+      error("arg #1 cannot be nil", 2)
+    end
+
+    SDK.new(kong_config, sdk_major_version, self)
+
+    log_facilities.core = self.log
+  end
 end
 
 

@@ -59,6 +59,7 @@ host: example.com
 [error]
 
 
+
 === TEST 3: service.set_target() errors if port is not a number
 --- config
     location = /t {

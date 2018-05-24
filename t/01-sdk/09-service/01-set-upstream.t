@@ -69,6 +69,7 @@ host: my_upstream
 [error]
 
 
+
 === TEST 3: service.set_upstream() fails when given an invalid upstream
 --- config
     location = /t {
@@ -106,5 +107,3 @@ nil
 err: could not find an Upstream named 'not_an_upstream'
 --- no_error_log
 [error]
-
-

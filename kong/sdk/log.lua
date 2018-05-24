@@ -290,16 +290,12 @@ local function new_log(namespace, format)
 end
 
 
+_log_mt.__index = _log_mt
+_log_mt.new = new_log
+
+
 return {
   new = function()
-    local _LOG = new_log("core", _DEFAULT_FORMAT)
-
-
-    function _LOG.new(namespace, format)
-      return new_log(namespace, format or _DEFAULT_NAMESPACED_FORMAT)
-    end
-
-
-    return _LOG
+    return new_log("core", _DEFAULT_FORMAT)
   end,
 }

@@ -48,7 +48,6 @@ require("kong.globalpatches")()
 local kong_global = require "kong.global"
 
 
---_G.kong = kong_global.new()
 _G.kong = kong_global.new() -- no versioned SDK for plugins for now
 
 
@@ -175,6 +174,8 @@ function Kong.init()
   local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
   local config = assert(conf_loader(conf_path))
 
+  kong_global.init_sdk(kong, config, nil) -- nil: latest SDK
+
   local db = assert(DB.new(config))
   assert(db:init_connector())
 
@@ -200,9 +201,6 @@ function Kong.init()
   singletons.configuration = config
   singletons.db = db
   -- /LEGACY
-
-  kong_global.init_sdk(kong, config, nil) -- nil: latest SDK
-  kong_global.init_sdk(kong, config, nil) -- nil: latest SDK
 
   kong.dao = dao
   kong.db = db
@@ -319,6 +317,8 @@ function Kong.init_worker()
 
 
   for _, plugin in ipairs(loaded_plugins) do
+    kong_global.set_namespaced_log(kong, plugin.handler._name)
+
     plugin.handler:init_worker()
   end
 end
@@ -407,9 +407,12 @@ function Kong.rewrite()
   -- api will have been identified, hence we'll just be executing the global
   -- plugins
   for plugin, plugin_conf in plugins_iterator(loaded_plugins, true) do
-    kong_global.set_named_ctx("plugin", plugin_conf)
+    kong_global.set_named_ctx(kong, "plugin", plugin_conf)
+    kong_global.set_namespaced_log(kong, plugin.handler._name)
 
     plugin.handler:rewrite(plugin_conf)
+
+    kong_global.reset_log(kong)
   end
 
   runloop.rewrite.after(ctx)
@@ -424,9 +427,13 @@ function Kong.access()
 
   for plugin, plugin_conf in plugins_iterator(loaded_plugins, true) do
     if not ctx.delayed_response then
-      kong_global.set_named_ctx("plugin", plugin_conf)
+      kong_global.set_named_ctx(kong, "plugin", plugin_conf)
+      kong_global.set_namespaced_log(kong, plugin.handler._name)
 
       local err = coroutine.wrap(plugin.handler.access)(plugin.handler, plugin_conf)
+
+      kong_global.reset_log(kong)
+
       if err then
         ctx.delay_response = false
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
@@ -449,9 +456,12 @@ function Kong.header_filter()
   runloop.header_filter.before(ctx)
 
   for plugin, plugin_conf in plugins_iterator(loaded_plugins) do
-    kong_global.set_named_ctx("plugin", plugin_conf)
+    kong_global.set_named_ctx(kong, "plugin", plugin_conf)
+    kong_global.set_namespaced_log(kong, plugin.handler._name)
 
     plugin.handler:header_filter(plugin_conf)
+
+    kong_global.reset_log(kong)
   end
 
   runloop.header_filter.after(ctx)
@@ -459,9 +469,12 @@ end
 
 function Kong.body_filter()
   for plugin, plugin_conf in plugins_iterator(loaded_plugins) do
-    kong_global.set_req_ctx_key(_G.kong, plugin_conf)
+    kong_global.set_named_ctx(kong, "plugin", plugin_conf)
+    kong_global.set_namespaced_log(kong, plugin.handler._name)
 
     plugin.handler:body_filter(plugin_conf)
+
+    kong_global.reset_log(kong)
   end
 
   runloop.body_filter.after(ngx.ctx)
@@ -469,9 +482,12 @@ end
 
 function Kong.log()
   for plugin, plugin_conf in plugins_iterator(loaded_plugins) do
-    kong_global.set_named_ctx("plugin", plugin_conf)
+    kong_global.set_named_ctx(kong, "plugin", plugin_conf)
+    kong_global.set_namespaced_log(kong, plugin.handler._name)
 
     plugin.handler:log(plugin_conf)
+
+    kong_global.reset_log(kong)
   end
 
   runloop.log.after(ngx.ctx)
