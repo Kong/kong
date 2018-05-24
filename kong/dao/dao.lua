@@ -323,23 +323,18 @@ function DAO:find(tbl)
     return ret_error(self.db.name, nil, Errors.schema(err))
   end
 
-  -- XXX find a better, cleaner way to handle this logic - so that
-  -- there is no unreachable code, but still no upstream tainting
   local r = rbac.validate_entity_operation(primary_keys, constraints)
   if not r then
     ret_error(self.db.name, nil, "[RBAC] Unauthorized find")
   end
 
-  do
-    local row, err = self.db:find(self.table, self.schema, primary_keys)
-    if err then
-      ret_error(self.db.name, row, err)
-    end
-    remove_ws_prefix(self.schema.table, row)
-    return ret_error(self.db.name, row, err)
+  local row, err = self.db:find(self.table, self.schema, primary_keys)
+  if err then
+    ret_error(self.db.name, row, err)
   end
+  remove_ws_prefix(self.schema.table, row)
 
-  return ret_error(self.db.name, self.db:find(self.table, self.schema, primary_keys))
+  return ret_error(self.db.name, row, err)
 end
 
 --- Find all rows.
@@ -371,26 +366,20 @@ function DAO:find_all(tbl, include_ws)
     end
   end
 
-  -- XXX find a better, cleaner way to handle this logic - so that
-  -- there is no unreachable code, but still no upstream tainting
-  do
-    local rows, err = self.db:find_all(self.table, tbl, self.schema)
-    if err then
-      return ret_error(self.db.name, nil, Errors.schema(err))
-    end
-
-    for _, row in ipairs(rows) do
-      remove_ws_prefix(table_name, row, include_ws)
-    end
-
-    if skip_rbac ~= true then
-      rows = rbac.narrow_readable_entities(table_name, rows, constraints)
-    end
-
-    return ret_error(self.db.name, rows, err)
+  local rows, err = self.db:find_all(self.table, tbl, self.schema)
+  if err then
+    return ret_error(self.db.name, nil, Errors.schema(err))
   end
 
-  return ret_error(self.db.name, self.db:find_all(self.table, tbl, self.schema))
+  for _, row in ipairs(rows) do
+    remove_ws_prefix(table_name, row, include_ws)
+  end
+
+  if skip_rbac ~= true then
+    rows = rbac.narrow_readable_entities(table_name, rows, constraints)
+  end
+
+  return ret_error(self.db.name, rows, err)
 end
 
 --- Find a paginated set of rows.
@@ -424,23 +413,18 @@ function DAO:find_page(tbl, page_offset, page_size)
 
   check_arg(page_size, 3, "number")
 
-  -- XXX find a better, cleaner way to handle this logic - so that
-  -- there is no unreachable code, but still no upstream tainting
-  do
-    local rows, err, offset = self.db:find_page(self.table, tbl, page_offset,
-                                                page_size, self.schema)
-    if err then
-      return ret_error(self.db.name, nil, err)
-    end
-    for _, row in ipairs(rows) do
-      remove_ws_prefix(self.schema.table, row)
-    end
-
-    rows = rbac.narrow_readable_entities(self.schema.table, rows, constraints)
-    return ret_error(self.db.name, rows, err, offset)
+  local rows, err, offset = self.db:find_page(self.table, tbl, page_offset,
+                                              page_size, self.schema)
+  if err then
+    return ret_error(self.db.name, nil, err)
+  end
+  for _, row in ipairs(rows) do
+    remove_ws_prefix(self.schema.table, row)
   end
 
-  return ret_error(self.db.name, self.db:find_page(self.table, tbl, page_offset, page_size, self.schema))
+  rows = rbac.narrow_readable_entities(self.schema.table, rows, constraints)
+
+  return ret_error(self.db.name, rows, err, offset)
 end
 
 --- Count the number of rows.
