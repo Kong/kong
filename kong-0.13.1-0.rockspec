@@ -247,6 +247,7 @@ build = {
     ["kong.plugins.acl.schema"] = "kong/plugins/acl/schema.lua",
     ["kong.plugins.acl.api"] = "kong/plugins/acl/api.lua",
     ["kong.plugins.acl.daos"] = "kong/plugins/acl/daos.lua",
+    ["kong.plugins.acl.groups"] = "kong/plugins/acl/groups.lua",
 
     ["kong.plugins.correlation-id.handler"] = "kong/plugins/correlation-id/handler.lua",
     ["kong.plugins.correlation-id.schema"] = "kong/plugins/correlation-id/schema.lua",
