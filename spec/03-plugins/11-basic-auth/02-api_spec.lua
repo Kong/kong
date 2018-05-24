@@ -165,7 +165,7 @@ for _, strategy in helpers.each_strategy() do
 
       describe("GET", function()
         setup(function()
-          helpers.with_default_ws(
+          helpers.with_current_ws(
             dao.workspaces:find_all({name = "default"}),
             function()
                 for i = 1, 3 do
@@ -226,7 +226,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(credential.id, json.id)
         end)
         it("retrieves credential by id only if the credential belongs to the specified consumer", function()
-          helpers.with_default_ws(
+          helpers.with_current_ws(
             dao.workspaces:find_all({name = "default"}),
             function()
               assert(dao.consumers:insert {
@@ -334,7 +334,7 @@ for _, strategy in helpers.each_strategy() do
       describe("GET", function()
         setup(function()
           dao:truncate_table("basicauth_credentials")
-          helpers.with_default_ws(
+          helpers.with_current_ws(
             dao.workspaces:find_all({name = "default"}),
             function()
               assert(dao.basicauth_credentials:insert {
@@ -432,7 +432,7 @@ for _, strategy in helpers.each_strategy() do
         local credential
         setup(function()
           dao:truncate_table("basicauth_credentials")
-          helpers.with_default_ws(
+          helpers.with_current_ws(
             dao.workspaces:find_all({name = "default"}),
             function()
               credential = assert(dao.basicauth_credentials:insert {

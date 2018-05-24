@@ -34,7 +34,7 @@ for _, strategy in helpers.each_strategy() do
 
       local ws = dao.workspaces:find_all({name = "default"})
 
-      helpers.with_default_ws(
+      helpers.with_current_ws(
         ws,
         function()
           for i = 1, 10 do
@@ -646,7 +646,7 @@ for _, strategy in helpers.each_strategy() do
       local jwt_secret, route2, service2, route1, service1
       local ws = dao.workspaces:find_all({name = "default"})
 
-      helpers.with_default_ws(
+      helpers.with_current_ws(
         ws,
         function()
           service1 = bp.services:insert({

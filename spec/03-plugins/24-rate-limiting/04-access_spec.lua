@@ -75,7 +75,7 @@ for _, strategy in helpers.each_strategy() do
         assert(dao:run_migrations())
 
         local ws = dao.workspaces:find_all({name = "default" })
-        helpers.with_default_ws(
+        helpers.with_current_ws(
           ws,
           function()
 
@@ -438,7 +438,7 @@ for _, strategy in helpers.each_strategy() do
             dao:truncate_tables()
 
             local ws = dao.workspaces:find_all({name = "default" })
-            helpers.with_default_ws(
+            helpers.with_current_ws(
               ws,
               function()
 
@@ -519,7 +519,7 @@ for _, strategy in helpers.each_strategy() do
           before_each(function()
             helpers.kill_all()
             local ws = dao.workspaces:find_all({name = "default" })
-            helpers.with_default_ws(
+            helpers.with_current_ws(
               ws,
               function()
 
@@ -649,7 +649,7 @@ for _, strategy in helpers.each_strategy() do
         assert(dao:run_migrations())
 
         local ws = dao.workspaces:find_all({name = "default" })
-        helpers.with_default_ws(
+        helpers.with_current_ws(
           ws,
           function()
             local consumer = bp.consumers:insert {

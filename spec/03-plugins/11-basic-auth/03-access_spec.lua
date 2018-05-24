@@ -16,7 +16,7 @@ for _, strategy in helpers.each_strategy() do
       local ws = dao.workspaces:find_all({name = "default"})
 
 
-      helpers.with_default_ws(
+      helpers.with_current_ws(
         ws,
         function()
           consumer = bp.consumers:insert {
@@ -367,7 +367,7 @@ for _, strategy in helpers.each_strategy() do
     setup(function()
       local bp, _, dao = helpers.get_db_utils(strategy)
       local ws = dao.workspaces:find_all({ name = "default" })
-      helpers.with_default_ws(
+      helpers.with_current_ws(
         ws,
         function()
           anonymous = bp.consumers:insert {

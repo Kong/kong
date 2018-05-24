@@ -47,7 +47,7 @@ describe("Admin API", function()
 
     helpers.dao:truncate_tables()
 
-    helpers.with_default_ws(
+    helpers.with_current_ws(
       helpers.dao.workspaces:find_all({name = "default"}),
       function()
         upstream = assert(helpers.dao.upstreams:insert {
@@ -205,7 +205,7 @@ describe("Admin API", function()
       local apis = {}
 
       before_each(function()
-        helpers.with_default_ws(
+        helpers.with_current_ws(
           helpers.dao.workspaces:find_all({name = "default"}),
           function()
             local upstream3 = assert(helpers.dao.upstreams:insert {
@@ -454,7 +454,7 @@ describe("Admin API", function()
   describe("/upstreams/{upstream}/targets/all/", function()
     describe("GET", function()
       before_each(function()
-          helpers.with_default_ws(
+          helpers.with_current_ws(
             helpers.dao.workspaces:find_all({name = "default"}),
             function()
               for i = 1, 10 do
@@ -532,7 +532,7 @@ describe("Admin API", function()
         local upstream_name2 = "getkong.org"
 
         before_each(function()
-          helpers.with_default_ws(
+          helpers.with_current_ws(
             helpers.dao.workspaces:find_all({name = "default"}),
             function()
               assert(helpers.dao.upstreams:insert {
@@ -677,7 +677,7 @@ describe("Admin API", function()
 
       before_each(function()
         local upstream4
-        helpers.with_default_ws(
+        helpers.with_current_ws(
           helpers.dao.workspaces:find_all({name = "default"}),
           function()
             upstream4 = assert(helpers.dao.upstreams:insert {

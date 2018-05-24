@@ -1223,7 +1223,7 @@ return {
       wait_pid(pid_path, timeout)
     end
   end,
-  with_default_ws = function(ws,fn)
+  with_current_ws = function(ws,fn)
     local old_ws = ngx.ctx.workspaces
     ngx.ctx.workspaces = ws
     local res = fn()

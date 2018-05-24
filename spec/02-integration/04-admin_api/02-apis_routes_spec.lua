@@ -352,7 +352,7 @@ pending("Admin API #" .. kong_config.database, function()
 
     describe("GET", function()
       before_each(function()
-        helpers.with_default_ws(
+        helpers.with_current_ws(
           dao.workspaces:find_all({name = "default"}),
           function()
             for i = 1, 10 do
@@ -473,7 +473,7 @@ pending("Admin API #" .. kong_config.database, function()
       dao:truncate_tables()
     end)
     before_each(function()
-      helpers.with_default_ws(
+      helpers.with_current_ws(
         dao.workspaces:find_all({name = "default"}),
         function()
           api = assert(dao.apis:insert {
@@ -736,7 +736,7 @@ pending("Admin API #" .. kong_config.database, function()
   pending("/apis/{api}/plugins", function()
     local api
     before_each(function()
-      helpers.with_default_ws(
+      helpers.with_current_ws(
         dao.workspaces:find_all({name = "default"}),
         function()
           api = assert(dao.apis:insert {
@@ -930,7 +930,7 @@ pending("Admin API #" .. kong_config.database, function()
       it_content_types("perfers default values when replacing", function(content_type)
         return function()
           local plugin
-          helpers.with_default_ws(
+          helpers.with_current_ws(
             dao.workspaces:find_all({name = "default"}),
             function()
               plugin = assert(dao.plugins:insert {
@@ -968,7 +968,7 @@ pending("Admin API #" .. kong_config.database, function()
       it_content_types("overrides a plugin previous config if partial", function(content_type)
         return function()
           local plugin
-          helpers.with_default_ws(
+          helpers.with_current_ws(
             dao.workspaces:find_all({name = "default"}),
             function()
               plugin = assert(dao.plugins:insert {
@@ -997,7 +997,7 @@ pending("Admin API #" .. kong_config.database, function()
       it_content_types("updates the enabled property", function(content_type)
         return function()
           local plugin
-          helpers.with_default_ws(
+          helpers.with_current_ws(
             dao.workspaces:find_all({name = "default"}),
             function()
               plugin = assert(dao.plugins:insert {
@@ -1055,7 +1055,7 @@ pending("Admin API #" .. kong_config.database, function()
       end)
 
       it("retrieves the first page", function()
-        helpers.with_default_ws(
+        helpers.with_current_ws(
           dao.workspaces:find_all({name = "default"}),
           function()
             assert(dao.plugins:insert {
@@ -1087,7 +1087,7 @@ pending("Admin API #" .. kong_config.database, function()
     describe("/apis/{api}/plugins/{plugin}", function()
       local plugin
       before_each(function()
-        helpers.with_default_ws(
+        helpers.with_current_ws(
           dao.workspaces:find_all({name = "default"}),
           function()
             plugin = assert(dao.plugins:insert {
@@ -1117,7 +1117,7 @@ pending("Admin API #" .. kong_config.database, function()
         it("only retrieves if associated to the correct API", function()
           -- Create an API and try to query our plugin through it
           local w_api
-          helpers.with_default_ws(
+          helpers.with_current_ws(
             dao.workspaces:find_all({name = "default"}),
             function()
               w_api = assert(dao.apis:insert {

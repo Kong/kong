@@ -95,7 +95,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
       end
 
       local ws = dao.workspaces:find_all({name = "default"})
-      helpers.with_default_ws(
+      helpers.with_current_ws(
         ws,
         function()
           rbac_migrations_defaults.up(nil, nil, dao)

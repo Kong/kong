@@ -34,7 +34,7 @@ for _, strategy in helpers.each_strategy() do
     describe("/consumers/:consumer/jwt/", function()
       setup(function()
         local ws = dao.workspaces:find_all({name = "default"})
-        helpers.with_default_ws(
+        helpers.with_current_ws(
           ws,
           function()
             consumer = assert(dao.consumers:insert {
@@ -338,7 +338,7 @@ for _, strategy in helpers.each_strategy() do
           dao:truncate_table("jwt_secrets")
 
           local ws = dao.workspaces:find_all({name = "default"})
-          helpers.with_default_ws(
+          helpers.with_current_ws(
             ws,
             function()
               assert(dao.jwt_secrets:insert {
@@ -435,7 +435,7 @@ for _, strategy in helpers.each_strategy() do
         setup(function()
           dao:truncate_table("jwt_secrets")
           local ws = dao.workspaces:find_all({name = "default"})
-          helpers.with_default_ws(
+          helpers.with_current_ws(
             ws,
             function()
               credential = assert(dao.jwt_secrets:insert {
