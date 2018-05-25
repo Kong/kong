@@ -4,7 +4,7 @@ use Test::Nginx::Socket::Lua;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 
-plan tests => repeat_each() * (blocks() * 3);
+plan tests => repeat_each() * (blocks() * 3) + 1;
 
 run_tests();
 
@@ -14,16 +14,28 @@ __DATA__
 --- config
     location = /t {
         content_by_lua_block {
+        }
+
+        header_filter_by_lua_block {
+            ngx.header.content_length = nil
+
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.response.set_headers)
-            ngx.say(err)
+            local ok, err = pcall(sdk.response.set_headers)
+            if not ok then
+                ngx.ctx.err = err
+            end
+        }
+
+        body_filter_by_lua_block {
+            ngx.arg[1] = ngx.ctx.err
+            ngx.arg[2] = true
         }
     }
 --- request
 GET /t
---- response_body
+--- response_body chop
 headers must be a table
 --- no_error_log
 [error]
@@ -34,16 +46,28 @@ headers must be a table
 --- config
     location = /t {
         content_by_lua_block {
+        }
+
+        header_filter_by_lua_block {
+            ngx.header.content_length = nil
+
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.response.set_headers, 127001)
-            ngx.say(err)
+            local ok, err = pcall(sdk.response.set_headers, 127001)
+            if not ok then
+                ngx.ctx.err = err
+            end
+        }
+
+        body_filter_by_lua_block {
+            ngx.arg[1] = ngx.ctx.err
+            ngx.arg[2] = true
         }
     }
 --- request
 GET /t
---- response_body
+--- response_body chop
 headers must be a table
 --- no_error_log
 [error]
@@ -57,6 +81,9 @@ headers must be a table
 
         location /t {
             content_by_lua_block {
+            }
+
+            header_filter_by_lua_block {
                 local SDK = require "kong.sdk"
                 local sdk = SDK.new()
 
@@ -74,6 +101,7 @@ headers must be a table
 
         body_filter_by_lua_block {
             ngx.arg[1] = "X-Foo: {" .. ngx.resp.get_headers()["X-Foo"] .. "}"
+            ngx.arg[2] = true
         }
     }
 --- request
@@ -130,6 +158,9 @@ X-Foo: {hello world}
 
         location /t {
             content_by_lua_block {
+            }
+
+            header_filter_by_lua_block {
                 local SDK = require "kong.sdk"
                 local sdk = SDK.new()
 
@@ -166,6 +197,9 @@ X-Foo: {}
 
         location /t {
             content_by_lua_block {
+            }
+
+            header_filter_by_lua_block {
                 local SDK = require "kong.sdk"
                 local sdk = SDK.new()
 
@@ -202,6 +236,9 @@ X-Foo: {hello}
 
         location /t {
             content_by_lua_block {
+            }
+
+            header_filter_by_lua_block {
                 local SDK = require "kong.sdk"
                 local sdk = SDK.new()
 
@@ -238,6 +275,9 @@ X-Foo: {hello}
 
         location /t {
             content_by_lua_block {
+            }
+
+            header_filter_by_lua_block {
                 local SDK = require "kong.sdk"
                 local sdk = SDK.new()
 
@@ -274,18 +314,28 @@ X-Bar: {nil}
 --- http_config
 --- config
     location = /t {
-        access_by_lua_block {
+        content_by_lua_block {
+        }
+
+        header_filter_by_lua_block {
+            ngx.header.content_length = nil
+
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
+            local ok, err = pcall(sdk.response.set_headers, {[2] = "foo"})
+            if not ok then
+                ngx.ctx.err = err
+            end
+        }
 
-            local pok, err = pcall(sdk.response.set_headers, {[2] = "foo"})
-            assert(not pok)
-            ngx.say(err)
+        body_filter_by_lua_block {
+            ngx.arg[1] = ngx.ctx.err
+            ngx.arg[2] = true
         }
     }
 --- request
 GET /t
---- response_body
+--- response_body chop
 invalid name "2": got number, expected string
 --- no_error_log
 [error]
@@ -296,18 +346,29 @@ invalid name "2": got number, expected string
 --- http_config
 --- config
     location = /t {
-        access_by_lua_block {
+        content_by_lua_block {
+        }
+
+        header_filter_by_lua_block {
+            ngx.header.content_length = nil
+
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.response.set_headers, {["foo"] = 2})
-            assert(not pok)
-            ngx.say(err)
+            local ok, err = pcall(sdk.response.set_headers, {["foo"] = 2})
+            if not ok then
+                ngx.ctx.err = err
+            end
+        }
+
+        body_filter_by_lua_block {
+            ngx.arg[1] = ngx.ctx.err
+            ngx.arg[2] = true
         }
     }
 --- request
 GET /t
---- response_body
+--- response_body chop
 invalid value in "foo": got number, expected string
 --- no_error_log
 [error]
@@ -318,18 +379,29 @@ invalid value in "foo": got number, expected string
 --- http_config
 --- config
     location = /t {
-        access_by_lua_block {
+        content_by_lua_block {
+        }
+
+        header_filter_by_lua_block {
+            ngx.header.content_length = nil
+
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.response.set_headers, {["foo"] = {2}})
-            assert(not pok)
-            ngx.say(err)
+            local ok, err = pcall(sdk.response.set_headers, {["foo"] = {2}})
+            if not ok then
+                ngx.ctx.err = err
+            end
+        }
+
+        body_filter_by_lua_block {
+            ngx.arg[1] = ngx.ctx.err
+            ngx.arg[2] = true
         }
     }
 --- request
 GET /t
---- response_body
+--- response_body chop
 invalid value in array "foo": got number, expected string
 --- no_error_log
 [error]
@@ -343,6 +415,9 @@ invalid value in array "foo": got number, expected string
 
         location /t {
             content_by_lua_block {
+            }
+
+            header_filter_by_lua_block {
                 local SDK = require "kong.sdk"
                 local sdk = SDK.new()
 
@@ -486,41 +561,123 @@ X-Foo: {zzz}
 --- http_config
 --- config
     location = /t {
-        access_by_lua_block {
+        content_by_lua_block {
+        }
+
+        header_filter_by_lua_block {
+            ngx.header.content_length = nil
+
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.response.set_headers({})
-            ngx.say("ok")
+            local ok, err sdk.response.set_headers({})
+            if not ok then
+                ngx.ctx.err = err
+            end
+        }
+
+        body_filter_by_lua_block {
+            ngx.arg[1] = ngx.ctx.err or "ok"
+            ngx.arg[2] = true
         }
     }
 --- request
 GET /t
---- response_body
+--- response_body chop
 ok
 --- no_error_log
 [error]
 
 
 
-=== TEST 16: response.set_headers() errors if headers have already been sent
+=== TEST 16: response.set_headers() does not error in header_filter even if headers have already been sent
 --- config
     location = /t {
         content_by_lua_block {
             ngx.send_headers()
+        }
+
+        header_filter_by_lua_block {
+            ngx.header.content_length = nil
 
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = pcall(sdk.response.set_headers, {})
+            local ok, err = pcall(sdk.response.set_headers, { ["Content-Type"] = "text/plain" })
             if not ok then
-                ngx.say(err)
+                ngx.ctx.err = err
+            else
+            ngx.ctx.err = "ok"
+            end
+        }
+
+        body_filter_by_lua_block {
+            ngx.arg[1] = ngx.ctx.err
+            ngx.arg[2] = true
+        }
+    }
+--- request
+GET /t
+--- response_headers_like
+Content-Type: text/plain
+--- response_body chop
+ok
+--- no_error_log
+[error]
+
+
+
+=== TEST 17: response.set_headers() errors on non-supported phases
+--- http_config
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            local unsupported_phases = {
+                "set",
+                "rewrite",
+                "content",
+                "access",
+                "log",
+                "body_filter",
+                "timer",
+                "init_worker",
+                "balancer",
+                "ssl_cert",
+                "ssl_session_store",
+                "ssl_session_fetch",
+            }
+
+            for _, phase in ipairs(unsupported_phases) do
+                ngx.get_phase = function()
+                    return phase
+                end
+
+                local ok, err = pcall(sdk.response.set_headers, {})
+                if not ok then
+                    ngx.say(err)
+                end
             end
         }
     }
 --- request
 GET /t
+--- error_code: 200
 --- response_body
-headers have been sent
+kong.response.set_headers is disabled in the context of set
+kong.response.set_headers is disabled in the context of rewrite
+kong.response.set_headers is disabled in the context of content
+kong.response.set_headers is disabled in the context of access
+kong.response.set_headers is disabled in the context of log
+kong.response.set_headers is disabled in the context of body_filter
+kong.response.set_headers is disabled in the context of timer
+kong.response.set_headers is disabled in the context of init_worker
+kong.response.set_headers is disabled in the context of balancer
+kong.response.set_headers is disabled in the context of ssl_cert
+kong.response.set_headers is disabled in the context of ssl_session_store
+kong.response.set_headers is disabled in the context of ssl_session_fetch
 --- no_error_log
 [error]

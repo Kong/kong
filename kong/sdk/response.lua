@@ -5,22 +5,15 @@ local meta = require "kong.meta"
 local ngx = ngx
 local fmt = string.format
 local type = type
-local find = string.find
-local lower = string.lower
 local error = error
 local pairs = pairs
 local ipairs = ipairs
 local insert = table.insert
-local tostring = tostring
 local coroutine = coroutine
-local getmetatable = getmetatable
 
 
 local function new(sdk, major_version)
   local _RESPONSE = {}
-
-  local SERVER_HEADER_NAME   = "Server"
-  local SERVER_HEADER_VALUE  = meta._NAME .. "/" .. meta._VERSION
 
   local MIN_HEADERS          = 1
   local MAX_HEADERS_DEFAULT  = 100
@@ -29,24 +22,47 @@ local function new(sdk, major_version)
   local MIN_STATUS_CODE      = 100
   local MAX_STATUS_CODE      = 599
 
-  local CONTENT_TYPE         = "Content-Type"
-  local CONTENT_TYPE_JSON    = "application/json"
-  local CONTENT_TYPE_DEFAULT = "application/json; charset=utf-8"
+  local SERVER_HEADER_NAME   = "Server"
+  local SERVER_HEADER_VALUE  = meta._NAME .. "/" .. meta._VERSION
 
-  local DEFAULT_BODY = {
-    [ngx.HTTP_NOT_ALLOWED]           = "Method Not Allowed",
-    [ngx.HTTP_UNAUTHORIZED]          = "Unauthorized",
-    [ngx.HTTP_SERVICE_UNAVAILABLE]   = "Service Unavailable",
-    [ngx.HTTP_INTERNAL_SERVER_ERROR] = "Internal Server Error",
+  local CONTENT_LENGTH_NAME  = "Content-Length"
+  local CONTENT_TYPE_NAME    = "Content-Type"
+  local CONTENT_TYPE_JSON    = "application/json; charset=utf-8"
+
+  local RESPONSE_PHASES_SET  = {
+    header_filter = true,
   }
 
+  local RESPONSE_PHASES_GET  = {
+    header_filter = true,
+    body_filter   = true,
+  }
+
+  local RESPONSE_PHASES_EXIT = {
+    rewrite       = true,
+    access        = true,
+  }
 
   function _RESPONSE.get_status()
+    --local phase = ngx.get_phase()
+    --if not RESPONSE_PHASES_GET[phase] then
+    --  error(fmt("kong.response.get_status is disabled in the context of %s", phase), 2)
+    --end
+
     return ngx.status
   end
 
 
   function _RESPONSE.set_status(code)
+    --local phase = ngx.get_phase()
+    --if not RESPONSE_PHASES_SET[phase] then
+    --  error(fmt("kong.response.set_status is disabled in the context of %s", phase), 2)
+    --end
+
+    --if phase ~= "header_filter" and ngx.headers_sent then
+    --  error("headers have been sent", 2)
+    --end
+
     if type(code) ~= "number" then
       error("code must be a number", 2)
 
@@ -63,6 +79,11 @@ local function new(sdk, major_version)
 
 
   function _RESPONSE.get_headers(max_headers)
+    --local phase = ngx.get_phase()
+    --if not RESPONSE_PHASES_GET[phase] then
+    --  error(fmt("kong.response.get_headers is disabled in the context of %s", phase), 2)
+    --end
+
     if max_headers == nil then
       return ngx.resp.get_headers(MAX_HEADERS_DEFAULT)
     end
@@ -82,6 +103,11 @@ local function new(sdk, major_version)
 
 
   function _RESPONSE.get_header(name)
+    --local phase = ngx.get_phase()
+    --if not RESPONSE_PHASES_GET[phase] then
+    --  error(fmt("kong.response.get_header is disabled in the context of %s", phase), 2)
+    --end
+
     if type(name) ~= "string" then
       error("name must be a string", 2)
     end
@@ -96,16 +122,21 @@ local function new(sdk, major_version)
 
 
   function _RESPONSE.set_header(name, value)
+    local phase = ngx.get_phase()
+    --if not RESPONSE_PHASES_SET[phase] then
+    --  error(fmt("kong.response.set_header is disabled in the context of %s", phase), 2)
+    --end
+
+    if phase ~= "header_filter" and ngx.headers_sent then
+      error("headers have been sent", 2)
+    end
+
     if type(name) ~= "string" then
       error("name must be a string", 2)
     end
 
     if type(value) ~= "string" then
       error("value must be a string", 2)
-    end
-
-    if ngx.headers_sent then
-      error("headers have been sent", 2)
     end
 
     ngx.header[name] = value ~= "" and value or " "
@@ -113,16 +144,21 @@ local function new(sdk, major_version)
 
 
   function _RESPONSE.add_header(name, value)
+    local phase = ngx.get_phase()
+    --if not RESPONSE_PHASES_SET[phase] then
+    --  error(fmt("kong.response.add_header is disabled in the context of %s", phase), 2)
+    --end
+
+    if phase ~= "header_filter" and ngx.headers_sent then
+      error("headers have been sent", 2)
+    end
+
     if type(name) ~= "string" then
       error("name must be a string", 2)
     end
 
     if type(value) ~= "string" then
       error("value must be a string", 2)
-    end
-
-    if ngx.headers_sent then
-      error("headers have been sent", 2)
     end
 
     local header = _RESPONSE.get_headers()[name]
@@ -137,12 +173,17 @@ local function new(sdk, major_version)
 
 
   function _RESPONSE.clear_header(name)
-    if type(name) ~= "string" then
-      error("name must be a string", 2)
+    local phase = ngx.get_phase()
+    --if not RESPONSE_PHASES_SET[phase] then
+    --  error(fmt("kong.response.clear_header is disabled in the context of %s", phase), 2)
+    --end
+
+    if phase ~= "header_filter" and ngx.headers_sent then
+      error("headers have been sent", 2)
     end
 
-    if ngx.headers_sent then
-      error("headers have been sent", 2)
+    if type(name) ~= "string" then
+      error("name must be a string", 2)
     end
 
     ngx.header[name] = nil
@@ -150,6 +191,15 @@ local function new(sdk, major_version)
 
 
   function _RESPONSE.set_headers(headers)
+    local phase = ngx.get_phase()
+    if not RESPONSE_PHASES_SET[phase] then
+      error(fmt("kong.response.set_headers is disabled in the context of %s", phase), 2)
+    end
+
+    --if phase ~= "header_filter" and ngx.headers_sent then
+    --  error("headers have been sent", 2)
+    --end
+
     if type(headers) ~= "table" then
       error("headers must be a table", 2)
     end
@@ -175,100 +225,59 @@ local function new(sdk, major_version)
       end
     end
 
-    if ngx.headers_sent then
-      error("headers have been sent", 2)
-    end
-
     for name, value in pairs(headers) do
       ngx.header[name] = value ~= "" and value or " "
     end
   end
 
 
-  function _RESPONSE.get_raw_body()
-    -- TODO: implement
-  end
+  --function _RESPONSE.set_raw_body(body)
+  --  -- TODO: implement, but how?
+  --end
+  --
+  --
+  --function _RESPONSE.set_parsed_body(args, mimetype)
+  --  -- TODO: implement, but how?
+  --end
 
 
-  function _RESPONSE.get_parsed_body()
-    -- TODO: implement
-  end
-
-
-  function _RESPONSE.set_raw_body(body)
-    -- TODO: implement
-  end
-
-
-  function _RESPONSE.set_parsed_body(args, mimetype)
-    -- TODO: implement
-  end
-
-
-  local function send(code, body, headers)
+  local function send(status, body, headers)
     if ngx.headers_sent then
       error("headers have been sent", 2)
     end
 
-    ngx.status = code
+    local json
+    if type(body) == "table" then
+      local err
+      json, err = cjson.encode(body)
+      if err then
+        return nil, err
+      end
+    end
+
+    ngx.status = status
     ngx.header[SERVER_HEADER_NAME] = SERVER_HEADER_VALUE
 
-    if headers then
+    if headers ~= nil then
       for name, value in pairs(headers) do
         ngx.header[name] = value ~= "" and value or " "
       end
     end
 
-    if code == ngx.HTTP_NO_CONTENT then
-      body = DEFAULT_BODY[ngx.HTTP_NO_CONTENT]
+    if json ~= nil then
+      ngx.header[CONTENT_TYPE_NAME]   = CONTENT_TYPE_JSON
+      ngx.header[CONTENT_LENGTH_NAME] = #json
+      ngx.print(json)
 
-    elseif code == ngx.HTTP_NOT_ALLOWED then
-      body = DEFAULT_BODY[ngx.HTTP_NOT_ALLOWED]
+    elseif body ~= nil then
+      ngx.header[CONTENT_LENGTH_NAME] = #body
+      ngx.print(body)
 
-    elseif code == ngx.HTTP_INTERNAL_SERVER_ERROR then
-      if body then
-        if type(body) ~= "table" then
-          ngx.log(ngx.ERR, body)
-
-        elseif getmetatable(body) and type(getmetatable(body).__tostring) == "function" then
-          ngx.log(ngx.ERR, tostring(body))
-
-        else
-          local json = cjson.encode(body)
-          if json then
-            ngx.log(ngx.ERR, json)
-          end
-        end
-      end
-
-      body = DEFAULT_BODY[ngx.HTTP_INTERNAL_SERVER_ERROR]
-
-    elseif not body then
-      body = DEFAULT_BODY[code]
+    else
+      ngx.header[CONTENT_LENGTH_NAME] = 0
     end
 
-    if body then
-      local content_type = ngx.header[CONTENT_TYPE]
-      if content_type == nil or find(lower(content_type), CONTENT_TYPE_JSON, 1, true) then
-        local json = cjson.encode(type(body) == "table" and body or { message = body })
-        if json then
-          if content_type == nil then
-            ngx.header[CONTENT_TYPE] = CONTENT_TYPE_DEFAULT
-          end
-
-          body = json
-        end
-      end
-
-      if type(body) ~= "table" then
-        ngx.print(body)
-
-      elseif getmetatable(body) and type(getmetatable(body).__tostring) == "function" then
-        ngx.print(tostring(body))
-      end
-    end
-
-    ngx.exit(code)
+    return ngx.exit(status)
   end
 
 
@@ -279,11 +288,20 @@ local function new(sdk, major_version)
   end
 
 
-  function _RESPONSE.exit(code, body, headers)
-    if type(code) ~= "number" then
+  function _RESPONSE.exit(status, body, headers)
+    local phase = ngx.get_phase()
+    if not RESPONSE_PHASES_EXIT[phase] then
+      error(fmt("kong.response.exit is disabled in the context of %s", phase), 2)
+    end
+
+    if ngx.headers_sent then
+      error("headers have been sent", 2)
+    end
+
+    if type(status) ~= "number" then
       error("code must be a number", 2)
 
-    elseif code < MIN_STATUS_CODE or code > MAX_STATUS_CODE then
+    elseif status < MIN_STATUS_CODE or status > MAX_STATUS_CODE then
       error(fmt("code must be a number between %u and %u", MIN_STATUS_CODE, MAX_STATUS_CODE), 2)
     end
 
@@ -317,14 +335,10 @@ local function new(sdk, major_version)
       end
     end
 
-    if ngx.headers_sent then
-      error("headers have been sent", 2)
-    end
-
     local ctx = ngx.ctx
     if ctx.delay_response and not ctx.delayed_response then
       ctx.delayed_response = {
-        status_code = code,
+        status_code = status,
         content     = body,
         headers     = headers,
       }
@@ -333,7 +347,7 @@ local function new(sdk, major_version)
       coroutine.yield()
 
     else
-      send(code, body, headers)
+      return send(status, body, headers)
     end
   end
 

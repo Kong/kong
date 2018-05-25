@@ -4,7 +4,7 @@ use Test::Nginx::Socket::Lua;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 
-plan tests => repeat_each() * (blocks() * 3) + 10;
+plan tests => repeat_each() * (blocks() * 4);
 
 run_tests();
 
@@ -13,9 +13,7 @@ __DATA__
 === TEST 1: response.exit() code must be a number
 --- config
     location = /t {
-        content_by_lua_block {
-            ngx.send_headers()
-
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -27,6 +25,7 @@ __DATA__
     }
 --- request
 GET /t
+--- error_code: 200
 --- response_body
 code must be a number
 --- no_error_log
@@ -37,7 +36,7 @@ code must be a number
 === TEST 2: response.exit() code must be a number between 100 and 599
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -55,6 +54,7 @@ code must be a number
     }
 --- request
 GET /t
+--- error_code: 200
 --- response_body chop
 code must be a number between 100 and 599
 code must be a number between 100 and 599
@@ -66,7 +66,7 @@ code must be a number between 100 and 599
 === TEST 3: response.exit() body must be a nil, string or table
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local ffi = require "ffi"
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
@@ -90,6 +90,7 @@ code must be a number between 100 and 599
     }
 --- request
 GET /t
+--- error_code: 200
 --- response_body chop
 body must be a nil, string or table
 body must be a nil, string or table
@@ -106,13 +107,13 @@ body must be a nil, string or table
 === TEST 4: response.exit() errors if headers have already been sent
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             ngx.send_headers()
 
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = pcall(sdk.response.exit, 500)
+            local ok, err = pcall(sdk.response.exit, 200)
             if not ok then
                 ngx.say(err)
             end
@@ -120,6 +121,7 @@ body must be a nil, string or table
     }
 --- request
 GET /t
+--- error_code: 200
 --- response_body
 headers have been sent
 --- no_error_log
@@ -136,7 +138,7 @@ headers have been sent
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.response.exit(500)
+            sdk.response.exit(500, "ok")
         }
         content_by_lua_block {
             ngx.send_headers()
@@ -149,6 +151,7 @@ headers have been sent
     }
 --- request
 GET /t
+--- error_code: 200
 --- response_body
 headers have been sent
 --- no_error_log
@@ -191,6 +194,7 @@ headers have been sent
     }
 --- request
 GET /t
+--- error_code: 200
 --- response_body chop
 nil
 nil
@@ -201,270 +205,11 @@ true
 
 
 
-=== TEST 7: response.exit(405) has default content
---- config
-    location = /t {
-        default_type '';
-        content_by_lua_block {
-            local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-
-            sdk.response.exit(ngx.HTTP_NOT_ALLOWED)
-        }
-    }
---- request
-GET /t
---- error_code: 405
---- response_body chop
-{"message":"Method Not Allowed"}
---- no_error_log
-[error]
-
-
-
-=== TEST 8: response.exit(405) has default content (delayed)
+=== TEST 7: response.exit() has no default content
 --- config
     location = /t {
         default_type '';
         access_by_lua_block {
-            ngx.ctx.delay_response = true
-
-            local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-
-            sdk.response.exit(ngx.HTTP_NOT_ALLOWED)
-        }
-        content_by_lua_block {
-            ngx.ctx:delayed_response_callback()
-        }
-    }
---- request
-GET /t
---- error_code: 405
---- response_body chop
-{"message":"Method Not Allowed"}
---- no_error_log
-[error]
-
-
-
-=== TEST 9: response.exit(401) has default content
---- config
-    location = /t {
-        default_type '';
-        content_by_lua_block {
-            local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-
-            sdk.response.exit(ngx.HTTP_UNAUTHORIZED)
-        }
-    }
---- request
-GET /t
---- error_code: 401
---- response_body chop
-{"message":"Unauthorized"}
---- no_error_log
-[error]
-
-
-
-=== TEST 10: response.exit(401) has default content (delayed)
---- config
-    location = /t {
-        default_type '';
-        access_by_lua_block {
-            ngx.ctx.delay_response = true
-
-            local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-
-            sdk.response.exit(ngx.HTTP_UNAUTHORIZED)
-        }
-        content_by_lua_block {
-            ngx.ctx:delayed_response_callback()
-        }
-    }
---- request
-GET /t
---- error_code: 401
---- response_body chop
-{"message":"Unauthorized"}
---- no_error_log
-[error]
-
-
-
-=== TEST 11: response.exit(503) has default content
---- config
-    location = /t {
-        default_type '';
-        content_by_lua_block {
-            local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-
-            sdk.response.exit(ngx.HTTP_SERVICE_UNAVAILABLE)
-        }
-    }
---- request
-GET /t
---- error_code: 503
---- response_body chop
-{"message":"Service Unavailable"}
---- no_error_log
-[error]
-
-
-
-=== TEST 12: response.exit(503) has default content (delayed)
---- config
-    location = /t {
-        default_type '';
-        access_by_lua_block {
-            ngx.ctx.delay_response = true
-
-            local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-
-            sdk.response.exit(ngx.HTTP_SERVICE_UNAVAILABLE)
-        }
-        content_by_lua_block {
-            ngx.ctx:delayed_response_callback()
-        }
-    }
---- request
-GET /t
---- error_code: 503
---- response_body chop
-{"message":"Service Unavailable"}
---- no_error_log
-[error]
-
-
-
-=== TEST 13: response.exit(500) has default content
---- config
-    location = /t {
-        default_type '';
-        content_by_lua_block {
-            local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-
-            sdk.response.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
-        }
-    }
---- request
-GET /t
---- error_code: 500
---- response_body chop
-{"message":"Internal Server Error"}
---- no_error_log
-[error]
-
-
-
-=== TEST 14: response.exit(500) has default content (delayed)
---- config
-    location = /t {
-        default_type '';
-        access_by_lua_block {
-            ngx.ctx.delay_response = true
-
-            local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-
-            sdk.response.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
-        }
-        content_by_lua_block {
-            ngx.ctx:delayed_response_callback()
-        }
-    }
---- request
-GET /t
---- error_code: 500
---- response_body chop
-{"message":"Internal Server Error"}
---- no_error_log
-[error]
-
-
-
-=== TEST 15: response.exit(500) has default content and logs the body string
---- config
-    location = /t {
-        default_type '';
-        content_by_lua_block {
-            local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-
-            sdk.response.exit(ngx.HTTP_INTERNAL_SERVER_ERROR, "error")
-        }
-    }
---- request
-GET /t
---- error_code: 500
---- response_body chop
-{"message":"Internal Server Error"}
---- error_log: error
-
-
-
-=== TEST 16: response.exit(500) has default content and logs the body table
---- config
-    location = /t {
-        default_type '';
-        content_by_lua_block {
-            local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-
-            sdk.response.exit(ngx.HTTP_INTERNAL_SERVER_ERROR, { message = "error" })
-        }
-    }
---- request
-GET /t
---- error_code: 500
---- response_body chop
-{"message":"Internal Server Error"}
---- error_log: {"message":"error"}
-
-
-
-=== TEST 17: response.exit(500) has default content and logs the body table using metamethod
---- config
-    location = /t {
-        default_type '';
-        content_by_lua_block {
-            local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-
-            local body = setmetatable({
-                message = "error",
-            }, {
-                __tostring = function()
-                    return "{\"message\":\"failure\"}"
-                end,
-            })
-
-            sdk.response.exit(
-                ngx.HTTP_INTERNAL_SERVER_ERROR,
-                body
-            )
-        }
-    }
---- request
-GET /t
---- error_code: 500
---- response_body chop
-{"message":"Internal Server Error"}
---- error_log: {"message":"failure"}
-
-
-
-=== TEST 18: response.exit(456) has no default content
---- config
-    location = /t {
-        default_type '';
-        content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -475,12 +220,13 @@ GET /t
 GET /t
 --- error_code: 456
 --- response_body chop
+
 --- no_error_log
 [error]
 
 
 
-=== TEST 19: response.exit(456) has no default content (delayed)
+=== TEST 8: response.exit() has no default content (delayed)
 --- config
     location = /t {
         default_type '';
@@ -499,86 +245,24 @@ GET /t
 --- request
 GET /t
 --- error_code: 456
+--- response_headers_like
+Server: kong/\d+\.\d+\.\d+
 --- response_body chop
+
 --- no_error_log
 [error]
 
 
 
-=== TEST 20: response.exit(204) has no content
---- config
-    location = /t {
-        default_type '';
-        content_by_lua_block {
-            local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-
-            sdk.response.exit(ngx.HTTP_NO_CONTENT)
-        }
-    }
---- request
-GET /t
---- error_code: 204
---- response_body chop
---- no_error_log
-[error]
-
-
-
-=== TEST 21: response.exit(204) has no content (delayed)
+=== TEST 9: response.exit() adds server header
 --- config
     location = /t {
         default_type '';
         access_by_lua_block {
-            ngx.ctx.delay_response = true
-
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
             sdk.response.exit(ngx.HTTP_NO_CONTENT)
-        }
-        content_by_lua_block {
-            ngx.ctx:delayed_response_callback()
-        }
-    }
---- request
-GET /t
---- error_code: 204
---- response_body chop
---- no_error_log
-[error]
-
-
-
-=== TEST 22: response.exit(204) has no content even when body is given
---- config
-    location = /t {
-        default_type '';
-        content_by_lua_block {
-            local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-
-            sdk.response.exit(ngx.HTTP_NO_CONTENT, "no content")
-        }
-    }
---- request
-GET /t
---- error_code: 204
---- response_body chop
---- no_error_log
-[error]
-
-
-
-=== TEST 23: response.exit() adds server header
---- config
-    location = /t {
-        default_type '';
-        content_by_lua_block {
-            local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-
-            sdk.response.exit(ngx.HTTP_NO_CONTENT, "no content")
         }
     }
 --- request
@@ -586,15 +270,17 @@ GET /t
 --- error_code: 204
 --- response_headers_like
 Server: kong/\d+\.\d+\.\d+
+--- response_body chop
+
 --- no_error_log
 [error]
 
 
 
-=== TEST 24: response.exit() errors if headers is not a table
+=== TEST 10: response.exit() errors if headers is not a table
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -604,6 +290,7 @@ Server: kong/\d+\.\d+\.\d+
     }
 --- request
 GET /t
+--- error_code: 200
 --- response_body
 headers must be a nil or table
 --- no_error_log
@@ -611,7 +298,7 @@ headers must be a nil or table
 
 
 
-=== TEST 25: response.exit() errors if header name is not a string
+=== TEST 11: response.exit() errors if header name is not a string
 --- http_config
 --- config
     location = /t {
@@ -626,6 +313,7 @@ headers must be a nil or table
     }
 --- request
 GET /t
+--- error_code: 200
 --- response_body
 invalid header name "2": got number, expected string
 --- no_error_log
@@ -633,7 +321,7 @@ invalid header name "2": got number, expected string
 
 
 
-=== TEST 26: response.exit() errors if header value is of a bad type
+=== TEST 12: response.exit() errors if header value is of a bad type
 --- http_config
 --- config
     location = /t {
@@ -655,7 +343,7 @@ invalid header value in "foo": got number, expected string
 
 
 
-=== TEST 27: response.exit() errors if header value array element is of a bad type
+=== TEST 13: response.exit() errors if header value array element is of a bad type
 --- http_config
 --- config
     location = /t {
@@ -670,6 +358,7 @@ invalid header value in "foo": got number, expected string
     }
 --- request
 GET /t
+--- error_code: 200
 --- response_body
 invalid header value in array "foo": got number, expected string
 --- no_error_log
@@ -677,11 +366,11 @@ invalid header value in array "foo": got number, expected string
 
 
 
-=== TEST 28: response.exit() sends "text/plain" response
+=== TEST 14: response.exit() sends "text/plain" response
 --- http_config
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -690,6 +379,7 @@ invalid header value in array "foo": got number, expected string
     }
 --- request
 GET /t
+--- error_code: 200
 --- response_headers_like
 Server: kong/\d+\.\d+\.\d+
 Content-Type: text/plain
@@ -700,12 +390,12 @@ hello
 
 
 
-=== TEST 29: response.exit() sends "application/json; charset=utf-8" response by default
+=== TEST 15: response.exit() sends no content-type header by default
 --- http_config
 --- config
     location = /t {
-        default_type '';
-        content_by_lua_block {
+        default_type 'text/test';
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -714,6 +404,32 @@ hello
     }
 --- request
 GET /t
+--- error_code: 200
+--- response_headers_like
+Server: kong/\d+\.\d+\.\d+
+Content-Type: text/test
+--- response_body chop
+hello
+--- no_error_log
+[error]
+
+
+
+=== TEST 16: response.exit() sends json response when body is table
+--- http_config
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            sdk.response.exit(200, { message = "hello" })
+        }
+    }
+--- request
+GET /t
+--- error_code: 200
 --- response_headers_like
 Server: kong/\d+\.\d+\.\d+
 Content-Type: application/json; charset=utf-8
@@ -724,26 +440,26 @@ Content-Type: application/json; charset=utf-8
 
 
 
-=== TEST 30: response.exit() sends "application/json" response when asked
+=== TEST 17: response.exit() sends json response when body is table overrides content-type
 --- http_config
 --- config
     location = /t {
-        default_type '';
+        default_type 'text/test';
         access_by_lua_block {
-            ngx.header["Content-Type"] = "application/json"
-        }
-        content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.response.exit(200, { message = "hello" })
+            sdk.response.exit(200, { message = "hello" }, {
+                ["Content-Type"] = "text/plain"
+            })
         }
     }
 --- request
 GET /t
+--- error_code: 200
 --- response_headers_like
 Server: kong/\d+\.\d+\.\d+
-Content-Type: application/json
+Content-Type: application/json; charset=utf-8
 --- response_body chop
 {"message":"hello"}
 --- no_error_log
@@ -751,56 +467,170 @@ Content-Type: application/json
 
 
 
-=== TEST 31: response.exit() sends "text/xml" response as empty when using table
+=== TEST 18: response.exit() sets content-length header
 --- http_config
 --- config
     location = /t {
-        default_type 'text/xml';
-        content_by_lua_block {
+        default_type 'text/test';
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.response.exit(200, { message = "hello" })
+            sdk.response.exit(200, "", {
+                ["Content-Type"] = "text/plain"
+            })
         }
     }
 --- request
 GET /t
+--- error_code: 200
 --- response_headers_like
 Server: kong/\d+\.\d+\.\d+
-Content-Type: text/xml
---- response_body
+Content-Type: text/plain
+Content-Length: 0
+--- response_body chop
+
 --- no_error_log
 [error]
 
 
 
-=== TEST 32: response.exit() sends "text/plain" response as empty when using table with metamethod
+=== TEST 19: response.exit() sets content-length header even when no body
 --- http_config
 --- config
     location = /t {
-        content_by_lua_block {
+        default_type 'text/test';
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local response = setmetatable(
-                {
-                    message = "hello"
-                }, {
-                    __tostring = function(self)
-                        return self.message .. " " .. "world"
-                    end
-                }
-            )
-
-            sdk.response.exit(200, response, { ["Content-Type"] = "text/plain" })
+            sdk.response.exit(200, nil, {
+                ["Content-Type"] = "text/plain",
+                ["Content-Length"] = "100"
+            })
         }
     }
 --- request
 GET /t
+--- error_code: 200
 --- response_headers_like
 Server: kong/\d+\.\d+\.\d+
 Content-Type: text/plain
+Content-Length: 0
 --- response_body chop
-hello world
+
+--- no_error_log
+[error]
+
+
+
+=== TEST 20: response.exit() sets content-length header with text body
+--- http_config
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            sdk.response.exit(200, "a", {
+                ["Content-Type"] = "text/plain",
+                ["Content-Length"] = "100"
+            })
+        }
+    }
+--- request
+GET /t
+--- error_code: 200
+--- response_headers_like
+Server: kong/\d+\.\d+\.\d+
+Content-Type: text/plain
+Content-Length: 1
+--- response_body chop
+a
+--- no_error_log
+[error]
+
+
+
+=== TEST 21: response.exit() sets content-length header with table body
+--- http_config
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            sdk.response.exit(200, { message = "hello" }, {
+                ["Content-Type"] = "text/plain",
+                ["Content-Length"] = "100"
+            })
+        }
+    }
+--- request
+GET /t
+--- error_code: 200
+--- response_headers_like
+Server: kong/\d+\.\d+\.\d+
+Content-Type: application/json; charset=utf-8
+Content-Length: 19
+--- response_body chop
+{"message":"hello"}
+--- no_error_log
+[error]
+
+
+
+=== TEST 22: response.exit() errors on non-supported phases
+--- http_config
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            local unsupported_phases = {
+                "set",
+                "content",
+                "log",
+                "header_filter",
+                "body_filter",
+                "timer",
+                "init_worker",
+                "balancer",
+                "ssl_cert",
+                "ssl_session_store",
+                "ssl_session_fetch",
+            }
+
+            for _, phase in ipairs(unsupported_phases) do
+                ngx.get_phase = function()
+                    return phase
+                end
+
+                local ok, err = pcall(sdk.response.exit, 500)
+                if not ok then
+                    ngx.say(err)
+                end
+            end
+        }
+    }
+--- request
+GET /t
+--- error_code: 200
+--- response_body
+kong.response.exit is disabled in the context of set
+kong.response.exit is disabled in the context of content
+kong.response.exit is disabled in the context of log
+kong.response.exit is disabled in the context of header_filter
+kong.response.exit is disabled in the context of body_filter
+kong.response.exit is disabled in the context of timer
+kong.response.exit is disabled in the context of init_worker
+kong.response.exit is disabled in the context of balancer
+kong.response.exit is disabled in the context of ssl_cert
+kong.response.exit is disabled in the context of ssl_session_store
+kong.response.exit is disabled in the context of ssl_session_fetch
 --- no_error_log
 [error]
