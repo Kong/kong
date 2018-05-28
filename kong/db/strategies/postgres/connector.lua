@@ -2,11 +2,7 @@ local pgmoon       = require "pgmoon"
 
 
 local setmetatable = setmetatable
-local tonumber     = tonumber
-local tostring     = tostring
 local concat       = table.concat
-local floor        = math.floor
-local fmt          = string.format
 --local pairs        = pairs
 --local type         = type
 local ngx          = ngx
@@ -171,32 +167,6 @@ local _mt = {}
 
 
 _mt.__index = _mt
-
-
-function _mt:init()
-  local res, err = self:query("SHOW server_version_num;")
-  local ver = tonumber(res and res[1] and res[1].server_version_num)
-  if not ver then
-    return nil, err or "postgres version not detected"
-  end
-
-  self.version_num = ver
-
-
-  local major = floor(ver / 10000)
-  if major < 10 then
-    self.major_version = fmt("%u.%u", major, floor(ver / 100 % 100))
-    self.minor_version = tostring(ver % 100)
-
-  else
-    self.major_version = tostring(major)
-    self.minor_version = tostring(ver % 100)
-  end
-
-  self.version = fmt("%s.%s", self.major_version, self.minor_version)
-
-  return true
-end
 
 
 function _mt:connect()

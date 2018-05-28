@@ -91,11 +91,11 @@ return {
   DATABASE = {
     POSTGRES = {
       MIN = "9.5",
-      DEPRECATED = "9.4",
+      -- also accepts a DEPRECATED key, i.e. DEPRECATED = "9.4"
     },
     CASSANDRA = {
       MIN = "2.2",
-      DEPRECATED = "2.1",
+      -- also accepts a DEPRECATED key
     }
   }
 }
