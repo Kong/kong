@@ -48,7 +48,7 @@ return {
     -- CE and makes merges difficult
     PUT = function(self, dao_factory)
       -- if no id, it acts as POST
-      if not self.params.id and workspaces.is_route_colliding(self) then
+      if not self.params.id and workspaces.is_api_colliding(self) then
         local err = "API route collides with an existing API"
         return helpers.send_HTTP_CONFLICT(err)
       end
@@ -58,7 +58,7 @@ return {
         if curr_api then  -- exists, we create an ad-hoc router
 
           local r = ApiRouter.new(all_apis_except(curr_api))
-          if workspaces.is_route_colliding(self, r) then
+          if workspaces.is_api_colliding(self, r) then
             local err = "API route collides with an existing API"
             return helpers.send_HTTP_CONFLICT(err)
           end
@@ -69,7 +69,7 @@ return {
     end,
 
     POST = function(self, dao_factory)
-      if workspaces.is_route_colliding(self) then
+      if workspaces.is_api_colliding(self) then
         local err = "API route collides with an existing API"
         return helpers.send_HTTP_CONFLICT(err)
       end
@@ -91,7 +91,7 @@ return {
     PATCH = function(self, dao_factory)
       local r = ApiRouter.new(all_apis_except(self.api))
       -- create temporary router
-      if workspaces.is_route_colliding(self, r) then
+      if workspaces.is_api_colliding(self, r) then
         local err = "API route collides with an existing API"
         return helpers.send_HTTP_CONFLICT(err)
       end

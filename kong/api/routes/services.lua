@@ -5,6 +5,9 @@ local endpoints   = require "kong.api.endpoints"
 local reports     = require "kong.core.reports"
 local utils       = require "kong.tools.utils"
 local crud        = require "kong.api.crud_helpers"
+local core_handler = require "kong.core.handler"
+local uuid = require("kong.tools.utils").uuid
+local workspaces = require "kong.workspaces"
 
 
 local tostring    = tostring
@@ -26,6 +29,35 @@ return {
     end,
   },
 
+  ["/services/:services/routes"] = {
+    before = function(self, db, helpers)
+      local old_wss = ngx.ctx.workspaces
+      ngx.ctx.workspaces = {}
+      core_handler.build_router(db, uuid())
+      ngx.ctx.workspaces = old_wss
+
+      -- check for the service existence
+      local id = self.params.services
+      local entity, err_t
+      if not utils.is_valid_uuid(id) then
+        entity, _, err_t = db.services:select_by_name(id)
+      else
+        entity, _, err_t = db.services:select({ id = id })
+      end
+
+      if not entity or err_t then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+    end,
+
+    POST = function(self, _, _, parent)
+      if workspaces.is_route_colliding(self, singletons.router) then
+        local err = "API route collides with an existing API"
+        return responses.send_HTTP_CONFLICT(err)
+      end
+      return parent()
+    end
+  },
   ["/services/:services/plugins"] = {
     on_error = function(self)
       local err = self.errors[1]

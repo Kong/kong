@@ -1,5 +1,7 @@
 local singletons = require "kong.singletons"
 local utils      = require "kong.tools.utils"
+local tablex = require "pl.tablex"
+
 
 
 local find    = string.find
@@ -7,6 +9,7 @@ local format  = string.format
 local ngx_log = ngx.log
 local DEBUG   = ngx.DEBUG
 local next    = next
+local values = tablex.values
 
 
 local _M = {}
@@ -364,9 +367,18 @@ _M.is_api_in_ws = is_api_in_ws
 -- return true if an api with method,uri,host can be added in the
 -- workspace ws in the current router. See
 -- Workspaces-Design-Implementation quip doc for further detail.
+--
+-- This function works for both routes/services and APIS, the
+-- difference between both being we 'fold' api and route attributes of
+-- the selected `route (in the code used as a generic word)`
 local function validate_route_for_ws(router, method, uri, host, ws)
-
   local selected_route = match_route(router, method, uri, host)
+
+  -- XXX: Treating routes and apis the same way. See function comment
+  if selected_route and selected_route.route then
+    selected_route.api = selected_route.route
+  end
+
   ngx_log(DEBUG, "selected route is " .. tostring(selected_route))
   if selected_route == nil then -- no match ,no conflict
     ngx_log(DEBUG, "no selected_route")
@@ -433,7 +445,7 @@ end
 -- match each one of the combinations of accepted [hosts, uris,
 -- methods]. The function returns false iff none of the variants
 -- collide.
-function _M.is_route_colliding(req, router)
+function _M.is_api_colliding(req, router)
   router = router or singletons.api_router
   local methods, uris, hosts = sanitize_ngx_nulls(extract_req_data(req.params))
   local ws = _M.get_workspaces()[1]
@@ -442,6 +454,29 @@ function _M.is_route_colliding(req, router)
                            split(hosts)) do
     if not validate_route_for_ws(router, perm[1], perm[2], perm[3], ws) then
       ngx_log(DEBUG, "api collided")
+      return true
+    end
+  end
+  return false
+end
+
+
+-- Extracts parameters for a route to be validated against the global
+-- current router. An api can have 0..* of each hosts, uris, methods.
+-- We check if a route collides with the current setup by trying to
+-- match each one of the combinations of accepted [hosts, uris,
+-- methods]. The function returns false iff none of the variants
+-- collide.
+function _M.is_route_colliding(req, router)
+  router = router or singletons.router
+  local params = req.params
+  local methods, uris, hosts = sanitize_ngx_nulls(params.methods, params.paths, params.hosts)
+  local ws = _M.get_workspaces()[1]
+  for perm in permutations(methods and values(methods) or split(ALL_METHODS),
+                           uris and values(uris) or {"/"},
+                           hosts and values(hosts) or {""}) do
+    if not validate_route_for_ws(router, perm[1], perm[2], perm[3], ws) then
+      ngx_log(DEBUG, "route collided")
       return true
     end
   end
