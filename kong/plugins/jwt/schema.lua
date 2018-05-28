@@ -28,6 +28,7 @@ return {
     anonymous = {type = "string", default = "", func = check_user},
     run_on_preflight = {type = "boolean", default = true},
     maximum_expiration = {type = "number", default = 0, func = check_positive},
+	inject_claims = {type = "array", default = {}},
   },
   self_check = function(schema, plugin_t, dao, is_update)
     if plugin_t.maximum_expiration ~= nil

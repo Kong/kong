@@ -104,4 +104,22 @@ return {
     end,
     down = function(_, _, dao) end  -- not implemented
   },
+  {
+    name = "2018-05-28-151700_jwt_inject_claims_default",
+    up = function(_, _, dao)
+      for ok, config, update in plugin_config_iterator(dao, "jwt") do
+        if not ok then
+          return config
+        end
+        if config.inject_claims == nil then
+          config.inject_claims = {}
+          local _, err = update(config)
+          if err then
+            return err
+          end
+        end
+      end
+    end,
+    down = function(_, _, dao) end  -- not implemented
+  },
 }
