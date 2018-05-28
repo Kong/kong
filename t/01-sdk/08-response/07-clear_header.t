@@ -14,17 +14,29 @@ __DATA__
 --- config
     location = /t {
         content_by_lua_block {
+        }
+
+        header_filter_by_lua_block {
+            ngx.header.content_length = nil
+
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.response.clear_header)
-            ngx.say(err)
+            local ok, err = pcall(sdk.response.clear_header)
+            if not ok then
+                ngx.ctx.err = err
+            end
+        }
+
+        body_filter_by_lua_block {
+            ngx.arg[1] = ngx.ctx.err
+            ngx.arg[2] = true
         }
     }
 --- request
 GET /t
---- response_body
-name must be a string
+--- response_body chop
+header must be a string
 --- no_error_log
 [error]
 
@@ -34,17 +46,29 @@ name must be a string
 --- config
     location = /t {
         content_by_lua_block {
+        }
+
+        header_filter_by_lua_block {
+            ngx.header.content_length = nil
+
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.response.clear_header, 127001, "foo")
-            ngx.say(err)
+            local po, err = pcall(sdk.response.clear_header, 127001, "foo")
+            if not ok then
+                ngx.ctx.err = err
+            end
+        }
+
+        body_filter_by_lua_block {
+            ngx.arg[1] = ngx.ctx.err
+            ngx.arg[2] = true
         }
     }
 --- request
 GET /t
---- response_body
-name must be a string
+--- response_body chop
+header must be a string
 --- no_error_log
 [error]
 
@@ -129,83 +153,114 @@ X-Foo: {nil}
 === TEST 5: response.clear_header() clears headers set via set_header
 --- config
     location = /t {
+        content_by_lua_block {
+        }
 
-        rewrite_by_lua_block {
+        header_filter_by_lua_block {
+            ngx.header.content_length = nil
+
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
             sdk.response.set_header("X-Foo", "hello")
-        }
-
-        access_by_lua_block {
-            local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-
             sdk.response.clear_header("X-Foo")
         }
 
-        content_by_lua_block {
-            ngx.say("X-Foo: {" .. type(ngx.header["X-Foo"]) .. "}")
+        body_filter_by_lua_block {
+            ngx.arg[1] = "X-Foo: {" .. type(ngx.header["X-Foo"]) .. "}"
+            ngx.arg[2] = true
         }
     }
 --- request
 GET /t
---- response_body
+--- response_body chop
 X-Foo: {nil}
 --- no_error_log
 [error]
 
 
 
-=== TEST 6: response.clear_header() clears headers set via set_header
+=== TEST 6: response.clear_header() clears headers set via add_header
 --- config
     location = /t {
+        content_by_lua_block {
+        }
 
-        rewrite_by_lua_block {
+        header_filter_by_lua_block {
+            ngx.header.content_length = nil
+
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
             sdk.response.add_header("X-Foo", "hello")
-        }
-
-        access_by_lua_block {
-            local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-
             sdk.response.clear_header("X-Foo")
         }
 
-        content_by_lua_block {
-            ngx.say("X-Foo: {" .. type(ngx.header["X-Foo"]) .. "}")
+        body_filter_by_lua_block {
+            ngx.arg[1] = "X-Foo: {" .. type(ngx.header["X-Foo"]) .. "}"
+            ngx.arg[2] = true
         }
     }
 --- request
 GET /t
---- response_body
+--- response_body chop
 X-Foo: {nil}
 --- no_error_log
 [error]
 
 
 
-=== TEST 7: response.clear_header() errors if headers have already been sent
+=== TEST 7: response.clear_header() errors on non-supported phases
+--- http_config
 --- config
     location = /t {
-        content_by_lua_block {
-            ngx.send_headers()
-
+        default_type 'text/test';
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = pcall(sdk.response.clear_header, "X-Foo", "")
-            if not ok then
-                ngx.say(err)
+            local unsupported_phases = {
+                "set",
+                "rewrite",
+                "content",
+                "access",
+                "log",
+                "body_filter",
+                "timer",
+                "init_worker",
+                "balancer",
+                "ssl_cert",
+                "ssl_session_store",
+                "ssl_session_fetch",
+            }
+
+            for _, phase in ipairs(unsupported_phases) do
+                ngx.get_phase = function()
+                    return phase
+                end
+
+                local ok, err = pcall(sdk.response.clear_header, "test")
+                if not ok then
+                    ngx.say(err)
+                end
             end
         }
     }
 --- request
 GET /t
+--- error_code: 200
 --- response_body
-headers have been sent
+kong.response.clear_header is disabled in the context of set
+kong.response.clear_header is disabled in the context of rewrite
+kong.response.clear_header is disabled in the context of content
+kong.response.clear_header is disabled in the context of access
+kong.response.clear_header is disabled in the context of log
+kong.response.clear_header is disabled in the context of body_filter
+kong.response.clear_header is disabled in the context of timer
+kong.response.clear_header is disabled in the context of init_worker
+kong.response.clear_header is disabled in the context of balancer
+kong.response.clear_header is disabled in the context of ssl_cert
+kong.response.clear_header is disabled in the context of ssl_session_store
+kong.response.clear_header is disabled in the context of ssl_session_fetch
 --- no_error_log
 [error]

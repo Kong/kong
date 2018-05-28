@@ -336,7 +336,7 @@ X-Bar: {nil}
 --- request
 GET /t
 --- response_body chop
-invalid name "2": got number, expected string
+invalid header "2": got number, expected string
 --- no_error_log
 [error]
 
@@ -355,7 +355,7 @@ invalid name "2": got number, expected string
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = pcall(sdk.response.set_headers, {["foo"] = 2})
+            local ok, err = pcall(sdk.response.set_headers, {["foo"] = function() end})
             if not ok then
                 ngx.ctx.err = err
             end
@@ -369,7 +369,7 @@ invalid name "2": got number, expected string
 --- request
 GET /t
 --- response_body chop
-invalid value in "foo": got number, expected string
+invalid value in "foo": got function, expected string, number or boolean
 --- no_error_log
 [error]
 
@@ -388,7 +388,7 @@ invalid value in "foo": got number, expected string
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local ok, err = pcall(sdk.response.set_headers, {["foo"] = {2}})
+            local ok, err = pcall(sdk.response.set_headers, {["foo"] = {{}}})
             if not ok then
                 ngx.ctx.err = err
             end
@@ -402,7 +402,7 @@ invalid value in "foo": got number, expected string
 --- request
 GET /t
 --- response_body chop
-invalid value in array "foo": got number, expected string
+invalid value in array "foo": got table, expected string, number or boolean
 --- no_error_log
 [error]
 
@@ -606,8 +606,9 @@ ok
             local ok, err = pcall(sdk.response.set_headers, { ["Content-Type"] = "text/plain" })
             if not ok then
                 ngx.ctx.err = err
+
             else
-            ngx.ctx.err = "ok"
+                ngx.ctx.err = "ok"
             end
         }
 

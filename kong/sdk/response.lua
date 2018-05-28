@@ -43,6 +43,12 @@ local function new(sdk, major_version)
     access        = true,
   }
 
+  local HEADER_VALUE_TYPES   = {
+    string  = true,
+    number  = true,
+    boolean = true,
+  }
+
   function _RESPONSE.get_status()
     --local phase = ngx.get_phase()
     --if not RESPONSE_PHASES_GET[phase] then
@@ -121,72 +127,74 @@ local function new(sdk, major_version)
   end
 
 
-  function _RESPONSE.set_header(name, value)
+  function _RESPONSE.set_header(header, value)
     local phase = ngx.get_phase()
-    --if not RESPONSE_PHASES_SET[phase] then
-    --  error(fmt("kong.response.set_header is disabled in the context of %s", phase), 2)
-    --end
+    if not RESPONSE_PHASES_SET[phase] then
+      error(fmt("kong.response.set_header is disabled in the context of %s", phase), 2)
+    end
 
     if phase ~= "header_filter" and ngx.headers_sent then
       error("headers have been sent", 2)
     end
 
-    if type(name) ~= "string" then
-      error("name must be a string", 2)
+    if type(header) ~= "string" then
+      error("header must be a string", 2)
     end
 
-    if type(value) ~= "string" then
-      error("value must be a string", 2)
+    local value_t = type(value)
+    if not HEADER_VALUE_TYPES[value_t] then
+      error(fmt("invalid value for %q: got %s, expected string, number or boolean", header, value_t), 2)
     end
 
-    ngx.header[name] = value ~= "" and value or " "
+    ngx.header[header] = value ~= "" and value or " "
   end
 
 
-  function _RESPONSE.add_header(name, value)
+  function _RESPONSE.add_header(header, value)
     local phase = ngx.get_phase()
-    --if not RESPONSE_PHASES_SET[phase] then
-    --  error(fmt("kong.response.add_header is disabled in the context of %s", phase), 2)
-    --end
+    if not RESPONSE_PHASES_SET[phase] then
+      error(fmt("kong.response.add_header is disabled in the context of %s", phase), 2)
+    end
 
     if phase ~= "header_filter" and ngx.headers_sent then
       error("headers have been sent", 2)
     end
 
-    if type(name) ~= "string" then
-      error("name must be a string", 2)
+    if type(header) ~= "string" then
+      error("header must be a string", 2)
     end
 
-    if type(value) ~= "string" then
-      error("value must be a string", 2)
+    local value_t = type(value)
+    if not HEADER_VALUE_TYPES[value_t] then
+      error(fmt("invalid value for %q: got %s, expected string, number or boolean", header, value_t), 2)
     end
 
-    local header = _RESPONSE.get_headers()[name]
-    if type(header) ~= "table" then
-      header = { header }
+    local new_value = _RESPONSE.get_headers()[header]
+    if type(new_value) ~= "table" then
+      new_value = { new_value }
     end
 
-    insert(header, value ~= "" and value or " ")
+    insert(new_value, value ~= "" and value or " ")
 
-    ngx.header[name] = header
+    ngx.header[header] = new_value
   end
 
 
-  function _RESPONSE.clear_header(name)
+  function _RESPONSE.clear_header(header)
     local phase = ngx.get_phase()
-    --if not RESPONSE_PHASES_SET[phase] then
-    --  error(fmt("kong.response.clear_header is disabled in the context of %s", phase), 2)
-    --end
+    if not RESPONSE_PHASES_SET[phase] then
+      error(fmt("kong.response.clear_header is disabled in the context of %s", phase), 2)
+    end
 
     if phase ~= "header_filter" and ngx.headers_sent then
       error("headers have been sent", 2)
     end
 
-    if type(name) ~= "string" then
-      error("name must be a string", 2)
+    if type(header) ~= "string" then
+      error("header must be a string", 2)
     end
 
-    ngx.header[name] = nil
+    ngx.header[header] = nil
   end
 
 
@@ -196,32 +204,32 @@ local function new(sdk, major_version)
       error(fmt("kong.response.set_headers is disabled in the context of %s", phase), 2)
     end
 
-    --if phase ~= "header_filter" and ngx.headers_sent then
-    --  error("headers have been sent", 2)
-    --end
+    if phase ~= "header_filter" and ngx.headers_sent then
+      error("headers have been sent", 2)
+    end
 
     if type(headers) ~= "table" then
       error("headers must be a table", 2)
     end
 
     -- Check for type errors first
-    for name, value in pairs(headers) do
-      local name_t = type(name)
+    for header, value in pairs(headers) do
+      local name_t = type(header)
       if name_t ~= "string" then
-        error(fmt("invalid name %q: got %s, expected string", name, name_t), 2)
+        error(fmt("invalid header %q: got %s, expected string", header, name_t), 2)
       end
 
       local value_t = type(value)
       if value_t == "table" then
         for _, array_value in ipairs(value) do
           local array_value_t = type(array_value)
-          if array_value_t ~= "string" then
-            error(fmt("invalid value in array %q: got %s, expected string", name, array_value_t), 2)
+          if not HEADER_VALUE_TYPES[array_value_t] then
+            error(fmt("invalid value in array %q: got %s, expected string, number or boolean", header, array_value_t), 2)
           end
         end
 
-      elseif value_t ~= "string" then
-        error(fmt("invalid value in %q: got %s, expected string", name, value_t), 2)
+      elseif not HEADER_VALUE_TYPES[value_t] then
+        error(fmt("invalid value in %q: got %s, expected string, number or boolean", header, value_t), 2)
       end
     end
 
