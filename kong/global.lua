@@ -21,7 +21,7 @@ local _GLOBAL = {}
 
 
 function _GLOBAL.new()
-  local self = {
+  return {
     version = KONG_VERSION,
     version_num = KONG_VERSION_NUM,
 
@@ -30,8 +30,6 @@ function _GLOBAL.new()
 
     configuration = nil,
   }
-
-  return setmetatable(self, _GLOBAL)
 end
 
 

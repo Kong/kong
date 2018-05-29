@@ -10,7 +10,6 @@ local function new(self)
     -- those would be visible on the *.ctx namespace for now
     -- TODO: hide them in a private table shared between this
     -- module and the global.lua one
-    shared_ctx_key = _CTX_SHARED_KEY,
     keys = setmetatable({}, { __mode = "k" }),
   }
 
@@ -23,7 +22,7 @@ local function new(self)
     local key
 
     if k == "shared" then
-      key = t.shared_ctx_key
+      key = _CTX_SHARED_KEY
     else
       key = t.keys[k]
     end

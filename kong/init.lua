@@ -51,9 +51,6 @@ local kong_global = require "kong.global"
 _G.kong = kong_global.new() -- no versioned SDK for plugins for now
 
 
-kong_global.set_named_ctx(kong, "core", {})
-
-
 local ip = require "kong.tools.ip"
 local DB = require "kong.db"
 local dns = require "kong.tools.dns"
@@ -176,6 +173,8 @@ function Kong.init()
 
   kong_global.init_sdk(kong, config, nil) -- nil: latest SDK
 
+  kong_global.set_named_ctx(kong, "core", {})
+
   local db = assert(DB.new(config))
   assert(db:init_connector())
 
@@ -213,7 +212,6 @@ function Kong.init_worker()
   -- and in the init_worker phase, to avoid duplicated
   -- seeds.
   math.randomseed()
-
 
   -- init DAO
 
