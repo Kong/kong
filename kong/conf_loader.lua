@@ -425,6 +425,24 @@ local function check_and_infer(conf)
     end
   end
 
+  -- rbac can be any of 'endpoint', 'entity', 'on', or 'off'
+  local rbac = {}
+  if conf.rbac == "endpoint" then
+    rbac.endpoint = true
+  elseif conf.rbac == "entity" then
+    rbac.entity = true
+  elseif conf.rbac == "on" then
+    rbac.entity = true
+    rbac.endpoint = true
+  elseif conf.rbac == "off" then
+    rbac.off = true
+  else
+    ngx.log(ngx.ERR, [[conf.rbac:]], require("inspect")(conf.rbac))
+    errors[#errors+1] = "rbac must be one of 'endpoint', 'entity', 'on', " ..
+      "or 'off'; got '" .. conf.rbac .. "'"
+  end
+  conf.rbac = rbac
+
   return #errors == 0, errors[1], errors
 end
 
@@ -777,23 +795,6 @@ local function load(path, custom_conf)
       conf.portal_gui_ssl_cert_key = pl_path.abspath(conf.portal_gui_ssl_cert_key)
     end
   end
-
-  -- rbac can be any of 'endpoint', 'entity', 'on', or 'off'
-  local rbac = {}
-  if conf.rbac == "endpoint" then
-    rbac.endpoint = true
-  elseif conf.rbac == "entity" then
-    rbac.entity = true
-  elseif conf.rbac == "on" then
-    rbac.entity = true
-    rbac.endpoint = true
-  elseif conf.rbac == "off" then
-    rbac.off = true
-  else
-    errors[#errors+1] = "rbac must be one of 'endpoint', 'entity', 'on', " ..
-                        "or 'off'; got '" .. conf.rbac .. "'"
-  end
-  conf.rbac = rbac
 
   -- warn user if ssl is disabled and rbac is enforced
   -- TODO CE would probably benefit from some helpers - eg, see
