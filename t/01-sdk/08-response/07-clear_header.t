@@ -214,17 +214,22 @@ X-Foo: {nil}
 --- http_config
 --- config
     location = /t {
-        default_type 'text/test';
-        access_by_lua_block {
+        content_by_lua_block {
+        }
+
+        header_filter_by_lua_block {
+            ngx.header.content_length = nil
+
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local unsupported_phases = {
+            local phases = {
                 "set",
                 "rewrite",
-                "content",
                 "access",
+                "content",
                 "log",
+                "header_filter",
                 "body_filter",
                 "timer",
                 "init_worker",
@@ -234,26 +239,37 @@ X-Foo: {nil}
                 "ssl_session_fetch",
             }
 
-            for _, phase in ipairs(unsupported_phases) do
+            local data = {}
+            local i = 0
+
+            for _, phase in ipairs(phases) do
                 ngx.get_phase = function()
                     return phase
                 end
 
                 local ok, err = pcall(sdk.response.clear_header, "test")
                 if not ok then
-                    ngx.say(err)
+                    i = i + 1
+                    data[i] = err
                 end
             end
+
+            ngx.ctx.data = table.concat(data, "\n")
+        }
+
+        body_filter_by_lua_block {
+            ngx.arg[1] = ngx.ctx.data
+            ngx.arg[2] = true
         }
     }
 --- request
 GET /t
 --- error_code: 200
---- response_body
+--- response_body chop
 kong.response.clear_header is disabled in the context of set
 kong.response.clear_header is disabled in the context of rewrite
-kong.response.clear_header is disabled in the context of content
 kong.response.clear_header is disabled in the context of access
+kong.response.clear_header is disabled in the context of content
 kong.response.clear_header is disabled in the context of log
 kong.response.clear_header is disabled in the context of body_filter
 kong.response.clear_header is disabled in the context of timer

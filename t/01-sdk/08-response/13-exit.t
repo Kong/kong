@@ -591,8 +591,10 @@ Content-Length: 19
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local unsupported_phases = {
+            local phases = {
                 "set",
+                "rewrite",
+                "access",
                 "content",
                 "log",
                 "header_filter",
@@ -605,16 +607,28 @@ Content-Length: 19
                 "ssl_session_fetch",
             }
 
-            for _, phase in ipairs(unsupported_phases) do
+            local data = {}
+            local ctx = ngx.ctx
+            local i = 0
+
+
+            for _, phase in ipairs(phases) do
+                ctx.delay_response = true
+                ctx.delayed_response = nil
+                ctx.delayed_response_callback = nil
+
                 ngx.get_phase = function()
                     return phase
                 end
 
                 local ok, err = pcall(sdk.response.exit, 500)
                 if not ok then
-                    ngx.say(err)
+                    i = i + 1
+                    data[i] = err
                 end
             end
+
+            ngx.say(table.concat(data, "\n"))
         }
     }
 --- request

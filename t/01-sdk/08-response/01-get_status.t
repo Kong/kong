@@ -14,10 +14,20 @@ __DATA__
 --- config
     location /t {
         content_by_lua_block {
+        }
+
+        header_filter_by_lua_block {
+            ngx.header.content_length = nil
+
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            ngx.print("type: " .. type(sdk.response.get_status()))
+            ngx.ctx.type = "type: " .. type(sdk.response.get_status())
+        }
+
+        body_filter_by_lua_block {
+            ngx.arg[1] = ngx.ctx.type
+            ngx.arg[2] = true
         }
     }
 --- request
@@ -97,9 +107,6 @@ status: 404
 [error]
 
 
-set_by_lua*, rewrite_by_lua*, access_by_lua*, content_by_lua*, header_filter_by_lua*, body_filter_by_lua*, log_by_lua*
-
-
 
 === TEST 4: response.get_status() returns last status code set
 --- http_config
@@ -118,18 +125,14 @@ set_by_lua*, rewrite_by_lua*, access_by_lua*, content_by_lua*, header_filter_by_
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            assert(sdk.response.get_status() == 0, "0 ~=" .. tostring(sdk.response.get_status()))
             ngx.status = 201
-            assert(sdk.response.get_status() == 201, "201 ~=" .. tostring(sdk.response.get_status()))
         }
 
         access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            assert(sdk.response.get_status() == 201, "201 ~=" .. tostring(sdk.response.get_status()))
             ngx.status = 202
-            assert(sdk.response.get_status() == 202, "202 ~=" .. tostring(sdk.response.get_status()))
         }
 
         proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -162,5 +165,77 @@ set_by_lua*, rewrite_by_lua*, access_by_lua*, content_by_lua*, header_filter_by_
 --- request
 GET /t
 --- error_code: 204
+--- response_body chop
+--- no_error_log
+[error]
+
+
+
+=== TEST 5: response.get_headers() errors on non-supported phases
+--- http_config
+--- config
+    location = /t {
+        content_by_lua_block {
+        }
+
+        header_filter_by_lua_block {
+            ngx.header.content_length = nil
+
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            local phases = {
+                "set",
+                "rewrite",
+                "access",
+                "content",
+                "log",
+                "header_filter",
+                "body_filter",
+                "timer",
+                "init_worker",
+                "balancer",
+                "ssl_cert",
+                "ssl_session_store",
+                "ssl_session_fetch",
+            }
+
+            local data = {}
+            local i = 0
+
+            for _, phase in ipairs(phases) do
+                ngx.get_phase = function()
+                    return phase
+                end
+
+                local ok, err = pcall(sdk.response.get_status)
+                if not ok then
+                    i = i + 1
+                    data[i] = err
+                end
+            end
+
+            ngx.ctx.data = table.concat(data, "\n")
+        }
+
+        body_filter_by_lua_block {
+            ngx.arg[1] = ngx.ctx.data
+            ngx.arg[2] = true
+        }
+    }
+--- request
+GET /t
+--- error_code: 200
+--- response_body chop
+kong.response.get_status is disabled in the context of set
+kong.response.get_status is disabled in the context of rewrite
+kong.response.get_status is disabled in the context of access
+kong.response.get_status is disabled in the context of content
+kong.response.get_status is disabled in the context of timer
+kong.response.get_status is disabled in the context of init_worker
+kong.response.get_status is disabled in the context of balancer
+kong.response.get_status is disabled in the context of ssl_cert
+kong.response.get_status is disabled in the context of ssl_session_store
+kong.response.get_status is disabled in the context of ssl_session_fetch
 --- no_error_log
 [error]

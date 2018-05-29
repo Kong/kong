@@ -14,11 +14,22 @@ __DATA__
 --- config
     location /t {
         content_by_lua_block {
+        }
+
+        header_filter_by_lua_block {
+            ngx.header.content_length = nil
+
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            ngx.print("type: ", type(sdk.response.get_headers()))
+            ngx.ctx.data = "type: " .. type(sdk.response.get_headers())
         }
+
+        body_filter_by_lua_block {
+            ngx.arg[1] = ngx.ctx.data
+            ngx.arg[2] = true
+        }
+
     }
 --- request
 GET /t
@@ -127,13 +138,15 @@ x_Foo_header: Hello
 --- config
     location = /t {
         default_type '';
-        access_by_lua_block {
+        content_by_lua_block {
             for i = 1, 200 do
                 ngx.header["X-Header-" .. i] = "test"
             end
         }
 
-        content_by_lua_block {
+        header_filter_by_lua_block {
+            ngx.header.content_length = nil
+
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -147,7 +160,12 @@ x_Foo_header: Hello
                 end
             end
 
-            ngx.print("number of headers fetched: ", n)
+            ngx.ctx.n = n
+        }
+
+        body_filter_by_lua_block {
+            ngx.arg[1] = "number of headers fetched: " .. ngx.ctx.n
+            ngx.arg[2] = true
         }
     }
 --- request
@@ -163,13 +181,15 @@ number of headers fetched: 100
 --- config
     location = /t {
         default_type  '';
-        access_by_lua_block {
+        content_by_lua_block {
             for i = 1, 100 do
                 ngx.header["X-Header-" .. i] = "test"
             end
         }
 
-        content_by_lua_block {
+        header_filter_by_lua_block {
+            ngx.header.content_length = nil
+
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -183,7 +203,12 @@ number of headers fetched: 100
                 end
             end
 
-            ngx.print("number of headers fetched: " .. n)
+            ngx.ctx.n = n
+        }
+
+        body_filter_by_lua_block {
+            ngx.arg[1] = "number of headers fetched: " .. ngx.ctx.n
+            ngx.arg[2] = true
         }
     }
 --- request
@@ -199,12 +224,23 @@ number of headers fetched: 60
 --- config
     location = /t {
         content_by_lua_block {
+        }
+
+        header_filter_by_lua_block {
+            ngx.header.content_length = nil
+
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local _, err = pcall(sdk.response.get_headers, "invalid")
+            local ok, err = pcall(sdk.response.get_headers, "invalid")
+            if not ok then
+                ngx.ctx.err = err
+            end
+        }
 
-            ngx.print("error: ", err)
+        body_filter_by_lua_block {
+            ngx.arg[1] = "error: " .. ngx.ctx.err
+            ngx.arg[2] = true
         }
     }
 --- request
@@ -220,12 +256,23 @@ error: max_headers must be a number
 --- config
     location = /t {
         content_by_lua_block {
+        }
+
+        header_filter_by_lua_block {
+            ngx.header.content_length = nil
+
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local _, err = pcall(sdk.response.get_headers, 0)
+            local ok, err = pcall(sdk.response.get_headers, 0)
+            if not ok then
+                ngx.ctx.err = err
+            end
+        }
 
-            ngx.print("error: ", err)
+        body_filter_by_lua_block {
+            ngx.arg[1] = "error: " .. ngx.ctx.err
+            ngx.arg[2] = true
         }
     }
 --- request
@@ -241,12 +288,23 @@ error: max_headers must be >= 1
 --- config
     location = /t {
         content_by_lua_block {
+        }
+
+        header_filter_by_lua_block {
+            ngx.header.content_length = nil
+
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local _, err = pcall(sdk.response.get_headers, 1001)
+            local ok, err = pcall(sdk.response.get_headers, 1001)
+            if not ok then
+                ngx.ctx.err = err
+            end
+        }
 
-            ngx.print("error: ", err)
+        body_filter_by_lua_block {
+            ngx.arg[1] = "error: " .. ngx.ctx.err
+            ngx.arg[2] = true
         }
     }
 --- request
@@ -298,5 +356,76 @@ GET /t
 --- response_body chop
 X-Service-Header: test
 X-Non-Service-Header: test
+--- no_error_log
+[error]
+
+
+
+=== TEST 10: response.get_headers() errors on non-supported phases
+--- http_config
+--- config
+    location = /t {
+        content_by_lua_block {
+        }
+
+        header_filter_by_lua_block {
+            ngx.header.content_length = nil
+
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            local phases = {
+                "set",
+                "rewrite",
+                "access",
+                "content",
+                "log",
+                "header_filter",
+                "body_filter",
+                "timer",
+                "init_worker",
+                "balancer",
+                "ssl_cert",
+                "ssl_session_store",
+                "ssl_session_fetch",
+            }
+
+            local data = {}
+            local i = 0
+
+            for _, phase in ipairs(phases) do
+                ngx.get_phase = function()
+                    return phase
+                end
+
+                local ok, err = pcall(sdk.response.get_headers)
+                if not ok then
+                    i = i + 1
+                    data[i] = err
+                end
+            end
+
+            ngx.ctx.data = table.concat(data, "\n")
+        }
+
+        body_filter_by_lua_block {
+            ngx.arg[1] = ngx.ctx.data
+            ngx.arg[2] = true
+        }
+    }
+--- request
+GET /t
+--- error_code: 200
+--- response_body chop
+kong.response.get_headers is disabled in the context of set
+kong.response.get_headers is disabled in the context of rewrite
+kong.response.get_headers is disabled in the context of access
+kong.response.get_headers is disabled in the context of content
+kong.response.get_headers is disabled in the context of timer
+kong.response.get_headers is disabled in the context of init_worker
+kong.response.get_headers is disabled in the context of balancer
+kong.response.get_headers is disabled in the context of ssl_cert
+kong.response.get_headers is disabled in the context of ssl_session_store
+kong.response.get_headers is disabled in the context of ssl_session_fetch
 --- no_error_log
 [error]
