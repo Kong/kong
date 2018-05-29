@@ -303,8 +303,24 @@ _M.resolve_role_entity_permissions = resolve_role_entity_permissions
 
 
 local function get_rbac_user_info()
+  local guest_user = {
+    roles = {},
+    user = "guest",
+    entities_perms = {},
+    endpoints_perms = {},
+  }
   local ok, res = pcall(function() return ngx.ctx.rbac end)
-  return ok and res or { roles = {}, user = "guest", entities_perms = {} }
+  local user = ok and res
+  if user then
+    return user
+  end
+
+  local user, err =  _M.load_rbac_ctx(singletons.dao)
+  if err then
+    return nil, err
+  end
+
+  return user or guest_user
 end
 
 
@@ -356,7 +372,7 @@ function _M.validate_entity_operation(entity, constraints)
 
   local rbac_ctx = get_rbac_user_info()
   if rbac_ctx.user == "guest" then
-    return true
+    return false
   end
 
   local permissions_map = rbac_ctx.entities_perms
@@ -567,13 +583,33 @@ function _M.load_rbac_ctx(dao_factory)
     return nil, err
   end
 
-  return {
+  local rbac_ctx = {
     user = user,
     roles = roles,
     action = action,
     entities_perms = entities_perms,
     endpoints_perms = endpoints_perms,
   }
+  ngx.ctx.rbac = rbac_ctx
+
+  return rbac_ctx
+end
+
+function _M.validate_user()
+  if singletons.configuration.rbac.off then
+    return
+  end
+
+  local rbac_ctx, err = get_rbac_user_info()
+  if err then
+    ngx.log(ngx.ERR, "[rbac] ", err)
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+  end
+  ngx.log(ngx.ERR, [[rbac_ctx:]], require("inspect")(rbac_ctx))
+
+  if rbac_ctx.user == "guest" then
+    return responses.send_HTTP_UNAUTHORIZED("Invalid RBAC credentials")
+  end
 end
 
 
@@ -586,13 +622,10 @@ function _M.validate_endpoint(route_name, route)
     return
   end
 
-  local rbac_ctx, err = _M.load_rbac_ctx(singletons.dao)
+  local rbac_ctx, err = get_rbac_user_info()
   if err then
     ngx.log(ngx.ERR, "[rbac] ", err)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()
-  end
-  if not rbac_ctx then
-    return responses.send_HTTP_UNAUTHORIZED("Invalid RBAC credentials")
   end
 
   local  ok = _M.authorize_request_endpoint(rbac_ctx.endpoints_perms,
@@ -603,7 +636,6 @@ function _M.validate_endpoint(route_name, route)
                     rbac_ctx.user.name, readable_action(rbac_ctx.action))
     return responses.send_HTTP_UNAUTHORIZED(err)
   end
-  ngx.ctx.rbac = rbac_ctx
 end
 
 

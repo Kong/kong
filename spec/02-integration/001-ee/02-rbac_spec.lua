@@ -4,11 +4,71 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
 
+local client
+
+local function post(path, body, headers, expected_status)
+  local res = assert(client:send{
+    method = "POST",
+    path = path,
+    body = body or {},
+    headers = headers or {["Content-Type"] = "application/json"}
+  })
+  return cjson.decode(assert.res_status(expected_status or 201, res))
+end
+
+local function put(path, body, headers, expected_status)
+  local res = assert(client:send{
+    method = "PUT",
+    path = path,
+    body = body or {},
+    headers = headers or {["Content-Type"] = "application/json"}
+  })
+  return cjson.decode(assert.res_status(expected_status or 202, res))
+end
+
+local function get(path, headers, expected_status)
+  local res = assert(client:send{
+    method = "GET",
+    path = path,
+    body = body or {},
+    headers = headers or {["Content-Type"] = "application/json"}
+  })
+  return cjson.decode(assert.res_status(expected_status or 200, res))
+end
+
+local function delete(path, headers, expected_status)
+  local res = assert(client:send{
+    method = "DELETE",
+    path = path,
+    body = body or {},
+    headers = headers or {["Content-Type"] = "application/json"}
+  })
+  assert.res_status(expected_status or 204, res)
+end
+
+local function create_api(suffix)
+  suffix = tostring(suffix)
+  return post("/apis", {
+    uris = "/my-uri" .. suffix,
+    name = "my-api" .. suffix,
+    methods = "GET",
+    hosts = "my.api" .. suffix ..".com",
+    upstream_url = "http://api".. suffix.. ".com"})
+end
+
+local function map(pred, t)
+  local r = {}
+  for i, v in ipairs(t) do
+    r[i] = pred(v)
+  end
+  return r
+end
+
 
 dao_helpers.for_each_dao(function(kong_config)
 
 describe("Admin API RBAC with " .. kong_config.database, function()
-  local dao, client
+  local dao
 
   setup(function()
     dao = assert(DAOFactory.new(kong_config))
@@ -1757,3 +1817,71 @@ for _, h in ipairs({ "", "Custom-Auth-Token" }) do
     end)
   end)
 end
+
+
+dao_helpers.for_each_dao(function(kong_config)
+describe("Admin API", function()
+  local dao, apis
+
+  setup(function()
+    dao = assert(DAOFactory.new(kong_config))
+    dao:drop_schema()
+    helpers.dao:run_migrations()
+
+    assert(helpers.start_kong({
+      database = kong_config.database,
+    }))
+    client = assert(helpers.admin_client("127.0.0.1", 8001))
+
+    apis = map(create_api, {1, 2, 3, 4})
+
+    post("/rbac/users", {name = "bob", user_token = "bob"})
+    post("/rbac/roles" , {name = "mock-role"})
+    post("/rbac/roles/mock-role/entities", {entity_id = apis[2].id, actions = "read"})
+    post("/rbac/roles/mock-role/entities", {entity_id = apis[3].id, actions = "delete"})
+    post("/rbac/users/bob/roles", {roles = "mock-role"})
+
+    helpers.stop_kong(nil, true, true)
+    assert(helpers.start_kong {
+      database              = kong_config.database,
+      rbac                  = "entity",
+    })
+    client = assert(helpers.admin_client())
+  end)
+
+  teardown(function()
+    helpers.stop_kong()
+  end)
+
+  it(".find_all filters non accessible entities", function()
+    local data = get("/apis", {["Kong-RBAC-Token"] = "bob"}).data
+    assert.equal(1, #data)
+    assert.equal(apis[2].id, data[1].id)
+  end)
+
+  it(".find_all returns 401 for invalid credentials", function()
+    get("/apis", {["Kong-RBAC-Token"] = "wrong"}, 401)
+    get("/apis", nil, 401)
+  end)
+
+  it(".find errors for non permitted entities", function()
+    get("/apis/" .. apis[1].id , {["Kong-RBAC-Token"] = "wrong"}, 401)
+    get("/apis/" .. apis[2].id , {["Kong-RBAC-Token"] = "wrong"}, 401)
+    get("/apis/" .. apis[1].id , {["Kong-RBAC-Token"] = "bob"}, 404)
+    get("/apis/" .. apis[2].id , {["Kong-RBAC-Token"] = "bob"}, 200)
+  end)
+
+  it(".update checks rbac", function()
+    put("/apis/".. apis[4], )
+  end)
+
+  it(".delete checks rbac", function()
+    delete("/apis/" .. apis[1].id, nil, 401)
+    delete("/apis/" .. apis[2].id, nil, 401)
+    delete("/apis/" .. apis[1].id, {["Kong-RBAC-Token"] = "bob"}, 404)
+    delete("/apis/" .. apis[2].id, {["Kong-RBAC-Token"] = "bob"}, 404)
+    delete("/apis/" .. apis[3].id, {["Kong-RBAC-Token"] = "bob"}, 204)
+  end)
+end)
+
+end)

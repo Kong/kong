@@ -171,6 +171,7 @@ app:before_filter(function(self)
    -- ngx.var.uri is used to look for exact matches
    -- self.route_name is used to look for wildcard matches,
    -- by replacing named parameters with *
+   rbac.validate_user()
    rbac.validate_endpoint(self.route_name, ngx.var.uri)
   end
 
