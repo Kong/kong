@@ -368,8 +368,8 @@ local function new(self)
         return encoded
       end,
 
-      [CONTENT_TYPE_FORM_DATA] = function(args)
-        local data = multipart()
+      [CONTENT_TYPE_FORM_DATA] = function(args, mime)
+        local data = multipart(nil, mime)
 
         local keys = {}
         local i = 1
@@ -441,16 +441,17 @@ local function new(self)
       if mime and type(mime) ~= "string" then
         error("mime must be a string", 2)
       end
-
       if not mime then
         mime = ngx.req.get_headers()[CONTENT_TYPE]
-        local s = string_find(mime, ";", 1, true)
-        if s then
-          mime = string_sub(mime, 1, s - 1)
-        end
       end
 
-      local handler_fn = set_parsed_body_handlers[mime]
+      local boundaryless_mime = mime
+      local s = string_find(mime, ";", 1, true)
+      if s then
+        boundaryless_mime = string_sub(mime, 1, s - 1)
+      end
+
+      local handler_fn = set_parsed_body_handlers[boundaryless_mime]
       if not handler_fn then
         error("unsupported content type " .. mime, 2)
       end
@@ -460,7 +461,8 @@ local function new(self)
       -- and necessary to write the request to the service if it has not.
       ngx.req.read_body()
 
-      local body = handler_fn(args)
+      local body = handler_fn(args, mime)
+
       ngx.req.set_body_data(body)
       ngx.req.set_header(CONTENT_TYPE, mime)
     end
