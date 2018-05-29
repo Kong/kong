@@ -60,28 +60,22 @@ local function new(sdk, major_version)
   end
 
 
-  function _RESPONSE.set_status(code)
+  function _RESPONSE.get_header(header)
     local phase = ngx.get_phase()
-    if not RESPONSE_PHASES_SET[phase] then
-      error(fmt("kong.response.set_status is disabled in the context of %s", phase), 2)
+    if not RESPONSE_PHASES_GET[phase] then
+      error(fmt("kong.response.get_header is disabled in the context of %s", phase), 2)
     end
 
-    if phase ~= "header_filter" and ngx.headers_sent then
-      error("headers have been sent", 2)
+    if type(header) ~= "string" then
+      error("header must be a string", 2)
     end
 
-    if type(code) ~= "number" then
-      error("code must be a number", 2)
-
-    elseif code < MIN_STATUS_CODE or code > MAX_STATUS_CODE then
-      error(fmt("code must be a number between %u and %u", MIN_STATUS_CODE, MAX_STATUS_CODE), 2)
+    local header_value = _RESPONSE.get_headers()[header]
+    if type(header_value) == "table" then
+      return header_value[1]
     end
 
-    if ngx.headers_sent then
-      error("headers have been sent", 2)
-    end
-
-    ngx.status = code
+    return header_value
   end
 
 
@@ -109,22 +103,28 @@ local function new(sdk, major_version)
   end
 
 
-  function _RESPONSE.get_header(header)
+  function _RESPONSE.set_status(status)
     local phase = ngx.get_phase()
-    if not RESPONSE_PHASES_GET[phase] then
-      error(fmt("kong.response.get_header is disabled in the context of %s", phase), 2)
+    if not RESPONSE_PHASES_SET[phase] then
+      error(fmt("kong.response.set_status is disabled in the context of %s", phase), 2)
     end
 
-    if type(header) ~= "string" then
-      error("header must be a string", 2)
+    if phase ~= "header_filter" and ngx.headers_sent then
+      error("headers have been sent", 2)
     end
 
-    local header_value = _RESPONSE.get_headers()[header]
-    if type(header_value) == "table" then
-      return header_value[1]
+    if type(status) ~= "number" then
+      error("code must be a number", 2)
+
+    elseif status < MIN_STATUS_CODE or status > MAX_STATUS_CODE then
+      error(fmt("code must be a number between %u and %u", MIN_STATUS_CODE, MAX_STATUS_CODE), 2)
     end
 
-    return header_value
+    if ngx.headers_sent then
+      error("headers have been sent", 2)
+    end
+
+    ngx.status = status
   end
 
 
@@ -245,7 +245,7 @@ local function new(sdk, major_version)
   --end
   --
   --
-  --function _RESPONSE.set_parsed_body(args, mimetype)
+  --function _RESPONSE.set_body(args, mimetype)
   --  -- TODO: implement, but how?
   --end
 
