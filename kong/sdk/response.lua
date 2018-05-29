@@ -334,13 +334,13 @@ local function new(sdk, major_version)
         if value_t == "table" then
           for _, array_value in ipairs(value) do
             local array_value_t = type(array_value)
-            if array_value_t ~= "string" then
-              error(fmt("invalid header value in array %q: got %s, expected string", name, array_value_t), 2)
+            if not HEADER_VALUE_TYPES[array_value_t] then
+              error(fmt("invalid header value in array %q: got %s, expected string, number or boolean", name, array_value_t), 2)
             end
           end
 
-        elseif value_t ~= "string" then
-          error(fmt("invalid header value in %q: got %s, expected string", name, value_t), 2)
+        elseif not HEADER_VALUE_TYPES[value_t] then
+          error(fmt("invalid header value for %q: got %s, expected string, number or boolean", name, value_t), 2)
         end
       end
     end

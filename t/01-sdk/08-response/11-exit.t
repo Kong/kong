@@ -329,7 +329,7 @@ invalid header name "2": got number, expected string
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.response.exit, 200, nil, {["foo"] = 2})
+            local pok, err = pcall(sdk.response.exit, 200, nil, {["foo"] = function() end})
             assert(not pok)
             ngx.say(err)
         }
@@ -337,7 +337,7 @@ invalid header name "2": got number, expected string
 --- request
 GET /t
 --- response_body
-invalid header value in "foo": got number, expected string
+invalid header value for "foo": got function, expected string, number or boolean
 --- no_error_log
 [error]
 
@@ -351,7 +351,7 @@ invalid header value in "foo": got number, expected string
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.response.exit, 200, nil, {["foo"] = {2}})
+            local pok, err = pcall(sdk.response.exit, 200, nil, {["foo"] = { function() end }})
             assert(not pok)
             ngx.say(err)
         }
@@ -360,7 +360,7 @@ invalid header value in "foo": got number, expected string
 GET /t
 --- error_code: 200
 --- response_body
-invalid header value in array "foo": got number, expected string
+invalid header value in array "foo": got function, expected string, number or boolean
 --- no_error_log
 [error]
 
