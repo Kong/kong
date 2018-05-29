@@ -59,7 +59,7 @@ cassandra_schema_consensus_timeout = 10000
 
 db_update_frequency = 5
 db_update_propagation = 0
-db_cache_ttl = 3600
+db_cache_ttl = 0
 
 dns_resolver = NONE
 dns_hostsfile = /etc/hosts

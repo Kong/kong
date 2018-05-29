@@ -418,12 +418,12 @@
                                  # servers should suffer no such delays, and
                                  # this value can be safely set to 0.
 
-#db_cache_ttl = 3600             # Time-to-live (in seconds) of an entity from
+#db_cache_ttl = 0                # Time-to-live (in seconds) of an entity from
                                  # the datastore when cached by this node.
                                  # Database misses (no entity) are also cached
                                  # according to this setting.
-                                 # If set to 0, such cached entities/misses
-                                 # never expire.
+                                 # If set to 0 (default), such cached entities
+                                 # or misses never expire.
 
 #------------------------------------------------------------------------------
 # DNS RESOLVER
