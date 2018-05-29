@@ -149,16 +149,17 @@ build = {
     ["kong.db.strategies.postgres"] = "kong/db/strategies/postgres/init.lua",
     ["kong.db.strategies.postgres.connector"] = "kong/db/strategies/postgres/connector.lua",
 
-    ["kong.sdk.base"] = "kong/sdk/base.lua",
-    ["kong.sdk.client"] = "kong/sdk/client.lua",
     ["kong.sdk"] = "kong/sdk/init.lua",
+    ["kong.sdk.client"] = "kong/sdk/client.lua",
+    ["kong.sdk.ctx"] = "kong/sdk/ctx.lua",
     ["kong.sdk.ip"] = "kong/sdk/ip.lua",
     ["kong.sdk.log"] = "kong/sdk/log.lua",
+    ["kong.sdk.service"] = "kong/sdk/service.lua",
+    ["kong.sdk.service.request"] = "kong/sdk/service/request.lua",
+    ["kong.sdk.service.response"] = "kong/sdk/service/response.lua",
     ["kong.sdk.request"] = "kong/sdk/request.lua",
     ["kong.sdk.response"] = "kong/sdk/response.lua",
-    ["kong.sdk.upstream"] = "kong/sdk/upstream/init.lua",
-    ["kong.sdk.upstream.response"] = "kong/sdk/upstream/response.lua",
-    ["kong.sdk.utils.base"] = "kong/sdk/utils/base.lua",
+    ["kong.sdk.table"] = "kong/sdk/table.lua",
 
     ["kong.plugins.base_plugin"] = "kong/plugins/base_plugin.lua",
 
