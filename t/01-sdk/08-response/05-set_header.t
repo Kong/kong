@@ -36,7 +36,7 @@ __DATA__
 --- request
 GET /t
 --- response_body chop
-header must be a string
+header name must be a string
 --- no_error_log
 [error]
 
@@ -68,7 +68,7 @@ header must be a string
 --- request
 GET /t
 --- response_body chop
-header must be a string
+header name must be a string
 --- no_error_log
 [error]
 

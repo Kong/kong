@@ -60,17 +60,17 @@ local function new(sdk, major_version)
   end
 
 
-  function _RESPONSE.get_header(header)
+  function _RESPONSE.get_header(name)
     local phase = ngx.get_phase()
     if not RESPONSE_PHASES_GET[phase] then
       error(fmt("kong.response.get_header is disabled in the context of %s", phase), 2)
     end
 
-    if type(header) ~= "string" then
-      error("header must be a string", 2)
+    if type(name) ~= "string" then
+      error("header name must be a string", 2)
     end
 
-    local header_value = _RESPONSE.get_headers()[header]
+    local header_value = _RESPONSE.get_headers()[name]
     if type(header_value) == "table" then
       return header_value[1]
     end
@@ -128,7 +128,7 @@ local function new(sdk, major_version)
   end
 
 
-  function _RESPONSE.set_header(header, value)
+  function _RESPONSE.set_header(name, value)
     local phase = ngx.get_phase()
     if not RESPONSE_PHASES_SET[phase] then
       error(fmt("kong.response.set_header is disabled in the context of %s", phase), 2)
@@ -138,20 +138,20 @@ local function new(sdk, major_version)
       error("headers have been sent", 2)
     end
 
-    if type(header) ~= "string" then
-      error("header must be a string", 2)
+    if type(name) ~= "string" then
+      error("header name must be a string", 2)
     end
 
     local value_t = type(value)
     if not HEADER_VALUE_TYPES[value_t] then
-      error(fmt("invalid value for %q: got %s, expected string, number or boolean", header, value_t), 2)
+      error(fmt("invalid value for %q: got %s, expected string, number or boolean", name, value_t), 2)
     end
 
-    ngx.header[header] = value ~= "" and value or " "
+    ngx.header[name] = value ~= "" and value or " "
   end
 
 
-  function _RESPONSE.add_header(header, value)
+  function _RESPONSE.add_header(name, value)
     local phase = ngx.get_phase()
     if not RESPONSE_PHASES_SET[phase] then
       error(fmt("kong.response.add_header is disabled in the context of %s", phase), 2)
@@ -161,27 +161,27 @@ local function new(sdk, major_version)
       error("headers have been sent", 2)
     end
 
-    if type(header) ~= "string" then
-      error("header must be a string", 2)
+    if type(name) ~= "string" then
+      error("header name must be a string", 2)
     end
 
     local value_t = type(value)
     if not HEADER_VALUE_TYPES[value_t] then
-      error(fmt("invalid value for %q: got %s, expected string, number or boolean", header, value_t), 2)
+      error(fmt("invalid value for %q: got %s, expected string, number or boolean", name, value_t), 2)
     end
 
-    local new_value = _RESPONSE.get_headers()[header]
+    local new_value = _RESPONSE.get_headers()[name]
     if type(new_value) ~= "table" then
       new_value = { new_value }
     end
 
     insert(new_value, value ~= "" and value or " ")
 
-    ngx.header[header] = new_value
+    ngx.header[name] = new_value
   end
 
 
-  function _RESPONSE.clear_header(header)
+  function _RESPONSE.clear_header(name)
     local phase = ngx.get_phase()
     if not RESPONSE_PHASES_SET[phase] then
       error(fmt("kong.response.clear_header is disabled in the context of %s", phase), 2)
@@ -191,11 +191,11 @@ local function new(sdk, major_version)
       error("headers have been sent", 2)
     end
 
-    if type(header) ~= "string" then
-      error("header must be a string", 2)
+    if type(name) ~= "string" then
+      error("header name must be a string", 2)
     end
 
-    ngx.header[header] = nil
+    ngx.header[name] = nil
   end
 
 

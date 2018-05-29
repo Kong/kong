@@ -172,7 +172,7 @@ accept header value: nil
 --- request
 GET /t
 --- response_body chop
-error: header must be a string
+error: header name must be a string
 --- no_error_log
 [error]
 
