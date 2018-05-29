@@ -302,7 +302,7 @@ function Kong.init_worker()
   -- /LEGACY
 
 
-  kong.db_cache = cache
+  kong.cache = cache
   kong.worker_events = worker_events
   kong.cluster_events = cluster_events
 

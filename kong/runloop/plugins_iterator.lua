@@ -60,14 +60,14 @@ local function load_plugin_configuration(route_id,
                                                             consumer_id,
                                                             api_id)
 
-  local plugin, err = kong.db_cache:get(plugin_cache_key,
-                                        nil,
-                                        load_plugin_into_memory,
-                                        route_id,
-                                        service_id,
-                                        consumer_id,
-                                        plugin_name,
-                                        api_id)
+  local plugin, err = kong.cache:get(plugin_cache_key,
+                                     nil,
+                                     load_plugin_into_memory,
+                                     route_id,
+                                     service_id,
+                                     consumer_id,
+                                     plugin_name,
+                                     api_id)
   if err then
     ngx.ctx.delay_response = false
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
