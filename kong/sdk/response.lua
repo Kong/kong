@@ -147,7 +147,7 @@ local function new(sdk, major_version)
       error(fmt("invalid value for %q: got %s, expected string, number or boolean", name, value_t), 2)
     end
 
-    ngx.header[name] = value ~= "" and value or " "
+    ngx.header[name] = tostring(value ~= "" and value or " ")
   end
 
 
@@ -235,7 +235,7 @@ local function new(sdk, major_version)
     end
 
     for name, value in pairs(headers) do
-      ngx.header[name] = value ~= "" and value or " "
+      ngx.header[name] = tostring(value ~= "" and value or " ")
     end
   end
 

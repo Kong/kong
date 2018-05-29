@@ -195,15 +195,15 @@ local function new(self)
     if type(header) ~= "string" then
       error("header must be a string", 2)
     end
-    if type(value) ~= "string" then
-      error("value must be a string", 2)
+    if type(value) ~= "string" and type(value) ~= "number" and type(value) ~= "boolean" then
+      error("value must be a string, number or boolean", 2)
     end
 
     if string_lower(header) == "host" then
       ngx.var.upstream_host = value
     end
 
-    ngx.req.set_header(header, value ~= "" and value or " ")
+    ngx.req.set_header(header, tostring(value ~= "" and value or " "))
   end
 
 
@@ -219,8 +219,8 @@ local function new(self)
     if type(header) ~= "string" then
       error("header must be a string", 2)
     end
-    if type(value) ~= "string" then
-      error("value must be a string", 2)
+    if type(value) ~= "string" and type(value) ~= "number" and type(value) ~= "boolean" then
+      error("value must be a string, number or boolean", 2)
     end
 
     if string_lower(header) == "host" then
@@ -232,7 +232,7 @@ local function new(self)
       headers = { headers }
     end
 
-    table_insert(headers, value ~= "" and value or " ")
+    table_insert(headers, tostring(value ~= "" and value or " "))
 
     ngx.req.set_header(header, headers)
   end
@@ -295,10 +295,10 @@ local function new(self)
           end
         end
 
-      elseif typev ~= "string" then
+      elseif typev ~= "string" and typev ~= "boolean" and typev ~= "number" then
 
         error(("invalid value in %q: got %s, " ..
-               "expected string"):format(k, typev), 2)
+               "expected string, boolean or number"):format(k, typev), 2)
       end
     end
 
@@ -306,10 +306,10 @@ local function new(self)
 
     for k, v in pairs(headers) do
       if string_lower(k) == "host" then
-        ngx.var.upstream_host = v
+        ngx.var.upstream_host = tostring(v)
       end
 
-      ngx.req.set_header(k, v ~= "" and v or " ")
+      ngx.req.set_header(k, tostring(v ~= "" and v or " "))
     end
 
   end
