@@ -719,46 +719,16 @@ end
 function _mt:upsert(primary_key, entity)
   local collapsed_entity = self.collapse(entity, primary_key)
 
-  if self.connector.version_num >= 90500 then
-    local res, err = execute(self, "upsert", collapsed_entity)
-    if res then
-      local row = res[1]
-      if row then
-        return self.expand(row), nil
-      end
-      return nil, self.errors:not_found(primary_key)
+  local res, err = execute(self, "upsert", collapsed_entity)
+  if res then
+    local row = res[1]
+    if row then
+      return self.expand(row), nil
     end
-
-    return toerror(self, err, primary_key, entity)
+    return nil, self.errors:not_found(primary_key)
   end
 
-  while true do
-    local res, err = execute(self, "insert", collapsed_entity)
-    if res then
-      local row = res[1]
-      if row then
-        return self.expand(row), nil
-      end
-
-      return nil, nil
-    end
-
-    local _, err_t = toerror(self, err, nil, entity)
-    if err_t.code ~= self.errors.codes.PRIMARY_KEY_VIOLATION then
-      return _, err_t
-    end
-
-    res, err = execute(self, "update", collapsed_entity, true)
-    if res then
-      local row = res[1]
-      if row then
-        return self.expand(row), nil
-      end
-
-    else
-      return toerror(self, err, primary_key, entity)
-    end
-  end
+  return toerror(self, err, primary_key, entity)
 end
 
 
@@ -767,50 +737,19 @@ function _mt:upsert_by_field(field_name, unique_value, entity)
     [field_name] = unique_value
   })
 
-  if self.connector.version_num >= 90500 then
-    local statement_name = "upsert_by_" .. field_name
-    local res, err = execute(self, statement_name, collapsed_entity)
-    if res then
-      local row = res[1]
-      if row then
-        return self.expand(row), nil
-      end
-      return nil, self.errors:not_found_by_field {
-        [field_name] = unique_value,
-      }
+  local statement_name = "upsert_by_" .. field_name
+  local res, err = execute(self, statement_name, collapsed_entity)
+  if res then
+    local row = res[1]
+    if row then
+      return self.expand(row), nil
     end
-
-    return toerror(self, err, { [field_name] = unique_value }, entity)
+    return nil, self.errors:not_found_by_field {
+      [field_name] = unique_value,
+    }
   end
 
-  while true do
-    local res, err = execute(self, "insert", collapsed_entity)
-    if res then
-      local row = res[1]
-      if row then
-        return self.expand(row), nil
-      end
-
-      return nil, nil
-    end
-
-    local _, err_t = toerror(self, err, nil, entity)
-    if err_t.code ~= self.errors.codes.UNIQUE_VIOLATION then
-      return _, err_t
-    end
-
-    local statement_name = "update_by_" .. field_name
-    res, err = execute(self, statement_name, self.collapse({ [UNIQUE] = unique_value }, entity), true)
-    if res then
-      local row = res[1]
-      if row then
-        return self.expand(row), nil
-      end
-
-    else
-      return toerror(self, err, { [field_name] = unique_value }, entity)
-    end
-  end
+  return toerror(self, err, { [field_name] = unique_value }, entity)
 end
 
 
