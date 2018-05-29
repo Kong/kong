@@ -15,7 +15,7 @@ __DATA__
 === TEST 1: request.get_forwarded_scheme() considers X-Forwarded-Proto when trusted
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new({
                 trusted_ips = { "0.0.0.0/0", "::/0" }
@@ -38,7 +38,7 @@ scheme: https
 === TEST 2: request.get_forwarded_scheme() doesn't considers X-Forwarded-Proto when not trusted
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new({ trusted_ips = {} })
 
@@ -59,7 +59,7 @@ scheme: http
 === TEST 3: request.get_forwarded_scheme() considers first X-Forwarded-Proto if multiple when trusted
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new({ trusted_ips = { "0.0.0.0/0", "::/0" } })
 
@@ -81,7 +81,7 @@ scheme: http
 === TEST 4: request.get_forwarded_scheme() doesn't considers any X-Forwarded-Proto headers when not trusted
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new({ trusted_ips = {} })
 
@@ -103,7 +103,7 @@ scheme: http
 === TEST 5: request.get_forwarded_scheme() falls back to scheme used in last hop (http)
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new({
                 trusted_ips = { "0.0.0.0/0", "::/0" }
@@ -130,6 +130,9 @@ scheme: http
 
         location / {
             content_by_lua_block {
+            }
+
+            access_by_lua_block {
                 local SDK = require "kong.sdk"
                 local sdk = SDK.new({
                     trusted_ips = { "0.0.0.0/0", "::/0" }
@@ -156,7 +159,7 @@ scheme: https
 === TEST 7: request.get_forwarded_scheme() is normalized
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new({
                 trusted_ips = { "0.0.0.0/0", "::/0" }
@@ -171,5 +174,65 @@ GET /t
 X-Forwarded-Proto: HTTPS
 --- response_body
 scheme: https
+--- no_error_log
+[error]
+
+
+
+=== TEST 8: request.get_forwarded_scheme() errors on non-supported phases
+--- http_config
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            local phases = {
+                "set",
+                "rewrite",
+                "access",
+                "content",
+                "log",
+                "header_filter",
+                "body_filter",
+                "timer",
+                "init_worker",
+                "balancer",
+                "ssl_cert",
+                "ssl_session_store",
+                "ssl_session_fetch",
+            }
+
+            local data = {}
+            local i = 0
+
+            for _, phase in ipairs(phases) do
+                ngx.get_phase = function()
+                    return phase
+                end
+
+                local ok, err = pcall(sdk.request.get_forwarded_scheme)
+                if not ok then
+                    i = i + 1
+                    data[i] = err
+                end
+            end
+
+            ngx.say(table.concat(data, "\n"))
+        }
+    }
+--- request
+GET /t
+--- error_code: 200
+--- response_body
+kong.request.get_forwarded_scheme is disabled in the context of set
+kong.request.get_forwarded_scheme is disabled in the context of content
+kong.request.get_forwarded_scheme is disabled in the context of timer
+kong.request.get_forwarded_scheme is disabled in the context of init_worker
+kong.request.get_forwarded_scheme is disabled in the context of balancer
+kong.request.get_forwarded_scheme is disabled in the context of ssl_cert
+kong.request.get_forwarded_scheme is disabled in the context of ssl_session_store
+kong.request.get_forwarded_scheme is disabled in the context of ssl_session_fetch
 --- no_error_log
 [error]

@@ -8,14 +8,14 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: request.get_query_args() returns a table
+=== TEST 1: request.get_query() returns a table
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            ngx.say("type: ", type(sdk.request.get_query_args()))
+            ngx.say("type: ", type(sdk.request.get_query()))
         }
     }
 --- request
@@ -27,14 +27,14 @@ type: table
 
 
 
-=== TEST 2: request.get_query_args() returns request query arguments
+=== TEST 2: request.get_query() returns request query arguments
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local args = sdk.request.get_query_args()
+            local args = sdk.request.get_query()
             ngx.say("Foo: ", args.Foo)
             ngx.say("Bar: ", args.Bar)
             ngx.say("Accept: ", table.concat(args.Accept, ", "))
@@ -51,14 +51,14 @@ Accept: application/json, text/html
 
 
 
-=== TEST 3: request.get_query_args() returns request query arguments case-sensitive
+=== TEST 3: request.get_query() returns request query arguments case-sensitive
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local args = sdk.request.get_query_args()
+            local args = sdk.request.get_query()
             ngx.say("Foo: ", args.Foo)
             ngx.say("foo: ", args.foo)
             ngx.say("fOO: ", args.fOO)
@@ -75,10 +75,10 @@ fOO: Too
 
 
 
-=== TEST 4: request.get_query_args() fetches 100 query arguments by default
+=== TEST 4: request.get_query() fetches 100 query arguments by default
 --- config
     location = /t {
-        access_by_lua_block {
+        rewrite_by_lua_block {
             local args = {}
             for i = 1, 200 do
                 args["arg-" .. i] = "test"
@@ -86,11 +86,11 @@ fOO: Too
             ngx.req.set_uri_args(args)
         }
 
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local args = sdk.request.get_query_args()
+            local args = sdk.request.get_query()
 
             local n = 0
 
@@ -110,10 +110,10 @@ number of query arguments fetched: 100
 
 
 
-=== TEST 5: request.get_query_args() fetches max_args argument
+=== TEST 5: request.get_query() fetches max_args argument
 --- config
     location = /t {
-        access_by_lua_block {
+        rewrite_by_lua_block {
             local args = {}
             for i = 1, 100 do
                 args["arg-" .. i] = "test"
@@ -121,11 +121,11 @@ number of query arguments fetched: 100
             ngx.req.set_uri_args(args)
         }
 
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local headers = sdk.request.get_query_args(60)
+            local headers = sdk.request.get_query(60)
 
             local n = 0
 
@@ -145,14 +145,14 @@ number of query arguments fetched: 60
 
 
 
-=== TEST 6: request.get_query_args() raises error when trying to fetch with max_args invalid value
+=== TEST 6: request.get_query() raises error when trying to fetch with max_args invalid value
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local _, err = pcall(sdk.request.get_query_args, "invalid")
+            local _, err = pcall(sdk.request.get_query, "invalid")
 
             ngx.say("error: ", err)
         }
@@ -166,14 +166,14 @@ error: max_args must be a number
 
 
 
-=== TEST 7: request.get_query_args() raises error when trying to fetch with max_args < 1
+=== TEST 7: request.get_query() raises error when trying to fetch with max_args < 1
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local _, err = pcall(sdk.request.get_query_args, 0)
+            local _, err = pcall(sdk.request.get_query, 0)
 
             ngx.say("error: ", err)
         }
@@ -187,14 +187,14 @@ error: max_args must be >= 1
 
 
 
-=== TEST 8: request.get_query_args() raises error when trying to fetch with max_args > 1000
+=== TEST 8: request.get_query() raises error when trying to fetch with max_args > 1000
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local _, err = pcall(sdk.request.get_query_args, 1001)
+            local _, err = pcall(sdk.request.get_query, 1001)
 
             ngx.say("error: ", err)
         }
@@ -203,5 +203,65 @@ error: max_args must be >= 1
 GET /t
 --- response_body
 error: max_args must be <= 1000
+--- no_error_log
+[error]
+
+
+
+=== TEST 9: request.get_query() errors on non-supported phases
+--- http_config
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            local phases = {
+                "set",
+                "rewrite",
+                "access",
+                "content",
+                "log",
+                "header_filter",
+                "body_filter",
+                "timer",
+                "init_worker",
+                "balancer",
+                "ssl_cert",
+                "ssl_session_store",
+                "ssl_session_fetch",
+            }
+
+            local data = {}
+            local i = 0
+
+            for _, phase in ipairs(phases) do
+                ngx.get_phase = function()
+                    return phase
+                end
+
+                local ok, err = pcall(sdk.request.get_query)
+                if not ok then
+                    i = i + 1
+                    data[i] = err
+                end
+            end
+
+            ngx.say(table.concat(data, "\n"))
+        }
+    }
+--- request
+GET /t
+--- error_code: 200
+--- response_body
+kong.request.get_query is disabled in the context of set
+kong.request.get_query is disabled in the context of content
+kong.request.get_query is disabled in the context of timer
+kong.request.get_query is disabled in the context of init_worker
+kong.request.get_query is disabled in the context of balancer
+kong.request.get_query is disabled in the context of ssl_cert
+kong.request.get_query is disabled in the context of ssl_session_store
+kong.request.get_query is disabled in the context of ssl_session_fetch
 --- no_error_log
 [error]

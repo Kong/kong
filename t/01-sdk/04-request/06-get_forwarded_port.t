@@ -14,7 +14,7 @@ __DATA__
 === TEST 1: request.get_forwarded_port() considers X-Forwarded-Port when trusted
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new({ trusted_ips = { "0.0.0.0/0", "::/0" } })
 
@@ -37,7 +37,7 @@ type: number
 === TEST 2: request.get_forwarded_port() doesn't considers X-Forwarded-Port when not trusted
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -60,7 +60,7 @@ port: \d+
 === TEST 3: request.get_forwarded_port() considers first X-Forwarded-Port if multiple when trusted
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new({ trusted_ips = { "0.0.0.0/0", "::/0" } })
 
@@ -82,7 +82,7 @@ port: 1234
 === TEST 4: request.get_forwarded_port() doesn't considers any X-Forwarded-Port headers when not trusted
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -106,7 +106,7 @@ port: \d+
 === TEST 5: request.get_forwarded_port() falls back to port used in last hop (http)
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new({ trusted_ips = { "0.0.0.0/0", "::/0" } })
 
@@ -131,6 +131,9 @@ port: \d+
 
         location / {
             content_by_lua_block {
+            }
+
+            access_by_lua_block {
                 local SDK = require "kong.sdk"
                 local sdk = SDK.new({ trusted_ips = { "0.0.0.0/0", "::/0" } })
 
@@ -147,5 +150,65 @@ port: \d+
 GET /t
 --- response_body
 port: nil
+--- no_error_log
+[error]
+
+
+
+=== TEST 7: request.get_forwarded_port() errors on non-supported phases
+--- http_config
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            local phases = {
+                "set",
+                "rewrite",
+                "access",
+                "content",
+                "log",
+                "header_filter",
+                "body_filter",
+                "timer",
+                "init_worker",
+                "balancer",
+                "ssl_cert",
+                "ssl_session_store",
+                "ssl_session_fetch",
+            }
+
+            local data = {}
+            local i = 0
+
+            for _, phase in ipairs(phases) do
+                ngx.get_phase = function()
+                    return phase
+                end
+
+                local ok, err = pcall(sdk.request.get_forwarded_port)
+                if not ok then
+                    i = i + 1
+                    data[i] = err
+                end
+            end
+
+            ngx.say(table.concat(data, "\n"))
+        }
+    }
+--- request
+GET /t
+--- error_code: 200
+--- response_body
+kong.request.get_forwarded_port is disabled in the context of set
+kong.request.get_forwarded_port is disabled in the context of content
+kong.request.get_forwarded_port is disabled in the context of timer
+kong.request.get_forwarded_port is disabled in the context of init_worker
+kong.request.get_forwarded_port is disabled in the context of balancer
+kong.request.get_forwarded_port is disabled in the context of ssl_cert
+kong.request.get_forwarded_port is disabled in the context of ssl_session_store
+kong.request.get_forwarded_port is disabled in the context of ssl_session_fetch
 --- no_error_log
 [error]

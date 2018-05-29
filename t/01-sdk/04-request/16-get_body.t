@@ -8,14 +8,14 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: request.get_parsed_body() returns arguments with application/x-www-form-urlencoded
+=== TEST 1: request.get_body() returns arguments with application/x-www-form-urlencoded
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local args, err, mime = sdk.request.get_parsed_body()
+            local args, err, mime = sdk.request.get_body()
 
             ngx.say("type=", type(args))
             ngx.say("test=", args.test)
@@ -36,14 +36,14 @@ mime=application/x-www-form-urlencoded
 
 
 
-=== TEST 2: request.get_parsed_body() returns arguments with application/json
+=== TEST 2: request.get_body() returns arguments with application/json
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local args, err, mime = sdk.request.get_parsed_body()
+            local args, err, mime = sdk.request.get_body()
 
             ngx.say("type=", type(args))
             ngx.say("test=", args.test)
@@ -66,14 +66,14 @@ mime=application/json
 
 
 
-=== TEST 3: request.get_parsed_body() returns arguments with multipart/form-data
+=== TEST 3: request.get_body() returns arguments with multipart/form-data
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local args, err, mime = sdk.request.get_parsed_body()
+            local args, err, mime = sdk.request.get_body()
 
             ngx.say("type=", type(args))
             ngx.say("test=", args.test)
@@ -98,14 +98,14 @@ mime=multipart/form-data
 
 
 
-=== TEST 4: request.get_parsed_body() returns error when missing content type header
+=== TEST 4: request.get_body() returns error when missing content type header
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local _, err = sdk.request.get_parsed_body()
+            local _, err = sdk.request.get_body()
 
             ngx.say("error: ", err)
         }
@@ -120,14 +120,14 @@ error: missing content type
 
 
 
-=== TEST 5: request.get_parsed_body() returns error when using unsupported content type
+=== TEST 5: request.get_body() returns error when using unsupported content type
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local _, err = sdk.request.get_parsed_body()
+            local _, err = sdk.request.get_body()
 
             ngx.say("error: ", err)
         }
@@ -144,14 +144,14 @@ error: unsupported content type 'application/x-unsupported'
 
 
 
-=== TEST 6: request.get_parsed_body() returns error with invalid json body
+=== TEST 6: request.get_body() returns error with invalid json body
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local _, err = sdk.request.get_parsed_body()
+            local _, err = sdk.request.get_body()
 
             ngx.say("error: ", err)
         }
@@ -167,14 +167,14 @@ error: invalid json body
 
 
 
-=== TEST 7: request.get_parsed_body() content type value is case-insensitive
+=== TEST 7: request.get_body() content type value is case-insensitive
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local args, err, mime = sdk.request.get_parsed_body()
+            local args, err, mime = sdk.request.get_body()
 
             ngx.say("type=", type(args))
             ngx.say("test=", args.test)
@@ -195,14 +195,14 @@ mime=application/x-www-form-urlencoded
 
 
 
-=== TEST 8: request.get_parsed_body() with application/x-www-form-urlencoded returns request post arguments
+=== TEST 8: request.get_body() with application/x-www-form-urlencoded returns request post arguments
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local args = sdk.request.get_parsed_body()
+            local args = sdk.request.get_body()
             ngx.say("Foo: ", args.Foo)
             ngx.say("Bar: ", args.Bar)
             ngx.say("Accept: ", table.concat(args.Accept, ", "))
@@ -222,14 +222,14 @@ Accept: application/json, text/html
 
 
 
-=== TEST 9: request.get_parsed_body() with application/x-www-form-urlencoded returns empty table with header Content-Length: 0
+=== TEST 9: request.get_body() with application/x-www-form-urlencoded returns empty table with header Content-Length: 0
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            ngx.say("next: ", next(sdk.request.get_parsed_body()))
+            ngx.say("next: ", next(sdk.request.get_body()))
         }
     }
 --- request
@@ -245,14 +245,14 @@ next: nil
 
 
 
-=== TEST 10: request.get_parsed_body() with application/x-www-form-urlencoded returns request post arguments case-sensitive
+=== TEST 10: request.get_body() with application/x-www-form-urlencoded returns request post arguments case-sensitive
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local args = sdk.request.get_parsed_body()
+            local args = sdk.request.get_body()
             ngx.say("Foo: ", args.Foo)
             ngx.say("foo: ", args.foo)
             ngx.say("fOO: ", args.fOO)
@@ -272,10 +272,10 @@ fOO: Too
 
 
 
-=== TEST 11: request.get_parsed_body() with application/x-www-form-urlencoded fetches 100 post arguments by default
+=== TEST 11: request.get_body() with application/x-www-form-urlencoded fetches 100 post arguments by default
 --- config
     location = /t {
-        access_by_lua_block {
+        rewrite_by_lua_block {
             local args = {}
             for i = 1, 200 do
                 args["arg-" .. i] = "test"
@@ -284,11 +284,11 @@ fOO: Too
             ngx.req.set_body_data(ngx.encode_args(args))
         }
 
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local args = sdk.request.get_parsed_body("application/x-www-form-urlencoded")
+            local args = sdk.request.get_body("application/x-www-form-urlencoded")
 
             local n = 0
 
@@ -308,10 +308,10 @@ number of query arguments fetched: 100
 
 
 
-=== TEST 12: request.get_parsed_body() with application/x-www-form-urlencoded fetches max_args argument
+=== TEST 12: request.get_body() with application/x-www-form-urlencoded fetches max_args argument
 --- config
     location = /t {
-        access_by_lua_block {
+        rewrite_by_lua_block {
             local args = {}
             for i = 1, 100 do
                 args["arg-" .. i] = "test"
@@ -320,11 +320,11 @@ number of query arguments fetched: 100
             ngx.req.set_body_data(ngx.encode_args(args))
         }
 
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local headers = sdk.request.get_parsed_body("application/x-www-form-urlencoded", 60)
+            local headers = sdk.request.get_body("application/x-www-form-urlencoded", 60)
 
             local n = 0
 
@@ -344,14 +344,14 @@ number of query arguments fetched: 60
 
 
 
-=== TEST 13: request.get_parsed_body() with application/x-www-form-urlencoded raises error when trying to fetch with max_args invalid value
+=== TEST 13: request.get_body() with application/x-www-form-urlencoded raises error when trying to fetch with max_args invalid value
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local _, err = pcall(sdk.request.get_parsed_body, "application/x-www-form-urlencoded", "invalid")
+            local _, err = pcall(sdk.request.get_body, "application/x-www-form-urlencoded", "invalid")
 
             ngx.say("error: ", err)
         }
@@ -365,14 +365,14 @@ error: max_args must be a number
 
 
 
-=== TEST 14: request.get_parsed_body() with application/x-www-form-urlencoded raises error when trying to fetch with max_args < 1
+=== TEST 14: request.get_body() with application/x-www-form-urlencoded raises error when trying to fetch with max_args < 1
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local _, err = pcall(sdk.request.get_parsed_body, "application/x-www-form-urlencoded", 0)
+            local _, err = pcall(sdk.request.get_body, "application/x-www-form-urlencoded", 0)
 
             ngx.say("error: ", err)
         }
@@ -386,14 +386,14 @@ error: max_args must be >= 1
 
 
 
-=== TEST 15: request.get_parsed_body() with application/x-www-form-urlencoded raises error when trying to fetch with max_args > 1000
+=== TEST 15: request.get_body() with application/x-www-form-urlencoded raises error when trying to fetch with max_args > 1000
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local _, err = pcall(sdk.request.get_parsed_body, "application/x-www-form-urlencoded", 1001)
+            local _, err = pcall(sdk.request.get_body, "application/x-www-form-urlencoded", 1001)
 
             ngx.say("error: ", err)
         }
@@ -407,14 +407,14 @@ error: max_args must be <= 1000
 
 
 
-=== TEST 16: request.get_parsed_body() with application/x-www-form-urlencoded returns nil + error when the body is too big
+=== TEST 16: request.get_body() with application/x-www-form-urlencoded returns nil + error when the body is too big
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local args, err = sdk.request.get_parsed_body()
+            local args, err = sdk.request.get_body()
             ngx.say("error: ", err)
         }
     }
@@ -424,5 +424,68 @@ error: max_args must be <= 1000
 Content-Type: application/x-www-form-urlencoded
 --- response_body
 error: request body in temp file not supported
+--- no_error_log
+[error]
+
+
+
+=== TEST 17: request.get_body() errors on non-supported phases
+--- http_config
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            local phases = {
+                "set",
+                "rewrite",
+                "access",
+                "content",
+                "log",
+                "header_filter",
+                "body_filter",
+                "timer",
+                "init_worker",
+                "balancer",
+                "ssl_cert",
+                "ssl_session_store",
+                "ssl_session_fetch",
+            }
+
+            local data = {}
+            local i = 0
+
+            for _, phase in ipairs(phases) do
+                ngx.get_phase = function()
+                    return phase
+                end
+
+                local ok, err = pcall(sdk.request.get_body)
+                if not ok then
+                    i = i + 1
+                    data[i] = err
+                end
+            end
+
+            ngx.say(table.concat(data, "\n"))
+        }
+    }
+--- request
+GET /t
+--- error_code: 200
+--- response_body
+kong.request.get_body is disabled in the context of set
+kong.request.get_body is disabled in the context of content
+kong.request.get_body is disabled in the context of log
+kong.request.get_body is disabled in the context of header_filter
+kong.request.get_body is disabled in the context of body_filter
+kong.request.get_body is disabled in the context of timer
+kong.request.get_body is disabled in the context of init_worker
+kong.request.get_body is disabled in the context of balancer
+kong.request.get_body is disabled in the context of ssl_cert
+kong.request.get_body is disabled in the context of ssl_session_store
+kong.request.get_body is disabled in the context of ssl_session_fetch
 --- no_error_log
 [error]

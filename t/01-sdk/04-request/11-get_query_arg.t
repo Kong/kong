@@ -11,7 +11,7 @@ __DATA__
 === TEST 1: request.get_query_arg() returns first query arg when multiple is given with same name
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -30,7 +30,7 @@ Foo: 1
 === TEST 2: request.get_query_arg() returns values from case-sensitive table
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -51,7 +51,7 @@ foo: 2
 === TEST 3: request.get_query_arg() returns nil when query argument is missing
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -70,7 +70,7 @@ Bar: nil
 === TEST 4: request.get_query_arg() returns true when query argument has no value
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -89,7 +89,7 @@ Foo: true
 === TEST 5: request.get_query_arg() returns empty string when query argument's value is empty
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -108,7 +108,7 @@ Foo: ''
 === TEST 6: request.get_query_arg() returns nil when requested query arg does not fit in max_args
 --- config
     location = /t {
-        access_by_lua_block {
+        rewrite_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -123,7 +123,7 @@ Foo: ''
             ngx.req.set_uri_args(args)
         }
 
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -142,7 +142,7 @@ argument value: nil
 === TEST 7: request.get_query_arg() raises error when trying to fetch with invalid argument
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -154,6 +154,66 @@ argument value: nil
 --- request
 GET /t
 --- response_body
-error: name must be a string
+error: query argument name must be a string
+--- no_error_log
+[error]
+
+
+
+=== TEST 8: request.get_query_arg() errors on non-supported phases
+--- http_config
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            local phases = {
+                "set",
+                "rewrite",
+                "access",
+                "content",
+                "log",
+                "header_filter",
+                "body_filter",
+                "timer",
+                "init_worker",
+                "balancer",
+                "ssl_cert",
+                "ssl_session_store",
+                "ssl_session_fetch",
+            }
+
+            local data = {}
+            local i = 0
+
+            for _, phase in ipairs(phases) do
+                ngx.get_phase = function()
+                    return phase
+                end
+
+                local ok, err = pcall(sdk.request.get_query_arg, "Test")
+                if not ok then
+                    i = i + 1
+                    data[i] = err
+                end
+            end
+
+            ngx.say(table.concat(data, "\n"))
+        }
+    }
+--- request
+GET /t
+--- error_code: 200
+--- response_body
+kong.request.get_query_arg is disabled in the context of set
+kong.request.get_query_arg is disabled in the context of content
+kong.request.get_query_arg is disabled in the context of timer
+kong.request.get_query_arg is disabled in the context of init_worker
+kong.request.get_query_arg is disabled in the context of balancer
+kong.request.get_query_arg is disabled in the context of ssl_cert
+kong.request.get_query_arg is disabled in the context of ssl_session_store
+kong.request.get_query_arg is disabled in the context of ssl_session_fetch
 --- no_error_log
 [error]

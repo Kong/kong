@@ -15,7 +15,7 @@ __DATA__
 === TEST 1: request.get_host() returns host using host header
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -40,6 +40,9 @@ host: localhost
 
         location / {
             content_by_lua_block {
+            }
+
+            access_by_lua_block {
                 local SDK = require "kong.sdk"
                 local sdk = SDK.new()
 
@@ -69,6 +72,9 @@ host: localhost
 
         location / {
             content_by_lua_block {
+            }
+
+            access_by_lua_block {
                 local SDK = require "kong.sdk"
                 local sdk = SDK.new()
 
@@ -93,7 +99,7 @@ host: kong
 === TEST 4: request.get_host() returns host using request line
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -112,7 +118,7 @@ host: test
 === TEST 5: request.get_host() returns host using explicit host header
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -133,7 +139,7 @@ host: kong
 === TEST 6: request.get_host() request line overrides host header
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -154,7 +160,7 @@ host: test
 === TEST 7: request.get_host() request line is normalized
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -175,7 +181,7 @@ host: test
 === TEST 8: request.get_host() explicit host header is normalized
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -201,6 +207,9 @@ host: k0ng
 
         location / {
             content_by_lua_block {
+            }
+
+            access_by_lua_block {
                 local SDK = require "kong.sdk"
                 local sdk = SDK.new()
 
@@ -217,5 +226,65 @@ host: k0ng
 GET /t
 --- response_body
 host: k0ng
+--- no_error_log
+[error]
+
+
+
+=== TEST 10: request.get_host() errors on non-supported phases
+--- http_config
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            local phases = {
+                "set",
+                "rewrite",
+                "access",
+                "content",
+                "log",
+                "header_filter",
+                "body_filter",
+                "timer",
+                "init_worker",
+                "balancer",
+                "ssl_cert",
+                "ssl_session_store",
+                "ssl_session_fetch",
+            }
+
+            local data = {}
+            local i = 0
+
+            for _, phase in ipairs(phases) do
+                ngx.get_phase = function()
+                    return phase
+                end
+
+                local ok, err = pcall(sdk.request.get_host)
+                if not ok then
+                    i = i + 1
+                    data[i] = err
+                end
+            end
+
+            ngx.say(table.concat(data, "\n"))
+        }
+    }
+--- request
+GET /t
+--- error_code: 200
+--- response_body
+kong.request.get_host is disabled in the context of set
+kong.request.get_host is disabled in the context of content
+kong.request.get_host is disabled in the context of timer
+kong.request.get_host is disabled in the context of init_worker
+kong.request.get_host is disabled in the context of balancer
+kong.request.get_host is disabled in the context of ssl_cert
+kong.request.get_host is disabled in the context of ssl_session_store
+kong.request.get_host is disabled in the context of ssl_session_fetch
 --- no_error_log
 [error]

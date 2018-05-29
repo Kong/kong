@@ -11,7 +11,7 @@ __DATA__
 === TEST 1: request.get_header() returns first header when multiple is given with same name
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -33,7 +33,7 @@ accept header value: application/json
 === TEST 2: request.get_header() returns values from case-insensitive metatable
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -60,7 +60,7 @@ x_Foo_header: Hello
 === TEST 3: request.get_header() returns nil when header is missing
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -81,7 +81,7 @@ X-Missing: nil
 === TEST 4: request.get_header() returns empty string when header has no value
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -102,7 +102,7 @@ X-Foo-Header: ''
 === TEST 5: request.get_header() returns nil when requested header does not fit in default max_headers
 --- config
     location = /t {
-        access_by_lua_block {
+        rewrite_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -117,7 +117,7 @@ X-Foo-Header: ''
             ngx.req.set_header("Accept", "text/html")
         }
 
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -136,7 +136,7 @@ accept header value: nil
 === TEST 6: request.get_header() raises error when trying to fetch with invalid argument
 --- config
     location = /t {
-        content_by_lua_block {
+        access_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
@@ -148,6 +148,66 @@ accept header value: nil
 --- request
 GET /t
 --- response_body
-error: name must be a string
+error: header name must be a string
+--- no_error_log
+[error]
+
+
+
+=== TEST 7: request.get_header() errors on non-supported phases
+--- http_config
+--- config
+    location = /t {
+        default_type 'text/test';
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            local phases = {
+                "set",
+                "rewrite",
+                "access",
+                "content",
+                "log",
+                "header_filter",
+                "body_filter",
+                "timer",
+                "init_worker",
+                "balancer",
+                "ssl_cert",
+                "ssl_session_store",
+                "ssl_session_fetch",
+            }
+
+            local data = {}
+            local i = 0
+
+            for _, phase in ipairs(phases) do
+                ngx.get_phase = function()
+                    return phase
+                end
+
+                local ok, err = pcall(sdk.request.get_header, "Test")
+                if not ok then
+                    i = i + 1
+                    data[i] = err
+                end
+            end
+
+            ngx.say(table.concat(data, "\n"))
+        }
+    }
+--- request
+GET /t
+--- error_code: 200
+--- response_body
+kong.request.get_header is disabled in the context of set
+kong.request.get_header is disabled in the context of content
+kong.request.get_header is disabled in the context of timer
+kong.request.get_header is disabled in the context of init_worker
+kong.request.get_header is disabled in the context of balancer
+kong.request.get_header is disabled in the context of ssl_cert
+kong.request.get_header is disabled in the context of ssl_session_store
+kong.request.get_header is disabled in the context of ssl_session_fetch
 --- no_error_log
 [error]
