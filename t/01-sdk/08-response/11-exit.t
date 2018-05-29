@@ -611,7 +611,6 @@ Content-Length: 19
             local ctx = ngx.ctx
             local i = 0
 
-
             for _, phase in ipairs(phases) do
                 ctx.delay_response = true
                 ctx.delayed_response = nil
