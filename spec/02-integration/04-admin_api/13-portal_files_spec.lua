@@ -11,26 +11,29 @@ local function it_content_types(title, fn)
   it(title .. " with application/json", test_json)
 end
 
+
+for _, strategy in helpers.each_strategy() do
 describe("Admin API - Developer Portal", function()
   local client
   local dao
 
-
   setup(function()
-    dao = select(3, helpers.get_db_utils())
+    dao = select(3, helpers.get_db_utils(strategy))
+
     assert(helpers.start_kong({
-      portal = true
+      portal = true,
+      database = strategy,
     }))
   end)
 
   teardown(function()
-    helpers.stop_kong()
+    helpers.stop_kong(nil, true)
   end)
 
   local fileStub
   before_each(function()
-    helpers.dao:truncate_tables()
-    fileStub = assert(helpers.dao.portal_files:insert {
+    dao:truncate_tables()
+    fileStub = assert(dao.portal_files:insert {
       name = "stub",
       contents = "1",
       type = "page"
@@ -186,10 +189,10 @@ describe("Admin API - Developer Portal", function()
 
     describe("GET", function ()
       before_each(function()
-        helpers.dao:truncate_tables()
+        dao:truncate_tables()
 
         for i = 1, 10 do
-          assert(helpers.dao.portal_files:insert {
+          assert(dao.portal_files:insert {
             name = "file-" .. i,
             contents = "i-" .. i,
             type = "partial"
@@ -198,7 +201,7 @@ describe("Admin API - Developer Portal", function()
       end)
 
       teardown(function()
-        helpers.dao:truncate_tables()
+        dao:truncate_tables()
       end)
 
       it("retrieves the first page", function()
@@ -332,7 +335,7 @@ describe("Admin API - Developer Portal", function()
             assert.equal("bar", json.contents)
             assert.equal(fileStub.id, json.id)
 
-            local in_db = assert(helpers.dao.portal_files:find {
+            local in_db = assert(dao.portal_files:find {
               id = fileStub.id,
               name = fileStub.name,
             })
@@ -356,7 +359,7 @@ describe("Admin API - Developer Portal", function()
             assert.equal("bar", json.contents)
             assert.equal(fileStub.id, json.id)
 
-            local in_db = assert(helpers.dao.portal_files:find {
+            local in_db = assert(dao.portal_files:find {
               id = fileStub.id,
               name = fileStub.name,
             })
@@ -484,19 +487,19 @@ describe("Admin API - Developer Portal", function()
 
       before_each(function()
         local portal = require "kong.portal.dao_helpers"
-        helpers.dao:truncate_tables()
+        dao:truncate_tables()
 
         portal.register_resources(dao)
 
         for i = 1, 10 do
-          assert(helpers.dao.consumers:insert {
+          assert(dao.consumers:insert {
             username = "proxy-consumer-" .. i,
             custom_id = "proxy-consumer-" .. i,
             type = enums.CONSUMERS.TYPE.PROXY,
           })
           -- only insert half as many developers
           if i % 2 == 0 then
-            assert(helpers.dao.consumers:insert {
+            assert(dao.consumers:insert {
               username = "developer-consumer-" .. i,
               custom_id = "developer-consumer-" .. i,
               type = enums.CONSUMERS.TYPE.DEVELOPER
@@ -506,7 +509,7 @@ describe("Admin API - Developer Portal", function()
       end)
 
       teardown(function()
-        helpers.dao:truncate_tables()
+        dao:truncate_tables()
       end)
 
       it("retrieves list of developers only", function()
@@ -530,7 +533,7 @@ describe("Admin API - Developer Portal", function()
       end)
 
       it("filters by developer status", function()
-        assert(helpers.dao.consumers:insert {
+        assert(dao.consumers:insert {
           username = "developer-pending",
           custom_id = "developer-pending",
           type = enums.CONSUMERS.TYPE.DEVELOPER,
@@ -550,3 +553,4 @@ describe("Admin API - Developer Portal", function()
 
 
 end)
+end
