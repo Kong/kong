@@ -2,9 +2,18 @@ local responses    = require "kong.tools.responses"
 local singletons   = require "kong.singletons"
 
 
-local setmetatable = setmetatable
-local ipairs       = ipairs
-local error        = error
+local ipairs           = ipairs
+local error            = error
+local ngx_thread_spawn = ngx.thread.spawn
+local ngx_thread_wait  = ngx.thread.wait
+local new_tab
+do
+  local ok
+  ok, new_tab = pcall(require, "table.new")
+  if not ok then
+    new_tab = function(narr, nrec) return {} end
+  end
+end
 
 
 -- Loads a plugin config from the datastore.
@@ -43,16 +52,16 @@ end
 --- Load the configuration for a plugin entry in the DB.
 -- Given an API, a Consumer and a plugin name, retrieve the plugin's
 -- configuration if it exists. Results are cached in ngx.dict
+-- @param[type=string] plugin_name Name of the plugin being tested for.
 -- @param[type=string] route_id ID of the route being proxied.
 -- @param[type=string] service_id ID of the service being proxied.
 -- @param[type=string] consumer_id ID of the Consumer making the request (if any).
--- @param[type=stirng] plugin_name Name of the plugin being tested for.
 -- @param[type=string] api_id ID of the API being proxied.
--- @treturn table Plugin retrieved from the cache or database.
-local function load_plugin_configuration(route_id,
+-- @return table Plugin retrieved from the cache or database.
+local function load_plugin_configuration(plugin_name,
+                                         route_id,
                                          service_id,
                                          consumer_id,
-                                         plugin_name,
                                          api_id)
   local plugin_cache_key = singletons.dao.plugins:cache_key(plugin_name,
                                                             route_id,
@@ -69,8 +78,7 @@ local function load_plugin_configuration(route_id,
                                            plugin_name,
                                            api_id)
   if err then
-    ngx.ctx.delay_response = false
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    return nil, err -- forward error out of the coroutine
   end
 
   if plugin ~= nil and plugin.enabled then
@@ -85,127 +93,137 @@ local function load_plugin_configuration(route_id,
 end
 
 
-local function get_next(self)
-  local i = self.i + 1
+local function load_one_plugin(self, plugin)
+  local ctx = self.ctx
 
+  local api          = self.api
+  local route        = self.route
+  local service      = self.service
+  local consumer     = ctx.authenticated_consumer
+
+  if consumer then
+    local schema = plugin.schema
+    if schema and schema.no_consumer then
+      consumer = nil
+    end
+  end
+
+  local      api_id = api      and      api.id or nil
+  local    route_id = route    and    route.id or nil
+  local  service_id = service  and  service.id or nil
+  local consumer_id = consumer and consumer.id or nil
+
+  local plugin_name = plugin.name
+  local threads = new_tab(0, 9)
+  local len = 0
+
+  if route_id and service_id and consumer_id then
+    len = len + 1
+    threads[len] = ngx_thread_spawn(load_plugin_configuration, plugin_name,
+                                    route_id, service_id, consumer_id, nil)
+  end
+
+  if route_id and consumer_id then
+    len = len + 1
+    threads[len] = ngx_thread_spawn(load_plugin_configuration, plugin_name,
+                                    route_id, nil, consumer_id, nil)
+  end
+
+  if service_id and consumer_id then
+    len = len + 1
+    threads[len] = ngx_thread_spawn(load_plugin_configuration, plugin_name,
+                                    nil, service_id, consumer_id, nil)
+  end
+
+  if api_id and consumer_id then
+    len = len + 1
+    threads[len] = ngx_thread_spawn(load_plugin_configuration, plugin_name,
+                                    nil, nil, consumer_id, api_id)
+  end
+
+  if route_id and service_id then
+    len = len + 1
+    threads[len] = ngx_thread_spawn(load_plugin_configuration, plugin_name,
+                                    route_id, service_id, nil, nil)
+  end
+
+  if consumer_id then
+    len = len + 1
+    threads[len] = ngx_thread_spawn(load_plugin_configuration, plugin_name,
+                                    nil, nil, consumer_id, nil)
+  end
+
+  if route_id then
+    len = len + 1
+    threads[len] = ngx_thread_spawn(load_plugin_configuration, plugin_name,
+                                    route_id, nil, nil, nil)
+  end
+
+  if service_id then
+    len = len + 1
+    threads[len] = ngx_thread_spawn(load_plugin_configuration, plugin_name,
+                                    nil, service_id, nil, nil)
+  end
+
+  if api_id then
+    len = len + 1
+    threads[len] = ngx_thread_spawn(load_plugin_configuration, plugin_name,
+                                    nil, nil, nil, api_id)
+  end
+
+  for i = 1, len do
+    local _, cfg, err = assert(ngx_thread_wait(threads[i]))
+    if err then
+      ngx.ctx.delay_response = false
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    end
+
+    if cfg then
+      return cfg
+    end
+  end
+
+  -- perform the most expensive query last, only if needed
+  -- TODO this needs real perf testing to see when it helps.
+  -- Right now it penalizes every single request with global plugins enabled,
+  -- but also uses less CPU. Since we cache negative results inside
+  -- load_plugin_configuration, that could negate the gains
+  local cfg, err = load_plugin_configuration(plugin_name, nil, nil, nil, nil)
+  if err then
+    ngx.ctx.delay_response = false
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  end
+
+  return cfg
+end
+
+
+local function get_next(self)
+  local i = self.i
   local plugin = self.loaded_plugins[i]
   if not plugin then
     return nil
   end
+  self.i = i + 1
 
-  self.i = i
+  local plugin_conf
 
-  local ctx = self.ctx
-
-  -- load the plugin configuration in early phases
   if self.access_or_cert_ctx then
-
-    local api          = self.api
-    local route        = self.route
-    local service      = self.service
-    local consumer     = ctx.authenticated_consumer
-
-    if consumer then
-      local schema = plugin.schema
-      if schema and schema.no_consumer then
-        consumer = nil
-      end
-    end
-
-    local      api_id = api      and      api.id or nil
-    local    route_id = route    and    route.id or nil
-    local  service_id = service  and  service.id or nil
-    local consumer_id = consumer and consumer.id or nil
-
-    local plugin_name = plugin.name
-
-    local plugin_configuration
-
-    repeat
-
-      if route_id and service_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(route_id, service_id, consumer_id, plugin_name, nil)
-        if plugin_configuration then
-          break
-        end
-      end
-
-      if route_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(route_id, nil, consumer_id, plugin_name, nil)
-        if plugin_configuration then
-          break
-        end
-      end
-
-      if service_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(nil, service_id, consumer_id, plugin_name, nil)
-        if plugin_configuration then
-          break
-        end
-      end
-
-      if api_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(nil, nil, consumer_id, plugin_name, api_id)
-        if plugin_configuration then
-          break
-        end
-      end
-
-      if route_id and service_id then
-        plugin_configuration = load_plugin_configuration(route_id, service_id, nil, plugin_name, nil)
-        if plugin_configuration then
-          break
-        end
-      end
-
-      if consumer_id then
-        plugin_configuration = load_plugin_configuration(nil, nil, consumer_id, plugin_name, nil)
-        if plugin_configuration then
-          break
-        end
-      end
-
-      if route_id then
-        plugin_configuration = load_plugin_configuration(route_id, nil, nil, plugin_name, nil)
-        if plugin_configuration then
-          break
-        end
-      end
-
-      if service_id then
-        plugin_configuration = load_plugin_configuration(nil, service_id, nil, plugin_name, nil)
-        if plugin_configuration then
-          break
-        end
-      end
-
-      if api_id then
-        plugin_configuration = load_plugin_configuration(nil, nil, nil, plugin_name, api_id)
-        if plugin_configuration then
-          break
-        end
-      end
-
-      plugin_configuration = load_plugin_configuration(nil, nil, nil, plugin_name, nil)
-
-    until true
-
-    if plugin_configuration then
-      ctx.plugins_for_request[plugin.name] = plugin_configuration
-    end
+    -- load the plugin configuration in early phases and put it in ngx.ctx
+    plugin_conf = load_one_plugin(self, plugin)
+    self.ctx.plugins_for_request[plugin.name] = plugin_conf
+  else
+    -- in late phases, get the conf from ngx.ctx
+    plugin_conf = self.ctx.plugins_for_request[plugin.name]
   end
 
-  -- return the plugin configuration
-  local plugins_for_request = ctx.plugins_for_request
-  if plugins_for_request[plugin.name] then
-    return plugin, plugins_for_request[plugin.name]
+  if plugin_conf then
+    return plugin, plugin_conf
   end
 
-  return get_next(self) -- Load next plugin
+  -- no plugin configuration, skip to the next one
+  return get_next(self)
 end
-
-
-local plugin_iter_mt = { __call = get_next }
 
 
 --- Plugins for request iterator.
@@ -223,7 +241,7 @@ local function iter_plugins_for_req(loaded_plugins, access_or_cert_ctx)
   end
 
   local plugin_iter_state = {
-    i                     = 0,
+    i                     = 1,
     ctx                   = ctx,
     api                   = ctx.api,
     route                 = ctx.route,
@@ -232,7 +250,7 @@ local function iter_plugins_for_req(loaded_plugins, access_or_cert_ctx)
     access_or_cert_ctx    = access_or_cert_ctx,
   }
 
-  return setmetatable(plugin_iter_state, plugin_iter_mt)
+  return get_next, plugin_iter_state
 end
 
 
