@@ -11,6 +11,7 @@ description = {
   license = "MIT"
 }
 dependencies = {
+  "inspect == 3.1.1",
   "luasec == 0.6",
   "luasocket == 3.0-rc1",
   "penlight == 1.5.4",
