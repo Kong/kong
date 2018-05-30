@@ -123,7 +123,7 @@ body must be a nil, string or table
 GET /t
 --- error_code: 200
 --- response_body
-headers have been sent
+headers have already been sent
 --- no_error_log
 [error]
 
@@ -153,7 +153,7 @@ headers have been sent
 GET /t
 --- error_code: 200
 --- response_body
-headers have been sent
+headers have already been sent
 --- no_error_log
 [error]
 
@@ -577,73 +577,5 @@ Content-Type: application/json; charset=utf-8
 Content-Length: 19
 --- response_body chop
 {"message":"hello"}
---- no_error_log
-[error]
-
-
-
-=== TEST 22: response.exit() errors on non-supported phases
---- http_config
---- config
-    location = /t {
-        default_type 'text/test';
-        access_by_lua_block {
-            local SDK = require "kong.sdk"
-            local sdk = SDK.new()
-
-            local phases = {
-                "set",
-                "rewrite",
-                "access",
-                "content",
-                "log",
-                "header_filter",
-                "body_filter",
-                "timer",
-                "init_worker",
-                "balancer",
-                "ssl_cert",
-                "ssl_session_store",
-                "ssl_session_fetch",
-            }
-
-            local data = {}
-            local ctx = ngx.ctx
-            local i = 0
-
-            for _, phase in ipairs(phases) do
-                ctx.delay_response = true
-                ctx.delayed_response = nil
-                ctx.delayed_response_callback = nil
-
-                ngx.get_phase = function()
-                    return phase
-                end
-
-                local ok, err = pcall(sdk.response.exit, 500)
-                if not ok then
-                    i = i + 1
-                    data[i] = err
-                end
-            end
-
-            ngx.say(table.concat(data, "\n"))
-        }
-    }
---- request
-GET /t
---- error_code: 200
---- response_body
-kong.response.exit is disabled in the context of set
-kong.response.exit is disabled in the context of content
-kong.response.exit is disabled in the context of log
-kong.response.exit is disabled in the context of header_filter
-kong.response.exit is disabled in the context of body_filter
-kong.response.exit is disabled in the context of timer
-kong.response.exit is disabled in the context of init_worker
-kong.response.exit is disabled in the context of balancer
-kong.response.exit is disabled in the context of ssl_cert
-kong.response.exit is disabled in the context of ssl_session_store
-kong.response.exit is disabled in the context of ssl_session_fetch
 --- no_error_log
 [error]

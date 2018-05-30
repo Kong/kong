@@ -29,21 +29,6 @@ local function new(sdk, major_version)
   local CONTENT_TYPE_NAME    = "Content-Type"
   local CONTENT_TYPE_JSON    = "application/json; charset=utf-8"
 
-  local RESPONSE_PHASES_SET  = {
-    header_filter = true,
-  }
-
-  local RESPONSE_PHASES_GET  = {
-    header_filter = true,
-    body_filter   = true,
-    log           = true,
-  }
-
-  local RESPONSE_PHASES_EXIT = {
-    rewrite       = true,
-    access        = true,
-  }
-
   local HEADER_VALUE_TYPES   = {
     string        = true,
     number        = true,
@@ -51,21 +36,11 @@ local function new(sdk, major_version)
   }
 
   function _RESPONSE.get_status()
-    local phase = ngx.get_phase()
-    if not RESPONSE_PHASES_GET[phase] then
-      error(fmt("kong.response.get_status is disabled in the context of %s", phase), 2)
-    end
-
     return ngx.status
   end
 
 
   function _RESPONSE.get_header(name)
-    local phase = ngx.get_phase()
-    if not RESPONSE_PHASES_GET[phase] then
-      error(fmt("kong.response.get_header is disabled in the context of %s", phase), 2)
-    end
-
     if type(name) ~= "string" then
       error("header name must be a string", 2)
     end
@@ -80,11 +55,6 @@ local function new(sdk, major_version)
 
 
   function _RESPONSE.get_headers(max_headers)
-    local phase = ngx.get_phase()
-    if not RESPONSE_PHASES_GET[phase] then
-      error(fmt("kong.response.get_headers is disabled in the context of %s", phase), 2)
-    end
-
     if max_headers == nil then
       return ngx.resp.get_headers(MAX_HEADERS_DEFAULT)
     end
@@ -104,13 +74,8 @@ local function new(sdk, major_version)
 
 
   function _RESPONSE.set_status(status)
-    local phase = ngx.get_phase()
-    if not RESPONSE_PHASES_SET[phase] then
-      error(fmt("kong.response.set_status is disabled in the context of %s", phase), 2)
-    end
-
-    if phase ~= "header_filter" and ngx.headers_sent then
-      error("headers have been sent", 2)
+    if ngx.headers_sent then
+      error("headers have already been sent", 2)
     end
 
     if type(status) ~= "number" then
@@ -121,7 +86,7 @@ local function new(sdk, major_version)
     end
 
     if ngx.headers_sent then
-      error("headers have been sent", 2)
+      error("headers have already been sent", 2)
     end
 
     ngx.status = status
@@ -129,13 +94,8 @@ local function new(sdk, major_version)
 
 
   function _RESPONSE.set_header(name, value)
-    local phase = ngx.get_phase()
-    if not RESPONSE_PHASES_SET[phase] then
-      error(fmt("kong.response.set_header is disabled in the context of %s", phase), 2)
-    end
-
-    if phase ~= "header_filter" and ngx.headers_sent then
-      error("headers have been sent", 2)
+    if ngx.headers_sent then
+      error("headers have already been sent", 2)
     end
 
     if type(name) ~= "string" then
@@ -152,13 +112,8 @@ local function new(sdk, major_version)
 
 
   function _RESPONSE.add_header(name, value)
-    local phase = ngx.get_phase()
-    if not RESPONSE_PHASES_SET[phase] then
-      error(fmt("kong.response.add_header is disabled in the context of %s", phase), 2)
-    end
-
-    if phase ~= "header_filter" and ngx.headers_sent then
-      error("headers have been sent", 2)
+    if ngx.headers_sent then
+      error("headers have already been sent", 2)
     end
 
     if type(name) ~= "string" then
@@ -182,13 +137,8 @@ local function new(sdk, major_version)
 
 
   function _RESPONSE.clear_header(name)
-    local phase = ngx.get_phase()
-    if not RESPONSE_PHASES_SET[phase] then
-      error(fmt("kong.response.clear_header is disabled in the context of %s", phase), 2)
-    end
-
-    if phase ~= "header_filter" and ngx.headers_sent then
-      error("headers have been sent", 2)
+    if ngx.headers_sent then
+      error("headers have already been sent", 2)
     end
 
     if type(name) ~= "string" then
@@ -200,13 +150,8 @@ local function new(sdk, major_version)
 
 
   function _RESPONSE.set_headers(headers)
-    local phase = ngx.get_phase()
-    if not RESPONSE_PHASES_SET[phase] then
-      error(fmt("kong.response.set_headers is disabled in the context of %s", phase), 2)
-    end
-
-    if phase ~= "header_filter" and ngx.headers_sent then
-      error("headers have been sent", 2)
+    if ngx.headers_sent then
+      error("headers have already been sent", 2)
     end
 
     if type(headers) ~= "table" then
@@ -251,9 +196,8 @@ local function new(sdk, major_version)
 
 
   local function send(status, body, headers)
-    local phase = ngx.get_phase()
-    if phase ~= "header_filter" and ngx.headers_sent then
-      error("headers have been sent", 2)
+    if ngx.headers_sent then
+      error("headers have already been sent", 2)
     end
 
     local json
@@ -299,13 +243,8 @@ local function new(sdk, major_version)
 
 
   function _RESPONSE.exit(status, body, headers)
-    local phase = ngx.get_phase()
-    if not RESPONSE_PHASES_EXIT[phase] then
-      error(fmt("kong.response.exit is disabled in the context of %s", phase), 2)
-    end
-
-    if phase ~= "header_filter" and ngx.headers_sent then
-      error("headers have been sent", 2)
+    if ngx.headers_sent then
+      error("headers have already been sent", 2)
     end
 
     if type(status) ~= "number" then

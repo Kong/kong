@@ -4,7 +4,6 @@ local multipart = require "multipart"
 
 local ngx = ngx
 local sub = string.sub
-local fmt = string.format
 local find = string.find
 local lower = string.lower
 local type = type
@@ -39,56 +38,23 @@ local function new(self)
   local X_FORWARDED_HOST       = "X-Forwarded-Host"
   local X_FORWARDED_PORT       = "X-Forwarded-Port"
 
-  local REQUEST_PHASES         = {
-    rewrite                    = true,
-    access                     = true,
-    header_filter              = true,
-    body_filter                = true,
-    log                        = true,
-  }
-
-  local REQUEST_PHASES_BODY    = {
-    rewrite                    = true,
-    access                     = true,
-  }
-
 
   function _REQUEST.get_scheme()
-    local phase = ngx.get_phase()
-    if not REQUEST_PHASES[phase] then
-      error(fmt("kong.request.get_scheme is disabled in the context of %s", phase), 2)
-    end
-
     return ngx.var.scheme
   end
 
 
   function _REQUEST.get_host()
-    local phase = ngx.get_phase()
-    if not REQUEST_PHASES[phase] then
-      error(fmt("kong.request.get_host is disabled in the context of %s", phase), 2)
-    end
-
     return ngx.var.host
   end
 
 
   function _REQUEST.get_port()
-    local phase = ngx.get_phase()
-    if not REQUEST_PHASES[phase] then
-      error(fmt("kong.request.get_port is disabled in the context of %s", phase), 2)
-    end
-
     return tonumber(ngx.var.server_port)
   end
 
 
   function _REQUEST.get_forwarded_scheme()
-    local phase = ngx.get_phase()
-    if not REQUEST_PHASES[phase] then
-      error(fmt("kong.request.get_forwarded_scheme is disabled in the context of %s", phase), 2)
-    end
-
     if self.ip.is_trusted(self.client.get_ip()) then
       local scheme = _REQUEST.get_header(X_FORWARDED_PROTO)
       if scheme then
@@ -101,11 +67,6 @@ local function new(self)
 
 
   function _REQUEST.get_forwarded_host()
-    local phase = ngx.get_phase()
-    if not REQUEST_PHASES[phase] then
-      error(fmt("kong.request.get_forwarded_host is disabled in the context of %s", phase), 2)
-    end
-
     if self.ip.is_trusted(self.client.get_ip()) then
       local host = _REQUEST.get_header(X_FORWARDED_HOST)
       if host then
@@ -124,11 +85,6 @@ local function new(self)
 
 
   function _REQUEST.get_forwarded_port()
-    local phase = ngx.get_phase()
-    if not REQUEST_PHASES[phase] then
-      error(fmt("kong.request.get_forwarded_port is disabled in the context of %s", phase), 2)
-    end
-
     if self.ip.is_trusted(self.client.get_ip()) then
       local port = tonumber(_REQUEST.get_header(X_FORWARDED_PORT))
       if port and port >= MIN_PORT and port <= MAX_PORT then
@@ -158,31 +114,16 @@ local function new(self)
 
 
   function _REQUEST.get_http_version()
-    local phase = ngx.get_phase()
-    if not REQUEST_PHASES[phase] then
-      error(fmt("kong.request.get_http_version is disabled in the context of %s", phase), 2)
-    end
-
     return ngx.req.http_version()
   end
 
 
   function _REQUEST.get_method()
-    local phase = ngx.get_phase()
-    if not REQUEST_PHASES[phase] then
-      error(fmt("kong.request.get_method is disabled in the context of %s", phase), 2)
-    end
-
     return ngx.req.get_method()
   end
 
 
   function _REQUEST.get_path()
-    local phase = ngx.get_phase()
-    if not REQUEST_PHASES[phase] then
-      error(fmt("kong.request.get_path is disabled in the context of %s", phase), 2)
-    end
-
     local uri = ngx.var.request_uri
     local s = find(uri, "?", 2, true)
     return s and sub(uri, 1, s - 1) or uri
@@ -190,21 +131,11 @@ local function new(self)
 
 
   function _REQUEST.get_raw_query()
-    local phase = ngx.get_phase()
-    if not REQUEST_PHASES[phase] then
-      error(fmt("kong.request.get_raw_query is disabled in the context of %s", phase), 2)
-    end
-
     return ngx.var.args or ""
   end
 
 
   function _REQUEST.get_query_arg(name)
-    local phase = ngx.get_phase()
-    if not REQUEST_PHASES[phase] then
-      error(fmt("kong.request.get_query_arg is disabled in the context of %s", phase), 2)
-    end
-
     if type(name) ~= "string" then
       error("query argument name must be a string", 2)
     end
@@ -219,11 +150,6 @@ local function new(self)
 
 
   function _REQUEST.get_query(max_args)
-    local phase = ngx.get_phase()
-    if not REQUEST_PHASES[phase] then
-      error(fmt("kong.request.get_query is disabled in the context of %s", phase), 2)
-    end
-
     if max_args == nil then
       return ngx.req.get_uri_args(MAX_QUERY_ARGS_DEFAULT)
     end
@@ -245,11 +171,6 @@ local function new(self)
 
 
   function _REQUEST.get_header(name)
-    local phase = ngx.get_phase()
-    if not REQUEST_PHASES[phase] then
-      error(fmt("kong.request.get_header is disabled in the context of %s", phase), 2)
-    end
-
     if type(name) ~= "string" then
       error("header name must be a string", 2)
     end
@@ -264,11 +185,6 @@ local function new(self)
 
 
   function _REQUEST.get_headers(max_headers)
-    local phase = ngx.get_phase()
-    if not REQUEST_PHASES[phase] then
-      error(fmt("kong.request.get_headers is disabled in the context of %s", phase), 2)
-    end
-
     if max_headers == nil then
       return ngx.req.get_headers(MAX_HEADERS_DEFAULT)
     end
@@ -288,11 +204,6 @@ local function new(self)
 
 
   function _REQUEST.get_raw_body()
-    local phase = ngx.get_phase()
-    if not REQUEST_PHASES_BODY[phase] then
-      error(fmt("kong.request.get_raw_body is disabled in the context of %s", phase), 2)
-    end
-
     ngx.req.read_body()
 
     local body = ngx.req.get_body_data()
@@ -310,11 +221,6 @@ local function new(self)
 
 
   function _REQUEST.get_body(mimetype, max_args)
-    local phase = ngx.get_phase()
-    if not REQUEST_PHASES_BODY[phase] then
-      error(fmt("kong.request.get_body is disabled in the context of %s", phase), 2)
-    end
-
     local content_type = mimetype or _REQUEST.get_header(CONTENT_TYPE)
     if not content_type then
       return nil, "missing content type"
