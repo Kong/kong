@@ -44,7 +44,6 @@ end
 
 require("kong.globalpatches")()
 
-local ip = require "kong.tools.ip"
 local DB = require "kong.db"
 local dns = require "kong.tools.dns"
 local utils = require "kong.tools.utils"
@@ -155,6 +154,7 @@ local Kong = {}
 function Kong.init()
   local pl_path = require "pl.path"
   local conf_loader = require "kong.conf_loader"
+  local ip = require "kong.tools.ip"
 
   -- retrieve kong_config
   local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
@@ -308,64 +308,66 @@ end
 
 function Kong.balancer()
   local ctx = ngx.ctx
-  local addr = ctx.balancer_address
-  local tries = addr.tries
+  local balancer_data = ctx.balancer_data
+  local tries = balancer_data.tries
   local current_try = {}
-  addr.try_count = addr.try_count + 1
-  tries[addr.try_count] = current_try
+  balancer_data.try_count = balancer_data.try_count + 1
+  tries[balancer_data.try_count] = current_try
 
   runloop.balancer.before()
 
-  if addr.try_count > 1 then
-    -- only call balancer on retry, first one is done in `runloop.access.after` which runs
-    -- in the ACCESS context and hence has less limitations than this BALANCER context
-    -- where the retries are executed
+  if balancer_data.try_count > 1 then
+    -- only call balancer on retry, first one is done in `runloop.access.after`
+    -- which runs in the ACCESS context and hence has less limitations than
+    -- this BALANCER context where the retries are executed
 
     -- record failure data
-    local previous_try = tries[addr.try_count - 1]
+    local previous_try = tries[balancer_data.try_count - 1]
     previous_try.state, previous_try.code = get_last_failure()
 
     -- Report HTTP status for health checks
-    if addr.balancer then
+    local balancer = balancer_data.balancer
+    if balancer then
+      local ip, port = balancer_data.ip, balancer_data.port
       if previous_try.state == "failed" then
-        addr.balancer.report_tcp_failure(addr.ip, addr.port)
+        balancer.report_tcp_failure(ip, port)
       else
-        addr.balancer.report_http_status(addr.ip, addr.port, previous_try.code)
+        balancer.report_http_status(ip, port, previous_try.code)
       end
     end
 
-    local ok, err, errcode = balancer_execute(addr)
+    local ok, err, errcode = balancer_execute(balancer_data)
     if not ok then
       ngx_log(ngx_ERR, "failed to retry the dns/balancer resolver for ",
-              tostring(addr.host), "' with: ", tostring(err))
+              tostring(balancer_data.host), "' with: ", tostring(err))
       return ngx.exit(errcode)
     end
 
   else
     -- first try, so set the max number of retries
-    local retries = addr.retries
+    local retries = balancer_data.retries
     if retries > 0 then
       set_more_tries(retries)
     end
   end
 
-  current_try.ip   = addr.ip
-  current_try.port = addr.port
+  current_try.ip   = balancer_data.ip
+  current_try.port = balancer_data.port
 
   -- set the targets as resolved
-  ngx_log(ngx_DEBUG, "setting address (try ", addr.try_count, "): ",
-                     addr.ip, ":", addr.port)
-  local ok, err = set_current_peer(addr.ip, addr.port)
+  ngx_log(ngx_DEBUG, "setting address (try ", balancer_data.try_count, "): ",
+                     balancer_data.ip, ":", balancer_data.port)
+  local ok, err = set_current_peer(balancer_data.ip, balancer_data.port)
   if not ok then
     ngx_log(ngx_ERR, "failed to set the current peer (address: ",
-            tostring(addr.ip), " port: ", tostring(addr.port),"): ",
-            tostring(err))
+            tostring(balancer_data.ip), " port: ", tostring(balancer_data.port),
+            "): ", tostring(err))
     return ngx.exit(500)
   end
 
-  ok, err = set_timeouts(addr.connect_timeout / 1000,
-                         addr.send_timeout / 1000,
-                         addr.read_timeout / 1000)
+  ok, err = set_timeouts(balancer_data.connect_timeout / 1000,
+                         balancer_data.send_timeout / 1000,
+                         balancer_data.read_timeout / 1000)
   if not ok then
     ngx_log(ngx_ERR, "could not set upstream timeouts: ", err)
   end
