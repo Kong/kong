@@ -527,3 +527,341 @@ content-length: {7}
 content-type: {application/x-www-form-urlencoded}
 --- no_error_log
 [error]
+
+
+
+=== TEST 16: service.request.set_body() for application/json errors if table values have bad types
+--- config
+    location = /t {
+
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            sdk.service.request.set_header("Content-Type", "application/json")
+            local pok, err = pcall(sdk.service.request.set_body, {
+                aaa = "foo",
+                bbb = function() end,
+                ccc = "bar",
+            })
+            ngx.say(err)
+        }
+
+        proxy_pass http://127.0.0.1:9080;
+    }
+--- request
+POST /t
+--- response_body
+Cannot serialise function: type not supported
+--- no_error_log
+[error]
+
+
+
+=== TEST 17: service.request.set_body() for application/json errors if table keys have bad types
+--- config
+    location = /t {
+
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            sdk.service.request.set_header("Content-Type", "application/json")
+            local pok, err = pcall(sdk.service.request.set_body, {
+                aaa = "foo",
+                [true] = "what",
+                ccc = "bar",
+            })
+            ngx.say(err)
+        }
+
+        proxy_pass http://127.0.0.1:9080;
+    }
+--- request
+POST /t
+--- response_body
+Cannot serialise boolean: table key must be a number or string
+--- no_error_log
+[error]
+
+
+
+=== TEST 18: service.request.set_body() for application/json sets the Content-Type header
+--- http_config
+    server {
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+
+        location /t {
+            content_by_lua_block {
+                local headers = ngx.req.get_headers()
+                ngx.say("content-type: {", tostring(headers["Content-Type"]), "}")
+            }
+        }
+    }
+--- config
+    location = /t {
+
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            sdk.service.request.set_body({}, "application/json")
+        }
+
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
+    }
+--- request
+POST /t
+--- response_body
+content-type: {application/json}
+--- no_error_log
+[error]
+
+
+
+=== TEST 19: service.request.set_body() for application/json accepts an empty table
+--- http_config
+    server {
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+
+        location /t {
+            content_by_lua_block {
+                ngx.req.read_body()
+                local headers = ngx.req.get_headers()
+                ngx.say("body: {", tostring(ngx.req.get_body_data()), "}")
+                ngx.say("content-length: {", tostring(headers["Content-Length"]), "}")
+                ngx.say("content-type: {", tostring(headers["Content-Type"]), "}")
+            }
+        }
+    }
+--- config
+    location = /t {
+
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            sdk.service.request.set_header("Content-Type", "application/json")
+            sdk.service.request.set_body({})
+        }
+
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
+    }
+--- request
+POST /t
+
+foo=hello%20world
+--- response_body
+body: {{}}
+content-length: {2}
+content-type: {application/json}
+--- no_error_log
+[error]
+
+
+
+=== TEST 20: service.request.set_body() for application/json replaces the received post args
+--- http_config
+    server {
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+
+        location /t {
+            content_by_lua_block {
+                ngx.req.read_body()
+                local headers = ngx.req.get_headers()
+                ngx.say("body: {", tostring(ngx.req.get_body_data()), "}")
+                ngx.say("content-length: {", tostring(headers["Content-Length"]), "}")
+                ngx.say("content-type: {", tostring(headers["Content-Type"]), "}")
+            }
+        }
+    }
+--- config
+    location = /t {
+
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            sdk.service.request.set_body({
+                foo = "hello world"
+            }, "application/json")
+        }
+
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
+    }
+--- request
+POST /t
+
+foo=bar
+--- response_body
+body: {{"foo":"hello world"}}
+content-length: {21}
+content-type: {application/json}
+--- no_error_log
+[error]
+
+
+
+=== TEST 21: service.request.set_body() for application/json produces a deterministic lexicographical order
+--- http_config
+    server {
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+
+        location /t {
+            content_by_lua_block {
+                ngx.req.read_body()
+                local headers = ngx.req.get_headers()
+                ngx.say("body: {", tostring(ngx.req.get_body_data()), "}")
+                ngx.say("content-length: {", tostring(headers["Content-Length"]), "}")
+                ngx.say("content-type: {", tostring(headers["Content-Type"]), "}")
+            }
+        }
+    }
+--- config
+    location = /t {
+
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            sdk.service.request.set_body({
+                foo = "hello world",
+                a = true,
+                aa = true,
+                zzz = "goodbye world",
+            }, "application/json")
+        }
+
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
+    }
+--- request
+POST /t
+--- response_body
+body: {{"aa":true,"zzz":"goodbye world","foo":"hello world","a":true}}
+content-length: {62}
+content-type: {application/json}
+--- no_error_log
+[error]
+
+
+
+=== TEST 22: service.request.set_body() for application/json preserves the order of array arguments
+--- http_config
+    server {
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+
+        location /t {
+            content_by_lua_block {
+                ngx.req.read_body()
+                local headers = ngx.req.get_headers()
+                ngx.say("body: {", tostring(ngx.req.get_body_data()), "}")
+                ngx.say("content-length: {", tostring(headers["Content-Length"]), "}")
+                ngx.say("content-type: {", tostring(headers["Content-Type"]), "}")
+            }
+        }
+    }
+--- config
+    location = /t {
+
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            sdk.service.request.set_body({
+                foo = "hello world",
+                a = true,
+                aa = { "zzz", true, true, "aaa" },
+                zzz = "goodbye world",
+            }, "application/json")
+        }
+
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
+    }
+--- request
+POST /t
+--- response_body
+body: {{"aa":["zzz",true,true,"aaa"],"zzz":"goodbye world","foo":"hello world","a":true}}
+content-length: {81}
+content-type: {application/json}
+--- no_error_log
+[error]
+
+
+
+=== TEST 23: service.request.set_body() for application/json supports empty values
+--- http_config
+    server {
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+
+        location /t {
+            content_by_lua_block {
+                ngx.req.read_body()
+                local headers = ngx.req.get_headers()
+                ngx.say("body: {", tostring(ngx.req.get_body_data()), "}")
+                ngx.say("content-length: {", tostring(headers["Content-Length"]), "}")
+                ngx.say("content-type: {", tostring(headers["Content-Type"]), "}")
+            }
+        }
+    }
+--- config
+    location = /t {
+
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            sdk.service.request.set_body({
+                aa = "",
+            }, "application/json")
+        }
+
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
+    }
+--- request
+POST /t
+--- response_body
+body: {{"aa":""}}
+content-length: {9}
+content-type: {application/json}
+--- no_error_log
+[error]
+
+
+
+=== TEST 24: service.request.set_body() for application/json accepts empty keys
+--- http_config
+    server {
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+
+        location /t {
+            content_by_lua_block {
+                ngx.req.read_body()
+                local headers = ngx.req.get_headers()
+                ngx.say("body: {", tostring(ngx.req.get_body_data()), "}")
+                ngx.say("content-length: {", tostring(headers["Content-Length"]), "}")
+                ngx.say("content-type: {", tostring(headers["Content-Type"]), "}")
+            }
+        }
+    }
+--- config
+    location = /t {
+
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            sdk.service.request.set_body({
+                [""] = "aa",
+            }, "application/json")
+        }
+
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
+    }
+--- request
+POST /t
+--- response_body
+body: {{"":"aa"}}
+content-length: {9}
+content-type: {application/json}
+--- no_error_log
+[error]
