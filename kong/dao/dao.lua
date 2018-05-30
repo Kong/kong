@@ -609,7 +609,7 @@ function DAO:delete(tbl, options)
 
   if not rbac.validate_entity_operation(primary_keys, constraints) or
     not rbac.check_cascade(associated_entites, ngx.ctx.rbac)  then
-    return ret_error(self.db.name, nil, "cascading error")
+    return ret_error(self.db.name, nil, "[RBAC] cascading error")
   end
 
   local row, err = self.db:delete(self.table, self.schema, primary_keys, self.constraints)

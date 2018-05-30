@@ -18,6 +18,7 @@ local function post(path, body, headers, expected_status)
   return cjson.decode(assert.res_status(expected_status or 201, res))
 end
 
+
 local function put(path, body, headers, expected_status)
   headers = headers or {}
   headers["Content-Type"] = "application/json"
@@ -29,6 +30,7 @@ local function put(path, body, headers, expected_status)
   })
   return cjson.decode(assert.res_status(expected_status or 202, res))
 end
+
 
 local function patch(path, body, headers, expected_status)
   headers = headers or {}
@@ -42,6 +44,7 @@ local function patch(path, body, headers, expected_status)
 
   return cjson.decode(assert.res_status(expected_status or 202, res))
 end
+
 
 local function get(path, headers, expected_status)
   headers = headers or {}
@@ -66,6 +69,7 @@ local function delete(path, headers, expected_status)
   })
   assert.res_status(expected_status or 204, res)
 end
+
 
 local function create_api(suffix)
   suffix = tostring(suffix)
@@ -1860,7 +1864,7 @@ describe("Admin API", function()
     post("/rbac/roles" , {name = "mock-role"})
     post("/rbac/roles/mock-role/entities", {entity_id = apis[2].id, actions = "read"})
     post("/rbac/roles/mock-role/entities", {entity_id = apis[3].id, actions = "delete"})
-    post("/rbac/roles/mock-role/entities", {entity_id = apis[4].id, actions = "read,update"})
+    post("/rbac/roles/mock-role/entities", {entity_id = apis[4].id, actions = "update"})
     post("/rbac/users/bob/roles", {roles = "mock-role"})
 
     helpers.stop_kong(nil, true, true)
@@ -1872,7 +1876,7 @@ describe("Admin API", function()
   end)
 
   teardown(function()
-    helpers.stop_kong(nil, true, true)
+    helpers.stop_kong()
 
     if client then
       client:close()
