@@ -605,7 +605,6 @@ function _M.validate_user()
     ngx.log(ngx.ERR, "[rbac] ", err)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
-  ngx.log(ngx.ERR, [[rbac_ctx:]], require("inspect")(rbac_ctx))
 
   if rbac_ctx.user == "guest" then
     return responses.send_HTTP_UNAUTHORIZED("Invalid RBAC credentials")

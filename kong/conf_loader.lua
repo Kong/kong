@@ -437,7 +437,6 @@ local function check_and_infer(conf)
   elseif conf.rbac == "off" then
     rbac.off = true
   else
-    ngx.log(ngx.ERR, [[conf.rbac:]], require("inspect")(conf.rbac))
     errors[#errors+1] = "rbac must be one of 'endpoint', 'entity', 'on', " ..
       "or 'off'; got '" .. conf.rbac .. "'"
   end
