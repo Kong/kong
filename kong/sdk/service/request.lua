@@ -511,6 +511,8 @@ local function new(self)
 
       ngx.req.set_body_data(body)
       ngx.req.set_header(CONTENT_TYPE, content_type)
+
+      return true
     end
 
   end

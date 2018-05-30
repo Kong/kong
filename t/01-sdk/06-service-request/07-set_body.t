@@ -182,7 +182,7 @@ content-type: {application/x-www-form-urlencoded}
             local sdk = SDK.new()
 
             sdk.service.request.set_header("Content-Type", "application/x-www-form-urlencoded")
-            sdk.service.request.set_body({})
+            assert(sdk.service.request.set_body({}))
         }
 
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -222,9 +222,9 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_body({
+            assert(sdk.service.request.set_body({
                 foo = "hello world"
-            }, "application/x-www-form-urlencoded")
+            }, "application/x-www-form-urlencoded"))
         }
 
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -264,9 +264,9 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_body({
+            assert(sdk.service.request.set_body({
                 foo = "hello world"
-            }, "application/x-www-form-urlencoded")
+            }, "application/x-www-form-urlencoded"))
         }
 
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -304,12 +304,12 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_body({
+            assert(sdk.service.request.set_body({
                 foo = "hello world",
                 a = true,
                 aa = true,
                 zzz = "goodbye world",
-            }, "application/x-www-form-urlencoded")
+            }, "application/x-www-form-urlencoded"))
         }
 
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -347,12 +347,12 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_body({
+            assert(sdk.service.request.set_body({
                 foo = "hello world",
                 a = true,
                 aa = { "zzz", true, true, "aaa" },
                 zzz = "goodbye world",
-            }, "application/x-www-form-urlencoded")
+            }, "application/x-www-form-urlencoded"))
         }
 
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -390,9 +390,9 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_body({
+            assert(sdk.service.request.set_body({
                 aa = "",
-            }, "application/x-www-form-urlencoded")
+            }, "application/x-www-form-urlencoded"))
         }
 
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -430,9 +430,9 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_body({
+            assert(sdk.service.request.set_body({
                 [""] = "aa",
-            }, "application/x-www-form-urlencoded")
+            }, "application/x-www-form-urlencoded"))
         }
 
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -470,9 +470,9 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_body({
+            assert(sdk.service.request.set_body({
                 ["hello world"] = "aa",
-            }, "application/x-www-form-urlencoded")
+            }, "application/x-www-form-urlencoded"))
         }
 
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -511,9 +511,9 @@ content-type: {application/x-www-form-urlencoded}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_body({
+            assert(sdk.service.request.set_body({
                 foo = "bar",
-            }, "application/x-www-form-urlencoded")
+            }, "application/x-www-form-urlencoded"))
         }
 
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -605,7 +605,7 @@ Cannot serialise boolean: table key must be a number or string
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_body({}, "application/json")
+            assert(sdk.service.request.set_body({}, "application/json"))
         }
 
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -642,7 +642,7 @@ content-type: {application/json}
             local sdk = SDK.new()
 
             sdk.service.request.set_header("Content-Type", "application/json")
-            sdk.service.request.set_body({})
+            assert(sdk.service.request.set_body({}))
         }
 
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -682,9 +682,9 @@ content-type: {application/json}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_body({
+            assert(sdk.service.request.set_body({
                 foo = "hello world"
-            }, "application/json")
+            }, "application/json"))
         }
 
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -724,12 +724,12 @@ content-type: {application/json}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_body({
+            assert(sdk.service.request.set_body({
                 foo = "hello world",
                 a = true,
                 aa = true,
                 zzz = "goodbye world",
-            }, "application/json")
+            }, "application/json"))
         }
 
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -767,12 +767,12 @@ content-type: {application/json}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_body({
+            assert(sdk.service.request.set_body({
                 foo = "hello world",
                 a = true,
                 aa = { "zzz", true, true, "aaa" },
                 zzz = "goodbye world",
-            }, "application/json")
+            }, "application/json"))
         }
 
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -810,9 +810,9 @@ content-type: {application/json}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_body({
+            assert(sdk.service.request.set_body({
                 aa = "",
-            }, "application/json")
+            }, "application/json"))
         }
 
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -850,9 +850,9 @@ content-type: {application/json}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_body({
+            assert(sdk.service.request.set_body({
                 [""] = "aa",
-            }, "application/json")
+            }, "application/json"))
         }
 
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -924,10 +924,10 @@ invalid value "aa": got table, expected string, number or boolean
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_body({
+            assert(sdk.service.request.set_body({
                 foo = "hello world",
                 zzz = "goodbye world",
-            }, "multipart/form-data")
+            }, "multipart/form-data"))
         }
 
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -974,10 +974,10 @@ zzz: {goodbye world}
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.service.request.set_body({
+            assert(sdk.service.request.set_body({
                 foo = "hello world",
                 zzz = "goodbye world",
-            })
+            }))
         }
 
         proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
