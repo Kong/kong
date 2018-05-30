@@ -333,6 +333,7 @@ local function is_system_table(t)
   end
   return false
 end
+_M.is_system_table = is_system_table
 
 local function is_admin_api_request()
   local r = getfenv(0).__ngx_req

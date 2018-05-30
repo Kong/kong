@@ -524,7 +524,10 @@ function DAO:update(tbl, filter_keys, options)
   end
 
   local constraints = workspaceable[self.table]
-  if not rbac.validate_entity_operation(old, constraints) then
+  -- XXX: rethink the first condition. as maybe adding __skip_rbac is
+  -- more fine grained and useful than this shotgun surgery
+  if not rbac.is_system_table(self.table) and
+    not rbac.validate_entity_operation(old, constraints) then
     return ret_error(self.db.name, nil, "[RBAC] Unauthorized entity modification")
   end
 

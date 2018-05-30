@@ -7,41 +7,62 @@ local utils = require "kong.tools.utils"
 local client
 
 local function post(path, body, headers, expected_status)
+  headers = headers or {}
+  headers["Content-Type"] = "application/json"
   local res = assert(client:send{
     method = "POST",
     path = path,
     body = body or {},
-    headers = headers or {["Content-Type"] = "application/json"}
+    headers = headers
   })
   return cjson.decode(assert.res_status(expected_status or 201, res))
 end
 
 local function put(path, body, headers, expected_status)
+  headers = headers or {}
+  headers["Content-Type"] = "application/json"
   local res = assert(client:send{
     method = "PUT",
     path = path,
     body = body or {},
-    headers = headers or {["Content-Type"] = "application/json"}
+    headers = headers
   })
   return cjson.decode(assert.res_status(expected_status or 202, res))
 end
 
+local function patch(path, body, headers, expected_status)
+  headers = headers or {}
+  headers["Content-Type"] = "application/json"
+  local res = assert(client:send{
+    method = "PATCH",
+    path = path,
+    body = body or {},
+    headers = headers
+  })
+
+  return cjson.decode(assert.res_status(expected_status or 202, res))
+end
+
 local function get(path, headers, expected_status)
+  headers = headers or {}
+  headers["Content-Type"] = "application/json"
   local res = assert(client:send{
     method = "GET",
     path = path,
     body = body or {},
-    headers = headers or {["Content-Type"] = "application/json"}
+    headers = headers
   })
   return cjson.decode(assert.res_status(expected_status or 200, res))
 end
 
 local function delete(path, headers, expected_status)
+  headers = headers or {}
+  headers["Content-Type"] = "application/json"
   local res = assert(client:send{
     method = "DELETE",
     path = path,
     body = body or {},
-    headers = headers or {["Content-Type"] = "application/json"}
+    headers = headers
   })
   assert.res_status(expected_status or 204, res)
 end
@@ -1839,6 +1860,7 @@ describe("Admin API", function()
     post("/rbac/roles" , {name = "mock-role"})
     post("/rbac/roles/mock-role/entities", {entity_id = apis[2].id, actions = "read"})
     post("/rbac/roles/mock-role/entities", {entity_id = apis[3].id, actions = "delete"})
+    post("/rbac/roles/mock-role/entities", {entity_id = apis[4].id, actions = "read,update"})
     post("/rbac/users/bob/roles", {roles = "mock-role"})
 
     helpers.stop_kong(nil, true, true)
@@ -1850,7 +1872,11 @@ describe("Admin API", function()
   end)
 
   teardown(function()
-    helpers.stop_kong()
+    helpers.stop_kong(nil, true, true)
+
+    if client then
+      client:close()
+    end
   end)
 
   it(".find_all filters non accessible entities", function()
@@ -1871,8 +1897,42 @@ describe("Admin API", function()
     get("/apis/" .. apis[2].id , {["Kong-RBAC-Token"] = "bob"}, 200)
   end)
 
-  it(".update checks rbac", function()
-    put("/apis/".. apis[4], )
+  it(".update checks rbac via put", function()
+    put("/apis/" , {
+      id = apis[1].id,
+      name = "new-name",
+      created_at = "123",
+      upstream_url = "http://httpbin.org",
+    }, {["Kong-RBAC-Token"] = "bob"}, 401)
+
+    put("/apis/" , {
+      id = apis[4].id,
+      name = "new-name",
+      created_at = "123",
+      upstream_url = "http://httpbin.org"},
+  {["Kong-RBAC-Token"] = "bob"}, 200)
+  end)
+
+  it(".update checks rbac via patch", function()
+    -- patch("/apis/".. apis[1].id, {name = "new-name"}, {["Kong-RBAC-Token"] = "bob", ["Content-Type"] = "application/json"})
+    -- local res = assert(client:send {
+    --   method = "PATCH",
+    --   path = "/rbac/users/bob",
+    --   body = {
+    --     comment = "new comment",
+    --   },
+    --   headers = {
+    --     ["Kong-RBAC-Token"] = "bob",
+    --             ["Content-Type"] = "application/json",
+    --   },
+    -- })
+
+    -- local body = assert.res_status(200, res)
+    -- local json = cjson.decode(body)
+
+    -- patch("/apis/".. apis[2].id, {name = "new-name"}, {["Kong-RBAC-Token"] = "bob"})
+    -- patch("/apis/".. apis[3].id, {name = "new-name"}, {["Kong-RBAC-Token"] = "bob"})
+    -- patch("/apis/".. apis[4].id, {name = "new-name"}, {["Kong-RBAC-Token"] = "bob"})
   end)
 
   it(".delete checks rbac", function()
