@@ -67,6 +67,9 @@ local function noop(...)
 end
 
 
+-- Alternative for compile function. Used when wokspace scope needed in query.
+-- workspace scope will always have `$0` position, so it will not affect the
+-- position of other parameters.
 local function compile_ws(name, query)
   local i, n, p, s, e = 1, 2, -1, find(query, "$0", 1, true)
   local c = {
@@ -557,9 +560,6 @@ local function execute(strategy, statement_name, attributes, is_update, ws_scope
   end
 
   local sql = statement.make(argv)
-
-  local inspect = require("inspect")
-  print(inspect(sql))
 
   return connector:query(sql)
 end

@@ -115,10 +115,6 @@ end
 -- `before_filter`, but to set the entity some of those same methods are
 -- used
 function _M.is_workspaceable(table_name, ws_scope)
-  local workspaceable = workspaces.get_workspaceable_relations()
-  if workspaceable[table_name] and #ws_scope > 0 then
-    return true
-  end
-  return false
+    return workspaces.get_workspaceable_relations()[table_name] and #ws_scope > 0
 end
 return _M

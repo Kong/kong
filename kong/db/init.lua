@@ -88,9 +88,9 @@ function DB.new(kong_config, strategy)
 
       if schema.workspaceable then
         local unique = {}
-        for name, schema in pairs(schema.fields) do
-          if schema.unique then
-            unique[name] = schema
+        for field_name, field_schema in pairs(schema.fields) do
+          if field_schema.unique then
+            unique[field_name] = field_schema
           end
         end
         workspaces.register_workspaceable_relation(schema.name, schema.primary_key,
