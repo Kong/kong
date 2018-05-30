@@ -7,12 +7,12 @@ for _, strategy in helpers.each_strategy() do
   describe("Plugin: key-auth (API) [" .. strategy .. "]", function()
     local consumer
     local admin_client
+    local bp
     local dao
     local route1
     local route2
 
     setup(function()
-      local bp, _
       bp, _, dao = helpers.get_db_utils(strategy)
 
       route1 = bp.routes:insert {
@@ -186,7 +186,7 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(credential.id, json.id)
         end)
         it("retrieves credential by id only if the credential belongs to the specified consumer", function()
-          assert(dao.consumers:insert {
+          assert(bp.consumers:insert {
             username = "alice"
           })
 
@@ -337,9 +337,9 @@ for _, strategy in helpers.each_strategy() do
             })
           end
 
-          consumer2 = assert(dao.consumers:insert {
+          consumer2 = bp.consumers:insert {
             username = "bob-the-buidler"
-          })
+          }
 
           for i = 1, 3 do
             assert(dao.keyauth_credentials:insert {

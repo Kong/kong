@@ -3,7 +3,6 @@ local pgmoon       = require "pgmoon"
 
 local setmetatable = setmetatable
 local concat       = table.concat
-local setmetatable = setmetatable
 --local pairs        = pairs
 --local type         = type
 local ngx          = ngx

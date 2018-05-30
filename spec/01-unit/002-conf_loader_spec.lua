@@ -342,6 +342,13 @@ describe("Configuration loader", function()
       assert.is_nil(conf)
       assert.equal([[dns_order: invalid entry 'CXAME']], err)
     end)
+    it("errors on bad entries in headers", function()
+      local conf, err = conf_loader(nil, {
+        headers = "server_tokens,Foo-Bar",
+      })
+      assert.is_nil(conf)
+      assert.equal([[headers: invalid entry 'Foo-Bar']], err)
+    end)
     it("errors when hosts have a bad format in cassandra_contact_points", function()
       local conf, err = conf_loader(nil, {
           database                 = "cassandra",

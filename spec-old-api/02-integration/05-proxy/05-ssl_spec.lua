@@ -79,7 +79,7 @@ describe("SSL", function()
       body = {
         cert = ssl_fixtures.cert,
         key  = ssl_fixtures.key,
-        snis = "example.com,ssl1.com",
+        snis = { "example.com", "ssl1.com" },
       },
       headers = { ["Content-Type"] = "application/json" },
     })

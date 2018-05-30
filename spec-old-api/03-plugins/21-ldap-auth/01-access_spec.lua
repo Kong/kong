@@ -25,7 +25,7 @@ describe("Plugin: ldap-auth (access)", function()
   local client, client_admin, api2, plugin2
 
   setup(function()
-    local dao = select(3, helpers.get_db_utils())
+    local bp, _, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
       name         = "test-ldap",
@@ -58,9 +58,9 @@ describe("Plugin: ldap-auth (access)", function()
       upstream_url = helpers.mock_upstream_url,
     })
 
-    local anonymous_user = assert(dao.consumers:insert {
+    local anonymous_user = bp.consumers:insert {
       username = "no-body"
-    })
+    }
 
     assert(dao.plugins:insert {
       api_id = api1.id,
@@ -453,7 +453,7 @@ describe("Plugin: ldap-auth (access)", function()
   local client, user1, anonymous
 
   setup(function()
-    local dao = select(3, helpers.get_db_utils())
+    local bp, _, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
       name         = "api-1",
@@ -476,12 +476,12 @@ describe("Plugin: ldap-auth (access)", function()
       api_id = api1.id,
     })
 
-    anonymous = assert(dao.consumers:insert {
+    anonymous = bp.consumers:insert {
       username = "Anonymous",
-    })
-    user1 = assert(dao.consumers:insert {
+    }
+    user1 = bp.consumers:insert {
       username = "Mickey",
-    })
+    }
 
     local api2 = assert(dao.apis:insert {
       name         = "api-2",

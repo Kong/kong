@@ -7,10 +7,12 @@ local fixtures = require "spec-old-api.03-plugins.17-jwt.fixtures"
 describe("Plugin: jwt (API)", function()
   local admin_client, consumer, jwt_secret
   local dao
+  local bp
+  local _
   local jwt_secrets
 
   setup(function()
-    dao = select(3, helpers.get_db_utils())
+    bp, _, dao = helpers.get_db_utils()
     jwt_secrets = dao.jwt_secrets
 
     assert(helpers.start_kong())
@@ -23,12 +25,12 @@ describe("Plugin: jwt (API)", function()
 
   describe("/consumers/:consumer/jwt/", function()
     setup(function()
-      consumer = assert(dao.consumers:insert {
+      consumer = bp.consumers:insert {
         username = "bob"
-      })
-      assert(dao.consumers:insert {
+      }
+      bp.consumers:insert {
         username = "alice"
-      })
+      }
     end)
 
     describe("POST", function()
@@ -325,9 +327,9 @@ describe("Plugin: jwt (API)", function()
         assert(dao.jwt_secrets:insert {
           consumer_id = consumer.id,
         })
-        consumer2 = assert(dao.consumers:insert {
+        consumer2 = bp.consumers:insert {
           username = "bob-the-buidler"
-        })
+        }
         assert(dao.jwt_secrets:insert {
           consumer_id = consumer2.id,
         })

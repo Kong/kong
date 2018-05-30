@@ -1,19 +1,20 @@
 local helpers = require "spec.02-integration.03-dao.helpers"
 local Factory = require "kong.dao.factory"
+local DB = require "kong.db"
 
 helpers.for_each_dao(function(kong_conf)
   describe("DAO Factory with DB: #" .. kong_conf.database, function()
     it("should be instanciable", function()
       local factory
       assert.has_no_errors(function()
-        factory = assert(Factory.new(kong_conf))
+        factory = assert(Factory.new(kong_conf, DB.new(kong_conf)))
       end)
 
       assert.is_table(factory.daos)
       assert.equal(kong_conf.database, factory.db_type)
     end)
     it("should have shorthands to access the underlying daos", function()
-      local factory = assert(Factory.new(kong_conf))
+      local factory = assert(Factory.new(kong_conf, DB.new(kong_conf)))
       assert.equal(factory.daos.apis, factory.apis)
       assert.equal(factory.daos.consumers, factory.consumers)
       assert.equal(factory.daos.plugins, factory.plugins)
@@ -33,7 +34,7 @@ helpers.for_each_dao(function(kong_conf)
       kong_conf.pg_port = 9999
       kong_conf.cassandra_port = 9999
 
-      local factory = assert(Factory.new(kong_conf))
+      local factory = assert(Factory.new(kong_conf, DB.new(kong_conf)))
       local ok, err = factory:init()
       assert.is_nil(ok)
       assert.matches("[" .. kong_conf.database .. " error]", err, 1, true)
@@ -42,7 +43,7 @@ helpers.for_each_dao(function(kong_conf)
 
   describe(":init() + :infos()", function()
     it("returns DB info + 'unknown' for version if missing", function()
-      local factory = assert(Factory.new(kong_conf))
+      local factory = assert(Factory.new(kong_conf, DB.new(kong_conf)))
       local info = factory:infos()
 
       if kong_conf.database == "postgres" then
@@ -67,7 +68,7 @@ helpers.for_each_dao(function(kong_conf)
     end)
 
     it("returns DB version if :init() called", function()
-      local factory = assert(Factory.new(kong_conf))
+      local factory = assert(Factory.new(kong_conf, DB.new(kong_conf)))
       assert(factory:init())
 
       local info = factory:infos()
@@ -77,7 +78,7 @@ helpers.for_each_dao(function(kong_conf)
     end)
 
     it("calls :check_version_compat()", function()
-      local factory = assert(Factory.new(kong_conf))
+      local factory = assert(Factory.new(kong_conf, DB.new(kong_conf)))
       local s = spy.on(factory, "check_version_compat")
 
       factory:init()
@@ -87,7 +88,7 @@ helpers.for_each_dao(function(kong_conf)
 
     if kong_conf.database == "cassandra" then
       it("[cassandra] sets the 'major_version_n' field on the DB", function()
-        local factory = assert(Factory.new(kong_conf))
+        local factory = assert(Factory.new(kong_conf, DB.new(kong_conf)))
         assert(factory:init())
 
         assert.is_number(factory.db.major_version_n)
@@ -100,7 +101,7 @@ helpers.for_each_dao(function(kong_conf)
     local db_name
 
     before_each(function()
-      factory = assert(Factory.new(kong_conf))
+      factory = assert(Factory.new(kong_conf, DB.new(kong_conf)))
 
       local db_infos = factory:infos()
       db_name = db_infos.db_name

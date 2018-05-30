@@ -282,6 +282,24 @@ function _M:verify_registered_claims(claims_to_verify)
   return errors == nil, errors
 end
 
+--- Check that the maximum allowed expiration is not reached
+-- @param maximum_expiration of the claim
+-- @return A Boolean indicating true if the claim has reached the maximum
+-- allowed expiration time
+-- @return error if any
+function _M:check_maximum_expiration(maximum_expiration)
+  if maximum_expiration <= 0 then
+    return true
+  end
+
+  local exp = self.claims["exp"]
+  if exp == nil or exp - ngx_time() > maximum_expiration then
+    return false, {exp = "exceeds maximum allowed expiration"}
+  end
+
+  return true
+end
+
 _M.encode = encode_token
 
 return _M

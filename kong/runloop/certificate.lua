@@ -15,62 +15,58 @@ end
 local _M = {}
 
 
-local function find_certificate(sni)
-  local row, err = singletons.dao.ssl_servers_names:find {
-    name = sni
-  }
+local function find_certificate(sni_name)
+  local row, err = singletons.db.snis:select_by_name(sni_name)
   if err then
     return nil, err
   end
 
   if not row then
-    log(DEBUG, "no server name registered for client-provided SNI: '",
-               sni, "'")
+    log(DEBUG, "no SNI registered for client-provided name: '",
+               sni_name, "'")
     return true
   end
 
-  -- fetch SSL certificate for this SNI
+  -- fetch SSL certificate for this sni
 
-  local ssl_certificate, err = singletons.dao.ssl_certificates:find {
-    id = row.ssl_certificate_id
-  }
+  local certificate, err = singletons.db.certificates:select(row.certificate)
   if err then
     return nil, err
   end
 
-  if not ssl_certificate then
-    return nil, "no SSL certificate configured for server name: " .. sni
+  if not certificate then
+    return nil, "no SSL certificate configured for sni: " .. sni_name
   end
 
   return {
-    cert = ssl_certificate.cert,
-    key  = ssl_certificate.key,
+    cert = certificate.cert,
+    key  = certificate.key,
   }
 end
 
 
 function _M.execute()
-  -- retrieve SNI or raw server IP
+  -- retrieve sni or raw server IP
 
-  local sni, err = ssl.server_name()
+  local sn, err = ssl.server_name()
   if err then
-    log(ERR, "could not retrieve Server Name Indication: ", err)
+    log(ERR, "could not retrieve SNI: ", err)
     return ngx.exit(ngx.ERROR)
   end
 
-  if not sni then
-    log(DEBUG, "no Server Name Indication provided by client, serving ",
+  if not sn then
+    log(DEBUG, "no SNI provided by client, serving ",
                "default proxy SSL certificate")
     -- use fallback certificate
     return
   end
 
   local lru              = singletons.cache.mlcache.lru
-  local pem_cache_key    = "pem_ssl_certificates:" .. sni
-  local parsed_cache_key = "parsed_ssl_certificates:" .. sni
+  local pem_cache_key    = "pem_ssl_certificates:" .. sn
+  local parsed_cache_key = "parsed_ssl_certificates:" .. sn
 
   local pem_cert_and_key, err = singletons.cache:get(pem_cache_key, nil,
-                                                     find_certificate, sni)
+                                                     find_certificate, sn)
   if not pem_cert_and_key then
     log(ERR, err)
     return ngx.exit(ngx.ERROR)

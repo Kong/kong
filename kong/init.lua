@@ -171,6 +171,8 @@ function Kong.init()
 
   assert(dao:are_migrations_uptodate())
 
+  db.old_dao = dao
+
   -- populate singletons
   singletons.ip = ip.init(config)
   singletons.dns = dns(config)

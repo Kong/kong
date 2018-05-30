@@ -6,9 +6,10 @@ set -e
 #---------
 OPENSSL_DOWNLOAD=$DOWNLOAD_CACHE/openssl-$OPENSSL
 OPENRESTY_DOWNLOAD=$DOWNLOAD_CACHE/openresty-$OPENRESTY
+OPENRESTY_PATCHES_DOWNLOAD=$DOWNLOAD_CACHE/openresty-patches-master
 LUAROCKS_DOWNLOAD=$DOWNLOAD_CACHE/luarocks-$LUAROCKS
 
-mkdir -p $OPENSSL_DOWNLOAD $OPENRESTY_DOWNLOAD $LUAROCKS_DOWNLOAD
+mkdir -p $OPENSSL_DOWNLOAD $OPENRESTY_DOWNLOAD $OPENRESTY_PATCHES_DOWNLOAD $LUAROCKS_DOWNLOAD
 
 if [ ! "$(ls -A $OPENSSL_DOWNLOAD)" ]; then
   pushd $DOWNLOAD_CACHE
@@ -19,6 +20,12 @@ fi
 if [ ! "$(ls -A $OPENRESTY_DOWNLOAD)" ]; then
   pushd $DOWNLOAD_CACHE
     curl -s -S -L https://openresty.org/download/openresty-$OPENRESTY.tar.gz | tar xz
+  popd
+fi
+
+if [ ! "$(ls -A $OPENRESTY_PATCHES_DOWNLOAD)" ]; then
+  pushd $DOWNLOAD_CACHE
+    curl -s -S -L https://github.com/Kong/openresty-patches/archive/master.tar.gz | tar xz
   popd
 fi
 
@@ -37,6 +44,7 @@ mkdir -p $OPENSSL_INSTALL $OPENRESTY_INSTALL $LUAROCKS_INSTALL
 
 if [ ! "$(ls -A $OPENSSL_INSTALL)" ]; then
   pushd $OPENSSL_DOWNLOAD
+    echo "Installing OpenSSL $OPENSSL..."
     ./config shared --prefix=$OPENSSL_INSTALL &> build.log || (cat build.log && exit 1)
     make &> build.log || (cat build.log && exit 1)
     make install &> build.log || (cat build.log && exit 1)
@@ -56,6 +64,15 @@ if [ ! "$(ls -A $OPENRESTY_INSTALL)" ]; then
   )
 
   pushd $OPENRESTY_DOWNLOAD
+    if [ -d $OPENRESTY_PATCHES_DOWNLOAD/patches/$OPENRESTY ]; then
+      pushd bundle
+        for patch_file in $(ls -1 $OPENRESTY_PATCHES_DOWNLOAD/patches/$OPENRESTY/*.patch); do
+          echo "Applying OpenResty patch $patch_file"
+          patch -p1 < $patch_file 2> build.log || (cat build.log && exit 1)
+        done
+      popd
+    fi
+    echo "Installing OpenResty $OPENRESTY..."
     ./configure ${OPENRESTY_OPTS[*]} &> build.log || (cat build.log && exit 1)
     make &> build.log || (cat build.log && exit 1)
     make install &> build.log || (cat build.log && exit 1)
@@ -64,6 +81,7 @@ fi
 
 if [ ! "$(ls -A $LUAROCKS_INSTALL)" ]; then
   pushd $LUAROCKS_DOWNLOAD
+    echo "Installing LuaRocks $LUAROCKS..."
     git checkout -q v$LUAROCKS
     ./configure \
       --prefix=$LUAROCKS_INSTALL \
@@ -86,6 +104,7 @@ eval `luarocks path`
 # Install ccm & setup Cassandra cluster
 # -------------------------------------
 if [[ "$TEST_SUITE" != "unit" ]] && [[ "$TEST_SUITE" != "lint" ]]; then
+  echo "Installing ccm and setting up Cassandra cluster..."
   pip install --user PyYAML six ccm &> build.log || (cat build.log && exit 1)
   ccm create test -v $CASSANDRA -n 1 -d
   ccm start -v

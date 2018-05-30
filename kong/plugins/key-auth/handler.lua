@@ -39,7 +39,7 @@ local function load_credential(key)
 end
 
 local function load_consumer(consumer_id, anonymous)
-  local result, err = singletons.dao.consumers:find { id = consumer_id }
+  local result, err = singletons.db.consumers:select { id = consumer_id }
   if not result then
     if anonymous and not err then
       err = 'anonymous consumer "' .. consumer_id .. '" not found'
@@ -193,7 +193,7 @@ local function do_authentication(conf)
 
   -- retrieve the consumer linked to this API key, to set appropriate headers
 
-  local consumer_cache_key = dao.consumers:cache_key(credential.consumer_id)
+  local consumer_cache_key = singletons.db.consumers:cache_key(credential.consumer_id)
   local consumer, err = cache:get(consumer_cache_key, nil, load_consumer,
                                   credential.consumer_id)
   if err then
@@ -224,7 +224,7 @@ function KeyAuthHandler:access(conf)
   if not ok then
     if conf.anonymous ~= "" then
       -- get anonymous user
-      local consumer_cache_key = singletons.dao.consumers:cache_key(conf.anonymous)
+      local consumer_cache_key = singletons.db.consumers:cache_key(conf.anonymous)
       local consumer, err = singletons.cache:get(consumer_cache_key, nil,
                                                  load_consumer,
                                                  conf.anonymous, true)

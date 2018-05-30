@@ -16,7 +16,7 @@ describe("Plugin: jwt (access)", function()
   local proxy_client, admin_client
 
   setup(function()
-    local dao = select(3, helpers.get_db_utils())
+    local bp, _, dao = helpers.get_db_utils()
 
     local apis = {}
 
@@ -28,13 +28,13 @@ describe("Plugin: jwt (access)", function()
       }))
     end
 
-    local cdao = dao.consumers
-    local consumer1 = assert(cdao:insert({ username = "jwt_tests_consumer" }))
-    local consumer2 = assert(cdao:insert({ username = "jwt_tests_base64_consumer" }))
-    local consumer3 = assert(cdao:insert({ username = "jwt_tests_rsa_consumer_1" }))
-    local consumer4 = assert(cdao:insert({ username = "jwt_tests_rsa_consumer_2" }))
-    local consumer5 = assert(cdao:insert({ username = "jwt_tests_rsa_consumer_5" }))
-    local anonymous_user = assert(cdao:insert({ username = "no-body" }))
+    local cdao = bp.consumers
+    local consumer1 = cdao:insert({ username = "jwt_tests_consumer" })
+    local consumer2 = cdao:insert({ username = "jwt_tests_base64_consumer" })
+    local consumer3 = cdao:insert({ username = "jwt_tests_rsa_consumer_1" })
+    local consumer4 = cdao:insert({ username = "jwt_tests_rsa_consumer_2" })
+    local consumer5 = cdao:insert({ username = "jwt_tests_rsa_consumer_5" })
+    local anonymous_user = cdao:insert({ username = "no-body" })
 
     local pdao = dao.plugins
     assert(pdao:insert({ name   = "jwt",
@@ -543,7 +543,7 @@ describe("Plugin: jwt (access)", function()
   local client, user1, user2, anonymous, jwt_token
 
   setup(function()
-    local dao = select(3, helpers.get_db_utils())
+    local bp, _, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
       name         = "api-1",
@@ -559,15 +559,15 @@ describe("Plugin: jwt (access)", function()
       api_id = api1.id,
     })
 
-    anonymous = assert(dao.consumers:insert {
+    anonymous = bp.consumers:insert {
       username = "Anonymous",
-    })
-    user1 = assert(dao.consumers:insert {
+    }
+    user1 = bp.consumers:insert {
       username = "Mickey",
-    })
-    user2 = assert(dao.consumers:insert {
+    }
+    user2 = bp.consumers:insert {
       username = "Aladdin",
-    })
+    }
 
     local api2 = assert(dao.apis:insert {
       name         = "api-2",

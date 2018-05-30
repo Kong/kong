@@ -4,12 +4,12 @@ local pl_file = require "pl.file"
 describe("Plugin: datadog (log)", function()
   local client
   setup(function()
-    local _, _, dao = helpers.get_db_utils()
+    local bp, _, dao = helpers.get_db_utils()
 
-    local consumer1 = assert(dao.consumers:insert {
+    local consumer1 = bp.consumers:insert {
       username = "foo",
       custom_id = "bar"
-    })
+    }
     assert(dao.keyauth_credentials:insert {
       key = "kong",
       consumer_id = consumer1.id

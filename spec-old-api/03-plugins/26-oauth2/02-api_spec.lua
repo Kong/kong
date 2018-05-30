@@ -26,10 +26,10 @@ describe("Plugin: oauth (API)", function()
         hosts        = { "oauth2_token.com" },
         upstream_url = helpers.mock_upstream_url,
       })
-      consumer = assert(helpers.dao.consumers:insert {
+      consumer = assert(helpers.db.consumers:insert {
         username = "bob"
       })
-      assert(helpers.dao.consumers:insert {
+      assert(helpers.db.consumers:insert {
         username = "sally"
       })
     end)
@@ -270,7 +270,7 @@ describe("Plugin: oauth (API)", function()
         assert.equal(credential.id, json.id)
       end)
       it("retrieves credential by id only if the credential belongs to the specified consumer", function()
-        assert(helpers.dao.consumers:insert {
+        assert(helpers.db.consumers:insert {
           username = "alice"
         })
 

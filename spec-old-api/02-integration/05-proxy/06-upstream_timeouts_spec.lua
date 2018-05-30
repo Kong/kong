@@ -1,22 +1,5 @@
 local helpers = require "spec.helpers"
-local Factory = require "kong.dao.factory"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
-
-
-local factory
-
-
-local function insert_apis(arr)
-  if type(arr) ~= "table" then
-    return error("expected arg #1 to be a table", 2)
-  end
-
-  factory:truncate_tables()
-
-  for i = 1, #arr do
-    assert(factory.apis:insert(arr[i]))
-  end
-end
 
 
 dao_helpers.for_each_dao(function(kong_config)
@@ -25,11 +8,9 @@ dao_helpers.for_each_dao(function(kong_config)
     local client
 
     setup(function()
-      factory = assert(Factory.new(kong_config))
-      assert(factory:run_migrations())
-      factory:truncate_tables()
+      local _, _, dao = helpers.get_db_utils(kong_config.database)
 
-      insert_apis {
+      local apis = {
         {
           name                     = "api-1",
           methods                  = "HEAD",
@@ -49,6 +30,9 @@ dao_helpers.for_each_dao(function(kong_config)
           upstream_read_timeout = 1, -- ms
         }
       }
+      for _, api in ipairs(apis) do
+        assert(dao.apis:insert(api))
+      end
 
       assert(helpers.start_kong({
         database   = kong_config.database,

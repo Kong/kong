@@ -9,10 +9,11 @@ for _, strategy in helpers.each_strategy() do
     local consumer
     local jwt_secret
     local dao
+    local bp
 
     setup(function()
       local _
-      _, _, dao = helpers.get_db_utils(strategy)
+      bp, _, dao = helpers.get_db_utils(strategy)
 
       assert(helpers.start_kong({
         database = strategy,
@@ -30,12 +31,12 @@ for _, strategy in helpers.each_strategy() do
 
     describe("/consumers/:consumer/jwt/", function()
       setup(function()
-        consumer = assert(dao.consumers:insert {
+        consumer = bp.consumers:insert {
           username = "bob"
-        })
-        assert(dao.consumers:insert {
+        }
+        bp.consumers:insert {
           username = "alice"
-        })
+        }
       end)
 
       describe("POST", function()
@@ -330,15 +331,15 @@ for _, strategy in helpers.each_strategy() do
       describe("GET", function()
         setup(function()
           dao:truncate_table("jwt_secrets")
-          assert(dao.jwt_secrets:insert {
+          bp.jwt_secrets:insert {
             consumer_id = consumer.id,
-          })
-          consumer2 = assert(dao.consumers:insert {
+          }
+          consumer2 = bp.consumers:insert {
             username = "bob-the-buidler"
-          })
-          assert(dao.jwt_secrets:insert {
+          }
+          bp.jwt_secrets:insert {
             consumer_id = consumer2.id,
-          })
+          }
         end)
         it("retrieves all the jwts with trailing slash", function()
           local res = assert(admin_client:send {

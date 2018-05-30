@@ -214,9 +214,9 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(credential.id, json.id)
         end)
         it("retrieves credential by id only if the credential belongs to the specified consumer", function()
-          assert(dao.consumers:insert {
+          bp.consumers:insert {
             username = "alice"
-          })
+          }
 
           local res = assert(admin_client:send {
             method  = "GET",
@@ -321,9 +321,9 @@ for _, strategy in helpers.each_strategy() do
             consumer_id = consumer.id,
             username = "bob"
           })
-          consumer2 = assert(dao.consumers:insert {
+          consumer2 = bp.consumers:insert {
             username = "bob-the-buidler"
-          })
+          }
           assert(dao.basicauth_credentials:insert {
             consumer_id = consumer2.id,
             username = "bob-the-buidler"
