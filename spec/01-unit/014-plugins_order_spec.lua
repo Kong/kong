@@ -49,6 +49,7 @@ describe("Plugins", function()
     -- backwards-compatibility
 
     local order = {
+      "zipkin",
       "bot-detection",
       "cors",
       "jwt",

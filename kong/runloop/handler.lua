@@ -28,6 +28,7 @@ local ngx         = ngx
 local log         = ngx.log
 local null        = ngx.null
 local ngx_now     = ngx.now
+local update_time = ngx.update_time
 local re_match    = ngx.re.match
 local unpack      = unpack
 
@@ -46,6 +47,7 @@ local server_header = _KONG._NAME .. "/" .. _KONG._VERSION
 
 
 local function get_now()
+  update_time()
   return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
 end
 
@@ -682,7 +684,6 @@ return {
       -- record try-latency
       local try_latency = get_now() - current_try.balancer_start
       current_try.balancer_latency = try_latency
-      current_try.balancer_start = nil
 
       -- record overall latency
       ctx.KONG_BALANCER_TIME = (ctx.KONG_BALANCER_TIME or 0) + try_latency
@@ -751,11 +752,15 @@ return {
   },
   body_filter = {
     after = function(ctx)
-      if ngx.arg[2] and ctx.KONG_PROXIED then
-        -- time spent receiving the response (header_filter + body_filter)
-        -- we could use $upstream_response_time but we need to distinguish the waiting time
-        -- from the receiving time in our logging plugins (especially ALF serializer).
-        ctx.KONG_RECEIVE_TIME = get_now() - ctx.KONG_HEADER_FILTER_STARTED_AT
+      if ngx.arg[2] then
+        local now = get_now()
+        ctx.KONG_BODY_FILTER_ENDED_AT = now
+        if ctx.KONG_PROXIED then
+          -- time spent receiving the response (header_filter + body_filter)
+          -- we could use $upstream_response_time but we need to distinguish the waiting time
+          -- from the receiving time in our logging plugins (especially ALF serializer).
+          ctx.KONG_RECEIVE_TIME = now - ctx.KONG_HEADER_FILTER_STARTED_AT
+        end
       end
     end
   },
