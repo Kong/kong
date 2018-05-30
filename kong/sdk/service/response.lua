@@ -79,7 +79,7 @@ local function new(sdk, major_version)
   end
 
 
-  function response.get_parsed_body()
+  function response.get_body()
     -- TODO: implement
   end
 
