@@ -748,5 +748,16 @@ return {
       CREATE INDEX IF NOT EXISTS ON consumers(custom_id);
       CREATE INDEX IF NOT EXISTS ON consumers(username);
     ]]
+  },
+  {
+    name = "2018-05-17-173100_hash_on_cookie",
+    up = [[
+      ALTER TABLE upstreams ADD hash_on_cookie text;
+      ALTER TABLE upstreams ADD hash_on_cookie_path text;
+    ]],
+    down = [[
+      ALTER TABLE upstreams DROP hash_on_cookie;
+      ALTER TABLE upstreams DROP hash_on_cookie_path;
+    ]]
   }
 }

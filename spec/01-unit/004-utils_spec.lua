@@ -525,6 +525,21 @@ describe("Utils", function()
       end
     end
   end)
+  it("validate_cookie_name() validates cookie names", function()
+    local header_chars = [[_-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz]]
+
+    for i = 1, 255 do
+      local c = string.char(i)
+
+      if string.find(header_chars, c, nil, true) then
+        assert(utils.validate_cookie_name(c) == c,
+          "ascii character '" .. c .. "' (" .. i .. ") should have been allowed")
+      else
+        assert(utils.validate_cookie_name(c) == nil,
+          "ascii character " .. i .. " should not have been allowed")
+      end
+    end
+  end)
   it("pack() stores results, including nils, properly", function()
     assert.same({ n = 0 }, utils.pack())
     assert.same({ n = 1 }, utils.pack(nil))
