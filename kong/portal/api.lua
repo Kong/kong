@@ -240,7 +240,7 @@ return {
     before = function(self, dao_factory, helpers)
       validate_portal_auth_enabled(helpers)
 
-      local consumer_id = validate_consumer()
+      local consumer_id = validate_consumer(helpers)
 
       self.portal_auth = singletons.configuration.portal_auth
       self.collection = dao_factory[auth_plugins[self.portal_auth].dao]
@@ -274,7 +274,7 @@ return {
     before = function(self, dao_factory, helpers)
       validate_portal_auth_enabled(helpers)
 
-      local consumer_id = validate_consumer()
+      local consumer_id = validate_consumer(helpers)
 
       self.plugin = ngx.unescape_uri(self.params.plugin)
       self.collection = dao_factory[auth_plugins[self.plugin].dao]
@@ -313,7 +313,7 @@ return {
     before = function(self, dao_factory, helpers)
       validate_portal_auth_enabled(helpers)
 
-      local consumer_id = validate_consumer()
+      local consumer_id = validate_consumer(helpers)
 
       self.plugin = ngx.unescape_uri(self.params.plugin)
       self.collection = dao_factory[auth_plugins[self.plugin].dao]
