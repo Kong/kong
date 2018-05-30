@@ -39,7 +39,6 @@ build = {
   type = "builtin",
   modules = {
     ["kong"] = "kong/init.lua",
-    ["kong.ctx"] = "kong/ctx.lua",
     ["kong.meta"] = "kong/meta.lua",
     ["kong.cache"] = "kong/cache.lua",
     ["kong.global"] = "kong/global.lua",
