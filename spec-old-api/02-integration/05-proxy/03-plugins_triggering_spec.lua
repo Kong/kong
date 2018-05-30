@@ -5,21 +5,21 @@ describe("Plugins triggering", function()
   setup(function()
     helpers.get_db_utils()
 
-    local consumer1 = assert(helpers.dao.consumers:insert {
+    local consumer1 = assert(helpers.db.consumers:insert {
       username = "consumer1"
     })
     assert(helpers.dao.keyauth_credentials:insert {
       key = "secret1",
       consumer_id = consumer1.id
     })
-    local consumer2 = assert(helpers.dao.consumers:insert {
+    local consumer2 = assert(helpers.db.consumers:insert {
       username = "consumer2"
     })
     assert(helpers.dao.keyauth_credentials:insert {
       key = "secret2",
       consumer_id = consumer2.id
     })
-    local consumer3 = assert(helpers.dao.consumers:insert {
+    local consumer3 = assert(helpers.db.consumers:insert {
       username = "anonymous"
     })
 
@@ -402,7 +402,7 @@ describe("Plugins triggering", function()
         api_id = api.id,
       })
 
-      local consumer = assert(helpers.dao.consumers:insert {
+      local consumer = assert(helpers.db.consumers:insert {
         username = "bob",
       })
 

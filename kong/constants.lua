@@ -26,6 +26,8 @@ local plugins = {
   "bot-detection",
   "aws-lambda",
   "request-termination",
+  -- external plugins
+  "azure-functions",
 }
 
 local plugin_map = {}
@@ -50,6 +52,7 @@ return {
     HOST_OVERRIDE = "X-Host-Override",
     PROXY_LATENCY = "X-Kong-Proxy-Latency",
     UPSTREAM_LATENCY = "X-Kong-Upstream-Latency",
+    UPSTREAM_STATUS = "X-Kong-Upstream-Status",
     CONSUMER_ID = "X-Consumer-ID",
     CONSUMER_CUSTOM_ID = "X-Consumer-Custom-ID",
     CONSUMER_USERNAME = "X-Consumer-Username",
@@ -59,7 +62,9 @@ return {
     CONSUMER_GROUPS = "X-Consumer-Groups",
     FORWARDED_HOST = "X-Forwarded-Host",
     FORWARDED_PREFIX = "X-Forwarded-Prefix",
-    ANONYMOUS = "X-Anonymous-Consumer"
+    ANONYMOUS = "X-Anonymous-Consumer",
+    VIA = "Via",
+    SERVER = "Server"
   },
   RATELIMIT = {
     PERIODS = {
@@ -86,11 +91,11 @@ return {
   DATABASE = {
     POSTGRES = {
       MIN = "9.5",
-      DEPRECATED = "9.4",
+      -- also accepts a DEPRECATED key, i.e. DEPRECATED = "9.4"
     },
     CASSANDRA = {
       MIN = "2.2",
-      DEPRECATED = "2.1",
+      -- also accepts a DEPRECATED key
     }
   }
 }

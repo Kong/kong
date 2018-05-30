@@ -17,6 +17,17 @@ local DEFAULT_PATHS = {
   "/etc/kong.conf"
 }
 
+local headers = constants.HEADERS
+local header_key_to_name = {
+  ["server_tokens"] = "server_tokens",
+  ["latency_tokens"] = "latency_tokens",
+  [string.lower(headers.VIA)] = headers.VIA,
+  [string.lower(headers.SERVER)] = headers.SERVER,
+  [string.lower(headers.PROXY_LATENCY)] = headers.PROXY_LATENCY,
+  [string.lower(headers.UPSTREAM_LATENCY)] = headers.UPSTREAM_LATENCY,
+  [string.lower(headers.UPSTREAM_STATUS)] = headers.UPSTREAM_STATUS,
+}
+
 local PREFIX_PATHS = {
   nginx_pid = {"pids", "nginx.pid"},
   nginx_err_logs = {"logs", "error.log"},
@@ -61,8 +72,7 @@ local CONF_INFERENCES = {
   nginx_user = {typ = "string"},
   nginx_worker_processes = {typ = "string"},
   upstream_keepalive = {typ = "number"},
-  server_tokens = {typ = "boolean"},
-  latency_tokens = {typ = "boolean"},
+  headers = {typ = "array"},
   trusted_ips = {typ = "array"},
   real_ip_header = {typ = "string"},
   real_ip_recursive = {typ = "ngx_boolean"},
@@ -275,6 +285,14 @@ local function check_and_infer(conf)
     end)
     if not ok then
       errors[#errors + 1] = err
+    end
+  end
+
+  if conf.headers then
+    for _, token in ipairs(conf.headers) do
+      if token ~= "off" and not header_key_to_name[string.lower(token)] then
+        errors[#errors+1] = "headers: invalid entry '" .. tostring(token) .. "'"
+      end
     end
   end
 
@@ -585,6 +603,37 @@ local function load(path, custom_conf)
         break
       end
     end
+  end
+
+  -- load headers configuration
+  do
+    local enabled_headers = {}
+
+    for _, v in pairs(header_key_to_name) do
+      enabled_headers[v] = false
+    end
+
+    if #conf.headers > 0 and conf.headers[1] ~= "off" then
+      for _, token in ipairs(conf.headers) do
+        if token ~= "off" then
+          enabled_headers[header_key_to_name[string.lower(token)]] = true
+        end
+      end
+    end
+
+    if enabled_headers.server_tokens then
+      enabled_headers[headers.VIA] = true
+      enabled_headers[headers.SERVER] = true
+    end
+
+    if enabled_headers.latency_tokens then
+      enabled_headers[headers.PROXY_LATENCY] = true
+      enabled_headers[headers.UPSTREAM_LATENCY] = true
+    end
+
+    conf.enabled_headers = setmetatable(enabled_headers, {
+      __tostring = function() return "" end,
+    })
   end
 
   -- load absolute paths

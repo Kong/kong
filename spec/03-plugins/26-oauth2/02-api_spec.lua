@@ -251,8 +251,7 @@ for _, strategy in helpers.each_strategy() do
       local credential
       before_each(function()
         dao:truncate_table("oauth2_credentials")
-        dao:truncate_table("consumers")
-        db:truncate("services")
+        assert(db:truncate())
 
         service = bp.services:insert({ host = "oauth2_token.com" })
         consumer = bp.consumers:insert({ username = "bob" })
@@ -282,9 +281,9 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(credential.id, json.id)
         end)
         it("retrieves credential by id only if the credential belongs to the specified consumer", function()
-          assert(dao.consumers:insert {
+          bp.consumers:insert {
             username = "alice"
-          })
+          }
 
           local res = assert(admin_client:send {
             method  = "GET",

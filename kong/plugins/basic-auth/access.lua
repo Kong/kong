@@ -100,7 +100,7 @@ local function load_credential_from_db(username)
 end
 
 local function load_consumer_into_memory(consumer_id, anonymous)
-  local result, err = singletons.dao.consumers:find { id = consumer_id }
+  local result, err = singletons.db.consumers:select { id = consumer_id }
   if not result then
     if anonymous and not err then
       err = 'anonymous consumer "' .. consumer_id .. '" not found'
@@ -150,7 +150,7 @@ local function do_authentication(conf)
   end
 
   -- Retrieve consumer
-  local consumer_cache_key = singletons.dao.consumers:cache_key(credential.consumer_id)
+  local consumer_cache_key = singletons.db.consumers:cache_key(credential.consumer_id)
   local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
                                                   load_consumer_into_memory,
                                                   credential.consumer_id)
@@ -176,7 +176,7 @@ function _M.execute(conf)
   if not ok then
     if conf.anonymous ~= "" then
       -- get anonymous user
-      local consumer_cache_key = singletons.dao.consumers:cache_key(conf.anonymous)
+      local consumer_cache_key = singletons.db.consumers:cache_key(conf.anonymous)
       local consumer, err      = singletons.cache:get(consumer_cache_key, nil,
                                                       load_consumer_into_memory,
                                                       conf.anonymous, true)

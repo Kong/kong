@@ -28,7 +28,7 @@ for _, strategy in helpers.each_strategy() do
 
       local routes = {}
 
-      for i = 1, 10 do
+      for i = 1, 11 do
         routes[i] = bp.routes:insert {
           hosts = { "jwt" .. i .. ".com" },
         }
@@ -103,6 +103,12 @@ for _, strategy in helpers.each_strategy() do
         name     = "jwt",
         route_id = routes[10].id,
         config   = { key_claim_name = "kid" },
+      })
+
+      plugins:insert({
+        name     = "jwt",
+        route_id = routes[11].id,
+        config   = { claims_to_verify = {"nbf", "exp"}, maximum_expiration = 300 },
       })
 
       plugins:insert({
@@ -253,6 +259,39 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(401, res)
         assert.equal([[{"message":"Unauthorized"}]], body)
+      end)
+      it("returns 403 if the token exceeds the maximum allowed expiration limit", function()
+        local payload = {
+          iss = jwt_secret.key,
+          exp = os.time() + 3600,
+          nbf = os.time() - 30
+        }
+        local jwt = jwt_encoder.encode(payload, jwt_secret.secret)
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/request/?jwt=" .. jwt,
+          headers = {
+            ["Host"] = "jwt11.com"
+          }
+        })
+        local body = assert.res_status(403, res)
+        assert.equal('{"exp":"exceeds maximum allowed expiration"}', body)
+      end)
+      it("accepts a JWT token within the maximum allowed expiration limit", function()
+        local payload = {
+          iss = jwt_secret.key,
+          exp = os.time() + 270,
+          nbf = os.time() - 30
+        }
+        local jwt = jwt_encoder.encode(payload, jwt_secret.secret)
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/request/?jwt=" .. jwt,
+          headers = {
+            ["Host"] = "jwt11.com"
+          }
+        })
+        assert.res_status(200, res)
       end)
     end)
 

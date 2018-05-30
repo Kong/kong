@@ -1,7 +1,6 @@
 local helpers = require "spec.helpers"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local cjson = require "cjson"
-local DAOFactory = require "kong.dao.factory"
 
 local slots_default, slots_max = 10000, 2^16
 
@@ -19,8 +18,9 @@ describe("Admin API: #" .. kong_config.database, function()
   local dao
 
   setup(function()
-    dao = assert(DAOFactory.new(kong_config))
-    assert(dao:run_migrations())
+
+    local _
+    _, _, dao = helpers.get_db_utils(kong_config.database)
 
     assert(helpers.start_kong{
       database = kong_config.database

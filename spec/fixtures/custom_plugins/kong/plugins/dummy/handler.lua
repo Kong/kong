@@ -29,6 +29,10 @@ function DummyHandler:header_filter(conf)
 
   ngx.header["Dummy-Plugin"] = conf.resp_header_value
 
+  if conf.resp_code then
+    ngx.status = conf.resp_code
+  end
+
   if conf.append_body then
     ngx.header["Content-Length"] = nil
   end

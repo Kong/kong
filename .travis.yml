@@ -13,7 +13,7 @@ services:
   - redis-server
 
 addons:
-  postgresql: "9.4"
+  postgresql: "9.5"
   apt:
     packages:
       - net-tools

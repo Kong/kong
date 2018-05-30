@@ -124,6 +124,8 @@ local meta_errors = {
   TYPE = "missing type declaration",
   FIELDS_ARRAY = "each entry in fields must be a sub-table",
   FIELDS_KEY = "each key in fields must be a string",
+  ENDPOINT_KEY = "value must be a field name",
+  ENDPOINT_KEY_UNIQUE = "endpoint key must be a unique field",
 }
 
 
@@ -223,6 +225,12 @@ local MetaSchema = Schema.new({
       },
     },
     {
+      endpoint_key = {
+        type = "string",
+        nilable = true,
+      },
+    },
+    {
       fields = {
         type = "array",
         elements = {
@@ -257,6 +265,24 @@ local MetaSchema = Schema.new({
     if not schema.fields then
       errors["fields"] = meta_errors.TABLE:format("fields")
       return nil, errors
+    end
+
+    if schema.endpoint_key then
+      local found = false
+      for _, item in ipairs(schema.fields) do
+        local k = next(item)
+        local field = item[k]
+        if schema.endpoint_key == k then
+          if not field.unique then
+            errors["endpoint_key"] = meta_errors.ENDPOINT_KEY_UNIQUE
+          end
+          found = true
+          break
+        end
+      end
+      if not found then
+        errors["endpoint_key"] = meta_errors.ENDPOINT_KEY
+      end
     end
 
     for _, item in ipairs(schema.fields) do

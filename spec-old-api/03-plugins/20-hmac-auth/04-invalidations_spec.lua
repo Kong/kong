@@ -6,9 +6,11 @@ local openssl_hmac = require "openssl.hmac"
 describe("Plugin: hmac-auth (invalidations)", function()
   local client_proxy, client_admin, consumer, credential
   local dao
+  local bp
+  local _
 
   setup(function()
-    dao = select(3, helpers.get_db_utils())
+    bp, _, dao = helpers.get_db_utils()
 
     local api = assert(dao.apis:insert {
       name         = "api-1",
@@ -23,10 +25,10 @@ describe("Plugin: hmac-auth (invalidations)", function()
       },
     })
 
-    consumer = assert(dao.consumers:insert {
+    consumer = bp.consumers:insert {
       username  = "consumer1",
       custom_id = "1234",
-    })
+    }
     credential = assert(dao["hmacauth_credentials"]:insert {
       username    = "bob",
       secret      = "secret",

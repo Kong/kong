@@ -4,6 +4,7 @@ local conf_loader = require "kong.conf_loader"
 local DAOFactory = require "kong.dao.factory"
 local kill = require "kong.cmd.utils.kill"
 local log = require "kong.cmd.utils.log"
+local DB = require "kong.db"
 
 local function execute(args)
   local conf = assert(conf_loader(args.conf, {
@@ -13,7 +14,7 @@ local function execute(args)
   assert(not kill.is_running(conf.nginx_pid),
          "Kong is already running in " .. conf.prefix)
 
-  local dao = assert(DAOFactory.new(conf))
+  local dao = assert(DAOFactory.new(conf, DB.new(conf)))
   local ok, err_t = dao:init()
   if not ok then
     error(tostring(err_t))

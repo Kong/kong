@@ -27,6 +27,7 @@ local ngx         = ngx
 local log         = ngx.log
 local null        = ngx.null
 local ngx_now     = ngx.now
+local re_match    = ngx.re.match
 local unpack      = unpack
 
 
@@ -154,7 +155,7 @@ return {
       reports.init_worker()
 
       -- initialize local local_events hooks
-
+      local db             = singletons.db
       local dao            = singletons.dao
       local cache          = singletons.cache
       local worker_events  = singletons.worker_events
@@ -255,32 +256,32 @@ return {
 
       worker_events.register(function(data)
         log(DEBUG, "[events] SNI updated, invalidating cached certificates")
-        local sni = data.entity
+        local sn = data.entity
 
-        cache:invalidate("pem_ssl_certificates:"    .. sni.name)
-        cache:invalidate("parsed_ssl_certificates:" .. sni.name)
-      end, "crud", "ssl_servers_names")
+        cache:invalidate("pem_ssl_certificates:"    .. sn.name)
+        cache:invalidate("parsed_ssl_certificates:" .. sn.name)
+      end, "crud", "snis")
 
 
       worker_events.register(function(data)
         log(DEBUG, "[events] SSL cert updated, invalidating cached certificates")
         local certificate = data.entity
 
-        local rows, err = dao.ssl_servers_names:find_all {
-          ssl_certificate_id = certificate.id
-        }
+        local rows, err = db.snis:for_certificate({
+          id = certificate.id
+        })
         if not rows then
-          log(ERR, "[events] could not find associated SNIs for certificate: ",
+          log(ERR, "[events] could not find associated snis for certificate: ",
                    err)
         end
 
         for i = 1, #rows do
-          local sni = rows[i]
+          local sn = rows[i]
 
-          cache:invalidate("pem_ssl_certificates:"    .. sni.name)
-          cache:invalidate("parsed_ssl_certificates:" .. sni.name)
+          cache:invalidate("pem_ssl_certificates:"    .. sn.name)
+          cache:invalidate("parsed_ssl_certificates:" .. sn.name)
         end
-      end, "crud", "ssl_certificates")
+      end, "crud", "certificates")
 
 
       -- target updates
@@ -688,32 +689,49 @@ return {
   },
   header_filter = {
     before = function(ctx)
+      local var = ngx.var
+      local header = ngx.header
+
       if ctx.KONG_PROXIED then
         local now = get_now()
         -- time spent waiting for a response from upstream
         ctx.KONG_WAITING_TIME             = now - ctx.KONG_ACCESS_ENDED_AT
         ctx.KONG_HEADER_FILTER_STARTED_AT = now
+
+        local upstream_status_header = constants.HEADERS.UPSTREAM_STATUS
+        if singletons.configuration.enabled_headers[upstream_status_header] then
+          local matches, err = re_match(var.upstream_status, "[0-9]+$", "oj")
+          if err then
+            log(ERR, "failed to set ", upstream_status_header, " header: ", err)
+
+          elseif matches then
+            header[upstream_status_header] = matches[0]
+          end
+        end
       end
     end,
     after = function(ctx)
       local header = ngx.header
 
       if ctx.KONG_PROXIED then
-        if singletons.configuration.latency_tokens then
+        if singletons.configuration.enabled_headers[constants.HEADERS.UPSTREAM_LATENCY] then
           header[constants.HEADERS.UPSTREAM_LATENCY] = ctx.KONG_WAITING_TIME
-          header[constants.HEADERS.PROXY_LATENCY]    = ctx.KONG_PROXY_LATENCY
         end
 
-        if singletons.configuration.server_tokens then
-          header["Via"] = server_header
+        if singletons.configuration.enabled_headers[constants.HEADERS.PROXY_LATENCY] then
+          header[constants.HEADERS.PROXY_LATENCY] = ctx.KONG_PROXY_LATENCY
+        end
+
+        if singletons.configuration.enabled_headers[constants.HEADERS.VIA] then
+          header[constants.HEADERS.VIA] = server_header
         end
 
       else
-        if singletons.configuration.server_tokens then
-          header["Server"] = server_header
+        if singletons.configuration.enabled_headers[constants.HEADERS.SERVER] then
+          header[constants.HEADERS.SERVER] = server_header
 
         else
-          header["Server"] = nil
+          header[constants.HEADERS.SERVER] = nil
         end
       end
     end
