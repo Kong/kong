@@ -73,7 +73,6 @@ describe("Plugins", function()
       "udp-log",
       "tcp-log",
       "loggly",
-      "runscope",
       "syslog",
       "galileo",
       "request-termination",
