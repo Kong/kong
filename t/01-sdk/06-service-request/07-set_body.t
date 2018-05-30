@@ -865,3 +865,150 @@ content-length: {9}
 content-type: {application/json}
 --- no_error_log
 [error]
+
+
+
+=== TEST 25: service.request.set_body() for multipart/form-data can only store scalars in parts
+--- config
+    location = /t {
+
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            local ok, err = pcall(sdk.service.request.set_body, {
+                foo = "hello world",
+                a = true,
+                aa = { "zzz", true, true, "aaa" },
+                zzz = "goodbye world",
+            }, "multipart/form-data")
+            ngx.say(err)
+        }
+    }
+--- request
+POST /t
+--- response_body
+invalid value "aa": got table, expected string, number or boolean
+--- no_error_log
+[error]
+
+
+
+=== TEST 26: service.request.set_body() for multipart/form-data when mime given adds the boundary to the Content-Type
+--- http_config
+    server {
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+
+        location /t {
+            content_by_lua_block {
+                ngx.req.read_body()
+
+                local headers = ngx.req.get_headers()
+                local content_type = tostring(headers["Content-Type"])
+
+                local multipart = require "multipart"
+                local raw_body = tostring(ngx.req.get_body_data())
+                local mpdata = multipart(raw_body, content_type)
+                local mpvalues = mpdata:get_all()
+
+                ngx.say(content_type:match("(boundary)"))
+                ngx.say("foo: {", mpvalues.foo, "}")
+                ngx.say("zzz: {", mpvalues.zzz, "}")
+            }
+        }
+    }
+--- config
+    location = /t {
+
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            sdk.service.request.set_body({
+                foo = "hello world",
+                zzz = "goodbye world",
+            }, "multipart/form-data")
+        }
+
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
+    }
+--- request
+POST /t
+--- response_body
+boundary
+foo: {hello world}
+zzz: {goodbye world}
+--- no_error_log
+[error]
+
+
+
+=== TEST 27: service.request.set_body() for multipart/form-data when mime is not given reuses the boundary from the Content-Type
+--- http_config
+    server {
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+
+        location /t {
+            content_by_lua_block {
+                ngx.req.read_body()
+
+                local headers = ngx.req.get_headers()
+                local content_type = tostring(headers["Content-Type"])
+
+                local multipart = require "multipart"
+                local raw_body = tostring(ngx.req.get_body_data())
+                local mpdata = multipart(raw_body, content_type)
+                local mpvalues = mpdata:get_all()
+
+                ngx.say(content_type)
+                ngx.say((raw_body:gsub("\r", "")))
+                ngx.say("foo: {", mpvalues.foo, "}")
+                ngx.say("zzz: {", mpvalues.zzz, "}")
+            }
+        }
+    }
+--- config
+    location = /t {
+
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            sdk.service.request.set_body({
+                foo = "hello world",
+                zzz = "goodbye world",
+            })
+        }
+
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
+    }
+--- request
+POST /t
+
+--xxyyzz
+Content-Disposition: form-data; name="field1"
+
+value1
+--xxyyzz
+Content-Disposition: form-data; name="field2"
+
+value2
+--xxyyzz--
+--- more_headers
+Content-Type: multipart/form-data; boundary=xxyyzz
+--- response_body
+multipart/form-data; boundary=xxyyzz
+--xxyyzz
+Content-Disposition: form-data; name="foo"
+
+hello world
+--xxyyzz
+Content-Disposition: form-data; name="zzz"
+
+goodbye world
+--xxyyzz--
+
+foo: {hello world}
+zzz: {goodbye world}
+--- no_error_log
+[error]
