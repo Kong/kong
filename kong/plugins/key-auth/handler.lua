@@ -39,52 +39,48 @@ local function load_consumer(consumer_id, anonymous)
 end
 
 local function set_consumer(consumer, credential)
-  local const      = constants.HEADERS
-  local shared_ctx = kong.ctx.shared
-  local serv_req   = kong.service.request
+  local const = constants.HEADERS
 
   local new_headers = {
     [const.CONSUMER_ID]        = consumer.id,
-    [const.CONSUMER_CUSTOM_ID] = consumer.custom_id,
+    [const.CONSUMER_CUSTOM_ID] = tostring(consumer.custom_id),
     [const.CONSUMER_USERNAME]  = consumer.username,
   }
 
-  shared_ctx.authenticated_consumer = consumer
+  kong.ctx.shared.authenticated_consumer = consumer -- forward compatibility
+  ngx.ctx.authenticated_consumer = consumer         -- backward compatibility
 
   if credential then
-    shared_ctx.authenticated_credential    = credential
+    kong.ctx.shared.authenticated_credential = credential -- forward compatibility
+    ngx.ctx.authenticated_credential = credential         -- backward compatibility
     new_headers[const.CREDENTIAL_USERNAME] = credential.username
-    serv_req.clear_header(const.ANONYMOUS) -- in case of auth plugins concatenation
+    kong.service.request.clear_header(const.ANONYMOUS) -- in case of auth plugins concatenation
   else
     new_headers[const.ANONYMOUS] = true
   end
 
-  serv_req.set_headers(new_headers)
+  kong.service.request.set_headers(new_headers)
 end
 
 
 local function do_authentication(conf)
-  local log_err = kong.log.err
-  local res = kong.response
   if type(conf.key_names) ~= "table" then
-    log_err("no conf.key_names set, aborting plugin execution")
+    kong.log.err("no conf.key_names set, aborting plugin execution")
     return nil, { status = 500, message = "Invalid plugin configuration" }
   end
 
-  local req        = kong.request
-  local serv_req   = kong.service.request
-  local headers    = req.get_headers()
-  local query_args = req.get_query_args()
+  local headers = kong.request.get_headers()
+  local query = kong.request.get_query()
   local key
   local body
 
   -- read in the body if we want to examine POST args
   if conf.key_in_body then
     local err
-    body, err = req.get_parsed_body()
+    body, err = kong.request.get_body()
 
     if err then
-      log_err("Cannot process request body: ", err)
+      kong.log.err("Cannot process request body: ", err)
       return nil, { status = 400, message = "Cannot process request body" }
     end
   end
@@ -95,7 +91,7 @@ local function do_authentication(conf)
     local v = headers[name]
     if not v then
       -- search in querystring
-      v = query_args[name]
+      v = query[name]
     end
 
     -- search the body, if we asked to
@@ -106,13 +102,13 @@ local function do_authentication(conf)
     if type(v) == "string" then
       key = v
       if conf.hide_credentials then
-        query_args[name] = nil
-        serv_req.set_query(query_args)
-        serv_req.clear_header(name)
+        query[name] = nil
+        kong.service.request.set_query(query)
+        kong.service.request.clear_header(name)
 
         if conf.key_in_body then
           body[name] = nil
-          serv_req.set_body(body)
+          kong.service.request.set_body(body)
         end
       end
       break
@@ -124,7 +120,7 @@ local function do_authentication(conf)
 
   -- this request is missing an API key, HTTP 401
   if not key then
-    res.set_header("WWW-Authenticate", _realm)
+    kong.response.set_header("WWW-Authenticate", _realm)
     return nil, { status = 401, message = "No API key found in request" }
   end
 
@@ -137,8 +133,8 @@ local function do_authentication(conf)
   local credential, err = cache:get(credential_cache_key, nil,
                                     load_credential, key)
   if err then
-    log_err(err)
-    return res.exit(500, "An unexpected error ocurred")
+    kong.log.err(err)
+    return kong.response.exit(500, "An unexpected error ocurred")
   end
 
   -- no credential in DB, for this key, it is invalid, HTTP 403
@@ -156,7 +152,7 @@ local function do_authentication(conf)
   local consumer, err      = cache:get(consumer_cache_key, nil, load_consumer,
                                        credential.consumer_id)
   if err then
-    log_err(err)
+    kong.log.err(err)
     return nil, { status = 500, message = "An unexpected error ocurred" }
   end
 
@@ -168,14 +164,16 @@ end
 
 function KeyAuthHandler:access(conf)
   KeyAuthHandler.super.access(self)
-  local res = kong.response
 
   -- check if preflight request and whether it should be authenticated
   if not conf.run_on_preflight and kong.request.get_method() == "OPTIONS" then
     return
   end
 
-  if kong.ctx.shared.authenticated_credential and conf.anonymous ~= "" then
+  -- checking both old and new ctx for backward and forward compatibility
+  local authenticated_credential = kong.ctx.shared.authenticated_credential
+                                   or ngx.ctx.authenticated_credential
+  if authenticated_credential and conf.anonymous ~= "" then
     -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
     return
@@ -193,11 +191,11 @@ function KeyAuthHandler:access(conf)
                                            true)
       if err then
         kong.log.err(err)
-        return res.exit(500, { message = "An unexpected error ocurred" })
+        return kong.response.exit(500, { message = "An unexpected error ocurred" })
       end
       set_consumer(consumer, nil)
     else
-      return res.exit(err.status, { message = err.message }, err.headers)
+      return kong.response.exit(err.status, { message = err.message }, err.headers)
     end
   end
 end
