@@ -398,7 +398,7 @@ end
 
 --- returns a pre-configured `http_client` for the Kong admin port.
 -- @name admin_client
-local function admin_client(timeout)
+local function admin_client(timeout, forced_port)
   local admin_ip, admin_port
   for _, entry in ipairs(conf.admin_listeners) do
     if entry.ssl == false then
@@ -407,7 +407,7 @@ local function admin_client(timeout)
     end
   end
   assert(admin_ip, "No http-admin found in the configuration")
-  return http_client(admin_ip, admin_port, timeout)
+  return http_client(admin_ip, forced_port or admin_port, timeout)
 end
 
 --- returns a pre-configured `http_client` for the Kong admin SSL port.

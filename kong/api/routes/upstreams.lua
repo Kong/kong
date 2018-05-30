@@ -84,7 +84,9 @@ local function post_health(is_healthy)
     end
 
     local health = is_healthy and 1 or 0
-    local packet = ("%s|%d|%d|%s"):format(ip, port, health, self.upstream.name)
+    local packet = ("%s|%d|%d|%s|%s"):format(ip, port, health,
+                                             self.upstream.id,
+                                             self.upstream.name)
     cluster_events:broadcast("balancer:post_health", packet)
 
     return responses.send_HTTP_NO_CONTENT()

@@ -495,10 +495,10 @@
                                  # This includes the certificates configured
                                  # for Kong's database connections.
 
-#lua_package_path =              # Sets the Lua module search path (LUA_PATH).
-                                 # Useful when developing or using custom
-                                 # plugins not stored in the default search
-                                 # path.
+#lua_package_path = ./?.lua;./?/init.lua;  # Sets the Lua module search path
+                                           # (LUA_PATH). Useful when developing
+                                           # or using custom plugins not stored
+                                           # in the default search path.
 
 #lua_package_cpath =             # Sets the Lua C module search path
                                  # (LUA_CPATH).

@@ -302,6 +302,7 @@ end
 local add_upstream
 local patch_upstream
 local get_upstream_health
+local get_router_version
 local add_target
 local add_api
 local patch_api
@@ -318,8 +319,8 @@ do
     end
   end
 
-  local function api_send(method, path, body)
-    local api_client = helpers.admin_client()
+  local function api_send(method, path, body, forced_port)
+    local api_client = helpers.admin_client(nil, forced_port)
     local res, err = api_client:send({
       method = method,
       path = path,
@@ -350,11 +351,19 @@ do
     assert.same(200, api_send("PATCH", "/upstreams/" .. upstream_name, data))
   end
 
-  get_upstream_health = function(upstream_name)
+  get_upstream_health = function(upstream_name, forced_port)
     local path = "/upstreams/" .. upstream_name .."/health"
-    local status, body = api_send("GET", path)
+    local status, body = api_send("GET", path, nil, forced_port)
     if status == 200 then
       return body
+    end
+  end
+
+  get_router_version = function(forced_port)
+    local path = "/cache/router:version"
+    local status, body = api_send("GET", path, nil, forced_port)
+    if status == 200 then
+      return body.message
     end
   end
 
@@ -419,33 +428,39 @@ local function truncate_relevant_tables(db, dao)
 end
 
 
-local function poll_wait_health(upstream_name, localhost, port, value)
+local function poll_wait_health(upstream_name, host, port, value, admin_port)
   local hard_timeout = 300
   local expire = ngx.now() + hard_timeout
   while ngx.now() < expire do
-    local health = get_upstream_health(upstream_name)
+    local health = get_upstream_health(upstream_name, admin_port)
     if health then
       for _, d in ipairs(health.data) do
-        if d.target == localhost .. ":" .. port and d.health == value then
+        if d.target == host .. ":" .. port and d.health == value then
           return
         end
       end
     end
     ngx.sleep(0.01) -- poll-wait
   end
+  assert(false, "timed out waiting for " .. host .. ":" .. port " in " ..
+                upstream_name .. " to become " .. value)
 end
 
 
-local function file_contains(filename, searched)
-  local fd = assert(io.open(filename, "r"))
-  for line in fd:lines() do
-    if line:find(searched, 1, true) then
-      fd:close()
-      return true
-    end
-  end
-  fd:close()
-  return false
+local function wait_for_router_update(old_rv, localhost, proxy_port, admin_port)
+  -- add dummy upstream just to rebuild router
+  local dummy_upstream_name = add_upstream()
+  local dummy_port = add_target(dummy_upstream_name, localhost)
+  local dummy_api_host = add_api(dummy_upstream_name)
+  local dummy_server = http_server(localhost, dummy_port, { math.huge })
+
+  helpers.wait_until(function()
+    client_requests(1, dummy_api_host, "127.0.0.1", proxy_port)
+    local rv = get_router_version(admin_port)
+    return rv ~= old_rv
+  end, 10)
+
+  dummy_server:done()
 end
 
 
@@ -477,14 +492,18 @@ for _, strategy in helpers.each_strategy() do
 
     describe("#healthchecks (#cluster)", function()
 
+      -- second node ports are Kong test ports + 10
+      local proxy_port_1 = 9000
+      local admin_port_1 = 9001
+      local proxy_port_2 = 9010
+      local admin_port_2 = 9011
+
       setup(function()
-        -- start a second Kong instance (ports are Kong test ports + 10)
+        -- start a second Kong instance
         helpers.start_kong({
           database   = strategy,
-          admin_listen = "127.0.0.1:9011",
-          proxy_listen = "127.0.0.1:9010",
-          proxy_listen_ssl = "127.0.0.1:9453",
-          admin_listen_ssl = "127.0.0.1:9454",
+          admin_listen = "127.0.0.1:" .. admin_port_2,
+          proxy_listen = "127.0.0.1:" .. proxy_port_2,
           prefix = "servroot2",
           log_level = "debug",
           db_update_frequency = 0.1,
@@ -501,24 +520,24 @@ for _, strategy in helpers.each_strategy() do
 
           it("does not perform health checks when disabled (#3304)", function()
 
-            local upstream_name = add_upstream({})
+            local old_rv = get_router_version(admin_port_2)
+
+            local upstream_name = add_upstream()
             local port = add_target(upstream_name, localhost)
             local api_host = add_api(upstream_name)
 
-            helpers.wait_until(function()
-              return file_contains("servroot2/logs/error.log", "balancer:targets")
-            end, 10)
+            wait_for_router_update(old_rv, localhost, proxy_port_2, admin_port_2)
 
             -- server responds, then fails, then responds again
             local server = http_server(localhost, port, { 20, 20, 20 })
 
             local seq = {
-              { port = 9000, oks = 10, fails = 0, last_status = 200 },
-              { port = 9010, oks = 10, fails = 0, last_status = 200 },
-              { port = 9000, oks = 0, fails = 10, last_status = 500 },
-              { port = 9010, oks = 0, fails = 10, last_status = 500 },
-              { port = 9000, oks = 10, fails = 0, last_status = 200 },
-              { port = 9010, oks = 10, fails = 0, last_status = 200 },
+              { port = proxy_port_2, oks = 10, fails = 0, last_status = 200 },
+              { port = proxy_port_1, oks = 10, fails = 0, last_status = 200 },
+              { port = proxy_port_2, oks = 0, fails = 10, last_status = 500 },
+              { port = proxy_port_1, oks = 0, fails = 10, last_status = 500 },
+              { port = proxy_port_2, oks = 10, fails = 0, last_status = 200 },
+              { port = proxy_port_1, oks = 10, fails = 0, last_status = 200 },
             }
             for i, test in ipairs(seq) do
               local oks, fails, last_status = client_requests(10, api_host, "127.0.0.1", test.port)
@@ -533,6 +552,31 @@ for _, strategy in helpers.each_strategy() do
             assert.same(20, server_fails)
 
           end)
+
+          it("propagates posted health info", function()
+
+            local old_rv = get_router_version(admin_port_2)
+
+            local upstream_name = add_upstream({
+              healthchecks = healthchecks_config {}
+            })
+            local port = add_target(upstream_name, localhost)
+
+            wait_for_router_update(old_rv, localhost, proxy_port_2, admin_port_2)
+
+            local health1 = get_upstream_health(upstream_name, admin_port_1)
+            local health2 = get_upstream_health(upstream_name, admin_port_2)
+
+            assert.same("HEALTHY", health1.data[1].health)
+            assert.same("HEALTHY", health2.data[1].health)
+
+            post_target_endpoint(upstream_name, localhost, port, "unhealthy")
+
+            poll_wait_health(upstream_name, localhost, port, "UNHEALTHY", admin_port_1)
+            poll_wait_health(upstream_name, localhost, port, "UNHEALTHY", admin_port_2)
+
+          end)
+
         end)
       end
     end)

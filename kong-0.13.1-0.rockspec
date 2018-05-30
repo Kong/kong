@@ -27,10 +27,10 @@ dependencies = {
   "luaossl == 20180530",
   "luasyslog == 1.0.0",
   "lua_pack == 1.0.5",
-  "lua-resty-dns-client == 2.0.0",
+  "lua-resty-dns-client == 2.1.0",
   "lua-resty-worker-events == 0.3.3",
   "lua-resty-mediador == 0.1.2",
-  "lua-resty-healthcheck == 0.4.0",
+  "lua-resty-healthcheck == 0.4.2",
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.0.2",
   -- external Kong plugins

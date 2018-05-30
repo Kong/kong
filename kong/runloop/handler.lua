@@ -338,9 +338,10 @@ return {
 
       -- manual health updates
       cluster_events:subscribe("balancer:post_health", function(data)
-        local ip, port, health, name = data:match("([^|]+)|([^|]+)|([^|]+)|(.*)")
+        local pattern = "([^|]+)|([^|]+)|([^|]+)|([^|]+)|(.*)"
+        local ip, port, health, id, name = data:match(pattern)
         port = tonumber(port)
-        local upstream = { name = name }
+        local upstream = { id = id, name = name }
         local ok, err = balancer.post_health(upstream, ip, port, health == "1")
         if not ok then
           log(ERR, "failed posting health of ", name, " to workers: ", err)
