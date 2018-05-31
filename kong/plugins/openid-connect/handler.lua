@@ -1472,6 +1472,11 @@ function OICHandler:access(conf)
           end
         end
 
+        local token_endpoint_auth_method = args.get_conf_arg("token_endpoint_auth_method")
+        if token_endpoint_auth_method then
+          arg.token_endpoint_auth_method = token_endpoint_auth_method
+        end
+
         if args.get_conf_arg("cache_tokens") then
           log("trying to exchange credentials using token endpoint with caching enabled")
           tokens_encoded, err, downstream_headers = cache.tokens.load(oic, arg, ttl_default, true)

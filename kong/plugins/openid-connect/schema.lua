@@ -372,6 +372,15 @@ return {
         "authorization_code",
       },
     },
+    token_endpoint_auth_method         = {
+      required                         = false,
+      type                             = "string",
+      enum                             = {
+        "none",
+        "client_secret_basic",
+        "client_secret_post",
+      },
+    },
     upstream_headers_claims            = {
       required                         = false,
       type                             = "array",

@@ -1,7 +1,8 @@
 ## vNext (upcoming v0.1.8)
 
-- Add `config.consumer_optional`
 - Change `config_consumer_claim` from `string` to `array`
+- Add `config.consumer_optional`
+- Add `config.token_endpoint_auth_method`
 
 ## v0.1.7
 
