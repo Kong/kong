@@ -43,7 +43,8 @@ local function generate_foreign_key_methods(self)
     if field.type == "foreign" then
       local method_name = "for_" .. name
 
-      self[method_name] = function(self, foreign_key, size, offset)
+      self[method_name] = function(self, foreign_key, size, offset, options)
+        options = options or {}
         if type(foreign_key) ~= "table" then
           error("foreign_key must be a table", 2)
         end
@@ -82,9 +83,15 @@ local function generate_foreign_key_methods(self)
           return nil, tostring(err_t), err_t
         end
 
-        local entities, err, err_t = self:rows_to_entities(rows)
+        local entities, err, err_t = self:rows_to_entities(rows, options.include_ws)
         if err then
           return nil, err, err_t
+        end
+
+        if not options.skip_rbac then
+          local table_name = self.schema.name
+          local constraints = workspaceable[table_name]
+          entities = rbac.narrow_readable_entities(table_name, entities, constraints)
         end
 
         return entities, nil, nil, new_offset
@@ -98,7 +105,7 @@ local function generate_foreign_key_methods(self)
         end
       end
 
-      self["select_by_" .. name] = function(self, unique_value)
+      self["select_by_" .. name] = function(self, unique_value, options)
         validate_unique_value(unique_value)
         local pk, err_t = ws_helper.resolve_shared_entity_id(self.schema.name,
                                                      { [name] = unique_value },
@@ -108,7 +115,7 @@ local function generate_foreign_key_methods(self)
         end
 
         if pk then
-          return self:select(pk)
+          return self:select(pk, options)
         end
 
         local ws_scope = workspaces.get_workspaces()
@@ -152,6 +159,7 @@ local function generate_foreign_key_methods(self)
         if pk then
           return self:update(pk, entity_to_update)
         end
+
         local row, err_t = self.strategy:update_by_field(name, unique_value,
                                                          entity_to_update)
         if not row then
@@ -222,7 +230,8 @@ function _M.new(schema, strategy, errors)
 end
 
 
-function DAO:select(primary_key)
+function DAO:select(primary_key, options)
+  options = options or {}
   if type(primary_key) ~= "table" then
     error("primary_key must be a table", 2)
   end
@@ -242,11 +251,23 @@ function DAO:select(primary_key)
     return nil
   end
 
-  return self:row_to_entity(row)
+  local table_name = self.table
+  local constraints = workspaceable[table_name]
+
+  if not options.skip_rbac then
+    local r = rbac.validate_entity_operation(primary_key, constraints)
+    if not r then
+      local err_t = self.errors:unauthorized_operation("read")
+      return  nil, tostring(err_t), err_t
+    end
+  end
+
+  return self:row_to_entity(row, options.include_ws)
 end
 
 
-function DAO:page(size, offset)
+function DAO:page(size, offset, options)
+  options = options or {}
   size = tonumber(size == nil and 100 or size)
 
   if not size then
@@ -268,9 +289,15 @@ function DAO:page(size, offset)
     return nil, tostring(err_t), err_t
   end
 
-  local entities, err, err_t = self:rows_to_entities(rows)
+  local entities, err, err_t = self:rows_to_entities(rows, options.include_ws)
   if not entities then
     return nil, err, err_t
+  end
+
+  if not options.skip_rbac then
+    local table_name = self.schema.name
+    local constraints = workspaceable[table_name]
+    entities = rbac.narrow_readable_entities(table_name, entities, constraints)
   end
 
   return entities, err, err_t, offset
@@ -391,9 +418,12 @@ function DAO:update(primary_key, entity)
     return nil, tostring(err_t), err_t
   end
 
-  ws_helper.apply_unique_per_ws(self.schema.name, entity_to_update,
-  workspaceable[self.schema.name])
-
+  local constraints = workspaceable[self.schema.name]
+  if not rbac.validate_entity_operation(entity_to_update, constraints) then
+    local err_t = self.errors:unauthorized_operation("update")
+    return nil, tostring(err_t), err_t
+  end
+  ws_helper.apply_unique_per_ws(self.schema.name, entity_to_update, constraints)
 
   local row, err_t = self.strategy:update(primary_key, entity_to_update)
   if not row then

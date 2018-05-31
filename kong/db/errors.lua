@@ -32,6 +32,7 @@ local ERRORS            = {
   NOT_FOUND             = 6, -- WHERE clause leads nowhere (HTTP 404)
   INVALID_OFFSET        = 7, -- page(size, offset) is invalid
   DATABASE_ERROR        = 8, -- connection refused or DB error (HTTP 500)
+  RBAC_ERROR            = 9, -- forbidden operation (HTTP 403)
 }
 
 
@@ -47,6 +48,7 @@ local ERRORS_NAMES               = {
   [ERRORS.NOT_FOUND]             = "not found",
   [ERRORS.INVALID_OFFSET]        = "invalid offset",
   [ERRORS.DATABASE_ERROR]        = "database error",
+  [ERRORS.RBAC_ERROR]            = "rbac error",
 }
 
 
@@ -314,6 +316,17 @@ end
 function _M:database_error(err)
   err = err or ERRORS_NAMES[ERRORS.DATABASE_ERROR]
   return new_err_t(self, ERRORS.DATABASE_ERROR, err)
+end
+
+
+function _M:unauthorized_operation(operation)
+  if type(operation) ~= "string" then
+    error("operation must be a string", 2)
+  end
+
+  local message = fmt(" unauthorized operation : %s", operation)
+
+  return new_err_t(self, ERRORS.RBAC_ERROR, message)
 end
 
 

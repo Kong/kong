@@ -26,10 +26,6 @@ local min           = math.min
 local log           = ngx.log
 
 
-local get_workspaces = workspaces.get_workspaces
-local workspaceable  = workspaces.get_workspaceable_relations()
-
-
 local NOTICE        = ngx.NOTICE
 local LIMIT         = {}
 local UNIQUE        = {}
@@ -511,15 +507,6 @@ local function toerror(strategy, err, primary_key, entity)
 end
 
 
-local function encode_ws_list(ws_scope)
-  local ids = {}
-  for _, ws in ipairs(ws_scope) do
-    ids[#ids + 1] = "'" .. tostring(ws.id) .. "'"
-  end
-  return table.concat(ids, ", ")
-end
-
-
 local function execute(strategy, statement_name, attributes, is_update, ws_scope)
   local connector = strategy.connector
   local internal  = strategy[PRIVATE]
@@ -555,9 +542,8 @@ local function execute(strategy, statement_name, attributes, is_update, ws_scope
     end
   end
 
-  if ws_scope then
-    argv[0] = ws_scope
-  end
+  -- add workspace list at 0th index
+  argv[0] = ws_scope
 
   local sql = statement.make(argv)
 
@@ -572,12 +558,7 @@ local function page(self, size, token, foreign_key, foreign_entity_name)
 
   local statement_name
   local attributes
-  local ws_list
-
-  local ws_scope = get_workspaces()
-  if #ws_scope > 0 and workspaceable[self.schema.name]  then
-    ws_list = encode_ws_list(ws_scope)
-  end
+  local ws_list = ws_helper.ws_scope_as_list(self.schema.name)
 
   if token then
     if foreign_entity_name then
@@ -1545,7 +1526,7 @@ function _M.new(connector, schema, errors)
         "         )\n",
         "   WHERE (", foreign_key_names, ") = (", fk_placeholders, ")\n",
         "ORDER BY ",  pk_escaped, "\n",
-        "   LIMIT $", argc_first, ";";
+        "   LIMIT $", argc_first, ";"
       }
 
       page_next_statement = concat {

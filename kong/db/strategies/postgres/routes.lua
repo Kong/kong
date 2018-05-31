@@ -1,14 +1,16 @@
 local workspaces = require "kong.workspaces"
+local rbac       = require "kong.rbac"
 
 
 local fmt = string.format
 
 
-local _Routes = {}
+local _Routes_ee = {}
 
 
-function _Routes:delete(primary_key)
+function _Routes_ee:delete(primary_key)
   local plugins = {}
+  local constraints = workspaces.get_workspaceable_relations()[self.schema.name]
 
   -- retrieve plugins associated with this Route
   local select_q = fmt("SELECT * FROM plugins WHERE route_id = '%s'",
@@ -20,9 +22,19 @@ function _Routes:delete(primary_key)
                                              "for Route: " .. err)
     end
 
+    if not rbac.validate_entity_operation(row, constraints) then
+      -- todo return correct error
+      return nil, self.errors:unauthorized_operation("cascading delete")
+    end
+
     table.insert(plugins, row)
   end
 
+
+  if not rbac.validate_entity_operation(primary_key, constraints) then
+    -- todo return correct error
+    return nil, self.errors:unauthorized_operation("delete")
+  end
 
   local ok, err_t = self.super.delete(self, primary_key)
   if not ok then
@@ -53,4 +65,4 @@ function _Routes:delete(primary_key)
 end
 
 
-return _Routes
+return _Routes_ee

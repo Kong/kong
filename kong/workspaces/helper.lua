@@ -2,11 +2,17 @@ local workspaces = require "kong.workspaces"
 local utils      = require "kong.tools.utils"
 
 
-local pairs = pairs
+local pairs        = pairs
+local ipairs       = ipairs
+local fmt          = string.format
+local tostring     = tostring
+local table_concat = table.concat
+
+
 local workspaceable = workspaces.get_workspaceable_relations()
 
 
-local fmt = string.format
+
 
 _M = {}
 -- used only with insert, update and delete
@@ -117,4 +123,24 @@ end
 function _M.is_workspaceable(table_name, ws_scope)
     return workspaces.get_workspaceable_relations()[table_name] and #ws_scope > 0
 end
+
+
+local function encode_ws_list(ws_scope)
+  local ids = {}
+  for _, ws in ipairs(ws_scope) do
+    ids[#ids + 1] = "'" .. tostring(ws.id) .. "'"
+  end
+  return table_concat(ids, ", ")
+end
+
+
+function _M.ws_scope_as_list(table_name)
+  local ws_scope = workspaces.get_workspaces()
+  local workspaceable = workspaces.get_workspaceable_relations()
+  if workspaceable[table_name] and #ws_scope > 0 then
+    return encode_ws_list(ws_scope)
+  end
+end
+
+
 return _M
