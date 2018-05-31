@@ -1,6 +1,7 @@
 ## vNext (upcoming v0.1.8)
 
 - Add `config.consumer_optional`
+- Change `config_consumer_claim` from `string` to `array`
 
 ## v0.1.7
 

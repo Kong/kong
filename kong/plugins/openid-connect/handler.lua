@@ -167,6 +167,40 @@ local function redirect_uri()
 end
 
 
+local function find_claim(token, search)
+  if type(token) ~= "table" then
+    return nil
+  end
+
+  local search_t = type(search)
+  local t = token
+  if search_t == "string" then
+    if not t[search] then
+      return nil
+    end
+    t = t[search]
+
+  elseif search_t == "table" then
+    for _, claim in ipairs(search) do
+      if not t[claim] then
+        return nil
+      end
+
+      t = t[claim]
+    end
+
+  else
+    return nil
+  end
+
+  if type(t) == "table" then
+    return concat(t, " ")
+  end
+
+  return tostring(t)
+end
+
+
 local function find_consumer(token, claim, anonymous, consumer_by, ttl)
   if not token then
     return nil, "token for consumer mapping was not found"
@@ -186,8 +220,7 @@ local function find_consumer(token, claim, anonymous, consumer_by, ttl)
     return nil, "invalid token payload was specified for consumer mapping"
   end
 
-  local subject = payload[claim]
-
+  local subject = find_claim(payload, claim)
   if not subject then
     return nil, "claim (" .. claim .. ") was not found for consumer mapping"
   end
@@ -367,28 +400,6 @@ local function reset_trusted_client(new_client_index, trusted_client, oic, optio
   options.redirect_uri  = trusted_client.redirect_uri
 
   oic.options:reset(options)
-end
-
-
-local function find_claim(token, search)
-  if type(token) ~= "table" or type(search) ~= "table" then
-    return nil
-  end
-
-  local t = token
-  for _, claim in ipairs(search) do
-    if not t[claim] then
-      return nil
-    end
-
-    t = t[claim]
-  end
-
-  if type(t) == "table" then
-    return concat(t, " ")
-  end
-
-  return tostring(t)
 end
 
 

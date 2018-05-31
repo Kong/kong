@@ -558,7 +558,7 @@ return {
     },
     consumer_claim                     = {
       required                         = false,
-      type                             = "string",
+      type                             = "array",
     },
     consumer_by                        = {
       required                         = false,
