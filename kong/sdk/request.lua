@@ -50,7 +50,6 @@ local function new(self)
   local REQUEST_PHASES_BODY    = {
     rewrite                    = true,
     access                     = true,
-
   }
 
 
