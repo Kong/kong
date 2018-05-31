@@ -573,6 +573,11 @@ return {
         "custom_id",
       },
     },
+    consumer_optional                  = {
+      required                         = false,
+      type                             = "boolean",
+      default                          = false,
+    },
     credential_claim                   = {
       required                         = false,
       type                             = "array",

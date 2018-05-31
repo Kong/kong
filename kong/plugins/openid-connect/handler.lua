@@ -1874,48 +1874,56 @@ function OICHandler:access(conf)
 
       if not consumer then
         log("kong consumer was not found")
+
         if not anonymous then
-          if err then
-            return forbidden(
-              iss,
-              "consumer was not found (" .. err .. ")",
-              session,
-              anonymous,
-              trusted_client)
+          local consumer_optional = args.get_conf_arg("consumer_optional", false)
+          if consumer_optional then
+            log("kong consumer is optional")
 
           else
-            return forbidden(
-              iss,
-              "consumer was not found",
-              session,
-              anonymous,
-              trusted_client)
-          end
-        end
+            if err then
+              return forbidden(
+                iss,
+                "kong consumer was not found (" .. err .. ")",
+                session,
+                anonymous,
+                trusted_client)
 
-        log("trying with anonymous kong consumer")
-
-        is_anonymous = true
-
-        local consumer_token = {
-          payload = {
-            id = anonymous
-          }
-        }
-
-        consumer, err = find_consumer(consumer_token, "id", true, "id")
-        if not consumer then
-          log("anonymous kong consumer was not found")
-
-          if err then
-            return unexpected(trusted_client, "anonymous consumer was not found (", err, ")")
-
-          else
-            return unexpected(trusted_client, "anonymous consumer was not found")
+            else
+              return forbidden(
+                iss,
+                "kong consumer was not found",
+                session,
+                anonymous,
+                trusted_client)
+            end
           end
 
         else
-          log("found anonymous kong consumer")
+          log("trying with anonymous kong consumer")
+
+          is_anonymous = true
+
+          local consumer_token = {
+            payload = {
+              id = anonymous
+            }
+          }
+
+          consumer, err = find_consumer(consumer_token, "id", true, "id")
+          if not consumer then
+            log("anonymous kong consumer was not found")
+
+            if err then
+              return unexpected(trusted_client, "anonymous consumer was not found (", err, ")")
+
+            else
+              return unexpected(trusted_client, "anonymous consumer was not found")
+            end
+
+          else
+            log("found anonymous kong consumer")
+          end
         end
 
       else

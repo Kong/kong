@@ -1,3 +1,7 @@
+## vNext (upcoming v0.1.8)
+
+- Add `config.consumer_optional`
+
 ## v0.1.7
 
 - Change expired or non-active access tokens to give `401` instead of `403`
