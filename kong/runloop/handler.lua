@@ -526,52 +526,53 @@ return {
         return responses.send(426, "Please use HTTPS protocol")
       end
 
-      local balancer_address = {
-        type                 = upstream_url_t.type,  -- the type of `host`; ipv4, ipv6 or name
-        host                 = upstream_url_t.host,  -- target host per `upstream_url`
-        port                 = upstream_url_t.port,  -- final target port
-        try_count            = 0,                    -- retry counter
-        tries                = {},                   -- stores info per try
-        -- ip                = nil,                  -- final target IP address
-        -- balancer          = nil,                  -- the balancer object, in case of a balancer
-        -- hostname          = nil,                  -- the hostname belonging to the final target IP
+      local balancer_data = {
+        type           = upstream_url_t.type, -- type of 'host': ipv4, ipv6, name
+        host           = upstream_url_t.host, -- target host per `upstream_url`
+        port           = upstream_url_t.port, -- final target port
+        try_count      = 0,                   -- retry counter
+        tries          = {},                  -- stores info per try
+        -- ip          = nil,                 -- final target IP address
+        -- balancer    = nil,                 -- the balancer object, if any
+        -- hostname    = nil,                 -- hostname of the final target IP
+        -- hash_cookie = nil,                 -- if Upstream sets hash_on_cookie
       }
 
       -- TODO: this is probably not optimal
       do
         local retries = service.retries or api.retries
         if retries ~= null then
-          balancer_address.retries = retries
+          balancer_data.retries = retries
 
         else
-          balancer_address.retries = 5
+          balancer_data.retries = 5
         end
 
         local connect_timeout = service.connect_timeout or
                                 api.upstream_connect_timeout
         if connect_timeout ~= null then
-          balancer_address.connect_timeout = connect_timeout
+          balancer_data.connect_timeout = connect_timeout
 
         else
-          balancer_address.connect_timeout = 60000
+          balancer_data.connect_timeout = 60000
         end
 
         local send_timeout = service.write_timeout or
                              api.upstream_send_timeout
         if send_timeout ~= null then
-          balancer_address.send_timeout = send_timeout
+          balancer_data.send_timeout = send_timeout
 
         else
-          balancer_address.send_timeout = 60000
+          balancer_data.send_timeout = 60000
         end
 
         local read_timeout = service.read_timeout or
                              api.upstream_read_timeout
         if read_timeout ~= null then
-          balancer_address.read_timeout = read_timeout
+          balancer_data.read_timeout = read_timeout
 
         else
-          balancer_address.read_timeout = 60000
+          balancer_data.read_timeout = 60000
         end
       end
 
@@ -580,7 +581,8 @@ return {
       ctx.service          = service
       ctx.route            = route
       ctx.router_matches   = match_t.matches
-      ctx.balancer_address = balancer_address
+      ctx.balancer_data    = balancer_data
+      ctx.balancer_address = balancer_data -- for plugin backward compatibility
 
       -- `scheme` is the scheme to use for the upstream call
       -- `uri` is the URI with which to call upstream, as returned by the
@@ -630,11 +632,11 @@ return {
         end
       end
 
-      local ok, err, errcode = balancer.execute(ctx.balancer_address)
+      local ok, err, errcode = balancer.execute(ctx.balancer_data)
       if not ok then
         if errcode == 500 then
           err = "failed the initial dns/balancer resolve for '" ..
-                ctx.balancer_address.host .. "' with: "         ..
+                ctx.balancer_data.host .. "' with: "         ..
                 tostring(err)
         end
         return responses.send(errcode, err)
@@ -645,14 +647,14 @@ return {
         local upstream_host = var.upstream_host
 
         if not upstream_host or upstream_host == "" then
-          local addr = ctx.balancer_address
-          upstream_host = addr.hostname
+          local balancer_data = ctx.balancer_data
+          upstream_host = balancer_data.hostname
 
           local upstream_scheme = var.upstream_scheme
-          if upstream_scheme == "http"  and addr.port ~= 80 or
-             upstream_scheme == "https" and addr.port ~= 443
+          if upstream_scheme == "http"  and balancer_data.port ~= 80 or
+             upstream_scheme == "https" and balancer_data.port ~= 443
           then
-            upstream_host = upstream_host .. ":" .. addr.port
+            upstream_host = upstream_host .. ":" .. balancer_data.port
           end
 
           var.upstream_host = upstream_host
@@ -672,14 +674,14 @@ return {
   },
   balancer = {
     before = function()
-      local addr = ngx.ctx.balancer_address
-      local current_try = addr.tries[addr.try_count]
+      local balancer_data = ngx.ctx.balancer_data
+      local current_try = balancer_data.tries[balancer_data.try_count]
       current_try.balancer_start = get_now()
     end,
     after = function ()
       local ctx = ngx.ctx
-      local addr = ctx.balancer_address
-      local current_try = addr.tries[addr.try_count]
+      local balancer_data = ctx.balancer_data
+      local current_try = balancer_data.tries[balancer_data.try_count]
 
       -- record try-latency
       local try_latency = get_now() - current_try.balancer_start
@@ -711,15 +713,15 @@ return {
           end
         end
 
-        local cookie_hash_data = ctx.balancer_hash_cookie
-        if cookie_hash_data then
+        local hash_cookie = ctx.balancer_data.hash_cookie
+        if hash_cookie then
           local cookie = ck:new()
-          local ok, err = cookie:set(cookie_hash_data)
+          local ok, err = cookie:set(hash_cookie)
 
           if not ok then
             log(ngx.WARN, "failed to set the cookie for hash-based load balancing: ", err,
-                          " (key=", cookie_hash_data.key,
-                          ", path=", cookie_hash_data.path, ")")
+                          " (key=", hash_cookie.key,
+                          ", path=", hash_cookie.path, ")")
           end
         end
       end
@@ -768,13 +770,14 @@ return {
   log = {
     after = function(ctx)
       reports.log()
-      local addr = ctx.balancer_address
+      local balancer_data = ctx.balancer_data
 
       -- If response was produced by an upstream (ie, not by a Kong plugin)
       if ctx.KONG_PROXIED == true then
         -- Report HTTP status for health checks
-        if addr and addr.balancer and addr.ip then
-          addr.balancer.report_http_status(addr.ip, addr.port, ngx.status)
+        if balancer_data and balancer_data.balancer and balancer_data.ip then
+          balancer_data.balancer.report_http_status(balancer_data.ip,
+                                                    balancer_data.port, ngx.status)
         end
       end
     end

@@ -28,7 +28,7 @@ function _M.serialize(ngx)
       headers = ngx.resp.get_headers(),
       size = ngx.var.bytes_sent
     },
-    tries = (ngx.ctx.balancer_address or EMPTY).tries,
+    tries = (ngx.ctx.balancer_data or EMPTY).tries,
     latencies = {
       kong = (ngx.ctx.KONG_ACCESS_TIME or 0) +
              (ngx.ctx.KONG_RECEIVE_TIME or 0) +

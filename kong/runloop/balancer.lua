@@ -667,10 +667,7 @@ local create_hash = function(upstream)
       if not identifier then
         identifier = utils.uuid()
 
-        -- TODO: This should be added the `ngx.ctx.balancer_address`
-        -- structure, where other balancer-related values are stored,
-        -- when that is renamed/ refactored.
-        ctx.balancer_hash_cookie = {
+        ctx.balancer_data.hash_cookie = {
           key = upstream.hash_on_cookie,
           value = identifier,
           path = upstream.hash_on_cookie_path
