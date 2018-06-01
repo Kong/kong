@@ -1,5 +1,6 @@
 local cjson = require "cjson.safe"
 local meta = require "kong.meta"
+local checks = require "kong.sdk.private.checks"
 
 
 local ngx = ngx
@@ -7,9 +8,12 @@ local fmt = string.format
 local type = type
 local error = error
 local pairs = pairs
-local ipairs = ipairs
 local insert = table.insert
 local coroutine = coroutine
+local normalize_header = checks.normalize_header
+local normalize_multi_header = checks.normalize_multi_header
+local validate_header = checks.validate_header
+local validate_headers = checks.validate_headers
 
 
 local function new(sdk, major_version)
@@ -29,11 +33,6 @@ local function new(sdk, major_version)
   local CONTENT_TYPE_NAME    = "Content-Type"
   local CONTENT_TYPE_JSON    = "application/json; charset=utf-8"
 
-  local HEADER_VALUE_TYPES   = {
-    string        = true,
-    number        = true,
-    boolean       = true,
-  }
 
   function _RESPONSE.get_status()
     return ngx.status
@@ -98,16 +97,9 @@ local function new(sdk, major_version)
       error("headers have already been sent", 2)
     end
 
-    if type(name) ~= "string" then
-      error("header name must be a string", 2)
-    end
+    validate_header(name, value)
 
-    local value_t = type(value)
-    if not HEADER_VALUE_TYPES[value_t] then
-      error(fmt("invalid value for %q: got %s, expected string, number or boolean", name, value_t), 2)
-    end
-
-    ngx.header[name] = tostring(value ~= "" and value or " ")
+    ngx.header[name] = normalize_header(value)
   end
 
 
@@ -116,21 +108,14 @@ local function new(sdk, major_version)
       error("headers have already been sent", 2)
     end
 
-    if type(name) ~= "string" then
-      error("header name must be a string", 2)
-    end
-
-    local value_t = type(value)
-    if not HEADER_VALUE_TYPES[value_t] then
-      error(fmt("invalid value for %q: got %s, expected string, number or boolean", name, value_t), 2)
-    end
+    validate_header(name, value)
 
     local new_value = _RESPONSE.get_headers()[name]
     if type(new_value) ~= "table" then
       new_value = { new_value }
     end
 
-    insert(new_value, value ~= "" and value or " ")
+    insert(new_value, normalize_header(value))
 
     ngx.header[name] = new_value
   end
@@ -154,33 +139,10 @@ local function new(sdk, major_version)
       error("headers have already been sent", 2)
     end
 
-    if type(headers) ~= "table" then
-      error("headers must be a table", 2)
-    end
-
-    -- Check for type errors first
-    for header, value in pairs(headers) do
-      local name_t = type(header)
-      if name_t ~= "string" then
-        error(fmt("invalid header %q: got %s, expected string", header, name_t), 2)
-      end
-
-      local value_t = type(value)
-      if value_t == "table" then
-        for _, array_value in ipairs(value) do
-          local array_value_t = type(array_value)
-          if not HEADER_VALUE_TYPES[array_value_t] then
-            error(fmt("invalid value in array %q: got %s, expected string, number or boolean", header, array_value_t), 2)
-          end
-        end
-
-      elseif not HEADER_VALUE_TYPES[value_t] then
-        error(fmt("invalid value in %q: got %s, expected string, number or boolean", header, value_t), 2)
-      end
-    end
+    validate_headers(headers)
 
     for name, value in pairs(headers) do
-      ngx.header[name] = tostring(value ~= "" and value or " ")
+      ngx.header[name] = normalize_multi_header(value)
     end
   end
 
@@ -214,7 +176,7 @@ local function new(sdk, major_version)
 
     if headers ~= nil then
       for name, value in pairs(headers) do
-        ngx.header[name] = value ~= "" and value or " "
+        ngx.header[name] = normalize_multi_header(value)
       end
     end
 
@@ -263,25 +225,7 @@ local function new(sdk, major_version)
     end
 
     if headers ~= nil then
-      for name, value in pairs(headers) do
-        local name_t = type(name)
-        if name_t ~= "string" then
-          error(fmt("invalid header name %q: got %s, expected string", name, name_t), 2)
-        end
-
-        local value_t = type(value)
-        if value_t == "table" then
-          for _, array_value in ipairs(value) do
-            local array_value_t = type(array_value)
-            if not HEADER_VALUE_TYPES[array_value_t] then
-              error(fmt("invalid header value in array %q: got %s, expected string, number or boolean", name, array_value_t), 2)
-            end
-          end
-
-        elseif not HEADER_VALUE_TYPES[value_t] then
-          error(fmt("invalid header value for %q: got %s, expected string, number or boolean", name, value_t), 2)
-        end
-      end
+      validate_headers(headers)
     end
 
     local ctx = ngx.ctx

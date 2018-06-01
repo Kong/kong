@@ -36,7 +36,7 @@ __DATA__
 --- request
 GET /t
 --- response_body chop
-header name must be a string
+invalid header name "nil": got nil, expected string
 --- no_error_log
 [error]
 
@@ -68,7 +68,7 @@ header name must be a string
 --- request
 GET /t
 --- response_body chop
-header name must be a string
+invalid header name "127001": got number, expected string
 --- no_error_log
 [error]
 
@@ -100,7 +100,7 @@ header name must be a string
 --- request
 GET /t
 --- response_body chop
-invalid value for "foo": got table, expected string, number or boolean
+invalid header value for "foo": got table, expected string, number or boolean
 --- no_error_log
 [error]
 
@@ -132,7 +132,7 @@ invalid value for "foo": got table, expected string, number or boolean
 --- request
 GET /t
 --- response_body chop
-invalid value for "foo": got nil, expected string, number or boolean
+invalid header value for "foo": got nil, expected string, number or boolean
 --- no_error_log
 [error]
 

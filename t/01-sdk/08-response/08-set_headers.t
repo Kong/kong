@@ -336,7 +336,7 @@ X-Bar: {nil}
 --- request
 GET /t
 --- response_body chop
-invalid header "2": got number, expected string
+invalid header name "2": got number, expected string
 --- no_error_log
 [error]
 
@@ -369,7 +369,7 @@ invalid header "2": got number, expected string
 --- request
 GET /t
 --- response_body chop
-invalid value in "foo": got function, expected string, number or boolean
+invalid header value for "foo": got function, expected string, number, boolean or array of strings
 --- no_error_log
 [error]
 
@@ -402,13 +402,46 @@ invalid value in "foo": got function, expected string, number or boolean
 --- request
 GET /t
 --- response_body chop
-invalid value in array "foo": got table, expected string, number or boolean
+invalid header value in array "foo": got table, expected string
 --- no_error_log
 [error]
 
 
 
-=== TEST 12: response.set_headers() ignores non-sequence elements in arrays
+=== TEST 12: response.set_headers() errors if array element is number
+--- http_config
+--- config
+    location = /t {
+        content_by_lua_block {
+        }
+
+        header_filter_by_lua_block {
+            ngx.header.content_length = nil
+
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            local ok, err = pcall(sdk.response.set_headers, {["foo"] = {123}})
+            if not ok then
+                ngx.ctx.err = err
+            end
+        }
+
+        body_filter_by_lua_block {
+            ngx.arg[1] = ngx.ctx.err
+            ngx.arg[2] = true
+        }
+    }
+--- request
+GET /t
+--- response_body chop
+invalid header value in array "foo": got number, expected string
+--- no_error_log
+[error]
+
+
+
+=== TEST 13: response.set_headers() ignores non-sequence elements in arrays
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -459,7 +492,7 @@ X-Foo: {world}
 
 
 
-=== TEST 13: response.set_headers() removes headers when given an empty array
+=== TEST 14: response.set_headers() removes headers when given an empty array
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -508,7 +541,7 @@ GET /t
 
 
 
-=== TEST 14: response.set_headers() replaces every header of a given name
+=== TEST 15: response.set_headers() replaces every header of a given name
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -557,7 +590,7 @@ X-Foo: {zzz}
 
 
 
-=== TEST 15: response.set_headers() accepts an empty table
+=== TEST 16: response.set_headers() accepts an empty table
 --- http_config
 --- config
     location = /t {
@@ -590,7 +623,7 @@ ok
 
 
 
-=== TEST 16: response.set_headers() does not error in header_filter even if headers have already been sent
+=== TEST 17: response.set_headers() does not error in header_filter even if headers have already been sent
 --- config
     location = /t {
         content_by_lua_block {

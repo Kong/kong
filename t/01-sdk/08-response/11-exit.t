@@ -4,7 +4,7 @@ use Test::Nginx::Socket::Lua;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 
-plan tests => repeat_each() * (blocks() * 4);
+plan tests => repeat_each() * (blocks() * 4) + 1;
 
 run_tests();
 
@@ -337,7 +337,7 @@ invalid header name "2": got number, expected string
 --- request
 GET /t
 --- response_body
-invalid header value for "foo": got function, expected string, number or boolean
+invalid header value for "foo": got function, expected string, number, boolean or array of strings
 --- no_error_log
 [error]
 
@@ -360,7 +360,7 @@ invalid header value for "foo": got function, expected string, number or boolean
 GET /t
 --- error_code: 200
 --- response_body
-invalid header value in array "foo": got function, expected string, number or boolean
+invalid header value in array "foo": got function, expected string
 --- no_error_log
 [error]
 
@@ -579,3 +579,5 @@ Content-Length: 19
 {"message":"hello"}
 --- no_error_log
 [error]
+
+
