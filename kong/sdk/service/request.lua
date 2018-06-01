@@ -1,4 +1,5 @@
 local cjson = require "cjson.safe"
+local checks = require "kong.sdk.private.checks"
 
 
 local ngx = ngx
@@ -8,7 +9,10 @@ local table_concat = table.concat
 local string_find = string.find
 local string_sub = string.sub
 local string_lower = string.lower
-
+local normalize_header = checks.normalize_header
+local normalize_multi_header = checks.normalize_multi_header
+local validate_header = checks.validate_header
+local validate_headers = checks.validate_headers
 
 --------------------------------------------------------------------------------
 -- Produce a lexicographically ordered querystring, given a table of values.
@@ -191,19 +195,14 @@ local function new(self)
   -- @param value The header value. Example: "hello world"
   -- @return Nothing; throws an error on invalid inputs.
   request.set_header = function(header, value)
-    if type(header) ~= "string" then
-      error("header must be a string", 2)
-    end
-    local tvalue = type(value)
-    if tvalue ~= "string" and tvalue ~= "number" and tvalue ~= "boolean" then
-      error("value must be a string, number or boolean", 2)
-    end
+
+    validate_header(header, value)
 
     if string_lower(header) == "host" then
       ngx.var.upstream_host = value
     end
 
-    ngx.req.set_header(header, tostring(value ~= "" and value or " "))
+    ngx.req.set_header(header, normalize_header(value))
   end
 
 
@@ -216,13 +215,8 @@ local function new(self)
   -- @param value The header value. Example: "no-cache"
   -- @return Nothing; throws an error on invalid inputs.
   request.add_header = function(header, value)
-    if type(header) ~= "string" then
-      error("header must be a string", 2)
-    end
-    local tvalue = type(value)
-    if tvalue ~= "string" and tvalue ~= "number" and tvalue ~= "boolean" then
-      error("value must be a string, number or boolean", 2)
-    end
+
+    validate_header(header, value)
 
     if string_lower(header) == "host" then
       ngx.var.upstream_host = value
@@ -233,7 +227,7 @@ local function new(self)
       headers = { headers }
     end
 
-    table_insert(headers, tostring(value ~= "" and value or " "))
+    table_insert(headers, normalize_header(value))
 
     ngx.req.set_header(header, headers)
   end
@@ -278,39 +272,16 @@ local function new(self)
 
     -- Check for type errors first
 
-    for k, v in pairs(headers) do
-      local typek = type(k)
-      if typek ~= "string" then
-        error(("invalid key %q: got %s, expected string"):format(k, typek), 2)
-      end
-
-      local typev = type(v)
-
-      if typev == "table" then
-
-        for _, vv in ipairs(v) do
-          local typevv = type(vv)
-          if typevv ~= "string" then
-            error(("invalid value in array %q: got %s, " ..
-                   "expected string"):format(k, typevv), 2)
-          end
-        end
-
-      elseif typev ~= "string" and typev ~= "boolean" and typev ~= "number" then
-
-        error(("invalid value in %q: got %s, " ..
-               "expected string, boolean or number"):format(k, typev), 2)
-      end
-    end
+    validate_headers(headers)
 
     -- Now we can use ngx.req.set_header without pcall
 
     for k, v in pairs(headers) do
       if string_lower(k) == "host" then
-        ngx.var.upstream_host = tostring(v)
+        ngx.var.upstream_host = v
       end
 
-      ngx.req.set_header(k, tostring(v ~= "" and v or " "))
+      ngx.req.set_header(k, normalize_multi_header(v))
     end
 
   end

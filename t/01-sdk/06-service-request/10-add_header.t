@@ -24,7 +24,7 @@ __DATA__
 --- request
 GET /t
 --- response_body
-header must be a string
+invalid header name "nil": got nil, expected string
 --- no_error_log
 [error]
 
@@ -44,27 +44,27 @@ header must be a string
 --- request
 GET /t
 --- response_body
-header must be a string
+invalid header name "127001": got number, expected string
 --- no_error_log
 [error]
 
 
 
-=== TEST 3: service.request.add_header() errors if value is not a string
+=== TEST 3: service.request.add_header() errors if value is of a bad type
 --- config
     location = /t {
         content_by_lua_block {
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.service.request.add_header, "foo", 123456)
+            local pok, err = pcall(sdk.service.request.add_header, "foo", function() end)
             ngx.say(err)
         }
     }
 --- request
 GET /t
 --- response_body
-value must be a string
+invalid header value for "foo": got function, expected string, number or boolean
 --- no_error_log
 [error]
 
@@ -84,7 +84,7 @@ value must be a string
 --- request
 GET /t
 --- response_body
-value must be a string
+invalid header value for "foo": got nil, expected string, number or boolean
 --- no_error_log
 [error]
 
@@ -205,7 +205,73 @@ X-Foo: {hello world}
 
 
 
-=== TEST 8: service.request.add_header() adds two headers to an request to the service
+=== TEST 8: service.request.add_header() accepts a number
+--- http_config
+    server {
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+
+        location /t {
+            content_by_lua_block {
+                ngx.say("X-Foo: {" .. ngx.req.get_headers()["X-Foo"] .. "}")
+            }
+        }
+    }
+--- config
+    location = /t {
+
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            sdk.service.request.add_header("X-Foo", 2.5)
+
+        }
+
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
+    }
+--- request
+GET /t
+--- response_body
+X-Foo: {2.5}
+--- no_error_log
+[error]
+
+
+
+=== TEST 9: service.request.add_header() accepts a boolean
+--- http_config
+    server {
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+
+        location /t {
+            content_by_lua_block {
+                ngx.say("X-Foo: {" .. ngx.req.get_headers()["X-Foo"] .. "}")
+            }
+        }
+    }
+--- config
+    location = /t {
+
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            sdk.service.request.add_header("X-Foo", false)
+
+        }
+
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
+    }
+--- request
+GET /t
+--- response_body
+X-Foo: {false}
+--- no_error_log
+[error]
+
+
+
+=== TEST 10: service.request.add_header() adds two headers to an request to the service
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -244,7 +310,7 @@ X-Foo: {world}
 
 
 
-=== TEST 9: service.request.add_header() preserves headers with that name if any exist
+=== TEST 11: service.request.add_header() preserves headers with that name if any exist
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -285,7 +351,7 @@ X-Foo: {hello world}
 
 
 
-=== TEST 10: service.request.add_header() can set to an empty string
+=== TEST 12: service.request.add_header() can set to an empty string
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -318,7 +384,7 @@ X-Foo: {}
 
 
 
-=== TEST 11: service.request.add_header() ignores spaces in the beginning of value
+=== TEST 13: service.request.add_header() ignores spaces in the beginning of value
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -351,7 +417,7 @@ X-Foo: {hello}
 
 
 
-=== TEST 12: service.request.add_header() ignores spaces in the end of value
+=== TEST 14: service.request.add_header() ignores spaces in the end of value
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -384,7 +450,7 @@ X-Foo: {hello}
 
 
 
-=== TEST 13: service.request.add_header() can differentiate empty string from unset
+=== TEST 15: service.request.add_header() can differentiate empty string from unset
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;

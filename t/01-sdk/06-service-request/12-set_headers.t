@@ -30,7 +30,7 @@ headers must be a table
 
 
 
-=== TEST 2: service.request.set_headers() errors if header is not a string
+=== TEST 2: service.request.set_headers() errors if headers is not a table
 --- config
     location = /t {
         content_by_lua_block {
@@ -258,7 +258,73 @@ X-Foo: {hello}
 
 
 
-=== TEST 9: service.request.set_headers() can differentiate empty string from unset
+=== TEST 9: service.request.set_headers() accepts numbers
+--- http_config
+    server {
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+
+        location /t {
+            content_by_lua_block {
+                ngx.say("X-Foo: {" .. ngx.req.get_headers()["X-Foo"] .. "}")
+            }
+        }
+    }
+--- config
+    location = /t {
+
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            sdk.service.request.set_headers({["X-Foo"] = 2.5})
+
+        }
+
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
+    }
+--- request
+GET /t
+--- response_body
+X-Foo: {2.5}
+--- no_error_log
+[error]
+
+
+
+=== TEST 10: service.request.set_headers() accepts booleans
+--- http_config
+    server {
+        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+
+        location /t {
+            content_by_lua_block {
+                ngx.say("X-Foo: {" .. ngx.req.get_headers()["X-Foo"] .. "}")
+            }
+        }
+    }
+--- config
+    location = /t {
+
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            sdk.service.request.set_headers({["X-Foo"] = false})
+
+        }
+
+        proxy_pass http://unix:/$TEST_NGINX_HTML_DIR/nginx.sock;
+    }
+--- request
+GET /t
+--- response_body
+X-Foo: {false}
+--- no_error_log
+[error]
+
+
+
+=== TEST 11: service.request.set_headers() can differentiate empty string from unset
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -294,7 +360,7 @@ X-Bar: {nil}
 
 
 
-=== TEST 10: service.request.set_headers() errors if key is not a string
+=== TEST 12: service.request.set_headers() errors if key is not a string
 --- http_config
 --- config
     location = /t {
@@ -310,13 +376,13 @@ X-Bar: {nil}
 --- request
 GET /t
 --- response_body
-invalid key "2": got number, expected string
+invalid header name "2": got number, expected string
 --- no_error_log
 [error]
 
 
 
-=== TEST 11: service.request.set_headers() errors if value is of a bad type
+=== TEST 13: service.request.set_headers() errors if value is of a bad type
 --- http_config
 --- config
     location = /t {
@@ -324,7 +390,7 @@ invalid key "2": got number, expected string
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.service.request.set_headers, {["foo"] = 2})
+            local pok, err = pcall(sdk.service.request.set_headers, {["foo"] = function() end })
             assert(not pok)
             ngx.say(err)
         }
@@ -332,13 +398,13 @@ invalid key "2": got number, expected string
 --- request
 GET /t
 --- response_body
-invalid value in "foo": got number, expected string
+invalid header value for "foo": got function, expected string, number, boolean or array of strings
 --- no_error_log
 [error]
 
 
 
-=== TEST 12: service.request.set_headers() errors if array element is of a bad type
+=== TEST 14: service.request.set_headers() errors if array element is of a bad type
 --- http_config
 --- config
     location = /t {
@@ -346,7 +412,7 @@ invalid value in "foo": got number, expected string
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            local pok, err = pcall(sdk.service.request.set_headers, {["foo"] = {2}})
+            local pok, err = pcall(sdk.service.request.set_headers, {["foo"] = { {} }})
             assert(not pok)
             ngx.say(err)
         }
@@ -354,13 +420,13 @@ invalid value in "foo": got number, expected string
 --- request
 GET /t
 --- response_body
-invalid value in array "foo": got number, expected string
+invalid header value in array "foo": got table, expected string
 --- no_error_log
 [error]
 
 
 
-=== TEST 13: service.request.set_headers() ignores non-sequence elements in arrays
+=== TEST 15: service.request.set_headers() ignores non-sequence elements in arrays
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -402,7 +468,7 @@ X-Foo: {world}
 
 
 
-=== TEST 14: service.request.set_headers() removes headers when given an empty array
+=== TEST 16: service.request.set_headers() removes headers when given an empty array
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -443,7 +509,7 @@ X-Foo: world
 
 
 
-=== TEST 15: service.request.set_headers() replaces every header of a given name
+=== TEST 17: service.request.set_headers() replaces every header of a given name
 --- http_config
     server {
         listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -488,7 +554,7 @@ X-Foo: {zzz}
 
 
 
-=== TEST 16: service.request.set_headers() accepts an empty table
+=== TEST 18: service.request.set_headers() accepts an empty table
 --- http_config
 --- config
     location = /t {
