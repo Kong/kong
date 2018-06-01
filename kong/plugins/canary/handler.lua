@@ -18,7 +18,7 @@ local conf_cache = setmetatable({},{__mode = "k"})
 
 local Canary    = BasePlugin:extend()
 Canary.PRIORITY = 13
-Canary.VERSION  = "0.1.0"
+Canary.VERSION  = "0.2.0"
 
 
 
