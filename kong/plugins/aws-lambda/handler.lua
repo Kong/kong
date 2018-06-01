@@ -6,7 +6,7 @@ local responses = require "kong.tools.responses"
 local utils = require "kong.tools.utils"
 local http = require "resty.http"
 local cjson = require "cjson.safe"
-local public_utils = require "kong.tools.public"
+local public_utils = require "kong.plugins.aws-lambda.utils"
 
 local tostring             = tostring
 local ngx_req_read_body    = ngx.req.read_body

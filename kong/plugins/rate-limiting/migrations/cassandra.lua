@@ -1,6 +1,6 @@
 return {
   {
-    name = "2015-08-03-132400_init_ratelimiting",
+    name = "2015-08-03-132400_init_ratelimiting_plugin_reimport_ee",
     up = [[
       CREATE TABLE IF NOT EXISTS ratelimiting_metrics(
         api_id uuid,

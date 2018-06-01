@@ -1,3 +1,153 @@
+## 0.32 - 2018/05/22
+
+### Notifications
+
+- **Kong EE 0.32** inherits from **Kong CE 0.13.1** - hence, 0.13.0; make sure to read their changelogs:
+  - [0.13.0 Changelog](https://github.com/Kong/kong/blob/master/CHANGELOG.md#0130---20180322)
+  - [0.13.1 Changelog](https://github.com/Kong/kong/blob/master/CHANGELOG.md#0131---20180423)
+- **Kong EE 0.32** has these notices from **Kong CE 0.13**:
+  - Support for **Postgres 9.4 has been deprecated, but Kong will still start** - versions beyond 0.32 will not start with Postgres 9.4 or prior
+  - Support for **Cassandra 2.1 has been deprecated, but Kong will still start** - versions beyond 0.32 will not start with Cassandra 2.1 or prior
+  - Additional requirements:
+    - **Vitals** requires Postgres 9.5+
+    - **Dev Portal** requires Cassandra 3.0+
+  - Galileo plugin is deprecated and will reach EOL soon
+- **Breaking**: The `latest` tag in Kong Enterprise Docker repository changed from CentOS to Alpine - which might result in breakage if additional packages are assumed to be in the image, as the Alpine image only contains a minimal set of packages installed
+- **OpenID Connect**
+  - The plugins listed below were deprecated in favor of the all-in-one openid-connect plugin:
+    - `openid-connect-authentication`
+    - `openid-connect-protection`
+    - `openid-connect-verification`
+
+### Changes
+
+- **New Data Model** - Kong EE 0.32 is the first Enterprise version including the **new model**, released with Kong CE 0.13
+- **Rate Limiting Advanced**
+  - **Breaking** - Enterprise Rate Limiting, named `rate-limiting` up to EE 0.31, was renamed `rate-limiting-advanced` and CE Rate Limiting was imported as `rate-limiting`
+  - Rate Limiting Advanced, similarly to CE rate-limiting, now uses a dedicated shared dictionary named `kong_rate_limiting_counters` for its counters; if you are using a custom template, make sure to define the following shared memory zones:
+  ```
+  lua_shared_dict kong_rate_limiting_counters 12m;
+  ```
+- **Vitals**
+  - Vitals uses two dedicated shared dictionaries. If you use a custom template, define the following shared memory zones for Vitals:
+  ```
+  lua_shared_dict kong_vitals_counters 50m;
+  lua_shared_dict kong_vitals_lists     1m;
+  ```
+  You can remove any existing shared dictionaries that begin with `kong_vitals_`, e.g., `kong_vitals_requests_consumers`
+- **OpenID Connect**
+  - Remove multipart parsing of ID tokens - they were not proxy safe
+  - Change `self_check` to run only on content and access phases
+  - Change expired or non-active access tokens to give `401` instead of `403`
+
+### Features
+
+- **Admin GUI**
+  - New Listeners (Admin GUI + Developer Portal)
+  - Routes and Services GUI
+  - New Plugins thumbnail view
+  - Healthchecks GUI
+  - Syntax for form-encoded array elements
+- **Vitals**
+  - **Status Code** tracking - GUI and API
+    - Status Code groups per Cluster - counts of `1xx`, `2xx`, `3xx`, `4xx`, `5xx` groups across the cluster over time. Visible in the Admin GUI at `ADMIN_URL/vitals/status-codes`
+    - Status Codes per Service - count of individual status codes correlated to a particular service. Visible in the Admin GUI at `ADMIN_URL/services/{service_id}`
+    - Status Codes per Route - count of individual status codes correlated to a particular route. Visible in the Admin GUI at `ADMIN_URL/routes/{route_id}`
+    - Status Codes per Consumer and Route - count of individual status codes returned to a given consumer on a given route.  Visible in the Admin GUI at `ADMIN_URL/consumers/{consumer_id}`
+- **Dev Portal**
+  - Code Snippets
+  - Developer "request access" full life-cycle
+  - Default Dev Portal included in Kong disto (with default theme)
+  - Authentication on Dev Portal out of box (uncomment in Kong.conf)
+  - Docs for Routes/Services for Dev Portal
+  - Docs for Admin API
+  - **Requires Migration** - `/files` endpoint is now protected by RBAC
+- **Plugins**
+  - **Rate Limiting Advanced**: add a `dictionary_name` configuration, to allow using a custom dictionary for storing counters
+  - **Requires Migration - Rate Limiting CE** is now included in EE
+  - **Request Transformer CE** is now included in EE
+  - **Edge Compute**: plugin-based, Lua-only preview
+  - **Proxy Cache**: Customize the cache key, selecting specific headers or query params to be included
+  - **Opentracing Plugin**: Kong now adds detailed spans to Zipkin and Jaeger distributed tracing tools
+  - **Azure Plugin**: Invoke Azure functions from Kong
+  - **LDAP Advanced**: LDAP plugin with augmented ability to search by LDAP fields
+- **OpenID Connect**
+  - Bearer token is now looked up on `Access-Token` and `X-Access-Token` headers in addition to Authorization Bearer header (query and body args are supported as before)
+  - JWKs are rediscovered and the new keys are cached cluster wide (works better with keys rotation schemes)
+  - Admin API does self-check for discovery endpoint when the plugin is added and reports possible errors back
+  - Add configuration directives
+    - `config.extra_jwks_uris`
+    - `config.credential_claim`
+    - `config.session_storage`
+    - `config.session_memcache_prefix`
+    - `config.session_memcache_socket`
+    - `config.session_memcache_host`
+    - `config.session_memcache_port`
+    - `config.session_redis_prefix`
+    - `config.session_redis_socket`
+    - `config.session_redis_host`
+    - `config.session_redis_port`
+    - `config.session_redis_auth`
+    - `config.session_cookie_lifetime`
+    - `config.authorization_cookie_lifetime`
+    - `config.forbidden_destroy_session`
+    - `config.forbidden_redirect_uri`
+    - `config.unauthorized_redirect_uri`
+    - `config.unexpected_redirect_uri`
+    - `config.scopes_required`
+    - `config.scopes_claim`
+    - `config.audience_required`
+    - `config.audience_claim`
+    - `config.discovery_headers_names`
+    - `config.discovery_headers_values`
+    - `config.introspect_jwt_tokens`
+    - `config.introspection_hint`
+    - `config.introspection_headers_names`
+    - `config.introspection_headers_values`
+    - `config.token_exchange_endpoint`
+    - `config.cache_token_exchange`
+    - `config.bearer_token_param_type`
+    - `config.client_credentials_param_type`
+    - `config.password_param_type`
+    - `config.hide_credentials`
+    - `config.cache_ttl`
+    - `config.run_on_preflight`
+    - `config.upstream_headers_claims`
+    - `config.upstream_headers_names`
+    - `config.downstream_headers_claims`
+    - `config.downstream_headers_names`
+
+### Fixes
+
+- **Core**
+  - **Healthchecks**
+    - Fix an issue where updates made through `/health` or `/unhealth` wouldn't be propagated to other Kong nodes
+    - Fix internal management of healthcheck counters, which corrects detection of state flapping
+  - **DNS**: a number of fixes and improvements were made to Kong's DNS client library, including:
+    - The ring-balancer now supports `targets` resolving to an SRV record without port information (`port=0`)
+    - IPv6 nameservers with a scope in their address (eg. `nameserver fe80::1%wlan0`) will now be skipped instead of throwing errors
+- **Rate Limiting Advanced**
+  - Fix `failed to upsert counters` error
+  - Fix issue where an attempt to acquire a lock would result in an error
+  - Mitigate issue where lock acquisitions would lead to RL counters being lost
+- **Proxy Cache**
+  - Fix issue where proxy-cache would shortcircuit requests that resulted in a cache hit, not allowing subsequent plugins - e.g., logging plugins - to run
+  - Fix issue where PATCH requests would result in a 500 response
+  - Fix issue where Proxy Cache would overwrite X-RateLimit headers
+- **Request Transformer**
+  - Fix issue leading to an Internal Server Error in cases where the Rate Limiting plugin returned a 429 Too Many Requests response
+- **AWS Lambda**
+  - Fix issue where an empty array `[]` was returned as an empty object `{}`
+- **Galileo**
+  - Fix issue that prevented Galileo from reporting requests that were cached by proxy-cache
+  - Fix issue that prevented Galileo from showing request/response bodies of requests served by proxy-cache
+- **OpenID Connect**
+  - Fix `exp` retrieval
+  - Fix `jwt_session_cookie` verification
+  - Fix consumer mapping using introspection
+  - Fix set headers when callback to get header value failed
+  - Fix config.scopes when set to null or `""` so that it doesn't add openid scope forcibly
+
 ## 0.31 - 2018/03/13
 
 ### Changed
@@ -48,9 +198,10 @@ In case of auth plugins concatenation, the OpenID Connect plugin now removes rem
   - Correct the stats returned in the "metadata" attribute of the /vitals/consumers/:consumer_id/* endpoints
   - Correct a problem where workers get out of sync when adding their data to cache
   - Correct inconsistencies in chart axes when toggling between views or when Kong has no traffic
-
 - Proxy Cache
   - Fix issue that prevented cached requests from showing up in Vitals or Total Requests graphs
+- Rate Limiting
+  - Fix lock acquisition failure
 
 ## 0.30 - 2018/01/22
 

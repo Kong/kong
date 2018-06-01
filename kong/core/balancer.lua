@@ -806,6 +806,15 @@ end
 -- @return true if posting event was successful, nil+error otherwise
 local function post_health(upstream, hostname, port, is_healthy)
 
+  -- XXX EE-only temporary
+  if not upstream.id then
+    local name = upstream.name
+    upstream = get_upstream_by_name(name)
+    if not upstream then
+      return nil, "upstream " .. name .. " not found"
+    end
+  end
+
   local balancer = balancers[upstream.id]
   if not balancer then
     return nil, "Upstream " .. tostring(upstream.name) .. " has no balancer"

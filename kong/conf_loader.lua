@@ -142,6 +142,7 @@ local CONF_INFERENCES = {
 
   vitals = {typ = "boolean"},
   vitals_flush_interval = {typ = "number"},
+  vitals_delete_interval_pg = {typ = "number"},
   vitals_ttl_seconds = {typ = "number"},
   vitals_ttl_minutes = {typ = "number"},
 
@@ -728,6 +729,12 @@ local function load(path, custom_conf)
     end
 
     if conf.portal then
+      -- proxy must be enabled if portal is enabled
+      if #conf.proxy_listeners < 1 then
+        return nil, "proxy_listen cannot be set to 'off' when portal is set" ..
+                    "to 'on'"
+      end
+
       conf.portal_gui_listeners, err = parse_listeners(conf.portal_gui_listen)
       if err then
         return nil, "portal_gui_listen " .. err

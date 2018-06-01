@@ -27,12 +27,15 @@ dependencies = {
   "luaossl == 20171028",
   "luasyslog == 1.0.0",
   "lua_pack == 1.0.5",
-  "lua-resty-dns-client == 2.0.0",
+  "lua-resty-dns-client == 2.1.0",
   "lua-resty-worker-events == 0.3.2",
   "lua-resty-mediador == 0.1.2",
   "lua-resty-redis-connector == 0.03",
-  "lua-resty-healthcheck == 0.4.0",
+  "lua-resty-healthcheck == 0.4.1",
   "lua-resty-mlcache == 2.0.2",
+  -- external Kong plugins
+  "kong-plugin-azure-functions == 0.1.0",
+  "kong-plugin-zipkin == 0.0.1",
 }
 build = {
   type = "builtin",
@@ -133,6 +136,7 @@ build = {
     ["kong.dao.schemas.consumers"] = "kong/dao/schemas/consumers.lua",
     ["kong.dao.schemas.consumer_types"] = "kong/dao/schemas/consumer_types.lua",
     ["kong.dao.schemas.consumer_statuses"] = "kong/dao/schemas/consumer_statuses.lua",
+    ["kong.dao.schemas.credentials"] = "kong/dao/schemas/credentials.lua",
     ["kong.dao.schemas.plugins"] = "kong/dao/schemas/plugins.lua",
     ["kong.dao.schemas.upstreams"] = "kong/dao/schemas/upstreams.lua",
     ["kong.dao.schemas.targets"] = "kong/dao/schemas/targets.lua",
@@ -166,6 +170,7 @@ build = {
     ["kong.portal.enums"] = "kong/portal/enums.lua",
     ["kong.portal.api"] = "kong/portal/api.lua",
     ["kong.portal.dao_helpers"] = "kong/portal/dao_helpers.lua",
+    ["kong.portal.crud_helpers"] = "kong/portal/crud_helpers.lua",
     ["kong.portal.utils"] = "kong/portal/utils.lua",
     ["kong.portal.migrations.01_initial_files"] = "kong/portal/migrations/01_initial_files.lua",
 
@@ -354,6 +359,7 @@ build = {
     ["kong.plugins.aws-lambda.handler"] = "kong/plugins/aws-lambda/handler.lua",
     ["kong.plugins.aws-lambda.schema"] = "kong/plugins/aws-lambda/schema.lua",
     ["kong.plugins.aws-lambda.v4"] = "kong/plugins/aws-lambda/v4.lua",
+    ["kong.plugins.aws-lambda.utils"] = "kong/plugins/aws-lambda/utils.lua",
 
     ["kong.plugins.request-termination.handler"] = "kong/plugins/request-termination/handler.lua",
     ["kong.plugins.request-termination.schema"] = "kong/plugins/request-termination/schema.lua",

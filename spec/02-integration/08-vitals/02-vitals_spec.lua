@@ -180,6 +180,20 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
     end)
 
+    describe(".logging_metrics", function()
+      it("returns metadata about metrics stored in ngx.ctx", function()
+        local res = kong_vitals.logging_metrics
+
+        local expected = {
+          cache_metrics = {
+            cache_datastore_hits_total = "counter",
+            cache_datastore_misses_total = "counter",
+          }
+        }
+        assert.same(expected, res)
+      end)
+    end)
+
     describe(".table_names()", function()
       before_each(function()
         if dao.db_type == "postgres" then
@@ -208,6 +222,7 @@ dao_helpers.for_each_dao(function(kong_conf)
           "vitals_codes_by_route",
           "vitals_codes_by_service",
           "vitals_consumers",
+          "vitals_locks",
           "vitals_node_meta",
           "vitals_stats_hours",
           "vitals_stats_minutes",
@@ -281,6 +296,30 @@ dao_helpers.for_each_dao(function(kong_conf)
         vitals:cache_accessed(2)
 
         assert.same(initial_l2_counter + 1, vitals.counters.metrics[0].l2_hits)
+      end)
+
+      it("increments counters in ngx.ctx", function()
+        ngx.ctx.cache_metrics = nil
+        assert.is_nil(ngx.ctx.cache_metrics)
+
+        vitals:cache_accessed(2)
+
+        local expected = {
+          cache_datastore_hits_total = 1,
+          cache_datastore_misses_total = 0,
+        }
+
+        assert.same(expected, ngx.ctx.cache_metrics)
+
+        vitals:cache_accessed(3)
+        vitals:cache_accessed(2)
+
+        expected = {
+          cache_datastore_hits_total = 2,
+          cache_datastore_misses_total = 1,
+        }
+
+        assert.same(expected, ngx.ctx.cache_metrics)
       end)
     end)
 

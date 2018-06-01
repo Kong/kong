@@ -49,6 +49,7 @@ describe("Plugins", function()
     -- backwards-compatibility
 
     local order = {
+      "zipkin",
       "bot-detection",
       "cors",
       "jwt",
@@ -65,6 +66,7 @@ describe("Plugins", function()
       "request-transformer",
       "response-transformer",
       "aws-lambda",
+      "azure-functions",
       "http-log",
       "statsd",
       "datadog",
