@@ -2,9 +2,7 @@ local singletons = require "kong.singletons"
 local pl_tablex = require "pl.tablex"
 
 
-
 local EMPTY = pl_tablex.readonly {}
-
 
 
 local mt_cache = { __mode = "k" }
@@ -12,13 +10,8 @@ local consumer_groups_cache = setmetatable({}, mt_cache)
 local consumer_in_groups_cache = setmetatable({}, mt_cache)
 
 
-
 local function load_groups_into_memory(consumer_id)
-  local results, err = singletons.dao.acls:find_all {consumer_id = consumer_id}
-  if err then
-    return nil, err
-  end
-  return results
+  return singletons.dao.acls:find_all {consumer_id = consumer_id}
 end
 
 
@@ -28,7 +21,8 @@ end
 local function get_consumer_groups_raw(consumer_id)
   local cache_key = singletons.dao.acls:cache_key(consumer_id)
   local raw_groups, err = singletons.cache:get(cache_key, nil,
-                                         load_groups_into_memory, consumer_id)
+                                               load_groups_into_memory,
+                                               consumer_id)
   if err then
     return nil, err
   end
