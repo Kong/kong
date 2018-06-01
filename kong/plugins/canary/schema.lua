@@ -75,7 +75,7 @@ return {
     hash = {        -- what element to use for hashing to the target
       type    = "string",
       default = "consumer",
-      enum    = { "consumer", "ip", "none" },
+      enum    = { "consumer", "ip", "none", "whitelist", "blacklist" },
     },
     duration = {    -- how long should the transaction take (seconds)
       type    = "number",
@@ -103,14 +103,19 @@ return {
       type = "string",
       func = check_upstream_uri
     },
+    groups = {  -- white- or blacklists
+      type = "array",
+    },
   },
   self_check = function(_, conf, _, is_update)
     if not is_update and not conf.upstream_uri and not conf.upstream_host and not conf.upstream_port then
       return false, Errors.schema "either 'upstream_uri', 'upstream_host', or 'upstream_port' must be provided"
     end
 
-    if not is_update and not conf.percentage and not conf.start then
-      return false, Errors.schema "either 'percentage' or 'start' must be provided"
+    if conf.hash ~= "whitelist" and conf.hash ~= "blacklist" then
+      if not is_update and not conf.percentage and not conf.start then
+        return false, Errors.schema "either 'percentage' or 'start' must be provided"
+      end
     end
 
     return true

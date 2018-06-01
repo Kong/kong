@@ -134,8 +134,7 @@ end
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: canary (access) [#" .. strategy .. "]", function()
     local proxy_client, admin_client
-    local route1, route2, route3
-
+    local route1, route2, route3, route4
 
     setup(function()
       local bp = helpers.get_db_utils(strategy)
@@ -169,6 +168,11 @@ for _, strategy in helpers.each_strategy() do
         route_id = route3.id,
         config = {},
       }
+
+      route4 = bp.routes:insert({
+        hosts = { "canary4.com" },
+        preserve_host = true,
+      })
 
       assert(helpers.start_kong({
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -342,6 +346,160 @@ for _, strategy in helpers.each_strategy() do
           assert.are.equal(4, count["/requests"])
           assert.is_nil(count["/requests/path2"])
         end
+      end)
+
+      it("test 'whitelist' consumers", function()
+        add_canary(route1.id, {
+          upstream_uri = "/requests/path2",
+          hash = "whitelist",
+          groups = { "mycanary", "yourcanary" }
+        })
+        local ids = generate_consumers(admin_client, {1,2,3}, 4)
+        local count = {}
+        for _, apikey in pairs(ids) do
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/requests",
+            headers = {
+              ["Host"] = "canary1.com",
+              ["apikey"] = apikey
+            }
+          })
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          count[json.vars.request_uri] = (count[json.vars.request_uri] or  0) + 1
+        end
+        -- no consumer is part of the canary groups, so all stay put at `/requests`
+        assert.is_nil(count["/requests/path2"])
+        assert.are.equal(3, count["/requests"])
+
+        -- add the 3 consumers to groups
+        for i, id in pairs(ids) do
+          local res = assert(admin_client:send {
+            method = "POST",
+            path = "/consumers/" .. id .."/acls",
+            headers = {
+              ["Content-Type"] = "application/json"
+            },
+            body = {
+              group = ({ "mycanary", "yourcanary", "nocanary"})[i],
+            }
+          })
+          assert.response(res).has.status(201)
+        end
+        -- now try again
+        count = {}
+        for _, apikey in pairs(ids) do
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/requests",
+            headers = {
+              ["Host"] = "canary1.com",
+              ["apikey"] = apikey
+            }
+          })
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          count[json.vars.request_uri] = (count[json.vars.request_uri] or  0) + 1
+        end
+        -- two consumer are part of the canary groups, last one is in another group
+        assert.are.equal(2, count["/requests/path2"])
+        assert.are.equal(1, count["/requests"])
+      end)
+
+      it("test 'whitelist' with no consumer identified", function()
+        add_canary(route4.id, {
+          upstream_uri = "/requests/path2",
+          hash = "whitelist",
+          groups = { "mycanary", "yourcanary" }
+        })
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/requests",
+          headers = {
+            ["Host"] = "canary4.com",
+          }
+        })
+        assert.response(res).has.status(200)
+        local json = assert.response(res).has.jsonbody()
+        assert.are.equal("/requests", json.vars.request_uri)
+      end)
+
+      it("test 'blacklist' consumers", function()
+        add_canary(route1.id, {
+          upstream_uri = "/requests/path2",
+          hash = "blacklist",
+          groups = { "mycanary", "yourcanary" }
+        })
+        local ids = generate_consumers(admin_client, {1,2,3}, 4)
+        local count = {}
+        for _, apikey in pairs(ids) do
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/requests",
+            headers = {
+              ["Host"] = "canary1.com",
+              ["apikey"] = apikey
+            }
+          })
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          count[json.vars.request_uri] = (count[json.vars.request_uri] or  0) + 1
+        end
+        -- no consumer is part of the canary groups, so all move over
+        assert.are_equal(3, count["/requests/path2"])
+        assert.is_nil(count["/requests"])
+
+        -- add the 3 consumers to groups
+        for i, id in pairs(ids) do
+          local res = assert(admin_client:send {
+            method = "POST",
+            path = "/consumers/" .. id .."/acls",
+            headers = {
+              ["Content-Type"] = "application/json"
+            },
+            body = {
+              group = ({ "mycanary", "yourcanary", "nocanary"})[i],
+            }
+          })
+          assert.response(res).has.status(201)
+        end
+        -- now try again
+        count = {}
+        for _, apikey in pairs(ids) do
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/requests",
+            headers = {
+              ["Host"] = "canary1.com",
+              ["apikey"] = apikey
+            }
+          })
+          assert.response(res).has.status(200)
+          local json = assert.response(res).has.jsonbody()
+          count[json.vars.request_uri] = (count[json.vars.request_uri] or  0) + 1
+        end
+        -- two consumer are part of the canary groups, last one is in another group
+        assert.are.equal(1, count["/requests/path2"])
+        assert.are.equal(2, count["/requests"])
+      end)
+
+      it("test 'blacklist' with no consumer identified", function()
+        add_canary(route4.id, {
+          upstream_uri = "/requests/path2",
+          hash = "blacklist",
+          groups = { "mycanary", "yourcanary" }
+        })
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/requests",
+          headers = {
+            ["Host"] = "canary4.com",
+          }
+        })
+        assert.response(res).has.status(200)
+        local json = assert.response(res).has.jsonbody()
+        assert.are.equal("/requests/path2", json.vars.request_uri)
       end)
 
       it("test start with default hash", function()
