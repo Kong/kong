@@ -48,7 +48,7 @@ local ERRORS_NAMES               = {
   [ERRORS.NOT_FOUND]             = "not found",
   [ERRORS.INVALID_OFFSET]        = "invalid offset",
   [ERRORS.DATABASE_ERROR]        = "database error",
-  [ERRORS.RBAC_ERROR]            = "rbac error",
+  [ERRORS.RBAC_ERROR]            = "unauthorized access",
 }
 
 
@@ -324,7 +324,7 @@ function _M:unauthorized_operation(operation)
     error("operation must be a string", 2)
   end
 
-  local message = fmt(" unauthorized operation : %s", operation)
+  local message = fmt("unauthorized operation : %s", operation)
 
   return new_err_t(self, ERRORS.RBAC_ERROR, message)
 end

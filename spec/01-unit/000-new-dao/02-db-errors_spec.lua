@@ -289,6 +289,22 @@ describe("DB Errors", function()
         local s = fmt("[%s] %s", err_t.strategy, err_t.message)
         assert.equals(s, tostring(err_t))
       end)
+
+      describe("RBAC_ERROR", function()
+        local err_t = e:unauthorized_operation("some_operation")
+
+        it("creates", function()
+          assert.same({
+            code = Errors.codes.RBAC_ERROR,
+            name = "unauthorized access",
+            strategy = "some_strategy",
+            message = "unauthorized operation : some_operation",
+          }, err_t)
+
+          local s = fmt("[%s] %s", err_t.strategy, err_t.message)
+          assert.equals(s, tostring(err_t))
+        end)
+      end)
     end)
   end)
 end)

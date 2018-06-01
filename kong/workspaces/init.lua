@@ -190,7 +190,7 @@ function _M.get_default_workspace_migration()
     default_workspace = {
       {
         name = "2018-02-16-110000_default_workspace_entities",
-        up = function(_, _, dao)
+        up = function(factory, _, dao)
           local default, err = dao.workspaces:insert({
             name = default_workspace,
           })
@@ -199,31 +199,34 @@ function _M.get_default_workspace_migration()
           end
 
           for relation, constraints in pairs(workspaceable_relations) do
-            local entities, err = dao[relation]:find_all()
-            if err then
-              return nil, err
-            end
+            if dao[relation] then
+              local entities, err = dao[relation]:find_all()
+              if err then
+                return nil, err
+              end
 
-            for _, entity in ipairs(entities) do
-              if constraints.unique_keys then
-                for k, _ in pairs(constraints.unique_keys) do
+              for _, entity in ipairs(entities) do
+                if constraints.unique_keys then
+                  for k, _ in pairs(constraints.unique_keys) do
+                    local _, err = add_entity_relation_db(dao.workspace_entities, default.id,
+                                                          entity[constraints.primary_key],
+                                                          relation, k, entity[k])
+                    if err then
+                      return nil, err
+                    end
+                  end
+                else
                   local _, err = add_entity_relation_db(dao.workspace_entities, default.id,
                                                         entity[constraints.primary_key],
-                                                        relation, k, entity[k])
+                                                        relation, constraints.primary_key,
+                                                        entity[constraints.primary_key])
                   if err then
                     return nil, err
                   end
                 end
-              else
-                local _, err = add_entity_relation_db(dao.workspace_entities, default.id,
-                                                      entity[constraints.primary_key],
-                                                      relation, constraints.primary_key,
-                                                      entity[constraints.primary_key])
-                if err then
-                  return nil, err
-                end
               end
             end
+            -- todo add migrations for routes and services
           end
         end,
       },

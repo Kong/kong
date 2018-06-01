@@ -12,9 +12,9 @@ local table_concat = table.concat
 local workspaceable = workspaces.get_workspaceable_relations()
 
 
-
-
 _M = {}
+
+
 -- used only with insert, update and delete
 function _M.apply_unique_per_ws(table_name, params, constraints)
   -- entity may have workspace_id, workspace_name fields, ex. in case of update
@@ -39,6 +39,7 @@ function _M.apply_unique_per_ws(table_name, params, constraints)
       params[field_name] = fmt("%s:%s", workspace.name, params[field_name])
     end
   end
+
   return workspace
 end
 
@@ -121,7 +122,7 @@ end
 -- `before_filter`, but to set the entity some of those same methods are
 -- used
 function _M.is_workspaceable(table_name, ws_scope)
-    return workspaces.get_workspaceable_relations()[table_name] and #ws_scope > 0
+  return workspaces.get_workspaceable_relations()[table_name] and #ws_scope > 0
 end
 
 

@@ -225,7 +225,7 @@ local MetaSchema = Schema.new({
     {
       workspaceable = {
         type = "boolean",
-        required = false
+        nilable = true
       },
     },
     {
