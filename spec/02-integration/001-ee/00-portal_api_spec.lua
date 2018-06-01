@@ -532,6 +532,556 @@ describe("Developer Portal - Portal API", function()
       end)
     end)
   end)
+
+  describe("Vitals off", function()
+    setup(function()
+      helpers.stop_kong()
+      assert(db:truncate())
+      helpers.register_consumer_relations(dao)
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        portal     = true,
+        vitals     = false,
+        portal_auth = "basic-auth",
+        portal_auth_config = "{ \"hide_credentials\": true }",
+      }))
+
+      consumer_approved = bp.consumers:insert {
+        username = "hawk",
+        status = enums.CONSUMERS.STATUS.APPROVED,
+      }
+
+      assert(dao.basicauth_credentials:insert {
+        username    = "hawk",
+        password    = "kong",
+        consumer_id = consumer_approved.id,
+      })
+    end)
+
+    before_each(function()
+      client = assert(helpers.proxy_client())
+    end)
+
+    after_each(function()
+      if client then
+        client:close()
+      end
+    end)
+
+    describe("/vitals/status_codes/by_consumer", function()
+      describe("GET", function()
+
+        it("returns 404 when vitals if off", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/" .. proxy_prefix .. "/portal/vitals/status_codes/by_consumer",
+            headers = {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+            },
+          })
+
+          assert.res_status(404, res)
+        end)
+      end)
+    end)
+
+    describe("/vitals/status_codes/by_consumer_and_route", function()
+      describe("GET", function()
+
+        it("returns 404 when vitals if off", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/" .. proxy_prefix .. "/portal/vitals/status_codes/by_consumer_and_route",
+            headers = {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+            },
+          })
+
+          assert.res_status(404, res)
+        end)
+      end)
+    end)
+
+    describe("/vitals/consumers/cluster", function()
+      describe("GET", function()
+
+        it("returns 404 when vitals if off", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/" .. proxy_prefix .. "/portal/vitals/consumers/cluster",
+            headers = {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+            },
+          })
+
+          assert.res_status(404, res)
+        end)
+      end)
+    end)
+
+    describe("/vitals/consumers/nodes", function()
+      describe("GET", function()
+
+        it("returns 404 when vitals if off", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/" .. proxy_prefix .. "/portal/vitals/consumers/nodes",
+            headers = {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+            },
+          })
+
+          assert.res_status(404, res)
+        end)
+      end)
+    end)
+
+  end)
+
+  describe("Vitals on", function()
+    setup(function()
+      helpers.stop_kong()
+      assert(db:truncate())
+      helpers.register_consumer_relations(dao)
+
+      assert(helpers.start_kong({
+        database   = strategy,
+        portal     = true,
+        vitals     = true,
+        portal_auth = "basic-auth",
+        portal_auth_config = "{ \"hide_credentials\": true }",
+      }))
+
+      local consumer_pending = bp.consumers:insert {
+        username = "dale",
+        status = enums.CONSUMERS.STATUS.PENDING,
+      }
+
+      consumer_approved = bp.consumers:insert {
+        username = "hawk",
+        status = enums.CONSUMERS.STATUS.APPROVED,
+      }
+
+      assert(dao.basicauth_credentials:insert {
+        username    = "dale",
+        password    = "kong",
+        consumer_id = consumer_pending.id,
+      })
+
+      assert(dao.basicauth_credentials:insert {
+        username    = "hawk",
+        password    = "kong",
+        consumer_id = consumer_approved.id,
+      })
+
+    end)
+
+    before_each(function()
+      client = assert(helpers.proxy_client())
+    end)
+
+    after_each(function()
+      if client then
+        client:close()
+      end
+    end)
+
+    describe("/vitals/status_codes/by_consumer", function()
+      describe("GET", function()
+        it("returns 401 when unauthenticated", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/" .. proxy_prefix .. "/portal/vitals/status_codes/by_consumer",
+          })
+
+          assert.res_status(401, res)
+        end)
+
+        it("returns 401 when consumer is not approved", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/" .. proxy_prefix .. "/portal/vitals/status_codes/by_consumer",
+            headers = {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale:kong"),
+            },
+          })
+
+          local body = assert.res_status(401, res)
+          local json = cjson.decode(body)
+
+          assert.same({ status = 1, label = "PENDING" }, json)
+        end)
+
+        it("returns 400 when requested with invalid interval query param", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/" .. proxy_prefix .. "/portal/vitals/status_codes/by_consumer",
+            query = {
+              interval = "derp",
+            },
+            headers = {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+            },
+          })
+
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+
+          assert.same({
+            message = "Invalid query params: interval must be 'minutes' or 'seconds'",
+          }, json)
+        end)
+
+        it("returns seconds data", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/" .. proxy_prefix .. "/portal/vitals/status_codes/by_consumer",
+            query = {
+              interval = "seconds",
+            },
+            headers = {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+            },
+          })
+
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          assert.same({
+            meta = {
+              entity_id   = consumer_approved.id,
+              entity_type = "consumer",
+              interval    = "seconds",
+              level       = "cluster",
+              stat_labels = { "status_codes_per_consumer_total" },
+            },
+            stats = {},
+          }, json)
+        end)
+
+        it("returns minutes data", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/" .. proxy_prefix .. "/portal/vitals/status_codes/by_consumer",
+            query = {
+              interval = "minutes",
+            },
+            headers = {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+            },
+          })
+
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          assert.same({
+            meta = {
+              entity_id   = consumer_approved.id,
+              entity_type = "consumer",
+              interval    = "minutes",
+              level       = "cluster",
+              stat_labels = { "status_codes_per_consumer_total" },
+            },
+            stats = {},
+          }, json)
+        end)
+      end)
+    end)
+
+    describe("/vitals/status_codes/by_consumer_and_route", function()
+      describe("GET", function()
+        it("returns 401 when unauthenticated", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/" .. proxy_prefix .. "/portal/vitals/status_codes/by_consumer_and_route",
+          })
+
+          assert.res_status(401, res)
+        end)
+
+        it("returns 401 when consumer is not approved", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/" .. proxy_prefix .. "/portal/vitals/status_codes/by_consumer_and_route",
+            headers = {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale:kong"),
+            },
+          })
+
+          local body = assert.res_status(401, res)
+          local json = cjson.decode(body)
+
+          assert.same({ status = 1, label = "PENDING" }, json)
+        end)
+
+        it("returns 400 when requested with invalid interval query param", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/" .. proxy_prefix .. "/portal/vitals/status_codes/by_consumer_and_route",
+            query = {
+              interval = "derp",
+            },
+            headers = {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+            },
+          })
+
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+
+          assert.same({
+            message = "Invalid query params: interval must be 'minutes' or 'seconds'",
+          }, json)
+        end)
+
+        it("returns seconds data", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/" .. proxy_prefix .. "/portal/vitals/status_codes/by_consumer_and_route",
+            query = {
+              interval = "seconds",
+            },
+            headers = {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+            },
+          })
+
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          assert.same({
+            meta = {
+              entity_id   = consumer_approved.id,
+              entity_type = "consumer_route",
+              interval    = "seconds",
+              level       = "cluster",
+              stat_labels = { "status_codes_per_consumer_route_total" },
+            },
+            stats = {},
+          }, json)
+        end)
+
+        it("returns minutes data", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/" .. proxy_prefix .. "/portal/vitals/status_codes/by_consumer_and_route",
+            query = {
+              interval = "minutes",
+            },
+            headers = {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+            },
+          })
+
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          assert.same({
+            meta = {
+              entity_id   = consumer_approved.id,
+              entity_type = "consumer_route",
+              interval    = "minutes",
+              level       = "cluster",
+              stat_labels = { "status_codes_per_consumer_route_total" },
+            },
+            stats = {},
+          }, json)
+        end)
+      end)
+    end)
+
+    describe("vitals/consumers/cluster", function()
+      describe("GET", function()
+        it("returns 401 when unauthenticated", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/" .. proxy_prefix .. "/portal/vitals/consumers/cluster",
+          })
+
+          assert.res_status(401, res)
+        end)
+
+        it("returns 401 when consumer is not approved", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/" .. proxy_prefix .. "/portal/vitals/consumers/cluster",
+            headers = {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale:kong"),
+            },
+          })
+
+          local body = assert.res_status(401, res)
+          local json = cjson.decode(body)
+          assert.same({ status = 1, label = "PENDING" }, json)
+        end)
+
+        it("returns 400 when requested with invalid interval query param", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/" .. proxy_prefix .. "/portal/vitals/consumers/cluster",
+            query = {
+              interval = "derp",
+            },
+            headers = {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+            },
+          })
+
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+
+          assert.same({
+            message = "Invalid query params: interval must be 'minutes' or 'seconds'",
+          }, json)
+        end)
+
+        it("returns seconds data", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/" .. proxy_prefix .. "/portal/vitals/consumers/cluster",
+            query = {
+              interval = "seconds",
+            },
+            headers = {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+            },
+          })
+
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          assert.same({
+            meta = {
+              interval    = "seconds",
+              level       = "cluster",
+            },
+            stats = {},
+          }, json)
+        end)
+
+        it("returns minutes data", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/" .. proxy_prefix .. "/portal/vitals/consumers/cluster",
+            query = {
+              interval = "minutes",
+            },
+            headers = {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+            },
+          })
+
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          assert.same({
+            meta = {
+              interval    = "minutes",
+              level       = "cluster",
+            },
+            stats = {},
+          }, json)
+
+        end)
+      end)
+    end)
+
+    describe("vitals/consumers/nodes", function()
+      describe("GET", function()
+        it("returns 401 when unauthenticated", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/" .. proxy_prefix .. "/portal/vitals/consumers/nodes",
+          })
+
+          assert.res_status(401, res)
+        end)
+
+        it("returns 401 when consumer is not approved", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/" .. proxy_prefix .. "/portal/vitals/consumers/nodes",
+            headers = {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("dale:kong"),
+            },
+          })
+
+          local body = assert.res_status(401, res)
+          local json = cjson.decode(body)
+          assert.same({ status = 1, label = "PENDING" }, json)
+        end)
+
+        it("returns 400 when requested with invalid interval query param", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/" .. proxy_prefix .. "/portal/vitals/consumers/nodes",
+            query = {
+              interval = "derp",
+            },
+            headers = {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+            },
+          })
+
+          local body = assert.res_status(400, res)
+          local json = cjson.decode(body)
+
+          assert.same({
+            message = "Invalid query params: interval must be 'minutes' or 'seconds'",
+          }, json)
+        end)
+
+        it("returns seconds data", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/" .. proxy_prefix .. "/portal/vitals/consumers/nodes",
+            query = {
+              interval = "seconds",
+            },
+            headers = {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+            },
+          })
+
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          assert.same({
+            meta = {
+              interval    = "seconds",
+              level       = "node",
+            },
+            stats = {},
+          }, json)
+        end)
+
+        it("returns minutes data", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/" .. proxy_prefix .. "/portal/vitals/consumers/nodes",
+            query = {
+              interval = "minutes",
+            },
+            headers = {
+              ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+            },
+          })
+
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+
+          assert.same({
+            meta = {
+              interval    = "minutes",
+              level       = "node",
+            },
+            stats = {},
+          }, json)
+        end)
+      end)
+    end)
+  end)
 end)
 
 end
