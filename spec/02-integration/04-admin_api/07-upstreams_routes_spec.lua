@@ -475,7 +475,7 @@ describe("Admin API: #" .. kong_config.database, function()
 
       it("retrieves the first page", function()
         local res = assert(client:send {
-          methd = "GET",
+          method = "GET",
           path = "/upstreams"
         })
         assert.response(res).has.status(200)
@@ -524,7 +524,7 @@ describe("Admin API: #" .. kong_config.database, function()
       end)
       it("ignores an invalid body", function()
         local res = assert(client:send {
-          methd = "GET",
+          method = "GET",
           path = "/upstreams",
           body = "this fails if decoded as json",
           headers = {

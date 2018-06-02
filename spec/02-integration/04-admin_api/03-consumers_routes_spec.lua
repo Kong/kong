@@ -392,7 +392,7 @@ describe("Admin API", function()
 
       it("retrieves the first page", function()
         local res = assert(client:send {
-          methd = "GET",
+          method = "GET",
           path = "/consumers"
         })
         res = assert.res_status(200, res)
