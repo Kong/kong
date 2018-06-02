@@ -150,6 +150,7 @@ build = {
     ["kong.db.strategies.postgres.connector"] = "kong/db/strategies/postgres/connector.lua",
 
     ["kong.sdk"] = "kong/sdk/init.lua",
+    ["kong.sdk.private.checks"] = "kong/sdk/private/checks.lua",
     ["kong.sdk.client"] = "kong/sdk/client.lua",
     ["kong.sdk.ctx"] = "kong/sdk/ctx.lua",
     ["kong.sdk.ip"] = "kong/sdk/ip.lua",
