@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 
@@ -11,14 +12,18 @@ run_tests();
 __DATA__
 
 === TEST 1: service.response.get_headers() returns a table
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location / {
             return 200;
         }
     }
+}
 --- config
     location /t {
         proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -45,9 +50,12 @@ type: table
 
 
 === TEST 2: service.response.get_headers() returns service response headers
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location / {
             content_by_lua_block {
@@ -60,6 +68,7 @@ type: table
             }
         }
     }
+}
 --- config
     location = /t {
         proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -94,9 +103,12 @@ Accept: application/json, text/html
 
 
 === TEST 3: service.response.get_headers() returns service response headers with case-insensitive metatable
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location / {
             content_by_lua_block {
@@ -104,6 +116,7 @@ Accept: application/json, text/html
             }
         }
     }
+}
 --- config
     location = /t {
         proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -139,9 +152,12 @@ x_Foo_header: Hello
 
 
 === TEST 4: service.response.get_headers() fetches 100 headers max by default
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location / {
             default_type '';
@@ -152,6 +168,7 @@ x_Foo_header: Hello
             }
         }
     }
+}
 --- config
     location = /t {
         default_type '';
@@ -189,9 +206,12 @@ number of headers fetched: 100
 
 
 === TEST 5: service.response.get_headers() fetches max_headers argument
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location / {
             default_type '';
@@ -202,6 +222,7 @@ number of headers fetched: 100
             }
         }
     }
+}
 --- config
     location = /t {
         default_type  '';
@@ -239,14 +260,18 @@ number of headers fetched: 60
 
 
 === TEST 6: service.response.get_headers() raises error when trying to fetch with max_headers invalid value
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location / {
             return 200;
         }
     }
+}
 --- config
     location = /t {
         proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -275,14 +300,18 @@ error: max_headers must be a number
 
 
 === TEST 7: service.response.get_headers() raises error when trying to fetch with max_headers < 1
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location / {
             return 200;
         }
     }
+}
 --- config
     location = /t {
         proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -311,14 +340,18 @@ error: max_headers must be >= 1
 
 
 === TEST 8: service.response.get_headers() raises error when trying to fetch with max_headers > 1000
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location / {
             return 200;
         }
     }
+}
 --- config
     location = /t {
         proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -347,9 +380,12 @@ error: max_headers must be <= 1000
 
 
 === TEST 9: service.response.get_headers() returns only service headers
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location / {
             content_by_lua_block {
@@ -357,6 +393,7 @@ error: max_headers must be <= 1000
             }
         }
     }
+}
 --- config
     location = /t {
         access_by_lua_block {

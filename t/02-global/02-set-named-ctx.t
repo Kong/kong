@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 no_long_string();
 
@@ -13,6 +14,7 @@ run_tests();
 __DATA__
 
 === TEST 1: set_named_ctx() can set arbitrary namespaces
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -45,6 +47,7 @@ suzie
 
 
 === TEST 2: set_named_ctx() arbitrary namespaces can be rotated
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -78,6 +81,7 @@ marry
 
 
 === TEST 3: set_named_ctx() arbitrary namespaces can be discarded
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -104,6 +108,7 @@ nil
 
 
 === TEST 4: set_named_ctx() arbitrary namespaces invalid argument #1
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -127,6 +132,7 @@ arg #1 cannot be nil
 
 
 === TEST 5: set_named_ctx() arbitrary namespaces must have a name
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -156,6 +162,7 @@ name cannot be an empty string
 
 
 === TEST 6: set_named_ctx() arbitrary namespaces fail if SDK not initialized
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {

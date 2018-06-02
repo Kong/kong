@@ -2,6 +2,7 @@ use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 use File::Spec;
+use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 $ENV{TEST_NGINX_CERT_DIR} ||= File::Spec->catdir(server_root(), '..', 'certs');
@@ -13,6 +14,7 @@ run_tests();
 __DATA__
 
 === TEST 1: request.get_forwarded_scheme() considers X-Forwarded-Proto when trusted
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -36,6 +38,7 @@ scheme: https
 
 
 === TEST 2: request.get_forwarded_scheme() doesn't considers X-Forwarded-Proto when not trusted
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -57,6 +60,7 @@ scheme: http
 
 
 === TEST 3: request.get_forwarded_scheme() considers first X-Forwarded-Proto if multiple when trusted
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -79,6 +83,7 @@ scheme: http
 
 
 === TEST 4: request.get_forwarded_scheme() doesn't considers any X-Forwarded-Proto headers when not trusted
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -101,6 +106,7 @@ scheme: http
 
 
 === TEST 5: request.get_forwarded_scheme() falls back to scheme used in last hop (http)
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -122,11 +128,14 @@ scheme: http
 
 
 === TEST 6: request.get_forwarded_scheme() falls back to scheme used in last hop (https)
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock ssl;
-        ssl_certificate $TEST_NGINX_CERT_DIR/test.crt;
-        ssl_certificate_key $TEST_NGINX_CERT_DIR/test.key;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock ssl;
+        ssl_certificate $ENV{TEST_NGINX_CERT_DIR}/test.crt;
+        ssl_certificate_key $ENV{TEST_NGINX_CERT_DIR}/test.key;
 
         location / {
             content_by_lua_block {
@@ -142,6 +151,7 @@ scheme: http
             }
         }
     }
+}
 --- config
     location = /t {
         proxy_ssl_verify off;
@@ -157,6 +167,7 @@ scheme: https
 
 
 === TEST 7: request.get_forwarded_scheme() is normalized
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {

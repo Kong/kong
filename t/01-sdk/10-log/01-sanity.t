@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 log_level('debug');
 
@@ -32,6 +33,7 @@ run_tests();
 __DATA__
 
 === TEST 1: sdk has core logging facility
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -51,6 +53,7 @@ type: table
 
 
 === TEST 2: kong.log() produces core notice message
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -71,6 +74,7 @@ qr/\[notice\] .*? \[kong\] .*? hello world/
 
 
 === TEST 3: kong.debug() produces core debug message
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -91,6 +95,7 @@ qr/\[debug\] .*? \[kong\] .*? hello world/
 
 
 === TEST 4: kong.info() produces core info message
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -111,6 +116,7 @@ qr/\[info\] .*? \[kong\] .*? hello world/
 
 
 === TEST 5: kong.notice() produces core notice message
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -131,6 +137,7 @@ qr/\[notice\] .*? \[kong\] .*? hello world/
 
 
 === TEST 6: kong.warn() produces core warn message
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -151,6 +158,7 @@ qr/\[warn\] .*? \[kong\] .*? hello world/
 
 
 === TEST 7: kong.err() produces core err message
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -171,6 +179,7 @@ qr/\[error\] .*? \[kong\] .*? hello world/
 
 
 === TEST 8: kong.crit() produces core crit message
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -191,6 +200,7 @@ qr/\[crit\] .*? \[kong\] .*? hello world/
 
 
 === TEST 9: kong.alert() produces core alert message
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -211,6 +221,7 @@ qr/\[alert\] .*? \[kong\] .*? hello world/
 
 
 === TEST 10: kong.alert() produces core emerg message
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -231,6 +242,7 @@ qr/\[emerg\] .*? \[kong\] .*? hello world/
 
 
 === TEST 11: kong.log has core logging format & proper stack level (1/2)
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -255,6 +267,7 @@ qr/\[notice\] .*? \[kong\] content_by_lua\(nginx\.conf:\d+\):6 hello from my_fun
 
 
 === TEST 12: kong.log has core logging format & proper stack level (2/2)
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -276,7 +289,7 @@ qr/\[notice\] .*? \[kong\] content_by_lua\(nginx\.conf:\d+\):5 hello from my_fun
 
 === TEST 13: kong.log JIT compiles when level is below sys_level
 --- log_level: warn
---- http_config eval: $::HttpConfig
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -300,6 +313,7 @@ qr/\[TRACE\s+\d+ content_by_lua\(nginx\.conf:\d+\):5 loop\]/
 
 
 === TEST 14: kong.log accepts variadic arguments (string)
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -320,6 +334,7 @@ hello world
 
 
 === TEST 15: kong.log accepts variadic arguments (boolean)
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -340,6 +355,7 @@ boolean: false
 
 
 === TEST 16: kong.log accepts variadic arguments (number)
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -360,6 +376,7 @@ number: 1 2
 
 
 === TEST 17: kong.log accepts variadic arguments (table)
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -380,6 +397,7 @@ qr/table: 0x\d+/
 
 
 === TEST 18: kong.log accepts variadic arguments (userdata)
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {

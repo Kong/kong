@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 
@@ -11,6 +12,7 @@ run_tests();
 __DATA__
 
 === TEST 1: service.was_proxied() returns true if ngx.ctx.KONG_PROXIED is true
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -32,6 +34,7 @@ true
 
 
 === TEST 2: service.was_proxied() returns false if ngx.ctx.KONG_PROXIED not set
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {

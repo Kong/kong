@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 no_long_string();
 
@@ -13,6 +14,7 @@ run_tests();
 __DATA__
 
 === TEST 1: ctx.shared namespace exists
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -44,6 +46,7 @@ nil
 
 
 === TEST 2: ctx.shared namespace is shared between SDK instances
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {

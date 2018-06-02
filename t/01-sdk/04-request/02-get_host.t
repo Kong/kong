@@ -2,6 +2,7 @@ use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 use File::Spec;
+use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 $ENV{TEST_NGINX_CERT_DIR} ||= File::Spec->catdir(server_root(), '..', 'certs');
@@ -13,6 +14,7 @@ run_tests();
 __DATA__
 
 === TEST 1: request.get_host() returns host using host header
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -32,11 +34,14 @@ host: localhost
 
 
 === TEST 2: request.get_host() returns host using host header with tls
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock ssl;
-        ssl_certificate $TEST_NGINX_CERT_DIR/test.crt;
-        ssl_certificate_key $TEST_NGINX_CERT_DIR/test.key;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock ssl;
+        ssl_certificate $ENV{TEST_NGINX_CERT_DIR}/test.crt;
+        ssl_certificate_key $ENV{TEST_NGINX_CERT_DIR}/test.key;
 
         location / {
             content_by_lua_block {
@@ -50,6 +55,7 @@ host: localhost
             }
         }
     }
+}
 --- config
     location = /t {
         proxy_ssl_verify off;
@@ -65,10 +71,13 @@ host: localhost
 
 
 === TEST 3: request.get_host() returns host using server name
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
         server_name kong;
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location / {
             content_by_lua_block {
@@ -82,6 +91,7 @@ host: localhost
             }
         }
     }
+}
 --- config
     location /t {
         proxy_set_header Host "";
@@ -97,6 +107,7 @@ host: kong
 
 
 === TEST 4: request.get_host() returns host using request line
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -116,6 +127,7 @@ host: test
 
 
 === TEST 5: request.get_host() returns host using explicit host header
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -137,6 +149,7 @@ host: kong
 
 
 === TEST 6: request.get_host() request line overrides host header
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -158,6 +171,7 @@ host: test
 
 
 === TEST 7: request.get_host() request line is normalized
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -179,6 +193,7 @@ host: test
 
 
 === TEST 8: request.get_host() explicit host header is normalized
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -200,10 +215,13 @@ host: k0ng
 
 
 === TEST 9: request.get_host() server name is normalized
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
         server_name K0nG;
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location / {
             content_by_lua_block {
@@ -217,6 +235,7 @@ host: k0ng
             }
         }
     }
+}
 --- config
     location /t {
         proxy_set_header Host "";

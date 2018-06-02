@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 
@@ -11,6 +12,7 @@ run_tests();
 __DATA__
 
 === TEST 1: client.get_ip() returns client ip
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         real_ip_header X-Real-IP;
@@ -38,9 +40,13 @@ ip: 127.0.0.1
 
 
 === TEST 2: client.get_ip() returns client ip not affected by proxy_protocol
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock proxy_protocol;
+        server_name kong;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock proxy_protocol;
 
         location / {
             real_ip_header proxy_protocol;
@@ -58,6 +64,7 @@ ip: 127.0.0.1
             }
         }
     }
+}
 --- config
     location = /t {
         content_by_lua_block {

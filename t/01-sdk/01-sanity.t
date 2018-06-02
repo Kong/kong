@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 #repeat_each(2);
 
@@ -11,6 +12,7 @@ run_tests();
 __DATA__
 
 === TEST 1: SDK loads latest version by default
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -38,6 +40,7 @@ is latest: true
 
 
 === TEST 2: has sdk_major_version and sdk_version fields
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -61,6 +64,7 @@ sdk_version: \d+\.\d+.\d+
 
 === TEST 3: can load given major version
 --- SKIP: skip me since 1st release will only have version 0
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {

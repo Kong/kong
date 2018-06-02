@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 
@@ -11,6 +12,7 @@ run_tests();
 __DATA__
 
 === TEST 1: service.request.set_query() errors if not a table
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -31,6 +33,7 @@ args must be a table
 
 
 === TEST 2: service.request.set_query() errors if given no arguments
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -51,6 +54,7 @@ args must be a table
 
 
 === TEST 3: service.request.set_query() errors if table values have bad types
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
 
@@ -78,6 +82,7 @@ attempt to use function as query arg value
 
 
 === TEST 4: service.request.set_query() errors if table keys have bad types
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
 
@@ -105,9 +110,12 @@ arg keys must be strings
 
 
 === TEST 5: service.request.set_query() accepts an empty table
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -115,6 +123,7 @@ arg keys must be strings
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -138,9 +147,12 @@ query: {nil}
 
 
 === TEST 6: service.request.set_query() replaces the received post args
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -148,6 +160,7 @@ query: {nil}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -173,9 +186,12 @@ query: {foo=hello%20world}
 
 
 === TEST 7: service.request.set_query() urlencodes table values
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -183,6 +199,7 @@ query: {foo=hello%20world}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -208,9 +225,12 @@ query: {foo=hello%20world}
 
 
 === TEST 8: service.request.set_query() produces a deterministic lexicographical order
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -218,6 +238,7 @@ query: {foo=hello%20world}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -246,9 +267,12 @@ query: {a&aa&foo=hello%20world&zzz=goodbye%20world}
 
 
 === TEST 9: service.request.set_query() preserves the order of array arguments
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -256,6 +280,7 @@ query: {a&aa&foo=hello%20world&zzz=goodbye%20world}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -284,9 +309,12 @@ query: {a&aa=zzz&aa&aa&aa=aaa&foo=hello%20world&zzz=goodbye%20world}
 
 
 === TEST 10: service.request.set_query() supports empty values
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -294,6 +322,7 @@ query: {a&aa=zzz&aa&aa&aa=aaa&foo=hello%20world&zzz=goodbye%20world}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -319,9 +348,12 @@ query: {aa=}
 
 
 === TEST 11: service.request.set_query() accepts empty keys
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -329,6 +361,7 @@ query: {aa=}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -354,9 +387,12 @@ query: {=aa}
 
 
 === TEST 12: service.request.set_query() urlencodes table keys
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -364,6 +400,7 @@ query: {=aa}
             }
         }
     }
+}
 --- config
     location = /t {
 

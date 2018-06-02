@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 
@@ -11,6 +12,7 @@ run_tests();
 __DATA__
 
 === TEST 1: service.request.set_path() errors if not a string
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -31,6 +33,7 @@ path must be a string
 
 
 === TEST 2: service.request.set_path() errors if path doesn't start with "/"
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -54,9 +57,13 @@ path must start with /
 
 
 === TEST 3: service.request.set_path() works from access phase
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        server_name K0nG;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /foo {
             content_by_lua_block {
@@ -64,6 +71,7 @@ path must start with /
             }
         }
     }
+}
 --- config
     location = /t {
         set $upstream_uri '/t';
@@ -87,9 +95,13 @@ this is /foo
 
 
 === TEST 4: service.request.set_path() works from rewrite phase
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        server_name K0nG;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /foo {
             content_by_lua_block {
@@ -97,6 +109,7 @@ this is /foo
             }
         }
     }
+}
 --- config
     location = /t {
         set $upstream_uri '/t';

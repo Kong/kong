@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 no_long_string();
 
@@ -11,6 +12,7 @@ run_tests();
 __DATA__
 
 === TEST 1: has core logging facility by default
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -32,6 +34,7 @@ qr/\[notice\] .*? \[kong\] content_by_lua\(nginx\.conf:\d+\):\d+ hello world/
 
 
 === TEST 2: set_namespaced_log() validates args
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -61,6 +64,7 @@ namespace (arg #2) must be a string
 
 
 === TEST 3: reset_log() validates args
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -84,6 +88,7 @@ arg #1 cannot be nil
 
 
 === TEST 4: set_namespaced_log() switched to namespaced logging facility
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -107,6 +112,7 @@ qr/\[notice\] .*? \[kong\] content_by_lua\(nginx\.conf:\d+\):\d+ \[my-plugin\] h
 
 
 === TEST 5: set_namespaced_log() + reset_log() swaps between logging facilities
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {

@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 
@@ -11,6 +12,7 @@ run_tests();
 __DATA__
 
 === TEST 1: service.request.add_header() errors if arguments are not given
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -31,6 +33,7 @@ invalid header name "nil": got nil, expected string
 
 
 === TEST 2: service.request.add_header() errors if header is not a string
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -51,6 +54,7 @@ invalid header name "127001": got number, expected string
 
 
 === TEST 3: service.request.add_header() errors if value is of a bad type
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -71,6 +75,7 @@ invalid header value for "foo": got function, expected string, number or boolean
 
 
 === TEST 4: service.request.add_header() errors if value is not given
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -91,9 +96,12 @@ invalid header value for "foo": got nil, expected string, number or boolean
 
 
 === TEST 5: service.request.add_header("Host") sets Host header sent to the service
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -101,6 +109,7 @@ invalid header value for "foo": got nil, expected string, number or boolean
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -131,9 +140,12 @@ host: example.com
 
 
 === TEST 6: service.request.add_header("Host") cannot add two hosts
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -141,6 +153,7 @@ host: example.com
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -173,9 +186,12 @@ host: example2.com
 
 
 === TEST 7: service.request.add_header() sets a header in the request to the service
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -183,6 +199,7 @@ host: example2.com
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -206,9 +223,12 @@ X-Foo: {hello world}
 
 
 === TEST 8: service.request.add_header() accepts a number
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -216,6 +236,7 @@ X-Foo: {hello world}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -239,9 +260,12 @@ X-Foo: {2.5}
 
 
 === TEST 9: service.request.add_header() accepts a boolean
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -249,6 +273,7 @@ X-Foo: {2.5}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -272,9 +297,12 @@ X-Foo: {false}
 
 
 === TEST 10: service.request.add_header() adds two headers to an request to the service
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -285,6 +313,7 @@ X-Foo: {false}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -311,9 +340,12 @@ X-Foo: {world}
 
 
 === TEST 11: service.request.add_header() preserves headers with that name if any exist
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -324,6 +356,7 @@ X-Foo: {world}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -352,9 +385,12 @@ X-Foo: {hello world}
 
 
 === TEST 12: service.request.add_header() can set to an empty string
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -362,6 +398,7 @@ X-Foo: {hello world}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -385,9 +422,12 @@ X-Foo: {}
 
 
 === TEST 13: service.request.add_header() ignores spaces in the beginning of value
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -395,6 +435,7 @@ X-Foo: {}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -418,9 +459,12 @@ X-Foo: {hello}
 
 
 === TEST 14: service.request.add_header() ignores spaces in the end of value
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -428,6 +472,7 @@ X-Foo: {hello}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -451,9 +496,12 @@ X-Foo: {hello}
 
 
 === TEST 15: service.request.add_header() can differentiate empty string from unset
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -463,6 +511,7 @@ X-Foo: {hello}
             }
         }
     }
+}
 --- config
     location = /t {
 

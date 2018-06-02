@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 
@@ -11,6 +12,7 @@ run_tests();
 __DATA__
 
 === TEST 1: service.request.set_body() errors if args is not a table
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -31,6 +33,7 @@ args must be a table
 
 
 === TEST 2: service.request.set_body() errors if given no arguments
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -51,6 +54,7 @@ args must be a table
 
 
 === TEST 3: service.request.set_body() errors if mime is not a string
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -71,6 +75,7 @@ mime must be a string
 
 
 === TEST 4: service.request.set_body() for application/x-www-form-urlencoded errors if table values have bad types
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
 
@@ -99,6 +104,7 @@ attempt to use function as query arg value
 
 
 === TEST 5: service.request.set_body() for application/x-www-form-urlencoded errors if table keys have bad types
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
 
@@ -127,9 +133,12 @@ arg keys must be strings
 
 
 === TEST 6: service.request.set_body() for application/x-www-form-urlencoded sets the Content-Type header
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -138,6 +147,7 @@ arg keys must be strings
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -160,9 +170,12 @@ content-type: {application/x-www-form-urlencoded}
 
 
 === TEST 7: service.request.set_body() for application/x-www-form-urlencoded accepts an empty table
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -174,6 +187,7 @@ content-type: {application/x-www-form-urlencoded}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -201,9 +215,12 @@ content-type: {application/x-www-form-urlencoded}
 
 
 === TEST 8: service.request.set_body() for application/x-www-form-urlencoded replaces the received post args
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -215,6 +232,7 @@ content-type: {application/x-www-form-urlencoded}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -243,9 +261,12 @@ content-type: {application/x-www-form-urlencoded}
 
 
 === TEST 9: service.request.set_body() for application/x-www-form-urlencoded urlencodes table values
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -257,6 +278,7 @@ content-type: {application/x-www-form-urlencoded}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -283,9 +305,12 @@ content-type: {application/x-www-form-urlencoded}
 
 
 === TEST 10: service.request.set_body() for application/x-www-form-urlencoded produces a deterministic lexicographical order
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -297,6 +322,7 @@ content-type: {application/x-www-form-urlencoded}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -326,9 +352,12 @@ content-type: {application/x-www-form-urlencoded}
 
 
 === TEST 11: service.request.set_body() for application/x-www-form-urlencoded preserves the order of array arguments
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -340,6 +369,7 @@ content-type: {application/x-www-form-urlencoded}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -369,9 +399,12 @@ content-type: {application/x-www-form-urlencoded}
 
 
 === TEST 12: service.request.set_body() for application/x-www-form-urlencoded supports empty values
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -383,6 +416,7 @@ content-type: {application/x-www-form-urlencoded}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -409,9 +443,12 @@ content-type: {application/x-www-form-urlencoded}
 
 
 === TEST 13: service.request.set_body() for application/x-www-form-urlencoded accepts empty keys
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -423,6 +460,7 @@ content-type: {application/x-www-form-urlencoded}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -449,9 +487,12 @@ content-type: {application/x-www-form-urlencoded}
 
 
 === TEST 14: service.request.set_body() for application/x-www-form-urlencoded urlencodes table keys
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -463,6 +504,7 @@ content-type: {application/x-www-form-urlencoded}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -489,9 +531,12 @@ content-type: {application/x-www-form-urlencoded}
 
 
 === TEST 15: service.request.set_body() for application/x-www-form-urlencoded does not force a POST method
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -504,6 +549,7 @@ content-type: {application/x-www-form-urlencoded}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -531,6 +577,7 @@ content-type: {application/x-www-form-urlencoded}
 
 
 === TEST 16: service.request.set_body() for application/json errors if table values have bad types
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
 
@@ -559,6 +606,7 @@ Cannot serialise function: type not supported
 
 
 === TEST 17: service.request.set_body() for application/json errors if table keys have bad types
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
 
@@ -587,9 +635,12 @@ Cannot serialise boolean: table key must be a number or string
 
 
 === TEST 18: service.request.set_body() for application/json sets the Content-Type header
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -598,6 +649,7 @@ Cannot serialise boolean: table key must be a number or string
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -620,9 +672,12 @@ content-type: {application/json}
 
 
 === TEST 19: service.request.set_body() for application/json accepts an empty table
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -634,6 +689,7 @@ content-type: {application/json}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -661,9 +717,12 @@ content-type: {application/json}
 
 
 === TEST 20: service.request.set_body() for application/json replaces the received post args
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -675,6 +734,7 @@ content-type: {application/json}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -703,9 +763,12 @@ content-type: {application/json}
 
 
 === TEST 21: service.request.set_body() for application/json produces a deterministic lexicographical order
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -717,6 +780,7 @@ content-type: {application/json}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -746,9 +810,12 @@ content-type: {application/json}
 
 
 === TEST 22: service.request.set_body() for application/json preserves the order of array arguments
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -760,6 +827,7 @@ content-type: {application/json}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -789,9 +857,12 @@ content-type: {application/json}
 
 
 === TEST 23: service.request.set_body() for application/json supports empty values
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -803,6 +874,7 @@ content-type: {application/json}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -829,9 +901,12 @@ content-type: {application/json}
 
 
 === TEST 24: service.request.set_body() for application/json accepts empty keys
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -843,6 +918,7 @@ content-type: {application/json}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -869,6 +945,7 @@ content-type: {application/json}
 
 
 === TEST 25: service.request.set_body() for multipart/form-data can only store scalars in parts
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
 
@@ -895,9 +972,12 @@ invalid value "aa": got table, expected string, number or boolean
 
 
 === TEST 26: service.request.set_body() for multipart/form-data when mime given adds the boundary to the Content-Type
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -917,6 +997,7 @@ invalid value "aa": got table, expected string, number or boolean
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -944,9 +1025,12 @@ zzz: {goodbye world}
 
 
 === TEST 27: service.request.set_body() for multipart/form-data when mime is not given reuses the boundary from the Content-Type
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -961,12 +1045,13 @@ zzz: {goodbye world}
                 local mpvalues = mpdata:get_all()
 
                 ngx.say(content_type)
-                ngx.say((raw_body:gsub("\r", "")))
+                ngx.say((raw_body:gsub("\\r", "")))
                 ngx.say("foo: {", mpvalues.foo, "}")
                 ngx.say("zzz: {", mpvalues.zzz, "}")
             }
         }
     }
+}
 --- config
     location = /t {
 

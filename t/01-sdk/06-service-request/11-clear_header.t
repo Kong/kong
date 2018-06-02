@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 
@@ -11,6 +12,7 @@ run_tests();
 __DATA__
 
 === TEST 1: service.request.clear_header() errors if arguments are not given
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -31,6 +33,7 @@ header must be a string
 
 
 === TEST 2: service.request.clear_header() errors if header is not a string
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -51,9 +54,12 @@ header must be a string
 
 
 === TEST 3: service.request.clear_header() clears a given header
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -61,6 +67,7 @@ header must be a string
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -86,9 +93,12 @@ X-Foo: {nil}
 
 
 === TEST 4: service.request.clear_header() clears multiple given headers
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -96,6 +106,7 @@ X-Foo: {nil}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -122,9 +133,12 @@ X-Foo: {nil}
 
 
 === TEST 5: service.request.clear_header() clears headers set via set_header
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -132,6 +146,7 @@ X-Foo: {nil}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -157,9 +172,12 @@ X-Foo: {nil}
 
 
 === TEST 6: service.request.clear_header() clears headers set via add_header
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -167,6 +185,7 @@ X-Foo: {nil}
             }
         }
     }
+}
 --- config
     location = /t {
 

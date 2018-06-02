@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 
@@ -11,6 +12,7 @@ run_tests();
 __DATA__
 
 === TEST 1: response.add_header() errors if arguments are not given
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -43,6 +45,7 @@ invalid header name "nil": got nil, expected string
 
 
 === TEST 2: response.add_header() errors if name is not a string
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -75,6 +78,7 @@ invalid header name "127001": got number, expected string
 
 
 === TEST 3: response.add_header() errors if value is not a supported one
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -107,6 +111,7 @@ invalid header value for "foo": got table, expected string, number or boolean
 
 
 === TEST 4: response.add_header() errors if value is not given
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -139,6 +144,7 @@ invalid header value for "foo": got nil, expected string, number or boolean
 
 
 === TEST 5: response.add_header() sets a header in the downstream response
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -168,6 +174,7 @@ X-Foo: hello world
 
 
 === TEST 6: response.add_header() adds two headers to an downstream response
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -205,9 +212,12 @@ X-Foo: {world}
 
 
 === TEST 7: response.add_header() preserves headers with that name if any exist
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -215,6 +225,7 @@ X-Foo: {world}
             }
         }
     }
+}
 --- config
     location = /t {
         proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -251,9 +262,12 @@ X-Foo: {hello world}
 
 
 === TEST 8: response.add_header() can set to an empty string
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -267,6 +281,7 @@ X-Foo: {hello world}
             }
         }
     }
+}
 --- config
     location = /t {
         proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;

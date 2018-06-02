@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 plan tests => repeat_each() * (blocks() * 3);
 
@@ -9,6 +10,7 @@ run_tests();
 __DATA__
 
 === TEST 1: request.get_query_arg() returns first query arg when multiple is given with same name
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -28,6 +30,7 @@ Foo: 1
 
 
 === TEST 2: request.get_query_arg() returns values from case-sensitive table
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -49,6 +52,7 @@ foo: 2
 
 
 === TEST 3: request.get_query_arg() returns nil when query argument is missing
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -68,6 +72,7 @@ Bar: nil
 
 
 === TEST 4: request.get_query_arg() returns true when query argument has no value
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -87,6 +92,7 @@ Foo: true
 
 
 === TEST 5: request.get_query_arg() returns empty string when query argument's value is empty
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -106,6 +112,7 @@ Foo: ''
 
 
 === TEST 6: request.get_query_arg() returns nil when requested query arg does not fit in max_args
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         rewrite_by_lua_block {
@@ -140,6 +147,7 @@ argument value: nil
 
 
 === TEST 7: request.get_query_arg() raises error when trying to fetch with invalid argument
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {

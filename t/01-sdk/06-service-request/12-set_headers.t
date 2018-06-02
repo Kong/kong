@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 
@@ -11,6 +12,7 @@ run_tests();
 __DATA__
 
 === TEST 1: service.request.set_headers() errors if arguments are not given
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -31,6 +33,7 @@ headers must be a table
 
 
 === TEST 2: service.request.set_headers() errors if headers is not a table
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -51,9 +54,12 @@ headers must be a table
 
 
 === TEST 3: service.request.set_headers() with "Host" sets Host header sent to the service
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -61,6 +67,7 @@ headers must be a table
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -91,9 +98,12 @@ host: example.com
 
 
 === TEST 4: service.request.set_headers() sets a header in the request to the service
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -101,6 +111,7 @@ host: example.com
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -124,9 +135,12 @@ X-Foo: {hello world}
 
 
 === TEST 5: service.request.set_headers() replaces all headers with that name if any exist
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -134,6 +148,7 @@ X-Foo: {hello world}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -160,9 +175,12 @@ X-Foo: hello world
 
 
 === TEST 6: service.request.set_headers() can set to an empty string
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -170,6 +188,7 @@ X-Foo: hello world
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -193,9 +212,12 @@ X-Foo: {}
 
 
 === TEST 7: service.request.set_headers() ignores spaces in the beginning of value
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -203,6 +225,7 @@ X-Foo: {}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -226,9 +249,12 @@ X-Foo: {hello}
 
 
 === TEST 8: service.request.set_headers() ignores spaces in the end of value
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -236,6 +262,7 @@ X-Foo: {hello}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -259,9 +286,12 @@ X-Foo: {hello}
 
 
 === TEST 9: service.request.set_headers() accepts numbers
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -269,6 +299,7 @@ X-Foo: {hello}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -292,9 +323,12 @@ X-Foo: {2.5}
 
 
 === TEST 10: service.request.set_headers() accepts booleans
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -302,6 +336,7 @@ X-Foo: {2.5}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -325,9 +360,12 @@ X-Foo: {false}
 
 
 === TEST 11: service.request.set_headers() can differentiate empty string from unset
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -337,6 +375,7 @@ X-Foo: {false}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -361,7 +400,7 @@ X-Bar: {nil}
 
 
 === TEST 12: service.request.set_headers() errors if key is not a string
---- http_config
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -383,7 +422,7 @@ invalid header name "2": got number, expected string
 
 
 === TEST 13: service.request.set_headers() errors if value is of a bad type
---- http_config
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -405,7 +444,7 @@ invalid header value for "foo": got function, expected string, number, boolean o
 
 
 === TEST 14: service.request.set_headers() errors if array element is of a bad type
---- http_config
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -427,9 +466,12 @@ invalid header value in array "foo": got table, expected string
 
 
 === TEST 15: service.request.set_headers() ignores non-sequence elements in arrays
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -440,6 +482,7 @@ invalid header value in array "foo": got table, expected string
             }
         }
     }
+}
 --- config
     location = /t {
         access_by_lua_block {
@@ -469,9 +512,12 @@ X-Foo: {world}
 
 
 === TEST 16: service.request.set_headers() removes headers when given an empty array
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -483,6 +529,7 @@ X-Foo: {world}
             }
         }
     }
+}
 --- config
     location = /t {
         access_by_lua_block {
@@ -510,9 +557,12 @@ X-Foo: world
 
 
 === TEST 17: service.request.set_headers() replaces every header of a given name
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -523,6 +573,7 @@ X-Foo: world
             }
         }
     }
+}
 --- config
     location = /t {
         access_by_lua_block {
@@ -555,7 +606,7 @@ X-Foo: {zzz}
 
 
 === TEST 18: service.request.set_headers() accepts an empty table
---- http_config
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {

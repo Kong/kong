@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 
@@ -11,14 +12,18 @@ run_tests();
 __DATA__
 
 === TEST 1: service.response.get_status() returns a number
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location / {
             return 200;
         }
     }
+}
 --- config
     location /t {
         proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -45,14 +50,18 @@ type: number
 
 
 === TEST 2: service.response.get_status() returns 200
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location / {
             return 200;
         }
     }
+}
 --- config
     location /t {
         proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -79,14 +88,18 @@ status: 200
 
 
 === TEST 3: service.response.get_status() returns 404
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location / {
             return 404;
         }
     }
+}
 --- config
     location /t {
         proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -114,14 +127,18 @@ status: 404
 
 
 === TEST 4: service.response.get_status() gets service status only
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location / {
             return 404;
         }
     }
+}
 --- config
     location /t {
         proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;

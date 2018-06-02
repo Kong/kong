@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 plan tests => repeat_each() * (blocks() * 3);
 
@@ -9,6 +10,7 @@ run_tests();
 __DATA__
 
 === TEST 1: request.get_query() returns a table
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -28,6 +30,7 @@ type: table
 
 
 === TEST 2: request.get_query() returns request query arguments
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -52,6 +55,7 @@ Accept: application/json, text/html
 
 
 === TEST 3: request.get_query() returns request query arguments case-sensitive
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -76,6 +80,7 @@ fOO: Too
 
 
 === TEST 4: request.get_query() fetches 100 query arguments by default
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         rewrite_by_lua_block {
@@ -111,6 +116,7 @@ number of query arguments fetched: 100
 
 
 === TEST 5: request.get_query() fetches max_args argument
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         rewrite_by_lua_block {
@@ -146,6 +152,7 @@ number of query arguments fetched: 60
 
 
 === TEST 6: request.get_query() raises error when trying to fetch with max_args invalid value
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -167,6 +174,7 @@ error: max_args must be a number
 
 
 === TEST 7: request.get_query() raises error when trying to fetch with max_args < 1
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -188,6 +196,7 @@ error: max_args must be >= 1
 
 
 === TEST 8: request.get_query() raises error when trying to fetch with max_args > 1000
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {

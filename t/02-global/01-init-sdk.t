@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 no_long_string();
 
@@ -13,6 +14,7 @@ run_tests();
 __DATA__
 
 === TEST 1: init_sdk() attaches SDK to given global
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -37,6 +39,7 @@ nil
 
 
 === TEST 2: init_sdk() arg #1 validation
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {

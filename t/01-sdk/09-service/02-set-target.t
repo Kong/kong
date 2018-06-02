@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 
@@ -11,6 +12,7 @@ run_tests();
 __DATA__
 
 === TEST 1: service.set_target() errors if host is not a string
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -31,6 +33,7 @@ host must be a string
 
 
 === TEST 2: service.set_target() sets ngx.ctx.balancer_address.host
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
 
@@ -61,6 +64,7 @@ host: example.com
 
 
 === TEST 3: service.set_target() errors if port is not a number
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -83,6 +87,7 @@ port must be an integer
 
 
 === TEST 4: service.set_target() errors if port is not an integer
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -106,6 +111,7 @@ port must be an integer
 
 
 === TEST 5: service.set_target() errors if port is out of range
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -131,6 +137,7 @@ port must be an integer between 0 and 65535: given 70000
 
 
 === TEST 6: service.set_target() sets the balancer port
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
 

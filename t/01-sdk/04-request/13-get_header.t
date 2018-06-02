@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 plan tests => repeat_each() * (blocks() * 3);
 
@@ -9,6 +10,7 @@ run_tests();
 __DATA__
 
 === TEST 1: request.get_header() returns first header when multiple is given with same name
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -31,6 +33,7 @@ accept header value: application/json
 
 
 === TEST 2: request.get_header() returns values from case-insensitive metatable
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -58,6 +61,7 @@ x_Foo_header: Hello
 
 
 === TEST 3: request.get_header() returns nil when header is missing
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -79,6 +83,7 @@ X-Missing: nil
 
 
 === TEST 4: request.get_header() returns empty string when header has no value
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -100,6 +105,7 @@ X-Foo-Header: ''
 
 
 === TEST 5: request.get_header() returns nil when requested header does not fit in default max_headers
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         rewrite_by_lua_block {
@@ -134,6 +140,7 @@ accept header value: nil
 
 
 === TEST 6: request.get_header() raises error when trying to fetch with invalid argument
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {

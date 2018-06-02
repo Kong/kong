@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 plan tests => repeat_each() * (blocks() * 4);
 
@@ -9,6 +10,7 @@ run_tests();
 __DATA__
 
 === TEST 1: kong.log.inspect() pretty-prints a table
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -30,6 +32,7 @@ hello = "world"
 
 
 === TEST 2: kong.log.inspect() has its own format
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -55,6 +58,7 @@ qr/\[kong\] content_by_lua\(nginx\.conf:\d+\):my_func:6 \{/
 
 
 === TEST 3: kong.log.inspect() accepts variadic arguments
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -76,6 +80,7 @@ bye = "world"
 
 
 === TEST 4: kong.log.inspect.on|off() disables inspect for a facility
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -101,6 +106,7 @@ hidden
 
 
 === TEST 5: log.inspect.on|off() enables specific facility's inspect
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -128,6 +134,7 @@ hidden
 
 
 === TEST 6: log.inspect() custom facility does not log namespace
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -151,6 +158,7 @@ my_namespace
 
 
 === TEST 7: log.inspect() concatenates argument with a space
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {

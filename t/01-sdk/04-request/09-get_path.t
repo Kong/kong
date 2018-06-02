@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 plan tests => repeat_each() * (blocks() * 3);
 
@@ -9,6 +10,7 @@ run_tests();
 __DATA__
 
 === TEST 1: request.get_path() returns path component of uri
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -28,6 +30,7 @@ path: /t
 
 
 === TEST 2: request.get_path() returns at least slash
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = / {
         access_by_lua_block {
@@ -47,6 +50,7 @@ path: /
 
 
 === TEST 3: request.get_path() is not normalized
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t/ {
         access_by_lua_block {
@@ -66,6 +70,7 @@ path: /t/Abc%20123%C3%B8/../test/.
 
 
 === TEST 4: request.get_path() strips query string
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t/ {
         access_by_lua_block {

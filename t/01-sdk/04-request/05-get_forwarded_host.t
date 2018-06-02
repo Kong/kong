@@ -2,6 +2,7 @@ use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 use File::Spec;
+use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 $ENV{TEST_NGINX_CERT_DIR} ||= File::Spec->catdir(server_root(), '..', 'certs');
@@ -13,6 +14,7 @@ run_tests();
 __DATA__
 
 === TEST 1: request.get_forwarded_host() returns host using host header from last hop when not trusted
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -34,11 +36,14 @@ host: localhost
 
 
 === TEST 2: request.get_forwarded_host() returns host using host header with tls from last hop when not trusted
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock ssl;
-        ssl_certificate $TEST_NGINX_CERT_DIR/test.crt;
-        ssl_certificate_key $TEST_NGINX_CERT_DIR/test.key;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock ssl;
+        ssl_certificate $ENV{TEST_NGINX_CERT_DIR}/test.crt;
+        ssl_certificate_key $ENV{TEST_NGINX_CERT_DIR}/test.key;
 
         location / {
             content_by_lua_block {
@@ -52,6 +57,7 @@ host: localhost
             }
         }
     }
+}
 --- config
     location = /t {
         proxy_ssl_verify off;
@@ -69,10 +75,13 @@ host: localhost
 
 
 === TEST 3: request.get_forwarded_host() returns host using server name from last hop when not trusted
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
         server_name kong;
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location / {
             content_by_lua_block {
@@ -86,6 +95,7 @@ host: localhost
             }
         }
     }
+}
 --- config
     location /t {
         proxy_set_header Host "";
@@ -103,6 +113,7 @@ host: kong
 
 
 === TEST 4: request.get_forwarded_host() returns host using request line from last hop when not trusted
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -124,6 +135,7 @@ host: test
 
 
 === TEST 5: request.get_forwarded_host() returns host using explicit host header from last hop when not trusted
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -146,6 +158,7 @@ host: kong
 
 
 === TEST 6: request.get_forwarded_host() request line overrides host header from last hop when not trusted
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -168,6 +181,7 @@ host: test
 
 
 === TEST 7: request.get_host() request line is normalized and taken from last hop when not trusted
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -190,6 +204,7 @@ host: test
 
 
 === TEST 8: request.get_host() explicit host header is normalized and taken from last hop when not trusted
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -212,10 +227,13 @@ host: k0ng
 
 
 === TEST 9: request.get_host() server name is normalized and used when not trusted
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        server_name K0nG;
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        server_name k0ng;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location / {
             content_by_lua_block {
@@ -229,6 +247,7 @@ host: k0ng
             }
         }
     }
+}
 --- config
     location /t {
         proxy_set_header Host "";
@@ -246,6 +265,7 @@ host: k0ng
 
 
 === TEST 10: request.get_forwarded_host() returns host from forwarded host header when trusted
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -269,11 +289,14 @@ host: test
 
 
 === TEST 11: request.get_forwarded_host() returns host from forwarded host header with tls when trusted
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock ssl;
-        ssl_certificate $TEST_NGINX_CERT_DIR/test.crt;
-        ssl_certificate_key $TEST_NGINX_CERT_DIR/test.key;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock ssl;
+        ssl_certificate $ENV{TEST_NGINX_CERT_DIR}/test.crt;
+        ssl_certificate_key $ENV{TEST_NGINX_CERT_DIR}/test.key;
 
         location / {
             content_by_lua_block {
@@ -289,6 +312,7 @@ host: test
             }
         }
     }
+}
 --- config
     location = /t {
         proxy_ssl_verify off;
@@ -306,6 +330,7 @@ host: test
 
 
 === TEST 12: request.get_forwarded_host() forwarded host overrides request line and host header when trusted
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -330,6 +355,7 @@ host: test
 
 
 === TEST 13: request.get_host() forwarded host header is normalized
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {

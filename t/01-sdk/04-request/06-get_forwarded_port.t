@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 $ENV{TEST_NGINX_CERT_DIR} ||= File::Spec->catdir(server_root(), '..', 'certs');
@@ -12,6 +13,7 @@ run_tests();
 __DATA__
 
 === TEST 1: request.get_forwarded_port() considers X-Forwarded-Port when trusted
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -35,6 +37,7 @@ type: number
 
 
 === TEST 2: request.get_forwarded_port() doesn't considers X-Forwarded-Port when not trusted
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -58,6 +61,7 @@ port: \d+
 
 
 === TEST 3: request.get_forwarded_port() considers first X-Forwarded-Port if multiple when trusted
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -80,6 +84,7 @@ port: 1234
 
 
 === TEST 4: request.get_forwarded_port() doesn't considers any X-Forwarded-Port headers when not trusted
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -104,6 +109,7 @@ port: \d+
 
 
 === TEST 5: request.get_forwarded_port() falls back to port used in last hop (http)
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -123,11 +129,14 @@ port: \d+
 
 
 === TEST 6: request.get_forwarded_port() falls back to port used in last hop (https)
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock ssl;
-        ssl_certificate $TEST_NGINX_CERT_DIR/test.crt;
-        ssl_certificate_key $TEST_NGINX_CERT_DIR/test.key;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock ssl;
+        ssl_certificate $ENV{TEST_NGINX_CERT_DIR}/test.crt;
+        ssl_certificate_key $ENV{TEST_NGINX_CERT_DIR}/test.key;
 
         location / {
             content_by_lua_block {
@@ -141,6 +150,7 @@ port: \d+
             }
         }
     }
+}
 --- config
     location = /t {
         proxy_ssl_verify off;

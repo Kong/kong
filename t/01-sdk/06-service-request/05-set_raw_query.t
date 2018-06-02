@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 
@@ -11,6 +12,7 @@ run_tests();
 __DATA__
 
 === TEST 1: service.request.set_raw_query() errors if not a string
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -31,6 +33,7 @@ query must be a string
 
 
 === TEST 2: service.request.set_raw_query() errors if given no arguments
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -51,9 +54,13 @@ query must be a string
 
 
 === TEST 3: service.request.set_raw_query() accepts an empty string
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        server_name K0nG;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -61,6 +68,7 @@ query must be a string
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -86,9 +94,13 @@ query: {nil}
 
 
 === TEST 4: service.request.set_raw_query() sets the query string
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        server_name K0nG;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -96,6 +108,7 @@ query: {nil}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -121,9 +134,13 @@ query: {foo=bar&bla&baz=hello%20world}
 
 
 === TEST 5: service.request.set_raw_query() replaces any existing query string
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        server_name K0nG;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -131,6 +148,7 @@ query: {foo=bar&bla&baz=hello%20world}
             }
         }
     }
+}
 --- config
     location = /t {
 

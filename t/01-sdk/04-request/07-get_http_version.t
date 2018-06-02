@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 plan tests => repeat_each() * (blocks() * 3);
 
@@ -9,6 +10,7 @@ run_tests();
 __DATA__
 
 === TEST 1: request.get_http_version() returns request http version 1.0
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -31,6 +33,7 @@ version: 1
 
 
 === TEST 2: request.get_http_version() returns request http version 1.1
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -50,6 +53,7 @@ version: 1.1
 
 
 === TEST 3: request.get_http_version() returns number
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {

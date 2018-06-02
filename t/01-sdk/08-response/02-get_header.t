@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 
@@ -11,6 +12,7 @@ run_tests();
 __DATA__
 
 === TEST 1: response.get_header() returns first header when multiple is given with same name
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -44,6 +46,7 @@ content type header value: application/json
 
 
 === TEST 2: response.get_header() returns values from case-insensitive metatable
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -84,6 +87,7 @@ x_Foo_header: Hello
 
 
 === TEST 3: response.get_header() returns nil when header is missing
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -113,6 +117,7 @@ X-Missing: nil
 
 
 === TEST 4: response.get_header() returns nil when response header does not fit in default max_headers
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -147,6 +152,7 @@ accept header value: nil
 
 
 === TEST 5: response.get_header() raises error when trying to fetch with invalid argument
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -179,9 +185,12 @@ error: header name must be a string
 
 
 === TEST 6: response.get_header() returns not-only service header
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location / {
             content_by_lua_block {
@@ -189,6 +198,7 @@ error: header name must be a string
             }
         }
     }
+}
 --- config
     location = /t {
         access_by_lua_block {

@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 
@@ -11,6 +12,7 @@ run_tests();
 __DATA__
 
 === TEST 1: response.set_status() code must be a number
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -43,6 +45,7 @@ error: code must be a number
 
 
 === TEST 2: response.set_status() code must be a number between 100 and 599
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -90,9 +93,12 @@ code must be a number between 100 and 599
 
 
 === TEST 3: response.set_status() sets response status code
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -106,6 +112,7 @@ code must be a number between 100 and 599
             }
         }
     }
+}
 --- config
     location = /t {
         proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -130,9 +137,12 @@ Status: 204
 
 
 === TEST 4: response.set_status() replaces response status code
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -146,6 +156,7 @@ Status: 204
             }
         }
     }
+}
 --- config
     location = /t {
         proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;

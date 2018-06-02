@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 plan tests => repeat_each() * (blocks() * 3);
 
@@ -9,6 +10,7 @@ run_tests();
 __DATA__
 
 === TEST 1: kong.log.set_format() changes kong.log format and keeps prefix
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -31,6 +33,7 @@ qr/\[kong\] log from kong\.log: hello world/
 
 
 === TEST 2: kong.log.set_format() changes kong.log format for all logging levels
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -55,6 +58,7 @@ qr/\[error\] .*? log from kong\.log: hello world/
 
 
 === TEST 3: log.set_format() makes log() still supports variadic arguments
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -77,6 +81,7 @@ log from kong.log: hello world
 
 
 === TEST 4: log.set_format() accepts no modifier
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -99,6 +104,7 @@ hello world
 
 
 === TEST 5: log.set_format() accepts multiple %message modifiers
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -121,6 +127,7 @@ hello world | hello world
 
 
 === TEST 6: log.set_format() accepts %file_src modifier (by_lua chunk)
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -151,6 +158,7 @@ local sdk = SDK.new()
 sdk.log.set_format("file_src(%file_src) %message")
 
 sdk.log.notice("hello ", "world")
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_file html/my_file.lua;
@@ -178,6 +186,7 @@ local function my_func()
 end
 
 my_func()
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_file html/my_file.lua;
@@ -205,6 +214,7 @@ local function my_func()
 end
 
 my_func()
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_file html/my_file.lua;
@@ -220,6 +230,7 @@ qr/func_name\(my_func\) hello world/
 
 
 === TEST 10: log.set_format() %func_name modifier prints '?' when none
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -242,6 +253,7 @@ qr/func_name\(\?\) hello world/
 
 
 === TEST 11: log.set_format() sets format of namespaced facility
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -266,6 +278,7 @@ log from facility: hello world
 
 
 === TEST 12: log.set_format() accepts %namespace modifier
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -290,6 +303,7 @@ GET /t
 
 
 === TEST 13: log.set_format() does not consider escaped modifiers
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -314,6 +328,7 @@ GET /t
 
 
 === TEST 14: log.set_format() complex format
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -339,6 +354,6 @@ GET /t
 GET /t
 --- no_response_body
 --- error_log
-[kong] [%%namespace: my_namespace | my_namespace, %%file_src: content_by_lua(nginx.conf:57) | content_by_lua(nginx.conf:57), %%line_src: 14 | 14, %%func_name my_func | my_func, %%message hello world | hello world]
+[kong] [%%namespace: my_namespace | my_namespace, %%file_src: content_by_lua(nginx.conf:77) | content_by_lua(nginx.conf:77), %%line_src: 14 | 14, %%func_name my_func | my_func, %%message hello world | hello world]
 --- no_error_log
 [error]

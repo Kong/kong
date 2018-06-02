@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 
@@ -11,6 +12,7 @@ run_tests();
 __DATA__
 
 === TEST 1: client.get_forwarded_ip() returns client ip with X-Real-IP header when trusted
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         real_ip_header X-Real-IP;
@@ -38,6 +40,7 @@ ip: 10.0.0.1
 
 
 === TEST 2: client.get_forwarded_ip() returns client ip with X-Forwarded-For header when trusted
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         real_ip_header X-Forwarded-For;
@@ -65,6 +68,7 @@ ip: 10.0.0.1
 
 
 === TEST 3: client.get_forwarded_ip() returns client ip with X-Forwarded-For header with port when trusted
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         real_ip_header X-Forwarded-For;
@@ -92,9 +96,13 @@ ip: 10.0.0.1
 
 
 === TEST 4: client.get_forwarded_ip() returns client ip with proxy_protocol when trusted
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock proxy_protocol;
+        server_name kong;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock proxy_protocol;
 
         location / {
             real_ip_header proxy_protocol;
@@ -111,6 +119,7 @@ ip: 10.0.0.1
             }
         }
     }
+}
 --- config
     location = /t {
         content_by_lua_block {
@@ -137,6 +146,7 @@ ip: 10.0.0.1
 
 
 === TEST 5: client.get_forwarded_ip() returns client ip from last hop with X-Real-IP header when not trusted
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         real_ip_header X-Real-IP;
@@ -160,6 +170,7 @@ ip: 127.0.0.1
 
 
 === TEST 6: client.get_forwarded_ip() returns client ip from last hop with X-Forwarded-For header when not trusted
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         real_ip_header X-Forwarded-For;
@@ -183,6 +194,7 @@ ip: 127.0.0.1
 
 
 === TEST 7: client.get_forwarded_ip() returns client ip from last hop with X-Forwarded-For header with port when not trusted
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         real_ip_header X-Forwarded-For;
@@ -206,9 +218,13 @@ ip: 127.0.0.1
 
 
 === TEST 8: client.get_forwarded_ip() returns client ip from last hop with proxy_protocol when not trusted
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock proxy_protocol;
+        server_name kong;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock proxy_protocol;
 
         location / {
             real_ip_header proxy_protocol;
@@ -221,6 +237,7 @@ ip: 127.0.0.1
             }
         }
     }
+}
 --- config
     location = /t {
         content_by_lua_block {

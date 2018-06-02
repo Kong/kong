@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 
@@ -11,6 +12,7 @@ run_tests();
 __DATA__
 
 === TEST 1: service.request.set_method() errors if not a string
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -31,6 +33,7 @@ method must be a string
 
 
 === TEST 2: service.request.set_method() errors if given no arguments
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -51,6 +54,7 @@ method must be a string
 
 
 === TEST 3: service.request.set_method() fails if given an invalid method
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -71,6 +75,7 @@ invalid method: FOO
 
 
 === TEST 4: service.request.set_method() demands uppercase methods
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -91,9 +96,12 @@ invalid method: get
 
 
 === TEST 5: service.request.set_method() sets the request method to GET
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -101,6 +109,7 @@ invalid method: get
             }
         }
     }
+}
 --- config
     location = /t {
         access_by_lua_block {
@@ -123,9 +132,12 @@ method: GET
 
 
 === TEST 6: service.request.set_method() sets the request method to HEAD
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -133,6 +145,7 @@ method: GET
             }
         }
     }
+}
 --- config
     location = /t {
         access_by_lua_block {
@@ -154,9 +167,12 @@ method: HEAD
 
 
 === TEST 7: service.request.set_method() sets the request method to PUT
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -164,6 +180,7 @@ method: HEAD
             }
         }
     }
+}
 --- config
     location = /t {
         access_by_lua_block {
@@ -186,9 +203,12 @@ method: PUT
 
 
 === TEST 8: service.request.set_method() sets the request method to POST
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -196,6 +216,7 @@ method: PUT
             }
         }
     }
+}
 --- config
     location = /t {
         access_by_lua_block {
@@ -218,9 +239,12 @@ method: POST
 
 
 === TEST 9: service.request.set_method() sets the request method to DELETE
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -228,6 +252,7 @@ method: POST
             }
         }
     }
+}
 --- config
     location = /t {
         access_by_lua_block {
@@ -250,9 +275,12 @@ method: DELETE
 
 
 === TEST 10: service.request.set_method() sets the request method to OPTIONS
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -260,6 +288,7 @@ method: DELETE
             }
         }
     }
+}
 --- config
     location = /t {
         access_by_lua_block {
@@ -282,9 +311,12 @@ method: OPTIONS
 
 
 === TEST 11: service.request.set_method() sets the request method to MKCOL
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -292,6 +324,7 @@ method: OPTIONS
             }
         }
     }
+}
 --- config
     location = /t {
         access_by_lua_block {
@@ -313,9 +346,12 @@ method: MKCOL
 
 
 === TEST 12: service.request.set_method() sets the request method to COPY
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -323,6 +359,7 @@ method: MKCOL
             }
         }
     }
+}
 --- config
     location = /t {
         access_by_lua_block {
@@ -344,9 +381,12 @@ method: COPY
 
 
 === TEST 13: service.request.set_method() sets the request method to MOVE
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -354,6 +394,7 @@ method: COPY
             }
         }
     }
+}
 --- config
     location = /t {
         access_by_lua_block {
@@ -375,9 +416,12 @@ method: MOVE
 
 
 === TEST 14: service.request.set_method() sets the request method to PROPFIND
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -385,6 +429,7 @@ method: MOVE
             }
         }
     }
+}
 --- config
     location = /t {
         access_by_lua_block {
@@ -406,9 +451,12 @@ method: PROPFIND
 
 
 === TEST 15: service.request.set_method() sets the request method to PROPPATCH
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -416,6 +464,7 @@ method: PROPFIND
             }
         }
     }
+}
 --- config
     location = /t {
         access_by_lua_block {
@@ -437,9 +486,12 @@ method: PROPPATCH
 
 
 === TEST 16: service.request.set_method() sets the request method to LOCK
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -447,6 +499,7 @@ method: PROPPATCH
             }
         }
     }
+}
 --- config
     location = /t {
         access_by_lua_block {
@@ -468,9 +521,12 @@ method: LOCK
 
 
 === TEST 17: service.request.set_method() sets the request method to UNLOCK
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -478,6 +534,7 @@ method: LOCK
             }
         }
     }
+}
 --- config
     location = /t {
         access_by_lua_block {
@@ -499,9 +556,12 @@ method: UNLOCK
 
 
 === TEST 18: service.request.set_method() sets the request method to PATCH
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -509,6 +569,7 @@ method: UNLOCK
             }
         }
     }
+}
 --- config
     location = /t {
         access_by_lua_block {
@@ -530,9 +591,12 @@ method: PATCH
 
 
 === TEST 19: service.request.set_method() sets the request method to TRACE (for which Nginx always returns 405)
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -540,6 +604,7 @@ method: PATCH
             }
         }
     }
+}
 --- config
     location = /t {
         access_by_lua_block {

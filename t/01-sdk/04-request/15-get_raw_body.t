@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 plan tests => repeat_each() * (blocks() * 3);
 
@@ -9,6 +10,7 @@ run_tests();
 __DATA__
 
 === TEST 1: request.get_raw_body() returns empty strings for empty bodies
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -28,6 +30,7 @@ body: ''
 
 
 === TEST 2: request.get_raw_body() returns empty string when Content-Length header is less than 1
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -50,6 +53,7 @@ body: ''
 
 
 === TEST 3: request.get_raw_body() returns body string when Content-Length header is greater than 0
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -72,6 +76,7 @@ body: 'not ignored'
 
 
 === TEST 4: request.get_raw_body() returns the passed body for short bodies
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -92,6 +97,7 @@ body: 'potato'
 
 
 === TEST 5: request.get_raw_body() returns nil + error when the body is too big
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {

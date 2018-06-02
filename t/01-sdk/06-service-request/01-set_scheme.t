@@ -2,6 +2,7 @@ use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 use File::Spec;
+use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 $ENV{TEST_NGINX_CERT_DIR} ||= File::Spec->catdir(server_root(), '..', 'certs');
@@ -13,6 +14,7 @@ run_tests();
 __DATA__
 
 === TEST 1: service.request.set_scheme() errors if not a string
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -35,6 +37,7 @@ scheme must be a string
 
 
 === TEST 2: service.request.set_scheme() errors if not a valid scheme
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -57,11 +60,14 @@ invalid scheme: HTTP
 
 
 === TEST 3: service.request.set_scheme() sets the scheme to https
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen 127.0.0.1:9443 ssl;
-        ssl_certificate $TEST_NGINX_CERT_DIR/test.crt;
-        ssl_certificate_key $TEST_NGINX_CERT_DIR/test.key;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock ssl;
+        ssl_certificate $ENV{TEST_NGINX_CERT_DIR}/test.crt;
+        ssl_certificate_key $ENV{TEST_NGINX_CERT_DIR}/test.key;
 
         location /t {
             content_by_lua_block {
@@ -69,6 +75,7 @@ invalid scheme: HTTP
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -81,7 +88,7 @@ invalid scheme: HTTP
             local ok, err = sdk.service.request.set_scheme("https")
         }
 
-        proxy_pass $upstream_scheme://127.0.0.1:9443;
+        proxy_pass $upstream_scheme://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
     }
 --- request
 GET /t
@@ -93,9 +100,12 @@ scheme: https
 
 
 === TEST 4: service.request.set_scheme() sets the scheme to http
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -103,6 +113,7 @@ scheme: https
             }
         }
     }
+}
 --- config
     location = /t {
 

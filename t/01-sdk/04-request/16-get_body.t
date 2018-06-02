@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 plan tests => repeat_each() * (blocks() * 3);
 
@@ -9,6 +10,7 @@ run_tests();
 __DATA__
 
 === TEST 1: request.get_body() returns arguments with application/x-www-form-urlencoded
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -37,6 +39,7 @@ mime=application/x-www-form-urlencoded
 
 
 === TEST 2: request.get_body() returns arguments with application/json
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -67,6 +70,7 @@ mime=application/json
 
 
 === TEST 3: request.get_body() returns arguments with multipart/form-data
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -99,6 +103,7 @@ mime=multipart/form-data
 
 
 === TEST 4: request.get_body() returns error when missing content type header
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -121,6 +126,7 @@ error: missing content type
 
 
 === TEST 5: request.get_body() returns error when using unsupported content type
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -145,6 +151,7 @@ error: unsupported content type 'application/x-unsupported'
 
 
 === TEST 6: request.get_body() returns error with invalid json body
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -168,6 +175,7 @@ error: invalid json body
 
 
 === TEST 7: request.get_body() content type value is case-insensitive
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -196,6 +204,7 @@ mime=application/x-www-form-urlencoded
 
 
 === TEST 8: request.get_body() with application/x-www-form-urlencoded returns request post arguments
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -223,6 +232,7 @@ Accept: application/json, text/html
 
 
 === TEST 9: request.get_body() with application/x-www-form-urlencoded returns empty table with header Content-Length: 0
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -246,6 +256,7 @@ next: nil
 
 
 === TEST 10: request.get_body() with application/x-www-form-urlencoded returns request post arguments case-sensitive
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -273,6 +284,7 @@ fOO: Too
 
 
 === TEST 11: request.get_body() with application/x-www-form-urlencoded fetches 100 post arguments by default
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         rewrite_by_lua_block {
@@ -309,6 +321,7 @@ number of query arguments fetched: 100
 
 
 === TEST 12: request.get_body() with application/x-www-form-urlencoded fetches max_args argument
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         rewrite_by_lua_block {
@@ -345,6 +358,7 @@ number of query arguments fetched: 60
 
 
 === TEST 13: request.get_body() with application/x-www-form-urlencoded raises error when trying to fetch with max_args invalid value
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -366,6 +380,7 @@ error: max_args must be a number
 
 
 === TEST 14: request.get_body() with application/x-www-form-urlencoded raises error when trying to fetch with max_args < 1
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -387,6 +402,7 @@ error: max_args must be >= 1
 
 
 === TEST 15: request.get_body() with application/x-www-form-urlencoded raises error when trying to fetch with max_args > 1000
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -408,6 +424,7 @@ error: max_args must be <= 1000
 
 
 === TEST 16: request.get_body() with application/x-www-form-urlencoded returns nil + error when the body is too big
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {

@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 
@@ -11,6 +12,7 @@ run_tests();
 __DATA__
 
 === TEST 1: service.request.set_raw_body() errors if not a string
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -31,6 +33,7 @@ body must be a string
 
 
 === TEST 2: service.request.set_raw_body() errors if given no arguments
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -51,9 +54,12 @@ body must be a string
 
 
 === TEST 3: service.request.set_raw_body() accepts an empty string
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -62,6 +68,7 @@ body must be a string
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -88,9 +95,12 @@ body: {nil}
 
 
 === TEST 4: service.request.set_raw_body() sets the body
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -99,6 +109,7 @@ body: {nil}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -125,9 +136,12 @@ body: {foo=bar&bla&baz=hello%20world}
 
 
 === TEST 5: service.request.set_raw_body() sets a short body
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -136,6 +150,7 @@ body: {foo=bar&bla&baz=hello%20world}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -162,9 +177,12 @@ body: {ovo}
 
 
 === TEST 6: service.request.set_raw_body() is 8-bit clean
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -184,6 +202,7 @@ body: {ovo}
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -226,9 +245,12 @@ GET /t
 
 
 === TEST 7: service.request.set_raw_body() replaces any existing body
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location /t {
             content_by_lua_block {
@@ -237,6 +259,7 @@ GET /t
             }
         }
     }
+}
 --- config
     location = /t {
 
@@ -265,9 +288,12 @@ body: {I am another body}
 
 
 === TEST 8: service.request.set_raw_body() has no size limits for sending
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         client_max_body_size 10m;
         client_body_buffer_size 10m;
@@ -282,6 +308,7 @@ body: {I am another body}
             }
         }
     }
+}
 --- config
     location = /t {
 

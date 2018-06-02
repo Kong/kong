@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 plan tests => repeat_each() * (blocks() * 3);
 
@@ -9,6 +10,7 @@ run_tests();
 __DATA__
 
 === TEST 1: request.get_headers() returns a table
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -28,6 +30,7 @@ type: table
 
 
 === TEST 2: request.get_headers() returns request headers
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -57,6 +60,7 @@ Accept: application/json, text/html
 
 
 === TEST 3: request.get_headers() returns request headers with case-insensitive metatable
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -85,6 +89,7 @@ x_Foo_header: Hello
 
 
 === TEST 4: request.get_headers() fetches 100 headers max by default
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         rewrite_by_lua_block {
@@ -118,6 +123,7 @@ number of headers fetched: 100
 
 
 === TEST 5: request.get_headers() fetches max_headers argument
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         rewrite_by_lua_block {
@@ -151,6 +157,7 @@ number of headers fetched: 60
 
 
 === TEST 6: request.get_headers() raises error when trying to fetch with max_headers invalid value
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -172,6 +179,7 @@ error: max_headers must be a number
 
 
 === TEST 7: request.get_headers() raises error when trying to fetch with max_headers < 1
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -193,6 +201,7 @@ error: max_headers must be >= 1
 
 
 === TEST 8: request.get_headers() raises error when trying to fetch with max_headers > 1000
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {

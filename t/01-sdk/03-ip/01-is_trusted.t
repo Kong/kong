@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 plan tests => repeat_each() * (blocks() * 3);
 
@@ -9,6 +10,7 @@ run_tests();
 __DATA__
 
 === TEST 1: ip.is_trusted() trusts all IPs if trusted_ips = 0.0.0.0/0 (ipv4)
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -52,6 +54,7 @@ ok
 
 
 === TEST 2: ip.is_trusted() trusts all IPs if trusted_ips = ::/0 (ipv6)
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -94,6 +97,7 @@ ok
 
 
 === TEST 3: ip.is_trusted() trusts none if no trusted_ip (ipv4)
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -137,6 +141,7 @@ ok
 
 
 === TEST 4: ip.is_trusted() trusts none if no trusted_ip (ipv6)
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -180,6 +185,7 @@ ok
 
 === TEST 5: ip.is_trusted() trusts range (ipv4)
 --- SKIP: TODO
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -197,6 +203,7 @@ GET /t
 
 === TEST 6: ip.is_trusted() trusts range (ipv6)
 --- SKIP: TODO
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {

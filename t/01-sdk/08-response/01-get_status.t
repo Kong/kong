@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 
@@ -11,6 +12,7 @@ run_tests();
 __DATA__
 
 === TEST 1: response.get_status() returns a number
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
@@ -40,14 +42,18 @@ type: number
 
 
 === TEST 2: response.get_status() returns 200 from service
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location / {
             return 200;
         }
     }
+}
 --- config
     location /t {
         proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -74,14 +80,18 @@ status: 200
 
 
 === TEST 3: response.get_status() returns 404 from service
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location / {
             return 404;
         }
     }
+}
 --- config
     location /t {
         proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
@@ -109,9 +119,12 @@ status: 404
 
 
 === TEST 4: response.get_status() returns last status code set
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
 
         location / {
             content_by_lua_block {
@@ -119,6 +132,7 @@ status: 404
             }
         }
     }
+}
 --- config
     location /t {
         rewrite_by_lua_block {

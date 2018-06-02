@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 
@@ -11,6 +12,7 @@ run_tests();
 __DATA__
 
 === TEST 1: service.set_upstream() errors if not a string
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         content_by_lua_block {
@@ -31,6 +33,7 @@ host must be a string
 
 
 === TEST 2: service.set_upstream() sets ngx.ctx.balancer_address.host
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
 
@@ -71,6 +74,7 @@ host: my_upstream
 
 
 === TEST 3: service.set_upstream() fails when given an invalid upstream
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
 

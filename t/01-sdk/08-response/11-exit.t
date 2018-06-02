@@ -1,6 +1,7 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
+use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 
@@ -11,6 +12,7 @@ run_tests();
 __DATA__
 
 === TEST 1: response.exit() code must be a number
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -34,6 +36,7 @@ code must be a number
 
 
 === TEST 2: response.exit() code must be a number between 100 and 599
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -64,6 +67,7 @@ code must be a number between 100 and 599
 
 
 === TEST 3: response.exit() body must be a nil, string or table
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -105,6 +109,7 @@ body must be a nil, string or table
 
 
 === TEST 4: response.exit() errors if headers have already been sent
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -130,6 +135,7 @@ headers have already been sent
 
 
 === TEST 5: response.exit() errors if headers have already been sent with delayed response
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -160,6 +166,7 @@ headers have already been sent
 
 
 === TEST 6: response.exit() skips all the content phases
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         rewrite_by_lua_block {
@@ -206,6 +213,7 @@ true
 
 
 === TEST 7: response.exit() has no default content
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         default_type '';
@@ -227,6 +235,7 @@ GET /t
 
 
 === TEST 8: response.exit() has no default content (delayed)
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         default_type '';
@@ -255,6 +264,7 @@ Server: kong/\d+\.\d+\.\d+
 
 
 === TEST 9: response.exit() adds server header
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         default_type '';
@@ -278,6 +288,7 @@ Server: kong/\d+\.\d+\.\d+
 
 
 === TEST 10: response.exit() errors if headers is not a table
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -299,7 +310,7 @@ headers must be a nil or table
 
 
 === TEST 11: response.exit() errors if header name is not a string
---- http_config
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -322,7 +333,7 @@ invalid header name "2": got number, expected string
 
 
 === TEST 12: response.exit() errors if header value is of a bad type
---- http_config
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -344,7 +355,7 @@ invalid header value for "foo": got function, expected string, number, boolean o
 
 
 === TEST 13: response.exit() errors if header value array element is of a bad type
---- http_config
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -367,7 +378,7 @@ invalid header value in array "foo": got function, expected string
 
 
 === TEST 14: response.exit() sends "text/plain" response
---- http_config
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -391,7 +402,7 @@ hello
 
 
 === TEST 15: response.exit() sends no content-type header by default
---- http_config
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         default_type 'text/test';
@@ -416,7 +427,7 @@ hello
 
 
 === TEST 16: response.exit() sends json response when body is table
---- http_config
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         default_type 'text/test';
@@ -441,7 +452,7 @@ Content-Type: application/json; charset=utf-8
 
 
 === TEST 17: response.exit() sends json response when body is table overrides content-type
---- http_config
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         default_type 'text/test';
@@ -468,7 +479,7 @@ Content-Type: application/json; charset=utf-8
 
 
 === TEST 18: response.exit() sets content-length header
---- http_config
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         default_type 'text/test';
@@ -496,7 +507,7 @@ Content-Length: 0
 
 
 === TEST 19: response.exit() sets content-length header even when no body
---- http_config
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         default_type 'text/test';
@@ -525,7 +536,7 @@ Content-Length: 0
 
 
 === TEST 20: response.exit() sets content-length header with text body
---- http_config
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         default_type 'text/test';
@@ -554,7 +565,7 @@ a
 
 
 === TEST 21: response.exit() sets content-length header with table body
---- http_config
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         default_type 'text/test';

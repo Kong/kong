@@ -2,6 +2,7 @@ use strict;
 use warnings FATAL => 'all';
 use Test::Nginx::Socket::Lua;
 use File::Spec;
+use t::Util;
 
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
 $ENV{TEST_NGINX_CERT_DIR} ||= File::Spec->catdir(server_root(), '..', 'certs');
@@ -13,6 +14,7 @@ run_tests();
 __DATA__
 
 === TEST 1: request.get_scheme() returns http for plain text requests
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
@@ -32,11 +34,14 @@ scheme: http
 
 
 === TEST 2: request.get_scheme() returns https for TLS requests
---- http_config
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
     server {
-        listen unix:$TEST_NGINX_HTML_DIR/nginx.sock ssl;
-        ssl_certificate $TEST_NGINX_CERT_DIR/test.crt;
-        ssl_certificate_key $TEST_NGINX_CERT_DIR/test.key;
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock ssl;
+        ssl_certificate $ENV{TEST_NGINX_CERT_DIR}/test.crt;
+        ssl_certificate_key $ENV{TEST_NGINX_CERT_DIR}/test.key;
 
         location / {
             content_by_lua_block {
@@ -50,6 +55,7 @@ scheme: http
             }
         }
     }
+}
 --- config
     location = /t {
         proxy_ssl_verify off;
@@ -65,6 +71,7 @@ scheme: https
 
 
 === TEST 3: request.get_scheme() is normalized
+--- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
         access_by_lua_block {
