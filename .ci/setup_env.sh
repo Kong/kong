@@ -8,8 +8,9 @@ OPENSSL_DOWNLOAD=$DOWNLOAD_CACHE/openssl-$OPENSSL
 OPENRESTY_DOWNLOAD=$DOWNLOAD_CACHE/openresty-$OPENRESTY
 OPENRESTY_PATCHES_DOWNLOAD=$DOWNLOAD_CACHE/openresty-patches-master
 LUAROCKS_DOWNLOAD=$DOWNLOAD_CACHE/luarocks-$LUAROCKS
+CPAN_DOWNLOAD=$DOWNLOAD_CACHE/cpanm
 
-mkdir -p $OPENSSL_DOWNLOAD $OPENRESTY_DOWNLOAD $OPENRESTY_PATCHES_DOWNLOAD $LUAROCKS_DOWNLOAD
+mkdir -p $OPENSSL_DOWNLOAD $OPENRESTY_DOWNLOAD $OPENRESTY_PATCHES_DOWNLOAD $LUAROCKS_DOWNLOAD $CPAN_DOWNLOAD
 
 if [ ! "$(ls -A $OPENSSL_DOWNLOAD)" ]; then
   pushd $DOWNLOAD_CACHE
@@ -31,6 +32,10 @@ fi
 
 if [ ! "$(ls -A $LUAROCKS_DOWNLOAD)" ]; then
   git clone -q https://github.com/keplerproject/luarocks.git $LUAROCKS_DOWNLOAD
+fi
+
+if [ ! "$(ls -A $CPAN_DOWNLOAD)" ]; then
+  wget -O $CPAN_DOWNLOAD/cpanm https://cpanmin.us
 fi
 
 #--------
@@ -96,7 +101,7 @@ fi
 
 export OPENSSL_DIR=$OPENSSL_INSTALL # for LuaSec install
 
-export PATH=$PATH:$OPENRESTY_INSTALL/nginx/sbin:$OPENRESTY_INSTALL/bin:$LUAROCKS_INSTALL/bin
+export PATH=$PATH:$OPENRESTY_INSTALL/nginx/sbin:$OPENRESTY_INSTALL/bin:$LUAROCKS_INSTALL/bin:$CPAN_DOWNLOAD
 
 eval `luarocks path`
 
@@ -110,6 +115,14 @@ if [[ "$TEST_SUITE" != "unit" ]] && [[ "$TEST_SUITE" != "lint" ]]; then
   ccm start -v
   ccm status
 fi
+
+# -------------------
+# Install Test::Nginx
+# -------------------
+echo "Installing CPAN dependencies..."
+chmod +x $CPAN_DOWNLOAD/cpanm
+cpanm --notest Test::Nginx &> build.log || (cat build.log && exit 1)
+cpanm --notest --local-lib=$TRAVIS_BUILD_DIR/perl5 local::lib && eval $(perl -I $TRAVIS_BUILD_DIR/perl5/lib/perl5/ -Mlocal::lib)
 
 nginx -V
 resty -V
