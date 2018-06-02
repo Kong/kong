@@ -590,5 +590,3 @@ Content-Length: 19
 {"message":"hello"}
 --- no_error_log
 [error]
-
-
