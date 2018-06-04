@@ -103,7 +103,7 @@ local function send_response(status_code)
   -- @see https://github.com/openresty/lua-nginx-module
   -- @param content (Optional) The content to send as a response.
   -- @return ngx.exit (Exit current context)
-  return function(content, headers)
+  return function(content, headers, options)
     local ctx = ngx.ctx
 
     if ctx.delay_response and not ctx.delayed_response then
@@ -111,6 +111,7 @@ local function send_response(status_code)
         status_code = status_code,
         content = content,
         headers = headers,
+        options = options,
       }
 
       coroutine.yield()
@@ -137,8 +138,12 @@ local function send_response(status_code)
 
     local encoded, err
     if content then
-      encoded, err = cjson.encode(type(content) == "table" and content or
-                                  {message = content})
+      if options and options.encoded_content then
+        encoded = content
+      else
+        encoded, err = cjson.encode(type(content) == "table" and content or
+                                    {message = content})
+      end
       if not encoded then
         ngx.log(ngx.ERR, "[admin] could not encode value: ", err)
 
@@ -162,7 +167,8 @@ function _M.flush_delayed_response(ctx)
 
   _M.send(ctx.delayed_response.status_code,
           ctx.delayed_response.content,
-          ctx.delayed_response.headers)
+          ctx.delayed_response.headers,
+          ctx.delayed_response.options)
 end
 
 -- Generate sugar methods (closures) for the most used HTTP status codes.
@@ -183,15 +189,17 @@ local closure_cache = {}
 -- @param[type=number] status_code HTTP status code to send
 -- @param body A string or table which will be the body of the sent response. If table, the response will be encoded as a JSON object. If string, the response will be a JSON object and the string will be contained in the `message` property.
 -- @param[type=table] headers Response headers to send.
+-- @param[type=table] options Extra options for changing the response.
 -- @return ngx.exit (Exit current context)
-function _M.send(status_code, body, headers)
+function _M.send(status_code, body, headers, options)
   local res = closure_cache[status_code]
   if not res then
     res = send_response(status_code)
     closure_cache[status_code] = res
   end
 
-  return res(body, headers)
+  return res(body, headers, options)
 end
 
 return _M
+
