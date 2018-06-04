@@ -585,6 +585,13 @@ return {
       ctx.router_matches   = match_t.matches
       ctx.balancer_address = balancer_address
 
+      -- Add internal flag to requests which communicate through the internal
+      -- proxies to reduce repeated lookups throughout the codebase
+      local internal_proxies = singletons.internal_proxies
+      if ctx.service and internal_proxies:has_service(ctx.service.id) then
+        ctx.is_internal = true
+      end
+
       -- `scheme` is the scheme to use for the upstream call
       -- `uri` is the URI with which to call upstream, as returned by the
       --       router, which might have truncated it (`strip_uri`).
