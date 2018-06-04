@@ -271,3 +271,57 @@ X-Non-Service-Header: nil
 X-Non-Service-Header: test
 --- no_error_log
 [error]
+
+
+
+=== TEST 7: service.response.get_header() doesn't include headers set by response.set_header
+--- http_config eval
+qq{
+    $t::Util::HttpConfig
+
+    server {
+        listen unix:$ENV{TEST_NGINX_HTML_DIR}/nginx.sock;
+
+        location / {
+            content_by_lua_block {
+                ngx.header["X-Service-Header"] = "test"
+            }
+        }
+    }
+}
+--- config
+    location = /t {
+        access_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            sdk.response.set_header("X-Non-Service-Header", "test")
+        }
+
+        proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;
+
+        header_filter_by_lua_block {
+            ngx.header.content_length = nil
+        }
+
+        body_filter_by_lua_block {
+            local SDK = require "kong.sdk"
+            local sdk = SDK.new()
+
+            local get_header = sdk.service.response.get_header
+
+            ngx.arg[1] = "X-Service-Header: " .. get_header("X-Service-Header") .. "\n" ..
+                         "X-Non-Service-Header: " .. type(get_header("X-Non-Service-Header")) .. "\n" ..
+                         "X-Non-Service-Header: " .. ngx.header["X-Non-Service-Header"]
+
+            ngx.arg[2] = true
+        }
+    }
+--- request
+GET /t
+--- response_body chop
+X-Service-Header: test
+X-Non-Service-Header: nil
+X-Non-Service-Header: test
+--- no_error_log
+[error]
