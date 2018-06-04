@@ -1,10 +1,13 @@
 local checks = {}
 
 
+local tostring = tostring
 local ipairs = ipairs
 local pairs = pairs
-local string_format = string.format
+local error = error
 local type = type
+local fmt = string.format
+
 
 
 function checks.normalize_multi_header(value)
@@ -42,7 +45,7 @@ end
 function checks.validate_header(name, value)
   local tname = type(name)
   if tname ~= "string" then
-    error(string_format("invalid header name %q: got %s, " ..
+    error(fmt("invalid header name %q: got %s, " ..
                         "expected string", name, tname), 3)
   end
 
@@ -51,7 +54,7 @@ function checks.validate_header(name, value)
     if tvalue == "number" or tvalue == "boolean" then
       value = tostring(value)
     else
-      error(string_format("invalid header value for %q: got %s, expected " ..
+      error(fmt("invalid header value for %q: got %s, expected " ..
                           "string, number or boolean", name, tvalue), 3)
     end
   end
@@ -67,7 +70,7 @@ function checks.validate_headers(headers)
   for k, v in pairs(headers) do
     local tk = type(k)
     if tk ~= "string" then
-      error(string_format("invalid header name %q: got %s, " ..
+      error(fmt("invalid header name %q: got %s, " ..
                           "expected string", k, tk), 3)
     end
 
@@ -79,14 +82,14 @@ function checks.validate_headers(headers)
         for _, vv in ipairs(v) do
           local tvv = type(vv)
           if tvv ~= "string" then
-            error(string_format("invalid header value in array %q: got %s, " ..
+            error(fmt("invalid header value in array %q: got %s, " ..
                                 "expected string", k, tvv), 3)
           end
         end
 
       elseif tv ~= "number" and tv ~= "boolean" then
 
-        error(string_format("invalid header value for %q: got %s, " ..
+        error(fmt("invalid header value for %q: got %s, " ..
                             "expected string, number, boolean or " ..
                             "array of strings", k, tv), 3)
       end
