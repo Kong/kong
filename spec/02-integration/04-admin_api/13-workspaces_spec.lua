@@ -4,6 +4,7 @@ local helpers     = require "spec.helpers"
 local cjson       = require "cjson"
 local utils       = require "kong.tools.utils"
 local workspaces  = require "kong.workspaces"
+local singletons  = require "kong.singletons"
 
 
 dao_helpers.for_each_dao(function(kong_config)
@@ -13,9 +14,10 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
 
   setup(function()
     dao = assert(DAOFactory.new(kong_config))
+    singletons.dao = dao
 
     dao:truncate_tables()
-    helpers.run_migrations(dao)
+    helpers.dao:run_migrations()
     assert(helpers.start_kong({
       database = kong_config.database
     }))
@@ -196,9 +198,12 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
       uuid1, uuid2 = "182f2cc8-008e-11e8-ba89-0ed5f89f718b",
                      "182f2f2a-008e-11e8-ba89-0ed5f89f718b"
 
+      ngx.ctx.workspaces = {}
       local w = dao.workspaces:find_all({
         name = "foo",
       })
+      ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
+
       w = w[1].id
 
       assert(dao.workspace_entities:insert({
@@ -225,6 +230,7 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         -- only workspace foo belongs to the default workspace
+
         assert.equals(1, #json.data)
       end)
       it("returns a list of entities associated with the workspace", function()
@@ -520,7 +526,8 @@ describe("Admin API #" .. kong_config.database, function()
   local dao
   setup(function()
     dao = assert(DAOFactory.new(kong_config))
-    helpers.run_migrations(dao)
+    singletons.dao = dao
+    helpers.dao:run_migrations()
 
     assert(helpers.start_kong{
       database = kong_config.database
@@ -534,7 +541,7 @@ describe("Admin API #" .. kong_config.database, function()
     describe("Refresh the router", function()
       before_each(function()
         client = assert(helpers.admin_client())
-        helpers.run_migrations(dao)
+        helpers.dao:run_migrations()
       end)
       after_each(function()
         if client then client:close() end
