@@ -17,8 +17,6 @@ local type        = type
 local function build_router_without(excluded_route)
   local routes, i = {}, 0
   local db = singletons.db
-  local old_wss = ngx.ctx.workspaces
-  ngx.ctx.workspaces = {}
   local routes_iterator = db.routes:each()
 
   local route, err = routes_iterator()
@@ -73,7 +71,6 @@ local function build_router_without(excluded_route)
     end
     return r1.regex_priority > r2.regex_priority
   end)
-  ngx.ctx.workspaces = old_wss
 
   local router, err = Router.new(routes)
   if not router then
@@ -112,7 +109,12 @@ return {
 
     PATCH = function(self, db, helpers, parent)
       -- create temporary router
+
+      local old_workspaces = ngx.ctx.workspaces
+      ngx.ctx.workspaces = {}
       local r = build_router_without(self.params.routes)
+      ngx.ctx.workspaces = old_workspaces
+
       if workspaces.is_route_colliding(self, r) then
         local err = "API route collides with an existing API"
         return responses.send_HTTP_CONFLICT(err)
