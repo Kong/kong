@@ -50,6 +50,7 @@ describe("Plugins", function()
 
     local order = {
       "zipkin",
+      "ip-restriction",
       "bot-detection",
       "cors",
       "jwt",
