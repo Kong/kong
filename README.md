@@ -10,5 +10,10 @@ for details on installation and usage.
 
 # History
 
+0.1.1
+
+- Fix delayed response
+- Change "Server" header to "Via" header and only add it when configured
+
 0.1.0 Initial release
 

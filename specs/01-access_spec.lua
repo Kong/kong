@@ -1,4 +1,8 @@
 local helpers = require "spec.helpers"
+local meta = require "kong.meta"
+
+
+local server_tokens = meta._SERVER_TOKENS
 
 
 for _, strategy in helpers.each_strategy() do
@@ -36,8 +40,8 @@ for _, strategy in helpers.each_strategy() do
       }
 
       assert(helpers.start_kong{
-        database   = strategy,
-        custom_plugins = "azure-functions",
+        database = strategy,
+        plugins  = "azure-functions",
       })
 
     end) -- setup
@@ -129,6 +133,32 @@ for _, strategy in helpers.each_strategy() do
       --assert.same({}, json.headers)
       assert.same("anything_but_an_API_key", json.headers["X-Functions-Key"])
       assert.same("and_no_clientid", json.headers["X-Functions-Clientid"])
+    end)
+
+    it("returns server tokens with Via header", function()
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/",
+        query   = { hello = "world" },
+        headers = {
+          ["Host"] = "azure2.com"
+        }
+      })
+
+      assert.equal(server_tokens, res.headers["Via"])
+    end)
+
+    it("returns Content-Length header", function()
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/",
+        query   = { hello = "world" },
+        headers = {
+          ["Host"] = "azure2.com"
+        }
+      })
+
+      assert.equal(369, tonumber(res.headers["Content-Length"]))
     end)
 
   end) -- describe

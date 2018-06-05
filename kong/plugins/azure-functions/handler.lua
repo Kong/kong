@@ -1,29 +1,61 @@
 local BasePlugin    = require "kong.plugins.base_plugin"
+local singletons    = require "kong.singletons"
 local responses     = require "kong.tools.responses"
+local constants     = require "kong.constants"
 local meta          = require "kong.meta"
 local http          = require "resty.http"
 
+
 local pairs         = pairs
+local type          = type
+local ngx           = ngx
 local get_body_data = ngx.req.get_body_data
 local get_uri_args  = ngx.req.get_uri_args
 local get_headers   = ngx.req.get_headers
 local read_body     = ngx.req.read_body
 local get_method    = ngx.req.get_method
-local ngx_print     = ngx.print
-local ngx_exit      = ngx.exit
 local ngx_log       = ngx.log
-local response_headers = ngx.header
 local var           = ngx.var
 
 
-local SERVER        = meta._NAME .. "/" .. meta._VERSION
+local server_header = meta._SERVER_TOKENS
 local conf_cache    = setmetatable({}, { __mode = "k" })
+
+
+local function send(status, content, headers)
+  ngx.status = status
+
+  if type(headers) == "table" then
+    for k, v in pairs(headers) do
+      ngx.header[k] = v
+    end
+  end
+
+  if not ngx.header["Content-Length"] then
+    ngx.header["Content-Length"] = #content
+  end
+
+  if singletons.configuration.enabled_headers[constants.HEADERS.VIA] then
+    ngx.header[constants.HEADERS.VIA] = server_header
+  end
+
+  ngx.print(content)
+
+  return ngx.exit(status)
+end
+
+
+local function flush(ctx)
+  ctx = ctx or ngx.ctx
+  local response = ctx.delayed_response
+  return send(response.status_code, response.content, response.headers)
+end
 
 
 local azure = BasePlugin:extend()
 
 azure.PRIORITY = 749
-azure.VERSION = "0.1.0"
+azure.VERSION = "0.1.1"
 
 
 function azure:new()
@@ -115,22 +147,29 @@ function azure:access(config)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
-  -- prepare response for downstream
-  for k, v in pairs(res.headers) do
-    response_headers[k] = v
-  end
-
-  response_headers.Server = SERVER
-  ngx.status = res.status
-  local response_body = res:read_body()
-  ngx_print(response_body)
+  local response_headers = res.headers
+  local response_status = res.status
+  local response_content = res:read_body()
 
   ok, err = client:set_keepalive(config.keepalive)
   if not ok then
     ngx_log(ngx.ERR, "[azure-functions] could not keepalive connection: ", err)
   end
 
-  return ngx_exit(res.status)
+  local ctx = ngx.ctx
+  if ctx.delay_response and not ctx.delayed_response then
+    ctx.delayed_response = {
+      status_code               = response_status,
+      content                   = response_content,
+      headers                   = response_headers,
+    }
+
+    ctx.delayed_response_callback = flush
+
+    return
+  end
+
+  return send(response_status, response_content, response_headers)
 end
 
 
