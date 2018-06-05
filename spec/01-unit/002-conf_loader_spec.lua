@@ -95,6 +95,35 @@ describe("Configuration loader", function()
     assert.equal(false, conf.proxy_listeners[2].http2)
     assert.equal("0.0.0.0:8443 ssl", conf.proxy_listeners[2].listener)
   end)
+  it("parses IPv6 from proxy_listen/admin_listen", function()
+    local conf = assert(conf_loader(nil, {
+      proxy_listen = "[::]:8000, [::]:8443 ssl",
+      admin_listen = "[::1]:8001, [::1]:8444 ssl",
+    }))
+    assert.equal("[0000:0000:0000:0000:0000:0000:0000:0001]", conf.admin_listeners[1].ip)
+    assert.equal(8001, conf.admin_listeners[1].port)
+    assert.equal(false, conf.admin_listeners[1].ssl)
+    assert.equal(false, conf.admin_listeners[1].http2)
+    assert.equal("[0000:0000:0000:0000:0000:0000:0000:0001]:8001", conf.admin_listeners[1].listener)
+
+    assert.equal("[0000:0000:0000:0000:0000:0000:0000:0001]", conf.admin_listeners[2].ip)
+    assert.equal(8444, conf.admin_listeners[2].port)
+    assert.equal(true, conf.admin_listeners[2].ssl)
+    assert.equal(false, conf.admin_listeners[2].http2)
+    assert.equal("[0000:0000:0000:0000:0000:0000:0000:0001]:8444 ssl", conf.admin_listeners[2].listener)
+
+    assert.equal("[0000:0000:0000:0000:0000:0000:0000:0000]", conf.proxy_listeners[1].ip)
+    assert.equal(8000, conf.proxy_listeners[1].port)
+    assert.equal(false, conf.proxy_listeners[1].ssl)
+    assert.equal(false, conf.proxy_listeners[1].http2)
+    assert.equal("[0000:0000:0000:0000:0000:0000:0000:0000]:8000", conf.proxy_listeners[1].listener)
+
+    assert.equal("[0000:0000:0000:0000:0000:0000:0000:0000]", conf.proxy_listeners[2].ip)
+    assert.equal(8443, conf.proxy_listeners[2].port)
+    assert.equal(true, conf.proxy_listeners[2].ssl)
+    assert.equal(false, conf.proxy_listeners[2].http2)
+    assert.equal("[0000:0000:0000:0000:0000:0000:0000:0000]:8443 ssl", conf.proxy_listeners[2].listener)
+  end)
   it("extracts ssl flags properly when hostnames contain them", function()
     local conf
     conf = assert(conf_loader(nil, {

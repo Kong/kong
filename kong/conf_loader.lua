@@ -564,8 +564,13 @@ local function parse_listeners(values)
       ip.host, ip.port = remainder:match("(.+):([%d]+)$")
 
     else
-      -- It's an IPv4 or IPv6, just normalize it
+      -- It's an IPv4 or IPv6, normalize it
       ip = utils.normalize_ip(remainder)
+      -- nginx requires brackets in IPv6 addresses, but normalize_ip does
+      -- not include them (due to backwards compatibility with its other uses)
+      if ip and ip.type == "ipv6" then
+        ip.host = "[" .. ip.host .. "]"
+      end
     end
 
     if not ip or not ip.port then
