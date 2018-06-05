@@ -309,8 +309,7 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
             local body = assert.res_status(201, res)
             local json = cjson.decode(body)
 
-            assert.equals(entity.id, json[1].entity_id)
-            assert.equals(entity_type, json[1].entity_type)
+            assert.equals(entity.id, json[1].id)
           end
         end)
       end)
