@@ -35,7 +35,7 @@ describe("forward-proxy schema", function()
   end)
 
   it("errors with a missing host", function()
-    local ok, err = validate_entity({
+    local ok = validate_entity({
       proxy_port = 12345,
     }, forward_proxy_schema)
 
@@ -43,7 +43,7 @@ describe("forward-proxy schema", function()
   end)
 
   it("errors with a missing port", function()
-    local ok, err = validate_entity({
+    local ok = validate_entity({
       proxy_host = "127.0.0.1",
     }, forward_proxy_schema)
 

@@ -1,6 +1,11 @@
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
 local pl_file = require "pl.file"
+local meta    = require "kong.meta"
+
+
+local server_tokens = meta._SERVER_TOKENS
+
 
 describe("forward-proxy access", function()
   local client
@@ -37,8 +42,8 @@ describe("forward-proxy access", function()
     })
 
     assert(helpers.start_kong({
-      custom_plugins = "forward-proxy",
-      nginx_conf     = "spec/fixtures/custom_nginx.template",
+      plugins    = "forward-proxy",
+      nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
 
     client = helpers.proxy_client()
@@ -61,7 +66,8 @@ describe("forward-proxy access", function()
       },
     })
 
-    local body = assert.res_status(200, res)
+
+    assert.res_status(200, res)
   end)
 
   it("writes an absolute request URI to the proxy", function()
@@ -124,8 +130,7 @@ describe("forward-proxy access", function()
       },
     })
 
-    local body = assert.res_status(500, res)
-
+    assert.res_status(500, res)
     local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
     assert.matches("failed to connect to proxy: ", err_log, nil, true)
   end)
@@ -133,7 +138,7 @@ describe("forward-proxy access", function()
   describe("displays Kong core headers:", function()
     for _, s in ipairs({ "Proxy", "Upstream" }) do
       local name = string.format("X-Kong-%s-Latency", s)
-  
+
       it(name, function()
         local res = assert(client:send {
           method  = "GET",
@@ -142,10 +147,23 @@ describe("forward-proxy access", function()
             host = "api-1.com",
           },
         })
-  
+
         assert.res_status(200, res)
         assert.matches("^%d+$", res.headers[name])
       end)
     end
   end)
+
+  it("returns server tokens with Via header", function()
+    local res = assert(client:send {
+      method  = "GET",
+      path    = "/get",
+      headers = {
+        host = "api-1.com",
+      },
+    })
+
+    assert.equal(server_tokens, res.headers["Via"])
+  end)
+
 end)
