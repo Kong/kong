@@ -229,9 +229,7 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
-        -- only workspace foo belongs to the default workspace
-
-        assert.equals(1, #json.data)
+        assert.equals(2, #json.data)
       end)
       it("returns a list of entities associated with the workspace", function()
         local res = assert(client:send {
