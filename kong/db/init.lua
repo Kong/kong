@@ -139,7 +139,9 @@ end
 
 
 function DB:truncate()
-  return self.connector:truncate()
+  local ok, err = self.connector:truncate()
+  workspaces.create_default()
+  return ok, err
 end
 
 

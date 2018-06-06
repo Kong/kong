@@ -131,6 +131,8 @@ function _M.create_default(dao)
   }, { quiet = true })
 
   if not err then
+    dao.workspace_entities:truncate()
+
     dao.workspace_entities:insert({
         workspace_id = res.id,
         entity_id = res.id,

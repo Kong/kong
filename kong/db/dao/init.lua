@@ -193,7 +193,7 @@ local function generate_foreign_key_methods(self)
         -- entity not found, return
         local ws_scope = workspaces.get_workspaces()
         if #ws_scope > 0 then
-          return nil
+          return true
         end
 
         local _, err_t = self.strategy:delete_by_field(name, unique_value)

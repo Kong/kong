@@ -34,8 +34,10 @@ function _M.apply_unique_per_ws(table_name, params, constraints)
   end
 
   for field_name, field_schema in pairs(constraints.unique_keys) do
+    -- skip if no unique key or it's also a primary, field
+    -- is not set or has null value
     if params[field_name] and constraints.primary_key ~= field_name and
-      field_schema.type ~= "id" then
+      field_schema.type ~= "id" and  params[field_name] ~= ngx.null then
       params[field_name] = fmt("%s:%s", workspace.name, params[field_name])
     end
   end
@@ -94,8 +96,10 @@ function _M.remove_ws_prefix(table_name, row, include_ws)
   end
 
   for field_name, field_schema in pairs(constraints.unique_keys) do
+    -- skip if no unique key or it's also a primary, field
+    -- is not set or has null value
     if row[field_name] and constraints.primary_key ~= field_name and
-      field_schema.type ~= "id" then
+      field_schema.type ~= "id" and row[field_name] ~= ngx.null then
       local names = utils.split(row[field_name], ":")
       if #names > 1 then
         row[field_name] = names[2]

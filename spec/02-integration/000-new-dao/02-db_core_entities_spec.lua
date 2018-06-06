@@ -2,6 +2,7 @@ local Errors  = require "kong.db.errors"
 local utils   = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
+local singletons = require "kong.singletons"
 
 local fmt      = string.format
 local unindent = helpers.unindent
@@ -12,10 +13,16 @@ local a_blank_uuid = "00000000-0000-0000-0000-000000000000"
 
 for _, strategy in helpers.each_strategy() do
   describe("kong.db [#" .. strategy .. "]", function()
-    local db, bp
+    local db, bp, dao
 
     setup(function()
-      bp, db = helpers.get_db_utils(strategy)
+      ngx.ctx.workspaces = nil
+      bp, db, dao = helpers.get_db_utils(strategy, true)
+      singletons.dao = dao
+    end)
+
+    teardown(function()
+      db:truncate()
     end)
 
     --[[
@@ -30,6 +37,12 @@ for _, strategy in helpers.each_strategy() do
 
     describe("Routes", function()
       describe(":insert()", function()
+        setup(function()
+          assert(db:truncate())
+          ngx.ctx.workspaces = nil
+          ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
+        end)
+
         -- no I/O
         it("errors on invalid arg", function()
           assert.has_error(function()
@@ -223,6 +236,12 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe(":select()", function()
+        setup(function()
+          assert(db:truncate())
+          ngx.ctx.workspaces = nil
+          ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
+        end)
+
         -- no I/O
         it("errors on invalid arg", function()
           assert.has_error(function()
@@ -250,6 +269,12 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe(":update()", function()
+        setup(function()
+          assert(db:truncate())
+          ngx.ctx.workspaces = nil
+          ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
+        end)
+
         -- no I/O
         it("errors on invalid arg", function()
           assert.has_error(function()
@@ -446,6 +471,12 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe(":delete()", function()
+        setup(function()
+          assert(db:truncate())
+          ngx.ctx.workspaces = nil
+          ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
+        end)
+
         -- no I/O
         it("errors on invalid arg", function()
           assert.has_error(function()
@@ -486,6 +517,12 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe(":page()", function()
+        setup(function()
+          assert(db:truncate())
+          ngx.ctx.workspaces = nil
+          ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
+        end)
+
         -- no I/O
         it("errors on invalid size", function()
           assert.has_error(function()
@@ -552,6 +589,8 @@ for _, strategy in helpers.each_strategy() do
         describe("page size", function()
           setup(function()
             assert(db:truncate())
+            ngx.ctx.workspaces = nil
+            ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
 
             for i = 1, 1002 do
               bp.routes:insert({ hosts = { "example-" .. i .. ".com" } })
@@ -578,6 +617,8 @@ for _, strategy in helpers.each_strategy() do
         describe("page offset", function()
           setup(function()
             assert(db:truncate())
+            ngx.ctx.workspaces = nil
+            ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
 
             for i = 1, 10 do
               bp.routes:insert({
@@ -719,6 +760,8 @@ for _, strategy in helpers.each_strategy() do
       describe(":each()", function()
         setup(function()
           assert(db:truncate())
+          ngx.ctx.workspaces = nil
+          ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
 
           for i = 1, 100 do
             bp.routes:insert({
@@ -791,7 +834,16 @@ for _, strategy in helpers.each_strategy() do
     --]]
 
     describe("Services", function()
+      setup(function()
+        assert(db:truncate())
+      end)
+
       describe(":insert()", function()
+        setup(function()
+          ngx.ctx.workspaces = nil
+          ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
+        end)
+
         -- no I/O
         it("errors on invalid arg", function()
           assert.has_error(function()
@@ -926,6 +978,11 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe(":select()", function()
+        setup(function()
+          ngx.ctx.workspaces = nil
+          ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
+        end)
+
         -- no I/O
         it("errors on invalid arg", function()
           assert.has_error(function()
@@ -960,6 +1017,8 @@ for _, strategy in helpers.each_strategy() do
       describe(":select_by_name()", function()
         setup(function()
           assert(db:truncate())
+          ngx.ctx.workspaces = nil
+          ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
 
           for i = 1, 5 do
             assert(db.services:insert({
@@ -991,6 +1050,11 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe(":update()", function()
+        setup(function()
+          ngx.ctx.workspaces = nil
+          ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
+        end)
+
         -- no I/O
         it("errors on invalid arg", function()
           assert.has_error(function()
@@ -1089,6 +1153,8 @@ for _, strategy in helpers.each_strategy() do
       describe(":update_by_name()", function()
         before_each(function()
           assert(db:truncate())
+          ngx.ctx.workspaces = nil
+          ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
 
           assert(db.services:insert({
             name = "test-service",
@@ -1191,6 +1257,11 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe(":delete()", function()
+        setup(function()
+          ngx.ctx.workspaces = nil
+          ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
+        end)
+
         -- no I/O
         it("errors on invalid arg", function()
           assert.has_error(function()
@@ -1235,6 +1306,8 @@ for _, strategy in helpers.each_strategy() do
 
         setup(function()
           assert(db:truncate())
+          ngx.ctx.workspaces = nil
+          ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
 
           service = assert(db.services:insert({
             name = "service_1",
@@ -1279,6 +1352,12 @@ for _, strategy in helpers.each_strategy() do
     --]]
 
     describe("Services and Routes association", function()
+      setup(function()
+        ngx.ctx.workspaces = nil
+        ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
+      end)
+
+
       it(":insert() a Route with a relation to a Service", function()
         local service = assert(db.services:insert({
           protocol = "http",
@@ -1499,6 +1578,8 @@ for _, strategy in helpers.each_strategy() do
           describe("page size", function()
             setup(function()
               assert(db:truncate())
+              ngx.ctx.workspaces = nil
+              ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
 
               service = bp.services:insert()
 
@@ -1532,6 +1613,8 @@ for _, strategy in helpers.each_strategy() do
           describe("page offset", function()
             setup(function()
               assert(db:truncate())
+              ngx.ctx.workspaces = nil
+              ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
 
               service = bp.services:insert()
 

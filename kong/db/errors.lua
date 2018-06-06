@@ -1,5 +1,7 @@
 local pl_pretty = require("pl.pretty").write
 local pl_keys = require("pl.tablex").keys
+local workspaces = require "kong.workspaces"
+local utils = require "kong.tools.utils"
 
 
 local type         = type
@@ -288,6 +290,13 @@ end
 function _M:unique_violation(unique_key)
   if type(unique_key) ~= "table" then
     error("unique_key must be a table", 2)
+  end
+
+  for k, v in pairs(unique_key) do
+    local ws_value = utils.split(v , ":")
+    if #ws_value > 1 then
+      unique_key[k] = ws_value[2]
+    end
   end
 
   local message = fmt("UNIQUE violation detected on '%s'",
