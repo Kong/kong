@@ -210,6 +210,9 @@ return {
       if err then
         return helpers.yield_error(err)
       end
+      if not e[1] then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
 
       for _, row in ipairs(e) do
         local _, err = dao_factory.workspace_entities:delete(row)
