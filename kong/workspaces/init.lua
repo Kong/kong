@@ -1,7 +1,7 @@
 local singletons = require "kong.singletons"
 local utils      = require "kong.tools.utils"
 local tablex = require "pl.tablex"
-
+local cjson = require "cjson"
 
 
 local find    = string.find
@@ -423,9 +423,9 @@ end
 
 
 local function sanitize_ngx_nulls(methods, uris, hosts)
-  return (methods == ngx.null) and "" or methods,
-         (uris    == ngx.null) and "" or uris,
-         (hosts   == ngx.null) and "" or hosts
+  return ((methods == cjson.null) or (methods == ngx.null)) and {[""] = ""} or methods,
+         ((uris    == cjson.null) or (uris    == ngx.null)) and {[""] = ""} or uris,
+         ((hosts   == cjson.null) or (hosts   == ngx.null)) and {[""] = ""} or hosts
 end
 
 
