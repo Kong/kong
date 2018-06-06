@@ -7,13 +7,29 @@ local time                 = ngx.time
 local log                  = ngx.log
 local WARN                 = ngx.WARN
 local DEBUG                = ngx.DEBUG
+local INFO                 = ngx.INFO
 local math_min             = math.min
 local math_max             = math.max
+local timer_at             = ngx.timer.at
+
+local delete_handler
 
 local _M = {}
 local mt = { __index = _M }
 
 local _log_prefix = "[vitals-strategy] "
+local DELETE_LOCK_KEY = "postgres:delete_lock"
+
+local ACQUIRE_LOCK_STATUS_CODES_DELETE = [[
+  UPDATE vitals_locks SET expiry = to_timestamp(%d) at time zone 'UTC'
+  WHERE key = 'delete_status_codes'
+  AND ((expiry <= to_timestamp(%d) AT TIME ZONE 'UTC')
+  OR (expiry IS NULL))
+]]
+
+local RELEASE_LOCK_STATUS_CODES_DELETE = [[
+  UPDATE vitals_locks SET expiry = NULL WHERE key = 'delete_status_codes'
+]]
 
 local INSERT_STATS = [[
   INSERT INTO %s (at, node_id, l2_hit, l2_miss, plat_min, plat_max, ulat_min,
@@ -53,7 +69,7 @@ local SELECT_NODES_FOR_PHONE_HOME = [[
 
 local INSERT_CONSUMER_STATS = [[
   INSERT INTO vitals_consumers(consumer_id, node_id, at, duration, count)
-  VALUES('%s', '%s', to_timestamp(%d) at time zone 'UTC', %d, %d)
+  VALUES %s
   ON CONFLICT(consumer_id, node_id, at, duration) DO
   UPDATE SET COUNT = vitals_consumers.count + excluded.count
 ]]
@@ -63,8 +79,8 @@ local UPDATE_NODE_META = "UPDATE vitals_node_meta SET last_report = now() WHERE 
 local DELETE_STATS = "DELETE FROM %s WHERE at < %d"
 
 local DELETE_CONSUMER_STATS = [[
-  DELETE FROM vitals_consumers WHERE consumer_id = '{%s}'
-  AND ((duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC')
+  DELETE FROM vitals_consumers
+  WHERE ((duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC')
   OR (duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC'))
 ]]
 
@@ -76,7 +92,7 @@ local SELECT_NODE_META = [[
 
 local INSERT_CODE_CLASSES_CLUSTER = [[
   INSERT INTO vitals_code_classes_by_cluster(code_class, at, duration, count)
-  VALUES(%d, to_timestamp(%d) at time zone 'UTC', %d, %d)
+  VALUES %s
   ON CONFLICT(code_class, at, duration) DO
   UPDATE SET COUNT = vitals_code_classes_by_cluster.count + excluded.count
 ]]
@@ -141,16 +157,9 @@ local SELECT_CODES_CONSUMER_ROUTE = [[
 ]]
 
 local DELETE_CODES = [[
-  DELETE FROM %s t USING
-         (SELECT at, duration
-            FROM %s
-           WHERE (duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC')
-              OR (duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC')
-           ORDER BY at, duration
-             FOR UPDATE
-         ) to_delete
-   WHERE t.at = to_delete.at
-     AND t.duration = to_delete.duration
+  DELETE FROM %s
+   WHERE (duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC')
+      OR (duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC')
 ]]
 
 local STATUS_CODE_QUERIES = {
@@ -203,6 +212,8 @@ function _M.new(dao_factory, opts)
   )
 
   local self = {
+    list_cache = ngx.shared.kong_vitals_lists,
+    delete_interval = opts.delete_interval or 30,
     db = dao_factory.db,
     table_rotater = table_rotater,
     ttl_seconds = opts.ttl_seconds or 3600,
@@ -232,6 +243,106 @@ function _M:init(node_id, hostname)
   local ok, err = self:insert_node_meta()
   if not ok then
     return nil, "failed to record node info: " .. err
+  end
+
+  -- delete timer
+  local when = self.delete_interval
+  log(INFO, _log_prefix, "starting initial postgres delete timer in ", when, " seconds")
+
+  local _, err = timer_at(when, delete_handler, self)
+  if err then
+    return nil, "failed to start initial postgres delete timer: " .. err
+  end
+
+  return true
+end
+
+
+delete_handler = function(premature, self)
+  if premature then
+    return
+  end
+
+  local when = self.delete_interval
+  local now = ngx.now()
+
+  -- Attempt to get a worker-level and cluster-wide delete lock
+  if self:acquire_lock_status_codes_delete(now, when) then
+    log(DEBUG, _log_prefix, "recurring postgres delete has started")
+
+    -- iterate over status code entities and delete expired stats
+    for _, entity_type in ipairs({ "consumer_route", "route", "service" }) do
+      local _, err = self:delete_status_codes({
+        entity_type = entity_type,
+        seconds = now - self.ttl_seconds,
+        minutes = now - self.ttl_minutes,
+      })
+
+      if err then
+        log(WARN, _log_prefix, "delete_status_codes() " .. entity_type .. " threw an error: ", err)
+      end
+    end
+
+    -- delete from consumer_stats
+    local _, err = self:delete_consumer_stats()
+    if err then
+      log(WARN, _log_prefix, "failed to delete consumer_stats: ", err)
+    end
+
+    -- and from status_code_classes
+    local _, err = self:delete_status_code_classes()
+    if err then
+      log(WARN, _log_prefix, "failed to delete status_code_classes: ", err)
+    end
+
+    -- release delete lock
+    local query = fmt(RELEASE_LOCK_STATUS_CODES_DELETE)
+    local _, err = self.db:query(query)
+
+    if err then
+      log(WARN, _log_prefix, "err releasing delete lock ", err)
+    end
+
+    log(DEBUG, _log_prefix, "recurring postgres delete has completed")
+  end
+
+  -- start the next delete timer
+  log(DEBUG, _log_prefix, "starting recurring postgres delete timer in " .. when .. " seconds")
+  local ok, err = timer_at(when, delete_handler, self)
+  if not ok then
+    return nil, "failed to start recurring postgres delete timer: " .. err
+  end
+end
+
+
+function _M:acquire_lock_status_codes_delete(now, when)
+  local res, err
+
+  -- If we can acquire a worker-level shm lock...
+  if self:delete_lock(when) then
+    -- Attempt to acquire cluster-wide delete lock
+    local expiry = (when * 10) + now
+    local query = fmt(ACQUIRE_LOCK_STATUS_CODES_DELETE, expiry, now)
+
+    res, err = self.db:query(query)
+
+    if err then
+      log(WARN, _log_prefix, "error acquiring status code lock: ", err)
+    end
+  end
+  return res ~= nil and res.affected_rows == 1
+end
+
+-- acquire a lock for flushing counters to the database
+function _M:delete_lock(when)
+  local ok, err = self.list_cache:safe_add(DELETE_LOCK_KEY, true,
+    when - 0.01)
+  if not ok then
+    if err ~= "exists" then
+      log(DEBUG, _log_prefix, "failed to acquire delete lock: ", err)
+    end
+
+    return false
   end
 
   return true
@@ -651,41 +762,29 @@ end
   ]
 ]]
 function _M:insert_consumer_stats(data, node_id)
+  if not data[1] then
+    return true
+  end
+
   local consumer_id, at, duration, count
-  local query, last_err
-  local row_count  = 0
-  local fail_count = 0
 
   node_id = node_id or self.node_id
 
-  local consumers_to_delete = {}
+  local values_fmt = "%s('%s','%s',to_timestamp(%d) at time zone 'UTC',%d,%d), "
 
-  for _, row in ipairs(data) do
-    row_count = row_count + 1
-
-    consumer_id, at, duration, count = unpack(row)
-
-    query = fmt(INSERT_CONSUMER_STATS, consumer_id, node_id, at,
-                duration, count)
-
-    local res, err = self.db:query(query)
-    if not res then
-      fail_count = fail_count + 1
-      last_err   = tostring(err)
-    end
-
-    consumers_to_delete[consumer_id] = true
+  local values = ""
+  for _, v in ipairs(data) do
+    consumer_id, at, duration, count = unpack(v)
+    values = fmt(values_fmt, values, consumer_id, node_id, at, duration, count)
   end
 
-  if fail_count > 0 then
-    return nil, "failed to insert " .. tostring(fail_count) .. " of " ..
-        tostring(row_count) .. " consumer stats. last err: " .. last_err
-  end
+  -- strip last comma
+  values = values:sub(1, -3)
 
-  -- non-optional delete
-  local _, err = self:delete_consumer_stats(consumers_to_delete)
-  if err then
-    return nil, err
+  local res, err = self.db:query(fmt(INSERT_CONSUMER_STATS, values))
+
+  if not res then
+    return nil, "could not insert consumer_stats: " .. err
   end
 
   return true
@@ -693,7 +792,7 @@ end
 
 
 --[[
---deletes data for the given list of consumers
+--deletes expired rows
   cutoff_times: a table of timeframes to delete; e.g.
   {
     minutes = 1510759610 <- delete minutes data before this ts
@@ -702,11 +801,7 @@ end
 
   entries for minutes and seconds are both required
 ]]
-function _M:delete_consumer_stats(consumers, cutoff_times)
-  if not next(consumers) then
-    return 0
-  end
-
+function _M:delete_consumer_stats(cutoff_times)
   if not cutoff_times then
     local now = time()
     cutoff_times = {
@@ -715,62 +810,38 @@ function _M:delete_consumer_stats(consumers, cutoff_times)
     }
   end
 
-  local query, last_err
-  local fail_count = 0
-  local cons_count = 0
-  local row_count  = 0
+  local query = fmt(DELETE_CONSUMER_STATS, 1, cutoff_times.seconds,
+                    60, cutoff_times.minutes)
 
-  for consumer, _ in pairs(consumers) do
-    cons_count = cons_count + 1
+  local res, err = self.db:query(query)
 
-    query = fmt(DELETE_CONSUMER_STATS, consumer, 1, cutoff_times.seconds,
-        60, cutoff_times.minutes)
-
-    local res, err = self.db:query(query)
-
-    if res then
-      row_count = row_count + res.affected_rows
-    else
-      fail_count = fail_count + 1
-      last_err   = err
-    end
+  if err then
+    return nil, "failed to delete consumer stats: " .. err
   end
 
-  -- total failure
-  if fail_count == cons_count then
-    return nil, "failed to delete consumer stats. last err: " .. last_err
-  end
-
-  -- not a complete failure
-  if fail_count > 0 then
-    return cons_count - fail_count, "failed to delete " .. tostring(fail_count) ..
-        "stats for " .. tostring(row_count) .. " consumers. last err: " .. last_err
-  end
-
-  return row_count
+  return res.affected_rows or 0
 end
 
 
 function _M:insert_status_code_classes(data)
-  local res, err, count, at, duration, code_class, query
-
-  for _, row in ipairs(data) do
-    code_class, at, duration, count = unpack(row)
-
-    query = fmt(INSERT_CODE_CLASSES_CLUSTER, code_class, at,
-                duration, count)
-
-    res, err = self.db:query(query)
-
-    if not res then
-      return nil, "could not insert status code counters. error: " .. err
-    end
+  if not data[1] then
+    return true
   end
 
-  -- non-optional cleanup.
-  local _, err = self:delete_status_code_classes()
-  if err then
-    return nil, err
+  local values_fmt = "%s('%s',to_timestamp(%d) at time zone 'UTC',%d,%d), "
+
+  local values = ""
+  for _, v in ipairs(data) do
+    values = fmt(values_fmt, values, unpack(v))
+  end
+
+  -- strip last comma
+  values = values:sub(1, -3)
+
+  local res, err = self.db:query(fmt(INSERT_CODE_CLASSES_CLUSTER, values))
+
+  if not res then
+    return nil, "could not insert status code classes. error: " .. err
   end
 
   return true
@@ -813,6 +884,7 @@ function _M:select_status_codes(opts)
 
   return res
 end
+
 
 function _M:delete_status_code_classes(cutoff_times)
   -- if nothing passed in, use defaults
@@ -892,17 +964,6 @@ function _M:insert_status_codes(data, opts)
     end
   end
 
---  TODO: Commenting out for bug bash. Reinstate afterward.
---  if opts.prune then
---    local now = time()
---
---    self:delete_status_codes({
---      entity_type = entity_type,
---      seconds = now - self.ttl_seconds,
---      minutes = now - self.ttl_minutes,
---    })
---  end
-
   return true
 end
 
@@ -910,7 +971,6 @@ end
 function _M:insert_status_codes_by_service(data)
   return self:insert_status_codes(data, {
     entity_type = "service",
-    prune = true,
   })
 end
 
@@ -918,7 +978,6 @@ end
 function _M:insert_status_codes_by_route(data)
   return self:insert_status_codes(data, {
     entity_type = "route",
-    prune = true,
   })
 end
 
@@ -960,14 +1019,6 @@ function _M:delete_status_codes(opts)
     return nil, "opts must be a table"
   end
 
-  -- TODO: Refactor this validation so that we don't have to edit
-  -- it every time we add an entity_type?
-  if opts.entity_type ~= "service" and
-     opts.entity_type ~= "route"   and
-     opts.entity_type ~= "consumer_route" then
-    return nil, "opts.entity_type must be 'service', 'route', or 'consumer_route'"
-  end
-
   if type(opts.seconds) ~= "number" then
     return nil, "opts.seconds must be a number"
   end
@@ -976,10 +1027,17 @@ function _M:delete_status_codes(opts)
     return nil, "opts.minutes must be a number"
   end
 
+  -- TODO: Refactor this validation so that we don't have to edit
+  -- it every time we add an entity_type?
+  if opts.entity_type ~= "service" and
+    opts.entity_type ~= "route"   and
+    opts.entity_type ~= "consumer_route" then
+    return nil, "opts.entity_type must be 'service', 'route', or 'consumer_route'"
+  end
+
   local table_name = "vitals_codes_by_" .. opts.entity_type
 
-  local query = fmt(DELETE_CODES, table_name, table_name, 1, opts.seconds,
-                    60, opts.minutes)
+  local query = fmt(DELETE_CODES, table_name, 1, opts.seconds, 60, opts.minutes)
 
   local res, err = self.db:query(query)
 
@@ -994,7 +1052,6 @@ end
 function _M:insert_status_codes_by_consumer_and_route(data)
   return self:insert_status_codes(data, {
     entity_type = "consumer_route",
-    prune = true,
   })
 end
 

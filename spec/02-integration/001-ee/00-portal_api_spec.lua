@@ -1,9 +1,8 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local enums = require "kong.portal.enums"
-local is_valid_uuid = require "kong.tools.utils".is_valid_uuid
-local proxy_prefix
-              = require "kong.enterprise_edition.proxies".proxy_prefix
+local utils = require "kong.tools.utils"
+local proxy_prefix = require("kong.enterprise_edition.proxies").proxy_prefix
 
 
 local function insert_files(dao)
@@ -26,25 +25,26 @@ describe("Developer Portal - Portal API", function()
   local db
   local dao
   local client
+  local consumer_approved
 
   setup(function()
     bp, db, dao = helpers.get_db_utils(strategy)
   end)
 
   teardown(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
   describe("/_kong/portal/files without auth", function()
     before_each(function()
       helpers.stop_kong()
-      assert(db:truncate())
       helpers.register_consumer_relations(dao)
 
       assert(helpers.start_kong({
         database   = strategy,
         portal     = true
       }))
+
 
       client = assert(helpers.proxy_client())
     end)
@@ -61,7 +61,7 @@ describe("Developer Portal - Portal API", function()
       end)
 
       teardown(function()
-        helpers.dao:truncate_tables()
+        db:truncate()
       end)
 
       it("retrieves files", function()
@@ -110,12 +110,12 @@ describe("Developer Portal - Portal API", function()
         portal_auth_config = "{ \"hide_credentials\": true }"
       }))
 
-      local consumerPending = bp.consumers:insert {
+      local consumer_pending = bp.consumers:insert {
         username = "dale",
         status = enums.CONSUMERS.STATUS.PENDING
       }
 
-      local consumerApproved = bp.consumers:insert {
+      consumer_approved = bp.consumers:insert {
         username = "hawk",
         status = enums.CONSUMERS.STATUS.APPROVED
       }
@@ -123,13 +123,13 @@ describe("Developer Portal - Portal API", function()
       assert(dao.basicauth_credentials:insert {
         username    = "dale",
         password    = "kong",
-        consumer_id = consumerPending.id
+        consumer_id = consumer_pending.id
       })
 
       assert(dao.basicauth_credentials:insert {
         username    = "hawk",
         password    = "kong",
-        consumer_id = consumerApproved.id
+        consumer_id = consumer_approved.id
       })
     end)
 
@@ -251,8 +251,8 @@ describe("Developer Portal - Portal API", function()
         local consumer = resp_body_json.consumer
 
         assert.equal("gruce@konghq.com", credential.username)
-        assert.is_true(is_valid_uuid(credential.id))
-        assert.is_true(is_valid_uuid(consumer.id))
+        assert.is_true(utils.is_valid_uuid(credential.id))
+        assert.is_true(utils.is_valid_uuid(consumer.id))
 
         assert.equal(enums.CONSUMERS.TYPE.DEVELOPER, consumer.type)
         assert.equal(enums.CONSUMERS.STATUS.PENDING, consumer.status)
@@ -298,7 +298,7 @@ describe("Developer Portal - Portal API", function()
 
         assert.equal("kong", credential.username)
         assert.are_not.equals("hunter1", credential.password)
-        assert.is_true(is_valid_uuid(credential.id))
+        assert.is_true(utils.is_valid_uuid(credential.id))
       end)
     end)
 
@@ -325,7 +325,7 @@ describe("Developer Portal - Portal API", function()
         assert.equal("anotherone", credential_res.username)
         assert.are_not.equals(credential_res.username, credential.username)
         assert.are_not.equals("another-hunter1", credential_res.password)
-        assert.is_true(is_valid_uuid(credential_res.id))
+        assert.is_true(utils.is_valid_uuid(credential_res.id))
       end)
     end)
   end)
@@ -369,7 +369,7 @@ describe("Developer Portal - Portal API", function()
 
         assert.equal("dude", credential.username)
         assert.are_not.equals("hunter1", credential.password)
-        assert.is_true(is_valid_uuid(credential.id))
+        assert.is_true(utils.is_valid_uuid(credential.id))
       end)
 
       it("adds auth plugin credential - key-auth", function()
@@ -393,7 +393,7 @@ describe("Developer Portal - Portal API", function()
         credential_key_auth = resp_body_json
 
         assert.equal("letmein", credential_key_auth.key)
-        assert.is_true(is_valid_uuid(credential_key_auth.id))
+        assert.is_true(utils.is_valid_uuid(credential_key_auth.id))
       end)
     end)
 
@@ -447,7 +447,7 @@ describe("Developer Portal - Portal API", function()
 
         assert.equal("dudett", credential_res.username)
         assert.are_not.equals("a-new-password", credential_res.password)
-        assert.is_true(is_valid_uuid(credential_res.id))
+        assert.is_true(utils.is_valid_uuid(credential_res.id))
 
         assert.are_not.equals(credential_res.username, credential.username)
       end)
@@ -476,7 +476,7 @@ describe("Developer Portal - Portal API", function()
 
         assert.equal("duderino", credential_res.username)
         assert.are_not.equals("a-new-new-password", credential_res.password)
-        assert.is_true(is_valid_uuid(credential_res.id))
+        assert.is_true(utils.is_valid_uuid(credential_res.id))
 
         assert.are_not.equals(credential_res.username, credential.username)
       end)
@@ -535,3 +535,48 @@ describe("Developer Portal - Portal API", function()
 end)
 
 end
+
+describe("portal dao_helpers", function()
+  local dao
+
+  setup(function()
+    dao = select(3, helpers.get_db_utils("cassandra"))
+
+    local cassandra = require "kong.dao.db.cassandra"
+    local dao_cassandra = cassandra.new(helpers.test_conf)
+
+    -- raw cassandra insert without dao so "type" is nil
+    for i = 1, 10 do
+      local query = string.format([[INSERT INTO %s.consumers
+                                                (id, custom_id)
+                                                VALUES(%s, '%s')]],
+                                  helpers.test_conf.cassandra_keyspace,
+                                  utils.uuid(),
+                                  "cassy-" .. i)
+      dao_cassandra:query(query)
+    end
+
+    local rows = dao.consumers:find_all()
+
+    assert.equals(10, #rows)
+    for _, row in ipairs(rows) do
+      assert.is_nil(row.type)
+    end
+
+  end)
+
+  teardown(function()
+    helpers.stop_kong()
+  end)
+
+  it("updates consumers with nil type to default proxy type", function()
+    local portal = require "kong.portal.dao_helpers"
+    portal.update_consumers(dao, enums.CONSUMERS.TYPE.PROXY)
+
+    local rows = dao.consumers:find_all()
+    for _, row in ipairs(rows) do
+      assert.equals(enums.CONSUMERS.TYPE.PROXY, row.type)
+    end
+    assert.equals(10, #rows)
+  end)
+end)

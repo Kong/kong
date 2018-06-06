@@ -139,7 +139,7 @@ function _M:setup_portal()
     name = "cors",
     service = portal_config.name,
     config = {
-      origins = kong_config.portal_gui_url or "http://127.0.0.1:8003",
+      origins = kong_config.portal_gui_url or "*",
       methods = { "GET", "PATCH", "DELETE", "POST" },
       credentials = true
     }
@@ -179,6 +179,7 @@ function _M:setup_portal()
       name = portal_config_register.name,
       host = portal_config.host,
       port = portal_config.port,
+      protocol = portal_config.protocol,
       path = portal_config_register.path
     })
 
@@ -192,7 +193,7 @@ function _M:setup_portal()
       name = "cors",
       service = portal_config_unauthenticated.name,
       config = {
-        origins = kong_config.portal_gui_url or "http://127.0.0.1:8003",
+        origins = kong_config.portal_gui_url or "*",
         methods = { "GET" },
         credentials = true
       }

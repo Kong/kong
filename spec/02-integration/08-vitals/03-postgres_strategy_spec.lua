@@ -23,6 +23,7 @@ dao_helpers.for_each_dao(function(kong_conf)
       local opts = {
         ttl_seconds = 3600,
         ttl_minutes = 90000,
+        delete_interval = 90000,
       }
 
       dao = assert(dao_factory.new(kong_conf))
@@ -50,6 +51,8 @@ dao_helpers.for_each_dao(function(kong_conf)
       assert(db:query("truncate table vitals_codes_by_service"))
       assert(db:query("truncate table vitals_codes_by_route"))
       assert(db:query("truncate table vitals_codes_by_consumer_route"))
+      assert(db:query("truncate table vitals_locks"))
+      assert(db:query("INSERT INTO vitals_locks(key, expiry) VALUES ('delete_status_codes', NULL)"))
     end)
 
 
@@ -69,6 +72,8 @@ dao_helpers.for_each_dao(function(kong_conf)
       assert(db:query("truncate table vitals_codes_by_service"))
       assert(db:query("truncate table vitals_codes_by_route"))
       assert(db:query("truncate table vitals_codes_by_consumer_route"))
+      assert(db:query("truncate table vitals_locks"))
+      assert(db:query("INSERT INTO vitals_locks(key, expiry) VALUES ('delete_status_codes', NULL)"))
     end)
 
 
@@ -86,6 +91,86 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert.same("testhostname", res[1].hostname)
         assert.not_nil(res[1].first_report)
         assert.same(res[1].first_report, res[1].last_report)
+      end)
+    end)
+
+    describe("delete_lock()", function()
+      before_each(function()
+        strategy.list_cache:delete("postgres:delete_lock")
+      end)
+
+      teardown(function()
+        strategy.list_cache:delete("postgres:delete_lock")
+
+        local v = strategy.list_cache:get("postgres:delete_lock")
+        assert.is_nil(v)
+      end)
+
+      it("returns true upon acquiring a lock", function()
+        local ok, err = strategy:delete_lock(10)
+
+        assert.is_true(ok)
+        assert.is_nil(err)
+      end)
+
+      it("returns false when failing to acquire a lock, without err", function()
+        local ok, err = strategy:delete_lock(10)
+        assert.is_true(ok)
+        assert.is_nil(err)
+
+        local ok, err = strategy:delete_lock(10)
+        assert.is_false(ok)
+        assert.is_nil(err)
+      end)
+    end)
+
+    describe("acquire_lock_status_codes_delete()", function()
+      before_each(function()
+        strategy.list_cache:delete("postgres:delete_lock")
+      end)
+
+      teardown(function()
+        strategy.list_cache:delete("postgres:delete_lock")
+
+        local v = strategy.list_cache:get("postgres:delete_lock")
+        assert.is_nil(v)
+      end)
+
+      it("returns true if acquires both shm and cluster wide locks", function()
+        local now = time()
+        local when = 10
+
+        local ok, err = strategy:acquire_lock_status_codes_delete(now, when)
+        assert.is_true(ok)
+        assert.is_nil(err)
+      end)
+
+      it("returns false if fails to acquire shm lock", function()
+        local now = time()
+        local when = 10
+
+        local ok, err = strategy:delete_lock(when)
+        assert.is_true(ok)
+        assert.is_nil(err)
+
+        local ok, err = strategy:acquire_lock_status_codes_delete(now, when)
+
+        assert.is_false(ok)
+        assert.is_nil(err)
+      end)
+
+      it("returns false if fails to acquire cluster wide lock", function()
+        local now = time()
+        local when = 10
+
+        stub(strategy, "delete_lock").returns(true)
+        local ok, err = strategy:acquire_lock_status_codes_delete(now, when)
+        assert.is_true(ok)
+        assert.is_nil(err)
+
+        local ok, err = strategy:acquire_lock_status_codes_delete(now, when)
+        assert.is_false(ok)
+        assert.is_nil(err)
       end)
     end)
 
@@ -830,12 +915,6 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         assert.same(expected, results)
       end)
-
-      it("cleans up old records", function()
-        local s = spy.on(pg_strategy, "delete_consumer_stats")
-        strategy:insert_consumer_stats({})
-        assert.spy(s).was_called()
-      end)
     end)
 
 
@@ -1103,18 +1182,13 @@ dao_helpers.for_each_dao(function(kong_conf)
 
 
       it("cleans up consumer stats", function()
-        local consumers = {
-          [cons_1] = true,
-          [cons_2] = true,
-        }
-
         -- query is "<" so bump the cutoff by a second
         local cutoff_times = {
           minutes = 1510560001,
           seconds = 1510560002,
         }
 
-        local results, _ = strategy:delete_consumer_stats(consumers, cutoff_times)
+        local results, _ = strategy:delete_consumer_stats(cutoff_times)
 
         assert.same(5, results)
       end)
@@ -1176,12 +1250,6 @@ dao_helpers.for_each_dao(function(kong_conf)
         }
 
         assert.same(expected, results)
-      end)
-
-      it("cleans up old records", function()
-        local s = spy.on(strategy, "delete_status_code_classes")
-        strategy:insert_status_code_classes({})
-        assert.spy(s).was_called()
       end)
     end)
 
@@ -1253,7 +1321,6 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         local opts = {
           entity_type = "service",
-          prune = true,
         }
 
         strategy:insert_status_codes_by_service(data)
@@ -1270,7 +1337,6 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         local opts = {
           entity_type = "route",
-          prune = true,
         }
 
         strategy:insert_status_codes_by_route(data)
@@ -1287,7 +1353,6 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         local opts = {
           entity_type = "consumer_route",
-          prune = true,
         }
 
         strategy:insert_status_codes_by_consumer_and_route(data)
@@ -1312,7 +1377,6 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         local opts = {
           entity_type = "service",
-          prune = true,
         }
 
         assert(strategy:insert_status_codes(data, opts))
@@ -1368,7 +1432,6 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         local opts = {
           entity_type = "route",
-          prune = true,
         }
 
         assert(strategy:insert_status_codes(data, opts))
@@ -1428,7 +1491,6 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         local opts = {
           entity_type = "consumer_route",
-          prune = true,
         }
 
         assert(strategy:insert_status_codes(data, opts))
@@ -1474,39 +1536,6 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         assert.same(expected, results)
       end)
-
-      pending("deletes old rows when opts.prune evaluates to true", function()
-        local service_id = utils.uuid()
-        local data = {
-          { service_id, "404", tostring(ngx.time()), "1", 4 },
-        }
-
-        local s = spy.on(pg_strategy, "delete_status_codes")
-
-        strategy:insert_status_codes(data, {
-          entity_type = "service",
-          prune = true,
-        })
-
-        assert.spy(s).was_called()
-      end)
-
-      it("does not delete old rows when opts.prune evaluates to false", function()
-        local service_id = utils.uuid()
-        local data = {
-          { service_id, "404", tostring(ngx.time()), "1", 4 },
-        }
-
-        local s = spy.on(pg_strategy, "delete_status_codes")
-
-        strategy:insert_status_codes(data, {
-          entity_type = "service",
-          prune = false,
-        })
-
-        assert.spy(s).was_not_called()
-      end)
-
     end)
 
     describe(":select_status_codes (cluster)", function()
@@ -2143,7 +2172,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         local _, err = strategy:delete_status_codes("foo")
         assert.same("opts must be a table", err)
 
-        _, err = strategy:delete_status_codes({ entity_type = "foo" })
+        _, err = strategy:delete_status_codes({ entity_type = "foo", seconds = 999, minutes = 999 })
         assert.same("opts.entity_type must be 'service', 'route', or 'consumer_route'", err)
 
         _, err = strategy:delete_status_codes({ entity_type = "service", seconds = "foo" })

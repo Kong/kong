@@ -48,6 +48,13 @@ function ResponseTransformerHandler:body_filter(conf)
 
   if is_body_transform_set(conf) and is_json_body(ngx.header["content-type"]) then
     local ctx = ngx.ctx
+
+    -- Initializes context here in case this plugin's access phase
+    -- did not run - and hence `rt_body_chunks` and `rt_body_chunk_number`
+    -- were not initialized
+    ctx.rt_body_chunks = ctx.rt_body_chunks or {}
+    ctx.rt_body_chunk_number = ctx.rt_body_chunk_number or 1
+
     local chunk, eof = ngx.arg[1], ngx.arg[2]
     if eof then
       local body = body_filter.transform_json_body(conf, table_concat(ctx.rt_body_chunks))

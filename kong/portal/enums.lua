@@ -3,27 +3,28 @@ local _M = {}
 
 _M.CONSUMERS = {
   STATUS = {
-    ["APPROVED"] = 0,
-    ["PENDING"] = 1,
-    ["REJECTED"] = 2,
-    ["REVOKED"] = 3,
-    ["INVITED"] = 4
+    APPROVED = 0,
+    PENDING  = 1,
+    REJECTED = 2,
+    REVOKED  = 3,
+    INVITED  = 4,
   },
   TYPE = {
-    ["PROXY"] = 0,
-    ["DEVELOPER"] = 1
-  }
+    PROXY = 0,
+    DEVELOPER = 1,
+  },
+  STATUS_LABELS = {},
+  TYPE_LABELS   = {},
 }
 
 
-function _M.get_key_from_value(enums, value)
-  for k, v in pairs(enums) do
-    if v == value then
-      return k
-    end
-  end
+for k, v in pairs(_M.CONSUMERS.STATUS) do
+  _M.CONSUMERS.STATUS_LABELS[v] = k
+end
 
-  return nil
+
+for k, v in pairs(_M.CONSUMERS.TYPE) do
+  _M.CONSUMERS.TYPE_LABELS[v] = k
 end
 
 

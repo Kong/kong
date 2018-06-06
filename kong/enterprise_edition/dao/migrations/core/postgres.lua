@@ -335,6 +335,11 @@ return {
         count int,
         PRIMARY KEY (service_id, code, duration, at)
       );
+      ALTER TABLE vitals_codes_by_service
+      SET (autovacuum_vacuum_scale_factor = 0.01);
+
+      ALTER TABLE vitals_codes_by_service
+      SET (autovacuum_analyze_scale_factor = 0.01);
 
       CREATE TABLE IF NOT EXISTS vitals_codes_by_route(
         service_id uuid,
@@ -345,9 +350,11 @@ return {
         count int,
         PRIMARY KEY (route_id, code, duration, at)
       );
+      ALTER TABLE vitals_codes_by_route
+      SET (autovacuum_vacuum_scale_factor = 0.01);
 
-      CREATE INDEX IF NOT EXISTS vitals_cbr_service_idx
-      ON vitals_codes_by_route(service_id);
+      ALTER TABLE vitals_codes_by_route
+      SET (autovacuum_analyze_scale_factor = 0.01);
 
       CREATE TABLE IF NOT EXISTS vitals_codes_by_consumer_route(
         consumer_id uuid,
@@ -359,9 +366,11 @@ return {
         count int,
         PRIMARY KEY (consumer_id, route_id, code, duration, at)
       );
+      ALTER TABLE vitals_codes_by_consumer_route
+      SET (autovacuum_vacuum_scale_factor = 0.01);
 
-      CREATE INDEX IF NOT EXISTS vitals_cbcr_service_idx
-      ON vitals_codes_by_consumer_route(consumer_id, service_id);
+      ALTER TABLE vitals_codes_by_consumer_route
+      SET (autovacuum_analyze_scale_factor = 0.01);
     ]],
 
     down = [[
@@ -392,18 +401,18 @@ return {
   {
     name = "2018-04-10-094800_dev_portal_consumer_types_statuses",
     up = [[
-      CREATE TABLE IF NOT EXISTS "consumer_statuses" (
-        "id"               int PRIMARY KEY,
-        "name" 			       text COLLATE pg_catalog."default" NOT NULL,
-        "comment" 		     text COLLATE pg_catalog."default",
-        "created_at"       timestamp without time zone DEFAULT timezone('utc'::text, ('now'::text)::timestamp(0) with time zone)
+      CREATE TABLE IF NOT EXISTS consumer_statuses (
+        id               int PRIMARY KEY,
+        name 			       text COLLATE pg_catalog."default" NOT NULL,
+        comment 		     text COLLATE pg_catalog."default",
+        created_at       timestamp without time zone DEFAULT timezone('utc'::text, ('now'::text)::timestamp(0) with time zone)
       );
 
-      CREATE TABLE IF NOT EXISTS "consumer_types" (
-        "id"               int PRIMARY KEY,
-        "name" 			       text COLLATE pg_catalog."default" NOT NULL,
-        "comment" 		     text COLLATE pg_catalog."default",
-        "created_at"       timestamp without time zone DEFAULT timezone('utc'::text, ('now'::text)::timestamp(0) with time zone)
+      CREATE TABLE IF NOT EXISTS consumer_types (
+        id               int PRIMARY KEY,
+        name 			       text COLLATE pg_catalog."default" NOT NULL,
+        comment 		     text COLLATE pg_catalog."default",
+        created_at       timestamp without time zone DEFAULT timezone('utc'::text, ('now'::text)::timestamp(0) with time zone)
       );
 
       CREATE INDEX IF NOT EXISTS consumer_statuses_names_idx
@@ -440,12 +449,12 @@ return {
     name = "2018-05-08-143700_consumer_dev_portal_columns",
     up = [[
       ALTER TABLE consumers
-        ADD COLUMN "type" int NOT NULL DEFAULT 0 REFERENCES consumer_types (id),
-        ADD COLUMN "email" text COLLATE pg_catalog."default",
-        ADD COLUMN "status" integer REFERENCES consumer_statuses (id),
-        ADD COLUMN "meta" text COLLATE pg_catalog."default";
+        ADD COLUMN type int NOT NULL DEFAULT 0 REFERENCES consumer_types (id),
+        ADD COLUMN email text COLLATE pg_catalog."default",
+        ADD COLUMN status integer REFERENCES consumer_statuses (id),
+        ADD COLUMN meta text COLLATE pg_catalog."default";
 
-      ALTER TABLE consumers ADD CONSTRAINT consumers_email_type_key UNIQUE("email", "type");
+      ALTER TABLE consumers ADD CONSTRAINT consumers_email_type_key UNIQUE(email, type);
 
       CREATE INDEX IF NOT EXISTS consumers_type_idx
           ON consumers USING btree (type)
@@ -465,5 +474,45 @@ return {
       ALTER TABLE consumers DROP COLUMN status;
       ALTER TABLE consumers DROP COLUMN meta;
     ]]
-  }
+  },
+  {
+    name = "2018-05-03-120000_credentials_master_table",
+    up = [[
+      CREATE TABLE IF NOT EXISTS credentials (
+        id                uuid PRIMARY KEY,
+        consumer_id       uuid REFERENCES consumers (id) ON DELETE CASCADE,
+        consumer_type     integer REFERENCES consumer_types (id),
+        plugin            text NOT NULL,
+        credential_data   json,
+        created_at        timestamp without time zone DEFAULT timezone('utc'::text, ('now'::text)::timestamp(0) with time zone)
+      );
+
+      CREATE INDEX IF NOT EXISTS credentials_consumer_type
+        ON credentials USING btree (consumer_id)
+        TABLESPACE pg_default;
+
+      CREATE INDEX IF NOT EXISTS credentials_consumer_id_plugin
+        ON credentials USING btree (consumer_id, plugin)
+        TABLESPACE pg_default;
+    ]],
+
+    down = [[
+      DROP TABLE credentials
+    ]]
+  },
+  {
+    name = "2017-05-15-110000_vitals_locks",
+    up = [[
+      CREATE TABLE IF NOT EXISTS vitals_locks(
+        key text,
+        expiry timestamp with time zone,
+        PRIMARY KEY(key)
+      );
+      INSERT INTO vitals_locks(key, expiry)
+      VALUES ('delete_status_codes', NULL);
+    ]],
+    down = [[
+      DROP TABLE vitals_locks;
+    ]]
+  },
 }

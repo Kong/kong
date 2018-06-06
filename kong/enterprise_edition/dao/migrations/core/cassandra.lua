@@ -370,4 +370,34 @@ return {
       ALTER TABLE consumers DROP meta;
     ]]
   },
+  {
+    name = "2018-05-07-171200_credentials_master_table",
+    up = [[
+      CREATE TABLE IF NOT EXISTS credentials (
+        id                 uuid PRIMARY KEY,
+        consumer_id        uuid,
+        consumer_type      int,
+        plugin             text,
+        credential_data    text,
+        created_at         timestamp
+      );
+
+
+      CREATE INDEX IF NOT EXISTS credentials_consumer_id ON credentials(consumer_id);
+      CREATE INDEX IF NOT EXISTS credentials_plugin ON credentials(plugin);
+    ]],
+
+    down = [[
+      DROP TABLE credentials
+    ]]
+  },
+  {
+    name = "2018-05-09-215700_consumers_type_default",
+    up = function(_, _, dao)
+      local portal = require "kong.portal.dao_helpers"
+      local CONSUMERS = require("kong.portal.enums").CONSUMERS
+
+      return portal.update_consumers(dao, CONSUMERS.TYPE.PROXY)
+    end,
+  },
 }

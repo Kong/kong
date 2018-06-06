@@ -145,6 +145,22 @@ local function load_plugins(kong_conf, dao)
 
     reports.toggle(true)
 
+    local shm = ngx.shared
+
+    local reported_entities = {
+      a = "apis",
+      r = "routes",
+      c = "consumers",
+      s = "services",
+    }
+
+    for k, v in pairs(reported_entities) do
+      reports.add_ping_value(k, function()
+        return shm["kong_reports_" .. v] and
+          #shm["kong_reports_" .. v]:get_keys(70000)
+      end)
+    end
+
     sorted_plugins[#sorted_plugins+1] = {
       name = "reports",
       handler = reports,
@@ -209,6 +225,7 @@ function Kong.init()
   singletons.vitals = vitals.new {
       dao            = dao,
       flush_interval = config.vitals_flush_interval,
+      delete_interval_pg = config.vitals_delete_interval_pg,
       ttl_seconds    = config.vitals_ttl_seconds,
       ttl_minutes    = config.vitals_ttl_minutes,
   }
@@ -533,7 +550,7 @@ function Kong.serve_portal_api(options)
     return ngx.exit(204)
   end
 
-  return lapis.serve("kong.portal")
+  return lapis.serve(require("kong.portal").app)
 end
 
 return Kong

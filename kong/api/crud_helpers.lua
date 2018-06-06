@@ -2,6 +2,7 @@ local cjson         = require "cjson"
 local utils         = require "kong.tools.utils"
 local responses     = require "kong.tools.responses"
 local app_helpers   = require "lapis.application"
+local portal_crud   = require "kong.portal.crud_helpers"
 
 
 local decode_base64 = ngx.decode_base64
@@ -330,5 +331,7 @@ function _M.delete(primary_keys, dao_collection)
     return responses.send_HTTP_NO_CONTENT()
   end
 end
+
+_M.portal_crud = portal_crud
 
 return _M
