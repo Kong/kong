@@ -2,6 +2,7 @@ return {
   table = "credentials",
   primary_key = { "id" },
   cache_key = { "id", "name" },
+  workspaceable = true,
   fields = {
     id = { type = "id", required = true },
     consumer_id = { type = "id", foreign = "consumers:id" },
