@@ -194,16 +194,23 @@ return {
     end,
 
     GET = function(self, dao_factory, helpers)
-      local e, err = dao_factory.workspace_entities:find({
+      local e, err = dao_factory.workspace_entities:find_all({
         workspace_id = self.workspace.id,
         entity_id = self.params.entity_id,
       })
       if err then
         return helpers.yield_error(err)
       end
+      if not e[1] then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      e = e[1]
+      e.unique_field_name = nil
+      e.unique_field_value = nil
 
       return e and helpers.responses.send_HTTP_OK(e) or
-                   helpers.responses.send_HTTP_NOT_FOUND()
+        helpers.responses.send_HTTP_NOT_FOUND()
     end,
 
     DELETE = function(self, dao_factory, helpers)
