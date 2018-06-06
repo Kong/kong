@@ -166,10 +166,14 @@ return {
       local entity_ids = utils.split(self.params.entities, ",")
 
       for i = 1, #entity_ids do
-        local ws_e = dao_factory.workspace_entities:find_all({
+        local e = entity_ids[i]
+        local ws_e, err = dao_factory.workspace_entities:find_all({
           workspace_id = self.workspace.id,
-          entity_id = self.params.entity_id,
+          entity_id = e,
         })
+        if err then
+          return helpers.yield_error(err)
+        end
 
         for _, row in ipairs(ws_e) do
           local _, err = dao_factory.workspace_entities:delete(row)
