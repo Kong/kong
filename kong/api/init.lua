@@ -222,8 +222,8 @@ local function attach_routes(routes)
 
     app:match(route_path, route_path, app_helpers.respond_to(methods))
     if route_path ~= "/" then
-	app:match("workspace_" .. route_path, "/:workspace_name" .. route_path,
-		app_helpers.respond_to(methods))
+      app:match("workspace_" .. route_path, "/:workspace_name" .. route_path,
+        app_helpers.respond_to(methods))
     end
   end
 end
