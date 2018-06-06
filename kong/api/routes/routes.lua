@@ -13,6 +13,7 @@ local uuid = require("kong.tools.utils").uuid
 
 local tostring    = tostring
 local type        = type
+local null        = ngx.null
 
 local function build_router_without(excluded_route)
   local routes, i = {}, 0

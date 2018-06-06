@@ -38,7 +38,7 @@ return {
 
       -- check for the service existence
       local id = self.params.services
-      local entity, err_t
+      local entity, _, err_t
       if not utils.is_valid_uuid(id) then
         entity, _, err_t = db.services:select_by_name(id)
       else
