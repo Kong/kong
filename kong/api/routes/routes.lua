@@ -10,7 +10,6 @@ local Router      = require "kong.core.router"
 local core_handler = require "kong.core.handler"
 local uuid = require("kong.tools.utils").uuid
 
-
 local tostring    = tostring
 local type        = type
 local null        = ngx.null
@@ -81,38 +80,49 @@ local function build_router_without(excluded_route)
   return router
 end
 
+local function rebuild_routes(db)
+  local old_wss = ngx.ctx.workspaces
+  ngx.ctx.workspaces = {}
+  core_handler.build_router(db, uuid())
+  ngx.ctx.workspaces = old_wss
+end
+
 return {
   ["/routes"] = {
-    before = function(self, db, helpers)
-      local old_wss = ngx.ctx.workspaces
-      ngx.ctx.workspaces = {}
-      core_handler.build_router(db, uuid())
-      ngx.ctx.workspaces = old_wss
-    end,
+    POST = function(self, db, helpers, parent)
+      rebuild_routes(db)
 
-    POST = function(self, _, _, parent)
       if workspaces.is_route_colliding(self, singletons.router) then
         local err = "API route collides with an existing API"
         return responses.send_HTTP_CONFLICT(err)
       end
       return parent()
+    end,
+    GET = function(self, db, helpers, parent)
+      rebuild_routes(db)
+      return parent()
     end
   },
 
   ["/routes/:routes"] = {
-    before = function(self, db, helpers)
-      local uuid = require("kong.tools.utils").uuid
-      local old_wss = ngx.ctx.workspaces
-      ngx.ctx.workspaces = {}
-      core_handler.build_router(db, uuid())
-      ngx.ctx.workspaces = old_wss
+    GET = function(self, db, helpers, parent)
+      rebuild_routes(db)
+      return parent()
+    end,
+    POST = function(self, db, helpers, parent)
+      rebuild_routes(db)
+      return parent()
+    end,
+    DELETE = function(self, db, helpers, parent)
+      rebuild_routes(db)
+      return parent()
     end,
 
     PATCH = function(self, db, helpers, parent)
       -- create temporary router
-
       local old_workspaces = ngx.ctx.workspaces
       ngx.ctx.workspaces = {}
+      core_handler.build_router(db, uuid())
       local r = build_router_without(self.params.routes)
       ngx.ctx.workspaces = old_workspaces
 
