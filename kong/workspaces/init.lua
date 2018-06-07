@@ -160,9 +160,16 @@ end
 function _M.register_workspaceable_relation(relation, primary_keys, unique_keys)
   -- we explicitly take only the first component of the primary key - ie,
   -- in plugins, this means we only take the plugin ID
+
+  local pks = {}
+  for _, pk in ipairs(primary_keys) do
+    pks[pk] = true
+  end
+
   if not workspaceable_relations[relation] then
     workspaceable_relations[relation] = {
       primary_key = primary_keys[1],
+      primary_keys = pks,
       unique_keys = unique_keys
     }
     return true

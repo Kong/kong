@@ -91,7 +91,7 @@ local function apply_unique_per_ws(table_name, params, constraints)
   end
 
   for field_name, field_schema in pairs(constraints.unique_keys) do
-    if params[field_name] and constraints.primary_key ~= field_name and
+    if params[field_name] and not constraints.primary_keys[field_name] and
       field_schema.schema.fields[field_name].type ~= "id" then
       params[field_name] = fmt("%s:%s", workspace.name, params[field_name])
     end
@@ -131,7 +131,10 @@ local function resolve_shared_entity_id(table_name, params, constraints)
       end
 
       if row then
-        params[k] = nil
+        -- don't clear primary keys
+        if not constraints.primary_keys[k] then
+          params[k] = nil
+        end
         params[constraints.primary_key] = row.entity_id
       end
     end
@@ -150,7 +153,7 @@ local function remove_ws_prefix(table_name, row, include_ws)
   end
 
   for field_name, field_schema in pairs(constraints.unique_keys) do
-    if row[field_name] and constraints.primary_key ~= field_name and
+    if row[field_name] and not constraints.primary_keys[field_name] and
       field_schema.schema.fields[field_name].type ~= "id" then
       local names = utils.split(row[field_name], ":")
       if #names > 1 then
