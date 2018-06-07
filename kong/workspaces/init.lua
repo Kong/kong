@@ -423,9 +423,9 @@ end
 
 
 local function sanitize_ngx_nulls(methods, uris, hosts)
-  return ((methods == cjson.null) or (methods == ngx.null)) and {[""] = ""} or methods,
-         ((uris    == cjson.null) or (uris    == ngx.null)) and {[""] = ""} or uris,
-         ((hosts   == cjson.null) or (hosts   == ngx.null)) and {[""] = ""} or hosts
+  return (methods == ngx.null) and "" or methods,
+         (uris    == ngx.null) and "" or uris,
+         (hosts   == ngx.null) and "" or hosts
 end
 
 
@@ -462,6 +462,22 @@ function _M.is_api_colliding(req, router)
   return false
 end
 
+local function sanitize_route_param(param)
+  if (param == cjson.null) or (param == ngx.null) or
+  not param or not param[1] then
+    return {[""] = ""}
+  else
+    return param
+  end
+end
+
+
+local function sanitize_routes_ngx_nulls(methods, uris, hosts)
+  return sanitize_route_param(methods),
+         sanitize_route_param(uris),
+         sanitize_route_param(hosts)
+end
+
 
 -- Extracts parameters for a route to be validated against the global
 -- current router. An api can have 0..* of each hosts, uris, methods.
@@ -472,7 +488,8 @@ end
 function _M.is_route_colliding(req, router)
   router = router or singletons.router
   local params = req.params
-  local methods, uris, hosts = sanitize_ngx_nulls(params.methods, params.paths, params.hosts)
+  local methods, uris, hosts = sanitize_routes_ngx_nulls(params.methods, params.paths, params.hosts)
+
   local ws = _M.get_workspaces()[1]
   for perm in permutations(methods and values(methods) or split(ALL_METHODS),
                            uris and values(uris) or {"/"},
