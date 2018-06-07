@@ -332,7 +332,9 @@ function Kong.ssl_certificate()
   runloop.certificate.before(ctx)
 
   for plugin, plugin_conf in plugins_iterator(loaded_plugins, true) do
+    kong_global.set_namespaced_log(kong, plugin.handler._name)
     plugin.handler:certificate(plugin_conf)
+    kong_global.reset_log(kong)
   end
 end
 
