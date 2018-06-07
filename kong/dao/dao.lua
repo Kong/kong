@@ -347,11 +347,12 @@ function DAO:find_all(tbl, include_ws)
   local constraints = workspaceable[table_name]
 
   if tbl ~= nil then
+    check_arg(tbl, 1, "table")
+    check_utf8(tbl, 1)
+
     skip_rbac = tbl.__skip_rbac
     tbl.__skip_rbac = nil
 
-    check_arg(tbl, 1, "table")
-    check_utf8(tbl, 1)
     check_not_empty(tbl, 1)
 
     local ok, err = schemas_validation.is_schema_subset(tbl, self.schema)
