@@ -5,6 +5,7 @@ local Errors  = require "kong.db.errors"
 
 
 local unindent = helpers.unindent
+local with_current_ws = helpers.with_current_ws
 
 
 local function it_content_types(title, fn)
@@ -23,6 +24,7 @@ for _, strategy in helpers.each_strategy("postgres") do
     local client
 
     setup(function()
+      ngx.ctx.workspaces = nil
       bp, db, dao = helpers.get_db_utils(strategy)
     end)
 
@@ -50,11 +52,15 @@ for _, strategy in helpers.each_strategy("postgres") do
       describe("POST", function()
         it_content_types("creates a route", function(content_type)
           return function()
+            local s
+            with_current_ws(nil, function()
+              s = bp.services:insert()
+            end, dao)
             local res = client:post("/routes", {
               body = {
                 protocols = { "http" },
                 hosts     = { "my.route.com" },
-                service   = bp.services:insert(),
+                service   = s,
               },
               headers = { ["Content-Type"] = content_type }
             })
@@ -72,7 +78,10 @@ for _, strategy in helpers.each_strategy("postgres") do
 
         it_content_types("creates a complex route", function(content_type)
           return function()
-            local s = bp.services:insert()
+            local s
+            with_current_ws(nil, function()
+              s = bp.services:insert()
+            end, dao)
             local res = client:post("/routes", {
               body    = {
                 protocols = { "http" },
@@ -160,9 +169,11 @@ for _, strategy in helpers.each_strategy("postgres") do
       describe("GET", function()
         describe("with data", function()
           before_each(function()
-            for i = 1, 10 do
-              bp.routes:insert({ paths = { "/route-" .. i } })
-            end
+            with_current_ws(nil, function()
+              for i = 1, 10 do
+                bp.routes:insert({ paths = { "/route-" .. i } })
+              end
+            end, dao)
           end)
 
           it("retrieves the first page", function()
@@ -299,7 +310,9 @@ for _, strategy in helpers.each_strategy("postgres") do
         local route
 
         before_each(function()
-          route = bp.routes:insert({ paths = { "/my-route" } })
+          with_current_ws(nil, function()
+            route = bp.routes:insert({ paths = { "/my-route" } })
+          end, dao)
         end)
 
         describe("GET", function()
@@ -347,8 +360,10 @@ for _, strategy in helpers.each_strategy("postgres") do
               assert.same(cjson.null, json.methods)
               assert.equal(route.id, json.id)
 
-              local in_db = assert(db.routes:select({ id = route.id }))
-              assert.same(json, in_db)
+              with_current_ws(nil, function()
+                local in_db = assert(db.routes:select({ id = route.id }))
+                assert.same(json, in_db)
+              end, dao)
             end
           end)
 
@@ -367,8 +382,10 @@ for _, strategy in helpers.each_strategy("postgres") do
               assert.True(json.strip_path)
               assert.equal(route.id, json.id)
 
-              local in_db = assert(db.routes:select({id = route.id}))
-              assert.same(json, in_db)
+              with_current_ws(nil, function()
+                local in_db = assert(db.routes:select({id = route.id}))
+                assert.same(json, in_db)
+              end, dao)
             end
           end)
 
@@ -391,8 +408,10 @@ for _, strategy in helpers.each_strategy("postgres") do
               assert.same(cjson.null, json.methods)
               assert.equal(route.id, json.id)
 
-              local in_db = assert(db.routes:select({id = route.id}))
-              assert.same(json, in_db)
+              with_current_ws(nil, function()
+                local in_db = assert(db.routes:select({id = route.id}))
+                assert.same(json, in_db)
+              end, dao)
             end
           end)
 
@@ -414,8 +433,10 @@ for _, strategy in helpers.each_strategy("postgres") do
             assert.same(cjson.null, json.methods)
             assert.equal(route.id, json.id)
 
-            local in_db = assert(db.routes:select({id = route.id}))
-            assert.same(json, in_db)
+            with_current_ws(nil, function()
+              local in_db = assert(db.routes:select({id = route.id}))
+              assert.same(json, in_db)
+            end, dao)
           end)
 
           it("allows updating sets and arrays with en empty array", function()
@@ -487,9 +508,11 @@ for _, strategy in helpers.each_strategy("postgres") do
             local body = assert.res_status(204, res)
             assert.equal("", body)
 
-            local in_db, err = db.routes:select({id = route.id})
-            assert.is_nil(err)
-            assert.is_nil(in_db)
+            with_current_ws(nil, function()
+              local in_db, err = db.routes:select({id = route.id})
+              assert.is_nil(err)
+              assert.is_nil(in_db)
+            end, dao)
           end)
 
           describe("errors", function()
@@ -506,8 +529,10 @@ for _, strategy in helpers.each_strategy("postgres") do
         local route
 
         before_each(function()
-          service = bp.services:insert({ host = "example.com", path = "/" })
-          route   = bp.routes:insert({ paths = { "/my-route" }, service = service })
+          with_current_ws(nil, function()
+            service = bp.services:insert({ host = "example.com", path = "/" })
+            route   = bp.routes:insert({ paths = { "/my-route" }, service = service })
+          end, dao)
         end)
 
         describe("GET", function()
@@ -554,9 +579,10 @@ for _, strategy in helpers.each_strategy("postgres") do
               assert.equal("edited.com", json.host)
               assert.same(cjson.null,    json.path)
 
-
-              local in_db = assert(db.services:select({ id = service.id }))
-              assert.same(json, in_db)
+              with_current_ws(nil, function()
+                local in_db = assert(db.services:select({ id = service.id }))
+                assert.same(json, in_db)
+              end, dao)
             end
           end)
 
@@ -576,9 +602,10 @@ for _, strategy in helpers.each_strategy("postgres") do
               assert.equal(1234,          json.port)
               assert.equal("/foo",        json.path)
 
-
-              local in_db = assert(db.services:select({ id = service.id }))
-              assert.same(json, in_db)
+              with_current_ws(nil, function()
+                local in_db = assert(db.services:select({ id = service.id }))
+                assert.same(json, in_db)
+              end, dao)
             end
           end)
 
@@ -644,16 +671,18 @@ for _, strategy in helpers.each_strategy("postgres") do
         local route
 
         before_each(function()
-          service = bp.services:insert {
-            name     = "my-service",
-            protocol = "http",
-            host     = "my-service.com",
-          }
+          with_current_ws(nil, function()
+            service = bp.services:insert {
+              name     = "my-service",
+              protocol = "http",
+              host     = "my-service.com",
+            }
 
-          route = bp.routes:insert {
-            hosts    = { "my-route.com" },
-            service  = service
-          }
+            route = bp.routes:insert {
+              hosts    = { "my-route.com" },
+              service  = service
+            }
+          end, dao)
         end)
 
         describe("POST", function()
@@ -806,13 +835,16 @@ for _, strategy in helpers.each_strategy("postgres") do
 
           it_content_types("perfers default values when replacing", function(content_type)
             return function()
-              local plugin = assert(dao.plugins:insert {
-                name = "key-auth",
-                route_id = route.id,
-                config = {hide_credentials = true}
-              })
-              assert.True(plugin.config.hide_credentials)
-              assert.same({"apikey"}, plugin.config.key_names)
+              local plugin
+              with_current_ws(nil, function()
+                plugin = assert(dao.plugins:insert {
+                  name = "key-auth",
+                  route_id = route.id,
+                  config = {hide_credentials = true}
+                })
+                assert.True(plugin.config.hide_credentials)
+                assert.same({"apikey"}, plugin.config.key_names)
+              end, dao)
 
               local res = assert(client:send {
                 method = "PUT",
@@ -829,10 +861,12 @@ for _, strategy in helpers.each_strategy("postgres") do
               local json = cjson.decode(body)
               assert.False(json.config.hide_credentials) -- not true anymore
 
-              plugin = assert(dao.plugins:find {
-                id = plugin.id,
-                name = plugin.name
-              })
+              with_current_ws(nil, function()
+                plugin = assert(dao.plugins:find {
+                  id = plugin.id,
+                  name = plugin.name
+                })
+              end, dao)
               assert.False(plugin.config.hide_credentials)
               assert.same({"apikey", "key"}, plugin.config.key_names)
             end
@@ -840,11 +874,14 @@ for _, strategy in helpers.each_strategy("postgres") do
 
           it_content_types("overrides a plugin previous config if partial", function(content_type)
             return function()
-              local plugin = assert(dao.plugins:insert {
-                name = "key-auth",
-                route_id = route.id
-              })
-              assert.same({ "apikey" }, plugin.config.key_names)
+              local plugin
+              with_current_ws(nil, function()
+                plugin = assert(dao.plugins:insert {
+                  name = "key-auth",
+                  route_id = route.id
+                })
+                assert.same({ "apikey" }, plugin.config.key_names)
+              end, dao)
 
               local res = assert(client:send {
                 method = "PUT",
@@ -865,11 +902,14 @@ for _, strategy in helpers.each_strategy("postgres") do
 
           it_content_types("updates the enabled property", function(content_type)
             return function()
-              local plugin = assert(dao.plugins:insert {
-                name = "key-auth",
-                route_id = route.id
-              })
-              assert.True(plugin.enabled)
+              local plugin
+              with_current_ws(nil, function()
+                plugin = assert(dao.plugins:insert {
+                  name = "key-auth",
+                  route_id = route.id
+                })
+                assert.True(plugin.enabled)
+              end, dao)
 
               local res = assert(client:send {
                 method = "PUT",
@@ -913,10 +953,12 @@ for _, strategy in helpers.each_strategy("postgres") do
 
         describe("GET", function()
           it("retrieves the first page", function()
-            assert(dao.plugins:insert {
-              name = "key-auth",
-              route_id = route.id
-            })
+            with_current_ws(nil, function()
+              assert(dao.plugins:insert {
+                name = "key-auth",
+                route_id = route.id
+              })
+            end, dao)
             local res = assert(client:send {
               method = "GET",
               path = "/routes/" .. route.id .. "/plugins"

@@ -242,6 +242,18 @@ function DAO:select(primary_key, options)
     return nil, tostring(err_t), err_t
   end
 
+  local table_name = self.schema.name
+  local constraints = workspaceable[table_name]
+  local ok, err = ws_helper.validate_pk_exist(table_name, primary_key, constraints)
+  if err then
+    local err_t = self.errors:database_error(err)
+    return nil, tostring(err_t), err_t
+  end
+
+  if not ok then
+    return nil
+  end
+
   local row, err_t = self.strategy:select(primary_key)
   if err_t then
     return nil, tostring(err_t), err_t
@@ -250,9 +262,6 @@ function DAO:select(primary_key, options)
   if not row then
     return nil
   end
-
-  local table_name = self.table
-  local constraints = workspaceable[table_name]
 
   if not options.skip_rbac then
     local r = rbac.validate_entity_operation(primary_key, constraints)
@@ -412,13 +421,25 @@ function DAO:update(primary_key, entity)
     return nil, tostring(err_t), err_t
   end
 
+  local constraints = workspaceable[self.schema.name]
+  local ok, err = ws_helper.validate_pk_exist(self.schema.name,
+                                              primary_key, constraints)
+  if err then
+    local err_t = self.errors:database_error(err)
+    return nil, tostring(err_t), err_t
+  end
+
+  if not ok then
+    local err_t = self.errors:not_found(primary_key)
+    return nil, tostring(err_t), err_t
+  end
+
   local ok, errors = self.schema:validate_update(entity_to_update)
   if not ok then
     local err_t = self.errors:schema_violation(errors)
     return nil, tostring(err_t), err_t
   end
 
-  local constraints = workspaceable[self.schema.name]
   if not rbac.validate_entity_operation(entity_to_update, constraints) then
     local err_t = self.errors:unauthorized_operation("update")
     return nil, tostring(err_t), err_t
@@ -453,8 +474,19 @@ function DAO:delete(primary_key)
     error("primary_key must be a table", 2)
   end
 
-  ws_helper.apply_unique_per_ws(self.schema.name, primary_key,
-                                workspaceable[self.schema.name])
+  local constraints = workspaceable[self.schema.name]
+  local ok, err = ws_helper.validate_pk_exist(self.schema.name,
+                                              primary_key, constraints)
+  if err then
+    local err_t = self.errors:database_error(err)
+    return nil, tostring(err_t), err_t
+  end
+
+  if not ok then
+    return true
+  end
+
+  ws_helper.apply_unique_per_ws(self.schema.name, primary_key, constraints)
 
   local ok, errors = self.schema:validate_primary_key(primary_key)
   if not ok then

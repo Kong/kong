@@ -23,6 +23,7 @@ for _, strategy in helpers.each_strategy() do
     local db
     local dao
     local client
+    local foo_ws
 
     setup(function()
       ngx.ctx.workspaces = nil
@@ -42,6 +43,15 @@ for _, strategy in helpers.each_strategy() do
       }))
 
       client = assert(helpers.admin_client())
+
+      local res = client:post("/workspaces", {
+        body = {
+          name = "foo",
+        },
+        headers = { ["Content-Type"] = "application/json" },
+      })
+      local body = assert.res_status(201, res)
+      foo_ws = cjson.decode(body)
     end)
 
     after_each(function()
@@ -50,11 +60,11 @@ for _, strategy in helpers.each_strategy() do
       end
     end)
 
-    describe("/services", function()
+    describe("/foo/services", function()
       describe("POST", function()
         it_content_types("creates a service", function(content_type)
           return function()
-            local res = client:post("/services", {
+            local res = client:post("/foo/services", {
               body = {
                 protocol = "http",
                 host     = "service.com",
@@ -76,62 +86,12 @@ for _, strategy in helpers.each_strategy() do
             assert.equals(60000, json.read_timeout)
           end
         end)
-
-        it_content_types("creates a service with url", function(content_type)
-          return function()
-            local res = client:post("/services", {
-              body = {
-                url = "http://service.com/",
-              },
-              headers = { ["Content-Type"] = content_type },
-            })
-            local body = assert.res_status(201, res)
-            local json = cjson.decode(body)
-
-            assert.is_string(json.id)
-            assert.is_number(json.created_at)
-            assert.is_number(json.updated_at)
-            assert.equals(cjson.null, json.name)
-            assert.equals("http", json.protocol)
-            assert.equals("service.com", json.host)
-            assert.equals("/", json.path)
-            assert.equals(80, json.port)
-            assert.equals(60000, json.connect_timeout)
-            assert.equals(60000, json.write_timeout)
-            assert.equals(60000, json.read_timeout)
-          end
-        end)
-
-        it_content_types("'port' defaults to 443 when 'url' scheme is https", function(content_type)
-          return function()
-            local res = client:post("/services", {
-              body = {
-                url = "https://service.com/",
-              },
-              headers = { ["Content-Type"] = content_type },
-            })
-            local body = assert.res_status(201, res)
-            local json = cjson.decode(body)
-
-            assert.is_string(json.id)
-            assert.is_number(json.created_at)
-            assert.is_number(json.updated_at)
-            assert.equals(cjson.null, json.name)
-            assert.equals("https", json.protocol)
-            assert.equals("service.com", json.host)
-            assert.equals("/", json.path)
-            assert.equals(443, json.port)
-            assert.equals(60000, json.connect_timeout)
-            assert.equals(60000, json.write_timeout)
-            assert.equals(60000, json.read_timeout)
-          end
-        end)
       end)
 
       describe("GET", function()
         describe("with data", function()
           before_each(function()
-            with_current_ws(nil, function()
+            with_current_ws({ foo_ws }, function()
               for i = 1, 10 do
                 assert(db.services:insert {
                   host = ("example%d.com"):format(i)
@@ -141,7 +101,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("retrieves the first page", function()
-            local res = client:get("/services")
+            local res = client:get("/foo/services")
             local res = assert.res_status(200, res)
             local json = cjson.decode(res)
             ngx.sleep(50)
@@ -153,7 +113,7 @@ for _, strategy in helpers.each_strategy() do
             local offset
 
             for i = 1, 4 do
-              local res = client:get("/services",
+              local res = client:get("/foo/services",
                 { query  = { size = 3, offset = offset }})
               local body = assert.res_status(200, res)
               local json = cjson.decode(body)
@@ -174,49 +134,28 @@ for _, strategy in helpers.each_strategy() do
             end
           end)
         end)
-
-        describe("with no data", function()
-          it("data property is an empty array and not an empty hash", function()
-            local res = client:get("/services")
-            local body = assert.res_status(200, res)
-            assert.matches('"data":%[%]', body)
-            local json = cjson.decode(body)
-            assert.same({ data = {}, next = cjson.null }, json)
-          end)
-        end)
-
-        describe("errors", function()
-          it("handles invalid filters", function()
-            local res  = client:get("/services", { query = { foo = "bar" } })
-            local body = assert.res_status(200, res)
-            local json = cjson.decode(body)
-            assert.same({ data = {}, next = cjson.null }, json)
-          end)
-
-          it("ignores an invalid body", function()
-            local res = client:get("/services", {
-              body = "this fails if decoded as json",
-              headers = {
-                ["Content-Type"] = "application/json",
-              }
-            })
-            assert.res_status(200, res)
-          end)
-        end)
       end)
 
-      describe("/services/{service}", function()
-        local service
+      describe("/foo/services/{service}", function()
+        local service, service_default
 
         before_each(function()
-          with_current_ws(nil, function ()
+          with_current_ws({ foo_ws }, function ()
             service = bp.services:insert({ name = "my-service", protocol = "http", host="example.com", path="/path" })
+          end, dao)
+          with_current_ws(nil, function ()
+            service_default = bp.services:insert({ name = "my-service", protocol = "http", host="example.com", path="/path" })
           end, dao)
         end)
 
         describe("GET", function()
-          it("retrieves by id", function()
+          it("should not with wrong workspace", function()
             local res  = client:get("/services/" .. service.id)
+            assert.res_status(404, res)
+          end)
+
+          it("retrieves by id", function()
+            local res  = client:get("/foo/services/" .. service.id)
             local body = assert.res_status(200, res)
 
             local json = cjson.decode(body)
@@ -224,7 +163,7 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("retrieves by name", function()
-            local res  = client:get("/services/" .. service.name)
+            local res  = client:get("/foo/services/" .. service.name)
             local body = assert.res_status(200, res)
 
             local json = cjson.decode(body)
@@ -232,40 +171,20 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it("returns 404 if not found", function()
-            local res = client:get("/services/" .. utils.uuid())
+            local res = client:get("/foo/services/" .. utils.uuid())
             assert.res_status(404, res)
           end)
 
           it("returns 404 if not found by name", function()
-            local res = client:get("/services/not-found")
+            local res = client:get("/foo/services/not-found")
             assert.res_status(404, res)
-          end)
-
-          it("ignores an invalid body", function()
-            local res = client:get("/services/" .. service.id, {
-              headers = {
-                ["Content-Type"] = "application/json"
-              },
-              body = "this fails if decoded as json",
-            })
-            assert.res_status(200, res)
-          end)
-
-          it("ignores an invalid body by name", function()
-            local res = client:get("/services/" .. service.name, {
-              headers = {
-                ["Content-Type"] = "application/json"
-              },
-              body = "this fails if decoded as json",
-            })
-            assert.res_status(200, res)
           end)
         end)
 
         describe("PATCH", function()
           it_content_types("updates if found", function(content_type)
             return function()
-              local res = client:patch("/services/" .. service.id, {
+              local res = client:patch("/foo/services/" .. service.id, {
                 headers = {
                   ["Content-Type"] = content_type
                 },
@@ -280,14 +199,30 @@ for _, strategy in helpers.each_strategy() do
               assert.equal("https",    json.protocol)
               assert.equal(service.id, json.id)
 
-              local in_db = assert(db.services:select({ id = service.id }))
-              assert.same(json, in_db)
+              with_current_ws({ foo_ws }, function ()
+                local in_db = assert(db.services:select({ id = service.id }))
+                assert.same(json, in_db)
+              end, dao)
+            end
+          end)
+
+          it_content_types("should not updates with wrong workspace", function(content_type)
+            return function()
+              local res = client:patch("/services/" .. service.id, {
+                headers = {
+                  ["Content-Type"] = content_type
+                },
+                body = {
+                  protocol = "https",
+                },
+              })
+              assert.res_status(404, res)
             end
           end)
 
           it_content_types("updates if found by name", function(content_type)
             return function()
-              local res = client:patch("/services/" .. service.name, {
+              local res = client:patch("/foo/services/" .. service.name, {
                 headers = {
                   ["Content-Type"] = content_type
                 },
@@ -300,28 +235,38 @@ for _, strategy in helpers.each_strategy() do
               assert.equal("https",      json.protocol)
               assert.equal(service.id,   json.id)
               assert.equal(service.name, json.name)
-              with_current_ws(nil, function ()
+              with_current_ws({ foo_ws }, function ()
                 local in_db = assert(db.services:select_by_name(service.name))
                 assert.same(json, in_db)
               end, dao)
             end
           end)
-
         end)
 
         describe("DELETE", function()
-          it("deletes a service", function()
+          it("should not delete a service with wrong workspace", function()
             local res  = client:delete("/services/" .. service.id)
+            assert.res_status(204, res)
+          end)
+
+          it("deletes a service", function()
+            local res  = client:get("/foo/services/" .. service.id)
+            local body = assert.res_status(200, res)
+
+
+            local res  = client:delete("/foo/services/" .. service.id)
             local body = assert.res_status(204, res)
             assert.equal("", body)
 
-            local in_db, err = db.services:select({ id = service.id })
-            assert.is_nil(err)
-            assert.is_nil(in_db)
+            with_current_ws({ foo_ws }, function ()
+              local in_db, err = db.services:select({ id = service.id })
+              assert.is_nil(err)
+              assert.is_nil(in_db)
+            end, dao)
           end)
 
           it("deletes a service by name", function()
-            local res  = client:delete("/services/" .. service.name)
+            local res  = client:delete("/foo/services/" .. service.name)
             local body = assert.res_status(204, res)
             assert.equal("", body)
 
@@ -332,12 +277,12 @@ for _, strategy in helpers.each_strategy() do
 
           describe("errors", function()
             it("returns HTTP 204 even if not found", function()
-              local res = client:delete("/services/" .. utils.uuid())
+              local res = client:delete("/foo/services/" .. utils.uuid())
               assert.res_status(204, res)
             end)
 
             it("returns HTTP 204 even if not found by name", function()
-              local res = client:delete("/services/not-found")
+              local res = client:delete("/foo/services/not-found")
               assert.res_status(204, res)
             end)
           end)
@@ -345,11 +290,11 @@ for _, strategy in helpers.each_strategy() do
 
       end)
 
-      describe("/services/{service}/routes", function()
+      describe("/foo/services/{service}/routes", function()
         it_content_types("lists all routes belonging to service", function(content_type)
           return function()
             local service, route
-            with_current_ws(nil, function()
+            with_current_ws({ foo_ws }, function()
               service = db.services:insert({
                 protocol = "http",
                 host     = "service.com",
@@ -367,7 +312,7 @@ for _, strategy in helpers.each_strategy() do
               })
             end, dao)
 
-            local res = client:get("/services/" .. service.id .. "/routes", {
+            local res = client:get("/foo/services/" .. service.id .. "/routes", {
               headers = { ["Content-Type"] = content_type },
             })
 
@@ -379,11 +324,11 @@ for _, strategy in helpers.each_strategy() do
         end)
       end)
 
-      describe("/services/{service}/plugins", function()
+      describe("/foo/services/{service}/plugins", function()
         local service
 
         before_each(function()
-          with_current_ws(nil, function ()
+          with_current_ws({ foo_ws }, function ()
             service = bp.services:insert {
               name     = "my-service",
               protocol = "http",
@@ -397,7 +342,7 @@ for _, strategy in helpers.each_strategy() do
             return function()
               local res = assert(client:send {
                 method = "POST",
-                path = "/services/" .. service.id .. "/plugins",
+                path = "/foo/services/" .. service.id .. "/plugins",
                 body = {
                   name = "key-auth",
                   ["config.key_names"] = "apikey,key"
@@ -415,7 +360,7 @@ for _, strategy in helpers.each_strategy() do
             return function()
               local res = assert(client:send {
                 method = "POST",
-                path = "/services/" .. service.name .. "/plugins",
+                path = "/foo/services/" .. service.name .. "/plugins",
                 body = {
                   name = "key-auth",
                   ["config.key_names"] = "apikey,key"
@@ -434,7 +379,7 @@ for _, strategy in helpers.each_strategy() do
               return function()
                 local res = assert(client:send {
                   method = "POST",
-                  path = "/services/" .. service.id .. "/plugins",
+                  path = "/foo/services/" .. service.id .. "/plugins",
                   body = {},
                   headers = { ["Content-Type"] = content_type }
                 })
@@ -449,7 +394,7 @@ for _, strategy in helpers.each_strategy() do
                 -- insert initial plugin
                 local res = assert(client:send {
                   method = "POST",
-                  path = "/services/" .. service.id .. "/plugins",
+                  path = "/foo/services/" .. service.id .. "/plugins",
                   body = {
                     name = "basic-auth",
                   },
@@ -461,7 +406,7 @@ for _, strategy in helpers.each_strategy() do
                 -- do it again, to provoke the error
                 local res = assert(client:send {
                   method = "POST",
-                  path = "/services/" .. service.id .. "/plugins",
+                  path = "/foo/services/" .. service.id .. "/plugins",
                   body = {
                     name = "basic-auth",
                   },
@@ -478,7 +423,7 @@ for _, strategy in helpers.each_strategy() do
                 -- insert initial plugin
                 local res = assert(client:send {
                   method = "POST",
-                  path = "/services/" .. service.id .. "/plugins",
+                  path = "/foo/services/" .. service.id .. "/plugins",
                   body = {
                     name = "basic-auth",
                   },
@@ -490,7 +435,7 @@ for _, strategy in helpers.each_strategy() do
                 -- do it again, to provoke the error
                 local conflict_res = assert(client:send {
                   method = "POST",
-                  path = "/services/" .. service.id .. "/plugins",
+                  path = "/foo/services/" .. service.id .. "/plugins",
                   body = {
                     name = "key-auth",
                     id = plugin.id,
@@ -510,7 +455,7 @@ for _, strategy in helpers.each_strategy() do
             return function()
               local res = assert(client:send {
                 method = "PUT",
-                path = "/services/" .. service.id .. "/plugins",
+                path = "/foo/services/" .. service.id .. "/plugins",
                 body = {
                   name = "key-auth",
                   ["config.key_names"] = "apikey,key",
@@ -529,7 +474,7 @@ for _, strategy in helpers.each_strategy() do
             return function()
               local res = assert(client:send {
                 method = "PUT",
-                path = "/services/" .. service.id .. "/plugins",
+                path = "/foo/services/" .. service.id .. "/plugins",
                 body = {
                   name = "key-auth",
                   ["config.key_names"] = "apikey,key",
@@ -542,7 +487,7 @@ for _, strategy in helpers.each_strategy() do
 
               res = assert(client:send {
                 method = "PUT",
-                path = "/services/" .. service.id .. "/plugins",
+                path = "/foo/services/" .. service.id .. "/plugins",
                 body = {
                   id = json.id,
                   name = "key-auth",
@@ -561,7 +506,7 @@ for _, strategy in helpers.each_strategy() do
           it_content_types("perfers default values when replacing", function(content_type)
             return function()
               local plugin
-              with_current_ws(nil, function ()
+              with_current_ws({ foo_ws }, function ()
                 plugin = assert(dao.plugins:insert {
                   name = "key-auth",
                   service_id = service.id,
@@ -573,7 +518,7 @@ for _, strategy in helpers.each_strategy() do
 
               local res = assert(client:send {
                 method = "PUT",
-                path = "/services/" .. service.id .. "/plugins",
+                path = "/foo/services/" .. service.id .. "/plugins",
                 body = {
                   id = plugin.id,
                   name = "key-auth",
@@ -598,7 +543,7 @@ for _, strategy in helpers.each_strategy() do
           it_content_types("overrides a plugin previous config if partial", function(content_type)
             return function()
               local plugin
-              with_current_ws(nil, function ()
+              with_current_ws({ foo_ws }, function ()
                 plugin = assert(dao.plugins:insert {
                   name = "key-auth",
                   service_id = service.id
@@ -608,7 +553,7 @@ for _, strategy in helpers.each_strategy() do
 
               local res = assert(client:send {
                 method = "PUT",
-                path = "/services/" .. service.id .. "/plugins",
+                path = "/foo/services/" .. service.id .. "/plugins",
                 body = {
                   id = plugin.id,
                   name = "key-auth",
@@ -626,7 +571,7 @@ for _, strategy in helpers.each_strategy() do
           it_content_types("updates the enabled property", function(content_type)
             local plugin
             return function()
-              with_current_ws(nil, function ()
+              with_current_ws({ foo_ws }, function ()
                 plugin = assert(dao.plugins:insert {
                   name = "key-auth",
                   service_id = service.id
@@ -636,7 +581,7 @@ for _, strategy in helpers.each_strategy() do
 
               local res = assert(client:send {
                 method = "PUT",
-                path = "/services/" .. service.id .. "/plugins",
+                path = "/foo/services/" .. service.id .. "/plugins",
                 body = {
                   id = plugin.id,
                   name = "key-auth",
@@ -656,27 +601,11 @@ for _, strategy in helpers.each_strategy() do
               assert.False(plugin.enabled)
             end
           end)
-
-          describe("errors", function()
-            it_content_types("handles invalid input", function(content_type)
-              return function()
-                local res = assert(client:send {
-                  method = "PUT",
-                  path = "/services/" .. service.id .. "/plugins",
-                  body = {},
-                  headers = { ["Content-Type"] = content_type }
-                })
-                local body = assert.res_status(400, res)
-                local json = cjson.decode(body)
-                assert.same({ name = "name is required" }, json)
-              end
-            end)
-          end)
         end)
 
         describe("GET", function()
           it("retrieves the first page", function()
-            with_current_ws(nil, function ()
+            with_current_ws({ foo_ws }, function ()
               assert(dao.plugins:insert {
                 name = "key-auth",
                 service_id = service.id
@@ -684,7 +613,7 @@ for _, strategy in helpers.each_strategy() do
             end, dao)
             local res = assert(client:send {
               method = "GET",
-              path = "/services/" .. service.id .. "/plugins"
+              path = "/foo/services/" .. service.id .. "/plugins"
             })
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
@@ -694,7 +623,7 @@ for _, strategy in helpers.each_strategy() do
           it("ignores an invalid body", function()
             local res = assert(client:send {
               method = "GET",
-              path = "/services/" .. service.id .. "/plugins",
+              path = "/foo/services/" .. service.id .. "/plugins",
               body = "this fails if decoded as json",
               headers = {
                 ["Content-Type"] = "application/json",
@@ -707,7 +636,7 @@ for _, strategy in helpers.each_strategy() do
 
       describe("errors", function()
         it("handles malformed JSON body", function()
-          local res = client:post("/services", {
+          local res = client:post("/foo/services", {
               body    = '{"hello": "world"',
               headers = { ["Content-Type"] = "application/json" }
             })
@@ -718,7 +647,7 @@ for _, strategy in helpers.each_strategy() do
         it_content_types("handles invalid input", function(content_type)
           return function()
             -- Missing params
-            local res = client:post("/services", {
+            local res = client:post("/foo/services", {
                 body = {},
                 headers = { ["Content-Type"] = content_type }
               })
@@ -729,7 +658,7 @@ for _, strategy in helpers.each_strategy() do
               }, json.fields)
 
             -- Invalid parameter
-            res = client:post("/services", {
+            res = client:post("/foo/services", {
                 body = {
                   host     = "example.com",
                   protocol = "foo",
@@ -744,7 +673,7 @@ for _, strategy in helpers.each_strategy() do
 
         it_content_types("handles invalid url ", function(content_type)
           return function()
-            local res = client:post("/services", {
+            local res = client:post("/foo/services", {
               body = {
                 url = "invalid url",
               },

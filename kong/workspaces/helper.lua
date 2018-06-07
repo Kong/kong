@@ -85,6 +85,37 @@ function _M.resolve_shared_entity_id(table_name, params, constraints)
 end
 
 
+-- validates taht given primary_key belongs to current ws scope
+function _M.validate_pk_exist(table_name, params, constraints)
+  if not constraints or not constraints.unique_keys then
+    return
+  end
+
+  local ws_scope = workspaces.get_workspaces()
+  if #ws_scope == 0 then
+    return
+  end
+  local workspace = ws_scope[1]
+
+  if table_name == "workspaces" and
+    params.name == workspaces.DEFAULT_WORKSPACE then
+    return
+  end
+
+  local row, err = workspaces.find_entity_by_unique_field({
+    workspace_id = workspace.id,
+    entity_id = params[constraints.primary_key]
+  })
+
+  if err then
+    return false, err
+  end
+
+  return row and true
+end
+
+
+
 function _M.remove_ws_prefix(table_name, row, include_ws)
   if not row then
     return row

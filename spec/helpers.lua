@@ -128,12 +128,6 @@ local function get_db_utils(strategy, no_truncate)
   -- new DAO (DB module)
   local db = assert(DB.new(conf, strategy))
 
-  -- cleanup new DB tables
-  assert(db:init_connector())
-  if not no_truncate then
-    assert(db:truncate())
-  end
-
   -- legacy DAO
   local dao
 
@@ -149,12 +143,21 @@ local function get_db_utils(strategy, no_truncate)
     end
   end
 
+  require("kong.singletons").dao = dao
+
+  -- cleanup new DB tables
+  assert(db:init_connector())
+  if not no_truncate then
+    assert(db:truncate())
+  end
+
   -- XXX rbac resources are gone
   local portal_helper = require "kong.portal.dao_helpers"
   portal_helper.register_resources(dao)
 
   -- blueprints
   local bp = assert(Blueprints.new(dao, db))
+
 
   return bp, db, dao
 end
@@ -1223,8 +1226,10 @@ return {
       wait_pid(pid_path, timeout)
     end
   end,
-  with_current_ws = function(ws,fn)
+  with_current_ws = function(ws,fn, dao)
     local old_ws = ngx.ctx.workspaces
+    ngx.ctx.workspaces = nil
+    ws = ws or dao.workspaces:find_all({name = "default"})
     ngx.ctx.workspaces = ws
     local res = fn()
     ngx.ctx.workspaces = old_ws

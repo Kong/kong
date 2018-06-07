@@ -125,7 +125,6 @@ end
 
 function _M.create_default(dao)
   dao = dao or singletons.dao
-
   local res, err = dao.workspaces:insert({
       name = _M.DEFAULT_WORKSPACE,
   }, { quiet = true })

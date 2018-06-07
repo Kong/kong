@@ -32,15 +32,15 @@ describe("Admin API post-processing", function()
 
   before_each(function()
     helpers.dao:truncate_tables()
+    require("kong.singletons").dao = helpers.dao
     helpers.register_consumer_relations(helpers.dao)
-    helpers.with_current_ws(
-      helpers.dao.workspaces.find_all({name = "default"}),
+    helpers.with_current_ws(nil,
       function()
         assert(helpers.dao.consumers:insert({
           username = "michael",
           custom_id = "landon",
         }))
-    end)
+    end, helpers.dao)
   end)
 
   it_content_types("post-processes paginated sets", function(content_type)
