@@ -1,5 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
+local singletons = require "kong.singletons"
+
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
@@ -39,6 +41,8 @@ describe("Admin API", function()
 
   before_each(function()
     assert(helpers.dao:run_migrations())
+    singletons.dao = helpers.dao
+
     assert(helpers.start_kong({
       nginx_conf = "spec/fixtures/custom_nginx.template",
       dns_hostsfile = dns_hostsfile,
