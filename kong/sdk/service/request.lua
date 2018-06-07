@@ -1,5 +1,6 @@
 local cjson = require "cjson.safe"
 local checks = require "kong.sdk.private.checks"
+local phase_checker = require "kong.sdk.private.phases"
 
 
 local ngx = ngx
@@ -13,6 +14,14 @@ local normalize_header = checks.normalize_header
 local normalize_multi_header = checks.normalize_multi_header
 local validate_header = checks.validate_header
 local validate_headers = checks.validate_headers
+local check_phase = phase_checker.check
+
+
+local PHASES = phase_checker.phases
+
+
+local access_and_rewrite = phase_checker.new(PHASES.rewrite, PHASES.access)
+
 
 --------------------------------------------------------------------------------
 -- Produce a lexicographically ordered querystring, given a table of values.
@@ -64,6 +73,8 @@ local function new(self)
   -- @param scheme Protocol to use. Supported values are `"http"` and `"https"`.
   -- @return Nothing; throws an error on invalid inputs.
   request.set_scheme = function(scheme)
+    check_phase(PHASES.access)
+
     if type(scheme) ~= "string" then
       error("scheme must be a string", 2)
     end
@@ -83,6 +94,8 @@ local function new(self)
   -- @param path The path string. Example: "/v2/movies"
   -- @return Nothing; throws an error on invalid inputs.
   request.set_path = function(path)
+    check_phase(PHASES.access)
+
     if type(path) ~= "string" then
       error("path must be a string", 2)
     end
@@ -107,6 +120,8 @@ local function new(self)
   -- @param query The raw querystring. Example: "foo=bar&bla&baz=hello%20world"
   -- @return Nothing; throws an error on invalid inputs.
   request.set_raw_query = function(query)
+    check_phase(access_and_rewrite)
+
     if type(query) ~= "string" then
       error("query must be a string", 2)
     end
@@ -145,6 +160,8 @@ local function new(self)
     -- `"PROPPATCH"`, `"LOCK"`, `"UNLOCK"`, `"PATCH"`, `"TRACE"`.
     -- @return Nothing; throws an error on invalid inputs.
     request.set_method = function(method)
+      check_phase(access_and_rewrite)
+
       if type(method) ~= "string" then
         error("method must be a string", 2)
       end
@@ -174,6 +191,8 @@ local function new(self)
   -- strings or booleans. Any string values given are URL-encoded.
   -- @return Nothing; throws an error on invalid inputs.
   request.set_query = function(args)
+    check_phase(access_and_rewrite)
+
     if type(args) ~= "table" then
       error("args must be a table", 2)
     end
@@ -195,6 +214,7 @@ local function new(self)
   -- @param value The header value. Example: "hello world"
   -- @return Nothing; throws an error on invalid inputs.
   request.set_header = function(header, value)
+    check_phase(access_and_rewrite)
 
     validate_header(header, value)
 
@@ -215,6 +235,7 @@ local function new(self)
   -- @param value The header value. Example: "no-cache"
   -- @return Nothing; throws an error on invalid inputs.
   request.add_header = function(header, value)
+    check_phase(access_and_rewrite)
 
     validate_header(header, value)
 
@@ -240,6 +261,8 @@ local function new(self)
   -- @return Nothing; throws an error on invalid inputs.
   -- The function does not throw an error if no header was removed.
   request.clear_header = function(header)
+    check_phase(access_and_rewrite)
+
     if type(header) ~= "string" then
       error("header must be a string", 2)
     end
@@ -266,6 +289,8 @@ local function new(self)
   -- and each value is either a string or an array of strings.
   -- @return Nothing; throws an error on invalid inputs.
   request.set_headers = function(headers)
+    check_phase(access_and_rewrite)
+
     if type(headers) ~= "table" then
       error("headers must be a table", 2)
     end
@@ -298,6 +323,8 @@ local function new(self)
   -- @param body The raw body, as a string.
   -- @return Nothing; throws an error on invalid inputs.
   request.set_raw_body = function(body)
+    check_phase(access_and_rewrite)
+
     if type(body) ~= "string" then
       error("body must be a string", 2)
     end
@@ -452,6 +479,8 @@ local function new(self)
     -- The `Content-Type` header will be updated to match the appropriate type.
     -- @return Nothing; throws an error on invalid inputs.
     request.set_body = function(args, mime)
+      check_phase(access_and_rewrite)
+
       if type(args) ~= "table" then
         error("args must be a table", 2)
       end

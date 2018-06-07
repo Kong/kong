@@ -46,6 +46,7 @@ require("kong.globalpatches")()
 
 
 local kong_global = require "kong.global"
+local PHASES = kong_global.phases
 
 
 _G.kong = kong_global.new() -- no versioned SDK for plugins for now
@@ -179,8 +180,6 @@ function Kong.init()
 
   kong_global.init_sdk(kong, config, nil) -- nil: latest SDK
 
-  kong_global.set_named_ctx(kong, "core", {})
-
   local db = assert(DB.new(config))
   assert(db:init_connector())
 
@@ -213,6 +212,8 @@ function Kong.init()
 end
 
 function Kong.init_worker()
+  kong_global.set_phase(kong, PHASES.init_worker)
+
   -- special math.randomseed from kong.globalpatches
   -- not taking any argument. Must be called only once
   -- and in the init_worker phase, to avoid duplicated
@@ -328,7 +329,10 @@ function Kong.init_worker()
 end
 
 function Kong.ssl_certificate()
+  kong_global.set_phase(kong, PHASES.certificate)
+
   local ctx = ngx.ctx
+
   runloop.certificate.before(ctx)
 
   for plugin, plugin_conf in plugins_iterator(loaded_plugins, true) do
@@ -339,6 +343,8 @@ function Kong.ssl_certificate()
 end
 
 function Kong.balancer()
+  kong_global.set_phase(kong, PHASES.balancer)
+
   local ctx = ngx.ctx
   local addr = ctx.balancer_address
   local tries = addr.tries
@@ -406,7 +412,10 @@ function Kong.balancer()
 end
 
 function Kong.rewrite()
+  kong_global.set_phase(kong, PHASES.rewrite)
+
   local ctx = ngx.ctx
+
   runloop.rewrite.before(ctx)
 
   -- we're just using the iterator, as in this rewrite phase no consumer nor
@@ -425,6 +434,8 @@ function Kong.rewrite()
 end
 
 function Kong.access()
+  kong_global.set_phase(kong, PHASES.access)
+
   local ctx = ngx.ctx
 
   runloop.access.before(ctx)
@@ -457,6 +468,8 @@ function Kong.access()
 end
 
 function Kong.header_filter()
+  kong_global.set_phase(kong, PHASES.header_filter)
+
   local ctx = ngx.ctx
 
   runloop.header_filter.before(ctx)
@@ -474,6 +487,8 @@ function Kong.header_filter()
 end
 
 function Kong.body_filter()
+  kong_global.set_phase(kong, PHASES.body_filter)
+
   for plugin, plugin_conf in plugins_iterator(loaded_plugins) do
     kong_global.set_named_ctx(kong, "plugin", plugin_conf)
     kong_global.set_namespaced_log(kong, plugin.handler._name)
@@ -487,6 +502,8 @@ function Kong.body_filter()
 end
 
 function Kong.log()
+  kong_global.set_phase(kong, PHASES.log)
+
   for plugin, plugin_conf in plugins_iterator(loaded_plugins) do
     kong_global.set_named_ctx(kong, "plugin", plugin_conf)
     kong_global.set_namespaced_log(kong, plugin.handler._name)

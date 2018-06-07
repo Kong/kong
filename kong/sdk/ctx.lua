@@ -3,6 +3,7 @@ local ngx = ngx
 
 -- shared between all global instances
 local _CTX_SHARED_KEY = {}
+local _CTX_CORE_KEY = {}
 
 
 local function new(self)
@@ -21,8 +22,12 @@ local function new(self)
     local nctx = ngx.ctx
     local key
 
-    if k == "shared" then
+    if k == "core" then
+      key = _CTX_CORE_KEY
+
+    elseif k == "shared" then
       key = _CTX_SHARED_KEY
+
     else
       key = t.keys[k]
     end

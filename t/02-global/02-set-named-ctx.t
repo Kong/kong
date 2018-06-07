@@ -22,15 +22,15 @@ __DATA__
             local kong = kong_global.new()
             kong_global.init_sdk(kong)
 
-            kong_global.set_named_ctx(kong, "core", {})
+            kong_global.set_named_ctx(kong, "custom", {})
             kong_global.set_named_ctx(kong, "foo", {})
 
-            kong.ctx.core.cats = "marry"
+            kong.ctx.custom.cats = "marry"
             kong.ctx.foo.cats = "suzie"
 
-            ngx.say(ngx.ctx.core)
+            ngx.say(ngx.ctx.custom)
             ngx.say(ngx.ctx.cats)
-            ngx.say(kong.ctx.core.cats)
+            ngx.say(kong.ctx.custom.cats)
             ngx.say(kong.ctx.foo.cats)
         }
     }
@@ -58,15 +58,15 @@ suzie
             local namespace_key1 = {}
             local namespace_key2 = {}
 
-            kong_global.set_named_ctx(kong, "core", namespace_key1)
-            kong.ctx.core.cats = "marry"
-            ngx.say(kong.ctx.core.cats)
+            kong_global.set_named_ctx(kong, "custom", namespace_key1)
+            kong.ctx.custom.cats = "marry"
+            ngx.say(kong.ctx.custom.cats)
 
-            kong_global.set_named_ctx(kong, "core", namespace_key2)
-            ngx.say(kong.ctx.core.cats)
+            kong_global.set_named_ctx(kong, "custom", namespace_key2)
+            ngx.say(kong.ctx.custom.cats)
 
-            kong_global.set_named_ctx(kong, "core", namespace_key1)
-            ngx.say(kong.ctx.core.cats)
+            kong_global.set_named_ctx(kong, "custom", namespace_key1)
+            ngx.say(kong.ctx.custom.cats)
         }
     }
 --- request
@@ -89,12 +89,12 @@ marry
             local kong = kong_global.new()
             kong_global.init_sdk(kong)
 
-            kong_global.set_named_ctx(kong, "core", {})
-            kong.ctx.core.cats = "marry"
-            ngx.say(kong.ctx.core.cats)
+            kong_global.set_named_ctx(kong, "custom", {})
+            kong.ctx.custom.cats = "marry"
+            ngx.say(kong.ctx.custom.cats)
 
-            kong_global.set_named_ctx(kong, "core", nil)
-            ngx.say(kong.ctx.core)
+            kong_global.set_named_ctx(kong, "custom", nil)
+            ngx.say(kong.ctx.custom)
         }
     }
 --- request
@@ -169,7 +169,7 @@ name cannot be an empty string
             local kong_global = require "kong.global"
             local kong = kong_global.new()
 
-            local pok, perr = pcall(kong_global.set_named_ctx, kong, "core", {})
+            local pok, perr = pcall(kong_global.set_named_ctx, kong, "custom", {})
             if not pok then
               ngx.say(perr)
             end

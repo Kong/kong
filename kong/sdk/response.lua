@@ -1,6 +1,7 @@
 local cjson = require "cjson.safe"
 local meta = require "kong.meta"
 local checks = require "kong.sdk.private.checks"
+local phase_checker = require "kong.sdk.private.phases"
 
 
 local ngx = ngx
@@ -14,6 +15,22 @@ local normalize_header = checks.normalize_header
 local normalize_multi_header = checks.normalize_multi_header
 local validate_header = checks.validate_header
 local validate_headers = checks.validate_headers
+local check_phase = phase_checker.check
+
+
+local PHASES = phase_checker.phases
+
+
+local header_body_log = phase_checker.new(PHASES.header_filter,
+                                          PHASES.body_filter,
+                                          PHASES.log)
+
+local rewrite_access = phase_checker.new(PHASES.rewrite,
+                                         PHASES.access)
+
+local rewrite_access_header = phase_checker.new(PHASES.rewrite,
+                                                PHASES.access,
+                                                PHASES.header_filter)
 
 
 local function new(sdk, major_version)
@@ -35,11 +52,15 @@ local function new(sdk, major_version)
 
 
   function _RESPONSE.get_status()
+    check_phase(header_body_log)
+
     return ngx.status
   end
 
 
   function _RESPONSE.get_header(name)
+    check_phase(header_body_log)
+
     if type(name) ~= "string" then
       error("header name must be a string", 2)
     end
@@ -54,6 +75,8 @@ local function new(sdk, major_version)
 
 
   function _RESPONSE.get_headers(max_headers)
+    check_phase(header_body_log)
+
     if max_headers == nil then
       return ngx.resp.get_headers(MAX_HEADERS_DEFAULT)
     end
@@ -73,6 +96,8 @@ local function new(sdk, major_version)
 
 
   function _RESPONSE.set_status(status)
+    check_phase(rewrite_access_header)
+
     if ngx.headers_sent then
       error("headers have already been sent", 2)
     end
@@ -93,6 +118,8 @@ local function new(sdk, major_version)
 
 
   function _RESPONSE.set_header(name, value)
+    check_phase(rewrite_access_header)
+
     if ngx.headers_sent then
       error("headers have already been sent", 2)
     end
@@ -104,6 +131,8 @@ local function new(sdk, major_version)
 
 
   function _RESPONSE.add_header(name, value)
+    check_phase(rewrite_access_header)
+
     if ngx.headers_sent then
       error("headers have already been sent", 2)
     end
@@ -122,6 +151,8 @@ local function new(sdk, major_version)
 
 
   function _RESPONSE.clear_header(name)
+    check_phase(rewrite_access_header)
+
     if ngx.headers_sent then
       error("headers have already been sent", 2)
     end
@@ -135,6 +166,8 @@ local function new(sdk, major_version)
 
 
   function _RESPONSE.set_headers(headers)
+    check_phase(rewrite_access_header)
+
     if ngx.headers_sent then
       error("headers have already been sent", 2)
     end
@@ -205,6 +238,8 @@ local function new(sdk, major_version)
 
 
   function _RESPONSE.exit(status, body, headers)
+    check_phase(rewrite_access)
+
     if ngx.headers_sent then
       error("headers have already been sent", 2)
     end

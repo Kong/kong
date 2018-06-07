@@ -295,7 +295,7 @@ qq{
             local SDK = require "kong.sdk"
             local sdk = SDK.new()
 
-            sdk.response.set_header("X-Non-Service-Header", "test")
+            ngx.header["X-Non-Service-Header"] = "test"
         }
 
         proxy_pass http://unix:$TEST_NGINX_HTML_DIR/nginx.sock;

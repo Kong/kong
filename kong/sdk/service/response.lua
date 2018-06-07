@@ -1,3 +1,6 @@
+local phase_checker = require "kong.sdk.private.phases"
+
+
 local ngx = ngx
 local sub = string.sub
 local fmt = string.format
@@ -7,6 +10,15 @@ local error = error
 local lower = string.lower
 local tonumber = tonumber
 local getmetatable = getmetatable
+local check_phase = phase_checker.check
+
+
+local PHASES = phase_checker.phases
+
+
+local header_body_log = phase_checker.new(PHASES.header_filter,
+                                          PHASES.body_filter,
+                                          PHASES.log)
 
 
 local function headers(response_headers)
@@ -37,11 +49,15 @@ local function new(sdk, major_version)
 
 
   function response.get_status()
-     return tonumber(sub(ngx.var.upstream_status or "", -3))
+    check_phase(header_body_log)
+
+    return tonumber(sub(ngx.var.upstream_status or "", -3))
   end
 
 
   function response.get_headers(max_headers)
+    check_phase(header_body_log)
+
     if max_headers == nil then
       return headers(ngx.resp.get_headers(MAX_HEADERS_DEFAULT))
     end
@@ -61,6 +77,8 @@ local function new(sdk, major_version)
 
 
   function response.get_header(name)
+    check_phase(header_body_log)
+
     if type(name) ~= "string" then
       error("name must be a string", 2)
     end

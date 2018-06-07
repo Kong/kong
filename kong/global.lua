@@ -1,6 +1,7 @@
 -- TODO: get rid of 'kong.meta'; this module is king
 local meta = require "kong.meta"
 local SDK = require "kong.sdk"
+local phase_checker = require "kong.sdk.private.phases"
 
 
 local type = type
@@ -17,7 +18,9 @@ local KONG_VERSION_NUM = tonumber(string.format("%d%.2d%.2d",
 -- Runloop interface
 
 
-local _GLOBAL = {}
+local _GLOBAL = {
+  phases = phase_checker.phases,
+}
 
 
 function _GLOBAL.new()
@@ -51,6 +54,20 @@ function _GLOBAL.set_named_ctx(self, name, key)
   end
 
   self.ctx.keys[name] = key
+end
+
+
+function _GLOBAL.set_phase(self, phase)
+  if not self then
+    error("arg #1 cannot be nil", 2)
+  end
+
+  local kctx = self.ctx
+  if not kctx then
+    error("ctx SDK module not initialized", 2)
+  end
+
+  kctx.core.phase = phase
 end
 
 
