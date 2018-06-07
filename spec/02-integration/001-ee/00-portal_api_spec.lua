@@ -6,6 +6,7 @@ local proxy_prefix = require("kong.enterprise_edition.proxies").proxy_prefix
 
 
 local function insert_files(dao)
+  helpers.with_current_ws(nil, function()
   for i = 1, 10 do
     assert(dao.portal_files:insert {
       name = "file-" .. i,
@@ -14,6 +15,7 @@ local function insert_files(dao)
       auth = i % 2 == 0 and true or false
     })
   end
+  end, dao)
 end
 
 
@@ -110,6 +112,7 @@ describe("Developer Portal - Portal API", function()
         portal_auth_config = "{ \"hide_credentials\": true }"
       }))
 
+      helpers.with_current_ws(nil, function()
       local consumer_pending = bp.consumers:insert {
         username = "dale",
         status = enums.CONSUMERS.STATUS.PENDING
@@ -131,6 +134,7 @@ describe("Developer Portal - Portal API", function()
         password    = "kong",
         consumer_id = consumer_approved.id
       })
+      end, dao)
     end)
 
     before_each(function()
