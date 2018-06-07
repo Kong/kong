@@ -88,8 +88,3 @@ cache:
     - $DOWNLOAD_CACHE
     - $INSTALL_CACHE
     - $HOME/.ccm/repository
-
-
-branches:
-  except:
-    - feat/entity-level-rbac
