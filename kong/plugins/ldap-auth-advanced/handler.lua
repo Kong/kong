@@ -1,4 +1,4 @@
-local access = require "kong.plugins.ldap-auth.access"
+local access = require "kong.plugins.ldap-auth-advanced.access"
 local BasePlugin = require "kong.plugins.base_plugin"
 
 local LdapAuthHandler = BasePlugin:extend()

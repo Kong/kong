@@ -2,7 +2,7 @@ local openssl_digest = require "openssl.digest"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local singletons = require "kong.singletons"
-local ldap = require "kong.plugins.ldap-auth.ldap"
+local ldap = require "kong.plugins.ldap-auth-advanced.ldap"
 
 local ffi = require "ffi"
 ffi.cdef[[

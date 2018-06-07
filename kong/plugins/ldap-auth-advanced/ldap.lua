@@ -1,4 +1,4 @@
-local asn1 = require "kong.plugins.ldap-auth.asn1"
+local asn1 = require "kong.plugins.ldap-auth-advanced.asn1"
 local bunpack = string.unpack
 
 local string_format = string.format
