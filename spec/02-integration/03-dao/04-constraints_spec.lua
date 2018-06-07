@@ -22,9 +22,10 @@ dao_helpers.for_each_dao(function(kong_config)
     end)
 
     before_each(function()
-      dao:truncate_tables()
       assert(db:truncate())
       helper.register_consumer_relations(dao)
+      ngx.ctx.workspaces = nil
+      ngx.ctx.workspaces = dao.workspaces:find_all({ name = "default" })
 
       local service, _, err_t = db.services:insert {
         protocol = "http",

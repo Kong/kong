@@ -7,7 +7,9 @@ describe("Admin API /cache [#" .. strategy .. "]", function()
   local admin_client
 
   setup(function()
+    ngx.ctx.workspaces = nil
     local bp, _, dao = helpers.get_db_utils(strategy)
+    require("kong.singletons").dao = dao
     helpers.with_current_ws(nil, function()
       local service = bp.services:insert()
 
@@ -46,7 +48,7 @@ describe("Admin API /cache [#" .. strategy .. "]", function()
       proxy_client:close()
     end
 
-    helpers.stop_kong()
+    helpers.stop_kong(nil, true )
   end)
 
 

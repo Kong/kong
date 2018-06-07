@@ -1290,6 +1290,7 @@ end)
 describe("Admin API request size", function()
   local client
   setup(function()
+    singletons.dao = helpers.dao
     helpers.dao:truncate_tables()
     helpers.db:truncate()
   end)

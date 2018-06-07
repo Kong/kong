@@ -212,6 +212,7 @@ for _, strategy in helpers.each_strategy() do
           with_current_ws(nil, function ()
             service = bp.services:insert({ name = "my-service", protocol = "http", host="example.com", path="/path" })
           end, dao)
+
         end)
 
         describe("GET", function()
@@ -280,8 +281,10 @@ for _, strategy in helpers.each_strategy() do
               assert.equal("https",    json.protocol)
               assert.equal(service.id, json.id)
 
-              local in_db = assert(db.services:select({ id = service.id }))
-              assert.same(json, in_db)
+              with_current_ws(nil, function ()
+                local in_db = assert(db.services:select({ id = service.id }))
+                assert.same(json, in_db)
+              end, dao)
             end
           end)
 

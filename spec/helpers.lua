@@ -29,7 +29,6 @@ local http = require "resty.http"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
-local workspaces = require "kong.workspaces"
 
 local table_merge = utils.table_merge
 

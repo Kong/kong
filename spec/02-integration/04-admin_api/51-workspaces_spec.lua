@@ -21,7 +21,7 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
     assert(helpers.start_kong({
       database = kong_config.database
     }))
-
+    ngx.ctx.workspaces = nil
     client = assert(helpers.admin_client())
   end)
 
@@ -516,7 +516,6 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
 end)
 end)
 
-
 dao_helpers.for_each_dao(function(kong_config)
 describe("Admin API #" .. kong_config.database, function()
   local client
@@ -524,7 +523,9 @@ describe("Admin API #" .. kong_config.database, function()
   setup(function()
     dao = assert(DAOFactory.new(kong_config))
     singletons.dao = dao
-    helpers.dao:run_migrations()
+
+    dao:truncate_tables()
+    dao:run_migrations()
 
     assert(helpers.start_kong{
       database = kong_config.database
@@ -537,12 +538,12 @@ describe("Admin API #" .. kong_config.database, function()
   describe("POST /apis", function()
     describe("Refresh the router", function()
       before_each(function()
+        ngx.ctx.workspaces = nil
+        dao:truncate_tables()
         client = assert(helpers.admin_client())
-        helpers.dao:run_migrations()
       end)
       after_each(function()
         if client then client:close() end
-        dao:truncate_tables()
       end)
       it("doesn't create an API when it conflicts", function()
           local res = assert(client:send {

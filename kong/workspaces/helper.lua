@@ -93,13 +93,13 @@ function _M.validate_pk_exist(table_name, params, constraints)
 
   local ws_scope = workspaces.get_workspaces()
   if #ws_scope == 0 then
-    return
+    return true
   end
   local workspace = ws_scope[1]
 
   if table_name == "workspaces" and
     params.name == workspaces.DEFAULT_WORKSPACE then
-    return
+    return true
   end
 
   local row, err = workspaces.find_entity_by_unique_field({

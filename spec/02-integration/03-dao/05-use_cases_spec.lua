@@ -10,6 +10,12 @@ for _, strategy in helpers.each_strategy() do
       local _
       bp, _, dao = helpers.get_db_utils(strategy)
       singletons.dao = dao
+      ngx.ctx.workspaces = nil
+      ngx.ctx.workspaces = dao.workspaces:find_all({ name = "default" })
+    end)
+
+    teardown(function()
+      ngx.ctx.workspaces = nil
     end)
 
     it("retrieves plugins for plugins_iterator", function()

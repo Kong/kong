@@ -283,7 +283,10 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("errors on invalid values", function()
-          local pk = { id = utils.uuid() }
+          local route_inserted = bp.routes:insert({
+            hosts = { "example.com" },
+          })
+          local pk = { id = route_inserted.id }
           local new_route, err, err_t = db.routes:update(pk, {
             protocols = { 123 },
           })
@@ -1067,7 +1070,10 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("errors on invalid values", function()
-          local pk = { id = utils.uuid() }
+          local service_inserted = bp.services:insert({
+            host = "service.com",
+          })
+          local pk = { id = service_inserted.id }
           local new_service, err, err_t = db.services:update(pk, { protocol = 123 })
           assert.is_nil(new_service)
           local message = "schema violation (protocol: expected a string)"

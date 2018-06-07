@@ -1,36 +1,23 @@
 local Errors  = require "kong.db.errors"
 local utils   = require "kong.tools.utils"
 local helpers = require "spec.helpers"
-local cjson   = require "cjson"
 local singletons = require "kong.singletons"
 
 local fmt      = string.format
-local unindent = helpers.unindent
+local with_current_ws = helpers.with_current_ws
 
 
 local a_blank_uuid = "00000000-0000-0000-0000-000000000000"
 
-
-local function run_with_ws(cb, scope, dao)
-  scope = scope or dao.workspaces:find_all({name = "default"})
-  local old_ctx = ngx.ctx.workspaces
-  ngx.ctx.workspaces = scope
-  cb()
-  ngx.ctx.workspaces = old_ctx
-end
-
 local function add_ws(dao, ws_name)
-  local old_ctx
-  old_ctx, ngx.ctx.workspaces = ngx.ctx.workspaces, nil
-  ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
+  return with_current_ws(nil, function()
+    -- create another workspace in default workspace
+    local foo_ws, err, err_t = dao.workspaces:insert({
+      name = ws_name,
+    })
 
-  -- create another workspace in default workspace
-  local foo_ws, err, err_t = dao.workspaces:insert({
-    name = ws_name,
-  })
-
-  ngx.ctx.workspaces = old_ctx
-  return foo_ws
+    return foo_ws
+  end, dao)
 end
 
 
@@ -51,58 +38,61 @@ for _, strategy in helpers.each_strategy() do
     describe("Routes", function()
       describe(":insert()", function()
         it("creates a Route in default workspace", function()
-          local old_ctx = ngx.ctx.workspaces
-          ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
-          local route, err, err_t = db.routes:insert({
-            protocols = { "http" },
-            hosts = { "example.com" },
-            service = assert(db.services:insert({ host = "service.com" })),
-          })
+          with_current_ws(nil, function()
 
-          assert.is_nil(err_t)
-          assert.is_nil(err)
+            local route, err, err_t = db.routes:insert({
+              protocols = { "http" },
+              hosts = { "example.com" },
+              service = assert(db.services:insert({ host = "service.com" })),
+            })
 
-          assert.is_table(route)
-          assert.is_number(route.created_at)
-          assert.is_number(route.updated_at)
-          assert.is_true(utils.is_valid_uuid(route.id))
+            assert.is_nil(err_t)
+            assert.is_nil(err)
 
-          assert.same({
-            id              = route.id,
-            created_at      = route.created_at,
-            updated_at      = route.updated_at,
-            protocols       = { "http" },
-            methods         = ngx.null,
-            hosts           = { "example.com" },
-            paths           = ngx.null,
-            regex_priority  = 0,
-            preserve_host   = false,
-            strip_path      = true,
-            service         = route.service,
-          }, route)
+            assert.is_table(route)
+            assert.is_number(route.created_at)
+            assert.is_number(route.updated_at)
+            assert.is_true(utils.is_valid_uuid(route.id))
 
-          local default_ws = ngx.ctx.workspaces[1]
-          local rel, err = dao.workspace_entities:find({
-            workspace_id = default_ws.id,
-            entity_id = route.id,
-            unique_field_name = "id"
-          })
+            assert.same({
+              id              = route.id,
+              created_at      = route.created_at,
+              updated_at      = route.updated_at,
+              protocols       = { "http" },
+              methods         = ngx.null,
+              hosts           = { "example.com" },
+              paths           = ngx.null,
+              regex_priority  = 0,
+              preserve_host   = false,
+              strip_path      = true,
+              service         = route.service,
+            }, route)
 
-          assert.is_not_nil(rel)
-          assert.same({
-            entity_id = route.id,
-            entity_type = "routes",
-            unique_field_name = "id",
-            unique_field_value = route.id,
-            workspace_id = default_ws.id,
-          }, rel)
-          ngx.ctx.workspaces = old_ctx
+            local ws = dao.workspaces:find_all({
+              name = "default"
+            })
+            local default_ws = ws[1]
+            local rel, err = dao.workspace_entities:find({
+              workspace_id = default_ws.id,
+              entity_id = route.id,
+              unique_field_name = "id"
+            })
+
+            assert.is_not_nil(rel)
+            assert.same({
+              entity_id = route.id,
+              entity_type = "routes",
+              unique_field_name = "id",
+              unique_field_value = route.id,
+              workspace_id = default_ws.id,
+            }, rel)
+          end, dao)
         end)
 
         it("creates a Route in non-default workspace", function()
           local foo_ws = add_ws(dao, "foo")
 
-          run_with_ws(function ()
+          with_current_ws({ foo_ws }, function ()
             -- add route in foo workspace
             local route, err, err_t = db.routes:insert({
               protocols = { "http" },
@@ -147,7 +137,7 @@ for _, strategy in helpers.each_strategy() do
               unique_field_value = route.id,
               workspace_id = foo_ws.id,
             }, rel)
-          end, {foo_ws})
+          end, dao)
         end)
       end)
 
@@ -157,7 +147,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("returns an existing Route from default workspace", function()
-          run_with_ws( function ()
+          with_current_ws( nil,function ()
             local route_inserted = bp.routes:insert({
             hosts = { "example.com" },
             })
@@ -165,12 +155,12 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err_t)
             assert.is_nil(err)
             assert.same(route_inserted, route)
-          end, nil, dao)
+          end, dao)
         end)
 
-        it("returns an existing Route from foo worksoace", function()
+        it("returns an existing Route from foo workspace", function()
           local foo_ws = add_ws(dao, "foo")
-          run_with_ws( function ()
+          with_current_ws( {foo_ws},function()
             local route_inserted = bp.routes:insert({
               hosts = { "example.com" },
             })
@@ -178,7 +168,7 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err_t)
             assert.is_nil(err)
             assert.same(route_inserted, route)
-          end, {foo_ws})
+          end, dao)
         end)
       end)
 
@@ -190,20 +180,22 @@ for _, strategy in helpers.each_strategy() do
         -- I/O
         it("returns not found error", function()
           local foo_ws = add_ws(dao, "foo")
-          run_with_ws( function ()
+          with_current_ws( {foo_ws},function()
             local pk = { id = utils.uuid() }
             local new_route, err, err_t = db.routes:update(pk, {
             protocols = { "https" }
             })
             assert.is_nil(new_route)
-          end, {foo_ws})
+          end, dao)
         end)
 
         it("updates an existing Route", function()
           local foo_ws = add_ws(dao, "foo")
-          run_with_ws( function ()
-            local route = bp.routes:insert({
+          with_current_ws( {foo_ws},function()
+            local route = db.routes:insert({
+              protocols = { "http" },
               hosts = { "example.com" },
+              service = assert(db.services:insert({ host = "service.com" })),
             })
 
             ngx.sleep(1)
@@ -227,7 +219,7 @@ for _, strategy in helpers.each_strategy() do
               preserve_host   = route.preserve_host,
               service         = route.service,
             }, new_route)
-          end, {foo_ws})
+          end, dao)
         end)
       end)
 
@@ -239,7 +231,7 @@ for _, strategy in helpers.each_strategy() do
         -- I/O
         it("returns nothing if the Route does not exist", function()
           local foo_ws = add_ws(dao, "foo")
-          run_with_ws( function ()
+          with_current_ws( {foo_ws},function()
             local u = utils.uuid()
             local ok, err, err_t = db.routes:delete({
               id = u
@@ -247,12 +239,12 @@ for _, strategy in helpers.each_strategy() do
             assert.is_true(ok)
             assert.is_nil(err_t)
             assert.is_nil(err)
-          end, {foo_ws})
+          end, dao)
         end)
 
         it("deletes an existing Route", function()
           local foo_ws = add_ws(dao, "foo")
-          run_with_ws( function ()
+          with_current_ws( {foo_ws},function()
             local route = bp.routes:insert({
               hosts = { "example.com" },
             })
@@ -270,7 +262,7 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err_t)
             assert.is_nil(err)
             assert.is_nil(route_in_db)
-          end, {foo_ws})
+          end, dao)
         end)
       end)
 
@@ -282,7 +274,7 @@ for _, strategy in helpers.each_strategy() do
         it("invokes schema post-processing", function()
           assert(db:truncate())
           local foo_ws = add_ws(dao, "foo")
-          run_with_ws( function ()
+          with_current_ws( {foo_ws},function()
             bp.routes:insert {
               methods = { "GET" },
             }
@@ -294,7 +286,7 @@ for _, strategy in helpers.each_strategy() do
             for i = 1, #rows do
               assert.is_truthy(rows[i].methods.GET)
             end
-          end, {foo_ws})
+          end, dao)
         end)
 
         describe("page size", function()
@@ -304,31 +296,31 @@ for _, strategy in helpers.each_strategy() do
             db:truncate()
 
             foo_ws = add_ws(dao, "foo")
-            run_with_ws( function ()
+            with_current_ws( {foo_ws},function()
               for i = 1, 1002 do
                 bp.routes:insert({ hosts = { "example-" .. i .. ".com" } })
               end
-            end, {foo_ws})
+            end, dao)
           end)
 
           it("defaults page_size = 100", function()
-            run_with_ws( function ()
+            with_current_ws( {foo_ws},function()
               local rows, err, err_t = db.routes:page()
               assert.is_nil(err_t)
               assert.is_nil(err)
               assert.is_table(rows)
               assert.equal(100, #rows)
-            end, {foo_ws})
+            end, dao)
           end)
 
           it("max page_size = 1000", function()
-            run_with_ws( function ()
+            with_current_ws( {foo_ws},function()
               local rows, err, err_t = db.routes:page(1002)
               assert.is_nil(err_t)
               assert.is_nil(err)
               assert.is_table(rows)
               assert.equal(1000, #rows)
-            end, {foo_ws})
+            end, dao)
           end)
         end)
 
@@ -338,30 +330,30 @@ for _, strategy in helpers.each_strategy() do
             db:truncate()
 
             foo_ws = add_ws(dao, "foo")
-            run_with_ws( function ()
+            with_current_ws( {foo_ws},function()
               for i = 1, 10 do
                 bp.routes:insert({
                   hosts = { "example-" .. i .. ".com" },
                   methods = { "GET" },
                 })
               end
-            end, {foo_ws})
+            end, dao)
           end)
 
 
           it("fetches all rows in one page", function()
-            run_with_ws( function ()
+            with_current_ws( {foo_ws},function()
               local rows, err, err_t, offset = db.routes:page()
               assert.is_nil(err_t)
               assert.is_nil(err)
               assert.is_table(rows)
               assert.equal(10, #rows)
               assert.is_nil(offset)
-            end, {foo_ws})
+            end, dao)
           end)
 
           it("fetched rows are returned in a table without hash part", function()
-            run_with_ws( function ()
+            with_current_ws( {foo_ws},function()
               local rows, err, err_t = db.routes:page()
               assert.is_nil(err_t)
               assert.is_nil(err)
@@ -374,32 +366,32 @@ for _, strategy in helpers.each_strategy() do
               end
 
               assert.equal(#rows, #keys) -- no hash part in rows
-            end, {foo_ws})
+            end, dao)
           end)
 
           it("fetches rows always in same order", function()
-            run_with_ws( function ()
+            with_current_ws( {foo_ws},function()
               local rows1 = db.routes:page()
               local rows2 = db.routes:page()
               assert.is_table(rows1)
               assert.is_table(rows2)
               assert.same(rows1, rows2)
-            end, {foo_ws})
+            end, dao)
           end)
 
           it("returns offset when page_size < total", function()
-            run_with_ws( function ()
+            with_current_ws( {foo_ws},function()
               local rows, err, err_t, offset = db.routes:page(5)
               assert.is_nil(err_t)
               assert.is_nil(err)
               assert.is_table(rows)
               assert.equal(5, #rows)
               assert.is_string(offset)
-            end, {foo_ws})
+            end, dao)
           end)
 
           it("fetches subsequent pages with offset", function()
-            run_with_ws( function ()
+            with_current_ws( {foo_ws},function()
               local rows_1, err, err_t, offset = db.routes:page(5)
               assert.is_nil(err_t)
               assert.is_nil(err)
@@ -429,11 +421,11 @@ for _, strategy in helpers.each_strategy() do
                   assert.not_same(row_1, row_2)
                 end
               end
-            end, {foo_ws})
+            end, dao)
           end)
 
           it("fetches same page with same offset", function()
-            run_with_ws( function ()
+            with_current_ws( {foo_ws},function()
               local _, err, err_t, offset = db.routes:page(3)
               assert.is_nil(err_t)
               assert.is_nil(err)
@@ -454,11 +446,11 @@ for _, strategy in helpers.each_strategy() do
               for i = 1, #rows_a do
                 assert.same(rows_a[i], rows_b[i])
               end
-            end, {foo_ws})
+            end, dao)
           end)
 
           it("fetches pages with last page having a single row", function()
-            run_with_ws( function ()
+            with_current_ws( {foo_ws},function()
               local rows, offset
 
               repeat
@@ -474,11 +466,11 @@ for _, strategy in helpers.each_strategy() do
               until offset == nil
 
               assert.equal(1, #rows) -- last page
-            end, {foo_ws})
+            end, dao)
           end)
 
           it("fetches first page with invalid offset", function()
-            run_with_ws( function ()
+            with_current_ws( {foo_ws},function()
               local rows, err, err_t = db.routes:page(3, "hello")
               assert.is_nil(rows)
               local message  = "'hello' is not a valid offset for this strategy: bad base64 encoding"
@@ -489,7 +481,7 @@ for _, strategy in helpers.each_strategy() do
                 message  = message,
                 strategy = strategy,
               }, err_t)
-            end, {foo_ws})
+            end, dao)
           end)
         end)
       end)
@@ -500,14 +492,14 @@ for _, strategy in helpers.each_strategy() do
           db:truncate()
 
           foo_ws = add_ws(dao, "foo")
-          run_with_ws( function ()
+          with_current_ws( {foo_ws},function()
             for i = 1, 100 do
               bp.routes:insert({
                 hosts   = { "example-" .. i .. ".com" },
                 methods = { "GET" }
               })
             end
-          end, {foo_ws})
+          end, dao)
         end)
 
         teardown(function ()
@@ -516,7 +508,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- I/O
         it("iterates over all rows and its sets work as sets", function()
-          run_with_ws( function ()
+          with_current_ws( {foo_ws},function()
             local n_rows = 0
 
             for row, err, page in db.routes:each() do
@@ -528,11 +520,11 @@ for _, strategy in helpers.each_strategy() do
             end
 
             assert.equal(100, n_rows)
-          end, {foo_ws})
+          end, dao)
         end)
 
         it("page is smaller than total rows", function()
-          run_with_ws( function ()
+          with_current_ws( {foo_ws},function()
             local n_rows = 0
             local pages = {}
 
@@ -555,7 +547,7 @@ for _, strategy in helpers.each_strategy() do
               [9] = true,
               [10] = true,
             }, pages)
-          end, {foo_ws})
+          end, dao)
         end)
       end)
     end)
@@ -577,7 +569,7 @@ for _, strategy in helpers.each_strategy() do
       describe(":insert() in non-default workspace", function()
         local foo_ws = add_ws(dao, "foo")
         it("creates a Service with user-specified values", function()
-          run_with_ws( function ()
+          with_current_ws( {foo_ws},function()
             local service, err, err_t = db.services:insert({
               name            = "example_service",
               protocol        = "http",
@@ -611,12 +603,12 @@ for _, strategy in helpers.each_strategy() do
               read_timeout    = 10000,
               retries         = 6,
             }, service)
-          end, {foo_ws})
+          end, dao)
         end)
 
 
         it("cannot create a Service with an existing name", function()
-          run_with_ws( function ()
+          with_current_ws( {foo_ws},function()
             -- insert 1
             local _, _, err_t = db.services:insert {
               name = "my_service",
@@ -641,7 +633,7 @@ for _, strategy in helpers.each_strategy() do
                 name = "my_service",
               }
             }, err_t)
-          end, {foo_ws})
+          end, dao)
         end)
       end)
 
@@ -650,31 +642,31 @@ for _, strategy in helpers.each_strategy() do
         setup(function()
           db:truncate()
 
-          run_with_ws( function ()
+          with_current_ws( {foo_ws},function()
             for i = 1, 5 do
               assert(db.services:insert({
                 name = "service_" .. i,
                 host = "service" .. i .. ".com",
               }))
             end
-          end, {foo_ws})
+          end, dao)
         end)
 
         -- I/O
         it("returns existing Service", function()
-          run_with_ws( function ()
+          with_current_ws( {foo_ws},function()
             local service = assert(db.services:select_by_name("service_1"))
             assert.equal("service1.com", service.host)
-          end, {foo_ws})
+          end, dao)
         end)
 
         it("returns nothing on non-existing Service", function()
-          run_with_ws( function ()
+          with_current_ws( {foo_ws},function()
             local service, err, err_t = db.services:select_by_name("non-existing")
             assert.is_nil(err)
             assert.is_nil(err_t)
             assert.is_nil(service)
-          end, {foo_ws})
+          end, dao)
         end)
       end)
 
@@ -686,7 +678,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("cannot update a Service to bear an already existing name", function()
-            run_with_ws( function ()
+            with_current_ws( {foo_ws},function()
               -- insert 1
               local _, _, err_t = db.services:insert {
                 name = "service",
@@ -717,7 +709,7 @@ for _, strategy in helpers.each_strategy() do
                   name = "service",
                 }
               }, err_t)
-          end, {foo_ws})
+          end, dao)
         end)
       end)
 
@@ -727,7 +719,7 @@ for _, strategy in helpers.each_strategy() do
           db:truncate()
 
           foo_ws = add_ws(dao, "foo")
-          run_with_ws( function ()
+          with_current_ws( {foo_ws},function()
             assert(db.services:insert({
               name = "test-service",
               host = "test-service.com",
@@ -737,12 +729,12 @@ for _, strategy in helpers.each_strategy() do
               name = "existing-service",
               host = "existing-service.com",
             }))
-          end, {foo_ws})
+          end, dao)
         end)
 
         -- I/O
         it("returns not found error", function()
-          run_with_ws( function ()
+          with_current_ws( {foo_ws},function()
             local service, err, err_t = db.services:update_by_name("inexisting-service", { protocol = "http" })
             assert.is_nil(service)
             local message = fmt(
@@ -750,11 +742,11 @@ for _, strategy in helpers.each_strategy() do
               strategy)
             assert.equal(message, err)
             assert.equal(Errors.codes.NOT_FOUND, err_t.code)
-          end, {foo_ws})
+          end, dao)
         end)
 
         it("updates an existing Service", function()
-          run_with_ws( function ()
+          with_current_ws( {foo_ws},function()
             local service = assert(db.services:insert({
               host = "service.com"
             }))
@@ -772,13 +764,13 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err_t)
             assert.is_nil(err)
             assert.equal("https", service_in_db.protocol)
-          end, {foo_ws})
+          end, dao)
         end)
 
         it("updates an existing Service", function()
           local service_default
           -- add a service to default workspace
-          run_with_ws( function ()
+          with_current_ws(nil, function ()
             local err, err_t
             service_default, err, err_t = db.services:insert({
               name = "test-service",
@@ -786,9 +778,9 @@ for _, strategy in helpers.each_strategy() do
             })
             assert.is_nil(err_t)
             assert.is_nil(err)
-          end, nil, dao)
+          end, dao)
 
-          run_with_ws( function ()
+          with_current_ws( {foo_ws},function()
             local updated_service, err, err_t = db.services:update_by_name("test-service", {
               protocol = "https"
             })
@@ -802,19 +794,19 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err_t)
             assert.is_nil(err)
             assert.equal("https", service_in_db.protocol)
-          end, {foo_ws})
+          end, dao)
 
           -- validate service in default is still same
-          run_with_ws( function ()
+          with_current_ws(nil,function ()
             local service_default_db, err, err_t = db.services:select({
               id = service_default.id
             })
             assert.same(service_default, service_default_db)
-          end, nil, dao)
+          end, dao)
         end)
 
         it("cannot update a Service to bear an already existing name", function()
-          run_with_ws( function ()
+          with_current_ws( {foo_ws},function()
             local service, err, err_t = db.services:select_by_name("non-existing")
             local updated_service, _, err_t = db.services:update_by_name("test-service", {
               name = "existing-service"
@@ -829,7 +821,7 @@ for _, strategy in helpers.each_strategy() do
                 name = "existing-service",
               }
             }, err_t)
-          end, {foo_ws})
+          end, dao)
         end)
       end)
 
@@ -840,26 +832,26 @@ for _, strategy in helpers.each_strategy() do
           db:truncate()
 
           foo_ws = add_ws(dao, "foo")
-          run_with_ws( function ()
+          with_current_ws( {foo_ws},function()
             service = assert(db.services:insert({
               name = "service_1",
               host = "service1.com",
             }))
-          end, {foo_ws})
+          end, dao)
         end)
 
         -- I/O
         it("returns nothing if the Service does not exist", function()
-          run_with_ws( function ()
+          with_current_ws( {foo_ws},function()
             local ok, err, err_t = db.services:delete_by_name("service_10")
             assert.is_true(ok)
             assert.is_nil(err_t)
             assert.is_nil(err)
-          end, {foo_ws})
+          end, dao)
         end)
 
         it("deletes an existing Service", function()
-          run_with_ws( function ()
+          with_current_ws( {foo_ws},function()
             -- validate relationship deleted
             local rel, err = dao.workspace_entities:find({
               workspace_id = foo_ws.id,
@@ -890,7 +882,7 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err)
             assert.is_nil(rel)
 
-          end, {foo_ws})
+          end, dao)
         end)
       end)
     end)
@@ -909,7 +901,7 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it(":insert() a Route with a relation to a Service", function()
-        run_with_ws( function ()
+        with_current_ws( {foo_ws},function()
           local service = assert(db.services:insert({
             protocol = "http",
             host     = "service.com"
@@ -942,11 +934,11 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err_t)
           assert.is_nil(err)
           assert.same(route, route_in_db)
-        end, {foo_ws})
+        end, dao)
       end)
 
       it(":update() attaches a Route to an existing Service", function()
-        run_with_ws( function ()
+        with_current_ws( {foo_ws},function()
           local service1 = bp.services:insert({ host = "service1.com" })
           local service2 = bp.services:insert({ host = "service2.com" })
 
@@ -958,11 +950,11 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err_t)
           assert.is_nil(err)
           assert.same(new_route.service, { id = service2.id })
-        end, {foo_ws})
+        end, dao)
       end)
 
       it(":delete() a Service is not allowed if a Route is associated to it", function()
-        run_with_ws( function ()
+        with_current_ws( {foo_ws},function()
           local service = bp.services:insert({
             host = "example.com",
           })
@@ -982,11 +974,11 @@ for _, strategy in helpers.each_strategy() do
               ["@referenced_by"] = "routes",
             },
           }, err_t)
-        end, {foo_ws})
+        end, dao)
       end)
 
       it(":delete() a Route without deleting the associated Service", function()
-        run_with_ws( function ()
+        with_current_ws( {foo_ws},function()
           local service = bp.services:insert({
             host = "example.com",
           })
@@ -1004,24 +996,24 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err_t)
           assert.is_nil(err)
           assert.same(service, service_in_db)
-        end, {foo_ws})
+        end, dao)
       end)
 
       describe("routes:for_service()", function()
         -- I/O
         it("lists no Routes associated to an inexsistent Service", function()
-          run_with_ws( function ()
+          with_current_ws( {foo_ws},function()
             local rows, err, err_t = db.routes:for_service {
               id = a_blank_uuid,
             }
             assert.is_nil(err_t)
             assert.is_nil(err)
             assert.same({}, rows)
-          end, {foo_ws})
+          end, dao)
         end)
 
         it("lists Routes associated to a Service", function()
-          run_with_ws( function ()
+          with_current_ws( {foo_ws},function()
             local service = bp.services:insert()
 
             local route1 = bp.routes:insert {
@@ -1041,11 +1033,11 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err)
             assert.same({ route1 }, rows)
             ngx.sleep(50)
-          end, {foo_ws})
+          end, dao)
         end)
 
         it("invokes schema post-processing", function()
-          run_with_ws( function ()
+          with_current_ws( {foo_ws},function()
             local service = bp.services:insert {
               host = "example.com",
             }
@@ -1069,7 +1061,7 @@ for _, strategy in helpers.each_strategy() do
             -- our post-processing function will use a "set" metatable to alias
             -- the values for shorthand accesses.
             assert.is_truthy(rows[1].methods.GET)
-          end, {foo_ws})
+          end, dao)
         end)
       end) -- routes:for_service()
     end) -- Services and Routes association

@@ -473,7 +473,7 @@ describe("Admin API", function()
 
       it("retrieves the first page", function()
         local res = assert(client:send {
-          methd = "GET",
+          method = "GET",
           path = "/upstreams/" .. upstream_name .. "/targets/all",
         })
         assert.response(res).has.status(200)

@@ -20,6 +20,7 @@ describe("Admin API: #" .. kong_config.database, function()
 
   setup(function()
     dao = assert(DAOFactory.new(kong_config))
+    require("kong.singletons").dao = dao
     assert(dao:run_migrations())
 
     assert(helpers.start_kong{
@@ -462,12 +463,13 @@ describe("Admin API: #" .. kong_config.database, function()
     describe("GET", function()
       setup(function()
         dao:truncate_tables()
-
-        for i = 1, 10 do
-          assert(dao.upstreams:insert {
-            name = "upstream-" .. i,
-          })
-        end
+        helpers.with_current_ws(nil, function()
+          for i = 1, 10 do
+            assert(dao.upstreams:insert {
+              name = "upstream-" .. i,
+            })
+          end
+        end, dao)
       end)
       teardown(function()
         dao:truncate_tables()

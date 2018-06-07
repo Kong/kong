@@ -29,6 +29,7 @@ describe("DAO propagates CRUD events with DB: #" .. kong_conf.database, function
     singletons.dao = dao
     dao:set_events_handler(mock_ipc)
     dao:truncate_tables()
+    ngx.ctx.workspaces = nil --ideally test with default workspace
   end)
 
   after_each(function()
