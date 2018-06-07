@@ -1,4 +1,5 @@
 local helpers = require "spec.helpers"
+local singletons = require "kong.singletons"
 
 
 for _, strategy in helpers.each_strategy() do
@@ -10,7 +11,12 @@ for _, strategy in helpers.each_strategy() do
     local bp
 
     setup(function()
+      singletons.dao = select(3, helpers.get_db_utils(strategy, true))
+
       bp, db, dao = helpers.get_db_utils(strategy)
+
+      ngx.ctx.workspaces = nil
+      ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
 
       local consumer1 = bp.consumers:insert {
         username = "consumer1"
@@ -217,6 +223,9 @@ for _, strategy in helpers.each_strategy() do
         helpers.stop_kong()
         dao:truncate_tables()
         helpers.register_consumer_relations(dao)
+
+        ngx.ctx.workspaces = nil
+        ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
 
         do
           local service = assert(bp.services:insert {
@@ -444,6 +453,9 @@ for _, strategy in helpers.each_strategy() do
         assert(db:truncate())
         dao:truncate_tables()
         helpers.register_consumer_relations(dao)
+
+        ngx.ctx.workspaces = nil
+        ngx.ctx.workspaces = dao.workspaces:find_all({name = "default"})
 
         local service = bp.services:insert {
           name = "example",
