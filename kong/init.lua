@@ -64,6 +64,7 @@ local kong_error_handlers = require "kong.core.error_handlers"
 local internal_proxies = require "kong.enterprise_edition.proxies"
 local vitals = require "kong.vitals"
 local ee = require "kong.enterprise_edition"
+local portal_utils = require "kong.portal.utils"
 
 local ngx              = ngx
 local header           = ngx.header
@@ -458,6 +459,14 @@ function Kong.access()
       if err then
         ctx.delay_response = false
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      end
+
+      -- Validate status if we have a developer type consumer
+      local consumer = ctx.authenticated_consumer
+      if consumer and consumer.type == 1 and consumer.status ~= 0 then
+        ctx.delay_response = false
+        local msg = portal_utils.get_developer_status(consumer)
+        return responses.send_HTTP_UNAUTHORIZED(msg)
       end
     end
   end

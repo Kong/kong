@@ -21,23 +21,6 @@ local auth_plugins = {
 }
 
 
-local function validate_developer_status(helpers, consumer)
-  if not consumer then
-    return nil, {}
-  end
-
-  local status = consumer.status
-  if status ~= enums.CONSUMERS.STATUS.APPROVED then
-    return nil, {
-      status = status,
-      label  = enums.CONSUMERS.STATUS_LABELS[status]
-    }
-  end
-
-  return true
-end
-
-
 local function get_consumer_id_from_headers()
   return ngx.req.get_headers()[constants.HEADERS.CONSUMER_ID]
 end
@@ -58,11 +41,6 @@ local function validate_consumer_vitals(self, dao_factory, helpers)
   self.params.username_or_id = ngx.unescape_uri(self.params.consumer_id)
 
   crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
-
-  local ok, err = validate_developer_status(helpers, self.consumer)
-  if not ok then
-    return helpers.responses.send_HTTP_UNAUTHORIZED(err)
-  end
 end
 
 
@@ -93,11 +71,6 @@ return {
 
         self.params.email_or_id = consumer_id
         crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
-
-        local ok, err = validate_developer_status(helpers, self.consumer)
-        if not ok then
-          return helpers.responses.send_HTTP_UNAUTHORIZED(err)
-        end
       end
     end,
 
@@ -231,11 +204,6 @@ return {
 
       self.params.email_or_id = consumer_id
       crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
-
-      local ok, err = validate_developer_status(helpers, self.consumer)
-      if not ok then
-        return helpers.responses.send_HTTP_UNAUTHORIZED(err)
-      end
     end,
 
     GET = function(self, dao_factory, helpers)
@@ -308,11 +276,6 @@ return {
       self.params.email_or_id = self.params.consumer_id
 
       crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
-
-      local ok, err = validate_developer_status(helpers, self.consumer)
-      if not ok then
-        return helpers.responses.send_HTTP_UNAUTHORIZED(err)
-      end
     end,
 
     PATCH = function(self, dao_factory, helpers)
@@ -352,11 +315,6 @@ return {
       self.params.email_or_id = consumer_id
 
       crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
-
-      local ok, err = validate_developer_status(helpers, self.consumer)
-      if not ok then
-        return helpers.responses.send_HTTP_UNAUTHORIZED(err)
-      end
     end,
 
     GET = function(self, dao_factory, helpers)
@@ -401,11 +359,6 @@ return {
       self.params.plugin = nil
 
       crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
-
-      local ok, err = validate_developer_status(helpers, self.consumer)
-      if not ok then
-        return helpers.responses.send_HTTP_UNAUTHORIZED(err)
-      end
 
       local credentials, err = self.collection:find_all({
         consumer_id = consumer_id,

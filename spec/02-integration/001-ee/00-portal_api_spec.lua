@@ -189,11 +189,13 @@ for _, strategy in helpers.each_strategy('postgres') do
 
         local consumer_pending = bp.consumers:insert {
           username = "dale",
+          type = enums.CONSUMERS.TYPE.DEVELOPER,
           status = enums.CONSUMERS.STATUS.PENDING
         }
 
         consumer_approved = bp.consumers:insert {
           username = "hawk",
+          type = enums.CONSUMERS.TYPE.DEVELOPER,
           status = enums.CONSUMERS.STATUS.APPROVED
         }
 
@@ -333,7 +335,6 @@ for _, strategy in helpers.each_strategy('postgres') do
 
           assert.equal(enums.CONSUMERS.TYPE.DEVELOPER, consumer.type)
           assert.equal(enums.CONSUMERS.STATUS.PENDING, consumer.status)
-          assert.equal(enums.CONSUMERS.TYPE.DEVELOPER, consumer.type)
 
           assert.equal(consumer.id, credential.consumer_id)
         end)
@@ -626,6 +627,7 @@ for _, strategy in helpers.each_strategy('postgres') do
 
         consumer_approved = bp.consumers:insert {
           username = "hawk",
+          type = enums.CONSUMERS.TYPE.DEVELOPER,
           status = enums.CONSUMERS.STATUS.APPROVED,
         }
 
@@ -731,11 +733,13 @@ for _, strategy in helpers.each_strategy('postgres') do
 
         local consumer_pending = bp.consumers:insert {
           username = "dale",
+          type = enums.CONSUMERS.TYPE.DEVELOPER,
           status = enums.CONSUMERS.STATUS.PENDING,
         }
 
         consumer_approved = bp.consumers:insert {
           username = "hawk",
+          type = enums.CONSUMERS.TYPE.DEVELOPER,
           status = enums.CONSUMERS.STATUS.APPROVED,
         }
 

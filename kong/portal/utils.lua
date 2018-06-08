@@ -1,3 +1,5 @@
+local enums       = require "kong.portal.enums"
+
 local _M = {}
 
 
@@ -63,6 +65,14 @@ _M.validate_email = function(str)
   end
 
   return true
+end
+
+_M.get_developer_status = function(consumer)
+  local status = consumer.status
+  return {
+    status = status,
+    label  = enums.CONSUMERS.STATUS_LABELS[status]
+  }
 end
 
 
