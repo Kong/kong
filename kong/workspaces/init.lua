@@ -470,7 +470,7 @@ end
 
 local function sanitize_route_param(param)
   if (param == cjson.null) or (param == ngx.null) or
-  not param or not param[1] then
+    not param or not next(param) then
     return {[""] = ""}
   else
     return param
