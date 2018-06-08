@@ -67,22 +67,9 @@ local SELECT_NODES_FOR_PHONE_HOME = [[
   SELECT COUNT(DISTINCT node_id) AS "v.nt" FROM vitals_stats_minutes WHERE at >= %d
 ]]
 
-local INSERT_CONSUMER_STATS = [[
-  INSERT INTO vitals_consumers(consumer_id, node_id, at, duration, count)
-  VALUES %s
-  ON CONFLICT(consumer_id, node_id, at, duration) DO
-  UPDATE SET COUNT = vitals_consumers.count + excluded.count
-]]
-
 local UPDATE_NODE_META = "UPDATE vitals_node_meta SET last_report = now() WHERE node_id = '%s'"
 
 local DELETE_STATS = "DELETE FROM %s WHERE at < %d"
-
-local DELETE_CONSUMER_STATS = [[
-  DELETE FROM vitals_consumers
-  WHERE ((duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC')
-  OR (duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC'))
-]]
 
 local SELECT_NODE = "SELECT node_id FROM vitals_node_meta WHERE node_id = '%s'"
 
@@ -109,13 +96,6 @@ local DELETE_CODE_CLASSES_CLUSTER = [[
   OR (duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC'))
 ]]
 
-local INSERT_CODES_BY_SERVICE = [[
-  INSERT INTO vitals_codes_by_service(service_id, code, at, duration, count)
-  VALUES %s
-  ON CONFLICT(service_id, code, at, duration) DO
-  UPDATE SET COUNT = vitals_codes_by_service.count + excluded.count
-]]
-
 local INSERT_CODES_BY_ROUTE = [[
   INSERT INTO vitals_codes_by_route(route_id, service_id, code, at, duration, count)
   VALUES %s
@@ -131,9 +111,10 @@ local INSERT_CODES_BY_CONSUMER_AND_ROUTE = [[
 ]]
 
 local SELECT_CODES_SERVICE = [[
-  SELECT service_id, code, extract('epoch' from at) as at, count
-    FROM vitals_codes_by_service
-   WHERE service_id = '%s' AND duration = %d AND at >= to_timestamp(%d)
+SELECT service_id, code, extract('epoch' from at) as at, sum(count) as count
+  FROM vitals_codes_by_route
+ WHERE service_id = '%s' AND duration = %d AND at >= to_timestamp(%d)
+ GROUP BY service_id, code, at
 ]]
 
 local SELECT_CODES_ROUTE = [[
@@ -156,6 +137,13 @@ local SELECT_CODES_CONSUMER_ROUTE = [[
    GROUP BY consumer_id, route_id, code, at
 ]]
 
+local SELECT_REQUESTS_CONSUMER = [[
+  SELECT 'cluster' as node_id, extract('epoch' from at) as at, sum(count) as count
+    FROM vitals_codes_by_consumer_route
+   WHERE consumer_id = '%s' AND duration = %d AND at >= to_timestamp(%d)
+   GROUP BY at
+]]
+
 local DELETE_CODES = [[
   DELETE FROM %s
    WHERE (duration = %d AND at < to_timestamp(%d) AT TIME ZONE 'UTC')
@@ -172,7 +160,6 @@ local STATUS_CODE_QUERIES = {
   },
   INSERT = {
     consumer_route = INSERT_CODES_BY_CONSUMER_AND_ROUTE,
-    service = INSERT_CODES_BY_SERVICE,
     route = INSERT_CODES_BY_ROUTE,
   },
 }
@@ -271,7 +258,7 @@ delete_handler = function(premature, self)
     log(DEBUG, _log_prefix, "recurring postgres delete has started")
 
     -- iterate over status code entities and delete expired stats
-    for _, entity_type in ipairs({ "consumer_route", "route", "service" }) do
+    for _, entity_type in ipairs({ "consumer_route", "route" }) do
       local _, err = self:delete_status_codes({
         entity_type = entity_type,
         seconds = now - self.ttl_seconds,
@@ -283,13 +270,7 @@ delete_handler = function(premature, self)
       end
     end
 
-    -- delete from consumer_stats
-    local _, err = self:delete_consumer_stats()
-    if err then
-      log(WARN, _log_prefix, "failed to delete consumer_stats: ", err)
-    end
-
-    -- and from status_code_classes
+    -- now delete from status_code_classes
     local _, err = self:delete_status_code_classes()
     if err then
       log(WARN, _log_prefix, "failed to delete status_code_classes: ", err)
@@ -704,122 +685,38 @@ end
   or "cluster" when requesting cluster-level data
 ]]
 function _M:select_consumer_stats(opts)
-  local level    = opts.level
-  local node_id  = opts.node_id
   local cons_id  = opts.consumer_id
   local duration = opts.duration
 
-  local query, res, err
+  if duration ~= 1 and duration ~= 60 then
+    return nil, "duration must be 1 or 60"
+  end
 
-  -- for constructing dynamic SQL
-  local select, from, where
-  local group = ""
+  local query = SELECT_REQUESTS_CONSUMER
 
-  -- construct the SELECT clause
-  if level == "node" then
-    select = [[
-      SELECT node_id,
-             extract('epoch' from at) as at,
-             count
-      ]]
+  local cutoff_time
+
+  if duration == 1 then
+    cutoff_time = time() - self.ttl_seconds
   else
-    -- must be cluster
-    select = [[
-      SELECT 'cluster' as node_id,
-             extract('epoch' from at) as at,
-             sum(count) as count
-      ]]
-    group = " GROUP BY at "
+    cutoff_time = time() - self.ttl_minutes
   end
 
-  -- construct the FROM clause
-  from = " FROM vitals_consumers "
+  query = fmt(query, cons_id, duration, cutoff_time)
 
-  -- construct the WHERE clause
-  local where_clause = " WHERE consumer_id = '{%s}' AND duration = %d "
+  local res, err = self.db:query(query)
 
-  where = fmt(where_clause, cons_id, duration)
-
-  if level == "node" and node_id then
-    where = where .. " AND node_id = '{" .. node_id .. "}' "
-  end
-
-  -- put it all together
-  query = select .. from .. where .. group .. " ORDER BY at"
-
-  res, err = self.db:query(query)
-  if not res then
-    return nil, "could not select stats. query: " .. query .. " error: " .. err
+  if err then
+    return nil, "failed to select consumer requests. err: " .. err
   end
 
   return res
 end
 
 
---[[
-  data: a 2D-array of [
-    [consumer_id, timestamp, duration, count]
-  ]
-]]
 function _M:insert_consumer_stats(data, node_id)
-  if not data[1] then
-    return true
-  end
-
-  local consumer_id, at, duration, count
-
-  node_id = node_id or self.node_id
-
-  local values_fmt = "%s('%s','%s',to_timestamp(%d) at time zone 'UTC',%d,%d), "
-
-  local values = ""
-  for _, v in ipairs(data) do
-    consumer_id, at, duration, count = unpack(v)
-    values = fmt(values_fmt, values, consumer_id, node_id, at, duration, count)
-  end
-
-  -- strip last comma
-  values = values:sub(1, -3)
-
-  local res, err = self.db:query(fmt(INSERT_CONSUMER_STATS, values))
-
-  if not res then
-    return nil, "could not insert consumer_stats: " .. err
-  end
-
+  -- we'll query vitals_codes_per_consumer_route for this
   return true
-end
-
-
---[[
---deletes expired rows
-  cutoff_times: a table of timeframes to delete; e.g.
-  {
-    minutes = 1510759610 <- delete minutes data before this ts
-    seconds = 1510846084 <- delete seconds data before this ts
-  }
-
-  entries for minutes and seconds are both required
-]]
-function _M:delete_consumer_stats(cutoff_times)
-  if not cutoff_times then
-    local now = time()
-    cutoff_times = {
-      seconds = now - self.ttl_seconds,
-      minutes = now - self.ttl_minutes,
-    }
-  end
-
-  local query = fmt(DELETE_CONSUMER_STATS, 1, cutoff_times.seconds,
-                    60, cutoff_times.minutes)
-
-  local res, err = self.db:query(query)
-
-  if err then
-    return nil, "failed to delete consumer stats: " .. err
-  end
-
-  return res.affected_rows or 0
 end
 
 
@@ -969,9 +866,8 @@ end
 
 
 function _M:insert_status_codes_by_service(data)
-  return self:insert_status_codes(data, {
-    entity_type = "service",
-  })
+  -- no-op for Postgres -- we'll query from vitals_status_codes_by_route
+  return true
 end
 
 

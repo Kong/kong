@@ -543,13 +543,19 @@ dao_helpers.for_each_dao(function(kong_conf)
           it("retrieves the seconds-level response code data for a given service", function()
             local now = time()
 
-            local test_status_code_data = {
-              { service_id, 404, now, 1, 101},
-              { service_id, 200, now - 1, 1, 205},
-              { service_id, 500, now - 1, 1, 6},
-            }
-
-            assert(strategy:insert_status_codes_by_service(test_status_code_data))
+            if dao.db_type == "cassandra" then
+              assert(strategy:insert_status_codes_by_service({
+                { service_id, 404, now, 1, 101},
+                { service_id, 200, now - 1, 1, 205},
+                { service_id, 500, now - 1, 1, 6},
+              }))
+            else
+              assert(strategy:insert_status_codes_by_route({
+                { utils.uuid(), service_id, "404", now, 1, 101 },
+                { utils.uuid(), service_id, "200", now - 1, 1, 205 },
+                { utils.uuid(), service_id, "500", now - 1, 1, 6 },
+              }))
+            end
 
             local res = assert(client:send {
               methd = "GET",
@@ -594,13 +600,19 @@ dao_helpers.for_each_dao(function(kong_conf)
           it("retrieves the minutes-level response code data for a given service", function()
             local minute_start_at = time() - (time() % 60)
 
-            local test_status_code_data = {
-              { service_id, 404, minute_start_at, 60, 101},
-              { service_id, 200, minute_start_at - 60, 60, 205},
-              { service_id, 500, minute_start_at - 60, 60, 6},
-            }
-
-            assert(strategy:insert_status_codes_by_service(test_status_code_data))
+            if dao.db_type == "cassandra" then
+              assert(strategy:insert_status_codes_by_service({
+                { service_id, 404, minute_start_at, 60, 101},
+                { service_id, 200, minute_start_at - 60, 60, 205},
+                { service_id, 500, minute_start_at - 60, 60, 6},
+              }))
+            else
+              assert(strategy:insert_status_codes_by_route({
+                { utils.uuid(), service_id, "404", minute_start_at, 60, 101 },
+                { utils.uuid(), service_id, "200", minute_start_at - 60, 60, 205 },
+                { utils.uuid(), service_id, "500", minute_start_at - 60, 60, 6 },
+              }))
+            end
 
             local res = assert(client:send {
               methd = "GET",
@@ -1486,10 +1498,11 @@ dao_helpers.for_each_dao(function(kong_conf)
         before_each(function()
           dao.db:truncate_table("consumers")
           dao.db:truncate_table("vitals_consumers")
+          dao.db:truncate_table("vitals_codes_by_consumer_route")
         end)
 
         describe("GET", function()
-          it("retrieves the consumers seconds data for the entire cluster", function()
+          it("retrieves consumer stats (seconds)", function()
             local consumer = assert(dao.consumers:insert {
               username = "bob",
               custom_id = "1234"
@@ -1497,11 +1510,19 @@ dao_helpers.for_each_dao(function(kong_conf)
 
             local now = time()
 
-            assert(strategy:insert_consumer_stats({
-              -- inserting minute and second data, but only expecting second data in response
-              { consumer.id, now, 60, 45 },
-              { consumer.id, now, 1, 17 }
-            }, node_1))
+            if dao.db_type == "cassandra" then
+              assert(strategy:insert_consumer_stats({
+                -- inserting minute and second data, but only expecting second data in response
+                { consumer.id, now, 60, 45 },
+                { consumer.id, now, 1, 17 }
+              }, utils.uuid()))
+            else
+              assert(strategy:insert_status_codes_by_consumer_and_route({
+                -- inserting minute and second data, but only expecting second data in response
+                { consumer.id, utils.uuid(), utils.uuid(), "200", now, 60, 45 },
+                { consumer.id, utils.uuid(), utils.uuid(), "200", now, 1, 17 }
+              }))
+            end
 
             local res = assert(client:send {
               methd = "GET",
@@ -1555,93 +1576,6 @@ dao_helpers.for_each_dao(function(kong_conf)
             local res = assert(client:send {
               methd = "GET",
               path = "/vitals/consumers/" .. consumer.id .. "/cluster",
-              query = {
-                wrong_query_key = "seconds"
-              }
-            })
-            res = assert.res_status(400, res)
-            local json = cjson.decode(res)
-
-            assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
-          end)
-        end)
-      end)
-
-      describe("/vitals/consumers/{username_or_id}/nodes", function()
-        before_each(function()
-          dao.db:truncate_table("consumers")
-          dao.db:truncate_table("vitals_consumers")
-        end)
-
-        describe("GET", function()
-          it("retrieves the consumers minutes data for all nodes", function()
-            local consumer = assert(dao.consumers:insert {
-              username = "bob",
-              custom_id = "1234"
-            })
-
-            local minute_start_at = time() - (time() % 60)
-
-            -- a couple requests, a few seconds apart
-            assert(strategy:insert_consumer_stats({
-              { consumer.id, minute_start_at, 60, 3 },
-            }, node_1))
-
-            local res = assert(client:send {
-              methd = "GET",
-              path = "/vitals/consumers/" .. consumer.id .. "/nodes",
-              query = {
-                interval = "minutes"
-              }
-            })
-
-            res = assert.res_status(200, res)
-            local json = cjson.decode(res)
-
-            local expected = {
-              meta = {
-                level = "node",
-                interval = "minutes",
-                earliest_ts = minute_start_at,
-                latest_ts = minute_start_at,
-                stat_labels = consumer_stat_labels,
-                nodes = {
-                  [node_1] = { hostname = "testhostname1"}
-                }
-              },
-              stats = {
-                [node_1] = {
-                  [tostring(minute_start_at)] = 3
-                }
-              }
-            }
-
-            assert.same(expected, json)
-          end)
-
-          it("returns a 404 if called with invalid consumer_id path param", function()
-            local res = assert(client:send {
-              methd = "GET",
-              path = "/vitals/consumers/fake-uuid/nodes",
-              query = {
-                interval = "seconds"
-              }
-            })
-            res = assert.res_status(404, res)
-            local json = cjson.decode(res)
-
-            assert.same("Not found", json.message)
-          end)
-
-          it("returns a 400 if called with invalid query param", function()
-            local consumer = assert(dao.consumers:insert {
-              username = "bob",
-              custom_id = "1234"
-            })
-
-            local res = assert(client:send {
-              methd = "GET",
-              path = "/vitals/consumers/" .. consumer.id .. "/nodes",
               query = {
                 wrong_query_key = "seconds"
               }

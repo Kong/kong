@@ -4,7 +4,6 @@ local singletons   = require "kong.singletons"
 local dao_helpers  = require "spec.02-integration.03-dao.helpers"
 local utils        = require "kong.tools.utils"
 local json_null  = require("cjson").null
-local cassandra = require "cassandra"
 
 local ngx_time     = ngx.time
 local fmt          = string.format
@@ -616,49 +615,44 @@ dao_helpers.for_each_dao(function(kong_conf)
           assert.same(expected[i], res[i])
         end
 
+        -- vitals_consumers is cassandra-only
         local res, err
-        if dao.db.name == "postgres" then
-          res, err = dao.db:query([[
-              select consumer_id, node_id, extract('epoch' from at) as at,
-              duration, count from vitals_consumers ]])
-        else
-          res, err = dao.db:query("select * from vitals_consumers")
-        end
-
-        assert.is_nil(err)
-        table.sort(res, function(a,b)
-          return a.count < b.count
-        end)
-
-        local ats = {
-          now - 1,
-          minute,
-        }
-
         if dao.db.name == "cassandra" then
+          res, err = dao.db:query("select * from vitals_consumers")
+
+          assert.is_nil(err)
+          table.sort(res, function(a,b)
+            return a.count < b.count
+          end)
+
+          local ats = {
+            now - 1,
+            minute,
+          }
+
           for i, v in ipairs(ats) do
             ats[i] = v * 1000
           end
-        end
 
-        local expected = {
-          {
-            at = ats[1],
-            consumer_id = consumer_id,
-            count = 1,
-            duration = 1,
-            node_id = vitals.node_id,
-          }, {
-            at = ats[2],
-            consumer_id = consumer_id,
-            count = 3,
-            duration = 60,
-            node_id = vitals.node_id,
-          },
-        }
+          local expected = {
+            {
+              at = ats[1],
+              consumer_id = consumer_id,
+              count = 1,
+              duration = 1,
+              node_id = vitals.node_id,
+            }, {
+              at = ats[2],
+              consumer_id = consumer_id,
+              count = 3,
+              duration = 60,
+              node_id = vitals.node_id,
+            },
+          }
 
-        for i = 1, 2 do
-          assert.same(expected[i], res[i])
+          for i = 1, 2 do
+            assert.same(expected[i], res[i])
+          end
         end
 
         local res, err
@@ -742,88 +736,36 @@ dao_helpers.for_each_dao(function(kong_conf)
     end)
 
     describe("get_consumer_stats()", function()
-      local node_1  = "20426633-55dc-4050-89ef-2382c95a611e"
-      local node_2  = "8374682f-17fd-42cb-b1dc-7694d6f65ba0"
+      local now     = ngx.time()
       local cons_id = utils.uuid()
-      local now
-
-      before_each(function()
-        -- time series conveniently starts at the top of the minute
-        now = ngx_time() - (ngx_time() % 60)
-
-
-        local data_to_insert = {
-          {cons_id, node_1, now, 1, 1},
-          {cons_id, node_1, now + 1, 1, 3},
-          {cons_id, node_1, now + 2, 1, 4},
-          {cons_id, node_1, now, 60, 19},
-          {cons_id, node_2, now + 1, 1, 5},
-          {cons_id, node_2, now + 2, 1, 7},
-          {cons_id, node_2, now, 60, 20},
-          {cons_id, node_2, now + 60, 60, 24},
-        }
-
-        local nodes = { node_1, node_2 }
-
-        local q, node_q
-
-        if dao.db_type == "postgres" then
-          node_q = "insert into vitals_node_meta(node_id, hostname) values('%s', '%s')"
-          q = [[
-            insert into vitals_consumers(consumer_id, node_id, at, duration, count)
-            values('%s', '%s', to_timestamp(%d), %d, %d)
-          ]]
-
-          for i, node in ipairs(nodes) do
-            assert(dao.db:query(fmt(node_q, node, "testhostname" .. i)))
-          end
-
-          for _, row in ipairs(data_to_insert) do
-            assert(dao.db:query(fmt(q, unpack(row))))
-          end
-        else
-          node_q = "insert into vitals_node_meta(node_id, hostname) values (?, ?)"
-          q = [[
-            update vitals_consumers
-            set count = count + ?
-            where consumer_id = ?
-            and node_id = ?
-            and at = ?
-            and duration = ?
-          ]]
-
-          for i, node in ipairs(nodes) do
-            local args = {
-              cassandra.uuid(node),
-              "testhostname" .. i,
-            }
-            assert(dao.db.cluster:execute(node_q, args, { prepared = true }))
-          end
-
-          local counter_options = {
-            prepared = true,
-            counter  = true,
-          }
-
-          for _, row in ipairs(data_to_insert) do
-            local cons_id, node_id, at, duration, count = unpack(row)
-            assert(dao.db.cluster:execute(q, {
-              cassandra.counter(count),
-              cassandra.uuid(cons_id),
-              cassandra.uuid(node_id),
-              cassandra.timestamp(at * 1000),
-              duration,
-            }, counter_options))
-          end
-        end
-      end)
 
       after_each(function()
         assert(dao.db:query("truncate table vitals_consumers"))
         assert(dao.db:query("truncate table vitals_node_meta"))
+        assert(dao.db:query("truncate table vitals_codes_by_consumer_route"))
       end)
 
-      it("returns seconds stats for a consumer across the cluster", function()
+      it("returns seconds stats for a consumer", function()
+        local mock_stats = {
+          {
+            node_id = "cluster",
+            at      = now,
+            count   = 1,
+          },
+          {
+            node_id = "cluster",
+            at      = now + 1,
+            count   = 8,
+          },
+          {
+            node_id = "cluster",
+            at      = now + 2,
+            count   = 11,
+          },
+        }
+
+        stub(vitals.strategy, "select_consumer_stats").returns(mock_stats)
+
         local res, _ = vitals:get_consumer_stats({
           consumer_id = cons_id,
           duration    = "seconds",
@@ -850,38 +792,22 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert.same(expected, res)
       end)
 
-      it("returns seconds stats for a consumer and a node", function()
-        local res, _ = vitals:get_consumer_stats({
-          consumer_id = cons_id,
-          duration    = "seconds",
-          level       = "node",
-          node_id     = node_1,
-        })
-
-        local expected = {
-          meta = {
-            level = "node",
-            interval = "seconds",
-            earliest_ts = now,
-            latest_ts = now + 2,
-            stat_labels = consumer_stat_labels,
-            nodes = {
-              [node_1] = { hostname = "testhostname1"}
-            }
+      it("returns minutes stats for a consumer", function()
+        local mock_stats = {
+          {
+            node_id = "cluster",
+            at      = now,
+            count   = 39,
           },
-          stats = {
-            [node_1] = {
-              [tostring(now)] = 1,
-              [tostring(now + 1)] = 3,
-              [tostring(now + 2)] = 4,
-            }
-          }
+          {
+            node_id = "cluster",
+            at      = now + 60,
+            count   = 24,
+          },
         }
 
-        assert.same(expected, res)
-      end)
+        stub(vitals.strategy, "select_consumer_stats").returns(mock_stats)
 
-      it("returns minutes stats for a consumer across the cluster", function()
         local res, _ = vitals:get_consumer_stats({
           consumer_id = cons_id,
           duration    = "minutes",
@@ -899,36 +825,6 @@ dao_helpers.for_each_dao(function(kong_conf)
           stats = {
             cluster = {
               [tostring(now)] = 39,
-              [tostring(now + 60)] = 24,
-            }
-          }
-        }
-
-        assert.same(expected, res)
-      end)
-
-      it("returns minutes stats for a consumer and a node", function()
-        local res, _ = vitals:get_consumer_stats({
-          consumer_id = cons_id,
-          duration    = "minutes",
-          level       = "node",
-          node_id     = node_2,
-        })
-
-        local expected = {
-          meta = {
-            level = "node",
-            interval = "minutes",
-            earliest_ts = now,
-            latest_ts = now + 60,
-            stat_labels = consumer_stat_labels,
-            nodes = {
-              [node_2] = { hostname = "testhostname2"}
-            }
-          },
-          stats = {
-            [node_2] = {
-              [tostring(now)] = 20,
               [tostring(now + 60)] = 24,
             }
           }

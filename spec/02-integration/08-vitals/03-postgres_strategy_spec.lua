@@ -809,135 +809,36 @@ dao_helpers.for_each_dao(function(kong_conf)
 
 
     describe(":insert_consumer_stats()", function()
-      it("turns Lua tables into Postgres rows", function()
-        local node_id = utils.uuid()
-        local con1_id = utils.uuid()
-        local con2_id = utils.uuid()
-        local now     = time()
-
-        strategy:init(node_id, "testhostname")
-
-        local data_to_insert = {
-          {con1_id, now, 1, 1},
-          {con1_id, now + 1, 1, 2},
-          {con1_id, now, 60, 3},
-          {con2_id, now + 1, 1, 4},
-          {con2_id, now, 60, 5},
-        }
-
-        assert(strategy:insert_consumer_stats(data_to_insert))
-
-        -- force a sort order to make assertion easier
-        local q = [[
-            select consumer_id, node_id, extract('epoch' from at) as at,
-                   duration, count from vitals_consumers
-            order by count
-        ]]
-
-        local results, err = db:query(q)
-        assert.is_nil(err)
-
-        local expected = {
-          {
-            consumer_id = con1_id,
-            node_id     = node_id,
-            at          = now,
-            duration    = 1,
-            count       = 1,
-          },
-          {
-            consumer_id = con1_id,
-            node_id     = node_id,
-            at          = now + 1,
-            duration    = 1,
-            count       = 2,
-          },
-          {
-            consumer_id = con1_id,
-            node_id     = node_id,
-            at          = now,
-            duration    = 60,
-            count       = 3,
-          },
-          {
-            consumer_id = con2_id,
-            node_id     = node_id,
-            at          = now + 1,
-            duration    = 1,
-            count       = 4,
-          },
-          {
-            consumer_id = con2_id,
-            node_id     = node_id,
-            at          = now,
-            duration    = 60,
-            count       = 5,
-          },
-        }
-
-        assert.same(expected, results)
-      end)
-
-
-      it("upserts when necessary", function()
-        local node_id = utils.uuid()
-        local con1_id = utils.uuid()
-        local now     = time()
-
-        strategy:init(node_id, "testhostname")
-
-        -- insert a row to upsert on
-        assert(strategy:insert_consumer_stats({{ con1_id, now, 1, 1 }}))
-
-
-        local data_to_insert = {
-          {con1_id, now, 1, 19},
-        }
-
-        assert(strategy:insert_consumer_stats(data_to_insert))
-
-        local q = [[
-            select consumer_id, node_id, extract('epoch' from at) as at,
-                   duration, count from vitals_consumers where duration = 1
-        ]]
-
-        local results = db:query(q)
-
-        local expected = {
-          {
-            consumer_id = con1_id,
-            node_id     = node_id,
-            at          = now,
-            duration    = 1,
-            count       = 20,
-          },
-        }
-
-        assert.same(expected, results)
+      it("is a no-op", function()
+        assert(strategy:insert_consumer_stats())
       end)
     end)
 
 
     describe(":select_consumer_stats()", function()
-      local node_1  = "20426633-55dc-4050-89ef-2382c95a611e"
-      local node_2  = "8374682f-17fd-42cb-b1dc-7694d6f65ba0"
+      local node_id = "63be463e-f75f-49fd-bf79-0d47f54ee5de"
+      local service = "20426633-55dc-4050-89ef-2382c95a611e"
+      local route   = "8374682f-17fd-42cb-b1dc-7694d6f65ba0"
       local cons_id = utils.uuid()
+      local now     = time()
+      local minute  = now - (now % 60)
 
       before_each(function()
         local q, query
 
-        q = "insert into vitals_consumers(consumer_id, node_id, at, duration, count) " ..
-            "values('%s', '%s', to_timestamp(%d), %d, %d)"
+        q = "insert into vitals_codes_by_consumer_route" ..
+            "(consumer_id, service_id, route_id, code, at, duration, count) " ..
+            "values('%s', '%s', '%s', '%s', to_timestamp(%d), %d, %d)"
 
         local data_to_insert = {
-          {cons_id, node_1, 1510560000, 1, 1},
-          {cons_id, node_1, 1510560001, 1, 3},
-          {cons_id, node_1, 1510560002, 1, 4},
-          {cons_id, node_1, 1510560000, 60, 19},
-          {cons_id, node_2, 1510560001, 1, 5},
-          {cons_id, node_2, 1510560002, 1, 7},
-          {cons_id, node_2, 1510560000, 60, 20},
-          {cons_id, node_2, 1510560060, 60, 24},
+          {cons_id, service, route, "200", now - 2, 1, 1},
+          {cons_id, service, route, "200", now - 1, 1, 3},
+          {cons_id, service, route, "200", now, 1, 4},
+          {cons_id, service, route, "200", now - 2, 60, 19},
+          {cons_id, service, route, "401", now - 1, 1, 5},
+          {cons_id, service, route, "401", now, 1, 7},
+          {cons_id, service, route, "401", now - 2, 60, 20},
+          {cons_id, service, route, "401", minute, 60, 24},
         }
 
         for _, row in ipairs(data_to_insert) do
@@ -945,113 +846,39 @@ dao_helpers.for_each_dao(function(kong_conf)
           assert(db:query(query))
         end
 
-        strategy:init(node_1, "testhostname")
+        strategy:init(node_id, "testhostname")
       end)
 
 
       it("returns seconds stats for a consumer across the cluster", function()
         local opts = {
           consumer_id = cons_id,
-          node_id     = nil,
           duration    = 1,
-          level       = "cluster",
         }
 
         local results, _ = strategy:select_consumer_stats(opts)
 
         local expected = {
           {
-            node_id     = "cluster",
-            at          = 1510560000,
+            node_id = "cluster",
+            at          = now - 2,
             count       = 1,
           },
           {
-            node_id     = "cluster",
-            at          = 1510560001,
+            node_id = "cluster",
+            at          = now - 1,
             count       = 8,
           },
           {
-            node_id     = "cluster",
-            at          = 1510560002,
+            node_id = "cluster",
+            at          = now,
             count       = 11,
           },
         }
 
-        assert.same(expected, results)
-      end)
-
-
-      it("returns seconds stats for a consumer and all nodes", function()
-        local opts = {
-          consumer_id = cons_id,
-          node_id     = nil,
-          duration    = 1,
-          level       = "node",
-        }
-
-        local results, _ = strategy:select_consumer_stats(opts)
-
-        assert.same(5, #results)
-
-        -- just to make it easier to assert
         table.sort(results, function(a,b)
           return a.count < b.count
         end)
-
-        local expected = {
-          {
-            count = 1,
-            node_id = node_1,
-            at = 1510560000,
-          },
-          {
-            count = 3,
-            node_id = node_1,
-            at = 1510560001,
-          },
-          {
-            count = 4,
-            node_id = node_1,
-            at = 1510560002,
-          },
-          {
-            count = 5,
-            node_id = node_2,
-            at = 1510560001,
-          },
-          {
-            count = 7,
-            node_id = node_2,
-            at = 1510560002,
-          },
-        }
-
-        assert.same(expected, results)
-      end)
-
-
-      it("returns seconds stats for a consumer and a node", function()
-        local opts = {
-          consumer_id = cons_id,
-          node_id     = node_2,
-          duration    = 1,
-          level       = "node",
-        }
-
-        local results, _ = strategy:select_consumer_stats(opts)
-
-        local expected = {
-          {
-            count = 5,
-            node_id = node_2,
-            at = 1510560001,
-          },
-          {
-            count = 7,
-            node_id = node_2,
-            at = 1510560002,
-          },
-        }
 
         assert.same(expected, results)
       end)
@@ -1060,137 +887,29 @@ dao_helpers.for_each_dao(function(kong_conf)
       it("returns minutes stats for a consumer across the cluster", function()
         local opts = {
           consumer_id = cons_id,
-          node_id     = nil,
           duration    = 60,
-          level       = "cluster",
         }
 
         local results, _ = strategy:select_consumer_stats(opts)
 
         local expected = {
           {
-            node_id     = "cluster",
-            at          = 1510560000,
-            count       = 39,
-          },
-          {
-            node_id     = "cluster",
-            at          = 1510560060,
+            node_id = "cluster",
+            at          = minute,
             count       = 24,
           },
+          {
+            node_id = "cluster",
+            at          = now - 2,
+            count       = 39,
+          },
         }
-        assert.same(expected, results)
-      end)
-
-
-      it("returns minutes stats for a consumer and all nodes", function()
-        local opts = {
-          consumer_id = cons_id,
-          node_id     = nil,
-          duration    = 60,
-          level       = "node",
-        }
-
-        local results, _ = strategy:select_consumer_stats(opts)
-
-        assert.same(3, #results)
 
         table.sort(results, function(a,b)
           return a.count < b.count
         end)
 
-
-        local expected = {
-          {
-            count = 19,
-            node_id = node_1,
-            at = 1510560000,
-          },
-          {
-            count = 20,
-            node_id = node_2,
-            at = 1510560000,
-          },
-          {
-            count = 24,
-            node_id = node_2,
-            at = 1510560060,
-          },
-        }
-
         assert.same(expected, results)
-      end)
-
-
-      it("returns minutes stats for a consumer and a node", function()
-        local opts = {
-          consumer_id = cons_id,
-          node_id     = node_2,
-          duration    = 60,
-          level       = "node",
-        }
-
-        local results, _ = strategy:select_consumer_stats(opts)
-
-        local expected = {
-          {
-            count = 20,
-            node_id = node_2,
-            at = 1510560000,
-          },
-          {
-            count = 24,
-            node_id = node_2,
-            at = 1510560060,
-          },
-        }
-
-        assert.same(expected, results)
-      end)
-    end)
-
-
-    describe(":delete_consumer_stats()", function()
-      local cons_1 = "20426633-55dc-4050-89ef-2382c95a611e"
-      local cons_2 = "8374682f-17fd-42cb-b1dc-7694d6f65ba0"
-      local node_1 = utils.uuid()
-
-      before_each(function()
-        local q, query
-
-        q = "insert into vitals_consumers(consumer_id, node_id, at, duration, count) " ..
-            "values('%s', '%s', to_timestamp(%d), %d, %d)"
-
-        local test_data = {
-          {cons_1, node_1, 1510560000, 1, 1},
-          {cons_1, node_1, 1510560001, 1, 3},
-          {cons_1, node_1, 1510560002, 1, 4},
-          {cons_1, node_1, 1510560000, 60, 19},
-          {cons_2, node_1, 1510560001, 1, 5},
-          {cons_2, node_1, 1510560002, 1, 7},
-          {cons_2, node_1, 1510560000, 60, 20},
-          {cons_2, node_1, 1510560060, 60, 24},
-        }
-
-        for _, row in ipairs(test_data) do
-          query = fmt(q, unpack(row))
-          assert(db:query(query))
-        end
-
-        strategy:init(node_1, "testhostname")
-      end)
-
-
-      it("cleans up consumer stats", function()
-        -- query is "<" so bump the cutoff by a second
-        local cutoff_times = {
-          minutes = 1510560001,
-          seconds = 1510560002,
-        }
-
-        local results, _ = strategy:delete_consumer_stats(cutoff_times)
-
-        assert.same(5, results)
       end)
     end)
 
@@ -1313,22 +1032,6 @@ dao_helpers.for_each_dao(function(kong_conf)
     end)
 
 
-    describe(":insert_status_codes_by_service", function()
-      it("calls insert_status_codes with the right args", function()
-        stub(pg_strategy, "insert_status_codes")
-
-        local data = {}
-
-        local opts = {
-          entity_type = "service",
-        }
-
-        strategy:insert_status_codes_by_service(data)
-        assert.stub(pg_strategy.insert_status_codes).was_called_with(strategy, data, opts)
-      end)
-    end)
-
-
     describe(":insert_status_codes_by_route", function()
       it("calls insert_status_codes with the right args", function()
         stub(pg_strategy, "insert_status_codes")
@@ -1362,60 +1065,6 @@ dao_helpers.for_each_dao(function(kong_conf)
 
 
     describe(":insert_status_codes", function()
-
-      it("inserts service data", function()
-        local uuid = utils.uuid()
-
-        local now    = ngx.time()
-        local minute = now - (now % 60)
-
-        local data = {
-          { uuid, "404", tostring(now), "1", 4 },
-          { uuid, "404", tostring(now - 1), "1", 2 },
-          { uuid, "500", tostring(minute), "60", 5 },
-        }
-
-        local opts = {
-          entity_type = "service",
-        }
-
-        assert(strategy:insert_status_codes(data, opts))
-
-        -- force a sort order to make assertion easier
-        local q = [[
-          select service_id, code, extract('epoch' from at) as at,
-            duration, count from vitals_codes_by_service
-              order by count
-        ]]
-
-        local results = db:query(q)
-
-        local expected = {
-          {
-            at         = now - 1,
-            code       = 404,
-            count      = 2,
-            duration   = 1,
-            service_id = uuid,
-          },
-          {
-            at         = now,
-            code       = 404,
-            count      = 4,
-            duration   = 1,
-            service_id = uuid,
-          },
-          {
-            at         = minute,
-            code       = 500,
-            count      = 5,
-            duration   = 60,
-            service_id = uuid,
-          },
-        }
-
-        assert.same(expected, results)
-      end)
 
       it("inserts route data", function()
         local route_id = utils.uuid()
@@ -1682,6 +1331,8 @@ dao_helpers.for_each_dao(function(kong_conf)
     describe(":select_status_codes (service)", function()
       local uuid   = utils.uuid()
       local uuid_2 = utils.uuid()
+      local route  = utils.uuid()
+      local route_2 = utils.uuid()
 
       assert(strategy:init(uuid, "testhostname"))
 
@@ -1690,16 +1341,16 @@ dao_helpers.for_each_dao(function(kong_conf)
 
       before_each(function()
         local service_data = {
-          { uuid, 404, now, 1, 4 },
-          { uuid_2, 404, now, 1, 6 },
-          { uuid, 404, now - 1, 1, 2 },
-          { uuid, 500, minute, 60, 3 },
-          { uuid_2, 500, minute, 60, 5 },
+          { route, uuid, 404, now, 1, 4 },
+          { route_2, uuid_2, 404, now, 1, 6 },
+          { route, uuid, 404, now - 1, 1, 2 },
+          { route, uuid, 500, minute, 60, 3 },
+          { route_2, uuid_2, 500, minute, 60, 5 },
         }
 
         local q = [[
-          insert into vitals_codes_by_service(service_id, code, at, duration, count)
-          values('%s', '%s', to_timestamp(%d), %d, %d)
+          insert into vitals_codes_by_route(route_id, service_id, code, at, duration, count)
+          values('%s', '%s', '%s', to_timestamp(%d), %d, %d)
         ]]
 
         for _, v in ipairs(service_data) do
