@@ -11,23 +11,26 @@ for _, strategy in helpers.each_strategy() do
       local bp, _
       bp, _, dao = helpers.get_db_utils(strategy)
 
-      local route = bp.routes:insert {
-        hosts = { "key-auth.com" },
-      }
 
-      bp.plugins:insert {
-        name     = "key-auth",
-        route_id = route.id,
-      }
+      helpers.with_current_ws(nil, function()
+        local route = bp.routes:insert {
+          hosts = { "key-auth.com" },
+        }
 
-      local consumer = bp.consumers:insert {
-        username = "bob",
-      }
+        bp.plugins:insert {
+          name     = "key-auth",
+          route_id = route.id,
+        }
 
-      bp.keyauth_credentials:insert {
-        key         = "kong",
-        consumer_id = consumer.id,
-      }
+        local consumer = bp.consumers:insert {
+          username = "bob",
+        }
+
+        bp.keyauth_credentials:insert {
+          key         = "kong",
+          consumer_id = consumer.id,
+        }
+      end, dao)
 
       assert(helpers.start_kong({
         database   = strategy,

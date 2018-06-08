@@ -243,6 +243,11 @@ end
 
 function _M:truncate_table(dao_name)
   self.db:truncate_table(self.daos[dao_name].table)
+  local res, _ = self.daos.workspace_entities:find_all({entity_type = dao_name})
+
+  for i, v in ipairs(res) do
+    self.db:delete("workspace_entities", self.daos.workspace_entities.schema, v)
+  end
 end
 
 function _M:truncate_tables()

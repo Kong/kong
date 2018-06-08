@@ -641,7 +641,7 @@ for _, strategy in helpers.each_strategy() do
     local jwt_token
 
     setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp, _, dao = helpers.get_db_utils(strategy)
 
       local jwt_secret, route2, service2, route1, service1
       local ws = dao.workspaces:find_all({name = "default"})
