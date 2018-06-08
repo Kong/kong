@@ -16,6 +16,10 @@ for _, strategy in helpers.each_strategy() do
         hosts = { "response2.com" },
       })
 
+      local route3 = bp.routes:insert({
+        hosts = { "response3.com" },
+      })
+
       bp.plugins:insert {
         route_id = route1.id,
         name     = "response-transformer",
@@ -35,6 +39,21 @@ for _, strategy in helpers.each_strategy() do
             json  = {"headers:/hello/world", "uri_args:this is a / test", "url:\"wot\""}
           }
         }
+      }
+
+      bp.plugins:insert {
+        route_id = route3.id,
+        name     = "response-transformer",
+        config   = {
+          remove = {
+            json  = {"ip"}
+          }
+        }
+      }
+
+      bp.plugins:insert {
+        route_id = route3.id,
+        name     = "basic-auth",
       }
 
       assert(helpers.start_kong({
@@ -95,6 +114,25 @@ for _, strategy in helpers.each_strategy() do
         assert.equals([[/hello/world]], json.headers)
         assert.equals([["wot"]], json.url)
         assert.equals([[this is a / test]], json.uri_args)
+      end)
+    end)
+
+    describe("regressions", function()
+      it("does not throw an error when request was short-circuited in access phase", function()
+        -- basic-auth and response-transformer applied to route makes request
+        -- without credentials short-circuit before the response-transformer
+        -- access handler gets a chance to be executed.
+        --
+        -- Regression for https://github.com/Kong/kong/issues/3521
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            host  = "response3.com"
+          }
+        })
+
+        assert.response(res).status(401)
       end)
     end)
   end)
