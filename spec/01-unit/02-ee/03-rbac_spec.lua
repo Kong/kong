@@ -21,6 +21,10 @@ describe("(#" .. kong_conf.database .. ")", function()
     dao = assert(dao_factory.new(kong_conf))
     singletons.dao = dao
     rbac = require "kong.rbac"
+
+    dao:truncate_tables()
+    dao:run_migrations()
+    ngx.ctx.workspaces = nil
   end)
 
 
@@ -29,8 +33,6 @@ describe("(#" .. kong_conf.database .. ")", function()
     setup(function()
       math.randomseed(ngx.now())
       iterations = math.random(4, MAX_ITERATIONS)
-
-      dao:run_migrations()
     end)
 
     describe(".resolve_workspace_entities", function()
