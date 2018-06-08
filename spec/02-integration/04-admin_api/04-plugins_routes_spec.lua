@@ -1,6 +1,8 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
+local with_current_ws = helpers.with_current_ws
+
 for _, strategy in helpers.each_strategy() do
   describe("Admin API #" .. strategy, function()
     local dao
@@ -9,7 +11,7 @@ for _, strategy in helpers.each_strategy() do
 
     setup(function()
       _, db, dao = helpers.get_db_utils(strategy)
-
+      require("kong.singletons").dao = dao
       assert(helpers.start_kong({
         database = strategy,
       }))
@@ -47,23 +49,25 @@ for _, strategy in helpers.each_strategy() do
       local plugins = {}
 
       setup(function()
-        for i = 1, 3 do
-          local service, err, err_t = db.services:insert {
-            name = "service-" .. i,
-            protocol = "http",
-            host = "127.0.0.1",
-            port = 15555,
-          }
-          assert.is_nil(err_t)
-          assert.is_nil(err)
+        with_current_ws(nil, function()
+          for i = 1, 3 do
+            local service, err, err_t = db.services:insert {
+              name = "service-" .. i,
+              protocol = "http",
+              host = "127.0.0.1",
+              port = 15555,
+            }
+            assert.is_nil(err_t)
+            assert.is_nil(err)
 
-          services[i] = service
+            services[i] = service
 
-          plugins[i] = assert(dao.plugins:insert {
-            name = "key-auth",
-            service_id = service.id,
-          })
-        end
+            plugins[i] = assert(dao.plugins:insert {
+              name = "key-auth",
+              service_id = service.id,
+            })
+          end
+        end, dao)
       end)
 
       describe("GET", function()
