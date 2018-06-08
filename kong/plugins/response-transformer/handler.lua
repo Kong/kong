@@ -33,6 +33,15 @@ function ResponseTransformerHandler:body_filter(conf)
   if is_body_transform_set(conf) and is_json_body(ngx.header["content-type"]) then
     local ctx = ngx.ctx
     local chunk, eof = ngx.arg[1], ngx.arg[2]
+
+    if not ctx.rt_body_chunks then
+      ctx.rt_body_chunks = {}
+    end
+
+    if not ctx.rt_body_chunk_number then
+      ctx.rt_body_chunk_number = 1
+    end
+
     if eof then
       local body = body_filter.transform_json_body(conf, table_concat(ctx.rt_body_chunks))
       ngx.arg[1] = body
