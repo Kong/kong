@@ -1,6 +1,5 @@
 local cassandra = require "cassandra"
 local workspaces = require "kong.workspaces"
-local ws_helper  = require "kong.workspaces.helper"
 local utils      = require "kong.tools.utils"
 
 
@@ -535,9 +534,6 @@ do
   end
 
 
-  local opts = new_tab(0, 2)
-
-
   function _mt:page_ws(ws_scope, size, offset, cql, args)
     local table_name = self.schema.name
 
@@ -548,7 +544,6 @@ do
     end
 
     local res_rows = {}
-    local rows, err
 
     local token = offset
     while(true) do

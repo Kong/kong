@@ -1,6 +1,5 @@
 local pl_pretty = require("pl.pretty").write
 local pl_keys = require("pl.tablex").keys
-local workspaces = require "kong.workspaces"
 local utils = require "kong.tools.utils"
 
 
