@@ -12,6 +12,8 @@ local bor    = bit.bor
 local fmt    = string.format
 local lshift = bit.lshift
 local rshift = bit.rshift
+local setmetatable = setmetatable
+local getmetatable = getmetatable
 
 
 local function log(lvl, ...)
@@ -346,6 +348,7 @@ end
 
 function _M.narrow_readable_entities(db_table_name, entities, constraints)
   local filtered_rows = {}
+  setmetatable(filtered_rows, getmetatable(entities))
   if not is_system_table(db_table_name) and is_admin_api_request() then
     for i, v in ipairs(entities) do
       local valid = _M.validate_entity_operation(v, constraints)
