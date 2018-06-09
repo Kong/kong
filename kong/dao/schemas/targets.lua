@@ -13,6 +13,7 @@ local WEIGHT_MSG = "weight must be from " .. WEIGHT_MIN .. " to " .. WEIGHT_MAX
 return {
   table = "targets",
   primary_key = {"id"},
+  workspaceable = true,
   fields = {
     id = {
       type = "id",

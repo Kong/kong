@@ -152,7 +152,9 @@ local function http_server(host, port, counts, test_log)
         local client, err
         client, err = server:accept()
         if socket.gettime() > expire then
-          client:close()
+          if client then
+            client:close()
+          end
           break
 
         elseif not client then
@@ -462,6 +464,7 @@ for _, strategy in helpers.each_strategy() do
 
     setup(function()
       local _, db, dao = helpers.get_db_utils(strategy, true)
+      ngx.ctx.workspaces = nil
 
       truncate_relevant_tables(db, dao)
       helpers.start_kong({
