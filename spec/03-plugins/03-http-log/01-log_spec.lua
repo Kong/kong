@@ -37,8 +37,9 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
 
     setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp, _, dao = helpers.get_db_utils(strategy)
 
+      helpers.with_current_ws(nil, function()
       local service1 = bp.services:insert{
         protocol = "http",
         host     = "mockbin.com",
@@ -95,6 +96,7 @@ for _, strategy in helpers.each_strategy() do
           http_endpoint = "http://testuser:testpassword@mockbin.org/bin/" .. mock_bin_http_basic_auth
         }
       }
+      end, dao)
 
       assert(helpers.start_kong({
         database = strategy,
