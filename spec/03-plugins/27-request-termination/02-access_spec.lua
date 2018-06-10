@@ -8,8 +8,9 @@ for _, strategy in helpers.each_strategy() do
     local admin_client
 
     setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp, _, dao = helpers.get_db_utils(strategy)
 
+      helpers.with_current_ws(nil, function()
       local route1 = bp.routes:insert({
         hosts = { "api1.request-termination.com" },
       })
@@ -83,6 +84,7 @@ for _, strategy in helpers.each_strategy() do
           body        = '{"code": 1, "message": "Service unavailable"}',
         },
       }
+      end, dao)
 
       assert(helpers.start_kong({
         database   = strategy,

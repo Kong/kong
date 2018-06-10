@@ -1477,7 +1477,7 @@ for _, strategy in helpers.each_strategy() do
         consumer_id = user1.id
       }
 
-      local credential = bp.hmacauth_credentials:insert {
+      credential = bp.hmacauth_credentials:insert {
         username    = "Aladdin",
         secret      = "OpenSesame",
         consumer_id = user2.id

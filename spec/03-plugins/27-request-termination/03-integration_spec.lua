@@ -8,8 +8,9 @@ for _, strategy in helpers.each_strategy() do
     local consumer
 
     setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp, _, dao = helpers.get_db_utils(strategy)
 
+      helpers.with_current_ws(nil, function()
       bp.routes:insert({
         hosts = { "api1.request-termination.com" },
       })
@@ -26,6 +27,7 @@ for _, strategy in helpers.each_strategy() do
         key         = "kong",
         consumer_id = consumer.id,
       }
+      end, dao)
 
       assert(helpers.start_kong({
         database   = strategy,

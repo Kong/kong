@@ -22,11 +22,11 @@ end
 
 
 describe("Plugin: rate-limiting (integration)", function()
-  local client
+  local client, db, _, dao
 
   setup(function()
     -- only to run migrations
-    helpers.get_db_utils()
+    db, _, dao = helpers.get_db_utils()
   end)
 
   teardown(function()
@@ -45,6 +45,7 @@ describe("Plugin: rate-limiting (integration)", function()
       flush_redis(REDIS_DB_1)
       flush_redis(REDIS_DB_2)
 
+      helpers.with_current_ws(nil, function()
       local api1 = assert(helpers.dao.apis:insert {
         name         = "redistest1_com",
         hosts        = { "redistest1.com" },
@@ -80,6 +81,7 @@ describe("Plugin: rate-limiting (integration)", function()
           limits         = { video = { minute = 6 } },
         },
       })
+      end, dao)
       assert(helpers.start_kong({
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))

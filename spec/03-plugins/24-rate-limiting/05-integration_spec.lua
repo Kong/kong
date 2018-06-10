@@ -45,6 +45,7 @@ describe("Plugin: rate-limiting (integration)", function()
       flush_redis(REDIS_DB_1)
       flush_redis(REDIS_DB_2)
 
+      helpers.with_current_ws(nil, function()
       local api1 = assert(helpers.dao.apis:insert {
         name         = "redistest1_com",
         hosts        = { "redistest1.com" },
@@ -80,6 +81,8 @@ describe("Plugin: rate-limiting (integration)", function()
           fault_tolerant = false,
         }
       })
+      end, helpers.dao)
+
       assert(helpers.start_kong({
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
