@@ -13,15 +13,6 @@ function ResponseTransformerHandler:new()
   ResponseTransformerHandler.super.new(self, "response-transformer")
 end
 
-function ResponseTransformerHandler:access(conf)
-  ResponseTransformerHandler.super.access(self)
-
-  local ctx = ngx.ctx
-
-  ctx.rt_body_chunks = {}
-  ctx.rt_body_chunk_number = 1
-end
-
 function ResponseTransformerHandler:header_filter(conf)
   ResponseTransformerHandler.super.header_filter(self)
   header_filter.transform_headers(conf, ngx.header)
