@@ -593,11 +593,14 @@ function _M.resolve_entity_type(entity_id)
 end
 
 
-function _M.workspace_entities_map(ws_scope)
+function _M.workspace_entities_map(ws_scope, entity_type)
   local ws_entities_map = {}
 
   for _, ws in ipairs(ws_scope) do
-    local ws_entities, err = singletons.dao.workspace_entities:find_all({workspace_id = ws.id})
+    local ws_entities, err = singletons.dao.workspace_entities:find_all({
+      workspace_id = ws.id,
+      entity_type = entity_type
+    })
     if err then
       return nil, err
     end
