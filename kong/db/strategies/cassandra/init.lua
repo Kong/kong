@@ -538,7 +538,7 @@ do
     local table_name = self.schema.name
 
     local primary_key = workspaces.get_workspaceable_relations()[table_name].primary_key
-    local ws_entities_map, err = workspaces.workspace_entities_map(ws_scope)
+    local ws_entities_map, err = workspaces.workspace_entities_map(ws_scope, table_name)
     if err then
       return nil, err
     end

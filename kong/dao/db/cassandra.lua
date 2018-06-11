@@ -483,7 +483,10 @@ local function workspace_entities_map(db, table_name)
   local ws_entities_map = {}
 
   for _, ws in ipairs(ws_scope) do
-    local where, args = get_where(ws_entities_schema, {workspace_id = ws.id})
+    local where, args = get_where(ws_entities_schema, {
+      workspace_id = ws.id,
+      entity_type = table_name,
+    })
     local query = select_query("workspace_entities", where)
     local ws_entities, err = db:query(query, args, nil, ws_entities_schema)
     if err then
