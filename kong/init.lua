@@ -40,6 +40,13 @@ do
                    "directive is defined.")
     end
   end
+
+  -- if we're running `nginx -t` then don't initialize
+  if os.getenv("KONG_NGINX_CONF_CHECK") then
+    return {
+      init = function() end,
+    }
+  end
 end
 
 require("kong.globalpatches")()

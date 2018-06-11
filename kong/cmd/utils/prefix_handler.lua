@@ -13,6 +13,7 @@ local log = require "kong.cmd.utils.log"
 local constants = require "kong.constants"
 local ffi = require "ffi"
 local fmt = string.format
+local nginx_signals = require "kong.cmd.utils.nginx_signals"
 
 local function gen_default_ssl_cert(kong_config, admin)
   -- create SSL folder
@@ -194,8 +195,8 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
       return nil, err
     end
   end
-  if not pl_path.exists(kong_config.nginx_admin_acc_logs) then
-    local ok, err = pl_file.write(kong_config.nginx_admin_acc_logs, "")
+  if not pl_path.exists(kong_config.admin_acc_logs) then
+    local ok, err = pl_file.write(kong_config.admin_acc_logs, "")
     if not ok then
       return nil, err
     end
@@ -253,6 +254,12 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
     return nil, err
   end
   pl_file.write(kong_config.nginx_kong_conf, nginx_kong_conf)
+
+  -- testing written NGINX conf
+  local ok, err = nginx_signals.check_conf(kong_config)
+  if not ok then
+    return nil, err
+  end
 
   -- write kong.conf in prefix (for workers and CLI)
   local buf = {

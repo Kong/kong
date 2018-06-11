@@ -143,7 +143,7 @@ describe("Configuration loader", function()
     assert.equal("/usr/local/kong/pids/nginx.pid", conf.nginx_pid)
     assert.equal("/usr/local/kong/logs/error.log", conf.nginx_err_logs)
     assert.equal("/usr/local/kong/logs/access.log", conf.nginx_acc_logs)
-    assert.equal("/usr/local/kong/logs/admin_access.log", conf.nginx_admin_acc_logs)
+    assert.equal("/usr/local/kong/logs/admin_access.log", conf.admin_acc_logs)
     assert.equal("/usr/local/kong/nginx.conf", conf.nginx_conf)
     assert.equal("/usr/local/kong/nginx-kong.conf", conf.nginx_kong_conf)
     assert.equal("/usr/local/kong/.kong_env", conf.kong_env)
@@ -169,6 +169,40 @@ describe("Configuration loader", function()
   it("correctly parses values containing an octothorpe", function()
     local conf = assert(conf_loader("spec/fixtures/to-strip.conf"))
     assert.equal("test#123", conf.pg_password)
+  end)
+
+  describe("dynamic directives", function()
+    it("loads flexible prefix based configs from a file", function()
+      local conf = assert(conf_loader("spec/fixtures/nginx-directives.conf"))
+
+      assert.equal("custom_cache 5m",
+                   conf.nginx_http_directives["lua_shared_dict"])
+
+      assert.equal("8 24k",
+                   conf.nginx_http_directives["large_client_header_buffers"])
+    end)
+
+    it("quotes numeric flexible prefix based configs", function()
+      local conf, err = conf_loader(nil, {
+        ["nginx_http_max_pending_timers"] = 4096,
+      })
+      assert.is_nil(err)
+
+      assert.equal([["4096"]], conf.nginx_http_directives["max_pending_timers"])
+    end)
+
+    it("accepts flexible config values with precedence", function()
+      local conf = assert(conf_loader("spec/fixtures/nginx-directives.conf", {
+        ["nginx_http_large_client_header_buffers"] = "4 16k",
+        ["nginx_http_lua_shared_dict"] = "custom_cache 2m",
+      }))
+
+      assert.equal("custom_cache 2m",
+                   conf.nginx_http_directives["lua_shared_dict"])
+
+      assert.equal("4 16k",
+                   conf.nginx_http_directives["large_client_header_buffers"])
+    end)
   end)
 
   describe("nginx_user", function()
