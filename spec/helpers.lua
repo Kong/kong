@@ -136,6 +136,11 @@ local function get_db_utils(strategy, no_truncate)
     dao = assert(DAOFactory.new(conf, db))
     conf.database = database
 
+    -- update singletons.dao, since this function accepts a 'strategy'
+    -- argument, the existing value might be for a different strategy
+    -- (e.g., this module's module-leveldao, which defaults for postgres)
+    singletons.dao = dao
+
     assert(dao:run_migrations())
     if not no_truncate then
       dao:truncate_tables()
