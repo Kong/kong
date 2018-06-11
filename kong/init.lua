@@ -29,6 +29,13 @@ require "resty.core"
 local constants = require "kong.constants"
 
 do
+  -- if we're running nginx -t then don't initialize
+  if os.getenv("KONG_NGINX_CONF_CHECK") then
+    return {
+      init = function()
+      end,
+    }
+  end
   -- let's ensure the required shared dictionaries are
   -- declared via lua_shared_dict in the Nginx conf
 

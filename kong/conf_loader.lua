@@ -9,6 +9,7 @@ local pl_path = require "pl.path"
 local tablex = require "pl.tablex"
 local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
+local env = require "kong.cmd.utils.env"
 local ip = require "kong.tools.ip"
 local ciphers = require "kong.tools.ciphers"
 
@@ -28,11 +29,17 @@ local header_key_to_name = {
   [string.lower(headers.UPSTREAM_STATUS)] = headers.UPSTREAM_STATUS,
 }
 
+local CONF_KEY_PREFIXES = {
+  ["nginx_http_directives"] = "nginx_http_",
+  ["nginx_proxy_directives"] = "nginx_proxy_",
+  ["nginx_admin_directives"] = "nginx_admin_",
+}
+
 local PREFIX_PATHS = {
   nginx_pid = {"pids", "nginx.pid"},
   nginx_err_logs = {"logs", "error.log"},
   nginx_acc_logs = {"logs", "access.log"},
-  nginx_admin_acc_logs = {"logs", "admin_access.log"},
+  admin_acc_logs = {"logs", "admin_access.log"},
   nginx_conf = {"nginx.conf"},
   nginx_kong_conf = {"nginx-kong.conf"}
   ;
@@ -448,6 +455,24 @@ local function parse_listeners(values)
   return list
 end
 
+local function parse_nginx_directives(prefix, conf)
+  local directives = {}
+
+  if type(prefix) ~= "string" or type(conf) ~= "table" then
+    return directives
+  end
+
+  for k, v in pairs(conf) do
+    if type(k) == "string" then
+      local _ , _ , directive= string.find(k, prefix .. "(.+)")
+      if directive then
+        directives[directive] = v
+      end
+    end
+  end
+  return directives
+end
+
 --- Load Kong configuration
 -- The loaded configuration will have all properties from the default config
 -- merged with the (optionally) specified config file, environment variables
@@ -514,6 +539,48 @@ local function load(path, custom_conf)
   -- Merging & validation
   -----------------------
 
+  -- find dynamic keys that need to be loaded
+  do
+    local dynamic_keys = {}
+    local function find_dynamic_keys(t, prefix)
+      if not t then
+        return
+      end
+
+      for k, v in pairs(t) do
+        local _, _, directive = string.find(k, "(" .. prefix .. ".+)")
+        if directive then
+          dynamic_keys[directive] = true
+          if tonumber(v) then
+            t[k] = string.format("%q", v)
+          end
+        end
+      end
+    end
+
+    local env_vars, err = env.read_all()
+    if err then
+      return nil, err
+    end
+
+    local kong_env_vars = {}
+    for k, v in pairs(env_vars) do
+      local clean_k = string.lower(k)
+      local kong_var = string.match(clean_k, "^kong_(.+)")
+      if kong_var then
+        kong_env_vars[kong_var] = true
+      end
+    end
+
+    for _, prefix in pairs(CONF_KEY_PREFIXES) do
+      find_dynamic_keys(custom_conf, prefix)
+      find_dynamic_keys(kong_env_vars, prefix)
+      find_dynamic_keys(from_file_conf, prefix)
+    end
+
+    defaults = tablex.merge(defaults, dynamic_keys, true)
+  end
+
   -- merge default conf with file conf, ENV variables and arg conf (with precedence)
   local conf = tablex.pairmap(overrides, defaults, from_file_conf, custom_conf)
 
@@ -524,6 +591,11 @@ local function load(path, custom_conf)
   end
 
   conf = tablex.merge(conf, defaults) -- intersection (remove extraneous properties)
+
+  -- nginx directives from conf
+  for block, prefix in pairs(CONF_KEY_PREFIXES) do
+    conf[block] = parse_nginx_directives(prefix, conf)
+  end
 
   -- print alphabetically-sorted values
   do

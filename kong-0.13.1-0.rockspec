@@ -76,6 +76,7 @@ build = {
     ["kong.cmd.version"] = "kong/cmd/version.lua",
     ["kong.cmd.utils.log"] = "kong/cmd/utils/log.lua",
     ["kong.cmd.utils.kill"] = "kong/cmd/utils/kill.lua",
+    ["kong.cmd.utils.env"] = "kong/cmd/utils/env.lua",
     ["kong.cmd.utils.nginx_signals"] = "kong/cmd/utils/nginx_signals.lua",
     ["kong.cmd.utils.prefix_handler"] = "kong/cmd/utils/prefix_handler.lua",
 
