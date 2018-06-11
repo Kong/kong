@@ -25,9 +25,6 @@ function ResponseTransformerHandler:body_filter(conf)
     local ctx = ngx.ctx
     local chunk, eof = ngx.arg[1], ngx.arg[2]
 
-    -- Initializes context here in case this plugin's access phase
-    -- did not run - and hence `rt_body_chunks` and `rt_body_chunk_number`
-    -- were not initialized
     ctx.rt_body_chunks = ctx.rt_body_chunks or {}
     ctx.rt_body_chunk_number = ctx.rt_body_chunk_number or 1
 
