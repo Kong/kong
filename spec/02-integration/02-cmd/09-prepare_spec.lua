@@ -46,7 +46,8 @@ describe("kong prepare", function()
       assert.matches("Error: no file at: foobar.conf", stderr, nil, true)
     end)
     it("on invalid nginx directive", function()
-      local ok, stderr = helpers.kong_exec "prepare --conf spec/fixtures/invalid_nginx_directives.conf"
+      local ok, stderr = helpers.kong_exec("prepare --conf spec/fixtures/invalid_nginx_directives.conf" ..
+                                           " -p " .. TEST_PREFIX)
       assert.False(ok)
       assert.is_string(stderr)
       assert.matches("[emerg] unknown directive \"random_directive\"", stderr, nil, true)
