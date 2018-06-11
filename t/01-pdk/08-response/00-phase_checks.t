@@ -130,7 +130,17 @@ qq{
                 header_filter = false,
                 body_filter   = false,
                 log           = false,
-            },
+            }, {
+                method        = "get_source",
+                args          = { },
+                init_worker   = false,
+                certificate   = "pending",
+                rewrite       = false,
+                access        = false,
+                header_filter = true,
+                body_filter   = true,
+                log           = true,
+            }
         }
 
         phase_check_functions(phases.init_worker)

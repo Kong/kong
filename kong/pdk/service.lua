@@ -66,18 +66,6 @@ local function new()
   end
 
 
-  ------------------------------------------------------------------------------
-  -- Determine if the request was proxied by to a service
-  -- or if the response was produced by Kong itself.
-  --
-  -- @return true if the request was proxied by Kong;
-  function service.was_proxied()
-    check_phase(PHASES.request)
-
-    return ngx.ctx.KONG_PROXIED == true
-  end
-
-
   return service
 end
 

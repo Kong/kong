@@ -59,16 +59,6 @@ qq{
                 header_filter = "forced false",
                 body_filter   = "forced false",
                 log           = "forced false",
-            }, {
-                method        = "was_proxied",
-                args          = {},
-                init_worker   = "forced false",
-                certificate   = "pending",
-                rewrite       = true,
-                access        = true,
-                header_filter = true,
-                body_filter   = true,
-                log           = true,
             },
         }
 

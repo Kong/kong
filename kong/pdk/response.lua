@@ -95,6 +95,21 @@ local function new(pdk, major_version)
   end
 
 
+  function _RESPONSE.get_source()
+    check_phase(header_body_log)
+
+    if ngx.ctx.KONG_PROXIED then
+      return "service"
+    end
+
+    if ngx.ctx.KONG_EXITED then
+      return "exit"
+    end
+
+    return "error"
+  end
+
+
   function _RESPONSE.set_status(status)
     check_phase(rewrite_access_header)
 
@@ -264,6 +279,7 @@ local function new(pdk, major_version)
     end
 
     local ctx = ngx.ctx
+    ctx.KONG_EXITED = true
     if ctx.delay_response and not ctx.delayed_response then
       ctx.delayed_response = {
         status_code = status,
