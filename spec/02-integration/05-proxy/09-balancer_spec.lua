@@ -463,8 +463,8 @@ for _, strategy in helpers.each_strategy() do
   describe("Ring-balancer #" .. strategy, function()
 
     setup(function()
-      local _, db, dao = helpers.get_db_utils(strategy, true)
       ngx.ctx.workspaces = nil
+      local _, db, dao = helpers.get_db_utils(strategy, true)
 
       truncate_relevant_tables(db, dao)
       helpers.start_kong({
