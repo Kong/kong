@@ -29,6 +29,9 @@ local http = require "resty.http"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
+local workspaces = require "kong.workspaces"
+local singletons = require "kong.singletons"
+
 
 local table_merge = utils.table_merge
 
@@ -146,8 +149,6 @@ local function get_db_utils(strategy, no_truncate)
       dao:truncate_tables()
     end
   end
-
-  require("kong.singletons").dao = dao
 
   -- cleanup new DB tables
   assert(db:init_connector())
@@ -1126,6 +1127,9 @@ local function register_consumer_relations(dao)
   local portal = require "kong.portal.dao_helpers"
   portal.register_resources(dao)
 end
+
+
+singletons.dao = dao
 
 ----------
 -- Exposed
