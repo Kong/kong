@@ -47,6 +47,19 @@ local function map(f, t)
   return r
 end
 
+local function map_unique(f, t)
+  local r = {}
+  local n = 0
+  for _, x in ipairs(t) do
+    if not r[x.workspace_id] then
+      n = n + 1
+      r[n] = f(x)
+      r[x.workspace_id] = true
+    end
+  end
+  return r
+end
+
 
 -- helper function for permutations
 local function inc(t, pos)
@@ -509,29 +522,28 @@ function _M.is_route_colliding(req, router)
 end
 
 
-local function load_workspace_scope(api)
+local function load_workspace_scope(route)
   local old_wss = ngx.ctx.workspaces
   ngx.ctx.workspaces = {}
   local rows, err = singletons.dao.workspace_entities:find_all({
-    entity_id          = api.id,
-    unique_field_name  = "name",
-    unique_field_value = api.name,
+    entity_id  = route.id,
   })
+
   ngx.ctx.workspaces = old_wss
   if not rows then
     return nil, err
   end
 
-  return map(function(x) return { id = x.workspace_id } end, rows)
+  return map_unique(function(x) return { id = x.workspace_id } end, rows)
 end
 
 
 -- Return workspace scope, given api belongs
 -- to, to the the context.
-function _M.resolve_ws_scope(api)
-  local ws_scope_key = format("apis_ws_resolution:%s", api.id)
+function _M.resolve_ws_scope(route)
+  local ws_scope_key = format("apis_ws_resolution:%s", route.id)
   local workspaces, err = singletons.cache:get(ws_scope_key, nil,
-                                               load_workspace_scope, api)
+                                               load_workspace_scope, route)
   if err then
     return nil, err
   end

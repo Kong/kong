@@ -427,7 +427,7 @@ return {
       worker_events.register(function(data)
         log(DEBUG, "[events] workspace_entites updated, invalidating API workspace scope")
         local target = data.entity
-        if target.entity_type ~= "apis" then
+        if target.entity_type ~= "apis" or target.entity_type ~= "routes" then
           return
         end
 
@@ -647,7 +647,7 @@ return {
       var.upstream_x_forwarded_port  = forwarded_port
 
       local err
-      ctx.workspaces, err = workspaces.resolve_ws_scope(api)
+      ctx.workspaces, err = workspaces.resolve_ws_scope(route or api)
       if err then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR("failed to retrieve workspace " ..
           "for the request (reason: " .. tostring(err) .. ")")

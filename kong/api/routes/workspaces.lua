@@ -39,7 +39,7 @@ return {
         return helpers.responses.send_HTTP_METHOD_NOT_ALLOWED()
       end
 
-      local results, err = dao_factory.workspace_entities:find_page({
+      local results, err = dao_factory.workspace_entities:find_all({
         workspace_id = self.workspace.id,
       })
       if err then
