@@ -18,10 +18,12 @@ local function read_all()
 
   for line in stdout:gmatch("[^\r\n]+") do
     local i = string.find(line, "=") -- match first =
-    local k = string.sub(line,1, i-1)
-    local v = string.sub(line, i+1)
-    if k and v then
-      vars[k] = v
+    if i then
+      local k = string.sub(line,1, i-1)
+      local v = string.sub(line, i+1)
+      if k and v then
+        vars[k] = v
+      end
     end
   end
   return vars
