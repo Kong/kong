@@ -71,6 +71,12 @@ describe("Admin API: #" .. kong_config.database, function()
         assert.equal(1, #json.data)
         assert.is_string(json.data[1].cert)
         assert.is_string(json.data[1].key)
+
+        -- XXX feat/entity-level-rbac
+        table.sort(json.data[1].snis, function(a, b)
+          return a > b
+        end)
+
         assert.same({ "foo.com", "bar.com" }, json.data[1].snis)
       end)
     end)
@@ -141,6 +147,12 @@ describe("Admin API: #" .. kong_config.database, function()
         json = cjson.decode(body)
         assert.equal(2, #json.data)
         assert.equal(2, json.total)
+
+        -- XXX feat/entity-level-rbac
+        table.sort(json.data, function(a, b)
+          return a.name > b.name
+        end)
+
         assert.equal("foo.com", json.data[1].name)
         assert.equal("bar.com", json.data[2].name)
 
@@ -156,6 +168,12 @@ describe("Admin API: #" .. kong_config.database, function()
         assert.equal(1, #json.data)
         assert.is_string(json.data[1].cert)
         assert.is_string(json.data[1].key)
+
+        -- XXX feat/entity-level-rbac
+        table.sort(json.data[1].snis, function(a, b)
+          return a > b
+        end)
+
         assert.same({ "foo.com", "bar.com" }, json.data[1].snis)
       end)
 
@@ -176,6 +194,12 @@ describe("Admin API: #" .. kong_config.database, function()
           local json = cjson.decode(body)
           assert.is_string(json.cert)
           assert.is_string(json.key)
+
+          -- XXX feat/entity-level-rbac
+          table.sort(json.snis, function(a, b)
+            return a > b
+          end)
+
           assert.same({ "foobar.com", "baz.com" }, json.snis)
         end
       end)
@@ -421,6 +445,12 @@ describe("Admin API: #" .. kong_config.database, function()
         local sni_names = {}
         table.insert(sni_names, json.data[1].name)
         table.insert(sni_names, json.data[2].name)
+
+        -- XXX feat/entity-level-rbac
+        table.sort(sni_names, function(a, b)
+          return a > b
+        end)
+
         assert.are.same({ "baz.com", "bar.com" }, sni_names)
 
         -- make sure we did not add any certificate
@@ -654,6 +684,18 @@ describe("Admin API: #" .. kong_config.database, function()
 
         assert.is_string(json1.cert)
         assert.is_string(json1.key)
+
+        -- XXX feat/entity-level-rbac
+        table.sort(json1.snis, function(a, b)
+          return a > b
+        end)
+
+        -- XXX feat/entity-level-rbac
+        table.sort(json2.snis, function(a, b)
+          return a > b
+        end)
+
+
         assert.same({ "foo.com", "bar.com" }, json1.snis)
         assert.same(json1, json2)
       end)
@@ -852,6 +894,12 @@ describe("Admin API: #" .. kong_config.database, function()
         local sni_names = {}
         table.insert(sni_names, json.data[1].name)
         table.insert(sni_names, json.data[2].name)
+
+        -- XXX feat/entity-level-rbac
+        table.sort(sni_names, function(a, b)
+          return a > b
+        end)
+
         assert.are.same( { "baz.com", "bar.com" } , sni_names)
 
         -- make sure we did not add any certificate
