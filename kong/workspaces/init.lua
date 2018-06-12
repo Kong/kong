@@ -483,7 +483,8 @@ end
 
 local function sanitize_route_param(param)
   if (param == cjson.null) or (param == ngx.null) or
-    not param or not next(param) then
+    not param or "table" ~= type(param) or
+    not next(param) then
     return {[""] = ""}
   else
     return param
