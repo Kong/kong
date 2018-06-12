@@ -20,10 +20,12 @@ for _, strategy in helpers.each_strategy() do
     local service_fixture
 
     setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp, _, dao = helpers.get_db_utils(strategy)
 
       -- insert single fixture Service
-      service_fixture = bp.services:insert()
+      helpers.with_current_ws(nil, function()
+        service_fixture = bp.services:insert()
+      end, dao)
 
       local db_update_propagation = strategy == "cassandra" and 3 or 0
 
