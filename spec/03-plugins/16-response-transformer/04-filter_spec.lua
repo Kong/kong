@@ -117,8 +117,11 @@ for _, strategy in helpers.each_strategy() do
       end)
     end)
 
-    describe("unauthorized", function()
-      it("doesn't err when unauthorized", function()
+    describe("regressions", function()
+      it("does not throw an error when request was short-circuited in access phase", function()
+        -- basic-auth and response-transformer applied to route
+        -- Makes request without credentials, short-circuits before response-transformer access handler
+        -- Regression for https://github.com/Kong/kong/issues/3521
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/get",
