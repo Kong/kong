@@ -878,7 +878,7 @@ do
                                              .. err)
     end
 
-    return true
+    return true, nil, primary_key
   end
 end
 

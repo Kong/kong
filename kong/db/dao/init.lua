@@ -196,12 +196,12 @@ local function generate_foreign_key_methods(self)
           return true
         end
 
-        local _, err_t = self.strategy:delete_by_field(name, unique_value)
+        local _, err_t, entity = self.strategy:delete_by_field(name, unique_value)
         if err_t then
           return nil, tostring(err_t), err_t
         end
 
-        self:post_crud_event("delete")
+        self:post_crud_event("delete", entity)
 
         return true
       end
@@ -494,12 +494,12 @@ function DAO:delete(primary_key)
     return nil, tostring(err_t), err_t
   end
 
-  local _, err_t = self.strategy:delete(primary_key)
+  local _, err_t, entity = self.strategy:delete(primary_key)
   if err_t then
     return nil, tostring(err_t), err_t
   end
 
-  self:post_crud_event("delete")
+  self:post_crud_event("delete", entity)
 
   return true
 end

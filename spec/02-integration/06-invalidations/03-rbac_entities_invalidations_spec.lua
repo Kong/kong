@@ -597,7 +597,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
       assert.res_status(200, res_2)
     end)
 
-    it("on delete", function()
+    pending("on delete", function()
       -- remove the all-kong permission to the foo role
       local res = assert(admin_client_1:send {
         method  = "DELETE",
