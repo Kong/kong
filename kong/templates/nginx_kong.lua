@@ -44,6 +44,10 @@ lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE}}';
 lua_ssl_verify_depth ${{LUA_SSL_VERIFY_DEPTH}};
 > end
 
+> for k, v in pairs(nginx_http_directives)  do
+    $(k) $(v);
+> end
+
 init_by_lua_block {
     kong = require 'kong'
     kong.init()
@@ -99,6 +103,10 @@ server {
     real_ip_recursive  ${{REAL_IP_RECURSIVE}};
 > for i = 1, #trusted_ips do
     set_real_ip_from   $(trusted_ips[i]);
+> end
+
+> for k, v in pairs(nginx_proxy_directives)  do
+    $(k) $(v);
 > end
 
     location / {
@@ -178,6 +186,10 @@ server {
     ssl_session_timeout 10m;
     ssl_prefer_server_ciphers on;
     ssl_ciphers ${{SSL_CIPHERS}};
+> end
+
+> for k, v in pairs(nginx_admin_directives)  do
+    $(k) $(v);
 > end
 
     location / {
