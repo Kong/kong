@@ -354,6 +354,6 @@ GET /t
 GET /t
 --- no_response_body
 --- error_log
-[kong] [%%namespace: my_namespace | my_namespace, %%file_src: content_by_lua(nginx.conf:77) | content_by_lua(nginx.conf:77), %%line_src: 14 | 14, %%func_name my_func | my_func, %%message hello world | hello world]
+[kong] [%%namespace: my_namespace | my_namespace, %%file_src: content_by_lua(nginx.conf:196) | content_by_lua(nginx.conf:196), %%line_src: 14 | 14, %%func_name my_func | my_func, %%message hello world | hello world]
 --- no_error_log
 [error]
