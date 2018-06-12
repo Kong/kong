@@ -5,12 +5,12 @@ local cjson   = require "cjson"
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: key-auth (invalidations) [#" .. strategy .. "]", function()
     local admin_client, proxy_client
-    local dao
+    local dao, default_ws_id
 
     before_each(function()
       local bp, _
       bp, _, dao = helpers.get_db_utils(strategy)
-
+      --default_ws_scope = dao.workspaces.find_all({name = "default"})
 
       helpers.with_current_ws(nil, function()
         local route = bp.routes:insert {
@@ -31,6 +31,7 @@ for _, strategy in helpers.each_strategy() do
           consumer_id = consumer.id,
         }
       end, dao)
+      default_ws_id = dao.workspaces:find_all({name = "default"})[1].id
 
       assert(helpers.start_kong({
         database   = strategy,
@@ -63,7 +64,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       -- ensure cache is populated
-      local cache_key = dao.keyauth_credentials:cache_key("kong")
+      local cache_key = dao.keyauth_credentials:cache_key("kong") .. default_ws_id
       res = assert(admin_client:send {
         method = "GET",
         path   = "/cache/" .. cache_key
@@ -111,7 +112,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       -- ensure cache is populated
-      local cache_key = dao.keyauth_credentials:cache_key("kong")
+      local cache_key = dao.keyauth_credentials:cache_key("kong") .. default_ws_id
       res = assert(admin_client:send {
         method = "GET",
         path   = "/cache/" .. cache_key
@@ -160,7 +161,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       -- ensure cache is populated
-      local cache_key = dao.keyauth_credentials:cache_key("kong")
+      local cache_key = dao.keyauth_credentials:cache_key("kong") .. default_ws_id
       res = assert(admin_client:send {
         method = "GET",
         path   = "/cache/" .. cache_key

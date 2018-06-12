@@ -7,6 +7,7 @@ for _, strategy in helpers.each_strategy() do
     local consumer
     local acl
     local dao
+    local default_ws
 
     before_each(function()
       local bp, _
@@ -88,6 +89,7 @@ for _, strategy in helpers.each_strategy() do
 
       proxy_client = helpers.proxy_client()
       admin_client = helpers.admin_client()
+      default_ws = dao.workspaces:find_all({name ="default"})[1].id
     end)
 
     after_each(function()
@@ -117,7 +119,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- Check that the cache is populated
 
-        local cache_key = dao.acls:cache_key(consumer.id)
+        local cache_key = dao.acls:cache_key(consumer.id) .. default_ws
         local res = assert(admin_client:send {
           method  = "GET",
           path    = "/cache/" .. cache_key,
@@ -176,7 +178,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(403, res)
 
         -- Check that the cache is populated
-        local cache_key = dao.acls:cache_key(consumer.id)
+        local cache_key = dao.acls:cache_key(consumer.id) .. default_ws
         local res = assert(admin_client:send {
           method  = "GET",
           path    = "/cache/" .. cache_key,
@@ -247,7 +249,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Check that the cache is populated
-        local cache_key = dao.acls:cache_key(consumer.id)
+        local cache_key = dao.acls:cache_key(consumer.id) .. default_ws
         local res = assert(admin_client:send {
           method  = "GET",
           path    = "/cache/" .. cache_key,
@@ -275,7 +277,7 @@ for _, strategy in helpers.each_strategy() do
         end, 3)
 
         -- Wait for key to be invalidated
-        local keyauth_cache_key = dao.keyauth_credentials:cache_key("apikey123")
+        local keyauth_cache_key = dao.keyauth_credentials:cache_key("apikey123") .. default_ws
         helpers.wait_until(function()
           local res = assert(admin_client:send {
             method  = "GET",

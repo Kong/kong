@@ -471,7 +471,9 @@ for _, strategy in helpers.each_strategy() do
     local anonymous
 
     setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp, _, dao = helpers.get_db_utils(strategy)
+
+      helpers.with_current_ws(nil, function()
 
       local route1 = bp.routes:insert {
         hosts = { "logical-and.com" },
@@ -534,7 +536,7 @@ for _, strategy in helpers.each_strategy() do
         password    = "OpenSesame",
         consumer_id = user2.id,
       }
-
+      end, dao)
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",

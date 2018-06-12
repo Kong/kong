@@ -617,6 +617,7 @@ function DAO:delete(tbl, options)
 
   local row, err = self.db:delete(self.table, self.schema, primary_keys, self.constraints)
   if not err and row ~= nil and not options.quiet then
+    remove_ws_prefix(self.table, row)
     if self.events then
       local _, err = self.events.post_local("dao:crud", "delete", {
         schema    = self.schema,

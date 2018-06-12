@@ -218,7 +218,7 @@ return {
           if data.old_entity then
             cache_key = dao[data.schema.table]:entity_cache_key(data.old_entity)
             if cache_key then
-              cache:invalidate(cache_key)
+              cache:invalidate(cache_key, workspaces)
             end
           end
 
@@ -427,12 +427,10 @@ return {
       worker_events.register(function(data)
         log(DEBUG, "[events] workspace_entites updated, invalidating API workspace scope")
         local target = data.entity
-        if target.entity_type ~= "apis" or target.entity_type ~= "routes" then
-          return
+        if target.entity_type == "apis" or target.entity_type == "routes" then
+          local ws_scope_key = fmt("apis_ws_resolution:%s", target.entity_id)
+          cache:invalidate(ws_scope_key)
         end
-
-        local ws_scope_key = fmt("apis_ws_resolution:%s", target.entity_id)
-        cache:invalidate(ws_scope_key)
       end, "crud", "workspace_entities")
 
       -- initialize balancers for active healthchecks

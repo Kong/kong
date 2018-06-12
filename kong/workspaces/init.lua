@@ -10,6 +10,7 @@ local ngx_log = ngx.log
 local DEBUG   = ngx.DEBUG
 local next    = next
 local values = tablex.values
+local cache = singletons.cache
 
 
 local _M = {}
@@ -49,12 +50,13 @@ end
 
 local function map_unique(f, t)
   local r = {}
+  local unique = {}
   local n = 0
   for _, x in ipairs(t) do
-    if not r[x.workspace_id] then
+    if not unique[x.workspace_id] then
       n = n + 1
       r[n] = f(x)
-      r[x.workspace_id] = true
+      unique[x.workspace_id] = true
     end
   end
   return r
@@ -300,12 +302,13 @@ end
 
 
 function _M.delete_entity_relation(table_name, entity)
+  local dao = singletons.dao
   local constraints = workspaceable_relations[table_name]
   if not constraints then
     return
   end
 
-  local res, err = singletons.dao.workspace_entities:find_all({
+  local res, err = dao.workspace_entities:find_all({
     entity_id = entity[constraints.primary_key],
   })
   if err then
@@ -313,9 +316,15 @@ function _M.delete_entity_relation(table_name, entity)
   end
 
   for _, row in ipairs(res) do
-    local _, err = singletons.dao.workspace_entities:delete(row)
+    local _, err = dao.workspace_entities:delete(row)
     if err then
       return err
+    end
+    if dao[table_name] then
+      local cache_key = dao[table_name]:entity_cache_key(entity)
+      if cache and cache_key then
+        cache:invalidate(cache_key .. row.workspace_id)
+      end
     end
   end
 end

@@ -10,11 +10,12 @@ for _, strategy in helpers.each_strategy() do
     local consumer
     local route
     local dao
+    local default_ws_id
 
     before_each(function()
       local bp, _
       bp, _, dao = helpers.get_db_utils(strategy)
-
+      helpers.with_current_ws(nil, function()
       route = bp.routes:insert {
         hosts = { "jwt.com" },
       }
@@ -34,6 +35,7 @@ for _, strategy in helpers.each_strategy() do
         secret      = "secret123",
         consumer_id = consumer.id,
       }
+      end, dao)
 
       assert(helpers.start_kong({
         database   = strategy,
@@ -42,6 +44,7 @@ for _, strategy in helpers.each_strategy() do
 
       admin_client = helpers.admin_client()
       proxy_client = helpers.proxy_client()
+      default_ws_id = dao.workspaces:find_all({name = "default"})[1].id
     end)
 
     after_each(function()
@@ -80,7 +83,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Check that cache is populated
-        local cache_key = dao.jwt_secrets:cache_key("key123")
+        local cache_key = dao.jwt_secrets:cache_key("key123") .. default_ws_id
         res = assert(admin_client:send {
           method = "GET",
           path   = "/cache/" .. cache_key,
@@ -148,7 +151,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(403, res)
 
         -- Check that cache is populated
-        local cache_key = dao.jwt_secrets:cache_key("key123")
+        local cache_key = dao.jwt_secrets:cache_key("key123") .. default_ws_id
         res = assert(admin_client:send {
           method = "GET",
           path   = "/cache/" .. cache_key,
@@ -224,7 +227,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Check that cache is populated
-        local cache_key = dao.jwt_secrets:cache_key("key123")
+        local cache_key = dao.jwt_secrets:cache_key("key123") .. default_ws_id
         res = assert(admin_client:send {
           method = "GET",
           path   = "/cache/" .. cache_key,

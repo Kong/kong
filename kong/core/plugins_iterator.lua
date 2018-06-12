@@ -52,10 +52,10 @@ local function load_plugin_into_memory_ws(route_id,
   local plugin, err, ttl
   for _, ws in ipairs(ngx.ctx.workspaces) do
     local plugin_cache_key = singletons.dao.plugins:cache_key_ws(ws,
+                                                                 plugin_name,
                                                                  route_id,
                                                                  service_id,
                                                                  consumer_id,
-                                                                 plugin_name,
                                                                  api_id)
     ttl, err, plugin = singletons.cache:probe(plugin_cache_key)
     if err then

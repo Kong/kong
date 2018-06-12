@@ -63,6 +63,7 @@ local OAUTH2_CREDENTIALS_SCHEMA = {
 local OAUTH2_AUTHORIZATION_CODES_SCHEMA = {
   primary_key = {"id"},
   table = "oauth2_authorization_codes",
+  workspaceable = true,
   fields = {
     id = { type = "id", dao_insert_value = true },
     service_id = { type = "id" }, --foreign = "services:id" -- manually tested in self_check

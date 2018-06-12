@@ -10,10 +10,10 @@ for _, strategy in helpers.each_strategy() do
     local db
     local dao
     local bp
+    local default_ws_id
 
     setup(function()
       bp, db, dao = helpers.get_db_utils(strategy)
-      singletons.dao = dao
     end)
 
     before_each(function()
@@ -49,6 +49,8 @@ for _, strategy in helpers.each_strategy() do
 
       proxy_client = helpers.proxy_client()
       admin_client = helpers.admin_client()
+
+      default_ws_id = dao.workspaces:find_all({name = "default"})[1].id
     end)
 
     after_each(function()
@@ -73,7 +75,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       -- ensure cache is populated
-      local cache_key = dao.basicauth_credentials:cache_key("bob")
+      local cache_key = dao.basicauth_credentials:cache_key("bob") .. default_ws_id
       res = assert(admin_client:send {
         method = "GET",
         path   = "/cache/" .. cache_key
@@ -121,7 +123,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       -- ensure cache is populated
-      local cache_key = dao.basicauth_credentials:cache_key("bob")
+      local cache_key = dao.basicauth_credentials:cache_key("bob") .. default_ws_id
       res = assert(admin_client:send {
         method = "GET",
         path   = "/cache/" .. cache_key
@@ -170,7 +172,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       -- ensure cache is populated
-      local cache_key = dao.basicauth_credentials:cache_key("bob")
+      local cache_key = dao.basicauth_credentials:cache_key("bob") .. default_ws_id
       res = assert(admin_client:send {
         method = "GET",
         path   = "/cache/" .. cache_key

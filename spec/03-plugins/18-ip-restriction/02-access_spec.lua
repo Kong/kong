@@ -8,6 +8,7 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
     local admin_client
     local dao
+    local default_ws
 
     setup(function()
       local bp, _
@@ -110,6 +111,7 @@ for _, strategy in helpers.each_strategy() do
         },
       })
       end, dao)
+      default_ws = dao.workspaces:find_all({name = "default"})[1].id
 
       assert(helpers.start_kong {
         database          = strategy,
@@ -312,7 +314,7 @@ for _, strategy in helpers.each_strategy() do
       local cache_key = dao.plugins:cache_key(plugin.name,
                                               plugin.route_id,
                                               plugin.service_id,
-                                              plugin.consumer_id)
+                                              plugin.consumer_id) .. default_ws
 
       helpers.wait_until(function()
         res = assert(admin_client:send {
