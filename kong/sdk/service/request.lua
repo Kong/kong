@@ -477,7 +477,8 @@ local function new(self)
     -- @param mime if given, it should be in the same format as the
     -- value returned by `kong.service.request.get_body`.
     -- The `Content-Type` header will be updated to match the appropriate type.
-    -- @return Nothing; throws an error on invalid inputs.
+    -- @return true on success, nil and an error message on errors;
+    -- throws an error on invalid inputs.
     request.set_body = function(args, mime)
       check_phase(access_and_rewrite)
 
@@ -489,6 +490,10 @@ local function new(self)
       end
       if not mime then
         mime = ngx.req.get_headers()[CONTENT_TYPE]
+        if not mime then
+          return nil, "content type was neither explicitly given " ..
+                      "as an argument or received as a header"
+        end
       end
 
       local boundaryless_mime = mime
