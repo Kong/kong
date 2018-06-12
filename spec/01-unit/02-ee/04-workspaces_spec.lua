@@ -43,10 +43,11 @@ describe("workspaces", function()
     end)
     it("iterates", function()
       local items = {
-        rel1 = { primary_key = "id1" },
-        rel2 = { primary_key = "id2" },
+        rel1 = { primary_key = "id1", primary_keys = {id1 = true} },
+        rel2 = { primary_key = "id2", primary_keys = {id2 = true} },
         rel3 = {
           primary_key = "id3",
+          primary_keys = {id3 = true},
           unique_keys = {
             field1 = {
               schema = {

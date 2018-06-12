@@ -47,10 +47,12 @@ for _, strategy in helpers.each_strategy() do
       describe("POST", function()
         local jwt1, jwt2
         teardown(function()
+          helpers.with_current_ws(nil, function()
           if jwt1 == nil then return end
           dao.jwt_secrets:delete(jwt1)
           if jwt2 == nil then return end
           dao.jwt_secrets:delete(jwt2)
+          end, dao)
         end)
 
         it("creates a jwt secret", function()
