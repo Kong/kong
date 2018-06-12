@@ -13,14 +13,14 @@ local function read_all()
   local success, ret_code, stdout, stderr = pl_utils.executeex(cmd)
   if not success or ret_code ~= 0 then
     return nil, fmt("could not read environment variables (exit code: %d): %s",
-           ret_code, stderr)
+                    ret_code, stderr)
   end
 
   for line in stdout:gmatch("[^\r\n]+") do
     local i = string.find(line, "=") -- match first =
     if i then
-      local k = string.sub(line,1, i-1)
-      local v = string.sub(line, i+1)
+      local k = string.sub(line, 1, i - 1)
+      local v = string.sub(line, i + 1)
       if k and v then
         vars[k] = v
       end

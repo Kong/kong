@@ -464,7 +464,7 @@ local function parse_nginx_directives(prefix, conf)
 
   for k, v in pairs(conf) do
     if type(k) == "string" then
-      local _ , _ , directive= string.find(k, prefix .. "(.+)")
+      local _, _, directive= string.find(k, prefix .. "(.+)")
       if directive then
         directives[directive] = v
       end
@@ -578,6 +578,8 @@ local function load(path, custom_conf)
       find_dynamic_keys(from_file_conf, prefix)
     end
 
+    -- union (add dynamic keys to `defaults` to prevent removal of the keys
+    -- during the intersection that happens later)
     defaults = tablex.merge(defaults, dynamic_keys, true)
   end
 

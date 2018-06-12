@@ -120,7 +120,7 @@ function _M.check_conf(kong_conf)
   local ok, retcode, _, stderr = pl_utils.executeex(cmd)
   if not ok then
     return false, ("failed to validate nginx configuration " ..
-           "(exit code %d):\n%s"):format(retcode ,stderr)
+                   "(exit code %d):\n%s"):format(retcode, stderr)
   end
 
   return true
