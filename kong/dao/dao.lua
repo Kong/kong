@@ -250,6 +250,10 @@ function DAO:insert(tbl, options)
   check_arg(tbl, 1, "table")
   check_arg(options, 2, "table")
 
+  -- deep copy so that the resolve_shared_entity_id call doesn't
+  -- modify the tbl argument
+  local tbl = utils.deep_copy(tbl)
+
   local model = self.model_mt(tbl)
   local ok, err = model:validate {dao = self}
   if not ok then
@@ -308,6 +312,10 @@ function DAO:find(tbl)
   check_arg(tbl, 1, "table")
   check_utf8(tbl, 1)
 
+  -- deep copy so that the resolve_shared_entity_id call doesn't
+  -- modify the tbl argument
+  local tbl = utils.deep_copy(tbl)
+
   local model = self.model_mt(tbl)
   if not model:has_primary_keys() then
     error("Missing PRIMARY KEY field", 2)
@@ -348,6 +356,10 @@ function DAO:find_all(tbl, include_ws)
   local skip_rbac
   local table_name = self.table
   local constraints = workspaceable[table_name]
+
+  -- deep copy so that the resolve_shared_entity_id call doesn't
+  -- modify the tbl argument
+  local tbl = utils.deep_copy(tbl)
 
   if tbl ~= nil then
     check_arg(tbl, 1, "table")
@@ -396,6 +408,10 @@ function DAO:find_page(tbl, page_offset, page_size)
   local table_name = self.table
   local constraints = workspaceable[table_name]
 
+   -- deep copy so that the resolve_shared_entity_id call doesn't
+   -- modify the tbl argument
+   local tbl = utils.deep_copy(tbl)
+
    if tbl ~= nil then
     check_arg(tbl, 1, "table")
     check_not_empty(tbl, 1)
@@ -438,6 +454,10 @@ end
 function DAO:count(tbl)
   local table_name = self.table
   local constraints = workspaceable[table_name]
+
+  -- deep copy so that the resolve_shared_entity_id call doesn't
+  -- modify the tbl argument
+  local tbl = utils.deep_copy(tbl)
 
   if tbl ~= nil then
     check_arg(tbl, 1, "table")
@@ -501,6 +521,10 @@ function DAO:update(tbl, filter_keys, options)
   check_arg(filter_keys, 2, "table")
   check_not_empty(filter_keys, 2)
   check_arg(options, 3, "table")
+
+  -- deep copy so that the resolve_shared_entity_id call doesn't
+  -- modify the tbl argument
+  local tbl = utils.deep_copy(tbl)
 
   for k, v in pairs(filter_keys) do
     if tbl[k] == nil then
@@ -579,6 +603,10 @@ function DAO:delete(tbl, options)
   options = options or {}
   check_arg(tbl, 1, "table")
   check_arg(options, 2, "table")
+
+  -- deep copy so that the resolve_shared_entity_id call doesn't
+  -- modify the tbl argument
+  local tbl = utils.deep_copy(tbl)
 
   local ws = workspaces.get_workspaces()[1]
   local constraints = workspaceable[self.table]
