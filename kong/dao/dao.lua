@@ -308,13 +308,6 @@ function DAO:find(tbl)
   check_arg(tbl, 1, "table")
   check_utf8(tbl, 1)
 
-  local table_name = self.table
-  local constraints = workspaceable[table_name]
-  local ok, err = resolve_shared_entity_id(table_name, tbl, constraints)
-  if not ok then
-    return ret_error(self.db.name, nil, Errors.schema(err))
-  end
-
   local model = self.model_mt(tbl)
   if not model:has_primary_keys() then
     error("Missing PRIMARY KEY field", 2)
@@ -322,6 +315,13 @@ function DAO:find(tbl)
 
   local primary_keys, _, _, err = model:extract_keys()
   if err then
+    return ret_error(self.db.name, nil, Errors.schema(err))
+  end
+
+  local table_name = self.table
+  local constraints = workspaceable[table_name]
+  local ok, err = resolve_shared_entity_id(table_name, tbl, constraints)
+  if not ok then
     return ret_error(self.db.name, nil, Errors.schema(err))
   end
 
