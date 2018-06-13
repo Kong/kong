@@ -289,6 +289,35 @@ describe("NGINX conf compiler", function()
         assert.matches("listen 0.0.0.0:8443 ssl;", nginx_conf)
       end)
     end)
+
+    describe("injected NGINX directives", function()
+      it("injects ngx_http_* directives", function()
+        local conf = assert(conf_loader(nil, {
+          nginx_http_large_client_header_buffers = "8 24k",
+          nginx_http_log_format = "custom_fmt '$connection $request_time'"
+        }))
+        local nginx_conf = prefix_handler.compile_kong_conf(conf)
+        assert.matches("large_client_header_buffers%s+8 24k;", nginx_conf)
+        assert.matches("log_format custom_fmt '$connection $request_time';",
+                       nginx_conf, nil, true)
+      end)
+
+      it("injects ngx_proxy_* directives", function()
+        local conf = assert(conf_loader(nil, {
+          nginx_http_large_client_header_buffers = "16 24k",
+        }))
+        local nginx_conf = prefix_handler.compile_kong_conf(conf)
+        assert.matches("large_client_header_buffers%s+16 24k;", nginx_conf)
+      end)
+
+      it("injects ngx_admin_* directives", function()
+        local conf = assert(conf_loader(nil, {
+          nginx_http_large_client_header_buffers = "4 24k",
+        }))
+        local nginx_conf = prefix_handler.compile_kong_conf(conf)
+        assert.matches("large_client_header_buffers%s+4 24k;", nginx_conf)
+      end)
+    end)
   end)
 
   describe("compile_nginx_conf()", function()
