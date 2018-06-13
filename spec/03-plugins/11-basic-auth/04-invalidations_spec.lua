@@ -1,6 +1,5 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local singletons = require "kong.singletons"
 
 
 for _, strategy in helpers.each_strategy() do

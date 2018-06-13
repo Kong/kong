@@ -118,4 +118,4 @@ function _Routes_ee:delete(primary_key)
 end
 
 
-return _Routes_ee
+return _Routes_ee or _Routes

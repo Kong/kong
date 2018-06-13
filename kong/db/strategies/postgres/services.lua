@@ -77,9 +77,9 @@ function _Services_ee:delete(primary_key)
   end
 
   -- delete child workspace relationship
-  local ok1, err1 = delete_cascade_ws(plugin_list, "plugins", errors, ws)
-  local ok2, err2 = delete_cascade_ws(oauth2_tokens_list, "oauth2_tokens", errors, ws)
-  local ok3, err3 = delete_cascade_ws(oauth2_codes_list, "oauth2_authorization_codes", errors, ws)
+  local _, err1 = delete_cascade_ws(plugin_list, "plugins", errors, ws)
+  local _, err2 = delete_cascade_ws(oauth2_tokens_list, "oauth2_tokens", errors, ws)
+  local _, err3 = delete_cascade_ws(oauth2_codes_list, "oauth2_authorization_codes", errors, ws)
 
   if err1 or err2 or err3 then
     return false, err1 or err2 or err3

@@ -12,7 +12,7 @@ local table_concat = table.concat
 local workspaceable = workspaces.get_workspaceable_relations()
 
 
-_M = {}
+local _M = {}
 
 
 -- used only with insert, update and delete

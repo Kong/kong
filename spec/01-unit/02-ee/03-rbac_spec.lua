@@ -912,8 +912,7 @@ describe("(#" .. kong_conf.database .. ")", function()
     end)
 
     it("each action", function()
-      role_id = u()
-      entity_id = u()
+      local role_id = u()
 
       assert(dao.rbac_role_endpoints:insert({
         role_id = role_id,
@@ -929,7 +928,6 @@ describe("(#" .. kong_conf.database .. ")", function()
       assert.same(rbac.readable_action(0x1), map.foo["/foo/bar"][1])
 
       role_id = u()
-      entity_id = u()
       assert(dao.rbac_role_endpoints:insert({
         role_id = role_id,
         workspace = "foo",
@@ -943,7 +941,6 @@ describe("(#" .. kong_conf.database .. ")", function()
       assert.equals(rbac.readable_action(0x2), map.foo["/foo/bar"][1])
 
       role_id = u()
-      entity_id = u()
       assert(dao.rbac_role_endpoints:insert({
         role_id = role_id,
         workspace = "foo",
@@ -957,7 +954,6 @@ describe("(#" .. kong_conf.database .. ")", function()
       assert.equals(rbac.readable_action(0x04), map.foo["/foo/bar"][1])
 
       role_id = u()
-      entity_id = u()
       assert(dao.rbac_role_endpoints:insert({
         role_id = role_id,
         workspace = "foo",
@@ -972,8 +968,7 @@ describe("(#" .. kong_conf.database .. ")", function()
       assert.equals(rbac.readable_action(0x08), map.foo["/foo/bar"][1])
     end)
     it("multiple permission", function()
-      role_id = u()
-      entity_id = u()
+      local role_id = u()
       assert(dao.rbac_role_endpoints:insert({
         role_id = role_id,
         workspace = "foo",

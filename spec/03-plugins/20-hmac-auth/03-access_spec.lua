@@ -1409,6 +1409,7 @@ for _, strategy in helpers.each_strategy() do
     local anonymous
     local hmacAuth
     local hmacDate
+    local credential
 
     setup(function()
       local bp, _, dao = helpers.get_db_utils(strategy)

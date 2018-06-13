@@ -1,21 +1,15 @@
 local cjson   = require "cjson"
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
-local singletons = require "kong.singletons"
-
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: basic-auth (API) [#" .. strategy .. "]", function()
     local consumer
     local admin_client
-    local bp
     local dao
 
     setup(function()
-      local _
-      bp, _, dao = helpers.get_db_utils(strategy)
-
-      singletons.dao = dao
+      dao = select(3, helpers.get_db_utils(strategy))
 
       assert(helpers.start_kong({
         database = strategy,

@@ -1,13 +1,8 @@
-local dao_helpers = require "spec.02-integration.03-dao.helpers"
-local DAOFactory = require "kong.dao.factory"
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local utils = require "kong.tools.utils"
-local singletons = require "kong.singletons"
 local tablex = require "pl.tablex"
 
 
-local db, dao
 local client
 
 
@@ -58,38 +53,11 @@ local function patch(path, body, headers, expected_status)
 end
 
 
-local function get(path, headers, expected_status)
-  headers = headers or {}
-  headers["Content-Type"] = "application/json"
-  local res = assert(client:send{
-    method = "GET",
-    path = path,
-    headers = headers
-  })
-
-  return cjson.decode(assert.res_status(expected_status or 200, res))
-end
-
-
-local function delete(path, headers, expected_status)
-  headers = headers or {}
-  headers["Content-Type"] = "application/json"
-  local res = assert(client:send{
-    method = "DELETE",
-    path = path,
-    body = body or {},
-    headers = headers
-  })
-  assert.res_status(expected_status or 204, res)
-end
-
-
 for _, strategy in helpers.each_strategy() do
 describe("DB [".. strategy .. "] routes are checked for colisions ", function()
   local route
   setup(function()
-    _, db, dao = helpers.get_db_utils(strategy)
-    singletons.dao = dao
+    helpers.get_db_utils(strategy)
 
     assert(helpers.start_kong({
       database   = strategy,

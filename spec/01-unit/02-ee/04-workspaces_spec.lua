@@ -84,9 +84,6 @@ describe("workspaces", function()
 
   it("is able to detect a matching [host, uri, method ] in the router", function()
     local Router = require "kong.core.api_router"
-    local method = "GET"
-    local uri = "/"
-    local host = "myapi1"
 
     local apis = {
       {
@@ -244,7 +241,6 @@ describe("workspaces", function()
     }
 
     it("selects routes correctly", function()
-      local method, uri, host = "GET", "/hey", "myapi1"
       local Router = require "kong.core.api_router"
       local r = Router.new(apis)
       assert.equal("api-2", workspaces.match_route(r, "GET", "/my-api2", "h1").api.name)

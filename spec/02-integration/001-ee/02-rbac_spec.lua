@@ -32,27 +32,12 @@ local function put(path, body, headers, expected_status)
 end
 
 
-local function patch(path, body, headers, expected_status)
-  headers = headers or {}
-  headers["Content-Type"] = "application/json"
-  local res = assert(client:send{
-    method = "PATCH",
-    path = path,
-    body = body or {},
-    headers = headers
-  })
-
-  return cjson.decode(assert.res_status(expected_status or 202, res))
-end
-
-
 local function get(path, headers, expected_status)
   headers = headers or {}
   headers["Content-Type"] = "application/json"
   local res = assert(client:send{
     method = "GET",
     path = path,
-    body = body or {},
     headers = headers
   })
   return cjson.decode(assert.res_status(expected_status or 200, res))
@@ -64,7 +49,6 @@ local function delete(path, headers, expected_status)
   local res = assert(client:send{
     method = "DELETE",
     path = path,
-    body = body or {},
     headers = headers
   })
   assert.res_status(expected_status or 204, res)
@@ -939,8 +923,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         path = "/rbac/users/bob/permissions",
       })
 
-      body = assert.res_status(200, res)
-      json = cjson.decode(body)
+      assert.res_status(200, res)
 
       -- TODO test permissions
 
@@ -980,8 +963,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         path = "/rbac/users/jerry/permissions",
       })
 
-      body = assert.res_status(200, res)
-      json = cjson.decode(body)
+      assert.res_status(200, res)
 
       -- TODO test decoded permissions
 
@@ -1021,8 +1003,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         path = "/rbac/users/alice/permissions",
       })
 
-      body = assert.res_status(200, res)
-      json = cjson.decode(body)
+      assert.res_status(200, res)
 
       -- TODO test decoded permissions
     end)
@@ -1066,9 +1047,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         path = "/rbac/users/herb/permissions",
       })
 
-      body = assert.res_status(200, res)
-      json = cjson.decode(body)
-
+      assert.res_status(200, res)
       -- TODO test decoded permissions
     end)
   end)
@@ -1422,9 +1401,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
           path = "/rbac/roles/mock-role/entities/permissions",
         })
 
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-
+        assert.res_status(200, res)
         -- TODO permissions tests
       end)
     end)

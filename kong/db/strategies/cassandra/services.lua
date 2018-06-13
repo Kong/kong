@@ -120,8 +120,8 @@ local function delete_cascade_ws(connector, table_name, entities, errors, ws)
     if ws then
       local err = workspaces.delete_entity_relation(table_name, {id = entities[i].id})
       if err then
-        return nil, self.errors:database_error("could not delete " .. table_name ..
-                                               " relationship with Workspace: " .. err)
+        return nil, errors:database_error("could not delete " .. table_name ..
+                                          " relationship with Workspace: " .. err)
       end
     end
   end
@@ -174,4 +174,4 @@ function _Services_ee:delete(primary_key)
 end
 
 
-return _Services_ee
+return _Services_ee or _Services

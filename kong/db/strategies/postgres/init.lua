@@ -2,7 +2,6 @@ local arrays     = require "pgmoon.arrays"
 local json       = require "pgmoon.json"
 local cjson      = require "cjson"
 local cjson_safe = require "cjson.safe"
-local workspaces = require "kong.workspaces"
 local ws_helper  = require "kong.workspaces.helper"
 
 
@@ -75,7 +74,6 @@ local function compile_ws(name, query)
   while s do
     if i < s then
       c[n+1] = "[=[\n"
-      local sub_query = sub(query, i, s - 1)
       c[n+2] = sub(query, i, s - 1)
       c[n+3] = "]=], "
       n=n+3

@@ -1,13 +1,10 @@
 local helpers = require "spec.helpers"
-local cjson = require "cjson"
-local meta = require "kong.meta"
-local utils = require "kong.tools.utils"
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: workspace scope test key-auth (access)", function()
-    local admin_client, proxy_client, api1, ws_foo, ws_bar, plugin1
+    local admin_client, proxy_client, api1
     setup(function()
-      local _, db, dao = helpers.get_db_utils(strategy)
+      helpers.get_db_utils(strategy)
 
 
       assert(helpers.start_kong({
@@ -28,7 +25,6 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       assert.res_status(201, res)
-      ws_foo = assert.response(res).has.jsonbody()
 
       local res = assert(admin_client:send {
         method = "POST",
@@ -41,7 +37,6 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       assert.res_status(201, res)
-      ws_bar = assert.response(res).has.jsonbody()
 
       local res = assert(admin_client:send {
         method = "POST",
@@ -70,7 +65,6 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       assert.res_status(201, res)
-      plugin1 = assert.response(res).has.jsonbody()
 
       local res = assert(admin_client:send {
         method = "POST",

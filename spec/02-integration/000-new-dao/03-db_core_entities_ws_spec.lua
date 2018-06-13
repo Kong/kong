@@ -12,7 +12,7 @@ local a_blank_uuid = "00000000-0000-0000-0000-000000000000"
 local function add_ws(dao, ws_name)
   return with_current_ws(nil, function()
     -- create another workspace in default workspace
-    local foo_ws, err, err_t = dao.workspaces:insert({
+    local foo_ws = dao.workspaces:insert({
       name = ws_name,
     })
 
@@ -40,7 +40,7 @@ for _, strategy in helpers.each_strategy() do
         it("creates a Route in default workspace", function()
           with_current_ws(nil, function()
 
-            local route, err, err_t = db.routes:insert({
+            local route, err_t, err = db.routes:insert({
               protocols = { "http" },
               hosts = { "example.com" },
               service = assert(db.services:insert({ host = "service.com" })),
@@ -72,7 +72,7 @@ for _, strategy in helpers.each_strategy() do
               name = "default"
             })
             local default_ws = ws[1]
-            local rel, err = dao.workspace_entities:find({
+            local rel = dao.workspace_entities:find({
               workspace_id = default_ws.id,
               entity_id = route.id,
               unique_field_name = "id"
@@ -94,7 +94,7 @@ for _, strategy in helpers.each_strategy() do
 
           with_current_ws({ foo_ws }, function ()
             -- add route in foo workspace
-            local route, err, err_t = db.routes:insert({
+            local route, err_t, err = db.routes:insert({
               protocols = { "http" },
               hosts = { "example.com" },
               service = assert(db.services:insert({ host = "service.com" })),
@@ -123,7 +123,7 @@ for _, strategy in helpers.each_strategy() do
             }, route)
 
             -- validate relationship
-            local rel, err = dao.workspace_entities:find({
+            local rel = dao.workspace_entities:find({
               workspace_id = foo_ws.id,
               entity_id = route.id,
               unique_field_name = "id"
@@ -186,6 +186,8 @@ for _, strategy in helpers.each_strategy() do
             protocols = { "https" }
             })
             assert.is_nil(new_route)
+            assert.is_not_nil(err_t)
+            assert.is_not_nil(err)
           end, dao)
         end)
 
@@ -502,10 +504,6 @@ for _, strategy in helpers.each_strategy() do
           end, dao)
         end)
 
-        teardown(function ()
-          ngx.ctx.workspaces = old_ctx
-        end)
-
         -- I/O
         it("iterates over all rows and its sets work as sets", function()
           with_current_ws( {foo_ws},function()
@@ -801,16 +799,19 @@ for _, strategy in helpers.each_strategy() do
             local service_default_db, err, err_t = db.services:select({
               id = service_default.id
             })
+            assert.is_nil(err_t)
+            assert.is_nil(err)
             assert.same(service_default, service_default_db)
           end, dao)
         end)
 
-        it("cannot update a Service to bear an already existing name", function()
+        it("cannot update a Service to an already existing name", function()
           with_current_ws( {foo_ws},function()
-            local service, err, err_t = db.services:select_by_name("non-existing")
-            local updated_service, _, err_t = db.services:update_by_name("test-service", {
+            local updated_service, err, err_t = db.services:update_by_name("test-service", {
               name = "existing-service"
             })
+            assert.is_not_nil(err_t)
+            assert.is_not_nil(err)
             assert.is_nil(updated_service)
             assert.same({
               code     = Errors.codes.UNIQUE_VIOLATION,

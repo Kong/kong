@@ -2,7 +2,6 @@ local cjson   = require "cjson"
 local utils   = require "kong.tools.utils"
 local helpers = require "spec.helpers"
 local Errors  = require "kong.db.errors"
-local singletons = require "kong.singletons"
 
 
 local unindent = helpers.unindent
@@ -137,14 +136,11 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("/foo/services/{service}", function()
-        local service, service_default
+        local service
 
         before_each(function()
           with_current_ws({ foo_ws }, function ()
             service = bp.services:insert({ name = "my-service", protocol = "http", host="example.com", path="/path" })
-          end, dao)
-          with_current_ws(nil, function ()
-            service_default = bp.services:insert({ name = "my-service", protocol = "http", host="example.com", path="/path" })
           end, dao)
         end)
 
@@ -251,7 +247,7 @@ for _, strategy in helpers.each_strategy() do
 
           it("deletes a service", function()
             local res  = client:get("/foo/services/" .. service.id)
-            local body = assert.res_status(200, res)
+            assert.res_status(200, res)
 
 
             local res  = client:delete("/foo/services/" .. service.id)

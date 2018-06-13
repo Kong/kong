@@ -1,9 +1,7 @@
 local cjson        = require "cjson"
 local helpers      = require "spec.helpers"
 local dao_helpers  = require "spec.02-integration.03-dao.helpers"
-local rbac = require "kong.rbac"
 local singletons = require "kong.singletons"
-local bit        = require "bit"
 local rbac_migrations_defaults = require "kong.rbac.migrations.01_defaults"
 
 local POLL_INTERVAL = 0.3

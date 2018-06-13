@@ -570,7 +570,7 @@ describe("Admin API #" .. kong_config.database, function()
                          headers = {["Content-Type"] = "application/json"}
           })
 
-          body = assert.res_status(201, res)
+          assert.res_status(201, res)
 
           -- route collides in different WS
           res = assert(client:send {
@@ -657,7 +657,7 @@ describe("Admin API #" .. kong_config.database, function()
                          headers = {["Content-Type"] = "application/json"}
           })
 
-          body = assert.res_status(201, res)
+          assert.res_status(201, res)
 
           -- modified ok
           res = assert(client:send {
@@ -674,7 +674,7 @@ describe("Admin API #" .. kong_config.database, function()
             },
             headers = {["Content-Type"] = "application/json"}
           })
-          body = assert.res_status(200, res)
+          assert.res_status(200, res)
 
           --  create ok in different WS
           res = assert(client:send {
@@ -721,8 +721,7 @@ describe("Admin API #" .. kong_config.database, function()
                              },
                              headers = {["Content-Type"] = "application/json"}
         })
-        local body = assert.res_status(201, res)
-        local json = cjson.decode(body)
+        assert.res_status(201, res)
 
         res = assert(client:send {
                        method = "POST",
@@ -733,7 +732,7 @@ describe("Admin API #" .. kong_config.database, function()
                        headers = {["Content-Type"] = "application/json"}
         })
 
-        body = assert.res_status(201, res)
+        assert.res_status(201, res)
 
         -- creates in different ws an API that would swallow traffic
         res = assert(client:send {
@@ -748,7 +747,7 @@ describe("Admin API #" .. kong_config.database, function()
                        },
                        headers = {["Content-Type"] = "application/json"}
         })
-        body = assert.res_status(409, res)
+        assert.res_status(409, res)
 
       end)
 
@@ -766,8 +765,7 @@ describe("Admin API #" .. kong_config.database, function()
                              },
                              headers = {["Content-Type"] = "application/json"}
         })
-        local body = assert.res_status(201, res)
-        local json = cjson.decode(body)
+        assert.res_status(201, res)
 
         res = assert(client:send {
                        method = "POST",
@@ -778,7 +776,7 @@ describe("Admin API #" .. kong_config.database, function()
                        headers = {["Content-Type"] = "application/json"}
         })
 
-        body = assert.res_status(201, res)
+        assert.res_status(201, res)
 
         -- creates in different ws an API that would swallow traffic
         res = assert(client:send {
@@ -793,7 +791,7 @@ describe("Admin API #" .. kong_config.database, function()
                        },
                        headers = {["Content-Type"] = "application/json"}
         })
-        body = assert.res_status(201, res)
+        local body = assert.res_status(201, res)
 
         res = assert(client:send {
                        method = "PATCH",
@@ -807,12 +805,9 @@ describe("Admin API #" .. kong_config.database, function()
                        },
                        headers = {["Content-Type"] = "application/json"}
         })
-        body = assert.res_status(409, res)
+        assert.res_status(409, res)
       end)
-
-
     end)
   end)
 end)
-
 end)
