@@ -22,7 +22,7 @@ end
 -- TODO: Cassandra
 for _, strategy in helpers.each_strategy('postgres') do
 
-describe("Developer Portal - Portal API", function()
+pending("Developer Portal - Portal API", function()
   local bp
   local db
   local dao
@@ -540,7 +540,7 @@ end)
 
 end
 
-describe("portal dao_helpers", function()
+pending("portal dao_helpers", function()
   local dao
 
   setup(function()
