@@ -1,3 +1,4 @@
+local spec_helpers = require "spec.helpers"
 local dao_factory = require "kong.dao.factory"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local utils       = require "kong.tools.utils"
@@ -18,13 +19,9 @@ describe("(#" .. kong_conf.database .. ")", function()
   setup(function()
     package.loaded["kong.rbac"] = nil
 
-    dao = assert(dao_factory.new(kong_conf))
+    dao = select(3, spec_helpers.get_db_utils())
     singletons.dao = dao
     rbac = require "kong.rbac"
-
-    dao:truncate_tables()
-    dao:run_migrations()
-    ngx.ctx.workspaces = nil
   end)
 
 
