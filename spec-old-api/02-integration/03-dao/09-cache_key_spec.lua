@@ -2,11 +2,13 @@ local helpers = require "spec.helpers"
 
 describe("<dao>:cache_key()", function()
   describe("generates unique cache keys for core entities", function()
+    local workspace_id = ngx.ctx.workspaces[1].id
+
     it("(Consumers)", function()
       local consumer_id = "59c7fb5e-3430-11e7-b51f-784f437104fa"
 
       local cache_key = helpers.dao.consumers:cache_key(consumer_id)
-      assert.equal("consumers:" .. consumer_id .. ":::::", cache_key)
+      assert.equal("consumers:" .. consumer_id .. ":::::" .. workspace_id, cache_key)
     end)
 
     it("(Plugins)", function()
@@ -15,17 +17,17 @@ describe("<dao>:cache_key()", function()
       local consumer_id = "59c7fb5e-3430-11e7-b51f-784f437104fa"
 
       local cache_key = helpers.dao.plugins:cache_key(name)
-      assert.equal("plugins:" .. name .. ":::::", cache_key)
+      assert.equal("plugins:" .. name .. ":::::" .. workspace_id, cache_key)
 
       cache_key = helpers.dao.plugins:cache_key(name, api_id)
-      assert.equal("plugins:" .. name .. ":" .. api_id .. "::::", cache_key)
+      assert.equal("plugins:" .. name .. ":" .. api_id .. "::::" .. workspace_id, cache_key)
 
       cache_key = helpers.dao.plugins:cache_key(name, api_id, consumer_id)
-      assert.equal("plugins:" .. name .. ":" .. api_id .. ":" .. consumer_id .. ":::",
+      assert.equal("plugins:" .. name .. ":" .. api_id .. ":" .. consumer_id .. ":::" .. workspace_id,
                    cache_key)
 
       cache_key = helpers.dao.plugins:cache_key(name, nil, consumer_id)
-      assert.equal("plugins:" .. name .. "::" .. consumer_id .. ":::", cache_key)
+      assert.equal("plugins:" .. name .. "::" .. consumer_id .. ":::" .. workspace_id, cache_key)
     end)
   end)
 end)
