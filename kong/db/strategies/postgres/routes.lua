@@ -45,7 +45,7 @@ function _Routes_ee:delete(primary_key)
   local ws = workspaces.get_workspaces()[1]
   for i = 1, #plugins do
     if ws then
-      local err = workspaces.delete_entity_relation("plugins", {id = plugins[i].id})
+      local err = workspaces.delete_entity_relation("plugins", plugins[i])
       if err then
         return nil, self.errors:database_error("could not delete Plugin relationship " ..
           "with Workspace: " .. err)
@@ -61,7 +61,7 @@ function _Routes_ee:delete(primary_key)
     end
   end
 
-  return true
+  return true, nil, primary_key
 end
 
 

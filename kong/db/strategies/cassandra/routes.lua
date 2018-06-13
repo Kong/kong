@@ -114,7 +114,7 @@ function _Routes_ee:delete(primary_key)
     end
   end
 
-  return true
+  return true, nil, primary_key
 end
 
 

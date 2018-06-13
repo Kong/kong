@@ -179,18 +179,18 @@ return {
         -- invalidate this entity anywhere it is cached if it has a
         -- caching key
 
-        local workspaces, err = dao.workspace_entities:find_all({
-          entity_id = data.entity[data.schema.primary_key[1]],
-          __skip_rbac = true,
-        })
-        if err then
-          log(ngx.ERR, "[events] could not fetch workspaces: ", err)
-          return
-        end
-
         if not data.new_db then
           if not data.schema then
             log(ngx.ERR, "[events] missing schema in crud subscriber")
+            return
+          end
+
+          local workspaces, err = dao.workspace_entities:find_all({
+            entity_id = data.entity[data.schema.primary_key[1]],
+            __skip_rbac = true,
+          })
+          if err then
+            log(ngx.ERR, "[events] could not fetch workspaces: ", err)
             return
           end
 

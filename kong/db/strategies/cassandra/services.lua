@@ -169,8 +169,7 @@ function _Services_ee:delete(primary_key)
     end
   end
 
-  return ok1 and ok2 and ok3,
-  err1 or err2 or err3
+  return ok1 and ok2 and ok3, err1 or err2 or err3, primary_key
 end
 
 
