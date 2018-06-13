@@ -18,7 +18,7 @@ __DATA__
         content_by_lua_block {
             local kong_global = require "kong.global"
             local kong = kong_global.new()
-            kong_global.init_sdk(kong)
+            kong_global.init_pdk(kong)
 
             kong.log.notice("hello world")
         }
@@ -40,7 +40,7 @@ qr/\[notice\] .*? \[kong\] content_by_lua\(nginx\.conf:\d+\):\d+ hello world/
         content_by_lua_block {
             local kong_global = require "kong.global"
             local kong = kong_global.new()
-            kong_global.init_sdk(kong)
+            kong_global.init_pdk(kong)
 
             local pok, perr = pcall(kong_global.set_namespaced_log)
             if not pok then
@@ -70,7 +70,7 @@ namespace (arg #2) must be a string
         content_by_lua_block {
             local kong_global = require "kong.global"
             local kong = kong_global.new()
-            kong_global.init_sdk(kong)
+            kong_global.init_pdk(kong)
 
             local pok, perr = pcall(kong_global.reset_log)
             if not pok then
@@ -94,7 +94,7 @@ arg #1 cannot be nil
         content_by_lua_block {
             local kong_global = require "kong.global"
             local kong = kong_global.new()
-            kong_global.init_sdk(kong)
+            kong_global.init_pdk(kong)
 
             kong_global.set_namespaced_log(kong, "my-plugin")
 
@@ -118,7 +118,7 @@ qr/\[notice\] .*? \[kong\] content_by_lua\(nginx\.conf:\d+\):\d+ \[my-plugin\] h
         content_by_lua_block {
             local kong_global = require "kong.global"
             local kong = kong_global.new()
-            kong_global.init_sdk(kong)
+            kong_global.init_pdk(kong)
 
             kong_global.set_namespaced_log(kong, "my-plugin")
             kong.log.notice("hello world")

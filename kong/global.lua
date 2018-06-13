@@ -1,7 +1,7 @@
 -- TODO: get rid of 'kong.meta'; this module is king
 local meta = require "kong.meta"
-local SDK = require "kong.sdk"
-local phase_checker = require "kong.sdk.private.phases"
+local PDK = require "kong.pdk"
+local phase_checker = require "kong.pdk.private.phases"
 
 
 local type = type
@@ -28,8 +28,8 @@ function _GLOBAL.new()
     version = KONG_VERSION,
     version_num = KONG_VERSION_NUM,
 
-    sdk_major_version = nil,
-    sdk_version = nil,
+    pdk_major_version = nil,
+    pdk_version = nil,
 
     configuration = nil,
   }
@@ -50,7 +50,7 @@ function _GLOBAL.set_named_ctx(self, name, key)
   end
 
   if not self.ctx then
-    error("ctx SDK module not initialized", 2)
+    error("ctx PDK module not initialized", 2)
   end
 
   self.ctx.keys[name] = key
@@ -106,12 +106,12 @@ do
   end
 
 
-  function _GLOBAL.init_sdk(self, kong_config, sdk_major_version)
+  function _GLOBAL.init_pdk(self, kong_config, pdk_major_version)
     if not self then
       error("arg #1 cannot be nil", 2)
     end
 
-    SDK.new(kong_config, sdk_major_version, self)
+    PDK.new(kong_config, pdk_major_version, self)
 
     log_facilities.core = self.log
   end

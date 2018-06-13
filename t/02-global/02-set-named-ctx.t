@@ -20,7 +20,7 @@ __DATA__
         content_by_lua_block {
             local kong_global = require "kong.global"
             local kong = kong_global.new()
-            kong_global.init_sdk(kong)
+            kong_global.init_pdk(kong)
 
             kong_global.set_named_ctx(kong, "custom", {})
             kong_global.set_named_ctx(kong, "foo", {})
@@ -53,7 +53,7 @@ suzie
         content_by_lua_block {
             local kong_global = require "kong.global"
             local kong = kong_global.new()
-            kong_global.init_sdk(kong)
+            kong_global.init_pdk(kong)
 
             local namespace_key1 = {}
             local namespace_key2 = {}
@@ -87,7 +87,7 @@ marry
         content_by_lua_block {
             local kong_global = require "kong.global"
             local kong = kong_global.new()
-            kong_global.init_sdk(kong)
+            kong_global.init_pdk(kong)
 
             kong_global.set_named_ctx(kong, "custom", {})
             kong.ctx.custom.cats = "marry"
@@ -114,7 +114,7 @@ nil
         content_by_lua_block {
             local kong_global = require "kong.global"
             local kong = kong_global.new()
-            kong_global.init_sdk(kong)
+            kong_global.init_pdk(kong)
 
             local pok, perr = pcall(kong_global.set_named_ctx, nil)
             if not pok then
@@ -138,7 +138,7 @@ arg #1 cannot be nil
         content_by_lua_block {
             local kong_global = require "kong.global"
             local kong = kong_global.new()
-            kong_global.init_sdk(kong)
+            kong_global.init_pdk(kong)
 
             local pok, perr = pcall(kong_global.set_named_ctx, kong, 123, {})
             if not pok then
@@ -161,7 +161,7 @@ name cannot be an empty string
 
 
 
-=== TEST 6: set_named_ctx() arbitrary namespaces fail if SDK not initialized
+=== TEST 6: set_named_ctx() arbitrary namespaces fail if PDK not initialized
 --- http_config eval: $t::Util::HttpConfig
 --- config
     location = /t {
@@ -178,6 +178,6 @@ name cannot be an empty string
 --- request
 GET /t
 --- response_body
-ctx SDK module not initialized
+ctx PDK module not initialized
 --- no_error_log
 [error]

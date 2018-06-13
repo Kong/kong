@@ -49,7 +49,7 @@ local kong_global = require "kong.global"
 local PHASES = kong_global.phases
 
 
-_G.kong = kong_global.new() -- no versioned SDK for plugins for now
+_G.kong = kong_global.new() -- no versioned PDK for plugins for now
 
 
 local ip = require "kong.tools.ip"
@@ -110,7 +110,7 @@ local function load_plugins(kong_conf, dao)
       ngx.log(ngx.WARN, "plugin '", plugin, "' has been deprecated")
     end
 
-    -- NOTE: no version _G.kong (nor SDK) in plugins main chunk
+    -- NOTE: no version _G.kong (nor PDK) in plugins main chunk
 
     local ok, handler = utils.load_module_if_exists("kong.plugins." .. plugin .. ".handler")
     if not ok then
@@ -178,7 +178,7 @@ function Kong.init()
   local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
   local config = assert(conf_loader(conf_path))
 
-  kong_global.init_sdk(kong, config, nil) -- nil: latest SDK
+  kong_global.init_pdk(kong, config, nil) -- nil: latest PDK
 
   local db = assert(DB.new(config))
   assert(db:init_connector())

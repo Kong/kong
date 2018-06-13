@@ -34,7 +34,7 @@ our $HttpConfig = <<_EOC_;
             require("luacov.runner")("t/phase_checks.luacov")
         end
 
-        local private_phases = require("kong.sdk.private.phases")
+        local private_phases = require("kong.pdk.private.phases")
         local phases = private_phases.phases
 
         function phase_check_functions(phase, skip_fnlist)
@@ -44,9 +44,9 @@ our $HttpConfig = <<_EOC_;
 
             local mod
             do
-                local SDK = require "kong.sdk"
-                local sdk = SDK.new()
-                mod = sdk
+                local PDK = require "kong.pdk"
+                local pdk = PDK.new()
+                mod = pdk
                 for part in phase_check_module:gmatch("[^.]+") do
                     mod = mod[part]
                 end
