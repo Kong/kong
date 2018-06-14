@@ -40,6 +40,14 @@ describe("rockspec/meta", function()
       -- suffix optional
     end)
 
+    it("has a _SERVER_TOKENS field", function()
+      assert.is_string(meta._SERVER_TOKENS)
+    end)
+
+    it("has a _SERVER_TOKENS field that equals to _NAME/_VERSION", function()
+      assert.equal(meta._NAME .. "/" .. meta._VERSION, meta._SERVER_TOKENS)
+    end)
+
     it("has a _DEPENDENCIES field", function()
       assert.is_table(meta._DEPENDENCIES)
       assert.is_table(meta._DEPENDENCIES.nginx)

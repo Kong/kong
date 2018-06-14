@@ -1,8 +1,9 @@
+local meta = require "kong.meta"
 local helpers = require "spec.helpers"
 local constants = require "kong.constants"
 
 
-local default_server_header = _KONG._NAME .. "/" .. _KONG._VERSION
+local default_server_header = meta._SERVER_TOKENS
 
 
 local function start(config)

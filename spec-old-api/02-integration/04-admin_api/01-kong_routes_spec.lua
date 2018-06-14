@@ -37,7 +37,7 @@ describe("Admin API - Kong routes", function()
         path = "/"
       })
       assert.res_status(200, res)
-      assert.equal(string.format("%s/%s", meta._NAME, meta._VERSION), res.headers.server)
+      assert.equal(meta._SERVER_TOKENS, res.headers.server)
       assert.is_nil(res.headers.via) -- Via is only set for proxied requests
     end)
     it("returns 405 on invalid method", function()

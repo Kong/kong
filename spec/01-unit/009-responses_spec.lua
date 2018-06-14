@@ -38,7 +38,7 @@ describe("Response helpers", function()
   it("sets the correct ngx values and call ngx.say and ngx.exit", function()
     responses.send_HTTP_OK("OK")
     assert.equal(ngx.status, responses.status_codes.HTTP_OK)
-    assert.equal(meta._NAME .. "/" .. meta._VERSION, ngx.header["Server"])
+    assert.equal(meta._SERVER_TOKENS, ngx.header["Server"])
     assert.equal("application/json; charset=utf-8", ngx.header["Content-Type"])
     assert.stub(ngx.say).was.called() -- set custom content
     assert.stub(ngx.exit).was.called() -- exit nginx (or continue to the next context if 200)

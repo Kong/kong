@@ -8,6 +8,7 @@
 -- In the `access_by_lua` phase, it is responsible for retrieving the route being proxied by
 -- a consumer. Then it is responsible for loading the plugins to execute on this request.
 local ck          = require "resty.cookie"
+local meta        = require "kong.meta"
 local utils       = require "kong.tools.utils"
 local Router      = require "kong.router"
 local ApiRouter   = require "kong.api_router"
@@ -43,7 +44,7 @@ local EMPTY_T = {}
 
 local router, router_version, router_err
 local api_router, api_router_version, api_router_err
-local server_header = _KONG._NAME .. "/" .. _KONG._VERSION
+local server_header = meta._SERVER_TOKENS
 
 
 local function get_now()
