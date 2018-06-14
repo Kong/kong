@@ -127,6 +127,12 @@ end
 local function get_db_utils(strategy, no_truncate)
   strategy = strategy or conf.database
 
+  -- Clean workspaces from the context - otherwise, migrations will fail,
+  -- as some of them have dao calls
+  -- If `no_truncate` is falsey, `dao:truncate` and `db:truncate` are called,
+  -- and these set the workspae back again to the new `default` workspace
+  ngx.ctx.workspaces = nil
+
   -- new DAO (DB module)
   local db = assert(DB.new(conf, strategy))
 
