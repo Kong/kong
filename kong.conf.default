@@ -47,6 +47,8 @@
                                           # adjusted by the `log_level`
                                           # directive.
 
+#proxy_custom_log_format                  # Custom log format for nginx access log
+
 #admin_access_log = logs/admin_access.log # Path for Admin API request access
                                           # logs. Set this value to `off` to
                                           # disable logging Admin API requests.
@@ -58,6 +60,8 @@
                                           # logs. Granularity of these logs is
                                           # adjusted by the `log_level`
                                           # directive.
+
+#admin_custom_log_format                  # Custom log format for nginx admin log
 
 #custom_plugins =                # Comma-separated list of additional plugins
                                  # this node should load.

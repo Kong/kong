@@ -3,8 +3,10 @@ prefix = /usr/local/kong/
 log_level = notice
 proxy_access_log = logs/access.log
 proxy_error_log = logs/error.log
+proxy_log_format = combined
 admin_access_log = logs/admin_access.log
 admin_error_log = logs/error.log
+admin_log_format = combined
 custom_plugins = NONE
 anonymous_reports = on
 
