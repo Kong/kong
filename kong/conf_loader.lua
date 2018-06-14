@@ -125,6 +125,7 @@ local CONF_INFERENCES = {
   admin_error_log = {typ = "string"},
   log_level = {enum = {"debug", "info", "notice", "warn",
                        "error", "crit", "alert", "emerg"}},
+  plugins = {typ = "array"},
   custom_plugins = {typ = "array"},
   anonymous_reports = {typ = "boolean"},
   nginx_daemon = {typ = "ngx_boolean"},
@@ -627,13 +628,35 @@ local function load(path, custom_conf)
 
   -- merge plugins
   do
-    local custom_plugins = {}
+    local plugins = {}
+    if #conf.plugins > 0 and conf.plugins[1] ~= "off" then
+      for i = 1, #conf.plugins do
+        local plugin_name = pl_stringx.strip(conf.plugins[i])
+        if plugin_name ~= "off" then
+          if plugin_name == "bundled" then
+            plugins = tablex.merge(constants.BUNDLED_PLUGINS, plugins, true)
+          else
+            plugins[plugin_name] = true
+          end
+        end
+      end
+    end
+
+    if conf.custom_plugins and #conf.custom_plugins > 0 then
+      log.warn("You are using a deprecated option 'custom_plugins' " ..
+               "in kong.conf, which will be removed in a future release. " ..
+               "Please use 'plugins' option to specify your " ..
+               "custom plugins.")
+    end
+
     for i = 1, #conf.custom_plugins do
       local plugin_name = pl_stringx.strip(conf.custom_plugins[i])
-      custom_plugins[plugin_name] = true
+      plugins[plugin_name] = true
     end
-    conf.plugins = tablex.merge(constants.PLUGINS_AVAILABLE, custom_plugins, true)
-    setmetatable(conf.plugins, nil) -- remove Map mt
+
+    conf.loaded_plugins = setmetatable(plugins, {
+      __tostring = function() return "" end,
+    })
   end
 
   -- nginx user directive

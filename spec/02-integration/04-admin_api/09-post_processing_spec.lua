@@ -17,7 +17,7 @@ describe("Admin API post-processing", function()
   setup(function()
     assert(helpers.dao:run_migrations())
     assert(helpers.start_kong {
-      custom_plugins = "admin-api-post-process, dummy"
+      plugins = "bundled, admin-api-post-process, dummy"
     })
 
     client = assert(helpers.admin_client())

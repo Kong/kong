@@ -59,12 +59,18 @@
                                           # adjusted by the `log_level`
                                           # directive.
 
-#custom_plugins =                # Comma-separated list of additional plugins
+#plugins = bundled               # Comma-separated list of plugins
                                  # this node should load.
-                                 # Use this property to load custom plugins
-                                 # that are not bundled with Kong.
-                                 # Plugins will be loaded from the
+                                 # Plugins are loaded from the
                                  # `kong.plugins.{name}.*` namespace.
+                                 # `bundled` loads all the plugins that
+                                 # are bundled with Kong.
+                                 # eg:
+                                 # - plugins = bundled, custom-auth
+                                 #   will load all bundled plugins and
+                                 #   another plugin `custom-auth`
+                                 # - plugins = key-auth, custom-auth
+                                 #   will load only these two plugins
 
 #anonymous_reports = on          # Send anonymous usage data such as error
                                  # stack traces to help improve Kong.
