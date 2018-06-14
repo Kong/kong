@@ -521,16 +521,21 @@ end
 
 do
 
-  local function select_query_page(cql, table_name, primary_key, token, page_size)
-
+  local function select_query_page(cql, table_name, primary_key, token, page_size, args)
     local token_template
+    local args_t
     if token then
-      token_template = fmt(" TOKEN(partition) = TOKEN('%s') AND %s > %s LIMIT %s",
-       table_name, primary_key, utils.is_valid_uuid(token) and token or fmt("'%s'", token), page_size)
-    end
+      args_t = utils.deep_copy(args or {})
+      token_template = fmt(" %s > ? LIMIT %s", primary_key, page_size)
 
+      if utils.is_valid_uuid(token) then
+        insert(args_t, cassandra.uuid(token))
+      else
+        insert(args_t, cassandra.text(token))
+      end
+    end
     return fmt("%s %s", cql, token and " AND " ..
-               token_template or "")
+               token_template or ""), args_t
   end
 
 
@@ -547,8 +552,8 @@ do
 
     local token = offset
     while(true) do
-      local cql = select_query_page(cql, table_name,  primary_key, token, size)
-      local rows, err = self.connector:query(cql, args, {}, "read")
+      local cql, args_t = select_query_page(cql, table_name,  primary_key, token, size, args)
+      local rows, err = self.connector:query(cql, args_t or args, {}, "read")
       if not rows then
         return nil, self.errors:database_error("could not execute page query: "
                                                .. err)
