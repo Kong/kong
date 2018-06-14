@@ -17,7 +17,8 @@
 --
 --    -- Raw send() helper:
 --    return responses.send(418, "This is a teapot")
-
+local singletons = require "kong.singletons"
+local constants = require "kong.constants"
 local cjson = require "cjson.safe"
 local meta = require "kong.meta"
 
@@ -122,7 +123,18 @@ local function send_response(status_code)
     end
 
     ngx.status = status_code
-    ngx.header["Server"] = server_header
+
+    if singletons and singletons.configuration then
+      if singletons.configuration.enabled_headers[constants.HEADERS.SERVER] then
+        ngx.header[constants.HEADERS.SERVER] = server_header
+
+      else
+        ngx.header[constants.HEADERS.SERVER] = nil
+      end
+
+    else
+      ngx.header[constants.HEADERS.SERVER] = server_header
+    end
 
     if headers then
       for k, v in pairs(headers) do
