@@ -2156,7 +2156,7 @@ for _, strategy in helpers.each_strategy() do
         assert.are.equal("no-store", res.headers["cache-control"])
         assert.are.equal("no-cache", res.headers["pragma"])
       end)
-      it("expires after 5 seconds", function()
+      pending("expires after 5 seconds", function()
         local token = provision_token()
 
         local res = assert(proxy_client:send {
@@ -2172,7 +2172,7 @@ for _, strategy in helpers.each_strategy() do
         local id = dao.oauth2_tokens:find_all({access_token = token.access_token })[1].id
         assert.truthy(dao.oauth2_tokens:find({id=id}))
         -- But waiting after the cache expiration (5 seconds) should block the request
-        ngx.sleep(7)
+        ngx.sleep(5)
 
         local res = assert(proxy_client:send {
           method  = "POST",

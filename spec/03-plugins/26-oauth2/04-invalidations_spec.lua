@@ -9,7 +9,6 @@ for _, strategy in helpers.each_strategy() do
     local db
     local dao
     local bp
-    local default_ws
 
     setup(function()
       bp, db, dao = helpers.get_db_utils(strategy)
@@ -68,7 +67,6 @@ for _, strategy in helpers.each_strategy() do
       }))
       end, dao)
 
-      default_ws = dao.workspaces:find_all({name = "default"})[1].id
       admin_client     = helpers.admin_client()
       proxy_ssl_client = helpers.proxy_ssl_client()
     end)
@@ -126,7 +124,7 @@ for _, strategy in helpers.each_strategy() do
         assert.response(res).has.status(200)
 
         -- Check that cache is populated
-        local cache_key = dao.oauth2_credentials:cache_key("clientid123") .. default_ws
+        local cache_key = dao.oauth2_credentials:cache_key("clientid123")
 
         local res = assert(admin_client:send {
           method  = "GET",
@@ -197,7 +195,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(400, res)
 
         -- Check that cache is populated
-        local cache_key = dao.oauth2_credentials:cache_key("clientid123") .. default_ws
+        local cache_key = dao.oauth2_credentials:cache_key("clientid123")
 
         local res = assert(admin_client:send {
           method  = "GET",
@@ -273,7 +271,8 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Check that cache is populated
-        local cache_key = dao.oauth2_credentials:cache_key("clientid123") .. default_ws
+        local cache_key = dao.oauth2_credentials:cache_key("clientid123")
+
         local res = assert(admin_client:send {
           method  = "GET",
           path    = "/cache/" .. cache_key,
@@ -341,7 +340,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Check that cache is populated
-        local cache_key = dao.oauth2_tokens:cache_key(token.access_token) .. default_ws
+        local cache_key = dao.oauth2_tokens:cache_key(token.access_token)
         local res = assert(admin_client:send {
           method  = "GET",
           path    = "/cache/" .. cache_key,
@@ -408,7 +407,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Check that cache is populated
-        local cache_key = dao.oauth2_tokens:cache_key(token.access_token) .. default_ws
+        local cache_key = dao.oauth2_tokens:cache_key(token.access_token)
 
         local res = assert(admin_client:send {
           method  = "GET",
@@ -494,7 +493,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Check that cache is populated
-        local cache_key = dao.oauth2_tokens:cache_key(token.access_token) .. default_ws
+        local cache_key = dao.oauth2_tokens:cache_key(token.access_token)
 
         local res = assert(admin_client:send {
           method  = "GET",
@@ -504,7 +503,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Retrieve credential ID
-        local cache_key_credential = dao.oauth2_credentials:cache_key("clientid123") .. default_ws
+        local cache_key_credential = dao.oauth2_credentials:cache_key("clientid123")
 
         local res = assert(admin_client:send {
           method  = "GET",
