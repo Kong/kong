@@ -1,35 +1,46 @@
-local pl_utils = require "pl.utils"
+-- Parts of this file are adapted from the ljsyscall project
+-- The ljsyscall project is licensed under the MIT License,
+-- and copyrighted as:
+--   Copyright (C) 2011-2016 Justin Cormack. All rights reserved.
+
+local ffi = require "ffi"
 local log = require "kong.cmd.utils.log"
-local fmt = string.format
 
 
-local cmd = [[ printenv ]]
+ffi.cdef [[
+  extern char **environ;
+]]
+
+
+local environ = ffi.C.environ
 
 
 local function read_all()
-  log.debug("reading environment variables: %s", cmd)
+  log.debug("reading environment variables")
 
-  local vars = {}
-  local success, ret_code, stdout, stderr = pl_utils.executeex(cmd)
-  if not success or ret_code ~= 0 then
-    return nil, fmt("could not read environment variables (exit code: %d): %s",
-                    ret_code, stderr)
+  local env = {}
+
+  if not environ then
+    log.warn("could not access **environ")
+    return env
   end
 
-  for line in stdout:gmatch("[^\r\n]+") do
-    local i = string.find(line, "=") -- match first =
+  local i = 0
 
-    if i then
-      local k = string.sub(line, 1, i - 1)
-      local v = string.sub(line, i + 1)
+  while environ[i] ~= nil do
+    local l = ffi.string(environ[i])
+    local eq = string.find(l, "=", nil, true)
 
-      if k and v then
-        vars[k] = v
-      end
+    if eq then
+      local name = string.sub(l, 1, eq - 1)
+      local val = string.sub(l, eq + 1)
+      env[name] = val
     end
+
+    i = i + 1
   end
 
-  return vars
+  return env
 end
 
 
