@@ -1,3 +1,143 @@
+---
+-- Kong's "Plugin Development Kit" ("PDK")
+--
+-- @module kong
+-- @release 0.1.1 (RFC)
+
+--- Top-level variables
+-- @section top_level_variables
+
+---
+-- A human-readable string containing the version number of the currently running node.
+-- @field kong.version
+-- @usage
+-- print(kong.version) -- "0.13.0"
+
+---
+-- An integral number representing the version number of the currently running
+-- node, useful for comparison and feature-existence checks.
+-- @field kong.version_num
+-- @usage
+-- if kong.version_num < 13000 then -- 000.130.00 -> 0.13.0
+-- -- no support for Routes & Services
+-- end
+
+---
+-- A number representing the major version of the current PDK (e.g.
+-- `1`). Useful for feature-existence checks or backwards-compatible behavior as
+-- users of the PDK.
+-- @field kong.pdk_major_version
+-- @usage
+-- if kong.pdk_version_num < 2 then
+-- -- PDK is below version 2
+-- end
+
+---
+-- A human-readable string containing the version number of the current PDK.
+-- @field kong.pdk_version
+-- @usage print(kong.pdk_version) -- "1.0.0"
+
+---
+-- A read-only table containing the configuration of the current Kong node, based
+-- on the configuration file and environment variables.
+--
+-- See [kong.conf.default](https://github.com/Kong/kong/blob/master/kong.conf.default) for details.
+-- Comma-separated lists in that file get promoted to arrays of strings in this
+-- table.th
+-- @field kong.configuration
+-- @usage
+-- print(kong.configuration.prefix) -- "/usr/local/kong"
+-- -- read-only, throws an error:
+-- kong.configuration.custom_plugins = "foo"
+
+--- 1st class utilities
+-- @section first_class_utilities
+
+---
+-- Instance of Kong's legacy DAO. This has the same interface as the object
+-- returned by `new(config, db)` in core's `kong.dao.factory` module.
+--
+-- > **Rationale:** given this is the legacy DAO, we don't expect further
+-- > development or improvements on this interface.
+--
+-- * getkong.org: [Plugin Development Guide - Accessing the Datastore](https://getkong.org/docs/latest/plugin-development/access-the-datastore/)
+-- * Kong legacy DAO: https://github.com/Kong/kong/tree/master/kong/dao
+-- @field kong.dao
+
+---
+-- Instance of Kong's DAO (the new `kong.db` modules). Contains accessor objects
+-- to various entities.
+-- A more thorough documentation of this DAO and new schema definitions is to be
+-- made available in the future, once this object will replace the old DAO as the
+-- standard interface with which to create custom entities in plugins.
+-- @field kong.db
+-- @usage
+-- kong.db.services:insert()
+-- kong.db.routes:select()
+
+---
+-- Instance of Kong's DNS resolver, a client object from the
+-- [lua-resty-dns-client](https://github.com/kong/lua-resty-dns-client) module.
+--
+-- **Note:** usage of this module is currently reserved to the core or to advanced users.
+-- @field kong.dns
+
+---
+-- Instance of Kong's IPC module for inter-workers communication from the
+-- [lua-resty-worker-events](https://github.com/Kong/lua-resty-worker-events)
+-- module.
+--
+-- **Note:** usage of this module is currently reserved to the core or to advanced users.
+-- @field kong.ipc
+
+---
+-- Instance of Kong's database caching object, from the `kong.cache` module.
+--
+-- **Note:** usage of this module is currently reserved to the core or to advanced users.
+-- @field kong.cache
+
+--- Minor utilities
+-- @section minor_utilities
+
+--- Utilities for Lua tables
+-- @field kong.table
+-- @see kong.table
+
+--- Instance of Kong logging factory with various utilities
+-- @field kong.log
+-- @see kong.log
+
+--- Request/Response
+-- @section request_response
+
+--- Current request context data
+-- @field kong.ctx
+-- @see kong.ctx
+
+--- Client information module
+-- @field kong.client
+-- @see kong.client
+
+--- Client request module
+-- @field kong.request
+-- @see kong.request
+
+--- Properties of the connection to the Service
+-- @field kong.service
+-- @see kong.service
+
+--- Manipulation of the request to the Service
+-- @field kong.service.request
+-- @see kong.service.request
+
+--- Manipulation of the response from the Service
+-- @field kong.service.response
+-- @see kong.service.response
+
+--- Client response module
+-- @field kong.response
+-- @see kong.response
+
 require("resty.core")
 
 
