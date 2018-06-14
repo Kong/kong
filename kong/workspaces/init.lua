@@ -477,13 +477,17 @@ end
 
 -- workarounds for
 -- https://github.com/stevedonovan/Penlight/blob/master/tests/test-stringx.lua#L141-L145
-local function split(str)
+local function split(str_or_tbl)
+  if type(str_or_tbl) == "table" then
+    return str_or_tbl
+  end
+
   local separator = ""
-  if str and str ~= "" then
+  if str_or_tbl and str_or_tbl ~= "" then
     separator = ","
   end
 
-  return utils.split(str or " ", separator)
+  return utils.split(str_or_tbl or " ", separator)
 end
 
 
