@@ -9,7 +9,6 @@ for _, strategy in helpers.each_strategy() do
     local consumer
     local credential
     local dao
-    local default_ws
 
     setup(function()
       local bp, _
@@ -47,7 +46,6 @@ for _, strategy in helpers.each_strategy() do
 
       proxy_client = helpers.proxy_client()
       admin_client = helpers.admin_client()
-      default_ws = dao.workspaces:find_all({name ="default"})[1].id
     end)
 
     teardown(function()
@@ -88,7 +86,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Check that cache is populated
-        local cache_key = dao.hmacauth_credentials:cache_key("bob") .. default_ws
+        local cache_key = dao.hmacauth_credentials:cache_key("bob")
         res = assert(admin_client:send {
           method = "GET",
           path   = "/cache/" .. cache_key,
@@ -195,7 +193,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- ensure cache is invalidated
-        local cache_key = dao.hmacauth_credentials:cache_key("bob") .. default_ws
+        local cache_key = dao.hmacauth_credentials:cache_key("bob")
         helpers.wait_until(function()
           local res = assert(admin_client:send {
             method  = "GET",
@@ -236,7 +234,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Check that cache is populated
-        local cache_key = dao.hmacauth_credentials:cache_key("hello123") .. default_ws
+        local cache_key = dao.hmacauth_credentials:cache_key("hello123")
         res = assert(admin_client:send {
           method = "GET",
           path   = "/cache/" .. cache_key,
