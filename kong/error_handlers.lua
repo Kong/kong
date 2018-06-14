@@ -1,3 +1,4 @@
+local meta = require "kong.meta"
 local singletons = require "kong.singletons"
 local constants = require "kong.constants"
 
@@ -31,7 +32,7 @@ local BODIES = {
   default = "The upstream server responded with %d"
 }
 
-local SERVER_HEADER = _KONG._NAME .. "/" .. _KONG._VERSION
+local SERVER_HEADER = meta._SERVER_TOKENS
 
 return function(ngx)
   local accept_header = ngx.req.get_headers()["accept"]
