@@ -1,18 +1,16 @@
 local helpers     = require "spec.helpers"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
-local dao_factory = require "kong.dao.factory"
 local utils       = require "kong.tools.utils"
 local cassandra   = require "kong.vitals.cassandra.strategy"
 local postgres    = require "kong.vitals.postgres.strategy"
 local cjson       = require "cjson"
-local singletons = require "kong.singletons"
 local time        = ngx.time
 local fmt         = string.format
 
 dao_helpers.for_each_dao(function(kong_conf)
 
   describe("Admin API Vitals with " .. kong_conf.database, function()
-    local client, dao, strategy, bp
+    local client, dao, strategy, bp, _
 
     local minute_start_at = time() - ( time() % 60 )
     local node_1 = "20426633-55dc-4050-89ef-2382c95a611e"
@@ -37,18 +35,12 @@ dao_helpers.for_each_dao(function(kong_conf)
 
     describe("when vitals is enabled", function()
       setup(function()
-        dao = assert(dao_factory.new(kong_conf))
-        singletons.dao = dao
 
         -- TODO: when this file is refactored to use the new dao, this line should
         -- return `bp, db, dao` and not just bp (there will be lint issues if
         -- doing so currently).
-        bp = helpers.get_db_utils(kong_conf.database)
+        bp, _, dao = helpers.get_db_utils(kong_conf.database)
 
-        -- start with a clean db
-        helpers.stop_kong()
-        dao:drop_schema()
-        dao:run_migrations()
 
         -- to insert test data
         if dao.db_type == "postgres" then
@@ -1712,10 +1704,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
     describe("when vitals is not enabled", function()
       setup(function()
-        dao = assert(dao_factory.new(kong_conf))
-        singletons.dao = dao
-
-        dao:run_migrations()
+        bp, _, dao = helpers.get_db_utils(kong_conf.database)
 
         assert(helpers.start_kong({
           database = kong_conf.database,
