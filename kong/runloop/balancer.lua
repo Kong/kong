@@ -282,6 +282,13 @@ do
           log(ERR, "[healthchecks] failed reporting status: ", err)
         end
       end
+
+      balancer.report_timeout = function(ip, port)
+        local _, err = hc:report_timeout(ip, port, "passive")
+        if err then
+          log(ERR, "[healthchecks] failed reporting status: ", err)
+        end
+      end
     end
 
     ----------------------------------------------------------------------------
