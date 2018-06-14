@@ -10,7 +10,6 @@ for _, strategy in helpers.each_strategy() do
     local consumer
     local route
     local dao
-    local default_ws_id
 
     before_each(function()
       local bp, _
@@ -44,7 +43,6 @@ for _, strategy in helpers.each_strategy() do
 
       admin_client = helpers.admin_client()
       proxy_client = helpers.proxy_client()
-      default_ws_id = dao.workspaces:find_all({name = "default"})[1].id
     end)
 
     after_each(function()
@@ -83,7 +81,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Check that cache is populated
-        local cache_key = dao.jwt_secrets:cache_key("key123") .. default_ws_id
+        local cache_key = dao.jwt_secrets:cache_key("key123")
         res = assert(admin_client:send {
           method = "GET",
           path   = "/cache/" .. cache_key,
@@ -151,7 +149,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(403, res)
 
         -- Check that cache is populated
-        local cache_key = dao.jwt_secrets:cache_key("key123") .. default_ws_id
+        local cache_key = dao.jwt_secrets:cache_key("key123")
         res = assert(admin_client:send {
           method = "GET",
           path   = "/cache/" .. cache_key,
@@ -227,7 +225,7 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(200, res)
 
         -- Check that cache is populated
-        local cache_key = dao.jwt_secrets:cache_key("key123") .. default_ws_id
+        local cache_key = dao.jwt_secrets:cache_key("key123")
         res = assert(admin_client:send {
           method = "GET",
           path   = "/cache/" .. cache_key,
