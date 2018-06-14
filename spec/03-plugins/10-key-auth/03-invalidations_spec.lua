@@ -5,33 +5,29 @@ local cjson   = require "cjson"
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: key-auth (invalidations) [#" .. strategy .. "]", function()
     local admin_client, proxy_client
-    local dao, default_ws_id
+    local dao
 
     before_each(function()
       local bp, _
       bp, _, dao = helpers.get_db_utils(strategy)
-      --default_ws_scope = dao.workspaces.find_all({name = "default"})
 
-      helpers.with_current_ws(nil, function()
-        local route = bp.routes:insert {
-          hosts = { "key-auth.com" },
-        }
+      local route = bp.routes:insert {
+        hosts = { "key-auth.com" },
+      }
 
-        bp.plugins:insert {
-          name     = "key-auth",
-          route_id = route.id,
-        }
+      bp.plugins:insert {
+        name     = "key-auth",
+        route_id = route.id,
+      }
 
-        local consumer = bp.consumers:insert {
-          username = "bob",
-        }
+      local consumer = bp.consumers:insert {
+        username = "bob",
+      }
 
-        bp.keyauth_credentials:insert {
-          key         = "kong",
-          consumer_id = consumer.id,
-        }
-      end, dao)
-      default_ws_id = dao.workspaces:find_all({name = "default"})[1].id
+      bp.keyauth_credentials:insert {
+        key         = "kong",
+        consumer_id = consumer.id,
+      }
 
       assert(helpers.start_kong({
         database   = strategy,
@@ -64,7 +60,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       -- ensure cache is populated
-      local cache_key = dao.keyauth_credentials:cache_key("kong") .. default_ws_id
+      local cache_key = dao.keyauth_credentials:cache_key("kong")
       res = assert(admin_client:send {
         method = "GET",
         path   = "/cache/" .. cache_key
@@ -112,7 +108,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       -- ensure cache is populated
-      local cache_key = dao.keyauth_credentials:cache_key("kong") .. default_ws_id
+      local cache_key = dao.keyauth_credentials:cache_key("kong")
       res = assert(admin_client:send {
         method = "GET",
         path   = "/cache/" .. cache_key
@@ -161,7 +157,7 @@ for _, strategy in helpers.each_strategy() do
       assert.res_status(200, res)
 
       -- ensure cache is populated
-      local cache_key = dao.keyauth_credentials:cache_key("kong") .. default_ws_id
+      local cache_key = dao.keyauth_credentials:cache_key("kong")
       res = assert(admin_client:send {
         method = "GET",
         path   = "/cache/" .. cache_key
