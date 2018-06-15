@@ -5,7 +5,7 @@ source = {
   tag = "0.1.0"
 }
 description = {
-  summary = "Dynamically run Lua code from Kong during access phase.",,
+  summary = "Dynamically run Lua code from Kong during access phase.",
   license = "Apache 2.0"
 }
 dependencies = {
