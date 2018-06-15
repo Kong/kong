@@ -61,6 +61,7 @@ local singletons = require "kong.singletons"
 local DAOFactory = require "kong.dao.factory"
 local kong_cache = require "kong.cache"
 local ngx_balancer = require "ngx.balancer"
+local kong_resty_ctx = require "kong.resty.ctx"
 local plugins_iterator = require "kong.runloop.plugins_iterator"
 local balancer_execute = require("kong.runloop.balancer").execute
 local kong_cluster_events = require "kong.cluster_events"
@@ -383,6 +384,8 @@ function Kong.balancer()
 end
 
 function Kong.rewrite()
+  kong_resty_ctx.stash_ref()
+
   local ctx = ngx.ctx
   runloop.rewrite.before(ctx)
 
@@ -452,6 +455,14 @@ function Kong.log()
 end
 
 function Kong.handle_error()
+  kong_resty_ctx.apply_ref()
+
+  if not ngx.ctx.plugins_for_request then
+    for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
+      -- just build list of plugins
+    end
+  end
+
   return kong_error_handlers(ngx)
 end
 
