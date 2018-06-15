@@ -333,6 +333,27 @@ for _, strategy in helpers.each_strategy() do
       assert.same({ message = "Your IP address is not allowed" }, json)
     end)
 
+    it("cannot be configured on a Consumer", function()
+      local utils = require "kong.tools.utils"
+      local cjson = require "cjson"
+
+      local res = assert(admin_client:send {
+        method = "POST",
+        path = "/plugins",
+        headers = {
+          ["Content-Type"] = "application/json",
+        },
+        body = {
+          name = "ip-restriction",
+          consumer_id = utils.uuid(),
+          ["config.whitelist"] = { "127.0.0.1" },
+        }
+      })
+      local body = assert.res_status(400, res)
+      local json = cjson.decode(body)
+      assert.equal("No consumer can be configured for that plugin", json.message)
+    end)
+
     describe("#regression", function()
       it("handles a CIDR entry with 0.0.0.0/0", function()
         local res = assert(proxy_client:send {
