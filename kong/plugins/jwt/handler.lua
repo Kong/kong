@@ -189,9 +189,11 @@ local function do_authentication(conf)
 
   set_consumer(consumer, jwt_secret, token)
 
-  for _, claim_name in ipairs(conf.inject_claims) do
-    if claims[claim_name] then
-      ngx_set_header("x-" .. claim_name, claims[claim_name])
+  if conf.inject_claims then
+    for _, claim_name in ipairs(conf.inject_claims) do
+      if claims[claim_name] then
+        ngx_set_header("x-" .. claim_name, claims[claim_name])
+      end
     end
   end
   
