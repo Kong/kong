@@ -21,26 +21,43 @@ local auth_plugins = {
 }
 
 
-local function validate_developer_status(helpers, consumer)
-  if not consumer then
-    return nil, {}
-  end
-
-  local status = consumer.status
-  if status ~= enums.CONSUMERS.STATUS.APPROVED then
-    return nil, {
-      status = status,
-      label  = enums.CONSUMERS.STATUS_LABELS[status]
-    }
-  end
-
-  return true
-end
-
-
 local function get_consumer_id_from_headers()
   return ngx.req.get_headers()[constants.HEADERS.CONSUMER_ID]
 end
+
+
+local function validate_consumer_vitals(self, dao_factory, helpers)
+  -- auth and vitals required
+  if not singletons.configuration.portal_auth or not singletons.configuration.vitals then
+    return helpers.responses.send_HTTP_NOT_FOUND()
+  end
+
+  local consumer_id = get_consumer_id_from_headers()
+  if not consumer_id then
+    return helpers.responses.send_HTTP_UNAUTHORIZED()
+  end
+
+  self.params.consumer_id = consumer_id
+  self.params.username_or_id = ngx.unescape_uri(self.params.consumer_id)
+
+  crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
+end
+
+
+local function handle_vitals_response(res, err, helpers)
+  if err then
+    if err:find("Invalid query params", nil, true) then
+      local msg = "Invalid query params: " ..
+                  "interval must be 'minutes' or 'seconds'"
+      return helpers.responses.send_HTTP_BAD_REQUEST(msg)
+    end
+
+    return helpers.yield_error(err)
+  end
+
+  return helpers.responses.send_HTTP_OK(res)
+end
+
 
 return {
   ["/files"] = {
@@ -54,11 +71,6 @@ return {
 
         self.params.email_or_id = consumer_id
         crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
-
-        local res, err = validate_developer_status(helpers, self.consumer)
-        if not res then
-          return helpers.responses.send_HTTP_UNAUTHORIZED(err)
-        end
       end
     end,
 
@@ -192,11 +204,6 @@ return {
 
       self.params.email_or_id = consumer_id
       crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
-
-      local res, err = validate_developer_status(helpers, self.consumer)
-      if not res then
-        return helpers.responses.send_HTTP_UNAUTHORIZED(err)
-      end
     end,
 
     GET = function(self, dao_factory, helpers)
@@ -269,11 +276,6 @@ return {
       self.params.email_or_id = self.params.consumer_id
 
       crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
-
-      local res, err = validate_developer_status(helpers, self.consumer)
-      if not res then
-        return helpers.responses.send_HTTP_UNAUTHORIZED(err)
-      end
     end,
 
     PATCH = function(self, dao_factory, helpers)
@@ -313,11 +315,6 @@ return {
       self.params.email_or_id = consumer_id
 
       crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
-
-      local res, err = validate_developer_status(helpers, self.consumer)
-      if not res then
-        return helpers.responses.send_HTTP_UNAUTHORIZED(err)
-      end
     end,
 
     GET = function(self, dao_factory, helpers)
@@ -363,11 +360,6 @@ return {
 
       crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
 
-      local res, err = validate_developer_status(helpers, self.consumer)
-      if not res then
-        return helpers.responses.send_HTTP_UNAUTHORIZED(err)
-      end
-
       local credentials, err = self.collection:find_all({
         consumer_id = consumer_id,
         id = self.params.credential_id
@@ -398,5 +390,69 @@ return {
       crud.portal_crud.delete_credential(self.credential)
       crud.delete(self.credential, self.collection)
     end,
+  },
+
+  ["/vitals/status_codes/by_consumer"] = {
+    before = validate_consumer_vitals,
+
+    GET = function(self, dao_factory, helpers)
+      local opts = {
+        entity_type = "consumer",
+        duration    = self.params.interval,
+        entity_id   = self.consumer.id,
+        level       = "cluster",
+      }
+
+      local res, err = singletons.vitals:get_status_codes(opts)
+      return handle_vitals_response(res, err, helpers)
+    end,
+  },
+
+  ["/vitals/status_codes/by_consumer_and_route"] = {
+    before = validate_consumer_vitals,
+
+    GET = function(self, dao_factory, helpers)
+      local key_by = "route_id"
+      local opts = {
+        entity_type = "consumer_route",
+        duration    = self.params.interval,
+        consumer_id = self.consumer.id,
+        entity_id   = self.consumer.id,
+        level       = "cluster",
+      }
+
+      local res, err = singletons.vitals:get_status_codes(opts, key_by)
+      return handle_vitals_response(res, err, helpers)
+    end
+  },
+
+  ["/vitals/consumers/cluster"] = {
+    before = validate_consumer_vitals,
+
+    GET = function(self, dao_factory, helpers)
+      local opts = {
+        consumer_id = self.consumer.id,
+        duration    = self.params.interval,
+        level       = "cluster",
+      }
+
+      local res, err = singletons.vitals:get_consumer_stats(opts)
+      return handle_vitals_response(res, err, helpers)
+    end
+  },
+
+  ["/vitals/consumers/nodes"] = {
+    before = validate_consumer_vitals,
+
+    GET = function(self, dao_factory, helpers)
+      local opts = {
+        consumer_id = self.consumer.id,
+        duration    = self.params.interval,
+        level       = "node",
+      }
+
+      local res, err = singletons.vitals:get_consumer_stats(opts)
+      return handle_vitals_response(res, err, helpers)
+    end
   },
 }

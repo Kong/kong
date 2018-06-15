@@ -66,13 +66,13 @@ jobs:
   include:
     - stage: deploy
       if: branch = master
-      script: .ci/build_docker_image.sh
+      script: .ci/build_artifacts.sh
       env:
         - DOCKER_TAG_NAME=dev-master
         - TEST_SUITE=none
     - stage: deploy
       if: tag =~ 0.
-      script: .ci/build_docker_image.sh
+      script: .ci/build_artifacts.sh
       env:
         - DOCKER_TAG_NAME=released
         - TEST_SUITE=none
