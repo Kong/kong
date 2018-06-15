@@ -31,7 +31,7 @@ dependencies = {
   "lua-resty-worker-events == 0.3.3",
   "lua-resty-mediador == 0.1.2",
   "lua-resty-healthcheck == 0.4.2",
-  "lua-resty-mlcache == 2.0.2",
+  "lua-resty-mlcache == 2.1.0",
 }
 build = {
   type = "builtin",
