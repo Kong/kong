@@ -224,7 +224,7 @@ local function http_server(host, port, counts, test_log)
             end
             if counts[1] == TIMEOUT then
               counts[1] = 0
-              socket.sleep(0.1)
+              socket.sleep(0.2)
             elseif counts[1] > 0 then
               counts[1] = counts[1] - 1
             end
@@ -411,9 +411,10 @@ do
     return route_host, service_name
   end
 
-  patch_api = function(service_name, new_upstream)
+  patch_api = function(service_name, new_upstream, read_timeout)
     assert.same(200, api_send("PATCH", "/services/" .. service_name, {
-      url = new_upstream
+      url = new_upstream,
+      read_timeout = read_timeout,
     }))
   end
 
@@ -1225,7 +1226,7 @@ for _, strategy in helpers.each_strategy() do
             assert.are.equal(0, fails)
           end)
 
-          it("perform passive health checks -- send #only #timeouts", function()
+          it("perform passive health checks -- send #timeouts", function()
 
             -- configure healthchecks
             local upstream_name = add_upstream({
@@ -1240,7 +1241,7 @@ for _, strategy in helpers.each_strategy() do
               }
             })
             local port1 = add_target(upstream_name, localhost)
-            local api_host = add_api(upstream_name, 100, nil, nil, 0)
+            local api_host, api_name = add_api(upstream_name, 10, nil, nil, 0)
 
             local server1 = http_server(localhost, port1, {
               TIMEOUT,
@@ -1252,6 +1253,8 @@ for _, strategy in helpers.each_strategy() do
             local _, oks1, fails1 = server1:done()
             assert.same(1, oks1)
             assert.same(0, fails1)
+
+            patch_api(api_name, nil, 60000)
 
             local port2 = add_target(upstream_name, localhost)
             local server2 = http_server(localhost, port2, {
