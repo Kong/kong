@@ -95,6 +95,23 @@ local function set_consumer(consumer, jwt_secret, token)
 
 end
 
+local function iter(config_array)
+  return function(config_array, i, previous_name, previous_value)
+    i = i + 1
+    local current_pair = config_array[i]
+    if current_pair == nil then -- n + 1
+      return nil
+    end
+
+    local current_name, current_value = current_pair:match("^([^:]+):*(.-)$")
+    if current_value == "" then
+      current_value = nil
+    end
+
+    return i, current_name, current_value
+  end, config_array, 0
+end
+
 local function do_authentication(conf)
   local token, err = retrieve_token(ngx.req, conf)
   if err then
@@ -189,17 +206,17 @@ local function do_authentication(conf)
 
   set_consumer(consumer, jwt_secret, token)
 
+  -- Inject claims into head
   if conf.inject_claims then
-    for _, claim_name in ipairs(conf.inject_claims) do
+    for _, claim_name, header_name in iter(conf.inject_claims) do
       if claims[claim_name] then
-        ngx_set_header("x-" .. claim_name, claims[claim_name])
+        ngx_set_header(header_name, claims[claim_name])
       end
     end
   end
-  
+
   return true
 end
-
 
 function JwtHandler:access(conf)
   JwtHandler.super.access(self)

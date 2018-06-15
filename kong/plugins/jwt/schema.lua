@@ -17,6 +17,16 @@ local function check_positive(v)
   return true
 end
 
+local function check_for_value(value)
+  for i, entry in ipairs(value) do
+    local ok = string.find(entry, ":")
+    if not ok then
+      return false, "key '" .. entry .. "' has no value. Format is 'claim:headerName'"
+    end
+  end
+  return true
+end
+
 return {
   no_consumer = true,
   fields = {
@@ -28,7 +38,7 @@ return {
     anonymous = {type = "string", default = "", func = check_user},
     run_on_preflight = {type = "boolean", default = true},
     maximum_expiration = {type = "number", default = 0, func = check_positive},
-    inject_claims = {type = "array", default = {}},
+    inject_claims = {type = "array", default = {}, func = check_for_value},
   },
   self_check = function(schema, plugin_t, dao, is_update)
     if plugin_t.maximum_expiration ~= nil
