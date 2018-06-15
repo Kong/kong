@@ -515,4 +515,11 @@ return {
       DROP TABLE vitals_locks;
     ]]
   },
+  {
+    name = "2018-03-12-000000_vitals_v0.33",
+    up = [[
+      CREATE INDEX IF NOT EXISTS vcbr_svc_ts_idx
+      ON vitals_codes_by_route(service_id, duration, at);
+    ]],
+  },
 }

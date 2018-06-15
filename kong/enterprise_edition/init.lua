@@ -15,18 +15,24 @@ local DEFAULT_KONG_LICENSE_PATH = "/etc/kong/license.json"
 _M.handlers = {
   access = {
     after = function(ctx)
-      singletons.vitals:log_latency(ctx.KONG_PROXY_LATENCY)
-      singletons.vitals:log_request(ctx)
+      if not ctx.is_internal then
+        singletons.vitals:log_latency(ctx.KONG_PROXY_LATENCY)
+        singletons.vitals:log_request(ctx)
+      end
     end
   },
   header_filter = {
     after = function(ctx)
-      singletons.vitals:log_upstream_latency(ctx.KONG_WAITING_TIME)
+      if not ctx.is_internal then
+        singletons.vitals:log_upstream_latency(ctx.KONG_WAITING_TIME)
+      end
     end
   },
   log = {
     after = function(ctx, status)
-      singletons.vitals:log_phase_after_plugins(ctx, status)
+      if not ctx.is_internal then
+        singletons.vitals:log_phase_after_plugins(ctx, status)
+      end
     end
   }
 }
