@@ -1727,9 +1727,6 @@ for _, strategy in helpers.each_strategy() do
               assert.is_nil(err_t)
               assert.is_nil(err)
               assert.is_table(rows_a)
-
-              -- XXX failing consistently on Travis
-              -- workspaces/rbac branch
               assert.equal(3, #rows_a)
 
               local rows_b, err, err_t = db.routes:for_service({
@@ -1762,8 +1759,6 @@ for _, strategy in helpers.each_strategy() do
                 end
               until offset == nil
 
-              -- XXX failing consistently on Travis
-              -- workspaces/rbac branch
               assert.equal(1, #rows) -- last page
             end)
 
