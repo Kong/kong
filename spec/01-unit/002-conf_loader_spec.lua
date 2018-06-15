@@ -186,7 +186,9 @@ describe("Configuration loader", function()
 
   describe("dynamic directives", function()
     it("loads flexible prefix based configs from a file", function()
-      local conf = assert(conf_loader("spec/fixtures/nginx-directives.conf"))
+      local conf = assert(conf_loader("spec/fixtures/nginx-directives.conf", {
+        plugins = "off",
+      }))
 
       assert.equal("custom_cache 5m",
                    conf.nginx_http_directives["lua_shared_dict"])
@@ -208,6 +210,7 @@ describe("Configuration loader", function()
       local conf = assert(conf_loader("spec/fixtures/nginx-directives.conf", {
         ["nginx_http_large_client_header_buffers"] = "4 16k",
         ["nginx_http_lua_shared_dict"] = "custom_cache 2m",
+        plugins = "off",
       }))
 
       assert.equal("custom_cache 2m",
@@ -215,6 +218,36 @@ describe("Configuration loader", function()
 
       assert.equal("4 16k",
                    conf.nginx_http_directives["large_client_header_buffers"])
+    end)
+  end)
+
+  describe("prometheus_metrics shm", function()
+    it("is injected if not provided via nginx_http_* directives", function()
+      local conf = assert(conf_loader())
+      assert.equal("prometheus_metrics 5m",
+                   conf.nginx_http_directives["lua_shared_dict"])
+    end)
+    it("size is not modified if provided via nginx_http_* directives", function()
+      local conf = assert(conf_loader(nil, {
+        plugins = "bundled",
+        nginx_http_lua_shared_dict = "prometheus_metrics 2m",
+      }))
+      assert.equal("prometheus_metrics 2m",
+                   conf.nginx_http_directives["lua_shared_dict"])
+    end)
+    it("is injected in addition to any shm provided via nginx_http_* directive", function()
+      local conf = assert(conf_loader(nil, {
+        plugins = "bundled",
+        nginx_http_lua_shared_dict = "custom_cache 2m",
+      }))
+      assert.equal("custom_cache 2m; lua_shared_dict prometheus_metrics 5m",
+                   conf.nginx_http_directives["lua_shared_dict"])
+    end)
+    it("is not injected if prometheus plugin is disabled", function()
+      local conf = assert(conf_loader(nil, {
+        plugins = "off",
+      }))
+      assert.is_nil(conf.nginx_http_directives["lua_shared_dict"])
     end)
   end)
 

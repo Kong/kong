@@ -657,6 +657,24 @@ local function load(path, custom_conf)
     })
   end
 
+  -- temporary workaround: inject an shm for prometheus plugin if needed
+  -- TODO: allow plugins to declare shm dependencies that are automatically
+  -- injected
+  if conf.loaded_plugins["prometheus"] then local shm_value =
+    conf["nginx_http_directives"]["lua_shared_dict"]
+
+    if shm_value then
+      if not string.match(shm_value, "prometheus_metrics") then
+        shm_value = shm_value .. "; lua_shared_dict prometheus_metrics 5m"
+      end
+
+    else
+      shm_value = "prometheus_metrics 5m"
+    end
+
+    conf["nginx_http_directives"]["lua_shared_dict"] = shm_value
+  end
+
   -- nginx user directive
   do
     local user = conf.nginx_user:gsub("^%s*", ""):gsub("%s$", ""):gsub("%s+", " ")
