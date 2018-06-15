@@ -50,7 +50,6 @@ describe("Plugins", function()
 
     local order = {
       "zipkin",
-      "ip-restriction",
       "bot-detection",
       "cors",
       "jwt",
@@ -59,6 +58,7 @@ describe("Plugins", function()
       "ldap-auth",
       "basic-auth",
       "hmac-auth",
+      "ip-restriction",
       "request-size-limiting",
       "acl",
       "rate-limiting",
