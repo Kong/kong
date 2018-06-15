@@ -67,6 +67,7 @@ describe("Plugins", function()
       "response-transformer",
       "aws-lambda",
       "azure-functions",
+      "prometheus",
       "http-log",
       "statsd",
       "datadog",
