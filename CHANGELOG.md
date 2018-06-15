@@ -1,3 +1,3 @@
 ## 0.1.0
 
-- `pre-function` and `post-function` enterprise plugins added
+- `pre-function` and `post-function` plugins added
