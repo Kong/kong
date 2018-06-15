@@ -1,8 +1,8 @@
 package = "kong-prometheus-plugin"
-version = "0.1.0-0"
+version = "0.1.0-1"
 
 source = {
-  url = "https://github.com/Kong/kong-plugin-prometheus",
+  url = "git://github.com/Kong/kong-plugin-prometheus",
   tag = "0.1.0"
 }
 
