@@ -112,6 +112,8 @@ server {
 > end
 
     location / {
+        default_type                     '';
+
         set $ctx_ref                     '';
         set $upstream_host               '';
         set $upstream_upgrade            '';
