@@ -48,6 +48,19 @@ describe("schema", function()
       assert.string(err)
     end)
 
+
+    it("fails on invalid foreign reference", function()
+      local Test, err = Schema.new({
+        fields = {
+          { f = { type = "foreign", reference = "invalid_reference" } },
+          { b = { type = "number" }, },
+          { c = { type = "number" }, },
+        }
+      })
+      assert.falsy(Test)
+      assert.match("invalid_reference", err)
+    end)
+
   end)
 
   describe("validate", function()
