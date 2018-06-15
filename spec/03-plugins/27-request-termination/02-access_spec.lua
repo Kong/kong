@@ -1,5 +1,9 @@
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
+local meta    = require "kong.meta"
+
+
+local server_tokens = meta._SERVER_TOKENS
 
 
 for _, strategy in helpers.each_strategy() do
@@ -181,6 +185,18 @@ for _, strategy in helpers.each_strategy() do
         local json = cjson.decode(body)
         assert.same({ code = 1, message = "Service unavailable" }, json)
       end)
+    end)
+
+    it("returns server tokens with Server header", function()
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["Host"] = "api1.request-termination.com"
+        }
+      })
+
+      assert.equal(server_tokens, res.headers["Server"])
     end)
   end)
 end
