@@ -49,7 +49,10 @@ local function healthchecks_config(config)
 end
 
 
-local TEST_LOG = false    -- extra verbose logging of test server
+local TEST_LOG = false -- extra verbose logging of test server
+
+
+local TIMEOUT = -1  -- marker for timeouts in http_server
 
 
 local function direct_request(host, port, path)
@@ -110,12 +113,14 @@ local function http_server(host, port, counts, test_log)
   local threads = require "llthreads2.ex"
   local thread = threads.new({
     function(expire, host, port, counts, TEST_LOG)
+      local TIMEOUT = -1
+
       local function test_log(...)
         if not TEST_LOG then
           return
         end
 
-        local t = { n = select( "#", ...), ...}
+        local t = {"server on port ", port, ": ", ...}
         for i, v in ipairs(t) do
           t[i] = tostring(v)
         end
@@ -136,7 +141,7 @@ local function http_server(host, port, counts, test_log)
       local handshake_done = false
 
       assert(server:settimeout(0.5))
-      test_log("test http server on port ", port, " started")
+      test_log("started")
 
       local healthy = true
       local n_checks = 0
@@ -144,7 +149,7 @@ local function http_server(host, port, counts, test_log)
       local ok_responses, fail_responses = 0, 0
       local total_reqs = 0
       for _, c in pairs(counts) do
-        total_reqs = total_reqs + c
+        total_reqs = total_reqs + (c < 0 and 1 or c)
       end
       local n_reqs = 0
       local reply_200 = true
@@ -208,6 +213,7 @@ local function http_server(host, port, counts, test_log)
 
           elseif handshake_done and not got_handshake then
             n_reqs = n_reqs + 1
+            test_log("nreqs ", n_reqs, " of ", total_reqs)
 
             while counts[1] == 0 do
               table.remove(counts, 1)
@@ -216,7 +222,10 @@ local function http_server(host, port, counts, test_log)
             if not counts[1] then
               error(host .. ":" .. port .. ": unexpected request")
             end
-            if counts[1] > 0 then
+            if counts[1] == TIMEOUT then
+              counts[1] = 0
+              socket.sleep(0.1)
+            elseif counts[1] > 0 then
               counts[1] = counts[1] - 1
             end
 
@@ -241,13 +250,12 @@ local function http_server(host, port, counts, test_log)
             error("got a request before the handshake was complete")
           end
           client:close()
-          test_log("test http server on port ", port, ": ", ok_responses, " oks, ",
-                   fail_responses," fails handled")
+          test_log(ok_responses, " oks, ", fail_responses," fails handled")
         end
         ::continue::
       end
       server:close()
-      test_log("test http server on port ", port, " closed")
+      test_log("closed")
       return ok_responses, fail_responses, n_checks
     end
   }, expire, host, port, counts, test_log or TEST_LOG)
@@ -385,12 +393,16 @@ do
     return port
   end
 
-  add_api = function(upstream_name)
+  add_api = function(upstream_name, read_timeout, write_timeout, connect_timeout, retries)
     local service_name = gen_sym("service")
     local route_host = gen_sym("host")
     assert.same(201, api_send("POST", "/services", {
       name = service_name,
       url = "http://" .. upstream_name,
+      read_timeout = read_timeout,
+      write_timeout = write_timeout,
+      connect_timeout = connect_timeout,
+      retries = retries,
     }))
     local path = "/services/" .. service_name .. "/routes"
     assert.same(201, api_send("POST", path, {
@@ -1157,6 +1169,104 @@ for _, strategy in helpers.each_strategy() do
 
           end)
 
+          it("perform passive health checks -- connection #timeouts", function()
+
+            -- configure healthchecks
+            local upstream_name = add_upstream({
+              healthchecks = healthchecks_config {
+                passive = {
+                  unhealthy = {
+                    timeouts = 1,
+                  }
+                }
+              }
+            })
+            local port1 = add_target(upstream_name, localhost)
+            local port2 = add_target(upstream_name, localhost)
+            local api_host = add_api(upstream_name, 50, 50)
+
+            -- setup target servers:
+            -- server2 will only respond for half of the test
+            -- then will timeout on the following request.
+            -- Then server1 will take over.
+            local server1_oks = SLOTS * 1.5
+            local server2_oks = SLOTS / 2
+            local server1 = http_server(localhost, port1, {
+              server1_oks
+            })
+            local server2 = http_server(localhost, port2, {
+              server2_oks,
+              TIMEOUT,
+            })
+
+            -- 1) server1 and server2 take requests
+            local oks, fails = client_requests(SLOTS, api_host)
+
+            -- 2) server1 takes all requests once server2 produces
+            -- `nfails` failures (even though server2 will be ready
+            -- to respond 200 again after `nfails`)
+            do
+              local o, f = client_requests(SLOTS, api_host)
+              oks = oks + o
+              fails = fails + f
+            end
+
+            -- collect server results; hitcount
+            local _, ok1, fail1 = server1:done()
+            local _, ok2, fail2 = server2:done()
+
+            -- verify
+            assert.are.equal(server1_oks, ok1)
+            assert.are.equal(server2_oks, ok2)
+            assert.are.equal(0, fail1)
+            assert.are.equal(1, fail2)
+
+            assert.are.equal(SLOTS * 2, oks)
+            assert.are.equal(0, fails)
+          end)
+
+          it("perform passive health checks -- send #only #timeouts", function()
+
+            -- configure healthchecks
+            local upstream_name = add_upstream({
+              healthchecks = healthchecks_config {
+                passive = {
+                  unhealthy = {
+                    http_failures = 0,
+                    timeouts = 1,
+                    tcp_failures = 0,
+                  }
+                }
+              }
+            })
+            local port1 = add_target(upstream_name, localhost)
+            local api_host = add_api(upstream_name, 100, nil, nil, 0)
+
+            local server1 = http_server(localhost, port1, {
+              TIMEOUT,
+            })
+
+            local _, _, last_status = client_requests(1, api_host)
+            assert.same(504, last_status)
+
+            local _, oks1, fails1 = server1:done()
+            assert.same(1, oks1)
+            assert.same(0, fails1)
+
+            local port2 = add_target(upstream_name, localhost)
+            local server2 = http_server(localhost, port2, {
+              10,
+            })
+
+            _, _, last_status = client_requests(10, api_host)
+            assert.same(200, last_status)
+
+            local _, oks2, fails2 = server2:done()
+            assert.same(10, oks2)
+            assert.same(0, fails2)
+
+          end)
+
         end)
 
         describe("Balancing", function()
@@ -1515,3 +1625,4 @@ for _, strategy in helpers.each_strategy() do
     end -- for 'localhost'
   end)
 end -- for each_strategy
+
