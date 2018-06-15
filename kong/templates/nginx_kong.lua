@@ -31,6 +31,7 @@ lua_max_pending_timers 16384;
 lua_shared_dict kong                5m;
 lua_shared_dict kong_cache          ${{MEM_CACHE_SIZE}};
 lua_shared_dict kong_db_cache_miss 12m;
+lua_shared_dict kong_locks          8m;
 lua_shared_dict kong_process_events 5m;
 lua_shared_dict kong_cluster_events 5m;
 lua_shared_dict kong_healthchecks   5m;
