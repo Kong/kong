@@ -859,8 +859,13 @@ function Schema:validate_primary_key(pk, ignore_others)
     pk_set[k] = true
     local field = self.fields[k]
     local v = pk[k]
+
     if not v then
       errors[k] = validation_errors.MISSING_PK
+
+    elseif (field.required or field.auto) and v == null then
+      errors[k] = validation_errors.REQUIRED
+
     else
       local _
       _, errors[k] = self:validate_field(field, v)
