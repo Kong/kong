@@ -414,6 +414,11 @@ return {
   {
     name = "2017-01-24-132600_upstream_timeouts_2",
     up = function(_, _, dao)
+      local ok, err = dao.db:wait_for_schema_consensus()
+      if not ok then
+        return err
+      end
+
       local rows, err = dao.db:query([[
         SELECT * FROM apis;
       ]])
