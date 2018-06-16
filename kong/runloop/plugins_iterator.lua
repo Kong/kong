@@ -1,7 +1,7 @@
 local responses    = require "kong.tools.responses"
-local singletons   = require "kong.singletons"
 
 
+local kong         = kong
 local setmetatable = setmetatable
 local ipairs       = ipairs
 local error        = error
@@ -14,7 +14,7 @@ local function load_plugin_into_memory(route_id,
                                        consumer_id,
                                        plugin_name,
                                        api_id)
-  local rows, err = singletons.dao.plugins:find_all {
+  local rows, err = kong.dao.plugins:find_all {
              name = plugin_name,
          route_id = route_id,
        service_id = service_id,
@@ -54,20 +54,20 @@ local function load_plugin_configuration(route_id,
                                          consumer_id,
                                          plugin_name,
                                          api_id)
-  local plugin_cache_key = singletons.dao.plugins:cache_key(plugin_name,
+  local plugin_cache_key = kong.dao.plugins:cache_key(plugin_name,
                                                             route_id,
                                                             service_id,
                                                             consumer_id,
                                                             api_id)
 
-  local plugin, err = singletons.cache:get(plugin_cache_key,
-                                           nil,
-                                           load_plugin_into_memory,
-                                           route_id,
-                                           service_id,
-                                           consumer_id,
-                                           plugin_name,
-                                           api_id)
+  local plugin, err = kong.cache:get(plugin_cache_key,
+                                     nil,
+                                     load_plugin_into_memory,
+                                     route_id,
+                                     service_id,
+                                     consumer_id,
+                                     plugin_name,
+                                     api_id)
   if err then
     ngx.ctx.delay_response = false
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)

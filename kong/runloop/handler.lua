@@ -20,6 +20,7 @@ local singletons  = require "kong.singletons"
 local certificate = require "kong.runloop.certificate"
 
 
+local kong        = kong
 local tostring    = tostring
 local sub         = string.sub
 local lower       = string.lower
@@ -504,7 +505,7 @@ return {
       -- contains the IP that was originally in $remote_addr before realip
       -- module overrode that (aka the client that connected us).
 
-      local trusted_ip = singletons.ip.trusted(realip_remote_addr)
+      local trusted_ip = kong.ip.is_trusted(realip_remote_addr)
       if trusted_ip then
         forwarded_proto = var.http_x_forwarded_proto or var.scheme
         forwarded_host  = var.http_x_forwarded_host  or var.host
