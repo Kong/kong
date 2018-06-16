@@ -154,6 +154,7 @@ build = {
     ["kong.db.strategies.postgres.connector"] = "kong/db/strategies/postgres/connector.lua",
 
     ["kong.pdk"] = "kong/pdk/init.lua",
+    ["kong.pdk.table"] = "kong/pdk/table.lua",
 
     ["kong.plugins.base_plugin"] = "kong/plugins/base_plugin.lua",
 

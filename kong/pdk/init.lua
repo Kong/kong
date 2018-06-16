@@ -145,6 +145,7 @@ local MAJOR_VERSIONS = {
   [1] = {
     version = "1.0.0",
     modules = {
+      "table",
     },
   },
 
