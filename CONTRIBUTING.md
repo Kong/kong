@@ -52,13 +52,14 @@ https://konghq.com/kong-enterprise-edition/ or contact us at
 There are several channels where you can get answers from the community
 or the maintainers of this project:
 
-- Our public forum, [Kong Nation](https://discuss.konghq.com/), for
-  asynchronous and lengthy chatter and staying up-to-date with the latest
-  announcements or usage tips
-- Gitter, for faster, but more ephemeral conversations. The room is
-  hosted at https://gitter.im/Kong/kong
-- The IRC channel, registered on freenode as [#kong
-  ](https://webchat.freenode.net/?channels=kong)
+- Our public forum, [Kong Nation](https://discuss.konghq.com), is great for
+  asking questions, giving advice, and staying up-to-date with the latest
+  announcements. Kong Nation is frequented by Kong maintainers.
+- Two chat channels are used by the community, but are rarely visited by Kong
+  maintainers:
+  - [Gitter](https://gitter.im/Kong/kong)
+  - IRC, registered on freenode as
+    [#kong](https://webchat.freenode.net/?channels=kong)
 
 **Please avoid opening GitHub issues for general questions or help**, as those
 should be reserved for actual bug reports. The Kong community is welcoming and
