@@ -51,12 +51,12 @@ $(el.name) $(el.value);
 > end
 
 init_by_lua_block {
-    kong = require 'kong'
-    kong.init()
+    Kong = require 'kong'
+    Kong.init()
 }
 
 init_worker_by_lua_block {
-    kong.init_worker()
+    Kong.init_worker()
 }
 
 
@@ -64,7 +64,7 @@ init_worker_by_lua_block {
 upstream kong_upstream {
     server 0.0.0.1;
     balancer_by_lua_block {
-        kong.balancer()
+        Kong.balancer()
     }
     keepalive ${{UPSTREAM_KEEPALIVE}};
 }
@@ -87,7 +87,7 @@ server {
     ssl_certificate_key ${{SSL_CERT_KEY}};
     ssl_protocols TLSv1.1 TLSv1.2;
     ssl_certificate_by_lua_block {
-        kong.ssl_certificate()
+        Kong.ssl_certificate()
     }
 
     ssl_session_cache shared:SSL:10m;
@@ -127,11 +127,11 @@ server {
         set $upstream_x_forwarded_port   '';
 
         rewrite_by_lua_block {
-            kong.rewrite()
+            Kong.rewrite()
         }
 
         access_by_lua_block {
-            kong.access()
+            Kong.access()
         }
 
         proxy_http_version 1.1;
@@ -149,15 +149,15 @@ server {
         proxy_pass         $upstream_scheme://kong_upstream$upstream_uri;
 
         header_filter_by_lua_block {
-            kong.header_filter()
+            Kong.header_filter()
         }
 
         body_filter_by_lua_block {
-            kong.body_filter()
+            Kong.body_filter()
         }
 
         log_by_lua_block {
-            kong.log()
+            Kong.log()
         }
     }
 
@@ -166,19 +166,19 @@ server {
         uninitialized_variable_warn off;
 
         content_by_lua_block {
-            kong.handle_error()
+            Kong.handle_error()
         }
 
         header_filter_by_lua_block {
-            kong.header_filter()
+            Kong.header_filter()
         }
 
         body_filter_by_lua_block {
-            kong.body_filter()
+            Kong.body_filter()
         }
 
         log_by_lua_block {
-            kong.log()
+            Kong.log()
         }
     }
 }
@@ -216,7 +216,7 @@ server {
     location / {
         default_type application/json;
         content_by_lua_block {
-            kong.serve_admin_api()
+            Kong.serve_admin_api()
         }
     }
 
