@@ -159,6 +159,7 @@ build = {
     ["kong.pdk.client"] = "kong/pdk/client.lua",
     ["kong.pdk.ip"] = "kong/pdk/ip.lua",
     ["kong.pdk.log"] = "kong/pdk/log.lua",
+    ["kong.pdk.request"] = "kong/pdk/request.lua",
     ["kong.pdk.table"] = "kong/pdk/table.lua",
 
     ["kong.plugins.base_plugin"] = "kong/plugins/base_plugin.lua",

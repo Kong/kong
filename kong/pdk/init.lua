@@ -149,6 +149,7 @@ local MAJOR_VERSIONS = {
       "log",
       "ip",
       "client",
+      "request",
     },
   },
 
