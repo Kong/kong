@@ -11,6 +11,7 @@ description = {
   license = "MIT"
 }
 dependencies = {
+  "inspect == 3.1.1",
   "luasec == 0.7alpha-2",
   "luasocket == 3.0-rc1",
   "penlight == 1.5.4",
@@ -154,6 +155,7 @@ build = {
     ["kong.db.strategies.postgres.connector"] = "kong/db/strategies/postgres/connector.lua",
 
     ["kong.pdk"] = "kong/pdk/init.lua",
+    ["kong.pdk.log"] = "kong/pdk/log.lua",
     ["kong.pdk.table"] = "kong/pdk/table.lua",
 
     ["kong.plugins.base_plugin"] = "kong/plugins/base_plugin.lua",
