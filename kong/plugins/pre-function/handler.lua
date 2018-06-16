@@ -27,8 +27,12 @@ function PreFunction:access(config)
 end
 
 
-PreFunction.PRIORITY = math.huge
 PreFunction.VERSION = "0.1.0"
+
+-- Set priority to just below infinity so that it runs immediately after
+-- tracing plugins to ensure tracing metrics are accurately measured and
+-- reported. See https://github.com/Kong/kong/pull/3551#issue-195293286
+PreFunction.PRIORITY = 1.7976931348623e+308
 
 
 return PreFunction
