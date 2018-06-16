@@ -151,6 +151,7 @@ local MAJOR_VERSIONS = {
       "client",
       "request",
       "service.request",
+      "service.response",
     },
   },
 
