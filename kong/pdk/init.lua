@@ -150,6 +150,7 @@ local MAJOR_VERSIONS = {
       "ip",
       "client",
       "request",
+      "service.request",
     },
   },
 
