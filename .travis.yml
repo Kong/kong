@@ -30,7 +30,9 @@ env:
     - OPENRESTY=$OPENRESTY_BASE
     - DOWNLOAD_CACHE=$HOME/download-cache
     - INSTALL_CACHE=$HOME/install-cache
+    - JOBS=2
   matrix:
+    - TEST_SUITE=pdk
     - TEST_SUITE=lint
     - TEST_SUITE=unit
     - TEST_SUITE=integration
