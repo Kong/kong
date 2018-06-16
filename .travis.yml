@@ -23,10 +23,10 @@ addons:
 env:
   global:
     - LUAROCKS=2.4.3
-    - OPENSSL=1.0.2n
+    - OPENSSL=1.1.0h
     - CASSANDRA=3.9
-    - OPENRESTY_BASE=1.11.2.5
-    - OPENRESTY_LATEST=1.13.6.1
+    - OPENRESTY_BASE=1.13.6.2
+    - OPENRESTY_LATEST=1.13.6.2
     - OPENRESTY=$OPENRESTY_BASE
     - DOWNLOAD_CACHE=$HOME/download-cache
     - INSTALL_CACHE=$HOME/install-cache
