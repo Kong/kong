@@ -146,6 +146,8 @@ local MAJOR_VERSIONS = {
     version = "1.0.0",
     modules = {
       "table",
+      "log",
+      "ip",
     },
   },
 
