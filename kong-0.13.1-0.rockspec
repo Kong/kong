@@ -158,6 +158,7 @@ build = {
     ["kong.pdk.private.checks"] = "kong/pdk/private/checks.lua",
     ["kong.pdk.private.phases"] = "kong/pdk/private/phases.lua",
     ["kong.pdk.client"] = "kong/pdk/client.lua",
+    ["kong.pdk.ctx"] = "kong/pdk/ctx.lua",
     ["kong.pdk.ip"] = "kong/pdk/ip.lua",
     ["kong.pdk.log"] = "kong/pdk/log.lua",
     ["kong.pdk.service"] = "kong/pdk/service.lua",

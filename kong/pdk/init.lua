@@ -147,6 +147,7 @@ local MAJOR_VERSIONS = {
     modules = {
       "table",
       "log",
+      "ctx",
       "ip",
       "client",
       "service",
