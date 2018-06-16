@@ -1,5 +1,5 @@
 package = "kong-prometheus-plugin"
-version = "0.1.0-1"
+version = "0.1.0-2"
 
 source = {
   url = "git://github.com/Kong/kong-plugin-prometheus",
@@ -13,7 +13,7 @@ description = {
 }
 
 dependencies = {
-  "kong >= 0.13.0",
+  --"kong >= 0.13.0",
 }
 
 build = {
