@@ -154,7 +154,11 @@ return {
         })
       end
 
-      local collection = dao_factory[auth_plugins[self.portal_auth].dao]
+      local plugin = auth_plugins[self.portal_auth]
+      if not plugin then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
       local credential_data
 
       if self.portal_auth == "basic-auth" then
@@ -178,8 +182,10 @@ return {
             self.portal_auth)
       end
 
+      local collection = dao_factory[plugin.dao]
+
       crud.post(credential_data, collection, function(credential)
-          crud.portal_crud.insert_credential(auth_plugins[self.portal_auth].name,
+          crud.portal_crud.insert_credential(plugin.name,
                                              enums.CONSUMERS.TYPE.DEVELOPER
                                             )(credential)
           return {
@@ -270,7 +276,13 @@ return {
       end
 
       self.portal_auth = singletons.configuration.portal_auth
-      self.collection = dao_factory[auth_plugins[self.portal_auth].dao]
+
+      local plugin = auth_plugins[self.portal_auth]
+      if not plugin then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      self.collection = dao_factory[plugin.dao]
 
       self.params.consumer_id = consumer_id
       self.params.email_or_id = self.params.consumer_id
@@ -308,7 +320,13 @@ return {
       end
 
       self.plugin = ngx.unescape_uri(self.params.plugin)
-      self.collection = dao_factory[auth_plugins[self.plugin].dao]
+
+      local plugin = auth_plugins[self.plugin]
+      if not plugin then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      self.collection = dao_factory[plugin.dao]
 
       self.params.plugin = nil
       self.params.consumer_id = consumer_id
@@ -352,7 +370,13 @@ return {
       end
 
       self.plugin = ngx.unescape_uri(self.params.plugin)
-      self.collection = dao_factory[auth_plugins[self.plugin].dao]
+
+      local plugin = auth_plugins[self.plugin]
+      if not plugin then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      self.collection = dao_factory[plugin.dao]
 
       self.params.consumer_id = consumer_id
       self.params.email_or_id = self.params.consumer_id
