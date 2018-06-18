@@ -29,6 +29,7 @@ local plugins = {
   -- external plugins
   "azure-functions",
   "zipkin",
+  "prometheus",
 }
 
 local plugin_map = {}
