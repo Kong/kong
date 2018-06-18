@@ -46,11 +46,31 @@ local function load_plugin_into_memory_ws(route_id,
                                           consumer_id,
                                           plugin_name,
                                           api_id)
-  ngx.ctx.workspaces = ngx.ctx.workspaces or {}
+  local ws_scope = ngx.ctx.workspaces or {}
+
+  local plugin, err, ttl
+  -- when there is no workspace, like in phase rewrite
+  if #ws_scope == 0 then
+    local plugin_cache_key = singletons.dao.plugins:cache_key_ws(nil,
+                                                                 plugin_name,
+                                                                 route_id,
+                                                                 service_id,
+                                                                 consumer_id,
+                                                                 api_id)
+
+    local plugin, err = singletons.cache:get(plugin_cache_key,
+                                             nil,
+                                             load_plugin_into_memory,
+                                             route_id,
+                                             service_id,
+                                             consumer_id,
+                                             plugin_name,
+                                             api_id)
+    return plugin, err
+  end
 
   -- check if plugin in cache for each workspace
-  local plugin, err, ttl
-  for _, ws in ipairs(ngx.ctx.workspaces) do
+  for _, ws in ipairs(ws_scope) do
     local plugin_cache_key = singletons.dao.plugins:cache_key_ws(ws,
                                                                  plugin_name,
                                                                  route_id,
@@ -66,13 +86,14 @@ local function load_plugin_into_memory_ws(route_id,
       return plugin
     end
   end
-  -- if negative cache return nil
+
+  -- if ttl present, plugin present in negative cache
   if ttl then
     return plugin
   end
 
   -- load plugin, here workspace scope can contain more than one workspace
-  -- depending on with how many workspace api being shared
+  -- depending on with how many workspace, api being shared
   local plugin = load_plugin_into_memory(route_id,
                                          service_id,
                                          consumer_id,
@@ -103,7 +124,7 @@ local function load_plugin_into_memory_ws(route_id,
                                                                  api_id)
 
     local _, err = singletons.cache:get(plugin_cache_key, nil, function ()
-      return { null = true }
+      return plugin
     end)
     if err then
       return nil, err
