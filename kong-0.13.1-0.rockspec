@@ -11,7 +11,7 @@ description = {
   license = "MIT"
 }
 dependencies = {
-  "luasec == 0.6",
+  "luasec == 0.7alpha-2",
   "luasocket == 3.0-rc1",
   "penlight == 1.5.4",
   "lua-resty-http == 0.12",
@@ -19,7 +19,7 @@ dependencies = {
   "multipart == 0.5.5",
   "version == 0.2",
   "kong-lapis == 1.6.0.1",
-  "lua-cassandra == 1.2.3",
+  "lua-cassandra == 1.3.0",
   "pgmoon == 1.8.0",
   "luatz == 0.3",
   "lua_system_constants == 0.1.2",
@@ -34,9 +34,10 @@ dependencies = {
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.0.2",
   -- external Kong plugins
-  "kong-plugin-azure-functions == 0.1.0",
+  "kong-plugin-azure-functions == 0.1.1",
   "kong-plugin-zipkin == 0.0.1",
   "kong-plugin-serverless-functions == 0.1.0",
+  "kong-prometheus-plugin == 0.1.0",
 }
 build = {
   type = "builtin",
@@ -61,6 +62,7 @@ build = {
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
     ["kong.templates.kong_defaults"] = "kong/templates/kong_defaults.lua",
 
+    ["kong.resty.ctx"] = "kong/resty/ctx.lua",
     ["kong.vendor.classic"] = "kong/vendor/classic.lua",
 
     ["kong.cmd"] = "kong/cmd/init.lua",

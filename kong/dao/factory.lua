@@ -186,7 +186,7 @@ function _M.new(kong_config, new_db)
     daos = {},
     additional_tables = {},
     kong_config = kong_config,
-    plugin_names = kong_config.plugins or {}
+    plugin_names = kong_config.loaded_plugins or {}
   }
 
   local DB = require("kong.dao.db." .. self.db_type)

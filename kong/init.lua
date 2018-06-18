@@ -61,6 +61,7 @@ local singletons = require "kong.singletons"
 local DAOFactory = require "kong.dao.factory"
 local kong_cache = require "kong.cache"
 local ngx_balancer = require "ngx.balancer"
+local kong_resty_ctx = require "kong.resty.ctx"
 local plugins_iterator = require "kong.runloop.plugins_iterator"
 local balancer_execute = require("kong.runloop.balancer").execute
 local kong_cluster_events = require "kong.cluster_events"
@@ -95,13 +96,13 @@ local function load_plugins(kong_conf, dao)
 
   -- check all plugins in DB are enabled/installed
   for plugin in pairs(in_db_plugins) do
-    if not kong_conf.plugins[plugin] then
+    if not kong_conf.loaded_plugins[plugin] then
       return nil, plugin .. " plugin is in use but not enabled"
     end
   end
 
   -- load installed plugins
-  for plugin in pairs(kong_conf.plugins) do
+  for plugin in pairs(kong_conf.loaded_plugins) do
     if constants.DEPRECATED_PLUGINS[plugin] then
       ngx.log(ngx.WARN, "plugin '", plugin, "' has been deprecated")
     end
@@ -336,8 +337,14 @@ function Kong.balancer()
     local balancer = balancer_data.balancer
     if balancer then
       local ip, port = balancer_data.ip, balancer_data.port
+
       if previous_try.state == "failed" then
-        balancer.report_tcp_failure(ip, port)
+        if previous_try.code == 504 then
+          balancer.report_timeout(ip, port)
+        else
+          balancer.report_tcp_failure(ip, port)
+        end
+
       else
         balancer.report_http_status(ip, port, previous_try.code)
       end
@@ -383,6 +390,8 @@ function Kong.balancer()
 end
 
 function Kong.rewrite()
+  kong_resty_ctx.stash_ref()
+
   local ctx = ngx.ctx
   runloop.rewrite.before(ctx)
 
@@ -452,6 +461,14 @@ function Kong.log()
 end
 
 function Kong.handle_error()
+  kong_resty_ctx.apply_ref()
+
+  if not ngx.ctx.plugins_for_request then
+    for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
+      -- just build list of plugins
+    end
+  end
+
   return kong_error_handlers(ngx)
 end
 

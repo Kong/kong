@@ -18,7 +18,7 @@ local cache = {}
 
 local IpRestrictionHandler = BasePlugin:extend()
 
-IpRestrictionHandler.PRIORITY = 3000
+IpRestrictionHandler.PRIORITY = 990
 IpRestrictionHandler.VERSION = "0.1.0"
 
 local function cidr_cache(cidr_tab)

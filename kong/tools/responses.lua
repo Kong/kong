@@ -152,11 +152,16 @@ local function send_response(status_code)
                                   {message = content})
       if not encoded then
         ngx.log(ngx.ERR, "[admin] could not encode value: ", err)
+        ngx.header["Content-Length"] = 0
 
       else
         ngx.header["Content-Type"] = "application/json; charset=utf-8"
+        ngx.header["Content-Length"] = #encoded + 1
         ngx.say(encoded)
       end
+
+    else
+      ngx.header["Content-Length"] = 0
     end
 
     return ngx.exit(status_code)

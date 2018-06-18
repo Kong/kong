@@ -1,5 +1,6 @@
 local conf_loader = require "kong.conf_loader"
 local helpers = require "spec.helpers"
+local tablex = require "pl.tablex"
 
 describe("Configuration loader", function()
   it("loads the defaults", function()
@@ -53,21 +54,33 @@ describe("Configuration loader", function()
   it("returns a plugins table", function()
     local constants = require "kong.constants"
     local conf = assert(conf_loader())
-    assert.same(constants.PLUGINS_AVAILABLE, conf.plugins)
+    assert.same(constants.BUNDLED_PLUGINS, conf.loaded_plugins)
   end)
   it("loads custom plugins", function()
     local conf = assert(conf_loader(nil, {
       custom_plugins = "hello-world,my-plugin"
     }))
-    assert.True(conf.plugins["hello-world"])
-    assert.True(conf.plugins["my-plugin"])
+    assert.True(conf.loaded_plugins["hello-world"])
+    assert.True(conf.loaded_plugins["my-plugin"])
+  end)
+  it("merges plugins and custom plugins", function()
+    local conf = assert(conf_loader(nil, {
+      plugins = "foo, bar",
+      custom_plugins = "baz,foobaz",
+    }))
+    assert.is_not_nil(conf.loaded_plugins)
+    assert.same(4, tablex.size(conf.loaded_plugins))
+    assert.True(conf.loaded_plugins["foo"])
+    assert.True(conf.loaded_plugins["bar"])
+    assert.True(conf.loaded_plugins["baz"])
+    assert.True(conf.loaded_plugins["foobaz"])
   end)
   it("loads custom plugins surrounded by spaces", function()
     local conf = assert(conf_loader(nil, {
       custom_plugins = " hello-world ,   another-one  "
     }))
-    assert.True(conf.plugins["hello-world"])
-    assert.True(conf.plugins["another-one"])
+    assert.True(conf.loaded_plugins["hello-world"])
+    assert.True(conf.loaded_plugins["another-one"])
   end)
   it("extracts flags, ports and listen ips from proxy_listen/admin_listen", function()
     local conf = assert(conf_loader())
@@ -163,8 +176,8 @@ describe("Configuration loader", function()
   it("overcomes penlight's list_delim option", function()
     local conf = assert(conf_loader("spec/fixtures/to-strip.conf"))
     assert.False(conf.pg_ssl)
-    assert.True(conf.plugins.foobar)
-    assert.True(conf.plugins["hello-world"])
+    assert.True(conf.loaded_plugins.foobar)
+    assert.True(conf.loaded_plugins["hello-world"])
   end)
   it("correctly parses values containing an octothorpe", function()
     local conf = assert(conf_loader("spec/fixtures/to-strip.conf"))
@@ -173,7 +186,9 @@ describe("Configuration loader", function()
 
   describe("dynamic directives", function()
     it("loads flexible prefix based configs from a file", function()
-      local conf = assert(conf_loader("spec/fixtures/nginx-directives.conf"))
+      local conf = assert(conf_loader("spec/fixtures/nginx-directives.conf", {
+        plugins = "off",
+      }))
 
       assert.equal("custom_cache 5m",
                    conf.nginx_http_directives["lua_shared_dict"])
@@ -195,6 +210,7 @@ describe("Configuration loader", function()
       local conf = assert(conf_loader("spec/fixtures/nginx-directives.conf", {
         ["nginx_http_large_client_header_buffers"] = "4 16k",
         ["nginx_http_lua_shared_dict"] = "custom_cache 2m",
+        plugins = "off",
       }))
 
       assert.equal("custom_cache 2m",
@@ -202,6 +218,36 @@ describe("Configuration loader", function()
 
       assert.equal("4 16k",
                    conf.nginx_http_directives["large_client_header_buffers"])
+    end)
+  end)
+
+  describe("prometheus_metrics shm", function()
+    it("is injected if not provided via nginx_http_* directives", function()
+      local conf = assert(conf_loader())
+      assert.equal("prometheus_metrics 5m",
+                   conf.nginx_http_directives["lua_shared_dict"])
+    end)
+    it("size is not modified if provided via nginx_http_* directives", function()
+      local conf = assert(conf_loader(nil, {
+        plugins = "bundled",
+        nginx_http_lua_shared_dict = "prometheus_metrics 2m",
+      }))
+      assert.equal("prometheus_metrics 2m",
+                   conf.nginx_http_directives["lua_shared_dict"])
+    end)
+    it("is injected in addition to any shm provided via nginx_http_* directive", function()
+      local conf = assert(conf_loader(nil, {
+        plugins = "bundled",
+        nginx_http_lua_shared_dict = "custom_cache 2m",
+      }))
+      assert.equal("custom_cache 2m; lua_shared_dict prometheus_metrics 5m",
+                   conf.nginx_http_directives["lua_shared_dict"])
+    end)
+    it("is not injected if prometheus plugin is disabled", function()
+      local conf = assert(conf_loader(nil, {
+        plugins = "off",
+      }))
+      assert.is_nil(conf.nginx_http_directives["lua_shared_dict"])
     end)
   end)
 

@@ -30,6 +30,7 @@ local plugins = {
   "zipkin",
   "pre-function",
   "post-function",
+  "prometheus",
 }
 
 local plugin_map = {}
@@ -47,7 +48,7 @@ for _, plugin in ipairs(deprecated_plugins) do
 end
 
 return {
-  PLUGINS_AVAILABLE = plugin_map,
+  BUNDLED_PLUGINS = plugin_map,
   DEPRECATED_PLUGINS = deprecated_plugin_map,
   -- non-standard headers, specific to Kong
   HEADERS = {

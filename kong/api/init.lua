@@ -268,8 +268,8 @@ end
 
 
 -- Loading plugins routes
-if singletons.configuration and singletons.configuration.plugins then
-  for k in pairs(singletons.configuration.plugins) do
+if singletons.configuration and singletons.configuration.loaded_plugins then
+  for k in pairs(singletons.configuration.loaded_plugins) do
     local loaded, mod = utils.load_module_if_exists("kong.plugins." .. k .. ".api")
 
     if loaded then

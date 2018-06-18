@@ -1,18 +1,26 @@
 -- Copyright (C) Kong Inc.
-
 local BasePlugin = require "kong.plugins.base_plugin"
 local aws_v4 = require "kong.plugins.aws-lambda.v4"
+local singletons = require "kong.singletons"
 local responses = require "kong.tools.responses"
+local constants = require "kong.constants"
 local utils = require "kong.tools.utils"
+local meta = require "kong.meta"
 local http = require "resty.http"
 local cjson = require "cjson.safe"
 local public_utils = require "kong.tools.public"
 
+
 local tostring             = tostring
+local pairs                = pairs
+local type                 = type
+local fmt                  = string.format
+local ngx                  = ngx
 local ngx_req_read_body    = ngx.req.read_body
 local ngx_req_get_uri_args = ngx.req.get_uri_args
 local ngx_req_get_headers  = ngx.req.get_headers
 local ngx_encode_base64    = ngx.encode_base64
+
 
 local new_tab
 do
@@ -23,13 +31,50 @@ do
   end
 end
 
+
+local server_header = meta._SERVER_TOKENS
+
+
 local AWS_PORT = 443
 
+
+local function send(status, content, headers)
+  ngx.status = status
+
+  if type(headers) == "table" then
+    for k, v in pairs(headers) do
+      ngx.header[k] = v
+    end
+  end
+
+  if not ngx.header["Content-Length"] then
+    ngx.header["Content-Length"] = #content
+  end
+
+  if singletons.configuration.enabled_headers[constants.HEADERS.VIA] then
+    ngx.header[constants.HEADERS.VIA] = server_header
+  end
+
+  ngx.print(content)
+
+  return ngx.exit(status)
+end
+
+
+local function flush(ctx)
+  ctx = ctx or ngx.ctx
+  local response = ctx.delayed_response
+  return send(response.status_code, response.content, response.headers)
+end
+
+
 local AWSLambdaHandler = BasePlugin:extend()
+
 
 function AWSLambdaHandler:new()
   AWSLambdaHandler.super.new(self, "aws-lambda")
 end
+
 
 function AWSLambdaHandler:access(conf)
   AWSLambdaHandler.super.access(self)
@@ -84,8 +129,8 @@ function AWSLambdaHandler:access(conf)
                      " to forward request values: ", err)
   end
 
-  local host = string.format("lambda.%s.amazonaws.com", conf.aws_region)
-  local path = string.format("/2015-03-31/functions/%s/invocations",
+  local host = fmt("lambda.%s.amazonaws.com", conf.aws_region)
+  local path = fmt("/2015-03-31/functions/%s/invocations",
                             conf.function_name)
   local port = conf.port or AWS_PORT
 
@@ -133,7 +178,7 @@ function AWSLambdaHandler:access(conf)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
-  local body = res:read_body()
+  local content = res:read_body()
   local headers = res.headers
 
   local ok, err = client:set_keepalive(conf.keepalive)
@@ -141,26 +186,35 @@ function AWSLambdaHandler:access(conf)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
+  local status
   if conf.unhandled_status
      and headers["X-Amz-Function-Error"] == "Unhandled"
   then
-    ngx.status = conf.unhandled_status
+    status = conf.unhandled_status
 
   else
-    ngx.status = res.status
+    status = res.status
   end
 
-  -- Send response to client
-  for k, v in pairs(headers) do
-    ngx.header[k] = v
+  local ctx = ngx.ctx
+  if ctx.delay_response and not ctx.delayed_response then
+    ctx.delayed_response = {
+      status_code = status,
+      content     = content,
+      headers     = headers,
+    }
+
+    ctx.delayed_response_callback = flush
+
+    return
   end
 
-  ngx.say(body)
-
-  return ngx.exit(res.status)
+  return send(status, content, headers)
 end
 
+
 AWSLambdaHandler.PRIORITY = 750
-AWSLambdaHandler.VERSION = "0.1.0"
+AWSLambdaHandler.VERSION = "0.1.1"
+
 
 return AWSLambdaHandler

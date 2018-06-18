@@ -777,8 +777,13 @@ return {
       if ctx.KONG_PROXIED == true then
         -- Report HTTP status for health checks
         if balancer_data and balancer_data.balancer and balancer_data.ip then
-          balancer_data.balancer.report_http_status(balancer_data.ip,
-                                                    balancer_data.port, ngx.status)
+          local ip, port = balancer_data.ip, balancer_data.port
+          local status = ngx.status
+          if status == 504 then
+            balancer_data.balancer.report_timeout(ip, port)
+          else
+            balancer_data.balancer.report_http_status(ip, port, status)
+          end
         end
       end
     end
