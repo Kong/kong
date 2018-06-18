@@ -280,8 +280,7 @@ end
 
 
 -- Coming from admin API request
-function _M.get_req_workspace(params)
-  local ws_name = params.workspace_name or default_workspace
+function _M.get_req_workspace(ws_name)
 
   local filter
   if ws_name ~= "*" then

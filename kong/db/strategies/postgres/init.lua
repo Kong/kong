@@ -643,6 +643,13 @@ local function make_select_for(foreign_entity_name)
   end
 end
 
+local _M  = {
+  CUSTOM_STRATEGIES = {
+    services = require("kong.db.strategies.postgres.services"),
+    routes   = require("kong.db.strategies.postgres.routes"),
+  }
+}
+
 
 local _mt   = {}
 
@@ -677,7 +684,53 @@ function _mt:drop()
 end
 
 
+local function foreign_pk_exists(dao, field_name, field, foreign_pk)
+  local foreign_schema = field.schema
+  local foreign_strategy = _M.new(dao.connector, foreign_schema,
+                                   dao.errors)
+
+  local foreign_row, err_t = foreign_strategy:select_ws(foreign_pk)
+  if err_t then
+    return nil, err_t
+  end
+
+  if not foreign_row then
+    return nil, dao.errors:foreign_key_violation_invalid_reference(foreign_pk,
+      field_name,
+      foreign_schema.name)
+  end
+
+  return true
+end
+
+
+local function validate_fk_exists_ws(dao, entity)
+  local schema = dao.schema
+
+  for field_name, field in schema:each_field() do
+    if field.type == "foreign" then
+      local foreign_pk = entity[field_name]
+
+      if foreign_pk and foreign_pk ~= ngx.null then
+        -- if given, check if this foreign entity exists
+        local exists, err_t = foreign_pk_exists(dao, field_name, field, foreign_pk)
+        if not exists then
+          return nil, err_t
+        end
+      end
+    end
+  end
+
+  return true
+end
+
+
 function _mt:insert(entity)
+  local exists, err_t = validate_fk_exists_ws(self, entity)
+  if not exists then
+    return nil, err_t
+  end
+
   local res, err = execute(self, "insert", self.collapse(entity))
 
   if res then
@@ -726,8 +779,10 @@ end
 
 
 -- TODO may not be needed
-function _mt:select_ws(primary_key, ws_scope)
-  local res, err = execute(self, "select_ws", self.collapse(primary_key))
+function _mt:select_ws(primary_key)
+  local ws_list = ws_helper.ws_scope_as_list(self.schema.name)
+  local res, err = execute(self, "select_ws",
+                           self.collapse(primary_key), nil, ws_list)
 
   if res then
     local row = res[1]
@@ -764,6 +819,11 @@ end
 
 
 function _mt:update(primary_key, entity)
+  local exists, err_t = validate_fk_exists_ws(self, entity)
+  if not exists then
+    return nil, err_t
+  end
+
   local res, err = execute(self, "update", self.collapse(primary_key, entity), true)
 
   if res then
@@ -902,14 +962,6 @@ function _mt:each(size)
     return nil
   end
 end
-
-
-local _M  = {
-  CUSTOM_STRATEGIES = {
-    services = require("kong.db.strategies.postgres.services"),
-    routes   = require("kong.db.strategies.postgres.routes"),
-  }
-}
 
 
 function _M.new(connector, schema, errors)
@@ -1292,8 +1344,8 @@ function _M.new(connector, schema, errors)
     "    FROM ( (",
     "            SELECT DISTINCT workspace_id, entity_id, name as workspace_name FROM",
     "            workspaces INNER JOIN workspace_entities ON",
-    "            ( workspace_id = id  AND entity_type = '", table_name_escaped, "' AND id in ( $0 ) ) )",
-    "            ws_e INNER JOIN ", table_name_escaped, " ", table_name_escaped , " ON ( ws_e.entity_id = ", table_name_escaped, ".id::varchar )",
+    "            ( workspace_id = id  AND entity_type = '", table_name, "' AND id in ( $0 ) ) )",
+    "            ws_e INNER JOIN ", table_name, " ", table_name , " ON ( ws_e.entity_id = ", table_name, ".id::varchar )",
     "         )\n",
     " WHERE (", pk_escaped, ") = (", primary_key_placeholders, ")\n",
     " LIMIT 1;"

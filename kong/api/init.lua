@@ -21,6 +21,7 @@ local type     = type
 local pairs    = pairs
 local ipairs   = ipairs
 local tostring = tostring
+local fmt      = string.format
 
 
 local app = lapis.Application()
@@ -158,9 +159,11 @@ app:before_filter(function(self)
     -- So previous workspace should be dropped
     ngx.ctx.admin_api_request = true
     ngx.ctx.workspaces = nil
-    local workspaces = workspaces.get_req_workspace(self.params)
-    if not workspaces then
-      responses.send_HTTP_NOT_FOUND()
+
+    local ws_name = self.params.workspace_name or workspaces.DEFAULT_WORKSPACE
+    local workspaces = workspaces.get_req_workspace(ws_name)
+    if not workspaces or #workspaces == 0 then
+      responses.send_HTTP_NOT_FOUND(fmt("Workspace '%s' not found", ws_name))
     end
 
     -- save workspace name in the context; if not passed, default workspace is

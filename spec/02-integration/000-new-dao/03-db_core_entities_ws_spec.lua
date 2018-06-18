@@ -1,7 +1,6 @@
 local Errors  = require "kong.db.errors"
 local utils   = require "kong.tools.utils"
 local helpers = require "spec.helpers"
-local singletons = require "kong.singletons"
 
 local fmt      = string.format
 local with_current_ws = helpers.with_current_ws
@@ -12,10 +11,17 @@ local a_blank_uuid = "00000000-0000-0000-0000-000000000000"
 local function add_ws(dao, ws_name)
   return with_current_ws(nil, function()
     -- create another workspace in default workspace
-    local foo_ws = dao.workspaces:insert({
+    local res = dao.workspaces:find_all({
       name = ws_name,
     })
 
+    if res and #res > 0 then
+      return res[1]
+    end
+
+    local foo_ws = assert(dao.workspaces:insert({
+      name = ws_name,
+    }))
     return foo_ws
   end, dao)
 end
@@ -28,7 +34,6 @@ for _, strategy in helpers.each_strategy() do
     setup(function()
       ngx.ctx.workspaces = nil
       bp, db, dao = helpers.get_db_utils(strategy, true)
-      singletons.dao = dao
     end)
 
     teardown(function()
@@ -139,6 +144,30 @@ for _, strategy in helpers.each_strategy() do
             }, rel)
           end, dao)
         end)
+
+        it("shouldn't allow insert of route with service from other workspace", function()
+          local service_default
+          with_current_ws(nil, function()
+            local err_t, err
+            service_default, err_t, err = db.services:insert({ host = "service.com" })
+            assert.is_nil(err_t)
+            assert.is_nil(err)
+
+          end, dao)
+          local foo_ws = add_ws(dao, "foo")
+
+          with_current_ws({ foo_ws }, function ()
+            -- add route in foo workspace
+            local route, err_t, err = db.routes:insert({
+              protocols = { "http" },
+              hosts = { "example.com" },
+              service = service_default,
+            })
+            assert.is_nil(route)
+            assert.is_not_nil(err_t)
+            assert.is_not_nil(err)
+          end)
+        end)
       end)
 
       describe(":select()", function()
@@ -163,6 +192,7 @@ for _, strategy in helpers.each_strategy() do
           with_current_ws( {foo_ws},function()
             local route_inserted = bp.routes:insert({
               hosts = { "example.com" },
+              service = assert(db.services:insert({ host = "service.com" }))
             })
             local route, err, err_t = db.routes:select({ id = route_inserted.id })
             assert.is_nil(err_t)
@@ -183,7 +213,7 @@ for _, strategy in helpers.each_strategy() do
           with_current_ws( {foo_ws},function()
             local pk = { id = utils.uuid() }
             local new_route, err, err_t = db.routes:update(pk, {
-            protocols = { "https" }
+              protocols = { "https" }
             })
             assert.is_nil(new_route)
             assert.is_not_nil(err_t)
@@ -223,25 +253,62 @@ for _, strategy in helpers.each_strategy() do
             }, new_route)
           end, dao)
         end)
+
+        it("shouldn't allow to update route with service from other workspace", function()
+          local service_default
+          with_current_ws(nil, function()
+            local err_t, err
+            service_default, err_t, err = db.services:insert({ host = "service.com" })
+            assert.is_nil(err_t)
+            assert.is_nil(err)
+
+          end, dao)
+          local foo_ws = add_ws(dao, "foo")
+
+          with_current_ws({ foo_ws }, function ()
+            -- add route in foo workspace
+            local route = db.routes:insert({
+              protocols = { "http" },
+              hosts = { "example.com" },
+              service = assert(db.services:insert({ host = "service.com" })),
+            })
+
+            ngx.sleep(1)
+
+            local new_route, err, err_t = db.routes:update({ id = route.id }, {
+              protocols = { "https" },
+              regex_priority = 5,
+            })
+            assert.is_nil(err_t)
+            assert.is_nil(err)
+            assert.same({
+              id              = route.id,
+              created_at      = route.created_at,
+              updated_at      = new_route.updated_at,
+              protocols       = { "https" },
+              methods         = route.methods,
+              hosts           = route.hosts,
+              paths           = route.paths,
+              regex_priority  = 5,
+              strip_path      = route.strip_path,
+              preserve_host   = route.preserve_host,
+              service         = route.service,
+            }, new_route)
+
+            local new_route, err, err_t = db.routes:update({ id = route.id }, {
+              service = service_default,
+            })
+
+            assert.is_nil(new_route)
+            assert.is_not_nil(err_t)
+            assert.is_not_nil(err)
+          end)
+        end)
       end)
 
       describe(":delete()", function()
         setup(function()
           db:truncate()
-        end)
-
-        -- I/O
-        it("returns nothing if the Route does not exist", function()
-          local foo_ws = add_ws(dao, "foo")
-          with_current_ws( {foo_ws},function()
-            local u = utils.uuid()
-            local ok, err, err_t = db.routes:delete({
-              id = u
-            })
-            assert.is_true(ok)
-            assert.is_nil(err_t)
-            assert.is_nil(err)
-          end, dao)
         end)
 
         it("deletes an existing Route", function()
@@ -264,6 +331,20 @@ for _, strategy in helpers.each_strategy() do
             assert.is_nil(err_t)
             assert.is_nil(err)
             assert.is_nil(route_in_db)
+          end, dao)
+        end)
+
+        -- I/O
+        it("returns nothing if the Route does not exist", function()
+          local foo_ws = add_ws(dao, "foo")
+          with_current_ws( {foo_ws},function()
+            local u = utils.uuid()
+            local ok, err, err_t = db.routes:delete({
+              id = u
+            })
+            assert.is_true(ok)
+            assert.is_nil(err_t)
+            assert.is_nil(err)
           end, dao)
         end)
       end)

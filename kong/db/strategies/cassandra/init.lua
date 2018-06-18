@@ -1,5 +1,6 @@
 local cassandra = require "cassandra"
 local workspaces = require "kong.workspaces"
+local ws_helper = require "kong.workspaces.helper"
 local utils      = require "kong.tools.utils"
 
 
@@ -153,6 +154,21 @@ local function foreign_pk_exists(self, field_name, field, foreign_pk)
   local foreign_schema = field.schema
   local foreign_strategy = _M.new(self.connector, foreign_schema,
                                   self.errors)
+
+  local constraint = workspaceable[foreign_schema.name]
+  if constraint then
+    local res, err = ws_helper.validate_pk_exist(foreign_schema.name, foreign_pk,
+                                                 constraint)
+    if err then
+      return nil, err
+    end
+
+    if not res then
+      return nil, self.errors:foreign_key_violation_invalid_reference(foreign_pk,
+                                                                      field_name,
+                                                                      foreign_schema.name)
+    end
+  end
 
   local foreign_row, err_t = foreign_strategy:select(foreign_pk)
   if err_t then

@@ -87,7 +87,7 @@ end
 
 -- validates taht given primary_key belongs to current ws scope
 function _M.validate_pk_exist(table_name, params, constraints)
-  if not constraints or not constraints.unique_keys then
+  if not constraints or not constraints.primary_key then
     return
   end
 
@@ -173,6 +173,7 @@ end
 function _M.ws_scope_as_list(table_name)
   local ws_scope = workspaces.get_workspaces()
   local workspaceable = workspaces.get_workspaceable_relations()
+
   if workspaceable[table_name] and #ws_scope > 0 then
     return encode_ws_list(ws_scope)
   end
