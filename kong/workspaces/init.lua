@@ -48,20 +48,6 @@ local function map(f, t)
   return r
 end
 
-local function map_unique(f, t)
-  local r = {}
-  local unique = {}
-  local n = 0
-  for _, x in ipairs(t) do
-    if not unique[x.workspace_id] then
-      n = n + 1
-      r[n] = f(x)
-      unique[x.workspace_id] = true
-    end
-  end
-  return r
-end
-
 
 -- helper function for permutations
 local function inc(t, pos)
@@ -553,19 +539,43 @@ function _M.is_route_colliding(req, router)
 end
 
 
+local function unique_workspaces(workspace_entities)
+  local r = {}
+  local seen = {}
+  local n = 0
+  for _, x in ipairs(workspace_entities) do
+    local ws_id = x.workspace_id
+    if ws_id and not seen[ws_id] then
+      n = n + 1
+      r[n] = {id = ws_id}
+      seen[ws_id] = true
+    end
+  end
+  return r
+end
+
+
+-- Return the list of current workspaces given a route. `route` is the
+-- matched route from the router. Special handling of portal routes is
+-- done matching them by id as portal creates routes on memory that do
+-- not have a representation in the db. Therefore they don't exist in
+-- workspace_entities.
 local function load_workspace_scope(route)
+  if route.id == "00000000-0000-0000-0002-000000000000" then
+    return singletons.dao.workspaces:find_all({name = default_workspace})
+  end
+
   local old_wss = ngx.ctx.workspaces
   ngx.ctx.workspaces = {}
   local rows, err = singletons.dao.workspace_entities:find_all({
     entity_id  = route.id,
   })
-
   ngx.ctx.workspaces = old_wss
-  if not rows then
+  if not rows or not rows[1] then
     return nil, err
   end
 
-  return map_unique(function(x) return { id = x.workspace_id } end, rows)
+  return unique_workspaces(rows)
 end
 
 

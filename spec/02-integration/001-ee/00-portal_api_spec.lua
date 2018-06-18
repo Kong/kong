@@ -21,7 +21,7 @@ end
 
 -- TODO: Cassandra
 for _, strategy in helpers.each_strategy('postgres') do
-  pending("Developer Portal - Portal API", function()
+  describe("Developer Portal - Portal API", function()
     local bp
     local db
     local dao
