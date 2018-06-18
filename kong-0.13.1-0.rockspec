@@ -32,7 +32,7 @@ dependencies = {
   "lua-resty-mediador == 0.1.2",
   "lua-resty-healthcheck == 0.4.2",
   "lua-resty-cookie == 0.1.0",
-  "lua-resty-mlcache == 2.0.2",
+  "lua-resty-mlcache == 2.1.0",
   -- external Kong plugins
   "kong-plugin-azure-functions == 0.1.1",
   "kong-plugin-zipkin == 0.0.1",
@@ -252,6 +252,7 @@ build = {
     ["kong.plugins.acl.schema"] = "kong/plugins/acl/schema.lua",
     ["kong.plugins.acl.api"] = "kong/plugins/acl/api.lua",
     ["kong.plugins.acl.daos"] = "kong/plugins/acl/daos.lua",
+    ["kong.plugins.acl.groups"] = "kong/plugins/acl/groups.lua",
 
     ["kong.plugins.correlation-id.handler"] = "kong/plugins/correlation-id/handler.lua",
     ["kong.plugins.correlation-id.schema"] = "kong/plugins/correlation-id/schema.lua",

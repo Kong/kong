@@ -43,12 +43,12 @@ package.path = CUSTOM_PLUGIN_PATH .. ";" .. package.path
 -- Ex: 1.11.2.2 -> 11122
 local function openresty_ver_num()
   local nginx_bin = assert(nginx_signals.find_nginx_bin())
-  local ok, _, _, stderr = pl_utils.executeex(string.format("%s -V", nginx_bin))
-  if not ok then
+  local _, _, _, stderr = pl_utils.executeex(string.format("%s -V", nginx_bin))
+
+  local a, b, c, d = string.match(stderr or "", "openresty/(%d+)%.(%d+)%.(%d+)%.(%d+)")
+  if not a then
     error("could not execute 'nginx -V': " .. stderr)
   end
-
-  local a, b, c, d = string.match(stderr, "openresty/(%d+)%.(%d+)%.(%d+)%.(%d+)")
 
   return tonumber(a .. b .. c .. d)
 end

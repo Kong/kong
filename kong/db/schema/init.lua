@@ -71,6 +71,7 @@ local validation_errors = {
   SCHEMA_NO_DEFINITION      = "expected a definition table",
   SCHEMA_NO_FIELDS          = "error in schema definition: no 'fields' table",
   SCHEMA_MISSING_ATTRIBUTE  = "error in schema definition: missing attribute",
+  SCHEMA_BAD_REFERENCE      = "schema refers to an invalid foreign entity: %s",
   SCHEMA_TYPE               = "invalid type: %s",
   -- primary key errors
   NOT_PK                    = "not a primary key",
@@ -858,8 +859,13 @@ function Schema:validate_primary_key(pk, ignore_others)
     pk_set[k] = true
     local field = self.fields[k]
     local v = pk[k]
+
     if not v then
       errors[k] = validation_errors.MISSING_PK
+
+    elseif (field.required or field.auto) and v == null then
+      errors[k] = validation_errors.REQUIRED
+
     else
       local _
       _, errors[k] = self:validate_field(field, v)
@@ -1241,8 +1247,11 @@ function Schema.new(definition)
   for key, field in self:each_field() do
     self.fields[key] = field
     if field.type == "foreign" then
-      -- TODO: add error handling
-      field.schema = get_foreign_schema_for_field(field)
+      local err
+      field.schema, err = get_foreign_schema_for_field(field)
+      if not field.schema then
+        return nil, err
+      end
     end
   end
 
