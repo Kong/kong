@@ -85,7 +85,7 @@ return {
   DICTS = {
     "kong",
     "kong_locks",
-    "kong_cache",
+    "kong_db_cache",
     "kong_db_cache_miss",
     "kong_process_events",
     "kong_cluster_events",
