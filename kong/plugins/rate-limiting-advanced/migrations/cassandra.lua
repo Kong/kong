@@ -46,7 +46,7 @@ return {
             local new_created_at = cassandra.timestamp(timestamp())
             local new_name = "rate-limiting-advanced"
             local api_id = plugin.api_id and cassandra.uuid(plugin.api_id) or cassandra.unset
-            local consumer_id = plugin.consumer_id and cassandra.uuid(plugin.comsumer_id) or cassandra.unset
+            local consumer_id = plugin.consumer_id and cassandra.uuid(plugin.consumer_id) or cassandra.unset
             local config, err = cjson.encode(config)
             if err then
               return err

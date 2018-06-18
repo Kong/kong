@@ -1,3 +1,9 @@
+## Unreleased
+
+### Fixed
+
+- Fixed a typo in Cassandra migration
+
 ## 0.31.1
 
 ### Changed
