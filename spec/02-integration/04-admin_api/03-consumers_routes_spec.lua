@@ -399,6 +399,19 @@ describe("Admin API (" .. strategy .. "): ", function()
           end
         end)
 
+        it_content_types("creates if not exists by username", function(content_type)
+          return function()
+            local res = client:put("/consumers/test", {
+              body    = {},
+              headers = { ["Content-Type"] = content_type }
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.equal("test", json.username)
+            assert.equal(cjson.null, json.custom_id)
+          end
+        end)
+
         it_content_types("replaces if found", function(content_type)
           return function()
             local res = client:put("/consumers/" .. consumer.id, {
@@ -412,6 +425,30 @@ describe("Admin API (" .. strategy .. "): ", function()
 
             local in_db = assert(db.consumers:select({ id = consumer.id }))
             assert.same(json, in_db)
+          end
+        end)
+
+        it_content_types("replaces if found by username", function(content_type)
+          return function()
+            local res = client:put("/consumers/test", {
+              body    = { custom_id = "custom" },
+              headers = { ["Content-Type"] = content_type }
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.equal("test", json.username)
+            assert.equal("custom", json.custom_id)
+
+            local id = json.id
+            res = client:put("/consumers/test", {
+              body    = {},
+              headers = { ["Content-Type"] = content_type }
+            })
+            body = assert.res_status(200, res)
+            json = cjson.decode(body)
+            assert.equal(id, json.id)
+            assert.equal("test", json.username)
+            assert.equal(cjson.null, json.custom_id)
           end
         end)
 

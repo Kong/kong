@@ -846,9 +846,15 @@ do
     end
 
     if not row then
-      return nil, self.errors:not_found_by_field({
-        [field_name] = field_value,
-      })
+      if mode == "upsert" then
+        row = entity
+        row[field_name] = field_value
+
+      else
+        return nil, self.errors:not_found_by_field({
+          [field_name] = field_value,
+        })
+      end
     end
 
     local pk = extract_pk_values(self.schema, row)
