@@ -36,6 +36,7 @@ dependencies = {
   -- external Kong plugins
   "kong-plugin-azure-functions == 0.1.1",
   "kong-plugin-zipkin == 0.0.1",
+  "kong-plugin-serverless-functions == 0.1.0",
   "kong-prometheus-plugin == 0.1.0",
 }
 build = {

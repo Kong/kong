@@ -28,6 +28,8 @@ local plugins = {
   -- external plugins
   "azure-functions",
   "zipkin",
+  "pre-function",
+  "post-function",
   "prometheus",
 }
 
