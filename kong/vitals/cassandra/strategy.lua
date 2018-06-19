@@ -342,8 +342,8 @@ function _M:init(node_id, hostname)
 end
 
 
-function _M:select_stats(query_type, level, node_id)
-  local tname, earliest_second, not_before_ts
+function _M:select_stats(query_type, level, node_id, start_ts)
+  local tname, not_before_ts
   local now = time()
   local node_ids = {}
   local res = {}
@@ -369,18 +369,18 @@ function _M:select_stats(query_type, level, node_id)
 
   -- construct query
   if query_type == "seconds" then
-    earliest_second = now - self.ttl_seconds
-    not_before_ts = cassandra.timestamp((earliest_second) * 1000)
+    not_before_ts = tonumber(start_ts) or (now - self.ttl_seconds)
     tname = "vitals_stats_seconds"
 
   elseif query_type == "minutes" then
-    not_before_ts = cassandra.timestamp((now - self.ttl_minutes) * 1000)
+    not_before_ts = tonumber(start_ts) or (now - self.ttl_minutes)
     tname = "vitals_stats_minutes"
+
   end
 
   local args = {
     node_ids,
-    not_before_ts
+    cassandra.timestamp(not_before_ts * 1000)
   }
 
   for rows, err, page in self.cluster:iterate(fmt(SELECT_STATS, tname), args, QUERY_OPTIONS) do
@@ -878,9 +878,9 @@ function _M:select_status_codes(opts)
   local cutoff_time, args
 
   if duration == 1 then
-    cutoff_time = time() - self.ttl_seconds
+    cutoff_time = tonumber(opts.start_ts) or (time() - self.ttl_seconds)
   else
-    cutoff_time = time() - self.ttl_minutes
+    cutoff_time = tonumber(opts.start_ts) or (time() - self.ttl_minutes)
   end
 
   if entity_type == "cluster" then
@@ -1121,9 +1121,9 @@ function _M:select_consumer_stats(opts)
   local cutoff_time, args
 
   if duration == 1 then
-    cutoff_time = time() - self.ttl_seconds
+    cutoff_time = tonumber(opts.start_ts) or (time() - self.ttl_seconds)
   else
-    cutoff_time = time() - self.ttl_minutes
+    cutoff_time = tonumber(opts.start_ts) or (time() - self.ttl_minutes)
   end
 
   args = {
@@ -1256,6 +1256,20 @@ function _M:select_node_meta(node_ids)
   end
 
   return res
+end
+
+
+function _M:interval_width(interval)
+  if interval == "seconds" then
+    return 1
+  end
+
+  if interval == "minutes" then
+    return 60
+  end
+
+  -- yes, doing validation at the end rather than checking 'interval' twice
+  return nil, "interval must be 'seconds' or 'minutes'"
 end
 
 

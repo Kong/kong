@@ -674,29 +674,15 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert.same(expected, res)
       end)
 
-      it("takes an optional timestamp range", function()
+      it("takes an optional start_ts", function()
         stub(strategy, "table_names_for_select").returns({ "vitals_stats_seconds", "vitals_stats_seconds_2"})
 
-        local res, err = strategy:select_stats("seconds", "cluster", nil, 1509667485, 1509667487)
+        local res, err = strategy:select_stats("seconds", "cluster", nil, 1509667486)
 
         assert.is_nil(err)
 
         local expected = {
           {
-            at = 1509667485,
-            node_id = 'cluster',
-            l2_hit = 10,
-            l2_miss = 3,
-            plat_min = 1,
-            plat_max = 10,
-            ulat_min = 3,
-            ulat_max = 7,
-            requests = 6,
-            plat_count = 6,
-            plat_total = 43,
-            ulat_count = 6,
-            ulat_total = 25,
-          }, {
             at = 1509667486,
             node_id = 'cluster',
             l2_hit = 12,
@@ -710,6 +696,16 @@ dao_helpers.for_each_dao(function(kong_conf)
             plat_total = 74,
             ulat_count = 7,
             ulat_total = 47,
+          }, {
+            at = 1509667487,
+            node_id = 'cluster',
+            l2_hit = 19,
+            l2_miss = 23,
+            plat_count = 0,
+            plat_total = 0,
+            requests = 14,
+            ulat_count = 0,
+            ulat_total = 0,
           }
         }
 
@@ -834,10 +830,10 @@ dao_helpers.for_each_dao(function(kong_conf)
           {cons_id, service, route, "200", now - 2, 1, 1},
           {cons_id, service, route, "200", now - 1, 1, 3},
           {cons_id, service, route, "200", now, 1, 4},
-          {cons_id, service, route, "200", now - 2, 60, 19},
+          {cons_id, service, route, "200", minute - 60, 60, 19},
           {cons_id, service, route, "401", now - 1, 1, 5},
           {cons_id, service, route, "401", now, 1, 7},
-          {cons_id, service, route, "401", now - 2, 60, 20},
+          {cons_id, service, route, "401", minute - 60, 60, 20},
           {cons_id, service, route, "401", minute, 60, 24},
         }
 
@@ -900,7 +896,7 @@ dao_helpers.for_each_dao(function(kong_conf)
           },
           {
             node_id = "cluster",
-            at          = now - 2,
+            at          = minute - 60,
             count       = 39,
           },
         }
@@ -908,6 +904,27 @@ dao_helpers.for_each_dao(function(kong_conf)
         table.sort(results, function(a,b)
           return a.count < b.count
         end)
+
+        assert.same(expected, results)
+      end)
+
+
+      it("takes an optional start_ts", function()
+        local opts = {
+          consumer_id = cons_id,
+          duration    = 60,
+          start_ts    = minute,
+        }
+
+        local results, _ = strategy:select_consumer_stats(opts)
+
+        local expected = {
+          {
+            node_id = "cluster",
+            at          = minute,
+            count       = 24,
+          },
+        }
 
         assert.same(expected, results)
       end)
@@ -1306,6 +1323,39 @@ dao_helpers.for_each_dao(function(kong_conf)
             at          = start_minute,
             count       = 4,
           },
+          {
+            node_id     = "cluster",
+            code_class  = 4,
+            at          = start_minute + 60,
+            count       = 7,
+          },
+          {
+            node_id     = "cluster",
+            code_class  = 5,
+            at          = start_minute + 60,
+            count       = 19,
+          },
+        }
+
+        table.sort(results, function(a,b)
+          return a.count < b.count
+        end)
+
+        assert.same(expected, results)
+      end)
+
+
+      it("takes an optional start_ts", function()
+        local opts = {
+          duration    = 60,
+          level       = "cluster",
+          entity_type = "cluster",
+          start_ts    = start_minute + 39,
+        }
+
+        local results, _ = strategy:select_status_codes(opts)
+
+        local expected = {
           {
             node_id     = "cluster",
             code_class  = 4,
@@ -1896,6 +1946,23 @@ dao_helpers.for_each_dao(function(kong_conf)
         local res, _ = strategy:select_node_meta({})
 
         assert.same({}, res)
+      end)
+    end)
+
+
+    describe(":interval_width", function()
+      it("returns the right size, in seconds", function()
+        local width = strategy:interval_width("seconds")
+        assert.same(1, width)
+
+        width = strategy:interval_width("minutes")
+        assert.same(60, width)
+      end)
+
+      it("returns nil if requested interval is unknown", function()
+        local width, err = strategy:interval_width("foo")
+        assert.is_nil(width)
+        assert.same("interval must be 'seconds' or 'minutes'", err)
       end)
     end)
   end)

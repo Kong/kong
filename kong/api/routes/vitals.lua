@@ -15,7 +15,11 @@ return {
   },
   ["/vitals/cluster"] = {
     GET = function(self, dao, helpers)
-      local cluster_stats, err = singletons.vitals:get_stats(self.params.interval, "cluster", nil)
+      local cluster_stats, err = singletons.vitals:get_stats(
+          self.params.interval,
+          "cluster",
+          nil,
+          self.params.start_ts)
 
       if err then
         if err:find("Invalid query params", nil, true) then
@@ -33,8 +37,9 @@ return {
     GET = function(self, dao, helpers)
       local opts = {
         duration = self.params.interval,
-        level      = "cluster",
-        entity_type = "cluster"
+        start_ts = self.params.start_ts,
+        level = "cluster",
+        entity_type = "cluster",
       }
 
       local status_codes, err = singletons.vitals:get_status_codes(opts)
@@ -53,7 +58,12 @@ return {
   },
   ["/vitals/nodes/"] = {
     GET = function(self, dao, helpers)
-      local all_node_stats, err = singletons.vitals:get_stats(self.params.interval, "node", nil)
+      local all_node_stats, err = singletons.vitals:get_stats(
+          self.params.interval,
+          "node",
+          nil,
+          self.params.start_ts
+      )
 
       if err then
         if err:find("Invalid query params", nil, true) then
@@ -69,7 +79,12 @@ return {
   },
   ["/vitals/nodes/:node_id"] = {
     GET = function(self, dao, helpers)
-      local requested_node_stats, err = singletons.vitals:get_stats(self.params.interval, "node", self.params.node_id)
+      local requested_node_stats, err = singletons.vitals:get_stats(
+          self.params.interval,
+          "node",
+          self.params.node_id,
+          self.params.start_ts
+      )
 
       if err then
         if err:find("Invalid query params: invalid node_id") or err:find("node does not exist") then
@@ -92,16 +107,18 @@ return {
       local opts = {
         consumer_id = self.consumer.id,
         duration    = self.params.interval,
-        level       = "cluster"
+        start_ts    = self.params.start_ts,
+        level       = "cluster",
       }
 
       local cluster_stats, err = singletons.vitals:get_consumer_stats(opts)
 
       if err then
         if err:find("Invalid query params", nil, true) then
-          return helpers.responses.send_HTTP_BAD_REQUEST("Invalid query params: interval must be 'minutes' or 'seconds'")
+          return helpers.responses.send_HTTP_BAD_REQUEST(err)
 
         else
+          -- something went wrong in the arguments we set, not user-entered
           return helpers.yield_error(err)
         end
       end
@@ -124,6 +141,7 @@ return {
       local opts = {
         entity_type = "service",
         duration    = self.params.interval,
+        start_ts    = self.params.start_ts,
         entity_id   = self.params.service_id,
         level       = "cluster",
       }
@@ -156,6 +174,7 @@ return {
       local opts = {
         entity_type = "route",
         duration    = self.params.interval,
+        start_ts    = self.params.start_ts,
         entity_id   = self.params.route_id,
         level       = "cluster",
       }
@@ -181,6 +200,7 @@ return {
       local opts = {
         entity_type = "consumer",
         duration    = self.params.interval,
+        start_ts    = self.params.start_ts,
         entity_id   = self.consumer.id,
         level       = "cluster",
       }
@@ -189,8 +209,7 @@ return {
 
       if err then
         if err:find("Invalid query params", nil, true) then
-          return helpers.responses.send_HTTP_BAD_REQUEST("Invalid query params: interval must be 'minutes' or 'seconds'")
-
+          return helpers.responses.send_HTTP_BAD_REQUEST(err)
         else
           return helpers.yield_error(err)
         end
@@ -207,6 +226,7 @@ return {
       local opts = {
         entity_type = "consumer_route",
         duration    = self.params.interval,
+        start_ts    = self.params.start_ts,
         consumer_id   = self.consumer.id,
         entity_id   = self.consumer.id,
         level       = "cluster",
@@ -218,8 +238,7 @@ return {
 
       if err then
         if err:find("Invalid query params", nil, true) then
-          return helpers.responses.send_HTTP_BAD_REQUEST("Invalid query params: interval must be 'minutes' or 'seconds'")
-
+          return helpers.responses.send_HTTP_BAD_REQUEST(err)
         else
           return helpers.yield_error(err)
         end

@@ -349,6 +349,7 @@ dao_helpers.for_each_dao(function(kong_conf)
               meta = {
                 level = "cluster",
                 interval = "seconds",
+                interval_width = 1,
                 earliest_ts = minute_start_at,
                 latest_ts = minute_start_at + 2,
                 stat_labels = stat_labels,
@@ -380,6 +381,7 @@ dao_helpers.for_each_dao(function(kong_conf)
               meta = {
                 level = "cluster",
                 interval = "minutes",
+                interval_width = 60,
                 earliest_ts = minute_start_at,
                 latest_ts = minute_start_at,
                 stat_labels = stat_labels,
@@ -394,7 +396,7 @@ dao_helpers.for_each_dao(function(kong_conf)
             assert.same(expected, json)
           end)
 
-          it("returns a 400 if called with invalid query param", function()
+          it("returns a 400 if called with invalid interval", function()
             local res = assert(client:send {
               methd = "GET",
               path = "/vitals/cluster",
@@ -406,6 +408,21 @@ dao_helpers.for_each_dao(function(kong_conf)
             local json = cjson.decode(res)
 
             assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+          end)
+
+          it("returns a 400 if called with invalid start_ts", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/cluster",
+              query = {
+                interval = "minutes",
+                start_ts = "foo",
+              }
+            })
+            res = assert.res_status(400, res)
+            local json = cjson.decode(res)
+
+            assert.same("Invalid query params: start_ts must be a number", json.message)
           end)
         end)
       end)
@@ -512,7 +529,7 @@ dao_helpers.for_each_dao(function(kong_conf)
             assert.same(expected, json)
           end)
 
-          it("returns a 400 if called with invalid query param", function()
+          it("returns a 400 if called with invalid interval", function()
             local res = assert(client:send {
               methd = "GET",
               path = "/vitals/cluster/status_codes",
@@ -524,6 +541,21 @@ dao_helpers.for_each_dao(function(kong_conf)
             local json = cjson.decode(res)
 
             assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+          end)
+
+          it("returns a 400 if called with invalid start_ts", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/cluster/status_codes",
+              query = {
+                interval = "minutes",
+                start_ts = "foo",
+              }
+            })
+            res = assert.res_status(400, res)
+            local json = cjson.decode(res)
+
+            assert.same("Invalid query params: start_ts must be a number", json.message)
           end)
         end)
       end)
@@ -653,7 +685,7 @@ dao_helpers.for_each_dao(function(kong_conf)
             assert.same(expected, json)
           end)
 
-          it("returns a 400 if called with invalid query param", function()
+          it("returns a 400 if called with invalid interval", function()
             local res = assert(client:send {
               methd = "GET",
               path = "/vitals/status_codes/by_service",
@@ -684,7 +716,23 @@ dao_helpers.for_each_dao(function(kong_conf)
             assert.same("Invalid query params: service_id is invalid", json.message)
           end)
 
-          it("returns a 404 if called with a service_id that is not an actual id for a service", function()
+          it("returns a 400 if called with invalid start_ts", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/status_codes/by_service",
+              query = {
+                interval   = "seconds",
+                service_id = service_id,
+                start_ts   = "foo",
+              }
+            })
+            res = assert.res_status(400, res)
+            local json = cjson.decode(res)
+
+            assert.same("Invalid query params: start_ts must be a number", json.message)
+          end)
+
+          it("returns a 404 if called with a service_id that doesn't exist", function()
             local service_id = "20426633-55dc-4050-89ef-2382c95a611e"
             local res = assert(client:send {
               methd = "GET",
@@ -817,7 +865,7 @@ dao_helpers.for_each_dao(function(kong_conf)
             assert.same(expected, json)
           end)
 
-          it("returns a 400 if called with invalid query param", function()
+          it("returns a 400 if called with invalid interval", function()
             local res = assert(client:send {
               methd = "GET",
               path = "/vitals/status_codes/by_route",
@@ -860,6 +908,22 @@ dao_helpers.for_each_dao(function(kong_conf)
             local json = cjson.decode(res)
 
             assert.same("Invalid query params: route_id is invalid", json.message)
+          end)
+
+          it("returns a 400 if called with invalid start_ts", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/status_codes/by_route",
+              query = {
+                interval = "seconds",
+                route_id = route_id,
+                start_ts = "foo",
+              }
+            })
+            res = assert.res_status(400, res)
+            local json = cjson.decode(res)
+
+            assert.same("Invalid query params: start_ts must be a number", json.message)
           end)
 
           it("returns a 404 if called with a route_id that is not an actual id for a route", function()
@@ -1003,7 +1067,7 @@ dao_helpers.for_each_dao(function(kong_conf)
             assert.same(expected, json)
           end)
 
-          it("returns a 400 if called with invalid query param", function()
+          it("returns a 400 if called with invalid interval", function()
             local consumer = assert(dao.consumers:insert {
               username  = "bob",
               custom_id = "1234"
@@ -1021,6 +1085,27 @@ dao_helpers.for_each_dao(function(kong_conf)
             local json = cjson.decode(res)
 
             assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+          end)
+
+          it("returns a 400 if called with invalid start_ts", function()
+            local consumer = assert(dao.consumers:insert {
+              username  = "bob",
+              custom_id = "1234"
+            })
+
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/status_codes/by_consumer",
+              query = {
+                interval = "seconds",
+                consumer_id = consumer.id,
+                start_ts = "foo",
+              }
+            })
+            res = assert.res_status(400, res)
+            local json = cjson.decode(res)
+
+            assert.same("Invalid query params: start_ts must be a number", json.message)
           end)
 
           it("returns a 404 if called with invalid consumer_id", function()
@@ -1199,7 +1284,7 @@ dao_helpers.for_each_dao(function(kong_conf)
             assert.same(expected, json)
           end)
 
-          it("returns a 400 if called with invalid query param", function()
+          it("returns a 400 if called with invalid interval", function()
             local consumer = assert(dao.consumers:insert {
               username  = "bob",
               custom_id = "1234"
@@ -1217,6 +1302,27 @@ dao_helpers.for_each_dao(function(kong_conf)
             local json = cjson.decode(res)
 
             assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+          end)
+
+          it("returns a 400 if called with invalid start_ts", function()
+            local consumer = assert(dao.consumers:insert {
+              username  = "bob",
+              custom_id = "1234"
+            })
+
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/status_codes/by_consumer_and_route",
+              query = {
+                interval = "seconds",
+                consumer_id = consumer.id,
+                start_ts = "foo",
+              }
+            })
+            res = assert.res_status(400, res)
+            local json = cjson.decode(res)
+
+            assert.same("Invalid query params: start_ts must be a number", json.message)
           end)
 
           it("returns a 404 if called with invalid consumer_id", function()
@@ -1344,7 +1450,7 @@ dao_helpers.for_each_dao(function(kong_conf)
             assert.same(expected, json)
           end)
 
-          it("returns a 400 if called with invalid query param", function()
+          it("returns a 400 if called with invalid interval", function()
             local res = assert(client:send {
               methd = "GET",
               path = "/vitals/nodes",
@@ -1356,6 +1462,21 @@ dao_helpers.for_each_dao(function(kong_conf)
             local json = cjson.decode(res)
 
             assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+          end)
+
+          it("returns a 400 if called with invalid start_ts", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/nodes",
+              query = {
+                interval = "seconds",
+                start_ts = "foo",
+              }
+            })
+            res = assert.res_status(400, res)
+            local json = cjson.decode(res)
+
+            assert.same("Invalid query params: start_ts must be a number", json.message)
           end)
         end)
       end)
@@ -1377,6 +1498,7 @@ dao_helpers.for_each_dao(function(kong_conf)
               meta = {
                 level = "node",
                 interval = "seconds",
+                interval_width = 1,
                 earliest_ts = minute_start_at,
                 latest_ts = minute_start_at + 2,
                 stat_labels = stat_labels,
@@ -1416,6 +1538,7 @@ dao_helpers.for_each_dao(function(kong_conf)
               meta = {
                 level = "node",
                 interval = "minutes",
+                interval_width = 60,
                 earliest_ts = minute_start_at,
                 latest_ts = minute_start_at,
                 stat_labels = stat_labels,
@@ -1443,6 +1566,7 @@ dao_helpers.for_each_dao(function(kong_conf)
               meta = {
                 level = "node",
                 interval = "minutes",
+                interval_width = 60,
               },
               stats = {},
             }
@@ -1450,7 +1574,7 @@ dao_helpers.for_each_dao(function(kong_conf)
             assert.same(expected, json)
           end)
 
-          it("returns a 400 if called with invalid query param", function()
+          it("returns a 400 if called with invalid interval", function()
             local res = assert(client:send {
               methd = "GET",
               path = "/vitals/nodes/" .. node_1,
@@ -1462,6 +1586,21 @@ dao_helpers.for_each_dao(function(kong_conf)
             local json = cjson.decode(res)
 
             assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+          end)
+
+          it("returns a 400 if called with invalid start_ts", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/nodes/" .. node_1,
+              query = {
+                interval = "seconds",
+                start_ts = "foo",
+              }
+            })
+            res = assert.res_status(400, res)
+            local json = cjson.decode(res)
+
+            assert.same("Invalid query params: start_ts must be a number", json.message)
           end)
 
           it("returns a 404 if the node_id is not valid", function()
@@ -1567,7 +1706,7 @@ dao_helpers.for_each_dao(function(kong_conf)
             assert.same("Not found", json.message)
           end)
 
-          it("returns a 400 if called with invalid query param", function()
+          it("returns a 400 if called with invalid interval", function()
             local consumer = assert(dao.consumers:insert {
               username = "bob",
               custom_id = "1234"
@@ -1583,7 +1722,27 @@ dao_helpers.for_each_dao(function(kong_conf)
             res = assert.res_status(400, res)
             local json = cjson.decode(res)
 
-            assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+            assert.same("Invalid query params: consumer_id, duration, and level are required", json.message)
+          end)
+
+          it("returns a 400 if called with invalid start_ts", function()
+            local consumer = assert(dao.consumers:insert {
+              username = "bob",
+              custom_id = "1234"
+            })
+
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/consumers/" .. consumer.id .. "/cluster",
+              query = {
+                interval = "seconds",
+                start_ts = "foo"
+              }
+            })
+            res = assert.res_status(400, res)
+            local json = cjson.decode(res)
+
+            assert.same("Invalid query params: start_ts must be a number", json.message)
           end)
         end)
       end)
