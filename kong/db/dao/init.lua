@@ -148,11 +148,13 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
+        entity_to_upsert[name] = unique_value
         local ok, errors = self.schema:validate_upsert(entity_to_upsert)
         if not ok then
           local err_t = self.errors:schema_violation(errors)
           return nil, tostring(err_t), err_t
         end
+        entity_to_upsert[name] = nil
 
         local row, err_t = self.strategy:upsert_by_field(name, unique_value,
           entity_to_upsert)
