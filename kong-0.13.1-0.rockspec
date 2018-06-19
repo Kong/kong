@@ -11,6 +11,7 @@ description = {
   license = "MIT"
 }
 dependencies = {
+  "inspect == 3.1.1",
   "luasec == 0.7alpha-2",
   "luasocket == 3.0-rc1",
   "penlight == 1.5.4",
@@ -45,6 +46,7 @@ build = {
     ["kong"] = "kong/init.lua",
     ["kong.meta"] = "kong/meta.lua",
     ["kong.cache"] = "kong/cache.lua",
+    ["kong.global"] = "kong/global.lua",
     ["kong.router"] = "kong/router.lua",
     ["kong.api_router"] = "kong/api_router.lua",
     ["kong.reports"] = "kong/reports.lua",
@@ -152,6 +154,20 @@ build = {
     ["kong.db.strategies.cassandra.services"] = "kong/db/strategies/cassandra/services.lua",
     ["kong.db.strategies.postgres"] = "kong/db/strategies/postgres/init.lua",
     ["kong.db.strategies.postgres.connector"] = "kong/db/strategies/postgres/connector.lua",
+
+    ["kong.pdk"] = "kong/pdk/init.lua",
+    ["kong.pdk.private.checks"] = "kong/pdk/private/checks.lua",
+    ["kong.pdk.private.phases"] = "kong/pdk/private/phases.lua",
+    ["kong.pdk.client"] = "kong/pdk/client.lua",
+    ["kong.pdk.ctx"] = "kong/pdk/ctx.lua",
+    ["kong.pdk.ip"] = "kong/pdk/ip.lua",
+    ["kong.pdk.log"] = "kong/pdk/log.lua",
+    ["kong.pdk.service"] = "kong/pdk/service.lua",
+    ["kong.pdk.service.request"] = "kong/pdk/service/request.lua",
+    ["kong.pdk.service.response"] = "kong/pdk/service/response.lua",
+    ["kong.pdk.request"] = "kong/pdk/request.lua",
+    ["kong.pdk.response"] = "kong/pdk/response.lua",
+    ["kong.pdk.table"] = "kong/pdk/table.lua",
 
     ["kong.plugins.base_plugin"] = "kong/plugins/base_plugin.lua",
 

@@ -114,7 +114,7 @@ for _, strategy in helpers.each_strategy() do
       plugins:insert({
         name     = "ctx-checker",
         route_id = routes[1].id,
-        config   = { ctx_field = "authenticated_jwt_token" },
+        config   = { ctx_check_field = "authenticated_jwt_token" },
       })
 
       jwt_secret        = bp.jwt_secrets:insert { consumer_id = consumer1.id }
@@ -612,8 +612,9 @@ for _, strategy in helpers.each_strategy() do
             ["Host"]          = "jwt1.com",
           }
         })
-        local body = cjson.decode(assert.res_status(200, res))
-        assert.equal(body.headers["ctx-checker-plugin-field"], jwt)
+        assert.res_status(200, res)
+        local header = assert.header("ctx-checker-authenticated-jwt-token", res)
+        assert.equal(jwt, header)
       end)
     end)
 
