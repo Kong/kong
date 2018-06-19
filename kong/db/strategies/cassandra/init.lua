@@ -782,10 +782,14 @@ do
             end
 
             if row then
-              -- already exists
-              return nil, self.errors:unique_violation {
-                [field_name] = entity[field_name],
-              }
+              for _, pk_field_name in self.each_pk_field() do
+                if primary_key[pk_field_name] ~= row[pk_field_name] then
+                  -- already exists
+                  return nil, self.errors:unique_violation {
+                    [field_name] = entity[field_name],
+                  }
+                end
+              end
             end
           end
 

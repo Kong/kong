@@ -340,6 +340,28 @@ describe("Admin API (" .. strategy .. "): ", function()
             assert.same(json, in_db)
           end
         end)
+        it_content_types("updates by username and custom_id with previous values", function(content_type)
+          return function()
+            local res = assert(client:send {
+              method = "PATCH",
+              path = "/consumers/" .. consumer.username,
+              body = {
+                username = "bob",
+                custom_id = "wxyz",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.equal("bob", json.username)
+            assert.equal("wxyz", json.custom_id)
+            assert.equal(consumer.id, json.id)
+
+            local in_db = assert(db.consumers:select {id = consumer.id})
+            assert.same(json, in_db)
+          end
+        end)
+
         describe("errors", function()
           it_content_types("returns 404 if not found", function(content_type)
             return function()
