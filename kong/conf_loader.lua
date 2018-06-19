@@ -473,7 +473,7 @@ local function parse_nginx_directives(dyn_key_prefix, conf)
           v = string.format("%q", v)
         end
 
-        directives[directive] = v
+        table.insert(directives, { name = directive, value = v })
       end
     end
   end
@@ -605,7 +605,10 @@ local function load(path, custom_conf)
 
   -- nginx directives from conf
   for directives_block, dyn_key_prefix in pairs(DYNAMIC_KEY_PREFIXES) do
-    conf[directives_block] = parse_nginx_directives(dyn_key_prefix, conf)
+    local directives = parse_nginx_directives(dyn_key_prefix, conf)
+    conf[directives_block] = setmetatable(directives, {
+      __tostring = function() return "" end,
+    })
   end
 
   -- print alphabetically-sorted values
@@ -665,19 +668,24 @@ local function load(path, custom_conf)
   -- temporary workaround: inject an shm for prometheus plugin if needed
   -- TODO: allow plugins to declare shm dependencies that are automatically
   -- injected
-  if conf.loaded_plugins["prometheus"] then local shm_value =
-    conf["nginx_http_directives"]["lua_shared_dict"]
+  if conf.loaded_plugins["prometheus"] then
+    local http_directives = conf["nginx_http_directives"]
+    local found = false
 
-    if shm_value then
-      if not string.match(shm_value, "prometheus_metrics") then
-        shm_value = shm_value .. "; lua_shared_dict prometheus_metrics 5m"
+    for _, directive in pairs(http_directives) do
+      if directive.name == "lua_shared_dict"
+         and string.find(directive.value, "prometheus_metrics", nil, true) then
+         found = true
+         break
       end
-
-    else
-      shm_value = "prometheus_metrics 5m"
     end
 
-    conf["nginx_http_directives"]["lua_shared_dict"] = shm_value
+    if not found then
+      table.insert(http_directives, {
+        name  = "lua_shared_dict",
+        value = "prometheus_metrics 5m",
+      })
+    end
   end
 
   -- nginx user directive
