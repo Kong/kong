@@ -255,7 +255,7 @@ GET /t
 GET /t
 --- error_code: 456
 --- response_headers_like
-Server: kong/\d+\.\d+\.\d+
+Server: kong/\d+\.\d+\.\d+(rc\d?)?
 --- response_body chop
 
 --- no_error_log
@@ -279,7 +279,7 @@ Server: kong/\d+\.\d+\.\d+
 GET /t
 --- error_code: 204
 --- response_headers_like
-Server: kong/\d+\.\d+\.\d+
+Server: kong/\d+\.\d+\.\d+(rc\d?)?
 --- response_body chop
 
 --- no_error_log
@@ -392,7 +392,7 @@ invalid header value in array "foo": got function, expected string
 GET /t
 --- error_code: 200
 --- response_headers_like
-Server: kong/\d+\.\d+\.\d+
+Server: kong/\d+\.\d+\.\d+(rc\d?)?
 Content-Type: text/plain
 --- response_body chop
 hello
@@ -417,7 +417,7 @@ hello
 GET /t
 --- error_code: 200
 --- response_headers_like
-Server: kong/\d+\.\d+\.\d+
+Server: kong/\d+\.\d+\.\d+(rc\d?)?
 Content-Type: text/test
 --- response_body chop
 hello
@@ -442,7 +442,7 @@ hello
 GET /t
 --- error_code: 200
 --- response_headers_like
-Server: kong/\d+\.\d+\.\d+
+Server: kong/\d+\.\d+\.\d+(rc\d?)?
 Content-Type: application/json; charset=utf-8
 --- response_body chop
 {"message":"hello"}
@@ -469,7 +469,7 @@ Content-Type: application/json; charset=utf-8
 GET /t
 --- error_code: 200
 --- response_headers_like
-Server: kong/\d+\.\d+\.\d+
+Server: kong/\d+\.\d+\.\d+(rc\d?)?
 Content-Type: application/json; charset=utf-8
 --- response_body chop
 {"message":"hello"}
@@ -496,7 +496,7 @@ Content-Type: application/json; charset=utf-8
 GET /t
 --- error_code: 200
 --- response_headers_like
-Server: kong/\d+\.\d+\.\d+
+Server: kong/\d+\.\d+\.\d+(rc\d?)?
 Content-Type: text/plain
 Content-Length: 0
 --- response_body chop
@@ -525,7 +525,7 @@ Content-Length: 0
 GET /t
 --- error_code: 200
 --- response_headers_like
-Server: kong/\d+\.\d+\.\d+
+Server: kong/\d+\.\d+\.\d+(rc\d?)?
 Content-Type: text/plain
 Content-Length: 0
 --- response_body chop
@@ -554,7 +554,7 @@ Content-Length: 0
 GET /t
 --- error_code: 200
 --- response_headers_like
-Server: kong/\d+\.\d+\.\d+
+Server: kong/\d+\.\d+\.\d+(rc\d?)?
 Content-Type: text/plain
 Content-Length: 1
 --- response_body chop
@@ -583,7 +583,7 @@ a
 GET /t
 --- error_code: 200
 --- response_headers_like
-Server: kong/\d+\.\d+\.\d+
+Server: kong/\d+\.\d+\.\d+(rc\d?)?
 Content-Type: application/json; charset=utf-8
 Content-Length: 19
 --- response_body chop
