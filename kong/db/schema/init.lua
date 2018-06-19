@@ -71,6 +71,7 @@ local validation_errors = {
   SCHEMA_NO_DEFINITION      = "expected a definition table",
   SCHEMA_NO_FIELDS          = "error in schema definition: no 'fields' table",
   SCHEMA_MISSING_ATTRIBUTE  = "error in schema definition: missing attribute",
+  SCHEMA_BAD_REFERENCE      = "schema refers to an invalid foreign entity: %s",
   SCHEMA_TYPE               = "invalid type: %s",
   -- primary key errors
   NOT_PK                    = "not a primary key",
@@ -858,8 +859,13 @@ function Schema:validate_primary_key(pk, ignore_others)
     pk_set[k] = true
     local field = self.fields[k]
     local v = pk[k]
+
     if not v then
       errors[k] = validation_errors.MISSING_PK
+
+    elseif (field.required or field.auto) and v == null then
+      errors[k] = validation_errors.REQUIRED
+
     else
       local _
       _, errors[k] = self:validate_field(field, v)
@@ -961,10 +967,14 @@ function Schema:process_auto_fields(input, context)
     if field.auto then
       if field.uuid and context == "insert" then
         output[key] = utils.uuid()
+      elseif field.uuid and context == "upsert" and output[key] == nil then
+        output[key] = utils.uuid()
 
-      elseif (key == "created_at" and (context == "insert")) or
-             (key == "updated_at" and (context == "update"   or
-                                       context == "insert")) then
+      elseif (key == "created_at" and (context == "insert" or
+                                       context == "upsert")) or
+             (key == "updated_at" and (context == "insert" or
+                                       context == "upsert" or
+                                       context == "update")) then
         output[key] = now
       end
     end
@@ -1084,6 +1094,19 @@ function Schema:validate_update(input)
   validation_errors.AT_LEAST_ONE_OF = aloo
 
   return ok, err, err_t
+end
+
+
+--- Validate a table against the schema, ensuring that the entity is complete.
+-- It validates fields for their attributes,
+-- and runs the global entity checks against the entire table.
+-- @param input The input table.
+-- @return True on success.
+-- On failure, it returns nil and a table containing all errors,
+-- indexed numerically for general errors, and by field name for field errors.
+-- In all cases, the input table is untouched.
+function Schema:validate_upsert(input)
+  return self:validate(input, true)
 end
 
 
@@ -1224,8 +1247,11 @@ function Schema.new(definition)
   for key, field in self:each_field() do
     self.fields[key] = field
     if field.type == "foreign" then
-      -- TODO: add error handling
-      field.schema = get_foreign_schema_for_field(field)
+      local err
+      field.schema, err = get_foreign_schema_for_field(field)
+      if not field.schema then
+        return nil, err
+      end
     end
   end
 

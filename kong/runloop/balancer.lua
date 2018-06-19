@@ -1,5 +1,6 @@
 local pl_tablex = require "pl.tablex"
 local singletons = require "kong.singletons"
+local utils = require "kong.tools.utils"
 
 -- due to startup/require order, cannot use the ones from 'singletons' here
 local dns_client = require "resty.dns.client"
@@ -281,6 +282,13 @@ do
           log(ERR, "[healthchecks] failed reporting status: ", err)
         end
       end
+
+      balancer.report_timeout = function(ip, port)
+        local _, err = hc:report_timeout(ip, port, "passive")
+        if err then
+          log(ERR, "[healthchecks] failed reporting status: ", err)
+        end
+      end
     end
 
     ----------------------------------------------------------------------------
@@ -416,8 +424,9 @@ local function check_target_history(upstream, balancer)
   -- compare balancer history with db-loaded history
   local last_equal_index = 0  -- last index where history is the same
   for i, entry in ipairs(old_history) do
-    if entry.order ~= (new_history[i] or EMPTY_T).order then
-      last_equal_index = i - 1
+    if new_history[i] and entry.order == new_history[i].order then
+      last_equal_index = i
+    else
       break
     end
   end
@@ -656,6 +665,22 @@ local create_hash = function(upstream)
       if type(identifier) == "table" then
         identifier = table_concat(identifier)
       end
+
+    elseif hash_on == "cookie" then
+      identifier = ngx.var["cookie_" .. upstream.hash_on_cookie]
+
+      -- If the cookie doesn't exist, create one and store in `ctx`
+      -- to be added to the "Set-Cookie" header in the response
+      if not identifier then
+        identifier = utils.uuid()
+
+        ctx.balancer_data.hash_cookie = {
+          key = upstream.hash_on_cookie,
+          value = identifier,
+          path = upstream.hash_on_cookie_path
+        }
+      end
+
     end
 
     if identifier then

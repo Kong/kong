@@ -21,7 +21,7 @@ for _, strategy in helpers.each_strategy() do
       }
 
       bp.routes:insert {
-        methods = { "GET" },
+        methods = { "GET", "HEAD" },
         service = service,
       }
 
@@ -62,6 +62,16 @@ for _, strategy in helpers.each_strategy() do
                             "</body></html>"
       local html_message = string.format(html_template, RESPONSE_MESSAGE)
       assert.equal(html_message, body)
+    end)
+
+    it("HEAD request does not return a body", function()
+      local res = assert(proxy_client:send {
+        method  = "HEAD",
+        path    = "/",
+      })
+
+      local body = assert.res_status(RESPONSE_CODE, res)
+      assert.equal("", body)
     end)
 
     describe("", function()

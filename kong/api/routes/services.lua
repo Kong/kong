@@ -20,7 +20,11 @@ return {
   },
 
   ["/services/:services"] = {
-    PATCH  = function(self, _, _, parent)
+    PUT = function(self, _, _, parent)
+      api_helpers.resolve_url_params(self)
+      return parent()
+    end,
+    PATCH = function(self, _, _, parent)
       api_helpers.resolve_url_params(self)
       return parent()
     end,

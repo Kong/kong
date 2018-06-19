@@ -1,4 +1,6 @@
+local meta = require "kong.meta"
 local singletons = require "kong.singletons"
+local constants = require "kong.constants"
 
 local find = string.find
 local format = string.format
@@ -30,7 +32,7 @@ local BODIES = {
   default = "The upstream server responded with %d"
 }
 
-local SERVER_HEADER = _KONG._NAME .. "/" .. _KONG._VERSION
+local SERVER_HEADER = meta._SERVER_TOKENS
 
 return function(ngx)
   local accept_header = ngx.req.get_headers()["accept"]
@@ -57,8 +59,8 @@ return function(ngx)
   local status = ngx.status
   message = BODIES["s" .. status] and BODIES["s" .. status] or format(BODIES.default, status)
 
-  if singletons.configuration.server_tokens then
-    ngx.header["Server"] = SERVER_HEADER
+  if singletons.configuration.enabled_headers[constants.HEADERS.SERVER] then
+    ngx.header[constants.HEADERS.SERVER] = SERVER_HEADER
   end
 
   ngx.header["Content-Type"] = content_type

@@ -4,12 +4,12 @@ local UDP_PORT = 20000
 describe("Plugin: statsd (log)", function()
   local client
   setup(function()
-    local dao = select(3, helpers.get_db_utils())
+    local bp, _, dao = helpers.get_db_utils()
 
-    local consumer1 = assert(dao.consumers:insert {
+    local consumer1 = bp.consumers:insert {
       username  = "bob",
       custom_id = "robert",
-    })
+    }
     assert(dao.keyauth_credentials:insert {
       key         = "kong",
       consumer_id = consumer1.id,

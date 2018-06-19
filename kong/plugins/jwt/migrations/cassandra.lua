@@ -68,4 +68,22 @@ return {
     end,
     down = function(_, _, dao) end  -- not implemented
   },
+  {
+    name = "2018-03-15-150000_jwt_maximum_expiration",
+    up = function(_, _, dao)
+      for ok, config, update in plugin_config_iterator(dao, "jwt") do
+        if not ok then
+          return config
+        end
+        if config.maximum_expiration == nil then
+          config.maximum_expiration = 0
+          local _, err = update(config)
+          if err then
+            return err
+          end
+        end
+      end
+    end,
+    down = function(_, _, dao) end  -- not implemented
+  },
 }

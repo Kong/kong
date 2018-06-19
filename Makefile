@@ -53,3 +53,11 @@ old-test-plugins:
 
 old-test-all:
 	@$(TEST_CMD) spec-old-api/
+
+pdk-phase-checks:
+	rm -f t/phase_checks.stats
+	rm -f t/phase_checks.report
+	PDK_PHASE_CHECKS_LUACOV=1 prove -I. t/01*/*/00-phase*.t
+	luacov -c t/phase_checks.luacov
+	grep "ngx\\." t/phase_checks.report
+	grep "check_" t/phase_checks.report

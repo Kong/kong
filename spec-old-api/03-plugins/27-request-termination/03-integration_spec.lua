@@ -5,7 +5,7 @@ describe("Plugin: request-termination (integration)", function()
   local consumer1
 
   setup(function()
-    local dao = select(3, helpers.get_db_utils())
+    local bp, _, dao = helpers.get_db_utils()
 
     assert(dao.apis:insert {
       name         = "api-1",
@@ -15,9 +15,9 @@ describe("Plugin: request-termination (integration)", function()
     assert(dao.plugins:insert {
       name = "key-auth",
     })
-    consumer1 = assert(dao.consumers:insert {
+    consumer1 = bp.consumers:insert {
       username = "bob",
-    })
+    }
     assert(dao.keyauth_credentials:insert {
       key         = "kong",
       consumer_id = consumer1.id,

@@ -1,6 +1,5 @@
-local helpers = require "spec.02-integration.03-dao.helpers"
-local Factory = require "kong.dao.factory"
 local utils = require "kong.tools.utils"
+local helpers = require "spec.helpers"
 
 local api_tbl = {
   name         = "example",
@@ -14,17 +13,19 @@ local plugin_tbl = {
   name = "key-auth"
 }
 
-helpers.for_each_dao(function(kong_config)
-  describe("Model (Constraints) with DB: #" .. kong_config.database, function()
+for _, strategy in helpers.each_strategy() do
+  describe("Model (Constraints) with DB: #" .. strategy, function()
     local plugin_fixture, api_fixture
-    local factory, apis, plugins
+    local apis, plugins
+    local bp, db, dao
     setup(function()
-      factory = assert(Factory.new(kong_config))
-      apis = factory.apis
-      plugins = factory.plugins
-      assert(factory:run_migrations())
+      bp, db, dao = helpers.get_db_utils(strategy)
+      apis = dao.apis
+      plugins = dao.plugins
+      assert(dao:run_migrations())
 
-      factory:truncate_tables()
+      dao:truncate_tables()
+      assert(db:truncate())
     end)
     before_each(function()
       plugin_fixture = utils.shallow_copy(plugin_tbl)
@@ -33,7 +34,8 @@ helpers.for_each_dao(function(kong_config)
       api_fixture = api
     end)
     after_each(function()
-      factory:truncate_tables()
+      dao:truncate_tables()
+      assert(db:truncate())
     end)
 
     -- Check behavior just in case
@@ -81,12 +83,12 @@ helpers.for_each_dao(function(kong_config)
           assert.truthy(err)
           assert.falsy(plugin)
           assert.True(err.unique)
-          assert.matches("[" .. kong_config.database .. " error] " ..
+          assert.matches("[" .. strategy .. " error] " ..
                          "name=already exists with value 'key-auth'",
                          err, nil, true)
         end)
         it("API/Consumer/Plugin", function()
-          local consumer, err = factory.consumers:insert {
+          local consumer, err = bp.consumers:insert {
             username = "bob"
           }
           assert.falsy(err)
@@ -108,7 +110,7 @@ helpers.for_each_dao(function(kong_config)
           assert.truthy(err)
           assert.falsy(plugin)
           assert.True(err.unique)
-          assert.matches("[" .. kong_config.database .. " error] " ..
+          assert.matches("[" .. strategy .. " error] " ..
                          "name=already exists with value 'rate-limiting'",
                          err, nil, true)
         end)
@@ -169,13 +171,14 @@ helpers.for_each_dao(function(kong_config)
         }
         assert.falsy(err)
 
-        consumer_fixture, err = factory.consumers:insert {
+        consumer_fixture, err = bp.consumers:insert {
           username = "bob"
         }
         assert.falsy(err)
       end)
       after_each(function()
-        factory:truncate_tables()
+        dao:truncate_tables()
+        assert(db:truncate())
       end)
 
       it("delete", function()
@@ -209,12 +212,12 @@ helpers.for_each_dao(function(kong_config)
         }
         assert.falsy(err)
 
-        local res, err = factory.consumers:delete(consumer_fixture)
+        local res, err = db.consumers:delete({ id = consumer_fixture.id })
         assert.falsy(err)
-        assert.is_table(res)
+        assert.is_truthy(res)
 
-        local consumer, err = factory.consumers:find(consumer_fixture)
-        assert.falsy(err)
+        local consumer, err = db.consumers:select(consumer_fixture)
+        assert.truthy(err)
         assert.falsy(consumer)
 
         plugin, err = plugins:find(plugin)
@@ -223,4 +226,4 @@ helpers.for_each_dao(function(kong_config)
       end)
     end)
   end) -- describe
-end) -- for each db
+end -- for each db

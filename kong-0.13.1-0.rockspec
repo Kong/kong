@@ -11,7 +11,8 @@ description = {
   license = "MIT"
 }
 dependencies = {
-  "luasec == 0.6",
+  "inspect == 3.1.1",
+  "luasec == 0.7alpha-2",
   "luasocket == 3.0-rc1",
   "penlight == 1.5.4",
   "lua-resty-http == 0.12",
@@ -19,19 +20,25 @@ dependencies = {
   "multipart == 0.5.5",
   "version == 0.2",
   "kong-lapis == 1.6.0.1",
-  "lua-cassandra == 1.2.3",
+  "lua-cassandra == 1.3.0",
   "pgmoon == 1.8.0",
   "luatz == 0.3",
   "lua_system_constants == 0.1.2",
   "lua-resty-iputils == 0.3.0",
-  "luaossl == 20171028",
+  "luaossl == 20180530",
   "luasyslog == 1.0.0",
   "lua_pack == 1.0.5",
-  "lua-resty-dns-client == 2.0.0",
+  "lua-resty-dns-client == 2.1.0",
   "lua-resty-worker-events == 0.3.3",
   "lua-resty-mediador == 0.1.2",
-  "lua-resty-healthcheck == 0.4.0",
-  "lua-resty-mlcache == 2.0.2",
+  "lua-resty-healthcheck == 0.4.2",
+  "lua-resty-cookie == 0.1.0",
+  "lua-resty-mlcache == 2.1.0",
+  -- external Kong plugins
+  "kong-plugin-azure-functions == 0.1.1",
+  "kong-plugin-zipkin == 0.0.1",
+  "kong-plugin-serverless-functions == 0.1.0",
+  "kong-prometheus-plugin == 0.1.0",
 }
 build = {
   type = "builtin",
@@ -39,6 +46,7 @@ build = {
     ["kong"] = "kong/init.lua",
     ["kong.meta"] = "kong/meta.lua",
     ["kong.cache"] = "kong/cache.lua",
+    ["kong.global"] = "kong/global.lua",
     ["kong.router"] = "kong/router.lua",
     ["kong.api_router"] = "kong/api_router.lua",
     ["kong.reports"] = "kong/reports.lua",
@@ -56,6 +64,7 @@ build = {
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
     ["kong.templates.kong_defaults"] = "kong/templates/kong_defaults.lua",
 
+    ["kong.resty.ctx"] = "kong/resty/ctx.lua",
     ["kong.vendor.classic"] = "kong/vendor/classic.lua",
 
     ["kong.cmd"] = "kong/cmd/init.lua",
@@ -72,6 +81,7 @@ build = {
     ["kong.cmd.version"] = "kong/cmd/version.lua",
     ["kong.cmd.utils.log"] = "kong/cmd/utils/log.lua",
     ["kong.cmd.utils.kill"] = "kong/cmd/utils/kill.lua",
+    ["kong.cmd.utils.env"] = "kong/cmd/utils/env.lua",
     ["kong.cmd.utils.nginx_signals"] = "kong/cmd/utils/nginx_signals.lua",
     ["kong.cmd.utils.prefix_handler"] = "kong/cmd/utils/prefix_handler.lua",
 
@@ -108,12 +118,9 @@ build = {
     ["kong.dao.errors"] = "kong/dao/errors.lua",
     ["kong.dao.schemas_validation"] = "kong/dao/schemas_validation.lua",
     ["kong.dao.schemas.apis"] = "kong/dao/schemas/apis.lua",
-    ["kong.dao.schemas.consumers"] = "kong/dao/schemas/consumers.lua",
     ["kong.dao.schemas.plugins"] = "kong/dao/schemas/plugins.lua",
     ["kong.dao.schemas.upstreams"] = "kong/dao/schemas/upstreams.lua",
     ["kong.dao.schemas.targets"] = "kong/dao/schemas/targets.lua",
-    ["kong.dao.schemas.ssl_certificates"] = "kong/dao/schemas/ssl_certificates.lua",
-    ["kong.dao.schemas.ssl_servers_names"] = "kong/dao/schemas/ssl_servers_names.lua",
     ["kong.dao.db"] = "kong/dao/db/init.lua",
     ["kong.dao.db.cassandra"] = "kong/dao/db/cassandra.lua",
     ["kong.dao.db.postgres"] = "kong/dao/db/postgres.lua",
@@ -127,9 +134,15 @@ build = {
     ["kong.db"] = "kong/db/init.lua",
     ["kong.db.errors"] = "kong/db/errors.lua",
     ["kong.db.dao"] = "kong/db/dao/init.lua",
+    ["kong.db.dao.certificates"] = "kong/db/dao/certificates.lua",
+    ["kong.db.dao.snis"] = "kong/db/dao/snis.lua",
+    ["kong.db.dao.consumers"] = "kong/db/dao/consumers.lua",
     ["kong.db.schema"] = "kong/db/schema/init.lua",
+    ["kong.db.schema.entities.consumers"] = "kong/db/schema/entities/consumers.lua",
     ["kong.db.schema.entities.routes"] = "kong/db/schema/entities/routes.lua",
     ["kong.db.schema.entities.services"] = "kong/db/schema/entities/services.lua",
+    ["kong.db.schema.entities.certificates"] = "kong/db/schema/entities/certificates.lua",
+    ["kong.db.schema.entities.snis"] = "kong/db/schema/entities/snis.lua",
     ["kong.db.schema.entity"] = "kong/db/schema/entity.lua",
     ["kong.db.schema.metaschema"] = "kong/db/schema/metaschema.lua",
     ["kong.db.schema.typedefs"] = "kong/db/schema/typedefs.lua",
@@ -141,6 +154,20 @@ build = {
     ["kong.db.strategies.cassandra.services"] = "kong/db/strategies/cassandra/services.lua",
     ["kong.db.strategies.postgres"] = "kong/db/strategies/postgres/init.lua",
     ["kong.db.strategies.postgres.connector"] = "kong/db/strategies/postgres/connector.lua",
+
+    ["kong.pdk"] = "kong/pdk/init.lua",
+    ["kong.pdk.private.checks"] = "kong/pdk/private/checks.lua",
+    ["kong.pdk.private.phases"] = "kong/pdk/private/phases.lua",
+    ["kong.pdk.client"] = "kong/pdk/client.lua",
+    ["kong.pdk.ctx"] = "kong/pdk/ctx.lua",
+    ["kong.pdk.ip"] = "kong/pdk/ip.lua",
+    ["kong.pdk.log"] = "kong/pdk/log.lua",
+    ["kong.pdk.service"] = "kong/pdk/service.lua",
+    ["kong.pdk.service.request"] = "kong/pdk/service/request.lua",
+    ["kong.pdk.service.response"] = "kong/pdk/service/response.lua",
+    ["kong.pdk.request"] = "kong/pdk/request.lua",
+    ["kong.pdk.response"] = "kong/pdk/response.lua",
+    ["kong.pdk.table"] = "kong/pdk/table.lua",
 
     ["kong.plugins.base_plugin"] = "kong/plugins/base_plugin.lua",
 
@@ -169,7 +196,6 @@ build = {
     ["kong.plugins.oauth2.api"] = "kong/plugins/oauth2/api.lua",
 
     ["kong.plugins.log-serializers.basic"] = "kong/plugins/log-serializers/basic.lua",
-    ["kong.plugins.log-serializers.runscope"] = "kong/plugins/log-serializers/runscope.lua",
 
     ["kong.plugins.tcp-log.handler"] = "kong/plugins/tcp-log/handler.lua",
     ["kong.plugins.tcp-log.schema"] = "kong/plugins/tcp-log/schema.lua",
@@ -184,10 +210,6 @@ build = {
 
     ["kong.plugins.file-log.handler"] = "kong/plugins/file-log/handler.lua",
     ["kong.plugins.file-log.schema"] = "kong/plugins/file-log/schema.lua",
-
-    ["kong.plugins.runscope.handler"] = "kong/plugins/runscope/handler.lua",
-    ["kong.plugins.runscope.schema"] = "kong/plugins/runscope/schema.lua",
-    ["kong.plugins.runscope.log"] = "kong/plugins/runscope/log.lua",
 
     ["kong.plugins.galileo.migrations.cassandra"] = "kong/plugins/galileo/migrations/cassandra.lua",
     ["kong.plugins.galileo.migrations.postgres"] = "kong/plugins/galileo/migrations/postgres.lua",
@@ -247,6 +269,7 @@ build = {
     ["kong.plugins.acl.schema"] = "kong/plugins/acl/schema.lua",
     ["kong.plugins.acl.api"] = "kong/plugins/acl/api.lua",
     ["kong.plugins.acl.daos"] = "kong/plugins/acl/daos.lua",
+    ["kong.plugins.acl.groups"] = "kong/plugins/acl/groups.lua",
 
     ["kong.plugins.correlation-id.handler"] = "kong/plugins/correlation-id/handler.lua",
     ["kong.plugins.correlation-id.schema"] = "kong/plugins/correlation-id/schema.lua",

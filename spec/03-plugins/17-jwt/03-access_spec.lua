@@ -28,7 +28,7 @@ for _, strategy in helpers.each_strategy() do
 
       local routes = {}
 
-      for i = 1, 10 do
+      for i = 1, 11 do
         routes[i] = bp.routes:insert {
           hosts = { "jwt" .. i .. ".com" },
         }
@@ -106,9 +106,15 @@ for _, strategy in helpers.each_strategy() do
       })
 
       plugins:insert({
+        name     = "jwt",
+        route_id = routes[11].id,
+        config   = { claims_to_verify = {"nbf", "exp"}, maximum_expiration = 300 },
+      })
+
+      plugins:insert({
         name     = "ctx-checker",
         route_id = routes[1].id,
-        config   = { ctx_field = "authenticated_jwt_token" },
+        config   = { ctx_check_field = "authenticated_jwt_token" },
       })
 
       jwt_secret        = bp.jwt_secrets:insert { consumer_id = consumer1.id }
@@ -135,7 +141,7 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong {
         database          = strategy,
-        custom_plugins    = "ctx-checker",
+        plugins           = "bundled, ctx-checker",
         real_ip_header    = "X-Forwarded-For",
         real_ip_recursive = "on",
         trusted_ips       = "0.0.0.0/0, ::/0",
@@ -253,6 +259,39 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = assert.res_status(401, res)
         assert.equal([[{"message":"Unauthorized"}]], body)
+      end)
+      it("returns 403 if the token exceeds the maximum allowed expiration limit", function()
+        local payload = {
+          iss = jwt_secret.key,
+          exp = os.time() + 3600,
+          nbf = os.time() - 30
+        }
+        local jwt = jwt_encoder.encode(payload, jwt_secret.secret)
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/request/?jwt=" .. jwt,
+          headers = {
+            ["Host"] = "jwt11.com"
+          }
+        })
+        local body = assert.res_status(403, res)
+        assert.equal('{"exp":"exceeds maximum allowed expiration"}', body)
+      end)
+      it("accepts a JWT token within the maximum allowed expiration limit", function()
+        local payload = {
+          iss = jwt_secret.key,
+          exp = os.time() + 270,
+          nbf = os.time() - 30
+        }
+        local jwt = jwt_encoder.encode(payload, jwt_secret.secret)
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/request/?jwt=" .. jwt,
+          headers = {
+            ["Host"] = "jwt11.com"
+          }
+        })
+        assert.res_status(200, res)
       end)
     end)
 
@@ -573,8 +612,9 @@ for _, strategy in helpers.each_strategy() do
             ["Host"]          = "jwt1.com",
           }
         })
-        local body = cjson.decode(assert.res_status(200, res))
-        assert.equal(body.headers["ctx-checker-plugin-field"], jwt)
+        assert.res_status(200, res)
+        local header = assert.header("ctx-checker-authenticated-jwt-token", res)
+        assert.equal(jwt, header)
       end)
     end)
 

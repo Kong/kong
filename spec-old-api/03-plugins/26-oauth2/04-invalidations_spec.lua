@@ -1,18 +1,32 @@
 local cjson = require "cjson"
 local helpers = require "spec.helpers"
 
+for _, strategy in helpers.each_strategy() do
 describe("Plugin: oauth2 (invalidations)", function()
   local admin_client, proxy_ssl_client
+  local db
+  local dao
+  local bp
+
+  setup(function()
+    bp, db, dao = helpers.get_db_utils(strategy)
+
+    assert(db:truncate())
+    dao:truncate_tables()
+    assert(dao:run_migrations())
+  end)
+
 
   before_each(function()
-    helpers.dao:truncate_tables()
+    assert(db:truncate())
+    dao:truncate_tables()
 
-    local api = assert(helpers.dao.apis:insert {
+    local api = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "oauth2.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    assert(helpers.dao.plugins:insert {
+    assert(dao.plugins:insert {
       name   = "oauth2",
       api_id = api.id,
       config = {
@@ -25,10 +39,10 @@ describe("Plugin: oauth2 (invalidations)", function()
       },
     })
 
-    local consumer = assert(helpers.dao.consumers:insert {
+    local consumer = bp.consumers:insert {
       username = "bob",
-    })
-    assert(helpers.dao.oauth2_credentials:insert {
+    }
+    assert(dao.oauth2_credentials:insert {
       client_id     = "clientid123",
       client_secret = "secret123",
       redirect_uri  = "http://google.com/kong",
@@ -37,6 +51,7 @@ describe("Plugin: oauth2 (invalidations)", function()
     })
 
     assert(helpers.start_kong({
+      database = strategy,
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
     admin_client     = helpers.admin_client()
@@ -95,7 +110,7 @@ describe("Plugin: oauth2 (invalidations)", function()
       assert.response(res).has.status(200)
 
       -- Check that cache is populated
-      local cache_key = helpers.dao.oauth2_credentials:cache_key("clientid123")
+      local cache_key = dao.oauth2_credentials:cache_key("clientid123")
 
       local res = assert(admin_client:send {
         method = "GET",
@@ -166,7 +181,7 @@ describe("Plugin: oauth2 (invalidations)", function()
       assert.res_status(400, res)
 
       -- Check that cache is populated
-      local cache_key = helpers.dao.oauth2_credentials:cache_key("clientid123")
+      local cache_key = dao.oauth2_credentials:cache_key("clientid123")
 
       local res = assert(admin_client:send {
         method = "GET",
@@ -242,7 +257,7 @@ describe("Plugin: oauth2 (invalidations)", function()
       assert.res_status(200, res)
 
       -- Check that cache is populated
-      local cache_key = helpers.dao.oauth2_credentials:cache_key("clientid123")
+      local cache_key = dao.oauth2_credentials:cache_key("clientid123")
 
       local res = assert(admin_client:send {
         method = "GET",
@@ -311,7 +326,7 @@ describe("Plugin: oauth2 (invalidations)", function()
       assert.res_status(200, res)
 
       -- Check that cache is populated
-      local cache_key = helpers.dao.oauth2_tokens:cache_key(token.access_token)
+      local cache_key = dao.oauth2_tokens:cache_key(token.access_token)
       local res = assert(admin_client:send {
         method = "GET",
         path = "/cache/" .. cache_key,
@@ -319,7 +334,7 @@ describe("Plugin: oauth2 (invalidations)", function()
       })
       assert.res_status(200, res)
 
-      local res = helpers.dao.oauth2_tokens:find_all({access_token=token.access_token})
+      local res = dao.oauth2_tokens:find_all({access_token=token.access_token})
       local token_id = res[1].id
       assert.is_string(token_id)
 
@@ -378,7 +393,7 @@ describe("Plugin: oauth2 (invalidations)", function()
       assert.res_status(200, res)
 
       -- Check that cache is populated
-      local cache_key = helpers.dao.oauth2_tokens:cache_key(token.access_token)
+      local cache_key = dao.oauth2_tokens:cache_key(token.access_token)
 
       local res = assert(admin_client:send {
         method = "GET",
@@ -387,7 +402,7 @@ describe("Plugin: oauth2 (invalidations)", function()
       })
       assert.res_status(200, res)
 
-      local res = helpers.dao.oauth2_tokens:find_all({access_token=token.access_token})
+      local res = dao.oauth2_tokens:find_all({access_token=token.access_token})
       local token_id = res[1].id
       assert.is_string(token_id)
 
@@ -463,7 +478,7 @@ describe("Plugin: oauth2 (invalidations)", function()
       assert.res_status(200, res)
 
       -- Check that cache is populated
-      local cache_key = helpers.dao.oauth2_tokens:cache_key(token.access_token)
+      local cache_key = dao.oauth2_tokens:cache_key(token.access_token)
 
       local res = assert(admin_client:send {
         method = "GET",
@@ -473,7 +488,7 @@ describe("Plugin: oauth2 (invalidations)", function()
       assert.res_status(200, res)
 
       -- Retrieve credential ID
-      local cache_key_credential = helpers.dao.oauth2_credentials:cache_key("clientid123")
+      local cache_key_credential = dao.oauth2_credentials:cache_key("clientid123")
 
       local res = assert(admin_client:send {
         method = "GET",
@@ -513,3 +528,4 @@ describe("Plugin: oauth2 (invalidations)", function()
   end)
 
 end)
+end

@@ -8,6 +8,7 @@ describe("Balancer", function()
   local uuid = require("kong.tools.utils").uuid
   local upstream_hc
   local upstream_ph
+  local upstream_ote
 
   teardown(function()
     ngx.log:revert()
@@ -78,9 +79,11 @@ describe("Balancer", function()
       [6] = { id = "f", name = "upstream_f", slots = 10, healthchecks = hc_defaults },
       [7] = { id = "hc", name = "upstream_hc", slots = 10, healthchecks = passive_hc },
       [8] = { id = "ph", name = "upstream_ph", slots = 10, healthchecks = passive_hc },
+      [9] = { id = "ote", name = "upstream_ote", slots = 10, healthchecks = hc_defaults },
     }
     upstream_hc = UPSTREAMS_FIXTURES[7]
     upstream_ph = UPSTREAMS_FIXTURES[8]
+    upstream_ote = UPSTREAMS_FIXTURES[9]
 
     TARGETS_FIXTURES = {
       -- 1st upstream; a
@@ -185,6 +188,14 @@ describe("Balancer", function()
         created_at = "001",
         upstream_id = "ph",
         target = "127.0.0.1:2222",
+        weight = 10,
+      },
+      -- upstream_ote
+      {
+        id = "ote1",
+        created_at = "001",
+        upstream_id = "ote",
+        target = "localhost:1111",
         weight = 10,
       },
     }
@@ -374,6 +385,31 @@ describe("Balancer", function()
     end)
   end)
 
+  describe("on_target_event()", function()
+    setup(function()
+      balancer._load_targets_into_memory("ote")
+    end)
+
+    it("adding a target does not recreate a balancer", function()
+      local b1 = balancer._create_balancer(upstream_ote)
+      assert.same(1, #(balancer._get_target_history(b1)))
+
+      table.insert(TARGETS_FIXTURES, {
+        id = "ote2",
+        created_at = "002",
+        upstream_id = "ote",
+        target = "localhost:1112",
+        weight = 10,
+      })
+      balancer.on_target_event("create", { upstream_id = "ote" })
+
+      local b2 = balancer._create_balancer(upstream_ote)
+      assert.same(2, #(balancer._get_target_history(b2)))
+
+      assert(b1 == b2)
+    end)
+  end)
+
   describe("post_health()", function()
     local hc, my_balancer
 
@@ -506,6 +542,29 @@ describe("Balancer", function()
       })
       assert.are.same(crc32(value), hash)
     end)
+    describe("cookie", function()
+      it("uses the cookie when present in the request", function()
+        local value = "some cookie value"
+        ngx.var.cookie_Foo = value
+        ngx.ctx.balancer_data = {}
+        local hash = balancer._create_hash({
+          hash_on = "cookie",
+          hash_on_cookie = "Foo",
+        })
+        assert.are.same(crc32(value), hash)
+        assert.is_nil(ngx.ctx.balancer_data.hash_cookie)
+      end)
+      it("creates the cookie when not present in the request", function()
+        ngx.ctx.balancer_data = {}
+        balancer._create_hash({
+          hash_on = "cookie",
+          hash_on_cookie = "Foo",
+          hash_on_cookie_path = "/",
+        })
+        assert.are.same(ngx.ctx.balancer_data.hash_cookie.key, "Foo")
+        assert.are.same(ngx.ctx.balancer_data.hash_cookie.path, "/")
+      end)
+    end)
     it("multi-header", function()
       local value = { "some header value", "another value" }
       headers.HeaderName = value
@@ -561,6 +620,31 @@ describe("Balancer", function()
             hash_fallback_header = "HeaderName",
         })
         assert.are.same(crc32(table.concat(value)), hash)
+      end)
+      describe("cookie", function()
+        it("uses the cookie when present in the request", function()
+          local value = "some cookie value"
+          ngx.var.cookie_Foo = value
+          ngx.ctx.balancer_data = {}
+          local hash = balancer._create_hash({
+            hash_on = "consumer",
+            hash_fallback = "cookie",
+            hash_on_cookie = "Foo",
+          })
+          assert.are.same(crc32(value), hash)
+          assert.is_nil(ngx.ctx.balancer_data.hash_cookie)
+        end)
+        it("creates the cookie when not present in the request", function()
+          ngx.ctx.balancer_data = {}
+          balancer._create_hash({
+            hash_on = "consumer",
+            hash_fallback = "cookie",
+            hash_on_cookie = "Foo",
+            hash_on_cookie_path = "/",
+          })
+          assert.are.same(ngx.ctx.balancer_data.hash_cookie.key, "Foo")
+          assert.are.same(ngx.ctx.balancer_data.hash_cookie.path, "/")
+        end)
       end)
     end)
   end)

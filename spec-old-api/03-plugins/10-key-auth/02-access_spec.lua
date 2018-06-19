@@ -6,11 +6,11 @@ local utils = require "kong.tools.utils"
 describe("Plugin: key-auth (access)", function()
   local client
   setup(function()
-    local dao = select(3, helpers.get_db_utils())
+    local bp, _, dao = helpers.get_db_utils()
 
-    local anonymous_user = assert(dao.consumers:insert {
+    local anonymous_user = bp.consumers:insert {
       username = "no-body",
-    })
+    }
 
     local api1 = assert(dao.apis:insert {
       name         = "api-1",
@@ -35,9 +35,9 @@ describe("Plugin: key-auth (access)", function()
       },
     })
 
-    local consumer1 = assert(dao.consumers:insert {
+    local consumer1 = bp.consumers:insert {
       username = "bob"
-    })
+    }
     assert(dao.keyauth_credentials:insert {
       key         = "kong",
       consumer_id = consumer1.id,
@@ -410,7 +410,7 @@ describe("Plugin: key-auth (access)", function()
   local client, user1, user2, anonymous
 
   setup(function()
-    local _, _, dao = helpers.get_db_utils()
+    local bp, _, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
       name         = "api-1",
@@ -426,15 +426,15 @@ describe("Plugin: key-auth (access)", function()
       api_id = api1.id,
     })
 
-    anonymous = assert(dao.consumers:insert {
+    anonymous = bp.consumers:insert {
       username = "Anonymous",
-    })
-    user1 = assert(dao.consumers:insert {
+    }
+    user1 = bp.consumers:insert {
       username = "Mickey",
-    })
-    user2 = assert(dao.consumers:insert {
+    }
+    user2 = bp.consumers:insert {
       username = "Aladdin",
-    })
+    }
 
     local api2 = assert(dao.apis:insert {
       name         = "api-2",

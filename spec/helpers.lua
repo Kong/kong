@@ -43,12 +43,12 @@ package.path = CUSTOM_PLUGIN_PATH .. ";" .. package.path
 -- Ex: 1.11.2.2 -> 11122
 local function openresty_ver_num()
   local nginx_bin = assert(nginx_signals.find_nginx_bin())
-  local ok, _, _, stderr = pl_utils.executeex(string.format("%s -V", nginx_bin))
-  if not ok then
+  local _, _, _, stderr = pl_utils.executeex(string.format("%s -V", nginx_bin))
+
+  local a, b, c, d = string.match(stderr or "", "openresty/(%d+)%.(%d+)%.(%d+)%.(%d+)")
+  if not a then
     error("could not execute 'nginx -V': " .. stderr)
   end
-
-  local a, b, c, d = string.match(stderr, "openresty/(%d+)%.(%d+)%.(%d+)%.(%d+)")
 
   return tonumber(a .. b .. c .. d)
 end
@@ -94,6 +94,7 @@ end
 local conf = assert(conf_loader(TEST_CONF_PATH))
 local db = assert(DB.new(conf))
 local dao = assert(DAOFactory.new(conf, db))
+db.old_dao = dao
 local blueprints = assert(Blueprints.new(dao, db))
 -- make sure migrations are up-to-date
 
@@ -147,6 +148,8 @@ local function get_db_utils(strategy, no_truncate)
   if not no_truncate then
     assert(db:truncate())
   end
+
+  db.old_dao = dao
 
   -- blueprints
   local bp = assert(Blueprints.new(dao, db))
@@ -1009,8 +1012,8 @@ local function kong_exec(cmd, env)
 
   env.lua_package_path = env.lua_package_path .. ";" .. conf.lua_package_path
 
-  if not env.custom_plugins then
-    env.custom_plugins = "dummy,cache,rewriter"
+  if not env.plugins then
+    env.plugins = "bundled,dummy,cache,rewriter,error-handler-log"
   end
 
   -- build Kong environment variables
