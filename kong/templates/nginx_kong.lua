@@ -46,8 +46,8 @@ lua_ssl_verify_depth ${{LUA_SSL_VERIFY_DEPTH}};
 > end
 
 # injected nginx_http_* directives
-> for k, v in pairs(nginx_http_directives)  do
-$(k) $(v);
+> for _, el in ipairs(nginx_http_directives)  do
+$(el.name) $(el.value);
 > end
 
 init_by_lua_block {
@@ -108,8 +108,8 @@ server {
 > end
 
     # injected nginx_proxy_* directives
-> for k, v in pairs(nginx_proxy_directives)  do
-    $(k) $(v);
+> for _, el in ipairs(nginx_proxy_directives)  do
+    $(el.name) $(el.value);
 > end
 
     location / {
@@ -209,8 +209,8 @@ server {
 > end
 
     # injected nginx_admin_* directives
-> for k, v in pairs(nginx_admin_directives)  do
-    $(k) $(v);
+> for _, el in ipairs(nginx_admin_directives)  do
+    $(el.name) $(el.value);
 > end
 
     location / {
