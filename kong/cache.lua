@@ -10,7 +10,7 @@ local NOTICE  = ngx.NOTICE
 local DEBUG   = ngx.DEBUG
 
 
-local SHM_CACHE = "kong_cache"
+local SHM_CACHE = "kong_db_cache"
 --[[
 Hypothesis
 ----------
@@ -70,8 +70,8 @@ function _M.new(opts)
   end
 
   local mlcache, err = resty_mlcache.new(SHM_CACHE, SHM_CACHE, {
-    shm_miss         = ngx.shared.kong_db_cache_miss and "kong_db_cache_miss" or nil,
-    shm_locks        = ngx.shared.kong_locks and "kong_locks" or nil,
+    shm_miss         = "kong_db_cache_miss",
+    shm_locks        = "kong_locks",
     shm_set_retries  = 3,
     lru_size         = LRU_SIZE,
     ttl              = max(opts.ttl     or 3600, 0),
