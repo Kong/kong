@@ -3,15 +3,18 @@ local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local singletons = require "kong.singletons"
 local ldap = require "kong.plugins.ldap-auth-advanced.ldap"
-
 local ffi = require "ffi"
+
+
 ffi.cdef[[
 char *crypt(const char *key, const char *salt);
 ]]
-local libcrypt = ffi.load "crypt"
+
+
 local function crypt(key, salt)
-  return ffi.string(libcrypt.crypt(key, salt))
+  return ffi.string(ffi.C.crypt(key, salt))
 end
+
 
 local match = string.match
 local lower = string.lower
