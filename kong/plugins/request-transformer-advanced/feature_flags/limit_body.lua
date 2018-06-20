@@ -1,5 +1,5 @@
 local utils  = require "kong.tools.utils"
-local feature_flags, FLAGS, VALUES
+local FLAGS, VALUES
 
 
 local ok, feature_flags = utils.load_module_if_exists("kong.enterprise_edition.feature_flags")
@@ -23,10 +23,23 @@ local function init_worker()
     return true
   end
 
-  local limit = tonumber(feature_flags.get_feature_value(VALUES.REQUEST_TRANSFORMER_ADVANCED_LIMIT_BODY_SIZE))
-  if limit then
-    rt_body_size_limit = limit
+  local res, _ = feature_flags.get_feature_value(VALUES.REQUEST_TRANSFORMER_ADVANCED_LIMIT_BODY_SIZE)
+  if not res then
+    ngx_log(ngx_ERR, string.format("\"%s\" is turned on but \"%s\" is not defined",
+                                FLAGS.REQUEST_TRANSFORMER_ADVANCED_ENABLE_LIMIT_BODY,
+                                VALUES.REQUEST_TRANSFORMER_ADVANCED_LIMIT_BODY_SIZE))
+    return false
   end
+
+  local limit = tonumber(res)
+  if not limit then
+    ngx_log(ngx_ERR, string.format("\"%s\" is not valid number for \"%s\"",
+                                res,
+                                VALUES.REQUEST_TRANSFORMER_ADVANCED_LIMIT_BODY_SIZE))
+    return false
+  end
+
+  rt_body_size_limit = limit
   return true
 end
 
