@@ -17,6 +17,14 @@ local _M = {}
 function _M.new(opts)
   local conf = utils.deep_copy(opts)
 
+  local ok, feature_flags = utils.load_module_if_exists("kong.enterprise_edition.feature_flags")
+  if ok and feature_flags then
+    local namespace, err = feature_flags.get_feature_value(feature_flags.VALUES.REDIS_NAMESPACE)
+    if not err then
+      conf.suffix = namespace
+    end
+  end
+
   -- initialize redis configuration - e.g., parse
   -- Sentinel addresses
   redis.init_conf(conf)
@@ -41,6 +49,9 @@ local function exec_redis_op(conf, op, args)
     return nil, err
   end
 
+  if conf.suffix then
+    args[1] = args[1] .. ":" .. conf.suffix
+  end
   red:init_pipeline()
 
   red[op](red, unpack(args or {}))
