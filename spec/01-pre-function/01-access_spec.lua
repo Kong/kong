@@ -29,7 +29,7 @@ describe("Plugin: pre-function (access)", function()
   local client, admin_client
 
   setup(function()
-    helpers.run_migrations()
+    helpers.dao:run_migrations()
 
     local api1 = assert(helpers.dao.apis:insert {
       name         = "api-1",
@@ -85,6 +85,7 @@ describe("Plugin: pre-function (access)", function()
 
 
     assert(helpers.start_kong({
+      custom_plugins = "pre-function",
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
 
