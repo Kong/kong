@@ -42,6 +42,7 @@ local function init(feature_conf_path)
   local s = pl_stringio.open(f)
   local config, err = pl_config.read(s, {
     smart = false,
+    list_delim = "_blank_",
   })
   if err then
     return false, err
