@@ -119,7 +119,7 @@ return {
 
     -- KongCloud start
     local ok, feature_flags = utils.load_module_if_exists("kong.enterprise_edition.feature_flags")
-    if ok and feature_flags and feature_flag.is_enabled(feature_flags.FLAGS.RATE_LIMITING_ADVANCED_ENABLE_WINDOW_SIZE_LIMIT) then
+    if ok and feature_flags and feature_flags.is_enabled(feature_flags.FLAGS.RATE_LIMITING_ADVANCED_ENABLE_WINDOW_SIZE_LIMIT) then
       local max_window_size, err = feature_flags.get_feature_value(feature_flags.VALUES.RATE_LIMITING_ADVANCED_WINDOW_SIZE_LIMIT)
       if not err then
         max_window_size = tonumber(max_window_size)
@@ -128,6 +128,7 @@ return {
             if plugin_t.window_size[i] > max_window_size then
               return false, Errors.schema("windown_size cannot be greater than "
                             .. max_window_size)
+            end
           end
         end
       end
