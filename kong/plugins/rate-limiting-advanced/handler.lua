@@ -59,6 +59,11 @@ local function new_namespace(config, init_timer)
     local strategy_opts = strategy == "redis" and config.redis
 
     local dict_name = config.dictionary_name
+    if dict_name == nil then
+      ngx.log(ngx.WARN, "[rate-limiting] no shared dictionary was specified.",
+        " Falling back to 'kong'")
+      dict_name = "kong"
+    end
 
     -- if dictionary name was passed but doesn't exist, fallback to kong
     if ngx.shared[dict_name] == nil then
