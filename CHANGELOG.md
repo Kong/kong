@@ -3,6 +3,8 @@
 - Change `config_consumer_claim` from `string` to `array`
 - Add `config.consumer_optional`
 - Add `config.token_endpoint_auth_method`
+- Fix `kong_oauth2` added to bearer credential search
+  (now it can be used without having `bearer` or `introspection` in `config.auth_methods`) 
 
 ## v0.1.7
 

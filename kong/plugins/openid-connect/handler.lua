@@ -976,7 +976,7 @@ function OICHandler:access(conf)
 
     log("session was not found")
     -- bearer token authentication
-    if auth_methods.bearer or auth_methods.introspection then
+    if auth_methods.bearer or auth_methods.introspection or auth_methods.kong_oauth2 then
       log("trying to find bearer token")
       local bearer_token_param_type = args.get_conf_arg("bearer_token_param_type", PARAM_TYPES_ALL)
       for _, location in ipairs(bearer_token_param_type) do
