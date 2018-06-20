@@ -10,6 +10,7 @@ local FLAGS = {
   RATE_LIMITING_RESTRICT_REDIS_ONLY = "rate_limiting_restrict_redis_only",
   RESPONSE_RATELIMITING_RESTRICT_REDIS_ONLY = "response_ratelimiting_restrict_redis_only",
   RATE_LIMITING_ADVANCED_RESTRICT_REDIS_ONLY = "rate_limiting_advanced_restrict_redis_only",
+  RATE_LIMITING_ADVANCED_ENABLE_WINDOW_SIZE_LIMIT = "rate_limiting_advanced_enable_window_size_limit",
   REQUEST_TRANSFORMER_ENABLE_LIMIT_BODY = "request_transformation_enable_limit_body",
   REQUEST_TRANSFORMER_ADVANCED_ENABLE_LIMIT_BODY = "request_transformation_advanced_enable_limit_body",
   RESPONSE_TRANSFORMER_ENABLE_LIMIT_BODY = "response_transformation_enable_limit_body",
@@ -17,6 +18,7 @@ local FLAGS = {
 
 
 local VALUES = {
+  RATE_LIMITING_ADVANCED_WINDOW_SIZE_LIMIT = "rate_limiting_advanced_window_size_limit",
   REQUEST_TRANSFORMER_LIMIT_BODY_SIZE = "request_transformation_limit_body_size",
   REQUEST_TRANSFORMER_ADVANCED_LIMIT_BODY_SIZE = "request_transformation_advanced_limit_body_size",
   RESPONSE_TRANSFORMER_LIMIT_BODY_SIZE = "response_transformation_limit_body_size",
