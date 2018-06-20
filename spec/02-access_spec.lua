@@ -248,6 +248,7 @@ describe("Plugin: request-transformer-advanced(access)", function()
     })
 
     assert(helpers.start_kong({
+      custom_plugins = "request-transformer-advanced",
       nginx_conf = "spec/fixtures/custom_nginx.template",
     }))
   end)

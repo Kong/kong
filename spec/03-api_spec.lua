@@ -23,6 +23,7 @@ describe("Plugin: request-transformer-advanced(API)", function()
       })
 
       assert(helpers.start_kong({
+        custom_plugins = "request-transformer-advanced",
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
       admin_client = helpers.admin_client()

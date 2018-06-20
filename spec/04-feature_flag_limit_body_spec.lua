@@ -24,7 +24,8 @@ describe("Plugin: request-transformer-advanced(feature_flags) ", function()
     assert(helpers.start_kong({
       nginx_conf = "spec/fixtures/custom_nginx.template",
       feature_conf_path = "spec/fixtures/ee/feature_request_transformer_advanced_limit_body.conf",
-      enabled_plugins = "request-transformer-advanced"
+      enabled_plugins = "request-transformer-advanced",
+      custom_plugins = "request-transformer-advanced",
     }))
   end)
 
