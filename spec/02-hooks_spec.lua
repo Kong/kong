@@ -4,7 +4,9 @@ local cjson = require "cjson"
 describe("Plugin: oauth2-introspection (hooks)", function()
   local client, admin_client
   setup(function()
-    helpers.run_migrations()
+    helpers.dao:drop_schema()
+    helpers.dao:run_migrations()
+
     assert(helpers.dao.apis:insert {
       name = "introspection-api",
       uris = { "/introspect" },

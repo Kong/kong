@@ -5,7 +5,9 @@ local utils = require "kong.tools.utils"
 describe("Plugin: basic-auth (access)", function()
   local client, admin_client
   setup(function()
-    helpers.run_migrations()
+    helpers.dao:drop_schema()
+    helpers.dao:run_migrations()
+
     assert(helpers.dao.apis:insert {
       name = "introspection-api",
       uris = { "/introspect" },
@@ -393,7 +395,9 @@ describe("multiple auth", function()
   local client, user1, user2, anonymous, admin_client
 
   setup(function()
-    helpers.run_migrations()
+    helpers.dao:drop_schema()
+    helpers.dao:run_migrations()
+
     assert(helpers.dao.apis:insert {
       name = "introspection-api",
       uris = { "/introspect" },
