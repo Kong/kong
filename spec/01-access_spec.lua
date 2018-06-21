@@ -24,7 +24,7 @@ local ldap_host_aws = "ec2-54-172-82-117.compute-1.amazonaws.com"
 
 
 for _, strategy in helpers.each_strategy() do
-  describe("Plugin: ldap-auth (access) [#" .. strategy .. "]", function()
+  describe("Plugin: ldap-auth-advanced (access) [#" .. strategy .. "]", function()
     local proxy_client
     local admin_client
     local route2
@@ -65,6 +65,7 @@ for _, strategy in helpers.each_strategy() do
         route_id = route1.id,
         name     = "ldap-auth-advanced",
         config   = {
+          consumer_optional = true,
           ldap_host = ldap_host_aws,
           ldap_port = "389",
           start_tls = false,
@@ -77,6 +78,7 @@ for _, strategy in helpers.each_strategy() do
         route_id = route2.id,
         name     = "ldap-auth-advanced",
         config   = {
+          consumer_optional     = true,
           ldap_host        = ldap_host_aws,
           ldap_port        = "389",
           start_tls        = false,
@@ -91,6 +93,7 @@ for _, strategy in helpers.each_strategy() do
         route_id = route3.id,
         name     = "ldap-auth-advanced",
         config   = {
+          consumer_optional = true,
           ldap_host = ldap_host_aws,
           ldap_port = "389",
           start_tls = false,
@@ -104,6 +107,7 @@ for _, strategy in helpers.each_strategy() do
         route_id = route4.id,
         name     = "ldap-auth-advanced",
         config   = {
+          consumer_optional = true,
           ldap_host = "ec2-54-210-29-167.compute-1.amazonaws.com",
           ldap_port = "389",
           start_tls = false,
@@ -118,6 +122,7 @@ for _, strategy in helpers.each_strategy() do
         route_id = route5.id,
         name     = "ldap-auth-advanced",
         config   = {
+          consumer_optional = true,
           ldap_host = ldap_host_aws,
           ldap_port = "389",
           start_tls = false,
@@ -130,6 +135,7 @@ for _, strategy in helpers.each_strategy() do
       bp.plugins:insert {
         name     = "ldap-auth-advanced",
         config   = {
+          consumer_optional = true,
           ldap_host = ldap_host_aws,
           ldap_port = "389",
           start_tls = false,
@@ -146,7 +152,7 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     teardown(function()
-      helpers.stop_kong()
+      helpers.stop_kong(nil, true)
     end)
 
     before_each(function()
@@ -444,7 +450,7 @@ for _, strategy in helpers.each_strategy() do
         value = assert.request(res).has.header("x-consumer-username")
         assert.equal('no-body', value)
       end)
-      it("errors when anonymous user doesn't exist", function()
+      it("fails 500 when anonymous user doesn't exist", function()
         local res = assert(proxy_client:send {
           method  = "GET",
           path    = "/request",
@@ -457,7 +463,7 @@ for _, strategy in helpers.each_strategy() do
     end)
   end)
 
-  describe("Plugin: ldap-auth (access) [#" .. strategy .. "]", function()
+  describe("Plugin: ldap-auth-advanced (access) [#" .. strategy .. "]", function()
     local proxy_client
     local user
     local anonymous
@@ -478,6 +484,7 @@ for _, strategy in helpers.each_strategy() do
         route_id = route1.id,
         name     = "ldap-auth-advanced",
         config   = {
+          consumer_optional = true,
           ldap_host = ldap_host_aws,
           ldap_port = "389",
           start_tls = false,
@@ -512,6 +519,7 @@ for _, strategy in helpers.each_strategy() do
         route_id = route2.id,
         name     = "ldap-auth-advanced",
         config   = {
+          consumer_optional = true,
           ldap_host = ldap_host_aws,
           ldap_port = "389",
           start_tls = false,
@@ -549,7 +557,7 @@ for _, strategy in helpers.each_strategy() do
         proxy_client:close()
       end
 
-      helpers.stop_kong()
+      helpers.stop_kong(nil, true)
     end)
 
     describe("multiple auth without anonymous, logical AND", function()
@@ -667,6 +675,262 @@ for _, strategy in helpers.each_strategy() do
         assert.request(res).has.header("x-anonymous-consumer")
         local id = assert.request(res).has.header("x-consumer-id")
         assert.equal(id, anonymous.id)
+      end)
+    end)
+  end)
+
+  describe("Plugin: ldap-auth-advanced (access) [#" .. strategy .. "]", function()
+    local proxy_client, admin_client
+    local bp
+    local dao
+    local routes
+
+    local consumer_with_custom_id
+    local consumer_with_username
+    local anonymous_consumer
+
+    setup(function()
+      local _
+      bp, _, dao = helpers.get_db_utils(strategy)
+
+      routes = {
+        bp.routes:insert {
+          hosts = { "ldap.id.custom_id.username.com" },
+        },
+        
+        bp.routes:insert {
+          hosts = { "ldap.username.com" },
+        },
+        
+        bp.routes:insert {
+          hosts = { "ldap.custom_id.com" },
+        },
+
+        bp.routes:insert {
+          hosts = { "ldap.anonymous.com" },
+        },
+      }
+
+      consumer_with_username = bp.consumers:insert {
+        username = "einstein"
+      }
+
+      consumer_with_custom_id = bp.consumers:insert {
+        custom_id = "einstein"
+      }
+
+      anonymous_consumer = bp.consumers:insert {
+        username = "whoknows"
+      }
+
+      bp.plugins:insert {
+        route_id = routes[1].id,
+        name     = "ldap-auth-advanced",
+        config   = {
+          ldap_host = ldap_host_aws,
+          ldap_port = "389",
+          start_tls = false,
+          base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
+          attribute = "uid"
+        }
+      }
+
+      bp.plugins:insert {
+        route_id = routes[2].id,
+        name     = "ldap-auth-advanced",
+        config   = {
+          ldap_host = ldap_host_aws,
+          ldap_port = "389",
+          start_tls = false,
+          consumer_by = { "username" },
+          base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
+          attribute = "uid",
+        }
+      }
+
+      plugin = bp.plugins:insert {
+        route_id = routes[3].id,
+        name     = "ldap-auth-advanced",
+        config   = {
+          ldap_host = ldap_host_aws,
+          ldap_port = "389",
+          start_tls = false,
+          consumer_by = { "custom_id" },
+          base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
+          attribute = "uid",
+          cache_ttl = 2,
+        }
+      }
+
+      bp.plugins:insert {
+        route_id = routes[4].id,
+        name     = "ldap-auth-advanced",
+        config   = {
+          ldap_host = ldap_host_aws,
+          ldap_port = "389",
+          start_tls = false,
+          base_dn   = "ou=scientists,dc=ldap,dc=mashape,dc=com",
+          attribute = "uid",
+          anonymous = anonymous_consumer.id
+        }
+      }
+
+      assert(helpers.start_kong({
+        custom_plugins = "ldap-auth-advanced",
+        database   = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      }))
+    end)
+
+    teardown(function()
+      helpers.stop_kong(nil, true)
+    end)
+
+    before_each(function()
+      proxy_client = helpers.proxy_client()
+      admin_client = helpers.admin_client()
+    end)
+
+    after_each(function()
+      if proxy_client then
+        proxy_client:close()
+      end
+
+      if admin_client then
+        admin_client:close()
+      end
+    end)
+
+    describe("consumer mapping", function()
+
+      it("passes auth and maps consumer with username only, consumer_by = username, custom_id", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            ["Host"]          = "ldap.id.custom_id.username.com",
+            ["Authorization"] = "ldap " .. ngx.encode_base64("einstein:password"),
+          }
+        })
+        
+        assert.response(res).has.status(200)
+        assert.request(res).has.no.header("x-anonymous-consumer")
+        assert.are.equal('einstein', 
+                         assert.request(res).has.header("x-consumer-username"))
+        assert.request(res).has.no.header("x-anonymous-consumer")
+      end)
+
+      it("passes auth and maps consumer with username only, consumer_by = username", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            ["Host"]          = routes[2].hosts[1],
+            ["Authorization"] = "ldap " .. ngx.encode_base64("einstein:password"),
+          }
+        })
+
+        assert.response(res).has.status(200)
+        assert.request(res).has.no.header("x-anonymous-consumer")
+        assert.are.equal(consumer_with_username.id,
+                         assert.request(res).has.header("x-consumer-id"))
+        assert.are.equal(consumer_with_username.username, 
+                         assert.request(res).has.header("x-consumer-username"))
+      end)
+
+      it("passes auth and maps consumer with custom_id only, consumer_by = custom_id", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            ["Host"]          = routes[3].hosts[1],
+            ["Authorization"] = "ldap " .. ngx.encode_base64("einstein:password"),
+          }
+        })
+        
+        assert.response(res).has.status(200)
+        assert.request(res).has.no.header("x-anonymous-consumer")
+        assert.are.equal(consumer_with_custom_id.id,
+                         assert.request(res).has.header("x-consumer-id"))
+        assert.are.equal(consumer_with_custom_id.username, 
+                         assert.request(res).has.header("x-consumer-username"))
+      end)
+
+      it("fails ldap auth but maps to anonymous", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            ["Host"]          = routes[4].hosts[1],
+            ["Authorization"] = "ldap " .. ngx.encode_base64("noway:jose"),
+          }
+        })
+        
+        assert.response(res).has.status(200)
+        assert.are.equal(anonymous_consumer.id,
+                         assert.request(res).has.header("x-consumer-id"))
+        assert.are.equal(anonymous_consumer.username, 
+                         assert.request(res).has.header("x-consumer-username"))
+        assert.are.equal("true",
+                         assert.request(res).has.header("x-anonymous-consumer"))
+      end)
+
+      it("binds to anonymous with no credentials", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            ["Host"]          = routes[4].hosts[1]
+          }
+        })
+        
+        assert.response(res).has.status(200)
+        assert.are.equal(anonymous_consumer.id,
+                         assert.request(res).has.header("x-consumer-id"))
+        assert.are.equal(anonymous_consumer.username, 
+                         assert.request(res).has.header("x-consumer-username"))
+        assert.are.equal("true",
+                         assert.request(res).has.header("x-anonymous-consumer"))
+      end)
+
+      it("caches LDAP consumer map by consumer_by and invalidates", function()
+        local res = assert(proxy_client:send {
+          method  = "GET",
+          path    = "/get",
+          headers = {
+            ["Host"]          = routes[3].hosts[1],
+            ["Authorization"] = "ldap " .. ngx.encode_base64("einstein:password"),
+          }
+        })
+        assert.response(res).has.status(200)
+        assert.are.equal(consumer_with_custom_id.username, 
+                         assert.request(res).has.header("x-consumer-username"))
+        --consumers:username:einstein:consumers:::
+        local key = dao.consumers:cache_key("custom_id", consumer_with_custom_id.custom_id, "consumers")
+
+        helpers.wait_until(function()
+          local res = assert(admin_client:send {
+            method  = "GET",
+            path    = "/cache/" .. key
+          })
+          res:read_body()
+          return res.status == 200
+        end)
+        
+        admin_client:send {
+          method = "DELETE",
+          path = "/consumers/" .. consumer_with_custom_id.id
+        }
+
+        -- Check that cache is invalidated
+        helpers.wait_until(function()
+          local res = admin_client:send {
+            method  = "GET",
+            path    = "/cache/" .. key
+          }
+          res:read_body()
+          return res.status == 404
+        end, plugin.config.cache_ttl + 10)
       end)
     end)
   end)

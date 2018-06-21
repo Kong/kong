@@ -27,5 +27,10 @@ return {
     keepalive = {type = "number", default = 60000},
     anonymous = {type = "string", default = "", func = check_user},
     header_type = {type = "string", default = "ldap"},
+    consumer_optional = { required = false, type = "boolean", default = false },
+    consumer_by = { required = false, type = "array",
+      enum = { "username", "custom_id" },
+      default = { "username", "custom_id" },
+    },
   }
 }
