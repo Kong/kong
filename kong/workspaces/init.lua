@@ -585,10 +585,20 @@ end
 -- matched route from the router. Special handling of portal routes is
 -- done matching them by id as portal creates routes on memory that do
 -- not have a representation in the db. Therefore they don't exist in
--- workspace_entities.
+-- workspace_entities. See kong/enterprise_edition/proxies.lua
 local function load_workspace_scope(route)
-  if route.id == "00000000-0000-0000-0002-000000000000" then
+  if route.id == "00000000-0000-0000-0002-000000000000" or
+     route.id == "00000000-0000-0000-0000-000000000004" or
+     route.id == "00000000-0000-0000-0004-000000000000" or
+     route.id == "00000000-0000-0000-0000-000000000003" or
+     route.id == "00000000-0000-0000-0003-000000000000"
+     then
     return singletons.dao.workspaces:find_all({name = default_workspace})
+  end
+  if route.id == "00000000-0000-0000-0005-000000000000" then
+    local ws_name = ngx.ctx.router_matches.uri_captures.workspace_name
+    ngx.req.set_uri_args({workspace_name = ws_name})
+    return singletons.dao.workspaces:find_all({name = ws_name})
   end
 
   local old_wss = ngx.ctx.workspaces
@@ -597,6 +607,7 @@ local function load_workspace_scope(route)
     entity_id  = route.id,
   })
   ngx.ctx.workspaces = old_wss
+
   if not rows or not rows[1] then
     return nil, err
   end

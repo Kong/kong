@@ -135,6 +135,12 @@ function _M:setup_portal()
     paths = { "/" .. _M.proxy_prefix .. "/portal" },
   })
 
+  self:add_route({
+    id = "00000000-0000-0000-0005-000000000000",
+    service = portal_config.name,
+    paths = { "/" .. _M.proxy_prefix .. "/(?<workspace_name>\\w+)/portal" },
+  })
+
   self:add_plugin({
     name = "cors",
     service = portal_config.name,
