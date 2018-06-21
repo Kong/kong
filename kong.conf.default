@@ -619,6 +619,12 @@
                         # This value is commonly used in a microservices
                         # or service-mesh oriented architecture.
                         #
+                        # portal_gui_url sets 'Access-Control-Allow-Origin' 
+                        # in regards to requests related to the developer 
+                        # portal (set to * by default). It also acts as a
+                        # Dev Portal location reference for Kong, the Admin GUI,
+                        # and the Dev Portal itself.
+                        #
                         # Accepted format (items in parenthesis are optional):
                         #
                         #   <scheme>://<IP / HOSTNAME>(:<PORT>(/<PATH>))
@@ -666,6 +672,11 @@
                         #
                         # This value is commonly used in a microservices
                         # or service-mesh oriented architecture.
+                        #
+                        # portal_api_url is the address on which your 
+                        # Kong Dev Portal API is accessible by Kong. You
+                        # should only set this value if your Kong Dev Portal API 
+                        # lives on a different node than your Kong Proxy.
                         #
                         # Accepted format (parts in parenthesis are optional):
                         #
