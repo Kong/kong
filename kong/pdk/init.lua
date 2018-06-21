@@ -101,42 +101,42 @@
 
 --- Utilities for Lua tables
 -- @field kong.table
--- @see kong.table
+-- @redirect kong.table
 
 --- Instance of Kong logging factory with various utilities
 -- @field kong.log
--- @see kong.log
+-- @redirect kong.log
 
 --- Request/Response
 -- @section request_response
 
 --- Current request context data
 -- @field kong.ctx
--- @see kong.ctx
+-- @redirect kong.ctx
 
 --- Client information module
 -- @field kong.client
--- @see kong.client
+-- @redirect kong.client
 
 --- Client request module
 -- @field kong.request
--- @see kong.request
+-- @redirect kong.request
 
 --- Properties of the connection to the Service
 -- @field kong.service
--- @see kong.service
+-- @redirect kong.service
 
 --- Manipulation of the request to the Service
 -- @field kong.service.request
--- @see kong.service.request
+-- @redirect kong.service.request
 
 --- Manipulation of the response from the Service
 -- @field kong.service.response
--- @see kong.service.response
+-- @redirect kong.service.response
 
 --- Client response module
 -- @field kong.response
--- @see kong.response
+-- @redirect kong.response
 
 require("resty.core")
 
