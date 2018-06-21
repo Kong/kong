@@ -1,4 +1,13 @@
-## Unreleased
+## Unreleased 0.33-x
+
+### Consumer Mapping
+
+✨ add fields
+   * `consumer_by` - *optional*, default: { `username`, `custom_id` }
+   * `consumer_optional` *optional* , default: `false`
+     * By default, the consumer mapping is NOT optional. Set this config to `true` when you do not want the plugin to map to a kong consumer.
+
+✨ find consumers by `consumer_by` fields and map to ldap-auth user. This will set the authenticated consumer so that X-Consumer-{ID, USERNAME, CUSTOM_ID} headers are set and consumer functionality is available.
 
 ### Fixed
 
