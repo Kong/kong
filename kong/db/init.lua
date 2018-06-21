@@ -3,6 +3,7 @@ local Entity       = require "kong.db.schema.entity"
 local Errors       = require "kong.db.errors"
 local Strategies   = require "kong.db.strategies"
 local MetaSchema   = require "kong.db.schema.metaschema"
+local workspaces   = require "kong.workspaces"
 
 
 local fmt          = string.format
@@ -56,6 +57,7 @@ function DB.new(kong_config, strategy)
       end
 
       schemas[entity_name] = Entity.new(entity_schema)
+
     end
   end
 
@@ -83,6 +85,17 @@ function DB.new(kong_config, strategy)
       end
 
       daos[schema.name] = DAO.new(schema, strategy, errors)
+
+      if schema.workspaceable then
+        local unique = {}
+        for field_name, field_schema in pairs(schema.fields) do
+          if field_schema.unique then
+            unique[field_name] = field_schema
+          end
+        end
+        workspaces.register_workspaceable_relation(schema.name, schema.primary_key,
+                                                   unique)
+      end
     end
   end
 
@@ -126,7 +139,9 @@ end
 
 
 function DB:truncate()
-  return self.connector:truncate()
+  local ok, err = self.connector:truncate()
+  workspaces.create_default()
+  return ok, err
 end
 
 

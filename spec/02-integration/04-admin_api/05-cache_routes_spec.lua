@@ -7,25 +7,28 @@ describe("Admin API /cache [#" .. strategy .. "]", function()
   local admin_client
 
   setup(function()
-    local bp = helpers.get_db_utils(strategy)
+    ngx.ctx.workspaces = nil
+    local bp, _, dao = helpers.get_db_utils(strategy)
+    require("kong.singletons").dao = dao
+    helpers.with_current_ws(nil, function()
+      local service = bp.services:insert()
 
-    local service = bp.services:insert()
+      bp.routes:insert {
+        hosts   = { "cache.com" },
+        service = service,
+      }
 
-    bp.routes:insert {
-      hosts   = { "cache.com" },
-      service = service,
-    }
+      bp.routes:insert {
+        hosts   = { "cache.com" },
+        methods = { "POST" },
+        service = service,
+      }
 
-    bp.routes:insert {
-      hosts   = { "cache.com" },
-      methods = { "POST" },
-      service = service,
-    }
-
-    bp.plugins:insert {
-      name       = "cache",
-      service_id = service.id,
-    }
+      bp.plugins:insert {
+        name       = "cache",
+        service_id = service.id,
+      }
+    end, dao)
 
     assert(helpers.start_kong({
       database   = strategy,
@@ -45,7 +48,7 @@ describe("Admin API /cache [#" .. strategy .. "]", function()
       proxy_client:close()
     end
 
-    helpers.stop_kong()
+    helpers.stop_kong(nil, true )
   end)
 
 

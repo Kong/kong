@@ -3,6 +3,7 @@ local Factory = require "kong.dao.factory"
 local utils = require "kong.tools.utils"
 local DB = require "kong.db"
 local helper = require "spec.helpers"
+local singletons = require "kong.singletons"
 
 dao_helpers.for_each_dao(function(kong_config)
   describe("Model (Constraints) with DB: #" .. kong_config.database, function()
@@ -16,13 +17,15 @@ dao_helpers.for_each_dao(function(kong_config)
       assert(db:init_connector())
 
       dao = assert(Factory.new(kong_config, db))
+      singletons.dao = dao
       assert(dao:run_migrations())
     end)
 
     before_each(function()
-      dao:truncate_tables()
       assert(db:truncate())
       helper.register_consumer_relations(dao)
+      ngx.ctx.workspaces = nil
+      ngx.ctx.workspaces = dao.workspaces:find_all({ name = "default" })
 
       local service, _, err_t = db.services:insert {
         protocol = "http",

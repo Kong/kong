@@ -1,7 +1,8 @@
 return {
-  table = "rbac_perms",
+  table = "workspaces",
   primary_key = { "id" },
-  cache_key = { "id" },
+  cache_key = { "name" },
+  workspaceable = true,
   fields = {
     id = {
       type = "id",
@@ -12,19 +13,6 @@ return {
       type = "string",
       required = true,
       unique = true,
-    },
-    resources = {
-      type = "number",
-      required = true,
-    },
-    actions = {
-      type = "number",
-      required = true,
-    },
-    negative = {
-      type = "boolean",
-      required = true,
-      default = false,
     },
     comment = {
       type = "string",

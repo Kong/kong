@@ -14,7 +14,7 @@ for _, strategy in helpers.each_strategy() do
     before_each(function()
       local bp, _
       bp, _, dao = helpers.get_db_utils(strategy)
-
+      helpers.with_current_ws(nil, function()
       route = bp.routes:insert {
         hosts = { "jwt.com" },
       }
@@ -34,6 +34,7 @@ for _, strategy in helpers.each_strategy() do
         secret      = "secret123",
         consumer_id = consumer.id,
       }
+      end, dao)
 
       assert(helpers.start_kong({
         database   = strategy,

@@ -13,6 +13,7 @@ for _, strategy in helpers.each_strategy() do
       local _
       bp, _, dao = helpers.get_db_utils(strategy)
 
+      helpers.with_current_ws(nil, function()
       local consumer1 = bp.consumers:insert {
         username = "consumer1"
       }
@@ -221,6 +222,7 @@ for _, strategy in helpers.each_strategy() do
           anonymous = anonymous.id,
         }
       }
+      end, dao)
 
       assert(helpers.start_kong({
         database   = strategy,
@@ -454,8 +456,11 @@ for _, strategy in helpers.each_strategy() do
         assert.res_status(201, res)
 
         for i = 1, 3 do
+          local service
           -- Create API
-          local service = bp.services:insert()
+          helpers.with_current_ws(nil, function()
+            service = bp.services:insert()
+          end, dao)
 
           local res = assert(admin_client:send {
             method  = "POST",

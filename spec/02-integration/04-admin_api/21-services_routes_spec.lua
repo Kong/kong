@@ -5,6 +5,7 @@ local Errors  = require "kong.db.errors"
 
 
 local unindent = helpers.unindent
+local with_current_ws = helpers.with_current_ws
 
 
 local function it_content_types(title, fn)
@@ -23,6 +24,7 @@ for _, strategy in helpers.each_strategy() do
     local client
 
     setup(function()
+      ngx.ctx.workspaces = nil
       bp, db, dao = helpers.get_db_utils(strategy)
     end)
 
@@ -33,6 +35,7 @@ for _, strategy in helpers.each_strategy() do
     before_each(function()
       helpers.stop_kong()
       assert(db:truncate())
+      ngx.ctx.workspaces = nil
       assert(helpers.start_kong({
         database = strategy,
       }))
@@ -127,17 +130,20 @@ for _, strategy in helpers.each_strategy() do
       describe("GET", function()
         describe("with data", function()
           before_each(function()
-            for i = 1, 10 do
-              assert(db.services:insert {
-                host = ("example%d.com"):format(i)
-              })
-            end
+            with_current_ws(nil, function()
+              for i = 1, 10 do
+                assert(db.services:insert {
+                  host = ("example%d.com"):format(i)
+                })
+              end
+            end, dao)
           end)
 
           it("retrieves the first page", function()
             local res = client:get("/services")
             local res = assert.res_status(200, res)
             local json = cjson.decode(res)
+            ngx.sleep(50)
             assert.equal(10, #json.data)
           end)
 
@@ -202,7 +208,10 @@ for _, strategy in helpers.each_strategy() do
         local service
 
         before_each(function()
-          service = bp.services:insert({ name = "my-service", protocol = "http", host="example.com", path="/path" })
+          with_current_ws(nil, function ()
+            service = bp.services:insert({ name = "my-service", protocol = "http", host="example.com", path="/path" })
+          end, dao)
+
         end)
 
         describe("GET", function()
@@ -271,8 +280,10 @@ for _, strategy in helpers.each_strategy() do
               assert.equal("https",    json.protocol)
               assert.equal(service.id, json.id)
 
-              local in_db = assert(db.services:select({ id = service.id }))
-              assert.same(json, in_db)
+              with_current_ws(nil, function ()
+                local in_db = assert(db.services:select({ id = service.id }))
+                assert.same(json, in_db)
+              end, dao)
             end
           end)
 
@@ -291,9 +302,10 @@ for _, strategy in helpers.each_strategy() do
               assert.equal("https",      json.protocol)
               assert.equal(service.id,   json.id)
               assert.equal(service.name, json.name)
-
-              local in_db = assert(db.services:select_by_name(service.name))
-              assert.same(json, in_db)
+              with_current_ws(nil, function ()
+                local in_db = assert(db.services:select_by_name(service.name))
+                assert.same(json, in_db)
+              end, dao)
             end
           end)
 
@@ -338,21 +350,24 @@ for _, strategy in helpers.each_strategy() do
       describe("/services/{service}/routes", function()
         it_content_types("lists all routes belonging to service", function(content_type)
           return function()
-            local service = db.services:insert({
-              protocol = "http",
-              host     = "service.com",
-            })
+            local service, route
+            with_current_ws(nil, function()
+              service = db.services:insert({
+                protocol = "http",
+                host     = "service.com",
+              })
 
-            local route = db.routes:insert({
-              protocol = "http",
-              hosts    = { "service.com" },
-              service  = service,
-            })
+              route = db.routes:insert({
+                protocol = "http",
+                hosts    = { "service.com" },
+                service  = service,
+              })
 
-            local _ = db.routes:insert({
-              protocol = "http",
-              hosts    = { "service.com" },
-            })
+              local _ = db.routes:insert({
+                protocol = "http",
+                hosts    = { "service.com" },
+              })
+            end, dao)
 
             local res = client:get("/services/" .. service.id .. "/routes", {
               headers = { ["Content-Type"] = content_type },
@@ -370,11 +385,13 @@ for _, strategy in helpers.each_strategy() do
         local service
 
         before_each(function()
-          service = bp.services:insert {
-            name     = "my-service",
-            protocol = "http",
-            host     = "my-service.com",
-          }
+          with_current_ws(nil, function ()
+            service = bp.services:insert {
+              name     = "my-service",
+              protocol = "http",
+              host     = "my-service.com",
+            }
+          end, dao)
         end)
 
         describe("POST", function()
@@ -545,13 +562,16 @@ for _, strategy in helpers.each_strategy() do
 
           it_content_types("perfers default values when replacing", function(content_type)
             return function()
-              local plugin = assert(dao.plugins:insert {
-                name = "key-auth",
-                service_id = service.id,
-                config = { hide_credentials = true }
-              })
-              assert.True(plugin.config.hide_credentials)
-              assert.same({ "apikey" }, plugin.config.key_names)
+              local plugin
+              with_current_ws(nil, function ()
+                plugin = assert(dao.plugins:insert {
+                  name = "key-auth",
+                  service_id = service.id,
+                  config = { hide_credentials = true }
+                })
+                assert.True(plugin.config.hide_credentials)
+                assert.same({ "apikey" }, plugin.config.key_names)
+              end, dao)
 
               local res = assert(client:send {
                 method = "PUT",
@@ -579,11 +599,14 @@ for _, strategy in helpers.each_strategy() do
 
           it_content_types("overrides a plugin previous config if partial", function(content_type)
             return function()
-              local plugin = assert(dao.plugins:insert {
-                name = "key-auth",
-                service_id = service.id
-              })
-              assert.same({ "apikey" }, plugin.config.key_names)
+              local plugin
+              with_current_ws(nil, function ()
+                plugin = assert(dao.plugins:insert {
+                  name = "key-auth",
+                  service_id = service.id
+                })
+                assert.same({ "apikey" }, plugin.config.key_names)
+              end, dao)
 
               local res = assert(client:send {
                 method = "PUT",
@@ -603,12 +626,15 @@ for _, strategy in helpers.each_strategy() do
           end)
 
           it_content_types("updates the enabled property", function(content_type)
+            local plugin
             return function()
-              local plugin = assert(dao.plugins:insert {
-                name = "key-auth",
-                service_id = service.id
-              })
-              assert.True(plugin.enabled)
+              with_current_ws(nil, function ()
+                plugin = assert(dao.plugins:insert {
+                  name = "key-auth",
+                  service_id = service.id
+                })
+                assert.True(plugin.enabled)
+              end, dao)
 
               local res = assert(client:send {
                 method = "PUT",
@@ -652,10 +678,12 @@ for _, strategy in helpers.each_strategy() do
 
         describe("GET", function()
           it("retrieves the first page", function()
-            assert(dao.plugins:insert {
-              name = "key-auth",
-              service_id = service.id
-            })
+            with_current_ws(nil, function ()
+              assert(dao.plugins:insert {
+                name = "key-auth",
+                service_id = service.id
+              })
+            end, dao)
             local res = assert(client:send {
               method = "GET",
               path = "/services/" .. service.id .. "/plugins"

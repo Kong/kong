@@ -2,85 +2,94 @@ local helpers = require "spec.helpers"
 local cjson   = require "cjson"
 local meta    = require "kong.meta"
 local utils   = require "kong.tools.utils"
+local singletons = require "kong.singletons"
 
 
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: basic-auth (access) [#" .. strategy .. "]", function()
     local proxy_client
+    local consumer, anonymous_user, route1, route2, route3, route4
 
     setup(function()
       local bp, _, dao = helpers.get_db_utils(strategy)
+      singletons.dao = dao
+      local ws = dao.workspaces:find_all({name = "default"})
 
-      local consumer = bp.consumers:insert {
-        username = "bob",
-      }
 
-      local anonymous_user = bp.consumers:insert {
-        username = "no-body",
-      }
+      helpers.with_current_ws(
+        ws,
+        function()
+          consumer = bp.consumers:insert {
+            username = "bob",
+          }
 
-      local route1 = bp.routes:insert {
-        hosts = { "basic-auth1.com" },
-      }
+          anonymous_user = bp.consumers:insert {
+            username = "no-body",
+          }
 
-      local route2 = bp.routes:insert {
-        hosts = { "basic-auth2.com" },
-      }
+          route1 = bp.routes:insert {
+            hosts = { "basic-auth1.com" },
+          }
 
-      local route3 = bp.routes:insert {
-        hosts = { "basic-auth3.com" },
-      }
+          route2 = bp.routes:insert {
+            hosts = { "basic-auth2.com" },
+          }
 
-      local route4 = bp.routes:insert {
-        hosts = { "basic-auth4.com" },
-      }
+          route3 = bp.routes:insert {
+            hosts = { "basic-auth3.com" },
+          }
 
-      bp.plugins:insert {
-        name     = "basic-auth",
-        route_id = route1.id,
-      }
+          route4 = bp.routes:insert {
+            hosts = { "basic-auth4.com" },
+          }
 
-      bp.plugins:insert {
-        name     = "basic-auth",
-        route_id = route2.id,
-        config   = {
-          hide_credentials = true,
-        },
-      }
+          bp.plugins:insert {
+            name     = "basic-auth",
+            route_id = route1.id,
+          }
 
-      assert(dao.basicauth_credentials:insert {
-        username    = "bob",
-        password    = "kong",
-        consumer_id = consumer.id,
-      })
+          bp.plugins:insert {
+            name     = "basic-auth",
+            route_id = route2.id,
+            config   = {
+              hide_credentials = true,
+            },
+          }
 
-      assert(dao.basicauth_credentials:insert {
-        username    = "user123",
-        password    = "password123",
-        consumer_id = consumer.id,
-      })
+          assert(dao.basicauth_credentials:insert {
+                   username    = "bob",
+                   password    = "kong",
+                   consumer_id = consumer.id,
+          })
 
-      assert(dao.basicauth_credentials:insert {
-        username    = "user321",
-        password    = "password:123",
-        consumer_id = consumer.id,
-      })
+          assert(dao.basicauth_credentials:insert {
+                   username    = "user123",
+                   password    = "password123",
+                   consumer_id = consumer.id,
+          })
 
-      bp.plugins:insert {
-        name     = "basic-auth",
-        route_id = route3.id,
-        config   = {
-          anonymous = anonymous_user.id,
-        },
-      }
+          assert(dao.basicauth_credentials:insert {
+                   username    = "user321",
+                   password    = "password:123",
+                   consumer_id = consumer.id,
+          })
 
-      bp.plugins:insert {
-        name     = "basic-auth",
-        route_id = route4.id,
-        config   = {
-          anonymous = utils.uuid(), -- a non-existing consumer id
-        },
-      }
+          bp.plugins:insert {
+            name     = "basic-auth",
+            route_id = route3.id,
+            config   = {
+              anonymous = anonymous_user.id,
+            },
+          }
+
+          bp.plugins:insert {
+            name     = "basic-auth",
+            route_id = route4.id,
+            config   = {
+              anonymous = utils.uuid(), -- a non-existing consumer id
+            },
+          }
+      end)
 
       assert(helpers.start_kong({
         database   = strategy,
@@ -353,81 +362,86 @@ for _, strategy in helpers.each_strategy() do
     local user1
     local user2
     local anonymous
+    local service1, service2, route1, route2
 
     setup(function()
       local bp, _, dao = helpers.get_db_utils(strategy)
+      local ws = dao.workspaces:find_all({ name = "default" })
+      helpers.with_current_ws(
+        ws,
+        function()
+          anonymous = bp.consumers:insert {
+            username = "Anonymous",
+          }
 
-      anonymous = bp.consumers:insert {
-        username = "Anonymous",
-      }
+          user1 = bp.consumers:insert {
+            username = "Mickey",
+          }
 
-      user1 = bp.consumers:insert {
-        username = "Mickey",
-      }
+          user2 = bp.consumers:insert {
+            username = "Aladdin",
+          }
 
-      user2 = bp.consumers:insert {
-        username = "Aladdin",
-      }
+          service1 = bp.services:insert {
+            path = "/request",
+          }
 
-      local service1 = bp.services:insert {
-        path = "/request",
-      }
+          service2 = bp.services:insert {
+            path = "/request",
+          }
 
-      local service2 = bp.services:insert {
-        path = "/request",
-      }
+          route1 = bp.routes:insert {
+            hosts   = { "logical-and.com" },
+            service = service1,
+          }
 
-      local route1 = bp.routes:insert {
-        hosts   = { "logical-and.com" },
-        service = service1,
-      }
+          route2 = bp.routes:insert {
+            hosts   = { "logical-or.com" },
+            service = service2,
+          }
 
-      local route2 = bp.routes:insert {
-        hosts   = { "logical-or.com" },
-        service = service2,
-      }
+          bp.plugins:insert {
+            name     = "basic-auth",
+            route_id = route1.id,
+          }
 
-      bp.plugins:insert {
-        name     = "basic-auth",
-        route_id = route1.id,
-      }
+          bp.plugins:insert {
+            name     = "key-auth",
+            route_id = route1.id,
+          }
 
-      bp.plugins:insert {
-        name     = "key-auth",
-        route_id = route1.id,
-      }
+          bp.plugins:insert {
+            name     = "basic-auth",
+            route_id = route2.id,
+            config   = {
+              anonymous = anonymous.id,
+            },
+          }
 
-      bp.plugins:insert {
-        name     = "basic-auth",
-        route_id = route2.id,
-        config   = {
-          anonymous = anonymous.id,
-        },
-      }
+          bp.plugins:insert {
+            name     = "key-auth",
+            route_id = route2.id,
+            config   = {
+              anonymous = anonymous.id,
+            },
+          }
 
-      bp.plugins:insert {
-        name     = "key-auth",
-        route_id = route2.id,
-        config   = {
-          anonymous = anonymous.id,
-        },
-      }
+          assert(dao.keyauth_credentials:insert {
+                   key         = "Mouse",
+                   consumer_id = user1.id,
+          })
 
-      assert(dao.keyauth_credentials:insert {
-        key         = "Mouse",
-        consumer_id = user1.id,
-      })
+          assert(dao.basicauth_credentials:insert {
+                   username    = "Aladdin",
+                   password    = "OpenSesame",
+                   consumer_id = user2.id,
+          })
 
-      assert(dao.basicauth_credentials:insert {
-        username    = "Aladdin",
-        password    = "OpenSesame",
-        consumer_id = user2.id,
-      })
-
-      assert(helpers.start_kong({
-        database   = strategy,
-        nginx_conf = "spec/fixtures/custom_nginx.template",
-      }))
+          assert(helpers.start_kong({
+                     database   = strategy,
+                     nginx_conf = "spec/fixtures/custom_nginx.template",
+          }))
+      end)
 
       proxy_client = helpers.proxy_client()
     end)

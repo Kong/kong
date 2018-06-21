@@ -2,6 +2,7 @@ local arrays     = require "pgmoon.arrays"
 local json       = require "pgmoon.json"
 local cjson      = require "cjson"
 local cjson_safe = require "cjson.safe"
+local ws_helper  = require "kong.workspaces.helper"
 
 
 local encode_base64 = ngx.encode_base64
@@ -58,6 +59,42 @@ local PRIVATE = {}
 
 local function noop(...)
   return ...
+end
+
+
+-- Alternative for compile function. Used when wokspace scope needed in query.
+-- workspace scope will always have `$0` position, so it will not affect the
+-- position of other parameters.
+local function compile_ws(name, query)
+  local i, n, p, s, e = 1, 2, -1, find(query, "$0", 1, true)
+  local c = {
+    "local _ = ... or {}\n",
+    "return concat{\n",
+  }
+  while s do
+    if i < s then
+      c[n+1] = "[=[\n"
+      c[n+2] = sub(query, i, s - 1)
+      c[n+3] = "]=], "
+      n=n+3
+    end
+    p=p+1
+    c[n+1] = "_["
+    c[n+2] = p
+    c[n+3] = "], "
+    n=n+3
+    i = e + 1
+    s, e = find(query, "$" .. p + 1, i, true)
+  end
+  s = sub(query, i)
+  if s and s ~= "" then
+    c[n+1] = "[=[\n"
+    c[n+2] = s
+    c[n+3] = "]=]"
+    n=n+3
+  end
+  c[n+1] = " }"
+  return load(concat(c), "=" .. name, "t", { concat = concat })
 end
 
 
@@ -468,7 +505,7 @@ local function toerror(strategy, err, primary_key, entity)
 end
 
 
-local function execute(strategy, statement_name, attributes, is_update)
+local function execute(strategy, statement_name, attributes, is_update, ws_scope)
   local connector = strategy.connector
   local internal  = strategy[PRIVATE]
   local statement = internal.statements[statement_name]
@@ -503,6 +540,9 @@ local function execute(strategy, statement_name, attributes, is_update)
     end
   end
 
+  -- add workspace list at 0th index
+  argv[0] = ws_scope
+
   local sql = statement.make(argv)
 
   return connector:query(sql)
@@ -516,6 +556,7 @@ local function page(self, size, token, foreign_key, foreign_entity_name)
 
   local statement_name
   local attributes
+  local ws_list = ws_helper.ws_scope_as_list(self.schema.name)
 
   if token then
     if foreign_entity_name then
@@ -562,7 +603,7 @@ local function page(self, size, token, foreign_key, foreign_entity_name)
     end
   end
 
-  local res, err = execute(self, statement_name, self.collapse(attributes))
+  local res, err = execute(self, statement_name .. (ws_list and "_ws" or ""), self.collapse(attributes), nil, ws_list)
 
   if not res then
     return toerror(self, err)
@@ -602,6 +643,13 @@ local function make_select_for(foreign_entity_name)
   end
 end
 
+local _M  = {
+  CUSTOM_STRATEGIES = {
+    services = require("kong.db.strategies.postgres.services"),
+    routes   = require("kong.db.strategies.postgres.routes"),
+  }
+}
+
 
 local _mt   = {}
 
@@ -636,7 +684,53 @@ function _mt:drop()
 end
 
 
+local function foreign_pk_exists(dao, field_name, field, foreign_pk)
+  local foreign_schema = field.schema
+  local foreign_strategy = _M.new(dao.connector, foreign_schema,
+                                   dao.errors)
+
+  local foreign_row, err_t = foreign_strategy:select_ws(foreign_pk)
+  if err_t then
+    return nil, err_t
+  end
+
+  if not foreign_row then
+    return nil, dao.errors:foreign_key_violation_invalid_reference(foreign_pk,
+      field_name,
+      foreign_schema.name)
+  end
+
+  return true
+end
+
+
+local function validate_fk_exists_ws(dao, entity)
+  local schema = dao.schema
+
+  for field_name, field in schema:each_field() do
+    if field.type == "foreign" then
+      local foreign_pk = entity[field_name]
+
+      if foreign_pk and foreign_pk ~= ngx.null then
+        -- if given, check if this foreign entity exists
+        local exists, err_t = foreign_pk_exists(dao, field_name, field, foreign_pk)
+        if not exists then
+          return nil, err_t
+        end
+      end
+    end
+  end
+
+  return true
+end
+
+
 function _mt:insert(entity)
+  local exists, err_t = validate_fk_exists_ws(self, entity)
+  if not exists then
+    return nil, err_t
+  end
+
   local res, err = execute(self, "insert", self.collapse(entity))
 
   if res then
@@ -684,6 +778,25 @@ function _mt:select(primary_key)
 end
 
 
+-- TODO may not be needed
+function _mt:select_ws(primary_key)
+  local ws_list = ws_helper.ws_scope_as_list(self.schema.name)
+  local res, err = execute(self, "select_ws",
+                           self.collapse(primary_key), nil, ws_list)
+
+  if res then
+    local row = res[1]
+    if row then
+      return self.expand(row), nil
+    end
+
+    return nil, nil
+  end
+
+  return toerror(self, err, primary_key)
+end
+
+
 function _mt:select_by_field(field_name, unique_value)
   local statement_name = "select_by_" .. field_name
   local filter = {
@@ -706,6 +819,11 @@ end
 
 
 function _mt:update(primary_key, entity)
+  local exists, err_t = validate_fk_exists_ws(self, entity)
+  if not exists then
+    return nil, err_t
+  end
+
   local res, err = execute(self, "update", self.collapse(primary_key, entity), true)
 
   if res then
@@ -844,9 +962,6 @@ function _mt:each(size)
     return nil
   end
 end
-
-
-local _M  = {}
 
 
 function _M.new(connector, schema, errors)
@@ -1223,6 +1338,19 @@ function _M.new(connector, schema, errors)
     " LIMIT 1;"
   }
 
+  local ws_fields = ", \"workspace_id\", \"workspace_name\""
+  local select_statement_ws = concat {
+    "  SELECT ",  select_expressions .. ws_fields, "\n",
+    "    FROM ( (",
+    "            SELECT DISTINCT workspace_id, entity_id, name as workspace_name FROM",
+    "            workspaces INNER JOIN workspace_entities ON",
+    "            ( workspace_id = id  AND entity_type = '", table_name, "' AND id in ( $0 ) ) )",
+    "            ws_e INNER JOIN ", table_name, " ", table_name , " ON ( ws_e.entity_id = ", table_name, ".id::varchar )",
+    "         )\n",
+    " WHERE (", pk_escaped, ") = (", primary_key_placeholders, ")\n",
+    " LIMIT 1;"
+  }
+
   local page_first_statement = concat {
     "  SELECT ",  select_expressions, "\n",
     "    FROM ",  table_name_escaped, "\n",
@@ -1230,9 +1358,34 @@ function _M.new(connector, schema, errors)
     "   LIMIT $1;";
   }
 
+  local page_first_statement_ws = concat {
+    "  SELECT ",  select_expressions .. ws_fields, "\n",
+    "    FROM ( (",
+    "            SELECT DISTINCT workspace_id, entity_id, name as workspace_name FROM",
+    "            workspaces INNER JOIN workspace_entities ON",
+    "            ( workspace_id = id  AND entity_type = '", table_name, "' AND id in ( $0 ) ) )",
+    "            ws_e INNER JOIN ", table_name, " ", table_name , " ON ( ws_e.entity_id = ", table_name, ".id::varchar )",
+    "         )\n",
+    "ORDER BY ",  pk_escaped, "\n",
+    "   LIMIT $1;";
+  }
+
   local page_next_statement = concat {
     "  SELECT ",  select_expressions, "\n",
     "    FROM ",  table_name_escaped, "\n",
+    "   WHERE (", pk_escaped, ") > (", primary_key_placeholders, ")\n",
+    "ORDER BY ",  pk_escaped, "\n",
+    "   LIMIT $", page_next_count, ";"
+  }
+
+  local page_next_statement_ws = concat {
+    "  SELECT ",  select_expressions .. ws_fields, "\n",
+    "    FROM ( (",
+    "            SELECT DISTINCT workspace_id, entity_id, name as workspace_name FROM",
+    "            workspaces INNER JOIN workspace_entities ON",
+    "            ( workspace_id = id  AND entity_type = '", table_name, "' AND id in ( $0 ) ) )",
+    "            ws_e INNER JOIN ", table_name, " ", table_name , " ON ( ws_e.entity_id = ", table_name, ".id::varchar )",
+    "         )\n",
     "   WHERE (", pk_escaped, ") > (", primary_key_placeholders, ")\n",
     "ORDER BY ",  pk_escaped, "\n",
     "   LIMIT $", page_next_count, ";"
@@ -1332,6 +1485,12 @@ function _M.new(connector, schema, errors)
           argv         = common_args,
           make         = compile(table_name .. "_select" , select_statement),
         },
+        select_ws         = {
+          argn         = primary_key_names,
+          argc         = primary_key_fields_count,
+          argv         = common_args,
+          make         = compile_ws(table_name .. "_select_ws" , select_statement_ws),
+        },
         page_first     = {
           argn         = { LIMIT },
           argc         = 1,
@@ -1343,6 +1502,18 @@ function _M.new(connector, schema, errors)
           argc         = page_next_count,
           argv         = page_next_args,
           make         = compile(table_name .. "_page_next" , page_next_statement),
+        },
+        page_first_ws     = {
+          argn         = { LIMIT },
+          argc         = 1,
+          argv         = single_args,
+          make         = compile_ws(table_name .. "_page_first_ws" , page_first_statement_ws),
+        },
+        page_next_ws      = {
+          argn         = page_next_names,
+          argc         = page_next_count,
+          argv         = page_next_args,
+          make         = compile_ws(table_name .. "_page_next_ws" , page_next_statement_ws),
         },
       },
     }
@@ -1394,9 +1565,37 @@ function _M.new(connector, schema, errors)
         "   LIMIT $", argc_first, ";";
       }
 
+      local ws_fields = ", \"workspace_id\", \"workspace_name\""
+      page_first_statement_ws = concat {
+        "  SELECT ",  select_expressions .. ws_fields, "\n",
+        "    FROM ( (",
+        "            SELECT DISTINCT workspace_id, entity_id, name as workspace_name FROM",
+        "            workspaces INNER JOIN workspace_entities ON",
+        "            ( workspace_id = id  AND entity_type = '", table_name, "' AND id in ( $0 ) ) )",
+        "            ws_e INNER JOIN ", table_name, " ", table_name , " ON ( ws_e.entity_id = ", table_name, ".id::varchar )",
+        "         )\n",
+        "   WHERE (", foreign_key_names, ") = (", fk_placeholders, ")\n",
+        "ORDER BY ",  pk_escaped, "\n",
+        "   LIMIT $", argc_first, ";"
+      }
+
       page_next_statement = concat {
         "  SELECT ",  select_expressions, "\n",
         "    FROM ",  table_name_escaped, "\n",
+        "   WHERE (", foreign_key_names, ") = (", fk_placeholders, ")\n",
+        "     AND (", pk_escaped, ") > (", pk_placeholders, ")\n",
+        "ORDER BY ",  pk_escaped, "\n",
+        "   LIMIT $", argc_next, ";"
+      }
+
+      page_next_statement_ws = concat {
+        "  SELECT ",  select_expressions .. ws_fields, "\n",
+        "    FROM ( (",
+        "            SELECT DISTINCT workspace_id, entity_id, name as workspace_name FROM",
+        "            workspaces INNER JOIN workspace_entities ON",
+        "            ( workspace_id = id  AND entity_type = '", table_name, "' AND id in ( $0 ) ) )",
+        "            ws_e INNER JOIN ", table_name, " ", table_name , " ON ( ws_e.entity_id = ", table_name, ".id::varchar )",
+        "         )\n",
         "   WHERE (", foreign_key_names, ") = (", fk_placeholders, ")\n",
         "     AND (", pk_escaped, ") > (", pk_placeholders, ")\n",
         "ORDER BY ",  pk_escaped, "\n",
@@ -1412,11 +1611,25 @@ function _M.new(connector, schema, errors)
         make = compile(concat({ table_name, statement_name, "page_first" }, "_"), page_first_statement)
       }
 
+      statements[statement_name .. "_page_first_ws"] = {
+        argn = argn_first,
+        argc = argc_first,
+        argv = argv_first,
+        make = compile_ws(concat({ table_name, statement_name, "page_first" }, "_"), page_first_statement_ws)
+      }
+
       statements[statement_name .. "_page_next"] = {
         argn = argn_next,
         argc = argc_next,
         argv = argv_next,
         make = compile(concat({ table_name, statement_name, "page_next" }, "_"), page_next_statement)
+      }
+
+      statements[statement_name .. "_page_next_ws"] = {
+        argn = argn_next,
+        argc = argc_next,
+        argv = argv_next,
+        make = compile_ws(concat({ table_name, statement_name, "page_next" }, "_"), page_next_statement_ws)
       }
 
       self[statement_name] = make_select_for(foreign_entity_name)
@@ -1447,6 +1660,26 @@ function _M.new(connector, schema, errors)
         argc = 1,
         argv = single_args,
         make = compile(concat({ table_name, select_by_statement_name }, "_"), select_by_statement)
+      }
+
+      local select_by_statement_name_ws = "select_by_" .. unique_name .. "_ws"
+      local select_by_statement_ws = concat {
+        "SELECT ", select_expressions, "\n",
+        "    FROM ( (",
+        "            SELECT DISTINCT workspace_id, entity_id, name as workspace_name FROM",
+        "            workspaces INNER JOIN workspace_entities ON",
+        "            ( workspace_id = id  AND entity_type = '", table_name, "' AND id in ( $0 ) ) )",
+        "            ws_e INNER JOIN ", table_name, " ", table_name , " ON ( ws_e.entity_id = ", table_name, ".id::varchar )",
+        "         )\n",
+        " WHERE ", unique_escaped, " = $1\n",
+        " LIMIT 1;"
+      }
+
+      statements[select_by_statement_name_ws] = {
+        argn = single_names,
+        argc = 1,
+        argv = single_args,
+        make = compile_ws(concat({ table_name, select_by_statement_name_ws }, "_"), select_by_statement_ws)
       }
 
       local update_by_statement_name = "update_by_" .. unique_name

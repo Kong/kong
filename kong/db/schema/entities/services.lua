@@ -15,7 +15,7 @@ end
 return {
   name = "services",
   primary_key = { "id" },
-
+  workspaceable = true,
   fields = {
     { id              = typedefs.uuid, },
     { created_at      = { type = "integer", timestamp = true, auto = true }, },

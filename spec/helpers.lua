@@ -29,6 +29,8 @@ local http = require "resty.http"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
+local singletons = require "kong.singletons"
+
 
 local table_merge = utils.table_merge
 
@@ -124,6 +126,12 @@ end
 local function get_db_utils(strategy, no_truncate)
   strategy = strategy or conf.database
 
+  -- Clean workspaces from the context - otherwise, migrations will fail,
+  -- as some of them have dao calls
+  -- If `no_truncate` is falsey, `dao:truncate` and `db:truncate` are called,
+  -- and these set the workspae back again to the new `default` workspace
+  ngx.ctx.workspaces = nil
+
   -- new DAO (DB module)
   local db = assert(DB.new(conf, strategy))
 
@@ -135,6 +143,11 @@ local function get_db_utils(strategy, no_truncate)
     conf.database = strategy
     dao = assert(DAOFactory.new(conf, db))
     conf.database = database
+
+    -- update singletons.dao, since this function accepts a 'strategy'
+    -- argument, the existing value might be for a different strategy
+    -- (e.g., this module's module-leveldao, which defaults for postgres)
+    singletons.dao = dao
 
     assert(dao:run_migrations())
     if not no_truncate then
@@ -148,38 +161,13 @@ local function get_db_utils(strategy, no_truncate)
     assert(db:truncate())
   end
 
-  local rbac = require "kong.rbac"
-
-  for _, resource in ipairs {
-    "default",
-    "kong",
-    "status",
-    "apis",
-    "plugins",
-    "cache",
-    "certificates",
-    "consumers",
-    "snis",
-    "upstreams",
-    "targets",
-    "rbac",
-    "acls",
-    "basic-auth",
-    "hmac-auth",
-    "jwt",
-    "key-auth",
-    "oauth2",
-    "vitals",
-    "portal",
-  } do
-    rbac.register_resource(resource, dao)
-  end
-
+  -- XXX rbac resources are gone
   local portal_helper = require "kong.portal.dao_helpers"
   portal_helper.register_resources(dao)
 
   -- blueprints
   local bp = assert(Blueprints.new(dao, db))
+
 
   return bp, db, dao
 end
@@ -1145,6 +1133,9 @@ local function register_consumer_relations(dao)
   portal.register_resources(dao)
 end
 
+
+singletons.dao = dao
+
 ----------
 -- Exposed
 ----------
@@ -1247,5 +1238,14 @@ return {
       kill.kill(pid_path, "-TERM")
       wait_pid(pid_path, timeout)
     end
-end
+  end,
+  with_current_ws = function(ws,fn, dao)
+    local old_ws = ngx.ctx.workspaces
+    ngx.ctx.workspaces = nil
+    ws = ws or dao.workspaces:find_all({name = "default"})
+    ngx.ctx.workspaces = ws
+    local res = fn()
+    ngx.ctx.workspaces = old_ws
+    return res
+  end,
 }

@@ -4,6 +4,8 @@ local cjson = require "cjson"
 describe("Plugin: response-rate-limiting (API)", function()
   local admin_client
 
+  helpers.get_db_utils()
+
   teardown(function()
     if admin_client then
       admin_client:close()

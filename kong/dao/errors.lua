@@ -1,4 +1,7 @@
+local workspaces = require "kong.workspaces"
+
 local printable_mt = require "kong.tools.printable"
+local utils = require "kong.tools.utils"
 local setmetatable = setmetatable
 local getmetatable = getmetatable
 local tostring = tostring
@@ -35,6 +38,13 @@ local serializers = {
     local ret = {}
     for k, v in pairs(tbl) do
       ret[k] = "already exists with value '" .. v .. "'"
+
+      local ws_value = utils.split(v , ":")
+      if #ws_value > 1 then
+        local ws = ws_value[1]
+        ret[k] = fmt("already exists with value '%s'" ,
+          ws_value[2] , ws ~= workspaces.DEFAULT_WORKSPACE and " in workspace " .. ws or "")
+      end
     end
     return ret
   end,

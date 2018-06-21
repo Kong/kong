@@ -1,6 +1,7 @@
 return {
   table = "ssl_certificates",
   primary_key = { "id" },
+  workspaceable = true,
   fields = {
     id = { type = "id", dao_insert_value = true, required = true },
     cert = { type = "string", required = true },

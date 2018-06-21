@@ -1,4 +1,11 @@
 local cassandra = require "cassandra"
+local workspaces = require "kong.workspaces"
+local ws_helper = require "kong.workspaces.helper"
+local utils      = require "kong.tools.utils"
+
+
+local get_workspaces = workspaces.get_workspaces
+local workspaceable  = workspaces.get_workspaceable_relations()
 
 
 local fmt           = string.format
@@ -147,6 +154,21 @@ local function foreign_pk_exists(self, field_name, field, foreign_pk)
   local foreign_schema = field.schema
   local foreign_strategy = _M.new(self.connector, foreign_schema,
                                   self.errors)
+
+  local constraint = workspaceable[foreign_schema.name]
+  if constraint then
+    local res, err = ws_helper.validate_pk_exist(foreign_schema.name, foreign_pk,
+                                                 constraint)
+    if err then
+      return nil, err
+    end
+
+    if not res then
+      return nil, self.errors:foreign_key_violation_invalid_reference(foreign_pk,
+                                                                      field_name,
+                                                                      foreign_schema.name)
+    end
+  end
 
   local foreign_row, err_t = foreign_strategy:select(foreign_pk)
   if err_t then
@@ -513,6 +535,66 @@ function _mt:select_by_field(field_name, field_value)
   return _select(self, select_cql, bind_args)
 end
 
+do
+
+  local function select_query_page(cql, table_name, primary_key, token, page_size, args)
+    local token_template
+    local args_t
+    if token then
+      args_t = utils.deep_copy(args or {})
+      token_template = fmt(" %s > ? LIMIT %s", primary_key, page_size)
+
+      if utils.is_valid_uuid(token) then
+        insert(args_t, cassandra.uuid(token))
+      else
+        insert(args_t, cassandra.text(token))
+      end
+    end
+    return fmt("%s %s", cql, token and " AND " ..
+               token_template or ""), args_t
+  end
+
+
+  function _mt:page_ws(ws_scope, size, offset, cql, args)
+    local table_name = self.schema.name
+
+    local primary_key = workspaces.get_workspaceable_relations()[table_name].primary_key
+    local ws_entities_map, err = workspaces.workspace_entities_map(ws_scope, table_name)
+    if err then
+      return nil, err
+    end
+
+    local res_rows = {}
+
+    local token = offset
+    while(true) do
+      local cql, args_t = select_query_page(cql, table_name,  primary_key, token, size, args)
+      local rows, err = self.connector:query(cql, args_t or args, {}, "read")
+      if not rows then
+        return nil, self.errors:database_error("could not execute page query: "
+                                               .. err)
+      end
+
+      for _, row in ipairs(rows) do
+        local ws_entity = ws_entities_map[row[primary_key]]
+        if ws_entity then
+          row.workspace_id = ws_entity.workspace_id
+          res_rows[#res_rows+1] = deserialize_row(self, row)
+          if #res_rows == size then
+            return res_rows, nil, encode_base64(row[primary_key])
+          end
+        end
+        token = row[primary_key]
+      end
+
+      if #rows == 0 then
+        break
+      end
+    end
+
+    return res_rows
+  end
+end
 
 do
   local opts = new_tab(0, 2)
@@ -542,6 +624,11 @@ do
 
     else
       error("should provide both of: foreign_key, foreign_key_db_columns", 2)
+    end
+
+    local ws_scope = get_workspaces()
+    if #ws_scope > 0 and workspaceable[self.schema.name]  then
+      return self:page_ws(ws_scope, size, offset, cql, args)
     end
 
     opts.page_size = size
@@ -812,7 +899,7 @@ do
                                              .. err)
     end
 
-    return true
+    return true, nil, primary_key
   end
 end
 

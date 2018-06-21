@@ -5,6 +5,8 @@ local bit       = require "bit"
 local cjson     = require "cjson"
 local responses = require "kong.tools.responses"
 local new_tab   = require "table.new"
+local workspaces = require "kong.workspaces"
+local singletons = require "kong.singletons"
 
 
 local band  = bit.band
@@ -39,6 +41,7 @@ local function objects_from_names(dao_factory, given_names, object_name)
   return objs
 end
 
+
 local function action_bitfield(self)
   local action_bitfield = 0x0
 
@@ -49,7 +52,7 @@ local function action_bitfield(self)
       local action = action_names[i]
 
       -- keyword all sets everything
-      if action == "all" then
+      if action == "*" then
         for k in pairs(rbac.actions_bitfields) do
           action_bitfield = bxor(action_bitfield, rbac.actions_bitfields[k])
         end
@@ -69,68 +72,24 @@ local function action_bitfield(self)
   self.params.actions = action_bitfield
 end
 
-local function resource_bitfield(self)
-  local bitfield = 0x0
 
-  if type(self.params.resources) == "string" then
-    local resources_names = utils.split(self.params.resources, ",")
+local function post_process_actions(row)
+  local actions_t = setmetatable({}, cjson.empty_array_mt)
+  local actions_t_idx = 0
 
-    for i = 1, #resources_names do
-      local resource = resources_names[i]
 
-      -- keyword all sets everything
-      if resource == "all" then
-        for i, _ in ipairs(rbac.resource_bitfields) do
-          bitfield = bxor(bitfield, 2 ^ (i - 1))
-        end
-
-        break
-      end
-
-      if not rbac.resource_bitfields[resource] then
-        return responses.send_HTTP_BAD_REQUEST("Undefined RBAC action " ..
-                                               resource)
-      end
-
-      bitfield = bxor(bitfield, rbac.resource_bitfields[resource])
+  for k, n in pairs(rbac.actions_bitfields) do
+    if band(n, row.actions) == n then
+      actions_t_idx = actions_t_idx + 1
+      actions_t[actions_t_idx] = k
     end
   end
 
-  self.params.resources = bitfield
+
+  row.actions = actions_t
+  return row
 end
 
-local function readable_actions(permission)
-  local action_t     = setmetatable({}, cjson.empty_array_mt)
-  local action_t_idx = 0
-
-  for k in pairs(rbac.actions_bitfields) do
-    local n = rbac.actions_bitfields[k]
-
-    if band(n, permission.actions) == n then
-      action_t_idx = action_t_idx + 1
-      action_t[action_t_idx] = k
-    end
-  end
-
-  permission.actions = action_t
-end
-
-local function readable_resources(permission)
-  local resource_t     = setmetatable({}, cjson.empty_array_mt)
-  local resource_t_idx = 0
-
-  for i, _ in ipairs(rbac.resource_bitfields) do
-    local k = rbac.resource_bitfields[i]
-    local n = rbac.resource_bitfields[k]
-
-    if band(n, permission.resources) == n then
-      resource_t_idx = resource_t_idx + 1
-      resource_t[resource_t_idx] = k
-    end
-  end
-
-  permission.resources = resource_t
-end
 
 return {
   ["/rbac/users/"] = {
@@ -186,19 +145,19 @@ return {
     end,
 
     GET = function(self, dao_factory, helpers)
-      local map = rbac.build_permissions_map(self.rbac_user, dao_factory)
-
-      for action, value in pairs(map) do
-        local action_t = {}
-        for k in pairs(rbac.actions_bitfields) do
-          local n = rbac.actions_bitfields[k]
-
-          if band(n, value) == n then
-            action_t[#action_t + 1] = k
-          end
-        end
-        map[action] = #action_t > 0 and action_t or nil
+      local roles, err = rbac.entity_relationships(dao_factory, self.rbac_user,
+                                                   "user", "role")
+      if err then
+        ngx.log(ngx.ERR, "[rbac] ", err)
+        return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR()
       end
+
+      local map = {}
+      local entities_perms = rbac.readable_entities_permissions(roles)
+      local endpoints_perms = rbac.readable_endpoints_permissions(roles)
+
+      map.entities = entities_perms
+      map.endpoints = endpoints_perms
 
       return helpers.responses.send_HTTP_OK(map)
     end,
@@ -252,6 +211,10 @@ return {
         end
       end
 
+      -- invalidate rbac user so we don't fetch the old roles
+      local cache_key = dao_factory["rbac_user_roles"]:cache_key(self.rbac_user.id)
+      singletons.cache:invalidate(cache_key)
+
       -- re-fetch the users roles so we show all the role objects, not just our
       -- newly assigned mappings
       roles, err = entity_relationships(dao_factory, self.rbac_user,
@@ -291,6 +254,9 @@ return {
         })
       end
 
+      local cache_key = dao_factory["rbac_users"]:cache_key(self.rbac_user.id)
+      singletons.cache:invalidate(cache_key)
+
       return helpers.responses.send_HTTP_NO_CONTENT()
     end,
   },
@@ -309,9 +275,24 @@ return {
     end,
   },
 
-  ["/rbac/roles/:name_or_id"] = {
-    resource = "rbac",
+  ["/rbac/roles/:name_or_id/permissions"] = {
+    before = function(self, dao_factory, helpers)
+      crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
+    end,
 
+    GET = function(self, dao_factory, helpers)
+      local map = {}
+      local entities_perms = rbac.readable_entities_permissions({self.rbac_role})
+      local endpoints_perms = rbac.readable_endpoints_permissions({self.rbac_role})
+
+      map.entities = entities_perms
+      map.endpoints = endpoints_perms
+
+      return helpers.responses.send_HTTP_OK(map)
+    end,
+  },
+
+  ["/rbac/roles/:name_or_id"] = {
     before = function(self, dao_factory, helpers)
       crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
     end,
@@ -340,278 +321,174 @@ return {
         })
       end
 
-      -- delete the role <-> permission mappings
-      -- we have to get our row, then delete it
-      local perms, err = entity_relationships(dao_factory, self.rbac_role,
-                                              "role", "perm")
-      if err then
-        return helpers.yield_error(err)
-      end
-
-      for i = 1, #perms do
-        dao_factory.rbac_role_perms:delete({
-          role_id = self.rbac_role.id,
-          perm_id = perms[i].id
-        })
-      end
-
       crud.delete(self.rbac_role, dao_factory.rbac_roles)
     end,
   },
 
-  ["/rbac/roles/:name_or_id/permissions"] = {
+   ["/rbac/roles/:name_or_id/entities"] = {
+    before = function(self, dao_factory, helpers)
+      crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
+      self.params.role_id = self.rbac_role.id
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      return crud.paginated_set(self, dao_factory.rbac_role_entities,
+                                post_process_actions)
+    end,
+
+    POST = function(self, dao_factory, helpers)
+      action_bitfield(self)
+
+      local entity_type, _, err = workspaces.resolve_entity_type(self.params.entity_id)
+      -- database error
+      if entity_type == nil then
+        return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      end
+      -- entity doesn't exist
+      if entity_type == false then
+        return helpers.responses.send_HTTP_BAD_REQUEST(err)
+      end
+
+      self.params.entity_type = entity_type
+      crud.post(self.params, dao_factory.rbac_role_entities,
+                post_process_actions)
+    end,
+  },
+
+  ["/rbac/roles/:name_or_id/entities/:entity_id"] = {
+    before = function(self, dao_factory, helpers)
+      crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
+      self.params.role_id = self.rbac_role.id
+      if not utils.is_valid_uuid(self.params.entity_id) then
+        return helpers.responses.send_HTTP_BAD_REQUEST(
+          self.params.entity_id .. " is not a valid uuid")
+      end
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      crud.get(self.params, dao_factory.rbac_role_entities,
+               post_process_actions)
+    end,
+
+    PATCH = function(self, dao_factory, helpers)
+      if self.params.actions then
+        action_bitfield(self)
+      end
+
+      local filter = {
+        role_id = self.params.role_id,
+        entity_id = self.params.entity_id,
+      }
+
+      self.params.role_id = nil
+      self.params.entity_id = nil
+
+      crud.patch(self.params, dao_factory.rbac_role_entities, filter,
+                 post_process_actions)
+    end,
+
+    DELETE = function(self, dao_factory, helpers)
+      crud.delete(self.params, dao_factory.rbac_role_entities)
+    end,
+  },
+
+  ["/rbac/roles/:name_or_id/entities/permissions"] = {
     before = function(self, dao_factory, helpers)
       crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
     end,
 
     GET = function(self, dao_factory, helpers)
-      local p, err = entity_relationships(dao_factory, self.rbac_role,
-                                          "role", "perm")
-      if err then
-        return helpers.yield_error(err)
-      end
+      local map = rbac.readable_entities_permissions({self.rbac_role})
+      return helpers.responses.send_HTTP_OK(map)
+    end,
+  },
 
-      local perms = utils.deep_copy(p)
-      setmetatable(perms, cjson.empty_array_mt)
+  ["/rbac/roles/:name_or_id/endpoints"] = {
+    before = function(self, dao_factory, helpers)
+      crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
+      self.params.role_id = self.rbac_role.id
+    end,
 
-      for i = 1, #perms do
-        readable_actions(perms[i])
-        readable_resources(perms[i])
-      end
-
-      return helpers.responses.send_HTTP_OK({
-        role  = self.rbac_role,
-        permissions = perms,
-      })
+    GET = function(self, dao_factory, helpers)
+      return crud.paginated_set(self, dao_factory.rbac_role_endpoints,
+                                post_process_actions)
     end,
 
     POST = function(self, dao_factory, helpers)
-      -- we have the role, now verify our permissions
-      if not self.params.permissions then
-        return helpers.responses.send_HTTP_BAD_REQUEST("must provide >= 1 permission")
-      end
+      action_bitfield(self)
 
-      local perms, err = objects_from_names(dao_factory, self.params.permissions,
-                                            "perm")
-      if err then
-        if err:find("not found with name", nil, true) then
-          return helpers.responses.send_HTTP_BAD_REQUEST(err)
+      --XXX we should probably factor this check out into kong.workspaces
+      self.params.workspace = self.params.workspace or "default"
+      local ws_name = self.params.workspace
 
-        else
-          return helpers.yield_error(err)
-        end
-      end
-
-      -- we've now validated that all our perms exist, and this role exists,
-      -- so time to create the assignment
-      for i = 1, #perms do
-        local _, err = dao_factory.rbac_role_perms:insert({
-          role_id = self.rbac_role.id,
-          perm_id = perms[i].id
+      if ws_name ~=  "default" and ws_name ~= "*" then
+        local w, err = dao_factory.workspaces:find_all({
+          name = self.params.workspace
         })
         if err then
-          return helpers.yield_error(err)
+          helpers.yield_error(err)
+        end
+        if #w == 0 then
+          local err = fmt("Workspace %s does not exist", self.params.workspace)
+          helpers.responses.send_HTTP_NOT_FOUND(err)
         end
       end
 
-      -- re-fetch the users perms so we show all the permissions objects,
-      -- not just our newly assigned mappings
-      local p, err = entity_relationships(dao_factory, self.rbac_role,
-                                          "role", "perm")
-      if err then
-        return helpers.yield_error(err)
-      end
+      local cache_key = dao_factory["rbac_roles"]:cache_key(self.rbac_role.id)
+      singletons.cache:invalidate(cache_key)
 
-      perms = utils.deep_copy(p)
+      -- normalize endpoint: remove trailing /
+      self.params.endpoint = ngx.re.gsub(self.params.endpoint, "/$", "")
 
-      for i = 1, #perms do
-        readable_actions(perms[i])
-        readable_resources(perms[i])
-      end
-
-      -- show the user and all of the roles they are in
-      return helpers.responses.send_HTTP_CREATED({
-        role = self.rbac_role,
-        permissions = perms,
-      })
-    end,
-
-    DELETE = function(self, dao_factory, helpers)
-      -- we have the role, now verify our permissions
-      if not self.params.permissions then
-        return helpers.responses.send_HTTP_BAD_REQUEST("must provide >= 1 permission")
-      end
-
-      local perms, err = objects_from_names(dao_factory, self.params.permissions,
-                                            "perm")
-      if err then
-        if err:find("not found with name", nil, true) then
-          return helpers.responses.send_HTTP_BAD_REQUEST(err)
-
-        else
-          return helpers.yield_error(err)
-        end
-      end
-
-      for i = 1, #perms do
-        dao_factory.rbac_role_perms:delete({
-          role_id = self.rbac_role.id,
-          perm_id = perms[i].id,
-        })
-      end
-
-      return helpers.responses.send_HTTP_NO_CONTENT()
+      crud.post(self.params, dao_factory.rbac_role_endpoints, post_process_actions)
     end,
   },
 
-  ["/rbac/permissions"] = {
-    GET = function(self, dao_factory, helpers)
-      local dao_collection = dao_factory.rbac_perms
-
-      local size = self.params.size and tonumber(self.params.size) or 100
-      local offset = self.params.offset and ngx.decode_base64(self.params.offset)
-
-      self.params.size = nil
-      self.params.offset = nil
-
-      local filter_keys = next(self.params) and self.params
-
-      local r, err, offset = dao_collection:find_page(filter_keys, offset, size)
-      if err then
-        return helpers.yield_error(err)
-      end
-
-      local total_count, err = dao_collection:count(filter_keys)
-      if err then
-        return helpers.yield_error(err)
-      end
-
-      local next_url
-      if offset then
-        offset = ngx.encode_base64(offset)
-        next_url = self:build_url(self.req.parsed_url.path, {
-          port = self.req.parsed_url.port,
-          query = ngx.encode_args {
-            offset = offset,
-            size = size
-          }
-        })
-      end
-
-      local rows = utils.deep_copy(r)
-
-      for i = 1, #rows do
-        readable_actions(rows[i])
-        readable_resources(rows[i])
-      end
-
-      return helpers.responses.send_HTTP_OK {
-        data = #rows > 0 and rows or cjson.empty_array,
-        total = total_count,
-        offset = offset,
-        ["next"] = next_url
-      }
-    end,
-
-    POST = function(self, dao_factory, helpers)
-      action_bitfield(self)
-      resource_bitfield(self)
-
-      local p, err = dao_factory.rbac_perms:insert(self.params)
-      if err then
-        return helpers.yield_error(err)
-      end
-
-      local permission = utils.deep_copy(p)
-
-      readable_actions(permission)
-      readable_resources(permission)
-
-      return helpers.responses.send_HTTP_CREATED(permission)
-    end,
-
-    PUT = function(self, dao_factory)
-      action_bitfield(self)
-      resource_bitfield(self)
-
-      crud.put(self.params, dao_factory.rbac_perms)
-    end,
-  },
-
-  ["/rbac/permissions/:name_or_id"] = {
+  ["/rbac/roles/:name_or_id/endpoints/:workspace/*"] = {
     before = function(self, dao_factory, helpers)
-      crud.find_rbac_perm_by_name_or_id(self, dao_factory, helpers)
+      crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
+      self.params.role_id = self.rbac_role.id
+      self.params.endpoint = "/" .. self.params.splat
+      self.params.splat = nil
     end,
 
     GET = function(self, dao_factory, helpers)
-      local permission, err = dao_factory.rbac_perms:find(self.rbac_perm)
-      if err then
-        return helpers.yield_error(err)
-      end
-
-      if not permission then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-
-      readable_actions(permission)
-      readable_resources(permission)
-
-      return helpers.responses.send_HTTP_OK(permission)
+      crud.get(self.params, dao_factory.rbac_role_endpoints,
+               post_process_actions)
     end,
 
     PATCH = function(self, dao_factory, helpers)
-      action_bitfield(self)
-      resource_bitfield(self)
-
-      local p, err = dao_factory.rbac_perms:update(self.params,
-                                                            self.rbac_perm)
-      if err then
-        return helpers.yeild_error(err)
+      if self.params.actions then
+        action_bitfield(self)
       end
 
-      local permission = utils.deep_copy(p)
+      local filter = {
+        role_id = self.params.role_id,
+        workspace = self.params.workspace,
+        endpoint = self.params.endpoint,
+      }
 
-      readable_actions(permission)
-      readable_resources(permission)
+      self.params.role_id = nil
+      self.params.workspace = nil
+      self.params.endpoint = nil
 
-      return helpers.responses.send_HTTP_OK(permission)
+      crud.patch(self.params, dao_factory.rbac_role_endpoints, filter,
+                 post_process_actions)
     end,
 
     DELETE = function(self, dao_factory, helpers)
-      -- delete the role <-> permission mappings
-      -- we have to get our row, then delete it
-      local roles, err = entity_relationships(dao_factory, self.rbac_perm,
-                                              "role", "perm")
-      if err then
-        return helpers.yield_error(err)
-      end
-
-      for i = 1, #roles do
-        dao_factory.rbac_role_perms:delete({
-          role_id = roles[i].id,
-          perm_id = self.rbac_perm.id
-        })
-      end
-
-      crud.delete(self.rbac_perm, dao_factory.rbac_perms)
+      crud.delete(self.params, dao_factory.rbac_role_endpoints)
     end,
   },
 
-  ["/rbac/resources"] = {
+  ["/rbac/roles/:name_or_id/endpoints/permissions"] = {
+    before = function(self, dao_factory, helpers)
+      crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
+    end,
+
     GET = function(self, dao_factory, helpers)
-      local resources = {}
-
-      for k in pairs(rbac.resource_routes) do
-        resources[#resources + 1] = k
-      end
-
-      return helpers.responses.send_HTTP_OK(resources)
+      local map = rbac.readable_endpoints_permissions({self.rbac_role})
+      return helpers.responses.send_HTTP_OK(map)
     end,
   },
-
-  ["/rbac/resources/routes"] = {
-    GET = function(self, dao_factory, helpers)
-      return helpers.responses.send_HTTP_OK(rbac.route_resources)
-    end,
-  }
 }

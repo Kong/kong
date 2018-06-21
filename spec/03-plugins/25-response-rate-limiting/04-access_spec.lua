@@ -69,6 +69,7 @@ for _, strategy in helpers.each_strategy() do
 
         flush_redis()
 
+        helpers.with_current_ws(nil, function()
         local consumer1 = bp.consumers:insert {custom_id = "provider_123"}
         bp.keyauth_credentials:insert {
           key         = "apikey123",
@@ -280,6 +281,7 @@ for _, strategy in helpers.each_strategy() do
             limits         = { video = { minute = 6 } },
           }
         })
+        end, dao)
 
         assert(helpers.start_kong({
           database   = strategy,
@@ -537,6 +539,7 @@ for _, strategy in helpers.each_strategy() do
             dao:drop_schema()
             assert(dao:run_migrations())
 
+            helpers.with_current_ws(nil, function()
             local route1 = bp.routes:insert {
               hosts = { "failtest1.com" },
             }
@@ -568,6 +571,7 @@ for _, strategy in helpers.each_strategy() do
                 limits         = { video = {minute = 6} }
               }
             }
+            end, dao)
 
             assert(helpers.start_kong({
               database   = strategy,
@@ -630,6 +634,7 @@ for _, strategy in helpers.each_strategy() do
             dao:drop_schema()
             assert(dao:run_migrations())
 
+            helpers.with_current_ws(nil, function()
             local service1 = bp.services:insert()
 
             local route1 = bp.routes:insert {
@@ -665,6 +670,7 @@ for _, strategy in helpers.each_strategy() do
                 limits         = { video = { minute = 6 } },
               }
             }
+            end, dao)
 
             assert(helpers.start_kong({
               database   = strategy,
@@ -699,6 +705,7 @@ for _, strategy in helpers.each_strategy() do
           dao:drop_schema()
           assert(dao:run_migrations())
 
+          helpers.with_current_ws(nil, function()
           local service = bp.services:insert()
 
           local route = bp.routes:insert {
@@ -718,6 +725,7 @@ for _, strategy in helpers.each_strategy() do
               limits         = { video = { minute = 6 } },
             }
           }
+          end, dao)
 
           assert(helpers.start_kong({
             database   = strategy,
@@ -763,6 +771,7 @@ for _, strategy in helpers.each_strategy() do
         dao:truncate_tables()
         assert(dao:run_migrations())
 
+        helpers.with_current_ws(nil, function()
         local consumer = bp.consumers:insert {
           custom_id = "provider_125",
         }
@@ -791,6 +800,7 @@ for _, strategy in helpers.each_strategy() do
         for i = 1, 6 do
           bp.routes:insert({ hosts = { fmt("test%d.com", i) } })
         end
+        end, dao)
 
         assert(helpers.start_kong({
           database   = strategy,
@@ -841,6 +851,7 @@ for _, strategy in helpers.each_strategy() do
         dao:truncate_tables()
         assert(dao:run_migrations())
 
+        helpers.with_current_ws(nil, function()
         -- global plugin (not attached to route, service or consumer)
         bp.response_ratelimiting_plugins:insert({
           config = {
@@ -857,6 +868,7 @@ for _, strategy in helpers.each_strategy() do
         for i = 1, 6 do
           bp.routes:insert({ hosts = { fmt("test%d.com", i) } })
         end
+        end, dao)
 
         assert(helpers.start_kong({
           database   = strategy,

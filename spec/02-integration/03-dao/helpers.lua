@@ -1,7 +1,8 @@
 local spec_helpers = require "spec.helpers"
 local conf_loader = require "kong.conf_loader"
 
-local DATABASES = {"postgres", "cassandra"}
+local DATABASES = {"postgres",-- "cassandra"
+}
 
 local function for_each_dao(fn)
   for i = 1, #DATABASES do

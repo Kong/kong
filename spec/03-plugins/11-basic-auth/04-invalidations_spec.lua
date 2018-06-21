@@ -1,6 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
+
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: basic-auth (invalidations) [#" .. strategy .. "]", function()
     local admin_client
@@ -18,6 +19,7 @@ for _, strategy in helpers.each_strategy() do
       dao:truncate_tables()
       helpers.register_consumer_relations(dao)
 
+      helpers.with_current_ws(nil, function()
       local route = bp.routes:insert {
         hosts = { "basic-auth.com" },
       }
@@ -36,6 +38,7 @@ for _, strategy in helpers.each_strategy() do
         password    = "kong",
         consumer_id = consumer.id,
       })
+      end, dao)
 
       assert(helpers.start_kong({
         database   = strategy,

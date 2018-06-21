@@ -1,6 +1,7 @@
 return {
   table = "ssl_servers_names",
   primary_key = { "name" },
+  workspaceable = true,
   fields = {
     name = { type = "text", required = true, unique = true },
     ssl_certificate_id = { type = "id", foreign = "ssl_certificates:id" },

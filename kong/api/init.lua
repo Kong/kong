@@ -6,11 +6,13 @@ local responses   = require "kong.tools.responses"
 local singletons  = require "kong.singletons"
 local app_helpers = require "lapis.application"
 local api_helpers = require "kong.api.api_helpers"
+
 local Endpoints   = require "kong.api.endpoints"
 local arguments   = require "kong.api.arguments"
 local Errors      = require "kong.db.errors"
 
 local rbac = require "kong.rbac"
+local workspaces = require "kong.workspaces"
 
 
 local sub      = string.sub
@@ -19,6 +21,7 @@ local type     = type
 local pairs    = pairs
 local ipairs   = ipairs
 local tostring = tostring
+local fmt      = string.format
 
 
 local app = lapis.Application()
@@ -54,6 +57,16 @@ end
 local function on_error(self)
   local err = self.errors[1]
 
+  -- XXX create standard error codes in the rbac module?
+  if type(err) == "string" and err:match("[RBAC]") then
+    return responses.send_HTTP_UNAUTHORIZED("entity cannot be accessed due to your rbac permissions")
+  end
+
+  if type(err) == "table" then
+    if err.db then
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err.message)
+    end
+  end
   if type(err) ~= "table" then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(tostring(err))
   end
@@ -142,8 +155,27 @@ end
 
 app:before_filter(function(self)
   do
-    local rbac_handler = require "kong.rbac.handler"
-    rbac_handler.validate_filter(self)
+    -- in case of endpoint with missing `/`, this block is executed twice.
+    -- So previous workspace should be dropped
+    ngx.ctx.admin_api_request = true
+    ngx.ctx.workspaces = nil
+
+    local ws_name = self.params.workspace_name or workspaces.DEFAULT_WORKSPACE
+    local workspaces = workspaces.get_req_workspace(ws_name)
+    if not workspaces or #workspaces == 0 then
+      responses.send_HTTP_NOT_FOUND(fmt("Workspace '%s' not found", ws_name))
+    end
+
+    -- save workspace name in the context; if not passed, default workspace is
+    -- 'default'
+    ngx.ctx.workspaces = workspaces
+    self.params.workspace_name = nil
+
+   -- ngx.var.uri is used to look for exact matches
+   -- self.route_name is used to look for wildcard matches,
+   -- by replacing named parameters with *
+   rbac.validate_user()
+   rbac.validate_endpoint(self.route_name, ngx.var.uri)
   end
 
   if not NEEDS_BODY[ngx.req.get_method()] then
@@ -183,11 +215,6 @@ local function attach_routes(routes)
   for route_path, methods in pairs(routes) do
     methods.on_error = methods.on_error or on_error
 
-    rbac.register_resource_route(route_path, rbac.route_resource_map[route_path]
-                                             or methods.resource
-                                             or "default")
-    methods.resource = nil
-
     for method_name, method_handler in pairs(methods) do
       local wrapped_handler = function(self)
         return method_handler(self, singletons.dao, handler_helpers)
@@ -197,6 +224,10 @@ local function attach_routes(routes)
     end
 
     app:match(route_path, route_path, app_helpers.respond_to(methods))
+    if route_path ~= "/" then
+      app:match("workspace_" .. route_path, "/:workspace_name" .. route_path,
+        app_helpers.respond_to(methods))
+    end
   end
 end
 
@@ -204,10 +235,6 @@ end
 local function attach_new_db_routes(routes)
   for route_path, methods in pairs(routes) do
     methods.on_error = methods.on_error or new_db_on_error
-
-    rbac.register_resource_route(route_path, rbac.route_resource_map[route_path]
-                                             or methods.resource
-                                             or "default")
 
     for method_name, method_handler in pairs(methods) do
       local wrapped_handler = function(self)
@@ -219,6 +246,10 @@ local function attach_new_db_routes(routes)
     end
 
     app:match(route_path, route_path, app_helpers.respond_to(methods))
+    if route_path ~= "/" then
+      app:match("workspace_" .. route_path, "/:workspace_name" .. route_path,
+                app_helpers.respond_to(methods))
+    end
   end
 end
 
@@ -228,7 +259,7 @@ ngx.log(ngx.DEBUG, "Loading Admin API endpoints")
 
 -- Load core routes
 for _, v in ipairs({"kong", "apis", "consumers", "plugins", "cache",
-                    "certificates", "snis", "upstreams", "rbac", "vitals", "portal"}) do
+                    "certificates", "snis", "upstreams", "rbac", "vitals", "portal", "workspaces"}) do
   local routes = require("kong.api.routes." .. v)
   attach_routes(routes)
 end

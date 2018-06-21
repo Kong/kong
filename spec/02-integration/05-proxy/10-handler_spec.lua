@@ -8,8 +8,10 @@ for _, strategy in helpers.each_strategy() do
         local proxy_client
 
         setup(function()
-          local bp = helpers.get_db_utils(strategy)
+          local bp, _, dao = helpers.get_db_utils(strategy)
+          require("kong.singletons").dao = dao
 
+          helpers.with_current_ws(nil, function()
           -- insert plugin-less route and a global plugin
           local service = bp.services:insert {
             name = "mock_upstream",
@@ -27,6 +29,7 @@ for _, strategy in helpers.each_strategy() do
               value = "global plugin",
             },
           }
+          end, dao)
 
           assert(helpers.start_kong({
             database   = strategy,
@@ -61,27 +64,31 @@ for _, strategy in helpers.each_strategy() do
         local proxy_client
 
         setup(function()
-          local bp = helpers.get_db_utils(strategy)
+          local bp, _, dao = helpers.get_db_utils(strategy)
 
-          -- route specific plugin
-          local service = bp.services:insert {
-            name = "mock_upstream",
-          }
+          require("kong.singletons").dao = dao
 
-          local route = bp.routes:insert {
-            hosts   = { "mock_upstream" },
-            service = service,
-          }
+          helpers.with_current_ws(nil, function()
+            -- route specific plugin
+            local service = bp.services:insert {
+              name = "mock_upstream",
+            }
 
-          bp.plugins:insert {
-            route_id   = route.id,
-            service_id = service.id,
-            name       = "rewriter",
-            config     = {
-              value    = "route-specific plugin",
-            },
-          }
+            local route = bp.routes:insert {
+              hosts   = { "mock_upstream" },
+              service = service,
+            }
 
+            bp.plugins:insert {
+              route_id   = route.id,
+              service_id = service.id,
+              name       = "rewriter",
+              config     = {
+                value    = "route-specific plugin",
+              },
+            }
+
+          end, dao)
           assert(helpers.start_kong({
             database   = strategy,
             nginx_conf = "spec/fixtures/custom_nginx.template"
@@ -114,8 +121,11 @@ for _, strategy in helpers.each_strategy() do
         local proxy_client
 
         setup(function()
-          local bp = helpers.get_db_utils(strategy)
+          local bp, _, dao = helpers.get_db_utils(strategy)
 
+          require("kong.singletons").dao = dao
+
+          helpers.with_current_ws(nil, function()
           -- consumer specific plugin
           local service = bp.services:insert {
             name = "mock_upstream",
@@ -149,7 +159,7 @@ for _, strategy in helpers.each_strategy() do
               value     = "consumer-specific plugin",
             },
           }
-
+          end, dao)
           assert(helpers.start_kong({
             database   = strategy,
             nginx_conf = "spec/fixtures/custom_nginx.template",

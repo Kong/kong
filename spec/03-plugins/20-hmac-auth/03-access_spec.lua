@@ -22,8 +22,9 @@ for _, strategy in helpers.each_strategy() do
     local credential
 
     setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp, _, dao = helpers.get_db_utils(strategy)
 
+      helpers.with_current_ws(nil, function()
       local route1 = bp.routes:insert {
         hosts = { "hmacauth.com" },
       }
@@ -118,6 +119,7 @@ for _, strategy in helpers.each_strategy() do
           validate_request_body = true
         }
       }
+      end, dao)
 
       assert(helpers.start_kong {
         database          = strategy,
@@ -1407,10 +1409,12 @@ for _, strategy in helpers.each_strategy() do
     local anonymous
     local hmacAuth
     local hmacDate
+    local credential
 
     setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp, _, dao = helpers.get_db_utils(strategy)
 
+      helpers.with_current_ws(nil, function()
       local service1 = bp.services:insert({
         path = "/request"
       })
@@ -1474,11 +1478,12 @@ for _, strategy in helpers.each_strategy() do
         consumer_id = user1.id
       }
 
-      local credential = bp.hmacauth_credentials:insert {
+      credential = bp.hmacauth_credentials:insert {
         username    = "Aladdin",
         secret      = "OpenSesame",
         consumer_id = user2.id
       }
+      end, dao)
 
       hmacDate = os.date("!%a, %d %b %Y %H:%M:%S GMT")
       local encodedSignature   = ngx.encode_base64(hmac_sha1_binary(credential.secret, "date: " .. hmacDate))

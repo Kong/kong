@@ -32,9 +32,11 @@ for _, strategy in helpers.each_strategy() do
       setup(function()
         dao:truncate_tables()
         helpers.register_consumer_relations(dao)
+        helpers.with_current_ws(nil, function()
         consumer = assert(dao.consumers:insert {
           username = "bob"
         })
+        end, dao)
       end)
       after_each(function()
         dao:truncate_table("acls")
@@ -110,12 +112,14 @@ for _, strategy in helpers.each_strategy() do
 
       describe("GET", function()
         setup(function()
+          helpers.with_current_ws(nil, function()
           for i = 1, 3 do
             assert(dao.acls:insert {
               group       = "group" .. i,
               consumer_id = consumer.id
             })
           end
+          end, dao)
         end)
         teardown(function()
           dao:truncate_table("acls")
@@ -138,6 +142,7 @@ for _, strategy in helpers.each_strategy() do
       local acl, acl2
       before_each(function()
         dao:truncate_table("acls")
+        helpers.with_current_ws(nil, function()
         acl = assert(dao.acls:insert {
           group       = "hello",
           consumer_id = consumer.id
@@ -146,6 +151,7 @@ for _, strategy in helpers.each_strategy() do
           group       = "hello2",
           consumer_id = consumer.id
         })
+        end, dao)
       end)
       describe("GET", function()
         it("retrieves by id", function()
@@ -167,9 +173,11 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(acl.id, json.id)
         end)
         it("retrieves ACL by id only if the ACL belongs to the specified consumer", function()
+          helpers.with_current_ws(nil, function()
           assert(dao.consumers:insert {
             username = "alice"
           })
+          end, dao)
 
           local res = assert(admin_client:send {
             method  = "GET",
@@ -291,6 +299,7 @@ for _, strategy in helpers.each_strategy() do
         setup(function()
           dao:truncate_table("acls")
 
+          helpers.with_current_ws(nil, function()
           for i = 1, 3 do
             assert(dao.acls:insert {
               group = "group" .. i,
@@ -308,6 +317,7 @@ for _, strategy in helpers.each_strategy() do
               consumer_id = consumer2.id
             })
           end
+          end, dao)
         end)
 
         it("retrieves all the acls with trailing slash", function()
@@ -416,10 +426,12 @@ for _, strategy in helpers.each_strategy() do
 
         setup(function()
           dao:truncate_table("acls")
+          helpers.with_current_ws(nil, function()
           credential = assert(dao.acls:insert {
             group = "foo-group",
             consumer_id = consumer.id
           })
+          end, dao)
         end)
         it("retrieves a Consumer from an acl's id", function()
           local res = assert(admin_client:send {

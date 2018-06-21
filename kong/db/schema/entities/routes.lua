@@ -32,7 +32,7 @@ end
 return {
   name        = "routes",
   primary_key = { "id" },
-
+  workspaceable = true,
   fields = {
     { id             = typedefs.uuid, },
     { created_at     = { type = "integer", timestamp = true, auto = true }, },

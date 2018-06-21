@@ -14,13 +14,13 @@ local function load_plugin_into_memory(route_id,
                                        consumer_id,
                                        plugin_name,
                                        api_id)
-  local rows, err = singletons.dao.plugins:find_all {
+  local rows, err = singletons.dao.plugins:find_all({
              name = plugin_name,
          route_id = route_id,
        service_id = service_id,
       consumer_id = consumer_id,
            api_id = api_id,
-  }
+  }, true)
   if err then
     error(err)
   end
@@ -40,6 +40,101 @@ local function load_plugin_into_memory(route_id,
 end
 
 
+
+local function load_plugin_into_memory_ws(route_id,
+                                          service_id,
+                                          consumer_id,
+                                          plugin_name,
+                                          api_id)
+  local ws_scope = ngx.ctx.workspaces or {}
+
+  local plugin, err, ttl
+  -- when there is no workspace, like in phase rewrite
+  if #ws_scope == 0 then
+    local plugin_cache_key = singletons.dao.plugins:cache_key_ws(nil,
+                                                                 plugin_name,
+                                                                 route_id,
+                                                                 service_id,
+                                                                 consumer_id,
+                                                                 api_id)
+
+    local plugin, err = singletons.cache:get(plugin_cache_key,
+                                             nil,
+                                             load_plugin_into_memory,
+                                             route_id,
+                                             service_id,
+                                             consumer_id,
+                                             plugin_name,
+                                             api_id)
+    return plugin, err
+  end
+
+  -- check if plugin in cache for each workspace
+  for _, ws in ipairs(ws_scope) do
+    local plugin_cache_key = singletons.dao.plugins:cache_key_ws(ws,
+                                                                 plugin_name,
+                                                                 route_id,
+                                                                 service_id,
+                                                                 consumer_id,
+                                                                 api_id)
+    ttl, err, plugin = singletons.cache:probe(plugin_cache_key)
+    if err then
+      return nil, err
+    end
+
+    if ttl and plugin and not plugin.null then
+      return plugin
+    end
+  end
+
+  -- if ttl present, plugin present in negative cache
+  if ttl then
+    return plugin
+  end
+
+  -- load plugin, here workspace scope can contain more than one workspace
+  -- depending on with how many workspace, api being shared
+  local plugin = load_plugin_into_memory(route_id,
+                                         service_id,
+                                         consumer_id,
+                                         plugin_name,
+                                         api_id)
+  if plugin and not plugin.null then
+    local plugin_cache_key = singletons.dao.plugins:cache_key_ws({id = plugin.workspace_id},
+                                                                 plugin_name,
+                                                                 route_id,
+                                                                 service_id,
+                                                                 consumer_id,
+                                                                 api_id)
+
+    plugin, err = singletons.cache:get(plugin_cache_key, nil, function ()
+      return plugin
+    end)
+    return plugin, err
+  end
+
+  -- plugin not found in any of the workspace in workspace scope,
+  -- add negative cache
+  for _, ws in ipairs(ngx.ctx.workspaces) do
+    local plugin_cache_key = singletons.dao.plugins:cache_key_ws(ws,
+                                                                 plugin_name,
+                                                                 route_id,
+                                                                 service_id,
+                                                                 consumer_id,
+                                                                 api_id)
+
+    local _, err = singletons.cache:get(plugin_cache_key, nil, function ()
+      return plugin
+    end)
+    if err then
+      return nil, err
+    end
+  end
+
+  return plugin
+end
+
+
 --- Load the configuration for a plugin entry in the DB.
 -- Given an API, a Consumer and a plugin name, retrieve the plugin's
 -- configuration if it exists. Results are cached in ngx.dict
@@ -54,26 +149,23 @@ local function load_plugin_configuration(route_id,
                                          consumer_id,
                                          plugin_name,
                                          api_id)
-  local plugin_cache_key = singletons.dao.plugins:cache_key(plugin_name,
-                                                            route_id,
-                                                            service_id,
-                                                            consumer_id,
-                                                            api_id)
-
-  local plugin, err = singletons.cache:get(plugin_cache_key,
-                                           nil,
-                                           load_plugin_into_memory,
-                                           route_id,
-                                           service_id,
-                                           consumer_id,
-                                           plugin_name,
-                                           api_id)
+  local plugin, err = load_plugin_into_memory_ws(route_id,
+                                                 service_id,
+                                                 consumer_id,
+                                                 plugin_name,
+                                                 api_id)
   if err then
     ngx.ctx.delay_response = false
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
   if plugin ~= nil and plugin.enabled then
+    local plugin_ws = {
+      id = plugin.workspace_id,
+      name = plugin.workspace_name
+    }
+    ngx.ctx.workspaces = { plugin_ws }
+
     local cfg       = plugin.config or {}
     cfg.api_id      = plugin.api_id
     cfg.route_id    = plugin.route_id

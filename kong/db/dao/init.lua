@@ -1,5 +1,12 @@
 local cjson        = require "cjson"
 
+local workspaces = require "kong.workspaces"
+local ws_helper  = require "kong.workspaces.helper"
+local rbac       = require "kong.rbac"
+
+
+local workspaceable = workspaces.get_workspaceable_relations()
+
 local setmetatable = setmetatable
 local tonumber     = tonumber
 local require      = require
@@ -8,6 +15,7 @@ local pairs        = pairs
 local type         = type
 local min          = math.min
 local log          = ngx.log
+local tostring     = tostring
 
 
 local ERR          = ngx.ERR
@@ -35,7 +43,8 @@ local function generate_foreign_key_methods(self)
     if field.type == "foreign" then
       local method_name = "for_" .. name
 
-      self[method_name] = function(self, foreign_key, size, offset)
+      self[method_name] = function(self, foreign_key, size, offset, options)
+        options = options or {}
         if type(foreign_key) ~= "table" then
           error("foreign_key must be a table", 2)
         end
@@ -74,9 +83,15 @@ local function generate_foreign_key_methods(self)
           return nil, tostring(err_t), err_t
         end
 
-        local entities, err, err_t = self:rows_to_entities(rows)
+        local entities, err, err_t = self:rows_to_entities(rows, options.include_ws)
         if err then
           return nil, err, err_t
+        end
+
+        if not options.skip_rbac then
+          local table_name = self.schema.name
+          local constraints = workspaceable[table_name]
+          entities = rbac.narrow_readable_entities(table_name, entities, constraints)
         end
 
         return entities, nil, nil, new_offset
@@ -90,8 +105,23 @@ local function generate_foreign_key_methods(self)
         end
       end
 
-      self["select_by_" .. name] = function(self, unique_value)
+      self["select_by_" .. name] = function(self, unique_value, options)
         validate_unique_value(unique_value)
+        local pk, err_t = ws_helper.resolve_shared_entity_id(self.schema.name,
+                                                     { [name] = unique_value },
+                                                             workspaceable[self.schema.name])
+        if err_t then
+          return nil, tostring(err_t), err_t
+        end
+
+        if pk then
+          return self:select(pk, options)
+        end
+
+        local ws_scope = workspaces.get_workspaces()
+        if #ws_scope > 0 then
+          return nil
+        end
 
         local row, err_t = self.strategy:select_by_field(name, unique_value)
         if err_t then
@@ -120,6 +150,16 @@ local function generate_foreign_key_methods(self)
           return nil, tostring(err_t), err_t
         end
 
+        local pk, err_t = ws_helper.resolve_shared_entity_id(self.schema.name,
+                                                     { [name] = unique_value },
+                                                             workspaceable[self.schema.name])
+        if err_t then
+          return nil, tostring(err_t), err_t
+        end
+        if pk then
+          return self:update(pk, entity_to_update)
+        end
+
         local row, err_t = self.strategy:update_by_field(name, unique_value,
                                                          entity_to_update)
         if not row then
@@ -138,13 +178,30 @@ local function generate_foreign_key_methods(self)
 
       self["delete_by_" .. name] = function(self, unique_value)
         validate_unique_value(unique_value)
-
-        local _, err_t = self.strategy:delete_by_field(name, unique_value)
+        local pk, err_t = ws_helper.resolve_shared_entity_id(self.schema.name,
+                                                     { [name] = unique_value },
+                                                             workspaceable[self.schema.name])
         if err_t then
           return nil, tostring(err_t), err_t
         end
 
-        self:post_crud_event("delete")
+        if pk then
+          return self:delete(pk)
+        end
+
+        -- if workspace present and pk is nil
+        -- entity not found, return
+        local ws_scope = workspaces.get_workspaces()
+        if #ws_scope > 0 then
+          return true
+        end
+
+        local _, err_t, entity = self.strategy:delete_by_field(name, unique_value)
+        if err_t then
+          return nil, tostring(err_t), err_t
+        end
+
+        self:post_crud_event("delete", entity)
 
         return true
       end
@@ -173,7 +230,8 @@ function _M.new(schema, strategy, errors)
 end
 
 
-function DAO:select(primary_key)
+function DAO:select(primary_key, options)
+  options = options or {}
   if type(primary_key) ~= "table" then
     error("primary_key must be a table", 2)
   end
@@ -182,6 +240,18 @@ function DAO:select(primary_key)
   if not ok then
     local err_t = self.errors:invalid_primary_key(errors)
     return nil, tostring(err_t), err_t
+  end
+
+  local table_name = self.schema.name
+  local constraints = workspaceable[table_name]
+  local ok, err = ws_helper.validate_pk_exist(table_name, primary_key, constraints)
+  if err then
+    local err_t = self.errors:database_error(err)
+    return nil, tostring(err_t), err_t
+  end
+
+  if not ok then
+    return nil
   end
 
   local row, err_t = self.strategy:select(primary_key)
@@ -193,11 +263,20 @@ function DAO:select(primary_key)
     return nil
   end
 
-  return self:row_to_entity(row)
+  if not options.skip_rbac then
+    local r = rbac.validate_entity_operation(primary_key, constraints)
+    if not r then
+      local err_t = self.errors:unauthorized_operation("read")
+      return  nil, tostring(err_t), err_t
+    end
+  end
+
+  return self:row_to_entity(row, options.include_ws)
 end
 
 
-function DAO:page(size, offset)
+function DAO:page(size, offset, options)
+  options = options or {}
   size = tonumber(size == nil and 100 or size)
 
   if not size then
@@ -219,9 +298,15 @@ function DAO:page(size, offset)
     return nil, tostring(err_t), err_t
   end
 
-  local entities, err, err_t = self:rows_to_entities(rows)
+  local entities, err, err_t = self:rows_to_entities(rows, options.include_ws)
   if not entities then
     return nil, err, err_t
+  end
+
+  if not options.skip_rbac then
+    local table_name = self.schema.name
+    local constraints = workspaceable[table_name]
+    entities = rbac.narrow_readable_entities(table_name, entities, constraints)
   end
 
   return entities, err, err_t, offset
@@ -282,6 +367,12 @@ function DAO:insert(entity)
     return nil, tostring(err_t), err_t
   end
 
+  local workspace, err_t = ws_helper.apply_unique_per_ws(self.schema.name, entity_to_insert,
+                                                         workspaceable[self.schema.name])
+  if err then
+    return nil, tostring(err_t), err_t
+  end
+
   local row, err_t = self.strategy:insert(entity_to_insert)
   if not row then
     return nil, tostring(err_t), err_t
@@ -290,6 +381,17 @@ function DAO:insert(entity)
   row, err, err_t = self:row_to_entity(row)
   if not row then
     return nil, err, err_t
+  end
+
+  if not err and workspace then
+    local err_rel = workspaces.add_entity_relation(self.schema.name, row, workspace)
+    if err_rel then
+      local _, err_t = self:delete(row)
+      if err then
+        return nil, tostring(err_t), err_t
+      end
+      return nil, tostring(err_rel), err_rel
+    end
   end
 
   self:post_crud_event("create", row)
@@ -319,11 +421,30 @@ function DAO:update(primary_key, entity)
     return nil, tostring(err_t), err_t
   end
 
+  local constraints = workspaceable[self.schema.name]
+  local ok, err = ws_helper.validate_pk_exist(self.schema.name,
+                                              primary_key, constraints)
+  if err then
+    local err_t = self.errors:database_error(err)
+    return nil, tostring(err_t), err_t
+  end
+
+  if not ok then
+    local err_t = self.errors:not_found(primary_key)
+    return nil, tostring(err_t), err_t
+  end
+
   local ok, errors = self.schema:validate_update(entity_to_update)
   if not ok then
     local err_t = self.errors:schema_violation(errors)
     return nil, tostring(err_t), err_t
   end
+
+  if not rbac.validate_entity_operation(entity_to_update, constraints) then
+    local err_t = self.errors:unauthorized_operation("update")
+    return nil, tostring(err_t), err_t
+  end
+  ws_helper.apply_unique_per_ws(self.schema.name, entity_to_update, constraints)
 
   local row, err_t = self.strategy:update(primary_key, entity_to_update)
   if not row then
@@ -333,6 +454,13 @@ function DAO:update(primary_key, entity)
   row, err, err_t = self:row_to_entity(row)
   if not row then
     return nil, err, err_t
+  end
+
+  if not err then
+    local err_rel = workspaces.update_entity_relation(self.schema.name, row)
+    if err_rel then
+      return nil, tostring(err_rel), err_rel
+    end
   end
 
   self:post_crud_event("update", row)
@@ -346,24 +474,38 @@ function DAO:delete(primary_key)
     error("primary_key must be a table", 2)
   end
 
+  local constraints = workspaceable[self.schema.name]
+  local ok, err = ws_helper.validate_pk_exist(self.schema.name,
+                                              primary_key, constraints)
+  if err then
+    local err_t = self.errors:database_error(err)
+    return nil, tostring(err_t), err_t
+  end
+
+  if not ok then
+    return true
+  end
+
+  ws_helper.apply_unique_per_ws(self.schema.name, primary_key, constraints)
+
   local ok, errors = self.schema:validate_primary_key(primary_key)
   if not ok then
     local err_t = self.errors:invalid_primary_key(errors)
     return nil, tostring(err_t), err_t
   end
 
-  local _, err_t = self.strategy:delete(primary_key)
+  local _, err_t, entity = self.strategy:delete(primary_key)
   if err_t then
     return nil, tostring(err_t), err_t
   end
 
-  self:post_crud_event("delete")
+  self:post_crud_event("delete", entity)
 
   return true
 end
 
 
-function DAO:rows_to_entities(rows)
+function DAO:rows_to_entities(rows, include_ws)
   local count = #rows
   if count == 0 then
     return setmetatable(rows, cjson.empty_array_mt)
@@ -372,7 +514,7 @@ function DAO:rows_to_entities(rows)
   local entities = new_tab(count, 0)
 
   for i = 1, count do
-    local entity, err, err_t = self:row_to_entity(rows[i])
+    local entity, err, err_t = self:row_to_entity(rows[i], include_ws)
     if not entity then
       return nil, err, err_t
     end
@@ -384,12 +526,14 @@ function DAO:rows_to_entities(rows)
 end
 
 
-function DAO:row_to_entity(row)
+function DAO:row_to_entity(row, include_ws)
   local entity, errors = self.schema:process_auto_fields(row, "select")
   if not entity then
     local err_t = self.errors:schema_violation(errors)
     return nil, tostring(err_t), err_t
   end
+
+  ws_helper.remove_ws_prefix(self.schema.name, entity, include_ws)
 
   return entity
 end

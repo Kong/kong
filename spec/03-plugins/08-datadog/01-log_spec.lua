@@ -9,6 +9,7 @@ for _, strategy in helpers.each_strategy() do
     setup(function()
       local bp, _, dao = helpers.get_db_utils(strategy)
 
+      helpers.with_current_ws(nil, function()
       local consumer = bp.consumers:insert {
         username  = "foo",
         custom_id = "bar"
@@ -117,6 +118,7 @@ for _, strategy in helpers.each_strategy() do
           prefix = "prefix",
         },
       }
+      end, dao)
 
       assert(helpers.start_kong({
         database   = strategy,

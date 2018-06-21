@@ -16,6 +16,7 @@ local constants   = require "kong.constants"
 local responses   = require "kong.tools.responses"
 local singletons  = require "kong.singletons"
 local certificate = require "kong.core.certificate"
+local workspaces = require "kong.workspaces"
 
 
 local tostring    = tostring
@@ -75,6 +76,8 @@ local function build_api_router(dao, version)
   if version then
     api_router_version = version
   end
+
+  singletons.api_router = api_router
 
   return true
 end
@@ -173,10 +176,27 @@ return {
 
 
       worker_events.register(function(data)
+        -- invalidate this entity anywhere it is cached if it has a
+        -- caching key
+
         if not data.new_db then
           if not data.schema then
             log(ngx.ERR, "[events] missing schema in crud subscriber")
             return
+          end
+
+          local workspaces, err = dao.workspace_entities:find_all({
+            entity_id = data.entity[data.schema.primary_key[1]],
+            __skip_rbac = true,
+          })
+          if err then
+            log(ngx.ERR, "[events] could not fetch workspaces: ", err)
+            return
+          end
+
+          local cache_key = dao[data.schema.table]:entity_cache_key(data.entity)
+          if cache_key then
+            cache:invalidate(cache_key, workspaces)
           end
 
           if not data.entity then
@@ -189,7 +209,7 @@ return {
 
           local cache_key = dao[data.schema.table]:entity_cache_key(data.entity)
           if cache_key then
-            cache:invalidate(cache_key)
+            cache:invalidate(cache_key, workspaces)
           end
 
           -- if we had an update, but the cache key was part of what was updated,
@@ -198,7 +218,7 @@ return {
           if data.old_entity then
             cache_key = dao[data.schema.table]:entity_cache_key(data.old_entity)
             if cache_key then
-              cache:invalidate(cache_key)
+              cache:invalidate(cache_key, workspaces)
             end
           end
 
@@ -404,6 +424,14 @@ return {
         end
       end)
 
+      worker_events.register(function(data)
+        log(DEBUG, "[events] workspace_entites updated, invalidating API workspace scope")
+        local target = data.entity
+        if target.entity_type == "apis" or target.entity_type == "routes" then
+          local ws_scope_key = fmt("apis_ws_resolution:%s", target.entity_id)
+          cache:invalidate(ws_scope_key)
+        end
+      end, "crud", "workspace_entities")
 
       -- initialize balancers for active healthchecks
       ngx.timer.at(0, function()
@@ -622,6 +650,13 @@ return {
       var.upstream_x_forwarded_proto = forwarded_proto
       var.upstream_x_forwarded_host  = forwarded_host
       var.upstream_x_forwarded_port  = forwarded_port
+
+      local err
+      ctx.workspaces, err = workspaces.resolve_ws_scope(route.protocols and route or api)
+      if err then
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR("failed to retrieve workspace " ..
+          "for the request (reason: " .. tostring(err) .. ")")
+      end
     end,
     -- Only executed if the `router` module found a route and allows nginx to proxy it.
     after = function(ctx)

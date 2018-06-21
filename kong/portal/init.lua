@@ -3,6 +3,11 @@ local api_helpers = require "kong.api.api_helpers"
 local app_helpers = require "lapis.application"
 local singletons  = require "kong.singletons"
 local responses   = require "kong.tools.responses"
+local workspaces  = require "kong.workspaces"
+local rbac        = require "kong.rbac"
+
+
+local fmt = string.format
 
 
 local _M = {}
@@ -12,6 +17,25 @@ _M.app = lapis.Application()
 
 
 _M.app:before_filter(function(self)
+  -- in case of endpoint with missing `/`, this block is executed twice.
+  -- So previous workspace should be dropped
+  ngx.ctx.admin_api_request = true
+  ngx.ctx.workspaces = nil
+
+  local ws_name = self.params.workspace_name or workspaces.DEFAULT_WORKSPACE
+  local workspaces = workspaces.get_req_workspace(ws_name)
+  if not workspaces or #workspaces == 0 then
+    responses.send_HTTP_NOT_FOUND(fmt("Workspace '%s' not found", ws_name))
+  end
+
+  -- save workspace name in the context; if not passed, default workspace is
+  -- 'default'
+  ngx.ctx.workspaces = workspaces
+  self.params.workspace_name = nil
+
+  rbac.validate_user()
+  rbac.validate_endpoint(self.route_name, ngx.var.uri)
+
   api_helpers.filter_body_content_type(self)
 end)
 
@@ -80,6 +104,8 @@ function _M.attach_routes(routes, app)
     end
 
     app:match(route_path, route_path, app_helpers.respond_to(methods))
+    app:match("workspace_" .. route_path, "/:workspace_name" .. route_path,
+              app_helpers.respond_to(methods))
   end
 end
 

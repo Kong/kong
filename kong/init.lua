@@ -49,7 +49,6 @@ local ip = require "kong.tools.ip"
 local DB = require "kong.db"
 local dns = require "kong.tools.dns"
 local core = require "kong.core.handler"
-local rbac = require "kong.rbac"
 local utils = require "kong.tools.utils"
 local lapis = require "lapis"
 local responses = require "kong.tools.responses"
@@ -206,6 +205,7 @@ function Kong.init()
   -- populate singletons
   singletons.ip = ip.init(config)
   singletons.dns = dns(config)
+  singletons.configuration = config
   singletons.loaded_plugins = assert(load_plugins(config, dao))
   singletons.dao = dao
   singletons.configuration = config
@@ -226,7 +226,7 @@ function Kong.init()
   reports.add_immutable_value("enterprise", true)
 
   if config.anonymous_reports then
-    reports.add_ping_value("rbac_enforced", singletons.configuration.enforce_rbac)
+    reports.add_ping_value("rbac_enforced", not singletons.configuration.rbac.off)
   end
   singletons.vitals = vitals.new {
       dao            = dao,
@@ -235,8 +235,6 @@ function Kong.init()
       ttl_seconds    = config.vitals_ttl_seconds,
       ttl_minutes    = config.vitals_ttl_minutes,
   }
-
-  rbac.load_resource_bitfields(dao)
 
   assert(core.build_router(db, "init"))
   assert(core.build_api_router(dao, "init"))
@@ -365,13 +363,19 @@ function Kong.ssl_certificate()
   local ctx = ngx.ctx
   core.certificate.before(ctx)
 
+  local old_ws = ctx.workspaces
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
+    -- run certificate phase in global scope
+    ctx.workspaces = {}
     plugin.handler:certificate(plugin_conf)
   end
+  ctx.workspaces = old_ws
 end
 
 function Kong.balancer()
   local ctx = ngx.ctx
+  local old_ws = ctx.workspaces
+  ctx.workspaces = {}
   local addr = ctx.balancer_address
   local tries = addr.tries
   local current_try = {}
@@ -435,18 +439,24 @@ function Kong.balancer()
   end
 
   core.balancer.after()
+  ctx.workspaces = old_ws
 end
 
 function Kong.rewrite()
   local ctx = ngx.ctx
+
   core.rewrite.before(ctx)
 
+  local old_ws = ctx.workspaces
   -- we're just using the iterator, as in this rewrite phase no consumer nor
   -- api will have been identified, hence we'll just be executing the global
   -- plugins
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
+    -- run certificate phase in global scope
+    ctx.workspaces = {}
     plugin.handler:rewrite(plugin_conf)
   end
+  ctx.workspaces = old_ws
 
   core.rewrite.after(ctx)
 end
@@ -458,6 +468,7 @@ function Kong.access()
 
   ctx.delay_response = true
 
+  local old_ws = ctx.workspaces
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
     if not ctx.delayed_response then
       local err = coroutine.wrap(plugin.handler.access)(plugin.handler, plugin_conf)
@@ -474,6 +485,7 @@ function Kong.access()
         return responses.send_HTTP_UNAUTHORIZED(msg)
       end
     end
+    ctx.workspaces = old_ws
   end
 
   if ctx.delayed_response then
@@ -490,8 +502,10 @@ function Kong.header_filter()
   local ctx = ngx.ctx
   core.header_filter.before(ctx)
 
+  local old_ws = ctx.workspaces
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins) do
     plugin.handler:header_filter(plugin_conf)
+    ctx.workspaces = old_ws
   end
 
   core.header_filter.after(ctx)
@@ -500,8 +514,10 @@ end
 
 function Kong.body_filter()
   local ctx = ngx.ctx
+  local old_ws = ctx.workspaces
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins) do
     plugin.handler:body_filter(plugin_conf)
+    ctx.workspaces = old_ws
   end
 
   core.body_filter.after(ctx)
@@ -509,8 +525,10 @@ end
 
 function Kong.log()
   local ctx = ngx.ctx
+  local old_ws = ctx.workspaces
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins) do
     plugin.handler:log(plugin_conf)
+    ctx.workspaces = old_ws
   end
 
   core.log.after(ctx)

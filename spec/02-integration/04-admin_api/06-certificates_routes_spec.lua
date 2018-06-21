@@ -4,6 +4,7 @@ local DAOFactory = require "kong.dao.factory"
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
+local singletons = require "kong.singletons"
 
 
 local function it_content_types(title, fn)
@@ -33,6 +34,8 @@ describe("Admin API: #" .. kong_config.database, function()
   setup(function()
     dao = assert(DAOFactory.new(kong_config))
     assert(dao:run_migrations())
+
+    singletons.dao = dao
 
     assert(helpers.start_kong({
       database = kong_config.database
@@ -66,19 +69,19 @@ describe("Admin API: #" .. kong_config.database, function()
           method = "GET",
           path = "/certificates",
         })
-
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.equal(1, json.total)
         assert.equal(1, #json.data)
         assert.is_string(json.data[1].cert)
         assert.is_string(json.data[1].key)
-        assert.same({ "foo.com", "bar.com" }, json.data[1].snis)
+        assert.contains("foo.com", json.data[1].snis)
+        assert.contains("bar.com", json.data[1].snis)
       end)
     end)
 
     describe("POST", function()
-      it("returns a conflict when duplicates snis are present in the request", function()
+      it("returns a conflict when duplicates snis are present in the request#t", function()
         local res = assert(client:send {
           method  = "POST",
           path    = "/certificates",
@@ -143,8 +146,11 @@ describe("Admin API: #" .. kong_config.database, function()
         json = cjson.decode(body)
         assert.equal(2, #json.data)
         assert.equal(2, json.total)
-        assert.equal("foo.com", json.data[1].name)
-        assert.equal("bar.com", json.data[2].name)
+        local sni_names = {}
+        table.insert(sni_names, json.data[1].name)
+        table.insert(sni_names, json.data[2].name)
+        assert.contains("foo.com", sni_names)
+        assert.contains("bar.com", sni_names)
 
         -- make sure we only have one certificate
         res = assert(client:send {
@@ -158,7 +164,8 @@ describe("Admin API: #" .. kong_config.database, function()
         assert.equal(1, #json.data)
         assert.is_string(json.data[1].cert)
         assert.is_string(json.data[1].key)
-        assert.same({ "foo.com", "bar.com" }, json.data[1].snis)
+        assert.contains("bar.com", json.data[1].snis)
+        assert.contains("foo.com", json.data[1].snis)
       end)
 
       it_content_types("creates a certificate", function(content_type)
@@ -423,7 +430,8 @@ describe("Admin API: #" .. kong_config.database, function()
         local sni_names = {}
         table.insert(sni_names, json.data[1].name)
         table.insert(sni_names, json.data[2].name)
-        assert.are.same({ "baz.com", "bar.com" }, sni_names)
+        assert.contains("baz.com", sni_names)
+        assert.contains("bar.com", sni_names)
 
         -- make sure we did not add any certificate
         res = assert(client:send {
@@ -656,7 +664,8 @@ describe("Admin API: #" .. kong_config.database, function()
 
         assert.is_string(json1.cert)
         assert.is_string(json1.key)
-        assert.same({ "foo.com", "bar.com" }, json1.snis)
+        assert.contains("foo.com", json1.snis)
+        assert.contains("bar.com", json1.snis)
         assert.same(json1, json2)
       end)
 
@@ -870,7 +879,8 @@ describe("Admin API: #" .. kong_config.database, function()
         local sni_names = {}
         table.insert(sni_names, json.data[1].name)
         table.insert(sni_names, json.data[2].name)
-        assert.are.same( { "baz.com", "bar.com" } , sni_names)
+        assert.contains("baz.com", sni_names)
+        assert.contains("bar.com", sni_names)
 
         -- make sure we did not add any certificate
         res = assert(client:send {
@@ -1115,23 +1125,29 @@ describe("Admin API: #" .. kong_config.database, function()
 
     before_each(function()
       dao:truncate_tables()
-      ssl_certificate = assert(dao.ssl_certificates:insert {
-        cert = ssl_fixtures.cert,
-        key = ssl_fixtures.key,
+      ssl_certificate = dao.ssl_certificates:run_with_ws_scope(
+        dao.workspaces:find_all({name = "default"}),
+        dao.ssl_certificates.insert, {
+          cert = ssl_fixtures.cert,
+          key = ssl_fixtures.key,
       })
-      assert(dao.ssl_servers_names:insert {
-          name               = "foo.com",
-          ssl_certificate_id = ssl_certificate.id,
-      })
+
+      assert(dao.ssl_servers_names:run_with_ws_scope(
+               dao.workspaces:find_all({name = "default"}),
+               dao.ssl_servers_names.insert, {
+                 name               = "foo.com",
+                 ssl_certificate_id = ssl_certificate.id,
+      }))
     end)
 
     describe("POST", function()
       before_each(function()
         dao:truncate_tables()
-
-        ssl_certificate = assert(dao.ssl_certificates:insert {
-          cert = ssl_fixtures.cert,
-          key = ssl_fixtures.key,
+        ssl_certificate = dao.ssl_certificates:run_with_ws_scope(
+          dao.workspaces:find_all({name = "default"}),
+          dao.ssl_certificates.insert, {
+            cert = ssl_fixtures.cert,
+            key = ssl_fixtures.key,
         })
       end)
 
@@ -1174,10 +1190,12 @@ describe("Admin API: #" .. kong_config.database, function()
       end)
 
       it("returns a conflict when an SNI already exists", function()
-          assert(dao.ssl_servers_names:insert {
-            name = "foo.com",
-            ssl_certificate_id = ssl_certificate.id,
-          })
+        assert(dao.ssl_servers_names:run_with_ws_scope(
+                 dao.workspaces:find_all({name = "default"}),
+                 dao.ssl_servers_names.insert, {
+                   name               = "foo.com",
+                   ssl_certificate_id = ssl_certificate.id,
+        }))
 
           local res = assert(client:send {
             method  = "POST",
@@ -1217,14 +1235,19 @@ describe("Admin API: #" .. kong_config.database, function()
 
     before_each(function()
       dao:truncate_tables()
-      ssl_certificate = assert(dao.ssl_certificates:insert {
-        cert = ssl_fixtures.cert,
-        key = ssl_fixtures.key,
-      })
-      assert(dao.ssl_servers_names:insert {
-          name               = "foo.com",
-          ssl_certificate_id = ssl_certificate.id,
-      })
+      ssl_certificate = assert(dao.ssl_certificates:run_with_ws_scope(
+                                 dao.workspaces:find_all({name = "default"}),
+                                 dao.ssl_certificates.insert, {
+                                   cert = ssl_fixtures.cert,
+                                   key = ssl_fixtures.key,
+      }))
+
+      assert(dao.ssl_servers_names:run_with_ws_scope(
+               dao.workspaces:find_all({name = "default"}),
+               dao.ssl_servers_names.insert, {
+                 name = "foo.com",
+                 ssl_certificate_id = ssl_certificate.id,
+      }))
     end)
 
     describe("GET", function()
@@ -1255,9 +1278,11 @@ describe("Admin API: #" .. kong_config.database, function()
           -- ssl_certificate_id field because it is in the `SET` part of the
           -- query built by the DAO, but in C*, one cannot change a value
           -- from the clustering key.
-          local ssl_certificate_2 = assert(dao.ssl_certificates:insert {
-            cert = "foo",
-            key = "bar",
+
+          local ssl_certificate_2 = dao.ssl_certificates:run_with_ws_scope(
+            dao.workspaces:find_all({name = "default"}), dao.ssl_certificates.insert, {
+              cert = "foo",
+              key = "bar",
           })
 
           local res = assert(client:send {

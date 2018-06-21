@@ -1,120 +1,24 @@
 local _M = {}
 
-local utils      = require "kong.tools.utils"
 local singletons = require "kong.singletons"
 local bit        = require "bit"
-local tab_clear  = require "table.clear"
+local workspaces = require "kong.workspaces"
+local responses  = require "kong.tools.responses"
+local cjson      = require "cjson"
 
-local band = bit.band
-local bxor = bit.bxor
-local bor  = bit.bor
-local fmt  = string.format
+local band   = bit.band
+local bxor   = bit.bxor
+local bor    = bit.bor
+local fmt    = string.format
+local lshift = bit.lshift
+local rshift = bit.rshift
+local setmetatable = setmetatable
+local getmetatable = getmetatable
 
 
 local function log(lvl, ...)
   ngx.log(lvl, "[rbac] ", ...)
 end
-
-
-local core_resources_set = {
-  default = true,
-  kong = true,
-  status = true,
-  apis = true,
-  routes = true,
-  services = true,
-  plugins = true,
-  cache = true,
-  certificates = true,
-  consumers = true,
-  snis = true,
-  upstreams = true,
-  targets = true,
-  rbac = true,
-  vitals = true,
-  portal = true,
-  -- core plugins
-  jwt = true,
-  ["basic-auth"] = true,
-  oauth2 = true,
-  ["hmac-auth"] = true,
-  acls = true,
-  ["key-auth"] = true,
-}
-
-
-local route_resource_map = {
-  ["/apis/"] = "apis",
-  ["/apis/:api_name_or_id"] = "apis",
-  ["/apis/:api_name_or_id/plugins/"] = "plugins",
-  ["/apis/:api_name_or_id/plugins/:id"] = "plugins",
-  ["/routes"] = "routes",
-  ["/routes/:routes"] = "routes",
-  ["/routes/:routes/plugins"] = "plugins",
-  ["/routes/:routes/service"] = "services",
-  ["/services"] = "services",
-  ["/services/:services"] = "services",
-  ["/services/:services/plugins"] = "plugins",
-  ["/services/:services/routes"] = "routes",
-  ["/cache/:key"] = "cache",
-  ["/cache"] = "cache",
-  ["/certificates/"] = "certificates",
-  ["/certificates/:sni_or_uuid"] = "certificates",
-  ["/consumers/"] = "consumers",
-  ["/consumers/:username_or_id"] = "consumers",
-  ["/consumers/:username_or_id/plugins/"] = "consumers",
-  ["/consumers/:username_or_id/plugins/:id"] = "consumers",
-  ["/"] = "kong",
-  ["/status"] = "status",
-  ["/plugins"] = "plugins",
-  ["/plugins/schema/:name"] = "plugins",
-  ["/plugins/:id"] = "plugins",
-  ["/plugins/enabled"] = "plugins",
-  ["/rbac/users/"] = "rbac",
-  ["/rbac/users/:name_or_id"] = "rbac",
-  ["/rbac/users/:name_or_id/permissions"] = "rbac",
-  ["/rbac/users/:name_or_id/roles"] = "rbac",
-  ["/rbac/roles"] = "rbac",
-  ["/rbac/roles/:name_or_id"] = "rbac",
-  ["/rbac/roles/:name_or_id/permissions"] = "rbac",
-  ["/rbac/permissions"] = "rbac",
-  ["/rbac/permissions/:name_or_id"] = "rbac",
-  ["/rbac/resources"] = "rbac",
-  ["/rbac/resources/routes"] = "rbac",
-  ["/snis/"] = "snis",
-  ["/snis/:name"] = "snis",
-  ["/upstreams/"] = "upstreams",
-  ["/upstreams/:upstream_name_or_id"] = "upstreams",
-  ["/upstreams/:upstream_name_or_id/targets/"] = "upstreams",
-  ["/upstreams/:upstream_name_or_id/targets/active"] = "targets",
-  ["/upstreams/:upstream_name_or_id/targets/:target_or_id"] = "targets",
-  ["/vitals/"] = "vitals",
-  ["/vitals/cluster"] = "vitals",
-  ["/vitals/nodes/"] = "vitals",
-  ["/vitals/nodes/:node_id"] = "vitals",
-  ["/vitals/consumers/:username_or_id/cluster"] = "vitals",
-  ["/vitals/consumers/:username_or_id/nodes"] = "vitals",
-  ["/consumers/:username_or_id/acls/"] = "acls",
-  ["/consumers/:username_or_id/acls/:group_or_id"] = "acls",
-  ["/consumers/:username_or_id/basic-auth/"] = "basic-auth",
-  ["/consumers/:username_or_id/basic-auth/:credential_username_or_id"] = "basic-auth",
-  ["/consumers/:username_or_id/hmac-auth/"] = "hmac-auth",
-  ["/consumers/:username_or_id/hmac-auth/:credential_username_or_id"] = "hmac-auth",
-  ["/consumers/:username_or_id/jwt/"] = "jwt",
-  ["/consumers/:username_or_id/jwt/:credential_key_or_id"] = "jwt",
-  ["/consumers/:username_or_id/key-auth/"] = "key-auth",
-  ["/consumers/:username_or_id/key-auth/:credential_key_or_id"] = "key-auth",
-  ["/oauth2_tokens/"] = "oauth2",
-  ["/oauth2_tokens/:token_or_id"] = "oauth2",
-  ["/oauth2/"] = "oauth2",
-  ["/consumers/:username_or_id/oauth2/"] = "oauth2",
-  ["/consumers/:username_or_id/oauth2/:clientid_or_id"] = "oauth2",
-  ["/files"] = "portal",
-  ["/files/*"] = "portal",
-  ["/portal/developers"] = "portal",
-  ["/portal/developers/:email_or_id"] = "portal",
-}
-_M.route_resource_map = route_resource_map
 
 
 local actions_bitfields = {
@@ -124,13 +28,19 @@ local actions_bitfields = {
   delete = 0x08,
 }
 _M.actions_bitfields = actions_bitfields
+local actions_bitfield_size = 4
 
 
-local resource_bitfields = {}
-_M.resource_bitfields = resource_bitfields
+local bitfield_action = {
+  [0x01] = "read",
+  [0x02] = "create",
+  [0x04] = "update",
+  [0x08] = "delete",
+}
 
 
 local figure_action
+local readable_action
 do
   local action_lookup = setmetatable(
     {
@@ -155,85 +65,12 @@ do
     return action_lookup[method]
   end
 
+  readable_action = function(action)
+    return bitfield_action[action]
+  end
+
   _M.figure_action = figure_action
-end
-
-
-local route_resources = {}
-local resource_routes = {}
-_M.route_resources = route_resources
-_M.resource_routes = resource_routes
-
-
-local function load_resource_bitfields(dao_factory)
-  tab_clear(resource_bitfields)
-
-  local rows, err = dao_factory.rbac_resources:find_all()
-  if err then
-    error("Error in retrieving RBAC resource entries: " .. err)
-  end
-
-  table.sort(rows, function(a, b) return a.bit_pos < b.bit_pos end)
-
-  for i = 1, #rows do
-    local idx = rows[i].bit_pos
-    local resource = rows[i].name
-
-    resource_bitfields[idx] = resource
-    resource_bitfields[resource] = 2 ^ (idx - 1)
-  end
-end
-_M.load_resource_bitfields = load_resource_bitfields
-
-
-local function register_resource(resource, dao_factory)
-  -- clear and reload our bitfields so we make sure are inserting the correct
-  -- bit_pos
-  load_resource_bitfields(dao_factory)
-
-  local idx = #resource_bitfields + 1
-
-  resource_bitfields[idx] = resource
-  resource_bitfields[resource] = 2 ^ (idx - 1)
-
-  local ok, err = dao_factory.rbac_resources:insert({
-    id = utils.uuid(),
-    name = resource,
-    bit_pos = idx,
-  })
-  if not ok then
-    return nil, err
-  end
-
-  return ok
-end
-_M.register_resource = register_resource
-
-
-function _M.register_resource_route(route_path, resource)
-  if core_resources_set[resource] and not resource_bitfields[resource] then
-    return
-  end
-
-  if not resource_bitfields[resource] then
-    error("Resource '" .. resource .. "' not previous defined in " ..
-          "rbac_resources table", 2)
-  end
-
-  if route_resources[route_path] then
-    error("Resource route " .. route_path .. " already exists", 2)
-  end
-
-  log(ngx.INFO, "registering RBAC resource ", route_path, " as ",
-      resource)
-
-  route_resources[route_path] = resource
-
-  if not resource_routes[resource] then
-    resource_routes[resource] = {}
-  end
-
-  table.insert(resource_routes[resource], route_path)
+  _M.readable_action = readable_action
 end
 
 
@@ -336,91 +173,506 @@ local function get_user(user_token)
 end
 
 
-local function build_permissions_map(user, dao_factory)
+local function bitfield_check(map, key, bit)
+  return map[key] and band(map[key], bit) == bit or false
+end
+
+
+local function arr_hash_add(t, e)
+  if not t[e] then
+    t[e] = true
+    t[#t + 1] = e
+  end
+end
+
+
+-- given a list of workspace IDs, return a list/hash
+-- of entities belonging to the workspaces, handling
+-- circular references
+function _M.resolve_workspace_entities(workspaces)
+  -- entities = {
+  --    [1] = "foo",
+  --    foo = 1,
+  --
+  --    [2] = "bar",
+  --    bar = 2
+  -- }
+  local entities = {}
+
+
+  local seen_workspaces = {}
+
+
+  local function resolve(workspace)
+    local workspace_entities, err =
+      retrieve_relationship_ids(workspace, "workspace", "workspace_entities")
+    if err then
+      error(err)
+    end
+
+    local iter_entities = {}
+
+    for _, ws_entity in ipairs(workspace_entities) do
+      local ws_id  = ws_entity.workspace_id
+      local e_id   = ws_entity.entity_id
+      local e_type = ws_entity.entity_type
+
+      if e_type == "workspaces" then
+        assert(seen_workspaces[ws_id] == nil, "already seen workspace " ..
+                                              ws_id)
+        seen_workspaces[ws_id] = true
+
+        local recursed_entities = resolve(e_id)
+
+        for _, e in ipairs(recursed_entities) do
+          arr_hash_add(iter_entities, e)
+        end
+
+      else
+        arr_hash_add(iter_entities, e_id)
+      end
+    end
+
+    return iter_entities
+  end
+
+
+  for _, workspace in ipairs(workspaces) do
+    local es = resolve(workspace)
+    for _, e in ipairs(es) do
+      arr_hash_add(entities, e)
+    end
+  end
+
+
+  return entities
+end
+
+
+local function resolve_role_entity_permissions(roles)
+  local pmap = {}
+
+
+  local function positive_mask(p, id)
+    pmap[id] = bor(p, pmap[id] or 0x0)
+  end
+  local function negative_mask(p, id)
+    pmap[id] = band(pmap[id] or 0x0, bxor(p, pmap[id] or 0x0))
+  end
+
+
+  local function iter(role_entities, mask)
+    for _, role_entity in ipairs(role_entities) do
+      if role_entity.entity_type == "workspace" then
+        -- list/hash
+        local es = _M.resolve_workspace_entities({ role_entity.entity_id })
+
+        for _, child_id in ipairs(es) do
+          mask(role_entity.actions, child_id)
+        end
+      else
+        mask(role_entity.actions, role_entity.entity_id)
+      end
+    end
+  end
+
+
+  -- assign all the positive bits first such that we dont have a case
+  -- of an explicit positive overriding an explicit negative based on
+  -- the order of iteration
+  local positive_entities, negative_entities =  {}, {}
+  for _, role in ipairs(roles) do
+    local role_entities, err = singletons.dao.rbac_role_entities:find_all({
+      role_id  = role.id,
+    })
+    if err then
+      error(err)
+    end
+    for _, role_entity in ipairs(role_entities) do
+      if role_entity.negative then
+        negative_entities[#negative_entities + 1] = role_entity
+      else
+        positive_entities[#positive_entities + 1] = role_entity
+      end
+    end
+  end
+  iter(positive_entities, positive_mask)
+  iter(negative_entities, negative_mask)
+
+  return pmap
+end
+_M.resolve_role_entity_permissions = resolve_role_entity_permissions
+
+
+local function get_rbac_user_info()
+  local guest_user = {
+    roles = {},
+    user = "guest",
+    entities_perms = {},
+    endpoints_perms = {},
+  }
+  local ok, res = pcall(function() return ngx.ctx.rbac end)
+  local user = ok and res
+  if user then
+    return user
+  end
+
+  local user, err =  _M.load_rbac_ctx(singletons.dao)
+  if err then
+    return nil, err
+  end
+
+  return user or guest_user
+end
+
+
+local function is_system_table(t)
+  local reserved_tables = { "rbac_.*", "workspace*" }
+  for _, v in ipairs(reserved_tables) do
+    if string.find(t, v) then
+      return true
+    end
+  end
+  return false
+end
+_M.is_system_table = is_system_table
+
+local function is_admin_api_request()
+  local r = getfenv(0).__ngx_req
+  if not r then
+    return false
+  end
+  return ngx.ctx.admin_api_request
+end
+
+
+function _M.narrow_readable_entities(db_table_name, entities, constraints)
+  local filtered_rows = {}
+  setmetatable(filtered_rows, getmetatable(entities))
+  if not is_system_table(db_table_name) and is_admin_api_request() then
+    for i, v in ipairs(entities) do
+      local valid = _M.validate_entity_operation(v, constraints)
+      if valid then
+        filtered_rows[#filtered_rows+1] = v
+      end
+    end
+    return filtered_rows
+  else
+    return entities
+  end
+end
+
+
+function _M.validate_entity_operation(entity, constraints)
+  -- rbac only applies to the admin api - ie, proxy side
+  -- requests are not to be considered
+  if not is_admin_api_request() then
+    return true
+  end
+
+  if not singletons.configuration or not singletons.configuration.rbac.entity then
+    return true
+  end
+
+  local rbac_ctx = get_rbac_user_info()
+  if rbac_ctx.user == "guest" then
+    return false
+  end
+
+  local permissions_map = rbac_ctx.entities_perms
+  local action = rbac_ctx.action
+  local entity_id = "id"
+  if constraints then
+    entity_id = constraints.primary_key
+  end
+  return _M.authorize_request_entity(permissions_map, entity[entity_id], action)
+end
+
+
+function _M.readable_entities_permissions(roles)
+  local map = resolve_role_entity_permissions(roles)
+
+  for k, v in pairs(map) do
+    local actions_t = setmetatable({}, cjson.empty_array_mt)
+    local actions_t_idx = 0
+
+    for action, n in pairs(actions_bitfields) do
+      if band(n, v) == n then
+        actions_t_idx = actions_t_idx + 1
+        actions_t[actions_t_idx] = action
+      end
+    end
+
+    map[k] = actions_t
+  end
+
+  return map
+end
+
+
+local function authorize_request_entity(map, id, action)
+  return bitfield_check(map, id, action)
+end
+_M.authorize_request_entity = authorize_request_entity
+
+
+local function resolve_role_endpoint_permissions(roles)
+  local pmap = {}
+
+
+  for _, role in ipairs(roles) do
+    local roles_endpoints, err = singletons.dao.rbac_role_endpoints:find_all({
+      role_id = role.id,
+    })
+    if err then
+      error(err)
+    end
+
+    -- because we hold a two-dimensional mapping and prioritize explicit
+    -- mapping matches over endpoint globs, we need to hold both the negative
+    -- and positive bit sets independantly, instead of having a negative bit
+    -- unset a positive bit, because in doing so it would be impossible to
+    -- determine implicit vs. explicit authorization denial (the former leading
+    -- to a fall-through in the 2-d array, the latter leading to an immediate
+    -- denial)
+    for _, role_endpoint in ipairs(roles_endpoints) do
+      if not pmap[role_endpoint.workspace] then
+        pmap[role_endpoint.workspace] = {}
+      end
+
+      -- store explicit negative bits adjacent to the positive bits in the mask
+      local p = role_endpoint.actions
+      if role_endpoint.negative then
+        p = bor(p, lshift(p, 4))
+      end
+
+      local ws_prefix = ""
+      if role_endpoint.endpoint ~= "*" then
+        ws_prefix = "/" .. role_endpoint.workspace
+      end
+
+      pmap[role_endpoint.workspace][ws_prefix .. role_endpoint.endpoint] =
+        bor(p, pmap[role_endpoint.workspace][role_endpoint.endpoint] or 0x0)
+    end
+  end
+
+
+  return pmap
+end
+_M.resolve_role_endpoint_permissions = resolve_role_endpoint_permissions
+
+
+function _M.readable_endpoints_permissions(roles)
+  local map = resolve_role_endpoint_permissions(roles)
+
+  for workspace in pairs(map) do
+    for endpoint, actions in pairs(map[workspace]) do
+      local actions_t = setmetatable({}, cjson.empty_array_mt)
+      local actions_t_idx = 0
+
+      for action, n in pairs(actions_bitfields) do
+        if band(n, actions) == n then
+          actions_t_idx = actions_t_idx + 1
+          actions_t[actions_t_idx] = action
+        end
+      end
+
+      map[workspace][endpoint] = actions_t
+    end
+  end
+
+  return map
+end
+
+
+-- normalized route_name: replace lapis named parameters with *, so that
+-- any named parameters match wildcard endpoints
+local function normalize_route_name(route_name)
+  route_name = ngx.re.gsub(route_name, "^workspace_", "")
+  route_name = ngx.re.gsub(route_name, ":[^/]*", "*")
+  route_name = ngx.re.gsub(route_name, "/$", "")
+  return route_name
+end
+
+
+-- return a list of endpoints; if the incoming request endpoint
+-- matches either one of them, we get a positive or negative match
+local function get_endpoints(workspace, endpoint, route_name)
+  local endpoint_with_workspace = "/" .. workspace .. endpoint
+  local normalized_route_name = normalize_route_name(route_name)
+  local normalized_route_name_with_workspace = "/" .. workspace .. normalized_route_name
+
+  -- order is important:
+  --  - first, try to match exact endpoint name
+  --    * without workspace name prepended - e.g., /apis/test
+  --    * with workspace name prepended - e.g., /foo/apis/test
+  --  - normalized route name
+  --    * without workspace name prepended - e.g., /apis/*
+  --    * with workspace name prepended - e.g., /foo/apis/*
+  return {
+    endpoint,
+    endpoint_with_workspace,
+    normalized_route_name,
+    normalized_route_name_with_workspace,
+    "*",
+  }
+end
+
+
+function _M.authorize_request_endpoint(map, workspace, endpoint, route_name, action)
+  -- look for
+  -- 1. explicit allow (and _no_ explicit) deny in the specific ws/endpoint
+  -- 2. "" in the ws/*
+  -- 3. "" in the */endpoint
+  -- 4. "" in the */*
+  --
+  -- explit allow means a match on the lower bit set
+  -- and no match on the upper bits. if theres no match on the lower set,
+  -- no need to check the upper bit set
+  for _, workspace in ipairs{workspace, "*"} do
+    if map[workspace] then
+      for _, endpoint in ipairs(get_endpoints(workspace, endpoint, route_name)) do
+        local perm = map[workspace][endpoint]
+        if perm then
+          if band(perm, action) == action then
+            if band(rshift(perm, actions_bitfield_size), action) == action then
+              return false
+            else
+              return true
+            end
+          end
+        end
+      end
+    end
+  end
+
+  return false
+end
+
+
+function _M.load_rbac_ctx(dao_factory)
+  local rbac_auth_header = singletons.configuration.rbac_auth_header
+  local rbac_token = ngx.req.get_headers()[rbac_auth_header]
+  local http_method = ngx.req.get_method()
+
+  if not rbac_token then
+    return false
+  end
+
+  local user, err = get_user(rbac_token)
+  if err then
+    return nil, err
+  end
+  if not user then
+    return false
+  end
+
   local roles, err = entity_relationships(dao_factory, user, "user", "role")
   if err then
     return nil, err
   end
 
-  local permissions, neg_permissions = {}, {}
-
-  for i = 1, #roles do
-    local p, err = entity_relationships(dao_factory, roles[i], "role", "perm")
-    if err then
-      return nil, err
-    end
-
-    for j = 1, #p do
-      if p[j].negative == false or not p[j].negative then
-        permissions[#permissions + 1] = p[j]
-
-      else
-        neg_permissions[#neg_permissions + 1] = p[j]
-      end
-    end
-  end
-
-  local pmap = {}
-
-  for i = 1, #permissions do
-    local p = permissions[i]
-
-    for j, _ in ipairs(resource_bitfields) do
-      local k = resource_bitfields[j]
-      local n = resource_bitfields[k]
-
-      if band(n, p.resources) == n then
-        pmap[k] = bor(p.actions, pmap[k] or 0x0)
-      end
-    end
-  end
-
-  for i = 1, #neg_permissions do
-    local p = neg_permissions[i]
-
-    for j, _ in ipairs(resource_bitfields) do
-      local k = resource_bitfields[j]
-      local n = resource_bitfields[k]
-
-      if band(n, p.resources) == n then
-        pmap[k] = band(pmap[k], bxor(p.actions, pmap[k] or 0x0))
-      end
-    end
-  end
-
-  return pmap
-end
-_M.build_permissions_map = build_permissions_map
-
-
-local function check(map, resource, action)
-  return map[resource] and band(map[resource], action) == action or false
-end
-
-
-function _M.validate(token, route, method, dao_factory)
-  if not token then
-    return false
-  end
-
-  local user, err = get_user(token)
+  local action, err = figure_action(http_method)
   if err then
     return nil, err
   end
 
-  if not user then
-    return false
-  end
-
-  local map, err = build_permissions_map(user, dao_factory)
+  local entities_perms, err = resolve_role_entity_permissions(roles)
   if err then
     return nil, err
   end
 
-  local action = figure_action(method)
-  local resource = route_resources[route]
+  local endpoints_perms, err = resolve_role_endpoint_permissions(roles)
+  if err then
+    return nil, err
+  end
 
-  return check(map, resource, action)
+  local rbac_ctx = {
+    user = user,
+    roles = roles,
+    action = action,
+    entities_perms = entities_perms,
+    endpoints_perms = endpoints_perms,
+  }
+  ngx.ctx.rbac = rbac_ctx
+
+  return rbac_ctx
+end
+
+function _M.validate_user()
+  if singletons.configuration.rbac.off then
+    return
+  end
+
+  local rbac_ctx, err = get_rbac_user_info()
+  if err then
+    ngx.log(ngx.ERR, "[rbac] ", err)
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+  end
+
+  if rbac_ctx.user == "guest" then
+    return responses.send_HTTP_UNAUTHORIZED("Invalid RBAC credentials")
+  end
+end
+
+
+function _M.validate_endpoint(route_name, route)
+  if route_name == "default_route" then
+    return
+  end
+
+  if not singletons.configuration or not singletons.configuration.rbac.endpoint then
+    return
+  end
+
+  local rbac_ctx, err = get_rbac_user_info()
+  if err then
+    ngx.log(ngx.ERR, "[rbac] ", err)
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+  end
+
+  local  ok = _M.authorize_request_endpoint(rbac_ctx.endpoints_perms,
+                                            workspaces.get_workspaces()[1].name,
+                                            route, route_name, rbac_ctx.action)
+  if not ok then
+    local err = fmt("%s, you do not have permissions to %s this resource",
+                    rbac_ctx.user.name, readable_action(rbac_ctx.action))
+    return responses.send_HTTP_UNAUTHORIZED(err)
+  end
+end
+
+
+-- checks whether the given action can be cleanly performed in a
+-- set of entities
+function _M.check_cascade(entities, rbac_ctx)
+  if not singletons.configuration or
+    not singletons.configuration.rbac.entity
+  then
+    return true
+  end
+
+  --
+  -- entities = {
+  --  [table name] = {
+  --    entities = {
+  --      ...
+  --    },
+  --    schema = {
+  --      ...
+  --    }
+  --  }
+  -- }
+  for _, table_info in pairs(entities) do
+    for _, entity in ipairs(table_info.entities) do
+      if not authorize_request_entity(rbac_ctx.entities_perms,
+                                      entity[table_info.schema.primary_key[1]],
+                                      rbac_ctx.action) then
+        return false
+      end
+    end
+  end
+
+  return true
 end
 
 

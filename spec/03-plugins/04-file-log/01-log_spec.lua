@@ -14,8 +14,9 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
 
     setup(function()
-      local bp = helpers.get_db_utils(strategy)
+      local bp, _, dao = helpers.get_db_utils(strategy)
 
+      helpers.with_current_ws(nil, function()
       local route = bp.routes:insert {
         hosts = { "file_logging.com" },
       }
@@ -28,6 +29,7 @@ for _, strategy in helpers.each_strategy() do
           reopen = true,
         },
       }
+      end, dao)
 
       assert(helpers.start_kong({
         database   = strategy,

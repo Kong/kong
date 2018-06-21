@@ -693,6 +693,13 @@ describe("Configuration loader", function()
       assert.contains("cassandra_repl_strategy has", errors, true)
       assert.contains("ssl_cert must be specified", errors)
     end)
+    it("rbac is checked for one of the valid values", function()
+      local conf, _, errors = conf_loader(nil, {
+        rbac = "foo",
+      })
+      assert.equal(1, #errors)
+      assert.is_nil(conf)
+    end)
   end)
 
   describe("remove_sensitive()", function()

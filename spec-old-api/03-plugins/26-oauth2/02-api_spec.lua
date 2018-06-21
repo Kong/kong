@@ -7,6 +7,8 @@ describe("Plugin: oauth (API)", function()
     helpers.dao:run_migrations()
     helpers.register_consumer_relations(helpers.dao)
 
+    helpers.get_db_utils()
+
     helpers.prepare_prefix()
     assert(helpers.start_kong({
       nginx_conf = "spec/fixtures/custom_nginx.template",

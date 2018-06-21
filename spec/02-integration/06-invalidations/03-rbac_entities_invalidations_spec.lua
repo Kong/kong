@@ -1,7 +1,8 @@
 local cjson        = require "cjson"
 local helpers      = require "spec.helpers"
 local dao_helpers  = require "spec.02-integration.03-dao.helpers"
-
+local singletons = require "kong.singletons"
+local rbac_migrations_defaults = require "kong.rbac.migrations.01_defaults"
 
 local POLL_INTERVAL = 0.3
 
@@ -18,7 +19,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
 
   setup(function()
     dao = select(3, helpers.get_db_utils(kong_conf.database))
-
+    singletons.dao = dao
     local db_update_propagation = kong_conf.database == "cassandra" and 3 or 0
 
     assert(helpers.start_kong {
@@ -32,7 +33,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
       portal_api_listen     = "0.0.0.0:8004",
       db_update_frequency   = POLL_INTERVAL,
       db_update_propagation = db_update_propagation,
-      enforce_rbac          = true,
+      rbac                  = "endpoint",
     })
 
     assert(helpers.start_kong {
@@ -46,7 +47,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
       portal_api_listen     = "0.0.0.0:9004",
       db_update_frequency   = POLL_INTERVAL,
       db_update_propagation = db_update_propagation,
-      enforce_rbac          = true,
+      rbac                  = "endpoint",
     })
 
     admin_client_1 = helpers.http_client("127.0.0.1", 8001)
@@ -76,7 +77,6 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
 
   describe("RBAC (user_roles)", function()
     setup(function()
-      local utils = require "kong.tools.utils"
       local bit   = require "bit"
       local rbac  = require "kong.rbac"
       local bxor  = bit.bxor
@@ -84,7 +84,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
       -- default permissions and roles
       -- load our default resources and create our initial permissions
       -- this is similar to what occurs in the real migrations
-      rbac.load_resource_bitfields(dao)
+      -- rbac.load_resource_bitfields(dao)
 
       -- action int for all
       local action_bits_all = 0x0
@@ -92,127 +92,44 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         action_bits_all = bxor(action_bits_all, rbac.actions_bitfields[k])
       end
 
-      -- resource int for all
-      local resource_bits_all = 0x0
-      for i = 1, #rbac.resource_bitfields do
-        resource_bits_all = bxor(resource_bits_all, 2 ^ (i - 1))
-      end
+      local ws = dao.workspaces:find_all({name = "default"})
+      helpers.with_current_ws(
+        ws,
+        function()
+          rbac_migrations_defaults.up(nil, nil, dao)
+          -- a few extra mock entities for our test
+          dao.rbac_users:insert({
+              name = "alice",
+              user_token = "alice",
+          })
+          dao.rbac_roles:insert({
+              name = "foo",
+          })
 
-      local perms = {}
-      local roles = {}
+          -- this is bob
+          dao.rbac_users:insert({
+              name = "bob",
+              user_token = "bob",
+          })
 
-      -- read-only permission across all objects
-      perms.read_only = dao.rbac_perms:insert({
-        id = utils.uuid(),
-        name = "read-only",
-        resources = resource_bits_all,
-        actions = rbac.actions_bitfields["read"],
-        negative = false,
-        comment = "Read-only permissions across all initial RBAC resources",
-      })
+          local god = dao.rbac_users:insert({
+              name = "god",
+              user_token = "god",
+          })
 
-      -- read,create,update,delete-resources for all objects
-      perms.crud_all = dao.rbac_perms:insert({
-        id = utils.uuid(),
-        name = "full-access",
-        resources = resource_bits_all,
-        actions = action_bits_all,
-        negative = false,
-        comment = "Read/create/update/delete permissions across all objects",
-      })
-
-      -- negative rbac permissions (for the default 'admin' role)
-      perms.no_rbac = dao.rbac_perms:insert({
-        id = utils.uuid(),
-        name = "no-rbac",
-        resources = rbac.resource_bitfields["rbac"],
-        actions = action_bits_all,
-        negative = true,
-        comment = "Explicit denial of all RBAC resources",
-      })
-
-      -- admin role with CRUD access to all resources except RBAC resource
-      roles.admin = dao.rbac_roles:insert({
-        id = utils.uuid(),
-        name = "admin",
-        comment = "CRUD access to most initial resources (no RBAC)",
-      })
-      -- the 'admin' role has 'full-access' + 'no-rbac' permissions
-      dao.rbac_role_perms:insert({
-        role_id = roles.admin.id,
-        perm_id = perms.crud_all.id,
-      })
-      dao.rbac_role_perms:insert({
-        role_id = roles.admin.id,
-        perm_id = perms.no_rbac.id,
-      })
-
-      -- finally, a super user role who has access to all initial resources
-      roles.super_admin = dao.rbac_roles:insert({
-        id = utils.uuid(),
-        name = "super-admin",
-        comment = "Full CRUD access to all initial resources, including RBAC entities",
-      })
-      dao.rbac_role_perms:insert({
-        role_id = roles.super_admin.id,
-        perm_id = perms.crud_all.id,
-      })
-
-      -- now, create the roles and assign permissions to them
-
-      -- first, a read-only role across everything
-      roles.read_only = dao.rbac_roles:insert({
-        id = utils.uuid(),
-        name = "read-only",
-        comment = "Read-only access across all initial RBAC resources",
-      })
-      -- this role only has the 'read-only' permissions
-      dao.rbac_role_perms:insert({
-        role_id = roles.read_only.id,
-        perm_id = perms.read_only.id,
-      })
-
-      -- a few extra mock entities for our test
-      dao.rbac_users:insert({
-        name = "alice",
-        user_token = "alice",
-      })
-      dao.rbac_roles:insert({
-        name = "foo",
-      })
-      dao.rbac_perms:insert({
-        name = "all-kong",
-        actions = action_bits_all,
-        resources = 0x2,
-      })
-      dao.rbac_perms:insert({
-        name = "all-status",
-        actions = action_bits_all,
-        resources = 0x4,
-      })
-
-      -- this is bob
-      dao.rbac_users:insert({
-        name = "bob",
-        user_token = "bob",
-      })
-
-      local god = dao.rbac_users:insert({
-        name = "god",
-        user_token = "god",
-      })
-
-      dao.rbac_user_roles:insert({
-        user_id = god.id,
-        role_id = roles.super_admin.id
-      })
+          local superadmin = dao.rbac_roles:find_all({name = "super-admin"})[1]
+          dao.rbac_user_roles:insert({
+              user_id = god.id,
+              role_id = superadmin.id
+          })
+      end)
 
       -- populate cache with a miss on both nodes
       local res_1 = assert(admin_client_1:send {
         method  = "GET",
         path    = "/rbac/users/bob/roles",
         headers = {
-          ["Kong-Admin-Token"] = "god",
+          ["Kong-RBAC-Token"] = "god",
           ["Content-Type"]     = "application/json",
         },
       })
@@ -222,7 +139,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method  = "GET",
         path    = "/rbac/users/bob/roles",
         headers = {
-          ["Kong-Admin-Token"] = "god",
+          ["Kong-RBAC-Token"] = "god",
           ["Content-Type"]     = "application/json",
         },
       })
@@ -236,7 +153,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method = "GET",
         path   = "/apis",
         headers = {
-          ["Kong-Admin-Token"] = "bob",
+          ["Kong-RBAC-Token"] = "bob",
           ["Content-Type"]     = "application/json",
         },
       })
@@ -246,7 +163,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method = "GET",
         path   = "/apis",
         headers = {
-          ["Kong-Admin-Token"] = "bob",
+          ["Kong-RBAC-Token"] = "bob",
           ["Content-Type"]     = "application/json",
         },
       })
@@ -260,7 +177,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
           roles = "read-only",
         },
         headers = {
-          ["Kong-Admin-Token"] = "god",
+          ["Kong-RBAC-Token"] = "god",
           ["Content-Type"]     = "application/json",
         },
       })
@@ -273,7 +190,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method = "GET",
         path   = "/apis",
         headers = {
-          ["Kong-Admin-Token"] = "bob",
+          ["Kong-RBAC-Token"] = "bob",
           ["Content-Type"]     = "application/json",
         },
       })
@@ -285,7 +202,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method = "GET",
         path   = "/apis",
         headers = {
-          ["Kong-Admin-Token"] = "bob",
+          ["Kong-RBAC-Token"] = "bob",
           ["Content-Type"]     = "application/json",
         },
       })
@@ -299,7 +216,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method = "POST",
         path   = "/apis",
         headers = {
-          ["Kong-Admin-Token"] = "bob",
+          ["Kong-RBAC-Token"] = "bob",
           ["Content-Type"]     = "application/json",
         },
         body = {
@@ -314,7 +231,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method = "POST",
         path   = "/apis",
         headers = {
-          ["Kong-Admin-Token"] = "bob",
+          ["Kong-RBAC-Token"] = "bob",
           ["Content-Type"]     = "application/json",
         },
         body = {
@@ -333,7 +250,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
           roles = "admin",
         },
         headers = {
-          ["Kong-Admin-Token"] = "god",
+          ["Kong-RBAC-Token"] = "god",
           ["Content-Type"]     = "application/json",
         },
       })
@@ -346,7 +263,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method = "POST",
         path   = "/apis",
         headers = {
-          ["Kong-Admin-Token"] = "bob",
+          ["Kong-RBAC-Token"] = "bob",
           ["Content-Type"]     = "application/json",
         },
         body = {
@@ -363,7 +280,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method = "POST",
         path   = "/apis",
         headers = {
-          ["Kong-Admin-Token"] = "bob",
+          ["Kong-RBAC-Token"] = "bob",
           ["Content-Type"]     = "application/json",
         },
         body = {
@@ -384,7 +301,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
           roles = "admin",
         },
         headers = {
-          ["Kong-Admin-Token"] = "god",
+          ["Kong-RBAC-Token"] = "god",
           ["Content-Type"]     = "application/json",
         },
       })
@@ -397,7 +314,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method = "POST",
         path   = "/apis",
         headers = {
-          ["Kong-Admin-Token"] = "bob",
+          ["Kong-RBAC-Token"] = "bob",
           ["Content-Type"]     = "application/json",
         },
         body = {
@@ -414,7 +331,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method = "POST",
         path   = "/apis",
         headers = {
-          ["Kong-Admin-Token"] = "bob",
+          ["Kong-RBAC-Token"] = "bob",
           ["Content-Type"]     = "application/json",
         },
         body = {
@@ -434,7 +351,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method  = "POST",
         path    = "/rbac/users",
         headers = {
-          ["Kong-Admin-Token"] = "god",
+          ["Kong-RBAC-Token"] = "god",
           ["Content-Type"]     = "application/json",
         },
         body = {
@@ -449,7 +366,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method  = "POST",
         path    = "/rbac/users/herb/roles",
         headers = {
-          ["Kong-Admin-Token"] = "god",
+          ["Kong-RBAC-Token"] = "god",
           ["Content-Type"]     = "application/json",
         },
         body = {
@@ -463,7 +380,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method  = "GET",
         path    = "/",
         headers = {
-          ["Kong-Admin-Token"] = "herb",
+          ["Kong-RBAC-Token"] = "herb",
         },
       })
       assert.res_status(401, res_1)
@@ -474,7 +391,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method  = "GET",
         path    = "/",
         headers = {
-          ["Kong-Admin-Token"] = "herb",
+          ["Kong-RBAC-Token"] = "herb",
         },
       })
       assert.res_status(401, res_2)
@@ -485,7 +402,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method  = "PATCH",
         path    = "/rbac/users/herb",
         headers = {
-          ["Kong-Admin-Token"] = "god",
+          ["Kong-RBAC-Token"] = "god",
           ["Content-Type"]     = "application/json",
         },
         body = {
@@ -503,7 +420,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method  = "GET",
         path    = "/",
         headers = {
-          ["Kong-Admin-Token"] = "herb",
+          ["Kong-RBAC-Token"] = "herb",
         },
       })
       assert.res_status(200, res_1)
@@ -514,7 +431,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method  = "GET",
         path    = "/",
         headers = {
-          ["Kong-Admin-Token"] = "herb",
+          ["Kong-RBAC-Token"] = "herb",
         },
       })
       assert.res_status(200, res_2)
@@ -528,7 +445,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method  = "POST",
         path    = "/rbac/users/alice/roles",
         headers = {
-          ["Kong-Admin-Token"] = "god",
+          ["Kong-RBAC-Token"] = "god",
           ["Content-Type"]     = "application/json",
         },
         body = {
@@ -543,7 +460,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method  = "GET",
         path    = "/",
         headers = {
-          ["Kong-Admin-Token"] = "alice",
+          ["Kong-RBAC-Token"] = "alice",
         },
       })
       assert.res_status(401, res_1)
@@ -552,7 +469,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method  = "GET",
         path    = "/",
         headers = {
-          ["Kong-Admin-Token"] = "alice",
+          ["Kong-RBAC-Token"] = "alice",
         },
       })
       assert.res_status(401, res_2)
@@ -561,7 +478,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method  = "GET",
         path    = "/status",
         headers = {
-          ["Kong-Admin-Token"] = "alice",
+          ["Kong-RBAC-Token"] = "alice",
         },
       })
       assert.res_status(401, res_1)
@@ -570,7 +487,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method  = "GET",
         path    = "/status",
         headers = {
-          ["Kong-Admin-Token"] = "alice",
+          ["Kong-RBAC-Token"] = "alice",
         },
       })
       assert.res_status(401, res_2)
@@ -579,36 +496,37 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method  = "GET",
         path    = "/rbac/users/alice/permissions",
         headers = {
-          ["Kong-Admin-Token"] = "god",
+          ["Kong-RBAC-Token"] = "god",
         },
       })
 
       local body_1 = assert.res_status(200, res_1)
       local json_1 = cjson.decode(body_1)
-      assert.same({}, json_1)
+      assert.same({endpoints = {}, entities = {}}, json_1)
 
       res_2 = assert(admin_client_2:send {
         method  = "GET",
         path    = "/rbac/users/alice/permissions",
         headers = {
-          ["Kong-Admin-Token"] = "god",
+          ["Kong-RBAC-Token"] = "god",
         },
       })
 
       local body_2 = assert.res_status(200, res_2)
       local json_2 = cjson.decode(body_2)
-      assert.same({}, json_2)
+      assert.same({endpoints = {}, entities = {}}, json_2)
 
       -- add the all-kong perm to the foo role
       local res = assert(admin_client_1:send {
         method  = "POST",
-        path    = "/rbac/roles/foo/permissions",
+        path    = "/rbac/roles/foo/endpoints",
         headers = {
-          ["Kong-Admin-Token"] = "god",
+          ["Kong-RBAC-Token"] = "god",
           ["Content-Type"]     = "application/json",
         },
         body = {
-          permissions = "all-kong",
+          endpoint = "*",
+          actions = "read",
         },
       })
       assert.res_status(201, res)
@@ -620,7 +538,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method = "GET",
         path   = "/",
         headers = {
-          ["Kong-Admin-Token"] = "alice",
+          ["Kong-RBAC-Token"] = "alice",
         },
       })
       assert.res_status(200, res_1)
@@ -631,7 +549,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method = "GET",
         path   = "/",
         headers = {
-          ["Kong-Admin-Token"] = "alice",
+          ["Kong-RBAC-Token"] = "alice",
         },
       })
       assert.res_status(200, res_2)
@@ -641,13 +559,14 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
       -- add the all-status permission to the foo role
       local res = assert(admin_client_1:send {
         method  = "POST",
-        path    = "/rbac/roles/foo/permissions",
+        path    = "/rbac/roles/foo/endpoints",
         headers = {
-          ["Kong-Admin-Token"] = "god",
+          ["Kong-RBAC-Token"] = "god",
           ["Content-Type"]     = "application/json",
         },
         body = {
-          permissions = "all-status",
+          endpoint = "/status",
+          actions = "read",
         },
       })
       assert.res_status(201, res)
@@ -659,7 +578,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method = "GET",
         path   = "/status",
         headers = {
-          ["Kong-Admin-Token"] = "alice",
+          ["Kong-RBAC-Token"] = "alice",
         },
       })
       assert.res_status(200, res_1)
@@ -670,23 +589,24 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method = "GET",
         path   = "/status",
         headers = {
-          ["Kong-Admin-Token"] = "alice",
+          ["Kong-RBAC-Token"] = "alice",
         },
       })
       assert.res_status(200, res_2)
     end)
 
-    it("on delete", function()
+    pending("on delete", function()
       -- remove the all-kong permission to the foo role
       local res = assert(admin_client_1:send {
         method  = "DELETE",
-        path    = "/rbac/roles/foo/permissions",
+        path    = "/rbac/roles/foo/endpoints",
         headers = {
-          ["Kong-Admin-Token"] = "god",
+          ["Kong-RBAC-Token"] = "god",
           ["Content-Type"]     = "application/json",
         },
         body = {
-          permissions = "all-kong",
+          endpoint = "*",
+          actions = "read",
         },
       })
       assert.res_status(204, res)
@@ -698,7 +618,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method = "GET",
         path   = "/",
         headers = {
-          ["Kong-Admin-Token"] = "alice",
+          ["Kong-RBAC-Token"] = "alice",
         },
       })
       assert.res_status(401, res_1)
@@ -709,7 +629,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         method = "GET",
         path   = "/",
         headers = {
-          ["Kong-Admin-Token"] = "alice",
+          ["Kong-RBAC-Token"] = "alice",
         },
       })
       assert.res_status(401, res_2)

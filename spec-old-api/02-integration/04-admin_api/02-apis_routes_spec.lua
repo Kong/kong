@@ -28,6 +28,8 @@ describe("Admin API #" .. kong_config.database, function()
     dao:truncate_tables()
     db:truncate()
 
+    helpers.get_db_utils(kong_config.database)
+
     assert(helpers.start_kong{
       database = kong_config.database
     })
@@ -353,6 +355,8 @@ describe("Admin API #" .. kong_config.database, function()
       setup(function()
         dao:truncate_tables()
 
+        helpers.get_db_utils(kong_config.database)
+
         for i = 1, 10 do
           assert(dao.apis:insert {
             name = "api-" .. i,
@@ -435,6 +439,7 @@ describe("Admin API #" .. kong_config.database, function()
       describe("empty results", function()
         setup(function()
           dao:truncate_tables()
+          helpers.get_db_utils(kong_config.database)
         end)
 
         it("data property is an empty array", function()
@@ -479,6 +484,7 @@ describe("Admin API #" .. kong_config.database, function()
     local api
     setup(function()
       dao:truncate_tables()
+      helpers.get_db_utils(kong_config.database)
     end)
     before_each(function()
       api = assert(dao.apis:insert {
@@ -739,6 +745,7 @@ describe("Admin API #" .. kong_config.database, function()
     local api
     setup(function()
       dao:truncate_tables()
+      helpers.get_db_utils(kong_config.database)
 
       api = assert(dao.apis:insert {
         name = "my-api",

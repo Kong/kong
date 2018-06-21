@@ -1,6 +1,5 @@
 local helpers     = require "spec.helpers"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
-local dao_factory = require "kong.dao.factory"
 local utils       = require "kong.tools.utils"
 local cassandra   = require "kong.vitals.cassandra.strategy"
 local postgres    = require "kong.vitals.postgres.strategy"
@@ -11,7 +10,7 @@ local fmt         = string.format
 dao_helpers.for_each_dao(function(kong_conf)
 
   describe("Admin API Vitals with " .. kong_conf.database, function()
-    local client, dao, strategy, bp
+    local client, dao, strategy, bp, _
 
     local minute_start_at = time() - ( time() % 60 )
     local node_1 = "20426633-55dc-4050-89ef-2382c95a611e"
@@ -36,17 +35,12 @@ dao_helpers.for_each_dao(function(kong_conf)
 
     describe("when vitals is enabled", function()
       setup(function()
-        dao = assert(dao_factory.new(kong_conf))
 
         -- TODO: when this file is refactored to use the new dao, this line should
         -- return `bp, db, dao` and not just bp (there will be lint issues if
         -- doing so currently).
-        bp = helpers.get_db_utils(kong_conf.database)
+        bp, _, dao = helpers.get_db_utils(kong_conf.database)
 
-        -- start with a clean db
-        helpers.stop_kong()
-        dao:drop_schema()
-        dao:run_migrations()
 
         -- to insert test data
         if dao.db_type == "postgres" then
@@ -567,7 +561,9 @@ dao_helpers.for_each_dao(function(kong_conf)
           dao.db:truncate_table("vitals_codes_by_service")
           dao.db:truncate_table("services")
 
+          helpers.with_current_ws(nil, function()
           service    = bp.services:insert()
+          end, dao)
           service_id = service.id
         end)
 
@@ -757,7 +753,9 @@ dao_helpers.for_each_dao(function(kong_conf)
           dao.db:truncate_table("vitals_codes_by_route")
           dao.db:truncate_table("routes")
 
+          helpers.with_current_ws(nil, function()
           route    = bp.routes:insert({ paths = { "/my-route" } })
+          end, dao)
           route_id = route.id
         end)
 
@@ -952,10 +950,15 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         describe("GET", function()
           it("retrieves the seconds-level response code data for a given consumer", function()
-            local consumer = assert(dao.consumers:insert {
-              username  = "bob",
-              custom_id = "1234"
-            })
+            local consumer
+            helpers.with_current_ws(
+              dao.workspaces:find_all({name = "default"}),
+              function()
+                consumer = assert(dao.consumers:insert {
+                  username  = "bob",
+                  custom_id = "1234"
+                })
+            end)
 
             local now        = time()
             local minute     = now - (now % 60)
@@ -1011,10 +1014,15 @@ dao_helpers.for_each_dao(function(kong_conf)
           end)
 
           it("retrieves the minutes-level response code data for a given consumer", function()
-            local consumer = assert(dao.consumers:insert {
-              username  = "bob",
-              custom_id = "1234"
-            })
+            local consumer
+            helpers.with_current_ws(
+              dao.workspaces:find_all({name = "default"}),
+              function()
+                consumer = assert(dao.consumers:insert {
+                  username  = "bob",
+                  custom_id = "1234"
+                })
+            end)
 
             local minute_start_at = time() - (time() % 60)
             local route_id        = utils.uuid()
@@ -1068,23 +1076,29 @@ dao_helpers.for_each_dao(function(kong_conf)
           end)
 
           it("returns a 400 if called with invalid interval", function()
-            local consumer = assert(dao.consumers:insert {
-              username  = "bob",
-              custom_id = "1234"
-            })
+            local consumer
+            helpers.with_current_ws(
+              dao.workspaces:find_all({name = "default"}),
+              function()
+                consumer = assert(dao.consumers:insert {
+                  username  = "bob",
+                  custom_id = "1234"
+                })
+            end)
 
             local res = assert(client:send {
               methd = "GET",
               path = "/vitals/status_codes/by_consumer",
               query = {
-                interval = "so-wrong",
+                interval = "seconds",
                 consumer_id = consumer.id,
+                start_ts = "foo",
               }
             })
             res = assert.res_status(400, res)
             local json = cjson.decode(res)
 
-            assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+            assert.same("Invalid query params: start_ts must be a number", json.message)
           end)
 
           it("returns a 400 if called with invalid start_ts", function()
@@ -1165,12 +1179,17 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         describe("GET", function()
           it("retrieves the seconds-level response code data for a given consumer", function()
-            local consumer = assert(dao.consumers:insert {
-              username  = "bob",
-              custom_id = "1234"
-            })
+            local consumer, route
+            helpers.with_current_ws(
+              dao.workspaces:find_all({name = "default"}),
+              function()
+                consumer = assert(dao.consumers:insert {
+                  username  = "bob",
+                  custom_id = "1234"
+                })
+                route = bp.routes:insert({ paths = { "/my-route" } })
+            end)
 
-            local route    = bp.routes:insert({ paths = { "/my-route" } })
             local route_id = route.id
 
             local now        = time()
@@ -1226,12 +1245,18 @@ dao_helpers.for_each_dao(function(kong_conf)
           end)
 
           it("retrieves the minutes-level response code data for a given consumer", function()
-            local consumer = assert(dao.consumers:insert {
-              username  = "bob",
-              custom_id = "1234"
-            })
+            local consumer, route
+            helpers.with_current_ws(
+              dao.workspaces:find_all({name = "default"}),
+              function()
+                consumer = assert(dao.consumers:insert {
+                  username  = "bob",
+                  custom_id = "1234"
+                })
+                route = bp.routes:insert({ paths = { "/my-route" } })
+            end)
 
-            local route    = bp.routes:insert({ paths = { "/my-route" } })
+
             local route_id = route.id
 
             local minute_start_at = time() - (time() % 60)
@@ -1285,23 +1310,29 @@ dao_helpers.for_each_dao(function(kong_conf)
           end)
 
           it("returns a 400 if called with invalid interval", function()
-            local consumer = assert(dao.consumers:insert {
-              username  = "bob",
-              custom_id = "1234"
-            })
+            local consumer
+            helpers.with_current_ws(
+              dao.workspaces:find_all({name = "default"}),
+              function()
+                consumer = assert(dao.consumers:insert {
+                  username  = "bob",
+                  custom_id = "1234"
+                })
+            end)
 
             local res = assert(client:send {
               methd = "GET",
               path = "/vitals/status_codes/by_consumer_and_route",
               query = {
-                interval = "so-wrong",
+                interval = "seconds",
                 consumer_id = consumer.id,
+                start_ts = "foo",
               }
             })
             res = assert.res_status(400, res)
             local json = cjson.decode(res)
 
-            assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+            assert.same("Invalid query params: start_ts must be a number", json.message)
           end)
 
           it("returns a 400 if called with invalid start_ts", function()
@@ -1707,10 +1738,15 @@ dao_helpers.for_each_dao(function(kong_conf)
           end)
 
           it("returns a 400 if called with invalid interval", function()
-            local consumer = assert(dao.consumers:insert {
-              username = "bob",
-              custom_id = "1234"
-            })
+            local consumer
+            helpers.with_current_ws(
+              dao.workspaces:find_all({name = "default"}),
+              function()
+                consumer = assert(dao.consumers:insert {
+                  username = "bob",
+                  custom_id = "1234"
+                })
+            end)
 
             local res = assert(client:send {
               methd = "GET",
@@ -1726,10 +1762,15 @@ dao_helpers.for_each_dao(function(kong_conf)
           end)
 
           it("returns a 400 if called with invalid start_ts", function()
-            local consumer = assert(dao.consumers:insert {
-              username = "bob",
-              custom_id = "1234"
-            })
+            local consumer
+            helpers.with_current_ws(
+              dao.workspaces:find_all({name = "default"}),
+              function()
+                consumer = assert(dao.consumers:insert {
+                  username = "bob",
+                  custom_id = "1234"
+                })
+            end)
 
             local res = assert(client:send {
               methd = "GET",
@@ -1750,9 +1791,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
     describe("when vitals is not enabled", function()
       setup(function()
-        dao = assert(dao_factory.new(kong_conf))
-
-        dao:run_migrations()
+        bp, _, dao = helpers.get_db_utils(kong_conf.database)
 
         assert(helpers.start_kong({
           database = kong_conf.database,

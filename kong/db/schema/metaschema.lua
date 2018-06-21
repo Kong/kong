@@ -223,6 +223,12 @@ local MetaSchema = Schema.new({
       },
     },
     {
+      workspaceable = {
+        type = "boolean",
+        nilable = true
+      },
+    },
+    {
       fields = {
         type = "array",
         elements = {

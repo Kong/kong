@@ -193,6 +193,7 @@ end
 return {
   table = "apis",
   primary_key = {"id"},
+  workspaceable = true,
   -- no cache key
   fields = {
     id = {type = "id", dao_insert_value = true, required = true},

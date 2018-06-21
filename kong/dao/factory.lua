@@ -5,6 +5,7 @@ local version = require "version"
 local constants = require "kong.constants"
 local ModelFactory = require "kong.dao.model_factory"
 local ee_dao_factory = require "kong.enterprise_edition.dao.factory"
+local workspaces = require "kong.workspaces"
 
 local fmt = string.format
 
@@ -19,9 +20,10 @@ local CORE_MODELS = {
   "rbac_users",
   "rbac_user_roles",
   "rbac_roles",
-  "rbac_role_perms",
-  "rbac_perms",
-  "rbac_resources",
+  "rbac_role_entities",
+  "rbac_role_endpoints",
+  "workspaces",
+  "workspace_entities",
   "portal_files",
   "consumer_types",
   "consumer_statuses",
@@ -98,6 +100,12 @@ local function load_daos(self, schemas, constraints)
   for m_name, schema in pairs(schemas) do
     self.daos[m_name] = DAO(self.db, ModelFactory(schema), schema,
                             constraints[m_name])
+
+    if schema.workspaceable then
+      workspaces.register_workspaceable_relation(m_name, schema.primary_key,
+                                                 constraints[m_name] and
+                                                 constraints[m_name].unique)
+    end
   end
 end
 
@@ -235,6 +243,19 @@ end
 
 function _M:truncate_table(dao_name)
   self.db:truncate_table(self.daos[dao_name].table)
+
+  local is_workspaceable = workspaces.get_workspaceable_relations()[dao_name]
+
+  if is_workspaceable then
+    local res, _ = self.daos.workspace_entities:find_all({entity_type = dao_name})
+    for _, v in ipairs(res) do
+      self.db:delete("workspace_entities", self.daos.workspace_entities.schema, {
+        workspace_id = v.workspace_id,
+        entity_id = v.entity_id,
+        unique_field_name = v.unique_field_name,
+      })
+    end
+  end
 end
 
 function _M:truncate_tables()
@@ -259,6 +280,8 @@ function _M:truncate_tables()
       self.db:truncate_table(v)
     end
   end
+
+  workspaces.create_default(self)
 end
 
 function _M:migrations_modules()
@@ -475,6 +498,15 @@ function _M:run_migrations(on_migrate, on_success)
       end
     end
   end
+
+  -- run workspace-related migrations
+  local def_workspace_migration = workspaces.get_default_workspace_migration()
+  local _, err, n_ran = migrate(self, "default_workspace", def_workspace_migration,
+    cur_migrations, on_migrate, on_success)
+  if err then
+    return ret_error_string(self.db.name, nil, err)
+  end
+  migrations_ran = migrations_ran + n_ran
 
   if migrations_ran > 0 then
     log("%d migrations ran", migrations_ran)

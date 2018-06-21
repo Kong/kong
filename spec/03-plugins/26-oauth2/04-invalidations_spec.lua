@@ -25,6 +25,8 @@ for _, strategy in helpers.each_strategy() do
 
       -- XXX EE-only
       bp, db, dao = helpers.get_db_utils(strategy)
+      helpers.with_current_ws(nil, function()
+
 
       local service = bp.services:insert()
 
@@ -63,6 +65,7 @@ for _, strategy in helpers.each_strategy() do
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
+      end, dao)
 
       admin_client     = helpers.admin_client()
       proxy_ssl_client = helpers.proxy_ssl_client()
@@ -344,7 +347,7 @@ for _, strategy in helpers.each_strategy() do
           headers = {}
         })
         assert.res_status(200, res)
-
+        helpers.with_current_ws(nil, function()
         local res = dao.oauth2_tokens:find_all({access_token=token.access_token})
         local token_id = res[1].id
         assert.is_string(token_id)
@@ -356,7 +359,7 @@ for _, strategy in helpers.each_strategy() do
           headers = {}
         })
         assert.res_status(204, res)
-
+        end, dao)
         -- ensure cache is invalidated
         helpers.wait_until(function()
           local res = assert(admin_client:send {
@@ -412,8 +415,8 @@ for _, strategy in helpers.each_strategy() do
           headers = {}
         })
         assert.res_status(200, res)
-
-        local res = dao.oauth2_tokens:find_all({access_token=token.access_token})
+        helpers.with_current_ws(nil, function()
+          local res = dao.oauth2_tokens:find_all({access_token=token.access_token})
         local token_id = res[1].id
         assert.is_string(token_id)
 
@@ -429,6 +432,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.res_status(200, res)
+        end, dao)
 
         -- ensure cache is invalidated
         helpers.wait_until(function()

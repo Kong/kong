@@ -16,7 +16,10 @@ local Object = require "kong.vendor.classic"
 local utils = require "kong.tools.utils"
 local Errors = require "kong.dao.errors"
 local schemas_validation = require "kong.dao.schemas_validation"
+local workspaces = require "kong.workspaces"
+local rbac = require "kong.rbac"
 
+local workspaceable = workspaces.get_workspaceable_relations()
 
 local fmt    = string.format
 local new_tab
@@ -69,6 +72,104 @@ local function ret_error(db_name, res, err, ...)
   return res, err, ...
 end
 
+-- used only with insert, update and delete
+local function apply_unique_per_ws(table_name, params, constraints)
+  -- entity may have workspace_id, workspace_name fields, ex. in case of update
+  -- needs to be removed as entity schema doesn't support them
+  if table_name ~= "workspace_entities" then
+    params.workspace_id = nil
+  end
+  params.workspace_name = nil
+
+  if not constraints then
+    return
+  end
+
+  local workspace = workspaces.get_workspaces()[1]
+  if not workspace or table_name == "workspaces" then
+    return workspace
+  end
+
+  for field_name, field_schema in pairs(constraints.unique_keys) do
+    if params[field_name] and not constraints.primary_keys[field_name] and
+      field_schema.schema.fields[field_name].type ~= "id" then
+      params[field_name] = fmt("%s:%s", workspace.name, params[field_name])
+    end
+  end
+  return workspace
+end
+
+-- If entity has a unique key it will have workspace_name prefix so we
+-- have to search first in the relationship table
+local function resolve_shared_entity_id(table_name, params, constraints)
+  if not constraints or not constraints.unique_keys then
+    return true
+  end
+
+  local ws_scope = workspaces.get_workspaces()
+  if #ws_scope == 0 then
+    return true
+  end
+  local workspace = ws_scope[1]
+
+  if table_name == "workspaces" and
+  params.name == workspaces.DEFAULT_WORKSPACE then
+    return true
+  end
+
+  for k, v in pairs(params) do
+    if constraints.unique_keys[k] then
+      local row, err = workspaces.find_entity_by_unique_field({
+        workspace_id = workspace.id,
+        entity_type = table_name,
+        unique_field_name = k,
+        unique_field_value = v,
+      })
+
+      if err then
+        return false, err
+      end
+
+      if row then
+        -- don't clear primary keys
+        if not constraints.primary_keys[k] then
+          params[k] = nil
+        end
+        params[constraints.primary_key] = row.entity_id
+      end
+    end
+  end
+  return true
+end
+
+local function remove_ws_prefix(table_name, row, include_ws)
+  if not row then
+    return
+  end
+
+  local constraints = workspaceable[table_name]
+  if not constraints or not constraints.unique_keys then
+    return
+  end
+
+  for field_name, field_schema in pairs(constraints.unique_keys) do
+    if row[field_name] and not constraints.primary_keys[field_name] and
+      field_schema.schema.fields[field_name].type ~= "id" then
+      local names = utils.split(row[field_name], ":")
+      if #names > 1 then
+        row[field_name] = names[2]
+      end
+    end
+  end
+
+  if not include_ws then
+    if table_name ~= "workspace_entities" then
+      row.workspace_id = nil
+    end
+    row.workspace_name = nil
+  end
+end
+
 local DAO = Object:extend()
 
 DAO.ret_error = ret_error
@@ -89,13 +190,34 @@ function DAO:new(db, model_mt, schema, constraints)
   self.constraints = constraints
 end
 
+function DAO:cache_key_ws(workspace, arg1, arg2, arg3, arg4, arg5)
+  return fmt("%s:%s:%s:%s:%s:%s:%s", self.table,
+    arg1 == nil and "" or arg1,
+    arg2 == nil and "" or arg2,
+    arg3 == nil and "" or arg3,
+    arg4 == nil and "" or arg4,
+    arg5 == nil and "" or arg5,
+    workspace == nil and "" or workspace.id)
+end
+
 function DAO:cache_key(arg1, arg2, arg3, arg4, arg5)
-  return fmt("%s:%s:%s:%s:%s:%s", self.table,
+  local workspace = workspaces.get_workspaces()[1]
+
+  -- Entities that are not workspaceable do not need to be cached with
+  -- the current workspace. No matter what ws is the request (if any)
+  -- comming from.
+  local workspaceable = self.schema.workspaceable
+  if not workspaceable then
+    workspace = nil
+  end
+
+  return fmt("%s:%s:%s:%s:%s:%s:%s", self.table,
              arg1 == nil and "" or arg1,
              arg2 == nil and "" or arg2,
              arg3 == nil and "" or arg3,
              arg4 == nil and "" or arg4,
-             arg5 == nil and "" or arg5)
+             arg5 == nil and "" or arg5,
+             workspace == nil and "" or workspace.id)
 end
 
 function DAO:entity_cache_key(entity)
@@ -114,7 +236,7 @@ function DAO:entity_cache_key(entity)
     keys[i] = entity[cache_key[i]]
   end
 
-  return self:cache_key(utils.unpack(keys))
+  return self:cache_key_ws(nil, utils.unpack(keys))
 end
 
 --- Insert a row.
@@ -128,9 +250,19 @@ function DAO:insert(tbl, options)
   check_arg(tbl, 1, "table")
   check_arg(options, 2, "table")
 
+  -- deep copy so that the resolve_shared_entity_id call doesn't
+  -- modify the tbl argument
+  local tbl = utils.deep_copy(tbl)
+
   local model = self.model_mt(tbl)
   local ok, err = model:validate {dao = self}
   if not ok then
+    return ret_error(self.db.name, nil, err)
+  end
+
+  local workspace, err = apply_unique_per_ws(self.table, model,
+                                             workspaceable[self.table])
+  if err then
     return ret_error(self.db.name, nil, err)
   end
 
@@ -144,6 +276,18 @@ function DAO:insert(tbl, options)
   end
 
   local res, err = self.db:insert(self.table, self.schema, model, self.constraints, options)
+  remove_ws_prefix(self.table, res)
+  if not err and workspace then
+    local err_rel = workspaces.add_entity_relation(self.table, res, workspace)
+    if err_rel then
+      local _, err = self:delete(res)
+      if err then
+        return ret_error(self.db.name, nil, err)
+      end
+      return ret_error("workspace_entity", nil, err_rel)
+    end
+  end
+
   if not err and not options.quiet then
     if self.events then
       local _, err = self.events.post_local("dao:crud", "create", {
@@ -168,6 +312,10 @@ function DAO:find(tbl)
   check_arg(tbl, 1, "table")
   check_utf8(tbl, 1)
 
+  -- deep copy so that the resolve_shared_entity_id call doesn't
+  -- modify the tbl argument
+  local tbl = utils.deep_copy(tbl)
+
   local model = self.model_mt(tbl)
   if not model:has_primary_keys() then
     error("Missing PRIMARY KEY field", 2)
@@ -178,7 +326,25 @@ function DAO:find(tbl)
     return ret_error(self.db.name, nil, Errors.schema(err))
   end
 
-  return ret_error(self.db.name, self.db:find(self.table, self.schema, primary_keys))
+  local table_name = self.table
+  local constraints = workspaceable[table_name]
+  local ok, err = resolve_shared_entity_id(table_name, tbl, constraints)
+  if not ok then
+    return ret_error(self.db.name, nil, Errors.schema(err))
+  end
+
+  local r = rbac.validate_entity_operation(primary_keys, constraints)
+  if not r then
+    ret_error(self.db.name, nil, "[RBAC] Unauthorized find")
+  end
+
+  local row, err = self.db:find(self.table, self.schema, primary_keys)
+  if err then
+    ret_error(self.db.name, row, err)
+  end
+  remove_ws_prefix(self.schema.table, row)
+
+  return ret_error(self.db.name, row, err)
 end
 
 --- Find all rows.
@@ -186,19 +352,49 @@ end
 -- @param[type=table] tbl (optional) A table containing the fields and values to search for.
 -- @treturn rows An array of rows.
 -- @treturn table err If an error occured, a table describing the issue.
-function DAO:find_all(tbl)
+function DAO:find_all(tbl, include_ws)
+  local skip_rbac
+  local table_name = self.table
+  local constraints = workspaceable[table_name]
+
+  -- deep copy so that the resolve_shared_entity_id call doesn't
+  -- modify the tbl argument
+  local tbl = utils.deep_copy(tbl)
+
   if tbl ~= nil then
     check_arg(tbl, 1, "table")
     check_utf8(tbl, 1)
+
+    skip_rbac = tbl.__skip_rbac
+    tbl.__skip_rbac = nil
+
     check_not_empty(tbl, 1)
 
     local ok, err = schemas_validation.is_schema_subset(tbl, self.schema)
     if not ok then
       return ret_error(self.db.name, nil, Errors.schema(err))
     end
+
+    local ok, err = resolve_shared_entity_id(table_name, tbl, constraints)
+    if not ok then
+      return ret_error(self.db.name, nil, Errors.schema(err))
+    end
   end
 
-  return ret_error(self.db.name, self.db:find_all(self.table, tbl, self.schema))
+  local rows, err = self.db:find_all(self.table, tbl, self.schema)
+  if err then
+    return ret_error(self.db.name, nil, Errors.schema(err))
+  end
+
+  for _, row in ipairs(rows) do
+    remove_ws_prefix(table_name, row, include_ws)
+  end
+
+  if skip_rbac ~= true then
+    rows = rbac.narrow_readable_entities(table_name, rows, constraints)
+  end
+
+  return ret_error(self.db.name, rows, err)
 end
 
 --- Find a paginated set of rows.
@@ -209,6 +405,13 @@ end
 -- @treturn table rows An array of rows.
 -- @treturn table err If an error occured, a table describing the issue.
 function DAO:find_page(tbl, page_offset, page_size)
+  local table_name = self.table
+  local constraints = workspaceable[table_name]
+
+   -- deep copy so that the resolve_shared_entity_id call doesn't
+   -- modify the tbl argument
+   local tbl = utils.deep_copy(tbl)
+
    if tbl ~= nil then
     check_arg(tbl, 1, "table")
     check_not_empty(tbl, 1)
@@ -216,6 +419,11 @@ function DAO:find_page(tbl, page_offset, page_size)
     if not ok then
       return ret_error(self.db.name, nil, Errors.schema(err))
     end
+
+     local ok, err = resolve_shared_entity_id(table_name, tbl, constraints)
+     if not ok then
+       return ret_error(self.db.name, nil, Errors.schema(err))
+     end
   end
 
   if page_size == nil then
@@ -224,7 +432,18 @@ function DAO:find_page(tbl, page_offset, page_size)
 
   check_arg(page_size, 3, "number")
 
-  return ret_error(self.db.name, self.db:find_page(self.table, tbl, page_offset, page_size, self.schema))
+  local rows, err, offset = self.db:find_page(self.table, tbl, page_offset,
+                                              page_size, self.schema)
+  if err then
+    return ret_error(self.db.name, nil, err)
+  end
+  for _, row in ipairs(rows) do
+    remove_ws_prefix(self.schema.table, row)
+  end
+
+  rows = rbac.narrow_readable_entities(self.schema.table, rows, constraints)
+
+  return ret_error(self.db.name, rows, err, offset)
 end
 
 --- Count the number of rows.
@@ -233,10 +452,22 @@ end
 -- @treturn number count The total count of rows matching the given filter, or total count of rows if no filter was given.
 -- @treturn table err If an error occured, a table describing the issue.
 function DAO:count(tbl)
+  local table_name = self.table
+  local constraints = workspaceable[table_name]
+
+  -- deep copy so that the resolve_shared_entity_id call doesn't
+  -- modify the tbl argument
+  local tbl = utils.deep_copy(tbl)
+
   if tbl ~= nil then
     check_arg(tbl, 1, "table")
     check_not_empty(tbl, 1)
     local ok, err = schemas_validation.is_schema_subset(tbl, self.schema)
+    if not ok then
+      return ret_error(self.db.name, nil, Errors.schema(err))
+    end
+
+    local ok, err = resolve_shared_entity_id(table_name, tbl, constraints)
     if not ok then
       return ret_error(self.db.name, nil, Errors.schema(err))
     end
@@ -291,6 +522,10 @@ function DAO:update(tbl, filter_keys, options)
   check_not_empty(filter_keys, 2)
   check_arg(options, 3, "table")
 
+  -- deep copy so that the resolve_shared_entity_id call doesn't
+  -- modify the tbl argument
+  local tbl = utils.deep_copy(tbl)
+
   for k, v in pairs(filter_keys) do
     if tbl[k] == nil then
       tbl[k] = v
@@ -315,15 +550,31 @@ function DAO:update(tbl, filter_keys, options)
     return
   end
 
+  local constraints = workspaceable[self.table]
+  -- XXX: rethink the first condition. as maybe adding __skip_rbac is
+  -- more fine grained and useful than this shotgun surgery
+  if not rbac.is_system_table(self.table) and
+    not rbac.validate_entity_operation(old, constraints) then
+    return ret_error(self.db.name, nil, "[RBAC] Unauthorized entity modification")
+  end
+
   if not options.full then
     fix(old, values, self.schema)
   end
+
+  apply_unique_per_ws(self.table, values, constraints)
 
   local res, err = self.db:update(self.table, self.schema, self.constraints, primary_keys, values, nils, options.full, model, options)
   if err then
     return ret_error(self.db.name, nil, err)
   elseif res then
+    remove_ws_prefix(self.table, res)
+    local err = workspaces.update_entity_relation(self.table, res)
+    if err then
+      return ret_error(self.db.name, nil, err)
+    end
     if not options.quiet then
+      remove_ws_prefix(self.table, old)
       if self.events then
         local _, err = self.events.post_local("dao:crud", "update", {
           schema     = self.schema,
@@ -353,6 +604,14 @@ function DAO:delete(tbl, options)
   check_arg(tbl, 1, "table")
   check_arg(options, 2, "table")
 
+  -- deep copy so that the resolve_shared_entity_id call doesn't
+  -- modify the tbl argument
+  local tbl = utils.deep_copy(tbl)
+
+  local ws = workspaces.get_workspaces()[1]
+  local constraints = workspaceable[self.table]
+  apply_unique_per_ws(self.schema.table, tbl, constraints)
+
   local model = self.model_mt(tbl)
   if not model:has_primary_keys() then
     error("Missing PRIMARY KEY field", 2)
@@ -379,8 +638,14 @@ function DAO:delete(tbl, options)
     end
   end
 
+  if not rbac.validate_entity_operation(primary_keys, constraints) or
+    not rbac.check_cascade(associated_entites, ngx.ctx.rbac)  then
+    return ret_error(self.db.name, nil, "[RBAC] cascading error")
+  end
+
   local row, err = self.db:delete(self.table, self.schema, primary_keys, self.constraints)
   if not err and row ~= nil and not options.quiet then
+    remove_ws_prefix(self.table, row)
     if self.events then
       local _, err = self.events.post_local("dao:crud", "delete", {
         schema    = self.schema,
@@ -395,6 +660,7 @@ function DAO:delete(tbl, options)
     -- Also propagate the deletion for the associated entities
     for k, v in pairs(associated_entites) do
       for _, entity in ipairs(v.entities) do
+        remove_ws_prefix(k, entity)
         if self.events then
           local _, err = self.events.post_local("dao:crud", "delete", {
             schema    = v.schema,
@@ -405,10 +671,35 @@ function DAO:delete(tbl, options)
             ngx.log(ngx.ERR, "could not propagate CRUD operation: ", err)
           end
         end
+
+        if ws then
+          local err = workspaces.delete_entity_relation(k, entity)
+          if err then
+            ngx.log(ngx.ERR,
+              "could not delete entity relationship with workspace: ",
+              err)
+          end
+        end
       end
     end
   end
+  if not err and ws then
+    local err = workspaces.delete_entity_relation(self.table, tbl)
+    if err then
+      ngx.log(ngx.ERR,
+        "could not delete entity relationship with workspace: ",
+        err)
+    end
+  end
   return ret_error(self.db.name, row, err)
+end
+
+function DAO:run_with_ws_scope(ws_scope, cb, ...)
+  local old_ws = ngx.ctx.workspaces
+  ngx.ctx.workspaces = ws_scope
+  local res, err = cb(self, ...)
+  ngx.ctx.workspaces = old_ws
+  return res, err
 end
 
 function DAO:truncate()

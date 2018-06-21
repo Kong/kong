@@ -7,10 +7,10 @@ local helpers = require "spec.helpers"
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: rate-limiting (API) [#" .. strategy .. "]", function()
     local admin_client
-    local bp
+    local bp, _, dao
 
     setup(function()
-      bp = helpers.get_db_utils(strategy)
+      bp, _, dao = helpers.get_db_utils(strategy)
     end)
 
     teardown(function()
@@ -25,6 +25,7 @@ for _, strategy in helpers.each_strategy() do
       local route
 
       setup(function()
+        helpers.with_current_ws(nil, function()
         local service = bp.services:insert()
 
         route = bp.routes:insert {
@@ -32,6 +33,7 @@ for _, strategy in helpers.each_strategy() do
           protocols  = { "http", "https" },
           service    = service
         }
+        end, dao)
 
         assert(helpers.start_kong({
           database   = strategy,

@@ -16,6 +16,7 @@ local SCHEMA = {
   primary_key = {"id"},
   table = "acls",
   cache_key = { "consumer_id" },
+  workspaceable = true,
   fields = {
     id = { type = "id", dao_insert_value = true },
     created_at = { type = "timestamp", dao_insert_value = true },

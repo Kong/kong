@@ -33,6 +33,7 @@ end
 return {
   table = "plugins",
   primary_key = {"id", "name"},
+  workspaceable = true,
   cache_key = { "name", "route_id", "service_id", "consumer_id", "api_id" },
   fields = {
     id = {

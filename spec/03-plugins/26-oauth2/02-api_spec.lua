@@ -36,9 +36,11 @@ for _, strategy in helpers.each_strategy() do
 
     describe("/consumers/:consumer/oauth2/", function()
       setup(function()
+        helpers.with_current_ws(nil, function()
         service = bp.services:insert({ host = "oauth2_token.com" })
         consumer = bp.consumers:insert({ username = "bob" })
         bp.consumers:insert({ username = "sally" })
+        end, dao)
       end)
 
       after_each(function()
@@ -223,6 +225,7 @@ for _, strategy in helpers.each_strategy() do
 
       describe("GET", function()
         setup(function()
+          helpers.with_current_ws(nil, function()
           for i = 1, 3 do
             assert(dao.oauth2_credentials:insert {
               name         = "app" .. i,
@@ -230,6 +233,7 @@ for _, strategy in helpers.each_strategy() do
               consumer_id  = consumer.id,
             })
           end
+          end,dao)
         end)
         teardown(function()
           dao:truncate_table("oauth2_credentials")
@@ -255,7 +259,7 @@ for _, strategy in helpers.each_strategy() do
         dao:truncate_table("consumers")
         db:truncate("services")
         helpers.register_consumer_relations(dao)
-
+        helpers.with_current_ws(nil, function()
         service = bp.services:insert({ host = "oauth2_token.com" })
         consumer = bp.consumers:insert({ username = "bob" })
         credential = assert(dao.oauth2_credentials:insert {
@@ -263,6 +267,7 @@ for _, strategy in helpers.each_strategy() do
           redirect_uri = helpers.mock_upstream_ssl_url,
           consumer_id  = consumer.id,
         })
+        end, dao)
       end)
       describe("GET", function()
         it("retrieves oauth2 credential by id", function()
@@ -284,9 +289,12 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(credential.id, json.id)
         end)
         it("retrieves credential by id only if the credential belongs to the specified consumer", function()
+          helpers.with_current_ws(nil, function()
           assert(dao.consumers:insert {
-            username = "alice"
-          })
+						username = "alice"
+					})
+          end, dao)
+
 
           local res = assert(admin_client:send {
             method  = "GET",
@@ -399,11 +407,13 @@ for _, strategy in helpers.each_strategy() do
     describe("/oauth2_tokens/", function()
       local oauth2_credential
       setup(function()
+        helpers.with_current_ws(nil, function()
         oauth2_credential = assert(dao.oauth2_credentials:insert {
           name         = "Test APP",
           redirect_uri = helpers.mock_upstream_ssl_url,
           consumer_id  = consumer.id,
         })
+        end, dao)
       end)
       after_each(function()
         dao:truncate_table("oauth2_tokens")
@@ -488,6 +498,7 @@ for _, strategy in helpers.each_strategy() do
 
       describe("GET", function()
         setup(function()
+          helpers.with_current_ws(nil, function()
           for _ = 1, 3 do
             assert(dao.oauth2_tokens:insert {
               credential_id = oauth2_credential.id,
@@ -495,6 +506,7 @@ for _, strategy in helpers.each_strategy() do
               expires_in    = 10
             })
           end
+          end, dao)
         end)
         teardown(function()
           dao:truncate_table("oauth2_tokens")
@@ -516,11 +528,13 @@ for _, strategy in helpers.each_strategy() do
         local token
         before_each(function()
           dao:truncate_table("oauth2_tokens")
+          helpers.with_current_ws(nil, function()
           token = assert(dao.oauth2_tokens:insert {
             credential_id = oauth2_credential.id,
             service_id    = service.id,
             expires_in    = 10
           })
+          end, dao)
         end)
 
         describe("GET", function()

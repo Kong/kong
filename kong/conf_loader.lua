@@ -137,7 +137,7 @@ local CONF_INFERENCES = {
   lua_ssl_verify_depth = {typ = "number"},
   lua_socket_pool_size = {typ = "number"},
 
-  enforce_rbac = {typ = "boolean"},
+  rbac = {typ = "string"},
   rbac_auth_header = {typ = "string"},
 
   vitals = {typ = "boolean"},
@@ -379,12 +379,6 @@ local function check_and_infer(conf)
     end
   end
 
-  -- warn user if ssl is disabled and rbac is enforced
-  if conf.enforce_rbac and not conf.admin_ssl then
-    log.warn("RBAC authorization is enabled but Admin API calls will not be " ..
-      "encrypted via SSL")
-  end
-
   if conf.ssl_cipher_suite ~= "custom" then
     local ok, err = pcall(function()
       conf.ssl_ciphers = ciphers(conf.ssl_cipher_suite)
@@ -431,6 +425,23 @@ local function check_and_infer(conf)
                           "block or 'unix:', got '" .. address .. "'"
     end
   end
+
+  -- rbac can be any of 'endpoint', 'entity', 'on', or 'off'
+  local rbac = {}
+  if conf.rbac == "endpoint" then
+    rbac.endpoint = true
+  elseif conf.rbac == "entity" then
+    rbac.entity = true
+  elseif conf.rbac == "on" then
+    rbac.entity = true
+    rbac.endpoint = true
+  elseif conf.rbac == "off" then
+    rbac.off = true
+  else
+    errors[#errors+1] = "rbac must be one of 'endpoint', 'entity', 'on', " ..
+      "or 'off'; got '" .. conf.rbac .. "'"
+  end
+  conf.rbac = rbac
 
   return #errors == 0, errors[1], errors
 end
@@ -789,6 +800,15 @@ local function load(path, custom_conf)
       conf.portal_gui_ssl_cert = pl_path.abspath(conf.portal_gui_ssl_cert)
       conf.portal_gui_ssl_cert_key = pl_path.abspath(conf.portal_gui_ssl_cert_key)
     end
+  end
+
+  -- warn user if ssl is disabled and rbac is enforced
+  -- TODO CE would probably benefit from some helpers - eg, see
+  -- kong.enterprise_edition.select_listener
+  local ssl_on = (table.concat(conf.admin_listen, ",") .. " "):find("%sssl[%s,]")
+  if not conf.rbac.off and not ssl_on then
+    log.warn("RBAC authorization is enabled but Admin API calls will not be " ..
+      "encrypted via SSL")
   end
 
   -- attach prefix files paths
