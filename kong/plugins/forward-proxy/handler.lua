@@ -4,7 +4,7 @@ local responses  = require "kong.tools.responses"
 local constants  = require "kong.constants"
 local meta       = require "kong.meta"
 local http       = require "resty.http"
-local handler    = require "kong.runloop.handler"
+local handler    = require "kong.core.handler"
 
 
 local ngx                 = ngx

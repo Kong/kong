@@ -2,7 +2,6 @@
 
 * Add support for delayed response
 * Add `Via` header
-* Update `kong.core.handler` to `kong.runloop.handler`
 
 ## Unreleased
 
