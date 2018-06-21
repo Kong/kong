@@ -4,6 +4,8 @@ local BasePlugin   = require "kong.plugins.base_plugin"
 local ratelimiting = require "kong.tools.public.rate-limiting"
 local responses    = require "kong.tools.responses"
 local singletons   = require "kong.singletons"
+local schema       = require "kong.plugins.rate-limiting-advanced.schema"
+
 
 local max      = math.max
 local tonumber = tonumber
@@ -58,11 +60,12 @@ local function new_namespace(config, init_timer)
 
     local strategy_opts = strategy == "redis" and config.redis
 
+    -- no shm was specified, try the default value specified in the schema
     local dict_name = config.dictionary_name
     if dict_name == nil then
+      dict_name = schema.fields.dictionary_name.default
       ngx.log(ngx.WARN, "[rate-limiting] no shared dictionary was specified.",
-        " Falling back to 'kong'")
-      dict_name = "kong"
+        " Trying the default value '", dict_name, "'...")
     end
 
     -- if dictionary name was passed but doesn't exist, fallback to kong

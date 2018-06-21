@@ -2,7 +2,8 @@
 
 ### Fixed
 
-- Fixed a typo in Cassandra migration
+- Fix a typo in Cassandra migration
+- Fix selection of dictionary used for counters
 
 ## 0.31.1
 
