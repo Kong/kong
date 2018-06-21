@@ -7,6 +7,7 @@ local singletons = require "kong.singletons"
 local utils      = require "kong.tools.utils"
 local public     = require "kong.tools.public"
 local pg_strat   = require "kong.vitals.postgres.strategy"
+local feature_flags    = require "kong.enterprise_edition.feature_flags"
 
 local timer_at   = ngx.timer.at
 local time       = ngx.time
@@ -19,6 +20,8 @@ local DEBUG      = ngx.DEBUG
 local INFO       = ngx.INFO
 local WARN       = ngx.WARN
 local ERR        = ngx.ERR
+local FF_VALUES  = feature_flags.VALUES
+local FF_FLAGS   = feature_flags.FLAGS
 
 local fmt        = string.format
 
@@ -165,6 +168,49 @@ local function metrics_t_arr_init(sz, start_at)
 end
 
 
+local function load_tsdb_strategy()
+  local tsdb_config_str
+  if feature_flags.is_enabled(FF_FLAGS.VITALS_READ_FROM_TSDB) then
+    tsdb_config_str = feature_flags.get_feature_value(FF_VALUES.VITALS_TSDB_CONFIG)
+    if not tsdb_config_str then
+      return error(fmt("\"%s\" is turned on but \"%s\" is not defined",
+        FF_FLAGS.VITALS_READ_FROM_TSDB,
+        FF_VALUES.VITALS_TSDB_CONFIG
+      ))
+    end
+  end
+
+  if not tsdb_config_str then
+    -- no error and not using TSDB strategy
+    return nil, nil
+  end
+
+  if type(tsdb_config_str) == "table" then
+    tsdb_config_str = table.concat(tsdb_config_str, ",")
+  end
+  local tsdb_config, err = cjson.decode(tsdb_config_str)
+  if not tsdb_config then
+    return error(fmt("\"%s\" is not valid JSON for TSDB connection configuration: %s", tsdb_config_str, err))
+  elseif not tsdb_config.host or tsdb_config.port == nil then
+    return error("TSDB host or port is not defined")
+  end
+
+  if tsdb_config.type == "prometheus" then
+    local db_strategy = require("kong.vitals.prometheus.strategy")
+    local strategy_opts = {
+      host = tsdb_config.host,
+      port = tonumber(tsdb_config.port),
+      custom_filters = tsdb_config.custom_filters,
+      connection_timeout = tonumber(tsdb_config.connection_timeout) or 5000, -- 5s
+    }
+    -- no error and we are using TSDB strategy
+    return db_strategy, strategy_opts
+  else
+    return error("no vitals TSDB strategy for " .. tsdb_config.type)
+  end
+end
+
+
 function _M.new(opts)
   opts = opts or {}
 
@@ -179,9 +225,9 @@ function _M.new(opts)
   end
 
   local strategy
+  local tsdb_storage = false
 
   do
-    local db_strategy
     local dao_factory = opts.dao
 
     local strategy_opts = {
@@ -189,7 +235,12 @@ function _M.new(opts)
       ttl_minutes = opts.ttl_minutes or 90000,
     }
 
-    if dao_factory.db_type == "postgres" then
+    local db_strategy, tsdb_strategy_opts = load_tsdb_strategy()
+
+    if db_strategy then
+      strategy_opts = tsdb_strategy_opts
+      tsdb_storage = true
+    elseif dao_factory.db_type == "postgres" then
       db_strategy = pg_strat
       strategy_opts.delete_interval = opts.delete_interval_pg or 90000
     elseif dao_factory.db_type == "cassandra" then
@@ -214,6 +265,7 @@ function _M.new(opts)
     ttl_seconds    = opts.ttl_seconds or 3600,
     ttl_minutes    = opts.ttl_minutes or 90000,
     initialized    = false,
+    tsdb_storage   = tsdb_storage,
   }
 
   return setmetatable(self, mt)
@@ -290,6 +342,11 @@ persistence_handler = function(premature, self)
     return
   end
 
+  if self.tsdb_storage then
+    -- TSDB strategy is read-only, the metrics will be sent by statsd-advanced plugin.
+    return
+  end
+
   -- if we've drifted, get back in sync
   local delay = self.flush_interval
   local when  = delay - (ngx.now() - (math.floor(ngx.now() / delay) * delay))
@@ -333,6 +390,11 @@ end
 
 -- converts Kong stats to format expected by Vitals API
 local function convert_stats(vitals, res, level, interval)
+  if vitals.tsdb_storage then
+    -- don't translate since we already translated in TSDB strategy
+    return res
+  end
+
   local stats = {}
   local meta = {
     level = level,
@@ -426,6 +488,11 @@ end
 
 -- converts consumer stats to format expected by Vitals API
 local function convert_consumer_stats(vitals, res, level, interval)
+  if vitals.tsdb_storage then
+    -- don't translate since we already translated in TSDB strategy
+    return res
+  end
+
   local stats = {}
   local meta = {
     level = level,
@@ -940,6 +1007,12 @@ end
 
 
 function _M:current_bucket()
+  if self.tsdb_storage then
+    -- returns nil to disable aggreation and writing
+    -- because in this case we are send metrics via a statsd-advanced plugin and not Vitals.
+    return nil
+  end
+
   local bucket = time() - self.counters.start_at
 
   -- we may be collecting data points into the flush_interval+1 second.
@@ -1126,6 +1199,7 @@ function _M:get_status_codes(opts, key_by)
     start_ts = opts.start_ts,
     entity_type = opts.entity_type,
     entity_id = opts.entity_id,
+    key_by = key_by,
   }
 
   local res, err = self.strategy:select_status_codes(query_opts)
@@ -1133,6 +1207,10 @@ function _M:get_status_codes(opts, key_by)
   if err then
     log(WARN, _log_prefix, err)
     return {}
+  elseif self.tsdb_storage then
+    -- don't translate since we already translated in TSDB strategy
+    -- don't move this into convert_status_codes and use singletons.vitals since it may not be set
+    return res
   end
 
   return convert_status_codes(res, opts.level, opts.duration, opts.entity_type, opts.entity_id, key_by)
@@ -1336,6 +1414,12 @@ function _M:log_phase_after_plugins(ctx, status)
   if not ctx.service then
     -- we're only logging for services and routes. if there's no
     -- service on the request, don't fill up the cache with useless keys
+    return true
+  end
+
+  if self.tsdb_storage then
+    -- skip maintaining counters since TSDB strategy is a read-only strategy
+    -- data will be written out via statsd plugin
     return true
   end
 
