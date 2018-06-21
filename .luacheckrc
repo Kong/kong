@@ -27,7 +27,7 @@ exclude_files = {
 }
 
 
-files["kong/plugins/ldap-auth/*.lua"] = {
+files["kong/plugins/ldap-auth*/*.lua"] = {
     read_globals = {
         "bit.mod",
         "string.pack",
