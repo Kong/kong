@@ -36,6 +36,280 @@ starts new workers, which take over from old workers before those old workers
 are terminated. In this way, Kong will serve new requests via the new
 configuration, without dropping existing in-flight connections.
 
+## Upgrade to `0.14.x`
+
+This version introduces **changes in Admin API endpoints**, **database
+migrations**, **Nginx configuration changes**, and **removed configuration
+properties**.
+
+In this release, the **API entity is still supported**, along with its related
+Admin API endpoints.
+
+This section will highlight breaking changes that you need to be aware of
+before upgrading, and will describe the recommended upgrade path. We recommend
+that you consult the full [0.14.0
+Changelog](https://github.com/Kong/kong/blob/master/CHANGELOG.md) for a
+complete list of changes and new features.
+
+#### 1. Breaking Changes
+
+##### Dependencies
+
+- The required OpenResty version has been bumped to 1.13.6.2. If you
+  are installing Kong from one of our distribution packages, you are not
+  affected by this change.
+- Support for PostreSQL 9.4 (deprecated in 0.12.0) is now dropped.
+- Support for Cassandra 2.1 (deprecated in 0.12.0) is now dropped.
+
+##### Configuration
+
+- The `server_tokens` and `latency_tokens` configuration properties have been
+  removed. Instead, a new `headers` configuration properties replaces them.
+  See the default configuration file or the [configuration
+  reference](https://docs.konghq.com/0.14.x/configuration/) for more details.
+- The Nginx configuration file has changed, which means that you need to update
+  it if you are using a custom template. The changes are detailed in a diff
+  included below.
+
+<details>
+<summary><strong>Click here to see the Nginx configuration changes</strong></summary>
+<p>
+
+```diff
+diff --git a/kong/templates/nginx_kong.lua b/kong/templates/nginx_kong.lua
+index a66c230f..d4e416bc 100644
+--- a/kong/templates/nginx_kong.lua
++++ b/kong/templates/nginx_kong.lua
+@@ -29,8 +29,9 @@ lua_socket_pool_size ${{LUA_SOCKET_POOL_SIZE}};
+ lua_max_running_timers 4096;
+ lua_max_pending_timers 16384;
+ lua_shared_dict kong                5m;
+-lua_shared_dict kong_cache          ${{MEM_CACHE_SIZE}};
++lua_shared_dict kong_db_cache       ${{MEM_CACHE_SIZE}};
+ lua_shared_dict kong_db_cache_miss 12m;
++lua_shared_dict kong_locks          8m;
+ lua_shared_dict kong_process_events 5m;
+ lua_shared_dict kong_cluster_events 5m;
+ lua_shared_dict kong_healthchecks   5m;
+@@ -44,13 +45,18 @@ lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE}}';
+ lua_ssl_verify_depth ${{LUA_SSL_VERIFY_DEPTH}};
+ > end
+
++# injected nginx_http_* directives
++> for _, el in ipairs(nginx_http_directives)  do
++$(el.name) $(el.value);
++> end
++
+ init_by_lua_block {
+-    kong = require 'kong'
+-    kong.init()
++    Kong = require 'kong'
++    Kong.init()
+ }
+
+ init_worker_by_lua_block {
+-    kong.init_worker()
++    Kong.init_worker()
+ }
+
+
+@@ -58,7 +64,7 @@ init_worker_by_lua_block {
+ upstream kong_upstream {
+     server 0.0.0.1;
+     balancer_by_lua_block {
+-        kong.balancer()
++        Kong.balancer()
+     }
+     keepalive ${{UPSTREAM_KEEPALIVE}};
+ }
+@@ -81,7 +87,7 @@ server {
+     ssl_certificate_key ${{SSL_CERT_KEY}};
+     ssl_protocols TLSv1.1 TLSv1.2;
+     ssl_certificate_by_lua_block {
+-        kong.ssl_certificate()
++        Kong.ssl_certificate()
+     }
+
+     ssl_session_cache shared:SSL:10m;
+@@ -101,7 +107,15 @@ server {
+     set_real_ip_from   $(trusted_ips[i]);
+ > end
+
++    # injected nginx_proxy_* directives
++> for _, el in ipairs(nginx_proxy_directives)  do
++    $(el.name) $(el.value);
++> end
++
+     location / {
++        default_type                     '';
++
++        set $ctx_ref                     '';
+         set $upstream_host               '';
+         set $upstream_upgrade            '';
+         set $upstream_connection         '';
+@@ -113,11 +127,11 @@ server {
+         set $upstream_x_forwarded_port   '';
+
+         rewrite_by_lua_block {
+-            kong.rewrite()
++            Kong.rewrite()
+         }
+
+         access_by_lua_block {
+-            kong.access()
++            Kong.access()
+         }
+
+         proxy_http_version 1.1;
+@@ -135,22 +149,36 @@ server {
+         proxy_pass         $upstream_scheme://kong_upstream$upstream_uri;
+
+         header_filter_by_lua_block {
+-            kong.header_filter()
++            Kong.header_filter()
+         }
+
+         body_filter_by_lua_block {
+-            kong.body_filter()
++            Kong.body_filter()
+         }
+
+         log_by_lua_block {
+-            kong.log()
++            Kong.log()
+         }
+     }
+
+     location = /kong_error_handler {
+         internal;
++        uninitialized_variable_warn off;
++
+         content_by_lua_block {
+-            kong.handle_error()
++            Kong.handle_error()
++        }
++
++        header_filter_by_lua_block {
++            Kong.header_filter()
++        }
++
++        body_filter_by_lua_block {
++            Kong.body_filter()
++        }
++
++        log_by_lua_block {
++            Kong.log()
+         }
+     }
+ }
+@@ -180,10 +208,15 @@ server {
+     ssl_ciphers ${{SSL_CIPHERS}};
+ > end
+
++    # injected nginx_admin_* directives
++> for _, el in ipairs(nginx_admin_directives)  do
++    $(el.name) $(el.value);
++> end
++
+     location / {
+         default_type application/json;
+         content_by_lua_block {
+-            kong.serve_admin_api()
++            Kong.serve_admin_api()
+         }
+     }
+```
+
+</p>
+</details>
+
+##### Core
+
+- If you are relying on passive health-checks to detect TCP timeouts, you
+  should double-check your health-check configurations. Previously, timeouts
+  were erroneously contriburing to the `tcp_failures` counter. They are now
+  properly contributing to the `timeout` counter. In order to short-circuit
+  traffic based on timeouts, you must ensure that your `timeout` settings
+  are properly configured. See the [Health Checks
+  reference](https://docs.konghq.com/0.14.x/health-checks-circuit-breakers/)
+  for more details.
+
+##### Plugins
+
+- Custom plugins can now see their `header_filter`, `body_filter`, and `log`
+  phases executed without the `rewrite` or `access` phases running first.  This
+  can happen when Nginx itself produces an error while parsing the client's
+  request. Similarly, `ngx.var` values (e.g. `ngx.var.request_uri`) may be
+  `nil`. Plugins should be hardened to handle such cases and avoid using
+  unititialized variables, which could throw Lua errors.
+- The Runscope plugin has been dropped, based on the EoL announcement made by
+  Runscope about their Traffic Inspector product.
+
+##### Admin API
+
+- As a result of being moved to the new Admin API implementation (and
+  supporting `PUT` and named endpoints), the `/snis` endpoint
+  `ssl_certificate_id` attribute has been renamed to `certificate_id`.
+  See the [Admin API
+  reference](https://docs.konghq.com/0.14.x/admin-api/#add-sni) for
+  more details.
+- On the `/certificates` endpoint, the `snis` attribute is not specified as a
+  comma-separated list anymore. It must be specified as a JSON array, or using
+  the url-formencoded array notation of other recent Admin API endpoints. See
+  the [Admin API
+  reference](https://docs.konghq.com/0.14.x/admin-api/#add-certificate) for
+  more details.
+- Filtering by username in the `/consumers` endpoint is not supported with
+  `/consumers?username=...`. Instead, use `/consumers/{username}` to retrieve a
+  Consumer by its username. Filtering with `/consumers?custom_id=...` is still
+  supported.
+
+#### 2. Deprecation Notices
+
+- The `custom_plugins` configuration property is now deprecated in favor of
+  `plugins`. See the default configuration file or the [configuration
+  reference](https://docs.konghq.com/0.14.x/configuration/) for more details.
+
+#### 3. Suggested Upgrade Path
+
+You can now start migrating your cluster from `0.13.x` to `0.14`. If you are
+doing this upgrade "in-place", against the datastore of a running 0.13 cluster,
+then for a short period of time, your database schema won't be fully compatible
+with your 0.13 nodes anymore. This is why we suggest either performing this
+upgrade when your 0.13 cluster is warm and most entities are cached, or against
+a new database, if you can migrate your data. If you wish to temporarily make
+your APIs unavailable, you can leverage the
+[request-termination](https://getkong.org/plugins/request-termination/) plugin.
+
+The path to upgrade a 0.13 datastore is identical to the one of previous major
+releases:
+
+1. If you are planning on upgrading Kong while 0.13 nodes are running against
+   the same datastore, make sure those nodes are warm enough (they should have
+   most of your entities cached already), or temporarily disable your APIs.
+2. Provision a 0.14 node and configure it as you wish (environment variables/
+   configuration file). Make sure to point this new 0.14 node to your current
+   datastore.
+3. **Without starting the 0.14 node**, run the 0.14 migrations against your
+   current datastore:
+
+```
+$ kong migrations up [-c kong.conf]
+```
+
+As usual, this step should be executed from a **single node**.
+
+4. You can now provision a fresh 0.14 cluster pointing to your migrated
+   datastore and start your 0.14 nodes.
+5. Gradually switch your traffic from the 0.13 cluster to the new 0.14 cluster.
+   Remember, once your database is migrated, your 0.13 nodes will rely on
+   their cache and not on the underlying database. Your traffic should switch
+   to the new cluster as quickly as possible.
+6. Once your traffic is fully migrated to the 0.14 cluster, decommission
+   your 0.13 cluster.
+
+You have now successfully upgraded your cluster to run 0.14 nodes exclusively.
+
 ## Upgrade to `0.13.x`
 
 This version comes with **new model entities**, **database migrations**, and
