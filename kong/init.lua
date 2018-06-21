@@ -213,6 +213,11 @@ function Kong.init()
   singletons.license = ee.read_license_info()
   singletons.internal_proxies = internal_proxies.new()
 
+  local _, err = ee.internal_statsd_init()
+  if err then
+    error(tostring(err))
+  end
+
   local reports = require "kong.core.reports"
   local l = singletons.license and
             singletons.license.license.payload.license_key or

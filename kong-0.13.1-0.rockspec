@@ -74,6 +74,7 @@ build = {
     ["kong.enterprise_edition.proxies"] = "kong/enterprise_edition/proxies.lua",
     ["kong.enterprise_edition.feature_flags"] = "kong/enterprise_edition/feature_flags.lua",
     ["kong.enterprise_edition.plugin_overwrite"] = "kong/enterprise_edition/plugin_overwrite.lua",
+    ["kong.enterprise_edition.internal_statsd"] = "kong/enterprise_edition/internal_statsd.lua",
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",

@@ -14,6 +14,7 @@ local FLAGS = {
   REQUEST_TRANSFORMER_ENABLE_LIMIT_BODY = "request_transformation_enable_limit_body",
   REQUEST_TRANSFORMER_ADVANCED_ENABLE_LIMIT_BODY = "request_transformation_advanced_enable_limit_body",
   RESPONSE_TRANSFORMER_ENABLE_LIMIT_BODY = "response_transformation_enable_limit_body",
+  INTERNAL_STATSD_PLUGIN = "internal_statsd_plugin",
 }
 
 
@@ -25,6 +26,8 @@ local VALUES = {
   REDIS_HOST = "redis_host",
   REDIS_PORT = "redis_port",
   REDIS_NAMESPACE = "redis_namespace",
+  -- example: internal_statsd_config={"host":"127.0.0.1","port":8125,"prefix":"kong","udp_packet_size":1000,"use_tcp":false}
+  INTERNAL_STATSD_PLUGIN_CONFIG = "internal_statsd_plugin_config",
 }
 
 
