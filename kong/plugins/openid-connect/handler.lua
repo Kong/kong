@@ -1424,7 +1424,8 @@ function OICHandler:access(conf)
             log("jwt bearer token is active and not revoked")
 
           else
-            return unauthorized(iss, "jwt bearer token is not active anymore or has been revoked", session, anonymous, trusted_client)
+            return unauthorized(iss, "jwt bearer token is not active anymore or has been revoked",
+                                session, anonymous, trusted_client)
           end
 
         else
