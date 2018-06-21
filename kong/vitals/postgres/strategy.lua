@@ -337,9 +337,8 @@ end
   level: "node" to get stats for all nodes or "cluster"
   node_id: if given, selects stats just for that node
   start_at: first timestamp, inclusive
-  end_before: last timestamp, exclusive
  ]]
-function _M:select_stats(query_type, level, node_id, start_at, end_before)
+function _M:select_stats(query_type, level, node_id, start_ts)
   local query, res, err
 
   -- for constructing dynamic SQL
@@ -400,12 +399,8 @@ function _M:select_stats(query_type, level, node_id, start_at, end_before)
     end
   end
 
-  if start_at then
-    where = where .. " AND at >= " .. start_at
-  end
-
-  if end_before then
-    where = where .. " AND at < " .. end_before
+  if start_ts then
+    where = where .. " AND at >= " .. start_ts
   end
 
   -- put it all together
@@ -697,9 +692,9 @@ function _M:select_consumer_stats(opts)
   local cutoff_time
 
   if duration == 1 then
-    cutoff_time = time() - self.ttl_seconds
+    cutoff_time = tonumber(opts.start_ts) or (time() - self.ttl_seconds)
   else
-    cutoff_time = time() - self.ttl_minutes
+    cutoff_time = tonumber(opts.start_ts) or (time() - self.ttl_minutes)
   end
 
   query = fmt(query, cons_id, duration, cutoff_time)
@@ -762,9 +757,9 @@ function _M:select_status_codes(opts)
   local cutoff_time
 
   if duration == 1 then
-    cutoff_time = time() - self.ttl_seconds
+    cutoff_time = tonumber(opts.start_ts) or (time() - self.ttl_seconds)
   else
-    cutoff_time = time() - self.ttl_minutes
+    cutoff_time = tonumber(opts.start_ts) or (time() - self.ttl_minutes)
   end
 
   if entity_type ~= "cluster" then
@@ -983,5 +978,20 @@ function _M:node_exists(node_id)
 
   return res[1] ~= nil
 end
+
+
+function _M:interval_width(interval)
+  if interval == "seconds" then
+    return 1
+  end
+
+  if interval == "minutes" then
+    return 60
+  end
+
+  -- yes, doing validation at the end rather than checking 'interval' twice
+  return nil, "interval must be 'seconds' or 'minutes'"
+end
+
 
 return _M

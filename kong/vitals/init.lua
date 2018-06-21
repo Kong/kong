@@ -337,6 +337,7 @@ local function convert_stats(vitals, res, level, interval)
   local meta = {
     level = level,
     interval = interval,
+    interval_width = vitals.strategy:interval_width(interval),
   }
 
   -- no stats to process, return minimal metadata along with empty stats
@@ -1067,7 +1068,7 @@ function _M:get_index()
 end
 
 
-function _M:get_stats(query_type, level, node_id)
+function _M:get_stats(query_type, level, node_id, start_ts)
   if query_type ~= "minutes" and query_type ~= "seconds" then
     return nil, "Invalid query params: interval must be 'minutes' or 'seconds'"
   end
@@ -1076,12 +1077,15 @@ function _M:get_stats(query_type, level, node_id)
     return nil, "Invalid query params: level must be 'cluster' or 'node'"
   end
 
-
   if not utils.is_valid_uuid(node_id) and node_id ~= nil then
     return nil, "Invalid query params: invalid node_id"
   end
 
-  local res, err = self.strategy:select_stats(query_type, level, node_id)
+  if start_ts and not tonumber(start_ts) then
+    return nil, "Invalid query params: start_ts must be a number"
+  end
+
+  local res, err = self.strategy:select_stats(query_type, level, node_id, start_ts)
 
   if res and not res[1] then
     local node_exists, node_err = self.strategy:node_exists(node_id)
@@ -1113,8 +1117,13 @@ function _M:get_status_codes(opts, key_by)
     return nil, "Invalid query params: level must be 'cluster'"
   end
 
+  if opts.start_ts and not tonumber(opts.start_ts) then
+    return nil, "Invalid query params: start_ts must be a number"
+  end
+
   local query_opts = {
     duration = opts.duration == "seconds" and 1 or 60,
+    start_ts = opts.start_ts,
     entity_type = opts.entity_type,
     entity_id = opts.entity_id,
   }
@@ -1176,11 +1185,16 @@ function _M:get_consumer_stats(opts)
     return nil, "Invalid query params: invalid node_id"
   end
 
+  if opts.start_ts and not tonumber(opts.start_ts) then
+    return nil, "Invalid query params: start_ts must be a number"
+  end
+
   local query_opts = {
     consumer_id = opts.consumer_id,
     duration    = opts.duration == "seconds" and 1 or 60,
     level       = opts.level,
     node_id     = opts.node_id,
+    start_ts    = opts.start_ts,
   }
 
   local res, _ = self.strategy:select_consumer_stats(query_opts)

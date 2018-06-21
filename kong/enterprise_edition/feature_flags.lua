@@ -10,19 +10,24 @@ local FLAGS = {
   RATE_LIMITING_RESTRICT_REDIS_ONLY = "rate_limiting_restrict_redis_only",
   RESPONSE_RATELIMITING_RESTRICT_REDIS_ONLY = "response_ratelimiting_restrict_redis_only",
   RATE_LIMITING_ADVANCED_RESTRICT_REDIS_ONLY = "rate_limiting_advanced_restrict_redis_only",
+  RATE_LIMITING_ADVANCED_ENABLE_WINDOW_SIZE_LIMIT = "rate_limiting_advanced_enable_window_size_limit",
   REQUEST_TRANSFORMER_ENABLE_LIMIT_BODY = "request_transformation_enable_limit_body",
   REQUEST_TRANSFORMER_ADVANCED_ENABLE_LIMIT_BODY = "request_transformation_advanced_enable_limit_body",
   RESPONSE_TRANSFORMER_ENABLE_LIMIT_BODY = "response_transformation_enable_limit_body",
+  INTERNAL_STATSD_PLUGIN = "internal_statsd_plugin",
 }
 
 
 local VALUES = {
+  RATE_LIMITING_ADVANCED_WINDOW_SIZE_LIMIT = "rate_limiting_advanced_window_size_limit",
   REQUEST_TRANSFORMER_LIMIT_BODY_SIZE = "request_transformation_limit_body_size",
   REQUEST_TRANSFORMER_ADVANCED_LIMIT_BODY_SIZE = "request_transformation_advanced_limit_body_size",
   RESPONSE_TRANSFORMER_LIMIT_BODY_SIZE = "response_transformation_limit_body_size",
   REDIS_HOST = "redis_host",
   REDIS_PORT = "redis_port",
   REDIS_NAMESPACE = "redis_namespace",
+  -- example: internal_statsd_config={"host":"127.0.0.1","port":8125,"prefix":"kong","udp_packet_size":1000,"use_tcp":false}
+  INTERNAL_STATSD_PLUGIN_CONFIG = "internal_statsd_plugin_config",
 }
 
 
@@ -40,6 +45,7 @@ local function init(feature_conf_path)
   local s = pl_stringio.open(f)
   local config, err = pl_config.read(s, {
     smart = false,
+    list_delim = "_blank_",
   })
   if err then
     return false, err

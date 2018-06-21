@@ -426,6 +426,25 @@ for _, strategy in helpers.each_strategy('postgres') do
 
 
       describe("POST", function()
+        it("returns 404 if plugin is not one of the allowed auth plugins", function()
+          local plugin = "awesome-custom-plugin"
+
+          local res = assert(client:send {
+            method = "POST",
+            path = "/" .. proxy_prefix .. "/portal/credentials/" .. plugin,
+            body = {
+              username = "dude",
+              password = "hunter1"
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+              ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+            }
+          })
+
+          assert.res_status(404, res)
+        end)
+
         it("adds auth plugin credential - basic-auth", function()
           local plugin = "basic-auth"
 
@@ -478,6 +497,23 @@ for _, strategy in helpers.each_strategy('postgres') do
       end)
 
       describe("GET", function()
+        it("returns 404 if plugin is not one of the allowed auth plugins", function()
+          local plugin = "awesome-custom-plugin"
+          local path = "/" .. proxy_prefix .. "/portal/credentials/"
+                        .. plugin .. "/" .. credential.id
+
+          local res = assert(client:send {
+            method = "GET",
+            path = path,
+            headers = {
+              ["Content-Type"] = "application/json",
+              ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+            }
+          })
+
+          assert.res_status(404, res)
+        end)
+
         it("retrieves a credential - basic-auth", function()
           local plugin = "basic-auth"
           local path = "/" .. proxy_prefix .. "/portal/credentials/"
@@ -502,6 +538,28 @@ for _, strategy in helpers.each_strategy('postgres') do
       end)
 
       describe("PATCH", function()
+        it("returns 404 if plugin is not one of the allowed auth plugins", function()
+          local plugin = "awesome-custom-plugin"
+          local path = "/" .. proxy_prefix .. "/portal/credentials/"
+                        .. plugin .. "/" .. credential.id
+
+          local res = assert(client:send {
+            method = "PATCH",
+            path = path,
+            body = {
+              id = credential.id,
+              username = "dudett",
+              password = "a-new-password"
+            },
+            headers = {
+              ["Content-Type"] = "application/json",
+              ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+            }
+          })
+
+          assert.res_status(404, res)
+        end)
+
         it("/portal/credentials/:plugin/ - basic-auth", function()
           local plugin = "basic-auth"
           local path = "/" .. proxy_prefix .. "/portal/credentials/"

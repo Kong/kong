@@ -6,6 +6,7 @@ local pl_utils   = require "pl.utils"
 local pl_path    = require "pl.path"
 local singletons = require "kong.singletons"
 local feature_flags = require "kong.enterprise_edition.feature_flags"
+local internal_statsd = require "kong.enterprise_edition.internal_statsd"
 
 
 local _M = {}
@@ -45,6 +46,14 @@ function _M.feature_flags_init(config)
       return err
     end
   end
+end
+
+function _M.internal_statsd_init()
+  local _, err = internal_statsd.new()
+  if err then
+    return false, err
+  end
+  return true, nil
 end
 
 

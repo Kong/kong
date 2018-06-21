@@ -16,10 +16,25 @@ local function init_worker()
     return true
   end
 
-  local limit = tonumber(feature_flags.get_feature_value(VALUES.RESPONSE_TRANSFORMER_LIMIT_BODY_SIZE))
-  if limit then
-    rt_body_size_limit = limit
+  local res, _ = feature_flags.get_feature_value(VALUES.RESPONSE_TRANSFORMER_LIMIT_BODY_SIZE)
+  if not res then
+    ngx_log(ngx_ERR, string.format("[response-transformer] failed to configure body size limit:" ..
+                                   "\"%s\" is turned on but \"%s\" is not defined",
+                                   FLAGS.RESPONSE_TRANSFORMER_ENABLE_LIMIT_BODY,
+                                   VALUES.RESPONSE_TRANSFORMER_LIMIT_BODY_SIZE))
+    return false
   end
+
+  local limit = tonumber(res)
+  if not limit then
+    ngx_log(ngx_ERR, string.format("[response-transformer] failed to configure body size limit:" ..
+                                   "\"%s\" is not valid number for \"%s\", ",
+                                   res,
+                                   VALUES.RESPONSE_TRANSFORMER_LIMIT_BODY_SIZE))
+    return false
+  end
+
+  rt_body_size_limit = limit
   return true
 end
 

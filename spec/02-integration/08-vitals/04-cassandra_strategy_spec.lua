@@ -582,6 +582,30 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         assert.same(expected, res)
       end)
+
+      it("should accept an optional start_ts", function()
+        local expected = {
+          {
+            node_id  = "cluster",
+            at       = now,
+            l2_hit   = 6,
+            l2_miss  = 75,
+            plat_min = 5,
+            plat_max = 25,
+            ulat_min = 1,
+            ulat_max = 30,
+            requests = 3100,
+            plat_count = 6,
+            plat_total = 60,
+            ulat_count = 28,
+            ulat_total = 280,
+          },
+        }
+
+        local res, _ = strategy:select_stats("seconds", "cluster", nil, now)
+
+        assert.same(expected, res)
+      end)
     end)
 
     describe(":select_phone_home()", function()
@@ -761,7 +785,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert.same("duration must be 1 or 60", err)
       end)
 
-      it("returns seconds stats for a consumer across the cluster", function()
+      it("returns seconds stats for a consumer", function()
         local opts = {
           consumer_id = cons_id,
           node_id     = nil,
@@ -812,127 +836,7 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert.same(expected, results)
       end)
 
-
-      it("returns seconds stats for a consumer and all nodes", function()
-        local opts = {
-          consumer_id = cons_id,
-          node_id     = nil,
-          duration    = 1,
-          level       = "node",
-        }
-
-        local results, _ = strategy:select_consumer_stats(opts)
-
-        -- just to make it easier to assert
-        table.sort(results, function(a,b)
-          return a.count < b.count
-        end)
-
-        local expected = {
-          {
-            node_id = node_1,
-            at = start_at,
-            count = 1,
-          },
-          {
-            node_id = node_2,
-            at = start_at + 2,
-            count = 2,
-          },
-          {
-            node_id = node_1,
-            at = start_at + 1,
-            count = 3,
-          },
-          {
-            node_id = node_1,
-            at = start_at + 2,
-            count = 4,
-          },
-          {
-            node_id = node_2,
-            at = start_at + 60,
-            count = 5,
-          },
-          {
-            node_id = node_2,
-            at = start_at + 61,
-            count = 6,
-          },
-          {
-            node_id = node_1,
-            at = start_at + 60,
-            count = 7,
-          },
-          {
-            node_id = node_2,
-            at = start_at + 62,
-            count = 8,
-          },
-          {
-            node_id = node_2,
-            at = start_at + 63,
-            count = 9,
-          },
-          {
-            node_id = node_1,
-            at = start_at + 61,
-            count = 11,
-          },
-          {
-            node_id = node_1,
-            at = start_at + 62,
-            count = 18,
-          },
-        }
-
-        assert.same(expected, results)
-      end)
-
-
-      it("returns seconds stats for a consumer and a node", function()
-        local opts = {
-          consumer_id = cons_id,
-          node_id     = node_2,
-          duration    = 1,
-          level       = "node",
-        }
-
-        local results, _ = strategy:select_consumer_stats(opts)
-
-        local expected = {
-          {
-            node_id = node_2,
-            at = start_at + 2,
-            count = 2,
-          },
-          {
-            node_id = node_2,
-            at = start_at + 60,
-            count = 5,
-          },
-          {
-            node_id = node_2,
-            at = start_at + 61,
-            count = 6,
-          },
-          {
-            node_id = node_2,
-            at = start_at + 62,
-            count = 8,
-          },
-          {
-            node_id = node_2,
-            at = start_at + 63,
-            count = 9,
-          },
-        }
-
-        assert.same(expected, results)
-      end)
-
-
-      it("returns minutes stats for a consumer across the cluster", function()
+      it("returns minutes stats for a consumer", function()
         local opts = {
           consumer_id = cons_id,
           node_id     = nil,
@@ -957,73 +861,24 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert.same(expected, results)
       end)
 
-
-      it("returns minutes stats for a consumer and all nodes", function()
+      it("takes an optional start_ts", function()
         local opts = {
           consumer_id = cons_id,
           node_id     = nil,
           duration    = 60,
-          level       = "node",
-        }
-
-        local results, _ = strategy:select_consumer_stats(opts)
-
-        table.sort(results, function(a,b)
-          return a.count < b.count
-        end)
-
-
-        local expected = {
-          {
-            node_id = node_2,
-            at = start_minute,
-            count = 2,
-          },
-          {
-            node_id = node_1,
-            at = start_minute,
-            count = 8,
-          },
-          {
-            node_id = node_2,
-            at = start_minute + 60,
-            count = 28,
-          },
-          {
-            node_id = node_1,
-            at = start_minute + 60,
-            count = 36,
-          },
-        }
-
-        assert.same(expected, results)
-      end)
-
-
-      it("returns minutes stats for a consumer and a node", function()
-        local opts = {
-          consumer_id = cons_id,
-          node_id     = node_2,
-          duration    = 60,
-          level       = "node",
+          level       = "cluster",
+          start_ts    = start_minute + 60,
         }
 
         local results, _ = strategy:select_consumer_stats(opts)
 
         local expected = {
           {
-            count = 2,
-            node_id = node_2,
-            at = start_minute,
-          },
-          {
-            count = 28,
-            node_id = node_2,
-            at = start_minute + 60,
+            node_id     = "cluster",
+            at          = start_minute + 60,
+            count       = 64,
           },
         }
-
-        assert.is_nil(_)
         assert.same(expected, results)
       end)
     end)
@@ -1539,6 +1394,37 @@ dao_helpers.for_each_dao(function(kong_conf)
             at         = start_minute,
             count      = 4,
           },
+          {
+            code_class = 4,
+            at         = start_minute + 60,
+            count      = 7,
+          },
+          {
+            code_class = 5,
+            at         = start_minute + 60,
+            count      = 19,
+          },
+        }
+
+        table.sort(results, function(a,b)
+          return a.count < b.count
+        end)
+
+        assert.same(expected, results)
+      end)
+
+
+      it("takes an optional start_ts", function()
+        local opts = {
+          duration    = 60,
+          level       = "cluster",
+          entity_type = "cluster",
+          start_ts    = start_minute + 60,
+        }
+
+        local results, _ = strategy:select_status_codes(opts)
+
+        local expected = {
           {
             code_class = 4,
             at         = start_minute + 60,
@@ -2198,6 +2084,23 @@ dao_helpers.for_each_dao(function(kong_conf)
         res, _ = strategy:select_node_meta()
 
         assert.same({}, res)
+      end)
+    end)
+
+
+    describe(":interval_width", function()
+      it("returns the right size, in seconds", function()
+        local width = strategy:interval_width("seconds")
+        assert.same(1, width)
+
+        width = strategy:interval_width("minutes")
+        assert.same(60, width)
+      end)
+
+      it("returns nil if requested interval is unknown", function()
+        local width, err = strategy:interval_width("foo")
+        assert.is_nil(width)
+        assert.same("interval must be 'seconds' or 'minutes'", err)
       end)
     end)
   end)

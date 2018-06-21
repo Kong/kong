@@ -735,6 +735,20 @@ dao_helpers.for_each_dao(function(kong_conf)
       end)
     end)
 
+    describe("get_consumer_stats() validations", function()
+      it("rejects invalid start_ts", function()
+        local res, err = vitals:get_consumer_stats({
+          consumer_id = utils.uuid(),
+          duration    = "seconds",
+          level       = "cluster",
+          start_ts    = "foo",
+        })
+
+        assert.is_nil(res)
+        assert.same("Invalid query params: start_ts must be a number", err)
+      end)
+    end)
+
     describe("get_consumer_stats()", function()
       local now     = ngx.time()
       local cons_id = utils.uuid()
@@ -903,11 +917,26 @@ dao_helpers.for_each_dao(function(kong_conf)
         assert.same(expected, err)
       end)
 
+      it("rejects invalid start_ts", function()
+        local res, err = vitals:get_stats("minutes", "cluster", nil, "foo")
+
+        local expected = "Invalid query params: start_ts must be a number"
+
+        assert.is_nil(res)
+        assert.same(expected, err)
+      end)
+
+      it("doesn't mind a null start_ts", function()
+        local _, err = vitals:get_stats("minutes", "cluster", nil)
+        assert.is_nil(err)
+      end)
+
       it("returns converted stats", function()
         local expected = {
           meta = {
             earliest_ts = now,
             interval = "seconds",
+            interval_width = 1,
             latest_ts = now + 1,
             level = "node",
             nodes = {},
@@ -952,6 +981,32 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         assert.is_nil(res)
         assert.same(expected, err)
+      end)
+
+      it("rejects invalid start_ts", function()
+        local res, err = vitals:get_status_codes({
+          level       = "cluster",
+          entity_type = "service",
+          entity_id   = utils.uuid(),
+          duration    = "minutes",
+          start_ts    = "foo",
+        })
+
+        local expected = "Invalid query params: start_ts must be a number"
+
+        assert.is_nil(res)
+        assert.same(expected, err)
+      end)
+
+      it("doesn't mind a null start_ts", function()
+        local _, err = vitals:get_status_codes({
+          level       = "cluster",
+          entity_type = "service",
+          entity_id   = utils.uuid(),
+          duration    = "minutes",
+        })
+
+        assert.is_nil(err)
       end)
     end)
 
