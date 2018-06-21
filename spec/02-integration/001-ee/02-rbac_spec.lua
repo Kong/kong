@@ -1429,7 +1429,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
           path = "/rbac/roles/mock-role/endpoints",
           body = {
             workspace = "mock-workspace",
-            endpoint = "foo",
+            endpoint = "/foo",
             actions = "*",
           },
           headers = {
@@ -1441,7 +1441,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         local json = cjson.decode(body)
 
         assert.same("mock-workspace", json.workspace)
-        assert.same("foo", json.endpoint)
+        assert.same("/foo", json.endpoint)
 
         table.sort(json.actions)
         assert.same({ "create", "delete", "read", "update" }, json.actions)
@@ -1484,7 +1484,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
             path = "/rbac/roles/mock-role/endpoints",
             body = {
               workspace = "mock-workspace",
-              endpoint = "foo",
+              endpoint = "/foo",
               actions = "*",
             },
             headers = {
@@ -1501,7 +1501,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
             path = "/rbac/roles/mock-role/endpoints",
             body = {
               workspace = "dne-workspace",
-              endpoint = "foo",
+              endpoint = "/foo",
               actions = "*",
             },
             headers = {
@@ -1521,7 +1521,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
             path = "/rbac/roles/dne-role/endpoints",
             body = {
               workspace = "mock-workspace",
-              endpoint = "foo",
+              endpoint = "/foo",
               actions = "*",
             },
             headers = {
@@ -1589,7 +1589,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         local json = cjson.decode(body)
 
         assert.equals("mock-workspace", json.workspace)
-        assert.equals("foo", json.endpoint)
+        assert.equals("/foo", json.endpoint)
 
         table.sort(json.actions)
         assert.same({ "create", "delete", "read", "update" }, json.actions)
