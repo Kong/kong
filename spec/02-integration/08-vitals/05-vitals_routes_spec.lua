@@ -1090,14 +1090,15 @@ dao_helpers.for_each_dao(function(kong_conf)
               methd = "GET",
               path = "/vitals/status_codes/by_consumer",
               query = {
-                interval = "so-wrong",
+                interval = "seconds",
                 consumer_id = consumer.id,
+                start_ts = "foo",
               }
             })
             res = assert.res_status(400, res)
             local json = cjson.decode(res)
 
-            assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+            assert.same("Invalid query params: start_ts must be a number", json.message)
           end)
 
           it("returns a 400 if called with invalid start_ts", function()
@@ -1323,14 +1324,15 @@ dao_helpers.for_each_dao(function(kong_conf)
               methd = "GET",
               path = "/vitals/status_codes/by_consumer_and_route",
               query = {
-                interval = "so-wrong",
+                interval = "seconds",
                 consumer_id = consumer.id,
+                start_ts = "foo",
               }
             })
             res = assert.res_status(400, res)
             local json = cjson.decode(res)
 
-            assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+            assert.same("Invalid query params: start_ts must be a number", json.message)
           end)
 
           it("returns a 400 if called with invalid start_ts", function()
@@ -1760,10 +1762,15 @@ dao_helpers.for_each_dao(function(kong_conf)
           end)
 
           it("returns a 400 if called with invalid start_ts", function()
-            local consumer = assert(dao.consumers:insert {
-              username = "bob",
-              custom_id = "1234"
-            })
+            local consumer
+            helpers.with_current_ws(
+              dao.workspaces:find_all({name = "default"}),
+              function()
+                consumer = assert(dao.consumers:insert {
+                  username = "bob",
+                  custom_id = "1234"
+                })
+            end)
 
             local res = assert(client:send {
               methd = "GET",
