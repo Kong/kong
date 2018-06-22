@@ -27,92 +27,92 @@ for i, policy in ipairs({"memory", "redis"}) do
     end
 
     setup(function()
-      helpers.dao:drop_schema()
-      helpers.dao:run_migrations()
+
+      local _, _, dao = helpers.get_db_utils()
       redis.flush_redis(REDIS_HOST, REDIS_PORT, REDIS_DATABASE, REDIS_PASSWORD)
 
-      local api1 = assert(helpers.dao.apis:insert {
+      local api1 = assert(dao.apis:insert {
         name = "api-1",
         hosts = { "api-1.com" },
         upstream_url = "http://httpbin.org",
       })
-      local api2 = assert(helpers.dao.apis:insert {
+      local api2 = assert(dao.apis:insert {
         name = "api-2",
         hosts = { "api-2.com" },
         upstream_url = "http://httpbin.org",
       })
-      assert(helpers.dao.apis:insert {
+      assert(dao.apis:insert {
         name = "api-3",
         hosts = { "api-3.com" },
         upstream_url = "http://httpbin.org",
       })
-      assert(helpers.dao.apis:insert {
+      assert(dao.apis:insert {
         name = "api-4",
         hosts = { "api-4.com" },
         upstream_url = "http://httpbin.org",
       })
-      local api5 = assert(helpers.dao.apis:insert {
+      local api5 = assert(dao.apis:insert {
         name = "api-5",
         hosts = { "api-5.com" },
         upstream_url = "http://httpbin.org",
       })
-      local api6 = assert(helpers.dao.apis:insert {
+      local api6 = assert(dao.apis:insert {
         name = "api-6",
         hosts = { "api-6.com" },
         upstream_url = "http://httpbin.org",
       })
-      local api7 = assert(helpers.dao.apis:insert {
+      local api7 = assert(dao.apis:insert {
         name = "api-7",
         hosts = { "api-7.com" },
         upstream_url = "http://httpbin.org",
       })
-      local api8 = assert(helpers.dao.apis:insert {
+      local api8 = assert(dao.apis:insert {
         name = "api-8",
         hosts = { "api-8.com" },
         upstream_url = "http://httpbin.org",
       })
-      local api9 = assert(helpers.dao.apis:insert {
+      local api9 = assert(dao.apis:insert {
         name = "api-9",
         hosts = { "api-9.com" },
         upstream_url = "http://httpbin.org",
       })
-      local api10 = assert(helpers.dao.apis:insert {
+      local api10 = assert(dao.apis:insert {
         name = "api-10",
         hosts = { "api-10.com" },
         upstream_url = "http://httpbin.org",
       })
-      local api11 = assert(helpers.dao.apis:insert {
+      local api11 = assert(dao.apis:insert {
         name = "api-11",
         hosts = { "api-11.com" },
         upstream_url = "http://httpbin.org",
       })
-      local api12 = assert(helpers.dao.apis:insert {
+      local api12 = assert(dao.apis:insert {
         name = "api-12",
         hosts = { "api-12.com" },
         upstream_url = "http://httpbin.org",
       })
 
-      local consumer1 = assert(helpers.dao.consumers:insert {
+      local consumer1 = assert(dao.consumers:insert {
         username = "bob",
       })
-      assert(helpers.dao.keyauth_credentials:insert {
+      assert(dao.keyauth_credentials:insert {
         key = "bob",
         consumer_id = consumer1.id,
       })
-      local consumer2 = assert(helpers.dao.consumers:insert {
+      local consumer2 = assert(dao.consumers:insert {
         username = "alice",
       })
-      assert(helpers.dao.keyauth_credentials:insert {
+      assert(dao.keyauth_credentials:insert {
         key = "alice",
         consumer_id = consumer2.id,
       })
-      assert(helpers.dao.plugins:insert {
+      assert(dao.plugins:insert {
         name = "key-auth",
         api_id = api5.id,
         config = {},
       })
 
-      assert(helpers.dao.plugins:insert {
+      assert(dao.plugins:insert {
         name = "proxy-cache",
         api_id = api1.id,
         config = {
@@ -122,7 +122,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         },
       })
 
-      assert(helpers.dao.plugins:insert {
+      assert(dao.plugins:insert {
         name = "proxy-cache",
         api_id = api2.id,
         config = {
@@ -133,7 +133,7 @@ for i, policy in ipairs({"memory", "redis"}) do
       })
 
       -- global plugin for apis 3 and 4
-      assert(helpers.dao.plugins:insert {
+      assert(dao.plugins:insert {
         name = "proxy-cache",
         config = {
           strategy = policy,
@@ -142,7 +142,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         },
       })
 
-      assert(helpers.dao.plugins:insert {
+      assert(dao.plugins:insert {
         name = "proxy-cache",
         api_id = api5.id,
         config = {
@@ -152,7 +152,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         },
       })
 
-      assert(helpers.dao.plugins:insert {
+      assert(dao.plugins:insert {
         name = "proxy-cache",
         api_id = api6.id,
         config = {
@@ -163,7 +163,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         },
       })
 
-      assert(helpers.dao.plugins:insert {
+      assert(dao.plugins:insert {
         name = "proxy-cache",
         api_id = api7.id,
         config = {
@@ -174,7 +174,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         },
       })
 
-      assert(helpers.dao.plugins:insert {
+      assert(dao.plugins:insert {
         name = "proxy-cache",
         api_id = api8.id,
         config = {
@@ -186,7 +186,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         },
       })
 
-      assert(helpers.dao.plugins:insert {
+      assert(dao.plugins:insert {
         name = "proxy-cache",
         api_id = api9.id,
         config = {
@@ -198,7 +198,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         },
       })
 
-      assert(helpers.dao.plugins:insert {
+      assert(dao.plugins:insert {
         name = "proxy-cache",
         api_id = api10.id,
         config = {
@@ -210,7 +210,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         },
       })
 
-      assert(helpers.dao.plugins:insert {
+      assert(dao.plugins:insert {
         name = "proxy-cache",
         api_id = api11.id,
         config = {
@@ -223,7 +223,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         },
       })
 
-      assert(helpers.dao.plugins:insert {
+      assert(dao.plugins:insert {
         name = "proxy-cache",
         api_id = api12.id,
         config = {
