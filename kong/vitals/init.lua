@@ -1252,7 +1252,7 @@ function _M:get_consumer_stats(opts)
   end
 
   if opts.duration ~= "seconds" and opts.duration ~= "minutes" then
-    return nil, "Invalid query params: duration must be 'minutes' or 'seconds'"
+    return nil, "Invalid query params: interval must be 'minutes' or 'seconds'"
   end
 
   if opts.level ~= "node" and opts.level ~= "cluster" then

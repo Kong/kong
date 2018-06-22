@@ -47,9 +47,7 @@ end
 local function handle_vitals_response(res, err, helpers)
   if err then
     if err:find("Invalid query params", nil, true) then
-      local msg = "Invalid query params: " ..
-                  "interval must be 'minutes' or 'seconds'"
-      return helpers.responses.send_HTTP_BAD_REQUEST(msg)
+      return helpers.responses.send_HTTP_BAD_REQUEST(err)
     end
 
     return helpers.yield_error(err)
@@ -424,6 +422,7 @@ return {
         entity_type = "consumer",
         duration    = self.params.interval,
         entity_id   = self.consumer.id,
+        start_ts    = self.params.start_ts,
         level       = "cluster",
       }
 
@@ -442,6 +441,7 @@ return {
         duration    = self.params.interval,
         consumer_id = self.consumer.id,
         entity_id   = self.consumer.id,
+        start_ts    = self.params.start_ts,
         level       = "cluster",
       }
 
@@ -457,22 +457,8 @@ return {
       local opts = {
         consumer_id = self.consumer.id,
         duration    = self.params.interval,
+        start_ts    = self.params.start_ts,
         level       = "cluster",
-      }
-
-      local res, err = singletons.vitals:get_consumer_stats(opts)
-      return handle_vitals_response(res, err, helpers)
-    end
-  },
-
-  ["/vitals/consumers/nodes"] = {
-    before = validate_consumer_vitals,
-
-    GET = function(self, dao_factory, helpers)
-      local opts = {
-        consumer_id = self.consumer.id,
-        duration    = self.params.interval,
-        level       = "node",
       }
 
       local res, err = singletons.vitals:get_consumer_stats(opts)
