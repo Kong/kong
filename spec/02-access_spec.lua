@@ -1,6 +1,4 @@
 local helpers = require "spec.helpers"
-local rbac = require "kong.rbac"
-local json = require "cjson"
 local pl_file = require "pl.file"
 local redis = require "kong.enterprise_edition.redis"
 
@@ -31,7 +29,6 @@ for i, policy in ipairs({"memory", "redis"}) do
     setup(function()
       helpers.dao:drop_schema()
       helpers.dao:run_migrations()
-      rbac.register_resource("proxy-cache", helpers.dao)
       redis.flush_redis(REDIS_HOST, REDIS_PORT, REDIS_DATABASE, REDIS_PASSWORD)
 
       local api1 = assert(helpers.dao.apis:insert {

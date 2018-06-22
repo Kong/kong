@@ -1,6 +1,5 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local rbac = require "kong.rbac"
 
 
 describe("Plugin: proxy-cache", function()
@@ -9,7 +8,6 @@ describe("Plugin: proxy-cache", function()
   setup(function()
     helpers.dao:truncate_tables()
     helpers.dao:run_migrations()
-    rbac.register_resource("proxy-cache", helpers.dao)
 
     api1 = assert(helpers.dao.apis:insert {
       name = "api-1",
