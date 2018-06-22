@@ -339,7 +339,7 @@ local function new(self)
   -- will also set the SNI of the request to the Service.
   -- @function kong.service.request.set_headers
   -- @phases `rewrite`, `access`
-  -- @tparam headers A table where each key is a string containing a header name
+  -- @tparam table headers A table where each key is a string containing a header name
   --   and each value is either a string or an array of strings.
   -- @return Nothing; throws an error on invalid inputs.
   -- @usage
@@ -561,8 +561,8 @@ local function new(self)
     -- @tparam table args A table with data to be converted to the appropriate format
     -- and stored in the body.
     -- @tparam[opt] string mimetype can be one of:
-    -- @return boolean|nil `true` on success, `nil` otherwise
-    -- @return string|nil an error message on errors, `nil` otherwise.
+    -- @treturn boolean|nil `true` on success, `nil` otherwise
+    -- @treturn string|nil `nil` on success, an error message in case of error.
     -- Throws an error on invalid inputs.
     -- @usage
     -- kong.service.set_header("application/json")
