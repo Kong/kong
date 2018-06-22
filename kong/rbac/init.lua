@@ -370,7 +370,9 @@ function _M.validate_entity_operation(entity, constraints)
     return true
   end
 
-  if not singletons.configuration or not singletons.configuration.rbac.entity then
+  if not singletons.configuration or
+         singletons.configuration.rbac ~= "entity" and
+         singletons.configuration.rbac ~= "on" then
     return true
   end
 
@@ -600,7 +602,7 @@ function _M.load_rbac_ctx(dao_factory)
 end
 
 function _M.validate_user()
-  if singletons.configuration.rbac.off then
+  if singletons.configuration.rbac == "off" then
     return
   end
 
@@ -621,7 +623,9 @@ function _M.validate_endpoint(route_name, route)
     return
   end
 
-  if not singletons.configuration or not singletons.configuration.rbac.endpoint then
+  if not singletons.configuration or
+         singletons.configuration.rbac ~= "endpoint" and
+         singletons.configuration.rbac ~= "on" then
     return
   end
 
@@ -646,8 +650,8 @@ end
 -- set of entities
 function _M.check_cascade(entities, rbac_ctx)
   if not singletons.configuration or
-    not singletons.configuration.rbac.entity
-  then
+         singletons.configuration.rbac ~= "entity" and
+         singletons.configuration.rbac ~= "on" then
     return true
   end
 

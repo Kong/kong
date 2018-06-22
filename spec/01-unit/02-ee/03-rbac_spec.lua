@@ -736,10 +736,7 @@ describe("(#" .. kong_conf.database .. ")", function()
     setup(function()
       local singletons = require "kong.singletons"
       singletons.configuration= {
-        rbac = {
-          endpoint = true,
-          entity = true
-        }
+        rbac = "on",
       }
       entities = {
         ["table1"] = {
@@ -802,9 +799,7 @@ describe("(#" .. kong_conf.database .. ")", function()
     end)
     it("rbac off", function()
       singletons.configuration= {
-        rbac = {
-          off = true,
-        }
+        rbac = "off",
       }
       assert.equals(true, rbac.check_cascade(entities, nil))
     end)

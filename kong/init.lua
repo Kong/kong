@@ -226,7 +226,7 @@ function Kong.init()
   reports.add_immutable_value("enterprise", true)
 
   if config.anonymous_reports then
-    reports.add_ping_value("rbac_enforced", not singletons.configuration.rbac.off)
+    reports.add_ping_value("rbac_enforced", singletons.configuration.rbac ~= "off")
   end
   singletons.vitals = vitals.new {
       dao            = dao,
