@@ -1,13 +1,3 @@
-local bit         = require "bit"
-
-
-local bxor        = bit.bxor
-local ipairs      = ipairs
-
-
-local is_ee, rbac = pcall(require, "kong.rbac")
-
-
 local migrations = {
   {
     name = "2017-06-01-180000_init_oic",
