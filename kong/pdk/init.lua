@@ -57,9 +57,6 @@
 -- Instance of Kong's legacy DAO. This has the same interface as the object
 -- returned by `new(config, db)` in core's `kong.dao.factory` module.
 --
--- > **Rationale:** given this is the legacy DAO, we don't expect further
--- > development or improvements on this interface.
---
 -- * getkong.org: [Plugin Development Guide - Accessing the Datastore](https://getkong.org/docs/latest/plugin-development/access-the-datastore/)
 -- * Kong legacy DAO: https://github.com/Kong/kong/tree/master/kong/dao
 -- @field kong.dao

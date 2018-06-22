@@ -164,11 +164,15 @@ local serializers = {
 -- Produced log lines have the following format when logging is invoked from
 -- within the core:
 --
---     [kong] %file_src:%line_src %message
+-- ``` plain
+-- [kong] %file_src:%line_src %message
+-- ```
 --
 -- In comparison, log lines produced by plugins have the following format:
 --
---     [kong] %file_src:%line_src [%namespace] %message
+-- ``` plain
+-- [kong] %file_src:%line_src [%namespace] %message
+-- ```
 --
 -- Where:
 --
@@ -179,17 +183,22 @@ local serializers = {
 --
 -- For example, the following call:
 --
---     kong.log("hello ", "world")
+-- ``` lua
+-- kong.log("hello ", "world")
+-- ```
 --
 -- would, within the core, produce a log line similar to:
 --
---
---     2017/07/09 19:36:25 [notice] 25932#0: *1 [kong] some_file.lua:54 hello world, client: 127.0.0.1, server: localhost, request: "GET /log HTTP/1.1", host: "localhost"
+-- ``` plain
+-- 2017/07/09 19:36:25 [notice] 25932#0: *1 [kong] some_file.lua:54 hello world, client: 127.0.0.1, server: localhost, request: "GET /log HTTP/1.1", host: "localhost"
+-- ```
 --
 -- If invoked from within a plugin (e.g. `key-auth`) it would include the
 -- namespace prefix, like so:
 --
---     2017/07/09 19:36:25 [notice] 25932#0: *1 [kong] some_file.lua:54 [key-auth] hello world, client: 127.0.0.1, server: localhost, request: "GET /log HTTP/1.1", host: "localhost"
+-- ``` plain
+-- 2017/07/09 19:36:25 [notice] 25932#0: *1 [kong] some_file.lua:54 [key-auth] hello world, client: 127.0.0.1, server: localhost, request: "GET /log HTTP/1.1", host: "localhost"
+-- ```
 --
 -- @function kong.log
 -- @phases `init_worker`, `certificate`, `rewrite`, `access`, `header_filter`, `body_filter`, `log`
@@ -214,16 +223,22 @@ local serializers = {
 -- Logs have the same format as that of `kong.log()`. For
 -- example, the following call:
 --
---     kong.log.err("hello ", "world")
+-- ``` lua
+--  kong.log.err("hello ", "world")
+-- ```
 --
 -- would, within the core, produce a log line similar to:
 --
---     2017/07/09 19:36:25 [error] 25932#0: *1 [kong] some_file.lua:54 hello world, client: 127.0.0.1, server: localhost, request: "GET /log HTTP/1.1", host: "localhost"
+-- ``` plain
+-- 2017/07/09 19:36:25 [error] 25932#0: *1 [kong] some_file.lua:54 hello world, client: 127.0.0.1, server: localhost, request: "GET /log HTTP/1.1", host: "localhost"
+-- ```
 --
 -- If invoked from within a plugin (e.g. `key-auth`) it would include the
 -- namespace prefix, like so:
 --
---     2017/07/09 19:36:25 [error] 25932#0: *1 [kong] some_file.lua:54 [key-auth] hello world, client: 127.0.0.1, server: localhost, request: "GET /log HTTP/1.1", host: "localhost"
+-- ``` plain
+-- 2017/07/09 19:36:25 [error] 25932#0: *1 [kong] some_file.lua:54 [key-auth] hello world, client: 127.0.0.1, server: localhost, request: "GET /log HTTP/1.1", host: "localhost"
+-- ```
 --
 -- @function kong.log.LEVEL
 -- @phases `init_worker`, `certificate`, `rewrite`, `access`, `header_filter`, `body_filter`, `log`
@@ -300,7 +315,9 @@ end
 -- `kong.log.inspect.off()`, then this function prints nothing, and is aliased to
 -- a "NOP" function in order to save CPU cycles.
 --
---     kong.log.inspect("...")
+-- ``` lua
+-- kong.log.inspect("...")
+-- ```
 --
 -- This function differs from `kong.log()` in the sense that arguments will be
 -- concatenated with a space(`" "`), and each argument will be "pretty-printed":
@@ -317,7 +334,9 @@ end
 --
 -- When writing logs, `kong.log.inspect()` always uses its own format, defined as:
 --
---     %file_src:%func_name:%line_src %message
+-- ``` plain
+-- %file_src:%func_name:%line_src %message
+-- ```
 --
 -- Where:
 --

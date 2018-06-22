@@ -43,6 +43,7 @@ local function new(self)
   -- `kong.client.get_ip`, this function will consider forwarded addresses in cases
   -- when a load balancer is in front of Kong. Whether this function returns a
   -- forwarded address or not depends on several Kong configuration parameters:
+  --
   -- * [trusted\_ips](https://getkong.org/docs/latest/configuration/#trusted_ips)
   -- * [real\_ip\_header](https://getkong.org/docs/latest/configuration/#real_ip_header)
   -- * [real\_ip\_recursive](https://getkong.org/docs/latest/configuration/#real_ip_recursive)
