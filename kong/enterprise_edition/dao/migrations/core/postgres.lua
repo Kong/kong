@@ -186,7 +186,7 @@ return {
     name = "2018-04-18-110000_old_rbac_cleanup",
     up = [[
       DROP TABLE IF EXISTS rbac_users;
-      DROP TABLE IF EXISTS rbac_users_roles;
+      DROP TABLE IF EXISTS rbac_user_roles;
       DROP TABLE IF EXISTS rbac_roles;
       DROP TABLE IF EXISTS rbac_perms;
       DROP TABLE IF EXISTS rbac_role_perms;
