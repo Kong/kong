@@ -1016,9 +1016,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         assert.same("Hit", res.headers["X-Cache-Status"])
         assert.matches("^%d+$", res.headers["X-Kong-Proxy-Latency"])
         if policy == "memory" then
-          assert.equals(0, tonumber(res.headers["X-Kong-Proxy-Latency"]))
-        else
-          assert.matches("^%d+$", res.headers["X-Kong-Proxy-Latency"])
+          assert.True(3 > tonumber(res.headers["X-Kong-Proxy-Latency"]))
         end
       end)
 
@@ -1046,7 +1044,7 @@ for i, policy in ipairs({"memory", "redis"}) do
         local body = assert.res_status(200, res)
         assert.same("Hit", res.headers["X-Cache-Status"])
         assert.matches("^%d+$", res.headers["X-Kong-Upstream-Latency"])
-        assert.equals(0, tonumber(res.headers["X-Kong-Upstream-Latency"]))
+        assert.True(5 > tonumber(res.headers["X-Kong-Upstream-Latency"]))
       end)
     end)
   end)
