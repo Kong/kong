@@ -30,10 +30,10 @@ local function new(self)
   end
 
   if #trusted_ips == 0 then
-    function _IP.is_trusted() return false end
+    _IP.is_trusted = function() return false end
 
   elseif trust_all_ipv4 and trust_all_ipv6 then
-    function _IP.is_trusted() return true end
+    _IP.is_trusted = function() return true end
 
   else
     -- do not load if not needed
