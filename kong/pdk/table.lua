@@ -1,13 +1,20 @@
 --- Utilities for Lua tables
+--
 -- @module kong.table
+
+
 local new_tab
 local clear_tab
 do
   ---
-  -- Returns a table with pre-allocated number of slots in its array and hash parts.
+  -- Returns a table with pre-allocated number of slots in its array and hash
+  -- parts.
+  --
   -- @function kong.table.new
-  -- @tparam[opt] number narr specifies the number of slots to pre-allocate in the
-  -- @tparam[opt] number nrec specifies the number of slots to pre-allocate in the hash part.
+  -- @tparam[opt] number narr specifies the number of slots to pre-allocate
+  -- in the array part.
+  -- @tparam[opt] number nrec specifies the number of slots to pre-allocate in
+  -- the hash part.
   -- @treturn table the newly created table
   -- @usage
   -- local tab = kong.table.new(4, 4)
@@ -17,8 +24,10 @@ do
     new_tab = function (narr, nrec) return {} end
   end
 
+
   ---
   -- Clears a table from all of its array and hash parts entries.
+  --
   -- @function kong.table.clear
   -- @tparam table tab the table which will be cleared
   -- @return Nothing
