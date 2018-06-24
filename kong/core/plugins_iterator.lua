@@ -99,32 +99,26 @@ local function load_plugin_into_memory_ws(route_id,
                                          consumer_id,
                                          plugin_name,
                                          api_id)
-  if plugin and not plugin.null then
-    local plugin_cache_key = singletons.dao.plugins:cache_key_ws({id = plugin.workspace_id},
-                                                                 plugin_name,
-                                                                 route_id,
-                                                                 service_id,
-                                                                 consumer_id,
-                                                                 api_id)
 
-    plugin, err = singletons.cache:get(plugin_cache_key, nil, function ()
-      return plugin
-    end)
-    return plugin, err
-  end
-
-  -- plugin not found in any of the workspace in workspace scope,
-  -- add negative cache
-  for _, ws in ipairs(ngx.ctx.workspaces) do
+  -- add positive and negative cache
+  for _, ws in ipairs(ws_scope) do
     local plugin_cache_key = singletons.dao.plugins:cache_key_ws(ws,
                                                                  plugin_name,
                                                                  route_id,
                                                                  service_id,
                                                                  consumer_id,
                                                                  api_id)
+    local to_be_cached
+    if plugin and not plugin.null and ws.id == plugin.workspace_id then
+      -- positive cache
+      to_be_cached = plugin
+    else
+      -- negative cache
+      to_be_cached = { null = true }
+    end
 
     local _, err = singletons.cache:get(plugin_cache_key, nil, function ()
-      return plugin
+      return to_be_cached
     end)
     if err then
       return nil, err

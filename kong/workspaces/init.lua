@@ -619,6 +619,7 @@ end
 -- Return workspace scope, given api belongs
 -- to, to the the context.
 function _M.resolve_ws_scope(route)
+
   local ws_scope_key = format("apis_ws_resolution:%s", route.id)
   local workspaces, err = singletons.cache:get(ws_scope_key, nil,
                                                load_workspace_scope, route)
