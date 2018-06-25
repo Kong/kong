@@ -943,11 +943,12 @@ for i, policy in ipairs({"memory", "redis"}) do
     describe("cache versioning", function()
       local cache_key
 
-      local name = "bypasses old cache version data"
-      if policy == "memory" then
-        name = "#flaky " .. name
-      end
-      it(name, function()
+      -- This test tries to flush the proxy-cache from the test
+      -- code. This is is doable in the redis strategy as it can be
+      -- referenced (and flushed) from test code. nginx's in-memory
+      -- cache can't be referenced from test code.
+      local test_except_memory = policy == "memory" and pending or it
+      test_except_memory("bypasses old cache version data", function()
         local strategy = require("kong.plugins.proxy-cache.strategies")({
           strategy_name = policy,
           strategy_opts = policy_config,
