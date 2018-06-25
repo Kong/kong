@@ -121,7 +121,7 @@ end
 
 
 local function is_blank(t)
-  return not t or not t[1]
+  return not t or (type(t) == "table" and not t[1])
 end
 
 
@@ -512,9 +512,9 @@ function _M.is_api_colliding(req, router)
   router = router or singletons.api_router
   local methods, uris, hosts = sanitize_ngx_nulls(extract_req_data(req.params))
   local ws = _M.get_workspaces()[1]
-  for perm in permutations(split(methods or ALL_METHODS),
-                           split(uris),
-                           split(hosts)) do
+  for perm in permutations(split(is_blank(methods) and ALL_METHODS or methods),
+                           split(is_blank(uris)    and {"/"} or uris),
+                           split(is_blank(hosts)   and {""} or hosts)) do
     if not validate_route_for_ws(router, perm[1], perm[2], perm[3], ws) then
       ngx_log(DEBUG, "api collided")
       return true
