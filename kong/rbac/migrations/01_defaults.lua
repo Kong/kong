@@ -6,14 +6,24 @@ return {
   up = function (_, _, dao)
       local role, ok, err
 
-      -- create read only role
-      role, err = dao.rbac_roles:insert({
-        id = utils.uuid(),
-        name = "read-only",
-        comment = "Read access to all endpoints, across all workspaces",
+
+      role, err = dao.rbac_roles:find_all({
+        name = "read-only"
       })
       if err then
         return err
+      end
+      role = role[1]
+      if not role then
+        -- create read only role
+        role, err = dao.rbac_roles:insert({
+          id = utils.uuid(),
+          name = "read-only",
+          comment = "Read access to all endpoints, across all workspaces",
+        })
+        if err then
+          return err
+        end
       end
 
       -- add endpoint permissions to the read only role
@@ -27,14 +37,21 @@ return {
         return err
       end
 
-      -- create admin role
-      role, err = dao.rbac_roles:insert({
-        id = utils.uuid(),
-        name = "admin",
-        comment = "Full access to all endpoints, across all workspaces - except RBAC Admin API",
-      })
+      role, err = dao.rbac_roles:find_all({name = "admin"})
       if err then
         return err
+      end
+      role = role[1]
+      if not role then
+        -- create admin role
+        role, err = dao.rbac_roles:insert({
+          id = utils.uuid(),
+          name = "admin",
+          comment = "Full access to all endpoints, across all workspaces - except RBAC Admin API",
+        })
+        if err then
+          return err
+        end
       end
 
       local action_bits_all = 0x0
@@ -65,15 +82,24 @@ return {
         return err
       end
 
-      -- create super admin role
-      role, err = dao.rbac_roles:insert({
-        id = utils.uuid(),
-        name = "super-admin",
-        comment = "Full access to all endpoints, across all workspaces",
-      })
+      role, err = dao.rbac_roles:find_all({name = "super-admin"})
       if err then
         return err
       end
+      role = role[1]
+      if not role then
+        -- create super admin role
+        role, err = dao.rbac_roles:insert({
+          id = utils.uuid(),
+          name = "super-admin",
+          comment = "Full access to all endpoints, across all workspaces",
+        })
+        if err then
+          return err
+        end
+      end
+
+
 
       -- add endpoint permissions to the super admin role
       ok, err = dao.rbac_role_endpoints:insert({
