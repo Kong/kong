@@ -177,9 +177,17 @@ return {
         PRIMARY KEY(workspace_id, entity_id, unique_field_name)
       );
 
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('workspace_entities_composite_idx')) IS NULL THEN
+          CREATE INDEX workspace_entities_composite_idx on workspace_entities(workspace_id, entity_type, unique_field_name);
+        END IF;
+      END$$;
+
     ]],
     down = [[
       DROP TABLE IF EXISTS workspaces;
+      DROP TABLE IF EXISTS workspace_entities;
     ]],
   },
   {

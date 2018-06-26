@@ -3,6 +3,7 @@ local helpers = require "spec.helpers"
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: workspace scope test key-auth (access)", function()
     local admin_client, proxy_client, api1, plugin_foo, ws_foo, ws_default, dao
+    local consumer_default, cred_default
     setup(function()
       dao = select(3, helpers.get_db_utils(strategy))
 
@@ -81,11 +82,11 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       assert.res_status(201, res)
-      local consumer1 = assert.response(res).has.jsonbody()
+      consumer_default = assert.response(res).has.jsonbody()
 
       local res = assert(admin_client:send {
         method = "POST",
-        path   = "/consumers/" .. consumer1.username .. "/key-auth"   ,
+        path   = "/consumers/" .. consumer_default.username .. "/key-auth"   ,
         body   = {
           key = "kong",
         },
@@ -94,7 +95,7 @@ for _, strategy in helpers.each_strategy() do
         }
       })
       assert.res_status(201, res)
-      assert.response(res).has.jsonbody()
+      cred_default = assert.response(res).has.jsonbody()
       admin_client:close()
     end)
     teardown(function()
@@ -142,6 +143,31 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.response(res).has.jsonbody()
         assert.is_equal(ws_default.id, body.workspace_id)
 
+        local cache_key = dao.keyauth_credentials:cache_key(cred_default.key)
+        local res
+        helpers.wait_until(function()
+          res = assert(admin_client:send {
+            method = "GET",
+            path = "/cache/" .. cache_key,
+          })
+          return res.status == 200
+        end)
+
+        local body = assert.response(res).has.jsonbody()
+        assert.is_equal(cred_default.id, body.id)
+
+        local cache_key = dao.consumers:cache_key(consumer_default.id)
+        local res
+        helpers.wait_until(function()
+          res = assert(admin_client:send {
+            method = "GET",
+            path = "/cache/" .. cache_key,
+          })
+          return res.status == 200
+        end)
+
+        local body = assert.response(res).has.jsonbody()
+        assert.is_equal(cred_default.consumer_id, body.id)
       end)
       it("negative cache added for non enabled plugin in default workspace", function()
         local cache_key = dao.plugins:cache_key_ws(ws_default,

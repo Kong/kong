@@ -561,7 +561,7 @@ function _M:find_all(table_name, tbl, schema)
     local err
     ws_entities_map, err = workspace_entities_map(self, table_name)
     if err then
-      return nil, err
+      return nil, Errors.db(err)
     end
   end
 
