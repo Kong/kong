@@ -95,7 +95,7 @@ make without coding:
 - Reporting a bug (see the [report bugs](#where-to-report-bugs) section)
 - Helping other members of the community on the support channels
 - Fixing a typo in the code
-- Fixing a typo in the documentation at https://getkong.org (see
+- Fixing a typo in the documentation at https://docs.konghq.com (see
   the [documentation contribution](#improving-the-documentation) section)
 - Providing your feedback on the proposed features and designs
 - Reviewing Pull Requests
@@ -108,12 +108,12 @@ patch](#submitting-a-patch) section.
 
 ### Improving the documentation
 
-The documentation hosted at https://getkong.org is open source and built with
-[Jekyll](https://jekyllrb.com/). You are welcome to propose changes to it
+The documentation hosted at https://docs.konghq.com is open source and built
+with [Jekyll](https://jekyllrb.com/). You are welcome to propose changes to it
 (correct typos, add examples or clarifications...)!
 
 The repository is also hosted on GitHub at:
-https://github.com/Kong/getkong.org/
+https://github.com/Kong/docs.konghq.com/
 
 To run and test your changes locally, follow the installation instructions in
 its README.md. You will need Ruby, Node.js (for npm), and Python 2.7 on your
@@ -142,20 +142,20 @@ will be pushed into separate repositories in the foreseeable future.
 
 If you wish to write a new plugin for your own needs, you should start by
 reading the [Plugin Development
-Guide](https://getkong.org/docs/latest/plugin-development).
+Guide](https://docs.konghq.com/latest/plugin-development).
 
 If you already wrote a plugin, and are thinking about making it available to
 the community, we strongly encourage you to host it on a publicly available
 repository (like GitHub), and to distribute it via LuaRocks. A good resource on
 how to do so is the [Distribution
-Section](https://getkong.org/docs/latest/plugin-development/distribution/#distribute-your-plugin)
+Section](https://docs.konghq.com/latest/plugin-development/distribution/#distribute-your-plugin)
 of the Plugin Development Guide.
 
 To give visibility to your plugin, we advise that you create a post in the
 Announcements category of [Kong Nation](https://discuss.konghq.com/)!
 
 In the foreseeable future, we will also include a "Community Plugins" section
-to the online [Plugins Gallery](https://getkong.org/plugins/), and we will
+to the online [Plugins Gallery](https://docs.konghq.com/plugins/), and we will
 improve how plugins are distributed and installed on Kong nodes. Stay tuned!
 :wink:
 
