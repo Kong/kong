@@ -36,7 +36,9 @@ helpers.for_each_dao(function(kong_config)
   describe("Model (CRUD) with DB: #" .. kong_config.database, function()
     local factory, apis, oauth2_credentials
     setup(function()
-      factory = assert(Factory.new(kong_config, DB.new(kong_config)))
+      local db = DB.new(kong_config)
+      assert(db:init_connector())
+      factory = assert(Factory.new(kong_config, db))
       apis = factory.apis
 
       -- DAO used for testing arrays

@@ -23,7 +23,10 @@ describe("DAO propagates CRUD events with DB: #" .. kong_conf.database, function
   before_each(function()
     mock_ipc = mock(mock_ipc_module)
 
-    dao = assert(kong_dao_factory.new(kong_conf, DB.new(kong_conf)))
+    local db = DB.new(kong_conf)
+    assert(db:init_connector())
+
+    dao = assert(kong_dao_factory.new(kong_conf, db))
     dao:set_events_handler(mock_ipc)
     dao:truncate_tables()
   end)

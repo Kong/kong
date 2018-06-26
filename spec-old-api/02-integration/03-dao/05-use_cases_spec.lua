@@ -140,7 +140,9 @@ describe("#cassandra", function()
       kong_config.cassandra_lb_policy        = "DCAwareRoundRobin"
       kong_config.cassandra_local_datacenter = "my-dc"
 
-      assert(Factory.new(kong_config, DB.new(kong_config)))
+      local db = DB.new(kong_config)
+      assert(db:init_connector())
+      assert(Factory.new(kong_config, db))
     end)
   end)
 end)

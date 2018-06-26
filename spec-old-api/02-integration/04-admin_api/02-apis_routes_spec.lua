@@ -21,8 +21,9 @@ describe("Admin API #" .. kong_config.database, function()
 
   setup(function()
     db = assert(DB.new(kong_config))
-    dao = assert(DAOFactory.new(kong_config, db))
     assert(db:init_connector())
+
+    dao = assert(DAOFactory.new(kong_config, db))
     assert(dao:run_migrations())
 
     dao:truncate_tables()
