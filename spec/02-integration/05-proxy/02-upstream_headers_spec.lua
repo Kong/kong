@@ -5,7 +5,7 @@ local cjson     = require "cjson"
 local stop_kong = helpers.stop_kong
 
 
-for _, strategy in helpers.each_strategy("postgres") do
+for _, strategy in helpers.each_strategy() do
   describe("Upstream header(s) [#" .. strategy .. "]", function()
 
     local proxy_client
@@ -72,6 +72,7 @@ for _, strategy in helpers.each_strategy("postgres") do
 
     describe("(using the default configuration values)", function()
       setup(start_kong {
+        database         = strategy,
         nginx_conf       = "spec/fixtures/custom_nginx.template",
         lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua",
       })
@@ -247,6 +248,7 @@ for _, strategy in helpers.each_strategy("postgres") do
 
     describe("(using the trusted configuration values)", function()
       setup(start_kong {
+        database         = strategy,
         trusted_ips      = "127.0.0.1",
         nginx_conf       = "spec/fixtures/custom_nginx.template",
         lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua",
@@ -356,6 +358,7 @@ for _, strategy in helpers.each_strategy("postgres") do
 
     describe("(using the non-trusted configuration values)", function()
       setup(start_kong {
+        database         = strategy,
         trusted_ips      = "10.0.0.1",
         nginx_conf       = "spec/fixtures/custom_nginx.template",
         lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua",
@@ -463,6 +466,7 @@ for _, strategy in helpers.each_strategy("postgres") do
 
     describe("(using the recursive trusted configuration values)", function()
       setup(start_kong {
+        database          = strategy,
         real_ip_header    = "X-Forwarded-For",
         real_ip_recursive = "on",
         trusted_ips       = "127.0.0.1,172.16.0.1,192.168.0.1",
@@ -524,6 +528,7 @@ for _, strategy in helpers.each_strategy("postgres") do
 
     describe("(using the recursive non-trusted configuration values)", function()
       setup(start_kong {
+        database          = strategy,
         real_ip_header    = "X-Forwarded-For",
         real_ip_recursive = "on",
         trusted_ips       = "10.0.0.1,172.16.0.1,192.168.0.1",
@@ -589,6 +594,7 @@ for _, strategy in helpers.each_strategy("postgres") do
       local proxy_port = helpers.get_proxy_port(false)
 
       setup(start_kong {
+        database          = strategy,
         proxy_listen      = proxy_ip .. ":" .. proxy_port .. " proxy_protocol",
         real_ip_header    = "proxy_protocol",
         real_ip_recursive = "on",
@@ -694,6 +700,7 @@ for _, strategy in helpers.each_strategy("postgres") do
       local proxy_port = helpers.get_proxy_port(false)
 
       setup(start_kong {
+        database          = strategy,
         proxy_listen      = "0.0.0.0:" .. proxy_port .. " proxy_protocol",
         real_ip_header    = "proxy_protocol",
         real_ip_recursive = "on",

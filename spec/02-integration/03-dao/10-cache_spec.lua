@@ -34,7 +34,9 @@ describe("dao in-memory cache", function()
     assert(worker_events.configure {
       shm = "kong_process_events",
     })
-    local dao_factory = assert(Factory.new(helpers.test_conf, DB.new(helpers.test_conf)))
+    local db = DB.new(helpers.test_conf)
+    assert(db:init_connector())
+    local dao_factory = assert(Factory.new(helpers.test_conf, db))
     local cluster_events = assert(kong_cluster_events.new {
       dao = dao_factory,
     })
