@@ -519,4 +519,29 @@ return {
       ON vitals_codes_by_route(service_id, duration, at);
     ]],
   },
+  {
+    name = "2018-06-12-105400_consumers_rbac_users_mapping",
+    up = [[
+      CREATE TABLE IF NOT EXISTS consumers_rbac_users_map(
+        consumer_id uuid REFERENCES consumers (id) ON DELETE CASCADE,
+        user_id uuid REFERENCES rbac_users (id) ON DELETE CASCADE,
+        created_at timestamp without time zone DEFAULT timezone('utc'::text, ('now'::text)::timestamp(0) with time zone),
+        PRIMARY KEY (consumer_id, user_id)
+      );
+    ]],
+    down = [[
+      DROP TABLE consumers_rbac_users_map;
+    ]]
+  },
+  {
+    name = "2018-06-12-076222_consumer_type_status_admin",
+    up = [[
+      INSERT INTO consumer_types(id, name, comment)
+      VALUES (2, 'admin', 'Admin consumer.')
+      ON CONFLICT DO NOTHING;
+    ]],
+    down = [[
+      DELETE FROM consumer_types;
+    ]]
+  },
 }

@@ -1,5 +1,5 @@
 local crud = require "kong.api.crud_helpers"
-local enums = require "kong.portal.enums"
+local enums = require "kong.enterprise_edition.dao.enums"
 
 return {
   ["/consumers/"] = {

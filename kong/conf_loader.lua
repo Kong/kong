@@ -12,6 +12,7 @@ local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
 local ip = require "kong.tools.ip"
 local ciphers = require "kong.tools.ciphers"
+local ee_conf_loader = require "kong.enterprise_edition.conf_loader"
 
 local DEFAULT_PATHS = {
   "/etc/kong/kong.conf",
@@ -70,10 +71,6 @@ local CONF_INFERENCES = {
   proxy_listen = {typ = "array"},
   admin_listen = {typ = "array"},
   admin_api_uri = {typ = "string"},
-  admin_gui_listen = {typ = "array"},
-  admin_gui_error_log = {typ = "string"},
-  admin_gui_access_log = {typ = "string"},
-  admin_gui_flags = {typ = "string"},
   db_update_frequency = { typ = "number" },
   db_update_propagation = { typ = "number" },
   db_cache_ttl = { typ = "number" },
@@ -145,6 +142,13 @@ local CONF_INFERENCES = {
   vitals_delete_interval_pg = {typ = "number"},
   vitals_ttl_seconds = {typ = "number"},
   vitals_ttl_minutes = {typ = "number"},
+
+  admin_gui_listen = {typ = "array"},
+  admin_gui_error_log = {typ = "string"},
+  admin_gui_access_log = {typ = "string"},
+  admin_gui_flags = {typ = "string"},
+  admin_gui_auth = {typ = "string"},
+  admin_gui_auth_conf = {type = "string"},
 
   portal = {typ = "boolean"},
   portal_gui_listen = {typ = "array"},
@@ -311,21 +315,10 @@ local function check_and_infer(conf)
     end
   end
 
-  if (table.concat(conf.admin_gui_listen, ",") .. " "):find("%sssl[%s,]") then
-    if conf.admin_gui_ssl_cert and not conf.admin_gui_ssl_cert_key then
-      errors[#errors+1] = "admin_gui_ssl_cert_key must be specified"
-    elseif conf.admin_gui_ssl_cert_key and not conf.admin_gui_ssl_cert then
-      errors[#errors+1] = "admin_gui_ssl_cert must be specified"
-    end
+  -- enterprise validations
+  tablex.merge(errors, ee_conf_loader.validate(conf))
 
-    if conf.admin_gui_ssl_cert and not pl_path.exists(conf.admin_gui_ssl_cert) then
-      errors[#errors+1] = "admin_gui_ssl_cert: no such file at " .. conf.admin_gui_ssl_cert
-    end
-    if conf.admin_gui_ssl_cert_key and not pl_path.exists(conf.admin_gui_ssl_cert_key) then
-      errors[#errors+1] = "admin_gui_ssl_cert_key: no such file at " .. conf.admin_gui_ssl_cert_key
-    end
-  end
-
+  -- TODO: move these to ee_conf_loader
   if conf.portal then
     if (table.concat(conf.portal_api_listen, ",") .. " "):find("%sssl[%s,]") then
       if conf.portal_api_ssl_cert and not conf.portal_api_ssl_cert_key then

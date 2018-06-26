@@ -2,7 +2,7 @@ local responses   = require "kong.tools.responses"
 local singletons  = require "kong.singletons"
 local app_helpers = require "lapis.application"
 local crud        = require "kong.api.crud_helpers"
-local enums       = require "kong.portal.enums"
+local enums       = require "kong.enterprise_edition.dao.enums"
 local utils       = require "kong.portal.utils"
 local constants   = require "kong.constants"
 

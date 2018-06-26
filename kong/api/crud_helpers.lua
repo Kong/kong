@@ -103,6 +103,19 @@ function _M.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
   self.params.name_or_id = nil
 end
 
+function _M.find_rbac_user_consumer_map(self, dao_factory, helpers)
+  local rows, err = dao_factory.consumers_rbac_users_map:find_all(self.params)
+  if err then
+    return helpers.yield_error(err)
+  end
+
+  self.consumers_rbac_users_map = rows[1]
+
+  if not self.consumers_rbac_users_map then
+    return helpers.responses.send_HTTP_NOT_FOUND()
+  end
+end
+
 function _M.find_api_by_name_or_id(self, dao_factory, helpers)
   local rows, err = _M.find_by_id_or_field(dao_factory.apis, {},
                                            self.params.api_name_or_id, "name")

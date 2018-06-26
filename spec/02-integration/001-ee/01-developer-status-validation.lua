@@ -1,6 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson   = require "cjson"
-local enums   = require "kong.portal.enums"
+local enums   = require "kong.enterprise_edition.dao.enums"
 
 
 for _, strategy in helpers.each_strategy('postgres') do

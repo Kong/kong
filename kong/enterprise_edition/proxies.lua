@@ -10,6 +10,19 @@ local mt = { __index = _M }
 _M.proxy_prefix = "_kong"
 
 
+-- identifiers for internal proxies must be unique
+-- they are listed here to help prevent collisions when adding new services
+-- to add a new service and route, follow the almost-convention below
+local portal_service_id          = "00000000-0000-0000-0000-000000000001"
+local portal_route_id            = "00000000-0000-0000-0002-000000000000"
+local portal_files_service_id    = "00000000-0000-0000-0000-000000000003"
+local portal_files_route_id      = "00000000-0000-0000-0003-000000000000"
+local portal_register_service_id = "00000000-0000-0000-0000-000000000004"
+local portal_register_route_id   = "00000000-0000-0000-0004-000000000000"
+local admin_service_id           = "00000000-0000-0000-0000-000000000006"
+local admin_route_id             = "00000000-0000-0000-0006-000000000000"
+
+
 -- todo move this into helpers
 local function select_listener(listeners, filters)
   for _, listener in ipairs(listeners) do
@@ -75,6 +88,8 @@ function _M.new(opts)
 
   cls:setup_portal()
 
+  cls:setup_admin()
+
   if opts.services then
     for i = 1, #opts.services do
       cls:add_service(opts.services[i])
@@ -100,15 +115,35 @@ end
 function _M:setup_admin()
   local admin_config = get_service_config("admin", 8001)
 
-  admin_config.id = "00000000-0000-0000-0000-000000000001"
-  admin_config.name = "__kong_manager_api"
+  admin_config.id = admin_service_id
+  admin_config.name = "__kong_admin_api"
 
   self:add_service(admin_config)
   self:add_route({
-    id = "00000000-0000-0000-0001-000000000000",
+    id = admin_route_id,
     service = admin_config.name,
-    paths = { "/" .. _M.proxy_prefix .. "/manager" },
+    paths = { "/" .. _M.proxy_prefix .. "/admin" },
   })
+
+  local kong_config = singletons.configuration
+
+  self:add_plugin({
+    name = "cors",
+    service = admin_config.name,
+    config = {
+      origins = kong_config.admin_gui_url or "*",
+      methods = { "GET", "PATCH", "DELETE", "POST" },
+      credentials = true,
+    }
+  })
+
+  if kong_config.admin_gui_auth then
+    self:add_plugin({
+      name = kong_config.admin_gui_auth,
+      service = admin_config.name,
+      config = kong_config.admin_gui_auth_conf or {}
+    })
+  end
 end
 
 
@@ -125,20 +160,14 @@ function _M:setup_portal()
 
   local portal_config = get_service_config("portal_api", 8004)
 
-  portal_config.id = "00000000-0000-0000-0000-000000000001"
+  portal_config.id = portal_service_id
   portal_config.name = "__kong_portal_api"
 
   self:add_service(portal_config)
   self:add_route({
-    id = "00000000-0000-0000-0002-000000000000",
+    id = portal_route_id,
     service = portal_config.name,
     paths = { "/" .. _M.proxy_prefix .. "/portal" },
-  })
-
-  self:add_route({
-    id = "00000000-0000-0000-0005-000000000000",
-    service = portal_config.name,
-    paths = { "/" .. _M.proxy_prefix .. "/(?<workspace_name>\\w+)/portal" },
   })
 
   self:add_plugin({
@@ -163,13 +192,13 @@ function _M:setup_portal()
     local portal_config_unauthenticated = utils.shallow_copy(portal_config)
 
     portal_config_unauthenticated.name ="_kong-portal-files-unauthenticated"
-    portal_config_unauthenticated.id = "00000000-0000-0000-0000-000000000003"
+    portal_config_unauthenticated.id = portal_files_service_id
     portal_config_unauthenticated.path = "/files/unauthenticated"
 
     self:add_service(portal_config_unauthenticated)
 
     self:add_route({
-      id = "00000000-0000-0000-0003-000000000000",
+      id = portal_files_route_id,
       service = portal_config_unauthenticated.name,
       paths = { "/" .. _M.proxy_prefix .. "/portal/files/unauthenticated" },
     })
@@ -177,7 +206,7 @@ function _M:setup_portal()
     local portal_config_register = utils.shallow_copy(portal_config)
 
     portal_config_register.name ="_kong-portal-register"
-    portal_config_register.id = "00000000-0000-0000-0000-000000000004"
+    portal_config_register.id = portal_register_service_id
     portal_config_register.path = "/portal/register"
 
     self:add_service({
@@ -190,7 +219,7 @@ function _M:setup_portal()
     })
 
     self:add_route({
-      id = "00000000-0000-0000-0004-000000000000",
+      id = portal_register_route_id,
       service = portal_config_register.name,
       paths = { "/" .. _M.proxy_prefix .. "/portal/register" },
     })

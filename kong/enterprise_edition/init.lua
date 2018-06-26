@@ -192,16 +192,30 @@ end
 
 
 function _M.prepare_admin(kong_config)
-  local listener = select_listener(kong_config.admin_listeners, {ssl = false})
-  local ssl_listener = select_listener(kong_config.admin_listeners, {ssl = true})
-  local admin_port = listener and listener.port
-  local admin_ssl_port = ssl_listener and ssl_listener.port
+  local gui_listen = select_listener(kong_config.admin_gui_listeners, {ssl = false})
+  local gui_port = gui_listen and gui_listen.port
+  local gui_ssl_listen = select_listener(kong_config.admin_gui_listeners, {ssl = true})
+  local gui_ssl_port = gui_ssl_listen and gui_ssl_listen.port
+
+  local api_listen = select_listener(kong_config.proxy_listeners, {ssl = false})
+  local api_port = api_listen and api_listen.port
+  local api_ssl_listen = select_listener(kong_config.proxy_listeners, {ssl = true})
+  local api_ssl_port = api_ssl_listen and api_ssl_listen.port
+
+  -- we will consider rbac to be on if it is set to "endpoint" or "on",
+  -- because we don't currently support entity-level
+  local rbac_enforced = kong_config.rbac == "endpoint" or kong_config.rbac == "on"
 
   return prepare_interface("gui", {
-    ADMIN_API_URI = prepare_variable(kong_config.admin_api_uri),
-    ADMIN_API_PORT = prepare_variable(admin_port),
-    ADMIN_API_SSL_PORT = prepare_variable(admin_ssl_port),
+    ADMIN_GUI_AUTH = prepare_variable(kong_config.admin_gui_auth),
+    ADMIN_GUI_URL = prepare_variable(kong_config.admin_gui_url),
+    ADMIN_GUI_PORT = prepare_variable(gui_port),
+    ADMIN_GUI_SSL_PORT = prepare_variable(gui_ssl_port),
+    ADMIN_API_URL = prepare_variable(kong_config.proxy_url),
+    ADMIN_API_PORT = prepare_variable(api_port),
+    ADMIN_API_SSL_PORT = prepare_variable(api_ssl_port),
     RBAC = prepare_variable(kong_config.rbac),
+    RBAC_ENFORCED = prepare_variable(rbac_enforced),
     RBAC_HEADER = prepare_variable(kong_config.rbac_auth_header),
     KONG_VERSION = prepare_variable(meta.versions.package),
     FEATURE_FLAGS = prepare_variable(kong_config.admin_gui_flags),
@@ -226,6 +240,8 @@ function _M.prepare_portal(kong_config)
   local proxy_port = proxy_listener and proxy_listener.port
   local proxy_ssl_port = proxy_ssl_listener and proxy_ssl_listener.port
 
+  local rbac_enforced = kong_config.rbac == "endpoint" or kong_config.rbac == "on"
+
   return prepare_interface("portal", {
     PROXY_URL = prepare_variable(kong_config.proxy_url),
     PORTAL_AUTH = prepare_variable(kong_config.portal_auth),
@@ -234,7 +250,7 @@ function _M.prepare_portal(kong_config)
     PORTAL_GUI_URL = prepare_variable(kong_config.portal_gui_url),
     PORTAL_GUI_PORT = prepare_variable(portal_gui_port),
     PORTAL_GUI_SSL_PORT = prepare_variable(portal_gui_ssl_port),
-    RBAC_ENFORCED = prepare_variable(kong_config.enforce_rbac),
+    RBAC_ENFORCED = prepare_variable(rbac_enforced),
     RBAC_HEADER = prepare_variable(kong_config.rbac_auth_header),
     KONG_VERSION = prepare_variable(meta.versions.package),
   }, kong_config)

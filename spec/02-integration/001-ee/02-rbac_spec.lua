@@ -230,11 +230,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         assert.equals(4, #json.data)
       end)
 
-      -- TODO remove after master rebase - filter on cassandra
-      -- is fixed in there
-      local block = kong_config.database == "cassandra" and pending or it
-
-      block("lists enabled users", function()
+      pending("lists enabled users", function()
         local res = assert(client:send {
           method = "GET",
           path = "/rbac/users",
@@ -242,7 +238,6 @@ describe("Admin API RBAC with " .. kong_config.database, function()
             enabled = true,
           },
         })
-
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
@@ -1783,6 +1778,87 @@ describe("Admin API RBAC with " .. kong_config.database, function()
   end)
 end)
 
+  describe("/rbac/users/consumers map with " .. kong_config.database, function()
+    local client
+    local user_consumer_map
+    local bp
+    local dao
+    local consumer
+
+    setup(function()
+      helpers.stop_kong()
+
+      local _
+      bp, _, dao = helpers.get_db_utils(kong_config.database)
+
+      assert(helpers.start_kong({
+        database = kong_config.database
+      }))
+
+      consumer = bp.consumers:insert { username = "dale" }
+    end)
+
+    before_each(function()
+      if client then
+        client:close()
+      end
+
+      client = assert(helpers.admin_client())
+    end)
+
+    teardown(function()
+      if client then
+        client:close()
+      end
+
+      dao:truncate_tables()
+      helpers.stop_kong()
+    end)
+
+    describe("POST", function()
+      it("creates a consumer user map", function()
+
+        local user = dao.rbac_users:insert {
+          name = "the-dale-user",
+          user_token = "letmein",
+          enabled = true,
+        }
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/users/consumers",
+          body = {
+            user_id = user.id,
+            consumer_id = consumer.id
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+
+        local body = assert.res_status(201, res)
+        user_consumer_map = cjson.decode(body)
+
+        assert.equal(user_consumer_map.user_id, user.id)
+        assert.equal(user_consumer_map.consumer_id, consumer.id)
+      end)
+    end)
+
+    describe("GET", function()
+      it("retrieves a specific consumer user map", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/rbac/users/" .. user_consumer_map.user_id .."/consumers/"
+                 .. user_consumer_map.consumer_id,
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.same(json, user_consumer_map)
+      end)
+    end)
+  end)
 end)
 
 for _, h in ipairs({ "", "Custom-Auth-Token" }) do

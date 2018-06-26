@@ -588,17 +588,13 @@ end
 -- workspace_entities. See kong/enterprise_edition/proxies.lua
 local function load_workspace_scope(route)
   if route.id == "00000000-0000-0000-0002-000000000000" or
-     route.id == "00000000-0000-0000-0000-000000000004" or
-     route.id == "00000000-0000-0000-0004-000000000000" or
-     route.id == "00000000-0000-0000-0000-000000000003" or
-     route.id == "00000000-0000-0000-0003-000000000000"
-     then
+    route.id == "00000000-0000-0000-0000-000000000004" or
+    route.id == "00000000-0000-0000-0004-000000000000" or
+    route.id == "00000000-0000-0000-0000-000000000003" or
+    route.id == "00000000-0000-0000-0003-000000000000" or
+    route.id == "00000000-0000-0000-0006-000000000000"
+  then
     return singletons.dao.workspaces:find_all({name = default_workspace})
-  end
-  if route.id == "00000000-0000-0000-0005-000000000000" then
-    local ws_name = ngx.ctx.router_matches.uri_captures.workspace_name
-    ngx.req.set_uri_args({workspace_name = ws_name})
-    return singletons.dao.workspaces:find_all({name = ws_name})
   end
 
   local old_wss = ngx.ctx.workspaces

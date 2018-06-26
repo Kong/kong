@@ -491,4 +491,21 @@ return {
       return helpers.responses.send_HTTP_OK(map)
     end,
   },
+
+  ["/rbac/users/consumers"] = {
+    POST = function(self, dao_factory)
+      -- TODO: validate consumer and user here
+      crud.post(self.params, dao_factory.consumers_rbac_users_map)
+    end,
+  },
+
+  ["/rbac/users/:user_id/consumers/:consumer_id"] = {
+    before = function(self, dao_factory, helpers)
+      crud.find_rbac_user_consumer_map(self, dao_factory, helpers)
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      return helpers.responses.send_HTTP_OK(self.consumers_rbac_users_map)
+    end,
+  },
 }

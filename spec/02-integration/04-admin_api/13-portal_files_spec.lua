@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 local escape = require("socket.url").escape
 local cjson = require "cjson"
-local enums = require "kong.portal.enums"
+local enums = require "kong.enterprise_edition.dao.enums"
 
 
 local function it_content_types(title, fn)

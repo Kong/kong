@@ -393,9 +393,33 @@ return {
     name = "2018-05-09-215700_consumers_type_default",
     up = function(_, _, dao)
       local portal = require "kong.portal.dao_helpers"
-      local CONSUMERS = require("kong.portal.enums").CONSUMERS
+      local CONSUMERS = require("kong.enterprise_edition.dao.enums").CONSUMERS
 
       return portal.update_consumers(dao, CONSUMERS.TYPE.PROXY)
     end,
+  },
+  {
+    name = "2018-06-12-111000_consumers_rbac_users_mapping",
+    up = [[
+      CREATE TABLE IF NOT EXISTS consumers_rbac_users_map(
+        consumer_id uuid,
+        user_id     uuid,
+        created_at  timestamp,
+        PRIMARY KEY(consumer_id, user_id)
+      );
+    ]],
+    down = [[
+      DROP TABLE consumers_rbac_users_map;
+    ]]
+  },
+  {
+    name = "2018-06-12-076222_consumer_type_status_admin",
+    up = [[
+      INSERT INTO consumer_types(id, name, comment, created_at)
+      VALUES (2, 'admin', 'Admin consumer.', dateof(now()));
+    ]],
+    down = [[
+      DELETE FROM consumer_types;
+    ]]
   },
 }

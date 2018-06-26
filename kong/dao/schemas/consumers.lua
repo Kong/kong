@@ -1,5 +1,5 @@
 local utils = require "kong.tools.utils"
-local enums = require "kong.portal.enums"
+local enums = require "kong.enterprise_edition.dao.enums"
 
 local function check_custom_id_and_username(value, consumer_t)
   local username = type(consumer_t.username) == "string" and utils.strip(consumer_t.username) or ""

@@ -3,6 +3,8 @@ local singletons = require "kong.singletons"
 local public = require "kong.tools.public"
 local conf_loader = require "kong.conf_loader"
 local cjson = require "cjson"
+local ee_api = require "kong.enterprise_edition.api_helpers"
+local crud = require "kong.api.crud_helpers"
 
 local sub = string.sub
 local find = string.find
@@ -122,5 +124,51 @@ return {
 
       return helpers.responses.send_HTTP_OK(status_response)
     end
-  }
+  },
+
+  --- Retrieves current consumer and/or RBAC user
+  -- This route is whitelisted from RBAC validation. It requires that a consumer
+  -- is set on the headers, but should only work for a consumer that is set
+  -- when an authentication plugin has set the consumer-id header.
+  -- See for reference: kong.rbac.authorize_request_endpoint()
+  ["/userinfo"] = {
+    before = function(self, dao_factory, helpers)
+      self.params.username_or_id = ee_api.get_consumer_id_from_headers()
+
+      local admin_auth = singletons.configuration.admin_gui_auth
+
+      if admin_auth and not self.params.username_or_id then
+        return helpers.responses.send_HTTP_UNAUTHORIZED()
+      end
+
+      if not admin_auth then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
+
+      local rbac = singletons.configuration.rbac
+      if rbac == "on" or rbac == "endpoint" then
+        local user_consumer = dao_factory.consumers_rbac_users_map:find_all({
+          consumer_id = self.consumer.id,
+        })
+
+        if user_consumer and user_consumer[1].user_id then
+          self.params.name_or_id = user_consumer[1].user_id
+          crud.find_rbac_user_by_name_or_id(self, dao_factory, helpers)
+
+          if not self.rbac_user then
+            return helpers.responses.send_HTTP_UNAUTHORIZED('user not found')
+          end
+        end
+      end
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      return helpers.responses.send_HTTP_OK({
+        rbac_user = self.rbac_user,
+        consumer = self.consumer,
+      })
+    end,
+  },
 }

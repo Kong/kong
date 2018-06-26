@@ -159,27 +159,6 @@
                          # capabilities) pulling its configuration changes
                          # from the database.
 
-#admin_gui_listen = 0.0.0.0:8002, 0.0.0.0:8445 ssl
-                                 # Comma-separated list of addresses and ports
-                                 # on which Kong will expose the Admin API GUI.
-                                 # This interface lets you configure and manage
-                                 # Kong via a web interface and should be kept
-                                 # private and secured. Suffixes can be specified
-                                 # for each pair, similarly to the `admin_listen`
-                                 # directive.
-
-#admin_gui_access_log = logs/admin_gui_access.log  # Path for admin gui request
-                                                   # access logs. If this value
-                                                   # is a relative path it will
-                                                   # be placed under the `prefix`
-                                                   # location
-
-#admin_gui_error_log = logs/admin_gui_error.log    # Path for admin gui request
-                                                   # error logs. If this value
-                                                   # is a relative path it will
-                                                   # be placed under the `prefix`
-                                                   # location
-
 #nginx_user = nobody nobody      # Defines user and group credentials used by
                                  # worker processes. If group is omitted, a
                                  # group whose name equals that of user is
@@ -239,14 +218,6 @@
 
 #admin_ssl_cert_key =            # The absolute path to the SSL key for
                                  # `admin_listen` values with SSL enabled.
-
-#admin_gui_ssl_cert =            # The absolute path to the SSL certificate for
-                                 # `admin_gui_listen` values with SSL enabled.
-
-#admin_gui_ssl_cert_key =        # The absolute path to the SSL key for
-                                 # `admin_gui_listen` values with SSL enabled.
-
-#admin_gui_flags = {}            # Alters the layout Admin GUI (JSON)
 
 #upstream_keepalive = 60         # Sets the maximum number of idle keepalive
                                  # connections to upstream servers that are
@@ -583,6 +554,104 @@
 
 #vitals = off                    # When enabled, Kong will store and report
                                  # metrics about its performance.
+
+#------------------------------------------------------------------------------
+# ADMIN GUI
+#------------------------------------------------------------------------------
+
+#admin_gui_listen = 0.0.0.0:8002, 0.0.0.0:8445 ssl
+                        # Admin GUI Listeners
+                        #
+                        # Comma-separated list of addresses and ports on which
+                        # Kong will expose the Admin GUI. This web application
+                        # lets you configure and manage Kong, and therefore
+                        # should be kept private and secured.
+                        #
+                        # Suffixes can be specified for each pair, similarly to
+                        # the `admin_listen` directive.
+
+#admin_gui_url =
+                        # Admin GUI URL
+                        #
+                        # Here you may provide the lookup, or balancer,
+                        # address for your admin application.
+                        #
+                        # Accepted format (items in parenthesis are optional):
+                        #
+                        #   <scheme>://<IP / HOSTNAME>(:<PORT>(/<PATH>))
+                        #
+                        # Examples:
+                        #
+                        #   - http://127.0.0.1:8003
+                        #   - https://kong-admin.test
+                        #   - http://dev-machine/dev-285
+                        #
+                        # By default:
+                        #
+                        #  The application will use the window request host and
+                        #  append the resolved listener port depending on the
+                        #  requested protocol.
+
+#admin_gui_ssl_cert =
+                        # The absolute path to the SSL certificate for
+                        # `admin_gui_listen` values with SSL enabled.
+
+#admin_gui_ssl_cert_key =
+                        # The absolute path to the SSL key for
+                        # `admin_gui_listen` values with SSL enabled.
+
+#admin_gui_flags = {}
+                        # Alters the layout Admin GUI (JSON)
+
+#admin_gui_access_log = logs/admin_gui_access.log
+                        # Admin GUI Access Logs
+                        #
+                        # Here you can set an absolute or relative path for the
+                        # Admin GUI access logs. When the path is relative,
+                        # logs are placed in the `prefix` location.
+                        #
+                        # Setting this value to `off` disables access logs
+                        # for the Admin GUI.
+
+#admin_gui_error_log = logs/admin_gui_error.log
+                        # Admin GUI Error Logs
+                        #
+                        # Here you can set an absolute or relative path for your
+                        # Portal API access logs. When the path is relative,
+                        # logs are placed in the `prefix` location.
+                        #
+                        # Setting this value to `off` disables error logs for
+                        # the Admin GUI.
+                        #
+                        # Granularity can be adjusted through the `log_level`
+                        # directive.
+
+#admin_gui_auth =
+                        # Admin GUI Authentication Plugin Name
+                        #
+                        # Here you may secure access to the Admin GUI by
+                        # specifying an authentication plugin to use.
+                        #
+                        # Supported Plugins:
+                        #
+                        # Value to Use          | Authentication Type
+                        # ----------------------+--------------------------
+                        # key-auth              | Key Authentication
+                        # basic-auth            | Basic Authentication
+                        # ldap-auth-advanced    | LDAP Authentication
+
+#admin_gui_auth_conf =
+                        # Admin GUI Authentication Plugin Config (JSON)
+                        #
+                        # Here you may specify the configuration for the
+                        # authentication plugin you have chosen.
+                        #
+                        # For information about Plugin Configuration
+                        # consult the associated plugin documentation.
+                        #
+                        # Example for `basic-auth`:
+                        #
+                        #  admin_gui_auth_conf = { "hide_credentials": true }
 
 #------------------------------------------------------------------------------
 # DEVELOPER PORTAL

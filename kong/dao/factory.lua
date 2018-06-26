@@ -28,6 +28,7 @@ local CORE_MODELS = {
   "consumer_types",
   "consumer_statuses",
   "credentials",
+  "consumers_rbac_users_map",
 }
 
 -- returns db errors as strings, including the initial `nil`

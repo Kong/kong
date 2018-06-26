@@ -1,6 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local enums = require "kong.portal.enums"
+local enums = require "kong.enterprise_edition.dao.enums"
 local utils = require "kong.tools.utils"
 local proxy_prefix = require("kong.enterprise_edition.proxies").proxy_prefix
 

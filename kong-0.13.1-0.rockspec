@@ -55,7 +55,9 @@ build = {
     ["kong.cache"] = "kong/cache.lua",
 
     ["kong.enterprise_edition"] = "kong/enterprise_edition/init.lua",
+    ["kong.enterprise_edition.conf_loader"] = "kong/enterprise_edition/conf_loader.lua",
     ["kong.enterprise_edition.meta"] = "kong/enterprise_edition/meta.lua",
+    ["kong.enterprise_edition.dao.enums"] = "kong/enterprise_edition/dao/enums.lua",
     ["kong.enterprise_edition.dao.factory"] = "kong/enterprise_edition/dao/factory.lua",
     ["kong.enterprise_edition.dao.migrations.core.postgres"] = "kong/enterprise_edition/dao/migrations/core/postgres.lua",
     ["kong.enterprise_edition.dao.migrations.core.cassandra"] = "kong/enterprise_edition/dao/migrations/core/cassandra.lua",
@@ -63,6 +65,7 @@ build = {
     ["kong.enterprise_edition.proxies"] = "kong/enterprise_edition/proxies.lua",
     ["kong.enterprise_edition.feature_flags"] = "kong/enterprise_edition/feature_flags.lua",
     ["kong.enterprise_edition.plugin_overwrite"] = "kong/enterprise_edition/plugin_overwrite.lua",
+    ["kong.enterprise_edition.api_helpers"] = "kong/enterprise_edition/api_helpers.lua",
     ["kong.enterprise_edition.internal_statsd"] = "kong/enterprise_edition/internal_statsd.lua",
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
@@ -107,6 +110,7 @@ build = {
     ["kong.api.routes.vitals" ] = "kong/api/routes/vitals.lua",
     ["kong.api.routes.workspaces"] = "kong/api/routes/workspaces.lua",
     ["kong.api.routes.portal"] = "kong/api/routes/portal.lua",
+    ["kong.api.routes.admins"] = "kong/api/routes/admins.lua",
 
     ["kong.tools.ip"] = "kong/tools/ip.lua",
     ["kong.tools.ciphers"] = "kong/tools/ciphers.lua",
@@ -151,6 +155,7 @@ build = {
     ["kong.dao.schemas.rbac_role_endpoints"] = "kong/dao/schemas/rbac_role_endpoints.lua",
     ["kong.dao.schemas.rbac_role_entities"] = "kong/dao/schemas/rbac_role_entities.lua",
     ["kong.dao.schemas.portal_files"] = "kong/dao/schemas/portal_files.lua",
+    ["kong.dao.schemas.consumers_rbac_users_map"] = "kong/dao/schemas/consumers_rbac_users_map.lua",
     ["kong.dao.db"] = "kong/dao/db/init.lua",
     ["kong.dao.db.cassandra"] = "kong/dao/db/cassandra.lua",
     ["kong.dao.db.postgres"] = "kong/dao/db/postgres.lua",
@@ -170,7 +175,6 @@ build = {
     ["kong.workspaces.helper"] = "kong/workspaces/helper.lua",
 
     ["kong.portal"] = "kong/portal/init.lua",
-    ["kong.portal.enums"] = "kong/portal/enums.lua",
     ["kong.portal.api"] = "kong/portal/api.lua",
     ["kong.portal.dao_helpers"] = "kong/portal/dao_helpers.lua",
     ["kong.portal.crud_helpers"] = "kong/portal/crud_helpers.lua",

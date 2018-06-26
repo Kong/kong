@@ -21,6 +21,11 @@ local function log(lvl, ...)
 end
 
 
+local whitelisted_endpoints = {
+  ["/userinfo"] = true,
+}
+
+
 local actions_bitfields = {
   read   = 0x01,
   create = 0x02,
@@ -370,6 +375,11 @@ function _M.validate_entity_operation(entity, constraints)
     return true
   end
 
+  -- whitelisted endpoints are also exempt
+  if whitelisted_endpoints[ngx.var.request_uri] then
+    return true
+  end
+
   if not singletons.configuration or
          singletons.configuration.rbac ~= "entity" and
          singletons.configuration.rbac ~= "on" then
@@ -522,6 +532,10 @@ end
 
 
 function _M.authorize_request_endpoint(map, workspace, endpoint, route_name, action)
+  if whitelisted_endpoints[endpoint] then
+    return true
+  end
+
   -- look for
   -- 1. explicit allow (and _no_ explicit) deny in the specific ws/endpoint
   -- 2. "" in the ws/*

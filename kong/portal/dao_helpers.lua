@@ -1,4 +1,4 @@
-local enums = require "kong.portal.enums"
+local enums = require "kong.enterprise_edition.dao.enums"
 
 
 local _M = {}
@@ -19,6 +19,16 @@ function _M.register_resources(dao)
     id = enums.CONSUMERS.TYPE.DEVELOPER,
     name = 'developer',
     comment = "Kong Developer Portal consumer.",
+  })
+
+  if err then
+    return err
+  end
+
+  local _, err = dao.consumer_types:insert({
+    id = enums.CONSUMERS.TYPE.ADMIN,
+    name = 'admin',
+    comment = "Admin consumer.",
   })
 
   if err then

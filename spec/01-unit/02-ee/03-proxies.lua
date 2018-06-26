@@ -53,32 +53,49 @@ describe("ee proxies", function()
         services = {
           {
             id = "0000",
-            name = "one"
+            name = "one",
           }
         },
 
         routes = {
           {
-            name = "two",
-            service = "one"
+            paths = { "/two" },
+            service = "one",
           }
         },
 
         plugins = {
           {
             name = "three",
-            service = "one"
+            service = "one",
           }
         }
       })
 
       assert.equal(proxies.config.services["0000"].name, "one")
       assert.equal(proxies.config.services.one.name, "one")
-      assert.equal(#proxies.config.routes, 1)
-      assert.equal(proxies.config.routes[1].name, "two")
-      assert.equal(proxies.config.routes[1].service.id, "0000")
-      assert.equal(#proxies.config.plugins, 1)
-      assert.equal(proxies.config.plugins[1].name, "three")
+
+
+      assert.is_true(#proxies.config.routes > 0)
+      local route_verified = false
+      for _, route in ipairs(proxies.config.routes) do
+        if route.service.id == "0000" then
+          assert.same({ "/two" }, route.paths)
+          route_verified = true
+        end
+      end
+
+      assert.is_true(route_verified)
+
+      local plugin_verified = false
+      for _, plugin in ipairs(proxies.config.plugins) do
+        if plugin.name == "three" then
+          assert.same("0000", plugin.service_id)
+          plugin_verified = true
+        end
+      end
+
+      assert.is_true(plugin_verified)
     end)
   end)
 
@@ -150,11 +167,20 @@ describe("ee proxies", function()
       local proxies = ee_proxies.new()
 
       proxies:add_route({
-        paths = { "/hello" }
+        paths = { "/hello" },
+        id = "1111",
       })
 
-      assert.equal(#proxies.config.routes, 1)
-      assert.equal(proxies.config.routes[1].paths[1], "/hello")
+      assert.is_true(#proxies.config.routes > 0)
+      local route_verified = false
+      for _, route in ipairs(proxies.config.routes) do
+        if route.id == "1111" then
+          assert.same({ "/hello" }, route.paths)
+          route_verified = true
+        end
+      end
+
+      assert.is_true(route_verified)
     end)
   end)
 
@@ -216,14 +242,30 @@ describe("ee proxies", function()
   end)
 
   describe("setup_portal()", function()
-    it("should not generate config when disabled", function()
+    it("should not generate portal config when disabled", function()
       local proxies = ee_proxies.new()
 
       proxies:setup_portal()
 
-      assert.equal(#proxies.config.services, 0)
-      assert.equal(#proxies.config.routes, 0)
-      assert.equal(#proxies.config.plugins, 0)
+      -- only configured service is admin
+      assert.is_nil(proxies.config.services.__kong_portal_api)
+
+      local route_exists = false
+      assert.is_true(#proxies.config.routes > 0)
+      for _, route in ipairs(proxies.config.routes) do
+        if route.id == "00000000-0000-0000-0002-000000000000" then
+          route_exists = true
+        end
+      end
+      assert.is_false(route_exists)
+
+      local plugin_exists = false
+      for _, plugin in ipairs(proxies.config.plugins) do
+        if plugin.service_id == "00000000-0000-0000-0000-000000000001" then
+          plugin_exists = true
+        end
+      end
+      assert.is_false(plugin_exists)
     end)
 
     it("should generate config when enabled", function()
@@ -239,11 +281,57 @@ describe("ee proxies", function()
       assert.truthy(proxies.config.services.__kong_portal_api)
       assert.equal(proxies.config.services.__kong_portal_api.id,
         "00000000-0000-0000-0000-000000000001")
-      assert.equal(#proxies.config.routes, 1)
-      assert.equal(proxies.config.routes[1].service.id,
-        "00000000-0000-0000-0000-000000000001")
-      assert.equal(#proxies.config.plugins, 1)
-      assert.equal(proxies.config.plugins[1].name, "cors")
+
+      local route_verified = false
+      assert.is_true(#proxies.config.routes > 0)
+      for _, route in ipairs(proxies.config.routes) do
+        if route.id == "00000000-0000-0000-0002-000000000000" then
+          assert.same({ "/_kong/portal" }, route.paths)
+          assert.same("00000000-0000-0000-0000-000000000001", route.service.id)
+          route_verified = true
+        end
+      end
+      assert.is_true(route_verified)
+
+      local plugin_verified = false
+      for _, plugin in ipairs(proxies.config.plugins) do
+        if plugin.service_id == "00000000-0000-0000-0000-000000000001" then
+          assert.same("cors", plugin.name)
+          plugin_verified = true
+        end
+      end
+      assert.is_true(plugin_verified)
+    end)
+  end)
+
+  describe("setup_admin()", function()
+    it("should generate config", function()
+      local proxies = ee_proxies.new()
+
+      assert.is_not_nil(proxies.config.services["00000000-0000-0000-0000-000000000005"])
+      assert.is_not_nil(proxies.config.services.__kong_admin_api)
+      assert.same("00000000-0000-0000-0000-000000000005",
+                  proxies.config.services.__kong_admin_api.id)
+
+      assert.is_true(#proxies.config.routes > 0)
+
+      local route_verified = false
+      for _, route in ipairs(proxies.config.routes) do
+        if route.service.id == "00000000-0000-0000-0000-000000000005" then
+          assert.same({ "/_kong/admin" }, route.paths)
+          route_verified = true
+        end
+      end
+      assert.is_true(route_verified)
+
+      local plugin_verified = false
+      for _, plugin in ipairs(proxies.config.plugins) do
+        if plugin.service_id == "00000000-0000-0000-0000-000000000005" then
+          assert.same("cors", plugin.name)
+          plugin_verified = true
+        end
+      end
+      assert.is_true(plugin_verified)
     end)
   end)
 
@@ -277,9 +365,11 @@ describe("ee proxies", function()
         name = "internal_plugin"
       })
 
+      local expected = #proxies.config.plugins
+
       proxies:add_internal_plugins(plugins, {})
 
-      assert.equal(#plugins, 1)
+      assert.equal(expected, #plugins)
     end)
 
     it("should not add plugins when already exist in map", function()
@@ -302,11 +392,13 @@ describe("ee proxies", function()
         name = "internal_plugin"
       })
 
+      local expected = #proxies.config.plugins
+
       proxies:add_internal_plugins(plugins, {
         "internal_plugin"
       })
 
-      assert.equal(#plugins, 1)
+      assert.equal(expected, #plugins)
     end)
   end)
 end)

@@ -10,8 +10,9 @@ _M.CONSUMERS = {
     INVITED  = 4,
   },
   TYPE = {
-    PROXY = 0,
+    PROXY     = 0,
     DEVELOPER = 1,
+    ADMIN     = 2,
   },
   STATUS_LABELS = {},
   TYPE_LABELS   = {},

@@ -1,4 +1,4 @@
-local enums = require "kong.portal.enums"
+local enums = require "kong.enterprise_edition.dao.enums"
 local cjson = require "cjson"
 local app_helpers   = require "lapis.application"
 local singletons = require "kong.singletons"
