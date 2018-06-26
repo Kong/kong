@@ -2643,9 +2643,9 @@ for _, strategy in helpers.each_strategy() do
 
     local function assert_ttls_records_for_token(uuid, count)
       local DB = require "kong.dao.db.postgres"
-      local _db = DB.new(helpers.test_conf, strategy)
+      local db = DB.new(helpers.test_conf)
       local query = fmt("SELECT COUNT(*) FROM ttls where table_name='oauth2_tokens' AND primary_uuid_value = '%s'", tostring(uuid))
-      local result, error = _db:query(query)
+      local result, error = db:query(query)
       assert.falsy(error)
       assert.truthy(result[1].count == count)
     end
