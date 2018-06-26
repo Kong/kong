@@ -16,30 +16,7 @@ return {
     end,
 
     POST = function(self, dao_factory)
-      local function associate_base_entities(created_ws)
-        local ws, err = dao_factory.workspaces:find_all({name = "default"})
-        if not ws or not ws[1] or err then
-          ngx.log(ngx.ERR, "Error finding default ws. " .. tostring(err))
-        end
-
-        local portal_files, err =
-          dao_factory.portal_files:run_with_ws_scope(ws[1],
-                                                     dao_factory.portal_files.find_all)
-        if err then
-          ngx.log(ngx.ERR, "Error finding portal_files in default ws. " .. tostring(err))
-        end
-
-        for _, file in ipairs(portal_files) do
-          local err = workspaces.add_entity_relation("portal_files",
-                                                     file,
-                                                     created_ws)
-          if err then
-            ngx.log(ngx.ERR, "Error adding " .. file.id .. " in to ws " ..
-                    created_ws.id .. ": " .. tostring(err))
-          end
-        end
-      end
-      crud.post(self.params, dao_factory.workspaces, associate_base_entities)
+      crud.post(self.params, dao_factory.workspaces)
     end,
   },
 
