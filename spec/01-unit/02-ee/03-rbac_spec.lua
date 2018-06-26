@@ -345,14 +345,14 @@ describe("(#" .. kong_conf.database .. ")", function()
           assert(dao.rbac_role_entities:insert({
             role_id = roles[1],
             entity_id = workspaces[1],
-            entity_type = "workspace",
+            entity_type = "workspaces",
             actions = 0x1,
             negative = false,
           }))
           assert(dao.rbac_role_entities:insert({
             role_id = roles[2],
             entity_id = workspaces[2],
-            entity_type = "workspace",
+            entity_type = "workspaces",
             actions = 0x1,
             negative = false,
           }))

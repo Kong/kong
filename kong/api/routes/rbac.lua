@@ -339,6 +339,10 @@ return {
     POST = function(self, dao_factory, helpers)
       action_bitfield(self)
 
+      if not self.params.entity_id then
+        return helpers.responses.send_HTTP_BAD_REQUEST("Missing required parameter: 'entity_id'")
+      end
+
       local entity_type, _, err = workspaces.resolve_entity_type(self.params.entity_id)
       -- database error
       if entity_type == nil then

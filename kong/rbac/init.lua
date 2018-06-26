@@ -223,7 +223,12 @@ function _M.resolve_workspace_entities(workspaces)
       local e_id   = ws_entity.entity_id
       local e_type = ws_entity.entity_type
 
-      if e_type == "workspaces" then
+      if e_id == ws_id then -- luacheck: ignore
+        -- As the default workspace has this row where entity_id ==
+        -- workspace_id, we would start recursing over itself. We
+        -- don't want to recurse on it), and we dont' want to add it
+        -- to the list of object relations either
+      elseif e_type == "workspaces" then
         assert(seen_workspaces[ws_id] == nil, "already seen workspace " ..
                                               ws_id)
         seen_workspaces[ws_id] = true
@@ -269,7 +274,7 @@ local function resolve_role_entity_permissions(roles)
 
   local function iter(role_entities, mask)
     for _, role_entity in ipairs(role_entities) do
-      if role_entity.entity_type == "workspace" then
+      if role_entity.entity_type == "workspaces" then
         -- list/hash
         local es = _M.resolve_workspace_entities({ role_entity.entity_id })
 
