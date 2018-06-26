@@ -5,6 +5,7 @@ local bit        = require "bit"
 local workspaces = require "kong.workspaces"
 local responses  = require "kong.tools.responses"
 local cjson      = require "cjson"
+local tablex     = require "pl.tablex"
 
 local band   = bit.band
 local bxor   = bit.bxor
@@ -506,6 +507,27 @@ local function normalize_route_name(route_name)
   return route_name
 end
 
+-- return a list of paths from route_name, replacing the most
+-- rightmost section of the path which not a wildcard already by the
+-- wildcard "*" until all sections are wildcards
+--
+-- example: generalize_with_wildcards("/foo/bar/baz") ->
+-- {"/foo/bar/*", "/foo/*/*", "/*/*/*" }
+local function generalize_with_wildcards(route_name)
+  route_name = ngx.re.gsub(route_name, "^workspace_", "")
+  route_name = ngx.re.gsub(route_name, "/$", "")
+  local n
+  local res = {}
+
+  res[1], n = ngx.re.sub(string.reverse(route_name), "^[^*/]+", "*")
+  while n == 1 do
+    res[#res+1] ,n = ngx.re.sub(res[#res], "/[^*/]+", "/*")
+  end
+  res[#res] = nil
+
+  return tablex.imap(string.reverse, res)
+end
+_M.generalize_with_wildcards = generalize_with_wildcards
 
 -- return a list of endpoints; if the incoming request endpoint
 -- matches either one of them, we get a positive or negative match
@@ -513,6 +535,8 @@ local function get_endpoints(workspace, endpoint, route_name)
   local endpoint_with_workspace = "/" .. workspace .. endpoint
   local normalized_route_name = normalize_route_name(route_name)
   local normalized_route_name_with_workspace = "/" .. workspace .. normalized_route_name
+  local wildcarded_endpoints = generalize_with_wildcards(endpoint)
+  local wildcarded_endpoints_with_ws = generalize_with_wildcards(endpoint_with_workspace)
 
   -- order is important:
   --  - first, try to match exact endpoint name
@@ -521,13 +545,25 @@ local function get_endpoints(workspace, endpoint, route_name)
   --  - normalized route name
   --    * without workspace name prepended - e.g., /apis/*
   --    * with workspace name prepended - e.g., /foo/apis/*
-  return {
+  --  - sequence of endpoints with path segments substituted by * progressively
+  --  - sequence of endpoints+workspace with path segments substituted by * progressively
+  local endpoints = {
     endpoint,
     endpoint_with_workspace,
     normalized_route_name,
     normalized_route_name_with_workspace,
-    "*",
   }
+
+  for _, v in ipairs(wildcarded_endpoints) do
+    table.insert(endpoints, v)
+  end
+  for _, v in ipairs(wildcarded_endpoints_with_ws) do
+    table.insert(endpoints, v)
+  end
+
+  table.insert(endpoints,"*")
+
+  return endpoints
 end
 
 

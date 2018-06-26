@@ -490,6 +490,24 @@ describe("(#" .. kong_conf.database .. ")", function()
             rbac.actions_bitfields.read
           ))
         end)
+        it("(endpoint with wildcards)", function()
+          assert.equals(true, rbac.authorize_request_endpoint(
+            { foo = { ["/bar/*/*"] = 0x1 } },
+            "foo",
+            "/bar/baz/quux",
+            "/foo/bar/baz/quux",
+            rbac.actions_bitfields.read
+          ))
+        end)
+        it("(endpoint with wildcards but different depth)", function()
+          assert.equals(false, rbac.authorize_request_endpoint(
+            { foo = { ["/bar/*"] = 0x1 } },
+            "foo",
+            "/bar/baz/quux",
+            "/foo/bar/baz/quux",
+            rbac.actions_bitfields.read
+          ))
+        end)
         it("(hierarchical path)", function()
           local map = { foo = { ["/apis/test/plugins/"] = 0x1 } }
           assert.equals(true, rbac.authorize_request_endpoint(
@@ -892,7 +910,7 @@ describe("(#" .. kong_conf.database .. ")", function()
       assert.same({'create', 'read'}, map[entity_id])
     end)
   end)
-  describe("readable_endpoint_permissions#t", function()
+  describe("readable_endpoint_permissions", function()
     local u
     setup(function()
       u = utils.uuid

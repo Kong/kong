@@ -61,8 +61,6 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
   teardown(function()
     helpers.stop_kong("servroot1")
     helpers.stop_kong("servroot2")
-
-    dao:truncate_tables()
   end)
 
   before_each(function()
