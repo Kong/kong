@@ -1,7 +1,7 @@
 local package = {
   x = 0,
   y = 33,
-  z = "dev",
+  z = "-internal-preview",
 }
 
 local features = {
