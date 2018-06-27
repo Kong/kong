@@ -2,6 +2,7 @@
 
 - [Scheduled](#scheduled)
 - [Released](#released)
+    - [0.14.0rc2](#0140rc2---20180627)
     - [0.14.0rc1](#0140rc1---20180619)
     - [0.13.1](#0131---20180423)
     - [0.13.0](#0130---20180322)
@@ -30,6 +31,18 @@ a detailed changeset of their content.
 
 This section describes publicly available releases and a detailed changeset of
 their content.
+
+## [0.14.0rc2] - 2018/06/27
+
+### Fixes
+
+- An issue causing some new Cassandra migrations to error out has been
+  resolved.
+  [#3575](https://github.com/Kong/kong/pull/3575)
+- Ensure errors thrown in the runloop are properly reported.
+  [f0624d9](https://github.com/Kong/kong/commit/f0624d978a795b38ea58a783048f79a6761a2584)
+
+[Back to TOC](#table-of-contents)
 
 ## [0.14.0rc1] - 2018/06/19
 
@@ -2778,6 +2791,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[0.14.0rc2]: https://github.com/Kong/kong/compare/0.14.0rc1...0.14.0rc2
 [0.14.0rc1]: https://github.com/Kong/kong/compare/0.13.1...0.14.0rc1
 [0.13.1]: https://github.com/Kong/kong/compare/0.13.0...0.13.1
 [0.13.0]: https://github.com/Kong/kong/compare/0.12.3...0.13.0
