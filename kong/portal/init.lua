@@ -4,7 +4,6 @@ local app_helpers = require "lapis.application"
 local singletons  = require "kong.singletons"
 local responses   = require "kong.tools.responses"
 local workspaces  = require "kong.workspaces"
-local rbac        = require "kong.rbac"
 
 
 local fmt = string.format
