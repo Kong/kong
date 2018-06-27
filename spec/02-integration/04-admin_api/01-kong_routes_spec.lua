@@ -318,6 +318,54 @@ describe("Admin API - Kong routes", function()
         assert.same(consumer, json.consumer)
         assert.same(super_admin, json.rbac_user)
       end)
+
+      it("is whitelisted", function()
+        local ee_helpers = require "spec.ee_helpers"
+        local _
+        bp, _, dao = helpers.get_db_utils(strategy)
+
+        assert(helpers.start_kong({
+          database = strategy,
+          admin_gui_auth = "basic-auth",
+          rbac = "on",
+        }))
+
+        local super_admin = ee_helpers.register_rbac_resources(dao)
+
+        client = assert(helpers.proxy_client())
+
+        local consumer = bp.consumers:insert {
+          username = "hawk",
+          type = enums.CONSUMERS.TYPE.ADMIN,
+          status = enums.CONSUMERS.STATUS.APPROVED,
+        }
+
+        assert(dao.basicauth_credentials:insert {
+          username    = "hawk",
+          password    = "kong",
+          consumer_id = consumer.id,
+        })
+
+        assert(dao.consumers_rbac_users_map:insert {
+          consumer_id = consumer.id,
+          user_id = super_admin.id
+        })
+
+        local res = assert(client:send {
+          method = "GET",
+          path = "/" .. proxy_prefix .. "/admin/userinfo",
+          headers = {
+            ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
+          }
+        })
+
+        res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+
+        assert.same(consumer, json.consumer)
+        assert.same(super_admin, json.rbac_user)
+      end)
+
     end)
   end)
 end)

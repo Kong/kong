@@ -661,6 +661,11 @@ function _M.validate_user()
     return
   end
 
+  -- if it's whitelisted, we don't care who the user is
+  if whitelisted_endpoints[ngx.var.request_uri] then
+    return true
+  end
+
   local rbac_ctx, err = get_rbac_user_info()
   if err then
     ngx.log(ngx.ERR, "[rbac] ", err)
