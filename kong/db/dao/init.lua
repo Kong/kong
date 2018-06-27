@@ -244,17 +244,16 @@ function DAO:each(size)
   local next_row = self.strategy:each(size)
 
   return function()
-    local err_t
-    local row, err, page = next_row()
+    local row, err_t, page = next_row()
     if not row then
-      if err then
-        local err_t = self.errors:database_error(err)
+      if err_t then
         return nil, tostring(err_t), err_t
       end
 
       return nil
     end
 
+    local err
     row, err, err_t = self:row_to_entity(row)
     if not row then
       return nil, err, err_t
