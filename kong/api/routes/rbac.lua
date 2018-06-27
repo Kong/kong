@@ -441,8 +441,16 @@ return {
       local cache_key = dao_factory["rbac_roles"]:cache_key(self.rbac_role.id)
       singletons.cache:invalidate(cache_key)
 
-      -- normalize endpoint: remove trailing /
-      self.params.endpoint = ngx.re.gsub(self.params.endpoint, "/$", "")
+      -- strip any whitespaces from both ends
+      self.params.endpoint = utils.strip(self.params.endpoint)
+
+      if self.params.endpoint ~= "*" then
+        -- normalize endpoint: remove trailing /
+        self.params.endpoint = ngx.re.gsub(self.params.endpoint, "/$", "")
+
+        -- make sure the endpoint starts with /, unless it's '*'
+        self.params.endpoint = ngx.re.gsub(self.params.endpoint, "^/?", "/")
+      end
 
       crud.post(self.params, dao_factory.rbac_role_endpoints, post_process_actions)
     end,
