@@ -84,6 +84,8 @@ end
 local function retrieve_relationship_ids(entity_id, entity_name, factory_key)
   local relationship_ids, err = singletons.dao[factory_key]:find_all({
     [entity_name .. "_id"] = entity_id,
+    __skip_rbac = true,
+
   })
   if err then
     log(ngx.ERR, "err retrieving relationship via id ", entity_id, ": ", err)
@@ -98,6 +100,7 @@ end
 local function retrieve_relationship_entity(foreign_factory_key, foreign_id)
   local relationship, err = singletons.dao[foreign_factory_key]:find_all({
     id = foreign_id,
+    __skip_rbac = true,
   })
   if err then
     log(ngx.ERR, "err retrieving relationship via id ", foreign_id, ": ", err)
@@ -156,6 +159,7 @@ local function retrieve_user(user_token)
   local user, err = singletons.dao.rbac_users:find_all({
     user_token = user_token,
     enabled    = true,
+    __skip_rbac = true,
   })
   if err then
     log(ngx.ERR, "error in retrieving user from token: ", err)
@@ -295,6 +299,7 @@ local function resolve_role_entity_permissions(roles)
   for _, role in ipairs(roles) do
     local role_entities, err = singletons.dao.rbac_role_entities:find_all({
       role_id  = role.id,
+      __skip_rbac = true,
     })
     if err then
       error(err)
@@ -338,7 +343,7 @@ end
 
 
 local function is_system_table(t)
-  local reserved_tables = { "rbac_.*", "workspace*" }
+  local reserved_tables = { "workspace*" }
   for _, v in ipairs(reserved_tables) do
     if string.find(t, v) then
       return true
@@ -444,6 +449,7 @@ local function resolve_role_endpoint_permissions(roles)
   for _, role in ipairs(roles) do
     local roles_endpoints, err = singletons.dao.rbac_role_endpoints:find_all({
       role_id = role.id,
+      __skip_rbac = true,
     })
     if err then
       error(err)
