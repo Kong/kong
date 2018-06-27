@@ -344,6 +344,7 @@ local function is_system_table(t)
       return true
     end
   end
+
   return false
 end
 _M.is_system_table = is_system_table
@@ -353,6 +354,7 @@ local function is_admin_api_request()
   if not r then
     return false
   end
+
   return ngx.ctx.admin_api_request
 end
 
@@ -367,6 +369,7 @@ function _M.narrow_readable_entities(db_table_name, entities, constraints)
         filtered_rows[#filtered_rows+1] = v
       end
     end
+
     return filtered_rows
   else
     return entities
