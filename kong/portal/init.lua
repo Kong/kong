@@ -33,9 +33,6 @@ _M.app:before_filter(function(self)
   ngx.ctx.workspaces = workspaces
   self.params.workspace_name = nil
 
-  rbac.validate_user()
-  rbac.validate_endpoint(self.route_name, ngx.var.uri)
-
   api_helpers.filter_body_content_type(self)
 end)
 
