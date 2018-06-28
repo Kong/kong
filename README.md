@@ -8,13 +8,13 @@ e.g. using docker:
 sudo docker run -d -p 9411:9411 openzipkin/zipkin
 ```
 
-
 ## Enable the Plugin
 
 ```
 curl -X PUT --url http://localhost:8001/plugins/ -d name=zipkin -d config.http_endpoint=http://127.0.0.1:9411/api/v2/spans
 ```
 
+See many more details of using this plugin at https://docs.konghq.com/plugins/zipkin/
 
 # Implementation
 
