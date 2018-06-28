@@ -343,14 +343,17 @@ return {
         return helpers.responses.send_HTTP_BAD_REQUEST("Missing required parameter: 'entity_id'")
       end
 
-      local entity_type, _, err = workspaces.resolve_entity_type(self.params.entity_id)
-      -- database error
-      if entity_type == nil then
-        return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-      end
-      -- entity doesn't exist
-      if entity_type == false then
-        return helpers.responses.send_HTTP_BAD_REQUEST(err)
+      local entity_type = "wildcard"
+      if self.params.entity_id ~= "*" then
+        entity_type, _, err = workspaces.resolve_entity_type(self.params.entity_id)
+        -- database error
+        if entity_type == nil then
+          return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+        end
+        -- entity doesn't exist
+        if entity_type == false then
+          return helpers.responses.send_HTTP_BAD_REQUEST(err)
+        end
       end
 
       self.params.entity_type = entity_type
@@ -363,7 +366,7 @@ return {
     before = function(self, dao_factory, helpers)
       crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
       self.params.role_id = self.rbac_role.id
-      if not utils.is_valid_uuid(self.params.entity_id) then
+      if self.params.entity_id ~= "*" and not utils.is_valid_uuid(self.params.entity_id) then
         return helpers.responses.send_HTTP_BAD_REQUEST(
           self.params.entity_id .. " is not a valid uuid")
       end

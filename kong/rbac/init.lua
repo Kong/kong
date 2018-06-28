@@ -184,6 +184,12 @@ end
 
 
 local function bitfield_check(map, key, bit)
+  -- authorize wildcard
+  if map["*"] and band(map["*"], bit) == bit then
+    return true
+  end
+
+  -- authorize entity id
   return map[key] and band(map[key], bit) == bit or false
 end
 
