@@ -1,6 +1,7 @@
 local resty_http = require "resty.http"
 local to_hex = require "resty.string".to_hex
-local cjson = require "cjson"
+local cjson = require "cjson".new()
+cjson.encode_number_precision(16)
 
 local zipkin_reporter_methods = {}
 local zipkin_reporter_mt = {
