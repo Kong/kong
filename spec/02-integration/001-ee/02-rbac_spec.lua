@@ -867,6 +867,18 @@ describe("Admin API RBAC with " .. kong_config.database, function()
       assert.matches("update", body, nil, true)
       assert.matches("read", body, nil, true)
       assert.not_matches("rbac", body, nil, true)
+
+      res = assert(client:send {
+        path = "/rbac/roles/super-admin/entities/permissions",
+        method = "GET",
+      })
+
+      body = assert.res_status(200, res)
+      assert.matches("*", body, nil, true)
+      assert.matches("delete", body, nil, true)
+      assert.matches("create", body, nil, true)
+      assert.matches("update", body, nil, true)
+      assert.matches("read", body, nil, true)
     end)
 
     it("defines no default entity permissions", function()
@@ -1355,8 +1367,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         })
 
         assert.res_status(204, res)
-
-        assert.same(1, dao.rbac_role_entities:count())
+        assert.same(2, dao.rbac_role_entities:count())
       end)
 
       describe("errors", function()
@@ -1728,7 +1739,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         assert.res_status(204, res)
         -- TODO review dao calls in this file - workspaces/rbac
         -- dao integration has rough edges
-        assert.same(1, dao.rbac_role_entities:count())
+        assert.same(2, dao.rbac_role_entities:count())
       end)
 
       describe("errors", function()
