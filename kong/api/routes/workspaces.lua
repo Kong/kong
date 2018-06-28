@@ -36,7 +36,7 @@ return {
 
     DELETE = function(self, dao_factory, helpers)
       if self.workspace.name == workspaces.DEFAULT_WORKSPACE then
-        return helpers.responses.send_HTTP_METHOD_NOT_ALLOWED()
+        return helpers.responses.send_HTTP_BAD_REQUEST("Cannot delete default workspace")
       end
 
       local results, err = dao_factory.workspace_entities:find_all({
@@ -47,7 +47,7 @@ return {
       end
 
       if #results > 0 then
-        return helpers.responses.send_HTTP_METHOD_NOT_ALLOWED()
+        return helpers.responses.send_HTTP_BAD_REQUEST("Workspace is not empty")
       end
       crud.delete(self.workspace, dao_factory.workspaces)
     end,

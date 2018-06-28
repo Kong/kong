@@ -167,7 +167,7 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
           path = "/workspaces/default",
         })
 
-        assert.res_status(405, res)
+        assert.res_status(400, res)
       end)
 
       it("removes a workspace", function()
@@ -187,6 +187,41 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
 
         assert.res_status(404, res)
       end)
+
+      it("refuses to delete a non empty workspace", function()
+        local name = "blah"
+
+        local res = assert(client:send {
+          method = "POST",
+          path = "/workspaces",
+          body = { name = name },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
+        res = assert(client:send {
+          method = "POST",
+          path   = "/" .. name .. "/apis",
+          body = {
+            name = "foo",
+            hosts = {"api.com"},
+            upstream_url = "http://httpbin.org"
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(201, res)
+
+        res = assert(client:send {
+          method = "DELETE",
+          path   = "/workspaces/" .. name,
+        })
+        assert.res_status(400, res)
+      end)
+
     end)
   end)
 
