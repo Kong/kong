@@ -144,5 +144,15 @@ return {
       if not ok then
         return err
       end
+
+      ok, err = dao.rbac_role_entities:insert({
+        role_id = role.id,
+        entity_id = "*",
+        entity_type = "wildcard",
+        actions = action_bits_all,
+      })
+      if not ok then
+        return err
+      end
   end
 }
