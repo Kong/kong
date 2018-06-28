@@ -1551,39 +1551,68 @@ You can:
 ========================================================================== */
 @font-face {
   font-family: "Roboto";
-  src: url(http://localhost:3000dist/fonts/Roboto-Regular.ttf) format("truetype");
+  src: url(fonts/Roboto-Regular.ttf) format("truetype");
   font-weight: 400;
   font-style: normal; }
 
 @font-face {
   font-family: "Roboto";
-  src: url(http://localhost:3000dist/fonts/Roboto-Italic.ttf) format("truetype");
+  src: url(fonts/Roboto-Italic.ttf) format("truetype");
   font-weight: 400;
   font-style: italic; }
 
 @font-face {
   font-family: "Roboto";
-  src: url(http://localhost:3000dist/fonts/Roboto-Medium.ttf) format("truetype");
+  src: url(fonts/Roboto-Medium.ttf) format("truetype");
   font-weight: 500;
   font-style: normal; }
 
 @font-face {
   font-family: "Roboto";
-  src: url(http://localhost:3000dist/fonts/Roboto-MediumItalic.ttf) format("truetype");
+  src: url(fonts/Roboto-MediumItalic.ttf) format("truetype");
   font-weight: 500;
   font-style: italic; }
 
 @font-face {
   font-family: "Roboto";
-  src: url(http://localhost:3000dist/fonts/Roboto-Bold.ttf) format("truetype");
+  src: url(fonts/Roboto-Bold.ttf) format("truetype");
   font-weight: 700;
   font-style: normal; }
 
 @font-face {
   font-family: "Roboto";
-  src: url(http://localhost:3000dist/fonts/Roboto-BoldItalic.ttf) format("truetype");
+  src: url(fonts/Roboto-BoldItalic.ttf) format("truetype");
   font-weight: 700;
   font-style: italic; }
+
+@font-face {
+  font-family: "Material Icons";
+  font-weight: 400;
+  font-style: normal;
+  src: url(fonts/MaterialIcons-Regular.ttf) format("woff2"), url(fonts/MaterialIcons-Regular.ttf) format("woff"), url(fonts/MaterialIcons-Regular.ttf) format("truetype"); }
+
+.material-icons {
+  font-family: "Material Icons";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  /* Preferred icon size */
+  display: inline-block;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+  /* Support for all WebKit browsers. */
+  -webkit-font-smoothing: antialiased;
+  /* Support for Safari and Chrome. */
+  text-rendering: optimizeLegibility;
+  /* Support for Firefox. */
+  -moz-osx-font-smoothing: grayscale;
+  /* Support for IE. */
+  -webkit-font-feature-settings: 'liga';
+          font-feature-settings: 'liga'; }
 
 /*  Font Settings
 ========================================================================== */
@@ -4455,6 +4484,71 @@ console.log('Custom JS file loaded')
   },
   {
     type = "partial",
+    name = "unauthenticated/code-snippet-languages",
+    contents = [[<script>
+/*
+|--------------------------------------------------------------------------
+| Code snippet language selections for swagger ui.
+|--------------------------------------------------------------------------
+|
+*/
+window.snippetLanguages = [
+  {
+    prismLanguage: 'javascript',
+    target: 'javascript',
+    client: 'xhr' // 'jquery',
+  },
+  {
+    prismLanguage: 'bash',
+    target: 'shell',
+    client: 'curl' // 'httpie', 'wget'
+  },
+  {
+    prismLanguage: 'python',
+    target: 'python'
+  },
+  {
+    prismLanguage: 'ruby',
+    target: 'ruby'
+  }/*,
+  {
+    prismLanguage: 'php',
+    target: 'php'
+  },
+  {
+    prismLanguage: 'swift',
+    target: 'swift'
+  },
+  {
+    prismLanguage: 'java',
+    target: 'java',
+    client: 'unirest', 'okhttp'
+  },
+  {
+    prismLanguage: 'ocaml',
+    target: 'ocaml'
+  },
+  {
+    prismLanguage: 'swift',
+    target: 'swift'
+  },
+  {
+    prismLanguage: 'csharp',
+    target: 'csharp'
+  },{
+    prismLanguage: 'c',
+    target: 'c'
+  },{
+    prismLanguage: 'javascript',
+    target: 'node'
+    //, client: // 'unirest', 'request', 'native'
+  }*/
+]
+</script>]],
+    auth = false
+  },
+  {
+    type = "partial",
     name = "spec-renderer",
     contents = "<div id=\"ui-wrapper\" data-spec=\"{{spec}}\"></div>",
     auth = true
@@ -5812,573 +5906,5 @@ console.log('Custom JS file loaded')
   }
 }]],
     auth = true
-  },
-  {
-    type = "spec",
-    name = "splunk_payable_management_openapi_3",
-    contents = [[{
-  "info": {
-    "title": "Splunk Payable Management",
-    "version": "v1.0"
-  },
-  "paths": {
-    "/ns/billpayments": {
-      "get": {
-        "parameters": [
-          {
-            "description": "ID of Savedsearch script which have to be retrieved",
-            "in": "query",
-            "name": "savedSearchScriptId",
-            "required": true,
-            "schema" : {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "To retrieve Bill Payment data for invoices from Netsuite."
-          },
-          "400": {
-            "description": "Invalid data"
-          },
-          "401": {
-            "description": "Access denied. The user is not authorized to call this API"
-          },
-          "500": {
-            "description": "An error occurred"
-          }
-        }
-      }
-    },
-    "/ns/paymentSync": {
-      "get": {
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "401": {
-            "description": "Access denied. The user is not authorized to call this API"
-          },
-          "500": {
-            "description": "An error occurred"
-          }
-        }
-      }
-    },
-    "/ns/vendorBills": {
-      "put": {
-        "responses": {
-          "200": {
-            "description": "Create Vendor Bill in Netsuite"
-          },
-          "400": {
-            "description": "Invalid data"
-          },
-          "500": {
-            "description": "Operation Failed"
-          }
-        },
-        "description": "Upsert vendor bill in Netsuite corresponding to invoice of SimpleLegal",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "items": {
-                  "id": "http://jsonschema.net/0",
-                  "properties": {
-                    "approvalStatus": {
-                      "id": "http://jsonschema.net/approvalStatus/0",
-                      "type": "string"
-                    },
-                    "billreceiveddate": {
-                      "id": "http://jsonschema.net/billreceiveddate/0",
-                      "type": "string"
-                    },
-                    "currency": {
-                      "id": "http://jsonschema.net/currency/0",
-                      "type": "string"
-                    },
-                    "customForm": {
-                      "id": "http://jsonschema.net/customForm/0",
-                      "type": "string"
-                    },
-                    "invoiceOwner": {
-                      "id": "http://jsonschema.net/invoiceOwner/0",
-                      "type": "string"
-                    },
-                    "itemList": {
-                      "id": "http://jsonschema.net/itemList",
-                      "items": {
-                        "id": "http://jsonschema.net/fields/0",
-                        "properties": {
-                          "Class": {
-                            "id": "http://jsonschema.net/fields/0/Class",
-                            "type": "string"
-                          },
-                          "Department": {
-                            "id": "http://jsonschema.net/fields/0/Department",
-                            "type": "string"
-                          },
-                          "Netsuite Location": {
-                            "id": "http://jsonschema.net/fields/0/NetsuiteLocation",
-                            "type": "string"
-                          },
-                          "amount": {
-                            "id": "http://jsonschema.net/fields/0/amount",
-                            "type": "string"
-                          },
-                          "description": {
-                            "id": "http://jsonschema.net/fields/0/description",
-                            "type": "string"
-                          },
-                          "item": {
-                            "id": "http://jsonschema.net/fields/0/item",
-                            "type": "string"
-                          },
-                          "quantity": {
-                            "id": "http://jsonschema.net/item/fields/0/quantity",
-                            "type": "string"
-                          }
-                        },
-                        "type": "object"
-                      },
-                      "type": "array"
-                    },
-                    "location": {
-                      "id": "http://jsonschema.net/location/0",
-                      "type": "string"
-                    },
-                    "memo": {
-                      "id": "http://jsonschema.net/memo/0",
-                      "type": "string"
-                    },
-                    "simpleLegalRefNumber": {
-                      "id": "http://jsonschema.net/simpleLegalRefNumber/0",
-                      "type": "string"
-                    },
-                    "tranDate": {
-                      "id": "http://jsonschema.net/tranDate/0",
-                      "type": "string"
-                    },
-                    "tranId": {
-                      "id": "http://jsonschema.net/tranId/0",
-                      "type": "string"
-                    },
-                    "vendorId": {
-                      "id": "http://jsonschema.net/vendorId/0",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "vendorId",
-                    "itemList"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
-              }
-            }
-          },
-          "required": true
-        }
-      }
-    },
-    "/sl/invoiceSync": {
-      "get": {
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "401": {
-            "description": "Access denied. The user is not authorized to call this API"
-          },
-          "500": {
-            "description": "An error occurred"
-          }
-        }
-      }
-    },
-    "/sl/invoices": {
-      "get": {
-        "parameters": [
-          {
-            "description": "Status of Invoices which have to be retrieved",
-            "in": "query",
-            "name": "status",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "401": {
-            "description": "Access denied. The user is not authorized to call this API"
-          },
-          "500": {
-            "description": "An error occurred"
-          }
-        }
-      }
-    },
-    "/sl/invoices/voidPaymentStatus": {
-      "put": {
-        "responses": {
-          "200": {
-            "description": "Change status of invoice in SImpleLegal whose payment status is void in NetSuite"
-          },
-          "400": {
-            "description": "Invalid data"
-          },
-          "500": {
-            "description": "Operation Failed"
-          }
-        },
-        "description": "Update status of invoice in Simple Legal to handle void payment",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "items": {
-                  "id": "http://jsonschema.net/0",
-                  "properties": {
-                    "invoiceId": {
-                      "id": "http://jsonschema.net/approvalStatus/0",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "invoiceId"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
-              }
-            }
-          },
-          "required": true
-        }
-      }
-    },
-    "/sl/invoices/{invoiceId}": {
-      "get": {
-        "parameters": [
-          {
-            "description": "Id of invoice whose data is to be fetched",
-            "in": "path",
-            "name": "invoiceId",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "401": {
-            "description": "Access denied. The user is not authorized to call this API"
-          },
-          "500": {
-            "description": "An error occurred"
-          }
-        }
-      },
-      "patch": {
-        "parameters": [
-          {
-            "description": "Id of invoice whose data is to be fetched",
-            "in": "path",
-            "name": "invoiceId",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Status of invoice updated successful."
-          },
-          "400": {
-            "description": "Invalid data"
-          },
-          "401": {
-            "description": "Access denied. The user is not authorized to call this API"
-          },
-          "500": {
-            "description": "Error creating simple legal status of invoice update"
-          }
-        },
-        "description": "Update the status of Invoice in Simple Legal",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "properties": {
-                  "status": {
-                    "id": "http://jsonschema.net/status",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "status"
-                ],
-                "type": "object"
-              }
-            }
-          },
-          "required": true
-        }
-      },
-      "post": {
-        "parameters": [
-          {
-            "description": "Id of invoice whose data is to be fetched",
-            "in": "path",
-            "name": "invoiceId",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "Payment of invoice successful."
-          },
-          "400": {
-            "description": "Invalid data"
-          },
-          "401": {
-            "description": "Access denied. The user is not authorized to call this API"
-          },
-          "500": {
-            "description": "Error creating simple legal bill payment"
-          }
-        },
-        "description": "Create Bill Payment of Invoice in Simple Legal",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "properties": {
-                  "amount": {
-                    "id": "http://jsonschema.net/amount",
-                    "type": "number"
-                  },
-                  "currency": {
-                    "id": "http://jsonschema.net/currency",
-                    "type": "string"
-                  },
-                  "paymentDate": {
-                    "id": "http://jsonschema.net/paymentDate",
-                    "type": "string"
-                  },
-                  "paymentMethod": {
-                    "id": "http://jsonschema.net/paymentMethod",
-                    "type": "string"
-                  },
-                  "referenceNumber": {
-                    "id": "http://jsonschema.net/referenceNumber",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "paymentMethod",
-                  "referenceNumber",
-                  "amount",
-                  "currency",
-                  "paymentDate"
-                ],
-                "type": "object"
-              }
-            }
-          },
-          "required": true
-        }
-      }
-    },
-    "/sl/invoices/{invoiceId}/attachment": {
-      "get": {
-        "parameters": [
-          {
-            "description": "ID of the Invoice whose attachment to be retrived from SL",
-            "in": "path",
-            "name": "invoiceId",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "*/*": {
-                "schema": {
-                  "properties": {
-                    "fileContent": {
-                      "id": "http://jsonschema.net/fileContent",
-                      "type": "string"
-                    }
-                  },
-                  "type": "object"
-                }
-              }
-            },
-            "description": "To retrieve attachment from Simple Legal."
-          },
-          "400": {
-            "description": "Invalid data"
-          },
-          "401": {
-            "description": "Access denied. The user is not authorized to call this API"
-          },
-          "404": {
-            "description": "No Attachment exists for this invoiceId"
-          },
-          "500": {
-            "description": "Error getting Attachments"
-          }
-        }
-      }
-    }
-  },
-  "openapi": "3.0.0",
-  "servers": []
-}]],
-    auth = true
-  },
-  {
-    type = "partial",
-    name = "code-snippet-languages",
-    contents = [[<script>
-/*
-|--------------------------------------------------------------------------
-| Code snippet language selections for swagger ui.
-|--------------------------------------------------------------------------
-|
-*/
-window.snippetLanguages = [
-  {
-    prismLanguage: 'javascript',
-    target: 'javascript',
-    client: 'xhr' // 'jquery',
-  },
-  {
-    prismLanguage: 'bash',
-    target: 'shell',
-    client: 'curl' // 'httpie', 'wget'
-  },
-  {
-    prismLanguage: 'python',
-    target: 'python'
-  },
-  {
-    prismLanguage: 'ruby',
-    target: 'ruby'
-  }/*,
-  {
-    prismLanguage: 'php',
-    target: 'php'
-  },
-  {
-    prismLanguage: 'swift',
-    target: 'swift'
-  },
-  {
-    prismLanguage: 'java',
-    target: 'java',
-    client: 'unirest', 'okhttp'
-  },
-  {
-    prismLanguage: 'ocaml',
-    target: 'ocaml'
-  },
-  {
-    prismLanguage: 'swift',
-    target: 'swift'
-  },
-  {
-    prismLanguage: 'csharp',
-    target: 'csharp'
-  },{
-    prismLanguage: 'c',
-    target: 'c'
-  },{
-    prismLanguage: 'javascript',
-    target: 'node'
-    //, client: // 'unirest', 'request', 'native'
-  }*/
-]
-</script>]],
-    auth = true
-  },
-  {
-    type = "page",
-    name = "whatever",
-    contents = "<h1>your content goes here</h1>",
-    auth = true
-  },
-  {
-    type = "partial",
-    name = "unauthenticated/code-snippet-languages",
-    contents = [[<script>
-/*
-|--------------------------------------------------------------------------
-| Code snippet language selections for swagger ui.
-|--------------------------------------------------------------------------
-| 
-*/
-window.snippetLanguages = [
-  {
-    prismLanguage: 'javascript',
-    target: 'javascript',
-    client: 'xhr' // 'jquery', 
-  },
-  {
-    prismLanguage: 'bash',
-    target: 'shell',
-    client: 'curl' // 'httpie', 'wget'
-  },
-  {
-    prismLanguage: 'python',
-    target: 'python'
-  },
-  {
-    prismLanguage: 'ruby',
-    target: 'ruby'
-  }/*,
-  {
-    prismLanguage: 'php',
-    target: 'php'
-  },
-  {
-    prismLanguage: 'swift',
-    target: 'swift'
-  },
-  {
-    prismLanguage: 'java',
-    target: 'java',
-    client: 'unirest', 'okhttp'
-  },
-  {
-    prismLanguage: 'ocaml',
-    target: 'ocaml'
-  },
-  {
-    prismLanguage: 'swift',
-    target: 'swift'
-  },
-  {
-    prismLanguage: 'csharp',
-    target: 'csharp'
-  },{
-    prismLanguage: 'c',
-    target: 'c'
-  },{
-    prismLanguage: 'javascript',
-    target: 'node'
-    //, client: // 'unirest', 'request', 'native'
-  }*/
-]
-</script>]],
-    auth = false
   }
 }
