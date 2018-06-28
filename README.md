@@ -10,4 +10,4 @@ usage.
 
 0.1.0 Initial release
 
-[docs]: https://getkong.org/plugins/serverless-functions/
+[docs]: https://docs.konghq.com/plugins/serverless-functions/
