@@ -1,5 +1,6 @@
 return {
   table = "rbac_roles",
+  workspaceable = true,
   primary_key = { "id" },
   cache_key = { "id" },
   fields = {

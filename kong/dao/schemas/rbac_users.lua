@@ -2,6 +2,7 @@ local utils = require "kong.tools.utils"
 
 return {
   table = "rbac_users",
+  workspaceable = true,
   primary_key = { "id" },
   cache_key = { "user_token" },
   fields = {

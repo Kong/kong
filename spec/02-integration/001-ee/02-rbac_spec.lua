@@ -380,18 +380,10 @@ describe("Admin API RBAC with " .. kong_config.database, function()
 
       describe("errors", function()
         it("with duplicate names", function()
-          local res = assert(client:send {
-            method = "POST",
-            path = "/rbac/roles",
-            body = {
-              name = "admin",
-            },
-            headers = {
-              ["Content-Type"] = "application/json",
-            },
-          })
 
-          assert.res_status(409, res)
+          local name = utils.uuid()
+          post("/rbac/roles", { name = name })
+          post("/rbac/roles", { name = name }, nil, 409)
         end)
 
         it("with no name", function()
@@ -460,7 +452,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.equals(#users_json.data + 6, #json.data)
+        assert.equals(#users_json.data + 7, #json.data)
       end)
     end)
   end)
@@ -555,7 +547,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.equals(#user_json.data + 5, #json.data)
+        assert.equals(#user_json.data + 6, #json.data)
 
         for i = 1, #json.data do
           assert.not_equals("foo", json.data[i].name)

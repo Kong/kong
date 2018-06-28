@@ -91,7 +91,6 @@ local function retrieve_relationship_ids(entity_id, entity_name, factory_key)
   local relationship_ids, err = singletons.dao[factory_key]:find_all({
     [entity_name .. "_id"] = entity_id,
     __skip_rbac = true,
-
   })
   if err then
     log(ngx.ERR, "err retrieving relationship via id ", entity_id, ": ", err)
