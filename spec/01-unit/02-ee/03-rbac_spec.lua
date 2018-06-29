@@ -284,10 +284,10 @@ describe("(#" .. kong_conf.database .. ")", function()
             { id = role_id2 },
           })
 
-          -- role_id  has 1 positive read (0x1) permission
-          -- role_id2 has 1 negative read (0x1 << 4) permission
-          -- (0x1 | 0x1 << 4) == 0x17
-          assert.equals(0x17, map[entity_id])
+          -- role_id  has 1 positive read (1) permission
+          -- role_id2 has 1 negative read (1 << 4) permission
+          -- (1 | 1 << 4) == 17
+          assert.equals(17, map[entity_id])
         end)
 
         it("regardless of role order", function()
@@ -296,10 +296,10 @@ describe("(#" .. kong_conf.database .. ")", function()
             { id = role_id },
           })
 
-          -- role_id  has 1 positive read (0x1) permission
-          -- role_id2 has 1 negative read (0x1 << 4) permission
-          -- (0x1 | 0x1 << 4) == 0x17
-          assert.equals(0x17, map[entity_id])
+          -- role_id  has 1 positive read (1) permission
+          -- role_id2 has 1 negative read (1 << 4) permission
+          -- (1 | 1 << 4) == 17
+          assert.equals(17, map[entity_id])
         end)
       end)
 
