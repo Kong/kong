@@ -639,7 +639,7 @@ function _M.load_rbac_ctx(dao_factory)
 
   if not rbac_token then
     return false
-  elseif type(rbac_token) == "table" then
+  elseif type(rbac_token) ~= "string" then
      -- forbid sending rbac_token headers multiple times
      -- because get_user assume it's a string
     return false
