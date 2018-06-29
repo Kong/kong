@@ -695,7 +695,7 @@ describe("Configuration loader", function()
     end)
     it("rbac is checked for one of the valid values", function()
       local conf, _, errors = conf_loader(nil, {
-        rbac = "foo",
+        enforce_rbac = "foo",
       })
       assert.equal(1, #errors)
       assert.is_nil(conf)

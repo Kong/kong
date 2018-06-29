@@ -1934,7 +1934,7 @@ describe("Admin API", function()
     helpers.stop_kong(nil, true, true)
     assert(helpers.start_kong {
       database              = kong_config.database,
-      rbac                  = "entity",
+      enforce_rbac          = "entity",
     })
     client = assert(helpers.admin_client())
   end)
