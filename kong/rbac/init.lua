@@ -289,7 +289,7 @@ local function resolve_role_entity_permissions(roles)
     pmap[id] = bor(p, pmap[id] or 0x0)
   end
   local function negative_mask(p, id)
-    pmap[id] = band(pmap[id] or 0x0, bxor(p, pmap[id] or 0x0))
+    pmap[id] = bor(pmap[id] or 0x0, lshift(p, 4))
   end
 
 
