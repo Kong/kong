@@ -1455,7 +1455,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         assert.is_nil(json.comment)
       end)
 
-      it("creates a new endpoint with similar PK elements", function()
+      it("creates a new * endpoint with similar PK elements", function()
         local res = assert(client:send {
           method = "POST",
           path = "/rbac/roles/mock-role/endpoints",
@@ -1474,6 +1474,31 @@ describe("Admin API RBAC with " .. kong_config.database, function()
 
         assert.same("mock-workspace", json.workspace)
         assert.same("*", json.endpoint)
+
+        assert.same({ "read" }, json.actions)
+        assert.is_false(json.negative)
+        assert.is_nil(json.comment)
+      end)
+
+      it("creates a new / endpoint with similar PK elements", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles/mock-role/endpoints",
+          body = {
+            workspace = "mock-workspace",
+            endpoint = "/",
+            actions = "read",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          },
+        })
+
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+
+        assert.same("mock-workspace", json.workspace)
+        assert.same("/", json.endpoint)
 
         assert.same({ "read" }, json.actions)
         assert.is_false(json.negative)
@@ -1550,8 +1575,8 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.same(2, json.total)
-        assert.same(2, #json.data)
+        assert.same(3, json.total)
+        assert.same(3, #json.data)
       end)
 
       it("limits the size of returned entities", function()
@@ -1563,7 +1588,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.same(2, json.total)
+        assert.same(3, json.total)
         assert.same(1, #json.data)
         assert.not_nil(json.next)
         assert.not_nil(json.offset)
@@ -1599,6 +1624,25 @@ describe("Admin API RBAC with " .. kong_config.database, function()
 
         table.sort(json.actions)
         assert.same({ "create", "delete", "read", "update" }, json.actions)
+      end)
+
+      -- this is the limitation of lapis implementation
+      -- it's not possible to distinguish // from /
+      -- since the self.params.splat will always be "/"
+      it("treats /rbac/roles/:name_or_id/endpoints/:workspace// as /rbac/roles/:name_or_id/endpoints/:workspace/", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/rbac/roles/mock-role/endpoints/mock-workspace//",
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.equals("mock-workspace", json.workspace)
+        assert.equals("/", json.endpoint)
+
+        table.sort(json.actions)
+        assert.same({ "read" }, json.actions)
       end)
 
       describe("errors", function()
@@ -1651,6 +1695,48 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         assert.same({ "create", "delete", "read", "update" }, json.actions)
       end)
 
+      it("updates * endpoint properly", function()
+        local res = assert(client:send {
+          method = "PATCH",
+          path = "/rbac/roles/mock-role/endpoints/mock-workspace/*",
+          body = {
+            comment = "fooo",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.is_true(utils.is_valid_uuid(json.role_id))
+        assert.same("fooo", json.comment)
+        table.sort(json.actions)
+        assert.same({ "read" }, json.actions)
+      end)
+
+      it("updates / endpoint properly", function()
+        local res = assert(client:send {
+          method = "PATCH",
+          path = "/rbac/roles/mock-role/endpoints/mock-workspace/",
+          body = {
+            comment = "foooo",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.is_true(utils.is_valid_uuid(json.role_id))
+        assert.same("foooo", json.comment)
+        table.sort(json.actions)
+        assert.same({ "read" }, json.actions)
+      end)
+
       it("update the relationship actions and displays them properly", function()
         local res = assert(client:send {
           method = "PATCH",
@@ -1667,6 +1753,48 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         local json = cjson.decode(body)
 
         assert.same("foo", json.comment)
+
+        table.sort(json.actions)
+        assert.same({ "delete", "read", "update" }, json.actions)
+      end)
+
+      it("update the relationship actions and displays them properly for * endpoint", function()
+        local res = assert(client:send {
+          method = "PATCH",
+          path = "/rbac/roles/mock-role/endpoints/mock-workspace/*",
+          body = {
+            actions = "read,update,delete",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.same("fooo", json.comment)
+
+        table.sort(json.actions)
+        assert.same({ "delete", "read", "update" }, json.actions)
+      end)
+
+      it("update the relationship actions and displays them properly for / endpoint", function()
+        local res = assert(client:send {
+          method = "PATCH",
+          path = "/rbac/roles/mock-role/endpoints/mock-workspace/",
+          body = {
+            actions = "read,update,delete",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+
+        assert.same("foooo", json.comment)
 
         table.sort(json.actions)
         assert.same({ "delete", "read", "update" }, json.actions)
@@ -1767,6 +1895,30 @@ describe("Admin API RBAC with " .. kong_config.database, function()
 
           assert.res_status(404, res)
         end)
+      end)
+
+      it("removes * endpoint association", function()
+        local res = assert(client:send {
+          method = "DELETE",
+          path = "/rbac/roles/mock-role/endpoints/mock-workspace/*",
+        })
+
+        assert.res_status(204, res)
+        -- TODO review dao calls in this file - workspaces/rbac
+        -- dao integration has rough edges
+        assert.same(1, dao.rbac_role_entities:count())
+      end)
+
+      it("removes / endpoint association", function()
+        local res = assert(client:send {
+          method = "DELETE",
+          path = "/rbac/roles/mock-role/endpoints/mock-workspace/",
+        })
+
+        assert.res_status(204, res)
+        -- TODO review dao calls in this file - workspaces/rbac
+        -- dao integration has rough edges
+        assert.same(1, dao.rbac_role_entities:count())
       end)
     end)
   end)

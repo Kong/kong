@@ -464,7 +464,16 @@ return {
     before = function(self, dao_factory, helpers)
       crud.find_rbac_role_by_name_or_id(self, dao_factory, helpers)
       self.params.role_id = self.rbac_role.id
-      self.params.endpoint = "/" .. self.params.splat
+      -- Note: /rbac/roles/:name_or_id/endpoints/:workspace// will be treated same as
+      -- /rbac/roles/:name_or_id/endpoints/:workspace/
+      -- this is the limitation of lapis implementation
+      -- it's not possible to distinguish // from /
+      -- since the self.params.splat will always be "/"
+      if self.params.splat ~= "*" and self.params.splat ~= "/" then
+        self.params.endpoint = "/" .. self.params.splat
+      else
+        self.params.endpoint = self.params.splat
+      end
       self.params.splat = nil
     end,
 
