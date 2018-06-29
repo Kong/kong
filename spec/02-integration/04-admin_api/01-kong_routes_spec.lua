@@ -279,7 +279,7 @@ describe("Admin API - Kong routes", function()
         assert(helpers.start_kong({
           database = strategy,
           admin_gui_auth = "basic-auth",
-          enforce_rbac = "on",
+          enforce_rbac = "both",
         }))
 
         local super_admin = ee_helpers.register_rbac_resources(dao)
@@ -327,7 +327,7 @@ describe("Admin API - Kong routes", function()
         assert(helpers.start_kong({
           database = strategy,
           admin_gui_auth = "basic-auth",
-          enforce_rbac = "on",
+          enforce_rbac = "both",
         }))
 
         local super_admin = ee_helpers.register_rbac_resources(dao)
