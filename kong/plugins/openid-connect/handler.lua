@@ -1977,11 +1977,8 @@ function OICHandler:access(conf)
     end
   end
 
-  -- setting consumer context and headers
-  set_consumer(consumer, credential, is_anonymous)
-
   -- check if the dev portal consumer is not approved
-  if consumer and consumer.status ~= 0 then
+  if consumer and consumer.status ~= nil and consumer.status ~= 0 then
     return forbidden(
             iss,
             "consumer is not authorized",
@@ -1989,6 +1986,8 @@ function OICHandler:access(conf)
             anonymous,
             trusted_client)
   end
+  -- setting consumer context and headers
+  set_consumer(consumer, credential, is_anonymous)
 
   -- setting credential by arbitrary claim, in case when consumer mapping was not used
   if not consumer then
