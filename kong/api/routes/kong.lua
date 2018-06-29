@@ -148,7 +148,7 @@ return {
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
 
       local rbac = singletons.configuration.rbac
-      if rbac == "on" or rbac == "endpoint" then
+      if rbac == "on" or rbac == "both" then
         local user_consumer = dao_factory.consumers_rbac_users_map:find_all({
           consumer_id = self.consumer.id,
         })

@@ -760,7 +760,7 @@ describe("(#" .. kong_conf.database .. ")", function()
     setup(function()
       local singletons = require "kong.singletons"
       singletons.configuration= {
-        rbac = "on",
+        rbac = "both",
       }
       entities = {
         ["table1"] = {

@@ -118,7 +118,7 @@ describe("portal_gui", function()
           ssl = true,
         }
       },
-      rbac = "off",
+      enforce_rbac = "off",
       rbac_auth_header = 'Kong-Admin-Token',
     }
 

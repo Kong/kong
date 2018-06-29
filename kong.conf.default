@@ -533,18 +533,18 @@
                                  # server.
 
 #enforce_rbac = off              # Specifies whether Admin API RBAC is enforced;
-                                 # accepts one of 'endpoint', 'entity', 'on', or
-                                 # 'off'. When 'endpoint' is passed, only
+                                 # accepts one of 'entity', 'both', 'on', or
+                                 # 'off'. When 'on' is passed, only
                                  # endpoint-level authorization is enforced;
                                  # when 'entity' is passed, entity-level
-                                 # authorization applies; 'on' enables both
+                                 # authorization applies; 'both' enables both
                                  # endpoint and entity-level authorization;
                                  # 'off' disables both. When enabled, Kong will
                                  # deny requests to the Admin API when a
                                  # nonexistent or invalid RBAC authorization
                                  # token is passed, or the RBAC user with which
                                  # the token is associated does not have
-                                 # permissions to access/modify the request
+                                 # permissions to access/modify the requested
                                  # resource.
 
 
@@ -688,8 +688,8 @@
                         # This value is commonly used in a microservices
                         # or service-mesh oriented architecture.
                         #
-                        # portal_gui_url sets 'Access-Control-Allow-Origin' 
-                        # in regards to requests related to the developer 
+                        # portal_gui_url sets 'Access-Control-Allow-Origin'
+                        # in regards to requests related to the developer
                         # portal (set to * by default). It also acts as a
                         # Dev Portal location reference for Kong, the Admin GUI,
                         # and the Dev Portal itself.
@@ -742,9 +742,9 @@
                         # This value is commonly used in a microservices
                         # or service-mesh oriented architecture.
                         #
-                        # portal_api_url is the address on which your 
+                        # portal_api_url is the address on which your
                         # Kong Dev Portal API is accessible by Kong. You
-                        # should only set this value if your Kong Dev Portal API 
+                        # should only set this value if your Kong Dev Portal API
                         # lives on a different node than your Kong Proxy.
                         #
                         # Accepted format (parts in parenthesis are optional):

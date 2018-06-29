@@ -134,7 +134,7 @@ local CONF_INFERENCES = {
   lua_ssl_verify_depth = {typ = "number"},
   lua_socket_pool_size = {typ = "number"},
 
-  enforce_rbac = {enum = {"on", "off", "endpoint", "entity"}},
+  enforce_rbac = {enum = {"on", "off", "both", "entity"}},
   rbac_auth_header = {typ = "string"},
 
   vitals = {typ = "boolean"},

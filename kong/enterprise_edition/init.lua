@@ -202,9 +202,9 @@ function _M.prepare_admin(kong_config)
   local api_ssl_listen = select_listener(kong_config.proxy_listeners, {ssl = true})
   local api_ssl_port = api_ssl_listen and api_ssl_listen.port
 
-  -- we will consider rbac to be on if it is set to "endpoint" or "on",
+  -- we will consider rbac to be on if it is set to "both" or "on",
   -- because we don't currently support entity-level
-  local rbac_enforced = kong_config.rbac == "endpoint" or kong_config.rbac == "on"
+  local rbac_enforced = kong_config.rbac == "both" or kong_config.rbac == "on"
 
   return prepare_interface("gui", {
     ADMIN_GUI_AUTH = prepare_variable(kong_config.admin_gui_auth),
@@ -240,7 +240,7 @@ function _M.prepare_portal(kong_config)
   local proxy_port = proxy_listener and proxy_listener.port
   local proxy_ssl_port = proxy_ssl_listener and proxy_ssl_listener.port
 
-  local rbac_enforced = kong_config.rbac == "endpoint" or kong_config.rbac == "on"
+  local rbac_enforced = kong_config.rbac == "both" or kong_config.rbac == "on"
 
   return prepare_interface("portal", {
     PROXY_URL = prepare_variable(kong_config.proxy_url),

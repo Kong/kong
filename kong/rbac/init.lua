@@ -412,7 +412,7 @@ function _M.validate_entity_operation(entity, constraints)
 
   if not singletons.configuration or
          singletons.configuration.rbac ~= "entity" and
-         singletons.configuration.rbac ~= "on" then
+         singletons.configuration.rbac ~= "both" then
     return true
   end
 
@@ -709,7 +709,7 @@ function _M.validate_endpoint(route_name, route)
   end
 
   if not singletons.configuration or
-         singletons.configuration.rbac ~= "endpoint" and
+         singletons.configuration.rbac ~= "both" and
          singletons.configuration.rbac ~= "on" then
     return
   end
@@ -736,7 +736,7 @@ end
 function _M.check_cascade(entities, rbac_ctx)
   if not singletons.configuration or
          singletons.configuration.rbac ~= "entity" and
-         singletons.configuration.rbac ~= "on" then
+         singletons.configuration.rbac ~= "both" then
     return true
   end
 
