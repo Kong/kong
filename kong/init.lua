@@ -281,6 +281,7 @@ function Kong.init_worker()
     propagation_delay = kong.configuration.db_update_propagation,
     ttl               = kong.configuration.db_cache_ttl,
     neg_ttl           = kong.configuration.db_cache_ttl,
+    resurrect_ttl     = kong.configuration.resurrect_ttl,
     resty_lock_opts   = {
       exptime = 10,
       timeout = 5,
