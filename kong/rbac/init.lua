@@ -637,9 +637,8 @@ function _M.load_rbac_ctx(dao_factory)
   local rbac_token = ngx.req.get_headers()[rbac_auth_header]
   local http_method = ngx.req.get_method()
 
-  if not rbac_token then
-    return false
-  elseif type(rbac_token) ~= "string" then
+  if type(rbac_token) ~= "string" then
+     -- forbid empty rbac_token and also
      -- forbid sending rbac_token headers multiple times
      -- because get_user assume it's a string
     return false
