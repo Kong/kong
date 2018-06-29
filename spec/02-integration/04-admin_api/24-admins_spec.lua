@@ -70,7 +70,7 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/admins",
             headers = {
-              ["Kong-RBAC-Token"] = "letmein",
+              ["Kong-Admin-Token"] = "letmein",
             },
           })
 
@@ -88,7 +88,7 @@ for _, strategy in helpers.each_strategy() do
             method = "POST",
             path  = "/admins",
             headers = {
-              ["Kong-RBAC-Token"] = "letmein",
+              ["Kong-Admin-Token"] = "letmein",
               ["Content-Type"]     = "application/json",
             },
             body  = {
@@ -116,7 +116,7 @@ for _, strategy in helpers.each_strategy() do
             method = "POST",
             path  = "/admins",
             headers = {
-              ["Kong-RBAC-Token"] = "letmein",
+              ["Kong-Admin-Token"] = "letmein",
               ["Content-Type"]     = "application/json",
             },
             body  = {
@@ -137,7 +137,7 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/admins/" .. admin.id,
             headers = {
-              ["Kong-RBAC-Token"] = "letmein",
+              ["Kong-Admin-Token"] = "letmein",
               ["Content-Type"]     = "application/json",
             },
           })
@@ -154,7 +154,7 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/admins/" .. admin.username,
             headers = {
-              ["Kong-RBAC-Token"] = "letmein",
+              ["Kong-Admin-Token"] = "letmein",
               ["Content-Type"]     = "application/json",
             },
           })
@@ -168,7 +168,7 @@ for _, strategy in helpers.each_strategy() do
             method = "GET",
             path = "/admins/not-an-admin",
             headers = {
-              ["Kong-RBAC-Token"] = "letmein",
+              ["Kong-Admin-Token"] = "letmein",
               ["Content-Type"]     = "application/json",
             },
           })
@@ -186,7 +186,7 @@ for _, strategy in helpers.each_strategy() do
                 username = "alice"
               },
               headers = {
-                ["Kong-RBAC-Token"] = "letmein",
+                ["Kong-Admin-Token"] = "letmein",
                 ["Content-Type"]     = "application/json",
               },
             })
@@ -209,7 +209,7 @@ for _, strategy in helpers.each_strategy() do
                 username = "alice"
               },
               headers = {
-                ["Kong-RBAC-Token"] = "letmein",
+                ["Kong-Admin-Token"] = "letmein",
                 ["Content-Type"]     = "application/json",
               },
             })
@@ -232,7 +232,7 @@ for _, strategy in helpers.each_strategy() do
                username = "alice"
               },
               headers = {
-                ["Kong-RBAC-Token"] = "letmein",
+                ["Kong-Admin-Token"] = "letmein",
                 ["Content-Type"]     = "application/json",
               },
             })
@@ -247,7 +247,7 @@ for _, strategy in helpers.each_strategy() do
             method = "DELETE",
             path   = "/admins/" .. admin.id,
             headers = {
-              ["Kong-RBAC-Token"] = "letmein",
+              ["Kong-Admin-Token"] = "letmein",
               ["Content-Type"]     = "application/json",
             },
           })
@@ -260,7 +260,7 @@ for _, strategy in helpers.each_strategy() do
             method = "DELETE",
             path   = "/admins/admin-1",
             headers = {
-              ["Kong-RBAC-Token"] = "letmein",
+              ["Kong-Admin-Token"] = "letmein",
               ["Content-Type"]     = "application/json",
             },
           })
@@ -273,7 +273,7 @@ for _, strategy in helpers.each_strategy() do
             method = "DELETE",
             path   = "/admins/not-an-admin",
             headers = {
-              ["Kong-RBAC-Token"] = "letmein",
+              ["Kong-Admin-Token"] = "letmein",
               ["Content-Type"]     = "application/json",
             },
           })

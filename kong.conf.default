@@ -548,7 +548,7 @@
                                  # resource.
 
 
-#rbac_auth_header = Kong-RBAC-Token   # Defines the name of the HTTP request
+#rbac_auth_header = Kong-Admin-Token  # Defines the name of the HTTP request
                                       # header from which the Admin API will
                                       # attempt to identify the RBAC user.
 

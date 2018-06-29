@@ -308,7 +308,7 @@ describe("Admin API - Kong routes", function()
           path = "/" .. proxy_prefix .. "/admin/userinfo",
           headers = {
             ["Authorization"] = "Basic " .. ngx.encode_base64("hawk:kong"),
-            ["Kong-RBAC-Token"] = super_admin.user_token,
+            ["Kong-Admin-Token"] = super_admin.user_token,
           }
         })
 

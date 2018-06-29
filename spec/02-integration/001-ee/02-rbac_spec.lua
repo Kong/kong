@@ -1875,7 +1875,7 @@ end)
 for _, h in ipairs({ "", "Custom-Auth-Token" }) do
   describe("Admin API", function()
     local client
-    local expected = h == "" and "Kong-RBAC-Token" or h
+    local expected = h == "" and "Kong-Admin-Token" or h
 
     setup(function()
       helpers.dao:run_migrations()
@@ -1948,21 +1948,21 @@ describe("Admin API", function()
   end)
 
   it(".find_all filters non accessible entities", function()
-    local data = get("/apis", {["Kong-RBAC-Token"] = "bob"}).data
+    local data = get("/apis", {["Kong-Admin-Token"] = "bob"}).data
     assert.equal(1, #data)
     assert.equal(apis[2].id, data[1].id)
   end)
 
   it(".find_all returns 401 for invalid credentials", function()
-    get("/apis", {["Kong-RBAC-Token"] = "wrong"}, 401)
+    get("/apis", {["Kong-Admin-Token"] = "wrong"}, 401)
     get("/apis", nil, 401)
   end)
 
   it(".find errors for non permitted entities", function()
-    get("/apis/" .. apis[1].id , {["Kong-RBAC-Token"] = "wrong"}, 401)
-    get("/apis/" .. apis[2].id , {["Kong-RBAC-Token"] = "wrong"}, 401)
-    get("/apis/" .. apis[1].id , {["Kong-RBAC-Token"] = "bob"}, 404)
-    get("/apis/" .. apis[2].id , {["Kong-RBAC-Token"] = "bob"}, 200)
+    get("/apis/" .. apis[1].id , {["Kong-Admin-Token"] = "wrong"}, 401)
+    get("/apis/" .. apis[2].id , {["Kong-Admin-Token"] = "wrong"}, 401)
+    get("/apis/" .. apis[1].id , {["Kong-Admin-Token"] = "bob"}, 404)
+    get("/apis/" .. apis[2].id , {["Kong-Admin-Token"] = "bob"}, 200)
   end)
 
   it(".update checks rbac via put", function()
@@ -1971,18 +1971,18 @@ describe("Admin API", function()
       name = "new-name",
       created_at = "123",
       upstream_url = "http://httpbin.org",
-    }, {["Kong-RBAC-Token"] = "bob"}, 401)
+    }, {["Kong-Admin-Token"] = "bob"}, 401)
 
     put("/apis/" , {
       id = apis[4].id,
       name = "new-name",
       created_at = "123",
       upstream_url = "http://httpbin.org"},
-  {["Kong-RBAC-Token"] = "bob"}, 200)
+  {["Kong-Admin-Token"] = "bob"}, 200)
   end)
 
   it(".update checks rbac via patch", function()
-    -- patch("/apis/".. apis[1].id, {name = "new-name"}, {["Kong-RBAC-Token"] = "bob", ["Content-Type"] = "application/json"})
+    -- patch("/apis/".. apis[1].id, {name = "new-name"}, {["Kong-Admin-Token"] = "bob", ["Content-Type"] = "application/json"})
     -- local res = assert(client:send {
     --   method = "PATCH",
     --   path = "/rbac/users/bob",
@@ -1990,7 +1990,7 @@ describe("Admin API", function()
     --     comment = "new comment",
     --   },
     --   headers = {
-    --     ["Kong-RBAC-Token"] = "bob",
+    --     ["Kong-Admin-Token"] = "bob",
     --             ["Content-Type"] = "application/json",
     --   },
     -- })
@@ -1998,17 +1998,17 @@ describe("Admin API", function()
     -- local body = assert.res_status(200, res)
     -- local json = cjson.decode(body)
 
-    -- patch("/apis/".. apis[2].id, {name = "new-name"}, {["Kong-RBAC-Token"] = "bob"})
-    -- patch("/apis/".. apis[3].id, {name = "new-name"}, {["Kong-RBAC-Token"] = "bob"})
-    -- patch("/apis/".. apis[4].id, {name = "new-name"}, {["Kong-RBAC-Token"] = "bob"})
+    -- patch("/apis/".. apis[2].id, {name = "new-name"}, {["Kong-Admin-Token"] = "bob"})
+    -- patch("/apis/".. apis[3].id, {name = "new-name"}, {["Kong-Admin-Token"] = "bob"})
+    -- patch("/apis/".. apis[4].id, {name = "new-name"}, {["Kong-Admin-Token"] = "bob"})
   end)
 
   it(".delete checks rbac", function()
     delete("/apis/" .. apis[1].id, nil, 401)
     delete("/apis/" .. apis[2].id, nil, 401)
-    delete("/apis/" .. apis[1].id, {["Kong-RBAC-Token"] = "bob"}, 404)
-    delete("/apis/" .. apis[2].id, {["Kong-RBAC-Token"] = "bob"}, 404)
-    delete("/apis/" .. apis[3].id, {["Kong-RBAC-Token"] = "bob"}, 204)
+    delete("/apis/" .. apis[1].id, {["Kong-Admin-Token"] = "bob"}, 404)
+    delete("/apis/" .. apis[2].id, {["Kong-Admin-Token"] = "bob"}, 404)
+    delete("/apis/" .. apis[3].id, {["Kong-Admin-Token"] = "bob"}, 204)
   end)
 end)
 
