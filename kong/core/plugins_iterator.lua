@@ -22,7 +22,7 @@ local function load_plugin_into_memory(route_id,
            api_id = api_id,
   }, true)
   if err then
-    error(err)
+    error(tostring(err))
   end
 
   if #rows > 0 then
