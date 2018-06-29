@@ -4,6 +4,7 @@ local DAOFactory = require "kong.dao.factory"
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
+local singletons = require "kong.singletons"
 
 
 local function it_content_types(title, fn)
@@ -27,6 +28,8 @@ describe("Admin API: #" .. kong_config.database, function()
   setup(function()
     dao = assert(DAOFactory.new(kong_config))
     assert(dao:run_migrations())
+
+    singletons.dao = dao
 
     assert(helpers.start_kong({
       database = kong_config.database
