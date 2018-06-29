@@ -184,13 +184,24 @@ end
 
 
 local function bitfield_check(map, key, bit)
-  -- authorize wildcard
-  if map["*"] and band(map["*"], bit) == bit then
-    return true
+  local keys = {
+    key, -- exact match has priority
+    "*", -- wildcard
+  }
+
+  for _, key in ipairs(keys) do
+    -- first, verify negative permissions
+    if map[key] and band(rshift(map[key], 4), bit) == bit then
+      return false
+    end
+
+    -- then, positive permissions
+    if map[key] and band(map[key], bit) == bit then
+      return true
+    end
   end
 
-  -- authorize entity id
-  return map[key] and band(map[key], bit) == bit or false
+  return false
 end
 
 
