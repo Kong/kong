@@ -2,6 +2,7 @@
 
 - Fix `ngx.ctx.authenticated_credential` was set when we didn't actually find
   a value with `config.credential_claim`
+- Add check to `consumer.status` and return forbidden if consumer is unapproved
 
 ## v0.1.8
 
