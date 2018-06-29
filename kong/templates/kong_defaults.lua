@@ -7,7 +7,6 @@ admin_access_log = logs/admin_access.log
 admin_error_log = logs/error.log
 custom_plugins = NONE
 anonymous_reports = on
-rbac = off
 enforce_rbac = off
 rbac_auth_header = Kong-Admin-Token
 vitals = off
