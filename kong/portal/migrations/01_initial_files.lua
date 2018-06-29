@@ -2267,7 +2267,7 @@ footer#footer {
       transition: all 300ms ease; }
       .sidebar-list ul li a {
         color: inherit;
-        transition: all 300ms ease; }
+        transition: font-weight 300ms ease; }
         .sidebar-list ul li a:hover {
           font-weight: 500; }
       .sidebar-list ul li.list-title {
@@ -2303,8 +2303,7 @@ footer#footer {
           border-left: 5px solid black; }
       .sidebar-list ul li .submenu-items {
         max-height: 0;
-        overflow: hidden;
-        transition: all 300ms ease; }
+        overflow: hidden; }
         .sidebar-list ul li .submenu-items a {
           display: block;
           font-size: 14px;
