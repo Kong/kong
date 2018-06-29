@@ -134,7 +134,7 @@ local CONF_INFERENCES = {
   lua_ssl_verify_depth = {typ = "number"},
   lua_socket_pool_size = {typ = "number"},
 
-  rbac = {enum = {"on", "off", "endpoint", "entity"}},
+  enforce_rbac = {enum = {"on", "off", "endpoint", "entity"}},
   rbac_auth_header = {typ = "string"},
 
   vitals = {typ = "boolean"},
@@ -782,10 +782,14 @@ local function load(path, custom_conf)
   -- TODO CE would probably benefit from some helpers - eg, see
   -- kong.enterprise_edition.select_listener
   local ssl_on = (table.concat(conf.admin_listen, ",") .. " "):find("%sssl[%s,]")
-  if conf.rbac ~= "off" and not ssl_on then
+  if conf.enforce_rbac ~= "off" and not ssl_on then
     log.warn("RBAC authorization is enabled but Admin API calls will not be " ..
       "encrypted via SSL")
   end
+
+  -- preserve user-facing name `enforce_rbac` but use
+  -- `rbac` in code to minimize changes
+  conf.rbac = conf.enforce_rbac
 
   -- attach prefix files paths
   for property, t_path in pairs(PREFIX_PATHS) do

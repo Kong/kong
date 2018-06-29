@@ -17,7 +17,6 @@ for _, strategy in helpers.each_strategy() do
 
       assert(helpers.start_kong({
         database = strategy,
-        rbac = "endpoint",
       }))
 
       ee_helpers.register_rbac_resources(dao)

@@ -532,7 +532,7 @@
                                  # connection pool associated with every remote
                                  # server.
 
-#rbac = off                      # Specifies whether Admin API RBAC is enforced;
+#enforce_rbac = off              # Specifies whether Admin API RBAC is enforced;
                                  # accepts one of 'endpoint', 'entity', 'on', or
                                  # 'off'. When 'endpoint' is passed, only
                                  # endpoint-level authorization is enforced;
