@@ -1906,7 +1906,9 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         assert.res_status(204, res)
         -- TODO review dao calls in this file - workspaces/rbac
         -- dao integration has rough edges
-        assert.same(1, dao.rbac_role_entities:count())
+        --
+        -- 2 due to the new super-admin default * entity permission
+        assert.same(2, dao.rbac_role_entities:count())
       end)
 
       it("removes / endpoint association", function()
@@ -1918,7 +1920,9 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         assert.res_status(204, res)
         -- TODO review dao calls in this file - workspaces/rbac
         -- dao integration has rough edges
-        assert.same(1, dao.rbac_role_entities:count())
+        --
+        -- 2 due to the new super-admin default * entity permission
+        assert.same(2, dao.rbac_role_entities:count())
       end)
     end)
   end)
