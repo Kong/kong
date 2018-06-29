@@ -1,3 +1,8 @@
+## vNext (Upcoming v0.1.9)
+
+- Fix `ngx.ctx.authenticated_credential` was set when we didn't actually find
+  a value with `config.credential_claim`
+
 ## v0.1.8
 
 - Change `config_consumer_claim` from `string` to `array`
