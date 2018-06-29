@@ -2032,7 +2032,11 @@ function OICHandler:access(conf)
         end
       end
 
-      if type(credential_value) == "table" then
+
+      if credential_value == nil then
+        log("credential claim was not found")
+
+      elseif type(credential_value) == "table" then
         log("credential claim is invalid")
 
       else
