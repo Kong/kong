@@ -8,7 +8,6 @@ local cjson      = require "cjson"
 local tablex     = require "pl.tablex"
 
 local band   = bit.band
-local bxor   = bit.bxor
 local bor    = bit.bor
 local fmt    = string.format
 local lshift = bit.lshift

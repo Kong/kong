@@ -345,6 +345,7 @@ return {
 
       local entity_type = "wildcard"
       if self.params.entity_id ~= "*" then
+        local _, err
         entity_type, _, err = workspaces.resolve_entity_type(self.params.entity_id)
         -- database error
         if entity_type == nil then
