@@ -4,7 +4,6 @@ local responses    = require "kong.tools.responses"
 local kong         = kong
 local setmetatable = setmetatable
 local ipairs       = ipairs
-local error        = error
 
 
 -- Loads a plugin config from the datastore.
@@ -22,7 +21,7 @@ local function load_plugin_into_memory(route_id,
            api_id = api_id,
   }
   if err then
-    error(tostring(err))
+    return nil, tostring(err)
   end
 
   if #rows > 0 then
