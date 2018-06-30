@@ -382,6 +382,14 @@ function DAO:insert(entity)
     return nil, err, err_t
   end
 
+  -- if entity was created, insert it in the user's default role
+  if workspaceable[self.schema.name] then
+    local _, err = rbac.add_default_role_entity_permission(row.id, self.schema.name)
+    if err then
+      return nil, "failed to add entity permissions to current user"
+    end
+  end
+
   if not err and workspace then
     local err_rel = workspaces.add_entity_relation(self.schema.name, row, workspace)
     if err_rel then

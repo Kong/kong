@@ -446,13 +446,21 @@ describe("Admin API RBAC with " .. kong_config.database, function()
       it("lists roles", function()
         local res = assert(client:send {
           method = "GET",
+          path = "/rbac/users",
+        })
+
+        local users_body = assert.res_status(200, res)
+        local users_json = cjson.decode(users_body)
+
+        local res = assert(client:send {
+          method = "GET",
           path = "/rbac/roles",
         })
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.equals(6, #json.data)
+        assert.equals(#users_json.data + 6, #json.data)
       end)
     end)
   end)
@@ -533,13 +541,21 @@ describe("Admin API RBAC with " .. kong_config.database, function()
 
         res = assert(client:send {
           method = "GET",
+          path = "/rbac/users",
+        })
+
+        local user_body = assert.res_status(200, res)
+        local user_json = cjson.decode(user_body)
+
+        res = assert(client:send {
+          method = "GET",
           path = "/rbac/roles",
         })
 
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.equals(5, #json.data)
+        assert.equals(#user_json.data + 5, #json.data)
 
         for i = 1, #json.data do
           assert.not_equals("foo", json.data[i].name)
@@ -565,8 +581,10 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         local body = assert.res_status(201, res)
         local json = cjson.decode(body)
 
-        assert.same(1, #json.roles)
-        assert.same("read-only", json.roles[1].name)
+        -- user has one 'default' role, plus others he's added to
+        assert.same(2, #json.roles)
+        assert.same("bob", json.roles[1].name)
+        assert.same("read-only", json.roles[2].name)
         assert.same("bob", json.user.name)
       end)
 
@@ -585,7 +603,8 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         local body = assert.res_status(201, res)
         local json = cjson.decode(body)
 
-        assert.same(2, #json.roles)
+        -- user has one 'default' role, plus others he's added to
+        assert.same(3, #json.roles)
       end)
 
       describe("errors", function()
@@ -672,8 +691,10 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.same(1, #json.roles)
-        assert.same("read-only", json.roles[1].name)
+        -- user has one 'default' role and another he was just added to
+        assert.same(2, #json.roles)
+        assert.same("bob", json.roles[1].name)
+        assert.same("read-only", json.roles[2].name)
         assert.same("bob", json.user.name)
 
         res = assert(client:send {
@@ -684,7 +705,8 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.same(2, #json.roles)
+        -- user has one 'default' role, plus others he's added to
+        assert.same(3, #json.roles)
         assert.same("jerry", json.user.name)
       end)
     end)
@@ -712,7 +734,8 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.same(0, #json.roles)
+        -- every user has at least 1 role
+        assert.same(1, #json.roles)
         assert.same("bob", json.user.name)
       end)
 
@@ -738,8 +761,10 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.same(1, #json.roles)
-        assert.same("admin", json.roles[1].name)
+        -- user has one 'default' role and another he was just added to
+        assert.same(2, #json.roles)
+        assert.same("jerry", json.roles[1].name)
+        assert.same("admin", json.roles[2].name)
         assert.same("jerry", json.user.name)
       end)
 
@@ -922,7 +947,8 @@ describe("Admin API RBAC with " .. kong_config.database, function()
       local body = assert.res_status(201, res)
       local json = cjson.decode(body)
 
-      assert.equals(1, #json.roles)
+      -- user has one 'default' role and another he was just added to
+      assert.equals(2, #json.roles)
       assert.equals("bob", json.user.name)
 
       res = assert(client:send {
@@ -962,7 +988,8 @@ describe("Admin API RBAC with " .. kong_config.database, function()
       local body = assert.res_status(201, res)
       local json = cjson.decode(body)
 
-      assert.equals(1, #json.roles)
+      -- user has one 'default' role and another he was just added to
+      assert.equals(2, #json.roles)
       assert.equals("jerry", json.user.name)
 
       res = assert(client:send {
@@ -1002,7 +1029,8 @@ describe("Admin API RBAC with " .. kong_config.database, function()
       local body = assert.res_status(201, res)
       local json = cjson.decode(body)
 
-      assert.equals(1, #json.roles)
+      -- user has one 'default' role and another he was just added to
+      assert.equals(2, #json.roles)
       assert.equals("alice", json.user.name)
 
       res = assert(client:send {
@@ -1046,7 +1074,8 @@ describe("Admin API RBAC with " .. kong_config.database, function()
       local body = assert.res_status(201, res)
       local json = cjson.decode(body)
 
-      assert.equals(1, #json.roles)
+      -- user has one 'default' role and another he was just added to
+      assert.equals(2, #json.roles)
       assert.equals("herb", json.user.name)
 
       res = assert(client:send {

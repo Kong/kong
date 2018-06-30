@@ -2,6 +2,7 @@ local spec_helpers = require "spec.helpers"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local utils       = require "kong.tools.utils"
 local singletons  = require "kong.singletons"
+local bit = require "bit"
 
 
 local rbac
@@ -29,6 +30,15 @@ describe("(#" .. kong_conf.database .. ")", function()
     setup(function()
       math.randomseed(ngx.now())
       iterations = math.random(4, MAX_ITERATIONS)
+    end)
+
+    describe(".bitfield_all_actions", function()
+      local all_actions = rbac.bitfield_all_actions
+      for perm_name, perm_bit in pairs(rbac.actions_bitfields) do
+        it("has '" .. perm_name .. "' permissions", function()
+          assert.equals(perm_bit, bit.band(perm_bit, all_actions))
+        end)
+      end
     end)
 
     describe(".resolve_workspace_entities", function()

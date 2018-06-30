@@ -94,26 +94,53 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
       helpers.with_current_ws(
         ws,
         function()
+          local user, role
+
           rbac_migrations_defaults.up(nil, nil, dao)
           -- a few extra mock entities for our test
-          dao.rbac_users:insert({
+          user = dao.rbac_users:insert({
               name = "alice",
               user_token = "alice",
           })
+          -- create the default role
+          role = dao.rbac_roles:insert({
+            name = "alice",
+          })
+          dao.rbac_user_roles:insert({
+            user_id = user.id,
+            role_id = role.id,
+          })
+
           dao.rbac_roles:insert({
               name = "foo",
           })
 
           -- this is bob
-          dao.rbac_users:insert({
+          user = dao.rbac_users:insert({
               name = "bob",
               user_token = "bob",
           })
+          role = dao.rbac_roles:insert({
+            name = "bob",
+          })
+          dao.rbac_user_roles:insert({
+            user_id = user.id,
+            role_id = role.id,
+          })
+
 
           local god = dao.rbac_users:insert({
               name = "god",
               user_token = "god",
           })
+          role = dao.rbac_roles:insert({
+            name = "god",
+          })
+          dao.rbac_user_roles:insert({
+            user_id = god.id,
+            role_id = role.id,
+          })
+
 
           local superadmin = dao.rbac_roles:find_all({name = "super-admin"})[1]
           dao.rbac_user_roles:insert({

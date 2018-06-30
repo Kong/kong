@@ -44,6 +44,13 @@ local bitfield_action = {
 }
 
 
+local bitfield_all_actions = 0x0
+for k in pairs(actions_bitfields) do
+  bitfield_all_actions = bor(bitfield_all_actions, actions_bitfields[k])
+end
+_M.bitfield_all_actions = bitfield_all_actions
+
+
 local figure_action
 local readable_action
 do
@@ -380,6 +387,29 @@ local function is_admin_api_request()
 end
 
 
+-- add default role-entity permission: adds an entity to the
+-- current user's default role; as the owner of the entity,
+-- the user is allowed to perform any action
+local function add_default_role_entity_permission(entity_id, entity_type)
+
+  if is_system_table(entity_type) or not is_admin_api_request()
+    or not ngx.ctx.rbac then
+    return true
+  end
+
+  local role_id = ngx.ctx.rbac.default_role.id
+
+  return singletons.dao.rbac_role_entities:insert({
+    role_id = role_id,
+    entity_id = entity_id,
+    entity_type = entity_type,
+    actions = bitfield_all_actions,
+    negative = false,
+  })
+end
+_M.add_default_role_entity_permission = add_default_role_entity_permission
+
+
 function _M.narrow_readable_entities(db_table_name, entities, constraints)
   local filtered_rows = {}
   setmetatable(filtered_rows, getmetatable(entities))
@@ -657,6 +687,15 @@ function _M.load_rbac_ctx(dao_factory)
     return nil, err
   end
 
+  local default_role
+  -- retrieve default role
+  for _, role in ipairs(roles) do
+    if role.name == user.name then
+      default_role = role
+      break
+    end
+  end
+
   local action, err = figure_action(http_method)
   if err then
     return nil, err
@@ -675,6 +714,7 @@ function _M.load_rbac_ctx(dao_factory)
   local rbac_ctx = {
     user = user,
     roles = roles,
+    default_role = default_role,
     action = action,
     entities_perms = entities_perms,
     endpoints_perms = endpoints_perms,

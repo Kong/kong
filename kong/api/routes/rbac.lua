@@ -97,8 +97,31 @@ return {
       crud.paginated_set(self, dao_factory.rbac_users)
     end,
 
-    POST = function(self, dao_factory)
-      crud.post(self.params, dao_factory.rbac_users)
+    POST = function(self, dao_factory, helpers)
+      -- create a user
+      local user, err = dao_factory.rbac_users:insert(self.params)
+      if err then
+        return helpers.yield_error(err)
+      end
+
+      -- create the default role for the user
+      local role, err = dao_factory.rbac_roles:insert({
+        name = user.name,
+      })
+      if err then
+        return helpers.yield_error(err)
+      end
+
+      -- create the association
+      local _, err = dao_factory.rbac_user_roles:insert({
+        user_id = user.id,
+        role_id = role.id,
+      })
+      if err then
+        return helpers.yield_error(err)
+      end
+
+      return helpers.responses.send_HTTP_CREATED(user)
     end,
 
     PUT = function(self, dao_factory)
@@ -128,12 +151,23 @@ return {
         return helpers.yield_error(err)
       end
 
+      local default_role
+
       for i = 1, #roles do
         dao_factory.rbac_user_roles:delete({
           user_id = self.rbac_user.id,
           role_id = roles[i].id,
         })
+
+        if roles[i].name == self.rbac_user.name then
+          default_role = roles[i]
+        end
       end
+
+      dao_factory.rbac_roles:delete({
+        id = default_role.id,
+        name = default_role.name,
+      })
 
       crud.delete(self.rbac_user, dao_factory.rbac_users)
     end,
