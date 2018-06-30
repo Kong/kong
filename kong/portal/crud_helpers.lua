@@ -34,7 +34,7 @@ function _M.update_credential(credential)
   local _, err = singletons.dao.credentials:update(params, {
       id = credential.id,
       consumer_id = credential.consumer_id
-  })
+  }, {__skip_rbac = true})
 
   if err then
     return app_helpers.yield_error(err)
@@ -49,7 +49,7 @@ function _M.delete_credential(credential)
     ngx.log(ngx.DEBUG, "Failed to delete credential from credentials")
   end
 
-  local _, err = singletons.dao.credentials:delete({ id = credential.id })
+  local _, err = singletons.dao.credentials:delete({ id = credential.id }, {__skip_rbac = true})
   if err then
     return app_helpers.yield_error(err)
   end

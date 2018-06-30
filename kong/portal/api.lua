@@ -40,7 +40,7 @@ local function validate_consumer_vitals(self, dao_factory, helpers)
   self.params.consumer_id = consumer_id
   self.params.username_or_id = ngx.unescape_uri(self.params.consumer_id)
 
-  crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
+  crud.find_consumer_by_username_or_id(self, dao_factory, helpers, {__skip_rbac = true})
 end
 
 
@@ -68,12 +68,12 @@ return {
         end
 
         self.params.email_or_id = consumer_id
-        crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
+        crud.find_consumer_by_email_or_id(self, dao_factory, helpers, {__skip_rbac = true})
       end
     end,
 
     GET = function(self, dao_factory, helpers)
-      crud.paginated_set(self, dao_factory.portal_files)
+      crud.paginated_set(self, dao_factory.portal_files, nil, {__skip_rbac = true})
     end,
   },
 
@@ -81,10 +81,10 @@ return {
     -- List all unauthenticated files stored in the portal file system
     GET = function(self, dao_factory, helpers)
       self.params = {
-        auth = false
+        auth = false,
       }
 
-      crud.paginated_set(self, dao_factory.portal_files)
+      crud.paginated_set(self, dao_factory.portal_files, nil, {__skip_rbac = true})
     end,
   },
 
@@ -94,7 +94,7 @@ return {
       local identifier = self.params.splat
 
       -- Find a file by id or field "name"
-      local rows, err = crud.find_by_id_or_field(dao, {}, identifier, "name")
+      local rows, err = crud.find_by_id_or_field(dao, {__skip_rbac = true}, identifier, "name")
       if err then
         return helpers.yield_error(err)
       end
@@ -207,7 +207,7 @@ return {
       end
 
       self.params.email_or_id = consumer_id
-      crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
+      crud.find_consumer_by_email_or_id(self, dao_factory, helpers, {__skip_rbac = true})
     end,
 
     GET = function(self, dao_factory, helpers)
@@ -253,7 +253,7 @@ return {
       end
 
       self.params.email_or_id = consumer_id
-      crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
+      crud.find_consumer_by_email_or_id(self, dao_factory, helpers, {__skip_rbac = true})
     end,
 
     GET = function(self, dao_factory, helpers)
@@ -285,7 +285,8 @@ return {
       self.params.consumer_id = consumer_id
       self.params.email_or_id = self.params.consumer_id
 
-      crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
+      crud.find_consumer_by_email_or_id(self, dao_factory, helpers,
+                                                         {__skip_rbac = true})
     end,
 
     PATCH = function(self, dao_factory, helpers)
@@ -294,9 +295,8 @@ return {
                                                   "credential id is required")
       end
 
-      crud.patch(self.params, self.collection, {
-        id = self.params.id
-      })
+      crud.patch(self.params, self.collection, {id = self.params.id}, nil,
+                                                         {__skip_rbac = true})
     end,
 
     POST = function(self, dao_factory)
@@ -330,13 +330,15 @@ return {
       self.params.consumer_id = consumer_id
       self.params.email_or_id = consumer_id
 
-      crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
+      crud.find_consumer_by_email_or_id(self, dao_factory, helpers,
+                                                         {__skip_rbac = true})
     end,
 
     GET = function(self, dao_factory, helpers)
       self.params.consumer_type = enums.CONSUMERS.TYPE.PROXY
       self.params.plugin = auth_plugins[self.plugin].name
-      crud.paginated_set(self, dao_factory.credentials)
+      crud.paginated_set(self, dao_factory.credentials, nil,
+                                                         {__skip_rbac = true})
     end,
 
     POST = function(self, dao_factory, helpers)
@@ -351,7 +353,7 @@ return {
       end
 
       crud.patch(self.params, self.collection, { id = self.params.id },
-                 crud.portal_crud.update_credential)
+                 crud.portal_crud.update_credential, {__skip_rbac = true})
     end,
   },
 
@@ -380,9 +382,10 @@ return {
       self.params.email_or_id = self.params.consumer_id
       self.params.plugin = nil
 
-      crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
+      crud.find_consumer_by_email_or_id(self, dao_factory, helpers, {__skip_rbac = true})
 
       local credentials, err = self.collection:find_all({
+        __skip_rbac = true,
         consumer_id = consumer_id,
         id = self.params.credential_id
       })
@@ -405,12 +408,12 @@ return {
 
     PATCH = function(self, dao_factory)
       crud.patch(self.params, self.collection, self.credential,
-                 crud.portal_crud.update_credential)
+                 crud.portal_crud.update_credential, {__skip_rbac = true})
     end,
 
     DELETE = function(self, dao_factory)
       crud.portal_crud.delete_credential(self.credential)
-      crud.delete(self.credential, self.collection)
+      crud.delete(self.credential, self.collection, {__skip_rbac = true})
     end,
   },
 

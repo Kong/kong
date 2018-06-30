@@ -404,7 +404,8 @@ end
 -- @param page_size Size of the page to retrieve (number of rows).
 -- @treturn table rows An array of rows.
 -- @treturn table err If an error occured, a table describing the issue.
-function DAO:find_page(tbl, page_offset, page_size)
+function DAO:find_page(tbl, page_offset, page_size, options)
+  options = options or {}
   local table_name = self.table
   local constraints = workspaceable[table_name]
 
@@ -441,7 +442,9 @@ function DAO:find_page(tbl, page_offset, page_size)
     remove_ws_prefix(self.schema.table, row)
   end
 
-  rows = rbac.narrow_readable_entities(self.schema.table, rows, constraints)
+  if not options.__skip_rbac then
+    rows = rbac.narrow_readable_entities(self.schema.table, rows, constraints)
+  end
 
   return ret_error(self.db.name, rows, err, offset)
 end
@@ -553,7 +556,8 @@ function DAO:update(tbl, filter_keys, options)
   local constraints = workspaceable[self.table]
   -- XXX: rethink the first condition. as maybe adding __skip_rbac is
   -- more fine grained and useful than this shotgun surgery
-  if not rbac.is_system_table(self.table) and
+  if not options.__skip_rbac and
+    not rbac.is_system_table(self.table) and
     not rbac.validate_entity_operation(old, constraints) then
     return ret_error(self.db.name, nil, "[RBAC] Unauthorized entity modification")
   end
@@ -638,7 +642,8 @@ function DAO:delete(tbl, options)
     end
   end
 
-  if not rbac.validate_entity_operation(primary_keys, constraints) or
+  if not options.__skip_rbac and
+    not rbac.validate_entity_operation(primary_keys, constraints) or
     not rbac.check_cascade(associated_entites, ngx.ctx.rbac)  then
     return ret_error(self.db.name, nil, "[RBAC] cascading error")
   end

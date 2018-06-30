@@ -145,8 +145,9 @@ function _M.find_plugin_by_filter(self, dao_factory, filter, helpers)
   end
 end
 
-function _M.find_consumer_by_username_or_id(self, dao_factory, helpers)
-  local rows, err = _M.find_by_id_or_field(dao_factory.consumers, {},
+function _M.find_consumer_by_username_or_id(self, dao_factory, helpers, filter)
+  filter = filter or {}
+  local rows, err = _M.find_by_id_or_field(dao_factory.consumers, filter,
                                            self.params.username_or_id, "username")
 
   if err then
@@ -162,8 +163,9 @@ function _M.find_consumer_by_username_or_id(self, dao_factory, helpers)
   end
 end
 
-function _M.find_consumer_by_email_or_id(self, dao_factory, helpers)
-  local rows, err = _M.find_by_id_or_field(dao_factory.consumers, {},
+function _M.find_consumer_by_email_or_id(self, dao_factory, helpers, filter)
+  filter = filter or {}
+  local rows, err = _M.find_by_id_or_field(dao_factory.consumers, filter,
                                            self.params.email_or_id, "email")
 
   if err then
@@ -178,8 +180,9 @@ function _M.find_consumer_by_email_or_id(self, dao_factory, helpers)
   end
 end
 
-function _M.find_upstream_by_name_or_id(self, dao_factory, helpers)
-  local rows, err = _M.find_by_id_or_field(dao_factory.upstreams, {},
+function _M.find_upstream_by_name_or_id(self, dao_factory, helpers, filter)
+  filter = filter or {}
+  local rows, err = _M.find_by_id_or_field(dao_factory.upstreams, filter,
                                            self.params.upstream_name_or_id, "name")
 
   if err then
@@ -196,8 +199,9 @@ end
 
 -- this function will return the exact target if specified by `id`, or just
 -- 'any target entry' if specified by target (= 'hostname:port')
-function _M.find_target_by_target_or_id(self, dao_factory, helpers)
-  local rows, err = _M.find_by_id_or_field(dao_factory.targets, {},
+function _M.find_target_by_target_or_id(self, dao_factory, helpers, filter)
+  filter = filter or {}
+  local rows, err = _M.find_by_id_or_field(dao_factory.targets, filter,
                                            self.params.target_or_id, "target")
 
   if err then
@@ -214,7 +218,7 @@ function _M.find_target_by_target_or_id(self, dao_factory, helpers)
   end
 end
 
-function _M.paginated_set(self, dao_collection, post_process)
+function _M.paginated_set(self, dao_collection, post_process, options)
   local size   = self.params.size   and tonumber(self.params.size) or 100
   local offset = self.params.offset and decode_base64(self.params.offset)
 
@@ -223,7 +227,7 @@ function _M.paginated_set(self, dao_collection, post_process)
 
   local filter_keys = next(self.params) and self.params
 
-  local rows, err, offset = dao_collection:find_page(filter_keys, offset, size)
+  local rows, err, offset = dao_collection:find_page(filter_keys, offset, size, options)
   if err then
     return app_helpers.yield_error(err)
   end
@@ -286,11 +290,11 @@ end
 
 --- Partial update of an entity.
 -- Filter keys must be given to get the row to update.
-function _M.patch(params, dao_collection, filter_keys, post_process)
+function _M.patch(params, dao_collection, filter_keys, post_process, options)
   if not next(params) then
     return responses.send_HTTP_BAD_REQUEST("empty body")
   end
-  local updated_entity, err = dao_collection:update(params, filter_keys)
+  local updated_entity, err = dao_collection:update(params, filter_keys, options)
   if err then
     return app_helpers.yield_error(err)
   elseif updated_entity == nil then
@@ -332,8 +336,8 @@ end
 
 --- Delete an entity.
 -- The DAO requires to be given a table containing the full primary key of the entity
-function _M.delete(primary_keys, dao_collection)
-  local ok, err = dao_collection:delete(primary_keys)
+function _M.delete(primary_keys, dao_collection, options)
+  local ok, err = dao_collection:delete(primary_keys, options)
   if not ok then
     if err then
       return app_helpers.yield_error(err)
