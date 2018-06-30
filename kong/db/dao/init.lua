@@ -266,7 +266,10 @@ function DAO:select(primary_key, options)
   if not options.skip_rbac then
     local r = rbac.validate_entity_operation(primary_key, constraints)
     if not r then
-      local err_t = self.errors:unauthorized_operation("read")
+      local err_t = self.errors:unauthorized_operation({
+        username = ngx.ctx.rbac.user.name,
+        action = rbac.readable_action(ngx.ctx.rbac.action)
+      })
       return  nil, tostring(err_t), err_t
     end
   end
@@ -448,7 +451,10 @@ function DAO:update(primary_key, entity)
   end
 
   if not rbac.validate_entity_operation(entity_to_update, constraints) then
-    local err_t = self.errors:unauthorized_operation("update")
+    local err_t = self.errors:unauthorized_operation({
+      username = ngx.ctx.rbac.user.name,
+      action = rbac.readable_action(ngx.ctx.rbac.action)
+    })
     return nil, tostring(err_t), err_t
   end
   ws_helper.apply_unique_per_ws(self.schema.name, entity_to_update, constraints)

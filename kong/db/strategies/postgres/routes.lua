@@ -23,8 +23,10 @@ function _Routes_ee:delete(primary_key)
     end
 
     if not rbac.validate_entity_operation(row, constraints) then
-      -- todo return correct error
-      return nil, self.errors:unauthorized_operation("cascading delete")
+      return nil, self.errors:unauthorized_operation({
+        username = ngx.ctx.rbac.user.name,
+        action = rbac.readable_action(ngx.ctx.rbac.action)
+      })
     end
 
     table.insert(plugins, row)
@@ -32,8 +34,10 @@ function _Routes_ee:delete(primary_key)
 
 
   if not rbac.validate_entity_operation(primary_key, constraints) then
-    -- todo return correct error
-    return nil, self.errors:unauthorized_operation("delete")
+    return nil, self.errors:unauthorized_operation({
+      username = ngx.ctx.rbac.user.name,
+      action = rbac.readable_action(ngx.ctx.rbac.action)
+    })
   end
 
   local ok, err_t = self.super.delete(self, primary_key)

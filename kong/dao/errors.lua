@@ -30,7 +30,8 @@ local ERRORS = {
   unique = "unique",
   foreign = "foreign",
   schema = "schema",
-  db = "db"
+  db = "db",
+  forbidden = "forbidden",
 }
 
 local serializers = {
@@ -54,7 +55,15 @@ local serializers = {
       ret[k] = "does not exist with value '" .. v .. "'"
     end
     return ret
+  end,
+  [ERRORS.forbidden] = function(tbl)
+    local err = fmt("%s, you do not have permissions to %s this resource",
+                    tbl.username, tbl.action)
+    return {
+      message = err
+    }
   end
+
 }
 
 local function build_error(err_type)

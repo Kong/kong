@@ -344,7 +344,10 @@ function DAO:find(tbl)
 
   local r = rbac.validate_entity_operation(primary_keys, constraints)
   if not r then
-    ret_error(self.db.name, nil, "[RBAC] Unauthorized find")
+    ret_error(self.db.name, nil, Errors.forbidden({
+      username = ngx.ctx.rbac.user.name,
+      action = rbac.readable_action(ngx.ctx.rbac.action)
+    }))
   end
 
   local row, err = self.db:find(self.table, self.schema, primary_keys)
@@ -568,7 +571,10 @@ function DAO:update(tbl, filter_keys, options)
   if not options.__skip_rbac and
     not rbac.is_system_table(self.table) and
     not rbac.validate_entity_operation(old, constraints) then
-    return ret_error(self.db.name, nil, "[RBAC] Unauthorized entity modification")
+    return ret_error(self.db.name, nil, Errors.forbidden({
+      username = ngx.ctx.rbac.user.name,
+      action = rbac.readable_action(ngx.ctx.rbac.action)
+    }))
   end
 
   if not options.full then
@@ -654,7 +660,10 @@ function DAO:delete(tbl, options)
   if not options.__skip_rbac and
     not rbac.validate_entity_operation(primary_keys, constraints) or
     not rbac.check_cascade(associated_entites, ngx.ctx.rbac)  then
-    return ret_error(self.db.name, nil, "[RBAC] cascading error")
+    return ret_error(self.db.name, nil, Errors.forbidden({
+      username = ngx.ctx.rbac.user.name,
+      action = rbac.readable_action(ngx.ctx.rbac.action)
+    }))
   end
 
   local row, err = self.db:delete(self.table, self.schema, primary_keys, self.constraints)

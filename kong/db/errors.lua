@@ -327,12 +327,13 @@ function _M:database_error(err)
 end
 
 
-function _M:unauthorized_operation(operation)
-  if type(operation) ~= "string" then
-    error("operation must be a string", 2)
+function _M:unauthorized_operation(rbac_ctx)
+  if type(rbac_ctx) ~= "table" then
+    error("User and Action must be provided", 2)
   end
 
-  local message = fmt("unauthorized operation : %s", operation)
+  local message = fmt("%s, you do not have permissions to %s this resource",
+                  rbac_ctx.username, rbac_ctx.action)
 
   return new_err_t(self, ERRORS.RBAC_ERROR, message)
 end

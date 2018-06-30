@@ -291,14 +291,17 @@ describe("DB Errors", function()
       end)
 
       describe("RBAC_ERROR", function()
-        local err_t = e:unauthorized_operation("some_operation")
+        local err_t = e:unauthorized_operation({
+          username = "alice",
+          action = "read"
+        })
 
         it("creates", function()
           assert.same({
             code = Errors.codes.RBAC_ERROR,
             name = "unauthorized access",
             strategy = "some_strategy",
-            message = "unauthorized operation : some_operation",
+            message = "alice, you do not have permissions to read this resource",
           }, err_t)
 
           local s = fmt("[%s] %s", err_t.strategy, err_t.message)

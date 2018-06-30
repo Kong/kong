@@ -182,7 +182,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
           ["Content-Type"]     = "application/json",
         },
       })
-      assert.res_status(401, res)
+      assert.res_status(403, res)
 
       res = assert(admin_client_2:send {
         method = "GET",
@@ -192,7 +192,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
           ["Content-Type"]     = "application/json",
         },
       })
-      assert.res_status(401, res)
+      assert.res_status(403, res)
 
       -- give bob read-only access
       local admin_res = assert(admin_client_1:send {
@@ -250,7 +250,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
           upstream_url = "http://httpbin.org",
         },
       })
-      assert.res_status(401, res)
+      assert.res_status(403, res)
 
       res = assert(admin_client_2:send {
         method = "POST",
@@ -265,7 +265,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
           upstream_url = "http://httpbin.org",
         },
       })
-      assert.res_status(401, res)
+      assert.res_status(403, res)
 
       -- give bob read-write access
       local admin_res = assert(admin_client_1:send {
@@ -348,7 +348,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
           upstream_url = "http://httpbin.org",
         },
       })
-      assert.res_status(401, res_1)
+      assert.res_status(403, res_1)
 
       wait_for_propagation()
 
@@ -365,7 +365,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
           upstream_url = "http://httpbin.org",
         },
       })
-      assert.res_status(401, res_2)
+      assert.res_status(403, res_2)
     end)
   end)
 
@@ -488,7 +488,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
           ["Kong-Admin-Token"] = "alice",
         },
       })
-      assert.res_status(401, res_1)
+      assert.res_status(403, res_1)
 
       local res_2 = assert(admin_client_2:send {
         method  = "GET",
@@ -497,7 +497,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
           ["Kong-Admin-Token"] = "alice",
         },
       })
-      assert.res_status(401, res_2)
+      assert.res_status(403, res_2)
 
       res_1 = assert(admin_client_1:send {
         method  = "GET",
@@ -506,7 +506,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
           ["Kong-Admin-Token"] = "alice",
         },
       })
-      assert.res_status(401, res_1)
+      assert.res_status(403, res_1)
 
       res_2 = assert(admin_client_2:send {
         method  = "GET",
@@ -515,7 +515,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
           ["Kong-Admin-Token"] = "alice",
         },
       })
-      assert.res_status(401, res_2)
+      assert.res_status(403, res_2)
 
       res_1 = assert(admin_client_1:send {
         method  = "GET",
@@ -646,7 +646,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
           ["Kong-Admin-Token"] = "alice",
         },
       })
-      assert.res_status(401, res_1)
+      assert.res_status(403, res_1)
 
       wait_for_propagation()
 
@@ -657,7 +657,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
           ["Kong-Admin-Token"] = "alice",
         },
       })
-      assert.res_status(401, res_2)
+      assert.res_status(403, res_2)
     end)
   end)
 end)

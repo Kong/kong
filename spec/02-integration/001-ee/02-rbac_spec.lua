@@ -2156,7 +2156,7 @@ describe("Admin API", function()
       name = "new-name",
       created_at = "123",
       upstream_url = "http://httpbin.org",
-    }, {["Kong-Admin-Token"] = "bob"}, 401)
+    }, {["Kong-Admin-Token"] = "bob"}, 403)
 
     put("/apis/" , {
       id = apis[4].id,

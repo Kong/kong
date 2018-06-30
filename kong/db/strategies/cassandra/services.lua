@@ -87,8 +87,10 @@ local function validate_access(cluster, table_name, service_id, errors, constrai
 
     for i = 1, #rows do
       if not rbac.validate_entity_operation(rows[i], constraints) then
-        -- todo return correct error
-        return nil, errors:unauthorized_operation("cascading delete")
+        return nil, errors:unauthorized_operation({
+          username = ngx.ctx.rbac.user.name,
+          action = rbac.readable_action(ngx.ctx.rbac.action)
+        })
       end
       count = count + 1
       res[count] = rows[i]
@@ -147,8 +149,10 @@ function _Services_ee:delete(primary_key)
   end
 
   if not rbac.validate_entity_operation(primary_key, constraints) then
-    -- todo return correct error
-    return nil, self.errors:unauthorized_operation("delete")
+    return nil, self.errors:unauthorized_operation({
+      username = ngx.ctx.rbac.user.name,
+      action = rbac.readable_action(ngx.ctx.rbac.action)
+    })
   end
 
   -- delete parent, also deletes child entities
