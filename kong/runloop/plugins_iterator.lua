@@ -34,8 +34,6 @@ local function load_plugin_into_memory(route_id,
       end
     end
   end
-  -- insert a cached value to not trigger too many DB queries.
-  return { null = true }  -- works because: `.enabled == nil`
 end
 
 
