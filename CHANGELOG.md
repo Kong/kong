@@ -2,6 +2,7 @@
 
 - [Scheduled](#scheduled)
 - [Released](#released)
+    - [0.14.0rc3](#0140rc3---20180629)
     - [0.14.0rc2](#0140rc2---20180627)
     - [0.14.0rc1](#0140rc1---20180619)
     - [0.13.1](#0131---20180423)
@@ -31,6 +32,26 @@ a detailed changeset of their content.
 
 This section describes publicly available releases and a detailed changeset of
 their content.
+
+## [0.14.0rc3] - 2018/06/29
+
+### Additions
+
+- Serve stale data from the database cache when the datastore cannot be
+  reached. Such stale items are "resurrected".
+  [#3579](https://github.com/Kong/kong/pull/3579)
+- A new `db_resurrect_ttl` configuration property can be set to customize
+  the amount of time stale data can be resurrected for when it cannot be
+  refreshed. Default to 30 seconds.
+  [#3579](https://github.com/Kong/kong/pull/3579)
+
+### Fixes
+
+- Prevent an issue which caused migrations to fail when Cassandra was used
+  with custom CAs.
+  [205fe43](https://github.com/Kong/kong/commit/205fe43bba9de8dfadec7371bba694253ba11e8f)
+
+[Back to TOC](#table-of-contents)
 
 ## [0.14.0rc2] - 2018/06/27
 
@@ -2791,6 +2812,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
+[0.14.0rc3]: https://github.com/Kong/kong/compare/0.14.0rc2...0.14.0rc3
 [0.14.0rc2]: https://github.com/Kong/kong/compare/0.14.0rc1...0.14.0rc2
 [0.14.0rc1]: https://github.com/Kong/kong/compare/0.13.1...0.14.0rc1
 [0.13.1]: https://github.com/Kong/kong/compare/0.13.0...0.13.1
