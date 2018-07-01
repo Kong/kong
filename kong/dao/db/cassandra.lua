@@ -641,7 +641,7 @@ function _M:find_page(table_name, tbl, paging_state, page_size, schema)
       end
     end
 
-    return res_rows, nil, paging_state
+    return res_rows
   end
 
   local query = select_query(table_name, where)
