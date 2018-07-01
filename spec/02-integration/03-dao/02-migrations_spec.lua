@@ -68,6 +68,8 @@ helpers.for_each_dao(function(kong_config)
         end
       end)
       it("should run the migrations with callbacks", function()
+        ngx.ctx.workspaces = {}
+
         local on_migration = spy.new(function() end)
         local on_success = spy.new(function() end)
 
