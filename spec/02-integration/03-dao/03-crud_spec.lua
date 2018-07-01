@@ -342,6 +342,7 @@ helpers.for_each_dao(function(kong_config)
       end)
       teardown(function()
         factory:truncate_tables()
+        ngx.ctx.workspaces = {}
       end)
 
       it("has a default_page size (100)", function()
