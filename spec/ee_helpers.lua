@@ -80,14 +80,6 @@ function _M.register_rbac_resources(dao)
     return err
   end
 
-  local _, err = dao.rbac_roles:insert({
-    id = utils.uuid(),
-    name = "super_gruce",
-  })
-  if err then
-    return nil, err
-  end
-
   local super_user_role, err = dao.rbac_user_roles:insert({
     user_id = super_admin.id,
     role_id = roles.super_admin.id
