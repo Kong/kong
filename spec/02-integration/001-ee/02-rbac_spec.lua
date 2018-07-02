@@ -159,7 +159,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         assert.res_status(200, role)
       end)
 
-      it("#o creates a new user with existing role as default role", function()
+      it("creates a new user with existing role as default role", function()
         local res, body, json
 
         -- create a role with a very-likely-to-colide name
