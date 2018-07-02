@@ -17,7 +17,6 @@ local ipairs        = ipairs
 local json          = codec.json
 local base64        = codec.base64
 local type          = type
-local pcall         = pcall
 local ngx           = ngx
 local null          = ngx.null
 local time          = ngx.time
@@ -26,70 +25,39 @@ local tonumber      = tonumber
 local tostring      = tostring
 
 
-local cache_get, cache_key, cache_invalidate
-do
-  -- TODO: remove this and 0.10.x support
-  local ok, cache = pcall(require, "kong.tools.database_cache")
-  if ok then
-    -- 0.10.x
-    cache_get = function(key, opts, func, ...)
-      local ttl
-      if type(opts) == "table" then
-        ttl = tonumber(opts.ttl)
+local function cache_get(key, opts, func, ...)
+  local options
+  if type(opts) == "number" then
+    options = { ttl = opts }
 
-      else
-        ttl = tonumber(opts)
-      end
+  elseif type(opts) == "table" then
+    options = opts
+  end
 
-      return cache.get_or_set(key, ttl, func, ...)
-    end
+  return singletons.cache:get(key, options, func, ...)
+end
 
-    cache_key = function(key, entity)
-      if not key then
-        return nil
-      end
 
-      if entity then
-        return entity .. ":" .. key
-      end
+local function cache_key(key, entity)
+  if not key then
+    return nil
+  end
 
-      return key
-    end
+  if entity then
+    if singletons.dao[entity] then
+      return singletons.dao[entity]:cache_key(key)
 
-    cache_invalidate = function(key)
-      return cache.delete(key)
-    end
-
-  else
-    -- 0.11.x
-    cache_get = function(key, opts, func, ...)
-      local options
-      if type(opts) == "number" then
-        options = { ttl = opts }
-
-      elseif type(opts) == "table" then
-        options = opts
-      end
-
-      return singletons.cache:get(key, options, func, ...)
-    end
-
-    cache_key = function(key, entity)
-      if not key then
-        return nil
-      end
-
-      if entity then
-        return singletons.dao[entity]:cache_key(key)
-      end
-
-      return key
-    end
-
-    cache_invalidate = function(key)
-      return singletons.cache:invalidate(key)
+    elseif singletons.db[entity] then
+      return singletons.db[entity]:cache_key(key)
     end
   end
+
+  return key
+end
+
+
+local function cache_invalidate(key)
+  return singletons.cache:invalidate(key)
 end
 
 
@@ -808,5 +776,5 @@ return {
   tokens         = tokens,
   token_exchange = token_exchange,
   userinfo       = userinfo,
-  version        = "0.1.8",
+  version        = "0.1.9",
 }

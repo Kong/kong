@@ -1,8 +1,9 @@
-## vNext (Upcoming v0.1.9)
+## v0.1.9
 
 - Fix `ngx.ctx.authenticated_credential` was set when we didn't actually find
   a value with `config.credential_claim`
 - Add check to `consumer.status` and return forbidden if consumer is unapproved
+- Drop support for Kong distributions based on CE 0.10.x (or older)
 
 ## v0.1.8
 
