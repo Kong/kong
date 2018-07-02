@@ -394,7 +394,7 @@ function _M.create_default_role(user)
     name = user.name,
   })
   if not role then
-    return err
+    return nil, err
   end
 
   -- create the association
@@ -403,8 +403,10 @@ function _M.create_default_role(user)
     role_id = role.id,
   })
   if not res then
-    return err
+    return nil, err
   end
+
+  return true
 end
 
 
