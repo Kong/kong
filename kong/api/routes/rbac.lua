@@ -141,10 +141,13 @@ return {
         end
       end
 
-      dao_factory.rbac_roles:delete({
-        id = default_role.id,
-        name = default_role.name,
-      })
+      if default_role then
+        local _, err = rbac.remove_user_from_default_role(self.rbac_user,
+                                                          default_role)
+        if err then
+          helpers.yield_error(err)
+        end
+      end
 
       crud.delete(self.rbac_user, dao_factory.rbac_users)
     end,

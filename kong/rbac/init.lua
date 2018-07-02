@@ -462,16 +462,18 @@ end
 -- current user's default role; as the owner of the entity,
 -- the user is allowed to perform any action
 local function add_default_role_entity_permission(entity_id, entity_type)
-
   if is_system_table(entity_type) or not is_admin_api_request()
     or not ngx.ctx.rbac then
     return true
   end
 
-  local role_id = ngx.ctx.rbac.default_role.id
+  local default_role = ngx.ctx.rbac.default_role
+  if not default_role then
+    return true
+  end
 
   return singletons.dao.rbac_role_entities:insert({
-    role_id = role_id,
+    role_id = default_role.id,
     entity_id = entity_id,
     entity_type = entity_type,
     actions = bitfield_all_actions,
