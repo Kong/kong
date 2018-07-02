@@ -159,6 +159,150 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         assert.res_status(200, role)
       end)
 
+      it("#o creates a new user with existing role as default role", function()
+        local res, body, json
+
+        -- create a role with a very-likely-to-colide name
+        res = assert(client:send {
+          method = "POST",
+          path = "/rbac/roles",
+          body = {
+            name = "rbacy",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local role = assert.res_status(201, res)
+
+        -- create a user with this same very-likely-to-colide name
+        res = assert(client:send {
+          method = "POST",
+          path = "/rbac/users",
+          body = {
+            name = "rbacy",
+            user_token = "rbacelicius",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local user = assert.res_status(201, res)
+
+        -- make sure the user is in fact in that role!
+        res = assert(client:send {
+          method = "GET",
+          path = "/rbac/users/rbacy/roles",
+        })
+
+        local roles = assert.res_status(200, res)
+        local roles_json = cjson.decode(roles)
+
+        assert(1, #roles_json.roles)
+        assert.equal("rbacy", roles_json.roles[1].name)
+
+        -- cleanup
+        res = assert(client:send {
+          method = "DELETE",
+          path = "/rbac/users/rbacy",
+        })
+        assert.res_status(204, res)
+
+        -- role is gone too!
+        res = assert(client:send {
+          method = "GET",
+          path = "/rbac/roles/rbacy",
+        })
+        assert.res_status(404, res)
+      end)
+
+      it("doesn't delete default role if it is shared", function()
+        local res, body, json
+
+        -- create a user with some very-likely-to-colide name
+        res = assert(client:send {
+          method = "POST",
+          path = "/rbac/users",
+          body = {
+            name = "rbacy",
+            user_token = "rbacelicius",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        local user = assert.res_status(201, res)
+
+        -- make sure the user is in fact in that role!
+        res = assert(client:send {
+          method = "GET",
+          path = "/rbac/users/rbacy/roles",
+        })
+        local roles = assert.res_status(200, res)
+        local roles_json = cjson.decode(roles)
+
+        assert(1, #roles_json.roles)
+        assert.equal("rbacy", roles_json.roles[1].name)
+
+        -- now, add another user to this role!
+        res = assert(client:send {
+          method = "POST",
+          path = "/rbac/users",
+          body = {
+            name = "yarbacy",
+            user_token = "yarbacelicius",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local user = assert.res_status(201, res)
+
+        -- yarbacy is rbacy too
+        res = assert(client:send {
+          method = "POST",
+          path = "/rbac/users/yarbacy/roles",
+          body = {
+            roles = "rbacy",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local user = assert.res_status(201, res)
+
+        -- delete the rbacy...
+        res = assert(client:send {
+          method = "DELETE",
+          path = "/rbac/users/rbacy",
+        })
+        assert.res_status(204, res)
+
+        -- and check its rbacy role is still here, as yarbacy is
+        -- still in rbacy role and would hate to lose its role
+        res = assert(client:send {
+          method = "GET",
+          path = "/rbac/roles/rbacy",
+        })
+        assert.res_status(200, res)
+
+        -- cleanup
+        res = assert(client:send {
+          method = "DELETE",
+          path = "/rbac/users/yarbacy",
+        })
+        assert.res_status(204, res)
+        res = assert(client:send {
+          method = "DELETE",
+          path = "/rbac/roles/rbacy",
+        })
+        assert.res_status(204, res)
+      end)
+
       it("creates a new user with non-default options", function()
         local res = assert(client:send {
           method = "POST",
