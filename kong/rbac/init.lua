@@ -386,6 +386,28 @@ local function is_admin_api_request()
 end
 
 
+-- helper: create default role and the corresponding user-role association
+-- user: the rbac user entity
+function _M.create_default_role(user)
+  -- create the default role for the user
+  local role, err = singletons.dao.rbac_roles:insert({
+    name = user.name,
+  })
+  if not role then
+    return err
+  end
+
+  -- create the association
+  local res, err = singletons.dao.rbac_user_roles:insert({
+    user_id = user.id,
+    role_id = role.id,
+  })
+  if not res then
+    return err
+  end
+end
+
+
 -- add default role-entity permission: adds an entity to the
 -- current user's default role; as the owner of the entity,
 -- the user is allowed to perform any action

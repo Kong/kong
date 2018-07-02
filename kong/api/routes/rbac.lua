@@ -98,30 +98,7 @@ return {
     end,
 
     POST = function(self, dao_factory, helpers)
-      -- create a user
-      local user, err = dao_factory.rbac_users:insert(self.params)
-      if err then
-        return helpers.yield_error(err)
-      end
-
-      -- create the default role for the user
-      local role, err = dao_factory.rbac_roles:insert({
-        name = user.name,
-      })
-      if err then
-        return helpers.yield_error(err)
-      end
-
-      -- create the association
-      local _, err = dao_factory.rbac_user_roles:insert({
-        user_id = user.id,
-        role_id = role.id,
-      })
-      if err then
-        return helpers.yield_error(err)
-      end
-
-      return helpers.responses.send_HTTP_CREATED(user)
+      crud.post(self.params, dao_factory.rbac_users)
     end,
 
     PUT = function(self, dao_factory)
