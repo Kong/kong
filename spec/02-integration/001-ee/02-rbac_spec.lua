@@ -744,8 +744,9 @@ describe("Admin API RBAC with " .. kong_config.database, function()
 
         -- user has one 'default' role, plus others he's added to
         assert.same(2, #json.roles)
-        assert.same("bob", json.roles[1].name)
-        assert.same("read-only", json.roles[2].name)
+        local names = map(function(x) return x.name end , json.roles)
+        assert.contains("bob", names)
+        assert.contains("read-only", names)
         assert.same("bob", json.user.name)
       end)
 
@@ -854,8 +855,9 @@ describe("Admin API RBAC with " .. kong_config.database, function()
 
         -- user has one 'default' role and another he was just added to
         assert.same(2, #json.roles)
-        assert.same("bob", json.roles[1].name)
-        assert.same("read-only", json.roles[2].name)
+        local names = map(function(x) return x.name end , json.roles)
+        assert.contains("bob", names)
+        assert.contains("read-only", names)
         assert.same("bob", json.user.name)
 
         res = assert(client:send {
@@ -924,8 +926,9 @@ describe("Admin API RBAC with " .. kong_config.database, function()
 
         -- user has one 'default' role and another he was just added to
         assert.same(2, #json.roles)
-        assert.same("jerry", json.roles[1].name)
-        assert.same("admin", json.roles[2].name)
+        local names = map(function(x) return x.name end, json.roles)
+        assert.contains("admin", names)
+        assert.contains("jerry", names)
         assert.same("jerry", json.user.name)
       end)
 
