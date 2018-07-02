@@ -423,6 +423,41 @@ function _M.create_default_role(user)
 end
 
 
+-- helpers: remove user from default role; delete the role if the
+-- user was the only one in the role
+function _M.remove_user_from_default_role(user, default_role)
+  -- delete user-role relationship
+  local _, err = singletons.dao.rbac_user_roles:delete({
+    user_id = user.id,
+    role_id = default_role.id,
+  })
+  if err then
+    return err
+  end
+
+  -- get count of users still in the default role
+  local n_users, err = singletons.dao.rbac_user_roles:count({
+    role_id = default_role.id,
+  })
+  if err then
+    return nil, err
+  end
+
+  -- if count of users in role reached 0, delete it
+  if n_users == 0 then
+    local _, err = singletons.dao.rbac_roles:delete({
+      id = default_role.id,
+      name = default_role.name,
+    })
+    if err then
+      return err
+    end
+  end
+
+  return true
+end
+
+
 -- add default role-entity permission: adds an entity to the
 -- current user's default role; as the owner of the entity,
 -- the user is allowed to perform any action
