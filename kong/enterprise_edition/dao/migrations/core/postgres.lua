@@ -1,4 +1,5 @@
 local rbac_migrations_defaults = require "kong.rbac.migrations.01_defaults"
+local rbac_migrations_user_default_role = require "kong.rbac.migrations.03_user_default_role"
 local rbac_migrations_admins = require "kong.rbac.migrations.02_admins"
 
 
@@ -268,6 +269,12 @@ return {
     name = "2018-04-20-122000_rbac_defaults",
     up = function(_, _, dao)
       rbac_migrations_defaults.up(nil, nil, dao)
+    end
+  },
+  {
+    name = "2018-04-20-122000_rbac_user_default_roles",
+    up = function(_, _, dao)
+      rbac_migrations_user_default_role.up(nil, nil, dao)
     end
   },
   {
