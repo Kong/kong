@@ -1,5 +1,4 @@
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
-local DAOFactory = require "kong.dao.factory"
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
@@ -77,12 +76,13 @@ end
 dao_helpers.for_each_dao(function(kong_config)
 
 describe("Admin API RBAC with " .. kong_config.database, function()
-  local dao
+  local dao, _
 
   setup(function()
-    dao = assert(DAOFactory.new(kong_config))
+    _,_,dao = helpers.get_db_utils(kong_config.database)
     dao:drop_schema()
-    helpers.dao:run_migrations()
+    ngx.ctx.workspaces = {}
+    dao:run_migrations()
 
     assert(helpers.start_kong({
       database = kong_config.database
@@ -989,7 +989,8 @@ describe("Admin API RBAC with " .. kong_config.database, function()
   describe("rbac defaults", function()
     setup(function()
       dao:drop_schema()
-      helpers.dao:run_migrations()
+      ngx.ctx.workspaces = {}
+      dao:run_migrations()
     end)
 
     it("defines the default roles", function()
@@ -2259,12 +2260,10 @@ end
 
 dao_helpers.for_each_dao(function(kong_config)
 describe("Admin API", function()
-  local dao, apis
+  local apis
 
   setup(function()
-    dao = assert(DAOFactory.new(kong_config))
-    dao:drop_schema()
-    helpers.dao:run_migrations()
+    helpers.get_db_utils(kong_config.database)
 
     assert(helpers.start_kong({
       database = kong_config.database,
