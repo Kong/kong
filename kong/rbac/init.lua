@@ -432,7 +432,7 @@ function _M.remove_user_from_default_role(user, default_role)
     role_id = default_role.id,
   })
   if err then
-    return err
+    return nil, err
   end
 
   -- get count of users still in the default role
@@ -450,7 +450,7 @@ function _M.remove_user_from_default_role(user, default_role)
       name = default_role.name,
     })
     if err then
-      return err
+      return nil, err
     end
   end
 
