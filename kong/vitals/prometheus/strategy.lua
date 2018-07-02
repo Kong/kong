@@ -184,14 +184,16 @@ end
 -- @param[type=boolean] aggregate If we are showing cluster metrics or not, only influence the meta.level value, there won't be any aggregation
 -- @return A table in vitals format
 local function translate_vitals_stats(metrics_query, prometheus_stats, interval, duration_seconds, aggregate)
+  local metrics_count = #metrics_query
+
   local ret = {
     meta = {
       nodes = {},
-      stat_labels = new_tab(#metrics_query, 0)
+      stat_labels = new_tab(metrics_count, 0)
     },
     stats = {},
   }
-  
+
   if interval == MINUTE then
     ret.meta.interval = "minutes"
   elseif interval == SCRAPE_INTERVAL then
@@ -279,7 +281,7 @@ local function translate_vitals_stats(metrics_query, prometheus_stats, interval,
         end
       end
 
-      local last_value, incr_value
+      local last_value, current_value, incr_value
       start_k = earliest_ts
       for _, dp in ipairs(dps) do
         -- if we use integer as key, cjson will complain excessively sparse array
@@ -290,25 +292,7 @@ local function translate_vitals_stats(metrics_query, prometheus_stats, interval,
         if v ~= v then
           v = nil
         end
-        while k - start_k > interval do
-          start_k = tostring(start_k + interval)
-          if not n[start_k] then
-            n[start_k] = {}
-          end
-          -- add empty data points for other metrics that didn't reached this timestamp
-          for i = #n[start_k] + 1, #ret.meta.stat_labels, 1 do
-            n[start_k][i] = null
-          end
-        end
 
-        if not n[k] then
-          n[k] = {}
-        end
-        -- add empty placeholder for other metrics
-        for i = #n[k] + 1, #ret.meta.stat_labels - 1, 1 do
-          n[k][i] = null
-        end
-        -- add the real data point
         if is_rate and v ~= nil then
           if last_value ~= nil then -- skip the first data point
             -- add the data point
@@ -317,11 +301,45 @@ local function translate_vitals_stats(metrics_query, prometheus_stats, interval,
             else
               incr_value = v - last_value
             end
-            n[k][#n[k] + 1] = incr_value
+            current_value = incr_value
           end
           last_value = v
         else
-          n[k][#n[k] + 1] = v == nil and null or math_floor(v)
+          current_value = v == nil and null or math_floor(v)
+        end
+
+        -- if there's only one metric, client expect every timestamp has a value of number
+        if metrics_count == 1 then
+          -- current_value is nil when is_rate = true and is the first datapoint
+          if current_value ~= nil then
+            -- add the real data point
+            n[k] = current_value
+          end
+        -- client expect every timestamp has a value of array
+        else
+          while k - start_k > interval do
+            start_k = tostring(start_k + interval)
+            if not n[start_k] then
+              n[start_k] = {}
+            end
+            -- add empty data points for other metrics that didn't reached this timestamp
+            for i = #n[start_k] + 1, #ret.meta.stat_labels, 1 do
+              n[start_k][i] = null
+            end
+          end
+
+          if not n[k] then
+            n[k] = {}
+          end
+          -- add empty placeholder for other metrics
+          for i = #n[k] + 1, #ret.meta.stat_labels - 1, 1 do
+            n[k][i] = null
+          end
+          -- current_value is nil when is_rate = true and is the first datapoint
+          if current_value ~= nil then
+            -- add the real data point
+            n[k][#n[k] + 1] = current_value
+          end
         end
 
         start_k = k
@@ -360,7 +378,7 @@ local function translate_vitals_status(metrics_query, prometheus_stats, interval
     },
     stats = {},
   }
-  
+
   if interval == MINUTE then
     ret.meta.interval = "minutes"
   elseif interval == SCRAPE_INTERVAL then
@@ -465,11 +483,9 @@ local function translate_vitals_status(metrics_query, prometheus_stats, interval
   return ret, nil
 end
 
-
-function _M:select_stats(query_type, level, node_id, start_ts)
-  -- rate{dropcounter,,0}: treat the rate at the missing datapoint as 0, otherwise we'll get a negative rate
+local function get_interval_and_start_ts(level, start_ts)
   local interval
-  if query_type == "minutes" then
+  if level == "minutes" or level == MINUTE then
     interval = MINUTE
     -- backward compatibility for client that doesn't send start_ts
     if start_ts == nil then
@@ -482,6 +498,13 @@ function _M:select_stats(query_type, level, node_id, start_ts)
       start_ts = ngx_time() - 5 * 60
     end
   end
+
+  return interval, start_ts
+end
+
+
+function _M:select_stats(query_type, level, node_id, start_ts)
+  local interval, start_ts = get_interval_and_start_ts(query_type, start_ts)
 
   local metrics = self.common_stats_metrics
 
@@ -501,24 +524,8 @@ function _M:select_stats(query_type, level, node_id, start_ts)
 end
 
 function _M:select_status_codes(opts)
-  local interval
-  local start_ts = opts.start_ts
-  if opts.duration == MINUTE then
-    interval = MINUTE
-    -- backward compatibility for client that doesn't send start_ts
-    if start_ts == nil then
-      start_ts = ngx_time() - 720 * 60
-    end
-  else
-    interval = SCRAPE_INTERVAL
-    -- backward compatibility for client that doesn't send start_ts
-    if start_ts == nil then
-      start_ts = ngx_time() - 5 * 60
-    end
-  end
+  local interval, start_ts = get_interval_and_start_ts(opts.duration, opts.start_ts)
   
-  local merge_status_class = true
-
   -- build the filter table
   local filters = { }
   local filters_count = 0
@@ -528,8 +535,10 @@ function _M:select_status_codes(opts)
   end
 
   local entity_type = opts.entity_type
-  if entity_type ~= "cluster" then
-    merge_status_class = false
+  -- only merge status codes to like "2xx" when showing on /vitals/status-codes
+  local merge_status_class = false
+  if entity_type == "cluster" then
+    merge_status_class = true
   end
 
   local metric_name = "kong_status_code"
@@ -583,8 +592,27 @@ function _M:select_status_codes(opts)
 end
 
 function _M:select_consumer_stats(opts)
-  -- TODO: needs implementing when vitals in dev portal is merged
-  return {}
+  local interval, start_ts = get_interval_and_start_ts(opts.duration, opts.start_ts)
+
+  local metrics = {
+    { "requests_consumer_total", fmt("sum(kong_status_code_per_consumer{consumer=\"%s\", %s})",
+                opts.consumer_id, self.custom_filters_str),
+      true },
+  }
+
+  local res, err, duration_seconds = self:query(
+    start_ts,
+    metrics,
+    interval
+  )
+
+  if res then
+    return translate_vitals_stats(metrics, res, interval, duration_seconds,
+      true -- Cloud: use true to hide node-level metrics
+    )
+  else
+    return res, err
+  end
 end
 
 

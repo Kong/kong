@@ -270,6 +270,11 @@ describe("vitals Prometheus strategy", function()
     ]]).data.result,
   }
 
+  local consumer_stats_sample = {
+    -- prometheus v1 format
+    cjson.decode('{"status":"success","data":{"resultType":"matrix","result":[{"metric":{},"values":[[1527892620,"2699"],[1527892680,"12342"],[1527892740,"15463"],[1527892800,"27453"],[1527892860,"38464"],[1527892920,"49573"]]}]}}').data.result
+  }
+
   local query_parameters = {
     -- level, expected_duration_seconds, expected_interval (seconds), passed_in_interval (seconds)
     { "seconds", 5  * 60, 30, 1 },     -- 5min
@@ -284,6 +289,8 @@ describe("vitals Prometheus strategy", function()
   describe("generates query parameter for", function()
 
     local prometheus = require "kong.vitals.prometheus.strategy"
+    
+    local prom_query = prometheus.query
 
     setup(function()
       stub(prometheus, "translate_vitals_stats")
@@ -293,13 +300,13 @@ describe("vitals Prometheus strategy", function()
     teardown(function()
       prometheus.translate_vitals_stats:revert()
       prometheus.translate_vitals_status:revert()
+      -- revert in teardown to ensure we revert even when error occurs
+      prometheus.query = prom_query
     end)
 
     for _, v in ipairs(query_parameters) do
       level, expected_duration_seconds, expected_interval, passed_in_interval = unpack(v)
       it("duration " .. expected_duration_seconds .. "  common stats", function()
-        local prom_query = prometheus.query
-
         local expected_start_ts
         -- don't use assert.spy().was_called_with to have a better visibility on what's different
         prometheus.query = function(_, start_ts, metrics, interval)
@@ -323,13 +330,35 @@ describe("vitals Prometheus strategy", function()
         expected_start_ts = ngx.time() - expected_duration_seconds
         local _, err = prom:select_stats(level, "cluster", nil)
         assert.is_nil(err)
-        
-        prometheus.query = prom_query
+      end)
+
+      it("duration " .. expected_duration_seconds .. "  with customed start_ts  common stats", function()
+        local expected_start_ts
+        -- don't use assert.spy().was_called_with to have a better visibility on what's different
+        prometheus.query = function(_, start_ts, metrics, interval)
+          assert.equals(expected_start_ts, start_ts)
+          assert.same(metrics, {
+            {"cache_datastore_hits_total", "sum(kong_cache_datastore_hits_total{})", true},
+            {"cache_datastore_misses_total", "sum(kong_cache_datastore_misses_total{})", true},
+            {"latency_proxy_request_min_ms", "min(kong_latency_proxy_request{})"},
+            {"latency_proxy_request_max_ms", "max(kong_latency_proxy_request{})"},
+            {"latency_upstream_min_ms", "min(kong_latency_upstream{})"},
+            {"latency_upstream_max_ms", "max(kong_latency_upstream{})"},
+            {"requests_proxy_total", "sum(kong_requests_proxy{})", true},
+            {"latency_proxy_request_avg_ms", "sum(rate(kong_latency_proxy_request_sum{}[1m])) / sum(rate(kong_latency_proxy_request_count{}[1m]))"},
+            {"latency_upstream_avg_ms", "sum(rate(kong_latency_upstream_sum{}[1m])) / sum(rate(kong_latency_upstream_count{}[1m]))"}
+          })
+          assert.equals(expected_interval, interval)
+        end
+
+        local prom = prometheus.new({host = "notahost", port = 65555})
+
+        expected_start_ts = 1500000000
+        local _, err = prom:select_stats(level, "cluster", nil, expected_start_ts)
+        assert.is_nil(err)
       end)
 
       it("duration " .. expected_duration_seconds .. "  overall status codes", function()
-        local prom_query = prometheus.query
-
         local expected_start_ts
         -- don't use assert.spy().was_called_with to have a better visibility on what's different
         prometheus.query = function(_, start_ts, metrics, interval)
@@ -347,13 +376,9 @@ describe("vitals Prometheus strategy", function()
           duration = expected_interval,
         })
         assert.is_nil(err)
-        
-        prometheus.query = prom_query
       end)
 
       it("duration " .. expected_duration_seconds .. "  status codes per service", function()
-        local prom_query = prometheus.query
-
         local expected_start_ts
         local uuid = utils.uuid()
         -- don't use assert.spy().was_called_with to have a better visibility on what's different
@@ -374,13 +399,9 @@ describe("vitals Prometheus strategy", function()
           entity_id = uuid,
         })
         assert.is_nil(err)
-        
-        prometheus.query = prom_query
       end)
 
       it("duration " .. expected_duration_seconds .. "  status codes per consumer", function()
-        local prom_query = prometheus.query
-
         local expected_start_ts
         local uuid = utils.uuid()
         -- don't use assert.spy().was_called_with to have a better visibility on what's different
@@ -405,13 +426,9 @@ describe("vitals Prometheus strategy", function()
           entity_id = uuid,
         })
         assert.is_nil(err)  
-
-        prometheus.query = prom_query
       end)
 
       it("duration " .. expected_duration_seconds .. "  status codes per route", function()
-        local prom_query = prometheus.query
-
         local expected_start_ts
         local uuid = utils.uuid()
         -- don't use assert.spy().was_called_with to have a better visibility on what's different
@@ -436,13 +453,9 @@ describe("vitals Prometheus strategy", function()
           entity_id = uuid,
         })
         assert.is_nil(err)
-        
-        prometheus.query = prom_query
       end)
 
       it("duration " .. expected_duration_seconds .. "  status codes per consumer per route", function()
-        local prom_query = prometheus.query
-
         local expected_start_ts
         local uuid = utils.uuid()
         -- don't use assert.spy().was_called_with to have a better visibility on what's different
@@ -467,16 +480,78 @@ describe("vitals Prometheus strategy", function()
           entity_id = uuid,
         })
         assert.is_nil(err)
-
-        prometheus.query = prom_query
       end)
 
-      pending("duration " .. expected_duration_seconds .. "  consumer stats", function()
+      it("duration " .. expected_duration_seconds .. " with customed start_ts  status codes", function()
+        local expected_start_ts
+        -- don't use assert.spy().was_called_with to have a better visibility on what's different
+        prometheus.query = function(_, start_ts, metrics, interval)
+          assert.equals(expected_start_ts, start_ts)
+          assert.same(metrics, {
+            {"status_code", "sum(kong_status_code{}) by (status_code)", true},
+          })
+          assert.equals(expected_interval, interval)
+        end
+
+        local prom = prometheus.new({host = "notahost", port = 65555})
+
+        expected_start_ts = 1500000000
+        local _, err = prom:select_status_codes({
+          duration = expected_interval,
+          start_ts = expected_start_ts
+        })
+        assert.is_nil(err)
       end)
+
+      it("duration " .. expected_duration_seconds .. "  consumer stats", function()
+        local expected_start_ts
+        local uuid = utils.uuid()
+        -- don't use assert.spy().was_called_with to have a better visibility on what's different
+        prometheus.query = function(_, start_ts, metrics, interval)
+          assert.equals(expected_start_ts, start_ts)
+          assert.same(metrics, {
+            {"requests_consumer_total", 'sum(kong_status_code_per_consumer{consumer="' .. uuid .. '", })', true},
+           })
+          assert.equals(expected_interval, interval)
+        end
+
+        local prom = prometheus.new({host = "notahost", port = 65555})
+
+        expected_start_ts = ngx.time() - expected_duration_seconds
+        local _, err = prom:select_consumer_stats({
+          duration = passed_in_interval,
+          consumer_id = uuid,
+        })
+        assert.is_nil(err)
+      end)
+
+      it("duration " .. expected_duration_seconds .. " with customed start_ts  consumer stats", function()
+        local expected_start_ts
+        local uuid = utils.uuid()
+        -- don't use assert.spy().was_called_with to have a better visibility on what's different
+        prometheus.query = function(_, start_ts, metrics, interval)
+          assert.equals(expected_start_ts, start_ts)
+          assert.same(metrics, {
+            {"requests_consumer_total", 'sum(kong_status_code_per_consumer{consumer="' .. uuid .. '", })', true},
+           })
+          assert.equals(expected_interval, interval)
+        end
+
+        local prom = prometheus.new({host = "notahost", port = 65555})
+
+        expected_start_ts = 1500000000
+        local _, err = prom:select_consumer_stats({
+          duration = passed_in_interval,
+          start_ts = expected_start_ts,
+          consumer_id = uuid,
+        })
+        assert.is_nil(err)
+      end)
+
     end
   end)
 
-  describe("returns error if", function()
+  describe("catches error", function()
 
     local prometheus = require "kong.vitals.prometheus.strategy"
     local http = require "resty.http"
@@ -543,7 +618,7 @@ describe("vitals Prometheus strategy", function()
 
     end
 
-    describe("query returns error if", function()
+    describe("calling prometheus API", function()
 
       local prometheus = require "kong.vitals.prometheus.strategy"
       local http = require "resty.http"
@@ -884,7 +959,7 @@ describe("vitals Prometheus strategy", function()
     local cjson = require "cjson"
     setup(function()
       -- the last variable should be synced with the sample json below
-      stub(prometheus, "query").returns(status_code_key_by_sample, nil, 140)
+      stub(prometheus, "query").returns(status_code_key_by_sample, nil, 120)
     end)
   
     teardown(function()
@@ -952,6 +1027,52 @@ describe("vitals Prometheus strategy", function()
             }
           }
         }
+      ]]), ok)
+    end)
+  end)
+
+  describe("translates", function()
+    local prometheus = require "kong.vitals.prometheus.strategy"
+    setup(function()
+      -- the last variable should be synced with the sample json below
+      stub(prometheus, "query").returns(consumer_stats_sample, nil, 120)
+    end)
+  
+    teardown(function()
+      prometheus.query:revert()
+    end)
+
+    it("consumer stats", function()
+      local prom = prometheus.new({host = "notahost", port = 65555})
+      local ok, err = prom:select_consumer_stats("minutes", "cluster", nil)
+      assert.is_nil(err)
+      assert.same(cjson.decode([[
+      {
+        "meta": {
+          "earliest_ts": 1527892620,
+          "latest_ts": 1527892920,
+          "interval": "seconds",
+          "interval_width": 30,
+          "level": "cluster",
+          "nodes": {
+              "cluster": {
+                "hostname": "cluster"
+              }
+          },
+          "stat_labels": [
+            "requests_consumer_total"
+          ]
+        },
+        "stats": {
+          "cluster": {
+            "1527892680": 9643,
+            "1527892740": 3121,
+            "1527892800": 11990,
+            "1527892860": 11011,
+            "1527892920": 11109
+          }
+        }
+      }
       ]]), ok)
     end)
   end)
