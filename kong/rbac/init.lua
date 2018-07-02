@@ -389,15 +389,28 @@ end
 -- helper: create default role and the corresponding user-role association
 -- user: the rbac user entity
 function _M.create_default_role(user)
-  -- create the default role for the user
-  local role, err = singletons.dao.rbac_roles:insert({
+  local role, err
+
+  -- try fetching the role; if it exists, use it
+  role, err = singletons.dao.rbac_roles:find_all({
     name = user.name,
   })
-  if not role then
+  if err then
     return nil, err
   end
+  role = role[1]
 
-  -- create the association
+  -- if it doesn't exist, create it
+  if not role then
+    role, err = singletons.dao.rbac_roles:insert({
+      name = user.name,
+    })
+    if not role then
+      return nil, err
+    end
+  end
+
+  -- create the user-role association
   local res, err = singletons.dao.rbac_user_roles:insert({
     user_id = user.id,
     role_id = role.id,
