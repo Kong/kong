@@ -292,7 +292,7 @@ function DAO:insert(tbl, options)
       local _, err = rbac.add_default_role_entity_permission(res.id, self.table)
       if err then
         return ret_error("failed to add entity permissions to current user",
-                         nil, err_rel)
+                         nil, err)
       end
     end
   end
