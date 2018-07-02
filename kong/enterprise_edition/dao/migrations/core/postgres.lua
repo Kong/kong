@@ -1,4 +1,5 @@
 local rbac_migrations_defaults = require "kong.rbac.migrations.01_defaults"
+local rbac_migrations_admins = require "kong.rbac.migrations.02_admins"
 
 
 return {
@@ -551,5 +552,11 @@ return {
     down = [[
       DELETE FROM consumer_types;
     ]]
+  },
+  {
+    name = "2018-06-30-000000_rbac_consumer_admins",
+    up = function(_, _, dao)
+      rbac_migrations_admins.up(nil, nil, dao)
+    end
   },
 }
