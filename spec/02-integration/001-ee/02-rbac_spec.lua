@@ -160,7 +160,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
       end)
 
       it("creates a new user with existing role as default role", function()
-        local res, body, json
+        local res
 
         -- create a role with a very-likely-to-colide name
         res = assert(client:send {
@@ -174,7 +174,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
           }
         })
 
-        local role = assert.res_status(201, res)
+        assert.res_status(201, res)
 
         -- create a user with this same very-likely-to-colide name
         res = assert(client:send {
@@ -189,7 +189,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
           }
         })
 
-        local user = assert.res_status(201, res)
+        assert.res_status(201, res)
 
         -- make sure the user is in fact in that role!
         res = assert(client:send {
@@ -219,7 +219,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
       end)
 
       it("doesn't delete default role if it is shared", function()
-        local res, body, json
+        local res
 
         -- create a user with some very-likely-to-colide name
         res = assert(client:send {
@@ -233,7 +233,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
             ["Content-Type"] = "application/json",
           }
         })
-        local user = assert.res_status(201, res)
+        assert.res_status(201, res)
 
         -- make sure the user is in fact in that role!
         res = assert(client:send {
@@ -258,8 +258,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
             ["Content-Type"] = "application/json",
           }
         })
-
-        local user = assert.res_status(201, res)
+        assert.res_status(201, res)
 
         -- yarbacy is rbacy too
         res = assert(client:send {
@@ -272,8 +271,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
             ["Content-Type"] = "application/json",
           }
         })
-
-        local user = assert.res_status(201, res)
+        assert.res_status(201, res)
 
         -- delete the rbacy...
         res = assert(client:send {
