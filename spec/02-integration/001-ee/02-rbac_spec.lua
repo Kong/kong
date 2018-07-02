@@ -132,6 +132,33 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         assert.is_true(json.enabled)
       end)
 
+      it("creates a new user with a corresponding default role", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/rbac/users",
+          body = {
+            name = "fubar",
+            user_token = "fubarfu",
+          },
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+
+        assert.equal("fubar", json.name)
+        assert.equal("fubarfu", json.user_token)
+
+        local role = assert(client:send {
+          method = "GET",
+          path = "/rbac/roles/fubar",
+        })
+
+        assert.res_status(200, role)
+      end)
+
       it("creates a new user with non-default options", function()
         local res = assert(client:send {
           method = "POST",
@@ -227,7 +254,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.equals(4, #json.data)
+        assert.equals(5, #json.data)
       end)
 
       pending("lists enabled users", function()
@@ -241,7 +268,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.equals(3, #json.data)
+        assert.equals(4, #json.data)
       end)
     end)
   end)
@@ -328,7 +355,7 @@ describe("Admin API RBAC with " .. kong_config.database, function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
 
-        assert.equals(3, #json.data)
+        assert.equals(4, #json.data)
 
         for i = 1, #json.data do
           assert.not_equals("alice", json.data[i].name)
