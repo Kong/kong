@@ -161,9 +161,8 @@ _M.entity_relationships = entity_relationships
 
 
 local function retrieve_user(user_token)
-  local user, err = singletons.dao.rbac_users:find_all({
+  local users, err = singletons.dao.rbac_users:find_all({
     user_token = user_token,
-    enabled    = true,
     __skip_rbac = true,
   })
   if err then
@@ -171,7 +170,11 @@ local function retrieve_user(user_token)
     return nil, err
   end
 
-  return user[1]
+  for _, user in ipairs(users) do
+    if user.enabled then
+      return user
+    end
+  end
 end
 
 
