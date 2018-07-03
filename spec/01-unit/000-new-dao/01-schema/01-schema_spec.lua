@@ -671,6 +671,25 @@ describe("schema", function()
       assert.falsy(Test:validate({ f = { a = 2, b = "foo" } }))
     end)
 
+   it("validates nested records", function()
+      local Test = Schema.new({
+        fields = {
+          { f = {
+              type = "record",
+              fields = {
+                { r = {
+                    type = "record",
+                    fields = {
+                      { a = { type = "string" } },
+                      { b = { type = "number" } } }}}}}}}})
+      assert.truthy(Test:validate({ f = { r = { a = "foo" }}}))
+      assert.truthy(Test:validate({ f = { r = { b = 42 }}}))
+      assert.truthy(Test:validate({ f = { r = { a = "foo", b = 42 }}}))
+      assert.falsy(Test:validate({ f = { r = { a = 2 }}}))
+      assert.falsy(Test:validate({ f = { r = { b = "foo" }}}))
+      assert.falsy(Test:validate({ f = { r = { a = 2, b = "foo" }}}))
+    end)
+
     it("validates an integer", function()
       local Test = Schema.new({
         fields = {
