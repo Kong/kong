@@ -1,6 +1,7 @@
 local helpers = require "spec.02-integration.03-dao.helpers"
 local Factory = require "kong.dao.factory"
 local spec_helpers = require "spec.helpers"
+local singletons = require "kong.singletons"
 
 helpers.for_each_dao(function(kong_config)
   describe("Real use-cases with DB: #" .. kong_config.database, function()
@@ -8,6 +9,7 @@ helpers.for_each_dao(function(kong_config)
     setup(function()
       factory = assert(Factory.new(kong_config))
       assert(factory:run_migrations())
+      singletons.dao = factory
 
       factory:truncate_tables()
       spec_helpers.register_consumer_relations(spec_helpers.dao)
