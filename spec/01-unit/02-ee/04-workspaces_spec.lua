@@ -237,6 +237,12 @@ describe("workspaces", function()
         methods = { "POST", "PUT", "GET" },
         uris = { "/api4" },
         workspaces = {{ id = "ws4" }} ,
+      }, {
+        name = "api-5",
+        hosts = ngx.null,
+        methods = { "POST", "PUT", "GET" },
+        uris = { "/my-api5" },
+        workspaces = {{ id = "ws2" }} ,
       }
     }
 
@@ -264,6 +270,12 @@ describe("workspaces", function()
       local Router = require "kong.core.api_router"
       local r = Router.new(apis)
       assert.truthy(workspaces.validate_route_for_ws(r, "GET", "/my-api2", "h1", "w2"))
+    end)
+
+    it("ADD route in different ws, no host in existing one", function()
+      local Router = require "kong.core.api_router"
+      local r = Router.new(apis)
+      assert.truthy(workspaces.validate_route_for_ws(r, "GET", "/my-api5", "h1", "w2"))
     end)
 
     it("NOT add route in different ws, with same wildcard host", function()

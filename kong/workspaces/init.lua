@@ -447,7 +447,8 @@ local function validate_route_for_ws(router, method, uri, host, ws)
     ngx_log(DEBUG, "selected_route in the same ws")
     return true
 
-  elseif is_blank(selected_route.api.hosts) then -- we match from a no-host route
+  elseif is_blank(selected_route.api.hosts) or
+         ngx.null == selected_route.api.hosts then -- we match from a no-host route
     ngx_log(DEBUG, "selected_route has no host restriction")
     return true
 
