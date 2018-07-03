@@ -1,13 +1,16 @@
-## Unreleased 0.33-x
+## 0.32.1
 
-### Consumer Mapping
+### Added
 
-✨ add fields
+- Add fields
    * `consumer_by` - *optional*, default: { `username`, `custom_id` }
    * `consumer_optional` *optional* , default: `false`
-     * By default, the consumer mapping is NOT optional. Set this config to `true` when you do not want the plugin to map to a kong consumer.
+     - By default, the consumer mapping is NOT optional. Set this config to
+     `true` when you do not want the plugin to map to a kong consumer.
 
-✨ find consumers by `consumer_by` fields and map to ldap-auth user. This will set the authenticated consumer so that X-Consumer-{ID, USERNAME, CUSTOM_ID} headers are set and consumer functionality is available.
+- Find consumers by `consumer_by` fields and map to ldap-auth user. This will
+  set the authenticated consumer so that X-Consumer-{ID, USERNAME, CUSTOM_ID}
+  headers are set and consumer functionality is available.
 
 ### Fixed
 
@@ -15,7 +18,7 @@
 - Fix usage of LuaJIT ffi; `ffi.load` was being used to access an external
   symbol instead of `ffi.C.`
 
-## 0.1.0
+## 0.32.0
 
 ldap-auth-advanced was forked from Kong CE ldap-auth.
 
