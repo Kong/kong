@@ -283,6 +283,16 @@ function _M.get_default_workspace_migration()
             if err then
               return nil, err
             end
+
+            _, err = add_entity_relation_db(dao.workspace_entities,
+                                            default,
+                                            entity.id,
+                                            "services",
+                                            "id",
+                                            entity.id)
+            if err then
+              return nil, err
+            end
           end
 
           for _, route in ipairs(routes) do
