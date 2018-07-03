@@ -331,7 +331,7 @@ function Kong.init_worker()
 
 
   for _, plugin in ipairs(loaded_plugins) do
-    kong_global.set_namespaced_log(kong, plugin.handler._name)
+    kong_global.set_namespaced_log(kong, plugin.name)
 
     plugin.handler:init_worker()
   end
@@ -345,7 +345,7 @@ function Kong.ssl_certificate()
   runloop.certificate.before(ctx)
 
   for plugin, plugin_conf in plugins_iterator(loaded_plugins, true) do
-    kong_global.set_namespaced_log(kong, plugin.handler._name)
+    kong_global.set_namespaced_log(kong, plugin.name)
     plugin.handler:certificate(plugin_conf)
     kong_global.reset_log(kong)
   end
@@ -441,7 +441,7 @@ function Kong.rewrite()
   -- plugins
   for plugin, plugin_conf in plugins_iterator(loaded_plugins, true) do
     kong_global.set_named_ctx(kong, "plugin", plugin_conf)
-    kong_global.set_namespaced_log(kong, plugin.handler._name)
+    kong_global.set_namespaced_log(kong, plugin.name)
 
     plugin.handler:rewrite(plugin_conf)
 
@@ -463,7 +463,7 @@ function Kong.access()
   for plugin, plugin_conf in plugins_iterator(loaded_plugins, true) do
     if not ctx.delayed_response then
       kong_global.set_named_ctx(kong, "plugin", plugin_conf)
-      kong_global.set_namespaced_log(kong, plugin.handler._name)
+      kong_global.set_namespaced_log(kong, plugin.name)
 
       local err = coroutine.wrap(plugin.handler.access)(plugin.handler, plugin_conf)
 
@@ -494,7 +494,7 @@ function Kong.header_filter()
 
   for plugin, plugin_conf in plugins_iterator(loaded_plugins) do
     kong_global.set_named_ctx(kong, "plugin", plugin_conf)
-    kong_global.set_namespaced_log(kong, plugin.handler._name)
+    kong_global.set_namespaced_log(kong, plugin.name)
 
     plugin.handler:header_filter(plugin_conf)
 
@@ -509,7 +509,7 @@ function Kong.body_filter()
 
   for plugin, plugin_conf in plugins_iterator(loaded_plugins) do
     kong_global.set_named_ctx(kong, "plugin", plugin_conf)
-    kong_global.set_namespaced_log(kong, plugin.handler._name)
+    kong_global.set_namespaced_log(kong, plugin.name)
 
     plugin.handler:body_filter(plugin_conf)
 
@@ -524,7 +524,7 @@ function Kong.log()
 
   for plugin, plugin_conf in plugins_iterator(loaded_plugins) do
     kong_global.set_named_ctx(kong, "plugin", plugin_conf)
-    kong_global.set_namespaced_log(kong, plugin.handler._name)
+    kong_global.set_namespaced_log(kong, plugin.name)
 
     plugin.handler:log(plugin_conf)
 
