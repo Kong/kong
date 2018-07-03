@@ -1194,32 +1194,19 @@ end
 
 --- Cycle-aware table copy.
 -- To be replaced by tablex.deepcopy() when it supports cycles.
-local function copy(t, c, cache)
+local function copy(t, cache)
   if type(t) ~= "table" then
     return t
   end
   cache = cache or {}
-  c = c or {}
+  if cache[t] then
+    return cache[t]
+  end
+  local c = {}
+  cache[t] = c
   for k, v in pairs(t) do
-    local kk, vv = k, v
-    if type(k) == "table" then
-      if cache[k] then
-        kk = cache[k]
-      else
-        kk = {}
-        cache[k] = kk
-        copy(k, kk, cache)
-      end
-    end
-    if type(v) == "table" then
-      if cache[v] then
-        vv = cache[v]
-      else
-        vv = {}
-        cache[v] = vv
-        copy(v, vv, cache)
-      end
-    end
+    local kk = copy(k, cache)
+    local vv = copy(v, cache)
     c[kk] = vv
   end
   return c
