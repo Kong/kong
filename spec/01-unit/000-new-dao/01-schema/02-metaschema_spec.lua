@@ -2,9 +2,6 @@ local Schema = require "kong.db.schema"
 local MetaSchema = require "kong.db.schema.metaschema"
 
 
-Schema.new(MetaSchema)
-
-
 describe("metaschema", function()
   it("rejects a bad schema", function()
     local s = {
@@ -29,6 +26,23 @@ describe("metaschema", function()
       }
     }
     assert.falsy(MetaSchema:validate(s))
+  end)
+
+  it("validates a schema with nested records", function()
+    local s = {
+      name = "hello",
+      primary_key = { "foo" },
+      fields = {
+        { foo = { type = "number" } },
+        { f = {
+            type = "record",
+            fields = {
+              { r = {
+                  type = "record",
+                  fields = {
+                    { a = { type = "string" }, },
+                    { b = { type = "number" }, } }}}}}}}}
+    assert.truthy(MetaSchema:validate(s))
   end)
 
   it("allows only one entity check per array field", function()

@@ -38,7 +38,7 @@ local validators = {
   { len_min = { type = "integer" }, },
   { len_max = { type = "integer" }, },
   { match = { type = "string" }, },
-  { not_match = { type = { "string" } }, },
+  { not_match = { type = "string" }, },
   { match_all = match_list },
   { match_none = match_list },
   { match_any = match_any_list },
@@ -69,11 +69,22 @@ for _, field in ipairs(field_schema) do
   data.nilable = not data.required
 end
 
+local fields_array = {
+  type = "array",
+  elements = {
+    type = "map",
+    keys = { type = "string" },
+    values = { type = "record", fields = field_schema },
+    required = true,
+    len_eq = 1,
+  },
+}
+
 -- Recursive field attributes
 table.insert(field_schema, { elements = { type = "record", fields = field_schema } })
 table.insert(field_schema, { keys     = { type = "record", fields = field_schema } })
 table.insert(field_schema, { values   = { type = "record", fields = field_schema } })
-table.insert(field_schema, { fields   = { type = "record", fields = field_schema } })
+table.insert(field_schema, { fields   = fields_array })
 
 local conditional_validators = {}
 for _, field in ipairs(validators) do
@@ -86,10 +97,10 @@ local entity_checkers = {
   { conditional     = {
       type = "record",
       fields = {
-        if_field = "string",
-        if_match = conditional_validators,
-        then_field = "string",
-        then_match = conditional_validators,
+        { if_field = { type = "string" } },
+        { if_match = { type = "record", fields = conditional_validators } },
+        { then_field = { type = "string" } },
+        { then_match = { type = "record", fields = conditional_validators } },
       },
     },
   },
@@ -146,6 +157,7 @@ local attribute_types = {
     ["set"]    = true,
     ["hash"]   = true,
     ["string"] = true,
+    ["map"]    = true,
   },
   match = {
     ["string"] = true,
@@ -173,11 +185,31 @@ local nested_attributes = {
   ["elements" ] = true,
   ["keys" ] = true,
   ["values" ] = true,
-  ["fields" ] = true,
 }
 
+local check_field
 
-local function check_field(k, field, errors)
+local check_fields = function(schema, errors)
+  for _, item in ipairs(schema.fields) do
+    if type(item) ~= "table" then
+      errors["fields"] = meta_errors.FIELDS_ARRAY
+      break
+    end
+    local k = next(item)
+    local field = item[k]
+    if type(field) == "table" then
+      check_field(k, field, errors)
+    else
+      errors[k] = meta_errors.TABLE:format(k)
+    end
+  end
+  if next(errors) then
+    return nil, errors
+  end
+  return true
+end
+
+check_field = function(k, field, errors)
   if not field.type then
     errors[k] = meta_errors.TYPE
     return nil
@@ -202,6 +234,9 @@ local function check_field(k, field, errors)
         errors[k] = meta_errors.TABLE:format(name)
       end
     end
+  end
+  if field.fields then
+    return check_fields(field, errors)
   end
 end
 
@@ -231,16 +266,7 @@ local MetaSchema = Schema.new({
       },
     },
     {
-      fields = {
-        type = "array",
-        elements = {
-          type = "map",
-          keys = { type = "string" },
-          values = { type = "record", fields = field_schema },
-          required = true,
-          len_eq = 1,
-        },
-      },
+      fields = fields_array,
     },
     {
       entity_checks = entity_checks_schema,
@@ -285,23 +311,7 @@ local MetaSchema = Schema.new({
       end
     end
 
-    for _, item in ipairs(schema.fields) do
-      if type(item) ~= "table" then
-        errors["fields"] = meta_errors.FIELDS_ARRAY
-        break
-      end
-      local k = next(item)
-      local field = item[k]
-      if type(field) == "table" then
-        check_field(k, field, errors)
-      else
-        errors[k] = meta_errors.TABLE:format(k)
-      end
-    end
-    if next(errors) then
-      return nil, errors
-    end
-    return true
+    return check_fields(schema, errors)
   end,
 
 })
