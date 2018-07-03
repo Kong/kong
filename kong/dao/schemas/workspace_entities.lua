@@ -6,6 +6,10 @@ return {
       type = "id",
       required = true,
     },
+    workspace_name = {
+      type = "string",
+      required = true,
+    },
     entity_id = {
       type = "string",
       required = true,

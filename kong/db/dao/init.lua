@@ -106,7 +106,31 @@ local function generate_foreign_key_methods(self)
       end
 
       self["select_by_" .. name] = function(self, unique_value, options)
+        options = options or {}
         validate_unique_value(unique_value)
+
+        local params = { [name] = unique_value }
+        local constraints = workspaceable[self.schema.name]
+        ws_helper.apply_unique_per_ws(self.schema.name, params, constraints)
+        local row, err_t = self.strategy:select_by_field(name, params[name])
+        if err_t then
+          return nil, tostring(err_t), err_t
+        end
+
+        if not options.skip_rbac then
+          local r = rbac.validate_entity_operation(row, constraints)
+          if not r then
+            local err_t = self.errors:unauthorized_operation({
+              username = ngx.ctx.rbac.user.name,
+              action = rbac.readable_action(ngx.ctx.rbac.action)
+            })
+            return  nil, tostring(err_t), err_t
+          end
+        end
+
+        if row then
+          return self:row_to_entity(row)
+        end
         local pk, err_t = ws_helper.resolve_shared_entity_id(self.schema.name,
                                                      { [name] = unique_value },
                                                              workspaceable[self.schema.name])
@@ -117,22 +141,6 @@ local function generate_foreign_key_methods(self)
         if pk then
           return self:select(pk, options)
         end
-
-        local ws_scope = workspaces.get_workspaces()
-        if #ws_scope > 0 then
-          return nil
-        end
-
-        local row, err_t = self.strategy:select_by_field(name, unique_value)
-        if err_t then
-          return nil, tostring(err_t), err_t
-        end
-
-        if not row then
-          return nil
-        end
-
-        return self:row_to_entity(row)
       end
 
       self["update_by_" .. name] = function(self, unique_value, entity)

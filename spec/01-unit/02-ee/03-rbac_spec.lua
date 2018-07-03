@@ -62,6 +62,7 @@ describe("(#" .. kong_conf.database .. ")", function()
           for j, entity in ipairs(entities[i]) do
             assert(dao.workspace_entities:insert({
               workspace_id = workspace,
+              workspace_name = "ws_name",
               entity_id = entity,
               entity_type = "entity",
               unique_field_name="id",
@@ -118,6 +119,7 @@ describe("(#" .. kong_conf.database .. ")", function()
           workspaces[#workspaces + 1] = u()
           assert(dao.workspace_entities:insert({
             workspace_id = workspaces[#workspaces],
+            workspace_name = "ws_name",
             entity_id = workspaces[x],
             entity_type = "workspaces",
             unique_field_name="id",
@@ -129,6 +131,7 @@ describe("(#" .. kong_conf.database .. ")", function()
           workspaces[#workspaces + 1] = u()
           assert(dao.workspace_entities:insert({
             workspace_id = workspaces[#workspaces],
+            workspace_name = "ws_name",
             entity_id = workspaces[x],
             entity_type = "workspaces",
             unique_field_name="id",
@@ -140,6 +143,7 @@ describe("(#" .. kong_conf.database .. ")", function()
             table.insert(entities[#workspaces], u())
             assert(dao.workspace_entities:insert({
               workspace_id = workspaces[#workspaces],
+              workspace_name = "ws_name",
               entity_id = entities[#workspaces][i],
               entity_type = "entity",
               unique_field_name="id",
@@ -189,6 +193,7 @@ describe("(#" .. kong_conf.database .. ")", function()
             workspaces[#workspaces + 1] = utils.uuid()
             assert(dao.workspace_entities:insert({
               workspace_id = workspaces[#workspaces],
+              workspace_name = "ws_name",
               entity_id = workspaces[#workspaces - 1],
               entity_type = "workspaces",
               unique_field_name="id",
@@ -222,6 +227,7 @@ describe("(#" .. kong_conf.database .. ")", function()
 
           assert(dao.workspace_entities:insert({
             workspace_id = x,
+            workspace_name = "ws_name",
             entity_id = y,
             entity_type = "workspaces",
             unique_field_name="id",
@@ -229,6 +235,7 @@ describe("(#" .. kong_conf.database .. ")", function()
           }))
           assert(dao.workspace_entities:insert({
             workspace_id = y,
+            workspace_name = "ws_name",
             entity_id = x,
             entity_type = "workspaces",
             unique_field_name="id",
@@ -332,6 +339,7 @@ describe("(#" .. kong_conf.database .. ")", function()
           -- create a workspace with some entities
           assert(dao.workspace_entities:insert({
             workspace_id = workspaces[1],
+            workspace_name = "ws_name",
             entity_id = entities[1],
             entity_type = "entity",
             unique_field_name="id",
@@ -342,6 +350,7 @@ describe("(#" .. kong_conf.database .. ")", function()
           -- containing its own entities
           assert(dao.workspace_entities:insert({
             workspace_id = workspaces[2],
+            workspace_name = "ws_name",
             entity_id = workspaces[1],
             entity_type = "workspaces",
             unique_field_name="id",
@@ -349,6 +358,7 @@ describe("(#" .. kong_conf.database .. ")", function()
           }))
           assert(dao.workspace_entities:insert({
             workspace_id = workspaces[2],
+            workspace_name = "ws_name",
             entity_id = entities[2],
             entity_type = "entity",
             unique_field_name="id",

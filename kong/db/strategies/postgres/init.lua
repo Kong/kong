@@ -1341,12 +1341,8 @@ function _M.new(connector, schema, errors)
   local ws_fields = ", \"workspace_id\", \"workspace_name\""
   local select_statement_ws = concat {
     "  SELECT ",  select_expressions .. ws_fields, "\n",
-    "    FROM ( (",
-    "            SELECT DISTINCT workspace_id, entity_id, name as workspace_name FROM",
-    "            workspaces INNER JOIN workspace_entities ON",
-    "            ( workspace_id = id  AND entity_type = '", table_name, "' AND id in ( $0 ) ) )",
-    "            ws_e INNER JOIN ", table_name, " ", table_name , " ON ( ws_e.entity_id = ", table_name, ".id::varchar )",
-    "         )\n",
+    " FROM workspace_entities ws_e INNER JOIN ", table_name, " ", table_name ,
+    " ON ( unique_field_name = '", primary_key[1] ,  "' AND ws_e.workspace_id in ( $0 ) and ws_e.entity_id = ", table_name, ".id::varchar )\n",
     " WHERE (", pk_escaped, ") = (", primary_key_placeholders, ")\n",
     " LIMIT 1;"
   }
@@ -1360,12 +1356,8 @@ function _M.new(connector, schema, errors)
 
   local page_first_statement_ws = concat {
     "  SELECT ",  select_expressions .. ws_fields, "\n",
-    "    FROM ( (",
-    "            SELECT DISTINCT workspace_id, entity_id, name as workspace_name FROM",
-    "            workspaces INNER JOIN workspace_entities ON",
-    "            ( workspace_id = id  AND entity_type = '", table_name, "' AND id in ( $0 ) ) )",
-    "            ws_e INNER JOIN ", table_name, " ", table_name , " ON ( ws_e.entity_id = ", table_name, ".id::varchar )",
-    "         )\n",
+    " FROM workspace_entities ws_e INNER JOIN ", table_name, " ", table_name ,
+    " ON ( unique_field_name = '", primary_key[1] ,  "' AND ws_e.workspace_id in ( $0 ) and ws_e.entity_id = ", table_name, ".id::varchar )\n",
     "ORDER BY ",  pk_escaped, "\n",
     "   LIMIT $1;";
   }
@@ -1380,12 +1372,8 @@ function _M.new(connector, schema, errors)
 
   local page_next_statement_ws = concat {
     "  SELECT ",  select_expressions .. ws_fields, "\n",
-    "    FROM ( (",
-    "            SELECT DISTINCT workspace_id, entity_id, name as workspace_name FROM",
-    "            workspaces INNER JOIN workspace_entities ON",
-    "            ( workspace_id = id  AND entity_type = '", table_name, "' AND id in ( $0 ) ) )",
-    "            ws_e INNER JOIN ", table_name, " ", table_name , " ON ( ws_e.entity_id = ", table_name, ".id::varchar )",
-    "         )\n",
+    " FROM workspace_entities ws_e INNER JOIN ", table_name, " ", table_name ,
+    " ON ( unique_field_name = '", primary_key[1] ,  "' AND ws_e.workspace_id in ( $0 ) and ws_e.entity_id = ", table_name, ".id::varchar )\n",
     "   WHERE (", pk_escaped, ") > (", primary_key_placeholders, ")\n",
     "ORDER BY ",  pk_escaped, "\n",
     "   LIMIT $", page_next_count, ";"
@@ -1568,12 +1556,8 @@ function _M.new(connector, schema, errors)
       local ws_fields = ", \"workspace_id\", \"workspace_name\""
       page_first_statement_ws = concat {
         "  SELECT ",  select_expressions .. ws_fields, "\n",
-        "    FROM ( (",
-        "            SELECT DISTINCT workspace_id, entity_id, name as workspace_name FROM",
-        "            workspaces INNER JOIN workspace_entities ON",
-        "            ( workspace_id = id  AND entity_type = '", table_name, "' AND id in ( $0 ) ) )",
-        "            ws_e INNER JOIN ", table_name, " ", table_name , " ON ( ws_e.entity_id = ", table_name, ".id::varchar )",
-        "         )\n",
+        " FROM workspace_entities ws_e INNER JOIN ", table_name, " ", table_name ,
+        " ON ( unique_field_name = '", primary_key[1] ,  "' AND ws_e.workspace_id in ( $0 ) and ws_e.entity_id = ", table_name, ".id::varchar )\n",
         "   WHERE (", foreign_key_names, ") = (", fk_placeholders, ")\n",
         "ORDER BY ",  pk_escaped, "\n",
         "   LIMIT $", argc_first, ";"
@@ -1590,12 +1574,8 @@ function _M.new(connector, schema, errors)
 
       page_next_statement_ws = concat {
         "  SELECT ",  select_expressions .. ws_fields, "\n",
-        "    FROM ( (",
-        "            SELECT DISTINCT workspace_id, entity_id, name as workspace_name FROM",
-        "            workspaces INNER JOIN workspace_entities ON",
-        "            ( workspace_id = id  AND entity_type = '", table_name, "' AND id in ( $0 ) ) )",
-        "            ws_e INNER JOIN ", table_name, " ", table_name , " ON ( ws_e.entity_id = ", table_name, ".id::varchar )",
-        "         )\n",
+        " FROM workspace_entities ws_e INNER JOIN ", table_name, " ", table_name ,
+        " ON ( unique_field_name = '", primary_key[1] ,  "' AND ws_e.workspace_id in ( $0 ) and ws_e.entity_id = ", table_name, ".id::varchar )\n",
         "   WHERE (", foreign_key_names, ") = (", fk_placeholders, ")\n",
         "     AND (", pk_escaped, ") > (", pk_placeholders, ")\n",
         "ORDER BY ",  pk_escaped, "\n",
@@ -1665,12 +1645,8 @@ function _M.new(connector, schema, errors)
       local select_by_statement_name_ws = "select_by_" .. unique_name .. "_ws"
       local select_by_statement_ws = concat {
         "SELECT ", select_expressions, "\n",
-        "    FROM ( (",
-        "            SELECT DISTINCT workspace_id, entity_id, name as workspace_name FROM",
-        "            workspaces INNER JOIN workspace_entities ON",
-        "            ( workspace_id = id  AND entity_type = '", table_name, "' AND id in ( $0 ) ) )",
-        "            ws_e INNER JOIN ", table_name, " ", table_name , " ON ( ws_e.entity_id = ", table_name, ".id::varchar )",
-        "         )\n",
+        " FROM workspace_entities ws_e INNER JOIN ", table_name, " ", table_name ,
+        " ON ( unique_field_name = '", primary_key[1] ,  "' AND ws_e.workspace_id in ( $0 ) and ws_e.entity_id = ", table_name, ".id::varchar )\n",
         " WHERE ", unique_escaped, " = $1\n",
         " LIMIT 1;"
       }

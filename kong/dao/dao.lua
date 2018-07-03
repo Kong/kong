@@ -72,21 +72,21 @@ local function ret_error(db_name, res, err, ...)
   return res, err, ...
 end
 
--- used only with insert, update and delete
+-- used only with insert, update, delete, and find_all
 local function apply_unique_per_ws(table_name, params, constraints)
   -- entity may have workspace_id, workspace_name fields, ex. in case of update
   -- needs to be removed as entity schema doesn't support them
   if table_name ~= "workspace_entities" then
     params.workspace_id = nil
+    params.workspace_name = nil
   end
-  params.workspace_name = nil
 
   if not constraints then
     return
   end
 
   local workspace = workspaces.get_workspaces()[1]
-  if not workspace or table_name == "workspaces" then
+  if not workspace or table_name == "workspaces" or table_name == "plugins" then
     return workspace
   end
 
@@ -102,7 +102,8 @@ end
 -- If entity has a unique key it will have workspace_name prefix so we
 -- have to search first in the relationship table
 local function resolve_shared_entity_id(table_name, params, constraints)
-  if not constraints or not constraints.unique_keys then
+  if table_name == "plugins" or table_name == "workspaces" and
+    params.name == workspaces.DEFAULT_WORKSPACE then
     return true
   end
 
@@ -110,17 +111,15 @@ local function resolve_shared_entity_id(table_name, params, constraints)
   if #ws_scope == 0 then
     return true
   end
-  local workspace = ws_scope[1]
 
-  if table_name == "workspaces" and
-  params.name == workspaces.DEFAULT_WORKSPACE then
+  if not constraints or not constraints.unique_keys then
     return true
   end
 
   for k, v in pairs(params) do
     if constraints.unique_keys[k] then
       local row, err = workspaces.find_entity_by_unique_field({
-        workspace_id = workspace.id,
+        workspace_id = ws_scope[1].id,
         entity_type = table_name,
         unique_field_name = k,
         unique_field_value = v,
@@ -136,6 +135,7 @@ local function resolve_shared_entity_id(table_name, params, constraints)
           params[k] = nil
         end
         params[constraints.primary_key] = row.entity_id
+        return true
       end
     end
   end
@@ -395,6 +395,28 @@ function DAO:find_all(tbl, include_ws)
       return ret_error(self.db.name, nil, Errors.schema(err))
     end
 
+    -- run with assumption that there is only one workspace
+    -- in scope and entity was created in same workspace. So
+    -- if filter has any unique key, just prefix it with workspace name
+    local params = utils.deep_copy(tbl)
+    apply_unique_per_ws(self.table, params, constraints)
+    local rows, err = self.db:find_all(self.table, params, self.schema)
+    if err then
+      return ret_error(self.db.name, nil, Errors.schema(err))
+    end
+
+    if rows and #rows > 0 then
+      for _, row in ipairs(rows) do
+        remove_ws_prefix(table_name, row, include_ws)
+      end
+
+      if skip_rbac ~= true then
+        rows = rbac.narrow_readable_entities(table_name, rows, constraints)
+      end
+      return ret_error(self.db.name, rows, err)
+    end
+
+    -- now search in the relationship table
     local ok, err = resolve_shared_entity_id(table_name, tbl, constraints)
     if not ok then
       return ret_error(self.db.name, nil, Errors.schema(err))

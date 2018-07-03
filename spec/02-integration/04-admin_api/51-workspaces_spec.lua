@@ -243,12 +243,14 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
 
       assert(dao.workspace_entities:insert({
         workspace_id = w,
+        workspace_name = "foo",
         entity_id = uuid1,
         unique_field_name = "name",
         entity_type = "foo",
       }))
       assert(dao.workspace_entities:insert({
         workspace_id = w,
+        workspace_name = "bar",
         entity_id = uuid2,
         unique_field_name = "name",
         entity_type = "foo",
@@ -265,7 +267,7 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         -- default, foo, blah
-        assert.equals(3, #json.data)
+        assert.equals(6, #json.data)
       end)
       it("returns a list of entities associated with the workspace", function()
         local res = assert(client:send {
@@ -498,6 +500,7 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
 
       assert(dao.workspace_entities:insert({
         workspace_id = w_id,
+        workspace_name = "foo",
         entity_id = e_id,
         unique_field_name = "name",
         entity_type = "foo",

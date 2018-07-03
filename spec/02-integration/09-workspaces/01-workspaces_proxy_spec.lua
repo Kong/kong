@@ -170,7 +170,7 @@ for _, strategy in helpers.each_strategy() do
         assert.is_equal(cred_default.consumer_id, body.id)
       end)
       it("negative cache added for non enabled plugin in default workspace", function()
-        local cache_key = dao.plugins:cache_key_ws(ws_default,
+        local cache_key = dao.plugins:cache_key_ws(nil,
                                                    "request-transformer",
                                                    nil,
                                                    nil,
@@ -243,7 +243,7 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.response(res).has.jsonbody()
         assert("ok", body.headers["X-Test"])
       end)
-      pending("cache added for plugin in foo workspace", function()
+      it("cache added for plugin in foo workspace", function()
         local cache_key = dao.plugins:cache_key_ws(ws_foo,
                                                    "request-transformer",
                                                    nil,
@@ -303,8 +303,8 @@ for _, strategy in helpers.each_strategy() do
         local body = assert.response(res).has.jsonbody()
         assert.is_nil(body.headers["X-Test"])
       end)
-      pending("cache added for plugin in foo workspace", function()
-        local cache_key = dao.plugins:cache_key_ws(ws_foo,
+      it("cache added for plugin in foo workspace", function()
+        local cache_key = dao.plugins:cache_key_ws(nil,
                                                    "request-transformer",
                                                    nil,
                                                    nil,

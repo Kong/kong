@@ -150,10 +150,20 @@ function _M.create_default(dao)
   dao.workspace_entities:truncate()
   dao.workspace_entities:insert({
     workspace_id = res.id,
+    workspace_name = res.name,
+    entity_id = res.id,
+    entity_type = "workspaces",
+    unique_field_name = "id",
+    unique_field_value = res.id,
+  }, { quiet = true })
+
+  dao.workspace_entities:insert({
+    workspace_id = res.id,
+    workspace_name = res.name,
     entity_id = res.id,
     entity_type = "workspaces",
     unique_field_name = "name",
-    unique_field_value = "default",
+    unique_field_value = res.name,
   }, { quiet = true })
 
   ngx.ctx.workspaces = {res}
@@ -202,13 +212,14 @@ function _M.get_workspaceable_relations()
 end
 
 
-local function add_entity_relation_db(dao, ws_id, entity_id, table_name, field_name, field_value)
+local function add_entity_relation_db(dao, ws, entity_id, table_name, field_name, field_value)
   return dao:insert({
-    workspace_id = ws_id,
+    workspace_id = ws.id,
     entity_id = entity_id,
     entity_type = table_name,
     unique_field_name = field_name or "",
     unique_field_value = field_value or "",
+    workspace_name = ws.name,
   })
 end
 
@@ -238,21 +249,22 @@ function _M.get_default_workspace_migration()
               for _, entity in ipairs(entities) do
                 if constraints.unique_keys then
                   for k, _ in pairs(constraints.unique_keys) do
-                    local _, err = add_entity_relation_db(dao.workspace_entities, default.id,
-                                                          entity[constraints.primary_key],
-                                                          relation, k, entity[k])
-                    if err then
-                      return nil, err
+                    if not constraints.primary_keys[k] and entity[k] then
+                      local _, err = add_entity_relation_db(dao.workspace_entities, default,
+                                                            entity[constraints.primary_key],
+                                                            relation, k, entity[k])
+                      if err then
+                        return nil, err
+                      end
                     end
                   end
-                else
-                  local _, err = add_entity_relation_db(dao.workspace_entities, default.id,
-                                                        entity[constraints.primary_key],
-                                                        relation, constraints.primary_key,
-                                                        entity[constraints.primary_key])
-                  if err then
-                    return nil, err
-                  end
+                end
+                local _, err = add_entity_relation_db(dao.workspace_entities, default,
+                                                      entity[constraints.primary_key],
+                                                      relation, constraints.primary_key,
+                                                      entity[constraints.primary_key])
+                if err then
+                  return nil, err
                 end
               end
             end
@@ -262,7 +274,7 @@ function _M.get_default_workspace_migration()
             local routes = dao.db:query("select * from routes;")
             for _, entity in ipairs(services) do
               local _, err = add_entity_relation_db(dao.workspace_entities,
-                                                    default.id,
+                                                    default,
                                                     entity.id,
                                                     "services",
                                                     "name",
@@ -274,7 +286,7 @@ function _M.get_default_workspace_migration()
 
             for _, route in ipairs(routes) do
               local _, err = add_entity_relation_db(dao.workspace_entities,
-                                                    default.id,
+                                                    default,
                                                     route.id,
                                                     "routes",
                                                     "id",
@@ -309,8 +321,8 @@ function _M.add_entity_relation(table_name, entity, workspace)
 
   if constraints and constraints.unique_keys and next(constraints.unique_keys) then
     for k, _ in pairs(constraints.unique_keys) do
-      if entity[k] then
-        local _, err = add_entity_relation_db(singletons.dao.workspace_entities, workspace.id,
+      if not constraints.primary_keys[k] and entity[k] then
+        local _, err = add_entity_relation_db(singletons.dao.workspace_entities, workspace,
           entity[constraints.primary_key],
           table_name, k, entity[k])
         if err then
@@ -318,10 +330,9 @@ function _M.add_entity_relation(table_name, entity, workspace)
         end
       end
     end
-    return
   end
 
-  local _, err = add_entity_relation_db(singletons.dao.workspace_entities, workspace.id,
+  local _, err = add_entity_relation_db(singletons.dao.workspace_entities, workspace,
                                         entity[constraints.primary_key],
                                         table_name, constraints.primary_key,
                                         entity[constraints.primary_key])

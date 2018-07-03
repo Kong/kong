@@ -365,14 +365,9 @@ local function select_query_ws(self, ws_scope, select_clause, schema, table, whe
   -- TODO clean it once support for multiple workspaces added
   if join_ws then
     local ws_list = encode_ws_list(ws_scope)
-    local ws_join = fmt([[SELECT DISTINCT workspace_id, entity_id, name as workspace_name FROM
-                        workspaces INNER JOIN workspace_entities ON
-                        ( workspace_id = id  AND entity_type = '%s' AND id in ( %s ) )]],
-                        table, ws_list)
-
-    join_tbl = fmt("( %s ) ws_e INNER JOIN %s %s ON ( ws_e.entity_id = %s.%s%s )",
-                   ws_join, table, table, table, schema.primary_key[1],
-                   primary_key_type == "uuid" and "::varchar" or "")
+    join_tbl = fmt("workspace_entities ws_e INNER JOIN %s %s ON ( ws_e.entity_id = %s.%s%s and ws_e.unique_field_name = '%s' AND ws_e.workspace_id in ( %s ))",
+                   table, table, table, schema.primary_key[1],
+                   primary_key_type == "uuid" and "::varchar" or "", schema.primary_key[1], ws_list)
 
   end
 
@@ -381,9 +376,6 @@ local function select_query_ws(self, ws_scope, select_clause, schema, table, whe
                join_tbl or table, table, schema.primary_key[1],
                    primary_key_type == "uuid" and "uuid" or "key")
 
-    -- XXX was:
-    --join_where = ( join_where and (join_where .. " AND ") or "") ..
-    --fmt("( ttls.primary_key_value IS NULL OR (ttls.table_name = '%s' AND expire_at > CURRENT_TIMESTAMP(0) at time zone 'utc') )", table)
     join_where = fmt("( ttls.primary_key_value IS NULL OR (ttls.table_name = '%s' AND expire_at > CURRENT_TIMESTAMP(0) at time zone 'utc') )", table)
   end
 

@@ -100,6 +100,7 @@ return {
 
       CREATE TABLE IF NOT EXISTS workspace_entities(
         workspace_id uuid,
+        workspace_name text,
         entity_id text,
         entity_type text,
         unique_field_name text,

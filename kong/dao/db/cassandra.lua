@@ -582,6 +582,7 @@ function _M:find_all(table_name, tbl, schema)
         local ws_entity = ws_entities_map[row[primary_key]]
         if ws_entity then
           row.workspace_id = ws_entity.workspace_id
+          row.workspace_name = ws_entity.workspace_name
           res_rows_ws[#res_rows_ws+1] = row
         end
       end
@@ -628,6 +629,7 @@ function _M:find_page(table_name, tbl, paging_state, page_size, schema)
         local ws_entity = ws_entities_map[row[primary_key]]
         if ws_entity then
           row.workspace_id = ws_entity.workspace_id
+          row.workspace_name = ws_entity.workspace_name
           res_rows[#res_rows+1] = row
           if #res_rows == page_size then
             return res_rows, nil, row[primary_key]

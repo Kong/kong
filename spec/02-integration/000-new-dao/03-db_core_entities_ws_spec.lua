@@ -90,6 +90,7 @@ for _, strategy in helpers.each_strategy() do
               unique_field_name = "id",
               unique_field_value = route.id,
               workspace_id = default_ws.id,
+              workspace_name = "default"
             }, rel)
           end, dao)
         end)
@@ -141,6 +142,7 @@ for _, strategy in helpers.each_strategy() do
               unique_field_name = "id",
               unique_field_value = route.id,
               workspace_id = foo_ws.id,
+              workspace_name = "foo"
             }, rel)
           end, dao)
         end)
