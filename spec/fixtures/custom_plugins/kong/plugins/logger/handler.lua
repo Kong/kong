@@ -8,7 +8,7 @@ LoggerHandler.PRIORITY = 1000
 
 
 function LoggerHandler:new()
-  LoggerHandler.super.new(self, "logger-last")
+  LoggerHandler.super.new(self, "logger")
 end
 
 
