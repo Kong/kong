@@ -4,11 +4,11 @@ local LoggerHandler = require "spec.fixtures.custom_plugins.kong.plugins.logger.
 local LoggerLastHandler = BasePlugin:extend()
 
 
-LoggerLastHandler.PRIORITY = 10000
+LoggerLastHandler.PRIORITY = 0
 
 
 function LoggerLastHandler:new()
-  LoggerLastHandler.super.new(self, "logger")
+  LoggerLastHandler.super.new(self, "logger-last")
 end
 
 
