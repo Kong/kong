@@ -1,9 +1,9 @@
 package = "kong-plugin-enterprise-request-transformer"
-version = "0.31.0-0"
+version = "0.31.1-0"
 
 source = {
   url = "https://github.com/Kong/kong-plugin-enterprise-request-transformer",
-  tag = "0.31.0"
+  tag = "0.31.1"
 }
 
 supported_platforms = {"linux", "macosx"}
