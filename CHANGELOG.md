@@ -1,3 +1,11 @@
+## vNext (the upcoming v0.2.0)
+
+- Change to always log the original error message when authorization code flow
+  verification fails
+- Remove the deprecated `openid-connect-authentication` plugin
+- Remove the deprecated `openid-connect-protection` plugin
+- Remove the deprecated `openid-connect-verification` plugin
+
 ## v0.1.9
 
 - Fix `ngx.ctx.authenticated_credential` was set when we didn't actually find

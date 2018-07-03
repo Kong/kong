@@ -1211,6 +1211,9 @@ function OICHandler:access(conf)
 
                 elseif args.get_post_arg("state") == state then
                   return unauthorized(iss, err, authorization, anonymous, trusted_client)
+
+                else
+                  log(err)
                 end
 
                 log("starting a new authorization code flow with previous parameters")
