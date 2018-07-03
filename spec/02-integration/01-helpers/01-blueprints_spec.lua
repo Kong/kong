@@ -13,11 +13,7 @@ for _, strategy in helpers.each_strategy() do
 
     local bp
     setup(function()
-      local db = assert(DB.new(helpers.test_conf, strategy))
-      assert(db:init_connector())
-      assert(db:truncate())
-      helpers.register_consumer_relations(helpers.dao)
-      bp = assert(Blueprints.new({}, db))
+      bp, _, _ = helpers.get_db_utils(strategy)
     end)
 
     local service
