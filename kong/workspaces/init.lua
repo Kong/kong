@@ -268,32 +268,32 @@ function _M.get_default_workspace_migration()
                 end
               end
             end
+          end
 
-            -- Add routes and services
-            local services = dao.db:query("select * from services;")
-            local routes = dao.db:query("select * from routes;")
-            for _, entity in ipairs(services) do
-              local _, err = add_entity_relation_db(dao.workspace_entities,
-                                                    default,
-                                                    entity.id,
-                                                    "services",
-                                                    "name",
-                                                    entity.name)
-              if err then
-                return nil, err
-              end
+          -- Add new-dao entities (routes and services)
+          local services = dao.db:query("select * from services;")
+          local routes = dao.db:query("select * from routes;")
+          for _, entity in ipairs(services) do
+            local _, err = add_entity_relation_db(dao.workspace_entities,
+                                                  default,
+                                                  entity.id,
+                                                  "services",
+                                                  "name",
+                                                  entity.name)
+            if err then
+              return nil, err
             end
+          end
 
-            for _, route in ipairs(routes) do
-              local _, err = add_entity_relation_db(dao.workspace_entities,
-                                                    default,
-                                                    route.id,
-                                                    "routes",
-                                                    "id",
-                                                    route.id)
-              if err then
-                return nil, err
-              end
+          for _, route in ipairs(routes) do
+            local _, err = add_entity_relation_db(dao.workspace_entities,
+                                                  default,
+                                                  route.id,
+                                                  "routes",
+                                                  "id",
+                                                  route.id)
+            if err then
+              return nil, err
             end
           end
         end,
