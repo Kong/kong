@@ -322,7 +322,7 @@ function OAuth2Introspection:init_worker()
 end
 
 OAuth2Introspection.PRIORITY = 1700
-OAuth2Introspection.VERSION = "0.3.1"
+OAuth2Introspection.VERSION = "0.3.2"
 OAuth2Introspection.consumers_username_key = consumers_username_key
 OAuth2Introspection.consumers_id_key = consumers_id_key
 
