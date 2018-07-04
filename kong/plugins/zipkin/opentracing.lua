@@ -185,7 +185,7 @@ function OpenTracingHandler:log(conf)
 		proxy_span:set_tag("peer.port", balancer_address.port)
 	end
 
-	if not opentracing.header_filter_finished then
+	if opentracing.header_filter_span then
 		opentracing.header_filter_span:finish(now)
 		opentracing.header_filter_finished = true
 	end
