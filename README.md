@@ -8,6 +8,7 @@ e.g. using docker:
 sudo docker run -d -p 9411:9411 openzipkin/zipkin
 ```
 
+
 ## Enable the Plugin
 
 ```
@@ -15,6 +16,7 @@ curl -X PUT --url http://localhost:8001/plugins/ -d name=zipkin -d config.http_e
 ```
 
 See many more details of using this plugin at https://docs.konghq.com/plugins/zipkin/
+
 
 # Implementation
 

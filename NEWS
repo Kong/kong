@@ -1,8 +1,10 @@
 UNRELEASED
 
+
 0.0.2 - 2018-06-28
 
   - Prevent timestamps from being encoded with scientific notation
+
 
 0.0.1 - 2018-05-17
 
