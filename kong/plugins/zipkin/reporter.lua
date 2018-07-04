@@ -9,7 +9,7 @@ local zipkin_reporter_mt = {
 	__index = zipkin_reporter_methods;
 }
 
-local function new_zipkin_reporter(conf) -- lauacheck: ignore 212
+local function new_zipkin_reporter(conf)
 	local http_endpoint = conf.http_endpoint
 	assert(type(http_endpoint) == "string", "invalid http endpoint")
 	return setmetatable({
