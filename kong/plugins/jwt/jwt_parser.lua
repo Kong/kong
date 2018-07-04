@@ -26,8 +26,8 @@ local decode_base64 = ngx.decode_base64
 --- Supported algorithms for signing tokens.
 local alg_sign = {
   ["HS256"] = function(data, key) return openssl_hmac.new(key, "sha256"):final(data) end,
-  --["HS384"] = function(data, key) return openssl_hmac.new(key, "sha384"):final(data) end,
-  --["HS512"] = function(data, key) return openssl_hmac.new(key, "sha512"):final(data) end,
+  ["HS384"] = function(data, key) return openssl_hmac.new(key, "sha384"):final(data) end,
+  ["HS512"] = function(data, key) return openssl_hmac.new(key, "sha512"):final(data) end,
   ["RS256"] = function(data, key) return openssl_pkey.new(key):sign(openssl_digest.new("sha256"):update(data)) end,
   ["RS512"] = function(data, key) return openssl_pkey.new(key):sign(openssl_digest.new("sha512"):update(data)) end,
   ["ES256"] = function(data, key)
@@ -46,8 +46,8 @@ local alg_sign = {
 --- Supported algorithms for verifying tokens.
 local alg_verify = {
   ["HS256"] = function(data, signature, key) return signature == alg_sign["HS256"](data, key) end,
-  --["HS384"] = function(data, signature, key) return signature == alg_sign["HS384"](data, key) end,
-  --["HS512"] = function(data, signature, key) return signature == alg_sign["HS512"](data, key) end,
+  ["HS384"] = function(data, signature, key) return signature == alg_sign["HS384"](data, key) end,
+  ["HS512"] = function(data, signature, key) return signature == alg_sign["HS512"](data, key) end,
   ["RS256"] = function(data, signature, key)
     local pkey_ok, pkey = pcall(openssl_pkey.new, key)
     assert(pkey_ok, "Consumer Public Key is Invalid")
