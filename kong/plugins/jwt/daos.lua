@@ -13,7 +13,18 @@ local SCHEMA = {
     key = {type = "string", unique = true, default = utils.random_string},
     secret = {type = "string", default = utils.random_string},
     rsa_public_key = {type = "string"},
-    algorithm = {type = "string", enum = {"HS256", "RS256", "RS512", "ES256"}, default = 'HS256'}
+    algorithm = {
+      type = "string",
+      default = "HS256",
+      enum = {
+        "HS256",
+        "HS384",
+        "HS512",
+        "RS256",
+        "RS512",
+        "ES256",
+      },
+    }
   },
   self_check = function(schema, plugin_t, dao, is_update)
     if plugin_t.algorithm == "RS256" then

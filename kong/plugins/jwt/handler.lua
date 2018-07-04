@@ -145,7 +145,8 @@ local function do_authentication(conf)
     return false, {status = 403, message = "Invalid algorithm"}
   end
 
-  local jwt_secret_value = algorithm == "HS256" and jwt_secret.secret or jwt_secret.rsa_public_key
+  local jwt_secret_value = algorithm ~= nil and algorithm:sub(1, 2) == "HS" and
+                             jwt_secret.secret or jwt_secret.rsa_public_key
   if conf.secret_is_base64 then
     jwt_secret_value = jwt:b64_decode(jwt_secret_value)
   end
