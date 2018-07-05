@@ -183,6 +183,11 @@
 --
 -- @field kong.cache
 
+---
+-- Instance of Kong's IP module to determine whether a given IP address is
+-- trusted
+-- @field kong.ip
+-- @redirect kong.ip
 
 --- Utilities
 -- @section utilities
