@@ -207,7 +207,7 @@ describe("(#" .. kong_config.database .. ") Admin API workspaces", function()
           body = {
             name = "foo",
             hosts = {"api.com"},
-            upstream_url = "http://httpbin.org"
+            upstream_url = helpers.mock_upstream_url
           },
           headers = {
             ["Content-Type"] = "application/json",

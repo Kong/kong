@@ -444,6 +444,7 @@ end
 
 function Kong.rewrite()
   local ctx = ngx.ctx
+  ctx.is_proxy_request = true
 
   core.rewrite.before(ctx)
 

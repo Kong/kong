@@ -11,6 +11,7 @@ local DEBUG   = ngx.DEBUG
 local next    = next
 local values = tablex.values
 local cache = singletons.cache
+local getfenv = getfenv
 
 
 local _M = {}
@@ -608,7 +609,7 @@ end
 -- done matching them by id as portal creates routes on memory that do
 -- not have a representation in the db. Therefore they don't exist in
 -- workspace_entities. See kong/enterprise_edition/proxies.lua
-local function load_workspace_scope(route)
+local function load_workspace_scope(ctx, route)
   if route.id == "00000000-0000-0000-0002-000000000000" or
     route.id == "00000000-0000-0000-0000-000000000004" or
     route.id == "00000000-0000-0000-0004-000000000000" or
@@ -619,14 +620,16 @@ local function load_workspace_scope(route)
     return singletons.dao.workspaces:find_all({name = default_workspace})
   end
 
-  local old_wss = ngx.ctx.workspaces
-  ngx.ctx.workspaces = {}
+  local old_wss = ctx.workspaces
+  ctx.workspaces = {}
   local rows, err = singletons.dao.workspace_entities:find_all({
     entity_id  = route.id,
+    unique_field_name = "id",
+    unique_field_value = route.id,
   })
-  ngx.ctx.workspaces = old_wss
+  ctx.workspaces = old_wss
 
-  if not rows or not rows[1] then
+  if err or not rows[1] then
     return nil, err
   end
 
@@ -636,15 +639,15 @@ end
 
 -- Return workspace scope, given api belongs
 -- to, to the the context.
-function _M.resolve_ws_scope(route)
+function _M.resolve_ws_scope(ctx, route)
 
   local ws_scope_key = format("apis_ws_resolution:%s", route.id)
   local workspaces, err = singletons.cache:get(ws_scope_key, nil,
-                                               load_workspace_scope, route)
+                                               load_workspace_scope, ctx, route)
   if err then
     return nil, err
   end
-  return workspaces
+  return utils.deep_copy(workspaces)
 end
 
 
@@ -709,6 +712,15 @@ function _M.workspace_entities_map(ws_scope, entity_type)
   end
 
   return ws_entities_map
+end
+
+
+function _M.is_proxy_request()
+  local r = getfenv(0).__ngx_req
+  if not r then
+    return false
+  end
+  return ngx.ctx.is_proxy_request
 end
 
 

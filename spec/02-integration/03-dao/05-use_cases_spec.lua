@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local singletons = require "kong.singletons"
 
 for _, strategy in helpers.each_strategy() do
   describe("use-cases with DB: #" .. strategy, function()
@@ -9,9 +8,6 @@ for _, strategy in helpers.each_strategy() do
     setup(function()
       local _
       bp, _, dao = helpers.get_db_utils(strategy)
-      singletons.dao = dao
-      ngx.ctx.workspaces = nil
-      ngx.ctx.workspaces = dao.workspaces:find_all({ name = "default" })
     end)
 
     teardown(function()

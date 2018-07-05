@@ -652,7 +652,7 @@ return {
       var.upstream_x_forwarded_port  = forwarded_port
 
       local err
-      ctx.workspaces, err = workspaces.resolve_ws_scope(route.protocols and route or api)
+      ctx.workspaces, err = workspaces.resolve_ws_scope(ctx, route.protocols and route or api)
       if err then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR("failed to retrieve workspace " ..
           "for the request (reason: " .. tostring(err) .. ")")

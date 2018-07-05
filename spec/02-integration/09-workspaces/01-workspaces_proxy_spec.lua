@@ -48,7 +48,7 @@ for _, strategy in helpers.each_strategy() do
         path   = "/apis",
         body   = {
           name = "test",
-          upstream_url = "http://httpbin.org",
+          upstream_url = helpers.mock_upstream_url,
           hosts = "api1.com"
         },
         headers = {

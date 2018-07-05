@@ -2318,14 +2318,14 @@ describe("Admin API", function()
       id = apis[1].id,
       name = "new-name",
       created_at = "123",
-      upstream_url = "http://httpbin.org",
+      upstream_url = helpers.mock_upstream_url,
     }, {["Kong-Admin-Token"] = "bob"}, 403)
 
     put("/apis/" , {
       id = apis[4].id,
       name = "new-name",
       created_at = "123",
-      upstream_url = "http://httpbin.org"},
+      upstream_url = helpers.mock_upstream_url},
   {["Kong-Admin-Token"] = "bob"}, 200)
   end)
 

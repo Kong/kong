@@ -16,6 +16,7 @@ local pairs = pairs
 local ipairs = ipairs
 local get_workspaces = workspaces.get_workspaces
 local workspaceable_rel = workspaces.get_workspaceable_relations()
+local is_proxy_request = workspaces.is_proxy_request
 
 local _M = require("kong.dao.db").new_db("cassandra")
 
@@ -478,10 +479,8 @@ function _M:insert(table_name, schema, model, constraints, options)
   return self:find(table_name, schema, primary_keys)
 end
 
-local function workspace_entities_map(db, table_name)
-  local ws_scope = get_workspaces()
+local function load_entity_map(db, table_name, ws_scope)
   local ws_entities_map = {}
-
   for _, ws in ipairs(ws_scope) do
     local where, args = get_where(ws_entities_schema, {
       workspace_id = ws.id,
@@ -500,6 +499,31 @@ local function workspace_entities_map(db, table_name)
   end
 
   return ws_entities_map
+end
+
+-- cache enmities map in memory for current request
+-- ws_scope table has a life of current proxy request only
+local entity_map_cache = setmetatable({}, { __mode = "k" })
+local function workspace_entities_map(db, table_name)
+  local ws_scope = get_workspaces()
+
+  if not is_proxy_request() then
+    return load_entity_map(db, table_name, ws_scope)
+  end
+
+  local ws_entities_cached = entity_map_cache[ws_scope]
+  if not ws_entities_cached then
+    ws_entities_cached = {}
+    entity_map_cache[ws_scope] = ws_entities_cached
+  end
+
+  if ws_entities_cached[table_name] then
+    return ws_entities_cached[table_name]
+  end
+
+  local entity_map = load_entity_map(db, table_name, ws_scope)
+  ws_entities_cached[table_name] = entity_map
+  return entity_map
 end
 
 function _M:find(table_name, schema, filter_keys)

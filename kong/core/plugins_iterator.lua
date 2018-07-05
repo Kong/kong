@@ -45,8 +45,9 @@ local function load_plugin_into_memory_ws(route_id,
                                           service_id,
                                           consumer_id,
                                           plugin_name,
-                                          api_id)
-  local ws_scope = ngx.ctx.workspaces or {}
+                                          api_id,
+                                          ctx)
+  local ws_scope = ctx.workspaces or {}
 
   -- when there is no workspace, like in phase rewrite
   local plugin_cache_key = singletons.dao.plugins:cache_key_ws(nil,
@@ -145,14 +146,16 @@ local function load_plugin_configuration(route_id,
                                          service_id,
                                          consumer_id,
                                          plugin_name,
-                                         api_id)
+                                         api_id,
+                                         ctx)
   local plugin, err = load_plugin_into_memory_ws(route_id,
                                                  service_id,
                                                  consumer_id,
                                                  plugin_name,
-                                                 api_id)
+                                                 api_id,
+                                                 ctx)
   if err then
-    ngx.ctx.delay_response = false
+    ctx.delay_response = false
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
@@ -162,7 +165,7 @@ local function load_plugin_configuration(route_id,
       name = plugin.workspace_name
     }
 
-    ngx.ctx.workspaces = { plugin_ws }
+    ctx.workspaces = { plugin_ws }
 
     local cfg       = plugin.config or {}
     cfg.api_id      = plugin.api_id
@@ -227,69 +230,69 @@ local function get_next(self)
     repeat
 
       if route_id and service_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(route_id, service_id, consumer_id, plugin_name, nil)
+        plugin_configuration = load_plugin_configuration(route_id, service_id, consumer_id, plugin_name, nil, ctx)
         if plugin_configuration then
           break
         end
       end
 
       if route_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(route_id, nil, consumer_id, plugin_name, nil)
+        plugin_configuration = load_plugin_configuration(route_id, nil, consumer_id, plugin_name, nil, ctx)
         if plugin_configuration then
           break
         end
       end
 
       if service_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(nil, service_id, consumer_id, plugin_name, nil)
+        plugin_configuration = load_plugin_configuration(nil, service_id, consumer_id, plugin_name, nil, ctx)
         if plugin_configuration then
           break
         end
       end
 
       if api_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(nil, nil, consumer_id, plugin_name, api_id)
+        plugin_configuration = load_plugin_configuration(nil, nil, consumer_id, plugin_name, api_id, ctx)
         if plugin_configuration then
           break
         end
       end
 
       if route_id and service_id then
-        plugin_configuration = load_plugin_configuration(route_id, service_id, nil, plugin_name, nil)
+        plugin_configuration = load_plugin_configuration(route_id, service_id, nil, plugin_name, nil, ctx)
         if plugin_configuration then
           break
         end
       end
 
       if consumer_id then
-        plugin_configuration = load_plugin_configuration(nil, nil, consumer_id, plugin_name, nil)
+        plugin_configuration = load_plugin_configuration(nil, nil, consumer_id, plugin_name, nil, ctx)
         if plugin_configuration then
           break
         end
       end
 
       if route_id then
-        plugin_configuration = load_plugin_configuration(route_id, nil, nil, plugin_name, nil)
+        plugin_configuration = load_plugin_configuration(route_id, nil, nil, plugin_name, nil, ctx)
         if plugin_configuration then
           break
         end
       end
 
       if service_id then
-        plugin_configuration = load_plugin_configuration(nil, service_id, nil, plugin_name, nil)
+        plugin_configuration = load_plugin_configuration(nil, service_id, nil, plugin_name, nil, ctx)
         if plugin_configuration then
           break
         end
       end
 
       if api_id then
-        plugin_configuration = load_plugin_configuration(nil, nil, nil, plugin_name, api_id)
+        plugin_configuration = load_plugin_configuration(nil, nil, nil, plugin_name, api_id, ctx)
         if plugin_configuration then
           break
         end
       end
 
-      plugin_configuration = load_plugin_configuration(nil, nil, nil, plugin_name, nil)
+      plugin_configuration = load_plugin_configuration(nil, nil, nil, plugin_name, nil, ctx)
 
     until true
 

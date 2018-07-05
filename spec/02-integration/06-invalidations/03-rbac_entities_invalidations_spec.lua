@@ -221,7 +221,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         body = {
           name         = "example",
           hosts        = "example.com",
-          upstream_url = "http://httpbin.org",
+          upstream_url = helpers.mock_upstream_url,
         },
       })
       assert.res_status(403, res)
@@ -236,7 +236,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         body = {
           name         = "example",
           hosts        = "example.com",
-          upstream_url = "http://httpbin.org",
+          upstream_url = helpers.mock_upstream_url,
         },
       })
       assert.res_status(403, res)
@@ -268,7 +268,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         body = {
           name         = "example",
           hosts        = "example.com",
-          upstream_url = "http://httpbin.org",
+          upstream_url = helpers.mock_upstream_url,
         },
       })
       assert.res_status(201, res_1)
@@ -285,7 +285,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         body = {
           name         = "example2",
           hosts        = "example.com",
-          upstream_url = "http://httpbin.org",
+          upstream_url = helpers.mock_upstream_url,
         },
       })
       assert.res_status(201, res_2)
@@ -319,7 +319,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         body = {
           name         = "example",
           hosts        = "example.com",
-          upstream_url = "http://httpbin.org",
+          upstream_url = helpers.mock_upstream_url,
         },
       })
       assert.res_status(403, res_1)
@@ -336,7 +336,7 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         body = {
           name         = "example2",
           hosts        = "example.com",
-          upstream_url = "http://httpbin.org",
+          upstream_url = helpers.mock_upstream_url,
         },
       })
       assert.res_status(403, res_2)
