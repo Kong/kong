@@ -70,16 +70,29 @@ return {
         return err
       end
 
-      -- add negative endpoint permissions to the rbac endpoint
-      ok, err = dao.rbac_role_endpoints:insert({
-        role_id = role.id,
-        workspace = "*",
-        endpoint = "/rbac",
-        negative = true,
-        actions = action_bits_all, -- all actions
-      })
-      if not ok then
-        return err
+      -- for each possible rbac endpoint, register a negative
+      -- permission
+      -- yes, this is ugly, but we do not support a generic
+      -- wildcard with prefix matching - instead, wildcards
+      -- are for path segments (/*/)
+      for _, rbac_endpoint in ipairs{
+        "/rbac/*",
+        "/rbac/*/*",
+        "/rbac/*/*/*",
+        "/rbac/*/*/*/*",
+        "/rbac/*/*/*/*/*",
+      } do
+        -- add negative endpoint permissions to the rbac endpoint
+        ok, err = dao.rbac_role_endpoints:insert({
+          role_id = role.id,
+          workspace = "*",
+          endpoint = rbac_endpoint,
+          negative = true,
+          actions = action_bits_all, -- all actions
+        })
+        if not ok then
+          return err
+        end
       end
 
       role, err = dao.rbac_roles:find_all({name = "super-admin"})
