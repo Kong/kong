@@ -7,9 +7,15 @@ local ipairs       = ipairs
 local fmt          = string.format
 local tostring     = tostring
 local table_concat = table.concat
+local ngx_null     = ngx.null
+local utils_split  = utils.split
 
 
 local workspaceable = workspaces.get_workspaceable_relations()
+local workspace_delimiter = workspaces.WORKSPACE_DELIMITER
+local get_workspaces = workspaces.get_workspaces
+local find_entity_by_unique_field = workspaces.find_entity_by_unique_field
+local DEFAULT_WORKSPACE = workspaces.DEFAULT_WORKSPACE
 
 
 local _M = {}
@@ -28,7 +34,7 @@ function _M.apply_unique_per_ws(table_name, params, constraints)
     return
   end
 
-  local workspace = workspaces.get_workspaces()[1]
+  local workspace = get_workspaces()[1]
   if not workspace or table_name == "workspaces" then
     return workspace
   end
@@ -37,8 +43,9 @@ function _M.apply_unique_per_ws(table_name, params, constraints)
     -- skip if no unique key or it's also a primary, field
     -- is not set or has null value
     if params[field_name] and constraints.primary_key ~= field_name and
-      field_schema.type ~= "id" and  params[field_name] ~= ngx.null then
-      params[field_name] = fmt("%s:%s", workspace.name, params[field_name])
+      field_schema.type ~= "id" and  params[field_name] ~= ngx_null then
+      params[field_name] = fmt("%s%s%s", workspace.name, workspace_delimiter,
+                               params[field_name])
     end
   end
 
@@ -53,20 +60,20 @@ function _M.resolve_shared_entity_id(table_name, params, constraints)
     return
   end
 
-  local ws_scope = workspaces.get_workspaces()
+  local ws_scope = get_workspaces()
   if #ws_scope == 0 then
     return
   end
   local workspace = ws_scope[1]
 
   if table_name == "workspaces" and
-    params.name == workspaces.DEFAULT_WORKSPACE then
+    params.name == DEFAULT_WORKSPACE then
     return
   end
 
   for k, v in pairs(params) do
     if constraints.unique_keys[k] then
-      local row, err = workspaces.find_entity_by_unique_field({
+      local row, err = find_entity_by_unique_field({
         workspace_id = workspace.id,
         entity_type = table_name,
         unique_field_name = k,
@@ -85,24 +92,24 @@ function _M.resolve_shared_entity_id(table_name, params, constraints)
 end
 
 
--- validates taht given primary_key belongs to current ws scope
+-- validates that given primary_key belongs to current ws scope
 function _M.validate_pk_exist(table_name, params, constraints)
   if not constraints or not constraints.primary_key then
     return
   end
 
-  local ws_scope = workspaces.get_workspaces()
+  local ws_scope = get_workspaces()
   if #ws_scope == 0 then
     return true
   end
   local workspace = ws_scope[1]
 
   if table_name == "workspaces" and
-    params.name == workspaces.DEFAULT_WORKSPACE then
+    params.name == DEFAULT_WORKSPACE then
     return true
   end
 
-  local row, err = workspaces.find_entity_by_unique_field({
+  local row, err = find_entity_by_unique_field({
     workspace_id = workspace.id,
     entity_id = params[constraints.primary_key]
   })
@@ -113,7 +120,6 @@ function _M.validate_pk_exist(table_name, params, constraints)
 
   return row and true
 end
-
 
 
 function _M.remove_ws_prefix(table_name, row, include_ws)
@@ -130,8 +136,8 @@ function _M.remove_ws_prefix(table_name, row, include_ws)
     -- skip if no unique key or it's also a primary, field
     -- is not set or has null value
     if row[field_name] and constraints.primary_key ~= field_name and
-      field_schema.type ~= "id" and row[field_name] ~= ngx.null then
-      local names = utils.split(row[field_name], ":")
+      field_schema.type ~= "id" and row[field_name] ~= ngx_null then
+      local names = utils_split(row[field_name], workspace_delimiter)
       if #names > 1 then
         row[field_name] = names[2]
       end
@@ -157,7 +163,7 @@ end
 -- `before_filter`, but to set the entity some of those same methods are
 -- used
 function _M.is_workspaceable(table_name, ws_scope)
-  return workspaces.get_workspaceable_relations()[table_name] and #ws_scope > 0
+  return workspaceable[table_name] and #ws_scope > 0
 end
 
 
@@ -171,8 +177,7 @@ end
 
 
 function _M.ws_scope_as_list(table_name)
-  local ws_scope = workspaces.get_workspaces()
-  local workspaceable = workspaces.get_workspaceable_relations()
+  local ws_scope = get_workspaces()
 
   if workspaceable[table_name] and #ws_scope > 0 then
     return encode_ws_list(ws_scope)

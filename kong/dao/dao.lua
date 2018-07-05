@@ -20,8 +20,14 @@ local workspaces = require "kong.workspaces"
 local rbac = require "kong.rbac"
 
 local workspaceable = workspaces.get_workspaceable_relations()
+local apply_unique_per_ws = workspaces.apply_unique_per_ws
+local resolve_shared_entity_id = workspaces.resolve_shared_entity_id
+local remove_ws_prefix = workspaces.remove_ws_prefix
+local get_workspaces = workspaces.get_workspaces
 
 local fmt    = string.format
+local ipairs = ipairs
+local pairs = pairs
 local new_tab
 do
   local ok
@@ -72,103 +78,6 @@ local function ret_error(db_name, res, err, ...)
   return res, err, ...
 end
 
--- used only with insert, update, delete, and find_all
-local function apply_unique_per_ws(table_name, params, constraints)
-  -- entity may have workspace_id, workspace_name fields, ex. in case of update
-  -- needs to be removed as entity schema doesn't support them
-  if table_name ~= "workspace_entities" then
-    params.workspace_id = nil
-    params.workspace_name = nil
-  end
-
-  if not constraints then
-    return
-  end
-
-  local workspace = workspaces.get_workspaces()[1]
-  if not workspace or table_name == "workspaces" or table_name == "plugins" then
-    return workspace
-  end
-
-  for field_name, field_schema in pairs(constraints.unique_keys) do
-    if params[field_name] and not constraints.primary_keys[field_name] and
-      field_schema.schema.fields[field_name].type ~= "id" then
-      params[field_name] = fmt("%s:%s", workspace.name, params[field_name])
-    end
-  end
-  return workspace
-end
-
--- If entity has a unique key it will have workspace_name prefix so we
--- have to search first in the relationship table
-local function resolve_shared_entity_id(table_name, params, constraints)
-  if table_name == "plugins" or table_name == "workspaces" and
-    params.name == workspaces.DEFAULT_WORKSPACE then
-    return true
-  end
-
-  local ws_scope = workspaces.get_workspaces()
-  if #ws_scope == 0 then
-    return true
-  end
-
-  if not constraints or not constraints.unique_keys then
-    return true
-  end
-
-  for k, v in pairs(params) do
-    if constraints.unique_keys[k] then
-      local row, err = workspaces.find_entity_by_unique_field({
-        workspace_id = ws_scope[1].id,
-        entity_type = table_name,
-        unique_field_name = k,
-        unique_field_value = v,
-      })
-
-      if err then
-        return false, err
-      end
-
-      if row then
-        -- don't clear primary keys
-        if not constraints.primary_keys[k] then
-          params[k] = nil
-        end
-        params[constraints.primary_key] = row.entity_id
-        return true
-      end
-    end
-  end
-  return true
-end
-
-local function remove_ws_prefix(table_name, row, include_ws)
-  if not row then
-    return
-  end
-
-  local constraints = workspaceable[table_name]
-  if not constraints or not constraints.unique_keys then
-    return
-  end
-
-  for field_name, field_schema in pairs(constraints.unique_keys) do
-    if row[field_name] and not constraints.primary_keys[field_name] and
-      field_schema.schema.fields[field_name].type ~= "id" then
-      local names = utils.split(row[field_name], ":")
-      if #names > 1 then
-        row[field_name] = names[2]
-      end
-    end
-  end
-
-  if not include_ws then
-    if table_name ~= "workspace_entities" then
-      row.workspace_id = nil
-    end
-    row.workspace_name = nil
-  end
-end
 
 local DAO = Object:extend()
 
@@ -201,7 +110,7 @@ function DAO:cache_key_ws(workspace, arg1, arg2, arg3, arg4, arg5)
 end
 
 function DAO:cache_key(arg1, arg2, arg3, arg4, arg5)
-  local workspace = workspaces.get_workspaces()[1]
+  local workspace = get_workspaces()[1]
 
   -- Entities that are not workspaceable do not need to be cached with
   -- the current workspace. No matter what ws is the request (if any)
@@ -657,7 +566,7 @@ function DAO:delete(tbl, options)
   -- modify the tbl argument
   local tbl = utils.deep_copy(tbl)
 
-  local ws = workspaces.get_workspaces()[1]
+  local ws = get_workspaces()[1]
   local constraints = workspaceable[self.table]
   apply_unique_per_ws(self.schema.table, tbl, constraints)
 

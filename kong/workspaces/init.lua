@@ -11,13 +11,23 @@ local DEBUG   = ngx.DEBUG
 local next    = next
 local values = tablex.values
 local cache = singletons.cache
+local pairs = pairs
+local setmetatable = setmetatable
+local ipairs = ipairs
+local type = type
 local getfenv = getfenv
+local utils_split = utils.split
+local ngx_null = ngx.null
+local tostring = tostring
 
 
 local _M = {}
 
 local default_workspace = "default"
+local workspace_delimiter = ":"
+
 _M.DEFAULT_WORKSPACE = default_workspace
+_M.WORKSPACE_DELIMITER = workspace_delimiter
 local ALL_METHODS = "GET,POST,PUT,DELETE,OPTIONS,PATCH"
 
 
@@ -176,13 +186,14 @@ end
 -- Call can come from init phase, Admin or proxy
 -- mostly ngx.ctx.workspaces would already be set if not
 -- search will be done without workspace
-function _M.get_workspaces()
+local function get_workspaces()
   local r = getfenv(0).__ngx_req
   if not r then
     return {}
   end
   return ngx.ctx.workspaces or {}
 end
+_M.get_workspaces = get_workspaces
 
 
 -- register a relation name and its primary key name as a workspaceable
@@ -208,9 +219,10 @@ function _M.register_workspaceable_relation(relation, primary_keys, unique_keys)
 end
 
 
-function _M.get_workspaceable_relations()
+local function get_workspaceable_relations()
   return setmetatable({}, metatable(workspaceable_relations))
 end
+_M.get_workspaceable_relations = get_workspaceable_relations
 
 
 local function add_entity_relation_db(dao, ws, entity_id, table_name, field_name, field_value)
@@ -408,7 +420,7 @@ function _M.update_entity_relation(table_name, entity)
 end
 
 
-function _M.find_entity_by_unique_field(params)
+local function find_entity_by_unique_field(params)
   local rows, err = singletons.dao.workspace_entities:find_all(params)
   if err then
     return nil, err
@@ -417,7 +429,7 @@ function _M.find_entity_by_unique_field(params)
     return rows[1]
   end
 end
-
+_M.find_entity_by_unique_field = find_entity_by_unique_field
 
 local function match_route(router, method, uri, host)
   return router.select(method, uri, host)
@@ -433,6 +445,7 @@ local function api_workspace_ids(api)
   ngx.ctx.workspaces = old_wss
   return map(function(x) return x.workspace_id end, ws_rels)
 end
+
 
 -- return true if api is in workspace ws
 local function is_api_in_ws(api, ws)
@@ -470,7 +483,7 @@ local function validate_route_for_ws(router, method, uri, host, ws)
     return true
 
   elseif is_blank(selected_route.api.hosts) or
-         ngx.null == selected_route.api.hosts then -- we match from a no-host route
+         ngx_null == selected_route.api.hosts then -- we match from a no-host route
     ngx_log(DEBUG, "selected_route has no host restriction")
     return true
 
@@ -503,9 +516,9 @@ end
 
 
 local function sanitize_ngx_nulls(methods, uris, hosts)
-  return (methods == ngx.null) and "" or methods,
-         (uris    == ngx.null) and "" or uris,
-         (hosts   == ngx.null) and "" or hosts
+  return (methods == ngx_null) and "" or methods,
+         (uris    == ngx_null) and "" or uris,
+         (hosts   == ngx_null) and "" or hosts
 end
 
 
@@ -521,7 +534,7 @@ local function split(str_or_tbl)
     separator = ","
   end
 
-  return utils.split(str_or_tbl or " ", separator)
+  return utils_split(str_or_tbl or " ", separator)
 end
 
 
@@ -547,7 +560,7 @@ function _M.is_api_colliding(req, router)
 end
 
 local function sanitize_route_param(param)
-  if (param == cjson.null) or (param == ngx.null) or
+  if (param == cjson.null) or (param == ngx_null) or
     not param or "table" ~= type(param) or
     not next(param) then
     return {[""] = ""}
@@ -721,6 +734,109 @@ function _M.is_proxy_request()
     return false
   end
   return ngx.ctx.is_proxy_request
+end
+
+
+local workspaceable = get_workspaceable_relations()
+-- used only with insert, update, delete, and find_all
+function _M.apply_unique_per_ws(table_name, params, constraints)
+  -- entity may have workspace_id, workspace_name fields, ex. in case of update
+  -- needs to be removed as entity schema doesn't support them
+  if table_name ~= "workspace_entities" then
+    params.workspace_id = nil
+    params.workspace_name = nil
+  end
+
+  if not constraints then
+    return
+  end
+
+  local workspace = get_workspaces()[1]
+  if not workspace or table_name == "workspaces" or table_name == "plugins" then
+    return workspace
+  end
+
+  for field_name, field_schema in pairs(constraints.unique_keys) do
+    if params[field_name] and not constraints.primary_keys[field_name] and
+      field_schema.schema.fields[field_name].type ~= "id" then
+      params[field_name] = format("%s%s%s", workspace.name, workspace_delimiter,
+                                  params[field_name])
+    end
+  end
+  return workspace
+end
+
+
+-- If entity has a unique key it will have workspace_name prefix so we
+-- have to search first in the relationship table
+function _M.resolve_shared_entity_id(table_name, params, constraints)
+  if table_name == "plugins" or table_name == "workspaces" and
+    params.name == default_workspace then
+    return true
+  end
+
+  local ws_scope = get_workspaces()
+  if #ws_scope == 0 then
+    return true
+  end
+
+  if not constraints or not constraints.unique_keys then
+    return true
+  end
+
+  for k, v in pairs(params) do
+    if constraints.unique_keys[k] then
+      local row, err = find_entity_by_unique_field({
+        workspace_id = ws_scope[1].id,
+        entity_type = table_name,
+        unique_field_name = k,
+        unique_field_value = v,
+      })
+
+      if err then
+        return false, err
+      end
+
+      if row then
+        -- don't clear primary keys
+        if not constraints.primary_keys[k] then
+          params[k] = nil
+        end
+        params[constraints.primary_key] = row.entity_id
+        return true
+      end
+    end
+  end
+  return true
+end
+
+
+function _M.remove_ws_prefix(table_name, row, include_ws)
+  if not row then
+    return
+  end
+
+  local constraints = workspaceable[table_name]
+  if not constraints or not constraints.unique_keys then
+    return
+  end
+
+  for field_name, field_schema in pairs(constraints.unique_keys) do
+    if row[field_name] and not constraints.primary_keys[field_name] and
+      field_schema.schema.fields[field_name].type ~= "id" then
+      local names = utils_split(row[field_name], workspace_delimiter, 2)
+      if #names > 1 then
+        row[field_name] = names[2]
+      end
+    end
+  end
+
+  if not include_ws then
+    if table_name ~= "workspace_entities" then
+      row.workspace_id = nil
+    end
+    row.workspace_name = nil
+  end
 end
 
 
