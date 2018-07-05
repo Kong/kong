@@ -29,6 +29,12 @@ function zipkin_reporter_methods:report(span)
 	local span_context = span.context
 	local span_kind = span:get_tag "span.kind"
 	local port = span:get_tag "peer.port"
+	local zipkin_tags = {}
+	for k, v in span:each_tag() do
+		-- values of zipkin tags should be strings, see [zipkin-api](https://zipkin.io/zipkin-api/#/default/post_spans).
+		zipkin_tags[k] = tostring(v)
+	end
+
 	local zipkin_span = {
 		traceId = to_hex(span_context.trace_id);
 		name = span.name;
@@ -46,7 +52,7 @@ function zipkin_reporter_methods:report(span)
 			ipv6 = span:get_tag "peer.ipv6";
 			port = port; -- port is *not* optional
 		} or cjson.null;
-		tags = span.tags; -- XXX: not guaranteed by documented opentracing-lua API
+		tags = zipkin_tags;
 		annotations = span.logs -- XXX: not guaranteed by documented opentracing-lua API to be in correct format
 	}
 
