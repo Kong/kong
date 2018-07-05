@@ -19,6 +19,7 @@ local getfenv = getfenv
 local utils_split = utils.split
 local ngx_null = ngx.null
 local tostring = tostring
+local concat = table.concat
 
 
 local _M = {}
@@ -59,6 +60,17 @@ local function map(f, t)
   return r
 end
 
+local function filter(f, t)
+  local r = {}
+  local n = 0
+  for _, x in ipairs(t) do
+    if f(x) then
+      n = n + 1
+      r[n] = x
+    end
+  end
+  return r
+end
 
 -- helper function for permutations
 local function inc(t, pos)
@@ -240,6 +252,56 @@ end
 -- return migration for adding default workspace and existing
 -- workspaceable entities to the default workspace
 function _M.get_default_workspace_migration()
+
+  local separator = ":"
+  local prefix_separator = format("%s%s", default_workspace, separator)
+
+  local function pg_batch_update_entities_with_ws_prefix(dao, relation, constraints)
+    local function update_unique_fields(constraints)
+      return map(function(x)
+                   return format(" %s = '%s' || %s", x, prefix_separator, x)
+                 end,
+                 filter(function(x)
+                          return not constraints.primary_keys[x]
+                        end,
+                        require("pl.tablex").keys(constraints.unique_keys)))
+    end
+
+    local update_query = format("update %s set %s",
+                                relation,
+                                concat(update_unique_fields(constraints), ", "))
+    dao.db:query(update_query)
+  end
+
+
+  local function cas_update_entity_with_ws_prefix(dao, relation, entity, constraints, default_ws)
+    local err, _
+    local updates = {}
+    for k, v in pairs(constraints.unique_keys) do
+      if not constraints.primary_keys[k] and entity[k] then
+        updates[k] = entity[k]
+      end
+    end
+
+    local old_ws = ngx.ctx.workspaces
+    ngx.ctx.workspaces = {default_ws}
+    if next(updates) then
+      _, err = dao[relation]:update(updates, entity)
+    end
+    ngx.ctx.workspaces = old_ws
+
+    if err then
+      return nil, err
+    end
+
+    return true
+  end
+
+  local function escape_string(str)
+    return string.gsub(str, "'", "''")
+  end
+
+
   return {
     default_workspace = {
       {
@@ -271,6 +333,7 @@ function _M.get_default_workspace_migration()
                       end
                     end
                   end
+
                 end
                 local _, err = add_entity_relation_db(dao.workspace_entities, default,
                                                       entity[constraints.primary_key],
@@ -279,13 +342,22 @@ function _M.get_default_workspace_migration()
                 if err then
                   return nil, err
                 end
+
+                if factory.name == "cassandra" and relation ~= "workspaces" then
+                  cas_update_entity_with_ws_prefix(dao, relation, entity, constraints, default)
+                end
+
               end
+
+              if factory.name == "postgres" and relation ~= "workspaces" then
+                pg_batch_update_entities_with_ws_prefix(dao, relation, constraints)
+              end
+
             end
           end
 
           -- Add new-dao entities (routes and services)
           local services = dao.db:query("select * from services;")
-          local routes = dao.db:query("select * from routes;")
           for _, entity in ipairs(services) do
             local _, err = add_entity_relation_db(dao.workspace_entities,
                                                   default,
@@ -306,8 +378,18 @@ function _M.get_default_workspace_migration()
             if err then
               return nil, err
             end
+
+            if factory.name == "postgres" then
+              dao.db:query(format("update services set name = '%s' || name", prefix_separator))
+            elseif factory.name == "cassandra" and entity.name then
+              local q = format("UPDATE services SET name = '%s' WHERE id = %s and partition = 'services';",
+                               format("%s%s", prefix_separator, escape_string(entity.name)),
+                               entity.id)
+              dao.db:query(q)
+            end
           end
 
+          local routes = dao.db:query("select * from routes;")
           for _, route in ipairs(routes) do
             local _, err = add_entity_relation_db(dao.workspace_entities,
                                                   default,
