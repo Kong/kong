@@ -872,7 +872,7 @@ describe("(#" .. kong_conf.database .. ")", function()
       local map = rbac.readable_entities_permissions({
         { id = role_id },
       })
-      assert.same(rbac.readable_action(0x1), map[entity_id][1])
+      assert.same(rbac.readable_action(0x1), map[entity_id].actions[1])
 
       role_id = u()
       entity_id = u()
@@ -887,7 +887,7 @@ describe("(#" .. kong_conf.database .. ")", function()
       local map = rbac.readable_entities_permissions({
         { id = role_id },
       })
-      assert.equals(rbac.readable_action(0x2), map[entity_id][1])
+      assert.equals(rbac.readable_action(0x2), map[entity_id].actions[1])
 
       role_id = u()
       entity_id = u()
@@ -902,7 +902,7 @@ describe("(#" .. kong_conf.database .. ")", function()
       local map = rbac.readable_entities_permissions({
         { id = role_id },
       })
-      assert.equals(rbac.readable_action(0x4), map[entity_id][1])
+      assert.equals(rbac.readable_action(0x4), map[entity_id].actions[1])
 
       role_id = u()
       entity_id = u()
@@ -917,7 +917,7 @@ describe("(#" .. kong_conf.database .. ")", function()
       local map = rbac.readable_entities_permissions({
         { id = role_id },
       })
-      assert.equals(rbac.readable_action(0x08), map[entity_id][1])
+      assert.equals(rbac.readable_action(0x08), map[entity_id].actions[1])
     end)
     it("multiple permission", function()
       role_id = u()
@@ -933,7 +933,7 @@ describe("(#" .. kong_conf.database .. ")", function()
       local map = rbac.readable_entities_permissions({
         { id = role_id },
       })
-      assert.same({'create', 'read'}, map[entity_id])
+      assert.same({'create', 'read'}, map[entity_id].actions)
     end)
   end)
   describe("readable_endpoint_permissions", function()
@@ -960,7 +960,7 @@ describe("(#" .. kong_conf.database .. ")", function()
         { id = role_id },
       })
 
-      assert.same(rbac.readable_action(0x1), map.foo["/foo/bar"][1])
+      assert.same(rbac.readable_action(0x1), map.foo["/foo/bar"].actions[1])
 
       role_id = u()
       assert(dao.rbac_role_endpoints:insert({
@@ -973,7 +973,7 @@ describe("(#" .. kong_conf.database .. ")", function()
       local map = rbac.readable_endpoints_permissions({
         { id = role_id },
       })
-      assert.equals(rbac.readable_action(0x2), map.foo["/foo/bar"][1])
+      assert.equals(rbac.readable_action(0x2), map.foo["/foo/bar"].actions[1])
 
       role_id = u()
       assert(dao.rbac_role_endpoints:insert({
@@ -986,7 +986,7 @@ describe("(#" .. kong_conf.database .. ")", function()
       local map = rbac.readable_endpoints_permissions({
         { id = role_id },
       })
-      assert.equals(rbac.readable_action(0x04), map.foo["/foo/bar"][1])
+      assert.equals(rbac.readable_action(0x04), map.foo["/foo/bar"].actions[1])
 
       role_id = u()
       assert(dao.rbac_role_endpoints:insert({
@@ -1000,7 +1000,7 @@ describe("(#" .. kong_conf.database .. ")", function()
         { id = role_id },
       })
 
-      assert.equals(rbac.readable_action(0x08), map.foo["/foo/bar"][1])
+      assert.equals(rbac.readable_action(0x08), map.foo["/foo/bar"].actions[1])
     end)
     it("multiple permission", function()
       local role_id = u()
@@ -1014,7 +1014,7 @@ describe("(#" .. kong_conf.database .. ")", function()
       local map = rbac.readable_endpoints_permissions({
         { id = role_id },
       })
-      assert.same({'create', 'read'}, map.foo["/foo/bar"])
+      assert.same({'create', 'read'}, map.foo["/foo/bar"].actions)
     end)
   end)
 end)

@@ -291,15 +291,17 @@ end
 
 local function resolve_role_entity_permissions(roles)
   local pmap = {}
-
+  local nmap = {} -- map endpoints to a boolean indicating whether it is
+                  -- negative or not
 
   local function positive_mask(p, id)
     pmap[id] = bor(p, pmap[id] or 0x0)
+    nmap[id] = false
   end
   local function negative_mask(p, id)
     pmap[id] = bor(pmap[id] or 0x0, lshift(p, 4))
+    nmap[id] = true
   end
-
 
   local function iter(role_entities, mask)
     for _, role_entity in ipairs(role_entities) do
@@ -316,7 +318,6 @@ local function resolve_role_entity_permissions(roles)
     end
   end
 
-
   -- assign all the positive bits first such that we dont have a case
   -- of an explicit positive overriding an explicit negative based on
   -- the order of iteration
@@ -327,8 +328,9 @@ local function resolve_role_entity_permissions(roles)
       __skip_rbac = true,
     })
     if err then
-      error(err)
+      return _, _, err
     end
+
     for _, role_entity in ipairs(role_entities) do
       if role_entity.negative then
         negative_entities[#negative_entities + 1] = role_entity
@@ -337,10 +339,11 @@ local function resolve_role_entity_permissions(roles)
       end
     end
   end
+
   iter(positive_entities, positive_mask)
   iter(negative_entities, negative_mask)
 
-  return pmap
+  return pmap, nmap
 end
 _M.resolve_role_entity_permissions = resolve_role_entity_permissions
 
@@ -539,7 +542,7 @@ end
 
 
 function _M.readable_entities_permissions(roles)
-  local map = resolve_role_entity_permissions(roles)
+  local map, nmap = resolve_role_entity_permissions(roles)
 
   for k, v in pairs(map) do
     local actions_t = setmetatable({}, cjson.empty_array_mt)
@@ -552,7 +555,10 @@ function _M.readable_entities_permissions(roles)
       end
     end
 
-    map[k] = actions_t
+    map[k] = {
+      actions = actions_t,
+      negative = nmap[k]
+    }
   end
 
   return map
@@ -567,7 +573,8 @@ _M.authorize_request_entity = authorize_request_entity
 
 local function resolve_role_endpoint_permissions(roles)
   local pmap = {}
-
+  local nmap = {} -- map endpoints to a boolean indicating whether it is
+                  -- negative or not
 
   for _, role in ipairs(roles) do
     local roles_endpoints, err = singletons.dao.rbac_role_endpoints:find_all({
@@ -575,7 +582,7 @@ local function resolve_role_endpoint_permissions(roles)
       __skip_rbac = true,
     })
     if err then
-      error(err)
+      return _, _, err
     end
 
     -- because we hold a two-dimensional mapping and prioritize explicit
@@ -601,19 +608,22 @@ local function resolve_role_endpoint_permissions(roles)
         ws_prefix = "/" .. role_endpoint.workspace
       end
 
+      -- is it negative or positive?
+      nmap[ws_prefix .. role_endpoint.endpoint] = role_endpoint.negative
+
       pmap[role_endpoint.workspace][ws_prefix .. role_endpoint.endpoint] =
         bor(p, pmap[role_endpoint.workspace][role_endpoint.endpoint] or 0x0)
     end
   end
 
 
-  return pmap
+  return pmap, nmap
 end
 _M.resolve_role_endpoint_permissions = resolve_role_endpoint_permissions
 
 
 function _M.readable_endpoints_permissions(roles)
-  local map = resolve_role_endpoint_permissions(roles)
+  local map, nmap = resolve_role_endpoint_permissions(roles)
 
   for workspace in pairs(map) do
     for endpoint, actions in pairs(map[workspace]) do
@@ -627,7 +637,10 @@ function _M.readable_endpoints_permissions(roles)
         end
       end
 
-      map[workspace][endpoint] = actions_t
+      map[workspace][endpoint] = {
+        actions = actions_t,
+        negative = nmap[endpoint],
+      }
     end
   end
 
@@ -778,12 +791,12 @@ function _M.load_rbac_ctx(dao_factory)
     return nil, err
   end
 
-  local entities_perms, err = resolve_role_entity_permissions(roles)
+  local entities_perms, _, err = resolve_role_entity_permissions(roles)
   if err then
     return nil, err
   end
 
-  local endpoints_perms, err = resolve_role_endpoint_permissions(roles)
+  local endpoints_perms, _, err = resolve_role_endpoint_permissions(roles)
   if err then
     return nil, err
   end
