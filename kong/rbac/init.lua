@@ -407,6 +407,7 @@ function _M.create_default_role(user)
   if not role then
     role, err = singletons.dao.rbac_roles:insert({
       name = user.name,
+      comment = "Default user role generated for " .. user.name
     })
     if not role then
       return nil, err
