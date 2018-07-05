@@ -1,6 +1,5 @@
 local rbac_migrations_defaults = require "kong.rbac.migrations.01_defaults"
 local rbac_migrations_user_default_role = require "kong.rbac.migrations.03_user_default_role"
-local rbac_migrations_admins = require "kong.rbac.migrations.02_admins"
 
 
 return {
@@ -176,13 +175,13 @@ return {
   {
     name = "2018-04-20-122000_rbac_defaults",
     up = function(_, _, dao)
-      rbac_migrations_defaults.up(nil, nil, dao)
+      return rbac_migrations_defaults.up(nil, nil, dao)
     end
   },
   {
     name = "2018-04-20-122000_rbac_user_default_roles",
     up = function(_, _, dao)
-      rbac_migrations_user_default_role.up(nil, nil, dao)
+      return rbac_migrations_user_default_role.up(nil, nil, dao)
     end
   },
   {
@@ -430,11 +429,5 @@ return {
     down = [[
       DELETE FROM consumer_types;
     ]]
-  },
-  {
-    name = "2018-06-30-000000_rbac_consumer_admins",
-    up = function(_, _, dao)
-      rbac_migrations_admins.up(nil, nil, dao)
-    end
   },
 }

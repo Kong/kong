@@ -76,9 +76,9 @@ helpers.for_each_dao(function(kong_config)
         local ok, err = factory:run_migrations(on_migration, on_success)
         assert.falsy(err)
         assert.True(ok)
-        -- also counts default workspace migration calls
-        assert.spy(on_migration).was_called(n_ids + 1)
-        assert.spy(on_success).was_called(#flatten_migrations + 1)
+        -- also counts migrations that run after core + plugins
+        assert.spy(on_migration).was_called(n_ids + 2)
+        assert.spy(on_success).was_called(#flatten_migrations + 2)
 
         for _, mig in ipairs(flatten_migrations) do
           assert.spy(on_migration).was_called_with(mig.identifier, factory:infos())
