@@ -2,9 +2,7 @@
 
 - [Scheduled](#scheduled)
 - [Released](#released)
-    - [0.14.0rc3](#0140rc3---20180629)
-    - [0.14.0rc2](#0140rc2---20180627)
-    - [0.14.0rc1](#0140rc1---20180619)
+    - [0.14.0](#0140---20180705)
     - [0.13.1](#0131---20180423)
     - [0.13.0](#0130---20180322)
     - [0.12.3](#0123---20180312)
@@ -33,62 +31,27 @@ a detailed changeset of their content.
 This section describes publicly available releases and a detailed changeset of
 their content.
 
-## [0.14.0rc3] - 2018/06/29
+## [0.14.0] - 2018/07/05
 
-### Additions
-
-- Serve stale data from the database cache when the datastore cannot be
-  reached. Such stale items are "resurrected".
-  [#3579](https://github.com/Kong/kong/pull/3579)
-- A new `db_resurrect_ttl` configuration property can be set to customize
-  the amount of time stale data can be resurrected for when it cannot be
-  refreshed. Default to 30 seconds.
-  [#3579](https://github.com/Kong/kong/pull/3579)
-
-### Fixes
-
-- Prevent an issue which caused migrations to fail when Cassandra was used
-  with custom CAs.
-  [205fe43](https://github.com/Kong/kong/commit/205fe43bba9de8dfadec7371bba694253ba11e8f)
-
-[Back to TOC](#table-of-contents)
-
-## [0.14.0rc2] - 2018/06/27
-
-### Fixes
-
-- An issue causing some new Cassandra migrations to error out has been
-  resolved.
-  [#3575](https://github.com/Kong/kong/pull/3575)
-- Ensure errors thrown in the runloop are properly reported.
-  [f0624d9](https://github.com/Kong/kong/commit/f0624d978a795b38ea58a783048f79a6761a2584)
-
-[Back to TOC](#table-of-contents)
-
-## [0.14.0rc1] - 2018/06/19
-
-This release candidate introduces the first version of the **Plugin Development
-Kit**: a Lua SDK, comprised of a set of functions to ease the development of
+This release introduces the first version of the **Plugin Development Kit**: a
+Lua SDK, comprised of a set of functions to ease the development of
 custom plugins.
+
 Additionally, it contains several major improvements consolidating Kong's
 feature set and flexibility, such as the support for `PUT` endpoints on the
 Admin API for idempotent workflows, the execution of plugins during
 Nginx-produced errors, and the injection of **Nginx directives** without having
 to rely on the custom Nginx configuration pattern!
+
 Finally, new bundled plugins allow Kong to better integrate with **Cloud
 Native** environments, such as Zipkin and Prometheus.
 
-As usual, major version upgrades require database migrations and changes to
-the NGINX configuration file (if you customized the default template).
-Please take a few minutes to read the [0.14 Upgrade
+As usual, major version upgrades require database migrations and changes to the
+NGINX configuration file (if you customized the default template). Please take
+a few minutes to read the [0.14 Upgrade
 Path](https://github.com/Kong/kong/blob/master/UPGRADE.md#upgrade-to-014x) for
 more details regarding breaking changes and migrations before planning to
 upgrade your Kong cluster.
-
-**Note**: as a release candidate, we discourage the use of 0.14.0rc1 in
-production environments, but we **strongly encourage** testers to give it a try
-and report their feedback to us! Community feedback is extremely valuable to
-us and allows us to ship a stable release **faster** and **sooner**.
 
 ### Breaking Changes
 
@@ -150,6 +113,10 @@ us and allows us to ship a stable release **faster** and **sooner**.
 
 ##### Core
 
+- :fireworks" Serve stale data from the database cache when the datastore
+  cannot be reached. Such stale items are "resurrected" for `db_resurrect_ttl`
+  seconds (see configuration section).
+  [#3579](https://github.com/Kong/kong/pull/3579)
 - Reduce LRU churning in the database cache against some workloads.
   [#3550](https://github.com/Kong/kong/pull/3550)
 
@@ -176,6 +143,10 @@ us and allows us to ship a stable release **faster** and **sooner**.
   client response. This is particularly useful for clients to distinguish
   upstream statuses upon rewriting of the response by Kong.
   [#3263](https://github.com/Kong/kong/pull/3263)
+- A new `db_resurrect_ttl` configuration property can be set to customize
+  the amount of time stale data can be resurrected for when it cannot be
+  refreshed. Defaults to 30 seconds.
+  [#3579](https://github.com/Kong/kong/pull/3579)
 - Two new Cassandra load balancing policies are available: `RequestRoundRobin`
   and `RequestDCAwareRoundRobin`. Both policies guarantee that the same peer
   will be reused across several queries during the lifetime of a request, thus
@@ -2812,9 +2783,7 @@ First version running with Cassandra.
 
 [Back to TOC](#table-of-contents)
 
-[0.14.0rc3]: https://github.com/Kong/kong/compare/0.14.0rc2...0.14.0rc3
-[0.14.0rc2]: https://github.com/Kong/kong/compare/0.14.0rc1...0.14.0rc2
-[0.14.0rc1]: https://github.com/Kong/kong/compare/0.13.1...0.14.0rc1
+[0.14.0]: https://github.com/Kong/kong/compare/0.13.1...0.14.0
 [0.13.1]: https://github.com/Kong/kong/compare/0.13.0...0.13.1
 [0.13.0]: https://github.com/Kong/kong/compare/0.12.3...0.13.0
 [0.12.3]: https://github.com/Kong/kong/compare/0.12.2...0.12.3
