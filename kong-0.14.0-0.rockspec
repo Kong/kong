@@ -1,9 +1,9 @@
 package = "kong"
-version = "0.13.1-0"
+version = "0.14.0-0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "0.13.1"
+  tag = "0.14.0"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -12,7 +12,7 @@ description = {
 }
 dependencies = {
   "inspect == 3.1.1",
-  "luasec == 0.7alpha-2",
+  "luasec == 0.6",
   "luasocket == 3.0-rc1",
   "penlight == 1.5.4",
   "lua-resty-http == 0.12",
@@ -20,12 +20,12 @@ dependencies = {
   "multipart == 0.5.5",
   "version == 0.2",
   "kong-lapis == 1.6.0.1",
-  "lua-cassandra == 1.3.0",
+  "lua-cassandra == 1.3.1",
   "pgmoon == 1.8.0",
   "luatz == 0.3",
   "lua_system_constants == 0.1.2",
   "lua-resty-iputils == 0.3.0",
-  "luaossl == 20180530",
+  "luaossl == 20171028",
   "luasyslog == 1.0.0",
   "lua_pack == 1.0.5",
   "lua-resty-dns-client == 2.1.0",
@@ -33,12 +33,12 @@ dependencies = {
   "lua-resty-mediador == 0.1.2",
   "lua-resty-healthcheck == 0.4.2",
   "lua-resty-cookie == 0.1.0",
-  "lua-resty-mlcache == 2.1.0",
+  "lua-resty-mlcache == 2.2.0",
   -- external Kong plugins
-  "kong-plugin-azure-functions == 0.1.1",
-  "kong-plugin-zipkin == 0.0.1",
-  "kong-plugin-serverless-functions == 0.1.0",
-  "kong-prometheus-plugin == 0.1.0",
+  "kong-plugin-azure-functions ~> 0.1",
+  "kong-plugin-zipkin ~> 0.0",
+  "kong-plugin-serverless-functions ~> 0.1",
+  "kong-prometheus-plugin ~> 0.1",
 }
 build = {
   type = "builtin",

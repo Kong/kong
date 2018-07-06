@@ -3,7 +3,10 @@
 -- aspect of the request to the Service, such as connecting to a given host, IP
 -- address/port, or choosing a given Upstream entity for load-balancing and
 -- healthchecking.
+--
 -- @module kong.service
+
+
 local balancer = require "kong.runloop.balancer"
 local phase_checker = require "kong.pdk.private.phases"
 
@@ -20,19 +23,23 @@ local function new()
 
 
   ---
-  -- Sets the desired Upstream entity to handle the load-balancing step for this
-  -- request. Using this method is equivalent to creating a Service with a `host`
-  -- property equal to that of an Upstream entity (in which case, the request
-  -- would be proxied to one of the Targets associated with that Upstream).
+  -- Sets the desired Upstream entity to handle the load-balancing step for
+  -- this request. Using this method is equivalent to creating a Service with a
+  -- `host` property equal to that of an Upstream entity (in which case, the
+  -- request would be proxied to one of the Targets associated with that
+  -- Upstream).
   --
   -- The `host` argument should receive a string equal to that of one of the
   -- Upstream entities currently configured.
   --
   -- @function kong.service.set_upstream
-  -- @phases `access`
+  -- @phases access
   -- @tparam string host
-  -- @treturn boolean|nil `true` on success, or `nil` if no upstream entities where found
-  -- @treturn string|nil An error message describing the error if there was one.
+  -- @treturn boolean|nil `true` on success, or `nil` if no upstream entities
+  -- where found
+  -- @treturn string|nil An error message describing the error if there was
+  -- one.
+  --
   -- @usage
   -- local ok, err = kong.service.set_upstream("service.prod")
   -- if not ok then
@@ -59,15 +66,16 @@ local function new()
   ---
   -- Sets the host and port on which to connect to for proxying the request. ]]
   -- Using this method is equivalent to ask Kong to not run the load-balancing
-  -- phase for this request, and consider it manually overriden. Load-balancing
-  -- components such as retries and health-checks will also be ignored for this
-  -- request.
+  -- phase for this request, and consider it manually overridden.
+  -- Load-balancing components such as retries and health-checks will also be
+  -- ignored for this request.
   --
-  -- The `host` argument expects a string containing the IP address of the upstream
-  -- server (IPv4/IPv6), and the `port` argument must contain a number representing
-  -- the port on which to connect to.
+  -- The `host` argument expects a string containing the IP address of the
+  -- upstream server (IPv4/IPv6), and the `port` argument must contain a number
+  -- representing the port on which to connect to.
+  --
   -- @function kong.service.set_target
-  -- @phases `access`
+  -- @phases access
   -- @tparam string host
   -- @tparam number port
   -- @usage

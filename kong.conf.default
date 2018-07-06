@@ -452,6 +452,13 @@
                                  # If set to 0 (default), such cached entities
                                  # or misses never expire.
 
+#db_resurrect_ttl = 30           # Time (in seconds) for which stale entities
+                                 # from the datastore should be resurrected for
+                                 # when they cannot be refreshed (e.g., the
+                                 # datastore is unreachable). When this TTL
+                                 # expires, a new attempt to refresh the stale
+                                 # entities will be made.
+
 #------------------------------------------------------------------------------
 # DNS RESOLVER
 #------------------------------------------------------------------------------

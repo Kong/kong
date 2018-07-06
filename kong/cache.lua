@@ -76,6 +76,7 @@ function _M.new(opts)
     lru_size         = LRU_SIZE,
     ttl              = max(opts.ttl     or 3600, 0),
     neg_ttl          = max(opts.neg_ttl or 300,  0),
+    resurrect_ttl    = opts.resurrect_ttl or 30,
     resty_lock_opts  = opts.resty_lock_opts,
     ipc = {
       register_listeners = function(events)
