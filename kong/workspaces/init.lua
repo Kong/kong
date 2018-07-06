@@ -357,48 +357,89 @@ function _M.get_default_workspace_migration()
           end
 
           -- Add new-dao entities (routes and services)
-          local services = dao.db:query("select * from services;")
-          for _, entity in ipairs(services) do
-            local _, err = add_entity_relation_db(dao.workspace_entities,
-                                                  default,
-                                                  entity.id,
-                                                  "services",
-                                                  "name",
-                                                  entity.name)
-            if err then
-              return nil, err
+          if factory.name == "postgres" then
+            local services =  dao.db:query("select * from services;")
+            for _, entity in ipairs(services) do
+              local _, err = add_entity_relation_db(dao.workspace_entities,
+                                                    default,
+                                                    entity.id,
+                                                    "services",
+                                                    "name",
+                                                    entity.name)
+              if err then
+                return nil, err
+              end
+
+              _, err = add_entity_relation_db(dao.workspace_entities,
+                                              default,
+                                              entity.id,
+                                              "services",
+                                              "id",
+                                              entity.id)
+              if err then
+                return nil, err
+              end
             end
 
-            _, err = add_entity_relation_db(dao.workspace_entities,
-                                            default,
-                                            entity.id,
-                                            "services",
-                                            "id",
-                                            entity.id)
-            if err then
-              return nil, err
+            dao.db:query(format("update services set name = '%s' || name", prefix_separator))
+
+            local routes = dao.db:query("select * from routes;")
+            for _, route in ipairs(routes) do
+              local _, err = add_entity_relation_db(dao.workspace_entities,
+                                                    default,
+                                                    route.id,
+                                                    "routes",
+                                                    "id",
+                                                    route.id)
+              if err then
+                return nil, err
+              end
             end
 
-            if factory.name == "postgres" then
-              dao.db:query(format("update services set name = '%s' || name", prefix_separator))
-            elseif factory.name == "cassandra" and entity.name then
-              local q = format("UPDATE services SET name = '%s' WHERE id = %s and partition = 'services';",
-                               format("%s%s", prefix_separator, escape_string(entity.name)),
-                               entity.id)
-              dao.db:query(q)
-            end
-          end
+          else  -- cassandra
+            local coordinator  = dao.db:get_coordinator()
+            for rows, err, page in coordinator:iterate("SELECT * FROM services",
+                                                       nil,
+                                                       {page_size = 1000}) do
+              for _, service in ipairs(rows) do
+                local _, err = add_entity_relation_db(dao.workspace_entities,
+                                                      default,
+                                                      service.id,
+                                                      "services",
+                                                      "name",
+                                                      service.name)
+                if err then
+                  return nil, err
+                end
 
-          local routes = dao.db:query("select * from routes;")
-          for _, route in ipairs(routes) do
-            local _, err = add_entity_relation_db(dao.workspace_entities,
-                                                  default,
-                                                  route.id,
-                                                  "routes",
-                                                  "id",
-                                                  route.id)
-            if err then
-              return nil, err
+                _, err = add_entity_relation_db(dao.workspace_entities,
+                                                default,
+                                                service.id,
+                                                "services",
+                                                "id",
+                                                service.id)
+                if err then
+                  return nil, err
+                end
+
+                local q = format("UPDATE services SET name = '%s' WHERE id = %s and partition = 'services';",
+                  format("%s%s", prefix_separator, escape_string(service.name)),
+                  service.id)
+                dao.db:query(q)
+              end
+            end
+
+            coordinator  = dao.db:get_coordinator()
+            for rows, err, page in coordinator:iterate("SELECT * FROM routes",
+                                                       nil,
+                                                       {page_size = 1000}) do
+              for _, route in ipairs(rows) do
+                local _, err = add_entity_relation_db(dao.workspace_entities,
+                  default, route.id, "routes", "id", route.id)
+                if err then
+                  return nil, err
+                end
+              end
             end
           end
         end,
