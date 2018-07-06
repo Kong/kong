@@ -6,6 +6,7 @@ local utils      = require "kong.tools.utils"
 
 local get_workspaces = workspaces.get_workspaces
 local workspaceable  = workspaces.get_workspaceable_relations()
+local workspace_entities_map = workspaces.workspace_entities_map
 
 
 local fmt           = string.format
@@ -558,8 +559,8 @@ do
   function _mt:page_ws(ws_scope, size, offset, cql, args)
     local table_name = self.schema.name
 
-    local primary_key = workspaces.get_workspaceable_relations()[table_name].primary_key
-    local ws_entities_map, err = workspaces.workspace_entities_map(ws_scope, table_name)
+    local primary_key = workspaceable[table_name].primary_key
+    local ws_entities_map, err = workspace_entities_map(ws_scope, table_name)
     if err then
       return nil, err
     end

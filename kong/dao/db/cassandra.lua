@@ -5,7 +5,6 @@ local Errors = require "kong.dao.errors"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local workspaces = require "kong.workspaces"
-local ws_entities_schema = require "kong.dao.schemas.workspace_entities"
 
 local tonumber = tonumber
 local concat = table.concat
@@ -16,7 +15,8 @@ local pairs = pairs
 local ipairs = ipairs
 local get_workspaces = workspaces.get_workspaces
 local workspaceable_rel = workspaces.get_workspaceable_relations()
-local is_proxy_request = workspaces.is_proxy_request
+local workspace_entities_map = workspaces.workspace_entities_map
+
 
 local _M = require("kong.dao.db").new_db("cassandra")
 
@@ -441,6 +441,32 @@ local function check_foreign_constaints(self, values, constraints)
   return errors == nil, Errors.foreign(errors)
 end
 
+function _M:find(table_name, schema, filter_keys)
+  local where, args = get_where(schema, filter_keys)
+  local query = select_query(table_name, where)
+  local rows, err = self:query(query, args, nil, schema)
+  if not rows then       return nil, err
+  elseif #rows <= 1 then return rows[1]
+  else                   return nil, "bad rows result" end
+end
+
+-- true if the table is workspaceable and the workspace name is not
+-- the wildcard - which should evaluate to all workspaces - and we are not
+-- retrieving the default workspace itself
+--
+-- this is to break the cycle: some methods here - e.g., find_all -
+-- need to retrieve the current workspace entity, which is set in
+-- `before_filter`, but to set the entity some of those same methods are
+-- used
+local function is_workspaceable(table_name, filters)
+  local ws_scope = get_workspaces()
+  local workspaceable = workspaces.get_workspaceable_relations()
+  if workspaceable[table_name] and #ws_scope > 0 then
+    return true, ws_scope
+  end
+  return false
+end
+
 function _M:insert(table_name, schema, model, constraints, options)
   options = options or {}
 
@@ -479,79 +505,6 @@ function _M:insert(table_name, schema, model, constraints, options)
   return self:find(table_name, schema, primary_keys)
 end
 
-local function load_entity_map(db, table_name, ws_scope)
-  local ws_entities_map = {}
-  for _, ws in ipairs(ws_scope) do
-    local where, args = get_where(ws_entities_schema, {
-      workspace_id = ws.id,
-      entity_type = table_name,
-    })
-    local query = select_query("workspace_entities", where)
-    local ws_entities, err = db:query(query, args, nil, ws_entities_schema)
-    if err then
-      return nil, err
-    end
-
-    for _, row in ipairs(ws_entities) do
-      row.workspace_id = ws.id
-      ws_entities_map[row.entity_id] = row
-    end
-  end
-
-  return ws_entities_map
-end
-
--- cache enmities map in memory for current request
--- ws_scope table has a life of current proxy request only
-local entity_map_cache = setmetatable({}, { __mode = "k" })
-local function workspace_entities_map(db, table_name)
-  local ws_scope = get_workspaces()
-
-  if not is_proxy_request() then
-    return load_entity_map(db, table_name, ws_scope)
-  end
-
-  local ws_entities_cached = entity_map_cache[ws_scope]
-  if not ws_entities_cached then
-    ws_entities_cached = {}
-    entity_map_cache[ws_scope] = ws_entities_cached
-  end
-
-  if ws_entities_cached[table_name] then
-    return ws_entities_cached[table_name]
-  end
-
-  local entity_map = load_entity_map(db, table_name, ws_scope)
-  ws_entities_cached[table_name] = entity_map
-  return entity_map
-end
-
-function _M:find(table_name, schema, filter_keys)
-  local where, args = get_where(schema, filter_keys)
-  local query = select_query(table_name, where)
-  local rows, err = self:query(query, args, nil, schema)
-  if not rows then       return nil, err
-  elseif #rows <= 1 then return rows[1]
-  else                   return nil, "bad rows result" end
-end
-
--- true if the table is workspaceable and the workspace name is not
--- the wildcard - which should evaluate to all workspaces - and we are not
--- retrieving the default workspace itself
---
--- this is to break the cycle: some methods here - e.g., find_all -
--- need to retrieve the current workspace entity, which is set in
--- `before_filter`, but to set the entity some of those same methods are
--- used
-local function is_workspaceable(table_name, filters)
-  local ws_scope = get_workspaces()
-  local workspaceable = workspaces.get_workspaceable_relations()
-  if workspaceable[table_name] and #ws_scope > 0 then
-    return true
-  end
-  return false
-end
-
 function _M:find_all(table_name, tbl, schema)
   local opts = self:clone_query_options()
   local where, args
@@ -580,10 +533,10 @@ function _M:find_all(table_name, tbl, schema)
   end
 
   local ws_entities_map
-  local workspaceable = is_workspaceable(table_name, tbl)
+  local workspaceable, ws_scope = is_workspaceable(table_name, tbl)
   if workspaceable then
     local err
-    ws_entities_map, err = workspace_entities_map(self, table_name)
+    ws_entities_map, err = workspace_entities_map(ws_scope, table_name)
     if err then
       return nil, Errors.db(err)
     end
@@ -630,9 +583,10 @@ function _M:find_page(table_name, tbl, paging_state, page_size, schema)
     where, args = get_where(schema, tbl)
   end
 
-  if is_workspaceable(table_name, tbl) then
+  local workspaceable, ws_scope = is_workspaceable(table_name, tbl)
+  if workspaceable then
     local primary_key = workspaces.get_workspaceable_relations()[table_name].primary_key
-    local ws_entities_map, err = workspace_entities_map(self, table_name)
+    local ws_entities_map, err = workspace_entities_map(ws_scope, table_name)
     if err then
       return nil, err
     end

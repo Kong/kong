@@ -788,13 +788,26 @@ function _M.resolve_entity_type(entity_id)
 end
 
 
-function _M.workspace_entities_map(ws_scope, entity_type)
-  local ws_entities_map = {}
+local function is_proxy_request()
+  local r = getfenv(0).__ngx_req
+  if not r then
+    return false
+  end
+  return ngx.ctx.is_proxy_request
+end
+_M.is_proxy_request = is_proxy_request
 
+
+local workspaceable = get_workspaceable_relations()
+local function load_entity_map(ws_scope, table_name)
+  local ws_entities_map = {}
   for _, ws in ipairs(ws_scope) do
+    local primary_key = workspaceable[table_name].primary_key
+
     local ws_entities, err = singletons.dao.workspace_entities:find_all({
       workspace_id = ws.id,
-      entity_type = entity_type
+      entity_type = table_name,
+      unique_field_name = primary_key,
     })
     if err then
       return nil, err
@@ -809,17 +822,33 @@ function _M.workspace_entities_map(ws_scope, entity_type)
   return ws_entities_map
 end
 
+-- cache enmities map in memory for current request
+-- ws_scope table has a life of current proxy request only
+local entity_map_cache = setmetatable({}, { __mode = "k" })
+local function workspace_entities_map(ws_scope, table_name)
+  local ws_scope = get_workspaces()
 
-function _M.is_proxy_request()
-  local r = getfenv(0).__ngx_req
-  if not r then
-    return false
+  if not is_proxy_request() then
+    return load_entity_map(ws_scope, table_name)
   end
-  return ngx.ctx.is_proxy_request
+
+  local ws_entities_cached = entity_map_cache[ws_scope]
+  if not ws_entities_cached then
+    ws_entities_cached = {}
+    entity_map_cache[ws_scope] = ws_entities_cached
+  end
+
+  if ws_entities_cached[table_name] then
+    return ws_entities_cached[table_name]
+  end
+
+  local entity_map = load_entity_map(ws_scope, table_name)
+  ws_entities_cached[table_name] = entity_map
+  return entity_map
 end
+_M.workspace_entities_map = workspace_entities_map
 
 
-local workspaceable = get_workspaceable_relations()
 -- used only with insert, update, delete, and find_all
 function _M.apply_unique_per_ws(table_name, params, constraints)
   -- entity may have workspace_id, workspace_name fields, ex. in case of update
