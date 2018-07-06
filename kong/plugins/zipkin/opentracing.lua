@@ -153,6 +153,7 @@ function OpenTracingHandler:log(conf)
 		opentracing.proxy_span = proxy_span
 	end
 	proxy_span:set_tag("span.kind", "client")
+	local proxy_end = ctx.KONG_BODY_FILTER_ENDED_AT and ctx.KONG_BODY_FILTER_ENDED_AT/1000 or now
 
 	-- We'd run this in rewrite phase, but then we wouldn't have per-service configuration of this plugin
 	if ctx.KONG_REWRITE_TIME then
@@ -193,7 +194,7 @@ function OpenTracingHandler:log(conf)
 	end
 
 	if opentracing.body_filter_span then
-		opentracing.body_filter_span:finish(ctx.KONG_BODY_FILTER_ENDED_AT / 1000)
+		opentracing.body_filter_span:finish(proxy_end)
 	end
 
 	request_span:set_tag("http.status_code", ngx.status)
@@ -210,7 +211,7 @@ function OpenTracingHandler:log(conf)
 		proxy_span:set_tag("kong.service", ctx.service.id)
 		proxy_span:set_tag("peer.service", ctx.service.name)
 	end
-	proxy_span:finish(ctx.KONG_BODY_FILTER_ENDED_AT and ctx.KONG_BODY_FILTER_ENDED_AT/1000 or now)
+	proxy_span:finish(proxy_end)
 	request_span:finish(now)
 end
 
