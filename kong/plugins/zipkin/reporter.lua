@@ -36,6 +36,18 @@ function zipkin_reporter_methods:report(span)
 		-- and https://github.com/Kong/kong-plugin-zipkin/pull/13#issuecomment-402389342
 		zipkin_tags[k] = tostring(v)
 	end
+	local localEndpoint do
+		local service = ngx.ctx.service
+		if service and service.name ~= ngx.null then
+			localEndpoint = {
+				serviceName = service.name;
+				-- TODO: ip/port from ngx.var.server_name/ngx.var.server_port?
+			}
+		else
+			-- needs to be null; not the empty object
+			localEndpoint = cjson.null
+		end
+	end
 	local zipkin_span = {
 		traceId = to_hex(span_context.trace_id);
 		name = span.name;
@@ -46,8 +58,7 @@ function zipkin_reporter_methods:report(span)
 		duration = math.floor(span.duration * 1000000); -- zipkin wants integer
 		-- TODO: shared?
 		-- TODO: debug?
-		localEndpoint = cjson.null, -- needs to be null; not the empty object
-		-- TODO: localEndpoint from ngx.var.server_name/ngx.var.server_port?
+		localEndpoint = localEndpoint;
 		remoteEndpoint = port and {
 			ipv4 = span:get_tag "peer.ipv4";
 			ipv6 = span:get_tag "peer.ipv6";
