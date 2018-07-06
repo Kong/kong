@@ -1,5 +1,9 @@
 UNRELEASED
 
+  - Always pass tag values as strings
+  - Fix errors when phases get skipped
+  - Pass service name as localEndpoint
+
 
 0.0.2 - 2018-06-28
 
