@@ -2,6 +2,7 @@ local helpers = require "spec.02-integration.03-dao.helpers"
 local utils = require "kong.tools.utils"
 
 local Factory = require "kong.dao.factory"
+local DB = require "kong.db"
 
 helpers.for_each_dao(function(kong_config)
   describe("Model migrations with DB: #" .. kong_config.database, function()
@@ -9,7 +10,9 @@ helpers.for_each_dao(function(kong_config)
     setup(function()
       -- some `setup` functions also use `factory` and they run before the `before_each` chain
       -- hence we need to set it here, and again in `before_each`.
-      factory = assert(Factory.new(kong_config))
+      local db = DB.new(kong_config)
+      assert(db:init_connector())
+      factory = assert(Factory.new(kong_config, db))
       factory:drop_schema()
     end)
 
@@ -18,7 +21,9 @@ helpers.for_each_dao(function(kong_config)
     end)
 
     before_each(function()
-      factory = assert(Factory.new(kong_config))
+      local db = DB.new(kong_config)
+      assert(db:init_connector())
+      factory = assert(Factory.new(kong_config, db))
     end)
 
     describe("current_migrations()", function()
@@ -32,7 +37,9 @@ helpers.for_each_dao(function(kong_config)
           local invalid_conf = utils.shallow_copy(kong_config)
           invalid_conf.cassandra_keyspace = "_inexistent_"
 
-          local xfactory = assert(Factory.new(invalid_conf))
+          local db = DB.new(kong_config)
+          assert(db:init_connector())
+          local xfactory = assert(Factory.new(invalid_conf, db))
           local cur_migrations, err = xfactory:current_migrations()
           assert.is_nil(err)
           assert.same({}, cur_migrations)
@@ -143,7 +150,7 @@ helpers.for_each_dao(function(kong_config)
         kong_config.cassandra_timeout = 1000
 
         assert.error_matches(function()
-          local fact = assert(Factory.new(kong_config))
+          local fact = assert(Factory.new(kong_config, DB.new(kong_config)))
           assert(fact:run_migrations())
         end, "[" .. kong_config.database .. " error]", nil, true)
       end)

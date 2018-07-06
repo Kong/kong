@@ -8,10 +8,11 @@ for _, strategy in helpers.each_strategy() do
     local consumer
     local admin_client
     local dao
+    local bp
 
     setup(function()
       local _
-      _, _, dao = helpers.get_db_utils(strategy)
+      bp, _, dao = helpers.get_db_utils(strategy)
 
       assert(helpers.start_kong({
         database = strategy,
@@ -31,9 +32,9 @@ for _, strategy in helpers.each_strategy() do
     describe("/consumers/:consumer/acls/", function()
       setup(function()
         dao:truncate_tables()
-        consumer = assert(dao.consumers:insert {
+        consumer = bp.consumers:insert {
           username = "bob"
-        })
+        }
       end)
       after_each(function()
         dao:truncate_table("acls")
@@ -166,9 +167,9 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(acl.id, json.id)
         end)
         it("retrieves ACL by id only if the ACL belongs to the specified consumer", function()
-          assert(dao.consumers:insert {
+          bp.consumers:insert {
             username = "alice"
-          })
+          }
 
           local res = assert(admin_client:send {
             method  = "GET",
@@ -291,21 +292,21 @@ for _, strategy in helpers.each_strategy() do
           dao:truncate_table("acls")
 
           for i = 1, 3 do
-            assert(dao.acls:insert {
+            bp.acls:insert {
               group = "group" .. i,
               consumer_id = consumer.id
-            })
+            }
           end
 
-          consumer2 = assert(dao.consumers:insert {
+          consumer2 = bp.consumers:insert {
             username = "bob-the-buidler"
-          })
+          }
 
           for i = 1, 3 do
-            assert(dao.acls:insert {
+            bp.acls:insert {
               group = "group" .. i,
               consumer_id = consumer2.id
-            })
+            }
           end
         end)
 

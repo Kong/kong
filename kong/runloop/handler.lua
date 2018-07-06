@@ -7,6 +7,8 @@
 --
 -- In the `access_by_lua` phase, it is responsible for retrieving the route being proxied by
 -- a consumer. Then it is responsible for loading the plugins to execute on this request.
+local ck          = require "resty.cookie"
+local meta        = require "kong.meta"
 local utils       = require "kong.tools.utils"
 local Router      = require "kong.router"
 local ApiRouter   = require "kong.api_router"
@@ -18,6 +20,7 @@ local singletons  = require "kong.singletons"
 local certificate = require "kong.runloop.certificate"
 
 
+local kong        = kong
 local tostring    = tostring
 local sub         = string.sub
 local lower       = string.lower
@@ -27,6 +30,8 @@ local ngx         = ngx
 local log         = ngx.log
 local null        = ngx.null
 local ngx_now     = ngx.now
+local update_time = ngx.update_time
+local re_match    = ngx.re.match
 local unpack      = unpack
 
 
@@ -40,10 +45,11 @@ local EMPTY_T = {}
 
 local router, router_version, router_err
 local api_router, api_router_version, api_router_err
-local server_header = _KONG._NAME .. "/" .. _KONG._VERSION
+local server_header = meta._SERVER_TOKENS
 
 
 local function get_now()
+  update_time()
   return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
 end
 
@@ -154,7 +160,7 @@ return {
       reports.init_worker()
 
       -- initialize local local_events hooks
-
+      local db             = singletons.db
       local dao            = singletons.dao
       local cache          = singletons.cache
       local worker_events  = singletons.worker_events
@@ -255,32 +261,32 @@ return {
 
       worker_events.register(function(data)
         log(DEBUG, "[events] SNI updated, invalidating cached certificates")
-        local sni = data.entity
+        local sn = data.entity
 
-        cache:invalidate("pem_ssl_certificates:"    .. sni.name)
-        cache:invalidate("parsed_ssl_certificates:" .. sni.name)
-      end, "crud", "ssl_servers_names")
+        cache:invalidate("pem_ssl_certificates:"    .. sn.name)
+        cache:invalidate("parsed_ssl_certificates:" .. sn.name)
+      end, "crud", "snis")
 
 
       worker_events.register(function(data)
         log(DEBUG, "[events] SSL cert updated, invalidating cached certificates")
         local certificate = data.entity
 
-        local rows, err = dao.ssl_servers_names:find_all {
-          ssl_certificate_id = certificate.id
-        }
+        local rows, err = db.snis:for_certificate({
+          id = certificate.id
+        })
         if not rows then
-          log(ERR, "[events] could not find associated SNIs for certificate: ",
+          log(ERR, "[events] could not find associated snis for certificate: ",
                    err)
         end
 
         for i = 1, #rows do
-          local sni = rows[i]
+          local sn = rows[i]
 
-          cache:invalidate("pem_ssl_certificates:"    .. sni.name)
-          cache:invalidate("parsed_ssl_certificates:" .. sni.name)
+          cache:invalidate("pem_ssl_certificates:"    .. sn.name)
+          cache:invalidate("parsed_ssl_certificates:" .. sn.name)
         end
-      end, "crud", "ssl_certificates")
+      end, "crud", "certificates")
 
 
       -- target updates
@@ -499,7 +505,7 @@ return {
       -- contains the IP that was originally in $remote_addr before realip
       -- module overrode that (aka the client that connected us).
 
-      local trusted_ip = singletons.ip.trusted(realip_remote_addr)
+      local trusted_ip = kong.ip.is_trusted(realip_remote_addr)
       if trusted_ip then
         forwarded_proto = var.http_x_forwarded_proto or var.scheme
         forwarded_host  = var.http_x_forwarded_host  or var.host
@@ -522,52 +528,53 @@ return {
         return responses.send(426, "Please use HTTPS protocol")
       end
 
-      local balancer_address = {
-        type                 = upstream_url_t.type,  -- the type of `host`; ipv4, ipv6 or name
-        host                 = upstream_url_t.host,  -- target host per `upstream_url`
-        port                 = upstream_url_t.port,  -- final target port
-        try_count            = 0,                    -- retry counter
-        tries                = {},                   -- stores info per try
-        -- ip                = nil,                  -- final target IP address
-        -- balancer          = nil,                  -- the balancer object, in case of a balancer
-        -- hostname          = nil,                  -- the hostname belonging to the final target IP
+      local balancer_data = {
+        type           = upstream_url_t.type, -- type of 'host': ipv4, ipv6, name
+        host           = upstream_url_t.host, -- target host per `upstream_url`
+        port           = upstream_url_t.port, -- final target port
+        try_count      = 0,                   -- retry counter
+        tries          = {},                  -- stores info per try
+        -- ip          = nil,                 -- final target IP address
+        -- balancer    = nil,                 -- the balancer object, if any
+        -- hostname    = nil,                 -- hostname of the final target IP
+        -- hash_cookie = nil,                 -- if Upstream sets hash_on_cookie
       }
 
       -- TODO: this is probably not optimal
       do
         local retries = service.retries or api.retries
         if retries ~= null then
-          balancer_address.retries = retries
+          balancer_data.retries = retries
 
         else
-          balancer_address.retries = 5
+          balancer_data.retries = 5
         end
 
         local connect_timeout = service.connect_timeout or
                                 api.upstream_connect_timeout
         if connect_timeout ~= null then
-          balancer_address.connect_timeout = connect_timeout
+          balancer_data.connect_timeout = connect_timeout
 
         else
-          balancer_address.connect_timeout = 60000
+          balancer_data.connect_timeout = 60000
         end
 
         local send_timeout = service.write_timeout or
                              api.upstream_send_timeout
         if send_timeout ~= null then
-          balancer_address.send_timeout = send_timeout
+          balancer_data.send_timeout = send_timeout
 
         else
-          balancer_address.send_timeout = 60000
+          balancer_data.send_timeout = 60000
         end
 
         local read_timeout = service.read_timeout or
                              api.upstream_read_timeout
         if read_timeout ~= null then
-          balancer_address.read_timeout = read_timeout
+          balancer_data.read_timeout = read_timeout
 
         else
-          balancer_address.read_timeout = 60000
+          balancer_data.read_timeout = 60000
         end
       end
 
@@ -576,7 +583,8 @@ return {
       ctx.service          = service
       ctx.route            = route
       ctx.router_matches   = match_t.matches
-      ctx.balancer_address = balancer_address
+      ctx.balancer_data    = balancer_data
+      ctx.balancer_address = balancer_data -- for plugin backward compatibility
 
       -- `scheme` is the scheme to use for the upstream call
       -- `uri` is the URI with which to call upstream, as returned by the
@@ -626,11 +634,11 @@ return {
         end
       end
 
-      local ok, err, errcode = balancer.execute(ctx.balancer_address)
+      local ok, err, errcode = balancer.execute(ctx.balancer_data)
       if not ok then
         if errcode == 500 then
           err = "failed the initial dns/balancer resolve for '" ..
-                ctx.balancer_address.host .. "' with: "         ..
+                ctx.balancer_data.host .. "' with: "         ..
                 tostring(err)
         end
         return responses.send(errcode, err)
@@ -641,14 +649,14 @@ return {
         local upstream_host = var.upstream_host
 
         if not upstream_host or upstream_host == "" then
-          local addr = ctx.balancer_address
-          upstream_host = addr.hostname
+          local balancer_data = ctx.balancer_data
+          upstream_host = balancer_data.hostname
 
           local upstream_scheme = var.upstream_scheme
-          if upstream_scheme == "http"  and addr.port ~= 80 or
-             upstream_scheme == "https" and addr.port ~= 443
+          if upstream_scheme == "http"  and balancer_data.port ~= 80 or
+             upstream_scheme == "https" and balancer_data.port ~= 443
           then
-            upstream_host = upstream_host .. ":" .. addr.port
+            upstream_host = upstream_host .. ":" .. balancer_data.port
           end
 
           var.upstream_host = upstream_host
@@ -668,19 +676,18 @@ return {
   },
   balancer = {
     before = function()
-      local addr = ngx.ctx.balancer_address
-      local current_try = addr.tries[addr.try_count]
+      local balancer_data = ngx.ctx.balancer_data
+      local current_try = balancer_data.tries[balancer_data.try_count]
       current_try.balancer_start = get_now()
     end,
     after = function ()
       local ctx = ngx.ctx
-      local addr = ctx.balancer_address
-      local current_try = addr.tries[addr.try_count]
+      local balancer_data = ctx.balancer_data
+      local current_try = balancer_data.tries[balancer_data.try_count]
 
       -- record try-latency
       local try_latency = get_now() - current_try.balancer_start
       current_try.balancer_latency = try_latency
-      current_try.balancer_start = nil
 
       -- record overall latency
       ctx.KONG_BALANCER_TIME = (ctx.KONG_BALANCER_TIME or 0) + try_latency
@@ -688,56 +695,96 @@ return {
   },
   header_filter = {
     before = function(ctx)
+      local var = ngx.var
+      local header = ngx.header
+
       if ctx.KONG_PROXIED then
         local now = get_now()
         -- time spent waiting for a response from upstream
         ctx.KONG_WAITING_TIME             = now - ctx.KONG_ACCESS_ENDED_AT
         ctx.KONG_HEADER_FILTER_STARTED_AT = now
+
+        local upstream_status_header = constants.HEADERS.UPSTREAM_STATUS
+        if singletons.configuration.enabled_headers[upstream_status_header] then
+          local matches, err = re_match(var.upstream_status, "[0-9]+$", "oj")
+          if err then
+            log(ERR, "failed to set ", upstream_status_header, " header: ", err)
+
+          elseif matches then
+            header[upstream_status_header] = matches[0]
+          end
+        end
+
+        local hash_cookie = ctx.balancer_data.hash_cookie
+        if hash_cookie then
+          local cookie = ck:new()
+          local ok, err = cookie:set(hash_cookie)
+
+          if not ok then
+            log(ngx.WARN, "failed to set the cookie for hash-based load balancing: ", err,
+                          " (key=", hash_cookie.key,
+                          ", path=", hash_cookie.path, ")")
+          end
+        end
       end
     end,
     after = function(ctx)
       local header = ngx.header
 
       if ctx.KONG_PROXIED then
-        if singletons.configuration.latency_tokens then
+        if singletons.configuration.enabled_headers[constants.HEADERS.UPSTREAM_LATENCY] then
           header[constants.HEADERS.UPSTREAM_LATENCY] = ctx.KONG_WAITING_TIME
-          header[constants.HEADERS.PROXY_LATENCY]    = ctx.KONG_PROXY_LATENCY
         end
 
-        if singletons.configuration.server_tokens then
-          header["Via"] = server_header
+        if singletons.configuration.enabled_headers[constants.HEADERS.PROXY_LATENCY] then
+          header[constants.HEADERS.PROXY_LATENCY] = ctx.KONG_PROXY_LATENCY
+        end
+
+        if singletons.configuration.enabled_headers[constants.HEADERS.VIA] then
+          header[constants.HEADERS.VIA] = server_header
         end
 
       else
-        if singletons.configuration.server_tokens then
-          header["Server"] = server_header
+        if singletons.configuration.enabled_headers[constants.HEADERS.SERVER] then
+          header[constants.HEADERS.SERVER] = server_header
 
         else
-          header["Server"] = nil
+          header[constants.HEADERS.SERVER] = nil
         end
       end
     end
   },
   body_filter = {
     after = function(ctx)
-      if ngx.arg[2] and ctx.KONG_PROXIED then
-        -- time spent receiving the response (header_filter + body_filter)
-        -- we could use $upstream_response_time but we need to distinguish the waiting time
-        -- from the receiving time in our logging plugins (especially ALF serializer).
-        ctx.KONG_RECEIVE_TIME = get_now() - ctx.KONG_HEADER_FILTER_STARTED_AT
+      if ngx.arg[2] then
+        local now = get_now()
+        ctx.KONG_BODY_FILTER_ENDED_AT = now
+
+        if ctx.KONG_PROXIED then
+          -- time spent receiving the response (header_filter + body_filter)
+          -- we could use $upstream_response_time but we need to distinguish the waiting time
+          -- from the receiving time in our logging plugins (especially ALF serializer).
+          ctx.KONG_RECEIVE_TIME = now - ctx.KONG_HEADER_FILTER_STARTED_AT
+        end
       end
     end
   },
   log = {
     after = function(ctx)
       reports.log()
-      local addr = ctx.balancer_address
+      local balancer_data = ctx.balancer_data
 
       -- If response was produced by an upstream (ie, not by a Kong plugin)
       if ctx.KONG_PROXIED == true then
         -- Report HTTP status for health checks
-        if addr and addr.balancer and addr.ip then
-          addr.balancer.report_http_status(addr.ip, addr.port, ngx.status)
+        if balancer_data and balancer_data.balancer and balancer_data.ip then
+          local ip, port = balancer_data.ip, balancer_data.port
+          local status = ngx.status
+          if status == 504 then
+            balancer_data.balancer.report_timeout(ip, port)
+          else
+            balancer_data.balancer.report_http_status(ip, port, status)
+          end
         end
       end
     end

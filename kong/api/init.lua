@@ -191,12 +191,18 @@ end
 
 
 local function attach_new_db_routes(routes)
-  for route_path, methods in pairs(routes) do
+  for route_path, definition in pairs(routes) do
+    local schema  = definition.schema
+    local methods = definition.methods
+
     methods.on_error = methods.on_error or new_db_on_error
 
     for method_name, method_handler in pairs(methods) do
       local wrapped_handler = function(self)
-        self.args = arguments.load()
+        self.args = arguments.load({
+          schema = schema,
+        })
+
         return method_handler(self, singletons.db, handler_helpers)
       end
 
@@ -212,8 +218,7 @@ ngx.log(ngx.DEBUG, "Loading Admin API endpoints")
 
 
 -- Load core routes
-for _, v in ipairs({"kong", "apis", "consumers", "plugins", "cache",
-                    "certificates", "snis", "upstreams"}) do
+for _, v in ipairs({"kong", "apis", "consumers", "plugins", "cache", "upstreams"}) do
   local routes = require("kong.api.routes." .. v)
   attach_routes(routes)
 end
@@ -235,33 +240,36 @@ do
       for route_pattern, verbs in pairs(custom_endpoints) do
         if routes[route_pattern] ~= nil and type(verbs) == "table" then
           for verb, handler in pairs(verbs) do
-            local parent = routes[route_pattern][verb]
+            local parent = routes[route_pattern]["methods"][verb]
             if parent ~= nil and type(handler) == "function" then
-              routes[route_pattern][verb] = function(self, db, helpers)
+              routes[route_pattern]["methods"][verb] = function(self, db, helpers)
                 return handler(self, db, helpers, function()
                   return parent(self, db, helpers)
                 end)
               end
 
             else
-              routes[route_pattern][verb] = handler
+              routes[route_pattern]["methods"][verb] = handler
             end
           end
 
         else
-          routes[route_pattern] = verbs
+          routes[route_pattern] = {
+            schema  = dao.schema,
+            methods = verbs,
+          }
         end
       end
     end
-
   end
+
   attach_new_db_routes(routes)
 end
 
 
 -- Loading plugins routes
-if singletons.configuration and singletons.configuration.plugins then
-  for k in pairs(singletons.configuration.plugins) do
+if singletons.configuration and singletons.configuration.loaded_plugins then
+  for k in pairs(singletons.configuration.loaded_plugins) do
     local loaded, mod = utils.load_module_if_exists("kong.plugins." .. k .. ".api")
 
     if loaded then

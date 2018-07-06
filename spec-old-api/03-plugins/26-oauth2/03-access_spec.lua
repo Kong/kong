@@ -60,16 +60,18 @@ end
 describe("Plugin: oauth2 (access)", function()
   local proxy_ssl_client, proxy_client
   local client1
+  local bp
+  local db
   local dao
   setup(function()
-    dao = select(3, helpers.get_db_utils())
+    bp, db, dao = helpers.get_db_utils()
 
-    local consumer = assert(dao.consumers:insert {
+    local consumer = bp.consumers:insert {
       username = "bob"
-    })
-    local anonymous_user = assert(dao.consumers:insert {
+    }
+    local anonymous_user = bp.consumers:insert {
       username = "no-body"
-    })
+    }
     client1 = assert(dao.oauth2_credentials:insert {
       client_id = "clientid123",
       client_secret = "secret123",
@@ -1890,7 +1892,7 @@ describe("Plugin: oauth2 (access)", function()
       })
       local body = cjson.decode(assert.res_status(200, res))
 
-      local consumer = dao.consumers:find_all({username = "bob"})[1]
+      local consumer = db.consumers:select_by_username("bob")
       assert.are.equal(consumer.id, body.headers["x-consumer-id"])
       assert.are.equal(consumer.username, body.headers["x-consumer-username"])
       assert.are.equal("userid123", body.headers["x-authenticated-userid"])
@@ -1910,7 +1912,7 @@ describe("Plugin: oauth2 (access)", function()
       })
       local body = cjson.decode(assert.res_status(200, res))
 
-      local consumer = dao.consumers:find_all({username = "bob"})[1]
+      local consumer = db.consumers:select_by_username("bob")
       assert.are.equal(consumer.id, body.headers["x-consumer-id"])
       assert.are.equal(consumer.username, body.headers["x-consumer-username"])
       assert.are.equal("userid123", body.headers["x-authenticated-userid"])
@@ -2343,9 +2345,11 @@ describe("Plugin: oauth2 (access)", function()
 
   local client, user1, user2, anonymous
   local dao
+  local bp
+  local _
 
   setup(function()
-    dao = select(3, helpers.get_db_utils())
+    bp, _, dao = helpers.get_db_utils()
 
     local api1 = assert(dao.apis:insert {
       name         = "api-1",
@@ -2370,15 +2374,15 @@ describe("Plugin: oauth2 (access)", function()
       api_id = api1.id,
     })
 
-    anonymous = assert(dao.consumers:insert {
+    anonymous = bp.consumers:insert {
       username = "Anonymous",
-    })
-    user1 = assert(dao.consumers:insert {
+    }
+    user1 = bp.consumers:insert {
       username = "Mickey",
-    })
-    user2 = assert(dao.consumers:insert {
+    }
+    user2 = bp.consumers:insert {
       username = "Aladdin",
-    })
+    }
 
     local api2 = assert(dao.apis:insert {
       name         = "api-2",
@@ -2570,9 +2574,11 @@ for _, strategy in helpers.each_strategy() do
 
     local client
     local dao
+    local bp
+    local _
 
     setup(function()
-      dao = select(3, helpers.get_db_utils(strategy))
+      bp, _, dao = helpers.get_db_utils(strategy)
 
       local api11 = assert(dao.apis:insert {
         name = "api-11",
@@ -2612,9 +2618,9 @@ for _, strategy in helpers.each_strategy() do
         }
       })
 
-      local consumer = assert(dao.consumers:insert {
+      local consumer = bp.consumers:insert {
         username = "bob"
-      })
+      }
       assert(dao.oauth2_credentials:insert {
         client_id = "clientid123",
         client_secret = "secret123",
@@ -2637,9 +2643,9 @@ for _, strategy in helpers.each_strategy() do
 
     local function assert_ttls_records_for_token(uuid, count)
       local DB = require "kong.dao.db.postgres"
-      local _db = DB.new(helpers.test_conf, strategy)
+      local db = DB.new(helpers.test_conf)
       local query = fmt("SELECT COUNT(*) FROM ttls where table_name='oauth2_tokens' AND primary_uuid_value = '%s'", tostring(uuid))
-      local result, error = _db:query(query)
+      local result, error = db:query(query)
       assert.falsy(error)
       assert.truthy(result[1].count == count)
     end

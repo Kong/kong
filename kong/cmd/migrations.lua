@@ -1,5 +1,6 @@
 local conf_loader = require "kong.conf_loader"
 local DAOFactory = require "kong.dao.factory"
+local DB = require "kong.db"
 local log = require "kong.cmd.utils.log"
 local concat = table.concat
 
@@ -28,7 +29,9 @@ end
 
 local function execute(args)
   local conf = assert(conf_loader(args.conf))
-  local dao = assert(DAOFactory.new(conf))
+  local db = DB.new(conf)
+  assert(db:init_connector())
+  local dao = assert(DAOFactory.new(conf, db))
 
   if args.command == "up" then
     assert(dao:run_migrations())

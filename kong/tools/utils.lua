@@ -810,4 +810,22 @@ _M.validate_header_name = function(name)
               "', allowed characters are A-Z, a-z, 0-9, '_', and '-'"
 end
 
+--- Validates a cookie name.
+-- Checks characters used in a cookie name to be valid
+-- a-z, A-Z, 0-9, '_' and '-' are allowed.
+-- @param name (string) the cookie name to verify
+-- @return the valid cookie name, or `nil+error`
+_M.validate_cookie_name = function(name)
+  if name == nil or name == "" then
+    return nil, "no cookie name provided"
+  end
+
+  if re_match(name, "^[a-zA-Z0-9-_]+$", "jo") then
+    return name
+  end
+
+  return nil, "bad cookie name '" .. name ..
+              "', allowed characters are A-Z, a-z, 0-9, '_', and '-'"
+end
+
 return _M

@@ -17,14 +17,14 @@
 --
 --    -- Raw send() helper:
 --    return responses.send(418, "This is a teapot")
-
+local singletons = require "kong.singletons"
+local constants = require "kong.constants"
 local cjson = require "cjson.safe"
 local meta = require "kong.meta"
 
 local type = type
 
---local server_header = _KONG._NAME .. "/" .. _KONG._VERSION
-local server_header = meta._NAME .. "/" .. meta._VERSION
+local server_header = meta._SERVER_TOKENS
 
 --- Define the most common HTTP status codes for sugar methods.
 -- Each of those status will generate a helper method (sugar)
@@ -123,8 +123,18 @@ local function send_response(status_code)
     end
 
     ngx.status = status_code
-    ngx.header["Content-Type"] = "application/json; charset=utf-8"
-    ngx.header["Server"] = server_header
+
+    if singletons and singletons.configuration then
+      if singletons.configuration.enabled_headers[constants.HEADERS.SERVER] then
+        ngx.header[constants.HEADERS.SERVER] = server_header
+
+      else
+        ngx.header[constants.HEADERS.SERVER] = nil
+      end
+
+    else
+      ngx.header[constants.HEADERS.SERVER] = server_header
+    end
 
     if headers then
       for k, v in pairs(headers) do
@@ -142,9 +152,16 @@ local function send_response(status_code)
                                   {message = content})
       if not encoded then
         ngx.log(ngx.ERR, "[admin] could not encode value: ", err)
+        ngx.header["Content-Length"] = 0
+
+      else
+        ngx.header["Content-Type"] = "application/json; charset=utf-8"
+        ngx.header["Content-Length"] = #encoded + 1
+        ngx.say(encoded)
       end
 
-      ngx.say(encoded)
+    else
+      ngx.header["Content-Length"] = 0
     end
 
     return ngx.exit(status_code)

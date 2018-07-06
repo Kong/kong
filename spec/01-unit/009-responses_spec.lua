@@ -38,7 +38,8 @@ describe("Response helpers", function()
   it("sets the correct ngx values and call ngx.say and ngx.exit", function()
     responses.send_HTTP_OK("OK")
     assert.equal(ngx.status, responses.status_codes.HTTP_OK)
-    assert.equal(meta._NAME .. "/" .. meta._VERSION, ngx.header["Server"])
+    assert.equal(meta._SERVER_TOKENS, ngx.header["Server"])
+    assert.equal("application/json; charset=utf-8", ngx.header["Content-Type"])
     assert.stub(ngx.say).was.called() -- set custom content
     assert.stub(ngx.exit).was.called() -- exit nginx (or continue to the next context if 200)
   end)
@@ -89,6 +90,7 @@ describe("Response helpers", function()
     end)
     it("should apply default content rules for some status codes", function()
       responses.send_HTTP_NO_CONTENT("some content")
+      assert.is_nil(ngx.header["Content-Type"])
       assert.stub(ngx.say).was.not_called()
     end)
     it("should apply default content rules for some status codes", function()
@@ -188,6 +190,52 @@ describe("Response helpers", function()
       responses.flush_delayed_response(ngx.ctx)
 
       assert.spy(s).was.called_with(ngx.ctx)
+    end)
+  end)
+
+  describe("server tokens", function()
+    it("are sent by default", function()
+      responses.send_HTTP_OK("OK")
+      assert.equal(ngx.status, responses.status_codes.HTTP_OK)
+      assert.equal(meta._SERVER_TOKENS, ngx.header["Server"])
+    end)
+    it("are sent when enabled", function()
+      local singletons = require "kong.singletons"
+      singletons.configuration = {
+        enabled_headers = {
+          ["server_tokens"] = true
+        },
+      },
+      responses.send_HTTP_OK("OK")
+      assert.equal(ngx.status, responses.status_codes.HTTP_OK)
+      assert.equal(meta._SERVER_TOKENS, ngx.header["Server"])
+    end)
+    it("are not sent when disabled", function()
+      local singletons = require "kong.singletons"
+      singletons.configuration = {
+        enabled_headers = {
+        },
+      },
+      responses.send_HTTP_OK("OK")
+      assert.equal(ngx.status, responses.status_codes.HTTP_OK)
+      assert.is_nil(ngx.header["Server"])
+    end)
+  end)
+
+  describe("content-length header", function()
+    it("is set", function()
+      responses.send_HTTP_OK("OK")
+      assert.equal(17, tonumber(ngx.header["Content-Length"]))
+    end)
+
+    it("is set to 0 when no content", function()
+      responses.send_HTTP_OK()
+      assert.equal(0, tonumber(ngx.header["Content-Length"]))
+    end)
+
+    it("is set to 0 with HTTP 204", function()
+      responses.send_HTTP_NO_CONTENT("this is not sent")
+      assert.equal(0, tonumber(ngx.header["Content-Length"]))
     end)
   end)
 end)

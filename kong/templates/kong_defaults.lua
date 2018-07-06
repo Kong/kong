@@ -5,6 +5,7 @@ proxy_access_log = logs/access.log
 proxy_error_log = logs/error.log
 admin_access_log = logs/admin_access.log
 admin_error_log = logs/error.log
+plugins = bundled
 custom_plugins = NONE
 anonymous_reports = on
 
@@ -25,8 +26,7 @@ ssl_ciphers = ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-EC
 admin_ssl_cert = NONE
 admin_ssl_cert_key = NONE
 upstream_keepalive = 60
-server_tokens = on
-latency_tokens = on
+headers = server_tokens, latency_tokens
 trusted_ips = NONE
 real_ip_header = X-Real-IP
 real_ip_recursive = off
@@ -60,7 +60,8 @@ cassandra_schema_consensus_timeout = 10000
 
 db_update_frequency = 5
 db_update_propagation = 0
-db_cache_ttl = 3600
+db_cache_ttl = 0
+db_resurrect_ttl = 30
 
 dns_resolver = NONE
 dns_hostsfile = /etc/hosts

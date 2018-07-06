@@ -5,18 +5,20 @@ local jwt_encoder = require "kong.plugins.jwt.jwt_parser"
 describe("Plugin: jwt (invalidations)", function()
   local admin_client, proxy_client, consumer1, api1
   local dao
+  local bp
+  local _
 
   before_each(function()
-    dao = select(3, helpers.get_db_utils())
+    bp, _, dao = helpers.get_db_utils()
 
     api1 = assert(dao.apis:insert {
       name         = "api-1",
       hosts        = { "jwt.com" },
       upstream_url = helpers.mock_upstream_url,
     })
-    consumer1 = assert(dao.consumers:insert {
+    consumer1 = bp.consumers:insert {
       username = "consumer1",
-    })
+    }
 
     assert(dao.plugins:insert {
       name   = "jwt",

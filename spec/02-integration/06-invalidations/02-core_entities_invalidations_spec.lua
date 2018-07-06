@@ -373,9 +373,9 @@ for _, strategy in helpers.each_strategy() do
     -- ssl_certificates
     -------------------
 
-    describe("ssl_certificates / SNIs", function()
+    describe("ssl_certificates / snis", function()
 
-      local function get_cert(port, sni)
+      local function get_cert(port, sn)
         local pl_utils = require "pl.utils"
 
         local cmd = [[
@@ -385,7 +385,7 @@ for _, strategy in helpers.each_strategy() do
           -servername %s \
         ]]
 
-        local _, _, stderr = pl_utils.executeex(string.format(cmd, port, sni))
+        local _, _, stderr = pl_utils.executeex(string.format(cmd, port, sn))
 
         return stderr
       end
@@ -402,18 +402,14 @@ for _, strategy in helpers.each_strategy() do
         assert.matches("CN=localhost", cert_2, nil, true)
       end)
 
-      it("on certificate+SNI create", function()
-        local admin_res = assert(admin_client_1:send {
-          method = "POST",
-          path   = "/certificates",
+      it("on certificate+sni create", function()
+        local admin_res = admin_client_1:post("/certificates", {
           body   = {
             cert = ssl_fixtures.cert,
             key  = ssl_fixtures.key,
-            snis = "ssl-example.com",
+            snis = { "ssl-example.com" },
           },
-          headers = {
-            ["Content-Type"] = "application/json",
-          }
+          headers = { ["Content-Type"] = "application/json" }
         })
         assert.res_status(201, admin_res)
 
@@ -430,23 +426,18 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       it("on certificate delete+re-creation", function()
-        -- TODO: PATCH/PUT update are currently not possible
+        -- TODO: PATCH update are currently not possible
         -- with the admin API because snis have their name as their
         -- primary key and the DAO has limited support for such updates.
 
-        local admin_res = assert(admin_client_1:send {
-          method = "DELETE",
-          path   = "/certificates/ssl-example.com",
-        })
+        local admin_res = admin_client_1:delete("/certificates/ssl-example.com")
         assert.res_status(204, admin_res)
 
-        local admin_res = assert(admin_client_1:send {
-          method = "POST",
-          path   = "/certificates",
+        local admin_res = admin_client_1:post("/certificates", {
           body   = {
             cert = ssl_fixtures.cert,
             key  = ssl_fixtures.key,
-            snis = "new-ssl-example.com",
+            snis = { "new-ssl-example.com" },
           },
           headers = {
             ["Content-Type"] = "application/json",
@@ -474,7 +465,7 @@ for _, strategy in helpers.each_strategy() do
 
       it("on certificate update", function()
         -- update our certificate *without* updating the
-        -- attached SNI
+        -- attached sni
 
         local admin_res = assert(admin_client_1:send {
           method = "PATCH",
@@ -501,63 +492,69 @@ for _, strategy in helpers.each_strategy() do
         assert.matches("CN=ssl-alt.com", cert_2, nil, true)
       end)
 
-      pending("on SNI update", function()
-        -- Pending: currently, SNIs cannot be updated:
-        --   - A PATCH updating the name property would not work, since
-        --     the URI path expects the current name, and so does the
-        --     query fetchign the row to be updated
-        --
-        --
-        --
-        -- update our SNI but leave certificate untouched
+      it("on sni update via id", function()
+        local admin_res = admin_client_1:get("/snis")
+        local body = assert.res_status(200, admin_res)
+        local sni = assert(cjson.decode(body).data[1])
 
-        local admin_res = assert(admin_client_1:send {
-          method = "PATCH",
-          path   = "/snis/new-ssl-example.com",
-          body   = {
-            name = "updated-sni.com",
-          },
-          headers = {
-            ["Content-Type"] = "application/json",
-          },
+        local admin_res = admin_client_1:patch("/snis/" .. sni.id, {
+          body    = { name = "updated-sn-via-id.com" },
+          headers = { ["Content-Type"] = "application/json" },
         })
         assert.res_status(200, admin_res)
 
-        -- no need to wait for workers propagation (lua-resty-worker-events)
-        -- because our test instance only has 1 worker
+        local cert_1_old = get_cert(8443, "new-ssl-example.com")
+        assert.matches("CN=localhost", cert_1_old, nil, true)
 
-        local cert_1_old_sni = get_cert(8443, "new-ssl-example.com")
-        assert.matches("CN=localhost", cert_1_old_sni, nil, true)
+        local cert_1_new = get_cert(8443, "updated-sn-via-id.com")
+        assert.matches("CN=ssl-alt.com", cert_1_new, nil, true)
 
-        local cert_1_new_sni = get_cert(8443, "updated-sni.com")
-        assert.matches("CN=updated-sni.com", cert_1_new_sni, nil, true)
+        wait_for_propagation()
+
+        local cert_2_old = get_cert(9443, "new-ssl-example.com")
+        assert.matches("CN=localhost", cert_2_old, nil, true)
+
+        local cert_2_new = get_cert(9443, "updated-sn-via-id.com")
+        assert.matches("CN=ssl-alt.com", cert_2_new, nil, true)
+      end)
+
+      it("on sni update via name", function()
+        local admin_res = admin_client_1:patch("/snis/updated-sn-via-id.com", {
+          body    = { name = "updated-sn.com" },
+          headers = { ["Content-Type"] = "application/json" },
+        })
+        assert.res_status(200, admin_res)
+
+        local cert_1_old = get_cert(8443, "updated-sn-via-id.com")
+        assert.matches("CN=localhost", cert_1_old, nil, true)
+
+        local cert_1_new = get_cert(8443, "updated-sn.com")
+        assert.matches("CN=ssl-alt.com", cert_1_new, nil, true)
+
+        wait_for_propagation()
+
+        local cert_2_old = get_cert(9443, "updated-sn-via-id.com")
+        assert.matches("CN=localhost", cert_2_old, nil, true)
+
+        local cert_2_new = get_cert(9443, "updated-sn.com")
+        assert.matches("CN=ssl-alt.com", cert_2_new, nil, true)
       end)
 
       it("on certificate delete", function()
         -- delete our certificate
 
-        local admin_res = assert(admin_client_1:send {
-          method = "GET",
-          path   = "/certificates/new-ssl-example.com",
-        })
-        local body = assert.res_status(200, admin_res)
-        local cert = cjson.decode(body)
-
-        admin_res = assert(admin_client_1:send {
-          method = "DELETE",
-          path   = "/certificates/" .. cert.id
-        })
+        local admin_res = admin_client_1:delete("/certificates/updated-sn.com")
         assert.res_status(204, admin_res)
 
         -- no need to wait for workers propagation (lua-resty-worker-events)
         -- because our test instance only has 1 worker
 
-        local cert_1 = get_cert(8443, "new-ssl-example.com")
+        local cert_1 = get_cert(8443, "updated-sn.com")
         assert.matches("CN=localhost", cert_1, nil, true)
 
         wait_for_propagation()
 
-        local cert_2 = get_cert(9443, "new-ssl-example.com")
+        local cert_2 = get_cert(9443, "updated-sn.com")
         assert.matches("CN=localhost", cert_2, nil, true)
       end)
     end)

@@ -967,10 +967,14 @@ function Schema:process_auto_fields(input, context)
     if field.auto then
       if field.uuid and context == "insert" then
         output[key] = utils.uuid()
+      elseif field.uuid and context == "upsert" and output[key] == nil then
+        output[key] = utils.uuid()
 
-      elseif (key == "created_at" and (context == "insert")) or
-             (key == "updated_at" and (context == "update"   or
-                                       context == "insert")) then
+      elseif (key == "created_at" and (context == "insert" or
+                                       context == "upsert")) or
+             (key == "updated_at" and (context == "insert" or
+                                       context == "upsert" or
+                                       context == "update")) then
         output[key] = now
       end
     end
@@ -1090,6 +1094,19 @@ function Schema:validate_update(input)
   validation_errors.AT_LEAST_ONE_OF = aloo
 
   return ok, err, err_t
+end
+
+
+--- Validate a table against the schema, ensuring that the entity is complete.
+-- It validates fields for their attributes,
+-- and runs the global entity checks against the entire table.
+-- @param input The input table.
+-- @return True on success.
+-- On failure, it returns nil and a table containing all errors,
+-- indexed numerically for general errors, and by field name for field errors.
+-- In all cases, the input table is untouched.
+function Schema:validate_upsert(input)
+  return self:validate(input, true)
 end
 
 

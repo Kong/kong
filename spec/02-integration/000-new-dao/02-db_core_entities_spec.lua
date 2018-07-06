@@ -12,10 +12,10 @@ local a_blank_uuid = "00000000-0000-0000-0000-000000000000"
 
 for _, strategy in helpers.each_strategy() do
   describe("kong.db [#" .. strategy .. "]", function()
-    local db, bp
+    local db, bp, dao
 
     setup(function()
-      bp, db = helpers.get_db_utils(strategy)
+      bp, db, dao = helpers.get_db_utils(strategy)
     end)
 
     --[[
@@ -87,6 +87,17 @@ for _, strategy in helpers.each_strategy() do
           }, err_t)
           --TODO: enable when implemented
           --assert.equal("invalid primary key for Service: id=(missing)", tostring(err_t))
+        end)
+
+        it("cannot insert if foreign primary_key is invalid but it happens on the old DAO", function()
+          local credentials, err = dao.basicauth_credentials:insert({
+            username = "peter",
+            consumer_id = utils.uuid()
+          })
+
+          assert.is_nil(credentials)
+          assert.is_truthy(err.foreign)
+          assert.is_string(err.message) -- the message is different between cassandra and postgresql
         end)
 
         -- I/O
@@ -403,27 +414,7 @@ for _, strategy in helpers.each_strategy() do
             }, err_t)
           end)
 
-          it("unsets a non-required field", function()
-            local route = bp.routes:insert({
-              hosts   = { "example.com" },
-              methods = { "GET" },
-              paths   = ngx.null,
-            })
-
-            local new_route, err, err_t = db.routes:update({ id = route.id }, {
-              hosts   = { "example.com" },
-              methods = ngx.null,
-              paths   = ngx.null,
-            })
-            assert.is_nil(err_t)
-            assert.is_nil(err)
-            assert.equal(ngx.null, new_route.methods)
-            route.methods     = nil
-            new_route.methods = nil
-            assert.same(route, new_route)
-          end)
-
-          it("unsets a routing criteria when at least one of the fields is not null", function()
+          it("accepts a partial update to routing criteria when at least one of the required fields it not null", function()
             local route = bp.routes:insert({
               hosts   = { "example.com" },
               methods = { "GET" },
@@ -441,6 +432,33 @@ for _, strategy in helpers.each_strategy() do
             route.hosts     = nil
             new_route.hosts = nil
             assert.same(route, new_route)
+          end)
+
+          it("errors when unsetting a required field with ngx.null", function()
+            local route = bp.routes:insert({
+              hosts   = { "example.com" },
+              methods = { "GET" },
+            })
+
+            local new_route, _, err_t = db.routes:update({ id = route.id }, {
+              hosts   = ngx.null,
+              methods = ngx.null,
+            })
+            assert.is_nil(new_route)
+            assert.same({
+              code        = Errors.codes.SCHEMA_VIOLATION,
+              name = "schema violation",
+              strategy    = strategy,
+              message  = unindent([[
+                schema violation
+                (when updating, at least one of these fields must be non-empty: 'methods', 'hosts', 'paths')
+              ]], true, true),
+              fields   = {
+                ["@entity"] = {
+                  "when updating, at least one of these fields must be non-empty: 'methods', 'hosts', 'paths'",
+                }
+              },
+            }, err_t)
           end)
         end)
       end)

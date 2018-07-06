@@ -1,5 +1,8 @@
 local log = require "kong.cmd.utils.log"
+local cassandra = require "cassandra"
+local utils = require "kong.tools.utils"
 
+local migration_helpers = require "kong.dao.migrations.helpers"
 
 return {
   {
@@ -240,7 +243,7 @@ return {
   {
     name = "2016-12-14-172100_move_ssl_certs_to_core",
     up = [[
-      CREATE TABLE ssl_certificates(
+      CREATE TABLE IF NOT EXISTS ssl_certificates(
         id uuid PRIMARY KEY,
         cert text,
         key text ,
@@ -634,5 +637,133 @@ return {
       CREATE INDEX IF NOT EXISTS ON targets(target);
     ]],
     down = nil
+  },
+  {
+    name = "2018-03-22-141700_create_new_ssl_tables",
+    up = [[
+      CREATE TABLE IF NOT EXISTS certificates(
+        partition text,
+        id uuid,
+        cert text,
+        key text,
+        created_at timestamp,
+        PRIMARY KEY (partition, id)
+      );
+
+      CREATE TABLE IF NOT EXISTS snis(
+        partition text,
+        id uuid,
+        name text,
+        certificate_id uuid,
+        created_at timestamp,
+        PRIMARY KEY (partition, id)
+      );
+
+      CREATE INDEX IF NOT EXISTS snis_name_idx ON snis(name);
+      CREATE INDEX IF NOT EXISTS snis_certificate_id_idx ON snis(certificate_id);
+    ]],
+    down = nil
+  },
+  {
+    name = "2018-03-26-234600_copy_records_to_new_ssl_tables",
+    up = function(_, _, dao)
+      local ssl_certificates_def = {
+        name    = "ssl_certificates",
+        columns = {
+          id         = "uuid",
+          cert       = "text",
+          key        = "text",
+          created_at = "timestamp",
+        },
+        partition_keys = { "id" },
+      }
+
+      local certificates_def = {
+        name    = "certificates",
+        columns = {
+          partition  = "text",
+          id         = "uuid",
+          cert       = "text",
+          key        = "text",
+          created_at = "timestamp",
+        },
+        partition_keys = { "partition", "id" },
+      }
+
+      local _, err = migration_helpers.cassandra.copy_records(dao,
+        ssl_certificates_def,
+        certificates_def, {
+          partition  = function() return cassandra.text("certificates") end,
+          id         = "id",
+          cert       = "cert",
+          key        = "key",
+          created_at = "created_at",
+        })
+      if err then
+        return err
+      end
+
+      local ssl_servers_names_def = {
+        name    = "ssl_servers_names",
+        columns = {
+          name       = "text",
+          ssl_certificate_id = "uuid",
+          created_at = "timestamp",
+        },
+        partition_keys = { "name", "ssl_certificate_id" },
+      }
+
+      local snis_def = {
+        name    = "snis",
+        columns = {
+          partition      = "text",
+          id             = "uuid",
+          name           = "text",
+          certificate_id = "uuid",
+          created_at     = "timestamp",
+        },
+        partition_keys = { "partition", "id" },
+      }
+
+      local _, err = migration_helpers.cassandra.copy_records(dao,
+        ssl_servers_names_def,
+        snis_def, {
+          partition      = function() return cassandra.text("snis") end,
+          id             = function() return cassandra.uuid(utils.uuid()) end,
+          name           = "name",
+          certificate_id = "ssl_certificate_id",
+          created_at     = "created_at",
+        })
+      if err then
+        return err
+      end
+    end,
+    down = nil
+  },
+  { name = "2018-03-27-002500_drop_old_ssl_tables",
+    up = [[
+      DROP INDEX ssl_servers_names_ssl_certificate_id_idx;
+      DROP TABLE ssl_certificates;
+      DROP TABLE ssl_servers_names;
+    ]],
+    down = nil,
+  },
+  {
+    name = "2018-03-16-160000_index_consumers",
+    up = [[
+      CREATE INDEX IF NOT EXISTS ON consumers(custom_id);
+      CREATE INDEX IF NOT EXISTS ON consumers(username);
+    ]]
+  },
+  {
+    name = "2018-05-17-173100_hash_on_cookie",
+    up = [[
+      ALTER TABLE upstreams ADD hash_on_cookie text;
+      ALTER TABLE upstreams ADD hash_on_cookie_path text;
+    ]],
+    down = [[
+      ALTER TABLE upstreams DROP hash_on_cookie;
+      ALTER TABLE upstreams DROP hash_on_cookie_path;
+    ]]
   }
 }

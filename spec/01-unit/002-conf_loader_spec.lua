@@ -1,5 +1,19 @@
 local conf_loader = require "kong.conf_loader"
 local helpers = require "spec.helpers"
+local tablex = require "pl.tablex"
+
+
+local function search_directive(tbl, directive_name, directive_value)
+  for _, directive in pairs(tbl) do
+    if directive.name == directive_name
+       and directive.value == directive_value then
+      return true
+    end
+  end
+
+  return false
+end
+
 
 describe("Configuration loader", function()
   it("loads the defaults", function()
@@ -53,21 +67,33 @@ describe("Configuration loader", function()
   it("returns a plugins table", function()
     local constants = require "kong.constants"
     local conf = assert(conf_loader())
-    assert.same(constants.PLUGINS_AVAILABLE, conf.plugins)
+    assert.same(constants.BUNDLED_PLUGINS, conf.loaded_plugins)
   end)
   it("loads custom plugins", function()
     local conf = assert(conf_loader(nil, {
       custom_plugins = "hello-world,my-plugin"
     }))
-    assert.True(conf.plugins["hello-world"])
-    assert.True(conf.plugins["my-plugin"])
+    assert.True(conf.loaded_plugins["hello-world"])
+    assert.True(conf.loaded_plugins["my-plugin"])
+  end)
+  it("merges plugins and custom plugins", function()
+    local conf = assert(conf_loader(nil, {
+      plugins = "foo, bar",
+      custom_plugins = "baz,foobaz",
+    }))
+    assert.is_not_nil(conf.loaded_plugins)
+    assert.same(4, tablex.size(conf.loaded_plugins))
+    assert.True(conf.loaded_plugins["foo"])
+    assert.True(conf.loaded_plugins["bar"])
+    assert.True(conf.loaded_plugins["baz"])
+    assert.True(conf.loaded_plugins["foobaz"])
   end)
   it("loads custom plugins surrounded by spaces", function()
     local conf = assert(conf_loader(nil, {
       custom_plugins = " hello-world ,   another-one  "
     }))
-    assert.True(conf.plugins["hello-world"])
-    assert.True(conf.plugins["another-one"])
+    assert.True(conf.loaded_plugins["hello-world"])
+    assert.True(conf.loaded_plugins["another-one"])
   end)
   it("extracts flags, ports and listen ips from proxy_listen/admin_listen", function()
     local conf = assert(conf_loader())
@@ -172,7 +198,7 @@ describe("Configuration loader", function()
     assert.equal("/usr/local/kong/pids/nginx.pid", conf.nginx_pid)
     assert.equal("/usr/local/kong/logs/error.log", conf.nginx_err_logs)
     assert.equal("/usr/local/kong/logs/access.log", conf.nginx_acc_logs)
-    assert.equal("/usr/local/kong/logs/admin_access.log", conf.nginx_admin_acc_logs)
+    assert.equal("/usr/local/kong/logs/admin_access.log", conf.admin_acc_logs)
     assert.equal("/usr/local/kong/nginx.conf", conf.nginx_conf)
     assert.equal("/usr/local/kong/nginx-kong.conf", conf.nginx_kong_conf)
     assert.equal("/usr/local/kong/.kong_env", conf.kong_env)
@@ -192,12 +218,79 @@ describe("Configuration loader", function()
   it("overcomes penlight's list_delim option", function()
     local conf = assert(conf_loader("spec/fixtures/to-strip.conf"))
     assert.False(conf.pg_ssl)
-    assert.True(conf.plugins.foobar)
-    assert.True(conf.plugins["hello-world"])
+    assert.True(conf.loaded_plugins.foobar)
+    assert.True(conf.loaded_plugins["hello-world"])
   end)
   it("correctly parses values containing an octothorpe", function()
     local conf = assert(conf_loader("spec/fixtures/to-strip.conf"))
     assert.equal("test#123", conf.pg_password)
+  end)
+
+  describe("dynamic directives", function()
+    it("loads flexible prefix based configs from a file", function()
+      local conf = assert(conf_loader("spec/fixtures/nginx-directives.conf", {
+        plugins = "off",
+      }))
+      assert.True(search_directive(conf.nginx_http_directives,
+                  "lua_shared_dict", "custom_cache 5m"))
+      assert.True(search_directive(conf.nginx_http_directives,
+                  "large_client_header_buffers", "8 24k"))
+    end)
+
+    it("quotes numeric flexible prefix based configs", function()
+      local conf, err = conf_loader(nil, {
+        ["nginx_http_max_pending_timers"] = 4096,
+      })
+      assert.is_nil(err)
+
+      assert.True(search_directive(conf.nginx_http_directives,
+                  "max_pending_timers", [["4096"]]))
+    end)
+
+    it("accepts flexible config values with precedence", function()
+      local conf = assert(conf_loader("spec/fixtures/nginx-directives.conf", {
+        ["nginx_http_large_client_header_buffers"] = "4 16k",
+        ["nginx_http_lua_shared_dict"] = "custom_cache 2m",
+        plugins = "off",
+      }))
+
+      assert.True(search_directive(conf.nginx_http_directives,
+                  "lua_shared_dict", "custom_cache 2m"))
+      assert.True(search_directive(conf.nginx_http_directives,
+                  "large_client_header_buffers", "4 16k"))
+    end)
+  end)
+
+  describe("prometheus_metrics shm", function()
+    it("is injected if not provided via nginx_http_* directives", function()
+      local conf = assert(conf_loader())
+      assert.True(search_directive(conf.nginx_http_directives,
+                  "lua_shared_dict", "prometheus_metrics 5m"))
+    end)
+    it("size is not modified if provided via nginx_http_* directives", function()
+      local conf = assert(conf_loader(nil, {
+        plugins = "bundled",
+        nginx_http_lua_shared_dict = "prometheus_metrics 2m",
+      }))
+      assert.True(search_directive(conf.nginx_http_directives,
+                  "lua_shared_dict", "prometheus_metrics 2m"))
+    end)
+    it("is injected in addition to any shm provided via nginx_http_* directive", function()
+      local conf = assert(conf_loader(nil, {
+        plugins = "bundled",
+        nginx_http_lua_shared_dict = "custom_cache 2m",
+      }))
+      assert.True(search_directive(conf.nginx_http_directives,
+                  "lua_shared_dict", "custom_cache 2m"))
+      assert.True(search_directive(conf.nginx_http_directives,
+                  "lua_shared_dict", "prometheus_metrics 5m"))
+    end)
+    it("is not injected if prometheus plugin is disabled", function()
+      local conf = assert(conf_loader(nil, {
+        plugins = "off",
+      }))
+      assert.is_nil(conf.nginx_http_directives["lua_shared_dict"])
+    end)
   end)
 
   describe("nginx_user", function()
@@ -370,6 +463,13 @@ describe("Configuration loader", function()
       })
       assert.is_nil(conf)
       assert.equal([[dns_order: invalid entry 'CXAME']], err)
+    end)
+    it("errors on bad entries in headers", function()
+      local conf, err = conf_loader(nil, {
+        headers = "server_tokens,Foo-Bar",
+      })
+      assert.is_nil(conf)
+      assert.equal([[headers: invalid entry 'Foo-Bar']], err)
     end)
     it("errors when hosts have a bad format in cassandra_contact_points", function()
       local conf, err = conf_loader(nil, {

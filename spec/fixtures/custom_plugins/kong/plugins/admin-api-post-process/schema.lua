@@ -1,3 +1,5 @@
 return {
-  fields = {}
+  fields = {
+    foo = { type = "string" }
+  }
 }

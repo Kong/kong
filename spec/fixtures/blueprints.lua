@@ -65,14 +65,15 @@ local _M = {}
 function _M.new(dao, db)
   local res = {}
 
-  local ssl_name_seq = new_sequence("ssl-server-%d")
-  res.ssl_servers_names = new_blueprint(dao.ssl_servers_names, function()
+  local sni_seq = new_sequence("server-name-%d")
+  res.snis = new_blueprint(db.snis, function(overrides)
     return {
-      name = ssl_name_seq:next(),
+      name        = sni_seq:next(),
+      certificate = overrides.certificate or res.certificates:insert(),
     }
   end)
 
-  res.ssl_certificates = new_blueprint(dao.ssl_certificates, function()
+  res.certificates = new_blueprint(db.certificates, function()
     return {
       cert = ssl_fixtures.cert,
       key  = ssl_fixtures.key,
@@ -91,7 +92,7 @@ function _M.new(dao, db)
 
   local consumer_custom_id_seq = new_sequence("consumer-id-%d")
   local consumer_username_seq = new_sequence("consumer-username-%d")
-  res.consumers = new_blueprint(dao.consumers, function()
+  res.consumers = new_blueprint(db.consumers, function()
     return {
       custom_id = consumer_custom_id_seq:next(),
       username  = consumer_username_seq:next(),

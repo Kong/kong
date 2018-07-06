@@ -11,12 +11,12 @@ describe("Plugins", function()
     local conf = assert(conf_loader(nil, {
       -- ensure we test the galileo priority even if galileo isn't enabled by
       -- default anymore
-      custom_plugins = "galileo",
+      plugins = "bundled, galileo",
     }))
 
     plugins = {}
 
-    for plugin in pairs(conf.plugins) do
+    for plugin in pairs(conf.loaded_plugins) do
       local handler = require("kong.plugins." .. plugin .. ".handler")
       table.insert(plugins, {
         name    = plugin,
@@ -49,6 +49,8 @@ describe("Plugins", function()
     -- backwards-compatibility
 
     local order = {
+      "pre-function",
+      "zipkin",
       "bot-detection",
       "cors",
       "jwt",
@@ -65,6 +67,8 @@ describe("Plugins", function()
       "request-transformer",
       "response-transformer",
       "aws-lambda",
+      "azure-functions",
+      "prometheus",
       "http-log",
       "statsd",
       "datadog",
@@ -72,11 +76,11 @@ describe("Plugins", function()
       "udp-log",
       "tcp-log",
       "loggly",
-      "runscope",
       "syslog",
       "galileo",
       "request-termination",
       "correlation-id",
+      "post-function",
     }
 
     table.sort(plugins, function(a, b)

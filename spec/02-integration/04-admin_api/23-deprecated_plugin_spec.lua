@@ -29,7 +29,7 @@ describe("Deprecated plugin API" , function()
         })
         local body = assert.res_status(400 , res)
         local json = cjson.decode(body)
-        assert.is_equal("plugin 'admin-api-post-process' not enabled; add it to the 'custom_plugins' configuration property", json.config)
+        assert.is_equal("plugin 'admin-api-post-process' not enabled; add it to the 'plugins' configuration property", json.config)
       end)
     end)
   end)
@@ -37,7 +37,7 @@ describe("Deprecated plugin API" , function()
   describe("deprecated enabled plugins" , function()
     setup(function()
       assert(helpers.start_kong({
-        custom_plugins = "admin-api-post-process"
+        plugins = "bundled, admin-api-post-process"
       }))
       client = helpers.admin_client()
     end)

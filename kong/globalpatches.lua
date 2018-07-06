@@ -97,6 +97,7 @@ return function(options)
       function SharedDict:get(key)
         return self.data[key] and self.data[key].value, nil
       end
+      SharedDict.get_stale = SharedDict.get
       function SharedDict:set(key, value)
         set(self.data, key, value)
         return true, nil, false

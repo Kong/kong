@@ -15,6 +15,7 @@ end
 return {
   name = "services",
   primary_key = { "id" },
+  endpoint_key = "name",
 
   fields = {
     { id              = typedefs.uuid, },

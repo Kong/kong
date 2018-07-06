@@ -1,7 +1,6 @@
 local helpers = require "spec.helpers"
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
 local cjson = require "cjson"
-local DAOFactory = require "kong.dao.factory"
 
 local slots_default, slots_max = 10000, 2^16
 
@@ -19,8 +18,9 @@ describe("Admin API: #" .. kong_config.database, function()
   local dao
 
   setup(function()
-    dao = assert(DAOFactory.new(kong_config))
-    assert(dao:run_migrations())
+
+    local _
+    _, _, dao = helpers.get_db_utils(kong_config.database)
 
     assert(helpers.start_kong{
       database = kong_config.database
@@ -85,6 +85,29 @@ describe("Admin API: #" .. kong_config.database, function()
           assert.are.equal("ip", json.hash_fallback)
           assert.are.equal("HeaderName", json.hash_on_header)
           assert.are.equal("HeaderFallback", json.hash_fallback_header)
+        end
+      end)
+      it_content_types("creates an upstream with hash_on cookie parameters", function(content_type)
+        return function()
+          local res = assert(client:send {
+            method = "POST",
+            path = "/upstreams",
+            body = {
+              name = "my.upstream",
+              hash_on = "cookie",
+              hash_on_cookie = "CookieName1",
+              hash_on_cookie_path = "/foo",
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          assert.response(res).has.status(201)
+          local json = assert.response(res).has.jsonbody()
+          assert.equal("my.upstream", json.name)
+          assert.is_number(json.created_at)
+          assert.is_string(json.id)
+          assert.are.equal("cookie", json.hash_on)
+          assert.are.equal("CookieName1", json.hash_on_cookie)
+          assert.are.equal("/foo", json.hash_on_cookie_path)
         end
       end)
       it_content_types("creates an upstream with 2 header hashes", function(content_type)
@@ -198,7 +221,7 @@ describe("Admin API: #" .. kong_config.database, function()
             })
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ hash_on = '"something that is invalid" is not allowed. Allowed values are: "none", "consumer", "ip", "header"' }, json)
+            assert.same({ hash_on = '"something that is invalid" is not allowed. Allowed values are: "none", "consumer", "ip", "header", "cookie"' }, json)
 
             -- Invalid hash_fallback entries
             res = assert(client:send {
@@ -213,7 +236,7 @@ describe("Admin API: #" .. kong_config.database, function()
             })
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
-            assert.same({ hash_fallback = '"something that is invalid" is not allowed. Allowed values are: "none", "consumer", "ip", "header"' }, json)
+            assert.same({ hash_fallback = '"something that is invalid" is not allowed. Allowed values are: "none", "consumer", "ip", "header", "cookie"' }, json)
 
             -- same hash entries
             res = assert(client:send {
@@ -246,7 +269,7 @@ describe("Admin API: #" .. kong_config.database, function()
             local json = cjson.decode(body)
             assert.same({ message = "Header: bad header name 'not a <> valid <> header name', allowed characters are A-Z, a-z, 0-9, '_', and '-'" }, json)
 
-            -- Invalid header
+            -- Invalid fallback header
             res = assert(client:send {
               method = "POST",
               path = "/upstreams",
@@ -279,6 +302,23 @@ describe("Admin API: #" .. kong_config.database, function()
             local json = cjson.decode(body)
             assert.same({ message = "Cannot set fallback and primary hashes to the same value" }, json)
 
+            -- Cookie with hash_fallback
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                hash_on = "cookie",
+                hash_on_cookie = "cookiename",
+                hash_fallback = "header",
+                hash_fallback_header = "Cool-Header",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "Cannot set `hash_fallback` if primary `hash_on` is set to cookie" }, json)
+
             -- No headername provided
             res = assert(client:send {
               method = "POST",
@@ -310,6 +350,70 @@ describe("Admin API: #" .. kong_config.database, function()
             body = assert.res_status(400, res)
             local json = cjson.decode(body)
             assert.same({ message = "Hashing on 'header', but no header name provided" }, json)
+
+            -- Invalid cookie
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                hash_on = "cookie",
+                hash_on_cookie = "not a <> valid <> cookie name",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "Cookie name: bad cookie name 'not a <> valid <> cookie name', allowed characters are A-Z, a-z, 0-9, '_', and '-'" }, json)
+
+            -- Invalid cookie path
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                hash_on = "cookie",
+                hash_on_cookie = "hashme",
+                hash_on_cookie_path = "not a path",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "Cookie path: must be prefixed with slash" }, json)
+
+            -- Invalid cookie in hash fallback
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                hash_on = "consumer",
+                hash_fallback = "cookie",
+                hash_on_cookie = "not a <> valid <> cookie name",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "Cookie name: bad cookie name 'not a <> valid <> cookie name', allowed characters are A-Z, a-z, 0-9, '_', and '-'" }, json)
+
+            -- Invalid cookie path in hash fallback
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                hash_on = "consumer",
+                hash_fallback = "cookie",
+                hash_on_cookie = "my-cookie",
+                hash_on_cookie_path = "not a path",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            local json = cjson.decode(body)
+            assert.same({ message = "Cookie path: must be prefixed with slash" }, json)
 
           end
         end)

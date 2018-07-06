@@ -2,6 +2,7 @@ local timestamp = require "kong.tools.timestamp"
 local cassandra = require "cassandra"
 local Cluster = require "resty.cassandra.cluster"
 local Errors = require "kong.dao.errors"
+local db_errors = require "kong.db.errors"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 
@@ -86,8 +87,14 @@ function _M.new(kong_config)
   if kong_config.cassandra_lb_policy == "RoundRobin" then
     local policy = require("resty.cassandra.policies.lb.rr")
     cluster_options.lb_policy = policy.new()
+  elseif kong_config.cassandra_lb_policy == "RequestRoundRobin" then
+    local policy = require("resty.cassandra.policies.lb.req_rr")
+    cluster_options.lb_policy = policy.new()
   elseif kong_config.cassandra_lb_policy == "DCAwareRoundRobin" then
     local policy = require("resty.cassandra.policies.lb.dc_rr")
+    cluster_options.lb_policy = policy.new(kong_config.cassandra_local_datacenter)
+  elseif kong_config.cassandra_lb_policy == "RequestDCAwareRoundRobin" then
+    local policy = require("resty.cassandra.policies.lb.req_dc_rr")
     cluster_options.lb_policy = policy.new(kong_config.cassandra_local_datacenter)
   end
 
@@ -397,20 +404,56 @@ local function check_unique_constraints(self, table_name, constraints, values, p
   return errors == nil, Errors.unique(errors)
 end
 
-local function check_foreign_constaints(self, values, constraints)
+
+local function check_foreign_key_in_new_db(new_dao, primary_key)
+  local entity, err, err_t = new_dao:select(primary_key)
+
+  if err then
+    if err_t.code == db_errors.codes.DATABASE_ERROR then
+      return false, Errors.db(err)
+    end
+
+    return false, Errors.schema(err_t)
+  end
+
+  if entity then
+    return entity
+  end
+
+  return false
+end
+
+
+local function check_foreign_constraints(self, values, constraints)
   local errors
 
   for col, constraint in pairs(constraints.foreign) do
     -- Only check foreign keys if value is non-null,
     -- if must not be null, field should be required
     if values[col] ~= nil and values[col] ~= ngx.null then
-      local res, err = self:find(constraint.table, constraint.schema, {
-        [constraint.col] = values[col]
-      })
-      if err then return nil, err
-      elseif not res then
-        errors = utils.add_error(errors, col, values[col])
+
+      if self.new_db[constraint.table] then
+        -- new DAO
+        local new_dao = self.new_db[constraint.table]
+        local res, err = check_foreign_key_in_new_db(new_dao, {
+          [constraint.col] = values[col]
+        })
+        if err then return nil, err
+        elseif not res then
+          errors = utils.add_error(errors, col, values[col])
+        end
+
+      else
+        -- old DAO
+        local res, err = self:find(constraint.table, constraint.schema, {
+          [constraint.col] = values[col]
+        })
+        if err then return nil, err
+        elseif not res then
+          errors = utils.add_error(errors, col, values[col])
+        end
       end
+
     end
   end
 
@@ -425,7 +468,7 @@ function _M:insert(table_name, schema, model, constraints, options)
     return nil, err
   end
 
-  ok, err = check_foreign_constaints(self, model, constraints)
+  ok, err = check_foreign_constraints(self, model, constraints)
   if not ok then
     return nil, err
   end
@@ -548,13 +591,13 @@ end
 function _M:update(table_name, schema, constraints, filter_keys, values, nils, full, model, options)
   options = options or {}
 
-  -- must check unique constaints manually too
+  -- must check unique constraints manually too
   local ok, err = check_unique_constraints(self, table_name, constraints, values, filter_keys, true)
   if not ok then
     return nil, err
   end
 
-  ok, err = check_foreign_constaints(self, values, constraints)
+  ok, err = check_foreign_constraints(self, values, constraints)
   if not ok then
     return nil, err
   end

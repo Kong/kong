@@ -168,6 +168,7 @@ return {
         "consumer",
         "ip",
         "header",
+        "cookie",
       },
     },
     hash_fallback = {
@@ -179,6 +180,7 @@ return {
         "consumer",
         "ip",
         "header",
+        "cookie",
       },
     },
     hash_on_header = {
@@ -188,6 +190,15 @@ return {
     hash_fallback_header = {
       -- header name, if `hash_fallback == "header"`
       type = "string",
+    },
+    hash_on_cookie = {
+      -- cookie name, if `hash_on` or `hash_fallback` == `"cookie"`
+      type = "string",
+    },
+    hash_on_cookie_path = {
+      -- cookie path, if `hash_on` or `hash_fallback` == `"cookie"`
+      type = "string",
+      default = "/",
     },
     slots = {
       -- the number of slots in the loadbalancer algorithm
@@ -230,6 +241,20 @@ return {
       end
     end
 
+    if config.hash_on_cookie then
+      local ok, err = utils.validate_cookie_name(config.hash_on_cookie)
+      if not ok then
+        return false, Errors.schema("Cookie name: " .. err)
+      end
+    end
+
+    if config.hash_on_cookie_path then
+      local ok, err = check_http_path(config.hash_on_cookie_path)
+      if not ok then
+        return false, Errors.schema("Cookie path: " .. err)
+      end
+    end
+
     if (config.hash_on == "header"
         and not config.hash_on_header) or
        (config.hash_fallback == "header"
@@ -238,11 +263,25 @@ return {
                                   "but no header name provided")
     end
 
+    if (config.hash_on == "cookie" or config.hash_fallback == "cookie")
+        and not config.hash_on_cookie then
+      return false, Errors.schema("Hashing on 'cookie', " ..
+                                  "but no cookie name provided")
+    end
+
     if config.hash_on and config.hash_fallback then
       if config.hash_on == "none" then
         if config.hash_fallback ~= "none" then
           return false, Errors.schema("Cannot set fallback if primary " ..
                                       "'hash_on' is not set")
+        end
+
+      elseif config.hash_on == "cookie" then
+        if config.hash_fallback ~= "none" then
+          -- Cookie value will be set with the server response if not present,
+          -- so the fallback value would never be evaluated.
+          return false, Errors.schema("Cannot set `hash_fallback` if primary " ..
+                                      "`hash_on` is set to cookie")
         end
 
       else

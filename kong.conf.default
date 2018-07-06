@@ -59,12 +59,36 @@
                                           # adjusted by the `log_level`
                                           # directive.
 
-#custom_plugins =                # Comma-separated list of additional plugins
-                                 # this node should load.
-                                 # Use this property to load custom plugins
-                                 # that are not bundled with Kong.
-                                 # Plugins will be loaded from the
-                                 # `kong.plugins.{name}.*` namespace.
+#plugins = bundled               # Comma-separated list of plugins this node
+                                 # should load. By default, only plugins
+                                 # bundled in official distributions are
+                                 # loaded via the `bundled` keyword.
+                                 #
+                                 # Loading a plugin does not enable it by
+                                 # default, but only instructs Kong to load its
+                                 # source code, and allows to configure the
+                                 # plugin via the various related Admin API
+                                 # endpoints.
+                                 #
+                                 # The specified name(s) will be substituted as
+                                 # such in the Lua namespace:
+                                 # `kong.plugins.{name}.*`.
+                                 #
+                                 # When the `off` keyword is specified as the
+                                 # only value, no plugins will be loaded.
+                                 #
+                                 # `bundled` and plugin names can be mixed
+                                 # together, as the following examples suggest:
+                                 #
+                                 # - plugins = bundled, custom-auth
+                                 #     > will load all bundled plugins and
+                                 #       another plugin `custom-auth`
+                                 #
+                                 # - plugins = key-auth, custom-auth
+                                 #     > will only load these two plugins
+                                 #
+                                 # - plugins = off
+                                 #     > will not load any plugin
 
 #anonymous_reports = on          # Send anonymous usage data such as error
                                  # stack traces to help improve Kong.
@@ -190,15 +214,25 @@
                                  # process. When this number is exceeded, the
                                  # least recently used connections are closed.
 
-#server_tokens = on              # Enables or disables emitting Kong version on
-                                 # error pages and in the "Server" or "Via"
-                                 # (in case the request was proxied) response
-                                 # header field.
-
-#latency_tokens = on             # Enables or disables emitting Kong latency
-                                 # information in the "X-Kong-Proxy-Latency"
-                                 # and "X-Kong-Upstream-Latency" response
-                                 # header fields.
+#headers = server_tokens, latency_tokens
+                                 # Specify Kong-specific headers that should
+                                 # be injected in responses to the client.
+                                 # Acceptable values are:
+                                 # - `server_tokens`: inject 'Via' and 'Server'
+                                 #   headers.
+                                 # - `latency_tokens`: inject
+                                 #   'X-Kong-Proxy-Latency' and
+                                 #   'X-Kong-Upstream-Latency' headers.
+                                 # - `X-Kong-<header-name>`: only inject this
+                                 #   specific the header when applicable.
+                                 #
+                                 # Example:
+                                 #   headers = via, latency_tokens
+                                 #
+                                 # This value can be set to `off`, which
+                                 # prevents Kong from injecting any of these
+                                 # headers. Note that plugins can still inject
+                                 # headers.
 
 #trusted_ips =                   # Defines trusted IP addresses blocks that are
                                  # known to send correct X-Forwarded-* headers.
@@ -339,12 +373,15 @@
 #cassandra_lb_policy = RoundRobin  # Load balancing policy to use when
                                    # distributing queries across your Cassandra
                                    # cluster.
-                                   # Accepted values are `RoundRobin` and
-                                   # `DCAwareRoundRobin`.
+                                   # Accepted values are:
+                                   # `RoundRobin`, `RequestRoundRobin`,
+                                   # `DCAwareRoundRobin`, and
+                                   # `RequestDCAwareRoundRobin`.
                                    # Prefer the later if and only if you are
                                    # using a multi-datacenter cluster.
 
-#cassandra_local_datacenter =    # When using the `DCAwareRoundRobin` load
+#cassandra_local_datacenter =    # When using the `DCAwareRoundRobin`
+                                 # or `RequestDCAwareRoundRobin` load
                                  # balancing policy, you must specify the name
                                  # of the local (closest) datacenter for this
                                  # Kong node.
@@ -408,12 +445,19 @@
                                  # servers should suffer no such delays, and
                                  # this value can be safely set to 0.
 
-#db_cache_ttl = 3600             # Time-to-live (in seconds) of an entity from
+#db_cache_ttl = 0                # Time-to-live (in seconds) of an entity from
                                  # the datastore when cached by this node.
                                  # Database misses (no entity) are also cached
                                  # according to this setting.
-                                 # If set to 0, such cached entities/misses
-                                 # never expire.
+                                 # If set to 0 (default), such cached entities
+                                 # or misses never expire.
+
+#db_resurrect_ttl = 30           # Time (in seconds) for which stale entities
+                                 # from the datastore should be resurrected for
+                                 # when they cannot be refreshed (e.g., the
+                                 # datastore is unreachable). When this TTL
+                                 # expires, a new attempt to refresh the stale
+                                 # entities will be made.
 
 #------------------------------------------------------------------------------
 # DNS RESOLVER

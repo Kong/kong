@@ -94,6 +94,7 @@ end
 local conf = assert(conf_loader(TEST_CONF_PATH))
 local db = assert(DB.new(conf))
 local dao = assert(DAOFactory.new(conf, db))
+db.old_dao = dao
 local blueprints = assert(Blueprints.new(dao, db))
 -- make sure migrations are up-to-date
 
@@ -126,6 +127,7 @@ local function get_db_utils(strategy, no_truncate)
 
   -- new DAO (DB module)
   local db = assert(DB.new(conf, strategy))
+  assert(db:init_connector())
 
   -- legacy DAO
   local dao
@@ -143,10 +145,11 @@ local function get_db_utils(strategy, no_truncate)
   end
 
   -- cleanup new DB tables
-  assert(db:init_connector())
   if not no_truncate then
     assert(db:truncate())
   end
+
+  db.old_dao = dao
 
   -- blueprints
   local bp = assert(Blueprints.new(dao, db))
@@ -1009,8 +1012,8 @@ local function kong_exec(cmd, env)
 
   env.lua_package_path = env.lua_package_path .. ";" .. conf.lua_package_path
 
-  if not env.custom_plugins then
-    env.custom_plugins = "dummy,cache,rewriter"
+  if not env.plugins then
+    env.plugins = "bundled,dummy,cache,rewriter,error-handler-log"
   end
 
   -- build Kong environment variables
