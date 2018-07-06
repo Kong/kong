@@ -69,6 +69,7 @@ function OpenTracingHandler:initialise_request(conf, ctx)
 		access_span = nil;
 		proxy_span = nil;
 		header_filter_span = nil;
+		header_filter_finished = false;
 		body_filter_span = nil;
 	}
 end
