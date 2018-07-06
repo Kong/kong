@@ -112,9 +112,18 @@ function OpenTracingHandler:header_filter(conf)
 	local ctx = ngx.ctx
 	local opentracing = self:get_context(conf, ctx)
 
+	local header_started = ctx.KONG_HEADER_FILTER_STARTED_AT and ctx.KONG_HEADER_FILTER_STARTED_AT / 1000 or ngx.now()
+
+	if not opentracing.proxy_span then
+		opentracing.proxy_span = opentracing.request_span:start_child_span(
+			"kong.proxy",
+			header_started
+		)
+	end
+
 	opentracing.header_filter_span = opentracing.proxy_span:start_child_span(
 		"kong.header_filter",
-		ctx.KONG_HEADER_FILTER_STARTED_AT and ctx.KONG_HEADER_FILTER_STARTED_AT / 1000 or ngx.now()
+		header_started
 	)
 end
 
@@ -146,10 +155,7 @@ function OpenTracingHandler:log(conf)
 
 	local proxy_span = opentracing.proxy_span
 	if not proxy_span then
-		proxy_span = request_span:start_child_span(
-			"kong.proxy",
-			ctx.KONG_ACCESS_ENDED_AT / 1000
-		)
+		proxy_span = request_span:start_child_span("kong.proxy", now)
 		opentracing.proxy_span = proxy_span
 	end
 	proxy_span:set_tag("span.kind", "client")
