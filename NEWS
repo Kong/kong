@@ -1,4 +1,4 @@
-UNRELEASED
+0.0.3 - 2018-07-06
 
   - Always pass tag values as strings
   - Fix errors when phases get skipped
