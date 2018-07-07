@@ -49,47 +49,79 @@ local function log(premature, conf, body, name)
   name = "[" .. name .. "] "
 
   local headers
-  local req_url
   local parsed_url = parse_url(conf.http_endpoint)
 
   if parsed_url.userinfo then
     -- for lua-resty-http client Authorization
     headers = {
       ["Content-Type"] = conf.content_type,
+      ["Host"] = parsed_url.host,
       ["Authorization"] = string_format(
         "Basic %s", ngx.encode_base64(parsed_url.userinfo))
     }
-    req_url = parsed_url.scheme .. "://" .. parsed_url.host .. ":" .. parsed_url.port
-      .. parsed_url.path .. (parsed_url.params or "")
   else
     headers = {
-      ["Content-Type"] = conf.content_type
+      ["Content-Type"] = conf.content_type,
+      ["Host"] = parsed_url.host,
     }
-    req_url = conf.http_endpoint
   end
 
   local httpc = http.new()
   httpc:set_timeout(conf.timeout)
-  local res, err = httpc:request_uri(req_url, {
-      ssl_verify = false,
-      method = conf.method:upper(),
-      body = body,
-      headers = headers
+  local ok, err = httpc:connect(parsed_url.host, parsed_url.port)
+  if not ok then
+    ngx.log(ngx.ERR, name .. "request: " .. conf.http_endpoint .. " failed ", err)
+    return
+  end
+
+  if parsed_url.scheme == HTTPS then
+    local ok, err = httpc:ssl_handshake(nil, parsed_url.host, false)
+    if not ok then
+      ngx.log(ngx.ERR, name .. "request: " .. conf.http_endpoint .. " failed ", err)
+      return
+    end
+  end
+
+  local res
+  res, err = httpc:request({
+    path = parsed_url.path .. (parsed_url.params or ""),
+    headers = headers,
+    method = conf.method:upper(),
+    body = body,
   })
 
   if not res then
-    ngx.log(ngx.ERR, name .. "request failed: " .. req_url, err)
+    ngx.log(ngx.ERR, name .. "request: " .. conf.http_endpoint .. " failed ", err)
     return
   end
 
   if res.status >= 400 then
-    ngx.log(ngx.ERR, name .. "request failed: " .. req_url .. "status: " .. tostring(res.status), err)
+    ngx.log(ngx.ERR, name .. "request: " .. conf.http_endpoint .. " status_code: " .. tostring(res.status))
   end
 
-  local ok, err = httpc:set_keepalive(conf.keepalive)
-  if not ok then
-    ngx.log(ngx.ERR, name .. "failed to set_keepalive", err)
+  local reader = res.body_reader
+  if reader then
+    repeat
+      local chunk, err = reader()
+      if err then
+        ngx.log(ngx.ERR, name .. "request: " .. conf.http_endpoint .. " failed ", err)
+        return
+      end
+    until not chunk
   end
+
+  if conf.keepalive then
+    local ok, err = httpc:set_keepalive(conf.keepalive)
+    if not ok then
+      ngx.log(ngx.ERR, name .. "failed to set_keepalive ", err)
+    end
+  else
+    local ok, err = httpc:close()
+    if not ok then
+      ngx.log(ngx.ERR, name .. "failed to close ", err)
+    end
+  end
+
 end
 
 -- Only provide `name` when deriving from this class. Not when initializing an instance.
