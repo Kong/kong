@@ -411,6 +411,16 @@ function DAO:delete(tbl, options)
   return ret_error(self.db.name, row, err)
 end
 
+--- Deletes rows based on specified conditions
+-- Used when needing to delete rows by a value other than primary keys
+-- WIP: Currently need to figure out how to propogate deletions
+-- to related entities like the delete function does
+function DAO:delete_where(conditions)
+  check_arg(conditions, 1, "table")
+  local rows, err = self.db:delete(self.table, self.schema, conditions)
+  return ret_error(self.db.name, rows, err)
+end
+
 function DAO:truncate()
   return ret_error(self.db.name, self.db:truncate_table(self.table))
 end
