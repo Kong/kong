@@ -242,10 +242,35 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("DELETE", function()
+        local admin_id, expected
+
+        before_each(function()
+          dao:truncate_table('rbac_users')
+          dao:truncate_table('rbac_roles')
+          dao:truncate_table('consumers')
+          dao:truncate_table('consumers_rbac_users_map')
+
+          local res = assert(client:send {
+            method = "POST",
+            path  = "/admins",
+            headers = {
+              ["Kong-Admin-Token"] = "letmein",
+              ["Content-Type"]     = "application/json",
+            },
+            body  = {
+              username = "gruce",
+            },
+          })
+
+          assert.res_status(200, res)
+
+          admin_id = dao.db:query("select * from consumers_rbac_users_map")[1].consumer_id
+        end)
+
         it("deletes by id", function()
           local res = assert(client:send {
             method = "DELETE",
-            path   = "/admins/" .. admin.id,
+            path   = "/admins/" .. admin_id,
             headers = {
               ["Kong-Admin-Token"] = "letmein",
               ["Content-Type"]     = "application/json",
@@ -253,12 +278,28 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.res_status(204, res)
           assert.equal("", body)
+
+          if dao.db_type == "postgres" then
+            expected = {}
+          else
+            expected = {
+              meta = {
+                has_more_pages = false
+              },
+              type = "ROWS"
+            }
+          end
+
+          assert.same(dao.db:query("select * from consumers_rbac_users_map"), expected)
+          assert.same(dao.db:query("select * from rbac_users"), expected)
+          assert.same(dao.db:query("select * from consumers"), expected)
+          assert.same(dao.db:query("select * from rbac_roles"), expected)
         end)
 
         it("deletes by username", function()
           local res = assert(client:send {
             method = "DELETE",
-            path   = "/admins/admin-1",
+            path   = "/admins/gruce",
             headers = {
               ["Kong-Admin-Token"] = "letmein",
               ["Content-Type"]     = "application/json",
@@ -266,6 +307,22 @@ for _, strategy in helpers.each_strategy() do
           })
           local body = assert.res_status(204, res)
           assert.equal("", body)
+
+          if dao.db_type == "postgres" then
+            expected = {}
+          else
+            expected = {
+              meta = {
+                has_more_pages = false
+              },
+              type = "ROWS"
+            }
+          end
+
+          assert.same(dao.db:query("select * from consumers_rbac_users_map"), expected)
+          assert.same(dao.db:query("select * from rbac_users"), expected)
+          assert.same(dao.db:query("select * from consumers"), expected)
+          assert.same(dao.db:query("select * from rbac_roles"), expected)
         end)
 
         it("returns 404 if not found", function()

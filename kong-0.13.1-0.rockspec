@@ -67,6 +67,7 @@ build = {
     ["kong.enterprise_edition.plugin_overwrite"] = "kong/enterprise_edition/plugin_overwrite.lua",
     ["kong.enterprise_edition.api_helpers"] = "kong/enterprise_edition/api_helpers.lua",
     ["kong.enterprise_edition.internal_statsd"] = "kong/enterprise_edition/internal_statsd.lua",
+    ["kong.enterprise_edition.crud_helpers"] = "kong/enterprise_edition/crud_helpers.lua",
 
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
