@@ -19,7 +19,18 @@ return {
       crud.post(self.params, dao_factory.jwt_secrets)
     end
   },
+  ["/consumers/:username_or_id/jwt/revoke"] = {
+    before = function(self, dao_factory, helpers)
+      crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
+      self.params.consumer_id = self.consumer.id
+    end,
 
+    POST = function(self, dao_factory, helpers)
+      local _, err = crud.delete_where({ consumer_id = self.params.consumer_id }, dao_factory.jwt_secrets)
+      if err ~= nil then helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(); end
+      helpers.responses.send_HTTP_OK();
+    end
+  },
   ["/consumers/:username_or_id/jwt/:jwt_key_or_id"] = {
     before = function(self, dao_factory, helpers)
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)

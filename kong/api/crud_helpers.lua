@@ -278,4 +278,18 @@ function _M.delete(primary_keys, dao_collection)
   end
 end
 
+--- Delete an entity by conditions other than primary keys
+function _M.delete_where(conditions, dao_collection)
+  local ok, err = dao_collection:delete_where(conditions)
+  if not ok then
+    if err then
+      return app_helpers.yield_error(err)
+    else
+      return responses.send_HTTP_NOT_FOUND()
+    end
+  else
+    return responses.send_HTTP_NO_CONTENT()
+  end
+end
+
 return _M
