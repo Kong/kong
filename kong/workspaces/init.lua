@@ -787,6 +787,31 @@ function _M.resolve_ws_scope(ctx, route)
 end
 
 
+local function load_user_workspace_scope(ctx, token)
+  local old_wss = ctx.workspaces
+  ctx.workspaces = {}
+  local rows, err = singletons.dao.workspace_entities:find_all({
+    entity_type  = "rbac_users",
+    unique_field_name = "user_token",
+    unique_field_value = token,
+  })
+  ctx.workspaces = old_wss
+
+  if err or not rows[1] then
+    return nil, err
+  end
+
+  return unique_workspaces(rows)
+end
+
+
+-- Return workspace scope, given api belongs
+-- to, to the the context.
+function _M.resolve_user_ws_scope(ctx, token)
+  return load_user_workspace_scope(ctx, token)
+end
+
+
 -- given an entity ID, look up its entity collection name;
 -- it is only called if the user does not pass in an entity_type
 function _M.resolve_entity_type(entity_id)
@@ -891,6 +916,12 @@ _M.workspace_entities_map = workspace_entities_map
 
 
 -- used only with insert, update, delete, and find_all
+local unique_accross_ws = {
+  plugins    = true,
+  rbac_users = true,
+  workspaces = true,
+  workspace_entities = true,
+}
 function _M.apply_unique_per_ws(table_name, params, constraints)
   -- entity may have workspace_id, workspace_name fields, ex. in case of update
   -- needs to be removed as entity schema doesn't support them
@@ -904,7 +935,7 @@ function _M.apply_unique_per_ws(table_name, params, constraints)
   end
 
   local workspace = get_workspaces()[1]
-  if not workspace or table_name == "workspaces" or table_name == "plugins" then
+  if not workspace or unique_accross_ws[table_name] then
     return workspace
   end
 
@@ -922,8 +953,7 @@ end
 -- If entity has a unique key it will have workspace_name prefix so we
 -- have to search first in the relationship table
 function _M.resolve_shared_entity_id(table_name, params, constraints)
-  if table_name == "plugins" or table_name == "workspaces" and
-    params.name == default_workspace then
+  if unique_accross_ws[table_name] then
     return true
   end
 

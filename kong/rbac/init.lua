@@ -355,17 +355,21 @@ local function get_rbac_user_info()
     entities_perms = {},
     endpoints_perms = {},
   }
+
   local ok, res = pcall(function() return ngx.ctx.rbac end)
   local user = ok and res
   if user then
     return user
   end
 
-  local user, err =  _M.load_rbac_ctx(singletons.dao)
+  local ctx = ngx.ctx
+  local old_ws_ctx = ctx.workspaces
+  local user, err =  _M.load_rbac_ctx(singletons.dao, ctx)
   if err then
+    ctx.workspaces = old_ws_ctx
     return nil, err
   end
-
+  ctx.workspaces = old_ws_ctx
   return user or guest_user
 end
 
@@ -753,15 +757,15 @@ function _M.authorize_request_endpoint(map, workspace, endpoint, route_name, act
 end
 
 
-function _M.load_rbac_ctx(dao_factory)
+function _M.load_rbac_ctx(dao_factory, ctx)
   local rbac_auth_header = singletons.configuration.rbac_auth_header
   local rbac_token = ngx.req.get_headers()[rbac_auth_header]
   local http_method = ngx.req.get_method()
 
   if type(rbac_token) ~= "string" then
-     -- forbid empty rbac_token and also
-     -- forbid sending rbac_token headers multiple times
-     -- because get_user assume it's a string
+    -- forbid empty rbac_token and also
+    -- forbid sending rbac_token headers multiple times
+    -- because get_user assume it's a string
     return false
   end
 
@@ -770,7 +774,20 @@ function _M.load_rbac_ctx(dao_factory)
     return nil, err
   end
   if not user then
-    return false
+    local user_ws_scope, err = workspaces.resolve_user_ws_scope(ctx, rbac_token)
+    if err then
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    end
+
+    if not user_ws_scope or #user_ws_scope == 0 then
+      return responses.send_HTTP_UNAUTHORIZED("Invalid RBAC credentials")
+    end
+
+    ctx.workspaces = user_ws_scope
+    user, err = get_user(rbac_token)
+    if err or not user then
+      return nil, err
+    end
   end
 
   local roles, err = entity_relationships(dao_factory, user, "user", "role")

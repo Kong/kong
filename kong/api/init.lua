@@ -162,6 +162,7 @@ app:before_filter(function(self)
     -- So previous workspace should be dropped
     ngx.ctx.admin_api_request = true
     ngx.ctx.workspaces = nil
+    ngx.ctx.rbac = nil
 
     local ws_name = self.params.workspace_name or workspaces.DEFAULT_WORKSPACE
     local workspaces = workspaces.get_req_workspace(ws_name)

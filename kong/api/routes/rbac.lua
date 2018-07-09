@@ -443,8 +443,23 @@ return {
       self.params.workspace = self.params.workspace or "default"
       local ws_name = self.params.workspace
 
+      -- only super-admin role should be allowed to have global permission
+      -- its a hack and needs a different approach
+      local rbac_ctx = ngx.ctx.rbac
+      if ws_name == "*" and rbac_ctx then
+        -- make sure current user has permission to
+        -- add cross workspace permissions
+        local endpoints_perms = rbac_ctx.endpoints_perms
+        --todo  its a temp fix
+        if not endpoints_perms["*"] or not endpoints_perms["*"]["*"] == 15 then
+          local err = fmt("%s is not allowed to create cross workspace permissions",
+                          rbac_ctx.user.name)
+          helpers.responses.send_HTTP_BAD_REQUEST(err)
+        end
+      end
+
       if ws_name ~=  "default" and ws_name ~= "*" then
-        local w, err = dao_factory.workspaces:find_all({
+        local w, err = dao_factory.workspaces:run_with_ws_scope({}, dao_factory.workspaces.find_all, {
           name = self.params.workspace
         })
         if err then
