@@ -75,6 +75,7 @@ local balancer_execute = require("kong.runloop.balancer").execute
 local kong_cluster_events = require "kong.cluster_events"
 local kong_error_handlers = require "kong.error_handlers"
 
+local kong             = kong
 local ngx              = ngx
 local header           = ngx.header
 local ngx_log          = ngx.log
