@@ -22,6 +22,7 @@ local certificate = require "kong.runloop.certificate"
 
 local kong        = kong
 local tostring    = tostring
+local tonumber    = tonumber
 local sub         = string.sub
 local lower       = string.lower
 local fmt         = string.format
@@ -31,7 +32,6 @@ local log         = ngx.log
 local null        = ngx.null
 local ngx_now     = ngx.now
 local update_time = ngx.update_time
-local re_match    = ngx.re.match
 local unpack      = unpack
 
 
@@ -706,12 +706,9 @@ return {
 
         local upstream_status_header = constants.HEADERS.UPSTREAM_STATUS
         if singletons.configuration.enabled_headers[upstream_status_header] then
-          local matches, err = re_match(var.upstream_status, "[0-9]+$", "oj")
-          if err then
-            log(ERR, "failed to set ", upstream_status_header, " header: ", err)
-
-          elseif matches then
-            header[upstream_status_header] = matches[0]
+          header[upstream_status_header] = tonumber(sub(ngx.var.upstream_status or "", -3))
+          if not header[upstream_status_header] then
+            log(ERR, "failed to set ", upstream_status_header, " header")
           end
         end
 
