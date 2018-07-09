@@ -267,10 +267,14 @@ function _M.get_default_workspace_migration()
                         require("pl.tablex").keys(constraints.unique_keys)))
     end
 
-    local update_query = format("update %s set %s",
-                                relation,
-                                concat(update_unique_fields(constraints), ", "))
-    dao.db:query(update_query)
+    local unique_fields_updates = update_unique_fields(constraints)
+
+    if unique_fields_updates[1] then
+      local update_query = format("update %s set %s",
+                                  relation,
+                                  concat(unique_fields_updates, ", "))
+      dao.db:query(update_query)
+    end
   end
 
 
