@@ -438,6 +438,9 @@ return {
 
     POST = function(self, dao_factory, helpers)
       action_bitfield(self)
+      if not self.params.endpoint then
+        helpers.responses.send_HTTP_BAD_REQUEST("'endpoint' is a required field")
+      end
 
       --XXX we should probably factor this check out into kong.workspaces
       self.params.workspace = self.params.workspace or "default"
