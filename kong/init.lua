@@ -345,7 +345,7 @@ function Kong.ssl_certificate()
 
   runloop.certificate.before(ctx)
 
-  for plugin, plugin_conf in plugins_iterator(loaded_plugins, true) do
+  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins, true) do
     kong_global.set_namespaced_log(kong, plugin.name)
     plugin.handler:certificate(plugin_conf)
     kong_global.reset_log(kong)
@@ -440,7 +440,7 @@ function Kong.rewrite()
   -- we're just using the iterator, as in this rewrite phase no consumer nor
   -- api will have been identified, hence we'll just be executing the global
   -- plugins
-  for plugin, plugin_conf in plugins_iterator(loaded_plugins, true) do
+  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins, true) do
     kong_global.set_named_ctx(kong, "plugin", plugin_conf)
     kong_global.set_namespaced_log(kong, plugin.name)
 
@@ -461,7 +461,7 @@ function Kong.access()
 
   ctx.delay_response = true
 
-  for plugin, plugin_conf in plugins_iterator(loaded_plugins, true) do
+  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins, true) do
     if not ctx.delayed_response then
       kong_global.set_named_ctx(kong, "plugin", plugin_conf)
       kong_global.set_namespaced_log(kong, plugin.name)
@@ -493,7 +493,7 @@ function Kong.header_filter()
 
   runloop.header_filter.before(ctx)
 
-  for plugin, plugin_conf in plugins_iterator(loaded_plugins) do
+  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins) do
     kong_global.set_named_ctx(kong, "plugin", plugin_conf)
     kong_global.set_namespaced_log(kong, plugin.name)
 
@@ -508,7 +508,9 @@ end
 function Kong.body_filter()
   kong_global.set_phase(kong, PHASES.body_filter)
 
-  for plugin, plugin_conf in plugins_iterator(loaded_plugins) do
+  local ctx = ngx.ctx
+
+  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins) do
     kong_global.set_named_ctx(kong, "plugin", plugin_conf)
     kong_global.set_namespaced_log(kong, plugin.name)
 
@@ -517,13 +519,15 @@ function Kong.body_filter()
     kong_global.reset_log(kong)
   end
 
-  runloop.body_filter.after(ngx.ctx)
+  runloop.body_filter.after(ctx)
 end
 
 function Kong.log()
   kong_global.set_phase(kong, PHASES.log)
 
-  for plugin, plugin_conf in plugins_iterator(loaded_plugins) do
+  local ctx = ngx.ctx
+
+  for plugin, plugin_conf in plugins_iterator(ctx, loaded_plugins) do
     kong_global.set_named_ctx(kong, "plugin", plugin_conf)
     kong_global.set_namespaced_log(kong, plugin.name)
 
@@ -532,14 +536,15 @@ function Kong.log()
     kong_global.reset_log(kong)
   end
 
-  runloop.log.after(ngx.ctx)
+  runloop.log.after(ctx)
 end
 
 function Kong.handle_error()
   kong_resty_ctx.apply_ref()
 
-  if not ngx.ctx.plugins_for_request then
-    for plugin, plugin_conf in plugins_iterator(loaded_plugins, true) do
+  local ctx = ngx.ctx
+  if not ctx.plugins_for_request then
+    for _ in plugins_iterator(ctx, loaded_plugins, true) do
       -- just build list of plugins
     end
   end

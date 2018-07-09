@@ -46,7 +46,8 @@ end
 -- @param[type=stirng] plugin_name Name of the plugin being tested for.
 -- @param[type=string] api_id ID of the API being proxied.
 -- @treturn table Plugin retrieved from the cache or database.
-local function load_plugin_configuration(route_id,
+local function load_plugin_configuration(ctx,
+                                         route_id,
                                          service_id,
                                          consumer_id,
                                          plugin_name,
@@ -66,7 +67,7 @@ local function load_plugin_configuration(route_id,
                                      plugin_name,
                                      api_id)
   if err then
-    ngx.ctx.delay_response = false
+    ctx.delay_response = false
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
@@ -121,69 +122,69 @@ local function get_next(self)
     repeat
 
       if route_id and service_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(route_id, service_id, consumer_id, plugin_name, nil)
+        plugin_configuration = load_plugin_configuration(ctx, route_id, service_id, consumer_id, plugin_name, nil)
         if plugin_configuration then
           break
         end
       end
 
       if route_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(route_id, nil, consumer_id, plugin_name, nil)
+        plugin_configuration = load_plugin_configuration(ctx, route_id, nil, consumer_id, plugin_name, nil)
         if plugin_configuration then
           break
         end
       end
 
       if service_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(nil, service_id, consumer_id, plugin_name, nil)
+        plugin_configuration = load_plugin_configuration(ctx, nil, service_id, consumer_id, plugin_name, nil)
         if plugin_configuration then
           break
         end
       end
 
       if api_id and consumer_id then
-        plugin_configuration = load_plugin_configuration(nil, nil, consumer_id, plugin_name, api_id)
+        plugin_configuration = load_plugin_configuration(ctx, nil, nil, consumer_id, plugin_name, api_id)
         if plugin_configuration then
           break
         end
       end
 
       if route_id and service_id then
-        plugin_configuration = load_plugin_configuration(route_id, service_id, nil, plugin_name, nil)
+        plugin_configuration = load_plugin_configuration(ctx, route_id, service_id, nil, plugin_name, nil)
         if plugin_configuration then
           break
         end
       end
 
       if consumer_id then
-        plugin_configuration = load_plugin_configuration(nil, nil, consumer_id, plugin_name, nil)
+        plugin_configuration = load_plugin_configuration(ctx, nil, nil, consumer_id, plugin_name, nil)
         if plugin_configuration then
           break
         end
       end
 
       if route_id then
-        plugin_configuration = load_plugin_configuration(route_id, nil, nil, plugin_name, nil)
+        plugin_configuration = load_plugin_configuration(ctx, route_id, nil, nil, plugin_name, nil)
         if plugin_configuration then
           break
         end
       end
 
       if service_id then
-        plugin_configuration = load_plugin_configuration(nil, service_id, nil, plugin_name, nil)
+        plugin_configuration = load_plugin_configuration(ctx, nil, service_id, nil, plugin_name, nil)
         if plugin_configuration then
           break
         end
       end
 
       if api_id then
-        plugin_configuration = load_plugin_configuration(nil, nil, nil, plugin_name, api_id)
+        plugin_configuration = load_plugin_configuration(ctx, nil, nil, nil, plugin_name, api_id)
         if plugin_configuration then
           break
         end
       end
 
-      plugin_configuration = load_plugin_configuration(nil, nil, nil, plugin_name, nil)
+      plugin_configuration = load_plugin_configuration(ctx, nil, nil, nil, plugin_name, nil)
 
     until true
 
@@ -212,9 +213,7 @@ local plugin_iter_mt = { __call = get_next }
 -- is access_by_lua_block. We don't use `ngx.get_phase()` simply because we can
 -- avoid it.
 -- @treturn function iterator
-local function iter_plugins_for_req(loaded_plugins, access_or_cert_ctx)
-  local ctx = ngx.ctx
-
+local function iter_plugins_for_req(ctx, loaded_plugins, access_or_cert_ctx)
   if not ctx.plugins_for_request then
     ctx.plugins_for_request = {}
   end
