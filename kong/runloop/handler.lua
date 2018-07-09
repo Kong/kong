@@ -694,34 +694,37 @@ return {
   },
   header_filter = {
     before = function(ctx)
-      local var = ngx.var
       local header = ngx.header
 
-      if ctx.KONG_PROXIED then
-        local now = get_now()
-        -- time spent waiting for a response from upstream
-        ctx.KONG_WAITING_TIME             = now - ctx.KONG_ACCESS_ENDED_AT
-        ctx.KONG_HEADER_FILTER_STARTED_AT = now
+      if not ctx.KONG_PROXIED then
+        return
+      end
 
-        local upstream_status_header = constants.HEADERS.UPSTREAM_STATUS
-        if singletons.configuration.enabled_headers[upstream_status_header] then
-          header[upstream_status_header] = tonumber(sub(ngx.var.upstream_status or "", -3))
-          if not header[upstream_status_header] then
-            log(ERR, "failed to set ", upstream_status_header, " header")
-          end
+      local now = get_now()
+      -- time spent waiting for a response from upstream
+      ctx.KONG_WAITING_TIME             = now - ctx.KONG_ACCESS_ENDED_AT
+      ctx.KONG_HEADER_FILTER_STARTED_AT = now
+
+      local upstream_status_header = constants.HEADERS.UPSTREAM_STATUS
+      if singletons.configuration.enabled_headers[upstream_status_header] then
+        header[upstream_status_header] = tonumber(sub(ngx.var.upstream_status or "", -3))
+        if not header[upstream_status_header] then
+          log(ERR, "failed to set ", upstream_status_header, " header")
         end
+      end
 
-        local hash_cookie = ctx.balancer_data.hash_cookie
-        if hash_cookie then
-          local cookie = ck:new()
-          local ok, err = cookie:set(hash_cookie)
+      local hash_cookie = ctx.balancer_data.hash_cookie
+      if not hash_cookie then
+        return
+      end
 
-          if not ok then
-            log(ngx.WARN, "failed to set the cookie for hash-based load balancing: ", err,
-                          " (key=", hash_cookie.key,
-                          ", path=", hash_cookie.path, ")")
-          end
-        end
+      local cookie = ck:new()
+      local ok, err = cookie:set(hash_cookie)
+
+      if not ok then
+        log(ngx.WARN, "failed to set the cookie for hash-based load balancing: ", err,
+                      " (key=", hash_cookie.key,
+                      ", path=", hash_cookie.path, ")")
       end
     end,
     after = function(ctx)
@@ -752,35 +755,40 @@ return {
   },
   body_filter = {
     after = function(ctx)
-      if ngx.arg[2] then
-        local now = get_now()
-        ctx.KONG_BODY_FILTER_ENDED_AT = now
+      if not ngx.arg[2] then
+        return
+      end
 
-        if ctx.KONG_PROXIED then
-          -- time spent receiving the response (header_filter + body_filter)
-          -- we could use $upstream_response_time but we need to distinguish the waiting time
-          -- from the receiving time in our logging plugins (especially ALF serializer).
-          ctx.KONG_RECEIVE_TIME = now - ctx.KONG_HEADER_FILTER_STARTED_AT
-        end
+      local now = get_now()
+      ctx.KONG_BODY_FILTER_ENDED_AT = now
+
+      if ctx.KONG_PROXIED then
+        -- time spent receiving the response (header_filter + body_filter)
+        -- we could use $upstream_response_time but we need to distinguish the waiting time
+        -- from the receiving time in our logging plugins (especially ALF serializer).
+        ctx.KONG_RECEIVE_TIME = now - ctx.KONG_HEADER_FILTER_STARTED_AT
       end
     end
   },
   log = {
     after = function(ctx)
       reports.log()
-      local balancer_data = ctx.balancer_data
+
+      if not ctx.KONG_PROXIED then
+        return
+      end
 
       -- If response was produced by an upstream (ie, not by a Kong plugin)
-      if ctx.KONG_PROXIED == true then
-        -- Report HTTP status for health checks
-        if balancer_data and balancer_data.balancer and balancer_data.ip then
-          local ip, port = balancer_data.ip, balancer_data.port
-          local status = ngx.status
-          if status == 504 then
-            balancer_data.balancer.report_timeout(ip, port)
-          else
-            balancer_data.balancer.report_http_status(ip, port, status)
-          end
+      -- Report HTTP status for health checks
+      local balancer_data = ctx.balancer_data
+      if balancer_data and balancer_data.balancer and balancer_data.ip then
+        local ip, port = balancer_data.ip, balancer_data.port
+
+        local status = ngx.status
+        if status == 504 then
+          balancer_data.balancer.report_timeout(ip, port)
+        else
+          balancer_data.balancer.report_http_status(ip, port, status)
         end
       end
     end
