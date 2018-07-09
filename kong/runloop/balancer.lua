@@ -640,19 +640,22 @@ end
 -- Will only be called once per request, on first try.
 -- @param upstream the upstream enity
 -- @return integer value or nil if there is no hash to calculate
-local create_hash = function(upstream)
+local create_hash = function(upstream, ctx)
   local hash_on = upstream.hash_on
   if hash_on == "none" then
     return -- not hashing, exit fast
   end
 
-  local ctx = ngx.ctx
   local identifier
   local header_field_name = "hash_on_header"
 
   for _ = 1,2 do
 
-    if hash_on == "consumer" then
+   if hash_on == "consumer" then
+      if not ctx then
+        ctx = ngx.ctx
+      end
+
       -- consumer, fallback to credential
       identifier = (ctx.authenticated_consumer or EMPTY_T).id or
                    (ctx.authenticated_credential or EMPTY_T).id
@@ -672,6 +675,10 @@ local create_hash = function(upstream)
       -- If the cookie doesn't exist, create one and store in `ctx`
       -- to be added to the "Set-Cookie" header in the response
       if not identifier then
+        if not ctx then
+          ctx = ngx.ctx
+        end
+
         identifier = utils.uuid()
 
         ctx.balancer_data.hash_cookie = {
@@ -744,7 +751,7 @@ end
 -- @param silent Do not produce body data (to be used in OpenResty contexts
 -- which do not support sending it)
 -- @return true on success, nil+error message+status code otherwise
-local function execute(target)
+local function execute(target, ctx)
 
   if target.type ~= "name" then
     -- it's an ip address (v4 or v6), so nothing we can do...
@@ -780,7 +787,7 @@ local function execute(target)
       -- only add it if it doesn't exist, in case a plugin inserted one
       hash_value = target.hash_value
       if not hash_value then
-        hash_value = create_hash(upstream)
+        hash_value = create_hash(upstream, ctx)
         target.hash_value = hash_value
       end
     end
