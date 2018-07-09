@@ -362,7 +362,7 @@ function Kong.balancer()
   balancer_data.try_count = balancer_data.try_count + 1
   tries[balancer_data.try_count] = current_try
 
-  runloop.balancer.before()
+  runloop.balancer.before(ctx)
 
   if balancer_data.try_count > 1 then
     -- only call balancer on retry, first one is done in `runloop.access.after`
@@ -426,7 +426,7 @@ function Kong.balancer()
     ngx_log(ngx_ERR, "could not set upstream timeouts: ", err)
   end
 
-  runloop.balancer.after()
+  runloop.balancer.after(ctx)
 end
 
 function Kong.rewrite()

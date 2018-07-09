@@ -634,7 +634,7 @@ return {
         end
       end
 
-      local ok, err, errcode = balancer.execute(ctx.balancer_data)
+      local ok, err, errcode = balancer.execute(ctx.balancer_data, ctx)
       if not ok then
         if errcode == 500 then
           err = "failed the initial dns/balancer resolve for '" ..
@@ -675,13 +675,12 @@ return {
     end
   },
   balancer = {
-    before = function()
-      local balancer_data = ngx.ctx.balancer_data
+    before = function(ctx)
+      local balancer_data = ctx.balancer_data
       local current_try = balancer_data.tries[balancer_data.try_count]
       current_try.balancer_start = get_now()
     end,
-    after = function ()
-      local ctx = ngx.ctx
+    after = function(ctx)
       local balancer_data = ctx.balancer_data
       local current_try = balancer_data.tries[balancer_data.try_count]
 
