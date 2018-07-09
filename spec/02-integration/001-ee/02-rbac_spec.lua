@@ -18,6 +18,19 @@ local function post(path, body, headers, expected_status)
 end
 
 
+local function patch(path, body, headers, expected_status)
+  headers = headers or {}
+  headers["Content-Type"] = "application/json"
+  local res = assert(client:send{
+    method = "PATCH",
+    path = path,
+    body = body or {},
+    headers = headers
+  })
+  return cjson.decode(assert.res_status(expected_status or 200, res))
+end
+
+
 local function put(path, body, headers, expected_status)
   headers = headers or {}
   headers["Content-Type"] = "application/json"
@@ -2330,25 +2343,10 @@ describe("Admin API", function()
   end)
 
   it(".update checks rbac via patch", function()
-    -- patch("/apis/".. apis[1].id, {name = "new-name"}, {["Kong-Admin-Token"] = "bob", ["Content-Type"] = "application/json"})
-    -- local res = assert(client:send {
-    --   method = "PATCH",
-    --   path = "/rbac/users/bob",
-    --   body = {
-    --     comment = "new comment",
-    --   },
-    --   headers = {
-    --     ["Kong-Admin-Token"] = "bob",
-    --             ["Content-Type"] = "application/json",
-    --   },
-    -- })
-
-    -- local body = assert.res_status(200, res)
-    -- local json = cjson.decode(body)
-
-    -- patch("/apis/".. apis[2].id, {name = "new-name"}, {["Kong-Admin-Token"] = "bob"})
-    -- patch("/apis/".. apis[3].id, {name = "new-name"}, {["Kong-Admin-Token"] = "bob"})
-    -- patch("/apis/".. apis[4].id, {name = "new-name"}, {["Kong-Admin-Token"] = "bob"})
+    patch("/apis/".. apis[1].id, {name = "new-name"}, {["Kong-Admin-Token"] = "bob"}, 404)
+    patch("/apis/".. apis[2].id, {name = "new-name"}, {["Kong-Admin-Token"] = "bob"}, 404)
+    patch("/apis/".. apis[3].id, {name = "new-name"}, {["Kong-Admin-Token"] = "bob"}, 404)
+    patch("/apis/".. apis[4].id, {name = "new-name"}, {["Kong-Admin-Token"] = "bob"}, 200)
   end)
 
   it(".delete checks rbac", function()
