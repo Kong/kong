@@ -99,16 +99,13 @@ for _, strategy in helpers.each_strategy() do
       end)
 
       describe("GET", function()
-        it("works", function()
+        it("proxy is not enabled", function()
           local res = assert(client:send {
             method = "GET",
             path = "/" .. proxy_prefix .. "/admin",
           })
 
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-
-          assert.equal("Welcome to kong", json.tagline)
+          assert.res_status(404, res)
         end)
       end)
     end)

@@ -113,6 +113,19 @@ end
 
 
 function _M:setup_admin()
+  local kong_config = singletons.configuration
+
+  -- don't enable admin proxy unless secured
+  if not kong_config.admin_gui_auth then
+    ngx.log(ngx.DEBUG, "admin_gui_auth is not enabled, no admin proxy will be set up")
+    return
+  end
+
+  if not kong_config.proxy_listen and not kong_config.proxy_url then
+    ngx.log(ngx.DEBUG, "proxy_listen or proxy_url must be set when using admin_gui_auth")
+    return
+  end
+
   local admin_config = get_service_config("admin", 8001)
 
   admin_config.id = admin_service_id
@@ -125,8 +138,6 @@ function _M:setup_admin()
     paths = { "/" .. _M.proxy_prefix .. "/admin" },
   })
 
-  local kong_config = singletons.configuration
-
   self:add_plugin({
     name = "cors",
     service = admin_config.name,
@@ -137,13 +148,11 @@ function _M:setup_admin()
     }
   })
 
-  if kong_config.admin_gui_auth then
-    self:add_plugin({
-      name = kong_config.admin_gui_auth,
-      service = admin_config.name,
-      config = kong_config.admin_gui_auth_conf or {}
-    })
-  end
+  self:add_plugin({
+    name = kong_config.admin_gui_auth,
+    service = admin_config.name,
+    config = kong_config.admin_gui_auth_conf or {}
+  })
 end
 
 
