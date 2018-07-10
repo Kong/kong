@@ -1139,6 +1139,7 @@ return {
                            MOCK_UPSTREAM_PORT,
 
   mock_upstream_ssl_protocol = MOCK_UPSTREAM_SSL_PROTOCOL,
+  mock_upstream_ssl_host     = MOCK_UPSTREAM_HOST,
   mock_upstream_ssl_port     = MOCK_UPSTREAM_SSL_PORT,
   mock_upstream_ssl_url      = MOCK_UPSTREAM_SSL_PROTOCOL .. "://" ..
                                MOCK_UPSTREAM_HOST .. ':' ..
