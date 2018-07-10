@@ -1,39 +1,9 @@
 local cjson      = require "cjson"
-local socket     = require "socket"
 local helpers    = require "spec.helpers"
 
 
-local mockbin_ip = socket.dns.toip("mockbin.org")
-
-
-local function create_mock_bin()
-  local proxy_client = assert(helpers.http_client(mockbin_ip, 80))
-
-  local res = assert(proxy_client:send({
-    method  = "POST",
-    path    = "/bin/create",
-    body    = '{"status": 200, "statusText": "OK", "httpVersion": "HTTP/1.1", "headers": [], "cookies": [], "content": { "mimeType" : "application/json" }, "redirectURL": "", "headersSize": 0, "bodySize": 0}',
-    headers = {
-      Host  = "mockbin.org",
-      ["Content-Type"] = "application/json"
-    }
-  }))
-
-  local body = assert.res_status(201, res)
-
-  return body:sub(2, body:len() - 1)
-end
-
-
-local mock_bin_http            = create_mock_bin()
-local mock_bin_https           = create_mock_bin()
-local mock_bin_http_basic_auth = create_mock_bin()
-
-
 for _, strategy in helpers.each_strategy() do
-  pending("Plugin: http-log (log) [#" .. strategy .. "]", function()
-    -- Pending: at the time of this change, mockbin.com's behavior with bins
-    -- seems to be broken.
+  describe("Plugin: http-log (log) [#" .. strategy .. "]", function()
     local proxy_client
 
     setup(function()
@@ -41,12 +11,12 @@ for _, strategy in helpers.each_strategy() do
 
       local service1 = bp.services:insert{
         protocol = "http",
-        host     = "mockbin.com",
-        port     = 80,
+        host     = helpers.mock_upstream_host,
+        port     = helpers.mock_upstream_port,
       }
 
       local route1 = bp.routes:insert {
-        hosts   = { "http_logging.com" },
+        hosts   = { "http_logging.test" },
         service = service1
       }
 
@@ -54,18 +24,43 @@ for _, strategy in helpers.each_strategy() do
         route_id = route1.id,
         name     = "http-log",
         config   = {
-          http_endpoint = "http://mockbin.org/bin/" .. mock_bin_http
+          http_endpoint = "http://" .. helpers.mock_upstream_host
+                                    .. ":"
+                                    .. helpers.mock_upstream_port
+                                    .. "/post_log/http"
+        }
+      }
+
+      local service1 = bp.services:insert{
+        protocol = "http",
+        host     = helpers.mock_upstream_host,
+        port     = helpers.mock_upstream_port,
+      }
+
+      local route1 = bp.routes:insert {
+        hosts   = { "http_logging.test" },
+        service = service1
+      }
+
+      bp.plugins:insert {
+        route_id = route1.id,
+        name     = "http-log",
+        config   = {
+          http_endpoint = "http://" .. helpers.mock_upstream_host
+                                    .. ":"
+                                    .. helpers.mock_upstream_port
+                                    .. "/post_log/http"
         }
       }
 
       local service2 = bp.services:insert{
         protocol = "http",
-        host     = "mockbin.com",
-        port     = 80,
+        host     = helpers.mock_upstream_host,
+        port     = helpers.mock_upstream_port,
       }
 
       local route2 = bp.routes:insert {
-        hosts   = { "http_logging.com" },
+        hosts   = { "https_logging.test" },
         service = service2
       }
 
@@ -73,18 +68,21 @@ for _, strategy in helpers.each_strategy() do
         route_id = route2.id,
         name     = "http-log",
         config   = {
-          http_endpoint = "https://mockbin.org/bin/" .. mock_bin_https
+          http_endpoint = "https://" .. helpers.mock_upstream_ssl_host
+                                     .. ":"
+                                     .. helpers.mock_upstream_ssl_port
+                                     .. "/post_log/https"
         }
       }
 
       local service3 = bp.services:insert{
         protocol = "http",
-        host     = "mockbin.com",
-        port     = 80,
+        host     = helpers.mock_upstream_host,
+        port     = helpers.mock_upstream_port,
       }
 
       local route3 = bp.routes:insert {
-        hosts   = { "http_basic_auth_logging.com" },
+        hosts   = { "http_basic_auth_logging.test" },
         service = service3
       }
 
@@ -92,12 +90,18 @@ for _, strategy in helpers.each_strategy() do
         route_id = route3.id,
         name     = "http-log",
         config   = {
-          http_endpoint = "http://testuser:testpassword@mockbin.org/bin/" .. mock_bin_http_basic_auth
+          http_endpoint = "http://" .. "testuser:testpassword@"
+                                    .. helpers.mock_upstream_host
+                                    .. ":"
+                                    .. helpers.mock_upstream_port
+                                    .. "/post_auth_log/basic_auth"
+                                    .. "/testuser/testpassword"
         }
       }
 
       assert(helpers.start_kong({
         database = strategy,
+        nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
     end)
 
@@ -120,22 +124,22 @@ for _, strategy in helpers.each_strategy() do
         method = "GET",
         path = "/status/200",
         headers = {
-          ["Host"] = "http_logging.com"
+          ["Host"] = "http_logging.test"
         }
       }))
       assert.res_status(200, res)
 
       helpers.wait_until(function()
-        local client = assert(helpers.http_client(mockbin_ip, 80))
+        local client = assert(helpers.http_client(helpers.mock_upstream_host, helpers.mock_upstream_port))
         local res = assert(client:send {
           method  = "GET",
-          path    = "/bin/" .. mock_bin_http .. "/log",
+          path    = "/read_log/http",
           headers = {
-            Host   = "mockbin.org",
             Accept = "application/json"
           }
         })
-        local body = cjson.decode(assert.res_status(200, res))
+        local raw = assert.res_status(200, res)
+        local body = cjson.decode(raw)
         if #body.log.entries == 1 then
           local log_message = cjson.decode(body.log.entries[1].request.postData.text)
           assert.same("127.0.0.1", log_message.client_ip)
@@ -149,22 +153,22 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/status/200",
         headers = {
-          ["Host"] = "https_logging.com"
+          ["Host"] = "https_logging.test"
         }
       }))
       assert.res_status(200, res)
 
       helpers.wait_until(function()
-        local client = assert(helpers.http_client(mockbin_ip, 80))
+        local client = assert(helpers.http_client(helpers.mock_upstream_host, helpers.mock_upstream_port))
         local res = assert(client:send {
           method  = "GET",
-          path    = "/bin/" .. mock_bin_https .. "/log",
+          path    = "/read_log/https",
           headers = {
-            Host   = "mockbin.org",
             Accept = "application/json"
           }
         })
-        local body = cjson.decode(assert.res_status(200, res))
+        local raw = assert.res_status(200, res)
+        local body = cjson.decode(raw)
         if #body.log.entries == 1 then
           local log_message = cjson.decode(body.log.entries[1].request.postData.text)
           assert.same("127.0.0.1", log_message.client_ip)
@@ -178,18 +182,17 @@ for _, strategy in helpers.each_strategy() do
         method  = "GET",
         path    = "/status/200",
         headers = {
-          ["Host"] = "http_basic_auth_logging.com"
+          ["Host"] = "http_basic_auth_logging.test"
         }
       }))
       assert.res_status(200, res)
 
       helpers.wait_until(function()
-        local client = assert(helpers.http_client(mockbin_ip, 80))
+        local client = assert(helpers.http_client(helpers.mock_upstream_host, helpers.mock_upstream_port))
         local res = assert(client:send {
           method  = "GET",
-          path    = "/bin/" .. mock_bin_http_basic_auth .. "/log",
+          path    = "/read_log/basic_auth",
           headers = {
-            Host   = "mockbin.org",
             Accept = "application/json"
           }
         })
