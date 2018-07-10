@@ -21,7 +21,7 @@ local function validate_access(self, table_name, service_id, constraints)
         fmt("could not fetch %s for Service: %s", table_name, err))
     end
 
-    if not rbac.validate_entity_operation(row, constraints) then
+    if not rbac.validate_entity_operation(row, table_name) then
       return nil, self.errors:unauthorized_operation({
         username = ngx.ctx.rbac.user.name,
         action = rbac.readable_action(ngx.ctx.rbac.action)
@@ -67,7 +67,7 @@ function _Services_ee:delete(primary_key)
     return nil, err1 or err2 or err3
   end
 
-  if not rbac.validate_entity_operation(primary_key, constraints) then
+  if not rbac.validate_entity_operation(primary_key, self.schema.name) then
     return nil, self.errors:unauthorized_operation({
       username = ngx.ctx.rbac.user.name,
       action = rbac.readable_action(ngx.ctx.rbac.action)

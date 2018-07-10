@@ -494,12 +494,12 @@ end
 _M.add_default_role_entity_permission = add_default_role_entity_permission
 
 
-function _M.narrow_readable_entities(db_table_name, entities, constraints)
+function _M.narrow_readable_entities(db_table_name, entities)
   local filtered_rows = {}
   setmetatable(filtered_rows, getmetatable(entities))
   if not is_system_table(db_table_name) and is_admin_api_request() then
     for i, v in ipairs(entities) do
-      local valid = _M.validate_entity_operation(v, constraints)
+      local valid = _M.validate_entity_operation(v, db_table_name)
       if valid then
         filtered_rows[#filtered_rows+1] = v
       end
@@ -512,7 +512,7 @@ function _M.narrow_readable_entities(db_table_name, entities, constraints)
 end
 
 
-function _M.validate_entity_operation(entity, constraints)
+function _M.validate_entity_operation(entity, table_name)
   -- rbac only applies to the admin api - ie, proxy side
   -- requests are not to be considered
   if not is_admin_api_request() then
@@ -537,10 +537,17 @@ function _M.validate_entity_operation(entity, constraints)
 
   local permissions_map = rbac_ctx.entities_perms
   local action = rbac_ctx.action
-  local entity_id = "id"
-  if constraints then
-    entity_id = constraints.primary_key
+
+  local schema
+  if singletons.dao[table_name] then -- old dao
+    schema = singletons.dao[table_name].schema
+
+  else -- new dao
+    schema = singletons.db.daos[table_name].schema
   end
+
+  local entity_id = schema.primary_key[1]
+
   return _M.authorize_request_entity(permissions_map, entity[entity_id], action)
 end
 

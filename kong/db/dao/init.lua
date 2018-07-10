@@ -90,8 +90,7 @@ local function generate_foreign_key_methods(self)
 
         if not options.skip_rbac then
           local table_name = self.schema.name
-          local constraints = workspaceable[table_name]
-          entities = rbac.narrow_readable_entities(table_name, entities, constraints)
+          entities = rbac.narrow_readable_entities(table_name, entities)
         end
 
         return entities, nil, nil, new_offset
@@ -118,7 +117,7 @@ local function generate_foreign_key_methods(self)
         end
 
         if not options.skip_rbac then
-          local r = rbac.validate_entity_operation(row, constraints)
+          local r = rbac.validate_entity_operation(row, self.schema.name)
           if not r then
             local err_t = self.errors:unauthorized_operation({
               username = ngx.ctx.rbac.user.name,
@@ -272,7 +271,7 @@ function DAO:select(primary_key, options)
   end
 
   if not options.skip_rbac then
-    local r = rbac.validate_entity_operation(primary_key, constraints)
+    local r = rbac.validate_entity_operation(primary_key, self.schema.name)
     if not r then
       local err_t = self.errors:unauthorized_operation({
         username = ngx.ctx.rbac.user.name,
@@ -316,8 +315,7 @@ function DAO:page(size, offset, options)
 
   if not options.skip_rbac then
     local table_name = self.schema.name
-    local constraints = workspaceable[table_name]
-    entities = rbac.narrow_readable_entities(table_name, entities, constraints)
+    entities = rbac.narrow_readable_entities(table_name, entities)
   end
 
   return entities, err, err_t, offset
@@ -458,7 +456,7 @@ function DAO:update(primary_key, entity)
     return nil, tostring(err_t), err_t
   end
 
-  if not rbac.validate_entity_operation(entity_to_update, constraints) then
+  if not rbac.validate_entity_operation(entity_to_update, self.schema.name) then
     local err_t = self.errors:unauthorized_operation({
       username = ngx.ctx.rbac.user.name,
       action = rbac.readable_action(ngx.ctx.rbac.action)

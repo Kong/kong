@@ -55,7 +55,6 @@ function _Routes_ee:delete(primary_key)
   local plugins = {}
   local connector = self.connector
   local cluster = connector.cluster
-  local constraints = workspaces.get_workspaceable_relations()[self.schema.name]
 
   -- retrieve plugins associated with this Route
   local query = "SELECT * FROM plugins WHERE route_id = ? ALLOW FILTERING"
@@ -68,7 +67,7 @@ function _Routes_ee:delete(primary_key)
     end
 
     for i = 1, #rows do
-      if not rbac.validate_entity_operation(rows[i], constraints) then
+      if not rbac.validate_entity_operation(rows[i], self.schema.name) then
         return nil, self.errors:unauthorized_operation({
           username = ngx.ctx.rbac.user.name,
           action = rbac.readable_action(ngx.ctx.rbac.action)
@@ -78,7 +77,7 @@ function _Routes_ee:delete(primary_key)
     end
   end
 
-  if not rbac.validate_entity_operation(primary_key, constraints) then
+  if not rbac.validate_entity_operation(primary_key, self.schema.name) then
     return nil, self.errors:unauthorized_operation({
       username = ngx.ctx.rbac.user.name,
       action = rbac.readable_action(ngx.ctx.rbac.action)
