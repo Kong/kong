@@ -36,6 +36,15 @@ local ALL_METHODS = "GET,POST,PUT,DELETE,OPTIONS,PATCH"
 local workspaceable_relations = {}
 
 
+-- used only with insert, update, delete, and find_all
+local unique_accross_ws = {
+  plugins    = true,
+  rbac_users = true,
+  workspaces = true,
+  workspace_entities = true,
+}
+
+
 local function metatable(base)
   return {
     __index = base,
@@ -267,8 +276,11 @@ function _M.get_default_workspace_migration()
                         require("pl.tablex").keys(constraints.unique_keys)))
     end
 
-    local unique_fields_updates = update_unique_fields(constraints)
+    if unique_accross_ws[relation] then
+      return
+    end
 
+    local unique_fields_updates = update_unique_fields(constraints)
     if unique_fields_updates[1] then
       local update_query = format("update %s set %s",
                                   relation,
@@ -919,13 +931,6 @@ end
 _M.workspace_entities_map = workspace_entities_map
 
 
--- used only with insert, update, delete, and find_all
-local unique_accross_ws = {
-  plugins    = true,
-  rbac_users = true,
-  workspaces = true,
-  workspace_entities = true,
-}
 function _M.apply_unique_per_ws(table_name, params, constraints)
   -- entity may have workspace_id, workspace_name fields, ex. in case of update
   -- needs to be removed as entity schema doesn't support them
