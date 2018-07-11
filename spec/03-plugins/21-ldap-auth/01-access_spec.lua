@@ -31,9 +31,9 @@ for _, strategy in helpers.each_strategy() do
     local plugin2
 
     setup(function()
-      local bp, _, dao = helpers.get_db_utils(strategy)
-      helpers.with_current_ws(nil, function()
-        local route1 = bp.routes:insert {
+      local bp, _, _ = helpers.get_db_utils(strategy)
+
+      local route1 = bp.routes:insert {
         hosts = { "ldap.com" },
       }
 
@@ -137,7 +137,6 @@ for _, strategy in helpers.each_strategy() do
           attribute = "uid"
         }
       }
-      end, dao)
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -473,8 +472,7 @@ for _, strategy in helpers.each_strategy() do
     local anonymous
 
     setup(function()
-      local bp, _, dao = helpers.get_db_utils(strategy)
-      helpers.with_current_ws(nil, function()
+      local bp, _, _ = helpers.get_db_utils(strategy)
       local service1 = bp.services:insert({
         path = "/request"
       })
@@ -543,7 +541,6 @@ for _, strategy in helpers.each_strategy() do
         key         = "Mouse",
         consumer_id = user.id,
       }
-      end, dao)
 
       assert(helpers.start_kong({
         database   = strategy,

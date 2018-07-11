@@ -159,17 +159,13 @@ for _, strategy in helpers.each_strategy() do
 
       describe("GET", function()
         setup(function()
-          helpers.with_current_ws(
-            dao.workspaces:find_all({name = "default"}),
-            function()
-                for i = 1, 3 do
-                assert(dao.basicauth_credentials:insert {
-                            username    = "bob" .. i,
-                            password    = "kong",
-                            consumer_id = consumer.id
-                })
-            end
-          end)
+          for i = 1, 3 do
+            assert(dao.basicauth_credentials:insert {
+              username    = "bob" .. i,
+              password    = "kong",
+              consumer_id = consumer.id
+            })
+          end
         end)
         teardown(function()
           dao:truncate_table("basicauth_credentials")
