@@ -43,7 +43,7 @@ function DB.new(kong_config, strategy)
 
   -- load errors
 
-  local errors = Errors.new(strategy)
+  local errors = Errors.new(strategy or kong_config.database)
 
   local schemas = {}
 

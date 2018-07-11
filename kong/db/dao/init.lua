@@ -12,7 +12,6 @@ local log          = ngx.log
 local fmt          = string.format
 
 
-
 local ERR          = ngx.ERR
 
 
@@ -297,6 +296,10 @@ function DAO:each(size)
     local row, err, page = next_row()
     if not row then
       if err then
+        if type(err) == "table" then
+          return nil, tostring(err), err
+        end
+
         local err_t = self.errors:database_error(err)
         return nil, tostring(err_t), err_t
       end

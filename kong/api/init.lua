@@ -79,6 +79,10 @@ local function new_db_on_error(self)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(tostring(err))
   end
 
+  if err.strategy then
+    err.strategy = nil
+  end
+
   if err.code == Errors.codes.SCHEMA_VIOLATION
   or err.code == Errors.codes.INVALID_PRIMARY_KEY
   or err.code == Errors.codes.FOREIGN_KEY_VIOLATION
