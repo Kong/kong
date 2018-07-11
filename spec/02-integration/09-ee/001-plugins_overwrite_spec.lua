@@ -36,12 +36,9 @@ describe("Plugins overwrite:", function()
         assert.is_nil(json.fields.key_in_body.overwrite)
       end)
       it("is false by default", function()
-        local route
-        helpers.with_current_ws(nil, function()
-          route = assert(bp.routes:insert {
+        local route = assert(bp.routes:insert {
           hosts = { "keyauth1.test" },
         })
-        end, dao)
         local res = assert(client:send {
           method  = "POST",
           path    = "/plugins",
@@ -58,12 +55,9 @@ describe("Plugins overwrite:", function()
         assert.False(json.config.key_in_body)
       end)
       it("can be set to true", function()
-        local route
-        helpers.with_current_ws(nil, function()
-          route = assert(bp.routes:insert {
+        local route = assert(bp.routes:insert {
           hosts = { "keyauth2.test" },
         })
-        end, dao)
         local res = assert(client:send {
           method  = "POST",
           path    = "/plugins",
@@ -115,12 +109,9 @@ describe("Plugins overwrite:", function()
         assert.False(json.fields.key_in_body.overwrite)
       end)
       it("cannot be set to any value", function()
-        local route
-        helpers.with_current_ws(nil, function()
-          route = assert(bp.routes:insert {
+        local route = assert(bp.routes:insert {
           hosts = { "keyauth1.test" },
         })
-        end, dao)
 
         local res = assert(client:send {
           method  = "POST",
@@ -161,12 +152,9 @@ describe("Plugins overwrite:", function()
                     json["config.key_in_body"])
       end)
       it("is set to false", function()
-        local route
-        helpers.with_current_ws(nil, function()
-          route = assert(bp.routes:insert {
+        local route = assert(bp.routes:insert {
           hosts = { "keyauth2.test" },
         })
-        end, dao)
 
         local res = assert(client:send {
           method  = "POST",
@@ -216,12 +204,9 @@ describe("Plugins overwrite:", function()
         assert.is_nil(json.fields.validate_request_body.overwrite)
       end)
       it("is false by default", function()
-        local route
-        helpers.with_current_ws(nil, function()
-        route = assert(bp.routes:insert {
+        local route = assert(bp.routes:insert {
           hosts = { "hmacauth1.test" },
         })
-        end, dao)
         local res = assert(client:send {
           method  = "POST",
           path    = "/plugins",
@@ -238,12 +223,9 @@ describe("Plugins overwrite:", function()
         assert.False(json.config.validate_request_body)
       end)
       it("can be set to true", function()
-        local route
-        helpers.with_current_ws(nil, function()
-          route = assert(bp.routes:insert {
+        local route = assert(bp.routes:insert {
           hosts = { "hmacauth2.test" },
         })
-        end, dao)
         local res = assert(client:send {
           method  = "POST",
           path    = "/plugins",
@@ -295,12 +277,9 @@ describe("Plugins overwrite:", function()
         assert.False(json.fields.validate_request_body.overwrite)
       end)
       it("cannot be set to any value", function()
-        local route
-        helpers.with_current_ws(nil, function()
-          route = assert(bp.routes:insert {
+        local route = assert(bp.routes:insert {
           hosts = { "hmacauth1.test" },
         })
-        end, dao)
 
         local res = assert(client:send {
           method  = "POST",
@@ -341,12 +320,9 @@ describe("Plugins overwrite:", function()
                     json["config.validate_request_body"])
       end)
       it("is set to false", function()
-        local route
-        helpers.with_current_ws(nil, function()
-          route = assert(bp.routes:insert {
+        local route = assert(bp.routes:insert {
           hosts = { "hmacauth2.test" },
         })
-        end, dao)
 
         local res = assert(client:send {
           method  = "POST",
@@ -406,12 +382,9 @@ describe("Plugins overwrite:", function()
         assert.is_nil(json.fields.redis_timeout.overwrite)
       end)
       it("policy and redis fields can be set to a value", function()
-        local route
-        helpers.with_current_ws(nil, function()
-          route = assert(bp.routes:insert {
+        local route = assert(bp.routes:insert {
           hosts = { "rate-limit1.test" },
         })
-        end, dao)
         local res = assert(client:send {
           method  = "POST",
           path    = "/plugins",
@@ -588,12 +561,9 @@ describe("Plugins overwrite:", function()
         assert.is_nil(json.fields.redis_timeout.overwrite)
       end)
       it("policy and redis fields can be set to a value", function()
-        local route
-        helpers.with_current_ws(nil, function()
-          route = assert(bp.routes:insert {
+        local route = assert(bp.routes:insert {
           hosts = { "respone-rate-limit1.test" },
         })
-        end, dao)
 
         local res = assert(client:send {
           method  = "POST",

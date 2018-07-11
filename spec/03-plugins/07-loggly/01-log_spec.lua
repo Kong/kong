@@ -12,7 +12,6 @@ for _, strategy in helpers.each_strategy() do
     setup(function()
       local bp, _, dao = helpers.get_db_utils(strategy)
 
-      helpers.with_current_ws(nil, function()
       local route1 = bp.routes:insert {
         hosts = { "logging.com" },
       }
@@ -76,7 +75,6 @@ for _, strategy in helpers.each_strategy() do
           key  = "123456789"
         }
       }
-      end, dao)
 
       assert(helpers.start_kong({
         database   = strategy,

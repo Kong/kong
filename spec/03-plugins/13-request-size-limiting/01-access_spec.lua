@@ -13,7 +13,6 @@ for _, strategy in helpers.each_strategy() do
     setup(function()
       local bp, _, dao = helpers.get_db_utils(strategy)
 
-      helpers.with_current_ws(nil, function()
       local route = bp.routes:insert {
         hosts = { "limit.com" },
       }
@@ -25,7 +24,6 @@ for _, strategy in helpers.each_strategy() do
           allowed_payload_size = TEST_SIZE
         }
       }
-      end, dao)
 
       assert(helpers.start_kong({
         database   = strategy,
