@@ -352,17 +352,13 @@ pending("Admin API #" .. kong_config.database, function()
 
     describe("GET", function()
       before_each(function()
-        helpers.with_current_ws(
-          dao.workspaces:find_all({name = "default"}),
-          function()
-            for i = 1, 10 do
-              assert(dao.apis:insert {
-                       name = "api-" .. i,
-                       uris = "/api-" .. i,
-                       upstream_url = "http://my-api.com"
-              })
-            end
-        end)
+        for i = 1, 10 do
+          assert(dao.apis:insert {
+            name = "api-" .. i,
+            uris = "/api-" .. i,
+            upstream_url = "http://my-api.com"
+          })
+        end
       end)
 
       it("retrieves the first page", function()
@@ -473,15 +469,11 @@ pending("Admin API #" .. kong_config.database, function()
       dao:truncate_tables()
     end)
     before_each(function()
-      helpers.with_current_ws(
-        dao.workspaces:find_all({name = "default"}),
-        function()
-          api = assert(dao.apis:insert {
-                         name = "my-api",
-                         uris = "/my-api",
-                         upstream_url = "http://my-api.com"
-          })
-      end)
+      api = assert(dao.apis:insert {
+        name = "my-api",
+        uris = "/my-api",
+        upstream_url = "http://my-api.com"
+      })
     end)
     after_each(function()
       dao:truncate_tables()
@@ -736,15 +728,11 @@ pending("Admin API #" .. kong_config.database, function()
   pending("/apis/{api}/plugins", function()
     local api
     before_each(function()
-      helpers.with_current_ws(
-        dao.workspaces:find_all({name = "default"}),
-        function()
-          api = assert(dao.apis:insert {
-                         name = "my-api",
-                         uris = "/my-api",
-                         upstream_url = "http://my-api.com"
-          })
-      end)
+      api = assert(dao.apis:insert {
+        name = "my-api",
+        uris = "/my-api",
+        upstream_url = "http://my-api.com"
+      })
     end)
 
     describe("POST", function()
@@ -929,16 +917,11 @@ pending("Admin API #" .. kong_config.database, function()
       end)
       it_content_types("perfers default values when replacing", function(content_type)
         return function()
-          local plugin
-          helpers.with_current_ws(
-            dao.workspaces:find_all({name = "default"}),
-            function()
-              plugin = assert(dao.plugins:insert {
-                                name = "key-auth",
-                                api_id = api.id,
-                                config = {hide_credentials = true}
-              })
-          end)
+          local plugin = assert(dao.plugins:insert {
+            name = "key-auth",
+            api_id = api.id,
+            config = {hide_credentials = true}
+          })
           assert.True(plugin.config.hide_credentials)
           assert.same({"apikey"}, plugin.config.key_names)
 
@@ -967,15 +950,10 @@ pending("Admin API #" .. kong_config.database, function()
       end)
       it_content_types("overrides a plugin previous config if partial", function(content_type)
         return function()
-          local plugin
-          helpers.with_current_ws(
-            dao.workspaces:find_all({name = "default"}),
-            function()
-              plugin = assert(dao.plugins:insert {
-                                      name = "key-auth",
-                                      api_id = api.id
-              })
-          end)
+          local plugin = assert(dao.plugins:insert {
+            name = "key-auth",
+            api_id = api.id
+          })
           assert.same({"apikey"}, plugin.config.key_names)
 
           local res = assert(client:send {
@@ -996,37 +974,32 @@ pending("Admin API #" .. kong_config.database, function()
       end)
       it_content_types("updates the enabled property", function(content_type)
         return function()
-          local plugin
-          helpers.with_current_ws(
-            dao.workspaces:find_all({name = "default"}),
-            function()
-              plugin = assert(dao.plugins:insert {
-                                name = "key-auth",
-                                api_id = api.id
-              })
-              assert.True(plugin.enabled)
+          local plugin = assert(dao.plugins:insert {
+            name = "key-auth",
+            api_id = api.id
+          })
+          assert.True(plugin.enabled)
 
-              local res = assert(client:send {
-                                   method = "PUT",
-                                   path = "/apis/" .. api.id .. "/plugins",
-                                   body = {
-                                     id = plugin.id,
-                                     name = "key-auth",
-                                     enabled = false,
-                                     created_at = 1461276890000
-                                   },
-                                   headers = {["Content-Type"] = content_type}
-              })
-              local body = assert.res_status(200, res)
-              local json = cjson.decode(body)
-              assert.False(json.enabled)
+          local res = assert(client:send {
+            method = "PUT",
+            path = "/apis/" .. api.id .. "/plugins",
+            body = {
+              id = plugin.id,
+              name = "key-auth",
+              enabled = false,
+              created_at = 1461276890000
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.False(json.enabled)
 
-              plugin = assert(dao.plugins:find {
-                                id = plugin.id,
-                                name = plugin.name
-              })
-              assert.False(plugin.enabled)
-          end)
+          plugin = assert(dao.plugins:find {
+            id = plugin.id,
+            name = plugin.name
+          })
+          assert.False(plugin.enabled)
         end
       end)
       describe("errors", function()
@@ -1055,14 +1028,10 @@ pending("Admin API #" .. kong_config.database, function()
       end)
 
       it("retrieves the first page", function()
-        helpers.with_current_ws(
-          dao.workspaces:find_all({name = "default"}),
-          function()
-            assert(dao.plugins:insert {
-                     name = "key-auth",
-                     api_id = api.id
-            })
-        end)
+        assert(dao.plugins:insert {
+          name = "key-auth",
+          api_id = api.id
+        })
         local res = assert(client:send {
           method = "GET",
           path = "/apis/" .. api.id .. "/plugins"
@@ -1087,14 +1056,10 @@ pending("Admin API #" .. kong_config.database, function()
     describe("/apis/{api}/plugins/{plugin}", function()
       local plugin
       before_each(function()
-        helpers.with_current_ws(
-          dao.workspaces:find_all({name = "default"}),
-          function()
-            plugin = assert(dao.plugins:insert {
-                              name = "key-auth",
-                              api_id = api.id
-            })
-        end)
+        plugin = assert(dao.plugins:insert {
+          name = "key-auth",
+          api_id = api.id
+        })
       end)
 
       describe("GET", function()
@@ -1116,16 +1081,11 @@ pending("Admin API #" .. kong_config.database, function()
         end)
         it("only retrieves if associated to the correct API", function()
           -- Create an API and try to query our plugin through it
-          local w_api
-          helpers.with_current_ws(
-            dao.workspaces:find_all({name = "default"}),
-            function()
-              w_api = assert(dao.apis:insert {
-                               name = "wrong-api",
-                               uris = "/wrong-api",
-                               upstream_url = "http://wrong-api.com"
-              })
-          end)
+          local w_api = assert(dao.apis:insert {
+            name = "wrong-api",
+            uris = "/wrong-api",
+            upstream_url = "http://wrong-api.com"
+          })
 
           -- Try to request the plugin through it (belongs to the fixture API instead)
           local res = assert(client:send {

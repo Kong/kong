@@ -15,19 +15,17 @@ for _, strategy in helpers.each_strategy() do
       local bp, _
       bp, _, dao = helpers.get_db_utils(strategy)
 
-      helpers.with_current_ws(nil, function()
-        route1 = bp.routes:insert {
-          hosts = { "keyauth1.test" },
-        }
+      route1 = bp.routes:insert {
+        hosts = { "keyauth1.test" },
+      }
 
-        route2 = bp.routes:insert {
-          hosts = { "keyauth2.test" },
-        }
+      route2 = bp.routes:insert {
+        hosts = { "keyauth2.test" },
+      }
 
-        consumer = bp.consumers:insert {
-          username = "bob"
-        }
-      end, dao)
+      consumer = bp.consumers:insert {
+        username = "bob"
+      }
 
       assert(helpers.start_kong({
         database   = strategy,
@@ -137,13 +135,11 @@ for _, strategy in helpers.each_strategy() do
 
       describe("GET", function()
         setup(function()
-          helpers.with_current_ws(nil, function()
-            for i = 1, 3 do
-              assert(dao.keyauth_credentials:insert {
-                consumer_id = consumer.id
-              })
-            end
-          end, dao)
+          for i = 1, 3 do
+            assert(dao.keyauth_credentials:insert {
+              consumer_id = consumer.id
+            })
+          end
         end)
         teardown(function()
           dao:truncate_table("keyauth_credentials")
@@ -166,11 +162,9 @@ for _, strategy in helpers.each_strategy() do
       local credential
       before_each(function()
         dao:truncate_table("keyauth_credentials")
-        helpers.with_current_ws(nil, function()
-          credential = assert(dao.keyauth_credentials:insert {
-            consumer_id = consumer.id
-          })
-        end, dao)
+        credential = assert(dao.keyauth_credentials:insert {
+          consumer_id = consumer.id
+        })
       end)
       describe("GET", function()
         it("retrieves key-auth credential by id", function()
@@ -192,11 +186,9 @@ for _, strategy in helpers.each_strategy() do
           assert.equal(credential.id, json.id)
         end)
         it("retrieves credential by id only if the credential belongs to the specified consumer", function()
-          helpers.with_current_ws(nil, function()
-            assert(dao.consumers:insert {
-              username = "alice"
-            })
-          end, dao)
+          assert(dao.consumers:insert {
+            username = "alice"
+          })
 
           local res = assert(admin_client:send {
             method  = "GET",
@@ -339,7 +331,6 @@ for _, strategy in helpers.each_strategy() do
         setup(function()
           dao:truncate_table("keyauth_credentials")
 
-          helpers.with_current_ws(nil, function()
           for i = 1, 3 do
             assert(dao.keyauth_credentials:insert {
               consumer_id = consumer.id
@@ -355,7 +346,6 @@ for _, strategy in helpers.each_strategy() do
               consumer_id = consumer2.id
             })
           end
-          end, dao)
         end)
 
         it("retrieves all the key-auths with trailing slash", function()
@@ -442,11 +432,9 @@ for _, strategy in helpers.each_strategy() do
 
         setup(function()
           dao:truncate_table("keyauth_credentials")
-          helpers.with_current_ws(nil, function()
-            credential = assert(dao.keyauth_credentials:insert {
+          credential = assert(dao.keyauth_credentials:insert {
             consumer_id = consumer.id
-            })
-          end, dao)
+          })
         end)
 
         it("retrieve Consumer from a credential's id", function()

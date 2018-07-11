@@ -7,8 +7,7 @@ for _, strategy in helpers.each_strategy() do
     local admin_client
 
     setup(function()
-      local bp, _, dao = helpers.get_db_utils(strategy)
-      helpers.with_current_ws(nil, function()
+      local bp = helpers.get_db_utils(strategy)
       local route = bp.routes:insert {
         hosts = { "bot.com" },
       }
@@ -18,12 +17,10 @@ for _, strategy in helpers.each_strategy() do
         name     = "bot-detection",
         config   = {},
       }
-      end, dao)
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
-    end)
 
     teardown(function()
       helpers.stop_kong()

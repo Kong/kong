@@ -561,9 +561,7 @@ dao_helpers.for_each_dao(function(kong_conf)
           dao.db:truncate_table("vitals_codes_by_service")
           dao.db:truncate_table("services")
 
-          helpers.with_current_ws(nil, function()
           service    = bp.services:insert()
-          end, dao)
           service_id = service.id
         end)
 
@@ -753,9 +751,7 @@ dao_helpers.for_each_dao(function(kong_conf)
           dao.db:truncate_table("vitals_codes_by_route")
           dao.db:truncate_table("routes")
 
-          helpers.with_current_ws(nil, function()
           route    = bp.routes:insert({ paths = { "/my-route" } })
-          end, dao)
           route_id = route.id
         end)
 
@@ -951,14 +947,10 @@ dao_helpers.for_each_dao(function(kong_conf)
         describe("GET", function()
           it("retrieves the seconds-level response code data for a given consumer", function()
             local consumer
-            helpers.with_current_ws(
-              dao.workspaces:find_all({name = "default"}),
-              function()
-                consumer = assert(dao.consumers:insert {
-                  username  = "bob",
-                  custom_id = "1234"
-                })
-            end)
+            consumer = assert(dao.consumers:insert {
+              username  = "bob",
+              custom_id = "1234"
+            })
 
             local now        = time()
             local minute     = now - (now % 60)
@@ -1015,14 +1007,10 @@ dao_helpers.for_each_dao(function(kong_conf)
 
           it("retrieves the minutes-level response code data for a given consumer", function()
             local consumer
-            helpers.with_current_ws(
-              dao.workspaces:find_all({name = "default"}),
-              function()
-                consumer = assert(dao.consumers:insert {
-                  username  = "bob",
-                  custom_id = "1234"
-                })
-            end)
+            consumer = assert(dao.consumers:insert {
+              username  = "bob",
+              custom_id = "1234"
+            })
 
             local minute_start_at = time() - (time() % 60)
             local route_id        = utils.uuid()
@@ -1076,15 +1064,10 @@ dao_helpers.for_each_dao(function(kong_conf)
           end)
 
           it("returns a 400 if called with invalid interval", function()
-            local consumer
-            helpers.with_current_ws(
-              dao.workspaces:find_all({name = "default"}),
-              function()
-                consumer = assert(dao.consumers:insert {
-                  username  = "bob",
-                  custom_id = "1234"
-                })
-            end)
+            local consumer = assert(dao.consumers:insert {
+              username  = "bob",
+              custom_id = "1234"
+            })
 
             local res = assert(client:send {
               methd = "GET",
@@ -1179,16 +1162,11 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         describe("GET", function()
           it("retrieves the seconds-level response code data for a given consumer", function()
-            local consumer, route
-            helpers.with_current_ws(
-              dao.workspaces:find_all({name = "default"}),
-              function()
-                consumer = assert(dao.consumers:insert {
-                  username  = "bob",
-                  custom_id = "1234"
-                })
-                route = bp.routes:insert({ paths = { "/my-route" } })
-            end)
+            local consumer = assert(dao.consumers:insert {
+              username  = "bob",
+              custom_id = "1234"
+            })
+            local route = bp.routes:insert({ paths = { "/my-route" } })
 
             local route_id = route.id
 
@@ -1246,15 +1224,11 @@ dao_helpers.for_each_dao(function(kong_conf)
 
           it("retrieves the minutes-level response code data for a given consumer", function()
             local consumer, route
-            helpers.with_current_ws(
-              dao.workspaces:find_all({name = "default"}),
-              function()
-                consumer = assert(dao.consumers:insert {
-                  username  = "bob",
-                  custom_id = "1234"
-                })
-                route = bp.routes:insert({ paths = { "/my-route" } })
-            end)
+            consumer = assert(dao.consumers:insert {
+              username  = "bob",
+              custom_id = "1234"
+            })
+            route = bp.routes:insert({ paths = { "/my-route" } })
 
 
             local route_id = route.id
@@ -1310,15 +1284,10 @@ dao_helpers.for_each_dao(function(kong_conf)
           end)
 
           it("returns a 400 if called with invalid interval", function()
-            local consumer
-            helpers.with_current_ws(
-              dao.workspaces:find_all({name = "default"}),
-              function()
-                consumer = assert(dao.consumers:insert {
-                  username  = "bob",
-                  custom_id = "1234"
-                })
-            end)
+            local consumer = assert(dao.consumers:insert {
+              username  = "bob",
+              custom_id = "1234"
+            })
 
             local res = assert(client:send {
               methd = "GET",
@@ -1738,15 +1707,10 @@ dao_helpers.for_each_dao(function(kong_conf)
           end)
 
           it("returns a 400 if called with invalid interval", function()
-            local consumer
-            helpers.with_current_ws(
-              dao.workspaces:find_all({name = "default"}),
-              function()
-                consumer = assert(dao.consumers:insert {
-                  username = "bob",
-                  custom_id = "1234"
-                })
-            end)
+            local consumer = assert(dao.consumers:insert {
+              username = "bob",
+              custom_id = "1234"
+            })
 
             local res = assert(client:send {
               methd = "GET",
@@ -1762,15 +1726,10 @@ dao_helpers.for_each_dao(function(kong_conf)
           end)
 
           it("returns a 400 if called with invalid start_ts", function()
-            local consumer
-            helpers.with_current_ws(
-              dao.workspaces:find_all({name = "default"}),
-              function()
-                consumer = assert(dao.consumers:insert {
-                  username = "bob",
-                  custom_id = "1234"
-                })
-            end)
+            local consumer = assert(dao.consumers:insert {
+              username = "bob",
+              custom_id = "1234"
+            })
 
             local res = assert(client:send {
               methd = "GET",

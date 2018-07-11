@@ -6,7 +6,6 @@ local proxy_prefix = require("kong.enterprise_edition.proxies").proxy_prefix
 
 
 local function insert_files(dao)
-  helpers.with_current_ws(nil, function()
   for i = 1, 10 do
     assert(dao.portal_files:insert {
       name = "file-" .. i,
@@ -15,7 +14,6 @@ local function insert_files(dao)
       auth = i % 2 == 0 and true or false
     })
   end
-  end, dao)
 end
 
 local rbac_mode = {"on", "endpoint", "off"}

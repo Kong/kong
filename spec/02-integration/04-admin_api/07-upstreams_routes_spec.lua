@@ -463,13 +463,11 @@ describe("Admin API: #" .. kong_config.database, function()
     describe("GET", function()
       setup(function()
         dao:truncate_tables()
-        helpers.with_current_ws(nil, function()
-          for i = 1, 10 do
-            assert(dao.upstreams:insert {
-              name = "upstream-" .. i,
-            })
-          end
-        end, dao)
+        for i = 1, 10 do
+          assert(dao.upstreams:insert {
+            name = "upstream-" .. i,
+          })
+        end
       end)
       teardown(function()
         dao:truncate_tables()

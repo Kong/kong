@@ -43,56 +43,53 @@ for _, strategy in helpers.each_strategy() do
     describe("Routes", function()
       describe(":insert()", function()
         it("creates a Route in default workspace", function()
-          with_current_ws(nil, function()
+          local route, err_t, err = db.routes:insert({
+            protocols = { "http" },
+            hosts = { "example.com" },
+            service = assert(db.services:insert({ host = "service.com" })),
+          })
 
-            local route, err_t, err = db.routes:insert({
-              protocols = { "http" },
-              hosts = { "example.com" },
-              service = assert(db.services:insert({ host = "service.com" })),
-            })
+          assert.is_nil(err_t)
+          assert.is_nil(err)
 
-            assert.is_nil(err_t)
-            assert.is_nil(err)
+          assert.is_table(route)
+          assert.is_number(route.created_at)
+          assert.is_number(route.updated_at)
+          assert.is_true(utils.is_valid_uuid(route.id))
 
-            assert.is_table(route)
-            assert.is_number(route.created_at)
-            assert.is_number(route.updated_at)
-            assert.is_true(utils.is_valid_uuid(route.id))
+          assert.same({
+            id              = route.id,
+            created_at      = route.created_at,
+            updated_at      = route.updated_at,
+            protocols       = { "http" },
+            methods         = ngx.null,
+            hosts           = { "example.com" },
+            paths           = ngx.null,
+            regex_priority  = 0,
+            preserve_host   = false,
+            strip_path      = true,
+            service         = route.service,
+          }, route)
 
-            assert.same({
-              id              = route.id,
-              created_at      = route.created_at,
-              updated_at      = route.updated_at,
-              protocols       = { "http" },
-              methods         = ngx.null,
-              hosts           = { "example.com" },
-              paths           = ngx.null,
-              regex_priority  = 0,
-              preserve_host   = false,
-              strip_path      = true,
-              service         = route.service,
-            }, route)
+          local ws = dao.workspaces:find_all({
+            name = "default"
+          })
+          local default_ws = ws[1]
+          local rel = dao.workspace_entities:find({
+            workspace_id = default_ws.id,
+            entity_id = route.id,
+            unique_field_name = "id"
+          })
 
-            local ws = dao.workspaces:find_all({
-              name = "default"
-            })
-            local default_ws = ws[1]
-            local rel = dao.workspace_entities:find({
-              workspace_id = default_ws.id,
-              entity_id = route.id,
-              unique_field_name = "id"
-            })
-
-            assert.is_not_nil(rel)
-            assert.same({
-              entity_id = route.id,
-              entity_type = "routes",
-              unique_field_name = "id",
-              unique_field_value = route.id,
-              workspace_id = default_ws.id,
-              workspace_name = "default"
-            }, rel)
-          end, dao)
+          assert.is_not_nil(rel)
+          assert.same({
+            entity_id = route.id,
+            entity_type = "routes",
+            unique_field_name = "id",
+            unique_field_value = route.id,
+            workspace_id = default_ws.id,
+            workspace_name = "default"
+          }, rel)
         end)
 
         it("creates a Route in non-default workspace", function()

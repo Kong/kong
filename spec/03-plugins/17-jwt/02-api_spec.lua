@@ -33,26 +33,19 @@ for _, strategy in helpers.each_strategy() do
 
     describe("/consumers/:consumer/jwt/", function()
       setup(function()
-        local ws = dao.workspaces:find_all({name = "default"})
-        helpers.with_current_ws(
-          ws,
-          function()
-            consumer = assert(dao.consumers:insert {
-                                username = "bob"})
-            assert(dao.consumers:insert {
-                     username = "alice"})
-        end)
+        consumer = assert(dao.consumers:insert {
+          username = "bob"})
+        assert(dao.consumers:insert {
+          username = "alice"})
       end)
 
       describe("POST", function()
         local jwt1, jwt2
         teardown(function()
-          helpers.with_current_ws(nil, function()
           if jwt1 == nil then return end
           dao.jwt_secrets:delete(jwt1)
           if jwt2 == nil then return end
           dao.jwt_secrets:delete(jwt2)
-          end, dao)
         end)
 
         it("creates a jwt secret", function()
@@ -338,21 +331,15 @@ for _, strategy in helpers.each_strategy() do
       describe("GET", function()
         setup(function()
           dao:truncate_table("jwt_secrets")
-
-          local ws = dao.workspaces:find_all({name = "default"})
-          helpers.with_current_ws(
-            ws,
-            function()
-              assert(dao.jwt_secrets:insert {
-                       consumer_id = consumer.id,
-              })
-              consumer2 = assert(dao.consumers:insert {
-                                   username = "bob-the-buidler"
-              })
-              assert(dao.jwt_secrets:insert {
-                       consumer_id = consumer2.id,
-              })
-          end)
+          assert(dao.jwt_secrets:insert {
+            consumer_id = consumer.id,
+          })
+          consumer2 = assert(dao.consumers:insert {
+            username = "bob-the-buidler"
+          })
+          assert(dao.jwt_secrets:insert {
+            consumer_id = consumer2.id,
+          })
         end)
         it("retrieves all the jwts with trailing slash", function()
           local res = assert(admin_client:send {
@@ -436,14 +423,9 @@ for _, strategy in helpers.each_strategy() do
         local credential
         setup(function()
           dao:truncate_table("jwt_secrets")
-          local ws = dao.workspaces:find_all({name = "default"})
-          helpers.with_current_ws(
-            ws,
-            function()
-              credential = assert(dao.jwt_secrets:insert {
-                                    consumer_id = consumer.id
-              })
-          end)
+          credential = assert(dao.jwt_secrets:insert {
+            consumer_id = consumer.id
+          })
         end)
         it("retrieve consumer from a JWT id", function()
           local res = assert(admin_client:send {

@@ -143,7 +143,6 @@ for _, strategy in helpers.each_strategy() do
 
     describe("when deleting a service", function()
       it("deletes associated oauth2 entities", function()
-        helpers.with_current_ws(nil, function()
         local service = bp.services:insert()
         local consumer = bp.consumers:insert()
         local credential = bp.oauth2_credentials:insert({
@@ -190,7 +189,6 @@ for _, strategy in helpers.each_strategy() do
         local code, err = dao.oauth2_authorization_codes:find({ id = code.id })
         assert.falsy(err)
         assert.falsy(code)
-        end, dao)
       end)
     end)
   end)

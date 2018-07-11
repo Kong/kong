@@ -12,7 +12,6 @@ for _, strategy in helpers.each_strategy() do
       local bp, _
       bp, _, dao = helpers.get_db_utils(strategy)
 
-      helpers.with_current_ws(nil, function()
       consumer = bp.consumers:insert {
         username = "consumer1"
       }
@@ -79,7 +78,6 @@ for _, strategy in helpers.each_strategy() do
           whitelist = { "ya" }
         }
       }
-      end, dao)
 
       assert(helpers.start_kong({
         database   = strategy,

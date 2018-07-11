@@ -90,38 +90,33 @@ describe("rbac entities are invalidated with db: " .. kong_conf.database, functi
         action_bits_all = bxor(action_bits_all, rbac.actions_bitfields[k])
       end
 
-      local ws = dao.workspaces:find_all({name = "default"})
-      helpers.with_current_ws(
-        ws,
-        function()
-          rbac_migrations_defaults.up(nil, nil, dao)
-          -- a few extra mock entities for our test
-          dao.rbac_users:insert({
-              name = "alice",
-              user_token = "alice",
-          })
+      rbac_migrations_defaults.up(nil, nil, dao)
+      -- a few extra mock entities for our test
+      dao.rbac_users:insert({
+        name = "alice",
+        user_token = "alice",
+      })
 
-          dao.rbac_roles:insert({
-              name = "foo",
-          })
+      dao.rbac_roles:insert({
+        name = "foo",
+      })
 
-          -- this is bob
-          dao.rbac_users:insert({
-              name = "bob",
-              user_token = "bob",
-          })
+      -- this is bob
+      dao.rbac_users:insert({
+        name = "bob",
+        user_token = "bob",
+      })
 
-          local god = dao.rbac_users:insert({
-              name = "god",
-              user_token = "god",
-          })
+      local god = dao.rbac_users:insert({
+        name = "god",
+        user_token = "god",
+      })
 
-          local superadmin = dao.rbac_roles:find_all({name = "super-admin"})[1]
-          dao.rbac_user_roles:insert({
-              user_id = god.id,
-              role_id = superadmin.id
-          })
-      end)
+      local superadmin = dao.rbac_roles:find_all({name = "super-admin"})[1]
+      dao.rbac_user_roles:insert({
+        user_id = god.id,
+        role_id = superadmin.id
+      })
 
       -- populate cache with a miss on both nodes
       local res_1 = assert(admin_client_1:send {

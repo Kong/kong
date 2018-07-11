@@ -7,8 +7,8 @@ for _, strategy in helpers.each_strategy() do
     local admin_client
 
     setup(function()
-      local bp, _, dao = helpers.get_db_utils(strategy)
-      helpers.with_current_ws(nil, function()
+      local bp = helpers.get_db_utils(strategy)
+
       local route1 = bp.routes:insert {
         hosts = { "lambda.com" },
       }
@@ -196,7 +196,6 @@ for _, strategy in helpers.each_strategy() do
           forward_request_body    = true,
         }
       }
-      end, dao)
       assert(helpers.start_kong{
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",

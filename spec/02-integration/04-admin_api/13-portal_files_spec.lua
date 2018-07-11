@@ -37,13 +37,11 @@ describe("Admin API - Developer Portal", function()
   before_each(function()
     dao:truncate_tables()
 
-    helpers.with_current_ws(nil, function()
     fileStub = assert(dao.portal_files:insert {
       name = "stub",
       contents = "1",
       type = "page"
     })
-    end, dao)
     client = assert(helpers.admin_client())
   end)
 
@@ -198,7 +196,6 @@ describe("Admin API - Developer Portal", function()
       before_each(function()
         dao:truncate_tables()
 
-        helpers.with_current_ws(nil, function()
         for i = 1, 10 do
           assert(dao.portal_files:insert {
             name = "file-" .. i,
@@ -206,7 +203,6 @@ describe("Admin API - Developer Portal", function()
             type = "partial"
           })
         end
-        end, dao)
       end)
 
       teardown(function()
@@ -344,13 +340,11 @@ describe("Admin API - Developer Portal", function()
             assert.equal("bar", json.contents)
             assert.equal(fileStub.id, json.id)
 
-            helpers.with_current_ws(nil, function()
             local in_db = assert(dao.portal_files:find {
               id = fileStub.id,
               name = fileStub.name,
             })
             assert.same(json, in_db)
-            end, dao)
           end
         end)
 
@@ -370,13 +364,11 @@ describe("Admin API - Developer Portal", function()
             assert.equal("bar", json.contents)
             assert.equal(fileStub.id, json.id)
 
-            helpers.with_current_ws(nil, function()
             local in_db = assert(dao.portal_files:find {
               id = fileStub.id,
               name = fileStub.name,
             })
             assert.same(json, in_db)
-            end, dao)
           end
         end)
         describe("errors", function()
@@ -504,7 +496,6 @@ describe("Admin API - Developer Portal", function()
 
         portal.register_resources(dao)
 
-        helpers.with_current_ws(nil, function()
         for i = 1, 10 do
           assert(dao.consumers:insert {
             username = "proxy-consumer-" .. i,
@@ -520,7 +511,6 @@ describe("Admin API - Developer Portal", function()
             })
           end
         end
-        end, dao)
       end)
 
       teardown(function()
@@ -548,14 +538,12 @@ describe("Admin API - Developer Portal", function()
       end)
 
       it("filters by developer status", function()
-        helpers.with_current_ws(nil, function()
         assert(dao.consumers:insert {
           username = "developer-pending",
           custom_id = "developer-pending",
           type = enums.CONSUMERS.TYPE.DEVELOPER,
           status = enums.CONSUMERS.STATUS.PENDING
         })
-        end, dao)
 
         local res = assert(client:send {
           methd = "GET",

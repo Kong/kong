@@ -10,7 +10,6 @@ for _, strategy in helpers.each_strategy() do
     setup(function()
       local bp, _, dao = helpers.get_db_utils(strategy)
 
-      helpers.with_current_ws(nil, function()
         local anonymous_user = bp.consumers:insert {
           username = "no-body",
         }
@@ -113,7 +112,6 @@ for _, strategy in helpers.each_strategy() do
             run_on_preflight = false,
           },
         }
-      end, dao)
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -473,7 +471,6 @@ for _, strategy in helpers.each_strategy() do
     setup(function()
       local bp, _, dao = helpers.get_db_utils(strategy)
 
-      helpers.with_current_ws(nil, function()
 
       local route1 = bp.routes:insert {
         hosts = { "logical-and.com" },
@@ -536,7 +533,6 @@ for _, strategy in helpers.each_strategy() do
         password    = "OpenSesame",
         consumer_id = user2.id,
       }
-      end, dao)
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",

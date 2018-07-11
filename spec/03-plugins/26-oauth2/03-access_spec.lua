@@ -72,7 +72,6 @@ for _, strategy in helpers.each_strategy() do
 
     setup(function()
       bp, db, dao = helpers.get_db_utils(strategy)
-      helpers.with_current_ws(nil, function()
 
 
       local consumer = assert(dao.consumers:insert {
@@ -312,7 +311,6 @@ for _, strategy in helpers.each_strategy() do
         },
       })
 
-      end, dao)
 
       assert(helpers.start_kong({
         database    = strategy,
@@ -710,14 +708,12 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err)
           local m, err = iterator()
           assert.is_nil(err)
-          helpers.with_current_ws(nil, function()
           local data = dao.oauth2_authorization_codes:find_all {code = m[1]}
           assert.are.equal(1, #data)
           assert.are.equal(m[1], data[1].code)
           assert.are.equal("userid123", data[1].authenticated_userid)
           assert.are.equal("email", data[1].scope)
           assert.are.equal(client1.id, data[1].credential_id)
-          end, dao)
         end)
         it("returns success with a dotted scope and store authenticated user properties", function()
           local res = assert(proxy_ssl_client:send {
@@ -743,13 +739,11 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err)
           local m, err = iterator()
           assert.is_nil(err)
-          helpers.with_current_ws(nil, function()
           local data = dao.oauth2_authorization_codes:find_all {code = m[1]}
           assert.are.equal(1, #data)
           assert.are.equal(m[1], data[1].code)
           assert.are.equal("userid123", data[1].authenticated_userid)
           assert.are.equal("user.email", data[1].scope)
-          end, dao)
         end)
       end)
 
@@ -818,13 +812,11 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err)
           local m, err = iterator()
           assert.is_nil(err)
-          helpers.with_current_ws(nil, function()
           local data = dao.oauth2_tokens:find_all {access_token = m[1]}
           assert.are.equal(1, #data)
           assert.are.equal(m[1], data[1].access_token)
           assert.are.equal(5, data[1].expires_in)
           assert.falsy(data[1].refresh_token)
-          end, dao)
         end)
         it("returns success and store authenticated user properties", function()
           local res = assert(proxy_ssl_client:send {
@@ -849,8 +841,7 @@ for _, strategy in helpers.each_strategy() do
           assert.is_nil(err)
           local m, err = iterator()
           assert.is_nil(err)
-          helpers.with_current_ws(nil, function()
-            local data = dao.oauth2_tokens:find_all {access_token = m[1]}
+          local data = dao.oauth2_tokens:find_all {access_token = m[1]}
           assert.are.equal(1, #data)
           assert.are.equal(m[1], data[1].access_token)
           assert.are.equal("userid123", data[1].authenticated_userid)
@@ -859,7 +850,6 @@ for _, strategy in helpers.each_strategy() do
           -- Checking that there is no refresh token since it's an implicit grant
           assert.are.equal(5, data[1].expires_in)
           assert.falsy(data[1].refresh_token)
-          end, dao)
         end)
         it("returns set the right upstream headers", function()
           local res = assert(proxy_ssl_client:send {
@@ -1835,14 +1825,12 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         local body = cjson.decode(assert.res_status(200, res))
-        helpers.with_current_ws(nil, function()
         local consumer = dao.consumers:find_all({username = "bob"})[1]
         assert.are.equal(consumer.id, body.headers["x-consumer-id"])
         assert.are.equal(consumer.username, body.headers["x-consumer-username"])
         assert.are.equal("userid123", body.headers["x-authenticated-userid"])
         assert.are.equal("email", body.headers["x-authenticated-scope"])
         assert.is_nil(body.headers["x-anonymous-consumer"])
-        end, dao)
       end)
       it("returns HTTP 400 when scope is not a string", function()
         local invalid_values = {
@@ -1888,14 +1876,12 @@ for _, strategy in helpers.each_strategy() do
         })
         local body = cjson.decode(assert.res_status(200, res))
 
-        helpers.with_current_ws(nil, function()
         local consumer = dao.consumers:find_all({username = "bob"})[1]
         assert.are.equal(consumer.id, body.headers["x-consumer-id"])
         assert.are.equal(consumer.username, body.headers["x-consumer-username"])
         assert.are.equal("userid123", body.headers["x-authenticated-userid"])
         assert.are.equal("email", body.headers["x-authenticated-scope"])
         assert.is_nil(body.headers["x-anonymous-consumer"])
-        end, dao)
       end)
       it("works with wrong credentials and anonymous", function()
         local res = assert(proxy_ssl_client:send {
@@ -1950,13 +1936,11 @@ for _, strategy in helpers.each_strategy() do
         assert.is_nil(err)
         local m, err = iterator()
         assert.is_nil(err)
-        helpers.with_current_ws(nil, function()
         local data = dao.oauth2_tokens:find_all {access_token = m[1]}
         assert.are.equal(1, #data)
         assert.are.equal(m[1], data[1].access_token)
         assert.are.equal(7, data[1].expires_in)
         assert.falsy(data[1].refresh_token)
-        end, dao)
       end)
       describe("Global Credentials", function()
         it("does not access two different APIs that are not sharing global credentials", function()
@@ -2168,7 +2152,6 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.res_status(200, res)
-        helpers.with_current_ws(nil, function()
         local id = dao.oauth2_tokens:find_all({access_token = token.access_token })[1].id
         assert.truthy(dao.oauth2_tokens:find({id=id}))
         -- But waiting after the cache expiration (5 seconds) should block the request
@@ -2209,7 +2192,6 @@ for _, strategy in helpers.each_strategy() do
         assert.falsy(token.refresh_token == cjson.decode(body).refresh_token)
 
         assert.falsy(dao.oauth2_tokens:find({id=id}))
-        end, dao)
       end)
     end)
 
@@ -2361,7 +2343,6 @@ for _, strategy in helpers.each_strategy() do
 
     setup(function()
       bp, db, dao = helpers.get_db_utils(strategy)
-      helpers.with_current_ws(nil, function()
       local service1 = bp.services:insert({
         path = "/request"
       })
@@ -2432,7 +2413,6 @@ for _, strategy in helpers.each_strategy() do
         name          = "testapp",
         consumer_id   = user2.id,
       })
-      end, dao)
       assert(helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -2585,7 +2565,6 @@ for _, strategy in helpers.each_strategy() do
 
     setup(function()
       bp, db, dao = helpers.get_db_utils(strategy)
-      helpers.with_current_ws(nil, function()
 
       local route11 = assert(db.routes:insert({
         hosts     = { "oauth2_11.com" },
@@ -2635,7 +2614,6 @@ for _, strategy in helpers.each_strategy() do
         name = "testapp",
         consumer_id = consumer.id
       })
-      end,dao)
       assert(helpers.start_kong({
         database    = strategy,
         trusted_ips = "127.0.0.1",
@@ -2658,7 +2636,6 @@ for _, strategy in helpers.each_strategy() do
 
     describe("refresh token", function()
       it("is deleted after defined TTL", function()
-        helpers.with_current_ws(nil, function()
         local token = provision_token("oauth2_11.com")
         local token_entity = dao.oauth2_tokens:find_all { access_token = token.access_token }
         assert.equal(1, #token_entity)
@@ -2671,11 +2648,9 @@ for _, strategy in helpers.each_strategy() do
 
         token_entity = dao.oauth2_tokens:find_all { access_token = token.access_token }
         assert.equal(0, #token_entity)
-        end, dao)
       end)
 
       it("is not deleted when when TTL is 0 == never", function()
-        helpers.with_current_ws(nil, function()
         local token = provision_token("oauth2_12.com")
         local token_entity = dao.oauth2_tokens:find_all { access_token = token.access_token }
         assert.equal(1, #token_entity)
@@ -2688,7 +2663,6 @@ for _, strategy in helpers.each_strategy() do
 
         token_entity = dao.oauth2_tokens:find_all { access_token = token.access_token }
         assert.equal(1, #token_entity)
-        end, dao)
       end)
     end)
   end)

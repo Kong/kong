@@ -51,14 +51,10 @@ describe("Admin API", function()
 
     helpers.dao:truncate_tables()
 
-    helpers.with_current_ws(
-      helpers.dao.workspaces:find_all({name = "default"}),
-      function()
-        upstream = assert(helpers.dao.upstreams:insert {
-                            name = upstream_name,
-                            slots = 10,
-        })
-    end)
+    upstream = assert(helpers.dao.upstreams:insert {
+      name = upstream_name,
+      slots = 10,
+    })
   end)
 
   after_each(function()
@@ -209,36 +205,32 @@ describe("Admin API", function()
       local apis = {}
 
       before_each(function()
-        helpers.with_current_ws(
-          helpers.dao.workspaces:find_all({name = "default"}),
-          function()
-            local upstream3 = assert(helpers.dao.upstreams:insert {
-              name = upstream_name3,
+        local upstream3 = assert(helpers.dao.upstreams:insert {
+          name = upstream_name3,
+        })
+
+        -- testing various behaviors
+        -- for each index in weights, create a number of targets,
+        -- each with its weight as each element of the sub-array
+        local weights = {
+          { 10, 0 },        -- two targets, eventually resulting in down
+          { 10, 0, 10 },    -- three targets, eventually resulting in up
+          { 10 },           -- one target, up
+          { 10, 10 },       -- two targets, up (we should only see one)
+          { 10, 50, 0 },    -- three targets, two up in a row, eventually down
+          { 10, 0, 20, 0 }, -- four targets, eventually down
+        }
+
+        for i = 1, #weights do
+          for j = 1, #weights[i] do
+            ngx.sleep(0.01)
+            apis[i] = assert(helpers.dao.targets:insert {
+              target = "api-" .. tostring(i) .. ":80",
+              weight = weights[i][j],
+              upstream_id = upstream3.id
             })
-
-            -- testing various behaviors
-            -- for each index in weights, create a number of targets,
-            -- each with its weight as each element of the sub-array
-            local weights = {
-              { 10, 0 },        -- two targets, eventually resulting in down
-              { 10, 0, 10 },    -- three targets, eventually resulting in up
-              { 10 },           -- one target, up
-              { 10, 10 },       -- two targets, up (we should only see one)
-              { 10, 50, 0 },    -- three targets, two up in a row, eventually down
-              { 10, 0, 20, 0 }, -- four targets, eventually down
-            }
-
-            for i = 1, #weights do
-              for j = 1, #weights[i] do
-                ngx.sleep(0.01)
-                apis[i] = assert(helpers.dao.targets:insert {
-                  target = "api-" .. tostring(i) .. ":80",
-                  weight = weights[i][j],
-                  upstream_id = upstream3.id
-                })
-              end
-            end
-        end)
+          end
+        end
       end)
 
       it("only shows active targets", function()
@@ -458,17 +450,13 @@ describe("Admin API", function()
   describe("/upstreams/{upstream}/targets/all/", function()
     describe("GET", function()
       before_each(function()
-          helpers.with_current_ws(
-            helpers.dao.workspaces:find_all({name = "default"}),
-            function()
-              for i = 1, 10 do
-                assert(helpers.dao.targets:insert {
-                         target = "api-" .. i .. ":80",
-                         weight = 100,
-                         upstream_id = upstream.id,
-                })
-              end
-          end)
+        for i = 1, 10 do
+          assert(helpers.dao.targets:insert {
+            target = "api-" .. i .. ":80",
+            weight = 100,
+            upstream_id = upstream.id,
+          })
+        end
       end)
 
       it("retrieves the first page", function()
@@ -536,14 +524,10 @@ describe("Admin API", function()
         local upstream_name2 = "getkong.org"
 
         before_each(function()
-          helpers.with_current_ws(
-            helpers.dao.workspaces:find_all({name = "default"}),
-            function()
-              assert(helpers.dao.upstreams:insert {
-                       name = upstream_name2,
-                       slots = 10,
-              })
-          end)
+          assert(helpers.dao.upstreams:insert {
+            name = upstream_name2,
+            slots = 10,
+          })
         end)
 
         it("data property is an empty array", function()
@@ -681,26 +665,22 @@ describe("Admin API", function()
 
       before_each(function()
         local upstream4
-        helpers.with_current_ws(
-          helpers.dao.workspaces:find_all({name = "default"}),
-          function()
-            upstream4 = assert(helpers.dao.upstreams:insert {
-                                 name = upstream_name4,
-            })
+        upstream4 = assert(helpers.dao.upstreams:insert {
+          name = upstream_name4,
+        })
 
-            assert(helpers.dao.targets:insert {
-                     target = "api-1:80",
-                     weight = 10,
-                     upstream_id = upstream4.id,
-            })
+        assert(helpers.dao.targets:insert {
+          target = "api-1:80",
+          weight = 10,
+          upstream_id = upstream4.id,
+        })
 
-            -- predefine the target to mock delete
-            target = assert(helpers.dao.targets:insert {
-                              target = "api-2:80",
-                              weight = 10,
-                              upstream_id = upstream4.id,
-            })
-        end)
+        -- predefine the target to mock delete
+        target = assert(helpers.dao.targets:insert {
+          target = "api-2:80",
+          weight = 10,
+          upstream_id = upstream4.id,
+        })
       end)
 
       it("acts as a sugar method to POST a target with 0 weight (by target)", function()

@@ -37,12 +37,10 @@ for _, strategy in helpers.each_strategy() do
           dao:truncate_tables()
           helpers.register_consumer_relations(dao)
 
-          helpers.with_current_ws(nil, function()
           consumer = bp.consumers:insert {
             username  = "bob",
             custom_id = "1234"
           }
-          end, dao)
         end)
         it("[SUCCESS] should create a hmac-auth credential", function()
           local res = assert(admin_client:send {
@@ -256,7 +254,6 @@ for _, strategy in helpers.each_strategy() do
       describe("GET", function()
         setup(function()
           dao:truncate_table("hmacauth_credentials")
-          helpers.with_current_ws(nil, function()
           assert(dao.hmacauth_credentials:insert {
             consumer_id = consumer.id,
             username = "bob"
@@ -268,7 +265,6 @@ for _, strategy in helpers.each_strategy() do
             consumer_id = consumer2.id,
             username = "bob-the-buidler"
           })
-          end, dao)
         end)
         it("retrieves all the hmac-auths with trailing slash", function()
           local res = assert(admin_client:send {
@@ -352,12 +348,10 @@ for _, strategy in helpers.each_strategy() do
         local credential
         setup(function()
           dao:truncate_table("hmacauth_credentials")
-          helpers.with_current_ws(nil, function()
           credential = assert(dao.hmacauth_credentials:insert {
             consumer_id = consumer.id,
             username = "bob"
           })
-          end, dao)
         end)
         it("retrieve consumer from a hmac-auth id", function()
           local res = assert(admin_client:send {

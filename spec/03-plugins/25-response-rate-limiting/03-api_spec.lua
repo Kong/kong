@@ -23,11 +23,9 @@ for _, strategy in helpers.each_strategy() do
       local route
 
       setup(function()
-        helpers.with_current_ws(nil, function()
         route = bp.routes:insert {
           hosts = { "test1.com" },
         }
-        end, dao)
 
         assert(helpers.start_kong({
           database   = strategy,

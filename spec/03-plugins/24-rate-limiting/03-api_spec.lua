@@ -25,7 +25,6 @@ for _, strategy in helpers.each_strategy() do
       local route
 
       setup(function()
-        helpers.with_current_ws(nil, function()
         local service = bp.services:insert()
 
         route = bp.routes:insert {
@@ -33,7 +32,6 @@ for _, strategy in helpers.each_strategy() do
           protocols  = { "http", "https" },
           service    = service
         }
-        end, dao)
 
         assert(helpers.start_kong({
           database   = strategy,

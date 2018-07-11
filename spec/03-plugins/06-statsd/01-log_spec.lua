@@ -12,9 +12,8 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
 
     setup(function()
-      local bp, _, dao = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy)
 
-      helpers.with_current_ws(nil, function()
       local consumer = bp.consumers:insert {
         username  = "bob",
         custom_id = "robert",
@@ -229,7 +228,6 @@ for _, strategy in helpers.each_strategy() do
           prefix   = "prefix",
         },
       }
-      end, dao)
 
       assert(helpers.start_kong({
         database   = strategy,
