@@ -239,12 +239,22 @@ http {
             content_by_lua_block {
                 local function say(res, status)
                   ngx.header["x-amzn-RequestId"] = "foo"
+
                   if string.match(ngx.var.uri, "functionWithUnhandledError") then
                     ngx.header["X-Amz-Function-Error"] = "Unhandled"
                   end
+
                   ngx.status = status
 
-                  if type(res) == 'string' then
+                  if string.match(ngx.var.uri, "functionWithBadJSON") then
+                    local badRes = "{\"foo\":\"bar\""
+                    ngx.header["Content-Length"] = #badRes + 1
+                    ngx.say(badRes)
+
+                  elseif string.match(ngx.var.uri, "functionWithNoResponse") then
+                    ngx.header["Content-Length"] = 0
+
+                  elseif type(res) == 'string' then
                     ngx.header["Content-Length"] = #res + 1
                     ngx.say(res)
 

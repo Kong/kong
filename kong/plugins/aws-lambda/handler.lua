@@ -12,6 +12,7 @@ local public_utils = require "kong.tools.public"
 
 
 local tostring             = tostring
+local tonumber             = tonumber
 local pairs                = pairs
 local type                 = type
 local fmt                  = string.format
@@ -36,6 +37,54 @@ local server_header = meta._SERVER_TOKENS
 
 
 local AWS_PORT = 443
+
+
+--[[
+  Response format should be
+  {
+      "statusCode": httpStatusCode,
+      "headers": { "headerName": "headerValue", ... },
+      "body": "..."
+  }
+--]]
+local function validate_custom_response(response)
+  if type(response.statusCode) ~= "number" then
+    return nil, "statusCode must be a number"
+  end
+
+  if response.headers ~= nil and type(response.headers) ~= "table" then
+    return nil, "headers must be a table"
+  end
+
+  if response.body ~= nil and type(response.body) ~= "string" then
+    return nil, "body must be a string"
+  end
+
+  return true
+end
+
+
+local function extract_proxy_response(content)
+  local serialized_content, err = cjson.decode(content)
+  if not serialized_content then
+    return nil, err
+  end
+
+  local ok, err = validate_custom_response(serialized_content)
+  if not ok then
+    return nil, err
+  end
+
+  local headers = serialized_content.headers or {}
+  local body = serialized_content.body or ""
+  headers["Content-Length"] = #body
+
+  return {
+    status_code = tonumber(serialized_content.statusCode),
+    body = body,
+    headers = headers,
+  }
+end
 
 
 local function send(status, content, headers)
@@ -187,13 +236,28 @@ function AWSLambdaHandler:access(conf)
   end
 
   local status
-  if conf.unhandled_status
-     and headers["X-Amz-Function-Error"] == "Unhandled"
-  then
-    status = conf.unhandled_status
 
-  else
-    status = res.status
+  if conf.is_proxy_integration then
+    local proxy_response, err = extract_proxy_response(content)
+    if not proxy_response then
+      return responses.send_HTTP_BAD_GATEWAY("could not JSON decode Lambda " ..
+                                             "function response: " .. err)
+    end
+
+    status = proxy_response.status_code
+    headers = utils.table_merge(headers, proxy_response.headers)
+    content = proxy_response.body
+  end
+
+  if not status then
+    if conf.unhandled_status
+      and headers["X-Amz-Function-Error"] == "Unhandled"
+    then
+      status = conf.unhandled_status
+
+    else
+      status = res.status
+    end
   end
 
   local ctx = ngx.ctx
