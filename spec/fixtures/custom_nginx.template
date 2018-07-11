@@ -244,7 +244,11 @@ http {
                   end
                   ngx.status = status
 
-                  if type(res) == 'string' then
+                  if string.match(ngx.var.uri, "functionWithBadJSON") then
+                    local badRes = "{\"foo\":\"bar\""
+                    ngx.header["Content-Length"] = #badRes + 1
+                    ngx.say(badRes)
+                  elseif type(res) == 'string' then
                     ngx.header["Content-Length"] = #res + 1
                     ngx.say(res)
 
@@ -252,6 +256,7 @@ http {
                     ngx.req.discard_body()
                     ngx.header['Content-Length'] = 0
                   end
+
 
                   ngx.exit(0)
                 end

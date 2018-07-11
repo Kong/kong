@@ -1,3 +1,4 @@
+local cjson = require "cjson"
 local helpers = require "spec.helpers"
 local meta    = require "kong.meta"
 
@@ -65,6 +66,30 @@ for _, strategy in helpers.each_strategy() do
         hosts       = { "lambda10.com" },
         protocols   = { "http", "https" },
         service     = service10
+      }
+
+      local service11 = bp.services:insert({
+        protocol = "http",
+        host     = "httpbin.org",
+        port     = 80,
+      })
+
+      local route11 = bp.routes:insert {
+        hosts       = { "lambda11.com" },
+        protocols   = { "http", "https" },
+        service     = service11
+      }
+
+      local service12 = bp.services:insert({
+        protocol = "http",
+        host     = "httpbin.org",
+        port     = 80,
+      })
+
+      local route12 = bp.routes:insert {
+        hosts       = { "lambda12.com" },
+        protocols   = { "http", "https" },
+        service     = service12
       }
 
       bp.plugins:insert {
@@ -198,6 +223,32 @@ for _, strategy in helpers.each_strategy() do
           forward_request_uri     = false,
           forward_request_headers = true,
           forward_request_body    = true,
+        }
+      }
+
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route_id = route11.id,
+        config                    = {
+          port                    = 10001,
+          aws_key                 = "mock-key",
+          aws_secret              = "mock-secret",
+          aws_region              = "us-east-1",
+          function_name           = "kongLambdaTest",
+          is_proxy_integration    = true
+        }
+      }
+
+      bp.plugins:insert {
+        name     = "aws-lambda",
+        route_id = route12.id,
+        config                    = {
+          port                    = 10001,
+          aws_key                 = "mock-key",
+          aws_secret              = "mock-secret",
+          aws_region              = "us-east-1",
+          function_name           = "functionWithBadJSON",
+          is_proxy_integration    = true
         }
       }
 
@@ -527,5 +578,107 @@ for _, strategy in helpers.each_strategy() do
       assert.equal(65, tonumber(res.headers["Content-Length"]))
     end)
 
+    it("returns the proper status code when setting custom response body from Lambda", function()
+      -- the lambda function must return a string
+      -- for the custom response "body" property
+      local body = cjson.encode({
+        key1 = "some_value_post1",
+        key2 = "some_value_post2",
+        key3 = "some_value_post3"
+      })
+      local res = assert(proxy_client:send {
+        method  = "POST",
+        path    = "/post",
+        headers = {
+          ["Host"]         = "lambda11.com",
+          ["Content-Type"] = "application/json"
+        },
+        body = {
+          statusCode = 201,
+          body = body,
+          headers = {
+            ["X-Custom-Header"] = "Hello world!"
+          }
+        }
+      })
+      local res_body = assert.res_status(201, res)
+      assert.equal(79, tonumber(res.headers["Content-Length"]))
+      assert.equal("Hello world!", res.headers["X-Custom-Header"])
+      assert.equal(body, res_body)
+    end)
+
+    it("returns proper status code with no body or headers", function()
+      local res = assert(proxy_client:send {
+        method  = "POST",
+        path    = "/post",
+        headers = {
+          ["Host"]         = "lambda11.com",
+          ["Content-Type"] = "application/json"
+        },
+        body = {
+          statusCode = 201,
+        }
+      })
+      local body = assert.res_status(201, res)
+      assert.equal(0, tonumber(res.headers["Content-Length"]))
+      assert.equal(nil, res.headers["X-Custom-Header"])
+      assert.equal("", body)
+    end)
+
+    it("override duplicate headers with value from the custom response", function()
+      -- the default "x-amzn-RequestId" returned is "foo"
+      -- let's check it is overriden with a custom value
+      local headers = {
+        ["x-amzn-RequestId"] = "bar"
+      }
+      local res = assert(proxy_client:send {
+        method  = "POST",
+        path    = "/post",
+        headers = {
+          ["Host"]         = "lambda11.com",
+          ["Content-Type"] = "application/json"
+        },
+        body = {
+          statusCode = 201,
+          headers = headers,
+        }
+      })
+
+      assert.res_status(201, res)
+      assert.equal("bar", res.headers["x-amzn-RequestId"])
+    end)
+
+    it("errors with 502 with when 'body' on custom response is not a string", function()
+      local res = assert(proxy_client:send {
+        method  = "POST",
+        path    = "/post",
+        headers = {
+          ["Host"]         = "lambda11.com",
+          ["Content-Type"] = "application/json"
+        },
+        body = {
+          statusCode = 201,
+          body = 1234,
+        }
+      })
+
+      assert.res_status(502, res)
+      local b = assert.response(res).has.jsonbody()
+      assert.equal("Bad Gateway", b.message)
+    end)
+
+    it("errors with 502 with when response from lambda is not json", function()
+      local res = assert(proxy_client:send {
+        method  = "POST",
+        path    = "/post",
+        headers = {
+          ["Host"] = "lambda12.com"
+        }
+      })
+
+      assert.res_status(502, res)
+      local b = assert.response(res).has.jsonbody()
+      assert.equal("Bad Gateway", b.message)
+    end)
   end)
 end
