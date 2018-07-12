@@ -12,6 +12,11 @@ notifications:
 services:
   - redis-server
 
+branches:
+  only:
+  - master
+  - next
+
 addons:
   postgresql: "9.5"
   apt:
