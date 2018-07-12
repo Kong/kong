@@ -11,12 +11,12 @@ else
 OPENSSL_DIR ?= /usr
 endif
 
-.PHONY: install dev lint test test-integration test-plugins test-all win_scripts
+.PHONY: install dev lint test test-integration test-plugins test-all fix-windows
 
-install: win_scripts
+install:
 	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR)
 
-dev: win_scripts
+dev:
 	-@luarocks remove kong
 	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR) CRYPTO_DIR=$(OPENSSL_DIR)
 	@for rock in $(DEV_ROCKS) ; do \
@@ -31,28 +31,28 @@ dev: win_scripts
 lint:
 	@luacheck -q .
 
-test: win_scripts
+test:
 	@$(TEST_CMD) spec/01-unit
 
-test-integration: win_scripts
+test-integration:
 	@$(TEST_CMD) spec/02-integration
 
-test-plugins: win_scripts
+test-plugins:
 	@$(TEST_CMD) spec/03-plugins
 
-test-all: win_scripts
+test-all:
 	@$(TEST_CMD) spec/
 
-old-test: win_scripts
+old-test:
 	@$(TEST_CMD) spec-old-api/01-unit
 
-old-test-integration: win_scripts
+old-test-integration:
 	@$(TEST_CMD) spec-old-api/02-integration
 
-old-test-plugins: win_scripts
+old-test-plugins:
 	@$(TEST_CMD) spec-old-api/03-plugins
 
-old-test-all: win_scripts
+old-test-all:
 	@$(TEST_CMD) spec-old-api/
 
 pdk-phase-checks:
@@ -63,7 +63,7 @@ pdk-phase-checks:
 	grep "ngx\\." t/phase_checks.report
 	grep "check_" t/phase_checks.report
 
-win_scripts:
+fix-windows:
 	@for script in $(WIN_SCRIPTS) ; do \
 	  if [ $$(grep -obUaPc '\015' $$script) -gt 0 ] ; then \
 	    echo Converting Windows file $$script ; \
