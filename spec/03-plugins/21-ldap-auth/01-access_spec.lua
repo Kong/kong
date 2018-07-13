@@ -289,6 +289,17 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.response(res).has.status(403)
     end)
+    it("authorization fails with correct status with wrong very long password", function()
+      local res = assert(proxy_client:send {
+        method  = "GET",
+        path    = "/request",
+        headers = {
+          host          = "ldap.com",
+          authorization = "ldap " .. ngx.encode_base64("einstein:e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566")
+        }
+      })
+      assert.response(res).has.status(403)
+    end)
     it("authorization fails if credential has multiple encoded usernames or passwords separated by ':' in get request", function()
       local res = assert(proxy_client:send {
         method  = "GET",

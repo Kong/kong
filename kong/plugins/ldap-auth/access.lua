@@ -113,8 +113,7 @@ local function authenticate(conf, given_credentials)
   end
 
   local credential, err = singletons.cache:get(cache_key(conf, given_username), {
-    ttl = conf.cache_ttl,
-    neg_ttl = conf.cache_ttl,
+    ttl = conf.cache_ttl
   }, load_credential, given_username, given_password, conf)
   if err or credential == nil then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
