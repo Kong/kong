@@ -1,3 +1,14 @@
+## 0.32.2 - Unreleased
+
+### Added
+
+- Invalidation spec
+
+### Fixed
+
+- Fix issue where a request added a negative cache entry for an incorrect password attempt
+- Fix issue where a 500 response would result when long passwords (> 128 chars) were being used
+
 ## 0.32.1
 
 ### Added
