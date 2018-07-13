@@ -296,6 +296,17 @@ for _, strategy in helpers.each_strategy() do
       })
       assert.response(res).has.status(403)
     end)
+		it("authorization fails with correct status with wrong very long password", function()
+			local res = assert(proxy_client:send {
+				method  = "GET",
+				path    = "/request",
+				headers = {
+					host          = "ldap.com",
+					authorization = "ldap " .. ngx.encode_base64("einstein:e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566e0d91f53c566")
+				}
+			})
+			assert.response(res).has.status(403)
+		end)
     it("authorization fails if credential has multiple encoded usernames or passwords separated by ':' in get request", function()
       local res = assert(proxy_client:send {
         method  = "GET",
@@ -697,11 +708,11 @@ for _, strategy in helpers.each_strategy() do
         bp.routes:insert {
           hosts = { "ldap.id.custom_id.username.com" },
         },
-        
+
         bp.routes:insert {
           hosts = { "ldap.username.com" },
         },
-        
+
         bp.routes:insert {
           hosts = { "ldap.custom_id.com" },
         },
@@ -812,10 +823,10 @@ for _, strategy in helpers.each_strategy() do
             ["Authorization"] = "ldap " .. ngx.encode_base64("einstein:password"),
           }
         })
-        
+
         assert.response(res).has.status(200)
         assert.request(res).has.no.header("x-anonymous-consumer")
-        assert.are.equal('einstein', 
+        assert.are.equal('einstein',
                          assert.request(res).has.header("x-consumer-username"))
         assert.request(res).has.no.header("x-anonymous-consumer")
       end)
@@ -834,7 +845,7 @@ for _, strategy in helpers.each_strategy() do
         assert.request(res).has.no.header("x-anonymous-consumer")
         assert.are.equal(consumer_with_username.id,
                          assert.request(res).has.header("x-consumer-id"))
-        assert.are.equal(consumer_with_username.username, 
+        assert.are.equal(consumer_with_username.username,
                          assert.request(res).has.header("x-consumer-username"))
       end)
 
@@ -847,12 +858,12 @@ for _, strategy in helpers.each_strategy() do
             ["Authorization"] = "ldap " .. ngx.encode_base64("einstein:password"),
           }
         })
-        
+
         assert.response(res).has.status(200)
         assert.request(res).has.no.header("x-anonymous-consumer")
         assert.are.equal(consumer_with_custom_id.id,
                          assert.request(res).has.header("x-consumer-id"))
-        assert.are.equal(consumer_with_custom_id.username, 
+        assert.are.equal(consumer_with_custom_id.username,
                          assert.request(res).has.header("x-consumer-username"))
       end)
 
@@ -865,11 +876,11 @@ for _, strategy in helpers.each_strategy() do
             ["Authorization"] = "ldap " .. ngx.encode_base64("noway:jose"),
           }
         })
-        
+
         assert.response(res).has.status(200)
         assert.are.equal(anonymous_consumer.id,
                          assert.request(res).has.header("x-consumer-id"))
-        assert.are.equal(anonymous_consumer.username, 
+        assert.are.equal(anonymous_consumer.username,
                          assert.request(res).has.header("x-consumer-username"))
         assert.are.equal("true",
                          assert.request(res).has.header("x-anonymous-consumer"))
@@ -883,11 +894,11 @@ for _, strategy in helpers.each_strategy() do
             ["Host"]          = routes[4].hosts[1]
           }
         })
-        
+
         assert.response(res).has.status(200)
         assert.are.equal(anonymous_consumer.id,
                          assert.request(res).has.header("x-consumer-id"))
-        assert.are.equal(anonymous_consumer.username, 
+        assert.are.equal(anonymous_consumer.username,
                          assert.request(res).has.header("x-consumer-username"))
         assert.are.equal("true",
                          assert.request(res).has.header("x-anonymous-consumer"))
@@ -903,7 +914,7 @@ for _, strategy in helpers.each_strategy() do
           }
         })
         assert.response(res).has.status(200)
-        assert.are.equal(consumer_with_custom_id.username, 
+        assert.are.equal(consumer_with_custom_id.username,
                          assert.request(res).has.header("x-consumer-username"))
         --consumers:username:einstein:consumers:::
         local key = dao.consumers:cache_key("custom_id", consumer_with_custom_id.custom_id, "consumers")
@@ -916,7 +927,7 @@ for _, strategy in helpers.each_strategy() do
           res:read_body()
           return res.status == 200
         end)
-        
+
         admin_client:send {
           method = "DELETE",
           path = "/consumers/" .. consumer_with_custom_id.id

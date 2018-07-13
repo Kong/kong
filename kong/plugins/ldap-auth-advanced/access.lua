@@ -48,7 +48,7 @@ local _M = {}
 local function retrieve_credentials(authorization_header_value, conf)
   local username, password
   if authorization_header_value then
-    local s, e = find(lower(authorization_header_value), "^%s*" 
+    local s, e = find(lower(authorization_header_value), "^%s*"
                       .. lower(conf.header_type) .. "%s+")
     if s == 1 then
       local cred = sub(authorization_header_value, e + 1)
@@ -67,7 +67,7 @@ local function ldap_authenticate(given_username, given_password, conf)
   sock:settimeout(conf.timeout)
   ok, err = sock:connect(conf.ldap_host, conf.ldap_port)
   if not ok then
-    ngx_log(ngx_error, "[ldap-auth-advanced] failed to connect to " 
+    ngx_log(ngx_error, "[ldap-auth-advanced] failed to connect to "
             .. conf.ldap_host .. ":" .. tostring(conf.ldap_port) .. ": ", err)
     return nil, err
   end
@@ -118,15 +118,15 @@ local function ldap_authenticate(given_username, given_password, conf)
 
   ok, suppressed_err = sock:setkeepalive(conf.keepalive)
   if not ok then
-    ngx_log(ngx_error, "[ldap-auth-advanced] failed to keepalive to " 
-                        .. conf.ldap_host .. ":" .. tostring(conf.ldap_port) 
+    ngx_log(ngx_error, "[ldap-auth-advanced] failed to keepalive to "
+                        .. conf.ldap_host .. ":" .. tostring(conf.ldap_port)
                         .. ": ", suppressed_err)
   end
   return is_authenticated, err
 end
 
 local function load_credential(given_username, given_password, conf)
-  ngx_log(ngx_debug, "[ldap-auth-advanced] authenticating user against LDAP server: " 
+  ngx_log(ngx_debug, "[ldap-auth-advanced] authenticating user against LDAP server: "
                       .. conf.ldap_host .. ":" .. conf.ldap_port)
 
   local ok, err = ldap_authenticate(given_username, given_password, conf)
@@ -167,7 +167,6 @@ local function authenticate(conf, given_credentials)
 
   local credential, err = singletons.cache:get(cache_key(conf, given_username), {
     ttl = conf.cache_ttl,
-    neg_ttl = conf.cache_ttl,
   }, load_credential, given_username, given_password, conf)
   if err or credential == nil then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
@@ -270,11 +269,11 @@ local function do_authentication(conf)
   if not (authorization_value or proxy_authorization_value) then
     ngx.header["WWW-Authenticate"] = 'LDAP realm="kong"'
     consumer, err = load_consumers(anonymous, { 'id' }, ttl)
-    
+
     if err then
       return false, { status = 500 }
     end
-    
+
     if consumer then
       set_consumer(consumer, nil, anonymous)
       return true
