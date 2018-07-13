@@ -67,7 +67,7 @@ for _, strategy in helpers.each_strategy() do
       assert.True(log_message.latencies.proxy < 3000)
 
       local is_latencies_sum_adding_up =
-        log_message.latencies.request >= log_message.latencies.kong +
+        1+log_message.latencies.request >= log_message.latencies.kong +
         log_message.latencies.proxy
 
       assert.True(is_latencies_sum_adding_up)
