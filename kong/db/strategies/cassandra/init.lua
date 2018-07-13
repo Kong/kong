@@ -127,8 +127,12 @@ local function build_queries(self)
   if partitioned then
     return {
       insert = fmt([[
-        INSERT INTO %s(partition, %s) VALUES('%s', %s) IF NOT EXISTS
+        INSERT INTO %s(partition, %s) VALUES ('%s', %s) IF NOT EXISTS
       ]], schema.name, insert_columns, schema.name, insert_bind_args),
+
+      insert_ttl = fmt([[
+        INSERT INTO %s(partition, %s) VALUES ('%s', %s) USING TTL %s IF NOT EXISTS
+      ]], schema.name, insert_columns, schema.name, insert_bind_args, "%u"),
 
       select = fmt([[
         SELECT %s FROM %s WHERE partition = '%s' AND %s
@@ -146,9 +150,17 @@ local function build_queries(self)
         UPDATE %s SET %s WHERE partition = '%s' AND %s IF EXISTS
       ]], schema.name, "%s", schema.name, select_bind_args),
 
+      update_ttl = fmt([[
+        UPDATE %s USING TTL %s SET %s WHERE partition = '%s' AND %s IF EXISTS
+      ]], schema.name, "%u", "%s", schema.name, select_bind_args),
+
       upsert = fmt([[
         UPDATE %s SET %s WHERE partition = '%s' AND %s
       ]], schema.name, "%s", schema.name, select_bind_args),
+
+      upsert_ttl = fmt([[
+        UPDATE %s USING TTL %s SET %s WHERE partition = '%s' AND %s
+      ]], schema.name, "%u", "%s", schema.name, select_bind_args),
 
       delete = fmt([[
         DELETE FROM %s WHERE partition = '%s' AND %s
@@ -158,8 +170,12 @@ local function build_queries(self)
 
   return {
     insert = fmt([[
-      INSERT INTO %s(%s) VALUES(%s) IF NOT EXISTS
+      INSERT INTO %s(%s) VALUES (%s) IF NOT EXISTS
     ]], schema.name, insert_columns, insert_bind_args),
+
+    insert_ttl = fmt([[
+      INSERT INTO %s(%s) VALUES (%s) USING TTL %s IF NOT EXISTS
+    ]], schema.name, insert_columns, insert_bind_args, "%u"),
 
     -- might raise a "you must enable ALLOW FILTERING" error
     select = fmt([[
@@ -180,9 +196,17 @@ local function build_queries(self)
       UPDATE %s SET %s WHERE %s IF EXISTS
     ]], schema.name, "%s", select_bind_args),
 
+    update_ttl = fmt([[
+      UPDATE %s USING TTL %s SET %s WHERE %s IF EXISTS
+    ]], schema.name, "%u", "%s", select_bind_args),
+
     upsert = fmt([[
       UPDATE %s SET %s WHERE %s
     ]], schema.name, "%s", select_bind_args),
+
+    upsert_ttl = fmt([[
+      UPDATE %s USING TTL %s SET %s WHERE %s
+    ]], schema.name, "%u", "%s", select_bind_args),
 
     delete = fmt([[
       DELETE FROM %s WHERE %s
@@ -199,6 +223,7 @@ local function get_query(self, query_name)
       return nil, err
     end
   end
+
   return self.queries[query_name]
 end
 
@@ -489,10 +514,22 @@ local function _select(self, cql, args)
 end
 
 
-function _mt:insert(entity)
+function _mt:insert(entity, options)
   local schema = self.schema
-  local args     = new_tab(#schema.fields, 0)
-  local cql, err = get_query(self, "insert")
+  local ttl = schema.ttl and options and options.ttl
+
+  local query_name
+  local args
+  if ttl then
+    query_name = "insert_ttl"
+    args = new_tab(#schema.fields + 1, 0)
+
+  else
+    query_name = "insert"
+    args = new_tab(#schema.fields, 0)
+  end
+
+  local cql, err = get_query(self, query_name, options)
   if err then
     return nil, err
   end
@@ -537,6 +574,10 @@ function _mt:insert(entity)
 
       insert(args, serialize_arg(field, entity[field_name]))
     end
+  end
+
+  if ttl then
+    insert(args, cassandra.int(ttl))
   end
 
   -- execute query
@@ -742,12 +783,22 @@ end
 
 
 do
-  local function update(self, primary_key, entity, mode)
+  local function update(self, primary_key, entity, mode, options)
     local schema = self.schema
-    local cql, err = get_query(self, mode)
+    local ttl = schema.ttl and options and options.ttl
+
+    local query_name
+    if ttl then
+      query_name = mode .. "_ttl"
+    else
+      query_name = mode
+    end
+
+    local cql, err = get_query(self, query_name)
     if err then
       return nil, err
     end
+
     local args = new_tab(#schema.fields, 0)
     local args_names = new_tab(#schema.fields, 0)
 
@@ -814,7 +865,11 @@ do
       update_columns_binds[i] = args_names[i] .. " = ?"
     end
 
-    cql = fmt(cql, concat(update_columns_binds, ", "))
+    if ttl then
+      cql = fmt(cql, ttl, concat(update_columns_binds, ", "))
+    else
+      cql = fmt(cql, concat(update_columns_binds, ", "))
+    end
 
     -- execute query
 
@@ -843,7 +898,7 @@ do
   end
 
 
-  local function update_by_field(self, field_name, field_value, entity, mode)
+  local function update_by_field(self, field_name, field_value, entity, mode, options)
     local row, err_t = self:select_by_field(field_name, field_value)
     if err_t then
       return nil, err_t
@@ -863,27 +918,27 @@ do
 
     local pk = extract_pk_values(self.schema, row)
 
-    return self[mode](self, pk, entity)
+    return self[mode](self, pk, entity, options)
   end
 
 
-  function _mt:update(primary_key, entity)
-    return update(self, primary_key, entity, "update")
+  function _mt:update(primary_key, entity, options)
+    return update(self, primary_key, entity, "update", options)
   end
 
 
-  function _mt:upsert(primary_key, entity)
-    return update(self, primary_key, entity, "upsert")
+  function _mt:upsert(primary_key, entity, options)
+    return update(self, primary_key, entity, "upsert", options)
   end
 
 
-  function _mt:update_by_field(field_name, field_value, entity)
-    return update_by_field(self, field_name, field_value, entity, "update")
+  function _mt:update_by_field(field_name, field_value, entity, options)
+    return update_by_field(self, field_name, field_value, entity, "update", options)
   end
 
 
-  function _mt:upsert_by_field(field_name, field_value, entity)
-    return update_by_field(self, field_name, field_value, entity, "upsert")
+  function _mt:upsert_by_field(field_name, field_value, entity, options)
+    return update_by_field(self, field_name, field_value, entity, "upsert", options)
   end
 end
 
