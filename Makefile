@@ -65,11 +65,10 @@ pdk-phase-checks:
 
 fix-windows:
 	@for script in $(WIN_SCRIPTS) ; do \
-	  if [ $$(grep -obUaPc '\015' $$script) -gt 0 ] ; then \
-	    echo Converting Windows file $$script ; \
-	    mv $$script $$script.win ; \
-	    tr -d '\015' <$$script.win >$$script ; \
-	    rm $$script.win ; \
-	  fi \
+	  echo Converting Windows file $$script ; \
+	  mv $$script $$script.win ; \
+	  tr -d '\015' <$$script.win >$$script ; \
+	  rm $$script.win ; \
+	  chmod 0755 $$script ; \
 	done;
 
