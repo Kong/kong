@@ -223,7 +223,7 @@ describe("Plugin: datadog (log)", function()
   end)
 
   it("should not return a runtime error (regression)", function()
-    helpers.udp_server(9999, 1, 1)
+    local thread = helpers.udp_server(9999, 1, 1)
 
     local res = assert(client:send {
       method = "GET",
@@ -237,5 +237,6 @@ describe("Plugin: datadog (log)", function()
 
     local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
     assert.not_matches("attempt to index field 'api' (a nil value)", err_log, nil, true)
+    thread:join()
   end)
 end)
