@@ -572,8 +572,8 @@ local function tokens_load(oic, args, now)
   local expires_in
   if type(tokens_encoded) == "table" then
     expires_in = tonumber(tokens_encoded.expires_in)
-    if not expires_in then
-      local exp = tonumber(tokens_encoded.exp)
+    if not expires_in and type(tokens.access_token) == "table" then
+      local exp = tonumber(tokens_encoded.access_token.exp)
       if exp then
         expires_in = exp - now
       end

@@ -2,6 +2,7 @@
 
 - Change to always log the original error message when authorization code flow
   verification fails
+- Fix cache.tokens_load ttl fallback to access token `exp` in case when `expires_in` is missing
 - Remove the deprecated `openid-connect-authentication` plugin
 - Remove the deprecated `openid-connect-protection` plugin
 - Remove the deprecated `openid-connect-verification` plugin
