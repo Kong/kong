@@ -15,6 +15,7 @@ local ngx             = ngx
 local redirect        = ngx.redirect
 local var             = ngx.var
 local time            = ngx.time
+local null            = ngx.null
 local header          = ngx.header
 local set_header      = ngx.req.set_header
 local escape_uri      = ngx.escape_uri
@@ -230,14 +231,14 @@ end
 
 
 local function set_consumer(consumer, credential, is_anonymous)
+  local head = constants.HEADERS
+
   if consumer then
     log("setting kong consumer context and headers")
 
-    local head = constants.HEADERS
-
     ngx.ctx.authenticated_consumer = consumer
 
-    if credential then
+    if credential and credential ~= null then
       ngx.ctx.authenticated_credential = credential
 
     else
@@ -247,23 +248,31 @@ local function set_consumer(consumer, credential, is_anonymous)
       else
         set_header(head.ANONYMOUS, nil)
 
-        ngx.ctx.authenticated_credential = {
-          consumer_id = consumer.id
-        }
+        if consumer.id and consumer.id ~= null then
+          ngx.ctx.authenticated_credential = {
+            consumer_id = consumer.id
+          }
+        end
       end
     end
 
-    set_header(head.CONSUMER_ID,        consumer.id)
-    set_header(head.CONSUMER_CUSTOM_ID, consumer.custom_id)
-    set_header(head.CONSUMER_USERNAME,  consumer.username)
+    if consumer.id and consumer.id ~= null then
+      set_header(head.CONSUMER_ID, consumer.id)
+    end
+
+    if consumer.custom_id and consumer.custom_id ~= null then
+      set_header(head.CONSUMER_CUSTOM_ID, consumer.custom_id)
+    end
+
+    if consumer.username and consumer.username ~= null then
+      set_header(head.CONSUMER_USERNAME, consumer.username)
+    end
 
   else
     log("removing possible remnants of anonymous")
 
     ngx.ctx.authenticated_consumer   = nil
     ngx.ctx.authenticated_credential = nil
-
-    local head = constants.HEADERS
 
     set_header(head.CONSUMER_ID,        nil)
     set_header(head.CONSUMER_CUSTOM_ID, nil)
@@ -431,7 +440,7 @@ end
 
 
 local function set_upstream_header(header_key, header_value)
-  if not header_key or not header_value then
+  if not header_key or not header_value or header_value == null then
     return
   end
 
@@ -448,6 +457,10 @@ end
 
 
 local function set_downstream_header(header_key, header_value)
+  if not header_key or not header_value or header_value == null then
+    return
+  end
+
   if header_key == "authorization:bearer" then
     append_header("Authorization", "Bearer " .. header_value)
 
@@ -481,7 +494,7 @@ end
 
 
 local function set_headers(args, header_key, header_value)
-  if not header_key or not header_value then
+  if not header_key or not header_value or header_value == null then
     return
   end
 
@@ -500,7 +513,7 @@ local function set_headers(args, header_key, header_value)
         value = header_value
       end
 
-      if value then
+      if value and value ~= null then
         set_upstream_header(usm, value)
       end
     end
@@ -516,7 +529,7 @@ local function set_headers(args, header_key, header_value)
         end
       end
 
-      if value then
+      if value and value ~= null then
         set_downstream_header(dsm, value)
       end
     end
@@ -546,10 +559,19 @@ local function anonymous_access(anonymous, trusted_client)
   ngx.ctx.authenticated_consumer   = consumer
   ngx.ctx.authenticated_credential = nil
 
-  set_header(head.CONSUMER_ID,        consumer.id)
-  set_header(head.CONSUMER_CUSTOM_ID, consumer.custom_id)
-  set_header(head.CONSUMER_USERNAME,  consumer.username)
-  set_header(head.ANONYMOUS,          true)
+  if consumer.id and consumer.id ~= null then
+    set_header(head.CONSUMER_ID, consumer.id)
+  end
+
+  if consumer.custom_id and consumer.custom_id ~= null then
+    set_header(head.CONSUMER_CUSTOM_ID, consumer.custom_id)
+  end
+
+  if consumer.username and consumer.username ~= null then
+    set_header(head.CONSUMER_USERNAME, consumer.username)
+  end
+
+  set_header(head.ANONYMOUS, true)
 end
 
 
