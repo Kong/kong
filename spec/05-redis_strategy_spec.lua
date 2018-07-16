@@ -5,13 +5,15 @@ local cjson = require "cjson"
 
 require"resty.dns.client".init(nil)
 
+local REDIS_DB = 1
+
 describe("proxy-cache: Redis strategy", function()
   local strategy, redis_client
 
   local redis_config = {
     host = "127.0.0.1",
     port = 6379,
-    database = 0,
+    database = REDIS_DB,
   }
 
   setup(function()
@@ -37,6 +39,7 @@ describe("proxy-cache: Redis strategy", function()
   describe(":store", function()
     it("stores a cache object", function()
       local key = utils.random_string()
+      assert(redis_client:select(REDIS_DB))
       assert(strategy:store(key, cache_obj, 2))
       local obj = redis_client:array_to_hash(redis_client:hgetall(key))
       obj.headers = cjson.decode(obj.headers)
@@ -47,6 +50,7 @@ describe("proxy-cache: Redis strategy", function()
 
     it("expires a cache object", function()
       local key = utils.random_string()
+      assert(redis_client:select(REDIS_DB))
       assert(strategy:store(key, cache_obj, 1))
       ngx.sleep(2)
       local obj = redis_client:hgetall(key)
