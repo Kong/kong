@@ -195,6 +195,8 @@ build = {
     ["kong.plugins.oauth2.daos"] = "kong/plugins/oauth2/daos.lua",
     ["kong.plugins.oauth2.api"] = "kong/plugins/oauth2/api.lua",
 
+    ["kong.plugins.log-buffering.buffer"] = "kong/plugins/log-buffering/buffer.lua",
+
     ["kong.plugins.log-serializers.basic"] = "kong/plugins/log-serializers/basic.lua",
 
     ["kong.plugins.tcp-log.handler"] = "kong/plugins/tcp-log/handler.lua",
@@ -213,9 +215,10 @@ build = {
 
     ["kong.plugins.galileo.migrations.cassandra"] = "kong/plugins/galileo/migrations/cassandra.lua",
     ["kong.plugins.galileo.migrations.postgres"] = "kong/plugins/galileo/migrations/postgres.lua",
+    ["kong.plugins.galileo.producer"] = "kong/plugins/galileo/producer.lua",
     ["kong.plugins.galileo.handler"] = "kong/plugins/galileo/handler.lua",
+    ["kong.plugins.galileo.sender"] = "kong/plugins/galileo/sender.lua",
     ["kong.plugins.galileo.schema"] = "kong/plugins/galileo/schema.lua",
-    ["kong.plugins.galileo.buffer"] = "kong/plugins/galileo/buffer.lua",
     ["kong.plugins.galileo.alf"] = "kong/plugins/galileo/alf.lua",
 
     ["kong.plugins.rate-limiting.migrations.cassandra"] = "kong/plugins/rate-limiting/migrations/cassandra.lua",
