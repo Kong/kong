@@ -6,9 +6,8 @@ local dao_helpers  = require "spec.02-integration.03-dao.helpers"
 local POLL_INTERVAL = 0.3
 
 
-dao_helpers.for_each_dao(function(kong_conf)
-
-describe("proxy-cache invalidations via: " .. kong_conf.database, function()
+for _, strategy in helpers.each_strategy() do
+describe("proxy-cache invalidations via: " .. strategy, function()
 
   local client_1
   local client_2
@@ -24,9 +23,7 @@ describe("proxy-cache invalidations via: " .. kong_conf.database, function()
 
   setup(function()
     local kong_dao_factory = require "kong.dao.factory"
-    dao = assert(kong_dao_factory.new(kong_conf))
-    dao:truncate_tables()
-    helpers.dao:run_migrations()
+    dao = select(3, helpers.get_db_utils(strategy))
 
     api1 = assert(dao.apis:insert {
       name = "api-1",
@@ -64,12 +61,12 @@ describe("proxy-cache invalidations via: " .. kong_conf.database, function()
       },
     })
 
-    local db_update_propagation = kong_conf.database == "cassandra" and 3 or 0
+    local db_update_propagation = strategy == "cassandra" and 3 or 0
 
     assert(helpers.start_kong {
       log_level             = "debug",
       prefix                = "servroot1",
-      database              = kong_conf.database,
+      database              = strategy,
       proxy_listen          = "0.0.0.0:8000",
       proxy_listen_ssl      = "0.0.0.0:8443",
       admin_listen          = "0.0.0.0:8001",
@@ -84,7 +81,7 @@ describe("proxy-cache invalidations via: " .. kong_conf.database, function()
     assert(helpers.start_kong {
       log_level             = "debug",
       prefix                = "servroot2",
-      database              = kong_conf.database,
+      database              = strategy,
       proxy_listen          = "0.0.0.0:9000",
       proxy_listen_ssl      = "0.0.0.0:9443",
       admin_listen          = "0.0.0.0:9001",
@@ -310,5 +307,4 @@ describe("proxy-cache invalidations via: " .. kong_conf.database, function()
     end)
   end)
 end)
-
-end)
+end
