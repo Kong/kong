@@ -40,24 +40,8 @@ describe("admin_gui template", function()
   end)
 
   describe("prepare_admin() - proxied", function()
-    local mock_idx = [[
-      <meta name="KONG:ADMIN_GUI_AUTH" content="{{ADMIN_GUI_AUTH}}" />
-      <meta name="KONG:ADMIN_GUI_URL" content="{{ADMIN_GUI_URL}}" />
-      <meta name="KONG:ADMIN_GUI_PORT" content="{{ADMIN_GUI_PORT}}" />
-      <meta name="KONG:ADMIN_GUI_SSL_PORT" content="{{ADMIN_GUI_SSL_PORT}}" />
-      <meta name="KONG:ADMIN_API_URL" content="{{ADMIN_API_URL}}" />
-      <meta name="KONG:ADMIN_API_PORT" content="{{ADMIN_API_PORT}}" />
-      <meta name="KONG:ADMIN_API_SSL_PORT" content="{{ADMIN_API_SSL_PORT}}" />
-      <meta name="KONG:RBAC_ENFORCED" content="{{RBAC_ENFORCED}}" />
-      <meta name="KONG:RBAC_HEADER" content="{{RBAC_HEADER}}" />
-      <meta name="KONG:KONG_VERSION" content="{{KONG_VERSION}}" />
-      <meta name="KONG:FEATURE_FLAGS" content="{{FEATURE_FLAGS}}" />
-    ]]
-
     local mock_prefix  = "servroot"
-    local idx_filename = mock_prefix .. "/gui/index.html"
-    local tp_filename  = mock_prefix .. "/gui/index.html.tp-" ..
-      tostring(meta.versions.package)
+    local idx_filename = mock_prefix .. "/gui/kconfig.js"
 
     local conf = {
       prefix = mock_prefix,
@@ -105,55 +89,35 @@ describe("admin_gui template", function()
     }
 
     setup(function()
-      helpers.prepare_prefix(mock_prefix)
-
-      -- create a mock gui folder
-      pl_path.mkdir(mock_prefix .. "/gui")
+      helpers.execute("rm -f " .. idx_filename)
+      ee.prepare_admin(conf)
       assert(pl_path.isdir(mock_prefix))
-
-      -- write a mock index.html
-      pl_file.write(idx_filename, mock_idx)
-      assert(not pl_path.isfile(tp_filename))
       assert(pl_path.isfile(idx_filename))
     end)
 
     teardown(function()
-      if pl_path.isfile(tp_filename) then
-        pl_file.delete(tp_filename)
-      end
       if pl_path.isfile(idx_filename) then
         pl_file.delete(idx_filename)
       end
     end)
 
     it("inserts the appropriate values", function()
-      ee.prepare_admin(conf)
-
       local admin_idx = pl_file.read(idx_filename)
+      admin_idx = pl_file.read(idx_filename)
+      admin_idx = pl_file.read(idx_filename)
+      admin_idx = pl_file.read(idx_filename)
+      admin_idx = pl_file.read(idx_filename)
+      admin_idx = pl_file.read(idx_filename)
 
-      assert.matches('<meta name="KONG:ADMIN_GUI_AUTH" content="basic-auth" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_GUI_URL" content="http://0.0.0.0:8002" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_GUI_PORT" content="8002" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_GUI_SSL_PORT" content="8445" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_API_URL" content="http://0.0.0.0:8000" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_API_PORT" content="8000" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_API_SSL_PORT" content="8443" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:RBAC_ENFORCED" content="false" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:RBAC_HEADER" content="Kong-Admin-Token" />', admin_idx, nil, true)
-    end)
-
-    it("retains a template with the template placeholders", function()
-      local gui_idx_tpl = pl_file.read(tp_filename)
-
-      assert.matches('<meta name="KONG:ADMIN_GUI_AUTH" content="{{ADMIN_GUI_AUTH}}" />', gui_idx_tpl, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_GUI_URL" content="{{ADMIN_GUI_URL}}" />', gui_idx_tpl, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_GUI_PORT" content="{{ADMIN_GUI_PORT}}" />', gui_idx_tpl, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_GUI_SSL_PORT" content="{{ADMIN_GUI_SSL_PORT}}" />', gui_idx_tpl, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_API_URL" content="{{ADMIN_API_URL}}" />', gui_idx_tpl, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_API_PORT" content="{{ADMIN_API_PORT}}" />', gui_idx_tpl, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_API_SSL_PORT" content="{{ADMIN_API_SSL_PORT}}" />', gui_idx_tpl, nil, true)
-      assert.matches('<meta name="KONG:RBAC_ENFORCED" content="{{RBAC_ENFORCED}}" />', gui_idx_tpl, nil, true)
-      assert.matches('<meta name="KONG:RBAC_HEADER" content="{{RBAC_HEADER}}" />', gui_idx_tpl, nil, true)
+      assert.matches("'ADMIN_GUI_AUTH': 'basic-auth'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_URL': 'http://0.0.0.0:8002'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_PORT': '8002'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_SSL_PORT': '8445'", admin_idx, nil, true)
+      assert.matches("'ADMIN_API_URL': 'http://0.0.0.0:8000'", admin_idx, nil, true)
+      assert.matches("'ADMIN_API_PORT': '8000'", admin_idx, nil, true)
+      assert.matches("'ADMIN_API_SSL_PORT': '8443'", admin_idx, nil, true)
+      assert.matches("'RBAC_ENFORCED': 'false'", admin_idx, nil, true)
+      assert.matches("'RBAC_HEADER': 'Kong-Admin-Token'", admin_idx, nil, true)
     end)
 
     it("inserts new values when called again", function()
@@ -169,37 +133,21 @@ describe("admin_gui template", function()
       local admin_idx = pl_file.read(idx_filename)
 
       -- test configuration values against template
-      assert.matches('<meta name="KONG:ADMIN_GUI_URL" content="http://admin-test.example.com" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_GUI_PORT" content="8002" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_GUI_SSL_PORT" content="8445" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_API_URL" content="http://127.0.0.1:8000" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_API_PORT" content="8000" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_API_SSL_PORT" content="8443" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:RBAC_ENFORCED" content="false" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:RBAC_HEADER" content="Kong-Admin-Token" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:FEATURE_FLAGS" content="{ HIDE_VITALS: true }" />', admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_URL': 'http://admin-test.example.com'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_PORT': '8002'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_SSL_PORT': '8445'", admin_idx, nil, true)
+      assert.matches("'ADMIN_API_URL': 'http://127.0.0.1:8000'", admin_idx, nil, true)
+      assert.matches("'ADMIN_API_PORT': '8000'", admin_idx, nil, true)
+      assert.matches("'ADMIN_API_SSL_PORT': '8443'", admin_idx, nil, true)
+      assert.matches("'RBAC_ENFORCED': 'false'", admin_idx, nil, true)
+      assert.matches("'RBAC_HEADER': 'Kong-Admin-Token'", admin_idx, nil, true)
+      assert.matches("'FEATURE_FLAGS': '{ HIDE_VITALS: true }'", admin_idx, nil, true)
     end)
   end)
 
   describe("prepare_admin() - not proxied", function()
-    local mock_idx = [[
-      <meta name="KONG:ADMIN_GUI_AUTH" content="{{ADMIN_GUI_AUTH}}" />
-      <meta name="KONG:ADMIN_GUI_URL" content="{{ADMIN_GUI_URL}}" />
-      <meta name="KONG:ADMIN_GUI_PORT" content="{{ADMIN_GUI_PORT}}" />
-      <meta name="KONG:ADMIN_GUI_SSL_PORT" content="{{ADMIN_GUI_SSL_PORT}}" />
-      <meta name="KONG:ADMIN_API_URL" content="{{ADMIN_API_URL}}" />
-      <meta name="KONG:ADMIN_API_PORT" content="{{ADMIN_API_PORT}}" />
-      <meta name="KONG:ADMIN_API_SSL_PORT" content="{{ADMIN_API_SSL_PORT}}" />
-      <meta name="KONG:RBAC_ENFORCED" content="{{RBAC_ENFORCED}}" />
-      <meta name="KONG:RBAC_HEADER" content="{{RBAC_HEADER}}" />
-      <meta name="KONG:KONG_VERSION" content="{{KONG_VERSION}}" />
-      <meta name="KONG:FEATURE_FLAGS" content="{{FEATURE_FLAGS}}" />
-    ]]
-
     local mock_prefix  = "servroot"
-    local idx_filename = mock_prefix .. "/gui/index.html"
-    local tp_filename  = mock_prefix .. "/gui/index.html.tp-" ..
-      tostring(meta.versions.package)
+    local idx_filename = mock_prefix .. "/gui/kconfig.js"
 
     local conf = {
       prefix = mock_prefix,
@@ -248,55 +196,30 @@ describe("admin_gui template", function()
     }
 
     setup(function()
-      helpers.prepare_prefix(mock_prefix)
-
-      -- create a mock gui folder
-      pl_path.mkdir(mock_prefix .. "/gui")
+      helpers.execute("rm -f " .. idx_filename)
+      ee.prepare_admin(conf)
       assert(pl_path.isdir(mock_prefix))
-
-      -- write a mock index.html
-      pl_file.write(idx_filename, mock_idx)
-      assert(not pl_path.isfile(tp_filename))
       assert(pl_path.isfile(idx_filename))
     end)
 
     teardown(function()
-      if pl_path.isfile(tp_filename) then
-        pl_file.delete(tp_filename)
-      end
       if pl_path.isfile(idx_filename) then
         pl_file.delete(idx_filename)
       end
     end)
 
     it("inserts the appropriate values", function()
-      ee.prepare_admin(conf)
-
       local admin_idx = pl_file.read(idx_filename)
 
-      assert.matches('<meta name="KONG:ADMIN_GUI_AUTH" content="" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_GUI_URL" content="http://0.0.0.0:8002" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_GUI_PORT" content="8002" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_GUI_SSL_PORT" content="8445" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_API_URL" content="0.0.0.0:8001" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_API_PORT" content="8001" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_API_SSL_PORT" content="8444" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:RBAC_ENFORCED" content="false" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:RBAC_HEADER" content="Kong-Admin-Token" />', admin_idx, nil, true)
-    end)
-
-    it("retains a template with the template placeholders", function()
-      local gui_idx_tpl = pl_file.read(tp_filename)
-
-      assert.matches('<meta name="KONG:ADMIN_GUI_AUTH" content="{{ADMIN_GUI_AUTH}}" />', gui_idx_tpl, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_GUI_URL" content="{{ADMIN_GUI_URL}}" />', gui_idx_tpl, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_GUI_PORT" content="{{ADMIN_GUI_PORT}}" />', gui_idx_tpl, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_GUI_SSL_PORT" content="{{ADMIN_GUI_SSL_PORT}}" />', gui_idx_tpl, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_API_URL" content="{{ADMIN_API_URL}}" />', gui_idx_tpl, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_API_PORT" content="{{ADMIN_API_PORT}}" />', gui_idx_tpl, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_API_SSL_PORT" content="{{ADMIN_API_SSL_PORT}}" />', gui_idx_tpl, nil, true)
-      assert.matches('<meta name="KONG:RBAC_ENFORCED" content="{{RBAC_ENFORCED}}" />', gui_idx_tpl, nil, true)
-      assert.matches('<meta name="KONG:RBAC_HEADER" content="{{RBAC_HEADER}}" />', gui_idx_tpl, nil, true)
+      assert.matches("'ADMIN_GUI_AUTH': ''", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_URL': 'http://0.0.0.0:8002'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_PORT': '8002'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_SSL_PORT': '8445'", admin_idx, nil, true)
+      assert.matches("'ADMIN_API_URL': '0.0.0.0:8001'", admin_idx, nil, true)
+      assert.matches("'ADMIN_API_PORT': '8001'", admin_idx, nil, true)
+      assert.matches("'ADMIN_API_SSL_PORT': '8444'", admin_idx, nil, true)
+      assert.matches("'RBAC_ENFORCED': 'false'", admin_idx, nil, true)
+      assert.matches("'RBAC_HEADER': 'Kong-Admin-Token'", admin_idx, nil, true)
     end)
 
     it("inserts new values when called again", function()
@@ -309,18 +232,19 @@ describe("admin_gui template", function()
 
       -- update template
       ee.prepare_admin(new_conf)
+      assert(pl_path.isfile(idx_filename))
       local admin_idx = pl_file.read(idx_filename)
 
       -- test configuration values against template
-      assert.matches('<meta name="KONG:ADMIN_GUI_URL" content="http://admin-test.example.com" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_GUI_PORT" content="8002" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_GUI_SSL_PORT" content="8445" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_API_URL" content="0.0.0.0:8001" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_API_PORT" content="8001" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:ADMIN_API_SSL_PORT" content="8444" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:RBAC_ENFORCED" content="false" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:RBAC_HEADER" content="Kong-Admin-Token" />', admin_idx, nil, true)
-      assert.matches('<meta name="KONG:FEATURE_FLAGS" content="{ HIDE_VITALS: true }" />', admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_URL': 'http://admin-test.example.com'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_PORT': '8002'", admin_idx, nil, true)
+      assert.matches("'ADMIN_GUI_SSL_PORT': '8445'", admin_idx, nil, true)
+      assert.matches("'ADMIN_API_URL': '0.0.0.0:8001'", admin_idx, nil, true)
+      assert.matches("'ADMIN_API_PORT': '8001'", admin_idx, nil, true)
+      assert.matches("'ADMIN_API_SSL_PORT': '8444'", admin_idx, nil, true)
+      assert.matches("'RBAC_ENFORCED': 'false'", admin_idx, nil, true)
+      assert.matches("'RBAC_HEADER': 'Kong-Admin-Token'", admin_idx, nil, true)
+      assert.matches("'FEATURE_FLAGS': '{ HIDE_VITALS: true }'", admin_idx, nil, true)
     end)
   end)
 end)
