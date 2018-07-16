@@ -1,5 +1,4 @@
 local cjson      = require "cjson.safe"
-local log        = require "kong.cmd.utils.log"
 local meta       = require "kong.enterprise_edition.meta"
 local pl_file    = require "pl.file"
 local pl_utils   = require "pl.utils"
@@ -126,6 +125,7 @@ local function prepare_interface(interface_dir, interface_env, kong_config)
   local interface_path = kong_config.prefix .. "/" .. interface_dir
   local compile_env = interface_env
   local config_filename = interface_path .. "/kconfig.js"
+  local usr_interface_path = "/usr/local/kong/" .. interface_dir
 
   if not pl_path.exists(interface_path)
      and not pl_path.exists(usr_interface_path)then
@@ -137,7 +137,6 @@ local function prepare_interface(interface_dir, interface_env, kong_config)
   -- non-existant template. this occurs in development environments where the
   -- gui does not exist (it is bundled at build time), so this effectively
   -- serves to quiet useless warnings in kong-ee development
-  local usr_interface_path = "/usr/local/kong/" .. interface_dir
   if usr_interface_path ~= interface_path
      and pl_path.exists(usr_interface_path) then
     local ln_cmd = "ln -s " .. usr_interface_path .. " " .. interface_path

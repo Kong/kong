@@ -1,7 +1,6 @@
 local helpers        = require "spec.helpers"
 local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local conf_loader    = require "kong.conf_loader"
-local meta           = require "kong.enterprise_edition.meta"
 local ee             = require "kong.enterprise_edition"
 
 local pl_file = require "pl.file"

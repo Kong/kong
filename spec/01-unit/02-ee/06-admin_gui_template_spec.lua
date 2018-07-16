@@ -1,7 +1,6 @@
 local helpers        = require "spec.helpers"
 local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local conf_loader    = require "kong.conf_loader"
-local meta           = require "kong.enterprise_edition.meta"
 local ee             = require "kong.enterprise_edition"
 
 local pl_file = require "pl.file"
@@ -103,11 +102,6 @@ describe("admin_gui template", function()
 
     it("inserts the appropriate values", function()
       local admin_idx = pl_file.read(idx_filename)
-      admin_idx = pl_file.read(idx_filename)
-      admin_idx = pl_file.read(idx_filename)
-      admin_idx = pl_file.read(idx_filename)
-      admin_idx = pl_file.read(idx_filename)
-      admin_idx = pl_file.read(idx_filename)
 
       assert.matches("'ADMIN_GUI_AUTH': 'basic-auth'", admin_idx, nil, true)
       assert.matches("'ADMIN_GUI_URL': 'http://0.0.0.0:8002'", admin_idx, nil, true)
