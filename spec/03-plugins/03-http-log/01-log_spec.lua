@@ -99,6 +99,23 @@ for _, strategy in helpers.each_strategy() do
         }
       }
 
+      local route4 = bp.routes:insert {
+        hosts   = { "http_queue_logging.test" },
+        service = service1
+      }
+
+      bp.plugins:insert {
+        route_id = route4.id,
+        name     = "http-log",
+        config   = {
+          queue_size = 5,
+          http_endpoint = "http://" .. helpers.mock_upstream_host
+                                    .. ":"
+                                    .. helpers.mock_upstream_port
+                                    .. "/post_log/http_queue"
+        }
+      }
+
       assert(helpers.start_kong({
         database = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -145,8 +162,52 @@ for _, strategy in helpers.each_strategy() do
           assert.same("127.0.0.1", log_message.client_ip)
           return true
         end
-      end, 5)
-    end, 10)
+      end, 10)
+    end)
+
+    it("logs to HTTP with a buffer", function()
+      for i = 1, 10 do
+        local client = helpers.proxy_client()
+        local res = assert(client:send({
+          method = "GET",
+          path = "/status/" .. tostring(200 + i),
+          headers = {
+            ["Host"] = "http_queue_logging.test"
+          }
+        }))
+        assert.res_status(200 + i, res)
+        client:close()
+      end
+
+      helpers.wait_until(function()
+        local client = assert(helpers.http_client(helpers.mock_upstream_host, helpers.mock_upstream_port))
+        local res = assert(client:send {
+          method  = "GET",
+          path    = "/read_log/http_queue",
+          headers = {
+            Accept = "application/json"
+          }
+        })
+        local raw = assert.res_status(200, res)
+        local body = cjson.decode(raw)
+        if #body.log.entries ~= 2 then
+          return false
+        end
+        local status = 200
+        for _, entry in ipairs(body.log.entries) do
+          local json = cjson.decode(entry.request.postData.text)
+          if #json ~= 5 then
+            return false
+          end
+          for _, item in ipairs(json) do
+            assert.same("127.0.0.1", item.client_ip)
+            status = status + 1
+            assert.same(status, item.response.status)
+          end
+        end
+        return true
+      end, 10)
+    end)
 
     it("logs to HTTPS", function()
       local res = assert(proxy_client:send({
