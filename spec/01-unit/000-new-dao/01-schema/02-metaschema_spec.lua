@@ -224,20 +224,6 @@ describe("metaschema", function()
     assert.match("ttl is a reserved field name when ttl is enabled", err.ttl)
   end)
 
-  it("ttl can only be enabled on entities that have a 'created_at' timestamp field", function()
-    local s = {
-      name = "test",
-      ttl = "true",
-      fields = {
-        { str = { type = "string", unique = true } },
-      },
-      primary_key = { "str" },
-    }
-    local ok, err = MetaSchema:validate(s)
-    assert.falsy(ok)
-    assert.match("ttl can only be enabled on entities that have a 'created_at' timestamp field", err.ttl)
-  end)
-
   it("supports the unique attribute in base types", function()
     local s = {
       name = "test",
