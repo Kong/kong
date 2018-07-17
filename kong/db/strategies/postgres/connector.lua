@@ -237,10 +237,10 @@ function _mt:reset()
   local user = self:escape_identifier(self.config.user)
   local ok, err = self:query(concat {
     "BEGIN;\n",
-    "DROP SCHEMA IF EXISTS public CASCADE;\n",
-    "CREATE SCHEMA IF NOT EXISTS public AUTHORIZATION " .. user .. ";\n",
-    "GRANT ALL ON SCHEMA public TO " .. user .. ";\n",
-    "COMMIT;\n",
+    "  DROP SCHEMA IF EXISTS public CASCADE;\n",
+    "  CREATE SCHEMA IF NOT EXISTS public AUTHORIZATION ", user, ";\n",
+    "  GRANT ALL ON SCHEMA public TO ", user, ";\n",
+    "COMMIT;",
   })
 
   if not ok then
@@ -300,8 +300,8 @@ function _mt:truncate()
     return true
   end
 
-  local truncate_statement = {
-    "TRUNCATE TABLE ", concat(table_names, ", "), " RESTART IDENTITY CASCADE;"
+  local truncate_statement = concat {
+    "TRUNCATE ", concat(table_names, ", "), " RESTART IDENTITY CASCADE;"
   }
 
   local ok, err = self:query(truncate_statement)
@@ -314,8 +314,8 @@ end
 
 
 function _mt:truncate_table(table_name)
-  local truncate_statement = {
-    "TRUNCATE TABLE ", table_name, " RESTART IDENTITY CASCADE;"
+  local truncate_statement = concat {
+    "TRUNCATE ", self:escape_identifier(table_name), " RESTART IDENTITY CASCADE;"
   }
 
   local ok, err = self:query(truncate_statement)
