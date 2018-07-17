@@ -62,6 +62,14 @@ before_install:
 install:
   - make dev
 
+jobs:
+  include:
+    - stage: deploy
+      if: tag =~ 0.
+      script: .ci/trigger-travis.sh $TRAVIS_ACCESS_TOKEN
+      env:
+        - TEST_SUITE=none
+
 script:
   - .ci/run_tests.sh
 
