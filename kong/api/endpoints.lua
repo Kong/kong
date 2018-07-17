@@ -7,8 +7,10 @@ local app_helpers  = require "lapis.application"
 
 local escape_uri   = ngx.escape_uri
 local unescape_uri = ngx.unescape_uri
+local tonumber     = tonumber
 local tostring     = tostring
 local null         = ngx.null
+local next         = next
 local type         = type
 local fmt          = string.format
 
@@ -23,6 +25,9 @@ local ERRORS_HTTP_CODES = {
   [Errors.codes.NOT_FOUND]             = 404,
   [Errors.codes.INVALID_OFFSET]        = 400,
   [Errors.codes.DATABASE_ERROR]        = 500,
+  [Errors.codes.INVALID_SIZE]          = 400,
+  [Errors.codes.INVALID_UNIQUE]        = 400,
+  [Errors.codes.INVALID_OPTIONS]       = 400,
 }
 
 
@@ -44,26 +49,64 @@ local function handle_error(err_t)
 end
 
 
+local function extract_options(args, schema, context)
+  if type(args) ~= "table" then
+    return
+  end
+
+  local options = {}
+
+  if schema.ttl == true and args.ttl ~= nil and (context == "insert" or
+                                                 context == "update" or
+                                                 context == "upsert") then
+    options.ttl = tonumber(args.ttl) or args.ttl
+    args.ttl = nil
+  end
+
+  if next(options) then
+    return options
+  end
+end
+
+
+local function get_page_size(args)
+  local size = args.size
+  if size ~= nil then
+    size = tonumber(size)
+    if size == nil then
+      return nil, "size must be a number"
+    end
+
+    return size
+  end
+end
+
 
 local function query_entity(context, self, db, schema)
   local dao = db[schema.name]
+
   local args
   if context == "update" or context == "upsert" then
     args = self.args.post
+
+  else
+    args = self.args.uri
   end
+
+  local opts = extract_options(args, schema, context)
 
   local id = unescape_uri(self.params[schema.name])
   if utils.is_valid_uuid(id) then
-    return dao[context](dao, { id = id }, args)
+    return dao[context](dao, { id = id }, args, opts)
   end
 
   if schema.endpoint_key then
     local field = schema.fields[schema.endpoint_key]
     local inferred_value = arguments.infer_value(id, field)
-    return dao[context .. "_by_" .. schema.endpoint_key](dao, inferred_value, args)
+    return dao[context .. "_by_" .. schema.endpoint_key](dao, inferred_value, args, opts)
   end
 
-  return dao[context](dao, { id = id })
+  return dao[context](dao, { id = id }, opts)
 end
 
 
@@ -99,8 +142,16 @@ end
 -- /services
 local function get_collection_endpoint(schema, foreign_schema, foreign_field_name)
   return not foreign_schema and function(self, db, helpers)
-    local data, _, err_t, offset = db[schema.name]:page(self.args.size,
-                                                        self.args.offset)
+    local size, err = get_page_size(self.args.uri)
+    if err then
+      return handle_error(db[schema.name].errors:invalid_size(err))
+    end
+
+    local data, _, err_t, offset = db[schema.name]:page(size,
+                                                        self.args.uri.offset,
+                                                        extract_options(self.args.uri,
+                                                                        schema,
+                                                                        "select"))
     if err_t then
       return handle_error(err_t)
     end
@@ -123,9 +174,18 @@ local function get_collection_endpoint(schema, foreign_schema, foreign_field_nam
       return helpers.responses.send_HTTP_NOT_FOUND()
     end
 
+    local size, err = get_page_size(self.args.uri)
+    if err then
+      return handle_error(db[schema.name].errors:invalid_size(err))
+    end
+
     local dao = db[schema.name]
     local data, _, err_t, offset = dao["for_" .. foreign_field_name](dao, { id = foreign_entity.id },
-                                                                     self.args.size, self.args.offset)
+                                                                     size,
+                                                                     self.args.uri.offset,
+                                                                     extract_options(self.args.uri,
+                                                                                     schema,
+                                                                                     "select"))
     if err_t then
       return handle_error(err_t)
     end
@@ -173,7 +233,9 @@ local function post_collection_endpoint(schema, foreign_schema, foreign_field_na
       self.args.post[foreign_field_name] = { id = foreign_entity.id }
     end
 
-    local entity, _, err_t = db[schema.name]:insert(self.args.post)
+    local entity, _, err_t = db[schema.name]:insert(self.args.post, extract_options(self.args.post,
+                                                                                    schema,
+                                                                                    "insert"))
     if err_t then
       return handle_error(err_t)
     end
@@ -210,7 +272,9 @@ local function get_entity_endpoint(schema, foreign_schema, foreign_field_name)
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
-      entity, _, err_t = db[foreign_schema.name]:select(id)
+      entity, _, err_t = db[foreign_schema.name]:select(id, extract_options(self.args.uri,
+                                                                            foreign_schema,
+                                                                            "select"))
       if err_t then
         return handle_error(err_t)
       end
@@ -263,7 +327,9 @@ local function put_entity_endpoint(schema, foreign_schema, foreign_field_name)
       return helpers.responses.send_HTTP_NOT_FOUND()
     end
 
-    entity, _, err_t = db[foreign_schema.name]:upsert(id, self.args.post)
+    entity, _, err_t = db[foreign_schema.name]:upsert(id, self.args.post, extract_options(self.args.post,
+                                                                                          foreign_schema,
+                                                                                          "upsert"))
     if err_t then
       return handle_error(err_t)
     end
@@ -315,7 +381,10 @@ local function patch_entity_endpoint(schema, foreign_schema, foreign_field_name)
       return helpers.responses.send_HTTP_NOT_FOUND()
     end
 
-    entity, _, err_t = db[foreign_schema.name]:update(id, self.args.post)
+    entity, _, err_t = db[foreign_schema.name]:update(id, self.args.post,
+                                                      extract_options(self.args.post,
+                                                                      foreign_schema,
+                                                                      "update"))
     if err_t then
       return handle_error(err_t)
     end
@@ -446,7 +515,11 @@ local function generate_endpoints(schema, endpoints)
 end
 
 
-local Endpoints = { handle_error = handle_error }
+local Endpoints = {
+  handle_error = handle_error,
+  extract_options = extract_options,
+  get_page_size = get_page_size,
+}
 
 
 function Endpoints.new(schema, endpoints)
