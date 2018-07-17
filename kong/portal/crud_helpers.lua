@@ -55,5 +55,19 @@ function _M.delete_credential(credential)
   end
 end
 
+function _M.update_login_credential(credential_params, dao_collection, filter_keys)
+  local credential, err = dao_collection:update(credential_params, filter_keys, {__skip_rbac = true})
+
+  if err then
+    return nil, err
+  end
+
+  if credential == nil then
+    return nil
+  end
+
+  return _M.update_credential(credential)
+end
+
 
 return _M

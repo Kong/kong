@@ -1,10 +1,11 @@
-local responses   = require "kong.tools.responses"
 local singletons  = require "kong.singletons"
 local app_helpers = require "lapis.application"
 local crud        = require "kong.api.crud_helpers"
 local enums       = require "kong.enterprise_edition.dao.enums"
 local utils       = require "kong.portal.utils"
 local constants   = require "kong.constants"
+local cjson       = require "cjson"
+
 
 --- Allowed auth plugins
 -- Table containing allowed auth plugins that the developer portal api
@@ -146,9 +147,9 @@ return {
 
       -- omit credential post for oidc
       if self.portal_auth == "openid-connect" then
-        return responses.send_HTTP_CREATED({
+        return helpers.responses.send_HTTP_CREATED({
           consumer = consumer,
-          credential = {}
+          credential = {},
         })
       end
 
@@ -258,6 +259,221 @@ return {
 
     GET = function(self, dao_factory, helpers)
       return helpers.responses.send_HTTP_OK(self.consumer)
+    end,
+  },
+
+  ["/developer/password"] = {
+    before = function(self, dao_factory, helpers)
+      -- auth required
+      if not singletons.configuration.portal_auth then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      local consumer_id = get_consumer_id_from_headers()
+      if not consumer_id then
+        return helpers.responses.send_HTTP_UNAUTHORIZED()
+      end
+
+      self.params.email_or_id = consumer_id
+      crud.find_consumer_by_email_or_id(self, dao_factory, helpers, {__skip_rbac = true})
+
+      self.portal_auth = singletons.configuration.portal_auth
+
+      local plugin = auth_plugins[self.portal_auth]
+      if not plugin then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      self.collection = dao_factory[plugin.dao]
+
+      local credentials, err = dao_factory.credentials:find_all({
+        consumer_id = self.consumer.id,
+        consumer_type = enums.CONSUMERS.TYPE.DEVELOPER,
+        plugin = self.portal_auth,
+      })
+
+      if err then
+        return helpers.yield_error(err)
+      end
+
+      if next(credentials) == nil then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      self.credential = credentials[1]
+    end,
+
+    PATCH = function(self, dao_factory, helpers)
+      if not self.params.password then
+        return helpers.responses.send_HTTP_BAD_REQUEST("Password is required")
+      end
+
+      local cred_params = {
+        password = self.params.password,
+      }
+
+      self.params.password = nil
+
+      local filter = {
+        consumer_id = self.consumer.id,
+        id = self.credential.id,
+      }
+
+      local ok, err = crud.portal_crud.update_login_credential(cred_params, self.collection, filter)
+
+      if err then
+        return helpers.yield_error(err)
+      end
+
+      if not ok then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      return helpers.responses.send_HTTP_NO_CONTENT()
+    end,
+  },
+
+  ["/developer/email"] = {
+    before = function(self, dao_factory, helpers)
+      -- auth required
+      if not singletons.configuration.portal_auth then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      local consumer_id = get_consumer_id_from_headers()
+      if not consumer_id then
+        return helpers.responses.send_HTTP_UNAUTHORIZED()
+      end
+
+      self.params.email_or_id = consumer_id
+      crud.find_consumer_by_email_or_id(self, dao_factory, helpers, {__skip_rbac = true})
+
+      self.portal_auth = singletons.configuration.portal_auth
+
+      local plugin = auth_plugins[self.portal_auth]
+      if not plugin then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      self.collection = dao_factory[plugin.dao]
+
+      local credentials, err = dao_factory.credentials:find_all({
+        consumer_id = self.consumer.id,
+        consumer_type = enums.CONSUMERS.TYPE.DEVELOPER,
+        plugin = self.portal_auth,
+      })
+
+      if err then
+        return helpers.yield_error(err)
+      end
+
+      if next(credentials) == nil then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      self.credential = credentials[1]
+    end,
+
+    PATCH = function(self, dao_factory, helpers)
+      if utils.validate_email(self.params.email) == nil then
+        return helpers.responses.send_HTTP_BAD_REQUEST("Invalid email")
+      end
+
+      local cred_params = {
+        username = self.params.email,
+      }
+
+      local filter = {
+        consumer_id = self.consumer.id,
+        id = self.credential.id,
+      }
+
+      local ok, err = crud.portal_crud.update_login_credential(cred_params, self.collection, filter)
+
+      if err then
+        return helpers.yield_error(err)
+      end
+
+      if not ok then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      local dev_params = {
+        username = self.params.email,
+        email = self.params.email,
+      }
+
+      local ok, err = singletons.dao.consumers:update(dev_params, {
+        id = self.consumer.id,
+      })
+
+      if err then
+        return helpers.yield_error(err)
+      end
+
+      if not ok then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      return helpers.responses.send_HTTP_NO_CONTENT()
+    end,
+  },
+
+  ["/developer/meta"] = {
+    before = function(self, dao_factory, helpers)
+      -- auth required
+      if not singletons.configuration.portal_auth then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      local consumer_id = get_consumer_id_from_headers()
+      if not consumer_id then
+        return helpers.responses.send_HTTP_UNAUTHORIZED()
+      end
+
+      self.params.email_or_id = consumer_id
+      crud.find_consumer_by_email_or_id(self, dao_factory, helpers, {__skip_rbac = true})
+    end,
+
+    PATCH = function(self, dao_factory, helpers)
+      local meta_params = self.params.meta and cjson.decode(self.params.meta)
+
+      if not meta_params then
+        return helpers.responses.send_HTTP_BAD_REQUEST("meta required")
+      end
+
+      local current_dev_meta = self.consumer.meta and cjson.decode(self.consumer.meta)
+
+      if not current_dev_meta then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      -- Iterate over meta update params and assign them to current meta
+      for k, v in pairs(meta_params) do
+        -- Only assign values that are already in the current meta
+        if current_dev_meta[k] then
+          current_dev_meta[k] = v
+        end
+      end
+
+      -- Encode full meta (current and new) and assign it to update params
+      local dev_params = {
+        meta = cjson.encode(current_dev_meta)
+      }
+
+      local ok, err = singletons.dao.consumers:update(dev_params, {
+        id = self.consumer.id,
+      })
+
+      if err then
+        return helpers.yield_error(err)
+      end
+
+      if not ok then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      return helpers.responses.send_HTTP_NO_CONTENT()
     end,
   },
 
@@ -387,7 +603,7 @@ return {
       local credentials, err = self.collection:find_all({
         __skip_rbac = true,
         consumer_id = consumer_id,
-        id = self.params.credential_id
+        id = self.params.credential_id,
       })
 
       if err then
