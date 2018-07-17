@@ -127,8 +127,12 @@ local function build_queries(self)
   if partitioned then
     return {
       insert = fmt([[
-        INSERT INTO %s(partition, %s) VALUES('%s', %s) IF NOT EXISTS
+        INSERT INTO %s (partition, %s) VALUES ('%s', %s) IF NOT EXISTS
       ]], schema.name, insert_columns, schema.name, insert_bind_args),
+
+      insert_ttl = fmt([[
+        INSERT INTO %s (partition, %s) VALUES ('%s', %s) IF NOT EXISTS USING TTL %s
+      ]], schema.name, insert_columns, schema.name, insert_bind_args, "%u"),
 
       select = fmt([[
         SELECT %s FROM %s WHERE partition = '%s' AND %s
@@ -146,9 +150,17 @@ local function build_queries(self)
         UPDATE %s SET %s WHERE partition = '%s' AND %s IF EXISTS
       ]], schema.name, "%s", schema.name, select_bind_args),
 
+      update_ttl = fmt([[
+        UPDATE %s USING TTL %s SET %s WHERE partition = '%s' AND %s IF EXISTS
+      ]], schema.name, "%u", "%s", schema.name, select_bind_args),
+
       upsert = fmt([[
         UPDATE %s SET %s WHERE partition = '%s' AND %s
       ]], schema.name, "%s", schema.name, select_bind_args),
+
+      upsert_ttl = fmt([[
+        UPDATE %s USING TTL %s SET %s WHERE partition = '%s' AND %s
+      ]], schema.name, "%u", "%s", schema.name, select_bind_args),
 
       delete = fmt([[
         DELETE FROM %s WHERE partition = '%s' AND %s
@@ -158,8 +170,12 @@ local function build_queries(self)
 
   return {
     insert = fmt([[
-      INSERT INTO %s(%s) VALUES(%s) IF NOT EXISTS
+      INSERT INTO %s (%s) VALUES (%s) IF NOT EXISTS
     ]], schema.name, insert_columns, insert_bind_args),
+
+    insert_ttl = fmt([[
+      INSERT INTO %s (%s) VALUES (%s) IF NOT EXISTS USING TTL %s
+    ]], schema.name, insert_columns, insert_bind_args, "%u"),
 
     -- might raise a "you must enable ALLOW FILTERING" error
     select = fmt([[
@@ -180,9 +196,17 @@ local function build_queries(self)
       UPDATE %s SET %s WHERE %s IF EXISTS
     ]], schema.name, "%s", select_bind_args),
 
+    update_ttl = fmt([[
+      UPDATE %s USING TTL %s SET %s WHERE %s IF EXISTS
+    ]], schema.name, "%u", "%s", select_bind_args),
+
     upsert = fmt([[
       UPDATE %s SET %s WHERE %s
     ]], schema.name, "%s", select_bind_args),
+
+    upsert_ttl = fmt([[
+      UPDATE %s USING TTL %s SET %s WHERE %s
+    ]], schema.name, "%u", "%s", select_bind_args),
 
     delete = fmt([[
       DELETE FROM %s WHERE %s
@@ -199,6 +223,7 @@ local function get_query(self, query_name)
       return nil, err
     end
   end
+
   return self.queries[query_name]
 end
 
@@ -457,7 +482,7 @@ local function deserialize_row(self, row)
         row[field_name] = nil
       end
 
-    elseif field.timestamp then
+    elseif field.timestamp and row[field_name] ~= nil then
       row[field_name] = row[field_name] / 1000
     end
 
@@ -489,13 +514,27 @@ local function _select(self, cql, args)
 end
 
 
-function _mt:insert(entity)
+function _mt:insert(entity, options)
   local schema = self.schema
-  local args     = new_tab(#schema.fields, 0)
-  local cql, err = get_query(self, "insert")
-  if err then
-    return nil, err
+  local args = new_tab(#schema.fields, 0)
+  local ttl = schema.ttl and options and options.ttl
+
+  local cql, err
+  if ttl then
+    cql, err = get_query(self, "insert_ttl")
+    if err then
+      return nil, err
+    end
+
+    cql = fmt(cql, ttl)
+
+  else
+    cql, err = get_query(self, "insert")
+    if err then
+      return nil, err
+    end
   end
+
   -- serialize VALUES clause args
 
   for field_name, field in schema:each_field() do
@@ -582,7 +621,7 @@ function _mt:insert(entity)
 end
 
 
-function _mt:select(primary_key)
+function _mt:select(primary_key, options)
   local schema = self.schema
   local cql, err = get_query(self, "select")
   if err then
@@ -602,7 +641,7 @@ function _mt:select(primary_key)
 end
 
 
-function _mt:select_by_field(field_name, field_value)
+function _mt:select_by_field(field_name, field_value, options)
   local cql, err = get_query(self, "select_with_filter")
   if err then
     return nil, err
@@ -726,7 +765,7 @@ do
   local iter_mt = { __call = iter }
 
 
-  function _mt:each(size)
+  function _mt:each(size, options)
     local iter_ctx = {
       page         = 0,
       rows         = nil,
@@ -742,12 +781,22 @@ end
 
 
 do
-  local function update(self, primary_key, entity, mode)
+  local function update(self, primary_key, entity, mode, options)
     local schema = self.schema
-    local cql, err = get_query(self, mode)
+    local ttl = schema.ttl and options and options.ttl
+
+    local query_name
+    if ttl then
+      query_name = mode .. "_ttl"
+    else
+      query_name = mode
+    end
+
+    local cql, err = get_query(self, query_name)
     if err then
       return nil, err
     end
+
     local args = new_tab(#schema.fields, 0)
     local args_names = new_tab(#schema.fields, 0)
 
@@ -814,7 +863,11 @@ do
       update_columns_binds[i] = args_names[i] .. " = ?"
     end
 
-    cql = fmt(cql, concat(update_columns_binds, ", "))
+    if ttl then
+      cql = fmt(cql, ttl, concat(update_columns_binds, ", "))
+    else
+      cql = fmt(cql, concat(update_columns_binds, ", "))
+    end
 
     -- execute query
 
@@ -843,7 +896,7 @@ do
   end
 
 
-  local function update_by_field(self, field_name, field_value, entity, mode)
+  local function update_by_field(self, field_name, field_value, entity, mode, options)
     local row, err_t = self:select_by_field(field_name, field_value)
     if err_t then
       return nil, err_t
@@ -863,27 +916,27 @@ do
 
     local pk = extract_pk_values(self.schema, row)
 
-    return self[mode](self, pk, entity)
+    return self[mode](self, pk, entity, options)
   end
 
 
-  function _mt:update(primary_key, entity)
-    return update(self, primary_key, entity, "update")
+  function _mt:update(primary_key, entity, options)
+    return update(self, primary_key, entity, "update", options)
   end
 
 
-  function _mt:upsert(primary_key, entity)
-    return update(self, primary_key, entity, "upsert")
+  function _mt:upsert(primary_key, entity, options)
+    return update(self, primary_key, entity, "upsert", options)
   end
 
 
-  function _mt:update_by_field(field_name, field_value, entity)
-    return update_by_field(self, field_name, field_value, entity, "update")
+  function _mt:update_by_field(field_name, field_value, entity, options)
+    return update_by_field(self, field_name, field_value, entity, "update", options)
   end
 
 
-  function _mt:upsert_by_field(field_name, field_value, entity)
-    return update_by_field(self, field_name, field_value, entity, "upsert")
+  function _mt:upsert_by_field(field_name, field_value, entity, options)
+    return update_by_field(self, field_name, field_value, entity, "upsert", options)
   end
 end
 
@@ -915,7 +968,7 @@ do
   end
 
 
-  function _mt:delete(primary_key)
+  function _mt:delete(primary_key, options)
     local schema = self.schema
     local cql, err = get_query(self, "delete")
     if err then
@@ -970,7 +1023,7 @@ do
 end
 
 
-function _mt:delete_by_field(field_name, field_value)
+function _mt:delete_by_field(field_name, field_value, options)
   local row, err_t = self:select_by_field(field_name, field_value)
   if err_t then
     return nil, err_t
