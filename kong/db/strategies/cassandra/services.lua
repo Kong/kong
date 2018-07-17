@@ -86,7 +86,7 @@ local function validate_access(cluster, table_name, service_id, errors, constrai
     end
 
     for i = 1, #rows do
-      if not rbac.validate_entity_operation(rows[i], constraints) then
+      if not rbac.validate_entity_operation(rows[i], table_name) then
         return nil, errors:unauthorized_operation({
           username = ngx.ctx.rbac.user.name,
           action = rbac.readable_action(ngx.ctx.rbac.action)
@@ -148,7 +148,7 @@ function _Services_ee:delete(primary_key)
     return nil, err1 or err2 or err3
   end
 
-  if not rbac.validate_entity_operation(primary_key, constraints) then
+  if not rbac.validate_entity_operation(primary_key, self.schema.name) then
     return nil, self.errors:unauthorized_operation({
       username = ngx.ctx.rbac.user.name,
       action = rbac.readable_action(ngx.ctx.rbac.action)

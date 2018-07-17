@@ -10,7 +10,6 @@ local _Routes_ee = {}
 
 function _Routes_ee:delete(primary_key)
   local plugins = {}
-  local constraints = workspaces.get_workspaceable_relations()[self.schema.name]
 
   -- retrieve plugins associated with this Route
   local select_q = fmt("SELECT * FROM plugins WHERE route_id = '%s'",
@@ -22,7 +21,7 @@ function _Routes_ee:delete(primary_key)
                                              "for Route: " .. err)
     end
 
-    if not rbac.validate_entity_operation(row, constraints) then
+    if not rbac.validate_entity_operation(row, self.schema.name) then
       return nil, self.errors:unauthorized_operation({
         username = ngx.ctx.rbac.user.name,
         action = rbac.readable_action(ngx.ctx.rbac.action)
@@ -33,7 +32,7 @@ function _Routes_ee:delete(primary_key)
   end
 
 
-  if not rbac.validate_entity_operation(primary_key, constraints) then
+  if not rbac.validate_entity_operation(primary_key, self.schema.name) then
     return nil, self.errors:unauthorized_operation({
       username = ngx.ctx.rbac.user.name,
       action = rbac.readable_action(ngx.ctx.rbac.action)
