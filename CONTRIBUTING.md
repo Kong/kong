@@ -396,16 +396,27 @@ $ luacheck .
 
 We use [busted](https://olivinelabs.com/busted/) to write our tests. Your patch
 should include the related test updates or additions, in the appropriate test
-suite.
+suite. All tests of Kong Enterprise Edition functionality go into `spec-ee` to
+reduce collision and merge conflicts with CE tests.
 
-- `spec/01-unit` gathers our unit tests (to test a given Lua module or
+- `spec-ee/01-unit` gathers our unit tests (to test a given Lua module or
   function)
-- `spec/02-integration` contains tests that start Kong (connected to a running
+- `spec-ee/02-integration` contains tests that start Kong (connected to a running
   database), execute Admin API and proxy requests against it, and verify the
   output
-- `spec/03-plugins` contains tests (both unit and integration) for the bundled
-  plugins (those plugins still live in the core repository as of now, but will
-  eventually be externalized)
+
+Unit and integration tests are both organized loosely by "feature". This reduces
+the possibility of numeric collision within `kong-ee` branches / pull requests.
+If there is a collision, the first PR merged to master wins, and the next must
+renumber its test folders. Ideally, the feature number is consistent in the unit
+and integration directories; that is, if RBAC unit tests are in `01-unit/01-rbac`,
+then RBAC integration tests should be in `02-integration/01-rbac`.
+
+Naming convention: <counter>-<function_tested>_spec.lua
+- Test files start with a 2-digit counter and a -.
+- The name of the spec includes the functionality or module being tested, words
+separated by _.
+- The name ends with `_spec.lua`
 
 A few guidelines when writing tests:
 

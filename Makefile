@@ -33,15 +33,18 @@ lint:
 
 test:
 	@$(TEST_CMD) spec/01-unit
+	@$(TEST_CMD) spec-ee/01-unit
 
 test-integration:
 	@$(TEST_CMD) spec/02-integration
+	@$(TEST_CMD) spec-ee/02-integration
 
 test-plugins:
 	@$(TEST_CMD) spec/03-plugins
 
 test-all:
 	@$(TEST_CMD) spec/
+	@$(TEST_CMD) spec-ee/
 
 old-test:
 	@$(TEST_CMD) spec-old-api/01-unit
