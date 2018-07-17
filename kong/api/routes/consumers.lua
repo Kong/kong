@@ -2,7 +2,9 @@ local crud = require "kong.api.crud_helpers"
 local Endpoints = require "kong.api.endpoints"
 
 
-local escape_uri   = ngx.escape_uri
+local null = ngx.null
+local escape_uri = ngx.escape_uri
+local unescape_uri = ngx.unescape_uri
 
 
 return {
@@ -22,14 +24,17 @@ return {
         }
       end
 
-      local data, _, err_t, offset = db.consumers:page(self.args.size,
-                                                       self.args.offset)
+      local size, err = Endpoints.get_page_size(self.args.uri)
+      if err then
+        return Endpoints.handle_error(db.consumers.errors:invalid_size(err))
+      end
+
+      local data, _, err_t, offset = db.consumers:page(size, self.args.uri.offset)
       if err_t then
         return Endpoints.handle_error(err_t)
       end
 
-      local next_page = offset and "/consumers?offset=" .. escape_uri(offset)
-                                or ngx.null
+      local next_page = offset and "/consumers?offset=" .. escape_uri(offset) or null
 
       return helpers.responses.send_HTTP_OK {
         data   = data,
@@ -41,7 +46,7 @@ return {
 
   ["/consumers/:consumers/plugins"] = {
     before = function(self, dao_factory, helpers)
-      self.params.username_or_id = ngx.unescape_uri(self.params.consumers)
+      self.params.username_or_id = unescape_uri(self.params.consumers)
       self.params.consumers = nil
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
       self.params.consumer_id = self.consumer.id
@@ -62,7 +67,7 @@ return {
 
   ["/consumers/:consumers/plugins/:id"] = {
     before = function(self, dao_factory, helpers)
-      self.params.username_or_id = ngx.unescape_uri(self.params.consumers)
+      self.params.username_or_id = unescape_uri(self.params.consumers)
       self.params.consumers = nil
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
       crud.find_plugin_by_filter(self, dao_factory, {
