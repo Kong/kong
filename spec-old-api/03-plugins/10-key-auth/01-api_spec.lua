@@ -1,6 +1,7 @@
 local cjson = require "cjson"
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
+local pl_file = require "pl.file"
 
 describe("Plugin: key-auth (API)", function()
   local consumer
@@ -25,9 +26,15 @@ describe("Plugin: key-auth (API)", function()
     consumer = bp.consumers:insert {
       username = "bob"
     }
-    assert(helpers.start_kong({
+    local res = helpers.start_kong({
       nginx_conf = "spec/fixtures/custom_nginx.template",
-    }))
+    })
+
+    if not res then
+      assert(false, "Error starting kong:\n" ..
+        pl_file.read(helpers.test_conf.nginx_err_logs))
+    end
+
     admin_client = helpers.admin_client()
   end)
   teardown(function()
