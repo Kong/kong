@@ -1,3 +1,5 @@
+[![Build Status][badge-travis-image]][badge-travis-url]
+
 # Kong Serverless Functions Plugin
 
 Dynamically run Lua code from Kong during access phase. It can be used in 
@@ -11,3 +13,7 @@ usage.
 0.1.0 Initial release
 
 [docs]: https://docs.konghq.com/plugins/serverless-functions/
+
+
+[badge-travis-url]: https://travis-ci.com/Kong/kong-plugin-serverless-functions/branches
+[badge-travis-image]: https://travis-ci.com/Kong/kong-plugin-serverless-functions.svg
