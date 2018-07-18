@@ -1,3 +1,5 @@
+local workspaces = require "kong.workspaces"
+
 return {
   table = "rbac_role_endpoints",
   primary_key = { "role_id", "workspace", "endpoint" },
@@ -10,7 +12,7 @@ return {
     workspace = {
       type = "string",
       required = true,
-      default = "default",
+      default = workspaces.DEFAULT_WORKSPACE,
       immutable = true,
     },
     endpoint = {

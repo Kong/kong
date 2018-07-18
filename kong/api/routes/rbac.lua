@@ -443,7 +443,7 @@ return {
       end
 
       --XXX we should probably factor this check out into kong.workspaces
-      self.params.workspace = self.params.workspace or "default"
+      self.params.workspace = self.params.workspace or workspaces.DEFAULT_WORKSPACE
       local ws_name = self.params.workspace
 
       -- only super-admin role should be allowed to have global permission
@@ -461,7 +461,7 @@ return {
         end
       end
 
-      if ws_name ~=  "default" and ws_name ~= "*" then
+      if ws_name ~= workspaces.DEFAULT_WORKSPACE and ws_name ~= "*" then
         local w, err = dao_factory.workspaces:run_with_ws_scope({}, dao_factory.workspaces.find_all, {
           name = self.params.workspace
         })
