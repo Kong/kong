@@ -71,12 +71,17 @@ local validation_errors = {
   -- schema error
   SCHEMA_NO_DEFINITION      = "expected a definition table",
   SCHEMA_NO_FIELDS          = "error in schema definition: no 'fields' table",
-  SCHEMA_MISSING_ATTRIBUTE  = "error in schema definition: missing attribute",
+  SCHEMA_MISSING_ATTRIBUTE  = "error in schema definition: missing attribute %s",
   SCHEMA_BAD_REFERENCE      = "schema refers to an invalid foreign entity: %s",
   SCHEMA_TYPE               = "invalid type: %s",
   -- primary key errors
   NOT_PK                    = "not a primary key",
   MISSING_PK                = "missing primary key",
+  -- subschemas
+  SUBSCHEMA_UNKNOWN         = "unknown type: %s",
+  SUBSCHEMA_BAD_PARENT      = "entities of type '%s' cannot have subschemas",
+  SUBSCHEMA_UNDEFINED_FIELD = "error in schema definition: abstract field was not specialized",
+  SUBSCHEMA_BAD_TYPE        = "error in schema definition: cannot change type in a specialized field",
 }
 
 
@@ -468,6 +473,10 @@ function Schema:validate_field(field, value)
     end
   end
 
+  if field.abstract == true then
+    return nil, validation_errors.SUBSCHEMA_UNDEFINED_FIELD
+  end
+
   if field.type == "array" then
     if not is_sequence(value) then
       return nil, validation_errors.ARRAY
@@ -543,10 +552,10 @@ function Schema:validate_field(field, value)
       return nil, validation_errors.SCHEMA_MISSING_ATTRIBUTE:format("fields")
     end
 
-    local subschema = Schema.new(field)
+    local field_schema = Schema.new(field)
     -- TODO return nested table or string?
-    local copy = subschema:process_auto_fields(value, "insert")
-    local ok, err = subschema:validate(copy)
+    local copy = field_schema:process_auto_fields(value, "insert")
+    local ok, err = field_schema:validate(copy)
     if not ok then
       return nil, err
     end
@@ -675,6 +684,29 @@ local function handle_missing_field(k, field, entity)
 end
 
 
+--- Check if subschema field is compatible with the abstract field it replaces.
+-- @return true if compatible, false otherwise.
+local function compatible_fields(f1, f2)
+  local t1, t2 = f1.type, f2.type
+  if t1 ~= t2 then
+    return false
+  end
+  if t1 == "record" then
+    return true
+  end
+  if t1 == "array" or t1 == "set" then
+    return f1.elements.type == f2.elements.type
+  end
+  if t1 == "array" or t1 == "set" then
+    return f1.elements.type == f2.elements.type
+  end
+  if t1 == "map" then
+    return f1.keys.type == f2.keys.type and f1.values.type == f2.values.type
+  end
+  return true
+end
+
+
 --- Validate fields of a table, individually, against the schema.
 -- @param self The schema
 -- @param input The input table.
@@ -687,15 +719,34 @@ validate_fields = function(self, input)
 
   local errors = {}
 
+  local subschema_fields
+  if self.subschemas and self.subschema_key then
+    local subschema = self.subschemas[input[self.subschema_key]]
+    if subschema then
+      subschema_fields = self.subschemas[input[self.subschema_key]].fields
+    end
+  end
+
   for k, v in pairs(input) do
     local field = self.fields[k]
-    if field then
-      field = (field.type == "self") and input or field
-      local _
-      _, errors[k] = self:validate_field(field, v)
-    else
+    if not field then
       errors[k] = validation_errors.UNKNOWN
+      goto continue
     end
+    field = (field.type == "self") and input or field
+    local _
+    if subschema_fields then
+      local ss_field = subschema_fields[k]
+      if ss_field then
+        if not compatible_fields(field, ss_field) then
+          errors[k] = validation_errors.SUBSCHEMA_BAD_TYPE
+          goto continue
+        end
+        field = ss_field
+      end
+    end
+    _, errors[k] = self:validate_field(field, v)
+    ::continue::
   end
 
   if next(errors) then
@@ -1038,7 +1089,19 @@ function Schema:validate(input, full_check)
     full_check = true
   end
 
+  local ok, subschema_error
+  if self.subschema_key then
+    local key = input[self.subschema_key]
+    if not (self.subschemas and self.subschemas[key]) then
+      subschema_error = validation_errors.SUBSCHEMA_UNKNOWN:format(key)
+    end
+  end
+
   local _, field_errors = validate_fields(self, input)
+
+  if subschema_error then
+    field_errors[self.subschema_key] = subschema_error
+  end
 
   for name, field in self:each_field() do
     if field.required
@@ -1048,7 +1111,7 @@ function Schema:validate(input, full_check)
     end
   end
 
-  local ok, entity_errors, f_errs
+  local entity_errors, f_errs
   ok, entity_errors, f_errs = run_entity_checks(self, input)
   if not ok then
     if next(entity_errors) then
@@ -1186,7 +1249,7 @@ end
 local function get_foreign_schema_for_field(field)
   local ref = field.reference
   if not ref then
-    return nil, validation_errors.SCHEMA_MISSING_ATTRIBUTE:format(ref)
+    return nil, validation_errors.SCHEMA_MISSING_ATTRIBUTE:format("reference")
   end
 
   -- TODO add support for non-core entities
@@ -1253,6 +1316,28 @@ function Schema.new(definition)
   end
 
   return self
+end
+
+
+function Schema.new_subschema(self, key, definition)
+  assert(type(key) == "string", "key must be a string")
+  assert(type(definition) == "table", "definition must be a table")
+
+  if not self.subschema_key then
+    return nil, validation_errors.SUBSCHEMA_BAD_PARENT:format(self.name)
+  end
+
+  local subschema, err = Schema.new(definition)
+  if not subschema then
+    return nil, err
+  end
+
+  if not self.subschemas then
+    self.subschemas = {}
+  end
+  self.subschemas[key] = subschema
+
+  return true
 end
 
 
