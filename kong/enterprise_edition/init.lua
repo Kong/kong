@@ -111,7 +111,7 @@ end
 local function write_kconfig(configs, filename)
   local kconfig_str = "window.K_CONFIG = {\n"
   for config, value in pairs(configs) do
-    kconfig_str = kconfig_str .. "  '".. config .. "': '" .. value .. "',\n"
+    kconfig_str = kconfig_str .. "  '" .. config .. "': '" .. value .. "',\n"
   end
 
   -- remove trailing comma
@@ -128,13 +128,12 @@ local function prepare_interface(interface_dir, interface_env, kong_config)
   local usr_interface_path = "/usr/local/kong/" .. interface_dir
 
   if not pl_path.exists(interface_path)
-     and not pl_path.exists(usr_interface_path)then
+     and not pl_path.exists(usr_interface_path) then
     pl_path.mkdir(interface_path)
   end
 
   -- if the interface directory does not exist, try symlinking it to its default
-  -- prefix location; otherwise, we needn't bother attempting to update a
-  -- non-existant template. this occurs in development environments where the
+  -- prefix location. This occurs in development environments where the
   -- gui does not exist (it is bundled at build time), so this effectively
   -- serves to quiet useless warnings in kong-ee development
   if usr_interface_path ~= interface_path
