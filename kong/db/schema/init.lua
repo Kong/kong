@@ -39,6 +39,7 @@ local validation_errors = {
   INTEGER                   = "expected an integer",
   FUNCTION                  = "expected a function",
   -- validations
+  EQ                        = "value must be %s",
   BETWEEN                   = "value should be between %d and %d",
   LEN_EQ                    = "length must be %d",
   LEN_MIN                   = "length must be at least %d",
@@ -131,6 +132,14 @@ Schema.validators = {
       return nil, validation_errors.BETWEEN:format(limits[1], limits[2])
     end
     return true
+  end,
+
+  eq = function(value, wanted)
+    if value == wanted then
+      return true
+    end
+    local str = (wanted == null) and "null" or tostring(value)
+    return nil, validation_errors.EQ:format(str)
   end,
 
   len_eq = make_length_validator("LEN_EQ", function(len, n)
@@ -227,6 +236,7 @@ Schema.validators = {
 
 
 Schema.validators_order = {
+  "eq",
   "one_of",
 
   -- type-dependent

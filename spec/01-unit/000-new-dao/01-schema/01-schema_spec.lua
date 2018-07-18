@@ -110,6 +110,17 @@ describe("schema", function()
       assert.falsy(Test:validate({ a_number = "wat" }))
     end)
 
+    it("forces a value with 'eq'", function()
+      local Test = Schema.new({
+        fields = {
+          { a_number = { type = "number", eq = 9 } }
+        }
+      })
+      assert.truthy(Test:validate({ a_number = 9 }))
+      assert.falsy(Test:validate({ a_number = 8 }))
+      assert.falsy(Test:validate({ a_number = "wat" }))
+    end)
+
     it("makes sure all types run validators", function()
       local num = { type = "number" }
       local tests = {

@@ -34,6 +34,7 @@ local match_any_list = {
 -- Field attributes which match a validator function in the Schema class
 local validators = {
   { between = { type = "array", elements = { type = "integer" }, len_eq = 2 }, },
+  { eq = { type = "self" }, },
   { len_eq = { type = "integer" }, },
   { len_min = { type = "integer" }, },
   { len_max = { type = "integer" }, },
