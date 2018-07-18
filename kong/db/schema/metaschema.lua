@@ -58,6 +58,7 @@ local field_schema = {
   { auto = { type = "boolean" }, },
   { unique = { type = "boolean" }, },
   { default = { type = "self" }, },
+  { abstract = { type = "boolean" }, },
 }
 
 for _, field in ipairs(validators) do
@@ -141,6 +142,8 @@ local meta_errors = {
   ENDPOINT_KEY_UNIQUE = "endpoint key must be a unique field",
   TTL_RESERVED = "ttl is a reserved field name when ttl is enabled",
   TTL_CREATED_AT = "ttl can only be enabled on entities that have a 'created_at' timestamp field",
+  SUBSCHEMA_KEY = "value must be a field name",
+  SUBSCHEMA_KEY_STRING = "must be a string field",
 }
 
 
@@ -159,7 +162,6 @@ local attribute_types = {
   len_eq = {
     ["array"]  = true,
     ["set"]    = true,
-    ["hash"]   = true,
     ["string"] = true,
     ["map"]    = true,
   },
@@ -181,6 +183,15 @@ local attribute_types = {
     ["string"] = true,
     ["number"] = true,
     ["integer"] = true,
+  },
+  abstract = {
+    ["string"] = true,
+    ["number"] = true,
+    ["integer"] = true,
+    ["record"] = true,
+    ["array"] = true,
+    ["set"] = true,
+    ["map"] = true,
   },
 }
 
@@ -219,7 +230,11 @@ check_field = function(k, field, errors)
     return nil
   end
   if required_attributes[field.type] then
-    for _, required in ipairs(required_attributes[field.type]) do
+    local req_attrs = required_attributes[field.type]
+    if field.abstract and field.type == "record" then
+      req_attrs = {}
+    end
+    for _, required in ipairs(req_attrs) do
       if not field[required] then
         errors[k] = meta_errors.REQUIRED:format(field.type, required)
       end
@@ -276,6 +291,12 @@ local MetaSchema = Schema.new({
       }
     },
     {
+      subschema_key = {
+        type = "string",
+        nilable = true,
+      },
+    },
+    {
       fields = fields_array,
     },
     {
@@ -318,6 +339,24 @@ local MetaSchema = Schema.new({
       end
       if not found then
         errors["endpoint_key"] = meta_errors.ENDPOINT_KEY
+      end
+    end
+
+    if schema.subschema_key then
+      local found = false
+      for _, item in ipairs(schema.fields) do
+        local k = next(item)
+        local field = item[k]
+        if schema.subschema_key == k then
+          if field.type ~= "string" then
+            errors["subschema_key"] = meta_errors.SUBSCHEMA_KEY_STRING
+          end
+          found = true
+          break
+        end
+      end
+      if not found then
+        errors["subschema_key"] = meta_errors.SUBSCHEMA_KEY
       end
     end
 
