@@ -289,12 +289,28 @@ return function(options)
     local old_udp_setpeername
 
     local function tcp_resolve_connect(sock, host, port, sock_opts)
-      local target_ip, target_port = toip(host, port)
-      if not target_ip then
-        return nil, "[toip() name lookup failed]: " .. tostring(target_port) -- err
+      local target_ip, target_port
+
+      if sub(host, 1, 5) == "unix:" then
+        target_ip = host -- unix domain socket, so just maintain the named values
+
+      else
+        target_ip, target_port = toip(host, port)
+
+        if not target_ip then
+          return nil, "[toip() name lookup failed]: " .. tostring(target_port) -- err
+        end
+      end
+      
+      -- need to do the extra check here: https://github.com/openresty/lua-nginx-module/issues/860
+      if type(target_port) ~= "number" then
+        if not sock_opts then 
+          return old_tcp_connect(sock, target_ip)
+        end
+
+        return old_tcp_connect(sock, target_ip, sock_opts)
       end
 
-      -- need to do the extra check here: https://github.com/openresty/lua-nginx-module/issues/860
       if not sock_opts then
         return old_tcp_connect(sock, target_ip, target_port)
       end
@@ -316,6 +332,10 @@ return function(options)
         end
       end
 
+      if type(target_port) ~= "number" then
+        return old_udp_setpeername(sock, target_ip)
+      end
+      
       return old_udp_setpeername(sock, target_ip, target_port)
     end
 
