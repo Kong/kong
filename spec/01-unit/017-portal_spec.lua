@@ -1,7 +1,6 @@
 local helpers        = require "spec.helpers"
 local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local conf_loader    = require "kong.conf_loader"
-local meta           = require "kong.enterprise_edition.meta"
 local ee             = require "kong.enterprise_edition"
 
 local pl_file = require "pl.file"
@@ -71,23 +70,8 @@ describe("portal_gui", function()
   end)
 
   describe("prepare_prefix", function()
-    local mock_idx = [[
-      <meta name="KONG:PORTAL_AUTH" content="{{PORTAL_AUTH}}" />
-      <meta name="KONG:PORTAL_GUI_URL" content="{{PORTAL_GUI_URL}}" />
-      <meta name="KONG:PROXY_URL" content="{{PROXY_URL}}" />
-      <meta name="KONG:PORTAL_GUI_PORT" content="{{PORTAL_GUI_PORT}}" />
-      <meta name="KONG:PORTAL_GUI_SSL_PORT" content="{{PORTAL_GUI_SSL_PORT}}" />
-      <meta name="KONG:PORTAL_API_PORT" content="{{PORTAL_API_PORT}}" />
-      <meta name="KONG:PORTAL_API_SSL_PORT" content="{{PORTAL_API_SSL_PORT}}" />
-      <meta name="KONG:RBAC_ENFORCED" content="{{RBAC_ENFORCED}}" />
-      <meta name="KONG:RBAC_HEADER" content="{{RBAC_HEADER}}" />
-      <meta name="KONG:KONG_VERSION" content="{{KONG_VERSION}}" />
-    ]]
-
     local mock_prefix  = "servroot"
-    local idx_filename = mock_prefix .. "/portal/index.html"
-    local tp_filename  = mock_prefix .. "/portal/index.html.tp-" ..
-                         tostring(meta.versions.package)
+    local idx_filename = mock_prefix .. "/portal/kconfig.js"
 
     local conf = {
       prefix = mock_prefix,
@@ -123,54 +107,30 @@ describe("portal_gui", function()
     }
 
     setup(function()
-      helpers.prepare_prefix(mock_prefix)
-
-      -- create a mock gui folder
-      pl_path.mkdir(mock_prefix .. "/portal")
+      helpers.execute("rm -f " .. idx_filename)
+      ee.prepare_portal(conf)
       assert(pl_path.isdir(mock_prefix))
-
-      -- write a mock index.html
-      pl_file.write(idx_filename, mock_idx)
-      assert(not pl_path.isfile(tp_filename))
       assert(pl_path.isfile(idx_filename))
     end)
 
     teardown(function()
-      if pl_path.isfile(tp_filename) then
-        pl_file.delete(tp_filename)
-      end
       if pl_path.isfile(idx_filename) then
         pl_file.delete(idx_filename)
       end
     end)
 
     it("inserts the appropriate values", function()
-      ee.prepare_portal(conf)
       local portal_idx = pl_file.read(idx_filename)
 
-      assert.matches('<meta name="KONG:PORTAL_AUTH" content="basic-auth" />', portal_idx, nil, true)
-      assert.matches('<meta name="KONG:PORTAL_GUI_URL" content="" />', portal_idx, nil, true)
-      assert.matches('<meta name="KONG:PROXY_URL" content="" />', portal_idx, nil, true)
-      assert.matches('<meta name="KONG:PORTAL_GUI_PORT" content="8003" />', portal_idx, nil, true)
-      assert.matches('<meta name="KONG:PORTAL_GUI_SSL_PORT" content="8446" />', portal_idx, nil, true)
-      assert.matches('<meta name="KONG:PORTAL_API_PORT" content="8000" />', portal_idx, nil, true)
-      assert.matches('<meta name="KONG:PORTAL_API_SSL_PORT" content="8443" />', portal_idx, nil, true)
-      assert.matches('<meta name="KONG:RBAC_ENFORCED" content="false" />', portal_idx, nil, true)
-      assert.matches('<meta name="KONG:RBAC_HEADER" content="Kong-Admin-Token" />', portal_idx, nil, true)
-    end)
-
-    it("retains a template with the template placeholders", function()
-      local gui_idx_tpl = pl_file.read(tp_filename)
-
-      assert.matches('<meta name="KONG:PORTAL_AUTH" content="{{PORTAL_AUTH}}" />', gui_idx_tpl, nil, true)
-      assert.matches('<meta name="KONG:PORTAL_GUI_URL" content="{{PORTAL_GUI_URL}}" />', gui_idx_tpl, nil, true)
-      assert.matches('<meta name="KONG:PROXY_URL" content="{{PROXY_URL}}" />', gui_idx_tpl, nil, true)
-      assert.matches('<meta name="KONG:PORTAL_GUI_PORT" content="{{PORTAL_GUI_PORT}}" />', gui_idx_tpl, nil, true)
-      assert.matches('<meta name="KONG:PORTAL_GUI_SSL_PORT" content="{{PORTAL_GUI_SSL_PORT}}" />', gui_idx_tpl, nil, true)
-      assert.matches('<meta name="KONG:PORTAL_API_PORT" content="{{PORTAL_API_PORT}}" />', gui_idx_tpl, nil, true)
-      assert.matches('<meta name="KONG:PORTAL_API_SSL_PORT" content="{{PORTAL_API_SSL_PORT}}" />', gui_idx_tpl, nil, true)
-      assert.matches('<meta name="KONG:RBAC_ENFORCED" content="{{RBAC_ENFORCED}}" />', gui_idx_tpl, nil, true)
-      assert.matches('<meta name="KONG:RBAC_HEADER" content="{{RBAC_HEADER}}" />', gui_idx_tpl, nil, true)
+      assert.matches("'PORTAL_AUTH': 'basic-auth'", portal_idx, nil, true)
+      assert.matches("'PORTAL_GUI_URL': ''", portal_idx, nil, true)
+      assert.matches("'PROXY_URL': ''", portal_idx, nil, true)
+      assert.matches("'PORTAL_GUI_PORT': '8003'", portal_idx, nil, true)
+      assert.matches("'PORTAL_GUI_SSL_PORT': '8446'", portal_idx, nil, true)
+      assert.matches("'PORTAL_API_PORT': '8000'", portal_idx, nil, true)
+      assert.matches("'PORTAL_API_SSL_PORT': '8443'", portal_idx, nil, true)
+      assert.matches("'RBAC_ENFORCED': 'false'", portal_idx, nil, true)
+      assert.matches("'RBAC_HEADER': 'Kong-Admin-Token'", portal_idx, nil, true)
     end)
 
     it("inserts new values when called again", function()
@@ -185,14 +145,14 @@ describe("portal_gui", function()
       local portal_idx = pl_file.read(idx_filename)
 
       -- test configuration values against template
-      assert.matches('<meta name="KONG:PORTAL_GUI_URL" content="http://insecure.domain.com" />', portal_idx, nil, true)
-      assert.matches('<meta name="KONG:PROXY_URL" content="http://127.0.0.1:8000" />', portal_idx, nil, true)
-      assert.matches('<meta name="KONG:PORTAL_GUI_PORT" content="8003" />', portal_idx, nil, true)
-      assert.matches('<meta name="KONG:PORTAL_GUI_SSL_PORT" content="8446" />', portal_idx, nil, true)
-      assert.matches('<meta name="KONG:PORTAL_API_PORT" content="8000" />', portal_idx, nil, true)
-      assert.matches('<meta name="KONG:PORTAL_API_SSL_PORT" content="8443" />', portal_idx, nil, true)
-      assert.matches('<meta name="KONG:RBAC_ENFORCED" content="false" />', portal_idx, nil, true)
-      assert.matches('<meta name="KONG:RBAC_HEADER" content="Kong-Admin-Token" />', portal_idx, nil, true)
+      assert.matches("'PORTAL_GUI_URL': 'http://insecure.domain.com'", portal_idx, nil, true)
+      assert.matches("'PROXY_URL': 'http://127.0.0.1:8000'", portal_idx, nil, true)
+      assert.matches("'PORTAL_GUI_PORT': '8003'", portal_idx, nil, true)
+      assert.matches("'PORTAL_GUI_SSL_PORT': '8446'", portal_idx, nil, true)
+      assert.matches("'PORTAL_API_PORT': '8000'", portal_idx, nil, true)
+      assert.matches("'PORTAL_API_SSL_PORT': '8443'", portal_idx, nil, true)
+      assert.matches("'RBAC_ENFORCED': 'false'", portal_idx, nil, true)
+      assert.matches("'RBAC_HEADER': 'Kong-Admin-Token'", portal_idx, nil, true)
     end)
   end)
 end)
