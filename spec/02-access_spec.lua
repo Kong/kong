@@ -4,13 +4,15 @@ local pl_file = require "pl.file"
 local meta    = require "kong.meta"
 
 
-local server_tokens = meta._SERVER_TOKENS
+local server_header = meta._NAME .. "/" .. meta._VERSION
 
 
 describe("forward-proxy access", function()
   local client
 
   setup(function()
+    assert(helpers.dao:run_migrations())
+
     local api1 = assert(helpers.dao.apis:insert {
       name         = "api-1",
       hosts        = { "api-1.com" },
@@ -42,8 +44,8 @@ describe("forward-proxy access", function()
     })
 
     assert(helpers.start_kong({
-      plugins    = "forward-proxy",
-      nginx_conf = "spec/fixtures/custom_nginx.template",
+      custom_plugins = "forward-proxy",
+      nginx_conf     = "spec/fixtures/custom_nginx.template",
     }))
 
     client = helpers.proxy_client()
@@ -65,7 +67,6 @@ describe("forward-proxy access", function()
         host = "api-1.com",
       },
     })
-
 
     assert.res_status(200, res)
   end)
@@ -131,6 +132,7 @@ describe("forward-proxy access", function()
     })
 
     assert.res_status(500, res)
+
     local err_log = pl_file.read(helpers.test_conf.nginx_err_logs)
     assert.matches("failed to connect to proxy: ", err_log, nil, true)
   end)
@@ -163,7 +165,7 @@ describe("forward-proxy access", function()
       },
     })
 
-    assert.equal(server_tokens, res.headers["Via"])
+    assert.equal(server_header, res.headers["Via"])
   end)
 
 end)

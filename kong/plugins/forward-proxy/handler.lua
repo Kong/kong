@@ -1,7 +1,5 @@
 local BasePlugin = require "kong.plugins.base_plugin"
-local singletons = require "kong.singletons"
 local responses  = require "kong.tools.responses"
-local constants  = require "kong.constants"
 local meta       = require "kong.meta"
 local http       = require "resty.http"
 local handler    = require "kong.core.handler"
@@ -15,7 +13,7 @@ local ngx_req_get_method  = ngx.req.get_method
 
 
 local _prefix_log = "[forward-proxy] "
-local server_header = meta._SERVER_TOKENS
+local server_header = meta._NAME .. "/" .. meta._VERSION
 
 
 local ForwardProxyHandler = BasePlugin:extend()
@@ -31,6 +29,8 @@ end
 
 
 function ForwardProxyHandler:access(conf)
+  ForwardProxyHandler.super.access(self)
+
   -- connect to the proxy
   local httpc = http:new()
 
@@ -52,22 +52,20 @@ function ForwardProxyHandler:access(conf)
   -- ... yep, this does exactly what you think it would
   handler.access.after(ctx)
 
-  local res, err = httpc:request({
+  local res
+  res, err = httpc:request({
     method  = ngx_req_get_method(),
     path    = "http://" .. var.upstream_host .. var.upstream_uri,
     headers = ngx_req_get_headers(),
     body    = httpc:get_client_body_reader(),
   })
-
   if not res then
     log(ERR, _prefix_log, "failed to send proxy request: ", err)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
 
   local callback = function()
-    if singletons.configuration.enabled_headers[constants.HEADERS.VIA] then
-      ngx.header[constants.HEADERS.VIA] = server_header
-    end
+    ngx.header["Via"] = server_header
 
     httpc:proxy_response(res)
     httpc:set_keepalive()
@@ -75,7 +73,6 @@ function ForwardProxyHandler:access(conf)
     return ngx.exit(res.status)
   end
 
-  local ctx = ngx.ctx
   if ctx.delay_response and not ctx.delayed_response then
     ctx.delayed_response = {}
     ctx.delayed_response_callback = callback
