@@ -120,9 +120,10 @@ for _, strategy in helpers.each_strategy('postgres') do
 
       describe("/_kong/portal/files without auth", function()
         before_each(function()
+          helpers.stop_kong()
+
           dao:truncate_tables()
 
-          helpers.stop_kong()
           helpers.register_consumer_relations(dao)
 
           assert(helpers.start_kong({
