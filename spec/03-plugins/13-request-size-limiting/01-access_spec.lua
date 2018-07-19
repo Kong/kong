@@ -11,7 +11,7 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
 
     setup(function()
-      local bp, _, dao = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy)
 
       local route = bp.routes:insert {
         hosts = { "limit.com" },

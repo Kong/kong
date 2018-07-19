@@ -8,7 +8,7 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
 
     setup(function()
-      local bp, _, dao = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy)
 
         local anonymous_user = bp.consumers:insert {
           username = "no-body",
@@ -469,7 +469,7 @@ for _, strategy in helpers.each_strategy() do
     local anonymous
 
     setup(function()
-      local bp, _, dao = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy)
 
 
       local route1 = bp.routes:insert {

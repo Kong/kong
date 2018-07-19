@@ -22,11 +22,11 @@ end
 
 
 describe("Plugin: rate-limiting (integration)", function()
-  local client, dao
+  local client
 
   setup(function()
     -- only to run migrations
-    dao = select(3, helpers.get_db_utils())
+    select(3, helpers.get_db_utils())
   end)
 
   teardown(function()

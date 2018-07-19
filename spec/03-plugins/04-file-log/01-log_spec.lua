@@ -14,7 +14,7 @@ for _, strategy in helpers.each_strategy() do
     local proxy_client
 
     setup(function()
-      local bp, _, dao = helpers.get_db_utils(strategy)
+      local bp, _, _ = helpers.get_db_utils(strategy)
 
       local route = bp.routes:insert {
         hosts = { "file_logging.com" },

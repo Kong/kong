@@ -3,14 +3,14 @@ local cjson = require "cjson"
 
 
 describe("Plugins overwrite:", function()
-  local bp, _, dao
+  local bp
   local client
 
   describe("[key-auth]", function()
     describe("by default key_in_body", function()
 
       setup(function()
-        bp, _, dao = helpers.get_db_utils()
+        bp = helpers.get_db_utils()
         assert(helpers.start_kong())
         client = helpers.admin_client()
       end)
@@ -81,7 +81,7 @@ describe("Plugins overwrite:", function()
     describe("with feature-flag 'key_auth_disable_key_in_body=on', key_in_body", function()
 
       setup(function()
-        bp, _, _ = helpers.get_db_utils()
+        bp = helpers.get_db_utils()
         assert(helpers.start_kong{
           feature_conf_path = "spec/fixtures/ee/feature_key_auth.conf",
         })
@@ -180,7 +180,7 @@ describe("Plugins overwrite:", function()
       setup(function()
         assert(helpers.start_kong())
         client = helpers.admin_client()
-        bp, _, dao = helpers.get_db_utils()
+        bp = helpers.get_db_utils()
       end)
 
       teardown(helpers.stop_kong)
@@ -253,7 +253,7 @@ describe("Plugins overwrite:", function()
           feature_conf_path = "spec/fixtures/ee/feature_hmac_auth.conf",
         })
         client = helpers.admin_client()
-        bp, _, dao = helpers.get_db_utils()
+        bp = helpers.get_db_utils()
       end)
 
       teardown(helpers.stop_kong)
@@ -348,7 +348,7 @@ describe("Plugins overwrite:", function()
       setup(function()
         assert(helpers.start_kong())
         client = helpers.admin_client()
-        bp, _, dao = helpers.get_db_utils()
+        bp = helpers.get_db_utils()
       end)
 
       teardown(helpers.stop_kong)
@@ -423,7 +423,7 @@ describe("Plugins overwrite:", function()
           feature_conf_path = "spec/fixtures/ee/feature_rate_limit_plugins.conf",
         })
         client = helpers.admin_client()
-        bp, _, dao = helpers.get_db_utils()
+        bp = helpers.get_db_utils()
       end)
 
       teardown(helpers.stop_kong)
@@ -527,7 +527,7 @@ describe("Plugins overwrite:", function()
       setup(function()
         assert(helpers.start_kong())
         client = helpers.admin_client()
-        bp, _, dao = helpers.get_db_utils()
+        bp = helpers.get_db_utils()
       end)
 
       teardown(helpers.stop_kong)
@@ -607,7 +607,7 @@ describe("Plugins overwrite:", function()
           feature_conf_path = "spec/fixtures/ee/feature_rate_limit_plugins.conf",
         })
         client = helpers.admin_client()
-        bp, _, dao = helpers.get_db_utils()
+        bp = helpers.get_db_utils()
       end)
 
       teardown(helpers.stop_kong)

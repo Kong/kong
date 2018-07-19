@@ -8,7 +8,7 @@ for _, strategy in helpers.each_strategy() do
     local consumer
 
     setup(function()
-      local bp, _, dao = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy)
 
       bp.routes:insert({
         hosts = { "api1.request-termination.com" },

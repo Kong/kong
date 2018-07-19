@@ -7,10 +7,10 @@ local helpers = require "spec.helpers"
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: rate-limiting (API) [#" .. strategy .. "]", function()
     local admin_client
-    local bp, _, dao
+    local bp
 
     setup(function()
-      bp, _, dao = helpers.get_db_utils(strategy)
+      bp = helpers.get_db_utils(strategy)
     end)
 
     teardown(function()

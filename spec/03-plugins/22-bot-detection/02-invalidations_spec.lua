@@ -21,6 +21,7 @@ for _, strategy in helpers.each_strategy() do
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
+    end)
 
     teardown(function()
       helpers.stop_kong()

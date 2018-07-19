@@ -8,7 +8,7 @@ local default_server_header = _KONG._NAME .. "/" .. _KONG._VERSION
 for _, strategy in helpers.each_strategy() do
   describe("Server Tokens [#" .. strategy .. "]", function()
     local proxy_client
-    local bp, dao
+    local bp
 
     local function start(config)
       return function()
@@ -25,7 +25,7 @@ for _, strategy in helpers.each_strategy() do
     end
 
     setup(function()
-      bp, _, dao = helpers.get_db_utils(strategy)
+      bp = helpers.get_db_utils(strategy)
     end)
 
     before_each(function()
@@ -172,7 +172,7 @@ for _, strategy in helpers.each_strategy() do
     end
 
     setup(function()
-      bp, _, dao  = helpers.get_db_utils(strategy)
+      bp = helpers.get_db_utils(strategy)
     end)
 
 

@@ -22,7 +22,7 @@ for _, strategy in helpers.each_strategy() do
     local credential
 
     setup(function()
-      local bp, _, dao = helpers.get_db_utils(strategy)
+      local bp = helpers.get_db_utils(strategy)
 
       local route1 = bp.routes:insert {
         hosts = { "hmacauth.com" },

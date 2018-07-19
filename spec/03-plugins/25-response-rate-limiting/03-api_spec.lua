@@ -5,10 +5,10 @@ local cjson   = require "cjson"
 for _, strategy in helpers.each_strategy() do
   describe("Plugin: response-rate-limiting (API) [#" .. strategy .. "]", function()
     local admin_client
-    local bp, _, dao
+    local bp
 
     setup(function()
-      bp, _, dao = helpers.get_db_utils(strategy)
+      bp = helpers.get_db_utils(strategy)
     end)
 
     teardown(function()
