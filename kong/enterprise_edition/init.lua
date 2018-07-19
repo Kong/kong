@@ -1,4 +1,5 @@
 local cjson      = require "cjson.safe"
+local log        = require "kong.cmd.utils.log"
 local meta       = require "kong.enterprise_edition.meta"
 local pl_file    = require "pl.file"
 local pl_utils   = require "pl.utils"
