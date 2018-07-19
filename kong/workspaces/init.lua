@@ -963,16 +963,16 @@ end
 -- have to search first in the relationship table
 function _M.resolve_shared_entity_id(table_name, params, constraints)
   if unique_accross_ws[table_name] then
-    return true
+    return
   end
 
   local ws_scope = get_workspaces()
   if #ws_scope == 0 then
-    return true
+    return
   end
 
   if not constraints or not constraints.unique_keys then
-    return true
+    return
   end
 
   for k, v in pairs(params) do
@@ -998,7 +998,6 @@ function _M.resolve_shared_entity_id(table_name, params, constraints)
       end
     end
   end
-  return true
 end
 
 

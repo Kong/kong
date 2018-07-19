@@ -254,8 +254,8 @@ function DAO:find(tbl)
 
   local table_name = self.table
   local constraints = workspaceable[table_name]
-  local ok, err = resolve_shared_entity_id(table_name, tbl, constraints)
-  if not ok then
+  local _, err = resolve_shared_entity_id(table_name, tbl, constraints)
+  if err then
     return ret_error(self.db.name, nil, Errors.schema(err))
   end
 
@@ -327,8 +327,12 @@ function DAO:find_all(tbl, include_ws)
 
     -- now search in the relationship table
     local ok, err = resolve_shared_entity_id(table_name, tbl, constraints)
-    if not ok then
+    if err then
       return ret_error(self.db.name, nil, Errors.schema(err))
+    end
+
+    if not ok then
+      tbl = params
     end
   end
 
@@ -372,8 +376,8 @@ function DAO:find_page(tbl, page_offset, page_size, options)
       return ret_error(self.db.name, nil, Errors.schema(err))
     end
 
-     local ok, err = resolve_shared_entity_id(table_name, tbl, constraints)
-     if not ok then
+     local _, err = resolve_shared_entity_id(table_name, tbl, constraints)
+     if err then
        return ret_error(self.db.name, nil, Errors.schema(err))
      end
   end
@@ -421,8 +425,8 @@ function DAO:count(tbl)
       return ret_error(self.db.name, nil, Errors.schema(err))
     end
 
-    local ok, err = resolve_shared_entity_id(table_name, tbl, constraints)
-    if not ok then
+    local _, err = resolve_shared_entity_id(table_name, tbl, constraints)
+    if err then
       return ret_error(self.db.name, nil, Errors.schema(err))
     end
   end

@@ -124,6 +124,17 @@ for _, strategy in helpers.each_strategy() do
         })
         assert.res_status(200, res)
       end)
+      it("should not allow workspace prefix in key", function()
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/anything",
+          headers = {
+            ["Host"] = "api1.com",
+            ["apikey"] = "default:kong",
+          }
+        })
+        assert.res_status(403, res)
+      end)
       it("cache added for plugin in default workspace", function()
         local cache_key = dao.plugins:cache_key_ws(ws_default,
                                                    "key-auth",
