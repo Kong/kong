@@ -117,7 +117,10 @@ local function write_kconfig(configs, filename)
   -- remove trailing comma
   kconfig_str = kconfig_str:sub(1, -3)
 
-  pl_file.write(filename, kconfig_str .. "\n}\n")
+  if not pl_file.write(filename, kconfig_str .. "\n}\n") then
+    log.warn("Could not write file ".. filename .. ". Ensure that the Kong " ..
+             "CLI user has permissions to write to this directory")
+  end
 end
 
 
@@ -129,7 +132,12 @@ local function prepare_interface(interface_dir, interface_env, kong_config)
 
   if not pl_path.exists(interface_path)
      and not pl_path.exists(usr_interface_path) then
-    pl_path.mkdir(interface_path)
+
+      if not pl_path.mkdir(interface_path) then
+        log.warn("Could not create directory " .. interface_path .. ". " ..
+                 "Ensure that the Kong CLI user has permissions to create " ..
+                 "this directory.")
+      end
   end
 
   -- if the interface directory does not exist, try symlinking it to its default
