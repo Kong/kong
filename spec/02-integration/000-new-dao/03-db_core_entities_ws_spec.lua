@@ -33,7 +33,7 @@ for _, strategy in helpers.each_strategy() do
 
     setup(function()
       ngx.ctx.workspaces = nil
-      bp, db, dao = helpers.get_db_utils(strategy, true)
+      bp, db, dao = helpers.get_db_utils(strategy)
     end)
 
     teardown(function()
