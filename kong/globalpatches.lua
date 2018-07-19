@@ -288,39 +288,36 @@ return function(options)
     local old_tcp_connect
     local old_udp_setpeername
 
-    local function tcp_resolve_connect(sock, host, port, sock_opts)
-      if sub(host, 1, 5) == "unix:" then
-        if not sock_opts then 
-          return old_tcp_connect(sock, host)
-        end
-
-        return old_tcp_connect(sock, host, sock_opts)
+  -- need to do the extra check here: https://github.com/openresty/lua-nginx-module/issues/860
+    local function strip_nils(port, opts)
+      if port and opts then
+        return port, opts
+      elseif opts then
+        return opts
+      elseif port then
+        return port
       end
+    end
 
-      local target_ip, target_port = toip(host, port)
+    local function resolve_connect(f, sock, host, port, sock_opts)
+      local target_ip, target_port
+      if sub(host, 1, 5) == "unix:" then
+        target_ip = host
+      else
+        target_ip, target_port = toip(host, port)
+      end
       if not target_ip then
         return nil, "[toip() name lookup failed]: " .. tostring(target_port)
       end
+      return f(sock, target_ip, strip_nils(target_port, sock_opts))
+    end
 
-      -- need to do the extra check here: https://github.com/openresty/lua-nginx-module/issues/860
-      if not sock_opts then
-        return old_tcp_connect(sock, target_ip, target_port)
-      end
-
-      return old_tcp_connect(sock, target_ip, target_port, sock_opts)
+    local function tcp_resolve_connect(sock, host, port, sock_opts)
+      return resolve_connect(old_tcp_connect, sock, host, port, sock_opts)
     end
 
     local function udp_resolve_setpeername(sock, host, port)
-      if sub(host, 1, 5) == "unix:" then
-        return old_udp_setpeername(sock, host) -- unix domain socket, so just maintain the named values and call connect without port
-      end
-
-      local target_ip, target_port = toip(host, port)
-      if not target_ip then
-        return nil, "[toip() name lookup failed]: " .. tostring(target_port) -- err
-      end
-      
-      return old_udp_setpeername(sock, target_ip, target_port)
+      return resolve_connect(old_udp_setpeername, sock, host, port)
     end
 
     -- STEP 4: patch globals
