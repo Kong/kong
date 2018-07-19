@@ -8,10 +8,11 @@ local default_server_header = _KONG._NAME .. "/" .. _KONG._VERSION
 for _, strategy in helpers.each_strategy() do
   describe("Server Tokens [#" .. strategy .. "]", function()
     local proxy_client
-    local bp
+    local bp, dao
 
     local function start(config)
       return function()
+        helpers.with_current_ws(nil, function()
         bp.routes:insert {
           hosts = { "headers-inspect.com" },
         }
@@ -21,11 +22,12 @@ for _, strategy in helpers.each_strategy() do
         config.nginx_conf = "spec/fixtures/custom_nginx.template"
 
         assert(helpers.start_kong(config))
+        end, dao)
       end
     end
 
     setup(function()
-      bp = helpers.get_db_utils(strategy)
+      bp, _, dao = helpers.get_db_utils(strategy)
     end)
 
     before_each(function()
@@ -155,13 +157,15 @@ for _, strategy in helpers.each_strategy() do
 
   describe("Latency Tokens", function()
     local proxy_client
-    local bp
+    local bp, dao -- luacheck: ignore
 
     local function start(config)
       return function()
+        helpers.with_current_ws(nil, function()
         bp.routes:insert {
           hosts = { "headers-inspect.com" },
         }
+        end, dao)
 
         config = config or {}
         config.database   = strategy
@@ -172,7 +176,7 @@ for _, strategy in helpers.each_strategy() do
     end
 
     setup(function()
-      bp = helpers.get_db_utils(strategy)
+      bp, _, dao = helpers.get_db_utils(strategy)
     end)
 
 
