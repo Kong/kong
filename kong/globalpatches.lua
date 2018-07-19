@@ -299,7 +299,7 @@ return function(options)
 
       local target_ip, target_port = toip(host, port)
       if not target_ip then
-        return nil, "[toip() name lookup failed]: " .. tostring(target_port) -- err
+        return nil, "[toip() name lookup failed]: " .. tostring(target_port)
       end
 
       -- need to do the extra check here: https://github.com/openresty/lua-nginx-module/issues/860
