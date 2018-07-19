@@ -512,13 +512,14 @@ function _M.delete_entity_relation(table_name, entity)
 
   local res, err = dao.workspace_entities:find_all({
     entity_id = entity[constraints.primary_key],
+    __skip_rbac = true
   })
   if err then
     return err
   end
 
   for _, row in ipairs(res) do
-    local _, err = dao.workspace_entities:delete(row)
+    local _, err = dao.workspace_entities:delete(row, {__skip_rbac = true})
     if err then
       return err
     end

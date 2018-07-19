@@ -434,6 +434,43 @@ function _M.create_default_role(user)
 end
 
 
+-- helpers: remove entity and endpoint relation when
+-- a role is removed
+local function role_relation_cleanup(role)
+  local dao = singletons.dao
+  -- delete the role <-> entity mappings
+  local entities, err = dao.rbac_role_entities:find_all({
+    role_id = role.id,
+  })
+  if err then
+    return err
+  end
+
+  for _, entity in ipairs(entities) do
+    local _, err = dao.rbac_role_entities:delete(entity)
+    if err then
+      return err
+    end
+  end
+
+  -- delete the role <-> endpoint mappings
+  local endpoints, err = dao.rbac_role_endpoints:find_all({
+    role_id = role.id,
+  })
+  if err then
+    return err
+  end
+
+  for _, endpoint in ipairs(endpoints) do
+    local _, err = dao.rbac_role_endpoints:delete(endpoint)
+    if err then
+      return err
+    end
+  end
+end
+_M.role_relation_cleanup = role_relation_cleanup
+
+
 -- helpers: remove user from default role; delete the role if the
 -- user was the only one in the role
 function _M.remove_user_from_default_role(user, default_role)
@@ -456,6 +493,11 @@ function _M.remove_user_from_default_role(user, default_role)
 
   -- if count of users in role reached 0, delete it
   if n_users == 0 then
+    local err = role_relation_cleanup(default_role)
+    if err then
+      return nil, err
+    end
+
     local _, err = singletons.dao.rbac_roles:delete({
       id = default_role.id,
       name = default_role.name,
@@ -502,6 +544,38 @@ local function add_default_role_entity_permission(entity, table_name)
   })
 end
 _M.add_default_role_entity_permission = add_default_role_entity_permission
+
+
+-- remove role-entity permission: remove an entity from the role
+-- should be called when entity is deleted or role is removed
+local function delete_role_entity_permission(table_name, entity)
+  local schema
+  local dao = singletons.dao
+  if dao[table_name] then -- old dao
+    schema = dao[table_name].schema
+
+  else -- new dao
+    schema = singletons.db.daos[table_name].schema
+  end
+
+  local entity_id = schema.primary_key[1]
+
+  local res, err = dao.rbac_role_entities:find_all({
+    entity_id = entity[entity_id],
+    entity_type = table_name,
+  })
+  if err then
+    return err
+  end
+
+  for _, row in ipairs(res) do
+    local _, err = dao.rbac_role_entities:delete(row)
+    if err then
+      return err
+    end
+  end
+end
+_M.delete_role_entity_permission = delete_role_entity_permission
 
 
 function _M.narrow_readable_entities(db_table_name, entities)

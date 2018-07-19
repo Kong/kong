@@ -645,6 +645,12 @@ function DAO:delete(tbl, options)
               "could not delete entity relationship with workspace: ",
               err)
           end
+
+          local err = rbac.delete_role_entity_permission(k, entity)
+          if err then
+            ngx.log(ngx.ERR, "could not delete entity relationship with role: ",
+              err)
+          end
         end
       end
     end
@@ -654,6 +660,12 @@ function DAO:delete(tbl, options)
     if err then
       ngx.log(ngx.ERR,
         "could not delete entity relationship with workspace: ",
+        err)
+    end
+
+    local err = rbac.delete_role_entity_permission(self.table, tbl)
+    if err then
+      ngx.log(ngx.ERR, "could not delete entity relationship with role: ",
         err)
     end
   end

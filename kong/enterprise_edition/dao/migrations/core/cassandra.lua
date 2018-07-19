@@ -430,4 +430,10 @@ return {
       DELETE FROM consumer_types;
     ]]
   },
+  {
+    name = "2018-07-18-110000_rbac_role_entities",
+    up = [[
+      CREATE INDEX IF NOT EXISTS ON rbac_role_entities(entity_type);
+    ]],
+  },
 }

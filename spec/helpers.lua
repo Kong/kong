@@ -148,6 +148,7 @@ local function get_db_utils(strategy, no_truncate)
     -- argument, the existing value might be for a different strategy
     -- (e.g., this module's module-leveldao, which defaults for postgres)
     singletons.dao = dao
+    singletons.db = db
 
     assert(dao:run_migrations())
     if not no_truncate then

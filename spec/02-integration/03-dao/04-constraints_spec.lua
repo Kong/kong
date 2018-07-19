@@ -18,6 +18,7 @@ dao_helpers.for_each_dao(function(kong_config)
 
       dao = assert(Factory.new(kong_config, db))
       singletons.dao = dao
+      singletons.db = db
       assert(dao:run_migrations())
     end)
 

@@ -104,8 +104,15 @@ function _Routes_ee:delete(primary_key)
       local err = workspaces.delete_entity_relation("plugins", plugins[i])
       if err then
         return nil, self.errors:database_error("could not delete Plugin relationship " ..
-          "with Workspace: " .. err)
+                                               "with Workspace: " .. err)
       end
+
+      err = rbac.delete_role_entity_permission("plugins", plugins[i])
+      if err then
+        return nil, self.errors:database_error("could not delete Plugin relationship " ..
+                                               "with Role: " .. err)
+      end
+
     end
   end
 
@@ -113,7 +120,13 @@ function _Routes_ee:delete(primary_key)
     local err = workspaces.delete_entity_relation("routes", primary_key)
     if err then
       return nil, self.errors:database_error("could not delete Route relationship " ..
-        "with Workspace: " .. err)
+                                             "with Workspace: " .. err)
+    end
+
+    err = rbac.delete_role_entity_permission("routes", primary_key)
+    if err then
+      return nil, self.errors:database_error("could not delete Route relationship " ..
+                                             "with Role: " .. err)
     end
   end
 

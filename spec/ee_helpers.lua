@@ -61,6 +61,13 @@ function _M.register_rbac_resources(dao)
     comment = "Full CRUD access to all initial resources, including RBAC entities",
   })
 
+  dao.rbac_role_entities:insert({
+    role_id = roles.super_admin.id,
+    entity_id = "*",
+    entity_type = "wildcard",
+    actions = action_bits_all, -- all actions
+  })
+
   dao.rbac_role_endpoints:insert({
     role_id = roles.super_admin.id,
     workspace = "*",

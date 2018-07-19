@@ -45,7 +45,13 @@ local function delete_cascade_ws(entities, table_name, errors, ws)
     local err = workspaces.delete_entity_relation(table_name, entities[i])
     if err then
       return nil, errors:database_error("could not delete " .. table_name ..
-        " relationship with Workspace: " .. err)
+                                        " relationship with Workspace: " .. err)
+    end
+
+    err = rbac.delete_role_entity_permission(table_name, entities[i])
+    if err then
+      return nil, errors:database_error("could not delete " .. table_name ..
+                                        " relationship with Role: " .. err)
     end
   end
 
@@ -93,8 +99,14 @@ function _Services_ee:delete(primary_key)
   if ok and ws then
     local err = workspaces.delete_entity_relation("services", primary_key)
     if err then
-      return nil, self.errors:database_error("could not delete Route relationship " ..
+      return nil, self.errors:database_error("could not delete Services relationship " ..
                                              "with Workspace: " .. err)
+    end
+
+    err = rbac.delete_role_entity_permission("services", primary_key)
+    if err then
+      return nil, self.errors:database_error("could not delete Services relationship " ..
+                                             "with Role: " .. err)
     end
   end
 

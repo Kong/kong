@@ -335,6 +335,11 @@ return {
         })
       end
 
+      local err = rbac.role_relation_cleanup(self.rbac_role)
+      if err then
+        return nil, err
+      end
+
       crud.delete(self.rbac_role, dao_factory.rbac_roles)
     end,
   },
