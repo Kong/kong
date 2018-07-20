@@ -64,18 +64,18 @@ local function new_namespace(config, init_timer)
     local dict_name = config.dictionary_name
     if dict_name == nil then
       dict_name = schema.fields.dictionary_name.default
-      ngx.log(ngx.WARN, "[rate-limiting] no shared dictionary was specified.",
+      ngx.log(ngx.WARN, "[rate-limiting-advanced] no shared dictionary was specified.",
         " Trying the default value '", dict_name, "'...")
     end
 
     -- if dictionary name was passed but doesn't exist, fallback to kong
     if ngx.shared[dict_name] == nil then
-      ngx.log(ngx.NOTICE, "[rate-limiting] specified shared dictionary '", dict_name,
+      ngx.log(ngx.NOTICE, "[rate-limiting-advanced] specified shared dictionary '", dict_name,
         "' doesn't exist. Falling back to the 'kong' shared dictionary")
       dict_name = "kong"
     end
 
-    ngx.log(ngx.NOTICE, "[rate-limiting] using shared dictionary '"
+    ngx.log(ngx.NOTICE, "[rate-limiting-advanced] using shared dictionary '"
                          .. dict_name .. "'")
 
     ratelimiting.new({
@@ -127,7 +127,7 @@ function NewRLHandler:init_worker()
   -- to start with, load existing plugins and create the
   -- namespaces/sync timers
   local plugins, err = dao_factory.plugins:find_all({
-    name = "rate-limiting",
+    name = "rate-limiting-advanced",
   })
   if err then
     ngx.log(ngx.ERR, "err in fetching plugins: ", err)
@@ -150,7 +150,7 @@ function NewRLHandler:init_worker()
 
   -- catch any plugins update and forward config data to each worker
   worker_events.register(function(data)
-    if data.entity.name == "rate-limiting" then
+    if data.entity.name == "rate-limiting-advanced" then
       worker_events.post("rl", data.operation, data.entity.config)
     end
   end, "crud", "plugins")
