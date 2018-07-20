@@ -112,9 +112,28 @@ return {
         end
       end
 
-      -- Setup and Admin user by default if ENV var is set
-      local super_user_role = role
+      -- add endpoint permissions to the super admin role
+      ok, err = dao.rbac_role_endpoints:insert({
+        role_id = role.id,
+        workspace = "*",
+        endpoint = "*",
+        actions = action_bits_all, -- all actions
+      })
+      if not ok then
+        return err
+      end
 
+      ok, err = dao.rbac_role_entities:insert({
+        role_id = role.id,
+        entity_id = "*",
+        entity_type = "wildcard",
+        actions = action_bits_all,
+      })
+      if not ok then
+        return err
+      end
+
+      -- Setup and Admin user by default if ENV var is set
       if os.getenv("KONG_RBAC_INITIAL_ADMIN_PASS") ~= nil then
       -- an old migration in 0.32 (the migration is deleted)
       -- could have already created a kong_admin user, do not overwrite
@@ -139,33 +158,11 @@ return {
         end
         local _, err = dao.rbac_user_roles:insert({
           user_id = user.id,
-          role_id = super_user_role.id
+          role_id = role.id
         })
         if err then
           return err
         end
-      end
-
-
-      -- add endpoint permissions to the super admin role
-      ok, err = dao.rbac_role_endpoints:insert({
-        role_id = role.id,
-        workspace = "*",
-        endpoint = "*",
-        actions = action_bits_all, -- all actions
-      })
-      if not ok then
-        return err
-      end
-
-      ok, err = dao.rbac_role_entities:insert({
-        role_id = role.id,
-        entity_id = "*",
-        entity_type = "wildcard",
-        actions = action_bits_all,
-      })
-      if not ok then
-        return err
       end
   end
 }
