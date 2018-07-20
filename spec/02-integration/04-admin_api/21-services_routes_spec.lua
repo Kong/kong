@@ -309,6 +309,26 @@ for _, strategy in helpers.each_strategy() do
             end
           end)
 
+          it_content_types("updates service by name with existing name", function(content_type)
+            return function()
+              local res = client:patch("/services/" .. service.name, {
+                headers = {
+                  ["Content-Type"] = content_type
+                },
+                body = {
+                  name = service.name
+                },
+              })
+              local body = assert.res_status(200, res)
+              local json = cjson.decode(body)
+              assert.equal(service.id,   json.id)
+              assert.equal(service.name, json.name)
+              with_current_ws(nil, function ()
+                local in_db = assert(db.services:select_by_name(service.name))
+                assert.same(json, in_db)
+              end, dao)
+            end
+          end)
         end)
 
         describe("DELETE", function()
