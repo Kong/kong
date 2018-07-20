@@ -57,7 +57,11 @@ describe("Plugin: udp-log (log)", function()
     local log_message = cjson.decode(res)
 
     assert.True(log_message.latencies.proxy < 3000)
-    assert.True(log_message.latencies.request >= log_message.latencies.kong + log_message.latencies.proxy)
+    local is_latencies_sum_adding_up =
+      1+log_message.latencies.request >= log_message.latencies.kong +
+      log_message.latencies.proxy
+
+    assert.True(is_latencies_sum_adding_up)
   end)
 
   it("logs to UDP", function()

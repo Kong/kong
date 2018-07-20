@@ -300,7 +300,7 @@ function DAO:each(size)
           return nil, tostring(err), err
         end
 
-        local err_t = self.errors:database_error(err)
+        err_t = self.errors:database_error(err)
         return nil, tostring(err_t), err_t
       end
 

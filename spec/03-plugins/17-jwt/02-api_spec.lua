@@ -211,7 +211,7 @@ for _, strategy in helpers.each_strategy() do
       describe("PUT", function()
         it("creates and update", function()
           local res = assert(admin_client:send {
-            method = "POST",
+            method = "PUT",
             path = "/consumers/bob/jwt/",
             body = {},
             headers = {
