@@ -69,17 +69,6 @@ local function map(f, t)
   return r
 end
 
-local function filter(f, t)
-  local r = {}
-  local n = 0
-  for _, x in ipairs(t) do
-    if f(x) then
-      n = n + 1
-      r[n] = x
-    end
-  end
-  return r
-end
 
 -- helper function for permutations
 local function inc(t, pos)
@@ -262,31 +251,44 @@ end
 -- workspaceable entities to the default workspace
 function _M.get_default_workspace_migration()
 
-  local separator = ":"
-  local prefix_separator = format("%s%s", default_workspace, separator)
+  local prefix_separator = format("%s%s", default_workspace, workspace_delimiter)
 
   local function pg_batch_update_entities_with_ws_prefix(dao, relation, constraints)
-    local function update_unique_fields(constraints)
-      return map(function(x)
-                   return format(" %s = '%s' || %s", x, prefix_separator, x)
-                 end,
-                 filter(function(x)
-                          return not constraints.primary_keys[x]
-                        end,
-                        require("pl.tablex").keys(constraints.unique_keys)))
+    local unique_fields_updates = {}
+    local unique_fields_wheres = {}
+    local sample_unique_field
+    for k, _ in pairs(constraints.unique_keys) do
+      if not constraints.primary_keys[k] then
+        sample_unique_field = sample_unique_field or k
+
+        table.insert(unique_fields_updates,
+                     format(" %s = '%s' || %s ",
+                            k,
+                            prefix_separator,
+                            k))
+
+        table.insert(unique_fields_wheres,
+                     format("( %s IS NOT NULL AND %s NOT LIKE '%s%%' )",
+                            k, k, prefix_separator))
+      end
     end
 
     if unique_accross_ws[relation] then
       return
     end
 
-    local unique_fields_updates = update_unique_fields(constraints)
-    if unique_fields_updates[1] then
-      local update_query = format("update %s set %s",
+    if sample_unique_field then
+      local update_query = format("update %s set %s where %s",
                                   relation,
-                                  concat(unique_fields_updates, ", "))
-      dao.db:query(update_query)
+                                  concat(unique_fields_updates, ", "),
+                                  concat(unique_fields_wheres, " or "))
+      local _, err = dao.db:query(update_query)
+      if err then
+        return nil, err
+      end
     end
+
+    return true
   end
 
 
@@ -305,7 +307,6 @@ function _M.get_default_workspace_migration()
       _, err = dao[relation]:update(updates, entity)
     end
     ngx.ctx.workspaces = old_ws
-
     if err then
       return nil, err
     end
@@ -323,6 +324,19 @@ function _M.get_default_workspace_migration()
       {
         name = "2018-02-16-110000_default_workspace_entities",
         up = function(factory, _, dao)
+
+          singletons.dao = singletons.dao or dao
+
+          local _, err = dao:truncate_table("workspace_entities")
+          if err then
+            return err
+          end
+
+          _, err = dao:truncate_table("workspaces")
+          if err then
+            return err
+          end
+
           local default, err = dao.workspaces:insert({
             name = default_workspace,
           })
@@ -334,7 +348,7 @@ function _M.get_default_workspace_migration()
             if dao[relation] then
               local entities, err = dao[relation]:find_all()
               if err then
-                return nil, err
+                return err
               end
 
               for _, entity in ipairs(entities) do
@@ -345,7 +359,7 @@ function _M.get_default_workspace_migration()
                                                             entity[constraints.primary_key],
                                                             relation, k, entity[k])
                       if err then
-                        return nil, err
+                        return err
                       end
                     end
                   end
@@ -356,19 +370,23 @@ function _M.get_default_workspace_migration()
                                                       relation, constraints.primary_key,
                                                       entity[constraints.primary_key])
                 if err then
-                  return nil, err
+                  return err
                 end
 
                 if factory.name == "cassandra" and relation ~= "workspaces" then
-                  cas_update_entity_with_ws_prefix(dao, relation, entity, constraints, default)
+                  local _, err = cas_update_entity_with_ws_prefix(dao, relation, entity, constraints, default)
+                  if err then
+                    return err
+                  end
                 end
-
               end
 
               if factory.name == "postgres" and relation ~= "workspaces" then
-                pg_batch_update_entities_with_ws_prefix(dao, relation, constraints)
+                local _, err = pg_batch_update_entities_with_ws_prefix(dao, relation, constraints)
+                if err then
+                  return err
+                end
               end
-
             end
           end
 
@@ -383,7 +401,7 @@ function _M.get_default_workspace_migration()
                                                     "name",
                                                     entity.name)
               if err then
-                return nil, err
+                return err
               end
 
               _, err = add_entity_relation_db(dao.workspace_entities,
@@ -393,13 +411,24 @@ function _M.get_default_workspace_migration()
                                               "id",
                                               entity.id)
               if err then
-                return nil, err
+                return err
               end
             end
 
-            dao.db:query(format("update services set name = '%s' || name", prefix_separator))
+            local _, err = dao.db:query(
+              format("update services set name = '%s' || name where name NOT LIKE '%s%%'",
+                     prefix_separator,
+                     prefix_separator))
+            if err then
+              return err
+            end
 
-            local routes = dao.db:query("select * from routes;")
+
+            local routes, err = dao.db:query("select * from routes;")
+            if err then
+              return err
+            end
+
             for _, route in ipairs(routes) do
               local _, err = add_entity_relation_db(dao.workspace_entities,
                                                     default,
@@ -408,7 +437,7 @@ function _M.get_default_workspace_migration()
                                                     "id",
                                                     route.id)
               if err then
-                return nil, err
+                return err
               end
             end
 
@@ -417,15 +446,21 @@ function _M.get_default_workspace_migration()
             for rows, err, page in coordinator:iterate("SELECT * FROM services",
                                                        nil,
                                                        {page_size = 1000}) do
+              if err then
+                return err
+              end
               for _, service in ipairs(rows) do
-                local _, err = add_entity_relation_db(dao.workspace_entities,
-                                                      default,
-                                                      service.id,
-                                                      "services",
-                                                      "name",
-                                                      service.name)
+                service.name = string.gsub(service.name, "^" .. prefix_separator, "")
+
+                local _, err = add_entity_relation_db(
+                  dao.workspace_entities,
+                  default,
+                  service.id,
+                  "services",
+                  "name",
+                  service.name)
                 if err then
-                  return nil, err
+                  return err
                 end
 
                 _, err = add_entity_relation_db(dao.workspace_entities,
@@ -435,13 +470,17 @@ function _M.get_default_workspace_migration()
                                                 "id",
                                                 service.id)
                 if err then
-                  return nil, err
+                  return err
                 end
 
                 local q = format("UPDATE services SET name = '%s' WHERE id = %s and partition = 'services';",
                   format("%s%s", prefix_separator, escape_string(service.name)),
-                  service.id)
-                dao.db:query(q)
+                  service.id,
+                  escape_string(service.name))
+                _, err = dao.db:query(q)
+                if err then
+                  return err
+                end
               end
             end
 
@@ -449,11 +488,15 @@ function _M.get_default_workspace_migration()
             for rows, err, page in coordinator:iterate("SELECT * FROM routes",
                                                        nil,
                                                        {page_size = 1000}) do
+              if err then
+                return err
+              end
+
               for _, route in ipairs(rows) do
                 local _, err = add_entity_relation_db(dao.workspace_entities,
                   default, route.id, "routes", "id", route.id)
                 if err then
-                  return nil, err
+                  return err
                 end
               end
             end
