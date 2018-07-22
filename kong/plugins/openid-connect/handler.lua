@@ -230,16 +230,16 @@ local function find_consumer(token, claim, anonymous, consumer_by, ttl)
 end
 
 
-local function set_consumer(consumer, credential, is_anonymous)
+local function set_consumer(ctx, consumer, credential, is_anonymous)
   local head = constants.HEADERS
 
   if consumer then
     log("setting kong consumer context and headers")
 
-    ngx.ctx.authenticated_consumer = consumer
+    ctx.authenticated_consumer = consumer
 
     if credential and credential ~= null then
-      ngx.ctx.authenticated_credential = credential
+      ctx.authenticated_credential = credential
 
     else
       if is_anonymous then
@@ -249,30 +249,38 @@ local function set_consumer(consumer, credential, is_anonymous)
         set_header(head.ANONYMOUS, nil)
 
         if consumer.id and consumer.id ~= null then
-          ngx.ctx.authenticated_credential = {
+          ctx.authenticated_credential = {
             consumer_id = consumer.id
           }
+        else
+          ctx.authenticated_credential = nil
         end
       end
     end
 
     if consumer.id and consumer.id ~= null then
       set_header(head.CONSUMER_ID, consumer.id)
+    else
+      set_header(head.CONSUMER_ID, nil)
     end
 
     if consumer.custom_id and consumer.custom_id ~= null then
       set_header(head.CONSUMER_CUSTOM_ID, consumer.custom_id)
+    else
+      set_header(head.CONSUMER_CUSTOM_ID, nil)
     end
 
     if consumer.username and consumer.username ~= null then
       set_header(head.CONSUMER_USERNAME, consumer.username)
+    else
+      set_header(head.CONSUMER_USERNAME, nil)
     end
 
   else
     log("removing possible remnants of anonymous")
 
-    ngx.ctx.authenticated_consumer   = nil
-    ngx.ctx.authenticated_credential = nil
+    ctx.authenticated_consumer   = nil
+    ctx.authenticated_credential = nil
 
     set_header(head.CONSUMER_ID,        nil)
     set_header(head.CONSUMER_CUSTOM_ID, nil)
@@ -537,7 +545,7 @@ local function set_headers(args, header_key, header_value)
 end
 
 
-local function anonymous_access(anonymous, trusted_client)
+local function anonymous_access(ctx, anonymous, trusted_client)
   local consumer_token = {
     payload = {
       id = anonymous
@@ -556,26 +564,32 @@ local function anonymous_access(anonymous, trusted_client)
 
   local head = constants.HEADERS
 
-  ngx.ctx.authenticated_consumer   = consumer
-  ngx.ctx.authenticated_credential = nil
+  ctx.authenticated_consumer   = consumer
+  ctx.authenticated_credential = nil
 
   if consumer.id and consumer.id ~= null then
     set_header(head.CONSUMER_ID, consumer.id)
+  else
+    set_header(head.CONSUMER_ID, nil)
   end
 
   if consumer.custom_id and consumer.custom_id ~= null then
     set_header(head.CONSUMER_CUSTOM_ID, consumer.custom_id)
+  else
+    set_header(head.CONSUMER_CUSTOM_ID, nil)
   end
 
   if consumer.username and consumer.username ~= null then
     set_header(head.CONSUMER_USERNAME, consumer.username)
+  else
+    set_header(head.CONSUMER_USERNAME, nil)
   end
 
   set_header(head.ANONYMOUS, true)
 end
 
 
-local function unauthorized(issuer, msg, err, session, anonymous, trusted_client)
+local function unauthorized(ctx, issuer, msg, err, session, anonymous, trusted_client)
   if err then
     log.notice(err)
   end
@@ -585,7 +599,7 @@ local function unauthorized(issuer, msg, err, session, anonymous, trusted_client
   end
 
   if anonymous then
-    return anonymous_access(anonymous, trusted_client)
+    return anonymous_access(ctx, anonymous, trusted_client)
   end
 
   if trusted_client.unauthorized_redirect_uri then
@@ -598,7 +612,7 @@ local function unauthorized(issuer, msg, err, session, anonymous, trusted_client
 end
 
 
-local function forbidden(issuer, msg, err, session, anonymous, trusted_client)
+local function forbidden(ctx, issuer, msg, err, session, anonymous, trusted_client)
   if err then
     log.notice(err)
   end
@@ -608,7 +622,7 @@ local function forbidden(issuer, msg, err, session, anonymous, trusted_client)
   end
 
   if anonymous then
-    return anonymous_access(anonymous, trusted_client)
+    return anonymous_access(ctx, anonymous, trusted_client)
   end
 
   if trusted_client.forbidden_redirect_uri then
@@ -790,6 +804,7 @@ end
 function OICHandler:access(conf)
   OICHandler.super.access(self)
 
+  local ctx = ngx.ctx
   local args = arguments(conf)
   args.get_http_opts = create_get_http_opts(args)
 
@@ -804,7 +819,7 @@ function OICHandler:access(conf)
   local forbidden_error_message = args.get_conf_arg("forbidden_error_message", "forbidden")
 
   local anonymous = args.get_conf_arg("anonymous")
-  if anonymous and ngx.ctx.authenticated_credential then
+  if anonymous and ctx.authenticated_credential then
     -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
     log("skipping because user is already authenticated")
@@ -1232,10 +1247,10 @@ function OICHandler:access(conf)
                 no_cache_headers()
 
                 if args.get_uri_arg("state") == state then
-                  return unauthorized(iss, unauthorized_error_message, err, authorization, anonymous, trusted_client)
+                  return unauthorized(ctx, iss, unauthorized_error_message, err, authorization, anonymous, trusted_client)
 
                 elseif args.get_post_arg("state") == state then
-                  return unauthorized(iss, unauthorized_error_message, err, authorization, anonymous, trusted_client)
+                  return unauthorized(ctx, iss, unauthorized_error_message, err, authorization, anonymous, trusted_client)
 
                 else
                   log(err)
@@ -1346,6 +1361,7 @@ function OICHandler:access(conf)
 
         else
           return unauthorized(
+            ctx,
             iss,
             unauthorized_error_message,
             "no suitable authorization credentials were provided",
@@ -1393,7 +1409,7 @@ function OICHandler:access(conf)
     tokens_decoded, err = oic.token:verify(tokens_encoded)
     if not tokens_decoded then
       log("unable to verify bearer token")
-      return unauthorized(iss, unauthorized_error_message, err, session, anonymous, trusted_client)
+      return unauthorized(ctx, iss, unauthorized_error_message, err, session, anonymous, trusted_client)
     end
 
     log("bearer token verified")
@@ -1405,7 +1421,7 @@ function OICHandler:access(conf)
       if auth_methods.kong_oauth2 then
         log("trying to find matching kong oauth2 token")
         token_introspected, credential, consumer = cache.kong_oauth2.load(
-          tokens_decoded.access_token, ttl_default, true)
+          ctx, tokens_decoded.access_token, ttl_default, true)
         if token_introspected then
           log("found matching kong oauth2 token")
           token_introspected.active = true
@@ -1433,7 +1449,7 @@ function OICHandler:access(conf)
 
         if not token_introspected or not token_introspected.active then
           log("authentication with opaque bearer token failed")
-          return unauthorized(iss, unauthorized_error_message, err, session, anonymous, trusted_client)
+          return unauthorized(ctx, iss, unauthorized_error_message, err, session, anonymous, trusted_client)
         end
 
         auth_method = "introspection"
@@ -1453,14 +1469,14 @@ function OICHandler:access(conf)
             log("jwt bearer token is active and not revoked")
 
           else
-            return unauthorized(iss, unauthorized_error_message,
+            return unauthorized(ctx, iss, unauthorized_error_message,
                                 "jwt bearer token is not active anymore or has been revoked",
                                 session, anonymous, trusted_client)
           end
 
         else
           log("unable to introspect jwt bearer token")
-          return unauthorized(iss, unauthorized_error_message, err, session, anonymous, trusted_client)
+          return unauthorized(ctx, iss, unauthorized_error_message, err, session, anonymous, trusted_client)
         end
       end
 
@@ -1528,14 +1544,14 @@ function OICHandler:access(conf)
 
     if not tokens_encoded then
       log("unable to exchange credentials with tokens")
-      return unauthorized(iss, unauthorized_error_message, err, session, anonymous, trusted_client)
+      return unauthorized(ctx, iss, unauthorized_error_message, err, session, anonymous, trusted_client)
     end
 
     log("verifying tokens")
     tokens_decoded, err = oic.token:verify(tokens_encoded, token_endpoint_args)
     if not tokens_decoded then
       log("token verification failed")
-      return unauthorized(iss, unauthorized_error_message, err, session, anonymous, trusted_client)
+      return unauthorized(ctx, iss, unauthorized_error_message, err, session, anonymous, trusted_client)
 
     else
       log("tokens verified")
@@ -1568,8 +1584,9 @@ function OICHandler:access(conf)
 
   log("checking for access token")
   if not tokens_encoded.access_token then
-    return unauthorized(iss, unauthorized_error_message, "access token was not found",
-                        session, anonymous, trusted_client)
+    return unauthorized(ctx, iss, unauthorized_error_message,
+                        "access token was not found", session,
+                        anonymous, trusted_client)
 
   else
     log("found access token")
@@ -1589,6 +1606,7 @@ function OICHandler:access(conf)
       if not tokens_decoded then
         log("reverifying tokens failed")
         return unauthorized(
+          ctx,
           iss,
           unauthorized_error_message,
           err,
@@ -1612,6 +1630,7 @@ function OICHandler:access(conf)
       -- access token has expired, try to refresh the access token before proxying
       if not tokens_encoded.refresh_token then
         return unauthorized(
+          ctx,
           iss,
           unauthorized_error_message,
           "access token cannot be refreshed in absense of refresh token",
@@ -1629,6 +1648,7 @@ function OICHandler:access(conf)
       if not tokens_refreshed then
         log("unable to refresh access token using refresh token")
         return unauthorized(
+          ctx,
           iss,
           unauthorized_error_message,
           err,
@@ -1653,6 +1673,7 @@ function OICHandler:access(conf)
       if not tokens_decoded then
         log("unable to verify refreshed tokens")
         return unauthorized(
+          ctx,
           iss,
           unauthorized_error_message,
           err,
@@ -1680,6 +1701,7 @@ function OICHandler:access(conf)
 
     else
       return unauthorized(
+        ctx,
         iss,
         unauthorized_error_message,
         "access token has expired and could not be refreshed",
@@ -1704,6 +1726,7 @@ function OICHandler:access(conf)
           local jwt_session_cookie_value = args.get_value(var["cookie_" .. jwt_session_cookie])
           if not jwt_session_cookie_value then
             return unauthorized(
+              ctx,
               iss,
               unauthorized_error_message,
               "jwt session cookie was not specified for session claim verification",
@@ -1719,6 +1742,7 @@ function OICHandler:access(conf)
 
           if not jwt_session_claim_value then
             return unauthorized(
+              ctx,
               iss,
               unauthorized_error_message,
               "jwt session claim (" .. jwt_session_claim .. ") was not specified in jwt access token",
@@ -1729,6 +1753,7 @@ function OICHandler:access(conf)
 
           if jwt_session_claim_value ~= jwt_session_cookie_value then
             return unauthorized(
+              ctx,
               iss,
               unauthorized_error_message,
               "invalid jwt session claim (" .. jwt_session_claim .. ") was specified in jwt access token",
@@ -1787,6 +1812,7 @@ function OICHandler:access(conf)
 
       if not access_token_scopes then
         return forbidden(
+          ctx,
           iss,
           forbidden_error_message,
           "scopes required but no scopes found",
@@ -1810,6 +1836,7 @@ function OICHandler:access(conf)
 
       else
         return forbidden(
+          ctx,
           iss,
           forbidden_error_message,
           "required scopes were not found [ " .. concat(access_token_scopes, ", ") .. " ]",
@@ -1865,6 +1892,7 @@ function OICHandler:access(conf)
 
       if not access_token_audience then
         return forbidden(
+          ctx,
           iss,
           forbidden_error_message,
           "audience required but no audience found",
@@ -1888,6 +1916,7 @@ function OICHandler:access(conf)
 
       else
         return forbidden(
+          ctx,
           iss,
           forbidden_error_message,
           "required audience was not found [ " .. concat(access_token_audience, ", ") .. " ]",
@@ -1943,6 +1972,7 @@ function OICHandler:access(conf)
           else
             if err then
               return forbidden(
+                ctx,
                 iss,
                 forbidden_error_message,
                 "kong consumer was not found (" .. err .. ")",
@@ -1952,6 +1982,7 @@ function OICHandler:access(conf)
 
             else
               return forbidden(
+                ctx,
                 iss,
                 forbidden_error_message,
                 "kong consumer was not found",
@@ -2025,6 +2056,7 @@ function OICHandler:access(conf)
   -- check if the dev portal consumer is not approved
   if consumer and consumer.status ~= nil and consumer.status ~= 0 then
     return forbidden(
+            ctx,
             iss,
             forbidden_error_message,
             "consumer is not authorized",
@@ -2033,7 +2065,7 @@ function OICHandler:access(conf)
             trusted_client)
   end
   -- setting consumer context and headers
-  set_consumer(consumer, credential, is_anonymous)
+  set_consumer(ctx, consumer, credential, is_anonymous)
 
   -- setting credential by arbitrary claim, in case when consumer mapping was not used
   if not consumer then
@@ -2087,7 +2119,7 @@ function OICHandler:access(conf)
 
       else
         log("credential found '", credential_value, "'")
-        ngx.ctx.authenticated_credential = {
+        ctx.authenticated_credential = {
           id = tostring(credential_value)
         }
       end
@@ -2134,6 +2166,7 @@ function OICHandler:access(conf)
       if not token_exchanged or error_status ~= 200 then
         if error_status == 401 then
           return unauthorized(
+            ctx,
             iss,
             unauthorized_error_message,
             err or "exchange token endpoint returned unauthorized",
@@ -2143,6 +2176,7 @@ function OICHandler:access(conf)
 
         elseif error_status == 403 then
           return forbidden(
+            ctx,
             iss,
             forbidden_error_message,
             err or "exchange token endpoint returned forbidden",

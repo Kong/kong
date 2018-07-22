@@ -421,7 +421,7 @@ local function kong_oauth2_load(access_token, now)
 end
 
 
-function kong_oauth2.load(access_token, ttl, use_cache)
+function kong_oauth2.load(ctx, access_token, ttl, use_cache)
   local now = time()
   local key = cache_key(access_token, "oauth2_tokens")
   local res
@@ -453,7 +453,6 @@ function kong_oauth2.load(access_token, ttl, use_cache)
   end
 
   do
-    local ctx = ngx.ctx
     if (token.service_id and ctx.service.id ~= token.service_id) then
       return nil, "kong access token is for different service"
 
