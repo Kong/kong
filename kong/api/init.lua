@@ -57,11 +57,6 @@ end
 local function on_error(self)
   local err = self.errors[1]
 
-  -- XXX create standard error codes in the rbac module?
-  if type(err) == "string" and err:match("[RBAC]") then
-    return responses.send_HTTP_FORBIDDEN("entity cannot be accessed due to your rbac permissions")
-  end
-
   if type(err) == "table" then
     if err.db then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err.message)
