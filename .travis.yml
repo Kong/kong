@@ -1,5 +1,8 @@
-dist: trusty
 sudo: required
+dist: precise
+group: stable
+
+language: generic
 
 services:
   - docker
@@ -12,32 +15,27 @@ branches:
   - master
   - next
 
-env:
-  - DOCKER_COMPOSE_VERSION=1.21.2
-
-before_install:
-  - sudo rm /usr/local/bin/docker-compose
-  - curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
-  - chmod +x docker-compose
-  - sudo mv docker-compose /usr/local/bin
-
 install:
+  - docker-compose version
   - docker-compose up -d
 
 jobs:
   include:
     - stage: lint and unit
-      script: 
+      script:
+      - docker-compose ps
       - docker-compose exec kong luacheck -q .
       - docker-compose exec kong bin/busted -v --keep-going --suppress-pending spec/01-unit
     - stage: postgres tests
       script:
+      - docker-compose ps
       - docker-compose exec kong bin/busted -v --no-keep-going --suppress-pending --exclude-tags cassandra spec/02-integration/
       env:
         - KONG_TEST_DATABASE=postgres
         - KONG_TEST_PG_DATABASE=kong
     - stage: cassandra3.9 tests
       script:
+      - docker-compose ps
       - docker-compose exec kong bin/busted -v --no-keep-going --suppress-pending --exclude-tags postgres spec/02-integration/
       env:
         - KONG_DATABASE=cassandra
