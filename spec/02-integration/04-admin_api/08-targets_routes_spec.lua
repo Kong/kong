@@ -24,24 +24,10 @@ describe("Admin API", function()
   local weight_default, weight_min, weight_max = 100, 0, 1000
   local default_port = 8000
 
-  local dns_hostsfile
-  setup(function()
-    -- Adding a name-based resolution that won't fail
-    dns_hostsfile = os.tmpname()
-    local fd = assert(io.open(dns_hostsfile, "w"))
-    assert(fd:write("127.0.0.1 localhost custom_localhost\n"))
-    fd:close()
-  end)
-
-  teardown(function()
-    os.remove(dns_hostsfile)
-  end)
-
   before_each(function()
     assert(helpers.dao:run_migrations())
     assert(helpers.start_kong({
       nginx_conf = "spec/fixtures/custom_nginx.template",
-      dns_hostsfile = dns_hostsfile,
     }))
     client = assert(helpers.admin_client())
 

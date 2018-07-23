@@ -6,7 +6,7 @@ local helpers    = require "spec.helpers"
 local u          = helpers.unindent
 
 
-describe("Plugin: jwt (parser)", function()
+describe("Plugin: jwt (parser) #skip", function()
   describe("Encoding", function()
     it("should properly encode using HS256", function()
       local token = jwt_parser.encode({

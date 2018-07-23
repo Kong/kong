@@ -190,6 +190,7 @@ local function encode_token(data, key, alg, header)
 
   local signing_input = table_concat(segments, ".")
   local signature = alg_sign[alg](signing_input, key)
+  error('186')
   segments[#segments+1] = b64_encode(signature)
   return table_concat(segments, ".")
 end

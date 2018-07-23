@@ -32,6 +32,7 @@ lint:
 	@luacheck -q .
 
 test:
+	echo $(TEST_CMD)
 	@$(TEST_CMD) spec/01-unit
 
 test-integration:
