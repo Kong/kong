@@ -19,13 +19,14 @@ branches:
   - next
 
 before_install:
-  - apt-get update
-  - apt-get install -o Dpkg::Options::="--force-confold" --force-yes -y docker-engine
+  - sudo apt-get update
+  - sudo apt-get install -o Dpkg::Options::="--force-confold" --force-yes -y docker-engine
   - curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
   - chmod +x docker-compose
-  - mv docker-compose /usr/local/bin
+  - sudo mv docker-compose /usr/local/bin
 
 install:
+  - docker version
   - docker-compose version
   - docker-compose up -d
   - grep -q 'done' <(docker-compose logs -f kong)
