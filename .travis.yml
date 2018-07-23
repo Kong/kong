@@ -26,17 +26,19 @@ install:
 
 jobs:
   include:
-    - stage: lint
-      script: docker-compose exec kong luacheck -q .
-    - stage: unit tests
-      script: docker-compose exec kong bin/busted -v --no-keep-going --suppress-pending spec/01-unit
+    - stage: lint and unit
+      script: 
+      - docker-compose exec kong luacheck -q .
+      - docker-compose exec kong bin/busted -v --keep-going --suppress-pending spec/01-unit
     - stage: postgres tests
-      script: docker-compose exec kong bin/busted -v --no-keep-going --suppress-pending --exclude-tags cassandra spec/02-integration/
+      script:
+      - docker-compose exec kong bin/busted -v --no-keep-going --suppress-pending --exclude-tags cassandra spec/02-integration/
       env:
         - KONG_TEST_DATABASE=postgres
         - KONG_TEST_PG_DATABASE=kong
     - stage: cassandra3.9 tests
-      script: docker-compose exec kong bin/busted -v --no-keep-going --suppress-pending --exclude-tags postgres spec/02-integration/
+      script:
+      - docker-compose exec kong bin/busted -v --no-keep-going --suppress-pending --exclude-tags postgres spec/02-integration/
       env:
         - KONG_DATABASE=cassandra
         - KONG_TEST_DATABASE=cassandra
