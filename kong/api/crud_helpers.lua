@@ -265,7 +265,7 @@ end
 
 --- Delete an entity.
 -- The DAO requires to be given a table containing the full primary key of the entity
-function _M.delete(primary_keys, dao_collection)
+function _M.delete(primary_keys, dao_collection, post_process)
   local ok, err = dao_collection:delete(primary_keys)
   if not ok then
     if err then
@@ -274,6 +274,7 @@ function _M.delete(primary_keys, dao_collection)
       return responses.send_HTTP_NOT_FOUND()
     end
   else
+    post_process_row({}, post_process)
     return responses.send_HTTP_NO_CONTENT()
   end
 end
