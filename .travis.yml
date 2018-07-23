@@ -22,7 +22,7 @@ before_install:
   - sudo mv docker-compose /usr/local/bin
 
 install:
-  - docker-compose up -d kong --build
+  - docker-compose up -d
 
 jobs:
   include:
@@ -42,6 +42,7 @@ jobs:
         - KONG_TEST_DATABASE=cassandra
     - stage: deploy
       if: tag =~ 0.
+      install: skip
       script: .ci/trigger-travis.sh $TRAVIS_ACCESS_TOKEN
       env:
 
