@@ -1,5 +1,5 @@
 sudo: required
-dist: trusty
+dist: precise
 group: stable
 
 language: generic
@@ -30,14 +30,14 @@ jobs:
     - stage: postgres tests
       script:
       - docker-compose ps
-      - docker-compose exec kong bin/busted -v --keep-going --suppress-pending --exclude-tags cassandra skip_if_docker spec/02-integration/
+      - docker-compose exec kong bin/busted -v --no-keep-going --suppress-pending -o gtest --exclude-tags cassandra skip_if_docker spec/02-integration/
       env:
         - KONG_TEST_DATABASE=postgres
         - KONG_TEST_PG_DATABASE=kong
     - stage: cassandra3.9 tests
       script:
       - docker-compose ps
-      - docker-compose exec kong bin/busted -v --no-keep-going --suppress-pending --exclude-tags postgres skip_if_docker spec/02-integration/
+      - docker-compose exec kong bin/busted -v --no-keep-going --suppress-pending -o gtest --exclude-tags postgres skip_if_docker spec/02-integration/
       env:
         - KONG_DATABASE=cassandra
         - KONG_TEST_DATABASE=cassandra
