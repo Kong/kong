@@ -4,9 +4,6 @@ group: stable
 
 language: generic
 
-env:
-  - DOCKER_VERSION: 17.05.0-ce
-
 notifications:
   email: false
 
@@ -15,30 +12,38 @@ branches:
   - master
   - next
 
+before_install:
+  - curl -fsSL get.docker.com -o get-docker.sh
+  - sudo sh get-docker.sh
+  - curl -L https://github.com/docker/compose/releases/download/1.21.2/docker-compose-`uname -s`-`uname -m` > docker-compose
+  - chmod +x docker-compose
+  - sudo mv docker-compose /usr/local/bin
+  - docker-compose -v
+  - docker -v
+
 install:
-  - curl -sLo - http://j.mp/install-travis-docker | sh -xe
-  - ./run docker-compose version
-  - ./run docker-compose up -d
-  - grep -q 'done' <(./run docker-compose logs -f kong)
+  - docker-compose version
+  - docker-compose up -d
+  - grep -q 'done' <(docker-compose logs -f kong)
 
 jobs:
   include:
     - stage: lint and unit
       script:
-      - ./run docker-compose ps
-      - ./run docker-compose exec kong luacheck -q .
-      - ./run docker-compose exec kong bin/busted -v --keep-going --suppress-pending spec/01-unit
+      - docker-compose ps
+      - docker-compose exec kong luacheck -q .
+      - docker-compose exec kong bin/busted -v --keep-going --suppress-pending spec/01-unit
     - stage: postgres tests
       script:
-      - ./run docker-compose ps
-      - ./run docker-compose exec kong bin/busted -v --no-keep-going --suppress-pending -o gtest --exclude-tags cassandra skip_if_docker spec/02-integration/
+      - docker-compose ps
+      - docker-compose exec kong bin/busted -v --no-keep-going --suppress-pending -o gtest --exclude-tags cassandra skip_if_docker spec/02-integration/
       env:
         - KONG_TEST_DATABASE=postgres
         - KONG_TEST_PG_DATABASE=kong
     - stage: cassandra3.9 tests
       script:
-      - ./run docker-compose ps
-      - ./run docker-compose exec kong bin/busted -v --no-keep-going --suppress-pending -o gtest --exclude-tags postgres skip_if_docker spec/02-integration/
+      - docker-compose ps
+      - docker-compose exec kong bin/busted -v --no-keep-going --suppress-pending -o gtest --exclude-tags postgres skip_if_docker spec/02-integration/
       env:
         - KONG_DATABASE=cassandra
         - KONG_TEST_DATABASE=cassandra
