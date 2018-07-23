@@ -50,4 +50,4 @@ jobs:
       if: tag =~ 0.
       script: .ci/trigger-travis.sh $TRAVIS_ACCESS_TOKEN
       env:
-        - TEST_SUITE=none
+
