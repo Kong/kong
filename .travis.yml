@@ -1,5 +1,5 @@
 sudo: required
-dist: precise
+dist: trusty
 group: stable
 
 language: generic
