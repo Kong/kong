@@ -18,6 +18,7 @@ branches:
 install:
   - docker-compose version
   - docker-compose up -d
+  - grep -q 'done' <(docker-compose logs -f kong)
 
 jobs:
   include:
