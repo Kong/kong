@@ -14,6 +14,7 @@ local Router      = require "kong.router"
 local ApiRouter   = require "kong.api_router"
 local reports     = require "kong.reports"
 local balancer    = require "kong.runloop.balancer"
+local mesh        = require "kong.runloop.mesh"
 local constants   = require "kong.constants"
 local semaphore   = require "ngx.semaphore"
 local responses   = require "kong.tools.responses"
@@ -599,12 +600,14 @@ return {
   },
   certificate = {
     before = function(_)
+      mesh.certificate()
       certificate.execute()
     end
   },
   rewrite = {
     before = function(ctx)
       ctx.KONG_REWRITE_START = get_now()
+      mesh.rewrite()
     end,
     after = function (ctx)
       ctx.KONG_REWRITE_TIME = get_now() - ctx.KONG_REWRITE_START -- time spent in Kong's rewrite_by_lua
