@@ -162,7 +162,7 @@ describe("kong start/stop", function()
   end)
 
   describe("nginx_daemon = off", function()
-    it("redirects nginx's stdout to 'kong start' stdout", function()
+    it("redirects nginx's stdout to 'kong start' stdout #skip_if_docker", function()
       local pl_utils = require "pl.utils"
       local pl_file = require "pl.file"
 
