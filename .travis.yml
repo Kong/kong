@@ -13,7 +13,7 @@ branches:
   - next
 
 env:
-  - DOCKER_COMPOSE_VERSION=1.4.2
+  - DOCKER_COMPOSE_VERSION=1.21.2
 
 before_install:
   - sudo rm /usr/local/bin/docker-compose
