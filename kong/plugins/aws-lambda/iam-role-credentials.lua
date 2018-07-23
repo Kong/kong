@@ -7,6 +7,7 @@ local DEFAULT_METADATA_SERVICE_HOST = "169.254.169.254"
 
 local function fetch_iam_credentials_from_metadata_service(metadata_service_host, metadata_service_port,
                                                            metadata_service_request_timeout)
+
   metadata_service_host = metadata_service_host or DEFAULT_METADATA_SERVICE_HOST
   metadata_service_port = metadata_service_port or DEFAULT_METADATA_SERVICE_PORT
   metadata_service_request_timeout = metadata_service_request_timeout or DEFAULT_METADATA_SERVICE_REQUEST_TIMEOUT
@@ -14,7 +15,10 @@ local function fetch_iam_credentials_from_metadata_service(metadata_service_host
   local client = http.new()
   client:set_timeout(metadata_service_request_timeout)
 
+  -- Set no proxy for 169.254.169.254
+  client:set_proxy_options(metadata_service_host)
   local ok, err = client:connect(metadata_service_host, metadata_service_port)
+ 
 
   if not ok then
     ngx.log(ngx.ERR, "[aws-lambda] Could not connect to metadata service: ", err)

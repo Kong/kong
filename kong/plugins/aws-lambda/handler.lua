@@ -15,6 +15,9 @@ local ngx_req_read_body    = ngx.req.read_body
 local ngx_req_get_uri_args = ngx.req.get_uri_args
 local ngx_req_get_headers  = ngx.req.get_headers
 local ngx_encode_base64    = ngx.encode_base64
+local ngx_print            = ngx.print
+local ngx_log              = ngx.log
+local DEBUG                = ngx.DEBUG
 
 local DEFAULT_CACHE_IAM_INSTANCE_CREDS_DURATION = 60
 local IAM_CREDENTIALS_CACHE_KEY = "plugin.aws-lambda.iam_role_temp_creds"
@@ -48,16 +51,16 @@ function AWSLambdaHandler:access(conf)
     local var = ngx.var
 
     if conf.forward_request_method then
-      upstream_body.request_method = var.request_method
+      upstream_body.httpMethod = var.request_method
     end
 
     if conf.forward_request_headers then
-      upstream_body.request_headers = ngx_req_get_headers()
+      upstream_body.headers = ngx_req_get_headers()
     end
 
     if conf.forward_request_uri then
-      upstream_body.request_uri      = var.request_uri
-      upstream_body.request_uri_args = ngx_req_get_uri_args()
+      upstream_body.path = var.request_uri
+      upstream_body.queryStringParameters = ngx_req_get_uri_args()
     end
 
     if conf.forward_request_body then
@@ -67,11 +70,11 @@ function AWSLambdaHandler:access(conf)
       if err_code == public_utils.req_body_errors.unknown_ct then
         -- don't know what this body MIME type is, base64 it just in case
         body_raw = ngx_encode_base64(body_raw)
-        upstream_body.request_body_base64 = true
+        upstream_body.isBase64Encoded = true
       end
-
-      upstream_body.request_body      = body_raw
-      upstream_body.request_body_args = body_args
+      
+      upstream_body.isBase64Encoded = false
+      upstream_body.body = body_raw
     end
 
   else
@@ -88,7 +91,6 @@ function AWSLambdaHandler:access(conf)
     ngx.log(ngx.ERR, "[aws-lambda] could not JSON encode upstream body",
                      " to forward request values: ", err)
   end
-
   local host = string.format("lambda.%s.amazonaws.com", conf.aws_region)
   local path = string.format("/2015-03-31/functions/%s/invocations",
                             conf.function_name)
@@ -113,8 +115,7 @@ function AWSLambdaHandler:access(conf)
   }
 
   if conf.use_ec2_iam_role then
-    local iam_role_credentials, err = singletons.cache:get(IAM_CREDENTIALS_CACHE_KEY, { ttl = DEFAULT_CACHE_IAM_INSTANCE_CREDS_DURATION },
-                                                           fetch_iam_credentials_from_metadata_service)
+    local iam_role_credentials, err = singletons.cache:get(IAM_CREDENTIALS_CACHE_KEY, { ttl = DEFAULT_CACHE_IAM_INSTANCE_CREDS_DURATION }, fetch_iam_credentials_from_metadata_service)
 
     if not iam_role_credentials then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
@@ -137,7 +138,11 @@ function AWSLambdaHandler:access(conf)
   -- Trigger request
   local client = http.new()
   client:set_timeout(conf.timeout)
-  client:connect(host, port)
+  if conf.proxy_url then
+    client:connect_proxy(conf.proxy_url, conf.proxy_scheme, host, port)
+  else
+    client:connect(host, port)
+  end
   local ok, err = client:ssl_handshake()
   if not ok then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)

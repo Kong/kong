@@ -26,6 +26,14 @@ return {
     aws_secret = {
       type = "string",
     },
+    proxy_scheme = {
+      type = "string",
+      enum = {
+        "http",
+        "https",
+      }
+    },
+    proxy_url = { type = "string" },
     aws_region = {
       type = "string",
       required = true,
@@ -105,6 +113,13 @@ return {
       -- if iam_profile is not set, aws_key and aws_secret are required
       if not plugin_t.aws_key or plugin_t.aws_key == "" or not plugin_t.aws_secret or plugin_t.aws_secret == "" then
         return false, Errors.schema "You need to set aws_key and aws_secret or need to use EC2 IAM roles"
+      end
+      return true
+    end
+    if plugin_t.proxy_url then
+      -- if iam_profile is not set, aws_key and aws_secret are required
+      if not plugin_t.proxy_scheme then
+        return false, Errors.schema "You need to set proxy_scheme when proxy_url is set"
       end
       return true
     end
