@@ -21,7 +21,7 @@ local function flush_redis(db)
 end
 
 
-describe("Plugin: rate-limiting (integration)", function()
+describe("Plugin: rate-limiting (integration) #redis", function()
   local client
 
   setup(function()

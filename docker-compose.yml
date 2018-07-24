@@ -1,0 +1,39 @@
+version: '3.4'
+
+# Kong
+services:
+  kong:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - kong-postgres
+      - kong-cassandra
+    environment:
+      - KONG_TEST_DATABASE
+      - KONG_TEST_PG_DATABASE
+      - KONG_TEST_PG_USER
+      - KONG_TEST_PG_HOST
+      - KONG_PG_HOST
+      - KONG_DATABASE
+      - KONG_ANONYMOUS_REPORTS
+      - KONG_PG_USER
+      - KONG_PG_DATABASE
+      - KONG_DB_UPDATE_PROPAGATION
+      - KONG_CASSANDRA_CONTACT_POINTS
+    restart: always
+
+  kong-postgres:
+    image: postgres:9.5
+    environment:
+      - POSTGRES_USER=kong
+      - POSTGRES_DB=kong
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+    restart: always
+
+  kong-cassandra:
+    image: cassandra:${CASSANDRA_VERSION}

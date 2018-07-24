@@ -101,7 +101,7 @@ local blueprints = assert(Blueprints.new(dao, db))
 local each_strategy
 
 do
-    local default_strategies = { "postgres", "cassandra" }
+    local default_strategies = { os.getenv("KONG_TEST_DATABASE") }
 
     local function iter(strategies, i)
       i = i + 1

@@ -113,13 +113,11 @@ describe("kong start/stop", function()
   describe("/etc/hosts resolving in CLI", function()
     it("resolves #cassandra hostname", function()
       assert(helpers.kong_exec("start --vv --run-migrations --conf " .. helpers.test_conf_path, {
-        cassandra_contact_points = "localhost",
         database = "cassandra"
       }))
     end)
     it("resolves #postgres hostname", function()
       assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path, {
-        pg_host = "localhost",
         database = "postgres"
       }))
     end)
@@ -164,7 +162,7 @@ describe("kong start/stop", function()
   end)
 
   describe("nginx_daemon = off", function()
-    it("redirects nginx's stdout to 'kong start' stdout", function()
+    it("redirects nginx's stdout to 'kong start' stdout #skip_if_docker", function()
       local pl_utils = require "pl.utils"
       local pl_file = require "pl.file"
 
