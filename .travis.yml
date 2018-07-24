@@ -14,14 +14,12 @@ branches:
 
 before_install:
   - sudo apt-get update
-  - sudo apt-get install -y apt-transport-https ca-certificates python3
+  - sudo apt-get install -y apt-transport-https ca-certificates libc6 python-pip
   - sudo apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
   - echo "deb https://apt.dockerproject.org/repo ubuntu-precise main" | sudo tee -a /etc/apt/sources.list
   - sudo apt-get update
   - sudo apt-get install -y docker-engine
-  - curl -L https://github.com/docker/compose/releases/download/1.21.2/docker-compose-`uname -s`-`uname -m` > docker-compose
-  - chmod +x docker-compose
-  - sudo mv docker-compose /usr/local/bin
+  - sudo pip install docker-compose
   - sudo usermod -aG docker travis
   - docker-compose -v
   - docker -v
