@@ -63,6 +63,7 @@ jobs:
       script: bin/busted -v --no-keep-going --suppress-pending -o gtest --exclude-tags cassandra skip_if_docker spec/02-integration/
       env:
         - TEST_SUITE=integration
+        - KONG_DATABASE=postgres
         - KONG_TEST_DATABASE=postgres
     - stage: cassandra3.9 tests
       script: bin/busted -v --no-keep-going --suppress-pending -o gtest --exclude-tags postgres skip_if_docker spec/02-integration/
