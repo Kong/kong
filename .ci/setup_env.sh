@@ -95,3 +95,6 @@ fi
 nginx -V
 resty -V
 luarocks --version
+
+
+set +e
