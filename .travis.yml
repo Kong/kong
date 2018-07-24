@@ -20,34 +20,29 @@ before_install:
   - sudo apt-get update
   - sudo apt-get install -y docker-engine
   - sudo pip install docker-compose
-  - sudo usermod -aG docker travis
-  - bash -l
-  - docker-compose -v
-  - docker -v
 
 install:
-  - docker-compose version
-  - docker-compose up -d
-  - grep -q 'done' <(docker-compose logs -f kong)
+  - sudo docker-compose up -d
+  - grep -q 'done' <(sudo docker-compose logs -f kong)
 
 jobs:
   include:
     - stage: lint and unit
       script:
-      - docker-compose ps
-      - docker-compose exec kong luacheck -q .
-      - docker-compose exec kong bin/busted -v --keep-going --suppress-pending spec/01-unit
+      - sudo docker-compose ps
+      - sudo docker-compose exec kong luacheck -q .
+      - sudo docker-compose exec kong bin/busted -v --keep-going --suppress-pending spec/01-unit
     - stage: postgres tests
       script:
-      - docker-compose ps
-      - docker-compose exec kong bin/busted -v --no-keep-going --suppress-pending -o gtest --exclude-tags cassandra skip_if_docker spec/02-integration/
+      - sudo docker-compose ps
+      - sudo docker-compose exec kong bin/busted -v --no-keep-going --suppress-pending -o gtest --exclude-tags cassandra skip_if_docker spec/02-integration/
       env:
         - KONG_TEST_DATABASE=postgres
         - KONG_TEST_PG_DATABASE=kong
     - stage: cassandra3.9 tests
       script:
-      - docker-compose ps
-      - docker-compose exec kong bin/busted -v --no-keep-going --suppress-pending -o gtest --exclude-tags postgres skip_if_docker spec/02-integration/
+      - sudo docker-compose ps
+      - sudo docker-compose exec kong bin/busted -v --no-keep-going --suppress-pending -o gtest --exclude-tags postgres skip_if_docker spec/02-integration/
       env:
         - KONG_DATABASE=cassandra
         - KONG_TEST_DATABASE=cassandra
