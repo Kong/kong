@@ -108,7 +108,7 @@ eval `luarocks path`
 # -------------------------------------
 # Install ccm & setup Cassandra cluster
 # -------------------------------------
-if [[ "$TEST_SUITE" != "unit" ]] && [[ "$TEST_SUITE" != "lint" ]]; then
+if [[ "$TEST_SUITE" != "unit" ]] && [[ "$TEST_SUITE" != "lint" ]] && [[ "$KONG_DATABASE" == "cassandra" ]]; then
   echo "Installing ccm and setting up Cassandra cluster..."
   pip install --user PyYAML six ccm &> build.log || (cat build.log && exit 1)
   ccm create test -v $CASSANDRA -n 1 -d
