@@ -6,6 +6,7 @@ describe("Plugin: prometheus (API)",function()
 
   describe("with no 'prometheus_metrics' shm defined", function()
     setup(function()
+      helpers.get_db_utils()
       assert(helpers.start_kong({
         nginx_conf = "spec/fixtures/prometheus/invalid_nginx.template",
         plugins = "bundled, prometheus",
@@ -21,7 +22,9 @@ describe("Plugin: prometheus (API)",function()
       helpers.stop_kong()
     end)
 
-    it("prometheus plugin cannot be configured", function()
+    -- skipping since Kong always injected a `prometheus_metrics` shm when
+    -- prometheus plugin is loaded into memory
+    pending("prometheus plugin cannot be configured", function()
       local res = assert(admin_client:send {
         method  = "POST",
         path    = "/plugins",
@@ -40,6 +43,7 @@ describe("Plugin: prometheus (API)",function()
 
   describe("with 'prometheus_metrics' defined", function()
     setup(function()
+      helpers.get_db_utils()
       assert(helpers.start_kong({
         nginx_conf = "spec/fixtures/prometheus/valid_nginx.template",
         plugins = "bundled, prometheus",
