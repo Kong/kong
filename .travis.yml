@@ -21,7 +21,7 @@ before_install:
   - sudo apt-get install -y docker-engine
   - sudo pip install docker-compose
   - sudo usermod -aG docker travis
-  - sudo su -
+  - newgrp docker
   - docker-compose -v
   - docker -v
 
