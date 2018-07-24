@@ -54,6 +54,7 @@ jobs:
   include:
     - stage: lint check
       script: luacheck -q .
+      install: skip
       env: TEST_SUITE=lint
     - stage: unit tests
       script: bin/busted -v --keep-going --suppress-pending spec/01-unit
@@ -63,7 +64,6 @@ jobs:
       env:
         - TEST_SUITE=integration
         - KONG_TEST_DATABASE=postgres
-        - KONG_TEST_PG_DATABASE=kong
     - stage: cassandra3.9 tests
       script: bin/busted -v --no-keep-going --suppress-pending -o gtest --exclude-tags postgres skip_if_docker spec/02-integration/
       env:
