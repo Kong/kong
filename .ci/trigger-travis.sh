@@ -86,28 +86,53 @@ REPO=kong-distributions
 TOKEN=$1
 MESSAGE=",\"message\": \"Triggered by upstream build of Kong/kong commit "`git rev-parse --short HEAD`"\""
 
-body="{
-\"request\": {
-  \"branch\":\"master\",
-  \"config\": {
-    \"merge_mode\": \"deep_merge\",
-    \"env\": {
-      \"matrix\": [
-        \"BUILD_RELEASE=true PLATFORM=centos:6\",
-        \"BUILD_RELEASE=true PLATFORM=centos:7\",
-        \"BUILD_RELEASE=true PLATFORM=debian:7\",
-        \"BUILD_RELEASE=true PLATFORM=debian:8\",
-        \"BUILD_RELEASE=true PLATFORM=debian:9\",
-        \"BUILD_RELEASE=true PLATFORM=ubuntu:12.04.5\",
-        \"BUILD_RELEASE=true PLATFORM=ubuntu:14.04.2\",
-        \"BUILD_RELEASE=true PLATFORM=ubuntu:16.04\",
-        \"BUILD_RELEASE=true PLATFORM=amazonlinux\",
-        \"BUILD_RELEASE=true PLATFORM=alpine\"
-      ]
+if [[ "${TRAVIS_EVENT_TYPE}" == "cron" ]]; then
+  body="{
+  \"request\": {
+    \"branch\":\"master\",
+    \"config\": {
+      \"merge_mode\": \"deep_merge\",
+      \"env\": {
+        \"matrix\": [
+          \"BUILD_RELEASE=true PLATFORM=centos:6 --nightly\",
+          \"BUILD_RELEASE=true PLATFORM=centos:7 --nightly\",
+          \"BUILD_RELEASE=true PLATFORM=debian:7 --nightly\",
+          \"BUILD_RELEASE=true PLATFORM=debian:8 --nightly\",
+          \"BUILD_RELEASE=true PLATFORM=debian:9 --nightly\",
+          \"BUILD_RELEASE=true PLATFORM=ubuntu:12.04.5 --nightly\",
+          \"BUILD_RELEASE=true PLATFORM=ubuntu:14.04.2 --nightly\",
+          \"BUILD_RELEASE=true PLATFORM=ubuntu:16.04 --nightly\",
+          \"BUILD_RELEASE=true PLATFORM=amazonlinux --nightly\",
+          \"BUILD_RELEASE=true PLATFORM=alpine --nightly\"
+        ]
+      }
     }
-  }
-  $MESSAGE
-}}"
+    $MESSAGE
+  }}"
+else
+  body="{
+  \"request\": {
+    \"branch\":\"master\",
+    \"config\": {
+      \"merge_mode\": \"deep_merge\",
+      \"env\": {
+        \"matrix\": [
+          \"BUILD_RELEASE=true PLATFORM=centos:6\",
+          \"BUILD_RELEASE=true PLATFORM=centos:7\",
+          \"BUILD_RELEASE=true PLATFORM=debian:7\",
+          \"BUILD_RELEASE=true PLATFORM=debian:8\",
+          \"BUILD_RELEASE=true PLATFORM=debian:9\",
+          \"BUILD_RELEASE=true PLATFORM=ubuntu:12.04.5\",
+          \"BUILD_RELEASE=true PLATFORM=ubuntu:14.04.2\",
+          \"BUILD_RELEASE=true PLATFORM=ubuntu:16.04\",
+          \"BUILD_RELEASE=true PLATFORM=amazonlinux\",
+          \"BUILD_RELEASE=true PLATFORM=alpine\"
+        ]
+      }
+    }
+    $MESSAGE
+  }}"
+fi
 
 ## For debugging:
 echo "USER=$USER"
