@@ -62,7 +62,7 @@ function JwtHandler:new()
 end
 
 local function load_credential(jwt_secret_key)
-  local rows, err = singletons.dao.jwt_secrets:find_all {key = jwt_secret_key}
+  local rows, err = singletons.dao.jwt_secrets:find_all {key = tostring(jwt_secret_key)}
   if err then
     return nil, err
   end
