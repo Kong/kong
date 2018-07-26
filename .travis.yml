@@ -70,7 +70,7 @@ jobs:
       env:
         - TEST_SUITE=none
     - stage: nightly deploy
-      if: TRAVIS_EVENT_TYPE = cron
+      if: TRAVIS_EVENT_TYPE == cron
       script: .ci/trigger-travis.sh $TRAVIS_ACCESS_TOKEN
       env:
         - TEST_SUITE=none
