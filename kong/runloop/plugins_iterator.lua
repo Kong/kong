@@ -104,6 +104,15 @@ local function get_next(self)
     local service      = self.service
     local consumer     = ctx.authenticated_consumer
 
+    if api and schema.no_api then
+      api = nil
+    end
+    if route and schema.no_route then
+      route = nil
+    end
+    if service and schema.no_service then
+      service = nil
+    end
     if consumer and schema.no_consumer then
       consumer = nil
     end

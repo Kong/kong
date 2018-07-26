@@ -677,33 +677,119 @@ describe("Entities Schemas", function()
     end)
 
     describe("self_check", function()
-      it("should refuse `consumer_id` if specified in the config schema", function()
-        local stub_config_schema = {
-          no_consumer = true,
-          fields = {
-            string = {type = "string", required = true}
+      describe("should refuse if criteria in plugin schema not met", function()
+        it("no_api", function()
+          local stub_config_schema = {
+            no_api = true,
+            fields = {
+              string = {type = "string", required = true}
+            }
           }
-        }
 
-        do
-          local old_schema_loader = plugins_schema.fields.config.schema
+          do
+            local old_schema_loader = plugins_schema.fields.config.schema
 
-          plugins_schema.fields.config.schema = function()
-            return stub_config_schema
+            plugins_schema.fields.config.schema = function()
+              return stub_config_schema
+            end
+
+            finally(function()
+              plugins_schema.fields.config.schema = old_schema_loader
+            end)
           end
 
-          finally(function()
-            plugins_schema.fields.config.schema = old_schema_loader
-          end)
-        end
+          local valid, _, err = validate_entity({name = "stub", api_id = "0000", config = {string = "foo"}}, plugins_schema, {dao = dao_stub})
+          assert.is_false(valid)
+          assert.equal("No api can be configured for that plugin", err.message)
 
-        local valid, _, err = validate_entity({name = "stub", service_id = "0000", consumer_id = "0000", config = {string = "foo"}}, plugins_schema, {dao = dao_stub})
-        assert.is_false(valid)
-        assert.equal("No consumer can be configured for that plugin", err.message)
+          valid, err = validate_entity({name = "stub", service_id = "0000", config = {string = "foo"}}, plugins_schema, {dao = dao_stub})
+          assert.is_true(valid)
+          assert.falsy(err)
+        end)
+        it("no_route", function()
+          local stub_config_schema = {
+            no_route = true,
+            fields = {
+              string = {type = "string", required = true}
+            }
+          }
 
-        valid, err = validate_entity({name = "stub", service_id = "0000", config = {string = "foo"}}, plugins_schema, {dao = dao_stub})
-        assert.is_true(valid)
-        assert.falsy(err)
+          do
+            local old_schema_loader = plugins_schema.fields.config.schema
+
+            plugins_schema.fields.config.schema = function()
+              return stub_config_schema
+            end
+
+            finally(function()
+              plugins_schema.fields.config.schema = old_schema_loader
+            end)
+          end
+
+          local valid, _, err = validate_entity({name = "stub", service_id = "0000", route_id = "0000", config = {string = "foo"}}, plugins_schema, {dao = dao_stub})
+          assert.is_false(valid)
+          assert.equal("No route can be configured for that plugin", err.message)
+
+          valid, err = validate_entity({name = "stub", service_id = "0000", config = {string = "foo"}}, plugins_schema, {dao = dao_stub})
+          assert.is_true(valid)
+          assert.falsy(err)
+        end)
+        it("no_service", function()
+          local stub_config_schema = {
+            no_service = true,
+            fields = {
+              string = {type = "string", required = true}
+            }
+          }
+
+          do
+            local old_schema_loader = plugins_schema.fields.config.schema
+
+            plugins_schema.fields.config.schema = function()
+              return stub_config_schema
+            end
+
+            finally(function()
+              plugins_schema.fields.config.schema = old_schema_loader
+            end)
+          end
+
+          local valid, _, err = validate_entity({name = "stub", service_id = "0000", config = {string = "foo"}}, plugins_schema, {dao = dao_stub})
+          assert.is_false(valid)
+          assert.equal("No service can be configured for that plugin", err.message)
+
+          valid, err = validate_entity({name = "stub", config = {string = "foo"}}, plugins_schema, {dao = dao_stub})
+          assert.is_true(valid)
+          assert.falsy(err)
+        end)
+        it("no_consumer", function()
+          local stub_config_schema = {
+            no_consumer = true,
+            fields = {
+              string = {type = "string", required = true}
+            }
+          }
+
+          do
+            local old_schema_loader = plugins_schema.fields.config.schema
+
+            plugins_schema.fields.config.schema = function()
+              return stub_config_schema
+            end
+
+            finally(function()
+              plugins_schema.fields.config.schema = old_schema_loader
+            end)
+          end
+
+          local valid, _, err = validate_entity({name = "stub", service_id = "0000", consumer_id = "0000", config = {string = "foo"}}, plugins_schema, {dao = dao_stub})
+          assert.is_false(valid)
+          assert.equal("No consumer can be configured for that plugin", err.message)
+
+          valid, err = validate_entity({name = "stub", service_id = "0000", config = {string = "foo"}}, plugins_schema, {dao = dao_stub})
+          assert.is_true(valid)
+          assert.falsy(err)
+        end)
       end)
 
       it("rejects a plugin if configured for both api_id and route_id", function()

@@ -89,6 +89,21 @@ return {
       return false, Errors.schema(err)
     end
 
+    -- Check if the schema has a `no_api` field
+    if config_schema.no_api and plugin_t.api_id ~= nil then
+      return false, Errors.schema "No api can be configured for that plugin"
+    end
+
+    -- Check if the schema has a `no_route` field
+    if config_schema.no_route and plugin_t.route_id ~= nil then
+      return false, Errors.schema "No route can be configured for that plugin"
+    end
+
+    -- Check if the schema has a `no_service` field
+    if config_schema.no_service and plugin_t.service_id ~= nil then
+      return false, Errors.schema "No service can be configured for that plugin"
+    end
+
     -- Check if the schema has a `no_consumer` field
     if config_schema.no_consumer and plugin_t.consumer_id ~= nil then
       return false, Errors.schema "No consumer can be configured for that plugin"
