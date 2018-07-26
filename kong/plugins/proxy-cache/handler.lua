@@ -9,8 +9,9 @@ local ee          = require "kong.enterprise_edition"
 
 local max              = math.max
 local floor            = math.floor
-local md5              = ngx.md5
 local get_method       = ngx.req.get_method
+local ngx_get_uri_args = ngx.req.get_uri_args
+local ngx_get_headers  = ngx.req.get_headers
 local resp_get_headers = ngx.resp.get_headers
 local timer_at         = ngx.timer.at
 local ngx_log          = ngx.log
@@ -215,11 +216,6 @@ local function signal_cache_req(cache_key, cache_status)
 end
 
 
-local function build_cache_key(prefix_uuid, method, uri, params, headers)
-  return md5(table.concat({prefix_uuid, method, uri, params, headers}, "|"))
-end
-
-
 -- define our own response sender instead of using kong.tools.responses
 -- as the included response generator always send JSON content
 local function send_response(res)
@@ -256,15 +252,6 @@ local function send_response(res)
   ngx.ctx.delayed_response_callback = function()
     ngx.say(res.body)
   end
-end
-
-
-local function prefix_uuid()
-  return ngx.ctx.authenticated_consumer    and
-         ngx.ctx.authenticated_consumer.id or
-         ngx.ctx.api                       and
-         ngx.ctx.api.id                    or
-         "default"
 end
 
 
@@ -346,16 +333,21 @@ function ProxyCacheHandler:access(conf)
     return
   end
 
-  -- try to fetch the cached object
-  -- first we need a uuid of this; try the consumer uuid, then the api uuid,
-  -- and finally a default value
-  local cache_key = build_cache_key(prefix_uuid(),
-                                    get_method(),
-                                    ngx_re_sub(ngx.var.request, "\\?.*", "", "oj"),
-                                    cache_key.params_key(ngx.req.get_uri_args(), conf),
-                                    cache_key.headers_key(ngx.req.get_headers(100), conf))
+  local ctx = ngx.ctx
+  local consumer_id = ctx.authenticated_consumer and ctx.authenticated_consumer.id
+  local api_id = ctx.api and ctx.api.id
+  local route_id = ctx.route and ctx.route.id
+
+  local cache_key = cache_key.build_cache_key(consumer_id, api_id, route_id,
+    get_method(),
+    ngx_re_sub(ngx.var.request, "\\?.*", "", "oj"),
+    ngx_get_uri_args(),
+    ngx_get_headers(100),
+    conf)
+
   ngx.header["X-Cache-Key"] = cache_key
 
+  -- try to fetch the cached object from the computed cache key
   local strategy = require(STRATEGY_PATH)({
     strategy_name = conf.strategy,
     strategy_opts = conf[conf.strategy],

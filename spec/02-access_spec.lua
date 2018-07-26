@@ -46,7 +46,7 @@ for i, policy in ipairs({"memory", "redis"}) do
 
     setup(function()
 
-      local _, _, dao = helpers.get_db_utils()
+      local bp, _, dao = helpers.get_db_utils()
       strategy:flush(true)
 
       local api1 = assert(dao.apis:insert {
@@ -109,6 +109,39 @@ for i, policy in ipairs({"memory", "redis"}) do
         hosts = { "api-12.com" },
         upstream_url = "http://httpbin.org",
       })
+      local api13 = assert(dao.apis:insert {
+        name = "api-13",
+        hosts = { "api-13.com" },
+        upstream_url = "http://httpbin.org",
+      })
+      local api14 = assert(dao.apis:insert {
+        name = "api-14",
+        hosts = { "api-14.com" },
+        upstream_url = "http://httpbin.org",
+      })
+
+      -- routes/services
+
+      local service1 = assert(bp.services:insert({
+        name = "service-1",
+        host = helpers.mock_upstream_host,
+        port = helpers.mock_upstream_port,
+        protocol = helpers.mock_upstream_protocol,
+      }))
+
+      local route1 = assert(bp.routes:insert({
+        methods = { "GET" },
+        protocols = { "http" },
+        hosts = { "route-1.com" },
+        service = service1,
+      }))
+
+      local route2 = assert(bp.routes:insert({
+        methods = { "GET" },
+        protocols = { "http" },
+        hosts = { "route-2.com" },
+        service = service1,
+      }))
 
       local consumer1 = assert(dao.consumers:insert {
         username = "bob",
@@ -127,6 +160,26 @@ for i, policy in ipairs({"memory", "redis"}) do
       assert(dao.plugins:insert {
         name = "key-auth",
         api_id = api5.id,
+        config = {},
+      })
+      assert(dao.plugins:insert {
+        name = "key-auth",
+        api_id = api13.id,
+        config = {},
+      })
+      assert(dao.plugins:insert {
+        name = "key-auth",
+        api_id = api14.id,
+        config = {},
+      })
+      assert(dao.plugins:insert {
+        name = "key-auth",
+        route_id = route1.id,
+        config = {},
+      })
+      assert(dao.plugins:insert {
+        name = "key-auth",
+        route_id = route2.id,
         config = {},
       })
 
@@ -256,6 +309,7 @@ for i, policy in ipairs({"memory", "redis"}) do
 
       assert(helpers.start_kong({
         custom_plugins = "proxy-cache",
+        nginx_conf = "spec/fixtures/custom_nginx.template",
       }))
       client = helpers.proxy_client()
       admin_client = helpers.admin_client()
@@ -711,6 +765,58 @@ for i, policy in ipairs({"memory", "redis"}) do
       local body2 = assert.res_status(200, res)
       assert.same("Hit", res.headers["X-Cache-Status"])
       assert.same(body1, body2)
+    end)
+
+    it("uses a separate cache key for the same consumer between apis", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/get",
+        headers = {
+          host = "api-13.com",
+          apikey = "bob",
+        }
+      })
+      assert.res_status(200, res)
+      local cache_key1 = res.headers["X-Cache-Key"]
+
+      local res = assert(client:send {
+        method = "GET",
+        path = "/get",
+        headers = {
+          host = "api-14.com",
+          apikey = "bob",
+        }
+      })
+      assert.res_status(200, res)
+      local cache_key2 = res.headers["X-Cache-Key"]
+
+      assert.not_equal(cache_key1, cache_key2)
+    end)
+
+    it("uses a separate cache key for the same consumer between routes/services", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/get",
+        headers = {
+          host = "route-1.com",
+          apikey = "bob",
+        }
+      })
+      assert.res_status(200, res)
+      local cache_key1 = res.headers["X-Cache-Key"]
+
+      local res = assert(client:send {
+        method = "GET",
+        path = "/get",
+        headers = {
+          host = "route-2.com",
+          apikey = "bob",
+        }
+      })
+      assert.res_status(200, res)
+      local cache_key2 = res.headers["X-Cache-Key"]
+
+      assert.not_equal(cache_key1, cache_key2)
     end)
 
     it("uses an separate cache key betweens apis as a global plugin", function()
