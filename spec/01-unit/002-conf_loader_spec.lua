@@ -293,6 +293,29 @@ describe("Configuration loader", function()
     end)
   end)
 
+  describe("phase_handlers", function()
+    it("accepts the default phase handlers", function()
+      local conf = assert(conf_loader(helpers.test_conf_path))
+      assert.is_table(conf.phase_handlers)
+    end)
+    it("ignores an undefined default phase handler", function()
+      local ignored_phase = "rewrite"
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        phase_handlers = { "access", "header_filter", "body_filter", "log" },
+      }))
+      for _, phase in ipairs(conf.phase_handlers) do
+        assert.not_equals(phase, ignored_phase)
+      end
+    end)
+    it("errors when given an unknown phase", function()
+      local conf, err = conf_loader(helpers.test_conf_path, {
+        phase_handlers = { "nope" },
+      })
+      assert.is_nil(conf)
+      assert.equal("'nope' is not a valid phase handler", err)
+    end)
+  end)
+
   describe("nginx_user", function()
     it("is nil by default", function()
       local conf = assert(conf_loader(helpers.test_conf_path))

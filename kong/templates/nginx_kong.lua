@@ -126,14 +126,12 @@ server {
         set $upstream_x_forwarded_host   '';
         set $upstream_x_forwarded_port   '';
 
-        rewrite_by_lua_block {
-            Kong.rewrite()
+> for _, phase in ipairs(phase_handlers) do
+        $(phase)_by_lua_block {
+            Kong.$(phase)()
         }
 
-        access_by_lua_block {
-            Kong.access()
-        }
-
+> end
         proxy_http_version 1.1;
         proxy_set_header   Host              $upstream_host;
         proxy_set_header   Upgrade           $upstream_upgrade;
@@ -147,18 +145,6 @@ server {
         proxy_pass_header  Date;
         proxy_ssl_name     $upstream_host;
         proxy_pass         $upstream_scheme://kong_upstream$upstream_uri;
-
-        header_filter_by_lua_block {
-            Kong.header_filter()
-        }
-
-        body_filter_by_lua_block {
-            Kong.body_filter()
-        }
-
-        log_by_lua_block {
-            Kong.log()
-        }
     }
 
     location = /kong_error_handler {
