@@ -97,17 +97,15 @@ local function get_next(self)
 
   -- load the plugin configuration in early phases
   if self.access_or_cert_ctx then
+    local schema = plugin.schema or {}
 
     local api          = self.api
     local route        = self.route
     local service      = self.service
     local consumer     = ctx.authenticated_consumer
 
-    if consumer then
-      local schema = plugin.schema
-      if schema and schema.no_consumer then
-        consumer = nil
-      end
+    if consumer and schema.no_consumer then
+      consumer = nil
     end
 
     local      api_id = api      and      api.id or nil
