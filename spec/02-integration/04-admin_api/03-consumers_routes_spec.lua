@@ -493,9 +493,10 @@ describe("Admin API (" .. strategy .. "): ", function()
               })
               local body = assert.res_status(400, res)
               assert.same({
-                code    = Errors.codes.SCHEMA_VIOLATION,
-                name    = "schema violation",
-                fields  = {
+                code     = Errors.codes.SCHEMA_VIOLATION,
+                name     = "schema violation",
+                strategy = strategy,
+                fields   = {
                   ["@entity"] = {
                     "at least one of these fields must be non-empty: 'custom_id', 'username'"
                   }

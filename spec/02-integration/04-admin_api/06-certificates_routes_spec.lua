@@ -296,9 +296,10 @@ describe("Admin API: #" .. strategy, function()
         })
         local body = assert.res_status(400, res)
         assert.same({
-          code    = Errors.codes.SCHEMA_VIOLATION,
-          name    = "schema violation",
-          message = "2 schema violations (cert: required field missing; key: required field missing)",
+          code     = Errors.codes.SCHEMA_VIOLATION,
+          name     = "schema violation",
+          strategy = strategy,
+          message  = "2 schema violations (cert: required field missing; key: required field missing)",
           fields  = {
             cert = "required field missing",
             key = "required field missing",
@@ -716,10 +717,11 @@ describe("Admin API: #" .. strategy, function()
         })
         local body = assert.res_status(400, res)
         assert.same({
-          code    = Errors.codes.SCHEMA_VIOLATION,
-          name    = "schema violation",
-          message = "2 schema violations (certificate: required field missing; name: required field missing)",
-          fields  = {
+          code     = Errors.codes.SCHEMA_VIOLATION,
+          name     = "schema violation",
+          strategy = strategy,
+          message  = "2 schema violations (certificate: required field missing; name: required field missing)",
+          fields   = {
             certificate = "required field missing",
             name = "required field missing",
           }

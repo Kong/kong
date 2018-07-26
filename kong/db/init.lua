@@ -41,6 +41,8 @@ function DB.new(kong_config, strategy)
     error("strategy must be a string", 2)
   end
 
+  strategy = strategy or kong_config.database
+
   -- load errors
 
   local errors = Errors.new(strategy)
@@ -81,6 +83,7 @@ function DB.new(kong_config, strategy)
     daos       = daos,       -- each of those has the connector singleton
     strategies = strategies,
     connector  = connector,
+    strategy   = strategy,
   }
 
   do
@@ -103,6 +106,11 @@ function DB.new(kong_config, strategy)
 end
 
 
+local function prefix_err(self, err)
+  return "[" .. self.strategy .. " error] " .. err
+end
+
+
 function DB:init_connector()
   -- I/O with the DB connector singleton
   -- Implementation up to the strategy's connector. A place for:
@@ -111,27 +119,52 @@ function DB:init_connector()
   --   - prepare statements
   --   - nop (default)
 
-  return self.connector:init()
+  local ok, err = self.connector:init()
+  if not ok then
+    return nil, prefix_err(self, err)
+  end
+
+  return ok
 end
 
 
 function DB:connect()
-  return self.connector:connect()
+  local ok, err = self.connector:connect()
+  if not ok then
+    return nil, prefix_err(self, err)
+  end
+
+  return ok
 end
 
 
 function DB:setkeepalive()
-  return self.connector:setkeepalive()
+  local ok, err = self.connector:setkeepalive()
+  if not ok then
+    return nil, prefix_err(self, err)
+  end
+
+  return ok
 end
 
 
 function DB:reset()
-  return self.connector:reset()
+  local ok, err = self.connector:reset()
+  if not ok then
+    return nil, prefix_err(self, err)
+  end
+
+  return ok
 end
 
 
 function DB:truncate()
-  return self.connector:truncate()
+  local ok, err = self.connector:truncate()
+  if not ok then
+    return nil, prefix_err(self, err)
+  end
+
+  return ok
 end
 
 
