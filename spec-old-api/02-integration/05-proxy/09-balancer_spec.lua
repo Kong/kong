@@ -470,7 +470,7 @@ for _, strategy in helpers.each_strategy() do
   describe("Ring-balancer #" .. strategy, function()
 
     setup(function()
-      local _, db, dao = helpers.get_db_utils(strategy, true)
+      local _, db, dao = helpers.get_db_utils(strategy, {})
 
       truncate_relevant_tables(db, dao)
       helpers.start_kong({
