@@ -43,12 +43,6 @@ function Entity.new(definition)
         return nil, entity_errors.AGGREGATE_ON_BASE_TYPES_ONLY:format(name)
       end
 
-    elseif field.type == "record" then
-      for _, entry in ipairs(field.fields) do
-        if not base_types[entry[next(entry)].type] then
-          return nil, entity_errors.AGGREGATE_ON_BASE_TYPES_ONLY:format(name)
-        end
-      end
     end
   end
 
