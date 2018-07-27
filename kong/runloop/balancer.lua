@@ -12,6 +12,7 @@ local log = ngx.log
 local sleep = ngx.sleep
 local min = math.min
 local max = math.max
+local inspect = require("inspect")
 
 local CRIT  = ngx.CRIT
 local ERR   = ngx.ERR
@@ -85,12 +86,12 @@ do
   local function load_upstream_into_memory(upstream_id)
     log(DEBUG, "fetching upstream: ", tostring(upstream_id))
 
-    local upstream, err = singletons.dao.upstreams:find_all {id = upstream_id}
+    local upstream, err = singletons.db.upstreams:select({id = upstream_id})
     if not upstream then
       return nil, err
     end
 
-    return upstream[1]  -- searched by id, so only 1 row in the returned set
+    return upstream
   end
   _load_upstream_into_memory = load_upstream_into_memory
 
@@ -105,15 +106,15 @@ end
 local fetch_target_history
 do
   ------------------------------------------------------------------------------
-  -- Loads the target history from the DAO.
+  -- Loads the target history from the DB.
   -- @param upstream_id Upstream uuid for which to load the target history
   -- @return The target history array, with target entity tables.
   local function load_targets_into_memory(upstream_id)
-    log(DEBUG, "fetching targets for upstream: ",tostring(upstream_id))
+    log(DEBUG, "fetching targets for upstream: ", tostring(upstream_id))
 
-    local target_history, err = singletons.dao.targets:find_all {upstream_id = upstream_id}
+    local target_history, err, err_t = singletons.db.targets:for_upstream_sorted({ id = upstream_id })
     if not target_history then
-      return nil, err
+      return nil, err, err_t
     end
 
     -- perform some raw data updates
@@ -122,14 +123,7 @@ do
       local port
       target.name, port = string.match(target.target, "^(.-):(%d+)$")
       target.port = tonumber(port)
-
-      -- need exact order, so create sort-key by created-time and uuid
-      target.order = target.created_at .. ":" .. target.id
     end
-
-    table.sort(target_history, function(a,b)
-      return a.order < b.order
-    end)
 
     return target_history
   end
@@ -137,7 +131,7 @@ do
 
 
   ------------------------------------------------------------------------------
-  -- Fetch target history, from cache or the DAO.
+  -- Fetch target history, from cache or the DB.
   -- @param upstream The upstream entity object
   -- @return The target history array, with target entity tables.
   fetch_target_history = function(upstream)
@@ -270,13 +264,16 @@ do
       healthcheckers[balancer] = hc
 
       balancer.report_http_status = function(ip, port, status)
+        log(DEBUG, "HC ", tostring(hc), " FOR BALANCER ", tostring(balancer), " REPORTING HTTP STATUS ", ip, ":", port, " ", status)
         local _, err = hc:report_http_status(ip, port, status, "passive")
+print("HC STATUS RETURN ", tostring(_))
         if err then
           log(ERR, "[healthchecks] failed reporting status: ", err)
         end
       end
 
       balancer.report_tcp_failure = function(ip, port)
+        log(DEBUG, "HC ", tostring(hc), " FOR BALANCER ", tostring(balancer), " REPORTINGTCP FAILURE ", ip, ":", port)
         local _, err = hc:report_tcp_failure(ip, port, nil, "passive")
         if err then
           log(ERR, "[healthchecks] failed reporting status: ", err)
@@ -284,6 +281,7 @@ do
       end
 
       balancer.report_timeout = function(ip, port)
+        log(DEBUG, "HC ", tostring(hc), " FOR BALANCER ", tostring(balancer), " REPORTING TIMEOUT ", ip, ":", port)
         local _, err = hc:report_timeout(ip, port, "passive")
         if err then
           log(ERR, "[healthchecks] failed reporting status: ", err)
@@ -307,6 +305,7 @@ do
         log(ERR, "[healthchecks] error creating health checker: ", err)
         return nil, err
       end
+      log(DEBUG, "HC ", tostring(healthchecker), " CREATED FOR BALANCER ", tostring(balancer))
 
       populate_healthchecker(healthchecker, balancer)
 
@@ -339,7 +338,7 @@ do
   end
 
   ------------------------------------------------------------------------------
-  -- @param upstream (table) The upstream data
+  -- @param upstream (table) A db.upstreams entity
   -- @param recreate (boolean, optional) create new balancer even if one exists
   -- @param history (table, optional) history of target updates
   -- @param start (integer, optional) from where to start reading the history
@@ -364,6 +363,9 @@ do
         wheelSize = upstream.slots,
         dns = dns_client,
       })
+
+    log(DEBUG, "CREATED NEW BALANCER ", tostring(balancer))
+
     if not balancer then
       return nil, err
     end
@@ -380,7 +382,11 @@ do
 
     apply_history(balancer, history, start)
 
+    log(DEBUG, "HEALTHCHECKS LOOKS LIKE ", inspect(upstream.healthcheckes))
+
     create_healthchecker(balancer, upstream)
+
+    log(DEBUG, "CREATED HC FOR BALANCER ", tostring(balancer), " HC ", tostring(healthcheckers[balancer]))
 
     -- only make the new balancer available for other requests after it
     -- is fully set up.
@@ -462,17 +468,11 @@ do
   -- and upstream entity tables as values, or nil+error
   local function load_upstreams_dict_into_memory()
     log(DEBUG, "fetching all upstreams")
-    local upstreams, err = singletons.dao.upstreams:find_all()
-    if err then
-      return nil, err
-    end
-
-    -- build a dictionary, indexed by the upstream name
     local upstreams_dict = {}
-    for _, up in ipairs(upstreams) do
+    for up in singletons.db.upstreams:each() do
+    -- build a dictionary, indexed by the upstream name
       upstreams_dict[up.name] = up.id
     end
-
     return upstreams_dict
   end
   _load_upstreams_dict_into_memory = load_upstreams_dict_into_memory
@@ -525,6 +525,7 @@ local function get_balancer(target, no_create)
   -- do not apply here
   local hostname = target.host
 
+
   -- first go and find the upstream object, from cache or the db
   local upstream, err = get_upstream_by_name(hostname)
   if upstream == false then
@@ -556,9 +557,10 @@ end
 --------------------------------------------------------------------------------
 -- Called on any changes to a target.
 -- @param operation "create", "update" or "delete"
--- @param upstream Target table with `upstream_id` field
+-- @param target Target table with `upstream.id` field
 local function on_target_event(operation, target)
-  local upstream_id = target.upstream_id
+  local upstream_id = target.upstream.id
+  log(DEBUG, "ON TARGET EVENT FOR UPSTREAM ", upstream_id)
 
   singletons.cache:invalidate_local("balancer:targets:" .. upstream_id)
 
@@ -748,8 +750,6 @@ end
 --
 -- @param target the data structure as defined in `core.access.before` where
 -- it is created.
--- @param silent Do not produce body data (to be used in OpenResty contexts
--- which do not support sending it)
 -- @return true on success, nil+error message+status code otherwise
 local function execute(target, ctx)
 
@@ -771,6 +771,7 @@ local function execute(target, ctx)
   if dns_cache_only then
     -- retry, so balancer is already set if there was one
     balancer = target.balancer
+    log(DEBUG, "FOR TARGET ", target.ip, ":", target.port, " DNS CACHE ONLY USING BALANCER ", tostring(balancer))
 
   else
     -- first try, so try and find a matching balancer/upstream object
@@ -791,6 +792,7 @@ local function execute(target, ctx)
         target.hash_value = hash_value
       end
     end
+    log(DEBUG, "FOR TARGET ", target.ip, ":", target.port, " FIRST TRY USING BALANCER ", tostring(balancer))
   end
 
   local ip, port, hostname
