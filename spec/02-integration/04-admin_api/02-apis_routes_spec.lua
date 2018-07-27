@@ -20,7 +20,7 @@ pending("Admin API #" .. kong_config.database, function()
 
   setup(function()
     local _
-    _, db, dao = helpers.get_db_utils(kong_config.database)
+    _, db, dao = helpers.get_db_utils(kong_config.database, {})
 
     assert(helpers.start_kong{
       database = kong_config.database

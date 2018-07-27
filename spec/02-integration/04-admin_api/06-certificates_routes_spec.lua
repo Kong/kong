@@ -52,7 +52,7 @@ describe("Admin API: #" .. strategy, function()
   end)
 
   setup(function()
-    bp, db, dao = helpers.get_db_utils(strategy)
+    bp, db, dao = helpers.get_db_utils(strategy, {})
     assert(dao:run_migrations())
 
     assert(helpers.start_kong({

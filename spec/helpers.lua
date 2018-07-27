@@ -122,8 +122,25 @@ do
     end
 end
 
-local function get_db_utils(strategy, no_truncate)
+local function truncate_tables(db, dao, tables)
+  if not tables then
+    return
+  end
+
+  for _, t in ipairs(tables) do
+    if db[t] and db[t].schema and not db[t].schema.legacy then
+      db[t]:truncate()
+    else
+      dao:truncate_table(t)
+    end
+  end
+end
+
+local function get_db_utils(strategy, tables)
   strategy = strategy or conf.database
+  if tables ~= nil and type(tables) ~= "table" then
+    error("arg #2 must be a list of tables to truncate", 2)
+  end
 
   -- new DAO (DB module)
   local db = assert(DB.new(conf, strategy))
@@ -139,14 +156,15 @@ local function get_db_utils(strategy, no_truncate)
     conf.database = database
 
     assert(dao:run_migrations())
-    if not no_truncate then
-      dao:truncate_tables()
-    end
   end
 
   -- cleanup new DB tables
-  if not no_truncate then
+  if not tables then
     assert(db:truncate())
+    dao:truncate_tables()
+
+  else
+    truncate_tables(db, dao, tables)
   end
 
   db.old_dao = dao
@@ -1168,10 +1186,15 @@ return {
   openresty_ver_num = openresty_ver_num(),
   unindent = unindent,
 
-  start_kong = function(env)
+  start_kong = function(env, tables)
+    if tables ~= nil and type(tables) ~= "table" then
+      error("arg #2 must be a list of tables to truncate")
+    end
     env = env or {}
     local ok, err = prepare_prefix(env.prefix)
     if not ok then return nil, err end
+
+    truncate_tables(db, dao, tables)
 
     local nginx_conf = ""
     if env.nginx_conf then
@@ -1180,7 +1203,7 @@ return {
 
     return kong_exec("start --conf " .. TEST_CONF_PATH .. nginx_conf, env)
   end,
-  stop_kong = function(prefix, preserve_prefix, preserve_tables)
+  stop_kong = function(prefix, preserve_prefix)
     prefix = prefix or conf.prefix
 
     local running_conf = get_running_conf(prefix)
@@ -1189,9 +1212,7 @@ return {
     local ok, err = kong_exec("stop --prefix " .. prefix)
 
     wait_pid(running_conf.nginx_pid)
-    if not preserve_tables then
-      dao:truncate_tables()
-    end
+
     if not preserve_prefix then
       clean_prefix(prefix)
     end
@@ -1200,8 +1221,6 @@ return {
   -- Only use in CLI tests from spec/02-integration/01-cmd
   kill_all = function(prefix, timeout)
     local kill = require "kong.cmd.utils.kill"
-
-    dao:truncate_tables()
 
     local running_conf = get_running_conf(prefix)
     if not running_conf then return end

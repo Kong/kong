@@ -20,7 +20,7 @@ describe("Admin API: #" .. kong_config.database, function()
   setup(function()
 
     local _
-    _, _, dao = helpers.get_db_utils(kong_config.database)
+    _, _, dao = helpers.get_db_utils(kong_config.database, {})
 
     assert(helpers.start_kong{
       database = kong_config.database
