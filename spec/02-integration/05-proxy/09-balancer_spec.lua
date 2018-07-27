@@ -295,10 +295,19 @@ local function client_requests(n, host_or_headers, proxy_host, proxy_port)
     }
     if not res then
       fails = fails + 1
+      if TEST_LOG then
+        print("FAIL (no body)")
+      end
     elseif res.status == 200 then
       oks = oks + 1
+      if TEST_LOG then
+        print("OK ", res.status, res:read_body())
+      end
     elseif res.status > 399 then
       fails = fails + 1
+      if TEST_LOG then
+        print("FAIL ", res.status, res:read_body())
+      end
     end
     last_status = res and res.status
     client:close()
@@ -309,6 +318,7 @@ end
 
 local add_upstream
 local patch_upstream
+local get_upstream
 local get_upstream_health
 local get_router_version
 local add_target
@@ -346,8 +356,11 @@ do
     return res.status, res_body
   end
 
-  add_upstream = function(data)
-    local upstream_name = gen_sym("upstream")
+  add_upstream = function(data, name)
+    local upstream_name = name or gen_sym("upstream")
+    if TEST_LOG then
+      print("ADDING UPSTREAM ", upstream_name)
+    end
     local req = utils.deep_copy(data) or {}
     req.name = req.name or upstream_name
     req.slots = req.slots or SLOTS
@@ -357,6 +370,14 @@ do
 
   patch_upstream = function(upstream_name, data)
     assert.same(200, api_send("PATCH", "/upstreams/" .. upstream_name, data))
+  end
+
+  get_upstream = function(upstream_name, forced_port)
+    local path = "/upstreams/" .. upstream_name
+    local status, body = api_send("GET", path, nil, forced_port)
+    if status == 200 then
+      return body
+    end
   end
 
   get_upstream_health = function(upstream_name, forced_port)
@@ -432,6 +453,15 @@ do
 end
 
 
+local function truncate_relevant_tables(db, dao)
+  db:truncate("services")
+  db:truncate("routes")
+  db:truncate("upstreams")
+  db:truncate("targets")
+  dao.plugins:truncate()
+end
+
+
 local function poll_wait_health(upstream_name, host, port, value, admin_port)
   local hard_timeout = 300
   local expire = ngx.now() + hard_timeout
@@ -446,7 +476,7 @@ local function poll_wait_health(upstream_name, host, port, value, admin_port)
     end
     ngx.sleep(0.01) -- poll-wait
   end
-  assert(false, "timed out waiting for " .. host .. ":" .. port " in " ..
+  assert(false, "timed out waiting for " .. host .. ":" .. port .. " in " ..
                 upstream_name .. " to become " .. value)
 end
 
@@ -480,14 +510,9 @@ for _, strategy in helpers.each_strategy() do
   describe("Ring-balancer #" .. strategy, function()
 
     setup(function()
-      assert(helpers.get_db_utils(strategy, {
-        "routes",
-        "services",
-        "plugins",
-        "upstreams",
-        "targets",
-      }))
+      local _, db, dao = helpers.get_db_utils(strategy, {})
 
+      truncate_relevant_tables(db, dao)
       helpers.start_kong({
         database   = strategy,
         nginx_conf = "spec/fixtures/custom_nginx.template",
@@ -612,6 +637,62 @@ for _, strategy in helpers.each_strategy() do
             local _, server_oks, server_fails = server:done()
             assert.same(1, server_oks)
             assert.same(0, server_fails)
+          end)
+
+          it("can have their config partially updated", function()
+            local upstream_name = add_upstream()
+
+            patch_upstream(upstream_name, {
+              healthchecks = {
+                active = {
+                  http_path = "/status",
+                  healthy = {
+                    interval = 0,
+                    successes = 1,
+                  },
+                  unhealthy = {
+                    interval = 0,
+                    http_failures = 1,
+                  },
+                }
+              }
+            })
+
+            local updated = {
+              active = {
+                concurrency = 10,
+                healthy = {
+                  http_statuses = { 200, 302 },
+                  interval = 0,
+                  successes = 1
+                },
+                http_path = "/status",
+                timeout = 1,
+                unhealthy = {
+                  http_failures = 1,
+                  http_statuses = { 429, 404, 500, 501, 502, 503, 504, 505 },
+                  interval = 0,
+                  tcp_failures = 0,
+                  timeouts = 0
+                }
+              },
+              passive = {
+                healthy = {
+                  http_statuses = { 200, 201, 202, 203, 204, 205, 206, 207, 208, 226,
+                                    300, 301, 302, 303, 304, 305, 306, 307, 308 },
+                  successes = 0
+                },
+                unhealthy = {
+                  http_failures = 0,
+                  http_statuses = { 429, 500, 503 },
+                  tcp_failures = 0,
+                  timeouts = 0
+                }
+              }
+            }
+
+            local upstream_data = get_upstream(upstream_name)
+            assert.same(updated, upstream_data.healthchecks)
           end)
 
           it("can be renamed without producing stale cache", function()
@@ -780,7 +861,7 @@ for _, strategy in helpers.each_strategy() do
 
           end)
 
-          it("perform passive health checks", function()
+          it("#perform passive health checks", function()
 
             for nfails = 1, 3 do
 
@@ -1449,6 +1530,7 @@ for _, strategy in helpers.each_strategy() do
               local requests = SLOTS * 2 -- go round the balancer twice
 
               local upstream_name = add_upstream()
+
               local port1 = add_target(upstream_name, localhost)
               local port2 = add_target(upstream_name, localhost)
               local api_host = add_api(upstream_name)
