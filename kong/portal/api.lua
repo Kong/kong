@@ -304,22 +304,12 @@ return {
     end,
 
     PATCH = function(self, dao_factory, helpers)
-      if not self.params.password then
-        return helpers.responses.send_HTTP_BAD_REQUEST("Password is required")
-      end
-
-      local cred_params = {
-        password = self.params.password,
-      }
-
-      self.params.password = nil
-
       local filter = {
         consumer_id = self.consumer.id,
         id = self.credential.id,
       }
 
-      local ok, err = crud.portal_crud.update_login_credential(cred_params, self.collection, filter)
+      local ok, err = crud.portal_crud.update_login_credential(self.params, self.collection, filter)
 
       if err then
         return helpers.yield_error(err)
@@ -375,6 +365,7 @@ return {
     end,
 
     PATCH = function(self, dao_factory, helpers)
+
       if utils.validate_email(self.params.email) == nil then
         return helpers.responses.send_HTTP_BAD_REQUEST("Invalid email")
       end
