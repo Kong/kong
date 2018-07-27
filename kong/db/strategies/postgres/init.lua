@@ -962,6 +962,7 @@ function _M.new(connector, schema, errors)
         local type_postgres          = field_type_to_postgres_type(foreign_field)
         local is_used_in_primary_key = primary_key_fields[name] ~= nil
         local is_unique              = foreign_field.unique == true
+        local is_endpoint_key        = schema.endpoint_key == field_name
 
         max_name_length              = max(max_name_length, #name_escaped)
         max_type_length              = max(max_type_length, #type_postgres)
@@ -978,6 +979,7 @@ function _M.new(connector, schema, errors)
           is_used_in_primary_key     = is_used_in_primary_key,
           is_part_of_composite_key   = is_part_of_composite_key,
           is_unique                  = is_unique,
+          is_endpoint_key            = is_endpoint_key,
         }
 
         if prepared_field.is_used_in_primary_key then
@@ -1054,6 +1056,7 @@ function _M.new(connector, schema, errors)
       local is_used_in_primary_key   = primary_key_fields[field_name] ~= nil
       local is_part_of_composite_key = is_used_in_primary_key and primary_key_count > 1 or false
       local is_unique                = field.unique == true
+      local is_endpoint_key          = schema.endpoint_key == field_name
 
       max_name_length = max(max_name_length, #name_escaped)
       max_type_length = max(max_type_length, #type_postgres)
@@ -1066,6 +1069,7 @@ function _M.new(connector, schema, errors)
         is_used_in_primary_key   = is_used_in_primary_key,
         is_part_of_composite_key = is_part_of_composite_key,
         is_unique                = is_unique,
+        is_endpoint_key          = is_endpoint_key,
       }
 
       if prepared_field.is_used_in_primary_key then
@@ -1100,6 +1104,7 @@ function _M.new(connector, schema, errors)
     local is_used_in_primary_key   = fields[i].is_used_in_primary_key
     local is_part_of_composite_key = fields[i].is_part_of_composite_key
     local is_unique                = fields[i].is_unique
+    local is_endpoint_key          = fields[i].is_endpoint_key
     local referenced_table         = fields[i].referenced_table
     local referenced_column        = fields[i].referenced_column
     local on_delete                = fields[i].on_delete
@@ -1179,6 +1184,11 @@ function _M.new(connector, schema, errors)
       create_expression[4] = rep(" ", max_type_length - #type_postgres + (#type_postgres < max_name_length and 3 or 2))
       create_expression[5] = "UNIQUE"
 
+      unique_fields_count = unique_fields_count + 1
+      unique_fields[unique_fields_count] = fields[i]
+
+    elseif is_endpoint_key and not is_unique then
+      -- treat it like a unique key anyway - they are indexed (example: target.target)
       unique_fields_count = unique_fields_count + 1
       unique_fields[unique_fields_count] = fields[i]
     end
