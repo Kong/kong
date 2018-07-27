@@ -10,16 +10,18 @@ describe("Plugin: oauth2 (invalidations)", function()
 
   setup(function()
     bp, db, dao = helpers.get_db_utils(strategy)
-
-    assert(db:truncate())
-    dao:truncate_tables()
-    assert(dao:run_migrations())
   end)
 
 
   before_each(function()
-    assert(db:truncate())
-    dao:truncate_tables()
+    assert(db:truncate("routes"))
+    assert(db:truncate("services"))
+    assert(db:truncate("consumers"))
+    dao:truncate_table("apis")
+    dao:truncate_table("plugins")
+    dao:truncate_table("oauth2_tokens")
+    dao:truncate_table("oauth2_credentials")
+    dao:truncate_table("oauth2_authorization_codes")
 
     local api = assert(dao.apis:insert {
       name         = "api-1",

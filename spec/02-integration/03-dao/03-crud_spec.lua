@@ -48,13 +48,13 @@ helpers.for_each_dao(function(kong_config)
       assert(factory:run_migrations())
     end)
     teardown(function()
-      factory:truncate_tables()
+      factory:truncate_table("apis")
       ngx.shared.kong_cassandra:flush_expired()
     end)
 
     describe("insert()", function()
       after_each(function()
-        factory:truncate_tables()
+        factory:truncate_table("apis")
       end)
       it("insert a valid API", function()
         local api, err = apis:insert(api_tbl)
@@ -78,6 +78,10 @@ helpers.for_each_dao(function(kong_config)
         assert.raw_table(api)
       end)
       it("insert a valid array field and return it properly", function()
+        finally(function()
+          factory:truncate_table("oauth2_credentials")
+        end)
+
         local res, err = oauth2_credentials:insert {
           name = "test_app",
           redirect_uri = "https://example.org"
@@ -91,6 +95,10 @@ helpers.for_each_dao(function(kong_config)
         assert.raw_table(res)
       end)
       it("insert a valid array field and return it properly bis", function()
+        finally(function()
+          factory:truncate_table("oauth2_credentials")
+        end)
+
         local res, err = oauth2_credentials:insert {
           name = "test_app",
           redirect_uri = "https://example.org, https://example.com"
@@ -183,7 +191,7 @@ helpers.for_each_dao(function(kong_config)
         api_fixture = api
       end)
       after_each(function()
-        factory:truncate_tables()
+        factory:truncate_table("apis")
       end)
 
       it("select by primary key", function()
@@ -223,7 +231,8 @@ helpers.for_each_dao(function(kong_config)
 
     describe("find_all()", function()
       setup(function()
-        factory:truncate_tables()
+        factory:truncate_table("apis")
+        factory:truncate_table("oauth2_credentials")
 
         for i = 1, 100 do
           local api, err = apis:insert {
@@ -243,7 +252,8 @@ helpers.for_each_dao(function(kong_config)
         assert.truthy(res)
       end)
       teardown(function()
-        factory:truncate_tables()
+        factory:truncate_table("apis")
+        factory:truncate_table("oauth2_credentials")
       end)
 
       it("retrieve all rows", function()
@@ -274,6 +284,9 @@ helpers.for_each_dao(function(kong_config)
         assert.equal("fixture_100", rows[1].name)
       end)
       it("return rows with arrays", function()
+        finally(function()
+          factory:truncate_table("oauth2_credentials")
+        end)
         local rows, err = oauth2_credentials:find_all()
         assert.falsy(err)
         assert.is_table(rows)
@@ -327,7 +340,7 @@ helpers.for_each_dao(function(kong_config)
 
     describe("find_page()", function()
       setup(function()
-        factory:truncate_tables()
+        factory:truncate_table("apis")
 
         for i = 1, 100 do
           local api, err = apis:insert {
@@ -341,7 +354,7 @@ helpers.for_each_dao(function(kong_config)
         end
       end)
       teardown(function()
-        factory:truncate_tables()
+        factory:truncate_table("apis")
       end)
 
       it("has a default_page size (100)", function()
@@ -498,7 +511,7 @@ helpers.for_each_dao(function(kong_config)
 
     describe("count()", function()
       setup(function()
-        factory:truncate_tables()
+        factory:truncate_table("apis")
 
         for i = 1, 100 do
           local api, err = apis:insert {
@@ -512,7 +525,7 @@ helpers.for_each_dao(function(kong_config)
       end)
 
       teardown(function()
-        factory:truncate_tables()
+        factory:truncate_table("apis")
       end)
 
       it("return the count of rows", function()
@@ -561,14 +574,14 @@ helpers.for_each_dao(function(kong_config)
     describe("update()", function()
       local api_fixture
       before_each(function()
-        factory:truncate_tables()
+        factory:truncate_table("apis")
 
         local api, err = apis:insert(api_tbl)
         assert.falsy(err)
         api_fixture = api
       end)
       after_each(function()
-        factory:truncate_tables()
+        factory:truncate_table("apis")
       end)
 
       it("update by primary key", function()
@@ -767,14 +780,14 @@ helpers.for_each_dao(function(kong_config)
     describe("delete()", function()
       local api_fixture
       before_each(function()
-        factory:truncate_tables()
+        factory:truncate_table("apis")
 
         local api, err = apis:insert(api_tbl)
         assert.falsy(err)
         api_fixture = api
       end)
       after_each(function()
-        factory:truncate_tables()
+        factory:truncate_table("apis")
       end)
 
       it("delete a row", function()

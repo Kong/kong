@@ -21,7 +21,8 @@ describe("Admin API", function()
     assert(helpers.start_kong())
     client = assert(helpers.admin_client())
 
-    helpers.dao:truncate_tables()
+    helpers.dao:truncate_table("upstreams")
+    helpers.dao:truncate_table("targets")
 
     upstream = assert(helpers.dao.upstreams:insert {
       name = upstream_name,

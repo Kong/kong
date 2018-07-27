@@ -8,7 +8,12 @@ for _, strategy in helpers.each_strategy() do
         local proxy_client
 
         setup(function()
-          local bp = helpers.get_db_utils(strategy)
+          local bp = helpers.get_db_utils(strategy, {
+            "apis",
+            "routes",
+            "services",
+            "plugins",
+          })
 
           -- insert plugin-less route and a global plugin
           local service = bp.services:insert {
@@ -61,7 +66,12 @@ for _, strategy in helpers.each_strategy() do
         local proxy_client
 
         setup(function()
-          local bp = helpers.get_db_utils(strategy)
+          local bp = helpers.get_db_utils(strategy, {
+            "apis",
+            "routes",
+            "services",
+            "plugins",
+          })
 
           -- route specific plugin
           local service = bp.services:insert {
@@ -114,7 +124,14 @@ for _, strategy in helpers.each_strategy() do
         local proxy_client
 
         setup(function()
-          local bp = helpers.get_db_utils(strategy)
+          local bp = helpers.get_db_utils(strategy, {
+            "apis",
+            "routes",
+            "services",
+            "plugins",
+            "consumers",
+            "keyauth_credentials",
+          })
 
           -- consumer specific plugin
           local service = bp.services:insert {

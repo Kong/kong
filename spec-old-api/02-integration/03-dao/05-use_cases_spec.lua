@@ -5,15 +5,15 @@ local helpers = require "spec.helpers"
 
 for _, strategy in helpers.each_strategy() do
   describe("Real use-cases with DB: #" .. strategy, function()
-    local dao
-    local bp
+    local bp, db, dao
     setup(function()
-      local _
-      bp, _, dao = helpers.get_db_utils(strategy)
+      bp, db, dao = helpers.get_db_utils(strategy)
     end)
 
     before_each(function()
-      dao:truncate_tables()
+      dao:truncate_table("apis")
+      dao:truncate_table("plugins")
+      db:truncate("consumers")
     end)
 
     it("retrieves plugins for plugins_iterator", function()

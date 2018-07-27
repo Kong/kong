@@ -34,8 +34,7 @@ describe("Admin API (" .. strategy .. "): ", function()
 
   local consumer, consumer2
   before_each(function()
-    assert(db:truncate())
-    dao:truncate_tables()
+    assert(db:truncate("consumers"))
     consumer = assert(bp.consumers:insert {
       username = "bob",
       custom_id = "wxyz"
@@ -191,13 +190,12 @@ describe("Admin API (" .. strategy .. "): ", function()
 
     describe("GET", function()
       before_each(function()
-        assert(db:truncate())
-        dao:truncate_tables()
+        assert(db:truncate("consumers"))
         bp.consumers:insert_n(10)
       end)
       teardown(function()
-        assert(db:truncate())
-        dao:truncate_tables()
+        assert(db:truncate("consumers"))
+        dao:truncate_table("plugins")
       end)
 
       it("retrieves the first page", function()

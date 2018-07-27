@@ -3,8 +3,6 @@ local cjson = require "cjson"
 local utils = require "kong.tools.utils"
 
 local dao_helpers = require "spec.02-integration.03-dao.helpers"
-local DAOFactory = require "kong.dao.factory"
-local DB         = require "kong.db"
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
@@ -16,18 +14,10 @@ end
 dao_helpers.for_each_dao(function(kong_config)
 describe("Admin API #" .. kong_config.database, function()
   local client
-  local dao
-  local db
+  local dao, _
 
   setup(function()
-    db = assert(DB.new(kong_config))
-    assert(db:init_connector())
-
-    dao = assert(DAOFactory.new(kong_config, db))
-    assert(dao:run_migrations())
-
-    dao:truncate_tables()
-    db:truncate()
+    _, _, dao = helpers.get_db_utils(kong_config.database)
 
     assert(helpers.start_kong{
       database = kong_config.database
@@ -40,7 +30,8 @@ describe("Admin API #" .. kong_config.database, function()
   describe("/apis", function()
     describe("POST", function()
       before_each(function()
-        dao:truncate_tables()
+        dao:truncate_table("apis")
+        dao:truncate_table("plugins")
         client = assert(helpers.admin_client())
       end)
       after_each(function()
@@ -175,7 +166,8 @@ describe("Admin API #" .. kong_config.database, function()
 
     describe("PUT", function()
       before_each(function()
-        dao:truncate_tables()
+        dao:truncate_table("apis")
+        dao:truncate_table("plugins")
         client = assert(helpers.admin_client())
       end)
       after_each(function()
@@ -352,7 +344,8 @@ describe("Admin API #" .. kong_config.database, function()
 
     describe("GET", function()
       setup(function()
-        dao:truncate_tables()
+        dao:truncate_table("apis")
+        dao:truncate_table("plugins")
 
         for i = 1, 10 do
           assert(dao.apis:insert {
@@ -363,7 +356,8 @@ describe("Admin API #" .. kong_config.database, function()
         end
       end)
       teardown(function()
-        dao:truncate_tables()
+        dao:truncate_table("apis")
+        dao:truncate_table("plugins")
       end)
       before_each(function()
         client = assert(helpers.admin_client())
@@ -435,7 +429,8 @@ describe("Admin API #" .. kong_config.database, function()
 
       describe("empty results", function()
         setup(function()
-          dao:truncate_tables()
+          dao:truncate_table("apis")
+          dao:truncate_table("plugins")
         end)
 
         it("data property is an empty array", function()
@@ -452,7 +447,8 @@ describe("Admin API #" .. kong_config.database, function()
 
     describe("DELETE", function()
       before_each(function()
-        dao:truncate_tables()
+        dao:truncate_table("apis")
+        dao:truncate_table("plugins")
         client = assert(helpers.admin_client())
       end)
       after_each(function()
@@ -479,7 +475,8 @@ describe("Admin API #" .. kong_config.database, function()
   describe("/apis/{api}", function()
     local api
     setup(function()
-      dao:truncate_tables()
+      dao:truncate_table("apis")
+      dao:truncate_table("plugins")
     end)
     before_each(function()
       api = assert(dao.apis:insert {
@@ -489,7 +486,8 @@ describe("Admin API #" .. kong_config.database, function()
       })
     end)
     after_each(function()
-      dao:truncate_tables()
+      dao:truncate_table("apis")
+      dao:truncate_table("plugins")
     end)
 
     describe("GET", function()
@@ -739,7 +737,8 @@ describe("Admin API #" .. kong_config.database, function()
   describe("/apis/{api}/plugins", function()
     local api
     setup(function()
-      dao:truncate_tables()
+      dao:truncate_table("apis")
+      dao:truncate_table("plugins")
 
       api = assert(dao.apis:insert {
         name = "my-api",

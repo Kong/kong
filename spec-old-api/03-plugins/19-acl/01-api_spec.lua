@@ -4,11 +4,10 @@ local utils = require "kong.tools.utils"
 
 describe("Plugin: acl (API)", function()
   local consumer, admin_client
-  local dao
-  local bp
-  local _
+  local bp, db, dao
+
   setup(function()
-    bp, _, dao = helpers.get_db_utils()
+    bp, db, dao = helpers.get_db_utils()
 
     assert(helpers.start_kong())
     admin_client = helpers.admin_client()
@@ -20,7 +19,8 @@ describe("Plugin: acl (API)", function()
 
   describe("/consumers/:consumer/acls/", function()
     setup(function()
-      dao:truncate_tables()
+      db:truncate("consumers")
+      dao:truncate_table("acls")
       consumer = bp.consumers:insert {
         username = "bob"
       }

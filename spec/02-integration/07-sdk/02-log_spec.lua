@@ -23,8 +23,9 @@ describe("SDK: kong.log", function()
 
   before_each(function()
     bp, db, dao = helpers.get_db_utils()
-    dao:truncate_tables()
-    assert(db:truncate())
+    assert(db:truncate("routes"))
+    assert(db:truncate("services"))
+    dao:truncate_table("plugins")
     dao:run_migrations()
   end)
 
@@ -33,10 +34,11 @@ describe("SDK: kong.log", function()
       proxy_client:close()
     end
 
-    dao:truncate_tables()
-    assert(db:truncate())
-
     helpers.stop_kong()
+
+    assert(db:truncate("routes"))
+    assert(db:truncate("services"))
+    dao:truncate_table("plugins")
   end)
 
   it("namespaces the logs with the plugin name inside a plugin", function()

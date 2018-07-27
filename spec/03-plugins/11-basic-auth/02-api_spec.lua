@@ -18,11 +18,17 @@ for _, strategy in helpers.each_strategy() do
         database = strategy,
       }))
 
-      admin_client = helpers.admin_client()
     end)
     teardown(function()
-      if admin_client then admin_client:close() end
       helpers.stop_kong()
+    end)
+
+    before_each(function()
+      admin_client = helpers.admin_client()
+    end)
+
+    after_each(function()
+      if admin_client then admin_client:close() end
     end)
 
     describe("/consumers/:consumer/basic-auth/", function()

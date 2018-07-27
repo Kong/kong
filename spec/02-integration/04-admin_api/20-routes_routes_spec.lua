@@ -23,7 +23,7 @@ for _, strategy in helpers.each_strategy() do
     local client
 
     setup(function()
-      bp, db, dao = helpers.get_db_utils(strategy)
+      bp, db, dao = helpers.get_db_utils(strategy, {})
     end)
 
     teardown(function()
@@ -32,7 +32,8 @@ for _, strategy in helpers.each_strategy() do
 
     before_each(function()
       helpers.stop_kong()
-      assert(db:truncate())
+      assert(db:truncate("routes"))
+      assert(db:truncate("services"))
       assert(helpers.start_kong({
         database = strategy,
       }))

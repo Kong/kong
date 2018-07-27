@@ -20,7 +20,7 @@ pending("Admin API #" .. kong_config.database, function()
 
   setup(function()
     local _
-    _, db, dao = helpers.get_db_utils(kong_config.database)
+    _, db, dao = helpers.get_db_utils(kong_config.database, {})
 
     assert(helpers.start_kong{
       database = kong_config.database
@@ -29,16 +29,17 @@ pending("Admin API #" .. kong_config.database, function()
 
   teardown(function()
     helpers.stop_kong()
+    dao:truncate_table("apis")
+    dao:truncate_table("plugins")
+    db:truncate("routes")
+    db:truncate("services")
   end)
 
   before_each(function()
-    dao:truncate_tables()
-    db:truncate()
-  end)
-
-  after_each(function()
-    dao:truncate_tables()
-    db:truncate()
+    dao:truncate_table("apis")
+    dao:truncate_table("plugins")
+    db:truncate("routes")
+    db:truncate("services")
   end)
 
   describe("/apis", function()
@@ -415,7 +416,7 @@ pending("Admin API #" .. kong_config.database, function()
 
       describe("empty results", function()
         it("data property is an empty array", function()
-          dao:truncate_tables()
+          dao:truncate_table("apis")
 
           local res = assert(client:send {
             method = "GET",
@@ -430,7 +431,7 @@ pending("Admin API #" .. kong_config.database, function()
 
     describe("DELETE", function()
       before_each(function()
-        dao:truncate_tables()
+        dao:truncate_table("apis")
         client = assert(helpers.admin_client())
       end)
       after_each(function()
@@ -456,18 +457,14 @@ pending("Admin API #" .. kong_config.database, function()
 
   describe("/apis/{api}", function()
     local api
-    setup(function()
-      dao:truncate_tables()
-    end)
+
     before_each(function()
+      dao:truncate_table("apis")
       api = assert(dao.apis:insert {
         name = "my-api",
         uris = "/my-api",
         upstream_url = "http://my-api.com"
       })
-    end)
-    after_each(function()
-      dao:truncate_tables()
     end)
 
     describe("GET", function()
@@ -1242,8 +1239,10 @@ end)
 describe("Admin API request size", function()
   local client
   setup(function()
-    helpers.dao:truncate_tables()
-    helpers.db:truncate()
+    helpers.dao:truncate_table("apis")
+    helpers.dao:truncate_table("plugins")
+    helpers.db:truncate("routes")
+    helpers.db:truncate("services")
   end)
   before_each(function()
     assert(helpers.dao:run_migrations())
