@@ -365,7 +365,6 @@ return {
     end,
 
     PATCH = function(self, dao_factory, helpers)
-
       if utils.validate_email(self.params.email) == nil then
         return helpers.responses.send_HTTP_BAD_REQUEST("Invalid email")
       end
