@@ -155,21 +155,6 @@ describe("metaschema", function()
     assert.match("value must be a field name", err.endpoint_key)
   end)
 
-  it("endpoint_key must be unique", function()
-    local s = {
-      name = "test",
-      endpoint_key = "num",
-      fields = {
-        { str = { type = "string", unique = true } },
-        { num = { type = "number" } },
-      },
-      primary_key = { "str" },
-    }
-    local ok, err = MetaSchema:validate(s)
-    assert.falsy(ok)
-    assert.match("endpoint key must be a unique field", err.endpoint_key)
-  end)
-
   it("ttl support can be enabled with ttl = true", function()
     local s = {
       name = "test",
