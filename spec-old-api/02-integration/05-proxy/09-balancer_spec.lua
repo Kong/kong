@@ -417,9 +417,8 @@ end
 
 
 local function truncate_relevant_tables(db, dao)
+  db:truncate()
   dao.apis:truncate()
-  dao.upstreams:truncate()
-  dao.targets:truncate()
   dao.plugins:truncate()
 end
 
