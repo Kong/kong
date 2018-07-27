@@ -18,19 +18,25 @@ end
 
 local upstream_name = "my_upstream"
 
-describe("Admin API", function()
+for _, strategy in helpers.each_strategy() do
 
+describe("Admin API #" .. strategy, function()
+  local bp
+  local db
+  local dao
   local client, upstream
   local weight_default, weight_min, weight_max = 100, 0, 1000
   local default_port = 8000
 
   local dns_hostsfile
   setup(function()
+    bp, db, dao = helpers.get_db_utils(strategy)
     -- Adding a name-based resolution that won't fail
     dns_hostsfile = os.tmpname()
     local fd = assert(io.open(dns_hostsfile, "w"))
     assert(fd:write("127.0.0.1 localhost custom_localhost\n"))
     fd:close()
+    assert(dao:run_migrations())
   end)
 
   teardown(function()
@@ -38,25 +44,24 @@ describe("Admin API", function()
   end)
 
   before_each(function()
-    assert(helpers.dao:run_migrations())
+    assert(db:truncate("upstreams"))
+    assert(db:truncate("targets"))
     assert(helpers.start_kong({
+      database   = strategy,
       nginx_conf = "spec/fixtures/custom_nginx.template",
       dns_hostsfile = dns_hostsfile,
     }))
     client = assert(helpers.admin_client())
 
-    helpers.dao:truncate_table("upstreams")
-    helpers.dao:truncate_table("targets")
-
-    upstream = assert(helpers.dao.upstreams:insert {
+    upstream = bp.upstreams:insert {
       name = upstream_name,
       slots = 10,
-    })
+    }
   end)
 
   after_each(function()
     if client then client:close() end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
   end)
 
   describe("/upstreams/{upstream}/targets/", function()
@@ -115,9 +120,7 @@ describe("Admin API", function()
           })
           assert.response(res).has.status(201)
         end
-        local history = assert(helpers.dao.targets:find_all {
-          upstream_id = upstream.id,
-        })
+        local history = assert(db.targets:for_upstream_raw({ id = upstream.id }))
         -- there should be 2 left; 1 from the cleanup, and the final one
         -- inserted that triggered the cleanup
         assert.equal(2, #history)
@@ -148,7 +151,8 @@ describe("Admin API", function()
             })
             local body = assert.response(res).has.status(400)
             local json = cjson.decode(body)
-            assert.same({ target = "target is required" }, json)
+            assert.equal("schema violation", json.name)
+            assert.same({ target = "required field missing" }, json.fields)
 
             -- Invalid target parameter
             res = assert(client:send {
@@ -161,7 +165,8 @@ describe("Admin API", function()
             })
             body = assert.response(res).has.status(400)
             local json = cjson.decode(body)
-            assert.same({ message = "Invalid target; not a valid hostname or ip address" }, json)
+            assert.equal("schema violation", json.name)
+            assert.same({ target = "Invalid target; not a valid hostname or ip address" }, json.fields)
 
             -- Invalid weight parameter
             res = assert(client:send {
@@ -175,7 +180,8 @@ describe("Admin API", function()
             })
             body = assert.response(res).has.status(400)
             local json = cjson.decode(body)
-            assert.same({ message = "weight must be from 0 to 1000" }, json)
+            assert.equal("schema violation", json.name)
+            assert.same({ weight = "value should be between 0 and 1000" }, json.fields)
           end
         end)
 
@@ -202,9 +208,7 @@ describe("Admin API", function()
       local apis = {}
 
       before_each(function()
-        local upstream3 = assert(helpers.dao.upstreams:insert {
-          name = upstream_name3,
-        })
+        local upstream3 = bp.upstreams:insert { name = upstream_name3 }
 
         -- testing various behaviors
         -- for each index in weights, create a number of targets,
@@ -221,11 +225,11 @@ describe("Admin API", function()
         for i = 1, #weights do
           for j = 1, #weights[i] do
             ngx.sleep(0.01)
-            apis[i] = assert(helpers.dao.targets:insert {
+            apis[i] = bp.targets:insert {
               target = "api-" .. tostring(i) .. ":80",
               weight = weights[i][j],
-              upstream_id = upstream3.id
-            })
+              upstream = { id = upstream3.id },
+            }
           end
         end
       end)
@@ -241,7 +245,6 @@ describe("Admin API", function()
 
           -- we got three active targets for this upstream
           assert.equal(3, #json.data)
-          assert.equal(3, json.total)
 
           -- when multiple active targets are present, we only see the last one
           assert.equal(apis[4].id, json.data[1].id)
@@ -308,7 +311,6 @@ describe("Admin API", function()
 
           assert.same(node_id, res.node_id)
           assert.equal(n, #res.data)
-          assert.equal(n, res.total)
 
           -- when multiple active targets are present, we only see the last one
           assert.equal(targets[4].id, res.data[1].id)
@@ -349,20 +351,15 @@ describe("Admin API", function()
 
       describe("with healthchecks off", function()
         it("returns HEALTHCHECKS_OFF for targets that resolve", function()
-
-          local targets = add_targets("custom_localhost:8%d")
           add_targets("127.0.0.1:8%d")
-
+          local targets = add_targets("custom_localhost:8%d")
           check_health_endpoint(targets, 6, "HEALTHCHECKS_OFF")
-
         end)
 
         it("returns DNS_ERROR if DNS cannot be resolved", function()
-
           local targets = add_targets("bad-target-%d:80")
 
           check_health_endpoint(targets, 3, "DNS_ERROR")
-
         end)
       end)
 
@@ -448,11 +445,11 @@ describe("Admin API", function()
     describe("GET", function()
       before_each(function()
         for i = 1, 10 do
-          assert(helpers.dao.targets:insert {
+          bp.targets:insert {
             target = "api-" .. i .. ":80",
             weight = 100,
-            upstream_id = upstream.id,
-          })
+            upstream = { id = upstream.id },
+          }
         end
       end)
 
@@ -464,7 +461,6 @@ describe("Admin API", function()
         assert.response(res).has.status(200)
         local json = assert.response(res).has.jsonbody()
         assert.equal(10, #json.data)
-        assert.equal(10, json.total)
       end)
       it("paginates a set", function()
         local pages = {}
@@ -478,7 +474,6 @@ describe("Admin API", function()
           })
           assert.response(res).has.status(200)
           local json = assert.response(res).has.jsonbody()
-          assert.equal(10, json.total)
 
           if i < 4 then
             assert.equal(3, #json.data)
@@ -495,15 +490,13 @@ describe("Admin API", function()
           pages[i] = json
         end
       end)
-      it("handles invalid filters", function()
+      it("ingores filters", function()
         local res = assert(client:send {
           method = "GET",
           path = "/upstreams/" .. upstream_name .. "/targets/all",
           query = {foo = "bar"},
         })
-        local body = assert.response(res).has.status(400)
-        local json = cjson.decode(body)
-        assert.same({ foo = "unknown field" }, json)
+        assert.response(res).has.status(200)
       end)
       it("ignores an invalid body", function()
         local res = assert(client:send {
@@ -521,10 +514,10 @@ describe("Admin API", function()
         local upstream_name2 = "getkong.org"
 
         before_each(function()
-          assert(helpers.dao.upstreams:insert {
+          bp.upstreams:insert {
             name = upstream_name2,
             slots = 10,
-          })
+          }
         end)
 
         it("data property is an empty array", function()
@@ -534,7 +527,7 @@ describe("Admin API", function()
           })
           local body = assert.response(res).has.status(200)
           local json = cjson.decode(body)
-          assert.same({ data = {}, total = 0 }, json)
+          assert.same({ data = {} }, json)
         end)
       end)
     end)
@@ -576,7 +569,7 @@ describe("Admin API", function()
               }
             }
           }))
-          assert.same(201, status)
+          assert.same(201, status, body)
           local json = assert(cjson.decode(body))
 
           status = assert(client_send({
@@ -586,7 +579,7 @@ describe("Admin API", function()
             body = {
               target = my_target_name,
               weight = 10,
-              upstream_id = json.id,
+              upstream = { id = json.id },
             }
           }))
           assert.same(201, status)
@@ -594,11 +587,11 @@ describe("Admin API", function()
 
         it("flips the target status from UNHEALTHY to HEALTHY", function()
           local status, body, json
-          status = assert(client_send {
+          status, body = assert(client_send {
             method = "POST",
             path = target_path .. "/unhealthy"
           })
-          assert.same(204, status)
+          assert.same(204, status, body)
           status, body = assert(client_send {
             method = "GET",
             path = "/upstreams/" .. my_upstream_name .. "/health"
@@ -661,22 +654,20 @@ describe("Admin API", function()
       local upstream_name4 = "example4.com"
 
       before_each(function()
-        local upstream4 = assert(helpers.dao.upstreams:insert {
-          name = upstream_name4,
-        })
+        local upstream4 = bp.upstreams:insert { name = upstream_name4 }
 
-        assert(helpers.dao.targets:insert {
+        bp.targets:insert {
           target = "api-1:80",
           weight = 10,
-          upstream_id = upstream4.id,
-        })
+          upstream = { id = upstream4.id },
+        }
 
         -- predefine the target to mock delete
-        target = assert(helpers.dao.targets:insert {
+        target = bp.targets:insert {
           target = "api-2:80",
           weight = 10,
-          upstream_id = upstream4.id,
-        })
+          upstream = { id = upstream4.id },
+        }
       end)
 
       it("acts as a sugar method to POST a target with 0 weight (by target)", function()
@@ -693,7 +684,6 @@ describe("Admin API", function()
         assert.response(targets).has.status(200)
         local json = assert.response(targets).has.jsonbody()
         assert.equal(3, #json.data)
-        assert.equal(3, json.total)
 
         local active = assert(client:send {
           method = "GET",
@@ -702,7 +692,6 @@ describe("Admin API", function()
         assert.response(active).has.status(200)
         json = assert.response(active).has.jsonbody()
         assert.equal(1, #json.data)
-        assert.equal(1, json.total)
         assert.equal("api-1:80", json.data[1].target)
       end)
 
@@ -720,7 +709,6 @@ describe("Admin API", function()
         assert.response(targets).has.status(200)
         local json = assert.response(targets).has.jsonbody()
         assert.equal(3, #json.data)
-        assert.equal(3, json.total)
 
         local active = assert(client:send {
           method = "GET",
@@ -729,9 +717,10 @@ describe("Admin API", function()
         assert.response(active).has.status(200)
         json = assert.response(active).has.jsonbody()
         assert.equal(1, #json.data)
-        assert.equal(1, json.total)
         assert.equal("api-1:80", json.data[1].target)
       end)
     end)
   end)
 end)
+
+end
