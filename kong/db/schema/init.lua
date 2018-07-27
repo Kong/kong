@@ -68,6 +68,7 @@ local validation_errors = {
   CONDITIONAL               = "failed conditional validation",
   AT_LEAST_ONE_OF           = "at least one of these fields must be non-empty: %s",
   ONLY_ONE_OF               = "only one of these fields must be non-empty: %s",
+  DISTINCT                  = "values of these fields must be distinct: %s",
   -- schema error
   SCHEMA_NO_DEFINITION      = "expected a definition table",
   SCHEMA_NO_FIELDS          = "error in schema definition: no 'fields' table",
@@ -407,6 +408,21 @@ Schema.entity_checkers = {
         return true
       end
       return nil, quoted_list(field_names)
+    end,
+  },
+
+  distinct = {
+    fn = function(entity, field_names)
+      local seen = {}
+      for _, name in ipairs(field_names) do
+        if is_nonempty(entity[name]) then
+          if seen[entity[name]] then
+            return nil, quoted_list(field_names)
+          end
+          seen[entity[name]] = true
+        end
+      end
+      return true
     end,
   },
 

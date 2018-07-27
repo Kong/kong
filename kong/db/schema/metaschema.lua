@@ -96,6 +96,7 @@ end
 local entity_checkers = {
   { at_least_one_of = { type = "array", elements = { type = "string" } } },
   { only_one_of     = { type = "array", elements = { type = "string" } } },
+  { distinct        = { type = "array", elements = { type = "string" } }, },
   { conditional     = {
       type = "record",
       fields = {
