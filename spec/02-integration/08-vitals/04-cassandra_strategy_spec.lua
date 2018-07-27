@@ -1984,7 +1984,7 @@ dao_helpers.for_each_dao(function(kong_conf)
 
       it("does not clean up status codes for an invalid entity type", function()
         if dao.db.major_version_n < 3 then
-          pending("fails on Cassandra 2.2", function() end)
+          -- delete not implemented for Cassandra 2.x
           return
         end
 

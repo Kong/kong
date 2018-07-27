@@ -326,6 +326,268 @@ dao_helpers.for_each_dao(function(kong_conf)
         end)
       end)
 
+      describe("/vitals/nodes", function()
+        describe("GET", function()
+          it("fails intermittently -- retrieves the vitals seconds data for all nodes", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/nodes",
+              query = {
+                interval = "seconds"
+              }
+            })
+            res = assert.res_status(200, res)
+            local json = cjson.decode(res)
+
+            local expected = {
+              meta = {
+                level = "node",
+                interval = "seconds",
+                interval_width = 1,
+                earliest_ts = minute_start_at,
+                latest_ts = minute_start_at + 2,
+                stat_labels = stat_labels,
+                nodes = {
+                  [node_1] = { hostname = "testhostname1" },
+                  [node_2] = { hostname = "testhostname2" },
+                },
+              },
+              stats = {
+                ["20426633-55dc-4050-89ef-2382c95a611e"] = {
+                  [tostring(minute_start_at)] = { 0, 0, cjson.null, cjson.null, cjson.null, cjson.null, 0, 10, 10 },
+                  [tostring(minute_start_at + 1)] = { 0, 3, 0, 11, 193, 212, 1, 10, 10 },
+                  [tostring(minute_start_at + 2)] = { 3, 4, 1, 8, 60, 9182, 4, 10, 10 },
+                },
+                ["8374682f-17fd-42cb-b1dc-7694d6f65ba0"] = {
+                  [tostring(minute_start_at + 1)] = { 1, 5, 0, 99, 25, 144, 9, 10, 10 },
+                  [tostring(minute_start_at + 2)] = { 1, 7, 0, 0, 13, 19, 8, 10, 10 },
+                }
+              }
+            }
+
+            assert.same(expected, json)
+          end)
+
+          it("fails intermittently -- retrieves the vitals minutes data for all nodes", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/nodes",
+              query = {
+                interval = "minutes"
+              }
+            })
+            res = assert.res_status(200, res)
+            local json = cjson.decode(res)
+
+            local expected = {
+              meta = {
+                level = "node",
+                interval = "minutes",
+                interval_width = 60,
+                earliest_ts = minute_start_at,
+                latest_ts = minute_start_at,
+                stat_labels = stat_labels,
+                nodes = {
+                  [node_1] = { hostname = "testhostname1" },
+                  [node_2] = { hostname = "testhostname2" },
+                },
+              },
+              stats = {
+                [node_1] = {
+                  [tostring(minute_start_at)] = { 3, 7, 0, 11, 60, 9182, 5, 10, 10 }
+                },
+                [node_2] = {
+                  [tostring(minute_start_at)] = { 2, 12, 0, 99, 13, 144, 17, 10, 10 }
+                }
+              }
+            }
+
+            assert.same(expected, json)
+          end)
+
+          it("returns a 400 if called with invalid interval", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/nodes",
+              query = {
+                interval = "so-wrong"
+              }
+            })
+            res = assert.res_status(400, res)
+            local json = cjson.decode(res)
+
+            assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+          end)
+
+          it("returns a 400 if called with invalid start_ts", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/nodes",
+              query = {
+                interval = "seconds",
+                start_ts = "foo",
+              }
+            })
+            res = assert.res_status(400, res)
+            local json = cjson.decode(res)
+
+            assert.same("Invalid query params: start_ts must be a number", json.message)
+          end)
+        end)
+      end)
+
+      describe("/vitals/nodes/{node_id}", function()
+        describe("GET", function()
+          it("retrieves the vitals seconds data for a requested node", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/nodes/" .. node_1,
+              query = {
+                interval = "seconds"
+              }
+            })
+            res = assert.res_status(200, res)
+            local json = cjson.decode(res)
+
+            local expected = {
+              meta = {
+                level = "node",
+                interval = "seconds",
+                interval_width = 1,
+                earliest_ts = minute_start_at,
+                latest_ts = minute_start_at + 2,
+                stat_labels = stat_labels,
+                nodes = {
+                  [node_1] = { hostname = "testhostname1"}
+                }
+              },
+              stats = {
+                [node_1] = {
+                  [tostring(minute_start_at)] = { 0, 0, cjson.null, cjson.null, cjson.null, cjson.null, 0, 10, 10 },
+                  [tostring(minute_start_at + 1)] = { 0, 3, 0, 11, 193, 212, 1, 10, 10 },
+                  [tostring(minute_start_at + 2)] = { 3, 4, 1, 8, 60, 9182, 4, 10, 10 },
+                },
+              }
+            }
+
+            assert.same(expected, json)
+          end)
+
+          it("retrieves the vitals minutes data for a requested node", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/nodes/" .. node_1,
+              query = {
+                interval = "minutes"
+              }
+            })
+            res = assert.res_status(200, res)
+            local json = cjson.decode(res)
+
+            local expected = {
+              stats = {
+                [node_1] = {
+                  [tostring(minute_start_at)] = { 3, 7, 0, 11, 60, 9182, 5, 10, 10 }
+                }
+              },
+              meta = {
+                level = "node",
+                interval = "minutes",
+                interval_width = 60,
+                earliest_ts = minute_start_at,
+                latest_ts = minute_start_at,
+                stat_labels = stat_labels,
+                nodes = {
+                  [node_1] = { hostname = "testhostname1"}
+                }
+              }
+            }
+
+            assert.same(expected, json)
+          end)
+
+          it("returns empty stats if the requested node hasn't reported data", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/nodes/" .. node_3,
+              query = {
+                interval = "minutes"
+              }
+            })
+            res = assert.res_status(200, res)
+            local json = cjson.decode(res)
+
+            local expected = {
+              meta = {
+                level = "node",
+                interval = "minutes",
+                interval_width = 60,
+              },
+              stats = {},
+            }
+
+            assert.same(expected, json)
+          end)
+
+          it("returns a 400 if called with invalid interval", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/nodes/" .. node_1,
+              query = {
+                wrong_query_key = "seconds"
+              }
+            })
+            res = assert.res_status(400, res)
+            local json = cjson.decode(res)
+
+            assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
+          end)
+
+          it("returns a 400 if called with invalid start_ts", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/nodes/" .. node_1,
+              query = {
+                interval = "seconds",
+                start_ts = "foo",
+              }
+            })
+            res = assert.res_status(400, res)
+            local json = cjson.decode(res)
+
+            assert.same("Invalid query params: start_ts must be a number", json.message)
+          end)
+
+          it("returns a 404 if the node_id is not valid", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/nodes/totally-fake-uuid",
+              query = {
+                interval = "seconds"
+              }
+            })
+            res = assert.res_status(404, res)
+            local json = cjson.decode(res)
+
+            assert.same("Not found", json.message)
+          end)
+
+          it("returns a 404 if the node_id does not exist", function()
+            local res = assert(client:send {
+              methd = "GET",
+              path = "/vitals/nodes/" .. utils.uuid(),
+              query = {
+                interval = "seconds"
+              }
+            })
+            res = assert.res_status(404, res)
+            local json = cjson.decode(res)
+
+            assert.same("Not found", json.message)
+          end)
+        end)
+      end)
+
       describe("/vitals/cluster", function()
         describe("GET", function()
           it("retrieves the vitals seconds cluster data", function()
@@ -561,7 +823,9 @@ dao_helpers.for_each_dao(function(kong_conf)
           dao.db:truncate_table("vitals_codes_by_service")
           dao.db:truncate_table("services")
 
+          helpers.with_current_ws(nil, function()
           service    = bp.services:insert()
+          end, dao)
           service_id = service.id
         end)
 
@@ -751,7 +1015,9 @@ dao_helpers.for_each_dao(function(kong_conf)
           dao.db:truncate_table("vitals_codes_by_route")
           dao.db:truncate_table("routes")
 
+          helpers.with_current_ws(nil, function()
           route    = bp.routes:insert({ paths = { "/my-route" } })
+          end, dao)
           route_id = route.id
         end)
 
@@ -947,10 +1213,14 @@ dao_helpers.for_each_dao(function(kong_conf)
         describe("GET", function()
           it("retrieves the seconds-level response code data for a given consumer", function()
             local consumer
-            consumer = assert(dao.consumers:insert {
-              username  = "bob",
-              custom_id = "1234"
-            })
+            helpers.with_current_ws(
+              dao.workspaces:find_all({name = "default"}),
+              function()
+                consumer = assert(dao.consumers:insert {
+                  username  = "bob",
+                  custom_id = "1234"
+                })
+            end)
 
             local now        = time()
             local minute     = now - (now % 60)
@@ -1007,10 +1277,14 @@ dao_helpers.for_each_dao(function(kong_conf)
 
           it("retrieves the minutes-level response code data for a given consumer", function()
             local consumer
-            consumer = assert(dao.consumers:insert {
-              username  = "bob",
-              custom_id = "1234"
-            })
+            helpers.with_current_ws(
+              dao.workspaces:find_all({name = "default"}),
+              function()
+                consumer = assert(dao.consumers:insert {
+                  username  = "bob",
+                  custom_id = "1234"
+                })
+            end)
 
             local minute_start_at = time() - (time() % 60)
             local route_id        = utils.uuid()
@@ -1064,10 +1338,15 @@ dao_helpers.for_each_dao(function(kong_conf)
           end)
 
           it("returns a 400 if called with invalid interval", function()
-            local consumer = assert(dao.consumers:insert {
-              username  = "bob",
-              custom_id = "1234"
-            })
+            local consumer
+            helpers.with_current_ws(
+              dao.workspaces:find_all({name = "default"}),
+              function()
+                consumer = assert(dao.consumers:insert {
+                  username  = "bob",
+                  custom_id = "1234"
+                })
+            end)
 
             local res = assert(client:send {
               methd = "GET",
@@ -1162,11 +1441,16 @@ dao_helpers.for_each_dao(function(kong_conf)
 
         describe("GET", function()
           it("retrieves the seconds-level response code data for a given consumer", function()
-            local consumer = assert(dao.consumers:insert {
-              username  = "bob",
-              custom_id = "1234"
-            })
-            local route = bp.routes:insert({ paths = { "/my-route" } })
+            local consumer, route
+            helpers.with_current_ws(
+              dao.workspaces:find_all({name = "default"}),
+              function()
+                consumer = assert(dao.consumers:insert {
+                  username  = "bob",
+                  custom_id = "1234"
+                })
+                route = bp.routes:insert({ paths = { "/my-route" } })
+            end)
 
             local route_id = route.id
 
@@ -1224,11 +1508,15 @@ dao_helpers.for_each_dao(function(kong_conf)
 
           it("retrieves the minutes-level response code data for a given consumer", function()
             local consumer, route
-            consumer = assert(dao.consumers:insert {
-              username  = "bob",
-              custom_id = "1234"
-            })
-            route = bp.routes:insert({ paths = { "/my-route" } })
+            helpers.with_current_ws(
+              dao.workspaces:find_all({name = "default"}),
+              function()
+                consumer = assert(dao.consumers:insert {
+                  username  = "bob",
+                  custom_id = "1234"
+                })
+                route = bp.routes:insert({ paths = { "/my-route" } })
+            end)
 
 
             local route_id = route.id
@@ -1284,10 +1572,15 @@ dao_helpers.for_each_dao(function(kong_conf)
           end)
 
           it("returns a 400 if called with invalid interval", function()
-            local consumer = assert(dao.consumers:insert {
-              username  = "bob",
-              custom_id = "1234"
-            })
+            local consumer
+            helpers.with_current_ws(
+              dao.workspaces:find_all({name = "default"}),
+              function()
+                consumer = assert(dao.consumers:insert {
+                  username  = "bob",
+                  custom_id = "1234"
+                })
+            end)
 
             local res = assert(client:send {
               methd = "GET",
@@ -1373,266 +1666,6 @@ dao_helpers.for_each_dao(function(kong_conf)
         end)
       end)
 
-      describe("/vitals/nodes", function()
-        describe("GET", function()
-          pending("fails intermittently -- retrieves the vitals seconds data for all nodes", function()
-            local res = assert(client:send {
-              methd = "GET",
-              path = "/vitals/nodes",
-              query = {
-                interval = "seconds"
-              }
-            })
-            res = assert.res_status(200, res)
-            local json = cjson.decode(res)
-
-            local expected = {
-              meta = {
-                level = "node",
-                interval = "seconds",
-                earliest_ts = minute_start_at,
-                latest_ts = minute_start_at + 2,
-                stat_labels = stat_labels,
-                nodes = {
-                  [node_1] = { hostname = "testhostname1" },
-                  [node_2] = { hostname = "testhostname2" },
-                },
-              },
-              stats = {
-                ["20426633-55dc-4050-89ef-2382c95a611e"] = {
-                  [tostring(minute_start_at)] = { 0, 0, cjson.null, cjson.null, cjson.null, cjson.null, 0, 10, 10 },
-                  [tostring(minute_start_at + 1)] = { 0, 3, 0, 11, 193, 212, 1, 10, 10 },
-                  [tostring(minute_start_at + 2)] = { 3, 4, 1, 8, 60, 9182, 4, 10, 10 },
-                },
-                ["8374682f-17fd-42cb-b1dc-7694d6f65ba0"] = {
-                  [tostring(minute_start_at + 1)] = { 1, 5, 0, 99, 25, 144, 9, 10, 10 },
-                  [tostring(minute_start_at + 2)] = { 1, 7, 0, 0, 13, 19, 8, 10, 10 },
-                }
-              }
-            }
-
-            assert.same(expected, json)
-          end)
-
-          pending("fails intermittently -- retrieves the vitals minutes data for all nodes", function()
-            local res = assert(client:send {
-              methd = "GET",
-              path = "/vitals/nodes",
-              query = {
-                interval = "minutes"
-              }
-            })
-            res = assert.res_status(200, res)
-            local json = cjson.decode(res)
-
-            local expected = {
-              meta = {
-                level = "node",
-                interval = "minutes",
-                earliest_ts = minute_start_at,
-                latest_ts = minute_start_at,
-                stat_labels = stat_labels,
-                nodes = {
-                  [node_1] = { hostname = "testhostname1" },
-                  [node_2] = { hostname = "testhostname2" },
-                },
-              },
-              stats = {
-                [node_1] = {
-                  [tostring(minute_start_at)] = { 3, 7, 0, 11, 60, 9182, 5, 10, 10 }
-                },
-                [node_2] = {
-                  [tostring(minute_start_at)] = { 2, 12, 0, 99, 13, 144, 17, 10, 10 }
-                }
-              }
-            }
-
-            assert.same(expected, json)
-          end)
-
-          it("returns a 400 if called with invalid interval", function()
-            local res = assert(client:send {
-              methd = "GET",
-              path = "/vitals/nodes",
-              query = {
-                interval = "so-wrong"
-              }
-            })
-            res = assert.res_status(400, res)
-            local json = cjson.decode(res)
-
-            assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
-          end)
-
-          it("returns a 400 if called with invalid start_ts", function()
-            local res = assert(client:send {
-              methd = "GET",
-              path = "/vitals/nodes",
-              query = {
-                interval = "seconds",
-                start_ts = "foo",
-              }
-            })
-            res = assert.res_status(400, res)
-            local json = cjson.decode(res)
-
-            assert.same("Invalid query params: start_ts must be a number", json.message)
-          end)
-        end)
-      end)
-
-      describe("/vitals/nodes/{node_id}", function()
-        describe("GET", function()
-          it("retrieves the vitals seconds data for a requested node", function()
-            local res = assert(client:send {
-              methd = "GET",
-              path = "/vitals/nodes/" .. node_1,
-              query = {
-                interval = "seconds"
-              }
-            })
-            res = assert.res_status(200, res)
-            local json = cjson.decode(res)
-
-            local expected = {
-              meta = {
-                level = "node",
-                interval = "seconds",
-                interval_width = 1,
-                earliest_ts = minute_start_at,
-                latest_ts = minute_start_at + 2,
-                stat_labels = stat_labels,
-                nodes = {
-                  [node_1] = { hostname = "testhostname1"}
-                }
-              },
-              stats = {
-                [node_1] = {
-                  [tostring(minute_start_at)] = { 0, 0, cjson.null, cjson.null, cjson.null, cjson.null, 0, 10, 10 },
-                  [tostring(minute_start_at + 1)] = { 0, 3, 0, 11, 193, 212, 1, 10, 10 },
-                  [tostring(minute_start_at + 2)] = { 3, 4, 1, 8, 60, 9182, 4, 10, 10 },
-                },
-              }
-            }
-
-            assert.same(expected, json)
-          end)
-
-          it("retrieves the vitals minutes data for a requested node", function()
-            local res = assert(client:send {
-              methd = "GET",
-              path = "/vitals/nodes/" .. node_1,
-              query = {
-                interval = "minutes"
-              }
-            })
-            res = assert.res_status(200, res)
-            local json = cjson.decode(res)
-
-            local expected = {
-              stats = {
-                [node_1] = {
-                  [tostring(minute_start_at)] = { 3, 7, 0, 11, 60, 9182, 5, 10, 10 }
-                }
-              },
-              meta = {
-                level = "node",
-                interval = "minutes",
-                interval_width = 60,
-                earliest_ts = minute_start_at,
-                latest_ts = minute_start_at,
-                stat_labels = stat_labels,
-                nodes = {
-                  [node_1] = { hostname = "testhostname1"}
-                }
-              }
-            }
-
-            assert.same(expected, json)
-          end)
-
-          it("returns empty stats if the requested node hasn't reported data", function()
-            local res = assert(client:send {
-              methd = "GET",
-              path = "/vitals/nodes/" .. node_3,
-              query = {
-                interval = "minutes"
-              }
-            })
-            res = assert.res_status(200, res)
-            local json = cjson.decode(res)
-
-            local expected = {
-              meta = {
-                level = "node",
-                interval = "minutes",
-                interval_width = 60,
-              },
-              stats = {},
-            }
-
-            assert.same(expected, json)
-          end)
-
-          it("returns a 400 if called with invalid interval", function()
-            local res = assert(client:send {
-              methd = "GET",
-              path = "/vitals/nodes/" .. node_1,
-              query = {
-                wrong_query_key = "seconds"
-              }
-            })
-            res = assert.res_status(400, res)
-            local json = cjson.decode(res)
-
-            assert.same("Invalid query params: interval must be 'minutes' or 'seconds'", json.message)
-          end)
-
-          it("returns a 400 if called with invalid start_ts", function()
-            local res = assert(client:send {
-              methd = "GET",
-              path = "/vitals/nodes/" .. node_1,
-              query = {
-                interval = "seconds",
-                start_ts = "foo",
-              }
-            })
-            res = assert.res_status(400, res)
-            local json = cjson.decode(res)
-
-            assert.same("Invalid query params: start_ts must be a number", json.message)
-          end)
-
-          it("returns a 404 if the node_id is not valid", function()
-            local res = assert(client:send {
-              methd = "GET",
-              path = "/vitals/nodes/totally-fake-uuid",
-              query = {
-                interval = "seconds"
-              }
-            })
-            res = assert.res_status(404, res)
-            local json = cjson.decode(res)
-
-            assert.same("Not found", json.message)
-          end)
-
-          it("returns a 404 if the node_id does not exist", function()
-            local res = assert(client:send {
-              methd = "GET",
-              path = "/vitals/nodes/" .. utils.uuid(),
-              query = {
-                interval = "seconds"
-              }
-            })
-            res = assert.res_status(404, res)
-            local json = cjson.decode(res)
-
-            assert.same("Not found", json.message)
-          end)
-        end)
-      end)
-
       describe("/vitals/consumers/{username_or_id}/cluster", function()
         before_each(function()
           dao.db:truncate_table("consumers")
@@ -1707,10 +1740,15 @@ dao_helpers.for_each_dao(function(kong_conf)
           end)
 
           it("returns a 400 if called with invalid interval", function()
-            local consumer = assert(dao.consumers:insert {
-              username = "bob",
-              custom_id = "1234"
-            })
+            local consumer
+            helpers.with_current_ws(
+              dao.workspaces:find_all({name = "default"}),
+              function()
+                consumer = assert(dao.consumers:insert {
+                  username = "bob",
+                  custom_id = "1234"
+                })
+            end)
 
             local res = assert(client:send {
               methd = "GET",
@@ -1726,10 +1764,15 @@ dao_helpers.for_each_dao(function(kong_conf)
           end)
 
           it("returns a 400 if called with invalid start_ts", function()
-            local consumer = assert(dao.consumers:insert {
-              username = "bob",
-              custom_id = "1234"
-            })
+            local consumer
+            helpers.with_current_ws(
+              dao.workspaces:find_all({name = "default"}),
+              function()
+                consumer = assert(dao.consumers:insert {
+                  username = "bob",
+                  custom_id = "1234"
+                })
+            end)
 
             local res = assert(client:send {
               methd = "GET",
