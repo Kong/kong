@@ -87,6 +87,10 @@ local _M = {
 
 
 local function new_err_t(self, code, message, errors, name)
+  if type(message) == "table" and getmetatable(message) == _err_mt then
+    return message
+  end
+
   if not code then
     error("missing code")
   end

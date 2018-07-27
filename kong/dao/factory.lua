@@ -10,8 +10,6 @@ local fmt = string.format
 local CORE_MODELS = {
   "apis",
   "plugins",
-  "upstreams",
-  "targets",
 }
 
 -- returns db errors as strings, including the initial `nil`
