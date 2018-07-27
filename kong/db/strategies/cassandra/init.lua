@@ -1,4 +1,5 @@
 local cassandra = require "cassandra"
+local cjson = require "cjson"
 
 
 local fmt           = string.format
@@ -273,6 +274,9 @@ local function serialize_arg(field, arg)
       serialized_arg[k] = serialize_arg(field.elements, arg[k])
     end
 
+  elseif field.type == "record" then
+    serialized_arg = cassandra.text(cjson.encode(arg))
+
   else
     error("[cassandra strategy] don't know how to serialize field")
   end
@@ -484,6 +488,8 @@ local function deserialize_row(self, row)
 
     elseif field.timestamp and row[field_name] ~= nil then
       row[field_name] = row[field_name] / 1000
+    elseif field.type == "record" then
+      row[field_name] = cjson.decode(row[field_name])
     end
 
     if row[field_name] == nil then
