@@ -304,12 +304,24 @@ return {
     end,
 
     PATCH = function(self, dao_factory, helpers)
+      local cred_params = {}
+
+      if self.params.password then
+        cred_params.password = self.params.password
+        self.params.password = nil
+      elseif self.params.key then
+        cred_params.key = self.params.key
+        self.params.key = nil
+      else
+        return helpers.responses.send_HTTP_BAD_REQUEST("key or password is required")
+      end
+
       local filter = {
         consumer_id = self.consumer.id,
         id = self.credential.id,
       }
 
-      local ok, err = crud.portal_crud.update_login_credential(self.params, self.collection, filter)
+      local ok, err = crud.portal_crud.update_login_credential(cred_params, self.collection, filter)
 
       if err then
         return helpers.yield_error(err)
