@@ -599,19 +599,11 @@ return {
   {
     name = "2017-11-07-192100_upstream_healthchecks_2",
     up = function(_, _, dao)
-      local rows, err = dao.db:query([[
-        SELECT * FROM upstreams;
-      ]])
-      if err then
-        return err
-      end
-
-      local upstreams = require("kong.dao.schemas.upstreams")
-      local default = upstreams.fields.healthchecks.default
-
-      for _, row in ipairs(rows) do
+      local db = dao.db.new_db
+      local default = db.upstreams.schema.fields.healthchecks.default
+      for row in db.upstreams:each() do
         if not row.healthchecks then
-          local _, err = dao.upstreams:update({
+          local _, err = db.upstreams:update({
             healthchecks = default,
           }, { id = row.id })
           if err then
@@ -632,12 +624,14 @@ return {
         return err
       end
 
+      local db = dao.db.new_db
+
       for _, row in ipairs(rows) do
         if not row.hash_on or not row.hash_fallback then
           row.hash_on = "none"
           row.hash_fallback = "none"
           row.created_at = nil
-          local _, err = dao.upstreams:update(row, { id = row.id })
+          local _, err = db.upstreams:update(row, { id = row.id })
           if err then
             return err
           end
