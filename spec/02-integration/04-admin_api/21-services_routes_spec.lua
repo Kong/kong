@@ -752,9 +752,10 @@ for _, strategy in helpers.each_strategy() do
             local json = cjson.decode(body)
             assert.same(
               {
-                name    = "schema violation",
-                code    = Errors.codes.SCHEMA_VIOLATION,
-                message = unindent([[
+                name     = "schema violation",
+                strategy = strategy,
+                code     = Errors.codes.SCHEMA_VIOLATION,
+                message  = unindent([[
                   2 schema violations
                   (host: required field missing;
                   path: should start with: /)
