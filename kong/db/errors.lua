@@ -191,8 +191,11 @@ function _M:schema_violation(errors)
       if type(field_errors) == "table" then
         for _, sub_field in ipairs(sorted_keys(field_errors)) do
           len = len + 1
-          buf[len] = fmt("%s.%s: %s", field_name, sub_field,
-                         field_errors[sub_field])
+          local value = field_errors[sub_field]
+          if type(value) == "table" then
+            value = pl_pretty(value)
+          end
+          buf[len] = fmt("%s.%s: %s", field_name, sub_field, value)
         end
 
       else
