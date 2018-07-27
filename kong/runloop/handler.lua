@@ -209,7 +209,7 @@ return {
         -- new DB module and old DAO: public worker events propagation
 
         local entity_channel           = data.schema.table or data.schema.name
-        local entity_operation_channel = fmt("%s:%s", data.schema.table,
+        local entity_operation_channel = fmt("%s:%s", entity_channel,
                                              data.operation)
 
         -- crud:routes
