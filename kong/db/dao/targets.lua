@@ -215,6 +215,29 @@ function _TARGETS:for_upstream_with_health(upstream_pk, ...)
 end
 
 
+function _TARGETS:for_upstream_first(upstream_pk, filter)
+  local targets = self:for_upstream(upstream_pk)
+  assert(filter.id or filter.target)
+  if filter.id then
+    for _, t in ipairs(targets) do
+      if t.id == filter.id then
+        return t
+      end
+    end
+    local err_t = self.errors:not_found(filter.id)
+    return nil, tostring(err_t), err_t
+  end
+
+  for _, t in ipairs(targets) do
+    if t.target == filter.target then
+      return t
+    end
+  end
+  local err_t = self.errors:not_found_by_field({ target = filter.target })
+  return nil, tostring(err_t), err_t
+end
+
+
 function _TARGETS:post_health(upstream, target, is_healthy)
   local addr = utils.normalize_ip(target.target)
   local ip, port = utils.format_host(addr.host), addr.port
