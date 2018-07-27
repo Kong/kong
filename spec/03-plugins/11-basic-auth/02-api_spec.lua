@@ -77,6 +77,30 @@ for _, strategy in helpers.each_strategy() do
           }
           assert.equal(hash, json.password)
         end)
+        it("encrypts the password without trimming whitespace", function()
+          local res = assert(admin_client:send {
+            method  = "POST",
+            path    = "/consumers/bob/basic-auth",
+            body    = {
+              username = "bob",
+              password = " kong "
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.is_string(json.password)
+          assert.not_equal(" kong ", json.password)
+
+          local crypto = require "kong.plugins.basic-auth.crypto"
+          local hash   = crypto.encrypt {
+            consumer_id = consumer.id,
+            password    = " kong "
+          }
+          assert.equal(hash, json.password)
+        end)
         describe("errors", function()
           it("returns bad request", function()
             local res = assert(admin_client:send {

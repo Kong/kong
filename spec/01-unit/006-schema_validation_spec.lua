@@ -82,7 +82,7 @@ describe("Schemas", function()
 
         local values = {string = " kong "}
 
-        local valid, err = validate_entity(values, trimSchema)
+        local valid, err = validate_entity(values, trim_schema)
         assert.True(valid)
         assert.falsy(err)
         assert.are.same("kong", values.string)
@@ -96,7 +96,7 @@ describe("Schemas", function()
 
         local values = {string = " kong "}
 
-        local valid, err = validate_entity(values, notrimSchema)
+        local valid, err = validate_entity(values, notrim_schema)
         assert.True(valid)
         assert.falsy(err)
         assert.are.same(" kong ", values.string)
