@@ -96,7 +96,7 @@ return {
       func = check_upstream_host
     },
     upstream_port = {  -- target port
-      type = number,
+      type = "number",
       func = check_upstream_port
     },
     upstream_uri = {   -- target uri
