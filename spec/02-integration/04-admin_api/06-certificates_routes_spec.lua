@@ -66,7 +66,9 @@ describe("Admin API: #" .. strategy, function()
 
   describe("/certificates", function()
     before_each(function()
-      assert(db:truncate())
+      assert(db:truncate("certificates"))
+      assert(db:truncate("snis"))
+
       local res = client:post("/certificates", {
         body    = {
           cert  = ssl_fixtures.cert,
@@ -176,7 +178,9 @@ describe("Admin API: #" .. strategy, function()
     local certificate
 
     before_each(function()
-      assert(db:truncate())
+      assert(db:truncate("certificates"))
+      assert(db:truncate("snis"))
+
       local res = client:post("/certificates", {
         body    = {
           cert  = ssl_fixtures.cert,
@@ -313,7 +317,8 @@ describe("Admin API: #" .. strategy, function()
       local cert_bar
 
       before_each(function()
-        assert(db:truncate())
+        assert(db:truncate("certificates"))
+        assert(db:truncate("snis"))
 
         local res = client:post("/certificates", {
           body    = {
@@ -551,7 +556,8 @@ describe("Admin API: #" .. strategy, function()
 
       local certificate
       before_each(function()
-        assert(db:truncate())
+        assert(db:truncate("certificates"))
+        assert(db:truncate("snis"))
 
         certificate = bp.certificates:insert()
         bp.snis:insert({
@@ -628,7 +634,9 @@ describe("Admin API: #" .. strategy, function()
 
     describe("GET", function()
       it("retrieves a list of snis", function()
-        assert(db:truncate())
+        assert(db:truncate("certificates"))
+        assert(db:truncate("snis"))
+
         local certificate = bp.certificates:insert()
         bp.snis:insert {
           name        = "foo.com",
@@ -649,7 +657,9 @@ describe("Admin API: #" .. strategy, function()
     local certificate, sni
 
     before_each(function()
-      assert(db:truncate())
+      assert(db:truncate("certificates"))
+      assert(db:truncate("snis"))
+
       certificate = bp.certificates:insert()
       sni = bp.snis:insert {
         name        = "foo.com",

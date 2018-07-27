@@ -540,7 +540,7 @@ for _, strategy in helpers.each_strategy() do
 
         -- I/O
         it("returns a table encoding to a JSON Array when empty", function()
-          assert(db:truncate())
+          assert(db:truncate("routes"))
 
           local rows, err, err_t, offset = db.routes:page()
           assert.is_nil(err_t)
@@ -552,7 +552,7 @@ for _, strategy in helpers.each_strategy() do
         end)
 
         it("invokes schema post-processing", function()
-          assert(db:truncate())
+          assert(db:truncate("routes"))
 
           bp.routes:insert {
             methods = { "GET" },
@@ -569,7 +569,7 @@ for _, strategy in helpers.each_strategy() do
 
         describe("page size", function()
           setup(function()
-            assert(db:truncate())
+            assert(db:truncate("routes"))
 
             for i = 1, 1002 do
               bp.routes:insert({ hosts = { "example-" .. i .. ".com" } })
@@ -595,7 +595,7 @@ for _, strategy in helpers.each_strategy() do
 
         describe("page offset", function()
           setup(function()
-            assert(db:truncate())
+            assert(db:truncate("routes"))
 
             for i = 1, 10 do
               bp.routes:insert({
@@ -736,7 +736,7 @@ for _, strategy in helpers.each_strategy() do
 
       describe(":each()", function()
         setup(function()
-          assert(db:truncate())
+          assert(db:truncate("routes"))
 
           for i = 1, 100 do
             bp.routes:insert({
@@ -977,7 +977,7 @@ for _, strategy in helpers.each_strategy() do
 
       describe(":select_by_name()", function()
         setup(function()
-          assert(db:truncate())
+          assert(db:truncate("services"))
 
           for i = 1, 5 do
             assert(db.services:insert({
@@ -1106,7 +1106,7 @@ for _, strategy in helpers.each_strategy() do
 
       describe(":update_by_name()", function()
         before_each(function()
-          assert(db:truncate())
+          assert(db:truncate("services"))
 
           assert(db.services:insert({
             name = "test-service",
@@ -1252,7 +1252,7 @@ for _, strategy in helpers.each_strategy() do
         local service
 
         setup(function()
-          assert(db:truncate())
+          assert(db:truncate("services"))
 
           service = assert(db.services:insert({
             name = "service_1",
@@ -1516,7 +1516,7 @@ for _, strategy in helpers.each_strategy() do
 
           describe("page size", function()
             setup(function()
-              assert(db:truncate())
+              assert(db:truncate("services"))
 
               service = bp.services:insert()
 
@@ -1549,7 +1549,7 @@ for _, strategy in helpers.each_strategy() do
 
           describe("page offset", function()
             setup(function()
-              assert(db:truncate())
+              assert(db:truncate("services"))
 
               service = bp.services:insert()
 

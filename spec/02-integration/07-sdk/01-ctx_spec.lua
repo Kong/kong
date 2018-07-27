@@ -7,8 +7,8 @@ describe("SDK: kong.ctx", function()
 
   before_each(function()
     bp, db, dao = helpers.get_db_utils()
-    dao:truncate_tables()
-    assert(db:truncate())
+    assert(db:truncate("routes"))
+    dao:truncate_table("plugins")
     dao:run_migrations()
   end)
 
@@ -17,10 +17,10 @@ describe("SDK: kong.ctx", function()
       proxy_client:close()
     end
 
-    dao:truncate_tables()
-    assert(db:truncate())
-
     helpers.stop_kong()
+
+    assert(db:truncate("routes"))
+    dao:truncate_table("plugins")
   end)
 
   it("isolates kong.ctx.plugin per-plugin", function()

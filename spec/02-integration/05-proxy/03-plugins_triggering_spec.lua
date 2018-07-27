@@ -220,7 +220,11 @@ for _, strategy in helpers.each_strategy() do
         end
 
         helpers.stop_kong()
-        dao:truncate_tables()
+        db:truncate("routes")
+        db:truncate("services")
+        db:truncate("consumers")
+        dao:truncate_table("plugins")
+        dao:truncate_table("keyauth_credentials")
 
         do
           local service = assert(bp.services:insert {
@@ -434,8 +438,11 @@ for _, strategy in helpers.each_strategy() do
 
         helpers.stop_kong()
 
-        assert(db:truncate())
-        dao:truncate_tables()
+        db:truncate("routes")
+        db:truncate("services")
+        db:truncate("consumers")
+        dao:truncate_table("plugins")
+        dao:truncate_table("keyauth_credentials")
 
         local service = bp.services:insert {
           name = "example",
@@ -506,8 +513,11 @@ for _, strategy in helpers.each_strategy() do
 
 
       setup(function()
-        assert(db:truncate())
-        dao:truncate_tables()
+        db:truncate("routes")
+        db:truncate("services")
+        db:truncate("consumers")
+        dao:truncate_table("plugins")
+        dao:truncate_table("keyauth_credentials")
 
         do
           -- service to mock HTTP 502

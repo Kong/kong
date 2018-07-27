@@ -301,4 +301,28 @@ function CassandraConnector:truncate()
 end
 
 
+function CassandraConnector:truncate_table(table_name)
+  local ok, err = self:connect()
+  if not ok then
+    return nil, err
+  end
+
+  local cql = string.format("TRUNCATE TABLE %s.%s",
+                            self.keyspace, table_name)
+
+  local ok, err = self:query(cql)
+  if not ok then
+    self:setkeepalive()
+    return nil, err
+  end
+
+  ok, err = self:setkeepalive()
+  if not ok then
+    return nil, err
+  end
+
+  return true
+end
+
+
 return CassandraConnector

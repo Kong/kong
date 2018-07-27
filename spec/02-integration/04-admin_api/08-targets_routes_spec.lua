@@ -10,7 +10,7 @@ end
 
 local function client_send(req)
   local client = helpers.admin_client()
-  local res = client:send(req)
+  local res = assert(client:send(req))
   local status, body = res.status, res:read_body()
   client:close()
   return status, body
@@ -45,7 +45,8 @@ describe("Admin API", function()
     }))
     client = assert(helpers.admin_client())
 
-    helpers.dao:truncate_tables()
+    helpers.dao:truncate_table("upstreams")
+    helpers.dao:truncate_table("targets")
 
     upstream = assert(helpers.dao.upstreams:insert {
       name = upstream_name,

@@ -32,7 +32,8 @@ for _, strategy in helpers.each_strategy() do
 
     before_each(function()
       helpers.stop_kong()
-      assert(db:truncate())
+      assert(db:truncate("routes"))
+      assert(db:truncate("services"))
       assert(helpers.start_kong({
         database = strategy,
       }))

@@ -38,7 +38,8 @@ for _, strategy in helpers.each_strategy() do
 
     local function start_kong(config)
       return function()
-        assert(db:truncate())
+        assert(db:truncate("routes"))
+        assert(db:truncate("services"))
 
         insert_routes {
           {

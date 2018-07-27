@@ -14,8 +14,10 @@ for _, strategy in helpers.each_strategy() do
     end)
 
     before_each(function()
-      dao:truncate_tables()
-      assert(db:truncate())
+      dao:truncate_table("plugins")
+      assert(db:truncate("routes"))
+      assert(db:truncate("services"))
+      assert(db:truncate("consumers"))
 
       local service, _, err_t = db.services:insert {
         protocol = "http",

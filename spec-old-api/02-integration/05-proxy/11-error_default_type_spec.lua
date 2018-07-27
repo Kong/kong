@@ -10,7 +10,7 @@ describe("Proxy errors Content-Type", function()
   local client
 
   setup(function()
-    helpers.dao:truncate_tables()
+    helpers.dao:truncate_table("apis")
 
     assert(helpers.dao.apis:insert {
       name                     = "api-1",

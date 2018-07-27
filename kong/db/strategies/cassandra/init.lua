@@ -986,4 +986,9 @@ function _mt:delete_by_field(field_name, field_value)
 end
 
 
+function _mt:truncate()
+  return self.connector:truncate_table(self.schema.name)
+end
+
+
 return _M
