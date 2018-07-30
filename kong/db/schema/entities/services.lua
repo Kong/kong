@@ -19,8 +19,8 @@ return {
 
   fields = {
     { id              = typedefs.uuid, },
-    { created_at      = { type = "integer", timestamp = true, auto = true }, },
-    { updated_at      = { type = "integer", timestamp = true, auto = true }, },
+    { created_at      = typedefs.auto_timestamp_s },
+    { updated_at      = typedefs.auto_timestamp_s },
     { name            = { type = "string", unique = true,
                           custom_validator = validate_name }, },
     { retries         = { type = "integer", default = 5, between = { 0, 32767 } }, },

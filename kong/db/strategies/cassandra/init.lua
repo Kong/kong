@@ -458,7 +458,7 @@ local function deserialize_row(self, row)
   -- deserialize rows
   -- replace `nil` fields with `ngx.null`
   -- replace `foreign_key` with `foreign = { key = "" }`
-  -- give seconds precisions to timestamps instead of ms
+  -- return timestamps in seconds instead of ms
 
   for field_name, field in self.schema:each_field() do
     if field.type == "foreign" then
