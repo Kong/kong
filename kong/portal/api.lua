@@ -304,15 +304,17 @@ return {
     end,
 
     PATCH = function(self, dao_factory, helpers)
-      if not self.params.password then
-        return helpers.responses.send_HTTP_BAD_REQUEST("Password is required")
+      local cred_params = {}
+
+      if self.params.password then
+        cred_params.password = self.params.password
+        self.params.password = nil
+      elseif self.params.key then
+        cred_params.key = self.params.key
+        self.params.key = nil
+      else
+        return helpers.responses.send_HTTP_BAD_REQUEST("key or password is required")
       end
-
-      local cred_params = {
-        password = self.params.password,
-      }
-
-      self.params.password = nil
 
       local filter = {
         consumer_id = self.consumer.id,

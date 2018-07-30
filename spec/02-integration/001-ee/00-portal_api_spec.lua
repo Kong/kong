@@ -418,7 +418,7 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
       end)
 
-      describe("/_kong/portal/developer/password", function()
+      describe("/_kong/portal/developer/password [basic-auth]", function()
 
         setup(function()
           helpers.stop_kong()
@@ -478,7 +478,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             local resp_body_json = cjson.decode(body)
             local message = resp_body_json.message
 
-            assert.equal("Password is required", message)
+            assert.equal("key or password is required", message)
           end)
 
           it("updates the password", function()
@@ -515,6 +515,107 @@ for _, strategy in helpers.each_strategy('postgres') do
               headers = {
                 ["Content-Type"] = "application/json",
                 ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:hunter1"),
+              }
+            })
+
+            assert.res_status(200, res)
+          end)
+        end)
+      end)
+
+      describe("/_kong/portal/developer/password [key-auth]", function()
+
+        setup(function()
+          helpers.stop_kong()
+          assert(db:truncate())
+          helpers.register_consumer_relations(dao)
+
+          assert(helpers.start_kong({
+            database   = strategy,
+            portal     = true,
+            rbac       = rbac,
+            portal_auth = "key-auth",
+            portal_auth_config = "{ \"hide_credentials\": true }",
+            portal_auto_approve = "on",
+          }))
+
+          client = assert(helpers.proxy_client())
+
+          local res = assert(client:send {
+            method = "POST",
+            path = "/" .. proxy_prefix .. "/portal/register",
+            body = {
+              email = "gruce@konghq.com",
+              key = "myKeeeeeey",
+              meta = "{\"full_name\":\"I Like Turtles\"}"
+            },
+            headers = {["Content-Type"] = "application/json"}
+          })
+
+          assert.res_status(201, res)
+
+          client:close()
+        end)
+
+        before_each(function()
+          client = assert(helpers.proxy_client())
+        end)
+
+        after_each(function()
+          if client then
+            client:close()
+          end
+        end)
+
+        describe("PATCH", function()
+          it("returns 400 if patched with no key", function()
+            local res = assert(client:send {
+              method = "PATCH",
+              body = {},
+              path = "/" .. proxy_prefix .. "/portal/developer/password?apikey=myKeeeeeey",
+              headers = {
+                ["Content-Type"] = "application/json",
+              }
+            })
+
+            local body = assert.res_status(400, res)
+            local resp_body_json = cjson.decode(body)
+            local message = resp_body_json.message
+
+            assert.equal("key or password is required", message)
+          end)
+
+          it("updates the key", function()
+            local res = assert(client:send {
+              method = "PATCH",
+              body = {
+                key = "hunter1",
+              },
+              path = "/" .. proxy_prefix .. "/portal/developer/password?apikey=myKeeeeeey",
+              headers = {
+                ["Content-Type"] = "application/json",
+              }
+            })
+
+            assert.res_status(204, res)
+
+            -- old key fails
+            local res = assert(client:send {
+              method = "GET",
+              path = "/" .. proxy_prefix .. "/portal/developer?apikey=myKeeeeeey",
+              headers = {
+                ["Content-Type"] = "application/json",
+              }
+            })
+
+            assert.res_status(403, res)
+
+            -- new key auths
+            local res = assert(client:send {
+              method = "GET",
+              path = "/" .. proxy_prefix .. "/portal/developer?apikey=hunter1",
+              headers = {
+                ["Content-Type"] = "application/json",
               }
             })
 
