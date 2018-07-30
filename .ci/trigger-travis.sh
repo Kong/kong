@@ -109,7 +109,6 @@ body="{
         \"BUILD_RELEASE=true PLATFORM=ubuntu:12.04.5 $NIGHTLY $VERSION\",
         \"BUILD_RELEASE=true PLATFORM=ubuntu:14.04.2 $NIGHTLY $VERSION\",
         \"BUILD_RELEASE=true PLATFORM=ubuntu:16.04 $NIGHTLY $VERSION\",
-        \"BUILD_RELEASE=true PLATFORM=aws $NIGHTLY $VERSION\",
         \"BUILD_RELEASE=true PLATFORM=alpine $NIGHTLY $VERSION\"
       ]
     }
