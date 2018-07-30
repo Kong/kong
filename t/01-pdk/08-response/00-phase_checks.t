@@ -133,10 +133,10 @@ qq{
             }, {
                 method        = "get_source",
                 args          = { },
-                init_worker   = false,
+                init_worker   = "forced false",
                 certificate   = "pending",
-                rewrite       = false,
-                access        = false,
+                rewrite       = "forced false",
+                access        = "forced false",
                 header_filter = true,
                 body_filter   = true,
                 log           = true,
