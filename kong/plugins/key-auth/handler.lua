@@ -46,7 +46,7 @@ local function set_consumer(consumer, credential)
   local new_headers = {
     [const.CONSUMER_ID]        = consumer.id,
     [const.CONSUMER_CUSTOM_ID] = tostring(consumer.custom_id),
-    [const.CONSUMER_USERNAME]  = consumer.username,
+    [const.CONSUMER_USERNAME]  = tostring(consumer.username),
   }
 
   kong.ctx.shared.authenticated_consumer = consumer -- forward compatibility
