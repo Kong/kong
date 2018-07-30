@@ -87,8 +87,10 @@ TOKEN=$1
 MESSAGE=",\"message\": \"Triggered by upstream build of Kong/kong commit "`git rev-parse --short HEAD`"\""
 
 NIGHTLY=""
+VERSION=""
 if [ "${TRAVIS_EVENT_TYPE}" = "cron" ]; then
-  NIGHTLY="--nightly"
+  NIGHTLY="NIGHTLY=-n"
+  VERSION="VERSION=`date +%Y-%m-%d`"
 fi
 
 
@@ -99,16 +101,16 @@ body="{
     \"merge_mode\": \"deep_merge\",
     \"env\": {
       \"matrix\": [
-        \"BUILD_RELEASE=true PLATFORM=centos:6 $NIGHTLY\",
-        \"BUILD_RELEASE=true PLATFORM=centos:7 $NIGHTLY\",
-        \"BUILD_RELEASE=true PLATFORM=debian:7 $NIGHTLY\",
-        \"BUILD_RELEASE=true PLATFORM=debian:8 $NIGHTLY\",
-        \"BUILD_RELEASE=true PLATFORM=debian:9 $NIGHTLY\",
-        \"BUILD_RELEASE=true PLATFORM=ubuntu:12.04.5 $NIGHTLY\",
-        \"BUILD_RELEASE=true PLATFORM=ubuntu:14.04.2 $NIGHTLY\",
-        \"BUILD_RELEASE=true PLATFORM=ubuntu:16.04 $NIGHTLY\",
-        \"BUILD_RELEASE=true PLATFORM=amazonlinux $NIGHTLY\",
-        \"BUILD_RELEASE=true PLATFORM=alpine $NIGHTLY\"
+        \"BUILD_RELEASE=true PLATFORM=centos:6 $NIGHTLY $VERSION\",
+        \"BUILD_RELEASE=true PLATFORM=centos:7 $NIGHTLY $VERSION\",
+        \"BUILD_RELEASE=true PLATFORM=debian:7 $NIGHTLY $VERSION\",
+        \"BUILD_RELEASE=true PLATFORM=debian:8 $NIGHTLY $VERSION\",
+        \"BUILD_RELEASE=true PLATFORM=debian:9 $NIGHTLY $VERSION\",
+        \"BUILD_RELEASE=true PLATFORM=ubuntu:12.04.5 $NIGHTLY $VERSION\",
+        \"BUILD_RELEASE=true PLATFORM=ubuntu:14.04.2 $NIGHTLY $VERSION\",
+        \"BUILD_RELEASE=true PLATFORM=ubuntu:16.04 $NIGHTLY $VERSION\",
+        \"BUILD_RELEASE=true PLATFORM=aws $NIGHTLY $VERSION\",
+        \"BUILD_RELEASE=true PLATFORM=alpine $NIGHTLY $VERSION\"
       ]
     }
   }
