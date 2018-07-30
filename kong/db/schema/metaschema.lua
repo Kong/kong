@@ -174,7 +174,7 @@ local attribute_types = {
     ["integer"] = true,
   },
   timestamp = {
-    ["integer"] = true,
+    ["number"] = true,
   },
   uuid = {
     ["string"] = true,

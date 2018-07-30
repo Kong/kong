@@ -87,4 +87,10 @@ typedefs.uuid = Schema.define {
   auto = true,
 }
 
+typedefs.auto_timestamp = Schema.define {
+  type = "number",
+  timestamp = true,
+  auto = true
+}
+
 return typedefs

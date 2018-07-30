@@ -176,7 +176,7 @@ describe("metaschema", function()
       ttl = true,
       fields = {
         { str = { type = "string", unique = true } },
-        { created_at = { type = "integer", timestamp = true, auto = true } },
+        { created_at = { type = "number", timestamp = true, auto = true } },
       },
       primary_key = { "str" },
     }
