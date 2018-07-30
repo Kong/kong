@@ -87,7 +87,7 @@ TOKEN=$1
 MESSAGE=",\"message\": \"Triggered by upstream build of Kong/kong commit "`git rev-parse --short HEAD`"\""
 
 NIGHTLY=""
-if [[ "${TRAVIS_EVENT_TYPE}" == "cron" ]]; then
+if [ "${TRAVIS_EVENT_TYPE}" = "cron" ]; then
   NIGHTLY="--nightly"
 fi
 
@@ -116,11 +116,11 @@ body="{
 }}"
 
 ## For debugging:
-echo "USER=$USER"
-echo "REPO=$REPO"
-echo "TOKEN=$TOKEN"
-echo "MESSAGE=$MESSAGE"
-echo "BODY=$body"
+#echo "USER=$USER"
+#echo "REPO=$REPO"
+#echo "TOKEN=$TOKEN"
+#echo "MESSAGE=$MESSAGE"
+#echo "BODY=$body"
 # It does not work to put / in place of %2F in the URL below.  I'm not sure why.
 curl -s -X POST \
   -H "Content-Type: application/json" \
