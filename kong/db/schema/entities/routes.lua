@@ -35,8 +35,8 @@ return {
 
   fields = {
     { id             = typedefs.uuid, },
-    { created_at     = { type = "integer", timestamp = true, auto = true }, },
-    { updated_at     = { type = "integer", timestamp = true, auto = true }, },
+    { created_at     = typedefs.auto_timestamp },
+    { updated_at     = typedefs.auto_timestamp },
     { protocols      = { type     = "set",
                          len_min  = 1,
                          required = true,
