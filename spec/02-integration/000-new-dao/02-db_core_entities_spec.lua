@@ -234,8 +234,8 @@ for _, strategy in helpers.each_strategy() do
           }))
 
           local route_in_db = assert(db.routes:select({ id = route.id }))
-          assert.equal(now, route_in_db.created_at)
-          assert.equal(now, route_in_db.updated_at)
+          assert.truthy(now - route_in_db.created_at < 0.1)
+          assert.truthy(now - route_in_db.updated_at < 0.1)
         end)
 
         it("created_at/updated_at cannot be overriden", function()
@@ -1241,6 +1241,13 @@ for _, strategy in helpers.each_strategy() do
           assert.has_error(function()
             db.services:delete()
           end, "primary_key must be a table")
+        end)
+
+        -- no I/O
+        it("errors on invalid arg", function()
+          assert.has_error(function()
+            db.services:delete_by_name(123)
+          end, "name must be a string")
         end)
 
         -- I/O
