@@ -260,6 +260,10 @@ return {
     GET = function(self, dao_factory, helpers)
       return helpers.responses.send_HTTP_OK(self.consumer)
     end,
+
+    DELETE = function(self, dao_factory)
+      crud.delete(self.consumer, dao_factory.consumers)
+    end
   },
 
   ["/developer/password"] = {
@@ -381,23 +385,25 @@ return {
         return helpers.responses.send_HTTP_BAD_REQUEST("Invalid email")
       end
 
-      local cred_params = {
-        username = self.params.email,
-      }
+      if singletons.configuration.portal_auth == "basic-auth" then
+        local cred_params = {
+          username = self.params.email,
+        }
 
-      local filter = {
-        consumer_id = self.consumer.id,
-        id = self.credential.id,
-      }
+        local filter = {
+          consumer_id = self.consumer.id,
+          id = self.credential.id,
+        }
 
-      local ok, err = crud.portal_crud.update_login_credential(cred_params, self.collection, filter)
+        local ok, err = crud.portal_crud.update_login_credential(cred_params, self.collection, filter)
 
-      if err then
-        return helpers.yield_error(err)
-      end
+        if err then
+          return helpers.yield_error(err)
+        end
 
-      if not ok then
-        return helpers.responses.send_HTTP_NOT_FOUND()
+        if not ok then
+          return helpers.responses.send_HTTP_NOT_FOUND()
+        end
       end
 
       local dev_params = {
