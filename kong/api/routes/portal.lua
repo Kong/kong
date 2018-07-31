@@ -272,7 +272,7 @@ return {
 
       self.params.email_or_id = ngx.unescape_uri(self.params.email_or_id)
 
-      crud.find_consumer_by_email_or_id(self, dao_factory, helpers, {__skip_rbac = true})
+      crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
     end,
 
     PATCH = function(self, dao_factory, helpers)
