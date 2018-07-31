@@ -250,7 +250,7 @@ return {
         created_at timestamp
       );
 
-      CREATE TABLE ssl_servers_names(
+      CREATE TABLE IF NOT EXISTS ssl_servers_names(
         name text,
         ssl_certificate_id uuid,
         created_at timestamp,
@@ -504,7 +504,8 @@ return {
     up = [[
       ALTER TABLE upstreams DROP orderlist;
     ]],
-    down = function(_, _, dao) end  -- not implemented
+    down = function(_, _, dao) end,  -- not implemented
+    ignore_error = "orderlist was not found"
   },
   {
     name = "2017-11-07-192000_upstream_healthchecks",
@@ -513,7 +514,8 @@ return {
     ]],
     down = [[
       ALTER TABLE upstreams DROP healthchecks;
-    ]]
+    ]],
+    ignore_error = "Invalid column name healthchecks"
   },
   {
     name = "2017-10-27-134100_consistent_hashing_1",
@@ -528,7 +530,8 @@ return {
       ALTER TABLE upstreams DROP hash_fallback;
       ALTER TABLE upstreams DROP hash_on_header;
       ALTER TABLE upstreams DROP hash_fallback_header;
-    ]]
+    ]],
+    ignore_error = "Invalid column name"
   },
   {
     name = "2017-11-07-192100_upstream_healthchecks_2",
@@ -764,6 +767,7 @@ return {
     down = [[
       ALTER TABLE upstreams DROP hash_on_cookie;
       ALTER TABLE upstreams DROP hash_on_cookie_path;
-    ]]
+    ]],
+    ignore_error = "Invalid column name hash_on_cookie",
   }
 }
