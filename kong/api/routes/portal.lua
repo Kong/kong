@@ -316,4 +316,19 @@ return {
       return helpers.responses.send_HTTP_NO_CONTENT()
     end,
   },
+
+  ["/portal/developers/:email_or_id/:plugin"] =  {
+    before = function(self, dao_factory, helpers)
+      self.params.email_or_id = ngx.unescape_uri(self.params.email_or_id)
+      crud.find_consumer_by_email_or_id(self, dao_factory, helpers)
+      self.params.consumer_id = self.consumer.id
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      self.params.consumer_type = enums.CONSUMERS.TYPE.PROXY
+      crud.paginated_set(self, dao_factory.credentials, function (row)
+        return row.credential_data
+      end)
+    end
+  },
 }
