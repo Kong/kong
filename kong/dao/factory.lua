@@ -417,6 +417,14 @@ local function migrate(self, identifier, migrations_modules, cur_migrations, on_
       err = migration.up(self.db, self.kong_config, self)
     end
 
+    if err and migration.ignore_error then
+      if type(migration.ignore_error) == "boolean" or
+         (type(migration.ignore_error) == "string" and
+          string.find(tostring(err), migration.ignore_error, 1, true)) then
+        err = nil
+      end
+    end
+
     if err then
       return nil, string.format("Error during migration %s: %s", migration.name, err)
     end

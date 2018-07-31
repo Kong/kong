@@ -579,10 +579,15 @@ return {
   {
     name = "2017-10-27-134100_consistent_hashing_1",
     up = [[
-      ALTER TABLE upstreams ADD hash_on text;
-      ALTER TABLE upstreams ADD hash_fallback text;
-      ALTER TABLE upstreams ADD hash_on_header text;
-      ALTER TABLE upstreams ADD hash_fallback_header text;
+      DO $$
+      BEGIN
+        ALTER TABLE upstreams ADD hash_on text;
+        ALTER TABLE upstreams ADD hash_fallback text;
+        ALTER TABLE upstreams ADD hash_on_header text;
+        ALTER TABLE upstreams ADD hash_fallback_header text;
+      EXCEPTION WHEN duplicate_column THEN
+          -- Do nothing, accept existing state
+      END$$;
     ]],
     down = [[
       ALTER TABLE upstreams DROP COLUMN IF EXISTS hash_on;
@@ -788,8 +793,13 @@ return {
   {
     name = "2018-05-17-173100_hash_on_cookie",
     up = [[
-      ALTER TABLE upstreams ADD hash_on_cookie text;
-      ALTER TABLE upstreams ADD hash_on_cookie_path text;
+      DO $$
+      BEGIN
+        ALTER TABLE upstreams ADD hash_on_cookie text;
+        ALTER TABLE upstreams ADD hash_on_cookie_path text;
+      EXCEPTION WHEN duplicate_column THEN
+        -- Do nothing, accept existing state
+      END$$;
     ]],
     down = [[
       ALTER TABLE upstreams DROP hash_on_cookie;
