@@ -32,7 +32,7 @@ DB.__index = function(self, k)
 end
 
 
-function DB.new(kong_config, strategy)
+function DB.new(kong_config, strategy, skip_init_connector)
   if not kong_config then
     error("missing kong_config", 2)
   end
@@ -62,7 +62,7 @@ function DB.new(kong_config, strategy)
                         tostring(errors:schema_violation(err_t)))
       end
 
-      schemas[entity_name] = Entity.new(entity_schema)
+      schemas[entity_name] = assert(Entity.new(entity_schema))
     end
   end
 
@@ -92,14 +92,23 @@ function DB.new(kong_config, strategy)
         return nil, fmt("no strategy found for schema '%s'", schema.name)
       end
 
-      daos[schema.name] = DAO.new(self, schema, strategy, errors)
+      daos[schema.name] = assert(DAO.new(self, schema, strategy, errors))
     end
   end
 
   -- we are 200 OK
+  setmetatable(self, DB)
 
+  if skip_init_connector then
+    return self
+  end
 
-  return setmetatable(self, DB)
+  local ok, err = self:init_connector()
+  if not ok then
+    return nil, err
+  end
+
+  return self
 end
 
 
