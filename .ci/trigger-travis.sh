@@ -86,6 +86,14 @@ REPO=kong-distributions
 TOKEN=$1
 MESSAGE=",\"message\": \"Triggered by upstream build of Kong/kong commit "`git rev-parse --short HEAD`"\""
 
+NIGHTLY=""
+VERSION=""
+if [ "${TRAVIS_EVENT_TYPE}" = "cron" ]; then
+  NIGHTLY="NIGHTLY=-n"
+  VERSION="VERSION=`date +%Y-%m-%d`"
+fi
+
+
 body="{
 \"request\": {
   \"branch\":\"master\",
@@ -93,16 +101,15 @@ body="{
     \"merge_mode\": \"deep_merge\",
     \"env\": {
       \"matrix\": [
-        \"BUILD_RELEASE=true PLATFORM=centos:6\",
-        \"BUILD_RELEASE=true PLATFORM=centos:7\",
-        \"BUILD_RELEASE=true PLATFORM=debian:7\",
-        \"BUILD_RELEASE=true PLATFORM=debian:8\",
-        \"BUILD_RELEASE=true PLATFORM=debian:9\",
-        \"BUILD_RELEASE=true PLATFORM=ubuntu:12.04.5\",
-        \"BUILD_RELEASE=true PLATFORM=ubuntu:14.04.2\",
-        \"BUILD_RELEASE=true PLATFORM=ubuntu:16.04\",
-        \"BUILD_RELEASE=true PLATFORM=amazonlinux\",
-        \"BUILD_RELEASE=true PLATFORM=alpine\"
+        \"BUILD_RELEASE=true PLATFORM=centos:6 $NIGHTLY $VERSION\",
+        \"BUILD_RELEASE=true PLATFORM=centos:7 $NIGHTLY $VERSION\",
+        \"BUILD_RELEASE=true PLATFORM=debian:7 $NIGHTLY $VERSION\",
+        \"BUILD_RELEASE=true PLATFORM=debian:8 $NIGHTLY $VERSION\",
+        \"BUILD_RELEASE=true PLATFORM=debian:9 $NIGHTLY $VERSION\",
+        \"BUILD_RELEASE=true PLATFORM=ubuntu:12.04.5 $NIGHTLY $VERSION\",
+        \"BUILD_RELEASE=true PLATFORM=ubuntu:14.04.2 $NIGHTLY $VERSION\",
+        \"BUILD_RELEASE=true PLATFORM=ubuntu:16.04 $NIGHTLY $VERSION\",
+        \"BUILD_RELEASE=true PLATFORM=alpine $NIGHTLY $VERSION\"
       ]
     }
   }
@@ -110,11 +117,11 @@ body="{
 }}"
 
 ## For debugging:
-echo "USER=$USER"
-echo "REPO=$REPO"
-echo "TOKEN=$TOKEN"
-echo "MESSAGE=$MESSAGE"
-echo "BODY=$body"
+#echo "USER=$USER"
+#echo "REPO=$REPO"
+#echo "TOKEN=$TOKEN"
+#echo "MESSAGE=$MESSAGE"
+#echo "BODY=$body"
 # It does not work to put / in place of %2F in the URL below.  I'm not sure why.
 curl -s -X POST \
   -H "Content-Type: application/json" \
