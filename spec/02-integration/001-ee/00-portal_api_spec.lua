@@ -421,7 +421,7 @@ for _, strategy in helpers.each_strategy('postgres') do
           it("deletes authenticated developer", function()
             local res = assert(client:send {
               method = "DELETE",
-              path = "/" .. proxy_prefix .. "/portal/developer" .. "/" .. "gruce@konghq.com",
+              path = "/" .. proxy_prefix .. "/portal/developer",
               headers = {
                 ["Content-Type"] = "application/json",
                 ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
@@ -439,7 +439,7 @@ for _, strategy in helpers.each_strategy('postgres') do
               }
             })
 
-            assert.res_status(401, res)
+            assert.res_status(403, res)
           end)
         end)
       end)
@@ -782,7 +782,7 @@ for _, strategy in helpers.each_strategy('postgres') do
             -- new email succeeds
             local res = assert(client:send {
               method = "GET",
-              path = "/" .. proxy_prefix .. "/portal/developer",
+              path = "/" .. proxy_prefix .. "/portal/developer", 
               headers = {
                 ["Content-Type"] = "application/json",
                 ["Authorization"] = "Basic " .. ngx.encode_base64("new_email@whodis.com:kong"),
@@ -857,24 +857,23 @@ for _, strategy in helpers.each_strategy('postgres') do
         end)
 
         describe("PATCH", function()
-          it("returns 400 if patched with an invalid email", function()
+          it("returns 400 if patched with an invalid key", function()
             local res = assert(client:send {
               method = "PATCH",
               body = {
                 email = "emailol.com",
               },
-              path = "/" .. proxy_prefix .. "/portal/developer/email",
+              path = "/" .. proxy_prefix .. "/portal/developer/email?apikey=wrongKey",
               headers = {
                 ["Content-Type"] = "application/json",
-                ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
               }
             })
 
-            local body = assert.res_status(400, res)
+            local body = assert.res_status(403, res)
             local resp_body_json = cjson.decode(body)
             local message = resp_body_json.message
 
-            assert.equal("Invalid email", message)
+            assert.equal("Invalid authentication credentials", message)
           end)
 
           it("returns 409 if patched with an email that already exists", function()
@@ -883,10 +882,9 @@ for _, strategy in helpers.each_strategy('postgres') do
               body = {
                 email = developer2.email,
               },
-              path = "/" .. proxy_prefix .. "/portal/developer/email",
+              path = "/" .. proxy_prefix .. "/portal/developer/email?apikey=kong",
               headers = {
                 ["Content-Type"] = "application/json",
-                ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
               }
             })
 
@@ -903,35 +901,19 @@ for _, strategy in helpers.each_strategy('postgres') do
               body = {
                 email = "new_email@whodis.com",
               },
-              path = "/" .. proxy_prefix .. "/portal/developer/email",
+              path = "/" .. proxy_prefix .. "/portal/developer/email?apikey=kong",
               headers = {
                 ["Content-Type"] = "application/json",
-                ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
               }
             })
 
             assert.res_status(204, res)
 
-            -- old email fails
             local res = assert(client:send {
               method = "GET",
-              path = "/" .. proxy_prefix .. "/portal/developer",
+              path = "/" .. proxy_prefix .. "/portal/developer?apikey=kong",
               headers = {
                 ["Content-Type"] = "application/json",
-                ["Authorization"] = "Basic " .. ngx.encode_base64("gruce@konghq.com:kong"),
-              }
-            })
-
-            assert.res_status(403, res)
-
-
-            -- new email succeeds
-            local res = assert(client:send {
-              method = "GET",
-              path = "/" .. proxy_prefix .. "/portal/developer",
-              headers = {
-                ["Content-Type"] = "application/json",
-                ["Authorization"] = "Basic " .. ngx.encode_base64("new_email@whodis.com:kong"),
               }
             })
 
