@@ -445,7 +445,7 @@ function _M.new(connector, schema, errors)
 end
 
 
-local function deserialize_row(self, row)
+function _mt:deserialize_row(row)
   if not row then
     error("row must be a table", 2)
   end
@@ -510,7 +510,7 @@ local function _select(self, cql, args)
     return nil
   end
 
-  return deserialize_row(self, row)
+  return self:deserialize_row(row)
 end
 
 
@@ -705,7 +705,7 @@ do
     end
 
     for i = 1, #rows do
-      rows[i] = deserialize_row(self, rows[i])
+      rows[i] = self:deserialize_row(rows[i])
     end
 
     local next_offset
