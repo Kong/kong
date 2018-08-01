@@ -57,6 +57,7 @@ local field_schema = {
   { reference = { type = "string" }, },
   { auto = { type = "boolean" }, },
   { unique = { type = "boolean" }, },
+  { on_delete = { type = "string", one_of = { "restrict", "cascade", "null" } }, },
   { default = { type = "self" }, },
   { abstract = { type = "boolean" }, },
 }
