@@ -25,6 +25,7 @@ local CORE_ENTITIES = {
   "snis",
   "upstreams",
   "targets",
+  "apis",
 }
 
 
@@ -47,7 +48,7 @@ function DB.new(kong_config, strategy)
 
   -- load errors
 
-  local errors = Errors.new(strategy or kong_config.database)
+  local errors = Errors.new(strategy)
 
   local schemas = {}
 
@@ -65,8 +66,12 @@ function DB.new(kong_config, strategy)
         return nil, fmt("schema of entity '%s' is invalid: %s", entity_name,
                         tostring(errors:schema_violation(err_t)))
       end
-
-      schemas[entity_name] = Entity.new(entity_schema)
+      local entity, err = Entity.new(entity_schema)
+      if not entity then
+        return nil, fmt("schema of entity '%s' is invalid: %s", entity_name,
+                        err)
+      end
+      schemas[entity_name] = entity
     end
   end
 
@@ -79,7 +84,6 @@ function DB.new(kong_config, strategy)
   end
 
   local daos = {}
-
 
   local self   = {
     daos       = daos,       -- each of those has the connector singleton
@@ -96,7 +100,6 @@ function DB.new(kong_config, strategy)
       if not strategy then
         return nil, fmt("no strategy found for schema '%s'", schema.name)
       end
-
       daos[schema.name] = DAO.new(self, schema, strategy, errors)
     end
   end

@@ -139,6 +139,7 @@ build = {
     ["kong.db.dao.consumers"] = "kong/db/dao/consumers.lua",
     ["kong.db.dao.targets"] = "kong/db/dao/targets.lua",
     ["kong.db.schema"] = "kong/db/schema/init.lua",
+    ["kong.db.schema.entities.apis"] = "kong/db/schema/entities/apis.lua",
     ["kong.db.schema.entities.consumers"] = "kong/db/schema/entities/consumers.lua",
     ["kong.db.schema.entities.routes"] = "kong/db/schema/entities/routes.lua",
     ["kong.db.schema.entities.services"] = "kong/db/schema/entities/services.lua",
