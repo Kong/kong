@@ -195,20 +195,32 @@ end
 
 local function row_iterator(self, pager, size, options)
   local next_row = page_iterator(pager, size, options)
+
+  local failed = false -- avoid infinite loop if error is not caught
   return function()
-    local row, err_t, page = next_row()
+    local err_t
+    if failed then
+      return nil
+    end
+    local row, err, page = next_row()
     if not row then
-      if err_t then
-        return nil, tostring(err_t), err_t
+      if err then
+        failed = true
+        if type(err) == "table" then
+          return false, tostring(err), err
+        end
+
+        err_t = self.errors:database_error(err)
+        return false, tostring(err_t), err_t
       end
 
       return nil
     end
 
-    local err
-    row, err, err_t = self:row_to_entity(row, options)
+    row, err, err_t = self:row_to_entity(row)
     if not row then
-      return nil, err, err_t
+      failed = true
+      return false, err, err_t
     end
 
     return row, nil, page
