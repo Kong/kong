@@ -464,10 +464,15 @@ return {
   {
     name = "2017-04-18-153000_unique_plugins_id_2",
     up = [[
-      ALTER TABLE plugins ADD CONSTRAINT plugins_id_key UNIQUE(id);
+      DO $$
+      BEGIN
+        ALTER TABLE plugins ADD CONSTRAINT plugins_id_key UNIQUE(id);
+      EXCEPTION WHEN duplicate_table THEN
+        -- Do nothing, accept existing state
+      END$$;
     ]],
     down = [[
-      ALTER TABLE plugins DROP CONSTRAINT plugins_id_key;
+      DROP CONSTRAINT IF EXISTS plugins_id_key;
     ]],
   },
   {
@@ -684,8 +689,19 @@ return {
   {
     name = "2017-10-25-180700_plugins_routes_and_services",
     up = [[
-      ALTER TABLE plugins ADD route_id uuid REFERENCES routes(id) ON DELETE CASCADE;
-      ALTER TABLE plugins ADD service_id uuid REFERENCES services(id) ON DELETE CASCADE;
+      DO $$
+      BEGIN
+        ALTER TABLE plugins ADD route_id uuid REFERENCES routes(id) ON DELETE CASCADE;
+      EXCEPTION WHEN duplicate_column THEN
+        -- Do nothing, accept existing state
+      END$$;
+
+      DO $$
+      BEGIN
+        ALTER TABLE plugins ADD service_id uuid REFERENCES services(id) ON DELETE CASCADE;
+      EXCEPTION WHEN duplicate_column THEN
+        -- Do nothing, accept existing state
+      END$$;
 
       DO $$
       BEGIN
