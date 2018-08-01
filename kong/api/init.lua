@@ -73,7 +73,7 @@ local function new_db_on_error(self)
   end
 
   if err.code == Errors.codes.PRIMARY_KEY_VIOLATION
- -- or err.code == Errors.codes.UNIQUE_VIOLATION
+  or err.code == Errors.codes.UNIQUE_VIOLATION
   then
     return responses.send_HTTP_CONFLICT(err)
   end
@@ -227,7 +227,7 @@ ngx.log(ngx.DEBUG, "Loading Admin API endpoints")
 
 
 -- Load core routes
-for _, v in ipairs({"kong", "apis", "consumers", "plugins", "cache"}) do
+for _, v in ipairs({"kong", "apis", "cache"}) do
   local routes = require("kong.api.routes." .. v)
   attach_routes(routes)
 end

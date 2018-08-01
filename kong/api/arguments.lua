@@ -231,7 +231,7 @@ infer = function(args, schema)
     return args
   end
 
-  for field_name, field in schema:each_field() do
+  for field_name, field in schema:each_field(args) do
     local value = args[field_name]
     if value then
       args[field_name] = infer_value(value, field)
