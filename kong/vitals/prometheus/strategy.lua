@@ -87,6 +87,7 @@ function _M.new(_, opts)
     custom_filters_str   = custom_filters_str,
     has_custom_filters   = #custom_filters_str > 0,
     common_stats_metrics = common_stats_metrics,
+    headers              = { Authorization = opts.auth_header },
   }
 
   return setmetatable(self, mt)
@@ -149,6 +150,7 @@ function _M:query(start_ts, metrics_query, interval)
         method = "GET",
         path = "/api/v1/query_range?query=" ..  ngx_escape_uri(q[2]) .. "&start=" .. start_ts 
                   .. "&end=" .. end_ts .. "&step=" .. interval,
+        headers = self.headers,
     }
     if not res then
       return nil, "request Prometheus failed: " .. err

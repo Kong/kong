@@ -197,14 +197,8 @@ local function load_tsdb_strategy()
 
   if tsdb_config.type == "prometheus" then
     local db_strategy = require("kong.vitals.prometheus.strategy")
-    local strategy_opts = {
-      host = tsdb_config.host,
-      port = tonumber(tsdb_config.port),
-      custom_filters = tsdb_config.custom_filters,
-      connection_timeout = tonumber(tsdb_config.connection_timeout) or 5000, -- 5s
-    }
     -- no error and we are using TSDB strategy
-    return db_strategy, strategy_opts
+    return db_strategy, tsdb_config
   else
     return error("no vitals TSDB strategy for " .. tsdb_config.type)
   end
