@@ -411,10 +411,14 @@ function _M.new(connector, schema, errors)
 
       -- store in constraints to subsequently retrieve the inverse relation
 
-      _constraints[field.reference] = {
+      if not _constraints[field.reference] then
+        _constraints[field.reference] = {}
+      end
+      insert(_constraints[field.reference], {
         schema     = schema,
         field_name = field_name,
-      }
+        on_delete  = field.on_delete,
+      })
     end
   end
 
@@ -913,31 +917,40 @@ do
     end
     local args = new_tab(#schema.primary_key, 0)
 
-    local constraint = _constraints[schema.name]
-    if constraint then
-      -- foreign keys could be pointing to this entity
-      -- this mimics the "ON DELETE" constraint of supported
-      -- RDBMs (e.g. PostgreSQL)
-      --
-      -- The possible behaviors on such a constraint are:
-      --  * RESTRICT (default)
-      --  * CASCADE  (NYI)
-      --  * SET NULL (NYI)
+    local constraints = _constraints[schema.name]
+    if constraints then
+      for i = 1, #constraints do
+        local constraint = constraints[i]
+        -- foreign keys could be pointing to this entity
+        -- this mimics the "ON DELETE" constraint of supported
+        -- RDBMs (e.g. PostgreSQL)
+        --
+        -- The possible behaviors on such a constraint are:
+        --  * RESTRICT (default)
+        --  * CASCADE  (on_delete = "cascade", NYI)
+        --  * SET NULL (NYI)
 
-      local row, err_t = select_by_foreign_key(self,
-                                               constraint.schema,
-                                               constraint.field_name,
-                                               primary_key)
-      if err_t then
-        return nil, err_t
-      end
+        local behavior = constraint.on_delete or "restrict"
 
-      if row then
-        -- a row is referring to this entity, we cannot delete it.
-        -- deleting the parent entity would violate the foreign key
-        -- constraint
-        return nil, self.errors:foreign_key_violation_restricted(schema.name,
-                                                                 constraint.schema.name)
+        if behavior == "restrict" then
+
+          local row, err_t = select_by_foreign_key(self,
+                                                    constraint.schema,
+                                                    constraint.field_name,
+                                                    primary_key)
+          if err_t then
+            return nil, err_t
+          end
+
+          if row then
+            -- a row is referring to this entity, we cannot delete it.
+            -- deleting the parent entity would violate the foreign key
+            -- constraint
+            return nil, self.errors:foreign_key_violation_restricted(schema.name,
+                                                                     constraint.schema.name)
+          end
+        end
+
       end
     end
 
