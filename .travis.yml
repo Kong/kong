@@ -64,6 +64,8 @@ install:
 
 jobs:
   include:
+    - stage: test
+      script: .ci/run_tests.sh
     - stage: deploy
       if: tag =~ 0.
       script: .ci/trigger-travis.sh $TRAVIS_ACCESS_TOKEN
@@ -74,9 +76,6 @@ jobs:
       script: .ci/trigger-travis.sh $TRAVIS_ACCESS_TOKEN
       env:
         - TEST_SUITE=none
-
-script:
-  - .ci/run_tests.sh
 
 cache:
   apt: true
